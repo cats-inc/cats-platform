@@ -6,7 +6,7 @@ import test from 'node:test';
 import {
   isDesktopHostActionId,
   validateDesktopUrl,
-} from '../dist-electron/security.js';
+} from '../build/desktop/security.js';
 
 function extractActionIds(source, constantName) {
   const anchor = source.indexOf(constantName);
@@ -64,3 +64,4 @@ test('preload and contracts keep the same desktop host action ids', async () => 
 
   assert.deepEqual(preloadActions, contractActions);
 });
+

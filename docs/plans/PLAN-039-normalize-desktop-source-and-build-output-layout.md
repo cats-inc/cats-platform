@@ -326,6 +326,7 @@ Use targeted, risk-based validation only.
 |------|--------|
 | 2026-04-06 | Plan created to align `cats-platform` desktop source/build layout with `cats-runtime` build vocabulary and remove unreleased legacy path names |
 | 2026-04-06 | Phase 2 slice 1 landed: moved the desktop host source tree from `electron/` to `desktop/host/`, renamed `tsconfig.electron.json` to `tsconfig.desktop.json`, and updated active docs/scripts to compile from the new source home while keeping the existing `dist-electron/` output for the next slice |
+| 2026-04-06 | Phase 2 slice 2 landed: consolidated app build artifacts under `build/server`, `build/renderer`, and `build/desktop`, updated desktop packaging/staging contracts, renamed the clean script to `scripts/clean-build.mjs`, and refreshed active docs/smoke tests/package-contract assertions for the new output layout; validation included `npm run build`, `npm run build:test-ui`, `node --test tests/package-contract.test.js`, `node --test tests/desktop-packaging.test.js tests/desktop-host-state.test.js tests/desktop-supervisor.test.js tests/desktop-setup-bridge.test.js`, `node --test tests/app-startup.test.js tests/server.test.js tests/rest-api.test.js`, `node --test tests/provider-telegram-routes.test.js`, `node --test tests/runtime-bridge-routes.test.js`, `node --test tests/product-delete-runtime-cleanup.test.js`, `node --test tests/platform-setup-wizard.test.js`, and `node --test tests/runtime-setup-flow.test.js` |
 
 ---
 

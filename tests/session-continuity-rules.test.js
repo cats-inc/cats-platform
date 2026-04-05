@@ -5,7 +5,7 @@ import {
   classifyContinuityTopology,
   resolveContinuityRule,
   shouldFlushMemory,
-} from '../dist-server/products/chat/state/session-continuity/rules.js';
+} from '../build/server/products/chat/state/session-continuity/rules.js';
 
 test('classifyContinuityTopology returns solo_thread for boss_thread kind', () => {
   const topology = classifyContinuityTopology({ channelKind: 'boss_thread', topic: '' });
@@ -70,3 +70,4 @@ test('shouldFlushMemory returns false for solo_thread on reset', () => {
   const rule = resolveContinuityRule('solo_thread');
   assert.equal(shouldFlushMemory(rule, 'reset'), false);
 });
+

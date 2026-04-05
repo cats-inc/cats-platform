@@ -32,7 +32,7 @@ docker compose up --build
 ```
 
 Container assets were inherited from bootstrap and have not yet been refreshed
-for the current `dist-server/` plus Vite output layout. Treat them as a future
+for the current `build/server/` plus `build/renderer/` output layout. Treat them as a future
 follow-up, not a validated deployment path.
 
 ### Desktop Host First Slice

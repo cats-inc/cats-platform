@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CatsRuntimeClient } from '../dist-server/runtime/client.js';
+import { CatsRuntimeClient } from '../build/server/runtime/client.js';
 
 test('runtime client reuses the shared execution-request serializer for outbound payloads', async () => {
   const requests = [];
@@ -325,3 +325,4 @@ test('runtime client preserves the runtime-sanitized modelSelection returned fro
     ],
   });
 });
+

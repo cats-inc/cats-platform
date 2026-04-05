@@ -12,6 +12,7 @@ function readAppPackageVersion(): string {
     '..',
     '..',
     '..',
+    '..',
     'package.json',
   );
   const packageJson = JSON.parse(

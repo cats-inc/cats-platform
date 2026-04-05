@@ -7,7 +7,7 @@ import {
   formatOperatorTimestamp,
   operatorSeverityClassName,
   runStatusLabel,
-} from '../dist-server/design/operatorFormatting.js';
+} from '../build/server/design/operatorFormatting.js';
 
 function resolveRepoPath(relativePath) {
   return fileURLToPath(new URL(relativePath, import.meta.url));
@@ -34,3 +34,4 @@ test('operator formatting is no longer duplicated under chat, work, or code', ()
     false,
   );
 });
+

@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../dist-server/server.js';
-import { UUID_PATTERN } from '../dist-server/products/chat/shared/channelPaths.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+import { createServer } from '../build/server/server.js';
+import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
@@ -726,3 +726,4 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
     assert.equal(afterDeletePayload.botBindings[0].botName, 'boss_cat_bot');
   });
 });
+

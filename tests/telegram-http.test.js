@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createTelegramIpv4Fetch } from '../dist-server/platform/transports/telegram/http.js';
+import { createTelegramIpv4Fetch } from '../build/server/platform/transports/telegram/http.js';
 
 test('createTelegramIpv4Fetch forces family 4 for Telegram API requests', async () => {
   const calls = [];
@@ -42,3 +42,4 @@ test('createTelegramIpv4Fetch forces family 4 for Telegram API requests', async 
   assert.equal(calls[0].options.family, 4);
   assert.equal(calls[0].options.servername, 'api.telegram.org');
 });
+

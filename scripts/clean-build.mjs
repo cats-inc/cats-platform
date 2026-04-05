@@ -6,9 +6,11 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputDirectories = [
+  'build',
   'dist',
   'dist-server',
   'dist-electron',
+  'dist-test',
 ];
 
 await Promise.all(

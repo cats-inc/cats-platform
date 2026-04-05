@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
-import { resolveOrchestratorDisplayName } from '../dist-server/products/chat/state/model/index.js';
+import { createServer } from '../build/server/server.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { resolveOrchestratorDisplayName } from '../build/server/products/chat/state/model/index.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -600,3 +600,4 @@ test('Boss Cat cannot be assigned as a regular chat participant', async () => {
     assert.equal(assignPayload.error.message, 'Boss Cat is already the default chat entrypoint');
   });
 });
+

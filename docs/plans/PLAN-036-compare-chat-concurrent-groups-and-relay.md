@@ -44,8 +44,8 @@ Completed for first slice.
 ## Verification
 
 - `npm run typecheck`
-- `npm run build:test-ui && node --test dist-test/sidebar-my-cats-navigation.test.js`
-- `npm run build:test-ui && node --test dist-test/chat-compare-sidebar.test.js`
+- `npm run build:test-ui && node --test build/test/sidebar-my-cats-navigation.test.js`
+- `npm run build:test-ui && node --test build/test/chat-compare-sidebar.test.js`
 
 ## Follow-ups
 

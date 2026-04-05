@@ -5,14 +5,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay/index.js';
-import { createServer } from '../dist-server/server.js';
+import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
+import { createServer } from '../build/server/server.js';
 import {
   FileChatStore,
   MemoryChatStore,
-} from '../dist-server/products/chat/state/store.js';
-import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companion-box/index.js';
-import { createChatTelegramRoomBridge } from '../dist-server/products/chat/state/telegramBridgeAdapter.js';
+} from '../build/server/products/chat/state/store.js';
+import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/index.js';
+import { createChatTelegramRoomBridge } from '../build/server/products/chat/state/telegramBridgeAdapter.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -1531,3 +1531,4 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
     },
   );
 });
+

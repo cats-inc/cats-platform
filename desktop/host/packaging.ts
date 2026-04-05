@@ -576,10 +576,10 @@ function buildPackagingTarget(
   const setupSupportAssets = DESKTOP_SETUP_SUPPORT_ASSETS.filter((asset) =>
     asset.targetPlatforms.includes(target.platform));
   const sharedAssets: Array<Omit<DesktopPackagingArtifact, 'required'>> = [
-    { id: 'electron-main', relativePath: 'shared/dist-electron/main.js', role: 'electron_host' as const },
-    { id: 'electron-preload', relativePath: 'shared/dist-electron/preload.cjs', role: 'electron_host' as const },
-    { id: 'app-server', relativePath: 'shared/dist-server/index.js', role: 'app_server' as const },
-    { id: 'app-renderer', relativePath: 'shared/dist/index.html', role: 'app_renderer' as const },
+    { id: 'electron-main', relativePath: 'shared/build/desktop/main.js', role: 'electron_host' as const },
+    { id: 'electron-preload', relativePath: 'shared/build/desktop/preload.cjs', role: 'electron_host' as const },
+    { id: 'app-server', relativePath: 'shared/build/server/index.js', role: 'app_server' as const },
+    { id: 'app-renderer', relativePath: 'shared/build/renderer/index.html', role: 'app_renderer' as const },
     { id: 'app-package-manifest', relativePath: 'shared/app-sidecar/package.json', role: 'app_server' as const },
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/dist/index.js', role: 'runtime_sidecar' as const },
     { id: 'runtime-package-manifest', relativePath: 'shared/cats-runtime/package.json', role: 'runtime_sidecar' as const },
@@ -658,8 +658,8 @@ async function ensureRequiredFile(path: string): Promise<void> {
 
 async function ensureBuiltAssets(config: DesktopHostConfig): Promise<void> {
   await ensureRequiredFile(config.paths.appEntryScript);
-  await ensureRequiredFile(join(config.packageRoot, 'dist', 'index.html'));
-  await ensureRequiredFile(join(config.packageRoot, 'dist-electron', 'main.js'));
+  await ensureRequiredFile(join(config.packageRoot, 'build', 'renderer', 'index.html'));
+  await ensureRequiredFile(join(config.packageRoot, 'build', 'desktop', 'main.js'));
   await ensureRequiredFile(config.paths.preloadScript);
   await ensureRequiredFile(join(config.packageRoot, 'package.json'));
 }
@@ -718,9 +718,9 @@ export async function stageDesktopPackagingOutputs(
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(join(outputRoot, 'shared'), { recursive: true });
 
-  await copyDirectory(join(config.packageRoot, 'dist-server'), join(outputRoot, 'shared', 'dist-server'));
-  await copyDirectory(join(config.packageRoot, 'dist'), join(outputRoot, 'shared', 'dist'));
-  await copyDirectory(join(config.packageRoot, 'dist-electron'), join(outputRoot, 'shared', 'dist-electron'));
+  await copyDirectory(join(config.packageRoot, 'build', 'server'), join(outputRoot, 'shared', 'build', 'server'));
+  await copyDirectory(join(config.packageRoot, 'build', 'renderer'), join(outputRoot, 'shared', 'build', 'renderer'));
+  await copyDirectory(join(config.packageRoot, 'build', 'desktop'), join(outputRoot, 'shared', 'build', 'desktop'));
   await copyFile(join(config.packageRoot, 'package.json'), join(outputRoot, 'shared', 'app-sidecar', 'package.json'));
   const setupAssets = await stageDesktopSetupAssets(
     config.packageRoot,
@@ -764,23 +764,23 @@ export async function stageDesktopPackagingOutputs(
     assets: [
       {
         source: relative(outputRoot, config.paths.appEntryScript),
-        target: 'shared/dist-server/index.js',
+        target: 'shared/build/server/index.js',
       },
       {
-        source: relative(outputRoot, join(config.packageRoot, 'dist', 'index.html')),
-        target: 'shared/dist/index.html',
+        source: relative(outputRoot, join(config.packageRoot, 'build', 'renderer', 'index.html')),
+        target: 'shared/build/renderer/index.html',
       },
       {
         source: relative(outputRoot, join(config.packageRoot, 'package.json')),
         target: 'shared/app-sidecar/package.json',
       },
       {
-        source: relative(outputRoot, join(config.packageRoot, 'dist-electron', 'main.js')),
-        target: 'shared/dist-electron/main.js',
+        source: relative(outputRoot, join(config.packageRoot, 'build', 'desktop', 'main.js')),
+        target: 'shared/build/desktop/main.js',
       },
       {
         source: relative(outputRoot, config.paths.preloadScript),
-        target: 'shared/dist-electron/preload.cjs',
+        target: 'shared/build/desktop/preload.cjs',
       },
       {
         source: relative(outputRoot, join(config.runtimePackageRoot, 'dist', 'index.js')),

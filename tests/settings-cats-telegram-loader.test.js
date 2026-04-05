@@ -6,7 +6,7 @@ import {
   createSettingsCatsTelegramAutoLoader,
   createSettingsCatsTelegramScopeKey,
   SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
-} from '../dist-server/core/settingsCatsTelegramDiagnostics.js';
+} from '../build/server/core/settingsCatsTelegramDiagnostics.js';
 
 function deferred() {
   let resolve;
@@ -187,3 +187,4 @@ test('settings cats telegram scope load resets loader scope during strict-mode s
     'finish',
   ]);
 });
+

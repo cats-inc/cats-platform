@@ -4,28 +4,28 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createDefaultChatState } from '../dist-server/products/chat/state/defaults.js';
+import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   appendMessage,
   buildChannelView,
   createChannel as seedChannel,
   setChannelCatLease,
   setChannelRoomRouting,
-} from '../dist-server/products/chat/state/model/index.js';
-import { routeChannelMessage } from '../dist-server/products/chat/state/runtimeActions.js';
-import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
-import { resolveMentionRoute } from '../dist-server/products/chat/state/mentionRouter.js';
+} from '../build/server/products/chat/state/model/index.js';
+import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
+import { createServer } from '../build/server/server.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { resolveMentionRoute } from '../build/server/products/chat/state/mentionRouter.js';
 import {
   createDefaultRoomRoutingState,
   resolveRoomRoutingState,
   resolveRoomWorkflowState,
-} from '../dist-server/products/chat/state/room-routing/index.js';
+} from '../build/server/products/chat/state/room-routing/index.js';
 import {
   appendWorkflowEvent,
   createWorkflowEvent,
   createWorkflowTurn,
-} from '../dist-server/products/chat/state/room-routing/workflow.js';
+} from '../build/server/products/chat/state/room-routing/workflow.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -2861,3 +2861,4 @@ test('GET /api/orchestrator/channels/:id/execution-loop accepts a projected room
     assert.equal(payload.operator.latestRunId, runId);
   });
 });
+

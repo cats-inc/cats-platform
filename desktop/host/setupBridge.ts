@@ -470,6 +470,10 @@ function deriveOptionalFollowThroughPack(
   return null;
 }
 
+function isWindowsAbsolutePath(value: string): boolean {
+  return /^[A-Za-z]:[\\/]/u.test(value) || value.startsWith('\\\\');
+}
+
 function buildHelperExecution(
   helper: Pick<DesktopSetupHelperSummary, 'platform'>,
   scriptPath: string,
@@ -504,10 +508,13 @@ function buildHelperExecution(
     };
   }
 
+  const normalizedScriptPath = isWindowsAbsolutePath(scriptPath)
+    ? scriptPath.replaceAll('\\', '/')
+    : scriptPath;
   return {
     command: 'bash',
     args: [
-      scriptPath,
+      normalizedScriptPath,
       ...args,
     ],
     windowsHide: false,

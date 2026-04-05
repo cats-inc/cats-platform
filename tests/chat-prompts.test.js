@@ -5,7 +5,7 @@ import {
   buildCatPrompt,
   buildOrchestratorPrompt,
   buildSoloChatBootstrapInstructions,
-} from '../dist-server/products/chat/state/prompts.js';
+} from '../build/server/products/chat/state/prompts.js';
 
 function createChannel() {
   return {
@@ -137,3 +137,4 @@ test('solo chat bootstrap instructions include only earlier conversational conte
   assert.ok(!instructions.includes('Telegram'));
   assert.ok(!instructions.includes('Respond in English'));
 });
+

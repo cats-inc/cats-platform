@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildSessionHealthSummary } from '../dist-server/products/chat/shared/sessionHealth.js';
+import { buildSessionHealthSummary } from '../build/server/products/chat/shared/sessionHealth.js';
 
 function buildChannel(kind = 'direct_lane', topic = '', leaseStatuses = ['ready']) {
   return {
@@ -65,3 +65,4 @@ test('buildSessionHealthSummary reports memoryFlushOnReset correctly', () => {
   const soloThread = buildSessionHealthSummary(buildChannel('boss_thread'));
   assert.equal(soloThread.memoryFlushOnReset, false);
 });
+

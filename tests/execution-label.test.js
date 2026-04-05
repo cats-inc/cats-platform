@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildExecutionLabel } from '../dist-server/shared/executionLabel.js';
+import { buildExecutionLabel } from '../build/server/shared/executionLabel.js';
 
 test('buildExecutionLabel derives backend suffixes from instance instead of rendering the raw instance id', () => {
   assert.equal(
@@ -50,3 +50,4 @@ test('buildExecutionLabel resolves Claude native aliases to friendly model names
     'Claude-CLI · Opus 4.6 with 1M context',
   );
 });
+

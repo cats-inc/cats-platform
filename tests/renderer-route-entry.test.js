@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   resolveSelectedChannelEntryLifecycle,
   shouldWakeRouteChannelOnEntry,
-} from '../dist-server/products/chat/shared/channelEntry.js';
+} from '../build/server/products/chat/shared/channelEntry.js';
 
 test('renderer route entry wakes when a persisted room route is not yet the hydrated selected view', () => {
   assert.equal(
@@ -128,3 +128,4 @@ test('direct chat entry lifecycle stays null when the lead cat is missing instea
 
   assert.equal(lifecycle, null);
 });
+

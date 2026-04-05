@@ -10,11 +10,11 @@ import {
   upsertCoreOutcome,
   upsertCoreRun,
   upsertCoreTask,
-} from '../dist-server/core/model/index.js';
+} from '../build/server/core/model/index.js';
 import {
   buildCoreTaskTimelineView,
   queryCoreTaskTimelineView,
-} from '../dist-server/core/taskTimeline.js';
+} from '../build/server/core/taskTimeline.js';
 
 test('buildCoreTaskTimelineView normalizes task history into a chronological narrative', () => {
   let core = createDefaultCoreState();
@@ -277,3 +277,4 @@ test('queryCoreTaskTimelineView filters task history by category, kind, actor, a
     [['activity', 'activity-timeline-filter-recovery', 'recovery']],
   );
 });
+

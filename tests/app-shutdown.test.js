@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { closeAppServerGracefully } from '../dist-server/app/server/shutdown.js';
+import { closeAppServerGracefully } from '../build/server/app/server/shutdown.js';
 
 test('closeAppServerGracefully closes idle connections before waiting for shutdown', async () => {
   let closeCalls = 0;
@@ -53,3 +53,4 @@ test('closeAppServerGracefully force closes lingering sockets after the grace de
   assert.equal(closeIdleCalls, 1);
   assert.equal(closeAllCalls, 1);
 });
+

@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   resolveCoreTaskHandoffState,
   taskExecutionProductLabel,
-} from '../dist-server/core/taskHandoff.js';
+} from '../build/server/core/taskHandoff.js';
 
 function createTask(overrides = {}) {
   return {
@@ -77,3 +77,4 @@ test('taskExecutionProductLabel exposes stable short labels for platform product
   assert.equal(taskExecutionProductLabel('work'), 'Work');
   assert.equal(taskExecutionProductLabel('code'), 'Code');
 });
+

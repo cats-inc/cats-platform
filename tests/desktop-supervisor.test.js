@@ -11,12 +11,12 @@ import {
   resolveCatsHomeDir,
   resolveDesktopHostConfig,
   resolveDesktopUserDataDir,
-} from '../dist-electron/config.js';
+} from '../build/desktop/config.js';
 import {
   buildManagedServiceSpecs,
   ManagedServiceSupervisor,
   prepareManagedServiceLog,
-} from '../dist-electron/processSupervisor.js';
+} from '../build/desktop/processSupervisor.js';
 
 class FakeChildProcess extends EventEmitter {
   constructor() {
@@ -52,7 +52,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
     env: {
       CATS_DESKTOP_APP_PORT: '48181',
       CATS_DESKTOP_RUNTIME_PORT: '43110',
-      CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/dist-server/index.js',
+      CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/build/server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
       CATS_DESKTOP_TRAY_ENABLED: 'true',
@@ -143,7 +143,7 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
 
   assert.equal(
     config.paths.appEntryScript,
-    'C:\\Program Files\\Cats\\resources\\app-sidecar\\dist-server\\index.js',
+    'C:\\Program Files\\Cats\\resources\\app-sidecar\\build\\server\\index.js',
   );
   assert.equal(
     config.paths.runtimeEntryScript,
@@ -155,7 +155,7 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
   );
   assert.equal(
     config.paths.preloadScript,
-    'C:\\Program Files\\Cats\\resources\\app.asar\\dist-electron\\preload.cjs',
+    'C:\\Program Files\\Cats\\resources\\app.asar\\build\\desktop\\preload.cjs',
   );
 });
 

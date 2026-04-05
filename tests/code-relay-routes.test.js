@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import test from 'node:test';
 
-import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+import { createServer } from '../build/server/server.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -209,3 +209,4 @@ test('Code relay routes create threads, update roster, and fan out prompts', asy
     assert.match(settledRound.messages[1].content, /\[(codex|gemini)\]/u);
   });
 });
+

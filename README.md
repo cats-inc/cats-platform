@@ -170,7 +170,7 @@ npm run build
 npm start
 ```
 
-The Node server will serve the built web UI from `dist/` when available.
+The Node server will serve the built web UI from `build/renderer/` when available.
 
 For the desktop-host slice:
 
@@ -178,7 +178,7 @@ For the desktop-host slice:
 npm run desktop:start
 ```
 
-That command builds `dist-server/`, `dist/`, and `dist-electron/`, then starts
+That command builds `build/server/`, `build/renderer/`, and `build/desktop/`, then starts
 the Electron host that supervises local `cats-runtime` and `cats` sidecars.
 
 For host-package smoke validation, the local tarball path now mirrors the

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { chunkTelegramReply } from '../dist-server/platform/transports/telegram/chunking.js';
+import { chunkTelegramReply } from '../build/server/platform/transports/telegram/chunking.js';
 
 test('returns single chunk for short text', () => {
   const result = chunkTelegramReply('Hello world', 4096);
@@ -58,3 +58,4 @@ test('handles text just over limit', () => {
   const result = chunkTelegramReply(text, 100);
   assert.equal(result.length, 2);
 });
+

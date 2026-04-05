@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultCoreState } from '../dist-server/core/model/index.js';
+import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import {
   createCodeRelayThread,
   finishCodeRelayFanOut,
   readCodeRelayThread,
   startCodeRelayFanOut,
   updateCodeRelayRosterEntry,
-} from '../dist-server/products/code/state/relayState.js';
+} from '../build/server/products/code/state/relayState.js';
 
 test('createCodeRelayThread seeds a persistent thread-wide roster', () => {
   const created = createCodeRelayThread(
@@ -173,3 +173,4 @@ test('readCodeRelayThread derives deterministic fallback ids for malformed metad
   assert.equal(firstRead.rounds[0].dispatches[0].id, secondRead.rounds[0].dispatches[0].id);
   assert.equal(firstRead.rounds[0].messages[0].id, secondRead.rounds[0].messages[0].id);
 });
+

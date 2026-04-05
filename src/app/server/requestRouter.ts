@@ -37,7 +37,7 @@ import {
   getAppShutdownContract,
 } from './startup.js';
 
-const WEB_DIST_ROOT = fileURLToPath(new URL('../../../dist', import.meta.url));
+const WEB_BUILD_ROOT = fileURLToPath(new URL('../../../renderer', import.meta.url));
 const MIME_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -94,13 +94,13 @@ async function tryServeWebAsset(
   response: import('node:http').ServerResponse,
 ): Promise<boolean> {
   const requestedPath = pathname === '/' ? '/index.html' : pathname;
-  const resolvedPath = path.resolve(WEB_DIST_ROOT, `.${requestedPath}`);
+  const resolvedPath = path.resolve(WEB_BUILD_ROOT, `.${requestedPath}`);
 
-  if (!resolvedPath.startsWith(WEB_DIST_ROOT)) {
+  if (!resolvedPath.startsWith(WEB_BUILD_ROOT)) {
     return false;
   }
 
-  const fallbackIndexPath = path.join(WEB_DIST_ROOT, 'index.html');
+  const fallbackIndexPath = path.join(WEB_BUILD_ROOT, 'index.html');
   const candidatePath = path.extname(resolvedPath) ? resolvedPath : fallbackIndexPath;
 
   try {

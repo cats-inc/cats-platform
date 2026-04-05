@@ -4,13 +4,13 @@ import test from 'node:test';
 import {
   appendCoreActivity,
   createDefaultCoreState,
-} from '../dist-server/core/model/index.js';
-import { executeCoreMemoryMaintenanceAction } from '../dist-server/core/memoryMaintenanceActions.js';
+} from '../build/server/core/model/index.js';
+import { executeCoreMemoryMaintenanceAction } from '../build/server/core/memoryMaintenanceActions.js';
 import {
   buildCoreMemoryMaintenanceSummary,
   queryCoreMemoryMaintenanceSummary,
-} from '../dist-server/core/memoryMaintenance.js';
-import { MemoryCoreStore } from '../dist-server/core/store.js';
+} from '../build/server/core/memoryMaintenance.js';
+import { MemoryCoreStore } from '../build/server/core/store.js';
 
 test('buildCoreMemoryMaintenanceSummary normalizes memory maintenance activity history', () => {
   const now = new Date('2026-03-26T17:00:00.000Z');
@@ -504,3 +504,4 @@ test('executeCoreMemoryMaintenanceAction records deferred owner sync activity', 
     /Cats-owned owner memory sync failed/i,
   );
 });
+

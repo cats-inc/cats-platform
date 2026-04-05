@@ -7,12 +7,12 @@ import test from 'node:test';
 import {
   createTelegramConversationMapper,
   TELEGRAM_ROOM_ROUTING_PLACEHOLDER_NOTE,
-} from '../dist-server/platform/transports/telegram/mapping.js';
-import { createTelegramRelay } from '../dist-server/platform/transports/telegram/relay/index.js';
+} from '../build/server/platform/transports/telegram/mapping.js';
+import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
 import {
   FileBackedTelegramRelayStore,
   InMemoryTelegramRelayStore,
-} from '../dist-server/platform/transports/telegram/store/index.js';
+} from '../build/server/platform/transports/telegram/store/index.js';
 
 function createContext(overrides = {}) {
   const defaultBotBinding = {
@@ -648,3 +648,4 @@ test('file-backed telegram relay store restores ingress and delivery diagnostics
   assert.equal(restored.getDeliveryStats().sentCount, 1);
   assert.equal(restored.getDeliveryStats().lastReceipt?.messageId, '89');
 });
+

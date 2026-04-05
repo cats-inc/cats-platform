@@ -64,8 +64,8 @@ rules.
 - [ ] Curate publish contents with `files`, `.npmignore`, and/or prepack
       behavior so built server and renderer assets are included while docs,
       tests, and source-only material are not shipped by default.
-- [ ] Define the build/publish contract so `dist-server/` and `dist/` are
-      available in the published package.
+- [ ] Define the build/publish contract so `build/server/` and
+      `build/renderer/` are available in the published package.
 - [ ] Decide whether `main`/`types` remain for internal tooling compatibility
       or should be minimized further for the app-first package story.
 
@@ -169,4 +169,3 @@ Use this when delegating implementation:
 ---
 
 *Last updated: 2026-03-19*
-

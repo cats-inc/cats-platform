@@ -5,44 +5,44 @@ import {
   appendCoreActivity,
   createDefaultCoreState,
   upsertCoreTask,
-} from '../dist-server/core/model/index.js';
-import { MemoryCoreStore } from '../dist-server/core/store.js';
-import { createDefaultChatState } from '../dist-server/products/chat/state/defaults.js';
+} from '../build/server/core/model/index.js';
+import { MemoryCoreStore } from '../build/server/core/store.js';
+import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   appendMessage,
   buildChannelView,
   createChannel,
   setChannelRoomRouting,
-} from '../dist-server/products/chat/state/model/index.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
-import { buildRoomWorkflowRunId } from '../dist-server/platform/orchestration/runIds.js';
-import { reconcileChatWorkflowRecoveryOnStartup } from '../dist-server/app/server/chatWorkflowRecovery.js';
-import { reconcileOrchestratorRecoveryOnStartup } from '../dist-server/app/server/orchestratorRecovery.js';
+} from '../build/server/products/chat/state/model/index.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { buildRoomWorkflowRunId } from '../build/server/platform/orchestration/runIds.js';
+import { reconcileChatWorkflowRecoveryOnStartup } from '../build/server/app/server/chatWorkflowRecovery.js';
+import { reconcileOrchestratorRecoveryOnStartup } from '../build/server/app/server/orchestratorRecovery.js';
 import {
   buildPendingOrchestratorDispatchRequest,
   readPendingOrchestratorDispatchSnapshot,
   writePendingOrchestratorDispatchMetadata,
-} from '../dist-server/platform/orchestration/pendingDispatch.js';
+} from '../build/server/platform/orchestration/pendingDispatch.js';
 import {
   buildOrchestratorDispatchReplayRequest,
   readOrchestratorDispatchReplay,
   writeOrchestratorDispatchReplayMetadata,
-} from '../dist-server/platform/orchestration/dispatchReplay.js';
+} from '../build/server/platform/orchestration/dispatchReplay.js';
 import {
   buildWorkflowContinuationReplayRequest,
   readWorkflowContinuationReplay,
   writeWorkflowContinuationReplayMetadata,
-} from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
+} from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 import {
   createDefaultRoomRoutingState,
   resolveRoomRoutingState,
   resolveRoomWorkflowState,
-} from '../dist-server/products/chat/state/room-routing/index.js';
+} from '../build/server/products/chat/state/room-routing/index.js';
 import {
   appendWorkflowEvent,
   createWorkflowEvent,
   createWorkflowTurn,
-} from '../dist-server/products/chat/state/room-routing/workflow.js';
+} from '../build/server/products/chat/state/room-routing/workflow.js';
 
 function buildChannelTaskId(channelId) {
   return `task-channel-${channelId}`;
@@ -1072,3 +1072,4 @@ test('startup recovery preserves retryable continuation replay metadata for inte
       && activity.metadata?.replayPhase === 'startup_recovered'),
   );
 });
+

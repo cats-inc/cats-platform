@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createGuardedTrayLifecycle } from '../dist-electron/trayLifecycle.js';
+import { createGuardedTrayLifecycle } from '../build/desktop/trayLifecycle.js';
 
 test('guarded tray lifecycle ignores menu updates after disposal', () => {
   const appliedStates = [];
@@ -24,3 +24,4 @@ test('guarded tray lifecycle ignores menu updates after disposal', () => {
   assert.equal(destroyCalls, 1);
   assert.equal(lifecycle.isDisposed(), true);
 });
+

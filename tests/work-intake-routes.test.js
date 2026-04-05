@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import test from 'node:test';
 
-import { createDefaultCoreState } from '../dist-server/core/model/index.js';
-import { routeWorkApi } from '../dist-server/products/work/api/index.js';
+import { createDefaultCoreState } from '../build/server/core/model/index.js';
+import { routeWorkApi } from '../build/server/products/work/api/index.js';
 
 function createMemoryStore() {
   let state = createDefaultCoreState();
@@ -360,3 +360,4 @@ test('GET /api/work/intake/:projectId/plan returns 404 for unknown project', asy
   );
   assert.equal(status, 404);
 });
+

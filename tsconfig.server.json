@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "NodeNext",
     "lib": ["ES2022"],
-    "outDir": "./dist-server",
+    "outDir": "./build/server",
     "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
@@ -23,8 +23,7 @@
     "src/app/renderer/**/*.tsx",
     "src/products/*/renderer/**/*",
     "node_modules",
-    "dist",
-    "dist-server",
+    "build",
     "tests"
   ]
 }

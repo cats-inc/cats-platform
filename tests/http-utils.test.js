@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { matchRoute } from '../dist-server/shared/http.js';
+import { matchRoute } from '../build/server/shared/http.js';
 
 test('matchRoute preserves undefined optional captures instead of coercing them to strings', () => {
   assert.deepEqual(
@@ -22,3 +22,4 @@ test('matchRoute still decodes literal route segments that happen to spell undef
     ['undefined'],
   );
 });
+

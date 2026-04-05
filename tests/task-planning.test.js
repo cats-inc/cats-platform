@@ -4,24 +4,24 @@ import test from 'node:test';
 import {
   applyTaskAssignmentLifecycle,
   checkoutTaskExecution,
-} from '../dist-server/core/taskLifecycle.js';
+} from '../build/server/core/taskLifecycle.js';
 import {
   createDefaultCoreState,
   upsertCoreTask,
   upsertCoreWorkItem,
-} from '../dist-server/core/model/index.js';
+} from '../build/server/core/model/index.js';
 import {
   buildTaskRuntimeExecutionRequest,
   cloneTaskRuntimeExecutionRequest,
   serializeTaskRuntimeExecutionRequest,
-} from '../dist-server/shared/taskExecutionBridge.js';
+} from '../build/server/shared/taskExecutionBridge.js';
 import {
   patchTaskPlanningMetadata,
   readTaskPlanningMetadata,
   resolveDefaultTaskStrategy,
   resolveEffectiveTaskStrategy,
   writeTaskPlanningMetadata,
-} from '../dist-server/shared/taskPlanning.js';
+} from '../build/server/shared/taskPlanning.js';
 
 function createTaskBridgeFixture() {
   const now = new Date('2026-03-26T02:00:00.000Z');
@@ -572,3 +572,4 @@ test('task lifecycle normalizes ad hoc execution requests before persistence and
     },
   });
 });
+

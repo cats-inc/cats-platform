@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createDefaultCoreState } from '../dist-server/core/model/index.js';
-import { createDefaultChatState } from '../dist-server/products/chat/state/defaults.js';
+import { createDefaultCoreState } from '../build/server/core/model/index.js';
+import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   archiveCat,
   appendMessage,
@@ -20,11 +20,11 @@ import {
   toChannelSummary,
   unarchiveCat,
   updateGlobalOrchestrator,
-} from '../dist-server/products/chat/state/model/index.js';
-import { routeChannelMessage } from '../dist-server/products/chat/state/runtimeActions.js';
-import { createSharedCoreFixtureBundle } from '../dist-server/shared/coreFixtures.js';
-import { UUID_PATTERN } from '../dist-server/products/chat/shared/channelPaths.js';
-import { FileChatStore } from '../dist-server/products/chat/state/store.js';
+} from '../build/server/products/chat/state/model/index.js';
+import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
+import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
+import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
+import { FileChatStore } from '../build/server/products/chat/state/store.js';
 
 test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
@@ -1818,3 +1818,4 @@ test('createChannel defaults empty draft fields to a neutral new-chat label', as
   assert.equal(state.channels[0].topic, '');
   assert.match(state.channels[0].id, UUID_PATTERN);
 });
+

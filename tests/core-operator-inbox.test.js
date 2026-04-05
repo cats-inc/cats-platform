@@ -8,20 +8,20 @@ import {
   upsertCoreRun,
   upsertCoreTask,
   writeApprovalDecision,
-} from '../dist-server/core/model/index.js';
+} from '../build/server/core/model/index.js';
 import {
   listCoreOperatorInboxItems,
   queryCoreOperatorInboxItems,
-} from '../dist-server/core/operatorInbox.js';
+} from '../build/server/core/operatorInbox.js';
 import {
   buildOrchestratorDispatchReplayRequest,
   writeOrchestratorDispatchReplayMetadata,
-} from '../dist-server/platform/orchestration/dispatchReplay.js';
+} from '../build/server/platform/orchestration/dispatchReplay.js';
 import {
   buildWorkflowContinuationReplayRequest,
   writeWorkflowContinuationReplayMetadata,
-} from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
-import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
+} from '../build/server/platform/orchestration/workflowContinuationReplay.js';
+import { writeTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 
 test('listCoreOperatorInboxItems returns actionable task summaries with latest timeline context', () => {
   const now = new Date('2026-03-26T18:00:00.000Z');
@@ -395,3 +395,4 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.withChildrenCount, 0);
   assert.equal(result.summary.withActiveChildrenCount, 0);
 });
+

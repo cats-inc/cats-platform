@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { shouldSubmitComposerOnKeyDown } from '../dist-server/shared/composer.js';
+import { shouldSubmitComposerOnKeyDown } from '../build/server/shared/composer.js';
 
 test('shouldSubmitComposerOnKeyDown only submits on plain Enter', () => {
   assert.equal(
@@ -58,3 +58,4 @@ test('shouldSubmitComposerOnKeyDown only submits on plain Enter', () => {
     false,
   );
 });
+

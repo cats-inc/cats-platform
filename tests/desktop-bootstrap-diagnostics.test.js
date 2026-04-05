@@ -7,7 +7,7 @@ import {
   buildDesktopAggregationBundle,
   createDesktopBootstrapEvent,
   createEmptyDesktopDiagnosticsState,
-} from '../dist-electron/bootstrapDiagnostics.js';
+} from '../build/desktop/bootstrapDiagnostics.js';
 
 test('desktop aggregation bundle prefers the active bootstrap attempt and keeps layer representation', () => {
   let diagnostics = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats']);
@@ -81,3 +81,4 @@ test('desktop aggregation bundle prefers the active bootstrap attempt and keeps 
   );
   assert.equal(bundle.layers.product.summary, 'Packaged platform setup was opened.');
 });
+

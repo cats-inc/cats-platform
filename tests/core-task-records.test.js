@@ -10,8 +10,8 @@ import {
   upsertCoreOutcome,
   upsertCoreRun,
   upsertCoreTask,
-} from '../dist-server/core/model/index.js';
-import { buildCoreTaskRecordsView } from '../dist-server/core/taskRecords.js';
+} from '../build/server/core/model/index.js';
+import { buildCoreTaskRecordsView } from '../build/server/core/taskRecords.js';
 
 test('buildCoreTaskRecordsView filters and sorts records for one task', () => {
   const now = new Date('2026-03-26T15:00:00.000Z');
@@ -225,3 +225,4 @@ test('buildCoreTaskRecordsView filters and sorts records for one task', () => {
     'activity-records-older',
   ]);
 });
+

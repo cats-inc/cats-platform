@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../dist-server/server.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
-import { createCat } from '../dist-server/products/chat/state/model/index.js';
+import { createServer } from '../build/server/server.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { createCat } from '../build/server/products/chat/state/model/index.js';
 
 let tempDir;
 let configId = 0;
@@ -529,3 +529,4 @@ test('GET /api/app-shell treats legacy active chat state as setup-complete even 
     assert.ok(payload.chat.bossCatId, 'boss cat should remain visible');
   }, chatStore);
 });
+

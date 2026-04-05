@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveCatStatusIndicator } from '../dist-server/products/chat/shared/catStatusResolution.js';
+import { resolveCatStatusIndicator } from '../build/server/products/chat/shared/catStatusResolution.js';
 
 function buildCat(id = 'cat-1', name = 'TestCat') {
   return { id, name, avatarColor: '#abc', status: 'active', roles: [], createdAt: '', updatedAt: '' };
@@ -96,3 +96,4 @@ test('includes cat name and avatar color', () => {
   assert.equal(indicator.catName, 'MyCat');
   assert.equal(indicator.avatarColor, '#abc');
 });
+

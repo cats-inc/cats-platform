@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ChatEventHub } from '../dist-server/products/chat/api/chatEventHub.js';
+import { ChatEventHub } from '../build/server/products/chat/api/chatEventHub.js';
 
 test('subscribe and emit delivers events to listener', () => {
   const hub = new ChatEventHub();
@@ -67,3 +67,4 @@ test('listener error does not break other subscribers', () => {
 
   assert.equal(received.length, 1);
 });
+

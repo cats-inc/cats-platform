@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { shouldAutoScanRuntimeSetup } from '../dist-server/shared/runtimeSetupFlow.js';
+import { shouldAutoScanRuntimeSetup } from '../build/server/shared/runtimeSetupFlow.js';
 
 function createRuntimeSetupSummary(overrides = {}) {
   return {
@@ -63,3 +63,4 @@ test('shouldAutoScanRuntimeSetup returns false once runtime setup is past scan_r
     false,
   );
 });
+

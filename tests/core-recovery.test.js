@@ -5,24 +5,24 @@ import {
   appendCoreActivity,
   createDefaultCoreState,
   upsertCoreTask,
-} from '../dist-server/core/model/index.js';
+} from '../build/server/core/model/index.js';
 import {
   buildCoreTaskRecoveryView,
   listCoreTaskRecoveryViews,
   queryCoreTaskRecoveryViews,
-} from '../dist-server/core/recovery.js';
+} from '../build/server/core/recovery.js';
 import {
   buildOrchestratorDispatchReplayRequest,
   writeOrchestratorDispatchReplayMetadata,
-} from '../dist-server/platform/orchestration/dispatchReplay.js';
+} from '../build/server/platform/orchestration/dispatchReplay.js';
 import {
   buildPendingOrchestratorDispatchRequest,
   writePendingOrchestratorDispatchMetadata,
-} from '../dist-server/platform/orchestration/pendingDispatch.js';
+} from '../build/server/platform/orchestration/pendingDispatch.js';
 import {
   buildWorkflowContinuationReplayRequest,
   writeWorkflowContinuationReplayMetadata,
-} from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
+} from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 
 test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recovery view', () => {
   const now = new Date('2026-03-26T12:00:00.000Z');
@@ -632,3 +632,4 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
   assert.equal(workflowResult.recoveries[0]?.context?.workflowReviewRequired, true);
   assert.equal(workflowResult.recoveries[0]?.context?.workflowConvergeTargetId, 'cat-followup');
 });
+

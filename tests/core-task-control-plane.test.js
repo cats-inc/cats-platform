@@ -8,21 +8,21 @@ import {
   upsertCoreRun,
   upsertCoreTask,
   writeApprovalDecision,
-} from '../dist-server/core/model/index.js';
+} from '../build/server/core/model/index.js';
 import {
   buildCoreTaskControlPlaneView,
   listCoreTaskControlPlaneViews,
   queryCoreTaskControlPlaneViews,
-} from '../dist-server/core/taskControlPlane.js';
+} from '../build/server/core/taskControlPlane.js';
 import {
   buildOrchestratorDispatchReplayRequest,
   writeOrchestratorDispatchReplayMetadata,
-} from '../dist-server/platform/orchestration/dispatchReplay.js';
+} from '../build/server/platform/orchestration/dispatchReplay.js';
 import {
   buildWorkflowContinuationReplayRequest,
   writeWorkflowContinuationReplayMetadata,
-} from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
-import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
+} from '../build/server/platform/orchestration/workflowContinuationReplay.js';
+import { writeTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 
 test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow recommendation signals', () => {
   const now = new Date('2026-03-26T16:00:00.000Z');
@@ -511,3 +511,4 @@ test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active ch
   assert.equal(query.summary.withChildrenCount, 1);
   assert.equal(query.summary.withActiveChildrenCount, 1);
 });
+

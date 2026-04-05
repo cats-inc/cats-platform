@@ -10,7 +10,7 @@ import {
   resolveDesktopStartupLaunchContext,
   syncDesktopStartupPreferences,
   updateDesktopStartupPreferences,
-} from '../dist-electron/desktopStartup.js';
+} from '../build/desktop/desktopStartup.js';
 
 test('desktop startup preferences default to sign-in launch enabled and window open disabled', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-desktop-startup-'));
@@ -171,3 +171,4 @@ test('buildLinuxAutostartEntry quotes the executable path', () => {
     /Exec="\/opt\/Cats Desktop\/cats" --launch-at-login/u,
   );
 });
+

@@ -5,8 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../dist-server/server.js';
-import { RuntimeRequestError } from '../dist-server/runtime/client.js';
+import { createServer } from '../build/server/server.js';
+import { RuntimeRequestError } from '../build/server/runtime/client.js';
 import {
   assignCatToChannel,
   createCat,
@@ -14,8 +14,8 @@ import {
   createConcurrentGroup,
   setChannelCatLease,
   setChannelOrchestratorLease,
-} from '../dist-server/products/chat/state/model/index.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+} from '../build/server/products/chat/state/model/index.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -376,3 +376,4 @@ test('DELETE /api/channels/:id treats missing runtime sessions as idempotent suc
     assert.equal(persisted.channels.length, 0);
   }, { chatStore });
 });
+

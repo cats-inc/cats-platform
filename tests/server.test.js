@@ -5,35 +5,35 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../dist-server/server.js';
-import { UUID_PATTERN } from '../dist-server/products/chat/shared/channelPaths.js';
-import { createSharedCoreFixtureBundle } from '../dist-server/shared/coreFixtures.js';
+import { createServer } from '../build/server/server.js';
+import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
+import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 import {
   assignCatToChannel,
   createCat,
   createChannel,
   setChannelCatLease,
   setChannelOrchestratorLease,
-} from '../dist-server/products/chat/state/model/index.js';
+} from '../build/server/products/chat/state/model/index.js';
 import {
   createCatsMemoryService,
   MemoryCanonicalMemoryStore,
-} from '../dist-server/platform/memory/index.js';
+} from '../build/server/platform/memory/index.js';
 import {
   buildOrchestratorDispatchReplayRequest,
   writeOrchestratorDispatchReplayMetadata,
-} from '../dist-server/platform/orchestration/dispatchReplay.js';
+} from '../build/server/platform/orchestration/dispatchReplay.js';
 import {
   buildPendingOrchestratorDispatchRequest,
   writePendingOrchestratorDispatchMetadata,
-} from '../dist-server/platform/orchestration/pendingDispatch.js';
+} from '../build/server/platform/orchestration/pendingDispatch.js';
 import {
   buildWorkflowContinuationReplayRequest,
   writeWorkflowContinuationReplayMetadata,
-} from '../dist-server/platform/orchestration/workflowContinuationReplay.js';
-import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
-import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+} from '../build/server/platform/orchestration/workflowContinuationReplay.js';
+import { writeTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
+import { createChatMemorySurface } from '../build/server/products/chat/state/memoryAdapter.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
@@ -6538,3 +6538,4 @@ test('attachment serving keeps no-repo chat files out of the state tree', async 
     assert.equal(await secondAttachmentResponse.arrayBuffer().then((buffer) => buffer.byteLength), 4);
   });
 });
+

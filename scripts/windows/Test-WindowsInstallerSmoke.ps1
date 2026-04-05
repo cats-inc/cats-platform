@@ -126,8 +126,8 @@ $resourcesRoot = Join-Path $resolvedInstallRoot 'resources'
 $packagingPlanPath = Join-Path $resourcesRoot 'desktop-package-plan.json'
 $requiredFiles = @(
   @{ Path = $exePath; Label = 'installed Cats.exe' },
-  @{ Path = (Join-Path $resourcesRoot 'app-sidecar\dist-server\index.js'); Label = 'bundled cats server entry' },
-  @{ Path = (Join-Path $resourcesRoot 'app-sidecar\dist\index.html'); Label = 'bundled cats renderer build' },
+  @{ Path = (Join-Path $resourcesRoot 'app-sidecar\build\server\index.js'); Label = 'bundled cats server entry' },
+  @{ Path = (Join-Path $resourcesRoot 'app-sidecar\build\renderer\index.html'); Label = 'bundled cats renderer build' },
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\package.json'); Label = 'bundled cats app package manifest' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\dist\index.js'); Label = 'bundled cats-runtime entry' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\package.json'); Label = 'bundled cats-runtime package manifest' },

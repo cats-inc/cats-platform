@@ -57,8 +57,8 @@ async function main() {
     throw new Error(`Unsupported platform filter: ${parsed.platform}`);
   }
 
-  const { resolveDesktopHostConfig } = await import('../dist-electron/config.js');
-  const { stageDesktopPackagingOutputs } = await import('../dist-electron/packaging.js');
+  const { resolveDesktopHostConfig } = await import('../build/desktop/config.js');
+  const { stageDesktopPackagingOutputs } = await import('../build/desktop/packaging.js');
 
   const config = resolveDesktopHostConfig({
     env: process.env,

@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   createAsyncKeyedGate,
   createKeyedRequestCoalescer,
-} from '../dist-server/products/chat/shared/asyncControl.js';
+} from '../build/server/products/chat/shared/asyncControl.js';
 
 test('selected-channel request coalescer reuses the same in-flight promise per channel', async () => {
   const coalescer = createKeyedRequestCoalescer();
@@ -67,3 +67,4 @@ test('chat mutation gate serializes same-channel operations without blocking dif
     'second:end',
   ]);
 });
+

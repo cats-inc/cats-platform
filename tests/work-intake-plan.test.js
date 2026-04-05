@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultCoreState } from '../dist-server/core/model/index.js';
+import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import {
   readTaskPlanningMetadata,
-} from '../dist-server/shared/taskPlanning.js';
+} from '../build/server/shared/taskPlanning.js';
 import {
   getWorkTemplate,
-} from '../dist-server/products/work/templates/index.js';
+} from '../build/server/products/work/templates/index.js';
 import {
   generateWorkIntakePlan,
-} from '../dist-server/products/work/intake/index.js';
+} from '../build/server/products/work/intake/index.js';
 
 function createIntakeFixture() {
   const now = new Date('2026-03-29T10:00:00.000Z');
@@ -302,3 +302,4 @@ test('generateWorkIntakePlan handles optional fields', () => {
   assert.equal(intake.deadline, undefined);
   assert.equal(intake.priority, undefined);
 });
+

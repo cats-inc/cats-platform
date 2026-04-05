@@ -8,13 +8,13 @@ import {
   resolveObservedPreviewSurfaceTarget,
   resolvePreviewSurfaceTarget,
   resolvePreviewSurfaceTargetFromArtifacts,
-} from '../dist-server/core/previewSurfaces.js';
+} from '../build/server/core/previewSurfaces.js';
 
 test('normalizePreviewSurfaceUrl accepts web-safe preview URLs and rejects filesystem paths', () => {
   assert.equal(normalizePreviewSurfaceUrl('https://example.test/preview'), 'https://example.test/preview');
   assert.equal(normalizePreviewSurfaceUrl('/artifacts/preview/index.html'), '/artifacts/preview/index.html');
   assert.equal(normalizePreviewSurfaceUrl('C:\\Users\\kenne\\project\\dist\\index.html'), null);
-  assert.equal(normalizePreviewSurfaceUrl('./dist/index.html'), null);
+  assert.equal(normalizePreviewSurfaceUrl('./build/renderer/index.html'), null);
   assert.equal(normalizePreviewSurfaceUrl('file:///tmp/index.html'), null);
 });
 
@@ -165,3 +165,4 @@ test('resolvePreviewSurfaceTargetFromArtifacts keeps artifact-only preview rules
     label: 'Published Preview',
   });
 });
+

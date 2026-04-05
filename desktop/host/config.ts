@@ -113,7 +113,7 @@ export function resolveDesktopUserDataDir(appDataDir: string): string {
 }
 
 function readCurrentPackageRoot(): string {
-  return resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  return resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 }
 
 function resolveHostRuntimeRoot(
@@ -177,7 +177,7 @@ export function resolveDesktopHostConfig(
   );
   const explicitAppEntry = env.CATS_DESKTOP_APP_ENTRY?.trim();
   const inferredPackageRoot = explicitAppEntry
-    ? resolveDesktopPath(joinDesktopPath(dirnameDesktopPath(explicitAppEntry), '..'))
+    ? resolveDesktopPath(joinDesktopPath(dirnameDesktopPath(explicitAppEntry), '..', '..'))
     : undefined;
   const packageRoot = resolveDesktopPath(
     env.CATS_DESKTOP_APP_ROOT?.trim() || inferredPackageRoot || layout.appSidecarRoot,
@@ -272,14 +272,19 @@ export function resolveDesktopHostConfig(
       runtimeRootDir,
       runtimeConfigDir,
       appEntryScript: resolveDesktopPath(
-        env.CATS_DESKTOP_APP_ENTRY?.trim() || joinDesktopPath(packageRoot, 'dist-server', 'index.js'),
+        env.CATS_DESKTOP_APP_ENTRY?.trim() || joinDesktopPath(packageRoot, 'build', 'server', 'index.js'),
       ),
       runtimeEntryScript: resolveDesktopPath(
         env.CATS_DESKTOP_RUNTIME_ENTRY?.trim() || joinDesktopPath(runtimePackageRoot, 'dist', 'index.js'),
       ),
       preloadScript: resolveDesktopPath(
         env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim()
-          || joinDesktopPath(layout.hostPackageRoot, 'dist-electron', 'preload.cjs'),
+          || joinDesktopPath(
+            options.packaged === true ? layout.hostPackageRoot : packageRoot,
+            'build',
+            'desktop',
+            'preload.cjs',
+          ),
       ),
       appStatePath: resolveDesktopPath(resolvePlatformStatePath(platformDir)),
       runtimeDataDir: resolveDesktopPath(joinDesktopPath(runtimeRootDir, 'data')),

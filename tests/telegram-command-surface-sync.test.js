@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createCatActorId } from '../dist-server/core/actors.js';
+import { createCatActorId } from '../build/server/core/actors.js';
 import {
   createTelegramCommandSurfaceSync,
-} from '../dist-server/app/server/telegramCommandSurfaceSync.js';
+} from '../build/server/app/server/telegramCommandSurfaceSync.js';
 
 function createChatState() {
   return {
@@ -219,3 +219,4 @@ test('telegram command surface sync clears stale bot tokens that disappeared fro
     },
   ]);
 });
+

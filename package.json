@@ -6,26 +6,26 @@
   "homepage": "https://github.com/cats-inc/cats-platform",
   "type": "module",
   "bin": {
-    "cats-platform": "./dist-server/index.js"
+    "cats-platform": "./build/server/index.js"
   },
-  "main": "dist-electron/main.js",
+  "main": "build/desktop/main.js",
   "files": [
-    "dist",
-    "dist-server",
-    "dist-electron",
+    "build/renderer",
+    "build/server",
+    "build/desktop",
     "scripts",
     ".env.example",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run clean:dist && npm run build:server && npm run build:web && npm run build:host",
+    "build": "npm run clean:build && npm run build:server && npm run build:web && npm run build:host",
     "build:host": "tsc -p tsconfig.desktop.json",
     "build:server": "tsc -p tsconfig.server.json",
     "build:web": "vite build",
-    "build:test-ui": "esbuild tests/*.test.tsx --bundle --platform=node --format=esm --outdir=dist-test",
-    "clean:dist": "node scripts/clean-dist.mjs",
-    "desktop:host": "electron dist-electron/main.js",
+    "build:test-ui": "esbuild tests/*.test.tsx --bundle --platform=node --format=esm --outdir=build/test",
+    "clean:build": "node scripts/clean-build.mjs",
+    "desktop:host": "electron build/desktop/main.js",
     "desktop:package": "node scripts/build-desktop-installer.mjs --target current",
     "desktop:package:linux": "node scripts/build-desktop-installer.mjs --target linux",
     "desktop:package:macos": "node scripts/build-desktop-installer.mjs --target macos",
@@ -43,8 +43,8 @@
     "preview:web": "vite preview",
     "prepack": "npm run build",
     "start": "npm run start:server",
-    "start:server": "node dist-server/index.js",
-    "test": "npm run typecheck && npm run build:server && npm run build:host && npm run build:test-ui && node --test --test-isolation=none tests/**/*.test.js dist-test/*.test.js",
+    "start:server": "node build/server/index.js",
+    "test": "npm run typecheck && npm run build:server && npm run build:host && npm run build:test-ui && node --test --test-isolation=none tests/**/*.test.js build/test/*.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.desktop.json && tsc --noEmit -p tsconfig.json"
   },
   "keywords": [
@@ -87,21 +87,21 @@
       "buildResources": "assets/build"
     },
     "files": [
-      "dist-electron/**/*",
+      "build/desktop/**/*",
       "assets/tray-icon.png",
       "package.json"
     ],
     "extraResources": [
       {
-        "from": "build/desktop-packaging/shared/dist-server",
-        "to": "app-sidecar/dist-server",
+        "from": "build/desktop-packaging/shared/build/server",
+        "to": "app-sidecar/build/server",
         "filter": [
           "**/*"
         ]
       },
       {
-        "from": "build/desktop-packaging/shared/dist",
-        "to": "app-sidecar/dist",
+        "from": "build/desktop-packaging/shared/build/renderer",
+        "to": "app-sidecar/build/renderer",
         "filter": [
           "**/*"
         ]

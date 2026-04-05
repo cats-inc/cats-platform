@@ -20,5 +20,5 @@
     "src/shared/**/*",
     "vite.config.ts"
   ],
-  "exclude": ["node_modules", "dist", "dist-server", "tests"]
+  "exclude": ["node_modules", "build", "tests"]
 }

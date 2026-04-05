@@ -6,7 +6,7 @@ import {
   readSidebarOpenPreference,
   SIDEBAR_OPEN_STORAGE_KEY,
   writeSidebarOpenPreference,
-} from '../dist-server/shared/sidebarPreference.js';
+} from '../build/server/shared/sidebarPreference.js';
 
 test('parseStoredSidebarOpen defaults to open unless explicitly collapsed', () => {
   assert.equal(parseStoredSidebarOpen(null), true);
@@ -36,3 +36,4 @@ test('sidebar preference helpers read and write the collapsed state', () => {
   assert.equal(storage.get(SIDEBAR_OPEN_STORAGE_KEY), 'open');
   assert.equal(readSidebarOpenPreference(fakeStorage), true);
 });
+

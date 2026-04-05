@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createServer } from '../dist-server/app/server/index.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+import { createServer } from '../build/server/app/server/index.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 function createRuntimeStub() {
   return {
@@ -230,3 +230,4 @@ test('binding can be created in webhook mode', async () => {
     assert.equal(body.botBinding.inboundMode, 'webhook');
   });
 });
+

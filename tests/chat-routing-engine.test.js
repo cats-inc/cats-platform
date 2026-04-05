@@ -10,10 +10,10 @@ import {
   createCat,
   removeCatFromChannel,
   setChannelCatLease,
-} from '../dist-server/products/chat/state/model/index.js';
-import { routeChannelMessage } from '../dist-server/products/chat/state/runtimeActions.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
-import { patchTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
+} from '../build/server/products/chat/state/model/index.js';
+import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { patchTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 
 function createRuntimeStub(responder) {
   let nextSession = 1;
@@ -1660,3 +1660,4 @@ test('anti-ping-pong blocks repeated back-and-forth and prompts only include per
     ),
   );
 });
+

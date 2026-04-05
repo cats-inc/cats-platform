@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   parseMentions,
   parseMentionsWithPositions,
-} from '../dist-server/core/mentionParsing.js';
+} from '../build/server/core/mentionParsing.js';
 
 test('core mention parsing returns unique mention names in encounter order', () => {
   assert.deepEqual(
@@ -25,3 +25,4 @@ test('core mention parsing preserves mention positions for renderer highlighting
     },
   );
 });
+

@@ -4,13 +4,13 @@ import test from 'node:test';
 import {
   createChannel,
   requireChannel,
-} from '../dist-server/products/chat/state/model/index.js';
+} from '../build/server/products/chat/state/model/index.js';
 import {
   beginChannelMessageDispatch,
   settleBegunChannelMessageDispatchFailure,
-} from '../dist-server/products/chat/state/runtimeActions.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
-import { mergeCompletedDispatchState } from '../dist-server/products/chat/state/runtime-dispatch/merge.js';
+} from '../build/server/products/chat/state/runtimeActions.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { mergeCompletedDispatchState } from '../build/server/products/chat/state/runtime-dispatch/merge.js';
 
 function createNoopRuntimeClient() {
   return {
@@ -188,3 +188,4 @@ test('mergeCompletedDispatchState treats overlapping workflow mutations as lates
   assert.equal(mergedWorkflow.activeTurn?.stageId, 'newer_dispatch_stage');
   assert.equal(mergedWorkflow.activeTurn?.updatedAt, '2026-04-03T12:20:06.000Z');
 });
+

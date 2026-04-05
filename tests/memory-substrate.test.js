@@ -8,19 +8,19 @@ import {
   createCatsMemoryService,
   FileCanonicalMemoryStore,
   MemoryCanonicalMemoryStore,
-} from '../dist-server/platform/memory/index.js';
-import { buildMemoryFlushSummary } from '../dist-server/platform/memory/maintenance.js';
-import { createCatActorId } from '../dist-server/core/actors.js';
+} from '../build/server/platform/memory/index.js';
+import { buildMemoryFlushSummary } from '../build/server/platform/memory/maintenance.js';
+import { createCatActorId } from '../build/server/core/actors.js';
 import {
   extractCanonicalMemoryFromChannel,
   extractCanonicalMemoryFromOwnerProfile,
-} from '../dist-server/platform/memory/extraction.js';
-import { buildMemoryRetrievalContext } from '../dist-server/platform/memory/retrieval.js';
-import { createMemoryAwareCompanionBoxStore } from '../dist-server/products/chat/state/companionMemoryAdapter.js';
-import { MemoryCompanionBoxStore } from '../dist-server/products/chat/state/companion-box/index.js';
-import { createChatMemorySurface } from '../dist-server/products/chat/state/memoryAdapter.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
-import { createSharedCoreFixtureBundle } from '../dist-server/shared/coreFixtures.js';
+} from '../build/server/platform/memory/extraction.js';
+import { buildMemoryRetrievalContext } from '../build/server/platform/memory/retrieval.js';
+import { createMemoryAwareCompanionBoxStore } from '../build/server/products/chat/state/companionMemoryAdapter.js';
+import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/index.js';
+import { createChatMemorySurface } from '../build/server/products/chat/state/memoryAdapter.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 
 function buildCompanionCat(catId, nowIso) {
   return {
@@ -822,3 +822,4 @@ test('buildMemoryFlushSummary deduplicates source scopes and replacement groups 
   assert.deepEqual(summary.sourceScopeKeys, ['cat:memory', 'channel:working-memory']);
   assert.deepEqual(summary.replacementGroups, ['cat:group-1', 'channel:group-1']);
 });
+

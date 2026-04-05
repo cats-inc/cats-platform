@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import {
   resolveCodeWorkspace,
-} from '../dist-server/products/code/state/workspaceResolution.js';
+} from '../build/server/products/code/state/workspaceResolution.js';
 
 test('resolveCodeWorkspace resolves an explicit path that exists', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'code-ws-'));
@@ -98,3 +98,4 @@ test('resolveCodeWorkspace treats empty strings as absent', async () => {
   });
   assert.equal(result.resolved, false);
 });
+

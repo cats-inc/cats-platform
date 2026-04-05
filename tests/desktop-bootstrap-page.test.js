@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildDesktopBootstrapPage } from '../dist-electron/bootstrapPage.js';
+import { buildDesktopBootstrapPage } from '../build/desktop/bootstrapPage.js';
 
 test('desktop bootstrap page surfaces setup recovery details from the host bridge', () => {
   const html = buildDesktopBootstrapPage();
@@ -43,3 +43,4 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /min-width: 0/);
   assert.match(html, /main\[data-page-mode="loading"\] \[data-recovery-only="true"\]/);
 });
+

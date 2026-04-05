@@ -4,7 +4,7 @@ import {
   createTelegramPollingSupervisor,
   telegramDeleteWebhook,
   telegramGetUpdates,
-} from '../dist-server/platform/transports/telegram/polling.js';
+} from '../build/server/platform/transports/telegram/polling.js';
 
 function createMockFetch(responses) {
   let callIndex = 0;
@@ -374,3 +374,4 @@ test('reconcilePolling restarts a consumer when its bot token changes', async ()
   assert.ok(calls.some((call) => call.url.includes('bottoken-old/getUpdates')));
   assert.ok(calls.some((call) => call.url.includes('bottoken-new/getUpdates')));
 });
+

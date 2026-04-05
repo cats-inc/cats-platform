@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildDesktopTrayMenuState } from '../dist-electron/trayMenu.js';
+import { buildDesktopTrayMenuState } from '../build/desktop/trayMenu.js';
 
 test('tray menu shows setup-oriented actions before onboarding is complete', () => {
   const state = buildDesktopTrayMenuState({
@@ -157,3 +157,4 @@ test('tray menu hides unavailable or disabled products from app-shell descriptor
     ['chat'],
   );
 });
+

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 
-import { readPersistedSetupCompletionState } from '../dist-electron/persistedSetupState.js';
+import { readPersistedSetupCompletionState } from '../build/desktop/persistedSetupState.js';
 
 test('readPersistedSetupCompletionState detects persisted setup completion from chat state and onboarding history', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-persisted-setup-'));
@@ -43,3 +43,4 @@ test('readPersistedSetupCompletionState tolerates missing persisted files', asyn
   assert.equal(state.setupCompleteAt, null);
   assert.equal(state.productSetupCompleted, false);
 });
+

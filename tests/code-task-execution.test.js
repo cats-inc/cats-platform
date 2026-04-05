@@ -4,15 +4,15 @@ import test from 'node:test';
 import {
   createDefaultCoreState,
   upsertCoreTask,
-} from '../dist-server/core/model/index.js';
-import { writeTaskPlanningMetadata, readTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
+} from '../build/server/core/model/index.js';
+import { writeTaskPlanningMetadata, readTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 import {
   createCodeTask,
   resumeCodeTask,
-} from '../dist-server/products/code/state/taskExecution.js';
+} from '../build/server/products/code/state/taskExecution.js';
 import {
   readCodeWorkspaceSummaryFromTask,
-} from '../dist-server/products/code/shared/workspaceSummary.js';
+} from '../build/server/products/code/shared/workspaceSummary.js';
 
 test('createCodeTask creates a task with productHint code and reflexion strategy', () => {
   const core = createDefaultCoreState();
@@ -184,3 +184,4 @@ test('resumeCodeTask preserves recorded workspace ownership summary', () => {
     ownershipState: 'room_owned',
   });
 });
+

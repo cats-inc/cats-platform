@@ -5,14 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../dist-server/server.js';
+import { createServer } from '../build/server/server.js';
 import {
   assignCatToChannel,
   createCat,
   createChannel,
   setChannelCatLease,
-} from '../dist-server/products/chat/state/model/index.js';
-import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
+} from '../build/server/products/chat/state/model/index.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -177,3 +177,4 @@ test('GET /api/channels/:id/deactivate returns 405', async () => {
     assert.equal(response.status, 405);
   });
 });
+

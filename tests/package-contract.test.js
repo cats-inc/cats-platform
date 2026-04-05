@@ -115,12 +115,12 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   const packedPaths = new Set(packed.files.map((entry) => entry.path));
 
   assert.deepEqual(manifest.bin, {
-    'cats-platform': './dist-server/index.js',
+    'cats-platform': './build/server/index.js',
   });
   assert.deepEqual(manifest.files, [
-    'dist',
-    'dist-server',
-    'dist-electron',
+    'build/renderer',
+    'build/server',
+    'build/desktop',
     'scripts',
     '.env.example',
     'README.md',
@@ -133,10 +133,10 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('.env.example'), true);
   assert.equal(packedPaths.has('LICENSE'), true);
   assert.equal(packedPaths.has('README.md'), true);
-  assert.equal(packedPaths.has('dist/index.html'), true);
-  assert.equal(packedPaths.has('dist-server/index.js'), true);
-  assert.equal(packedPaths.has('dist-electron/main.js'), true);
-  assert.equal(packedPaths.has('dist-electron/preload.cjs'), true);
+  assert.equal(packedPaths.has('build/renderer/index.html'), true);
+  assert.equal(packedPaths.has('build/server/index.js'), true);
+  assert.equal(packedPaths.has('build/desktop/main.js'), true);
+  assert.equal(packedPaths.has('build/desktop/preload.cjs'), true);
   assert.equal(packedPaths.has('scripts/linux/install-node-cli-tools.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-claude-code.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/check-installation.sh'), true);
@@ -162,9 +162,9 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
 
 test('build removes stale packaged output before npm pack snapshots it', () => {
   const stalePaths = [
-    join(projectRoot, 'dist', 'stale', 'old-artifact.txt'),
-    join(projectRoot, 'dist-server', 'stale', 'old-artifact.txt'),
-    join(projectRoot, 'dist-electron', 'stale', 'old-artifact.txt'),
+    join(projectRoot, 'build', 'renderer', 'stale', 'old-artifact.txt'),
+    join(projectRoot, 'build', 'server', 'stale', 'old-artifact.txt'),
+    join(projectRoot, 'build', 'desktop', 'stale', 'old-artifact.txt'),
   ];
 
   for (const stalePath of stalePaths) {
@@ -181,9 +181,9 @@ test('build removes stale packaged output before npm pack snapshots it', () => {
 
   const packed = runPackDryRun();
   const packedPaths = new Set(packed.files.map((entry) => entry.path));
-  assert.equal(packedPaths.has('dist/stale/old-artifact.txt'), false);
-  assert.equal(packedPaths.has('dist-server/stale/old-artifact.txt'), false);
-  assert.equal(packedPaths.has('dist-electron/stale/old-artifact.txt'), false);
+  assert.equal(packedPaths.has('build/renderer/stale/old-artifact.txt'), false);
+  assert.equal(packedPaths.has('build/server/stale/old-artifact.txt'), false);
+  assert.equal(packedPaths.has('build/desktop/stale/old-artifact.txt'), false);
 });
 
 test('local tarball install exposes the cats-platform executable entrypoint', () => {

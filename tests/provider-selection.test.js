@@ -5,11 +5,11 @@ import {
   isLegacyProviderModelTarget,
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
-} from '../dist-server/shared/providerSelection.js';
+} from '../build/server/shared/providerSelection.js';
 import {
   createStaticProviderModelCatalog,
   normalizeProviderAdvancedModelCatalog,
-} from '../dist-server/shared/providerCatalog.js';
+} from '../build/server/shared/providerCatalog.js';
 
 test('resolveSelectedProviderInstance picks the runtime default instance when none is selected', () => {
   const provider = {
@@ -718,3 +718,4 @@ test('normalizeProviderAdvancedModelCatalog preserves runtime preset availabilit
   ]);
   assert.equal(catalog.entries[0]?.limits?.contextWindowTokens, 200000);
 });
+

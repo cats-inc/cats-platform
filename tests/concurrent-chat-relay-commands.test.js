@@ -6,7 +6,7 @@ import {
   buildConcurrentRelayOutgoingNote,
   buildConcurrentRelayPrompt,
   normalizeConcurrentRelayCommand,
-} from '../dist-server/products/chat/shared/concurrentChats.js';
+} from '../build/server/products/chat/shared/concurrentChats.js';
 
 test('normalizeConcurrentRelayCommand accepts current supported relay commands', () => {
   assert.equal(normalizeConcurrentRelayCommand('improve_this'), 'improve_this');
@@ -63,3 +63,4 @@ test('buildConcurrentRelayIncomingNote records which command was received from w
     'Received Synthesize this from Claude-CLI for reply #12345678.',
   );
 });
+

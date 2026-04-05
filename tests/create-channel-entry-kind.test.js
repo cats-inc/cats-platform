@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultChatState } from '../dist-server/products/chat/state/defaults.js';
-import { createCat, createChannel } from '../dist-server/products/chat/state/model/index.js';
+import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
+import { createCat, createChannel } from '../build/server/products/chat/state/model/index.js';
 
 function createStateWithCat() {
   const withCat = createCat(createDefaultChatState(), {
@@ -50,3 +50,4 @@ test('createChannel treats entryKind=solo as a solo thread when composerMode is 
   assert.equal(channel?.composerMode, 'solo');
   assert.equal(channel?.channelKind, 'boss_thread');
 });
+

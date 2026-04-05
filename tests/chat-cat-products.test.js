@@ -1,17 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultChatState } from '../dist-server/products/chat/state/defaults.js';
+import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   createCat,
   createChannel,
   setBossCat,
   updateCatProducts,
-} from '../dist-server/products/chat/state/model/index.js';
+} from '../build/server/products/chat/state/model/index.js';
 import {
   defaultCatProducts,
   listEnabledPlatformSurfaces,
-} from '../dist-server/shared/platformSurfaces.js';
+} from '../build/server/shared/platformSurfaces.js';
 
 test('default chat state exposes platform-enabled surfaces only', () => {
   const state = createDefaultChatState();
@@ -86,3 +86,4 @@ test('removing chat from cat products detaches active chat participation and cle
   assert.equal(state.channels[0].roomRouting?.leadParticipantId, null);
   assert.equal(state.channels[0].composerMode, 'solo');
 });
+

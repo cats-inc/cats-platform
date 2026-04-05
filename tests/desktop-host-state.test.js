@@ -4,18 +4,18 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 
-import { resolveDesktopHostConfig } from '../dist-electron/config.js';
+import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import {
   appendHostEvent,
   buildDesktopAggregationBundle,
   createDesktopBootstrapEvent,
   createEmptyDesktopDiagnosticsState,
-} from '../dist-electron/bootstrapDiagnostics.js';
-import { createDesktopBackgroundState, DesktopHostStateStore } from '../dist-electron/hostState.js';
-import { buildDesktopBootstrapSnapshot } from '../dist-electron/readiness.js';
-import { createDesktopPackagingPlan } from '../dist-electron/packaging.js';
-import { createEmptyDesktopSetupState } from '../dist-electron/setupBridge.js';
-import { createDefaultDesktopUpdateState } from '../dist-electron/update.js';
+} from '../build/desktop/bootstrapDiagnostics.js';
+import { createDesktopBackgroundState, DesktopHostStateStore } from '../build/desktop/hostState.js';
+import { buildDesktopBootstrapSnapshot } from '../build/desktop/readiness.js';
+import { createDesktopPackagingPlan } from '../build/desktop/packaging.js';
+import { createEmptyDesktopSetupState } from '../build/desktop/setupBridge.js';
+import { createDefaultDesktopUpdateState } from '../build/desktop/update.js';
 
 function readyService(name, healthUrl) {
   return {
@@ -37,7 +37,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-host-state-'));
   const config = resolveDesktopHostConfig({
     env: {
-      CATS_DESKTOP_APP_ENTRY: join(workingDir, 'dist-server', 'index.js'),
+      CATS_DESKTOP_APP_ENTRY: join(workingDir, 'build', 'server', 'index.js'),
       CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'dist', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
     },
@@ -224,7 +224,7 @@ test('DesktopHostStateStore loads legacy setup state without optional follow-thr
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-host-state-legacy-'));
   const config = resolveDesktopHostConfig({
     env: {
-      CATS_DESKTOP_APP_ENTRY: join(workingDir, 'dist-server', 'index.js'),
+      CATS_DESKTOP_APP_ENTRY: join(workingDir, 'build', 'server', 'index.js'),
       CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'dist', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
     },

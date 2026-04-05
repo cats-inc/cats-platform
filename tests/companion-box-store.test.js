@@ -7,11 +7,11 @@ import test from 'node:test';
 import {
   FileCompanionBoxStore,
   deriveCompanionBoxStatePath,
-} from '../dist-server/products/chat/state/companion-box/index.js';
+} from '../build/server/products/chat/state/companion-box/index.js';
 import {
   buildCompanionBoxDirectoryKey,
   buildCompanionSourceStorageKey,
-} from '../dist-server/products/chat/companion/layout.js';
+} from '../build/server/products/chat/companion/layout.js';
 
 function buildCompanionCat(catId, nowIso) {
   return {
@@ -369,3 +369,4 @@ test('FileCompanionBoxStore rolls back snapshot when stored source materializati
   assert.equal(snapshot.derived.length, 0);
   assert.equal(snapshot.memory.length, 0);
 });
+

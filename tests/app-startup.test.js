@@ -8,7 +8,7 @@ import {
   getAppReadinessSnapshot,
   parseAppCliOptions,
   resolveAppStartupState,
-} from '../dist-server/app/server/startup.js';
+} from '../build/server/app/server/startup.js';
 
 test('parseAppCliOptions accepts app-managed lifecycle flags', () => {
   const options = parseAppCliOptions([
@@ -80,3 +80,4 @@ test('getAppHelpText documents the startup contract flags', () => {
   assert.match(help, /--managed-by <name>/);
   assert.match(help, /--ready-output <plain\|json\|silent>/);
 });
+

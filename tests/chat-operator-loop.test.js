@@ -11,11 +11,11 @@ import {
   upsertCoreRun,
   upsertCoreTask,
   writeApprovalDecision,
-} from '../dist-server/core/model/index.js';
+} from '../build/server/core/model/index.js';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
-} from '../dist-server/products/chat/shared/operator-loop/index.js';
+} from '../build/server/products/chat/shared/operator-loop/index.js';
 
 test('buildChatOperatorView narrows approvals and activity to the selected chat conversation', () => {
   let core = createDefaultCoreState();
@@ -526,3 +526,4 @@ test('buildChatOperatorView classifies orchestrator replay lifecycle notes for o
   assert.equal(recoveryItem?.label, 'Recovery');
   assert.equal(recoveryItem?.severity, 'attention');
 });
+

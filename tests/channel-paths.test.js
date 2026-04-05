@@ -16,7 +16,7 @@ import {
   resolveVisibleChatPath,
   SETUP_PATH,
   slugifyChannelLabel,
-} from '../dist-server/products/chat/shared/channelPaths.js';
+} from '../build/server/products/chat/shared/channelPaths.js';
 
 test('resolveDefaultChatPath falls back to the dedicated new-chat route', () => {
   assert.equal(resolveDefaultChatPath(''), NEW_CHAT_PATH);
@@ -100,3 +100,4 @@ test('slugifyChannelLabel falls back to chat for non-Latin input', () => {
   assert.equal(slugifyChannelLabel('   '), 'chat');
   assert.equal(slugifyChannelLabel('Hello World'), 'hello-world');
 });
+

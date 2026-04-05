@@ -5,7 +5,7 @@ import {
   checkForDesktopUpdates,
   createDefaultDesktopUpdateState,
   resolveDesktopUpdateConfig,
-} from '../dist-electron/update.js';
+} from '../build/desktop/update.js';
 
 test('resolveDesktopUpdateConfig reads channel and manifest settings', () => {
   const config = resolveDesktopUpdateConfig({
@@ -110,3 +110,4 @@ test('checkForDesktopUpdates rejects insecure or non-allow-listed download URLs'
   assert.equal(state.status, 'failed');
   assert.match(state.error ?? '', /allow-listed/);
 });
+

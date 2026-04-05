@@ -59,9 +59,9 @@ startup:
 
 These wrappers call `npm run desktop:start`, which builds:
 
-- `dist-server/`
-- `dist/`
-- `dist-electron/`
+- `build/server/`
+- `build/renderer/`
+- `build/desktop/`
 
 and then launches the Electron host that supervises local `cats-runtime` and
 `cats` child processes.
@@ -307,3 +307,4 @@ Representative usage:
 
 These are operational helper surfaces only. They are intentionally separate
 from the packaged setup wizard/bootstrap flow for now.
+

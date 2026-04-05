@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveDesktopBootstrapNavigation } from '../dist-electron/bootstrapNavigation.js';
+import { resolveDesktopBootstrapNavigation } from '../build/desktop/bootstrapNavigation.js';
 
 test('desktop bootstrap navigation opens setup when services are ready but setup is incomplete', () => {
   const nextUrl = resolveDesktopBootstrapNavigation({
@@ -52,3 +52,4 @@ test('desktop bootstrap navigation stays on the host page when startup is hidden
     showWindowOnStartup: true,
   }), null);
 });
+

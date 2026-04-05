@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildDesktopBootstrapSnapshot } from '../dist-electron/readiness.js';
+import { buildDesktopBootstrapSnapshot } from '../build/desktop/readiness.js';
 
 const desktopConfig = {
   packageRoot: 'cats-platform',
@@ -29,9 +29,9 @@ const desktopConfig = {
     autoDownload: false,
   },
   paths: {
-    appEntryScript: 'cats-platform/dist-server/index.js',
+    appEntryScript: 'cats-platform/build/server/index.js',
     runtimeEntryScript: 'cats-runtime/dist/index.js',
-    preloadScript: 'cats-platform/dist-electron/preload.cjs',
+    preloadScript: 'cats-platform/build/desktop/preload.cjs',
     appStatePath: 'cats-platform/platform/state/chat-state.local.json',
     runtimeDataDir: 'cats-platform/.desktop/runtime/data',
     runtimeSessionBaseDir: 'cats-platform/.desktop/runtime/sessions',
@@ -805,3 +805,4 @@ test('desktop bootstrap keeps optional local-model follow-through reachable afte
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup' && action.label === 'Open Setup for Local Model Pack'), true);
   assert.equal(snapshot.issues.some((issue) => issue.title === 'Optional local model pack is available for follow-through'), true);
 });
+

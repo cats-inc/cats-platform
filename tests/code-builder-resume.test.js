@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   normalizeCodeBuilderTaskId,
   resolveCodeBuilderExecutionTaskId,
-} from '../dist-server/products/code/shared/builderExecution.js';
+} from '../build/server/products/code/shared/builderExecution.js';
 
 test('normalizeCodeBuilderTaskId trims usable task ids', () => {
   assert.equal(normalizeCodeBuilderTaskId('  task-123  '), 'task-123');
@@ -40,3 +40,4 @@ test('CodeBuilderView exposes resume, workspace binding, and execution summary s
   assert.match(source, /CodeExecutionSummaryPanel/u);
   assert.match(source, /setSessionStatus\('running'\)/u);
 });
+

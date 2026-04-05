@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   getWorkTemplate,
   listWorkTemplates,
-} from '../dist-server/products/work/templates/index.js';
+} from '../build/server/products/work/templates/index.js';
 
 test('listWorkTemplates returns at least one template', () => {
   const templates = listWorkTemplates();
@@ -125,3 +125,4 @@ test('software_delivery blueprints have valid productHint values', () => {
     );
   }
 });
+

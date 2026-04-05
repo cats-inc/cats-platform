@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   runStartupRecoveryPasses,
   runServerStartupRecoveryPasses,
-} from '../dist-server/app/server/startupRecovery.js';
+} from '../build/server/app/server/startupRecovery.js';
 
 test('runStartupRecoveryPasses executes startup recovery in order', async () => {
   const order = [];
@@ -124,3 +124,4 @@ test('runServerStartupRecoveryPasses reconciles telegram command surfaces on sta
 
   assert.deepEqual(calls, ['telegram-command-surface']);
 });
+

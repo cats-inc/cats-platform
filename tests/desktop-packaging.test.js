@@ -4,11 +4,11 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 
-import { resolveDesktopHostConfig } from '../dist-electron/config.js';
+import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import {
   createDesktopPackagingPlan,
   stageDesktopPackagingOutputs,
-} from '../dist-electron/packaging.js';
+} from '../build/desktop/packaging.js';
 
 async function seedFile(path, contents = '') {
   await mkdir(dirname(path), { recursive: true });
@@ -74,7 +74,7 @@ async function seedUnixSetupAssets(packageRoot, platform) {
 test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defining platform outputs', () => {
   const config = resolveDesktopHostConfig({
     env: {
-      CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/dist-server/index.js',
+      CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/build/server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
     },
@@ -497,14 +497,14 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
 test('package.json wires Windows, macOS, and Linux installer targets through electron-builder', async () => {
   const packageJson = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
 
-  assert.equal(packageJson.main, 'dist-electron/main.js');
+  assert.equal(packageJson.main, 'build/desktop/main.js');
   assert.equal(Object.hasOwn(packageJson, 'types'), false);
   assert.equal(packageJson.scripts['desktop:package:linux'], 'node scripts/build-desktop-installer.mjs --target linux');
   assert.equal(packageJson.scripts['desktop:package:macos'], 'node scripts/build-desktop-installer.mjs --target macos');
   assert.equal(packageJson.scripts['desktop:package:windows'], 'node scripts/build-desktop-installer.mjs --target windows');
   assert.equal(packageJson.scripts['desktop:smoke:linux'], 'bash ./scripts/linux/test-linux-package-smoke.sh');
   assert.equal(packageJson.scripts['desktop:smoke:macos'], 'bash ./scripts/macos/test-macos-package-smoke.sh');
-  assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
+  assert.equal(packageJson.scripts['start:server'], 'node build/server/index.js');
   assert.equal(packageJson.build.extraMetadata?.name, 'Cats');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
   assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'dmg'), true);
@@ -539,8 +539,8 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
     'utf8',
   );
 
-  assert.match(script, /app-sidecar\\dist-server\\index\.js/);
-  assert.match(script, /app-sidecar\\dist\\index\.html/);
+  assert.match(script, /app-sidecar\\build\\server\\index\.js/);
+  assert.match(script, /app-sidecar\\build\\renderer\\index\.html/);
   assert.match(script, /app-sidecar\\package\.json/);
   assert.match(script, /cats-runtime\\dist\\index\.js/);
   assert.match(script, /cats-runtime\\package\.json/);
@@ -634,10 +634,10 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   const runtimeRoot = join(workingDir, 'cats-runtime');
   const outputRoot = join(workingDir, 'desktop-packaging');
 
-  await seedFile(join(packageRoot, 'dist-server', 'index.js'), 'export {};');
-  await seedFile(join(packageRoot, 'dist', 'index.html'), '<!doctype html>');
-  await seedFile(join(packageRoot, 'dist-electron', 'main.js'), 'export {};');
-  await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
+  await seedFile(join(packageRoot, 'build', 'server', 'index.js'), 'export {};');
+  await seedFile(join(packageRoot, 'build', 'renderer', 'index.html'), '<!doctype html>');
+  await seedFile(join(packageRoot, 'build', 'desktop', 'main.js'), 'export {};');
+  await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'package.json'), JSON.stringify({
     name: '@cats-inc/cats-platform',
     version: '0.1.0',
@@ -650,7 +650,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
 
   const config = resolveDesktopHostConfig({
     env: {
-      CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'dist-server', 'index.js'),
+      CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
       CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'dist', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
       CATS_DESKTOP_PACKAGING_OUTPUT_ROOT: outputRoot,
@@ -665,11 +665,11 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
 
   assert.equal(plan.targets.every((target) => target.platform !== 'macos'), true);
   await access(join(plan.outputRoot, 'desktop-package-plan.json'));
-  await access(join(plan.outputRoot, 'shared', 'dist-server', 'index.js'));
-  await access(join(plan.outputRoot, 'shared', 'dist', 'index.html'));
+  await access(join(plan.outputRoot, 'shared', 'build', 'server', 'index.js'));
+  await access(join(plan.outputRoot, 'shared', 'build', 'renderer', 'index.html'));
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'package.json'));
-  await access(join(plan.outputRoot, 'shared', 'dist-electron', 'main.js'));
-  await access(join(plan.outputRoot, 'shared', 'dist-electron', 'preload.cjs'));
+  await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'main.js'));
+  await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'preload.cjs'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'dist', 'index.js'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'public', 'provider-setup.html'));
@@ -1056,10 +1056,10 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
   const runtimeRoot = join(workingDir, 'cats-runtime');
   const outputRoot = join(workingDir, 'desktop-packaging');
 
-  await seedFile(join(packageRoot, 'dist-server', 'index.js'), 'export {};');
-  await seedFile(join(packageRoot, 'dist', 'index.html'), '<!doctype html>');
-  await seedFile(join(packageRoot, 'dist-electron', 'main.js'), 'export {};');
-  await seedFile(join(packageRoot, 'dist-electron', 'preload.cjs'), 'module.exports = {};');
+  await seedFile(join(packageRoot, 'build', 'server', 'index.js'), 'export {};');
+  await seedFile(join(packageRoot, 'build', 'renderer', 'index.html'), '<!doctype html>');
+  await seedFile(join(packageRoot, 'build', 'desktop', 'main.js'), 'export {};');
+  await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
   await seedFile(join(packageRoot, 'package.json'), JSON.stringify({
     name: '@cats-inc/cats-platform',
     version: '0.1.0',
@@ -1070,7 +1070,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
 
   const config = resolveDesktopHostConfig({
     env: {
-      CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'dist-server', 'index.js'),
+      CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
       CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'dist', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
       CATS_DESKTOP_PACKAGING_OUTPUT_ROOT: outputRoot,

@@ -574,9 +574,9 @@ an optional advanced mode.
 
 **Solution**: Confirm these built assets exist:
 
-- `dist-server/index.js`
-- `dist/index.html`
-- `dist-electron/main.js`
+- `build/server/index.js`
+- `build/renderer/index.html`
+- `build/desktop/main.js`
 - sibling `../cats-runtime/dist/index.js`
 
 If you changed any desktop-host paths, re-check the corresponding

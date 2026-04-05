@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   applyDesktopWindowChrome,
   resolveDesktopWindowChromeOptions,
-} from '../dist-electron/windowChrome.js';
+} from '../build/desktop/windowChrome.js';
 
 test('desktop window chrome hides the native menu bar on Windows', () => {
   assert.deepEqual(resolveDesktopWindowChromeOptions('win32'), {
@@ -42,3 +42,4 @@ test('desktop window chrome leaves the macOS app menu untouched', () => {
 
   assert.deepEqual(calls, []);
 });
+

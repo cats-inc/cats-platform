@@ -15,9 +15,6 @@ __pycache__/
 htmlcov/
 *.egg-info/
 dist/
-dist-test/
-dist-server/
-dist-electron/
 build/
 !assets/build/
 release/

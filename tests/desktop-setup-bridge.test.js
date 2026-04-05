@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 
-import { resolveDesktopHostConfig } from '../dist-electron/config.js';
-import { createDesktopPackagingPlan } from '../dist-electron/packaging.js';
+import { resolveDesktopHostConfig } from '../build/desktop/config.js';
+import { createDesktopPackagingPlan } from '../build/desktop/packaging.js';
 import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
@@ -13,21 +13,21 @@ import {
   isOptionalCapabilityPackSetupAction,
   runDesktopSetupHelper,
   shouldAutoRunSetupAudit,
-} from '../dist-electron/setupBridge.js';
+} from '../build/desktop/setupBridge.js';
 
 async function createDesktopConfig() {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-bridge-'));
   const packageRoot = join(workingDir, 'cats');
   const runtimeRoot = join(workingDir, 'cats-runtime');
 
-  await mkdir(join(packageRoot, 'dist-server'), { recursive: true });
+  await mkdir(join(packageRoot, 'build', 'server'), { recursive: true });
   await mkdir(join(runtimeRoot, 'dist'), { recursive: true });
-  await writeFile(join(packageRoot, 'dist-server', 'index.js'), 'export {};');
+  await writeFile(join(packageRoot, 'build', 'server', 'index.js'), 'export {};');
   await writeFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
 
   return resolveDesktopHostConfig({
     env: {
-      CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'dist-server', 'index.js'),
+      CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
       CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'dist', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
     },

@@ -11,13 +11,13 @@ import {
   upsertCoreRun,
   upsertCoreTask,
   writeApprovalDecision,
-} from '../dist-server/core/model/index.js';
-import { buildCoreTaskInspectionView } from '../dist-server/core/taskInspection.js';
+} from '../build/server/core/model/index.js';
+import { buildCoreTaskInspectionView } from '../build/server/core/taskInspection.js';
 import {
   buildOrchestratorDispatchReplayRequest,
   writeOrchestratorDispatchReplayMetadata,
-} from '../dist-server/platform/orchestration/dispatchReplay.js';
-import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
+} from '../build/server/platform/orchestration/dispatchReplay.js';
+import { writeTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 
 test('buildCoreTaskInspectionView combines governance, workflow, and recovery details', () => {
   const now = new Date('2026-03-26T14:00:00.000Z');
@@ -279,3 +279,4 @@ test('buildCoreTaskInspectionView combines governance, workflow, and recovery de
     activities: 1,
   });
 });
+

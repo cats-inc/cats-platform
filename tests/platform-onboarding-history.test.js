@@ -8,7 +8,7 @@ import {
   appendPlatformOnboardingEvent,
   readPlatformOnboardingHistory,
   resolvePlatformOnboardingHistoryPath,
-} from '../dist-server/shared/platformOnboardingHistory.js';
+} from '../build/server/shared/platformOnboardingHistory.js';
 
 test('platform onboarding history persists bounded product-owned events beside chat-state.json', async () => {
   const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-onboarding-history-'));
@@ -45,3 +45,4 @@ test('platform onboarding history persists bounded product-owned events beside c
   assert.equal(persisted.activeAttemptId, 'attempt-alpha');
   assert.equal(persisted.events.length, 2);
 });
+

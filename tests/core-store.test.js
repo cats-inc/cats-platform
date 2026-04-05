@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { MemoryCoreStore } from '../dist-server/core/store.js';
+import { MemoryCoreStore } from '../build/server/core/store.js';
 import {
   appendCoreTrace,
   appendCoreActivity,
@@ -17,8 +17,8 @@ import {
   upsertCoreTask,
   upsertCoreWorkItem,
   writeApprovalDecision,
-} from '../dist-server/core/model/index.js';
-import { createSharedCoreFixtureBundle } from '../dist-server/shared/coreFixtures.js';
+} from '../build/server/core/model/index.js';
+import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 
 test('MemoryCoreStore exposes a neutral read/write boundary for Cats Core state', async () => {
   const initialState = createDefaultCoreState();
@@ -441,3 +441,4 @@ test('appendCoreActivity rejects duplicate activity ids and approval bindings re
     /Task not found/,
   );
 });
+

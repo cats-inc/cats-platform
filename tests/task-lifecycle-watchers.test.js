@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultCoreState, upsertCoreTask } from '../dist-server/core/model/index.js';
-import { MemoryCoreStore } from '../dist-server/core/store.js';
+import { createDefaultCoreState, upsertCoreTask } from '../build/server/core/model/index.js';
+import { MemoryCoreStore } from '../build/server/core/store.js';
 import {
   checkoutTaskExecution,
   startTaskRunWatcher,
-} from '../dist-server/core/taskLifecycle.js';
+} from '../build/server/core/taskLifecycle.js';
 import {
   readObservedExecutionMetadata,
-} from '../dist-server/core/taskLifecycleShared.js';
+} from '../build/server/core/taskLifecycleShared.js';
 
 function createDeferred() {
   let resolve;
@@ -723,3 +723,4 @@ test('task run watcher blocks a parent task when child outcomes converge with mi
   assert.equal(parent?.metadata.taskLifecycle.convergence.childStatusCounts.completed, 1);
   assert.equal(parent?.metadata.taskLifecycle.convergence.childStatusCounts.cancelled, 1);
 });
+

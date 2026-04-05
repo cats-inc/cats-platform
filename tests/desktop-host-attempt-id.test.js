@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { readDesktopHostBootstrapAttemptId } from '../dist-server/shared/desktopHostState.js';
+import { readDesktopHostBootstrapAttemptId } from '../build/server/shared/desktopHostState.js';
 
 async function withHostStateFile(callback) {
   const tempDir = await mkdtemp(join(tmpdir(), 'cats-host-attempt-id-'));
@@ -72,3 +72,4 @@ test('readDesktopHostBootstrapAttemptId falls back to the cached attempt id duri
     assert.equal(await readDesktopHostBootstrapAttemptId(hostStatePath), 'attempt-recovered');
   });
 });
+

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'node:path';
 
-import { loadConfig } from '../dist-server/config.js';
+import { loadConfig } from '../build/server/config.js';
 
 test('loadConfig derives storage paths from canonical root directories', () => {
   const config = loadConfig({
@@ -91,3 +91,4 @@ test('loadConfig enables runtime session retention override only when explicitly
   assert.equal(enabled.debugKeepRuntimeSessionsOnProductDelete, true);
   assert.equal(disabled.debugKeepRuntimeSessionsOnProductDelete, false);
 });
+

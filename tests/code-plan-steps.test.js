@@ -4,15 +4,15 @@ import test from 'node:test';
 import {
   createDefaultCoreState,
   upsertCoreTask,
-} from '../dist-server/core/model/index.js';
-import { writeTaskPlanningMetadata } from '../dist-server/shared/taskPlanning.js';
+} from '../build/server/core/model/index.js';
+import { writeTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 import {
   readCodePlanFromTask,
   writeCodePlanToTask,
   updatePlanStepStatus,
   replanCodeTask,
   CODE_PLAN_MAX_STEPS,
-} from '../dist-server/products/code/state/planSteps.js';
+} from '../build/server/products/code/state/planSteps.js';
 
 function createCodeTaskFixture() {
   const now = new Date('2026-03-29T10:00:00.000Z');
@@ -209,3 +209,4 @@ test('readCodePlanFromTask normalizes malformed step data', () => {
   assert.equal(plan.steps[1].status, 'not_started');
   assert.equal(plan.version, 3);
 });
+

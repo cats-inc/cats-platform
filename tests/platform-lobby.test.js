@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildPlatformLobbySections } from '../dist-server/app/renderer/lobbyModel.js';
-import { listPlatformProductDescriptors } from '../dist-server/shared/platformProducts.js';
+import { buildPlatformLobbySections } from '../build/server/app/renderer/lobbyModel.js';
+import { listPlatformProductDescriptors } from '../build/server/shared/platformProducts.js';
 
 test('buildPlatformLobbySections groups platform products into Home and Office', () => {
   const sections = buildPlatformLobbySections({
@@ -56,3 +56,4 @@ test('buildPlatformLobbySections groups platform products into Home and Office',
     ],
   );
 });
+

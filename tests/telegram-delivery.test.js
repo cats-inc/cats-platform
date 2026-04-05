@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import {
   createTelegramBotApiDeliveryClient,
-} from '../dist-server/platform/transports/telegram/delivery.js';
+} from '../build/server/platform/transports/telegram/delivery.js';
 
 test('telegram bot api delivery client configures commands and menu button', async () => {
   const calls = [];
@@ -67,3 +67,4 @@ test('telegram bot api delivery client configures commands and menu button', asy
     scope: { type: 'default' },
   });
 });
+

@@ -1,24 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDefaultCoreState } from '../dist-server/core/model/index.js';
+import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import {
   isPlatformNonProductPath,
   resolvePlatformShellSurface,
   resolvePlatformSurfaceForPath,
   PLATFORM_SURFACE_ROUTES,
-} from '../dist-server/app/renderer/routeMap.js';
+} from '../build/server/app/renderer/routeMap.js';
 import {
   listPlatformSurfaceDescriptors,
   platformSurfaceRoutePrefix,
   platformSurfaceSubtitle,
-} from '../dist-server/core/platformSurface.js';
+} from '../build/server/core/platformSurface.js';
 import {
   buildWorkDashboardProjection,
-} from '../dist-server/products/work/api/projection.js';
+} from '../build/server/products/work/api/projection.js';
 import {
   buildCodeDashboardProjection,
-} from '../dist-server/products/code/api/projection.js';
+} from '../build/server/products/code/api/projection.js';
 
 test('resolvePlatformSurfaceForPath routes work and code prefixes to their dedicated platform surfaces', () => {
   assert.equal(resolvePlatformSurfaceForPath('/'), 'chat');
@@ -128,3 +128,4 @@ test('Work and Code dashboard projections stay core-backed without inventing new
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/artifacts'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/previews'));
 });
+
