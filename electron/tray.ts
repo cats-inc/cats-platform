@@ -31,15 +31,17 @@ function buildStatusLabel(phase: DesktopBootstrapPhase, summary: string): string
 }
 
 async function createTrayIcon(): Promise<Electron.NativeImage> {
-  // Prefer bundled tray icon for consistent cross-platform appearance.
-  try {
-    const iconPath = path.join(app.getAppPath(), 'assets', 'tray-icon.png');
-    const bundled = nativeImage.createFromPath(iconPath);
-    if (!bundled.isEmpty()) {
-      return bundled.resize({ width: 22, height: 22 });
+  // Linux cannot resolve an icon from the exe — use bundled icon instead.
+  if (process.platform === 'linux') {
+    try {
+      const iconPath = path.join(app.getAppPath(), 'assets', 'tray-icon.png');
+      const bundled = nativeImage.createFromPath(iconPath);
+      if (!bundled.isEmpty()) {
+        return bundled.resize({ width: 22, height: 22 });
+      }
+    } catch {
+      // Fall through to exe icon or default.
     }
-  } catch {
-    // Fall through to exe icon or default.
   }
   try {
     const icon = await app.getFileIcon(app.getPath('exe'), { size: 'normal' });
