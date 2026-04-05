@@ -7,7 +7,10 @@ Status: Draft
 - [ADR-003](../decisions/003-electron-host-manages-local-services.md)
 - [ADR-045](../decisions/045-use-cats-platform-as-the-main-platform-host-under-cats-brand.md)
 - [ADR-053](../decisions/053-use-structured-cats-home-platform-storage.md)
-- `cats-runtime` [ADR-030](../../../cats-runtime/docs/decisions/030-use-structured-cats-home-runtime-storage.md)
+
+## Related Plans
+
+- Paired runtime ownership plan: `cats-runtime` `PLAN-031`
 
 ## Related Spec
 
@@ -39,9 +42,10 @@ This plan covers:
 - renaming `cats-platform` desktop build vocabulary away from
   `dist-electron/*`
 - consolidating `cats-platform` build outputs under a single `build/` root
-- moving `cats-runtime` output from `dist/` to `build/runtime/`
 - updating package metadata, scripts, test imports, packaging paths, smoke
   checks, and docs to match the new source/output layout
+- coordinating the `cats-runtime` output rename where `cats-platform`
+  packaging or sidecar staging consumes runtime artifacts
 - removing old path aliases, duplicate emit paths, and compatibility shims
   instead of carrying both old and new layouts
 
@@ -51,9 +55,26 @@ This plan does not cover:
   `cats-runtime`
 - redesigning the desktop host responsibility split beyond renaming its source
   home from `electron/` to `desktop/host/`
+- implementing the `cats-runtime` output migration directly inside this plan;
+  that work belongs to `cats-runtime` `PLAN-031`
 - moving runtime-generated source files such as
   `src/http/ui/generated/runtimeTailwind.ts` out of `src/`
 - changing `~/.cats` storage layout beyond the ADRs already accepted
+
+## Ownership Boundary
+
+- `cats-platform` owns:
+  - `desktop/host/**`
+  - `build/renderer`, `build/server`, `build/desktop`, `build/test`
+  - packaging staging under `build/desktop-packaging`
+  - packaged resource naming under `desktop/...`
+- `cats-runtime` owns:
+  - `build/runtime`
+  - runtime package entrypoints and scripts
+  - runtime docs and tests for the output-root migration
+- cross-package coordination is required where desktop packaging stages a built
+  `cats-runtime`, but the runtime package keeps ownership of its own build
+  contract
 
 ## Hard Constraints
 
@@ -76,7 +97,7 @@ cats-platform/
   desktop/
     host/
   build/
-    web/
+    renderer/
     server/
     desktop/
     test/
@@ -100,15 +121,17 @@ cats-runtime/
    - Use `desktop/host`, not `electron`.
    - Use `build/desktop`, not `dist-electron`.
 2. Group build outputs by responsibility under one root.
-   - `build/web`
+   - `build/renderer`
    - `build/server`
    - `build/desktop`
    - `build/test`
-   - `build/runtime`
 3. Treat packaging staging as build output.
    - Keep `build/desktop-packaging/` under the same `build/` family.
-4. Remove old names in the same slice that introduces new names.
-5. Do not widen testing scope by default; validate the touched layout
+4. Keep final installable artifacts distinct from staging output.
+   - `build/desktop-packaging/` is the staging workspace.
+   - `release/` remains the final installer output root.
+5. Remove old names in the same slice that introduces new names.
+6. Do not widen testing scope by default; validate the touched layout
    boundaries with targeted checks.
 
 ## Phases
@@ -118,19 +141,20 @@ cats-runtime/
 - [ ] Confirm `cats-platform/electron/**` will move to `desktop/host/**`,
       not `desktop/electron/**`.
 - [ ] Confirm `cats-platform` output roots:
-      - `build/web`
+      - `build/renderer`
       - `build/server`
       - `build/desktop`
       - `build/test`
       - `build/desktop-packaging`
-- [ ] Confirm `cats-runtime` output root:
-      - `build/runtime`
 - [ ] Audit the current codebase for references to:
       - `electron/`
       - `dist-electron/`
       - `dist-server/`
       - `dist-test/`
-      - `dist/` inside `cats-runtime`
+- [ ] Confirm the packaging boundary explicitly:
+      - `build/desktop-packaging/` is staging
+      - `release/` is final installer output
+- [ ] Audit `.gitignore` and cleanup scripts against the new output roots.
 - [ ] Freeze the no-legacy-shim rule for this migration.
 
 **Deliverables**: one explicit layout matrix and an inventory of all affected
@@ -154,7 +178,7 @@ detail directly.
 ### Phase 3: Consolidate `cats-platform` Build Outputs Under `build/`
 
 - [ ] Rename renderer output:
-      - `dist` -> `build/web`
+      - `dist` -> `build/renderer`
 - [ ] Rename server output:
       - `dist-server` -> `build/server`
 - [ ] Rename desktop host output:
@@ -163,10 +187,14 @@ detail directly.
       - `dist-test` -> `build/test`
 - [ ] Rename root cleanup helpers and script names as needed
       (`clean-dist` -> `clean-build`) instead of keeping stale terminology.
+- [ ] Update `vite.config.ts` so the renderer output target matches
+      `build/renderer`.
 - [ ] Update `package.json` fields such as:
       - `main`
       - `files`
       - build/typecheck/test scripts
+- [ ] Update `.gitignore` to drop old root-level `dist*` assumptions and cover
+      the canonical `build/` outputs instead.
 - [ ] Update any runtime packaging or installer staging scripts that import
       compiled desktop modules from the old output locations.
 
@@ -180,32 +208,25 @@ detail directly.
       `desktop-host/setup-assets` to `desktop/setup-assets`.
 - [ ] Update smoke scripts, staged manifests, helper catalogs, and packaging
       tests to use the new packaged resource path.
+- [ ] Validate that final installer artifacts still emit to `release/` instead
+      of being conflated with staging output.
 - [ ] Update docs and packaged-relative-path assertions so desktop-host source
       naming and packaged resource naming do not drift apart.
 
 **Deliverables**: source layout, packaged resource layout, smoke checks, and
 installer contracts all use the same `desktop/...` vocabulary.
 
-### Phase 5: Move `cats-runtime` Output to `build/runtime`
+### Phase 5: Coordinate the Paired `cats-runtime` Output Migration
 
-- [ ] Change `cats-runtime` TypeScript `outDir` from `dist` to `build/runtime`.
-- [ ] Update package metadata:
-      - `main`
-      - `types`
-      - `exports`
-      - `bin`
-      - `files`
-- [ ] Update all scripts and helpers that execute:
-      - `dist/index.js`
-      - `dist/bin/*`
-- [ ] Rename cleanup script vocabulary as needed
-      (`clean-dist` -> `clean-build`) so the package no longer advertises the
-      old layout.
-- [ ] Update runtime docs, release guidance, and pack/install helpers so they
-      no longer reference `dist/`.
+- [ ] Land `cats-runtime` `PLAN-031` so the runtime package moves from `dist/`
+      to `build/runtime/` under its own ownership.
+- [ ] Update any `cats-platform` packaging or staging logic that currently
+      assumes the runtime still emits to `dist/`.
+- [ ] Validate that packaged desktop staging still picks up the built runtime
+      after the runtime output-root migration lands.
 
-**Deliverables**: `cats-runtime` uses `build/runtime/` as its only compiled
-output root.
+**Deliverables**: the platform layout migration and the paired runtime output
+plan align without leaving cross-package path drift.
 
 ### Phase 6: Sweep Tests, Docs, and Contract Assertions
 
@@ -227,17 +248,15 @@ same layout contract.
 | Area | Action | Why |
 |------|--------|-----|
 | `cats-platform/electron/**` | Move/Rename | Desktop host source should live under `desktop/host/**` |
-| `cats-platform/tsconfig.electron.json` | Rename/Modify | Desktop build config should follow the new source home |
+| `cats-platform/tsconfig.electron.json` | Rename/Modify | Desktop build config should follow the new source home and become `tsconfig.desktop.json` |
 | `cats-platform/package.json` | Modify | Build outputs, `main`, scripts, and packaged files all reference old names |
-| `cats-platform/vite.config.ts` | Modify | Renderer output should move from `dist` to `build/web` |
+| `cats-platform/vite.config.ts` | Modify | Renderer output should move from `dist` to `build/renderer` |
+| `cats-platform/.gitignore` | Modify | Old `dist*` roots should be replaced by the canonical `build/` layout |
 | `cats-platform/scripts/*.mjs` | Modify | Packaging/build scripts import compiled desktop output from old locations |
 | `cats-platform/tests/**/*.test.js` | Modify | Many tests import from `dist-electron` or assert old packaged paths |
 | `cats-platform/docs/**` | Modify | Current docs still describe the old source/output vocabulary |
-| `cats-runtime/tsconfig.json` | Modify | `outDir` must move to `build/runtime` |
-| `cats-runtime/package.json` | Modify | Package entrypoints and scripts still point at `dist/` |
-| `cats-runtime/scripts/**` | Modify | Restart/pack/install helpers execute `dist/index.js` and `dist/bin/*` |
-| `cats-runtime/tests/**` | Modify | Runtime tests and fixtures may assert old output locations |
-| `cats-runtime/docs/**` | Modify | Current docs still describe `dist/` as the compiled runtime root |
+| `cats-platform/release/**` | Validate | Final installer artifacts should stay distinct from staging output |
+| `cats-runtime/*` | Coordinate via `PLAN-031` | Runtime output-root changes remain runtime-owned, not platform-owned |
 
 ## Technical Decisions Frozen by This Plan
 
@@ -245,11 +264,15 @@ same layout contract.
   `desktop/electron`.
 - Decision 2: `cats-platform` build outputs consolidate under `build/` instead
   of leaving root-level `dist*` directories.
-- Decision 3: `cats-runtime` aligns with the same build vocabulary through
-  `build/runtime/`, even though it currently has only one compiled output root.
-- Decision 4: this migration removes old names instead of keeping compatibility
+- Decision 3: `cats-platform` renderer output uses `build/renderer`, not
+  `build/web`, because it represents the shared renderer surface rather than a
+  separately owned web-product deploy target.
+- Decision 4: `cats-runtime` aligns with the same build vocabulary through
+  `build/runtime/`, but the runtime package owns that migration in a paired
+  plan instead of embedding all runtime tasks directly here.
+- Decision 5: this migration removes old names instead of keeping compatibility
   aliases because neither package has shipped.
-- Decision 5: packaged desktop helper assets should align on `desktop/...`
+- Decision 6: packaged desktop helper assets should align on `desktop/...`
   vocabulary rather than keeping `desktop-host/...` as a separate naming island.
 
 ## Testing Strategy
@@ -257,22 +280,21 @@ same layout contract.
 Use targeted, risk-based validation only.
 
 - **`cats-platform` targeted checks**
-  - desktop/source build config typecheck
+  - package-level typecheck after each path-bearing slice
   - renderer/server/desktop/test build commands after output-path updates
   - packaging-path tests
   - smoke-script/path-resolution tests that directly assert packaged or desktop
     host locations
 - **`cats-runtime` targeted checks**
-  - package build
-  - entrypoint/export checks
-  - restart/pack/install helper tests or smoke checks that execute compiled
-    runtime paths
+  - are tracked in the paired runtime plan and should at least include package
+    build, entrypoint/export checks, and path-bearing helper validation
 - **Docs validation**
   - targeted search/diff checks to ensure active docs stop referencing replaced
     paths
 - **Do not default to full-suite runs**
-  - broaden validation only if the migration unexpectedly crosses into a wider
-    contract boundary than planned
+  - broaden validation when a slice changes package entrypoints, tsconfig
+    boundaries, packaging contracts, or other path-bearing surfaces with wide
+    blast radius
 
 ## Risks
 
@@ -282,6 +304,7 @@ Use targeted, risk-based validation only.
 | Packaged desktop helper paths diverge from source naming again | High | Rename packaged `desktop-host/setup-assets` in the same migration, not later |
 | Cross-platform smoke scripts regress on Windows/macOS/Linux | High | Keep smoke/path checks in the targeted validation set for the packaging slice |
 | Runtime npm metadata breaks when `dist/` is removed | High | Update `main`, `types`, `exports`, `bin`, `files`, and pack/install scripts together |
+| `.gitignore` or cleanup scripts still preserve stale output roots | Medium | Treat `.gitignore` and cleanup-script updates as first-class migration tasks, not cleanup afterthoughts |
 | Repo-root cleanup misses stale outputs and leaves mixed layouts | Medium | Rename cleanup scripts to the new `build/` vocabulary and explicitly remove old roots |
 | Historical docs get rewritten unnecessarily | Low | Update only active/current docs; leave historical ADR/research prose alone unless it is still normative |
 
@@ -293,7 +316,8 @@ Use targeted, risk-based validation only.
    references.
 3. Rename packaged helper/resource paths from `desktop-host/...` to
    `desktop/...`.
-4. Move `cats-runtime` from `dist/` to `build/runtime/`.
+4. Land the paired `cats-runtime` `PLAN-031` migration from `dist/` to
+   `build/runtime/`.
 5. Sweep active docs, smoke scripts, and current tests.
 
 ## Progress Log
