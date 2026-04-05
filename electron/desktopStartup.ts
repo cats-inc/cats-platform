@@ -28,8 +28,8 @@ export interface DesktopStartupAppLike {
 }
 
 const DEFAULT_DESKTOP_STARTUP_PREFERENCES: DesktopStartupPreferences = {
-  startAtLogin: false,
-  openWindowOnStartup: true,
+  startAtLogin: true,
+  openWindowOnStartup: false,
 };
 
 export const DESKTOP_LAUNCH_AT_LOGIN_ARG = '--launch-at-login';
@@ -44,8 +44,8 @@ function normalizeDesktopStartupPreferences(value: unknown): DesktopStartupPrefe
   }
 
   return {
-    startAtLogin: value.startAtLogin === true,
-    openWindowOnStartup: value.openWindowOnStartup !== false,
+    startAtLogin: value.startAtLogin !== false,
+    openWindowOnStartup: value.openWindowOnStartup === true,
   };
 }
 

@@ -11,8 +11,8 @@ export interface PlatformPreferences {
 
 const DEFAULTS: PlatformPreferences = {
   lastProductSurface: null,
-  startAtLogin: false,
-  openWindowOnStartup: true,
+  startAtLogin: true,
+  openWindowOnStartup: false,
 };
 
 export function resolvePlatformPreferencesPath(chatStatePath: string): string {
@@ -31,8 +31,8 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
       surface === 'chat' || surface === 'work' || surface === 'code'
         ? surface
         : null,
-    startAtLogin: record.startAtLogin === true,
-    openWindowOnStartup: record.openWindowOnStartup !== false,
+    startAtLogin: record.startAtLogin !== false,
+    openWindowOnStartup: record.openWindowOnStartup === true,
   };
 }
 

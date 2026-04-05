@@ -79,8 +79,8 @@ export function PlatformSettingsGeneral({
         }
         const body = await response.json() as Partial<AppShellPayload['desktop']>;
         persistedPrefs = {
-          startAtLogin: body.startAtLogin === true,
-          openWindowOnStartup: body.openWindowOnStartup !== false,
+          startAtLogin: body.startAtLogin !== false,
+          openWindowOnStartup: body.openWindowOnStartup === true,
         };
       }
 
@@ -103,8 +103,8 @@ export function PlatformSettingsGeneral({
   const avatarUrl = payload.ownerAvatarUrl;
   const initials = nameInitials(payload.ownerDisplayName);
   const desktopPrefs = payload.desktop ?? {
-    startAtLogin: false,
-    openWindowOnStartup: true,
+    startAtLogin: true,
+    openWindowOnStartup: false,
   };
 
   return (

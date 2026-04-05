@@ -12,15 +12,15 @@ import {
   updateDesktopStartupPreferences,
 } from '../dist-electron/desktopStartup.js';
 
-test('desktop startup preferences default to disabled login launch and enabled window open', async () => {
+test('desktop startup preferences default to sign-in launch enabled and window open disabled', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-desktop-startup-'));
   const appStatePath = path.join(root, 'config', 'chat-state.local.json');
 
   try {
     const prefs = await readDesktopStartupPreferences(appStatePath);
     assert.deepEqual(prefs, {
-      startAtLogin: false,
-      openWindowOnStartup: true,
+      startAtLogin: true,
+      openWindowOnStartup: false,
     });
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -149,7 +149,7 @@ test('desktop startup sync uses login item settings on Windows and writes autost
       },
     }, {
       startAtLogin: true,
-      openWindowOnStartup: true,
+      openWindowOnStartup: false,
     }, {
       platform: 'linux',
       executablePath: '/opt/Cats/cats',

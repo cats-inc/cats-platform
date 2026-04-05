@@ -67,8 +67,8 @@ export function createAppShell(
     },
     products: listPlatformProductDescriptors(),
     desktop: {
-      startAtLogin: setup?.desktop?.startAtLogin ?? false,
-      openWindowOnStartup: setup?.desktop?.openWindowOnStartup ?? true,
+      startAtLogin: setup?.desktop?.startAtLogin ?? true,
+      openWindowOnStartup: setup?.desktop?.openWindowOnStartup ?? false,
     },
     chat: {
       id: chat.id,

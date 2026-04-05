@@ -129,8 +129,8 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
     assert.equal(payload.guideCat, null);
     assert.equal(payload.lastProductSurface, null);
     assert.deepEqual(payload.desktop, {
-      startAtLogin: false,
-      openWindowOnStartup: true,
+      startAtLogin: true,
+      openWindowOnStartup: false,
     });
     assert.deepEqual(
       payload.products.map((product) => ({
@@ -444,8 +444,8 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
     assert.equal(prefsResponse.status, 200);
     assert.deepEqual(await prefsResponse.json(), {
       lastProductSurface: 'work',
-      startAtLogin: false,
-      openWindowOnStartup: true,
+      startAtLogin: true,
+      openWindowOnStartup: false,
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);

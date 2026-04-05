@@ -99,8 +99,8 @@ let diagnosticsState: DesktopHostDiagnosticsState | null = null;
 let bootstrapPageVisible = false;
 let startupLaunchContext: DesktopStartupLaunchContext | null = null;
 let latestDesktopStartupPreferences: DesktopStartupPreferences = {
-  startAtLogin: false,
-  openWindowOnStartup: true,
+  startAtLogin: true,
+  openWindowOnStartup: false,
 };
 
 interface ProductBootstrapDiagnosticsPayload {
