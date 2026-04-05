@@ -151,6 +151,18 @@ contracts.
       setup runtime-bootstrap proxy path so hung runtime setup scans or applies
       do not leave renderer and app-server requests pinned until the runtime
       client timeout expires
+- [ ] Finish demoting the Electron host bootstrap page into a failure/recovery
+      surface only, so the happy path stays background-first and successful
+      packaged runs flow directly into `cats-platform /setup` or the current
+      product entry instead of leaving end users on a host-owned blocking page
+- [ ] Replace the current operator-style packaged setup copy and diagnostics-
+      first layout with progressive disclosure for end users, including
+      simplified prerequisite/remediation messaging plus an explicit advanced
+      details/log export surface for support workflows
+- [ ] Ship the real `cats-can` bootstrap/install entrypoint so npm/npx and
+      desktop-first users converge on one installer-owned handoff into the
+      existing product setup flow instead of learning the current
+      `cats-runtime` / `cats-platform` / Electron layering by accident
 - [ ] Interactive delegation, owner approval loops, and "Know Your Boss"
       profile injection before dispatch
 - [x] Follow up the Chat-first task-strategy handoff slice by deduplicating
@@ -441,4 +453,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-05*
