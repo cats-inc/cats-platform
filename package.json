@@ -78,7 +78,7 @@
     "appId": "io.catsinc.cats",
     "productName": "Cats",
     "extraMetadata": {
-      "name": "cats"
+      "name": "Cats"
     },
     "asar": true,
     "npmRebuild": false,

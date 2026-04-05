@@ -504,7 +504,7 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.scripts['desktop:smoke:linux'], 'bash ./scripts/linux/test-linux-package-smoke.sh');
   assert.equal(packageJson.scripts['desktop:smoke:macos'], 'bash ./scripts/macos/test-macos-package-smoke.sh');
   assert.equal(packageJson.scripts['start:server'], 'node dist-server/index.js');
-  assert.equal(packageJson.build.extraMetadata?.name, 'cats');
+  assert.equal(packageJson.build.extraMetadata?.name, 'Cats');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
   assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'dmg'), true);
   assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'pkg'), true);
@@ -1083,4 +1083,20 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
     }),
     /requires the full bundled cats-runtime sidecar/,
   );
+});
+
+test('NSIS installer.nsh provides an uninstaller page for optional user-data removal', async () => {
+  const nsh = await readFile(
+    join(process.cwd(), 'assets', 'build', 'installer.nsh'),
+    'utf8',
+  );
+
+  assert.match(nsh, /UninstPage custom un\.UserDataRemovalPage un\.UserDataRemovalPageLeave/);
+  assert.match(nsh, /nsDialogs::Create 1018/);
+  assert.match(nsh, /NSD_CreateCheckbox/);
+  assert.match(nsh, /RemoveUserDataCheckbox/);
+  assert.match(nsh, /RemoveUserDataState/);
+  assert.match(nsh, /\$APPDATA\\Cats/);
+  assert.match(nsh, /RMDir \/r "\$APPDATA\\Cats"/);
+  assert.match(nsh, /customUnInstall/);
 });
