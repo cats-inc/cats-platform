@@ -1,6 +1,9 @@
 import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { writePlatformPreferences } from '../../../shared/platformPreferences.js';
+import {
+  readPlatformPreferences,
+  writePlatformPreferences,
+} from '../../../shared/platformPreferences.js';
 import { createDefaultChatState } from '../state/defaults.js';
 import { createCat } from '../state/model/index.js';
 import type { SetupCompleteInput } from './contracts.js';
@@ -125,7 +128,9 @@ async function handleSetupReset(
       createDefaultCoreState(),
     );
     try {
+      const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
       await writePlatformPreferences(context.dependencies.config.chatStatePath, {
+        ...currentPrefs,
         lastProductSurface: null,
       });
     } catch (error) {

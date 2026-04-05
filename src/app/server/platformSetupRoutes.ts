@@ -193,7 +193,9 @@ async function handlePlatformSetupComplete(
 
   // Best-effort side effects — failures must not prevent the 200.
   try {
+    const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
     await writePlatformPreferences(context.dependencies.config.chatStatePath, {
+      ...currentPrefs,
       lastProductSurface: body.selectedProduct,
     });
   } catch (error) {
@@ -362,20 +364,49 @@ async function handlePlatformPreferencesUpdate(
   context: PlatformSetupContext,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<{ lastProductSurface?: string }>(context.request);
+    const body = await readJsonBody<{
+      lastProductSurface?: string;
+      startAtLogin?: boolean;
+      openWindowOnStartup?: boolean;
+    }>(context.request);
+    const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
     const surface = body.lastProductSurface;
-    if (surface !== 'chat' && surface !== 'work' && surface !== 'code') {
+    if (
+      surface !== undefined
+      && surface !== 'chat'
+      && surface !== 'work'
+      && surface !== 'code'
+    ) {
       sendJson(context.response, 400, {
         error: { code: 'bad_request', message: 'Invalid product surface' },
       });
       return;
     }
+    if (body.startAtLogin !== undefined && typeof body.startAtLogin !== 'boolean') {
+      sendJson(context.response, 400, {
+        error: { code: 'bad_request', message: 'startAtLogin must be a boolean' },
+      });
+      return;
+    }
+    if (
+      body.openWindowOnStartup !== undefined
+      && typeof body.openWindowOnStartup !== 'boolean'
+    ) {
+      sendJson(context.response, 400, {
+        error: { code: 'bad_request', message: 'openWindowOnStartup must be a boolean' },
+      });
+      return;
+    }
 
-    await writePlatformPreferences(context.dependencies.config.chatStatePath, {
-      lastProductSurface: surface,
-    });
+    const nextPrefs = {
+      lastProductSurface: surface ?? currentPrefs.lastProductSurface,
+      startAtLogin: body.startAtLogin ?? currentPrefs.startAtLogin,
+      openWindowOnStartup: body.openWindowOnStartup ?? currentPrefs.openWindowOnStartup,
+    };
 
-    sendJson(context.response, 200, { lastProductSurface: surface });
+    await writePlatformPreferences(context.dependencies.config.chatStatePath, nextPrefs);
+
+    sendJson(context.response, 200, nextPrefs);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     sendJson(context.response, 400, {

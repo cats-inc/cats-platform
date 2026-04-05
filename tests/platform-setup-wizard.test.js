@@ -10,6 +10,7 @@ import { MemoryChatStore } from '../dist-server/products/chat/state/store.js';
 import { createCat } from '../dist-server/products/chat/state/model/index.js';
 
 let tempDir;
+let configId = 0;
 
 test.before(async () => {
   tempDir = await mkdtemp(path.join(tmpdir(), 'cats-platform-test-'));
@@ -22,12 +23,13 @@ test.after(async () => {
 });
 
 function getBaseConfig() {
+  configId += 1;
   return {
     host: '127.0.0.1',
     port: 8181,
     runtimeBaseUrl: 'http://127.0.0.1:3110',
     runtimeApiKey: '',
-    chatStatePath: path.join(tempDir, 'chat-state.json'),
+    chatStatePath: path.join(tempDir, `case-${configId}`, 'chat-state.json'),
   };
 }
 
@@ -126,6 +128,10 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
     assert.equal(payload.setupCompleteAt, null);
     assert.equal(payload.guideCat, null);
     assert.equal(payload.lastProductSurface, null);
+    assert.deepEqual(payload.desktop, {
+      startAtLogin: false,
+      openWindowOnStartup: true,
+    });
     assert.deepEqual(
       payload.products.map((product) => ({
         id: product.id,
@@ -383,6 +389,15 @@ test('old POST /api/setup/complete still works alongside new endpoint', async ()
 
 test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/platform/preferences`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        startAtLogin: true,
+        openWindowOnStartup: false,
+      }),
+    });
+
     await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -402,6 +417,10 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
     assert.equal(payload.setupCompleteAt, null, 'setupCompleteAt should be cleared');
     assert.equal(payload.lastProductSurface, null, 'lastProductSurface should be cleared');
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should be cleared');
+    assert.deepEqual(payload.desktop, {
+      startAtLogin: true,
+      openWindowOnStartup: false,
+    });
   });
 });
 
@@ -423,10 +442,57 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       body: JSON.stringify({ lastProductSurface: 'work' }),
     });
     assert.equal(prefsResponse.status, 200);
+    assert.deepEqual(await prefsResponse.json(), {
+      lastProductSurface: 'work',
+      startAtLogin: false,
+      openWindowOnStartup: true,
+    });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     const shell = await shellResponse.json();
     assert.equal(shell.lastProductSurface, 'work', 'lastProductSurface should be updated to work');
+  });
+});
+
+test('POST /api/platform/preferences updates desktop startup preferences without losing surface', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const firstResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        lastProductSurface: 'code',
+        startAtLogin: true,
+        openWindowOnStartup: false,
+      }),
+    });
+    assert.equal(firstResponse.status, 200);
+    assert.deepEqual(await firstResponse.json(), {
+      lastProductSurface: 'code',
+      startAtLogin: true,
+      openWindowOnStartup: false,
+    });
+
+    const secondResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        startAtLogin: false,
+      }),
+    });
+    assert.equal(secondResponse.status, 200);
+    assert.deepEqual(await secondResponse.json(), {
+      lastProductSurface: 'code',
+      startAtLogin: false,
+      openWindowOnStartup: false,
+    });
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    const shell = await shellResponse.json();
+    assert.equal(shell.lastProductSurface, 'code');
+    assert.deepEqual(shell.desktop, {
+      startAtLogin: false,
+      openWindowOnStartup: false,
+    });
   });
 });
 

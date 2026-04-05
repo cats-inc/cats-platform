@@ -100,6 +100,20 @@ declare module 'electron' {
     requestSingleInstanceLock(): boolean;
     whenReady(): Promise<void>;
     getPath(name: string): string;
+    setPath(name: string, path: string): void;
+    getLoginItemSettings(options?: {
+      path?: string;
+      args?: string[];
+    }): {
+      openAtLogin?: boolean;
+      wasOpenedAtLogin?: boolean;
+      executableWillLaunchAtLogin?: boolean;
+    };
+    setLoginItemSettings(settings: {
+      openAtLogin: boolean;
+      path?: string;
+      args?: string[];
+    }): void;
     quit(): void;
     exit(exitCode?: number): void;
     on(event: string, listener: (...args: any[]) => void): void;

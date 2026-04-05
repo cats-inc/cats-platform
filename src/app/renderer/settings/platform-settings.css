@@ -1,5 +1,32 @@
 @import '../../../design/components/settings-shell.css';
 
+.settingsCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(58, 44, 38, 0.08);
+}
+
+.settingsCheckboxRow:first-of-type {
+  border-top: 0;
+}
+
+.settingsCheckboxRow input[type='checkbox'] {
+  margin-top: 3px;
+}
+
+.settingsCheckboxMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settingsCheckboxLabel {
+  font-weight: 600;
+  color: #3a2c26;
+}
+
 @media (max-width: 820px) {
   .settingsShell {
     grid-template-columns: 1fr;

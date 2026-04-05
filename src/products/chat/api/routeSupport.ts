@@ -361,6 +361,10 @@ export async function buildAppShellPayload(
       guideCat: core.guideCat,
       botBindings,
       lastProductSurface: platformPrefs.lastProductSurface,
+      desktop: {
+        startAtLogin: platformPrefs.startAtLogin,
+        openWindowOnStartup: platformPrefs.openWindowOnStartup,
+      },
       runtimeSetup,
     },
   );

@@ -47,6 +47,11 @@ export interface PlatformResponseMetadata {
   port: number;
 }
 
+export interface PlatformDesktopPreferences {
+  startAtLogin: boolean;
+  openWindowOnStartup: boolean;
+}
+
 export interface PlatformOwnerContext {
   setupCompleteAt: string | null;
   ownerDisplayName: string;
@@ -59,6 +64,7 @@ export interface PlatformOwnerContext {
 export interface PlatformHostEnvelope extends PlatformOwnerContext {
   app: PlatformAppDescriptor;
   products: PlatformProductDescriptor[];
+  desktop: PlatformDesktopPreferences;
   runtime: RuntimeStatusSummary;
   runtimeSetup: RuntimeSetupSummary;
   metadata: PlatformResponseMetadata;

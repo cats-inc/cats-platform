@@ -1,7 +1,10 @@
 import type { AppConfig } from '../../../config.js';
 import type { GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
-import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type {
+  PlatformDesktopPreferences,
+  PlatformSurfaceId,
+} from '../../../shared/platform-contract.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
@@ -21,6 +24,7 @@ function resolveSetupCompleteAt(
     ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: PlatformSurfaceId | null;
+    desktop?: PlatformDesktopPreferences;
     guideCat?: GuideCatRecord | null;
   },
 ): string | null {
@@ -46,6 +50,7 @@ export function createAppShell(
     ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: PlatformSurfaceId | null;
+    desktop?: PlatformDesktopPreferences;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
   },
@@ -61,6 +66,10 @@ export function createAppShell(
       runtimeBoundary: 'cats-runtime',
     },
     products: listPlatformProductDescriptors(),
+    desktop: {
+      startAtLogin: setup?.desktop?.startAtLogin ?? false,
+      openWindowOnStartup: setup?.desktop?.openWindowOnStartup ?? true,
+    },
     chat: {
       id: chat.id,
       name: chat.name,

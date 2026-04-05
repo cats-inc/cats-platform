@@ -65,6 +65,15 @@ import {
   applyDesktopWindowChrome,
   resolveDesktopWindowChromeOptions,
 } from './windowChrome.js';
+import {
+  readDesktopStartupPreferences,
+  resolveDesktopStartupLaunchContext,
+  syncDesktopStartupPreferences,
+  updateDesktopStartupPreferences,
+  DESKTOP_LAUNCH_AT_LOGIN_ARG,
+  type DesktopStartupLaunchContext,
+  type DesktopStartupPreferences,
+} from './desktopStartup.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -88,6 +97,11 @@ let packagingState: DesktopPackagingPlan | null = null;
 let setupState: DesktopSetupState | null = null;
 let diagnosticsState: DesktopHostDiagnosticsState | null = null;
 let bootstrapPageVisible = false;
+let startupLaunchContext: DesktopStartupLaunchContext | null = null;
+let latestDesktopStartupPreferences: DesktopStartupPreferences = {
+  startAtLogin: false,
+  openWindowOnStartup: true,
+};
 
 interface ProductBootstrapDiagnosticsPayload {
   generatedAt?: string;
@@ -768,7 +782,12 @@ function hasPersistedProductSetupCompletion(
 }
 
 async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
-  if (!mainWindow || !hostConfig || snapshot.phase !== 'ready_for_chat') {
+  if (
+    !mainWindow
+    || !hostConfig
+    || snapshot.phase !== 'ready_for_chat'
+    || startupLaunchContext?.showWindowOnStartup === false
+  ) {
     return;
   }
   await showMainWindow(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
@@ -972,7 +991,12 @@ async function resumeSetupAction(): Promise<DesktopSetupSnapshot> {
   });
 }
 
-async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindow> {
+async function createMainWindow(
+  config: DesktopHostConfig,
+  options: {
+    showWindowOnStartup: boolean;
+  },
+): Promise<BrowserWindow> {
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -1007,7 +1031,9 @@ async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindo
   await window.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
   bootstrapPageVisible = true;
   window.once('ready-to-show', () => {
-    window.show();
+    if (options.showWindowOnStartup) {
+      window.show();
+    }
   });
   return window;
 }
@@ -1043,6 +1069,16 @@ async function main(): Promise<void> {
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
+  latestDesktopStartupPreferences = await readDesktopStartupPreferences(hostConfig.paths.appStatePath);
+  await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
+  startupLaunchContext = resolveDesktopStartupLaunchContext({
+    argv: process.argv,
+    wasOpenedAtLogin: process.platform === 'darwin'
+      ? app.getLoginItemSettings().wasOpenedAtLogin === true
+      : false,
+    preferences: latestDesktopStartupPreferences,
+    background: hostConfig.background,
+  });
   latestPersistedSetupState = await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
   stateStore = new DesktopHostStateStore(hostConfig.paths.hostStatePath);
   {
@@ -1057,6 +1093,14 @@ async function main(): Promise<void> {
       setup: defaultSetup,
     });
     backgroundState = restoredState?.background ?? defaultBackground;
+    if (startupLaunchContext && !startupLaunchContext.showWindowOnStartup) {
+      backgroundState = {
+        ...backgroundState,
+        mode: 'background',
+        windowVisible: false,
+        lastHiddenAt: new Date().toISOString(),
+      };
+    }
     updateState = restoredState?.updates ?? defaultUpdates;
     packagingState = defaultPackaging;
     setupState = restoredState?.setup ?? defaultSetup;
@@ -1103,8 +1147,41 @@ async function main(): Promise<void> {
   ipcMain.handle('cats-host:resume-setup', async () => {
     return await resumeSetupAction();
   });
+  ipcMain.handle('cats-host:update-desktop-preferences', async (_event, payload: unknown) => {
+    if (
+      typeof payload !== 'object'
+      || payload === null
+      || typeof (payload as { startAtLogin?: unknown }).startAtLogin !== 'boolean'
+      || typeof (payload as { openWindowOnStartup?: unknown }).openWindowOnStartup !== 'boolean'
+    ) {
+      throw new Error('Invalid desktop startup preferences payload.');
+    }
+    if (!hostConfig) {
+      throw new Error('Desktop host is not initialized.');
+    }
 
-  mainWindow = await createMainWindow(hostConfig);
+    latestDesktopStartupPreferences = await updateDesktopStartupPreferences(
+      hostConfig.paths.appStatePath,
+      {
+        startAtLogin: (payload as { startAtLogin: boolean }).startAtLogin,
+        openWindowOnStartup: (payload as { openWindowOnStartup: boolean }).openWindowOnStartup,
+      },
+    );
+    await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
+    startupLaunchContext = resolveDesktopStartupLaunchContext({
+      argv: process.argv,
+      wasOpenedAtLogin: process.platform === 'darwin'
+        ? app.getLoginItemSettings().wasOpenedAtLogin === true
+        : process.argv.includes(DESKTOP_LAUNCH_AT_LOGIN_ARG),
+      preferences: latestDesktopStartupPreferences,
+      background: hostConfig.background,
+    });
+    return latestDesktopStartupPreferences;
+  });
+
+  mainWindow = await createMainWindow(hostConfig, {
+    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+  });
   if (hostConfig.background.trayEnabled) {
     trayController = await createDesktopTrayController({
       getWindow: () => mainWindow,

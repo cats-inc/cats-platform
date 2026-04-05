@@ -34,6 +34,11 @@ interface DesktopBootstrapSnapshot {
   summary: string;
 }
 
+interface DesktopStartupPreferences {
+  startAtLogin: boolean;
+  openWindowOnStartup: boolean;
+}
+
 interface DesktopSetupSnapshot {
   helpers: Array<{
     id: string;
@@ -98,6 +103,19 @@ const bridge = {
   },
   resumeSetup(): Promise<DesktopSetupSnapshot> {
     return ipcRenderer.invoke('cats-host:resume-setup');
+  },
+  updateDesktopPreferences(
+    prefs: DesktopStartupPreferences,
+  ): Promise<DesktopStartupPreferences> {
+    if (
+      typeof prefs !== 'object'
+      || prefs === null
+      || typeof prefs.startAtLogin !== 'boolean'
+      || typeof prefs.openWindowOnStartup !== 'boolean'
+    ) {
+      throw new Error('Invalid desktop startup preferences payload.');
+    }
+    return ipcRenderer.invoke('cats-host:update-desktop-preferences', prefs);
   },
   onSnapshot(listener: (snapshot: DesktopBootstrapSnapshot) => void): () => void {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: DesktopBootstrapSnapshot) => {
