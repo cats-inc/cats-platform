@@ -32,6 +32,7 @@ export interface DesktopHostConfig {
   packageRoot: string;
   runtimePackageRoot: string;
   userDataDir: string;
+  catsHomeDir: string;
   appHost: string;
   appPort: number;
   appBaseUrl: string;
@@ -49,6 +50,7 @@ export interface DesktopHostConfig {
 interface ResolveDesktopHostConfigOptions {
   env?: NodeJS.ProcessEnv;
   userDataDir: string;
+  catsHomeDir?: string;
   packaged?: boolean;
   resourcesPath?: string;
 }
@@ -200,6 +202,7 @@ export function resolveDesktopHostConfig(
     DEFAULT_GRACEFUL_SHUTDOWN_MS,
   );
   const userDataDir = resolveDesktopPath(options.userDataDir);
+  const catsHomeDir = resolveDesktopPath(options.catsHomeDir ?? options.userDataDir);
   const background: DesktopHostBackgroundConfig = {
     trayEnabled: parseDesktopBoolean(
       env.CATS_DESKTOP_TRAY_ENABLED,
@@ -217,6 +220,7 @@ export function resolveDesktopHostConfig(
     packageRoot,
     runtimePackageRoot,
     userDataDir,
+    catsHomeDir,
     appHost,
     appPort,
     appBaseUrl: `http://${appHost}:${appPort}`,
@@ -241,27 +245,27 @@ export function resolveDesktopHostConfig(
       ),
       appStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_STATE_PATH?.trim()
-          || joinDesktopPath(userDataDir, 'config', 'chat-state.local.json'),
+          || joinDesktopPath(catsHomeDir, 'config', 'chat-state.local.json'),
       ),
       runtimeDataDir: resolveDesktopPath(
         env.CATS_DESKTOP_RUNTIME_DATA_DIR?.trim()
-          || joinDesktopPath(userDataDir, 'runtime', 'data'),
+          || joinDesktopPath(catsHomeDir, 'runtime', 'data'),
       ),
       runtimeSessionBaseDir: resolveDesktopPath(
         env.CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR?.trim()
-          || joinDesktopPath(userDataDir, 'runtime', 'sessions'),
+          || joinDesktopPath(catsHomeDir, 'runtime', 'sessions'),
       ),
       runtimeConfigPath: resolveDesktopPath(
         env.CATS_DESKTOP_RUNTIME_CONFIG_PATH?.trim()
-          || joinDesktopPath(userDataDir, 'runtime', 'providers.yaml'),
+          || joinDesktopPath(catsHomeDir, 'runtime', 'providers.yaml'),
       ),
       hostStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_HOST_STATE_PATH?.trim()
-          || joinDesktopPath(userDataDir, 'desktop-host', 'state.json'),
+          || joinDesktopPath(catsHomeDir, 'desktop-host', 'state.json'),
       ),
       hostLogsDir: resolveDesktopPath(
         env.CATS_DESKTOP_HOST_LOGS_DIR?.trim()
-          || joinDesktopPath(userDataDir, 'desktop-host', 'logs'),
+          || joinDesktopPath(catsHomeDir, 'desktop-host', 'logs'),
       ),
       packagingOutputRoot: resolveDesktopPath(
         env.CATS_DESKTOP_PACKAGING_OUTPUT_ROOT?.trim()

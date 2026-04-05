@@ -116,6 +116,23 @@ test('resolveCatsHomeDir returns ~/.cats', () => {
   assert.ok(home.endsWith('.cats'), `expected ${home} to end with .cats`);
 });
 
+test('desktop host config keeps Electron userData separate from cats home', () => {
+  const config = resolveDesktopHostConfig({
+    env: {},
+    userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
+  });
+
+  assert.equal(config.userDataDir, 'C:\\Users\\test\\AppData\\Roaming\\Cats');
+  assert.equal(config.catsHomeDir, 'C:\\Users\\test\\.cats');
+  assert.equal(config.paths.appStatePath, 'C:\\Users\\test\\.cats\\config\\chat-state.local.json');
+  assert.equal(config.paths.runtimeDataDir, 'C:\\Users\\test\\.cats\\runtime\\data');
+  assert.equal(config.paths.runtimeSessionBaseDir, 'C:\\Users\\test\\.cats\\runtime\\sessions');
+  assert.equal(config.paths.runtimeConfigPath, 'C:\\Users\\test\\.cats\\runtime\\providers.yaml');
+  assert.equal(config.paths.hostStatePath, 'C:\\Users\\test\\.cats\\desktop-host\\state.json');
+  assert.equal(config.paths.hostLogsDir, 'C:\\Users\\test\\.cats\\desktop-host\\logs');
+});
+
 test('desktop host config resolves bundled sidecar paths in packaged mode', () => {
   const config = resolveDesktopHostConfig({
     env: {},
