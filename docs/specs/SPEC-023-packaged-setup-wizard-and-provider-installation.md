@@ -409,7 +409,7 @@ teaching the renderer or the user about the underlying script topology.
   user-scoped npm prefix and PATH prerequisite logic that previously lived only
   in `environment-bootstrap`, and the staged/bundled desktop package now
   includes that helper under `shared/setup-assets/windows/` and
-  `desktop-host/setup-assets/windows/`.
+  `desktop/setup-assets/windows/`.
 - The second repo-owned packaged setup helper slice is also landed:
   `scripts/windows/Install-NodeCliPack.ps1` rewrites the Windows npm-global AI
   CLI pack installer for Codex, Gemini CLI, Copilot, OpenCode, Auggie, and Pi,

@@ -128,7 +128,7 @@
       },
       {
         "from": "build/desktop-packaging/shared/setup-assets",
-        "to": "desktop-host/setup-assets",
+        "to": "desktop/setup-assets",
         "filter": [
           "**/*"
         ]

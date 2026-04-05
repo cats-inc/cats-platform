@@ -494,15 +494,15 @@ What the smoke-check confirms:
 
 - `Cats.exe` exists
 - bundled `cats` and `cats-runtime` sidecar assets exist under `resources/`
-- the bundled Windows npm prefix helper exists under `resources/desktop-host/setup-assets/`
-- the bundled Windows native CLI pack helper exists under `resources/desktop-host/setup-assets/`
-- the bundled Windows native Claude Code installer exists under `resources/desktop-host/setup-assets/`
-- the bundled Windows native Cursor installer exists under `resources/desktop-host/setup-assets/`
-- the bundled Windows native Goose installer exists under `resources/desktop-host/setup-assets/`
-- the bundled Windows native Junie installer exists under `resources/desktop-host/setup-assets/`
-- the bundled Windows WSL prerequisite preflight helper exists under `resources/desktop-host/setup-assets/`
-- the bundled Windows Docker Desktop installer exists under `resources/desktop-host/setup-assets/`
-- the bundled Windows setup readiness audit helper exists under `resources/desktop-host/setup-assets/`
+- the bundled Windows npm prefix helper exists under `resources/desktop/setup-assets/`
+- the bundled Windows native CLI pack helper exists under `resources/desktop/setup-assets/`
+- the bundled Windows native Claude Code installer exists under `resources/desktop/setup-assets/`
+- the bundled Windows native Cursor installer exists under `resources/desktop/setup-assets/`
+- the bundled Windows native Goose installer exists under `resources/desktop/setup-assets/`
+- the bundled Windows native Junie installer exists under `resources/desktop/setup-assets/`
+- the bundled Windows WSL prerequisite preflight helper exists under `resources/desktop/setup-assets/`
+- the bundled Windows Docker Desktop installer exists under `resources/desktop/setup-assets/`
+- the bundled Windows setup readiness audit helper exists under `resources/desktop/setup-assets/`
 - the packaged `desktop-package-plan.json` still advertises the Windows NSIS
   target
 - launching the installed app refreshes the persisted desktop-host state file

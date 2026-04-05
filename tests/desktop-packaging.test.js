@@ -515,7 +515,7 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'tar.gz'), true);
   assert.equal(packageJson.build.nsis.oneClick, false);
   assert.equal(packageJson.build.extraResources.some(
-    (entry) => entry.to === 'desktop-host/setup-assets',
+    (entry) => entry.to === 'desktop/setup-assets',
   ), true);
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.from === 'build/desktop-packaging/shared/app-sidecar/package.json'
@@ -548,24 +548,24 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /cats-runtime\\skills\\README\.md/);
   assert.match(script, /cats-runtime\\config\\providers\.yaml\.example/);
   assert.match(script, /cats-runtime\\node_modules\\yaml\\package\.json/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-NodeCliPack\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-ClaudeCode\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-CursorAgent\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-Goose\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-Junie\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Check-WslPrerequisites\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-WslUbuntuEnvironment\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-KiroWslCli\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-DockerDesktop\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Install-Ollama\.ps1/);
-  assert.match(script, /desktop-host\\setup-assets\\windows\\Check-WindowsSetupReadiness\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-NodeCliPack\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-ClaudeCode\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-CursorAgent\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Goose\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Junie\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Check-WslPrerequisites\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-WslUbuntuEnvironment\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-KiroWslCli\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-DockerDesktop\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Ollama\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Check-WindowsSetupReadiness\.ps1/);
   assert.match(script, /providerSetup\.localProviders/);
   assert.match(script, /id -eq 'opencode'/);
   assert.match(script, /id -eq 'kilo'/);
   assert.match(script, /windows-ollama-local-model-installer/);
   assert.match(script, /windows-docker-desktop-installer/);
-  assert.match(script, /desktop-host\\setup-assets\\manifest\.json/);
+  assert.match(script, /desktop\\setup-assets\\manifest\.json/);
   assert.match(script, /\.cats\\desktop\\state\.json/);
   assert.match(script, /electron-sidecar-bundle/);
   assert.match(script, /ready_for_setup/);
@@ -584,13 +584,13 @@ test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and
   );
 
   assert.match(linuxScript, /release\/linux-unpacked/);
-  assert.match(linuxScript, /desktop-host\/setup-assets\/linux\/setup-node-global-prefix\.sh/);
-  assert.match(linuxScript, /desktop-host\/setup-assets\/shared\/unix-provider-cli-common\.sh/);
+  assert.match(linuxScript, /desktop\/setup-assets\/linux\/setup-node-global-prefix\.sh/);
+  assert.match(linuxScript, /desktop\/setup-assets\/shared\/unix-provider-cli-common\.sh/);
   assert.match(linuxScript, /linux-node-cli-pack-script/);
   assert.match(linuxScript, /linux-install-readiness-audit/);
   assert.match(macosScript, /release\/mac-universal\/Cats\.app/);
-  assert.match(macosScript, /desktop-host\/setup-assets\/macos\/setup-node-global-prefix\.sh/);
-  assert.match(macosScript, /desktop-host\/setup-assets\/shared\/unix-node-cli-common\.sh/);
+  assert.match(macosScript, /desktop\/setup-assets\/macos\/setup-node-global-prefix\.sh/);
+  assert.match(macosScript, /desktop\/setup-assets\/shared\/unix-node-cli-common\.sh/);
   assert.match(macosScript, /macos-node-cli-pack-script/);
   assert.match(macosScript, /macos-install-readiness-audit/);
 });
@@ -782,7 +782,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-claude-native-installer'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-ClaudeCode.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-ClaudeCode.ps1'
         && helper.supportsForce === true,
     ),
     true,
@@ -790,7 +790,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-cursor-native-installer'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-CursorAgent.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-CursorAgent.ps1'
         && helper.supportsUpgrade === true,
     ),
     true,
@@ -798,7 +798,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-goose-native-installer'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-Goose.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-Goose.ps1'
         && helper.supportsForce === true,
     ),
     true,
@@ -806,7 +806,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-junie-native-installer'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-Junie.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-Junie.ps1'
         && helper.supportsUpgrade === true,
     ),
     true,
@@ -814,7 +814,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-node-cli-pack'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-NodeCliPack.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-NodeCliPack.ps1'
         && helper.supportsUpgrade === true,
     ),
     true,
@@ -822,7 +822,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-wsl-environment-installer'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-WslUbuntuEnvironment.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-WslUbuntuEnvironment.ps1'
         && helper.supportsForce === true,
     ),
     true,
@@ -830,7 +830,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-kiro-wsl-installer'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-KiroWslCli.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-KiroWslCli.ps1'
         && helper.platform === 'windows_wsl',
     ),
     true,
@@ -838,7 +838,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-docker-desktop-installer'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-DockerDesktop.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-DockerDesktop.ps1'
         && helper.requiresElevation === true,
     ),
     true,
@@ -846,7 +846,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-ollama-local-model-installer'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/windows/Install-Ollama.ps1'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-Ollama.ps1'
         && helper.supportsForce === true,
     ),
     true,
@@ -1014,7 +1014,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     linuxTargetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'linux-install-readiness-audit'
-        && helper.packagedRelativePath === 'desktop-host/setup-assets/linux/check-installation.sh',
+        && helper.packagedRelativePath === 'desktop/setup-assets/linux/check-installation.sh',
     ),
     true,
   );
