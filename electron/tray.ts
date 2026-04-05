@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { app, Menu, Tray, nativeImage } from 'electron';
 
 import type { BrowserWindow, MenuItemConstructorOptions } from 'electron';
@@ -30,6 +31,16 @@ function buildStatusLabel(phase: DesktopBootstrapPhase, summary: string): string
 }
 
 async function createTrayIcon(): Promise<Electron.NativeImage> {
+  // Prefer bundled tray icon for consistent cross-platform appearance.
+  try {
+    const iconPath = path.join(app.getAppPath(), 'assets', 'tray-icon.png');
+    const bundled = nativeImage.createFromPath(iconPath);
+    if (!bundled.isEmpty()) {
+      return bundled.resize({ width: 22, height: 22 });
+    }
+  } catch {
+    // Fall through to exe icon or default.
+  }
   try {
     const icon = await app.getFileIcon(app.getPath('exe'), { size: 'normal' });
     if (!icon.isEmpty()) {

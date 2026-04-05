@@ -2,6 +2,8 @@
   "name": "@cats-inc/cats-platform",
   "version": "0.1.0",
   "description": "Technical host package for the Cats platform, backed by cats-runtime.",
+  "author": "Cats Inc. <sammykenny2@gmail.com>",
+  "homepage": "https://github.com/cats-inc/cats-platform",
   "type": "module",
   "bin": {
     "cats-platform": "./dist-server/index.js"
@@ -86,6 +88,7 @@
     },
     "files": [
       "dist-electron/**/*",
+      "assets/tray-icon.png",
       "package.json"
     ],
     "extraResources": [
