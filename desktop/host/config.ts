@@ -275,7 +275,8 @@ export function resolveDesktopHostConfig(
         env.CATS_DESKTOP_APP_ENTRY?.trim() || joinDesktopPath(packageRoot, 'build', 'server', 'index.js'),
       ),
       runtimeEntryScript: resolveDesktopPath(
-        env.CATS_DESKTOP_RUNTIME_ENTRY?.trim() || joinDesktopPath(runtimePackageRoot, 'dist', 'index.js'),
+        env.CATS_DESKTOP_RUNTIME_ENTRY?.trim()
+          || joinDesktopPath(runtimePackageRoot, 'build', 'runtime', 'index.js'),
       ),
       preloadScript: resolveDesktopPath(
         env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim()

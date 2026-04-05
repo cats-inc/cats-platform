@@ -30,7 +30,7 @@ const desktopConfig = {
   },
   paths: {
     appEntryScript: 'cats-platform/build/server/index.js',
-    runtimeEntryScript: 'cats-runtime/dist/index.js',
+    runtimeEntryScript: 'cats-runtime/build/runtime/index.js',
     preloadScript: 'cats-platform/build/desktop/preload.cjs',
     appStatePath: 'cats-platform/platform/state/chat-state.local.json',
     runtimeDataDir: 'cats-platform/.desktop/runtime/data',
@@ -805,4 +805,3 @@ test('desktop bootstrap keeps optional local-model follow-through reachable afte
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup' && action.label === 'Open Setup for Local Model Pack'), true);
   assert.equal(snapshot.issues.some((issue) => issue.title === 'Optional local model pack is available for follow-through'), true);
 });
-

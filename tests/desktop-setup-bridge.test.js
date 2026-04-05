@@ -21,14 +21,14 @@ async function createDesktopConfig() {
   const runtimeRoot = join(workingDir, 'cats-runtime');
 
   await mkdir(join(packageRoot, 'build', 'server'), { recursive: true });
-  await mkdir(join(runtimeRoot, 'dist'), { recursive: true });
+  await mkdir(join(runtimeRoot, 'build', 'runtime'), { recursive: true });
   await writeFile(join(packageRoot, 'build', 'server', 'index.js'), 'export {};');
-  await writeFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
+  await writeFile(join(runtimeRoot, 'build', 'runtime', 'index.js'), 'export {};');
 
   return resolveDesktopHostConfig({
     env: {
       CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
-      CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'dist', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'build', 'runtime', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
     },
     userDataDir: join(workingDir, 'user-data'),

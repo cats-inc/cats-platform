@@ -128,7 +128,7 @@ npm run build
 npm start
 ```
 
-The built Node server serves the static UI from `dist/`.
+The built Node server serves the static UI from `build/renderer/`.
 By default local chat state is stored in `~/.cats/platform/state/chat-state.local.json`.
 That file now holds channels, cats, execution targets, execution lease
 metadata, memory checkpoints, and transcripts.
@@ -577,7 +577,7 @@ an optional advanced mode.
 - `build/server/index.js`
 - `build/renderer/index.html`
 - `build/desktop/main.js`
-- sibling `../cats-runtime/dist/index.js`
+- sibling `../cats-runtime/build/runtime/index.js`
 
 If you changed any desktop-host paths, re-check the corresponding
 `CATS_DESKTOP_*` overrides.

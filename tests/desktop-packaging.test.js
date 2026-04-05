@@ -16,7 +16,7 @@ async function seedFile(path, contents = '') {
 }
 
 async function seedRuntimeSidecar(runtimeRoot) {
-  await seedFile(join(runtimeRoot, 'dist', 'index.js'), 'export {};');
+  await seedFile(join(runtimeRoot, 'build', 'runtime', 'index.js'), 'export {};');
   await seedFile(join(runtimeRoot, 'package.json'), JSON.stringify({
     name: 'cats-runtime',
     version: '0.1.0',
@@ -75,7 +75,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   const config = resolveDesktopHostConfig({
     env: {
       CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/build/server/index.js',
-      CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
+      CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/build/runtime/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
     },
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
@@ -542,7 +542,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /app-sidecar\\build\\server\\index\.js/);
   assert.match(script, /app-sidecar\\build\\renderer\\index\.html/);
   assert.match(script, /app-sidecar\\package\.json/);
-  assert.match(script, /cats-runtime\\dist\\index\.js/);
+  assert.match(script, /cats-runtime\\build\\runtime\\index\.js/);
   assert.match(script, /cats-runtime\\package\.json/);
   assert.match(script, /cats-runtime\\public\\provider-setup\.html/);
   assert.match(script, /cats-runtime\\skills\\README\.md/);
@@ -651,7 +651,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   const config = resolveDesktopHostConfig({
     env: {
       CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
-      CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'dist', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'build', 'runtime', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
       CATS_DESKTOP_PACKAGING_OUTPUT_ROOT: outputRoot,
     },
@@ -670,7 +670,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'main.js'));
   await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'preload.cjs'));
-  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'dist', 'index.js'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'build', 'runtime', 'index.js'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'public', 'provider-setup.html'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'skills', 'README.md'));
@@ -1071,7 +1071,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
   const config = resolveDesktopHostConfig({
     env: {
       CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
-      CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'dist', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'build', 'runtime', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
       CATS_DESKTOP_PACKAGING_OUTPUT_ROOT: outputRoot,
     },

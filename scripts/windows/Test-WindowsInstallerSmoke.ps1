@@ -129,7 +129,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\build\server\index.js'); Label = 'bundled cats server entry' },
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\build\renderer\index.html'); Label = 'bundled cats renderer build' },
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\package.json'); Label = 'bundled cats app package manifest' },
-  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\dist\index.js'); Label = 'bundled cats-runtime entry' },
+  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\build\runtime\index.js'); Label = 'bundled cats-runtime entry' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\package.json'); Label = 'bundled cats-runtime package manifest' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\public\provider-setup.html'); Label = 'bundled cats-runtime setup UI' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\skills\README.md'); Label = 'bundled cats-runtime skills catalog root' },

@@ -38,7 +38,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
   const config = resolveDesktopHostConfig({
     env: {
       CATS_DESKTOP_APP_ENTRY: join(workingDir, 'build', 'server', 'index.js'),
-      CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'dist', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'build', 'runtime', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
     },
     userDataDir: join(workingDir, 'user-data'),
@@ -225,7 +225,7 @@ test('DesktopHostStateStore loads legacy setup state without optional follow-thr
   const config = resolveDesktopHostConfig({
     env: {
       CATS_DESKTOP_APP_ENTRY: join(workingDir, 'build', 'server', 'index.js'),
-      CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'dist', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'build', 'runtime', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
     },
     userDataDir: join(workingDir, 'user-data'),

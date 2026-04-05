@@ -232,7 +232,7 @@ cats-runtime-mcp
 or a local build:
 
 ```text
-node dist/bin/mcp.js
+node build/runtime/bin/mcp.js
 ```
 
 Notes:

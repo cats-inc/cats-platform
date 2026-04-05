@@ -1,6 +1,6 @@
 # PLAN-039: Normalize Desktop Source and Build Output Layout Across `cats-platform` and `cats-runtime`
 
-Status: In Progress
+Status: Completed
 
 ## Related Decisions
 
@@ -138,37 +138,37 @@ cats-runtime/
 
 ### Phase 1: Freeze the New Source and Output Matrix
 
-- [ ] Confirm `cats-platform/electron/**` will move to `desktop/host/**`,
+- [x] Confirm `cats-platform/electron/**` will move to `desktop/host/**`,
       not `desktop/electron/**`.
-- [ ] Confirm `cats-platform` output roots:
+- [x] Confirm `cats-platform` output roots:
       - `build/renderer`
       - `build/server`
       - `build/desktop`
       - `build/test`
       - `build/desktop-packaging`
-- [ ] Audit the current codebase for references to:
+- [x] Audit the current codebase for references to:
       - `electron/`
       - `dist-electron/`
       - `dist-server/`
       - `dist-test/`
-- [ ] Confirm the packaging boundary explicitly:
+- [x] Confirm the packaging boundary explicitly:
       - `build/desktop-packaging/` is staging
       - `release/` is final installer output
-- [ ] Audit `.gitignore` and cleanup scripts against the new output roots.
-- [ ] Freeze the no-legacy-shim rule for this migration.
+- [x] Audit `.gitignore` and cleanup scripts against the new output roots.
+- [x] Freeze the no-legacy-shim rule for this migration.
 
 **Deliverables**: one explicit layout matrix and an inventory of all affected
 references before implementation starts.
 
 ### Phase 2: Move `cats-platform` Desktop Source into `desktop/host`
 
-- [ ] Move `electron/**` to `desktop/host/**`.
-- [ ] Rename `tsconfig.electron.json` to `tsconfig.desktop.json`.
-- [ ] Update `rootDir`, `include`, and all build scripts to use
+- [x] Move `electron/**` to `desktop/host/**`.
+- [x] Rename `tsconfig.electron.json` to `tsconfig.desktop.json`.
+- [x] Update `rootDir`, `include`, and all build scripts to use
       `desktop/host/**`.
-- [ ] Update any source imports, script imports, test references, and docs that
+- [x] Update any source imports, script imports, test references, and docs that
       still refer to `electron/*`.
-- [ ] Keep desktop-host responsibilities intact while renaming only the source
+- [x] Keep desktop-host responsibilities intact while renaming only the source
       home and related config vocabulary.
 
 **Deliverables**: desktop host source no longer lives in `electron/`, and the
@@ -177,25 +177,25 @@ detail directly.
 
 ### Phase 3: Consolidate `cats-platform` Build Outputs Under `build/`
 
-- [ ] Rename renderer output:
+- [x] Rename renderer output:
       - `dist` -> `build/renderer`
-- [ ] Rename server output:
+- [x] Rename server output:
       - `dist-server` -> `build/server`
-- [ ] Rename desktop host output:
+- [x] Rename desktop host output:
       - `dist-electron` -> `build/desktop`
-- [ ] Rename test bundle output:
+- [x] Rename test bundle output:
       - `dist-test` -> `build/test`
-- [ ] Rename root cleanup helpers and script names as needed
+- [x] Rename root cleanup helpers and script names as needed
       (`clean-dist` -> `clean-build`) instead of keeping stale terminology.
-- [ ] Update `vite.config.ts` so the renderer output target matches
+- [x] Update `vite.config.ts` so the renderer output target matches
       `build/renderer`.
-- [ ] Update `package.json` fields such as:
+- [x] Update `package.json` fields such as:
       - `main`
       - `files`
       - build/typecheck/test scripts
-- [ ] Update `.gitignore` to drop old root-level `dist*` assumptions and cover
+- [x] Update `.gitignore` to drop old root-level `dist*` assumptions and cover
       the canonical `build/` outputs instead.
-- [ ] Update any runtime packaging or installer staging scripts that import
+- [x] Update any runtime packaging or installer staging scripts that import
       compiled desktop modules from the old output locations.
 
 **Deliverables**: `cats-platform` exposes one coherent `build/` tree instead of
@@ -203,14 +203,14 @@ detail directly.
 
 ### Phase 4: Align Desktop Packaging and Packaged Resource Paths
 
-- [ ] Keep packaging staging under `build/desktop-packaging/`.
-- [ ] Rename packaged resource destination paths from
+- [x] Keep packaging staging under `build/desktop-packaging/`.
+- [x] Rename packaged resource destination paths from
       `desktop-host/setup-assets` to `desktop/setup-assets`.
-- [ ] Update smoke scripts, staged manifests, helper catalogs, and packaging
+- [x] Update smoke scripts, staged manifests, helper catalogs, and packaging
       tests to use the new packaged resource path.
-- [ ] Validate that final installer artifacts still emit to `release/` instead
+- [x] Validate that final installer artifacts still emit to `release/` instead
       of being conflated with staging output.
-- [ ] Update docs and packaged-relative-path assertions so desktop-host source
+- [x] Update docs and packaged-relative-path assertions so desktop-host source
       naming and packaged resource naming do not drift apart.
 
 **Deliverables**: source layout, packaged resource layout, smoke checks, and
@@ -218,11 +218,11 @@ installer contracts all use the same `desktop/...` vocabulary.
 
 ### Phase 5: Coordinate the Paired `cats-runtime` Output Migration
 
-- [ ] Land `cats-runtime` `PLAN-031` so the runtime package moves from `dist/`
+- [x] Land `cats-runtime` `PLAN-031` so the runtime package moves from `dist/`
       to `build/runtime/` under its own ownership.
-- [ ] Update any `cats-platform` packaging or staging logic that currently
+- [x] Update any `cats-platform` packaging or staging logic that currently
       assumes the runtime still emits to `dist/`.
-- [ ] Validate that packaged desktop staging still picks up the built runtime
+- [x] Validate that packaged desktop staging still picks up the built runtime
       after the runtime output-root migration lands.
 
 **Deliverables**: the platform layout migration and the paired runtime output
@@ -230,13 +230,13 @@ plan align without leaving cross-package path drift.
 
 ### Phase 6: Sweep Tests, Docs, and Contract Assertions
 
-- [ ] Update `cats-platform` tests importing `../dist-electron/*` or asserting
+- [x] Update `cats-platform` tests importing `../dist-electron/*` or asserting
       `dist*` paths.
-- [ ] Update `cats-runtime` tests and helpers asserting `dist/*`.
-- [ ] Update current docs and scripts to the new layout.
-- [ ] Leave historical research/ADR text untouched unless the old path appears
+- [x] Update `cats-runtime` tests and helpers asserting `dist/*`.
+- [x] Update current docs and scripts to the new layout.
+- [x] Leave historical research/ADR text untouched unless the old path appears
       as active guidance rather than historical context.
-- [ ] Validate that no repo-root `dist*` references remain in active
+- [x] Validate that no repo-root `dist*` references remain in active
       `cats-platform` code/docs/scripts and no `cats-runtime/dist` references
       remain in active code/docs/scripts.
 
@@ -328,6 +328,8 @@ Use targeted, risk-based validation only.
 | 2026-04-06 | Phase 2 slice 1 landed: moved the desktop host source tree from `electron/` to `desktop/host/`, renamed `tsconfig.electron.json` to `tsconfig.desktop.json`, and updated active docs/scripts to compile from the new source home while keeping the existing `dist-electron/` output for the next slice |
 | 2026-04-06 | Phase 2 slice 2 landed: consolidated app build artifacts under `build/server`, `build/renderer`, and `build/desktop`, updated desktop packaging/staging contracts, renamed the clean script to `scripts/clean-build.mjs`, and refreshed active docs/smoke tests/package-contract assertions for the new output layout; validation included `npm run build`, `npm run build:test-ui`, `node --test tests/package-contract.test.js`, `node --test tests/desktop-packaging.test.js tests/desktop-host-state.test.js tests/desktop-supervisor.test.js tests/desktop-setup-bridge.test.js`, `node --test tests/app-startup.test.js tests/server.test.js tests/rest-api.test.js`, `node --test tests/provider-telegram-routes.test.js`, `node --test tests/runtime-bridge-routes.test.js`, `node --test tests/product-delete-runtime-cleanup.test.js`, `node --test tests/platform-setup-wizard.test.js`, and `node --test tests/runtime-setup-flow.test.js` |
 | 2026-04-06 | Phase 2 slice 3 landed: renamed packaged setup helper/resource paths from `desktop-host/setup-assets/*` to `desktop/setup-assets/*`, updated electron-builder `extraResources`, synced host setup metadata plus Windows/macOS/Linux smoke checks, and refreshed desktop packaging/readiness/state bridge assertions for the new packaged location; validation included `npm run build:host` and `node --test tests/desktop-packaging.test.js tests/desktop-host-state.test.js tests/desktop-setup-bridge.test.js tests/desktop-readiness.test.js` |
+| 2026-04-06 | Phase 4 slice 4 landed: switched the desktop host default runtime entry, packaging plan, staged sidecar asset map, packaged smoke scripts, and desktop packaging/supervisor/readiness tests from `cats-runtime/dist` to `cats-runtime/build/runtime`, and refreshed active setup/MCP docs so the platform-side contract now matches `cats-runtime` `PLAN-031` |
+| 2026-04-06 | Final sweep completed: verified active `cats-platform` code/docs/scripts/tests no longer depend on repo-root `dist*` outputs or `cats-runtime/dist`, updated remaining current-state docs to `build/renderer` and `build/runtime`, and closed the paired migration with targeted desktop-host validation after rebuilding the compiled host output |
 
 ---
 

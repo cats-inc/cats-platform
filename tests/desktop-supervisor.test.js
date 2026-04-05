@@ -53,7 +53,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
       CATS_DESKTOP_APP_PORT: '48181',
       CATS_DESKTOP_RUNTIME_PORT: '43110',
       CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/build/server/index.js',
-      CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
+      CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/build/runtime/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
       CATS_DESKTOP_TRAY_ENABLED: 'true',
       CATS_DESKTOP_KEEP_SERVICES_RUNNING: 'true',
@@ -147,7 +147,7 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
   );
   assert.equal(
     config.paths.runtimeEntryScript,
-    'C:\\Program Files\\Cats\\resources\\cats-runtime\\dist\\index.js',
+    'C:\\Program Files\\Cats\\resources\\cats-runtime\\build\\runtime\\index.js',
   );
   assert.equal(
     config.packageRoot,

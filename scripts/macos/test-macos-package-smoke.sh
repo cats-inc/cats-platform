@@ -35,7 +35,7 @@ log "Validating macOS app bundle under ${APP_ROOT}"
 assert_file "${RESOURCES_ROOT}/app-sidecar/build/server/index.js" 'bundled cats server entry'
 assert_file "${RESOURCES_ROOT}/app-sidecar/build/renderer/index.html" 'bundled cats renderer build'
 assert_file "${RESOURCES_ROOT}/app-sidecar/package.json" 'bundled cats app package manifest'
-assert_file "${RESOURCES_ROOT}/cats-runtime/dist/index.js" 'bundled cats-runtime entry'
+assert_file "${RESOURCES_ROOT}/cats-runtime/build/runtime/index.js" 'bundled cats-runtime entry'
 assert_file "${RESOURCES_ROOT}/cats-runtime/package.json" 'bundled cats-runtime package manifest'
 assert_file "${RESOURCES_ROOT}/cats-runtime/public/provider-setup.html" 'bundled cats-runtime setup UI'
 assert_file "${RESOURCES_ROOT}/cats-runtime/skills/README.md" 'bundled cats-runtime skills catalog root'

@@ -93,8 +93,8 @@ const RUNTIME_PUBLIC_FILES = [
 
 const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
   {
-    sourceRelativePath: 'dist',
-    targetRelativePath: join('shared', 'cats-runtime', 'dist'),
+    sourceRelativePath: join('build', 'runtime'),
+    targetRelativePath: join('shared', 'cats-runtime', 'build', 'runtime'),
     directory: true,
   },
   {
@@ -143,7 +143,7 @@ async function ensureBundledRuntimeAssets(runtimePackageRoot: string): Promise<s
     runtimeDependencyPackagePath(dependency)
   );
   const requiredPaths = [
-    join(runtimePackageRoot, 'dist', 'index.js'),
+    join(runtimePackageRoot, 'build', 'runtime', 'index.js'),
     join(runtimePackageRoot, 'package.json'),
     ...RUNTIME_PUBLIC_FILES.map((fileName) => join(runtimePackageRoot, 'public', fileName)),
     join(runtimePackageRoot, 'skills'),
@@ -581,7 +581,7 @@ function buildPackagingTarget(
     { id: 'app-server', relativePath: 'shared/build/server/index.js', role: 'app_server' as const },
     { id: 'app-renderer', relativePath: 'shared/build/renderer/index.html', role: 'app_renderer' as const },
     { id: 'app-package-manifest', relativePath: 'shared/app-sidecar/package.json', role: 'app_server' as const },
-    { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/dist/index.js', role: 'runtime_sidecar' as const },
+    { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/build/runtime/index.js', role: 'runtime_sidecar' as const },
     { id: 'runtime-package-manifest', relativePath: 'shared/cats-runtime/package.json', role: 'runtime_sidecar' as const },
     { id: 'runtime-setup-ui', relativePath: 'shared/cats-runtime/public/provider-setup.html', role: 'runtime_sidecar' as const },
     { id: 'runtime-skills', relativePath: 'shared/cats-runtime/skills/README.md', role: 'runtime_sidecar' as const },
@@ -783,8 +783,8 @@ export async function stageDesktopPackagingOutputs(
         target: 'shared/build/desktop/preload.cjs',
       },
       {
-        source: relative(outputRoot, join(config.runtimePackageRoot, 'dist', 'index.js')),
-        target: 'shared/cats-runtime/dist/index.js',
+        source: relative(outputRoot, join(config.runtimePackageRoot, 'build', 'runtime', 'index.js')),
+        target: 'shared/cats-runtime/build/runtime/index.js',
       },
       {
         source: relative(outputRoot, join(config.runtimePackageRoot, 'package.json')),
