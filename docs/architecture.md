@@ -264,7 +264,7 @@ session lifecycle:
 
 - **Purpose**: Own desktop-only lifecycle concerns without pushing shell or
   installer logic into the renderer
-- **Technology**: `electron/*` plus host-owned packaging scripts under
+- **Technology**: `desktop/host/*` plus host-owned packaging scripts under
   `scripts/*`
 - **Responsibilities**:
   - supervise local `cats-runtime` + `cats` sidecars
@@ -693,4 +693,4 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-06*

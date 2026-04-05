@@ -4,7 +4,7 @@
     "module": "NodeNext",
     "lib": ["ES2022", "DOM"],
     "outDir": "./dist-electron",
-    "rootDir": "./electron",
+    "rootDir": "./desktop/host",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -16,7 +16,7 @@
     "moduleResolution": "NodeNext",
     "types": ["node"]
   },
-  "include": ["electron/**/*.ts", "electron/**/*.cts", "electron/**/*.d.ts"],
+  "include": ["desktop/host/**/*.ts", "desktop/host/**/*.cts", "desktop/host/**/*.d.ts"],
   "exclude": [
     "node_modules",
     "dist",

@@ -239,7 +239,7 @@ See [docs/](./docs/) for project details:
 
 ```text
 cats-platform/
-├── electron/      # Electron desktop host bootstrap and supervision
+├── desktop/host/  # Desktop host bootstrap and supervision
 ├── src/app/       # Platform-level server and renderer assembly
 ├── src/products/  # Product slices such as Cats Chat
 ├── src/shared/    # Types shared by server and renderer

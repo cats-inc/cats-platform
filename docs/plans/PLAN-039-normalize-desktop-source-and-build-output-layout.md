@@ -1,6 +1,6 @@
 # PLAN-039: Normalize Desktop Source and Build Output Layout Across `cats-platform` and `cats-runtime`
 
-Status: Draft
+Status: In Progress
 
 ## Related Decisions
 
@@ -325,6 +325,7 @@ Use targeted, risk-based validation only.
 | Date | Update |
 |------|--------|
 | 2026-04-06 | Plan created to align `cats-platform` desktop source/build layout with `cats-runtime` build vocabulary and remove unreleased legacy path names |
+| 2026-04-06 | Phase 2 slice 1 landed: moved the desktop host source tree from `electron/` to `desktop/host/`, renamed `tsconfig.electron.json` to `tsconfig.desktop.json`, and updated active docs/scripts to compile from the new source home while keeping the existing `dist-electron/` output for the next slice |
 
 ---
 
