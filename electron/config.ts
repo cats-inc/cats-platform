@@ -1,4 +1,5 @@
 import { dirname, join, resolve, win32 } from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -87,6 +88,10 @@ function dirnameDesktopPath(value: string): string {
   return isWindowsAbsolutePath(value)
     ? win32.dirname(win32.normalize(value))
     : dirname(resolve(value));
+}
+
+export function resolveCatsHomeDir(): string {
+  return resolveDesktopPath(joinDesktopPath(homedir(), '.cats'));
 }
 
 export function resolveDesktopUserDataDir(appDataDir: string): string {

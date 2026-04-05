@@ -1096,7 +1096,8 @@ test('NSIS installer.nsh provides an uninstaller page for optional user-data rem
   assert.match(nsh, /NSD_CreateCheckbox/);
   assert.match(nsh, /RemoveUserDataCheckbox/);
   assert.match(nsh, /RemoveUserDataState/);
-  assert.match(nsh, /\$APPDATA\\Cats/);
+  assert.match(nsh, /\$PROFILE\\\.cats/);
+  assert.match(nsh, /RMDir \/r "\$PROFILE\\\.cats"/);
   assert.match(nsh, /RMDir \/r "\$APPDATA\\Cats"/);
   assert.match(nsh, /customUnInstall/);
 });

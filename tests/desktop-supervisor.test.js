@@ -8,6 +8,7 @@ import test from 'node:test';
 
 import {
   DESKTOP_USER_DATA_DIR_NAME,
+  resolveCatsHomeDir,
   resolveDesktopHostConfig,
   resolveDesktopUserDataDir,
 } from '../dist-electron/config.js';
@@ -108,6 +109,11 @@ test('desktop host resolves the packaged userData directory to Cats', () => {
     resolveDesktopUserDataDir('C:/Users/test/AppData/Roaming'),
     'C:\\Users\\test\\AppData\\Roaming\\Cats',
   );
+});
+
+test('resolveCatsHomeDir returns ~/.cats', () => {
+  const home = resolveCatsHomeDir();
+  assert.ok(home.endsWith('.cats'), `expected ${home} to end with .cats`);
 });
 
 test('desktop host config resolves bundled sidecar paths in packaged mode', () => {

@@ -15,7 +15,7 @@ Function un.UserDataRemovalPage
   ${NSD_CreateLabel} 0 0 100% 40u "Cats will be uninstalled. You may also choose to remove all user data (settings, logs, and sessions)."
   Pop $0
 
-  ${NSD_CreateCheckbox} 0 50u 100% 16u "Remove all user data ($APPDATA\Cats)"
+  ${NSD_CreateCheckbox} 0 50u 100% 16u "Remove all user data ($PROFILE\.cats)"
   Pop $RemoveUserDataCheckbox
   ${NSD_SetState} $RemoveUserDataCheckbox ${BST_UNCHECKED}
 
@@ -27,7 +27,9 @@ Function un.UserDataRemovalPageLeave
 FunctionEnd
 
 !macro customUnInstall
+  ; Always clean Electron internal cache (not user-meaningful).
+  RMDir /r "$APPDATA\Cats"
   ${If} $RemoveUserDataState == ${BST_CHECKED}
-    RMDir /r "$APPDATA\Cats"
+    RMDir /r "$PROFILE\.cats"
   ${EndIf}
 !macroend

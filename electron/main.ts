@@ -3,8 +3,8 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import { resolveDesktopBootstrapNavigation } from './bootstrapNavigation.js';
 import {
+  resolveCatsHomeDir,
   resolveDesktopHostConfig,
-  resolveDesktopUserDataDir,
   type DesktopHostConfig,
 } from './config.js';
 import type {
@@ -1071,12 +1071,11 @@ async function main(): Promise<void> {
     return;
   }
 
-  app.setPath('userData', resolveDesktopUserDataDir(app.getPath('appData')));
   await app.whenReady();
   const nodeProcess = process as NodeJS.Process & { resourcesPath?: string };
 
   hostConfig = resolveDesktopHostConfig({
-    userDataDir: app.getPath('userData'),
+    userDataDir: resolveCatsHomeDir(),
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
