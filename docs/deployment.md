@@ -141,7 +141,7 @@ npm run desktop:package:linux
 
 - smoke-check defaults:
   - install root: `%LOCALAPPDATA%\Programs\Cats`
-  - host state path: `%USERPROFILE%\.cats\desktop-host\state.json`
+  - host state path: `%USERPROFILE%\.cats\desktop\state.json`
 - smoke-check contract:
   - verify installed `Cats.exe`
   - verify bundled `cats` and `cats-runtime` sidecar assets

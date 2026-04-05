@@ -99,7 +99,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(config.update.manifestUrl, 'https://updates.example.com/cats/beta.json');
   assert.equal(
     config.paths.hostStatePath,
-    'C:\\Users\\test\\AppData\\Roaming\\Cats\\desktop-host\\state.json',
+    'C:\\Users\\test\\AppData\\Roaming\\Cats\\desktop\\state.json',
   );
 });
 
@@ -129,8 +129,8 @@ test('desktop host config keeps Electron userData separate from cats home', () =
   assert.equal(config.paths.runtimeDataDir, 'C:\\Users\\test\\.cats\\runtime\\data');
   assert.equal(config.paths.runtimeSessionBaseDir, 'C:\\Users\\test\\.cats\\runtime\\sessions');
   assert.equal(config.paths.runtimeConfigPath, 'C:\\Users\\test\\.cats\\runtime\\providers.yaml');
-  assert.equal(config.paths.hostStatePath, 'C:\\Users\\test\\.cats\\desktop-host\\state.json');
-  assert.equal(config.paths.hostLogsDir, 'C:\\Users\\test\\.cats\\desktop-host\\logs');
+  assert.equal(config.paths.hostStatePath, 'C:\\Users\\test\\.cats\\desktop\\state.json');
+  assert.equal(config.paths.hostLogsDir, 'C:\\Users\\test\\.cats\\desktop\\logs');
 });
 
 test('desktop host config resolves bundled sidecar paths in packaged mode', () => {

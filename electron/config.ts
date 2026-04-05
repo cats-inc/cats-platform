@@ -265,11 +265,11 @@ export function resolveDesktopHostConfig(
       ),
       hostStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_HOST_STATE_PATH?.trim()
-          || joinDesktopPath(catsHomeDir, 'desktop-host', 'state.json'),
+          || joinDesktopPath(catsHomeDir, 'desktop', 'state.json'),
       ),
       hostLogsDir: resolveDesktopPath(
         env.CATS_DESKTOP_HOST_LOGS_DIR?.trim()
-          || joinDesktopPath(catsHomeDir, 'desktop-host', 'logs'),
+          || joinDesktopPath(catsHomeDir, 'desktop', 'logs'),
       ),
       packagingOutputRoot: resolveDesktopPath(
         env.CATS_DESKTOP_PACKAGING_OUTPUT_ROOT?.trim()

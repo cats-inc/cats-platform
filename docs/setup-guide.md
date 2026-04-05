@@ -173,7 +173,7 @@ It is the desktop-owned seam for:
 
 The desktop host now also keeps a host-readable state file at
 `CATS_DESKTOP_HOST_STATE_PATH` (default:
-`~/.cats/desktop-host/state.json`). That JSON snapshot includes:
+`~/.cats/desktop/state.json`). That JSON snapshot includes:
 
 - bootstrap phase and summary
 - structured prerequisite issues plus remediation actions
@@ -192,9 +192,9 @@ The desktop host now also keeps a host-readable state file at
 
 For packaged bootstrap or onboarding failures, collect these files first:
 
-- `%USERPROFILE%\\.cats\\desktop-host\\state.json`
-- `%USERPROFILE%\\.cats\\desktop-host\\logs\\cats-runtime.log`
-- `%USERPROFILE%\\.cats\\desktop-host\\logs\\cats.log`
+- `%USERPROFILE%\\.cats\\desktop\\state.json`
+- `%USERPROFILE%\\.cats\\desktop\\logs\\cats-runtime.log`
+- `%USERPROFILE%\\.cats\\desktop\\logs\\cats.log`
 - `%USERPROFILE%\\.cats\\platform\\platform-onboarding-history.json`
   - this file may be absent if `cats` never reached the product-owned setup flow
 
@@ -482,7 +482,7 @@ with:
 Default assumptions:
 
 - install root: `%LOCALAPPDATA%\Programs\Cats`
-- host state path: `%USERPROFILE%\.cats\desktop-host\state.json`
+- host state path: `%USERPROFILE%\.cats\desktop\state.json`
 
 If you installed to a different directory, pass overrides:
 
@@ -510,9 +510,9 @@ What the smoke-check confirms:
 
 If startup still fails after install, capture these artifacts before retrying:
 
-- `%USERPROFILE%\\.cats\\desktop-host\\state.json`
-- `%USERPROFILE%\\.cats\\desktop-host\\logs\\cats-runtime.log`
-- `%USERPROFILE%\\.cats\\desktop-host\\logs\\cats.log`
+- `%USERPROFILE%\\.cats\\desktop\\state.json`
+- `%USERPROFILE%\\.cats\\desktop\\logs\\cats-runtime.log`
+- `%USERPROFILE%\\.cats\\desktop\\logs\\cats.log`
 - `%USERPROFILE%\\.cats\\platform\\platform-onboarding-history.json`
 
 Use `-SkipLaunch` if you only want file/layout verification.

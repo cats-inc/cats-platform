@@ -820,7 +820,7 @@ the app listener is live.
 
 The Electron host now keeps a host-readable JSON snapshot at
 `CATS_DESKTOP_HOST_STATE_PATH` (default:
-`~/.cats/desktop-host/state.json`). This is not a public HTTP route, but it
+`~/.cats/desktop/state.json`). This is not a public HTTP route, but it
 is part of the packaged host contract. The bootstrap renderer itself now stays
 behind a sandboxed preload bridge, and the host only exposes snapshot reads
 plus a validated action seam.
@@ -872,9 +872,9 @@ includes:
 
 Related on-disk diagnostics artifacts for packaged failures:
 
-- `~/.cats/desktop-host/state.json`
-- `~/.cats/desktop-host/logs/cats-runtime.log`
-- `~/.cats/desktop-host/logs/cats.log`
+- `~/.cats/desktop/state.json`
+- `~/.cats/desktop/logs/cats-runtime.log`
+- `~/.cats/desktop/logs/cats.log`
 - `~/.cats/platform/platform-onboarding-history.json`
 - `packaging`:
   - packaging `strategy`

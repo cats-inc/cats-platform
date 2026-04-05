@@ -27,7 +27,7 @@ function readyService(name, healthUrl) {
     healthUrl,
     error: null,
     exitCode: null,
-    logPath: `C:/Users/test/AppData/Roaming/Cats/desktop-host/logs/${name}.log`,
+    logPath: `C:/Users/test/.cats/desktop/logs/${name}.log`,
     lastOutput: `${name} ready`,
     lastOutputAt: '2026-03-24T10:00:00.000Z',
   };

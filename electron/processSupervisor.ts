@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { access, appendFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
-import { delimiter, dirname, join } from 'node:path';
+import { delimiter, dirname, join, posix, win32 } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
 import type { ManagedServiceName, ManagedServiceSnapshot } from './contracts.js';
@@ -205,13 +205,15 @@ function resolveManagedServicePathEntries(
   platform: NodeJS.Platform,
 ): string[] {
   const pathKey = resolvePathEnvKey(env);
-  const existing = (env[pathKey] ?? '').split(delimiter);
+  const pathDelimiter = platform === 'win32' ? ';' : ':';
+  const pathModule = platform === 'win32' ? win32 : posix;
+  const existing = (env[pathKey] ?? '').split(pathDelimiter);
   const home = env.HOME?.trim() || env.USERPROFILE?.trim() || '';
   const homeScopedEntries = home
     ? [
-        join(home, '.local', 'bin'),
-        join(home, '.npm-global', 'bin'),
-        join(home, 'bin'),
+        pathModule.join(home, '.local', 'bin'),
+        pathModule.join(home, '.npm-global', 'bin'),
+        pathModule.join(home, 'bin'),
       ]
     : [];
 
@@ -251,6 +253,7 @@ function createManagedServiceEnv(
   platform: NodeJS.Platform,
 ): NodeJS.ProcessEnv {
   const pathKey = resolvePathEnvKey(env);
+  const pathDelimiter = platform === 'win32' ? ';' : ':';
   const nextEnv = { ...env };
 
   for (const key of Object.keys(nextEnv)) {
@@ -259,7 +262,7 @@ function createManagedServiceEnv(
     }
   }
 
-  nextEnv[pathKey] = resolveManagedServicePathEntries(env, platform).join(delimiter);
+  nextEnv[pathKey] = resolveManagedServicePathEntries(env, platform).join(pathDelimiter);
   return nextEnv;
 }
 
