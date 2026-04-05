@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
+import { resolveDesktopBootstrapNavigation } from './bootstrapNavigation.js';
 import {
   resolveDesktopHostConfig,
   resolveDesktopUserDataDir,
@@ -566,8 +567,16 @@ async function showMainWindow(url?: string): Promise<void> {
   if (!mainWindow) {
     return;
   }
-  if (url) {
-    await mainWindow.loadURL(validateDesktopUrl(url, {
+  const nextUrl = url ?? (
+    bootstrapPageVisible && hostConfig && latestSnapshot
+      ? resolveDesktopBootstrapNavigation(latestSnapshot, {
+        appBaseUrl: hostConfig.appBaseUrl,
+        showWindowOnStartup: true,
+      })
+      : null
+  );
+  if (nextUrl) {
+    await mainWindow.loadURL(validateDesktopUrl(nextUrl, {
       allowedHosts: hostConfig ? [hostConfig.appHost] : null,
     }));
     bootstrapPageVisible = false;
@@ -782,15 +791,17 @@ function hasPersistedProductSetupCompletion(
 }
 
 async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
-  if (
-    !mainWindow
-    || !hostConfig
-    || snapshot.phase !== 'ready_for_chat'
-    || startupLaunchContext?.showWindowOnStartup === false
-  ) {
+  if (!mainWindow || !hostConfig) {
     return;
   }
-  await showMainWindow(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
+  const nextUrl = resolveDesktopBootstrapNavigation(snapshot, {
+    appBaseUrl: hostConfig.appBaseUrl,
+    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+  });
+  if (!nextUrl) {
+    return;
+  }
+  await showMainWindow(nextUrl);
 }
 
 async function refreshUpdateState(): Promise<DesktopUpdateState> {

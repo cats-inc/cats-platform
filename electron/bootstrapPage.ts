@@ -44,6 +44,16 @@ export function buildDesktopBootstrapPage(): string {
         backdrop-filter: blur(18px);
         box-shadow: 0 18px 48px rgba(68, 43, 23, 0.12);
       }
+      main[data-page-mode="loading"] [data-recovery-only="true"] {
+        display: none;
+      }
+      main[data-page-mode="loading"] .grid {
+        grid-template-columns: 1fr;
+      }
+      main[data-page-mode="loading"] .column:last-child {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
       h1, h2 { margin: 0; font-weight: 700; }
       h1 { font-size: 30px; letter-spacing: -0.04em; }
       h2 {
@@ -210,7 +220,7 @@ export function buildDesktopBootstrapPage(): string {
     </style>
   </head>
   <body>
-    <main>
+    <main id="host-shell" data-page-mode="loading">
       <section class="hero">
         <span id="phase-badge" class="badge">Starting desktop host</span>
         <h1>Cats Desktop Host</h1>
@@ -222,7 +232,7 @@ export function buildDesktopBootstrapPage(): string {
             <h2>Services</h2>
             <div id="services" class="services"></div>
           </section>
-          <section class="panel">
+          <section class="panel" data-recovery-only="true">
             <h2>Prerequisites</h2>
             <div id="issues" class="issues"></div>
           </section>
@@ -233,7 +243,7 @@ export function buildDesktopBootstrapPage(): string {
             <div id="runtime-summary" class="meta"></div>
             <div id="provider-summary" class="meta"></div>
           </section>
-          <section class="panel">
+          <section class="panel" data-recovery-only="true">
             <h2>Setup Recovery</h2>
             <div id="setup-summary" class="setup-summary"></div>
           </section>
@@ -241,7 +251,7 @@ export function buildDesktopBootstrapPage(): string {
             <h2>Actions</h2>
             <div id="actions" class="actions"></div>
           </section>
-          <section class="panel">
+          <section class="panel" data-recovery-only="true">
             <h2>Diagnostics</h2>
             <div id="diagnostics" class="diagnostics-list"></div>
           </section>
@@ -251,6 +261,7 @@ export function buildDesktopBootstrapPage(): string {
     <script>
       const bridge = window.catsDesktopHost;
       const phaseBadge = document.getElementById('phase-badge');
+      const hostShell = document.getElementById('host-shell');
       const summary = document.getElementById('summary');
       const services = document.getElementById('services');
       const issues = document.getElementById('issues');
@@ -541,8 +552,16 @@ export function buildDesktopBootstrapPage(): string {
             : '<div class="meta">No chronology entries have been captured yet.</div>')
           + '</article>';
       }
+      function resolvePageMode(snapshot) {
+        return snapshot.phase === 'failed' || snapshot.phase === 'needs_prerequisites'
+          ? 'recovery'
+          : 'loading';
+      }
       function applySnapshot(snapshot) {
         latestSnapshot = snapshot;
+        if (hostShell) {
+          hostShell.dataset.pageMode = resolvePageMode(snapshot);
+        }
         phaseBadge.className = 'badge status-' + snapshot.status;
         phaseBadge.textContent = snapshot.phase.replace(/_/g, ' ');
         summary.textContent = snapshot.summary;
