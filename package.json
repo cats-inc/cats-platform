@@ -122,7 +122,8 @@
         "from": "build/desktop-packaging/shared/cats-runtime/node_modules",
         "to": "cats-runtime/node_modules",
         "filter": [
-          "**/*"
+          "**/*",
+          "!.bin{,/**/*}"
         ]
       },
       {
