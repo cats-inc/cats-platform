@@ -52,10 +52,6 @@ test('desktop host config and managed service specs preserve the app/runtime pro
     env: {
       CATS_DESKTOP_APP_PORT: '48181',
       CATS_DESKTOP_RUNTIME_PORT: '43110',
-      CATS_DESKTOP_STATE_PATH: 'C:/Cats/chat-state.local.json',
-      CATS_DESKTOP_RUNTIME_DATA_DIR: 'C:/Cats/runtime/data',
-      CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR: 'C:/Cats/runtime/sessions',
-      CATS_DESKTOP_RUNTIME_CONFIG_PATH: 'C:/Cats/runtime/config/providers.yaml',
       CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/dist-server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
@@ -79,7 +75,6 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   ]);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_PORT, '43110');
   assert.equal(runtimeSpec.env.CATS_RUNTIME_DIR, 'C:\\Users\\test\\.cats\\runtime');
-  assert.equal(runtimeSpec.env.CATS_RUNTIME_CONFIG_PATH, 'C:\\Cats\\runtime\\config\\providers.yaml');
   assert.equal(runtimeSpec.env.CATS_RUNTIME_WSL_DISCOVERY_POLICY, undefined);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_DOCKER_DISCOVERY_POLICY, undefined);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_NATIVE_DISCOVERY_INTERVAL_MS, undefined);
@@ -94,7 +89,8 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(appSpec.env.CATS_PORT, '48181');
   assert.equal(appSpec.env.CATS_RUNTIME_BASE_URL, 'http://127.0.0.1:43110');
   assert.equal(appSpec.env.CATS_PLATFORM_DIR, 'C:\\Users\\test\\.cats\\platform');
-  assert.equal(appSpec.env.CATS_STATE_PATH, 'C:\\Cats\\chat-state.local.json');
+  assert.equal(appSpec.env.CATS_DESKTOP_DIR, 'C:\\Users\\test\\.cats\\desktop');
+  assert.equal(appSpec.env.CATS_RUNTIME_DIR, 'C:\\Users\\test\\.cats\\runtime');
   assert.equal(appSpec.cwd, config.packageRoot);
   assert.equal(config.background.trayEnabled, true);
   assert.equal(config.background.closeBehavior, 'minimize_to_tray');

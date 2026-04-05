@@ -4,14 +4,15 @@ import path from 'node:path';
 
 import { loadConfig } from '../dist-server/config.js';
 
-test('loadConfig prefers canonical CATS_* variables over compatibility aliases', () => {
+test('loadConfig derives storage paths from canonical root directories', () => {
   const config = loadConfig({
     CATS_HOST: '0.0.0.0',
     CATS_PORT: '9191',
-    CATS_STATE_PATH: 'C:/state/cats.json',
+    CATS_PLATFORM_DIR: 'C:/Users/test/.cats/platform',
+    CATS_DESKTOP_DIR: 'C:/Users/test/.cats/desktop',
+    CATS_RUNTIME_DIR: 'C:/Users/test/.cats/runtime',
     CATS_INC_HOST: '127.0.0.9',
     CATS_INC_PORT: '9292',
-    CATS_INC_STATE_PATH: 'C:/state/legacy.json',
     CATS_RUNTIME_BASE_URL: 'http://127.0.0.1:3110/',
     CATS_RUNTIME_API_KEY: 'token',
     CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT: '3',
@@ -19,24 +20,36 @@ test('loadConfig prefers canonical CATS_* variables over compatibility aliases',
 
   assert.equal(config.host, '0.0.0.0');
   assert.equal(config.port, 9191);
-  assert.equal(config.chatStatePath, 'C:/state/cats.json');
+  assert.equal(
+    config.chatStatePath,
+    path.join('C:/Users/test/.cats/platform', 'state', 'chat-state.local.json'),
+  );
+  assert.equal(
+    config.desktopHostStatePath,
+    path.join('C:/Users/test/.cats/desktop', 'state.json'),
+  );
+  assert.equal(
+    config.runtimeDataDir,
+    path.join('C:/Users/test/.cats/runtime', 'data'),
+  );
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
 });
 
-test('loadConfig falls back to CATS_INC_* compatibility aliases', () => {
+test('loadConfig falls back to CATS_INC_* compatibility aliases for host and port', () => {
   const config = loadConfig({
     CATS_INC_HOST: '127.0.0.2',
     CATS_INC_PORT: '8282',
-    CATS_INC_STATE_PATH: 'C:/state/legacy.json',
     CATS_RUNTIME_BASE_URL: 'http://127.0.0.1:3110',
   });
 
   assert.equal(config.host, '127.0.0.2');
   assert.equal(config.port, 8282);
-  assert.equal(config.chatStatePath, 'C:/state/legacy.json');
+  assert.ok(
+    config.chatStatePath.endsWith(path.join('.cats', 'platform', 'state', 'chat-state.local.json')),
+  );
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 1);
 });

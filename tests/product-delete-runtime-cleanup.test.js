@@ -65,7 +65,7 @@ function createRuntimeStub(options = {}) {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? path.join(os.tmpdir(), '.cats-runtime', 'sessions', sessionId),
+        cwd: input.cwd ?? path.join(os.tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
       };
     },
     async sendMessage() {
@@ -107,7 +107,7 @@ async function withServer(
       config: {
         ...baseConfig,
         ...configOverrides,
-        chatStatePath: path.join(tempStateDir, 'chat-state.json'),
+        chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
         runtimeDataDir: path.join(tempStateDir, 'runtime-data'),
       },
       runtimeClient,

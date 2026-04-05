@@ -13,7 +13,7 @@ export function createSharedCoreFixtureBundle() {
       status: 'active',
       ownerActorId: 'actor-owner',
       summary: 'Shared program record for Chat, Work, and Code.',
-      repoPath: 'C:/repo/one-man-digital-company',
+      repoPath: '/workspace/one-man-digital-company',
       primaryConversationId: 'conversation-system-1',
       createdAt: SHARED_CORE_FIXTURE_TIME,
       metadata: {

@@ -819,7 +819,7 @@ the app listener is live.
 ### Desktop Host Bootstrap Snapshot
 
 The Electron host now keeps a host-readable JSON snapshot at
-`CATS_DESKTOP_HOST_STATE_PATH` (default:
+`<CATS_DESKTOP_DIR>/state.json` (default:
 `~/.cats/desktop/state.json`). This is not a public HTTP route, but it
 is part of the packaged host contract. The bootstrap renderer itself now stays
 behind a sandboxed preload bridge, and the host only exposes snapshot reads

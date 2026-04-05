@@ -5,7 +5,6 @@ export interface PlatformStorageLayout {
   platformDir: string;
   stateDir: string;
   configDir: string;
-  legacyRootLayout: boolean;
 }
 
 export function resolveDefaultPlatformDir(
@@ -26,18 +25,8 @@ export function resolveDefaultChatStatePath(platformDir: string): string {
   return path.join(resolvePlatformStateDir(platformDir), 'chat-state.local.json');
 }
 
-export function resolvePlatformStatePath(
-  platformDir: string,
-  overridePath: string | undefined,
-): string {
-  const trimmed = overridePath?.trim();
-  if (!trimmed) {
-    return resolveDefaultChatStatePath(platformDir);
-  }
-
-  return path.isAbsolute(trimmed)
-    ? trimmed
-    : path.join(platformDir, trimmed);
+export function resolvePlatformStatePath(platformDir: string): string {
+  return resolveDefaultChatStatePath(platformDir);
 }
 
 export function resolvePlatformStorageLayout(
@@ -45,33 +34,17 @@ export function resolvePlatformStorageLayout(
 ): PlatformStorageLayout {
   const normalizedChatStatePath = path.resolve(chatStatePath);
   const chatStateDir = path.dirname(normalizedChatStatePath);
-  const sectionName = path.basename(chatStateDir);
-
-  if (sectionName === 'state') {
-    const platformDir = path.dirname(chatStateDir);
-    return {
-      platformDir,
-      stateDir: chatStateDir,
-      configDir: resolvePlatformConfigDir(platformDir),
-      legacyRootLayout: false,
-    };
+  if (path.basename(chatStateDir) !== 'state') {
+    throw new Error(
+      `Platform state path must live under <platform>/state/chat-state.local.json, got '${chatStatePath}'`,
+    );
   }
 
-  if (sectionName === 'config') {
-    const platformDir = path.dirname(chatStateDir);
-    return {
-      platformDir,
-      stateDir: resolvePlatformStateDir(platformDir),
-      configDir: chatStateDir,
-      legacyRootLayout: false,
-    };
-  }
-
+  const platformDir = path.dirname(chatStateDir);
   return {
-    platformDir: chatStateDir,
+    platformDir,
     stateDir: chatStateDir,
-    configDir: chatStateDir,
-    legacyRootLayout: true,
+    configDir: resolvePlatformConfigDir(platformDir),
   };
 }
 

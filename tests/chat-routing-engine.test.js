@@ -53,7 +53,7 @@ function createRuntimeStub(responder) {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? path.join(tmpdir(), '.cats-runtime', 'sessions', sessionId),
+        cwd: input.cwd ?? path.join(tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
       };
       this.createdSessions.push({ ...input, id: session.id });
       return session;

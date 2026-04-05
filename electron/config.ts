@@ -104,23 +104,6 @@ function dirnameDesktopPath(value: string): string {
     : dirname(resolve(value));
 }
 
-function resolveDesktopPathWithinBase(
-  basePath: string,
-  overridePath: string | undefined,
-  defaultPath: string,
-): string {
-  const trimmed = overridePath?.trim();
-  if (!trimmed) {
-    return resolveDesktopPath(defaultPath);
-  }
-
-  return resolveDesktopPath(
-    isAbsoluteDesktopPath(trimmed)
-      ? trimmed
-      : joinDesktopPath(basePath, trimmed),
-  );
-}
-
 export function resolveCatsHomeDir(): string {
   return resolveDesktopPath(joinDesktopPath(homedir(), '.cats'));
 }
@@ -243,10 +226,15 @@ export function resolveDesktopHostConfig(
     joinDesktopPath(platformDir, 'config'),
   );
   const runtimeRootDir = resolveDesktopPath(
-    joinDesktopPath(catsHomeDir, 'runtime'),
+    env.CATS_RUNTIME_DIR?.trim()
+      || joinDesktopPath(catsHomeDir, 'runtime'),
   );
   const runtimeConfigDir = resolveDesktopPath(
     joinDesktopPath(runtimeRootDir, 'config'),
+  );
+  const desktopDir = resolveDesktopPath(
+    env.CATS_DESKTOP_DIR?.trim()
+      || joinDesktopPath(catsHomeDir, 'desktop'),
   );
   const background: DesktopHostBackgroundConfig = {
     trayEnabled: parseDesktopBoolean(
@@ -293,36 +281,12 @@ export function resolveDesktopHostConfig(
         env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim()
           || joinDesktopPath(layout.hostPackageRoot, 'dist-electron', 'preload.cjs'),
       ),
-      appStatePath: resolveDesktopPathWithinBase(
-        platformDir,
-        env.CATS_DESKTOP_STATE_PATH,
-        resolvePlatformStatePath(platformDir, undefined),
-      ),
-      runtimeDataDir: resolveDesktopPathWithinBase(
-        runtimeRootDir,
-        env.CATS_DESKTOP_RUNTIME_DATA_DIR,
-        joinDesktopPath(runtimeRootDir, 'data'),
-      ),
-      runtimeSessionBaseDir: resolveDesktopPathWithinBase(
-        runtimeRootDir,
-        env.CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR,
-        joinDesktopPath(runtimeRootDir, 'sessions'),
-      ),
-      runtimeConfigPath: resolveDesktopPathWithinBase(
-        runtimeRootDir,
-        env.CATS_DESKTOP_RUNTIME_CONFIG_PATH,
-        joinDesktopPath(runtimeConfigDir, 'providers.yaml'),
-      ),
-      hostStatePath: resolveDesktopPathWithinBase(
-        joinDesktopPath(catsHomeDir, 'desktop'),
-        env.CATS_DESKTOP_HOST_STATE_PATH,
-        joinDesktopPath(catsHomeDir, 'desktop', 'state.json'),
-      ),
-      hostLogsDir: resolveDesktopPathWithinBase(
-        joinDesktopPath(catsHomeDir, 'desktop'),
-        env.CATS_DESKTOP_HOST_LOGS_DIR,
-        joinDesktopPath(catsHomeDir, 'desktop', 'logs'),
-      ),
+      appStatePath: resolveDesktopPath(resolvePlatformStatePath(platformDir)),
+      runtimeDataDir: resolveDesktopPath(joinDesktopPath(runtimeRootDir, 'data')),
+      runtimeSessionBaseDir: resolveDesktopPath(joinDesktopPath(runtimeRootDir, 'sessions')),
+      runtimeConfigPath: resolveDesktopPath(joinDesktopPath(runtimeConfigDir, 'providers.yaml')),
+      hostStatePath: resolveDesktopPath(joinDesktopPath(desktopDir, 'state.json')),
+      hostLogsDir: resolveDesktopPath(joinDesktopPath(desktopDir, 'logs')),
       packagingOutputRoot: resolveDesktopPath(
         env.CATS_DESKTOP_PACKAGING_OUTPUT_ROOT?.trim()
           || joinDesktopPath(packageRoot, 'build', 'desktop-packaging'),

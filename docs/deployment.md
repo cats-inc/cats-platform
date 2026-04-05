@@ -241,7 +241,8 @@ for the planned desktop host model.
 | `CATS_HOST` | Yes | Host interface to bind (`CATS_INC_HOST` remains a compatibility alias) |
 | `CATS_PORT` | Yes | Service port (`CATS_INC_PORT` remains a compatibility alias) |
 | `CATS_PLATFORM_DIR` | No | Override the platform root used for `state/chat-state.local.json`, `state/platform-onboarding-history.json`, and `config/platform-preferences.json` |
-| `CATS_STATE_PATH` | No | Chat-state file path (`CATS_INC_STATE_PATH` remains a compatibility alias) |
+| `CATS_DESKTOP_DIR` | No | Override the desktop root used for `state.json` and `logs/` |
+| `CATS_RUNTIME_DIR` | No | Override the runtime root used for `config/`, `data/`, and `sessions/` |
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |
 | `CATS_RUNTIME_API_KEY` | No | Optional bearer token for `cats-runtime` |
 
@@ -254,11 +255,6 @@ Desktop-host specific overrides:
 | `CATS_DESKTOP_RUNTIME_ROOT` | No | Override sibling `cats-runtime/` root discovery |
 | `CATS_DESKTOP_APP_PORT` | No | Override host-managed `cats` port |
 | `CATS_DESKTOP_RUNTIME_PORT` | No | Override host-managed `cats-runtime` port |
-| `CATS_DESKTOP_STATE_PATH` | No | Override host-managed chat-state path |
-| `CATS_DESKTOP_RUNTIME_DATA_DIR` | No | Override host-managed runtime data dir |
-| `CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR` | No | Override host-managed runtime session dir |
-| `CATS_DESKTOP_RUNTIME_CONFIG_PATH` | No | Override host-managed runtime provider config path |
-| `CATS_DESKTOP_HOST_STATE_PATH` | No | Override the persisted desktop-host state file |
 | `CATS_DESKTOP_PACKAGING_OUTPUT_ROOT` | No | Override staged packaging output root |
 | `CATS_DESKTOP_TRAY_ENABLED` | No | Toggle tray/background lifecycle support |
 | `CATS_DESKTOP_KEEP_SERVICES_RUNNING` | No | Keep sidecars alive after the window hides |
@@ -280,7 +276,7 @@ Desktop-host specific overrides:
 - **Health**: `GET /health`
 - **Renderer**: served by the Node server after `npm run build`
 - **Desktop host**: Electron bootstrap page plus child-process supervision
-- **Desktop host state**: JSON snapshot at `CATS_DESKTOP_HOST_STATE_PATH`
+- **Desktop host state**: JSON snapshot at `<CATS_DESKTOP_DIR>/state.json`
   containing bootstrap phase, issues, remediation actions, progress steps,
   tray/background state, update status, and packaging metadata
 - **Desktop security posture**: sandboxed preload bridge, validated host env

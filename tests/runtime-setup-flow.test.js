@@ -21,14 +21,14 @@ test.after(async () => {
 });
 
 async function createConfig() {
-  const stateDir = await mkdtemp(path.join(tempDir, 'case-'));
+  const rootDir = await mkdtemp(path.join(tempDir, 'case-'));
   return {
     host: '127.0.0.1',
     port: 8181,
     runtimeBaseUrl: 'http://127.0.0.1:3110',
     runtimeApiKey: '',
-    desktopHostStatePath: path.join(stateDir, 'desktop-host-state.json'),
-    chatStatePath: path.join(stateDir, 'chat-state.json'),
+    desktopHostStatePath: path.join(rootDir, 'desktop', 'state.json'),
+    chatStatePath: path.join(rootDir, 'platform', 'state', 'chat-state.local.json'),
   };
 }
 
@@ -97,7 +97,7 @@ function createRuntimeSetupStub({
         appliedAt,
         appliedConfigPath: currentBootstrapRequired
           ? null
-          : 'C:/Users/test/.cats/runtime/providers.yaml',
+          : 'C:/Users/test/.cats/runtime/config/providers.yaml',
         error: null,
       },
       repair: {

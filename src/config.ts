@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT } from './shared/runtimeRecovery.js';
 import {
   resolveDefaultPlatformDir,
@@ -12,8 +13,10 @@ export interface AppConfig {
   runtimeBaseUrl: string;
   runtimeApiKey: string;
   debugKeepRuntimeSessionsOnProductDelete: boolean;
-  runtimeDataDir?: string;
-  desktopHostStatePath?: string;
+  runtimeDataDir: string;
+  desktopHostStatePath: string;
+  desktopDir: string;
+  runtimeDir: string;
   runtimeStaleSessionRetryLimit: number;
   platformDir: string;
   platformStateDir: string;
@@ -85,10 +88,15 @@ function parseBoolean(raw: string | undefined, fallback: boolean): boolean {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+  const catsHomeDir = env.HOME || env.USERPROFILE || undefined;
   const platformDir = env.CATS_PLATFORM_DIR?.trim()
-    || resolveDefaultPlatformDir(env.HOME || env.USERPROFILE || undefined);
+    || resolveDefaultPlatformDir(catsHomeDir);
   const platformStateDir = resolvePlatformStateDir(platformDir);
   const platformConfigDir = resolvePlatformConfigDir(platformDir);
+  const runtimeDir = env.CATS_RUNTIME_DIR?.trim()
+    || joinCatsHomePath(catsHomeDir, 'runtime');
+  const desktopDir = env.CATS_DESKTOP_DIR?.trim()
+    || joinCatsHomePath(catsHomeDir, 'desktop');
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
@@ -98,8 +106,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       env.CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE,
       false,
     ),
-    runtimeDataDir: readFirstDefined(env, ['CATS_RUNTIME_DATA_DIR']) || undefined,
-    desktopHostStatePath: readFirstDefined(env, ['CATS_DESKTOP_HOST_STATE_PATH']) || undefined,
+    runtimeDataDir: path.join(runtimeDir, 'data'),
+    desktopHostStatePath: path.join(desktopDir, 'state.json'),
+    desktopDir,
+    runtimeDir,
     runtimeStaleSessionRetryLimit: parseNonNegativeInt(
       env.CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT,
       DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT,
@@ -107,12 +117,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     platformDir,
     platformStateDir,
     platformConfigDir,
-    chatStatePath: resolvePlatformStatePath(
-      platformDir,
-      readFirstDefined(env, ['CATS_STATE_PATH', 'CATS_INC_STATE_PATH']),
-    ),
+    chatStatePath: resolvePlatformStatePath(platformDir),
     maxBossCats: parsePositiveInt(env.CATS_MAX_BOSS_CATS, DEFAULT_MAX_BOSS_CATS),
     maxCats: parsePositiveInt(env.CATS_MAX_CATS, DEFAULT_MAX_CATS),
     maxParallelChats: parsePositiveInt(env.CATS_MAX_PARALLEL_CHATS, DEFAULT_MAX_PARALLEL_CHATS),
   };
+}
+
+function joinCatsHomePath(homeDir: string | undefined, section: string): string {
+  return path.join(homeDir || '', '.cats', section);
 }

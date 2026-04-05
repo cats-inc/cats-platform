@@ -54,7 +54,7 @@ function createRuntimeStub() {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? path.join(tmpdir(), '.cats-runtime', 'sessions', sessionId),
+        cwd: input.cwd ?? path.join(tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
       };
       this.createdSessions.push({ ...input, id: session.id });
       return session;
@@ -340,7 +340,7 @@ test('after setup + activate, system messages stay generic and keep verbosity me
     assert.ok(orchMessage.body.includes('Orchestrator'), 'Should use generic orchestrator label in solo rooms');
     assert.ok(!orchMessage.body.includes('將將'), 'Should not expose boss cat name in solo session messages');
     assert.ok(
-      /\n\(cwd: .*\.cats-runtime[\\/]sessions[\\/].+\)/u.test(orchMessage.body),
+      /\n\(cwd: .*\\.cats[\\/]runtime[\\/]sessions[\\/].+\)/u.test(orchMessage.body),
       'Should include runtime cwd in the session message',
     );
 

@@ -19,13 +19,13 @@ function resolveRuntimeDataDir(runtimeDataDir: string | null | undefined): strin
     return path.resolve(configured);
   }
 
-  const envConfigured = normalizeWorkspacePath(process.env.CATS_RUNTIME_DATA_DIR);
-  if (envConfigured) {
-    return path.resolve(envConfigured);
+  const runtimeRoot = normalizeWorkspacePath(process.env.CATS_RUNTIME_DIR);
+  if (runtimeRoot) {
+    return path.join(path.resolve(runtimeRoot), 'data');
   }
 
   const homeDir = normalizeWorkspacePath(os.homedir());
-  return homeDir ? path.join(homeDir, '.cats-runtime', 'data') : null;
+  return homeDir ? path.join(homeDir, '.cats', 'runtime', 'data') : null;
 }
 
 export function resolveChannelSpawnCwd(

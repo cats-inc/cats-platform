@@ -12,14 +12,14 @@ test('resolveComposerWorkspacePath hides runtime session folders but keeps expli
   assert.equal(
     resolveComposerWorkspacePath(
       'C:\\Users\\kenne\\Source\\cats',
-      'C:\\Users\\kenne\\.cats-runtime\\sessions\\abc123',
+      'C:\\Users\\kenne\\.cats\\runtime\\sessions\\abc123',
     ),
     'C:\\Users\\kenne\\Source\\cats',
   );
   assert.equal(
     resolveComposerWorkspacePath(
       null,
-      'C:\\Users\\kenne\\.cats-runtime\\sessions\\abc123',
+      'C:\\Users\\kenne\\.cats\\runtime\\sessions\\abc123',
     ),
     null,
   );

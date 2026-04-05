@@ -13,7 +13,7 @@ export function isRuntimeSessionWorkspacePath(value: string | null | undefined):
     return false;
   }
 
-  return normalized.replace(/\\/g, '/').includes('/.cats-runtime/sessions/');
+  return normalized.replace(/\\/g, '/').includes('/.cats/runtime/sessions/');
 }
 
 export function resolveComposerWorkspacePath(

@@ -172,7 +172,7 @@ It is the desktop-owned seam for:
 - structured packaged setup helper discovery and execution
 
 The desktop host now also keeps a host-readable state file at
-`CATS_DESKTOP_HOST_STATE_PATH` (default:
+`<CATS_DESKTOP_DIR>/state.json` (default:
 `~/.cats/desktop/state.json`). That JSON snapshot includes:
 
 - bootstrap phase and summary
@@ -547,11 +547,9 @@ Node server on port `8181`.
 
 ### Issue 4: Channel selection or creation does not persist
 
-**Solution**: Check whether `CATS_STATE_PATH` points to a writable file
-location. `CATS_INC_STATE_PATH` is still accepted as a compatibility alias. If
-unset, the app uses `~/.cats/platform/state/chat-state.local.json`, or
-`<CATS_PLATFORM_DIR>/state/chat-state.local.json` when that directory override
-is set.
+**Solution**: Check whether `CATS_PLATFORM_DIR` points to a writable directory.
+The app writes product state to `<CATS_PLATFORM_DIR>/state/chat-state.local.json`
+and defaults to `~/.cats/platform/state/chat-state.local.json`.
 
 ### Issue 5: Channel activation fails immediately
 

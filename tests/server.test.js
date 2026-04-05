@@ -139,7 +139,7 @@ function createRuntimeStub() {
         provider: input.provider,
         model: input.model ?? null,
         status: 'ready',
-        cwd: input.cwd ?? path.join(os.tmpdir(), '.cats-runtime', 'sessions', sessionId),
+        cwd: input.cwd ?? path.join(os.tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
       };
       this.createdSessions.push({ ...input, id: session.id });
       return session;
@@ -225,7 +225,7 @@ async function withServer(
     shared: {
       config: {
         ...baseConfig,
-        chatStatePath: path.join(tempStateDir, 'chat-state.json'),
+        chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
         runtimeDataDir,
       },
       runtimeClient,
@@ -4410,7 +4410,7 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
     assert.equal(runtimeClient.createdSessions[0].cwd, null);
     assert.match(
       runtimeClient.createdSessions[1].cwd ?? '',
-      /\.cats-runtime[\\/]sessions[\\/]session-1$/u,
+      /\\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
     );
     assert.equal(activatePayload.activation.results[0].targetKind, 'orchestrator');
     assert.equal(activatePayload.activation.results[1].targetKind, 'cat');
@@ -4482,7 +4482,7 @@ test('first send persists a runtime-sanitized solo model selection after droppin
         },
       },
       status: 'ready',
-      cwd: input.cwd ?? path.join(os.tmpdir(), '.cats-runtime', 'sessions', sessionId),
+      cwd: input.cwd ?? path.join(os.tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
     };
   };
 
@@ -5375,7 +5375,7 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
     assert.match(
       channelPayload.channel.chatCwd ?? '',
-      /\.cats-runtime[\\/]sessions[\\/]session-1$/u,
+      /\\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
     );
     const soloReply = channelPayload.channel.messages.findLast(
       (message) => message.metadata?.targetKind === 'orchestrator',
