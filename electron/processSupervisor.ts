@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { access, appendFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
 import type { ManagedServiceName, ManagedServiceSnapshot } from './contracts.js';
@@ -164,10 +164,112 @@ export async function prepareManagedServiceLog(logPath: string): Promise<void> {
   await writeFile(logPath, '', 'utf8');
 }
 
+function resolvePathEnvKey(env: NodeJS.ProcessEnv): string {
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase() === 'path') {
+      return key;
+    }
+  }
+  return 'PATH';
+}
+
+function normalizePathEntries(
+  entries: string[],
+  platform: NodeJS.Platform,
+): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const dedupeKey = platform === 'win32'
+      ? trimmed.toLowerCase()
+      : trimmed;
+    if (seen.has(dedupeKey)) {
+      continue;
+    }
+
+    seen.add(dedupeKey);
+    normalized.push(trimmed);
+  }
+
+  return normalized;
+}
+
+function resolveManagedServicePathEntries(
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+): string[] {
+  const pathKey = resolvePathEnvKey(env);
+  const existing = (env[pathKey] ?? '').split(delimiter);
+  const home = env.HOME?.trim() || env.USERPROFILE?.trim() || '';
+  const homeScopedEntries = home
+    ? [
+        join(home, '.local', 'bin'),
+        join(home, '.npm-global', 'bin'),
+        join(home, 'bin'),
+      ]
+    : [];
+
+  if (platform === 'darwin') {
+    return normalizePathEntries([
+      ...existing,
+      '/opt/homebrew/bin',
+      '/opt/homebrew/sbin',
+      '/usr/local/bin',
+      '/usr/local/sbin',
+      ...homeScopedEntries,
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin',
+    ], platform);
+  }
+
+  if (platform === 'linux') {
+    return normalizePathEntries([
+      ...existing,
+      '/usr/local/bin',
+      '/usr/local/sbin',
+      ...homeScopedEntries,
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin',
+    ], platform);
+  }
+
+  return normalizePathEntries(existing, platform);
+}
+
+function createManagedServiceEnv(
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+): NodeJS.ProcessEnv {
+  const pathKey = resolvePathEnvKey(env);
+  const nextEnv = { ...env };
+
+  for (const key of Object.keys(nextEnv)) {
+    if (key !== pathKey && key.toLowerCase() === 'path') {
+      delete nextEnv[key];
+    }
+  }
+
+  nextEnv[pathKey] = resolveManagedServicePathEntries(env, platform).join(delimiter);
+  return nextEnv;
+}
+
 export function buildManagedServiceSpecs(
   config: DesktopHostConfig,
   env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
 ): ManagedServiceSpec[] {
+  const managedEnv = createManagedServiceEnv(env, platform);
+
   return [
     {
       name: 'cats-runtime',
@@ -180,7 +282,7 @@ export function buildManagedServiceSpecs(
       ],
       cwd: config.runtimePackageRoot,
       env: {
-        ...env,
+        ...managedEnv,
         ELECTRON_RUN_AS_NODE: '1',
         CATS_RUNTIME_HOST: config.runtimeHost,
         CATS_RUNTIME_PORT: String(config.runtimePort),
@@ -202,7 +304,7 @@ export function buildManagedServiceSpecs(
       ],
       cwd: config.packageRoot,
       env: {
-        ...env,
+        ...managedEnv,
         ELECTRON_RUN_AS_NODE: '1',
         CATS_HOST: config.appHost,
         CATS_PORT: String(config.appPort),

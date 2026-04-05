@@ -136,6 +136,37 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
   );
 });
 
+test('managed desktop services augment PATH for macOS packaged CLI discovery', () => {
+  const env = {
+    HOME: '/Users/tester',
+    PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+  };
+  const config = resolveDesktopHostConfig({
+    env,
+    userDataDir: '/Users/tester/Library/Application Support/Cats',
+  });
+
+  const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, env, 'darwin');
+  const runtimePathEntries = runtimeSpec.env.PATH.split(':');
+  const appPathEntries = appSpec.env.PATH.split(':');
+
+  assert.deepEqual(
+    runtimePathEntries.slice(0, 4),
+    ['/usr/bin', '/bin', '/usr/sbin', '/sbin'],
+  );
+  assert.ok(runtimePathEntries.includes('/opt/homebrew/bin'));
+  assert.ok(runtimePathEntries.includes('/opt/homebrew/sbin'));
+  assert.ok(runtimePathEntries.includes('/usr/local/bin'));
+  assert.ok(runtimePathEntries.includes('/usr/local/sbin'));
+  assert.ok(runtimePathEntries.includes('/Users/tester/.local/bin'));
+  assert.ok(runtimePathEntries.includes('/Users/tester/.npm-global/bin'));
+  assert.ok(runtimePathEntries.includes('/Users/tester/bin'));
+  assert.ok(runtimePathEntries.includes('/bin'));
+  assert.ok(runtimePathEntries.includes('/usr/sbin'));
+  assert.ok(runtimePathEntries.includes('/sbin'));
+  assert.deepEqual(appPathEntries, runtimePathEntries);
+});
+
 test('desktop host config rejects invalid host overrides', () => {
   assert.throws(() => resolveDesktopHostConfig({
     env: {
