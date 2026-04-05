@@ -2,6 +2,8 @@
 !include "LogicLib.nsh"
 !include "nsDialogs.nsh"
 
+!ifdef BUILD_UNINSTALLER
+
 Var RemoveUserDataCheckbox
 Var RemoveUserDataState
 
@@ -27,6 +29,8 @@ FunctionEnd
 Function un.UserDataRemovalPageLeave
   ${NSD_GetState} $RemoveUserDataCheckbox $RemoveUserDataState
 FunctionEnd
+
+!endif
 
 !macro customUnInstall
   ; Always clean Electron internal cache (not user-meaningful).
