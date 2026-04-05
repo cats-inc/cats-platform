@@ -129,7 +129,7 @@ npm start
 ```
 
 The built Node server serves the static UI from `dist/`.
-By default local chat state is stored in `config/chat-state.local.json`.
+By default local chat state is stored in `~/.cats/platform/chat-state.local.json`.
 That file now holds channels, cats, execution targets, execution lease
 metadata, memory checkpoints, and transcripts.
 The checked-in starter state is empty, so the renderer does not open with any
@@ -173,7 +173,7 @@ It is the desktop-owned seam for:
 
 The desktop host now also keeps a host-readable state file at
 `CATS_DESKTOP_HOST_STATE_PATH` (default:
-`<userData>/desktop-host/state.json`). That JSON snapshot includes:
+`~/.cats/desktop-host/state.json`). That JSON snapshot includes:
 
 - bootstrap phase and summary
 - structured prerequisite issues plus remediation actions
@@ -192,10 +192,10 @@ The desktop host now also keeps a host-readable state file at
 
 For packaged bootstrap or onboarding failures, collect these files first:
 
-- `%APPDATA%\\Cats\\desktop-host\\state.json`
-- `%APPDATA%\\Cats\\desktop-host\\logs\\cats-runtime.log`
-- `%APPDATA%\\Cats\\desktop-host\\logs\\cats.log`
-- `%APPDATA%\\Cats\\config\\platform-onboarding-history.json`
+- `%USERPROFILE%\\.cats\\desktop-host\\state.json`
+- `%USERPROFILE%\\.cats\\desktop-host\\logs\\cats-runtime.log`
+- `%USERPROFILE%\\.cats\\desktop-host\\logs\\cats.log`
+- `%USERPROFILE%\\.cats\\platform\\platform-onboarding-history.json`
   - this file may be absent if `cats` never reached the product-owned setup flow
 
 The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
@@ -482,7 +482,7 @@ with:
 Default assumptions:
 
 - install root: `%LOCALAPPDATA%\Programs\Cats`
-- host state path: `%APPDATA%\Cats\desktop-host\state.json`
+- host state path: `%USERPROFILE%\.cats\desktop-host\state.json`
 
 If you installed to a different directory, pass overrides:
 
@@ -510,10 +510,10 @@ What the smoke-check confirms:
 
 If startup still fails after install, capture these artifacts before retrying:
 
-- `%APPDATA%\\Cats\\desktop-host\\state.json`
-- `%APPDATA%\\Cats\\desktop-host\\logs\\cats-runtime.log`
-- `%APPDATA%\\Cats\\desktop-host\\logs\\cats.log`
-- `%APPDATA%\\Cats\\config\\platform-onboarding-history.json`
+- `%USERPROFILE%\\.cats\\desktop-host\\state.json`
+- `%USERPROFILE%\\.cats\\desktop-host\\logs\\cats-runtime.log`
+- `%USERPROFILE%\\.cats\\desktop-host\\logs\\cats.log`
+- `%USERPROFILE%\\.cats\\platform\\platform-onboarding-history.json`
 
 Use `-SkipLaunch` if you only want file/layout verification.
 
@@ -549,7 +549,9 @@ Node server on port `8181`.
 
 **Solution**: Check whether `CATS_STATE_PATH` points to a writable file
 location. `CATS_INC_STATE_PATH` is still accepted as a compatibility alias. If
-unset, the app uses `config/chat-state.local.json`.
+unset, the app uses `~/.cats/platform/chat-state.local.json`, or
+`<CATS_PLATFORM_DIR>/chat-state.local.json` when that directory override
+is set.
 
 ### Issue 5: Channel activation fails immediately
 

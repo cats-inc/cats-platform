@@ -41,7 +41,7 @@ test('desktop aggregation bundle prefers the active bootstrap attempt and keeps 
       attemptId: 'attempt-current',
       status: 'info',
       summary: 'Setup was opened.',
-      historyPath: 'C:/Users/test/AppData/Roaming/Cats/config/platform-onboarding-history.json',
+      historyPath: 'C:/Users/test/.cats/platform/platform-onboarding-history.json',
       latestReference: null,
       events: [
         createDesktopBootstrapEvent({

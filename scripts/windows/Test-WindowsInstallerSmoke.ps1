@@ -58,7 +58,7 @@ function Resolve-DefaultInstallRoot {
 }
 
 function Resolve-DefaultHostStatePath {
-  return Join-Path $env:APPDATA 'Cats\desktop-host\state.json'
+  return Join-Path $env:USERPROFILE '.cats\desktop-host\state.json'
 }
 
 function Assert-FileExists([string]$Path, [string]$Label) {

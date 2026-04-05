@@ -97,7 +97,7 @@ function createRuntimeSetupStub({
         appliedAt,
         appliedConfigPath: currentBootstrapRequired
           ? null
-          : 'C:/Users/test/AppData/Roaming/Cats/runtime/providers.yaml',
+          : 'C:/Users/test/.cats/runtime/providers.yaml',
         error: null,
       },
       repair: {

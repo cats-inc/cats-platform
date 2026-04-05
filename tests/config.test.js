@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import path from 'node:path';
 
 import { loadConfig } from '../dist-server/config.js';
 
@@ -38,6 +39,29 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases', () => {
   assert.equal(config.chatStatePath, 'C:/state/legacy.json');
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 1);
+});
+
+test('loadConfig derives the default chat-state path from CATS_PLATFORM_DIR', () => {
+  const config = loadConfig({
+    CATS_PLATFORM_DIR: 'C:/Users/test/.cats/platform',
+  });
+
+  assert.equal(
+    config.chatStatePath,
+    path.join('C:/Users/test/.cats/platform', 'chat-state.local.json'),
+  );
+});
+
+test('loadConfig defaults chat-state path under ~/.cats/platform', () => {
+  const originalHome = process.env.USERPROFILE;
+  process.env.USERPROFILE = 'C:/Users/tester';
+
+  try {
+    const config = loadConfig({});
+    assert.equal(config.chatStatePath, 'C:\\Users\\tester\\.cats\\platform\\chat-state.local.json');
+  } finally {
+    process.env.USERPROFILE = originalHome;
+  }
 });
 
 test('loadConfig enables runtime session retention override only when explicitly true', () => {

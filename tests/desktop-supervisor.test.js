@@ -125,7 +125,7 @@ test('desktop host config keeps Electron userData separate from cats home', () =
 
   assert.equal(config.userDataDir, 'C:\\Users\\test\\AppData\\Roaming\\Cats');
   assert.equal(config.catsHomeDir, 'C:\\Users\\test\\.cats');
-  assert.equal(config.paths.appStatePath, 'C:\\Users\\test\\.cats\\config\\chat-state.local.json');
+  assert.equal(config.paths.appStatePath, 'C:\\Users\\test\\.cats\\platform\\chat-state.local.json');
   assert.equal(config.paths.runtimeDataDir, 'C:\\Users\\test\\.cats\\runtime\\data');
   assert.equal(config.paths.runtimeSessionBaseDir, 'C:\\Users\\test\\.cats\\runtime\\sessions');
   assert.equal(config.paths.runtimeConfigPath, 'C:\\Users\\test\\.cats\\runtime\\providers.yaml');

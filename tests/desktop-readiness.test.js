@@ -32,7 +32,7 @@ const desktopConfig = {
     appEntryScript: 'cats-platform/dist-server/index.js',
     runtimeEntryScript: 'cats-runtime/dist/index.js',
     preloadScript: 'cats-platform/dist-electron/preload.cjs',
-    appStatePath: 'cats-platform/config/chat-state.local.json',
+    appStatePath: 'cats-platform/platform/chat-state.local.json',
     runtimeDataDir: 'cats-platform/.desktop/runtime/data',
     runtimeSessionBaseDir: 'cats-platform/.desktop/runtime/sessions',
     runtimeConfigPath: 'cats-platform/.desktop/runtime/providers.yaml',

@@ -203,6 +203,10 @@ export function resolveDesktopHostConfig(
   );
   const userDataDir = resolveDesktopPath(options.userDataDir);
   const catsHomeDir = resolveDesktopPath(options.catsHomeDir ?? options.userDataDir);
+  const platformDir = resolveDesktopPath(
+    env.CATS_PLATFORM_DIR?.trim()
+      || joinDesktopPath(catsHomeDir, 'platform'),
+  );
   const background: DesktopHostBackgroundConfig = {
     trayEnabled: parseDesktopBoolean(
       env.CATS_DESKTOP_TRAY_ENABLED,
@@ -245,7 +249,7 @@ export function resolveDesktopHostConfig(
       ),
       appStatePath: resolveDesktopPath(
         env.CATS_DESKTOP_STATE_PATH?.trim()
-          || joinDesktopPath(catsHomeDir, 'config', 'chat-state.local.json'),
+          || joinDesktopPath(platformDir, 'chat-state.local.json'),
       ),
       runtimeDataDir: resolveDesktopPath(
         env.CATS_DESKTOP_RUNTIME_DATA_DIR?.trim()

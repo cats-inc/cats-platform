@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { homedir } from 'node:os';
 
 import { DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT } from './shared/runtimeRecovery.js';
 
@@ -23,6 +24,10 @@ const DEFAULT_RUNTIME_BASE_URL = 'http://127.0.0.1:3110';
 const DEFAULT_MAX_BOSS_CATS = 1;
 const DEFAULT_MAX_CATS = 5;
 const DEFAULT_MAX_PARALLEL_CHATS = 5;
+
+function resolveDefaultPlatformDir(): string {
+  return path.join(homedir(), '.cats', 'platform');
+}
 
 function readFirstDefined(env: NodeJS.ProcessEnv, keys: string[]): string | undefined {
   for (const key of keys) {
@@ -78,6 +83,8 @@ function parseBoolean(raw: string | undefined, fallback: boolean): boolean {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+  const platformDir = env.CATS_PLATFORM_DIR?.trim()
+    || resolveDefaultPlatformDir();
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
@@ -95,7 +102,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     ),
     chatStatePath:
       readFirstDefined(env, ['CATS_STATE_PATH', 'CATS_INC_STATE_PATH'])
-      || path.join(process.cwd(), 'config', 'chat-state.local.json'),
+      || path.join(platformDir, 'chat-state.local.json'),
     maxBossCats: parsePositiveInt(env.CATS_MAX_BOSS_CATS, DEFAULT_MAX_BOSS_CATS),
     maxCats: parsePositiveInt(env.CATS_MAX_CATS, DEFAULT_MAX_CATS),
     maxParallelChats: parsePositiveInt(env.CATS_MAX_PARALLEL_CHATS, DEFAULT_MAX_PARALLEL_CHATS),
