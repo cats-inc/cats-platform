@@ -1,5 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import path from 'node:path';
+
+import {
+  resolvePlatformOnboardingHistoryPathFromChatState,
+} from './platformPaths.js';
 
 export interface PersistedSetupCompletionState {
   setupCompleteAt: string | null;
@@ -30,7 +33,7 @@ async function readPersistedSetupCompleteAt(chatStatePath: string): Promise<stri
 async function readPersistedProductSetupCompleted(chatStatePath: string): Promise<boolean> {
   try {
     const raw = await readFile(
-      path.join(path.dirname(chatStatePath), 'platform-onboarding-history.json'),
+      resolvePlatformOnboardingHistoryPathFromChatState(chatStatePath),
       'utf8',
     );
     const parsed = JSON.parse(raw) as unknown;

@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { PlatformSurfaceId } from './platform-contract.js';
+import { resolvePlatformPreferencesPathFromChatState } from './platformPaths.js';
 
 export interface PlatformPreferences {
   lastProductSurface: PlatformSurfaceId | null;
@@ -16,7 +17,7 @@ const DEFAULTS: PlatformPreferences = {
 };
 
 export function resolvePlatformPreferencesPath(chatStatePath: string): string {
-  return path.join(path.dirname(chatStatePath), 'platform-preferences.json');
+  return resolvePlatformPreferencesPathFromChatState(chatStatePath);
 }
 
 function normalizePlatformPreferences(value: unknown): PlatformPreferences {

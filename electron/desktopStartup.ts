@@ -1,6 +1,8 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { resolvePlatformPreferencesPathFromChatState } from './platformPaths.js';
+
 export interface DesktopStartupPreferences {
   startAtLogin: boolean;
   openWindowOnStartup: boolean;
@@ -50,7 +52,7 @@ function normalizeDesktopStartupPreferences(value: unknown): DesktopStartupPrefe
 }
 
 export function resolveDesktopPlatformPreferencesPath(appStatePath: string): string {
-  return path.join(path.dirname(appStatePath), 'platform-preferences.json');
+  return resolvePlatformPreferencesPathFromChatState(appStatePath);
 }
 
 export async function readDesktopStartupPreferences(

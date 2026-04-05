@@ -12,7 +12,7 @@ import {
 
 test('platform onboarding history persists bounded product-owned events beside chat-state.json', async () => {
   const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-onboarding-history-'));
-  const chatStatePath = path.join(workingDir, 'config', 'chat-state.local.json');
+  const chatStatePath = path.join(workingDir, 'platform', 'state', 'chat-state.local.json');
 
   await appendPlatformOnboardingEvent(chatStatePath, {
     now: new Date('2026-03-31T01:00:00.000Z'),

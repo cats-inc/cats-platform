@@ -287,6 +287,7 @@ export function buildManagedServiceSpecs(
       env: {
         ...managedEnv,
         ELECTRON_RUN_AS_NODE: '1',
+        CATS_RUNTIME_DIR: config.paths.runtimeRootDir,
         CATS_RUNTIME_HOST: config.runtimeHost,
         CATS_RUNTIME_PORT: String(config.runtimePort),
         CATS_RUNTIME_DATA_DIR: config.paths.runtimeDataDir,
@@ -311,6 +312,7 @@ export function buildManagedServiceSpecs(
         ELECTRON_RUN_AS_NODE: '1',
         CATS_HOST: config.appHost,
         CATS_PORT: String(config.appPort),
+        CATS_PLATFORM_DIR: config.paths.platformDir,
         CATS_STATE_PATH: config.paths.appStatePath,
         CATS_DESKTOP_HOST_STATE_PATH: config.paths.hostStatePath,
         CATS_RUNTIME_BASE_URL: config.runtimeBaseUrl,

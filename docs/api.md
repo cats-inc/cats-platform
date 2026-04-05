@@ -875,7 +875,7 @@ Related on-disk diagnostics artifacts for packaged failures:
 - `~/.cats/desktop/state.json`
 - `~/.cats/desktop/logs/cats-runtime.log`
 - `~/.cats/desktop/logs/cats.log`
-- `~/.cats/platform/platform-onboarding-history.json`
+- `~/.cats/platform/state/platform-onboarding-history.json`
 - `packaging`:
   - packaging `strategy`
   - staged target matrix for Windows/macOS/Linux

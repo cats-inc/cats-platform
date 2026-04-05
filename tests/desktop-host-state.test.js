@@ -42,6 +42,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
       CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
     },
     userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
   });
   const background = createDesktopBackgroundState(config, {
     mode: 'background',
@@ -228,6 +229,7 @@ test('DesktopHostStateStore loads legacy setup state without optional follow-thr
       CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
     },
     userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
   });
   const background = createDesktopBackgroundState(config);
   const updates = createDefaultDesktopUpdateState(config.update);

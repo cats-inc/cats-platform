@@ -48,7 +48,7 @@ test('loadConfig derives the default chat-state path from CATS_PLATFORM_DIR', ()
 
   assert.equal(
     config.chatStatePath,
-    path.join('C:/Users/test/.cats/platform', 'chat-state.local.json'),
+    path.join('C:/Users/test/.cats/platform', 'state', 'chat-state.local.json'),
   );
 });
 
@@ -58,7 +58,10 @@ test('loadConfig defaults chat-state path under ~/.cats/platform', () => {
 
   try {
     const config = loadConfig({});
-    assert.equal(config.chatStatePath, 'C:\\Users\\tester\\.cats\\platform\\chat-state.local.json');
+    assert.equal(
+      config.chatStatePath,
+      'C:\\Users\\tester\\.cats\\platform\\state\\chat-state.local.json',
+    );
   } finally {
     process.env.USERPROFILE = originalHome;
   }

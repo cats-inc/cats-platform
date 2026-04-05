@@ -240,7 +240,7 @@ for the planned desktop host model.
 |----------|----------|-------------|
 | `CATS_HOST` | Yes | Host interface to bind (`CATS_INC_HOST` remains a compatibility alias) |
 | `CATS_PORT` | Yes | Service port (`CATS_INC_PORT` remains a compatibility alias) |
-| `CATS_PLATFORM_DIR` | No | Override the platform state directory used for `chat-state.local.json` and sibling sidecars |
+| `CATS_PLATFORM_DIR` | No | Override the platform root used for `state/chat-state.local.json`, `state/platform-onboarding-history.json`, and `config/platform-preferences.json` |
 | `CATS_STATE_PATH` | No | Chat-state file path (`CATS_INC_STATE_PATH` remains a compatibility alias) |
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |
 | `CATS_RUNTIME_API_KEY` | No | Optional bearer token for `cats-runtime` |

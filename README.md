@@ -160,7 +160,8 @@ Default endpoints:
 The chat shell persists local state, including created channels,
 global cats, channel cat assignments, execution targets, execution
 lease metadata, memory checkpoints, and transcripts, to
-`config/chat-state.local.json` unless `CATS_STATE_PATH` overrides it.
+`~/.cats/platform/state/chat-state.local.json` unless `CATS_STATE_PATH`
+overrides it.
 `CATS_INC_STATE_PATH` is still accepted as a temporary compatibility alias.
 
 For a built run:

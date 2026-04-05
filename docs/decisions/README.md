@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [053-use-structured-cats-home-platform-storage](./053-use-structured-cats-home-platform-storage.md) | Use structured `~/.cats` platform storage | Accepted | 2026-04-05 |
 | [052-use-canonical-platform-settings-routes-inside-product-shells](./052-use-canonical-platform-settings-routes-inside-product-shells.md) | Use canonical platform settings routes inside product shells | Accepted | 2026-04-04 |
 | [051-generalize-participants-and-adopt-guide-cat-terminology](./051-generalize-participants-and-adopt-guide-cat-terminology.md) | Generalize participants and adopt Guide Cat terminology | Accepted | 2026-04-04 |
 | [049-cascade-product-deletes-into-runtime-session-deletion](./049-cascade-product-deletes-into-runtime-session-deletion.md) | Cascade product deletes into runtime session deletion | Accepted | 2026-04-02 |
@@ -95,6 +96,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-05*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

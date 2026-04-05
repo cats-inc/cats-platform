@@ -8,12 +8,12 @@ import { readPersistedSetupCompletionState } from '../dist-electron/persistedSet
 
 test('readPersistedSetupCompletionState detects persisted setup completion from chat state and onboarding history', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-persisted-setup-'));
-  const chatStatePath = path.join(root, 'config', 'chat-state.local.json');
+  const chatStatePath = path.join(root, 'platform', 'state', 'chat-state.local.json');
   await mkdir(path.dirname(chatStatePath), { recursive: true });
   await writeFile(chatStatePath, JSON.stringify({
     setupCompleteAt: '2026-03-31T04:14:48.267Z',
   }, null, 2));
-  await writeFile(path.join(root, 'config', 'platform-onboarding-history.json'), JSON.stringify({
+  await writeFile(path.join(root, 'platform', 'state', 'platform-onboarding-history.json'), JSON.stringify({
     schemaVersion: 1,
     updatedAt: '2026-03-31T04:14:48.267Z',
     activeAttemptId: 'desktop-bootstrap-20260331041158321-c53f309e',
@@ -37,7 +37,7 @@ test('readPersistedSetupCompletionState detects persisted setup completion from 
 
 test('readPersistedSetupCompletionState tolerates missing persisted files', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-persisted-setup-missing-'));
-  const chatStatePath = path.join(root, 'config', 'chat-state.local.json');
+  const chatStatePath = path.join(root, 'platform', 'state', 'chat-state.local.json');
 
   const state = await readPersistedSetupCompletionState(chatStatePath);
   assert.equal(state.setupCompleteAt, null);

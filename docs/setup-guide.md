@@ -129,7 +129,7 @@ npm start
 ```
 
 The built Node server serves the static UI from `dist/`.
-By default local chat state is stored in `~/.cats/platform/chat-state.local.json`.
+By default local chat state is stored in `~/.cats/platform/state/chat-state.local.json`.
 That file now holds channels, cats, execution targets, execution lease
 metadata, memory checkpoints, and transcripts.
 The checked-in starter state is empty, so the renderer does not open with any
@@ -195,7 +195,7 @@ For packaged bootstrap or onboarding failures, collect these files first:
 - `%USERPROFILE%\\.cats\\desktop\\state.json`
 - `%USERPROFILE%\\.cats\\desktop\\logs\\cats-runtime.log`
 - `%USERPROFILE%\\.cats\\desktop\\logs\\cats.log`
-- `%USERPROFILE%\\.cats\\platform\\platform-onboarding-history.json`
+- `%USERPROFILE%\\.cats\\platform\\state\\platform-onboarding-history.json`
   - this file may be absent if `cats` never reached the product-owned setup flow
 
 The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
@@ -513,7 +513,7 @@ If startup still fails after install, capture these artifacts before retrying:
 - `%USERPROFILE%\\.cats\\desktop\\state.json`
 - `%USERPROFILE%\\.cats\\desktop\\logs\\cats-runtime.log`
 - `%USERPROFILE%\\.cats\\desktop\\logs\\cats.log`
-- `%USERPROFILE%\\.cats\\platform\\platform-onboarding-history.json`
+- `%USERPROFILE%\\.cats\\platform\\state\\platform-onboarding-history.json`
 
 Use `-SkipLaunch` if you only want file/layout verification.
 
@@ -549,8 +549,8 @@ Node server on port `8181`.
 
 **Solution**: Check whether `CATS_STATE_PATH` points to a writable file
 location. `CATS_INC_STATE_PATH` is still accepted as a compatibility alias. If
-unset, the app uses `~/.cats/platform/chat-state.local.json`, or
-`<CATS_PLATFORM_DIR>/chat-state.local.json` when that directory override
+unset, the app uses `~/.cats/platform/state/chat-state.local.json`, or
+`<CATS_PLATFORM_DIR>/state/chat-state.local.json` when that directory override
 is set.
 
 ### Issue 5: Channel activation fails immediately

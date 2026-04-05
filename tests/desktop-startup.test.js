@@ -14,7 +14,7 @@ import {
 
 test('desktop startup preferences default to sign-in launch enabled and window open disabled', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-desktop-startup-'));
-  const appStatePath = path.join(root, 'config', 'chat-state.local.json');
+  const appStatePath = path.join(root, 'platform', 'state', 'chat-state.local.json');
 
   try {
     const prefs = await readDesktopStartupPreferences(appStatePath);
@@ -29,8 +29,8 @@ test('desktop startup preferences default to sign-in launch enabled and window o
 
 test('desktop startup preferences preserve unrelated fields when updated', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'cats-desktop-startup-'));
-  const appStatePath = path.join(root, 'config', 'chat-state.local.json');
-  const prefsPath = path.join(root, 'config', 'platform-preferences.json');
+  const appStatePath = path.join(root, 'platform', 'state', 'chat-state.local.json');
+  const prefsPath = path.join(root, 'platform', 'config', 'platform-preferences.json');
 
   try {
     await mkdir(path.dirname(prefsPath), { recursive: true });

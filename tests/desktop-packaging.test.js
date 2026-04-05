@@ -79,6 +79,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
     },
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
   });
 
   const plan = createDesktopPackagingPlan(config, {
@@ -565,7 +566,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /windows-ollama-local-model-installer/);
   assert.match(script, /windows-docker-desktop-installer/);
   assert.match(script, /desktop-host\\setup-assets\\manifest\.json/);
-  assert.match(script, /desktop-host\\state\.json/);
+  assert.match(script, /\.cats\\desktop\\state\.json/);
   assert.match(script, /electron-sidecar-bundle/);
   assert.match(script, /ready_for_setup/);
   assert.match(script, /ready_for_chat/);
@@ -655,6 +656,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
       CATS_DESKTOP_PACKAGING_OUTPUT_ROOT: outputRoot,
     },
     userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
   });
   const plan = await stageDesktopPackagingOutputs(config, {
     generatedAt: new Date('2026-03-24T12:05:00.000Z'),
@@ -1074,6 +1076,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
       CATS_DESKTOP_PACKAGING_OUTPUT_ROOT: outputRoot,
     },
     userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
   });
 
   await assert.rejects(

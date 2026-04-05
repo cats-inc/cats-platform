@@ -55,7 +55,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
       CATS_DESKTOP_STATE_PATH: 'C:/Cats/chat-state.local.json',
       CATS_DESKTOP_RUNTIME_DATA_DIR: 'C:/Cats/runtime/data',
       CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR: 'C:/Cats/runtime/sessions',
-      CATS_DESKTOP_RUNTIME_CONFIG_PATH: 'C:/Cats/runtime/providers.yaml',
+      CATS_DESKTOP_RUNTIME_CONFIG_PATH: 'C:/Cats/runtime/config/providers.yaml',
       CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/dist-server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/dist/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
@@ -66,6 +66,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
       CATS_DESKTOP_UPDATE_MANIFEST_URL: 'https://updates.example.com/cats/beta.json',
     },
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
   });
 
   const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, {});
@@ -77,7 +78,8 @@ test('desktop host config and managed service specs preserve the app/runtime pro
     '--ready-output=json',
   ]);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_PORT, '43110');
-  assert.equal(runtimeSpec.env.CATS_RUNTIME_CONFIG_PATH, 'C:\\Cats\\runtime\\providers.yaml');
+  assert.equal(runtimeSpec.env.CATS_RUNTIME_DIR, 'C:\\Users\\test\\.cats\\runtime');
+  assert.equal(runtimeSpec.env.CATS_RUNTIME_CONFIG_PATH, 'C:\\Cats\\runtime\\config\\providers.yaml');
   assert.equal(runtimeSpec.env.CATS_RUNTIME_WSL_DISCOVERY_POLICY, undefined);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_DOCKER_DISCOVERY_POLICY, undefined);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_NATIVE_DISCOVERY_INTERVAL_MS, undefined);
@@ -91,6 +93,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   ]);
   assert.equal(appSpec.env.CATS_PORT, '48181');
   assert.equal(appSpec.env.CATS_RUNTIME_BASE_URL, 'http://127.0.0.1:43110');
+  assert.equal(appSpec.env.CATS_PLATFORM_DIR, 'C:\\Users\\test\\.cats\\platform');
   assert.equal(appSpec.env.CATS_STATE_PATH, 'C:\\Cats\\chat-state.local.json');
   assert.equal(appSpec.cwd, config.packageRoot);
   assert.equal(config.background.trayEnabled, true);
@@ -99,7 +102,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(config.update.manifestUrl, 'https://updates.example.com/cats/beta.json');
   assert.equal(
     config.paths.hostStatePath,
-    'C:\\Users\\test\\AppData\\Roaming\\Cats\\desktop\\state.json',
+    'C:\\Users\\test\\.cats\\desktop\\state.json',
   );
 });
 
@@ -125,10 +128,10 @@ test('desktop host config keeps Electron userData separate from cats home', () =
 
   assert.equal(config.userDataDir, 'C:\\Users\\test\\AppData\\Roaming\\Cats');
   assert.equal(config.catsHomeDir, 'C:\\Users\\test\\.cats');
-  assert.equal(config.paths.appStatePath, 'C:\\Users\\test\\.cats\\platform\\chat-state.local.json');
+  assert.equal(config.paths.appStatePath, 'C:\\Users\\test\\.cats\\platform\\state\\chat-state.local.json');
   assert.equal(config.paths.runtimeDataDir, 'C:\\Users\\test\\.cats\\runtime\\data');
   assert.equal(config.paths.runtimeSessionBaseDir, 'C:\\Users\\test\\.cats\\runtime\\sessions');
-  assert.equal(config.paths.runtimeConfigPath, 'C:\\Users\\test\\.cats\\runtime\\providers.yaml');
+  assert.equal(config.paths.runtimeConfigPath, 'C:\\Users\\test\\.cats\\runtime\\config\\providers.yaml');
   assert.equal(config.paths.hostStatePath, 'C:\\Users\\test\\.cats\\desktop\\state.json');
   assert.equal(config.paths.hostLogsDir, 'C:\\Users\\test\\.cats\\desktop\\logs');
 });
@@ -139,6 +142,7 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
     packaged: true,
     resourcesPath: 'C:/Program Files/Cats/resources',
+    catsHomeDir: 'C:/Users/test/.cats',
   });
 
   assert.equal(
@@ -167,6 +171,7 @@ test('managed desktop services augment PATH for macOS packaged CLI discovery', (
   const config = resolveDesktopHostConfig({
     env,
     userDataDir: '/Users/tester/Library/Application Support/Cats',
+    catsHomeDir: '/Users/tester/.cats',
   });
 
   const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, env, 'darwin');
@@ -196,6 +201,7 @@ test('desktop host config rejects invalid host overrides', () => {
       CATS_DESKTOP_APP_HOST: '127.0.0.1/bad-path',
     },
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
   }), /Invalid desktop host value/);
 });
 
@@ -203,6 +209,7 @@ test('stopAll preserves the app-before-runtime shutdown order', async () => {
   const config = resolveDesktopHostConfig({
     env: {},
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
   });
   const supervisor = new ManagedServiceSupervisor(config);
   const shutdownOrder = [];
@@ -221,6 +228,7 @@ test('stopService gives SIGTERM its own grace window before SIGKILL', async () =
       CATS_DESKTOP_GRACEFUL_SHUTDOWN_MS: '20',
     },
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
   });
   const supervisor = new ManagedServiceSupervisor(config);
   const child = new FakeChildProcess();
@@ -261,6 +269,7 @@ test('startService hides Windows child consoles for managed services', async () 
   const config = resolveDesktopHostConfig({
     env: {},
     userDataDir,
+    catsHomeDir: join(userDataDir, '..', 'cats-home'),
   });
   const spawnCalls = [];
   const supervisor = new ManagedServiceSupervisor(config, {
@@ -289,6 +298,7 @@ test('startService accepts app-managed ready lifecycle events before health poll
       CATS_DESKTOP_READINESS_TIMEOUT_MS: '5',
     },
     userDataDir,
+    catsHomeDir: join(userDataDir, '..', 'cats-home'),
   });
   const child = new FakeChildProcess();
   const supervisor = new ManagedServiceSupervisor(config, {

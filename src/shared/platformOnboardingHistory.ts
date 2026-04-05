@@ -13,6 +13,7 @@ import {
   type BootstrapEventStatus,
   type ProductBootstrapDiagnosticsReadModel,
 } from './bootstrapDiagnostics.js';
+import { resolvePlatformOnboardingHistoryPathFromChatState } from './platformPaths.js';
 
 interface PlatformOnboardingHistoryFile {
   schemaVersion: 1;
@@ -146,7 +147,7 @@ async function writeAtomicJson(filePath: string, payload: unknown): Promise<void
 }
 
 export function resolvePlatformOnboardingHistoryPath(chatStatePath: string): string {
-  return path.join(path.dirname(chatStatePath), 'platform-onboarding-history.json');
+  return resolvePlatformOnboardingHistoryPathFromChatState(chatStatePath);
 }
 
 export async function readPlatformOnboardingHistoryFile(

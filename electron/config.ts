@@ -1,4 +1,4 @@
-import { dirname, join, resolve, win32 } from 'node:path';
+import { dirname, isAbsolute, join, resolve, win32 } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -8,8 +8,16 @@ import {
 } from './update.js';
 import { parseDesktopBoolean } from './env.js';
 import { normalizeDesktopHost } from './security.js';
+import {
+  resolvePlatformStatePath,
+} from './platformPaths.js';
 
 export interface DesktopHostPaths {
+  platformDir: string;
+  platformStateDir: string;
+  platformConfigDir: string;
+  runtimeRootDir: string;
+  runtimeConfigDir: string;
   appEntryScript: string;
   runtimeEntryScript: string;
   preloadScript: string;
@@ -74,6 +82,10 @@ function isWindowsAbsolutePath(value: string | undefined): boolean {
   return /^[A-Za-z]:[\\/]/u.test(value) || value.startsWith('\\\\');
 }
 
+function isAbsoluteDesktopPath(value: string | undefined): boolean {
+  return Boolean(value && (isWindowsAbsolutePath(value) || isAbsolute(value)));
+}
+
 function resolveDesktopPath(value: string): string {
   return isWindowsAbsolutePath(value)
     ? win32.normalize(value)
@@ -90,6 +102,23 @@ function dirnameDesktopPath(value: string): string {
   return isWindowsAbsolutePath(value)
     ? win32.dirname(win32.normalize(value))
     : dirname(resolve(value));
+}
+
+function resolveDesktopPathWithinBase(
+  basePath: string,
+  overridePath: string | undefined,
+  defaultPath: string,
+): string {
+  const trimmed = overridePath?.trim();
+  if (!trimmed) {
+    return resolveDesktopPath(defaultPath);
+  }
+
+  return resolveDesktopPath(
+    isAbsoluteDesktopPath(trimmed)
+      ? trimmed
+      : joinDesktopPath(basePath, trimmed),
+  );
 }
 
 export function resolveCatsHomeDir(): string {
@@ -202,10 +231,22 @@ export function resolveDesktopHostConfig(
     DEFAULT_GRACEFUL_SHUTDOWN_MS,
   );
   const userDataDir = resolveDesktopPath(options.userDataDir);
-  const catsHomeDir = resolveDesktopPath(options.catsHomeDir ?? options.userDataDir);
+  const catsHomeDir = resolveDesktopPath(options.catsHomeDir ?? resolveCatsHomeDir());
   const platformDir = resolveDesktopPath(
     env.CATS_PLATFORM_DIR?.trim()
       || joinDesktopPath(catsHomeDir, 'platform'),
+  );
+  const platformStateDir = resolveDesktopPath(
+    joinDesktopPath(platformDir, 'state'),
+  );
+  const platformConfigDir = resolveDesktopPath(
+    joinDesktopPath(platformDir, 'config'),
+  );
+  const runtimeRootDir = resolveDesktopPath(
+    joinDesktopPath(catsHomeDir, 'runtime'),
+  );
+  const runtimeConfigDir = resolveDesktopPath(
+    joinDesktopPath(runtimeRootDir, 'config'),
   );
   const background: DesktopHostBackgroundConfig = {
     trayEnabled: parseDesktopBoolean(
@@ -237,6 +278,11 @@ export function resolveDesktopHostConfig(
     background,
     update,
     paths: {
+      platformDir,
+      platformStateDir,
+      platformConfigDir,
+      runtimeRootDir,
+      runtimeConfigDir,
       appEntryScript: resolveDesktopPath(
         env.CATS_DESKTOP_APP_ENTRY?.trim() || joinDesktopPath(packageRoot, 'dist-server', 'index.js'),
       ),
@@ -247,29 +293,35 @@ export function resolveDesktopHostConfig(
         env.CATS_DESKTOP_PRELOAD_SCRIPT?.trim()
           || joinDesktopPath(layout.hostPackageRoot, 'dist-electron', 'preload.cjs'),
       ),
-      appStatePath: resolveDesktopPath(
-        env.CATS_DESKTOP_STATE_PATH?.trim()
-          || joinDesktopPath(platformDir, 'chat-state.local.json'),
+      appStatePath: resolveDesktopPathWithinBase(
+        platformDir,
+        env.CATS_DESKTOP_STATE_PATH,
+        resolvePlatformStatePath(platformDir, undefined),
       ),
-      runtimeDataDir: resolveDesktopPath(
-        env.CATS_DESKTOP_RUNTIME_DATA_DIR?.trim()
-          || joinDesktopPath(catsHomeDir, 'runtime', 'data'),
+      runtimeDataDir: resolveDesktopPathWithinBase(
+        runtimeRootDir,
+        env.CATS_DESKTOP_RUNTIME_DATA_DIR,
+        joinDesktopPath(runtimeRootDir, 'data'),
       ),
-      runtimeSessionBaseDir: resolveDesktopPath(
-        env.CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR?.trim()
-          || joinDesktopPath(catsHomeDir, 'runtime', 'sessions'),
+      runtimeSessionBaseDir: resolveDesktopPathWithinBase(
+        runtimeRootDir,
+        env.CATS_DESKTOP_RUNTIME_SESSION_BASE_DIR,
+        joinDesktopPath(runtimeRootDir, 'sessions'),
       ),
-      runtimeConfigPath: resolveDesktopPath(
-        env.CATS_DESKTOP_RUNTIME_CONFIG_PATH?.trim()
-          || joinDesktopPath(catsHomeDir, 'runtime', 'providers.yaml'),
+      runtimeConfigPath: resolveDesktopPathWithinBase(
+        runtimeRootDir,
+        env.CATS_DESKTOP_RUNTIME_CONFIG_PATH,
+        joinDesktopPath(runtimeConfigDir, 'providers.yaml'),
       ),
-      hostStatePath: resolveDesktopPath(
-        env.CATS_DESKTOP_HOST_STATE_PATH?.trim()
-          || joinDesktopPath(catsHomeDir, 'desktop', 'state.json'),
+      hostStatePath: resolveDesktopPathWithinBase(
+        joinDesktopPath(catsHomeDir, 'desktop'),
+        env.CATS_DESKTOP_HOST_STATE_PATH,
+        joinDesktopPath(catsHomeDir, 'desktop', 'state.json'),
       ),
-      hostLogsDir: resolveDesktopPath(
-        env.CATS_DESKTOP_HOST_LOGS_DIR?.trim()
-          || joinDesktopPath(catsHomeDir, 'desktop', 'logs'),
+      hostLogsDir: resolveDesktopPathWithinBase(
+        joinDesktopPath(catsHomeDir, 'desktop'),
+        env.CATS_DESKTOP_HOST_LOGS_DIR,
+        joinDesktopPath(catsHomeDir, 'desktop', 'logs'),
       ),
       packagingOutputRoot: resolveDesktopPath(
         env.CATS_DESKTOP_PACKAGING_OUTPUT_ROOT?.trim()
