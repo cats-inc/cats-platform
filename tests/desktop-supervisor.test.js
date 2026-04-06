@@ -364,3 +364,50 @@ test('startService accepts app-managed ready lifecycle events before health poll
     await rm(userDataDir, { recursive: true, force: true });
   }
 });
+
+test('Windows runtime startup tolerates slower late-ready lifecycle events', async () => {
+  const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-supervisor-runtime-ready-'));
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_READINESS_TIMEOUT_MS: '5',
+    },
+    userDataDir,
+    catsHomeDir: join(userDataDir, '..', 'cats-home'),
+  });
+  const child = new FakeChildProcess();
+  const supervisor = new ManagedServiceSupervisor(config, {
+    platform: 'win32',
+    spawn: () => child,
+    waitForServiceReadiness: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      throw new Error('fetch failed');
+    },
+  });
+  const [runtimeSpec] = buildManagedServiceSpecs(config, process.env, 'win32');
+
+  try {
+    const startPromise = supervisor.startService(runtimeSpec);
+    setTimeout(() => {
+      child.stdout.write(
+        `${JSON.stringify({
+          event: 'runtime.ready',
+          service: 'cats-runtime',
+          phase: 'ready',
+          ready: true,
+          host: '127.0.0.1',
+          port: 3110,
+          healthUrl: 'http://127.0.0.1:3110/health',
+        })}\n`,
+      );
+    }, 10);
+
+    await startPromise;
+
+    const runtimeSnapshot = supervisor.getSnapshots().find((snapshot) => snapshot.name === 'cats-runtime');
+    assert.ok(runtimeSnapshot);
+    assert.equal(runtimeSnapshot.status, 'ready');
+    assert.equal(runtimeSnapshot.ready, true);
+  } finally {
+    await rm(userDataDir, { recursive: true, force: true });
+  }
+});

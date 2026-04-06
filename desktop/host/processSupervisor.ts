@@ -30,6 +30,7 @@ interface ManagedServiceHandle {
 interface ProcessSupervisorDependencies {
   spawn?: typeof spawn;
   now?: () => Date;
+  platform?: NodeJS.Platform;
   waitForServiceReadiness?: typeof waitForServiceReadiness;
   onStateChange?: (snapshot: ManagedServiceSnapshot) => void;
 }
@@ -43,6 +44,7 @@ interface ManagedServiceLifecyclePayload {
 }
 
 const DEFAULT_APP_STARTUP_TIMEOUT_MS = 90_000;
+const DEFAULT_WINDOWS_RUNTIME_STARTUP_TIMEOUT_MS = 60_000;
 
 function waitForTimeout(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -129,9 +131,14 @@ function parseManagedServiceLifecycleLine(
 function getManagedServiceStartupTimeoutMs(
   serviceName: ManagedServiceName,
   readinessTimeoutMs: number,
+  platform: NodeJS.Platform,
 ): number {
   if (serviceName === 'cats') {
     return Math.max(readinessTimeoutMs, DEFAULT_APP_STARTUP_TIMEOUT_MS);
+  }
+  if (serviceName === 'cats-runtime' && platform === 'win32') {
+    // Windows login startup can take longer while runtime discovery rehydrates sessions.
+    return Math.max(readinessTimeoutMs, DEFAULT_WINDOWS_RUNTIME_STARTUP_TIMEOUT_MS);
   }
   return readinessTimeoutMs;
 }
@@ -408,13 +415,16 @@ export class ManagedServiceSupervisor {
 
   private readonly onStateChange?: (snapshot: ManagedServiceSnapshot) => void;
 
+  private readonly platform: NodeJS.Platform;
+
   private readonly logQueues = new Map<ManagedServiceName, Promise<void>>();
 
   constructor(
     private readonly config: DesktopHostConfig,
     private readonly dependencies: ProcessSupervisorDependencies = {},
   ) {
-    const specs = buildManagedServiceSpecs(config);
+    this.platform = dependencies.platform ?? process.platform;
+    const specs = buildManagedServiceSpecs(config, process.env, this.platform);
     this.spawnImpl = dependencies.spawn ?? spawn;
     this.now = dependencies.now ?? (() => new Date());
     this.waitForReadiness = dependencies.waitForServiceReadiness ?? waitForServiceReadiness;
@@ -437,7 +447,7 @@ export class ManagedServiceSupervisor {
 
   async startAll(): Promise<void> {
     await ensureLaunchAssets(this.config);
-    const specs = buildManagedServiceSpecs(this.config);
+    const specs = buildManagedServiceSpecs(this.config, process.env, this.platform);
     for (const spec of specs) {
       await this.startService(spec);
     }
@@ -623,6 +633,7 @@ export class ManagedServiceSupervisor {
     const startupTimeoutMs = getManagedServiceStartupTimeoutMs(
       spec.name,
       this.config.readinessTimeoutMs,
+      this.platform,
     );
     const startupDeadline = createStartupDeadlinePromise(spec.name, startupTimeoutMs);
 

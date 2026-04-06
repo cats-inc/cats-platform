@@ -417,7 +417,7 @@ function buildBootstrapProgress(
     },
     {
       id: 'start-app',
-      label: 'Start cats product server',
+      label: 'Start cats-platform server',
       status: appService?.status === 'failed'
         ? 'failed'
         : appReady

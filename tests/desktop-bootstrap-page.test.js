@@ -17,6 +17,8 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /snapshot\.setup/);
   assert.match(html, /providerSetup\.localProviders/);
   assert.match(html, /bundledInCurrentInstaller/);
+  assert.match(html, /getServiceDisplayName/);
+  assert.match(html, /cats-platform/);
   assert.match(html, /Recommended resume step/);
   assert.match(html, /Capability pack coverage/);
   assert.match(html, /providerSetup\.capabilityPacks/);
@@ -43,4 +45,3 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /min-width: 0/);
   assert.match(html, /main\[data-page-mode="loading"\] \[data-recovery-only="true"\]/);
 });
-

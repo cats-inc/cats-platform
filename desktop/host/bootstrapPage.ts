@@ -281,11 +281,14 @@ export function buildDesktopBootstrapPage(): string {
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
       }
+      function getServiceDisplayName(serviceName) {
+        return serviceName === 'cats' ? 'cats-platform' : serviceName;
+      }
       function renderServices(snapshot) {
         services.innerHTML = snapshot.services.map((service) => {
           const statusClass = 'status-' + (service.status === 'ready' ? 'ok' : service.status === 'failed' ? 'unavailable' : 'degraded');
           return '<article class="service-row">'
-            + '<div class="row-title"><strong>' + escapeHtml(service.name) + '</strong><span class="' + statusClass + '">' + escapeHtml(service.status) + '</span></div>'
+            + '<div class="row-title"><strong>' + escapeHtml(getServiceDisplayName(service.name)) + '</strong><span class="' + statusClass + '">' + escapeHtml(service.status) + '</span></div>'
             + '<div class="meta"><code>' + escapeHtml(service.healthUrl) + '</code></div>'
             + (service.error ? '<div class="meta status-unavailable">' + escapeHtml(service.error) + '</div>' : '')
             + (service.lastOutput ? '<div class="meta"><code>' + escapeHtml(service.lastOutput) + '</code></div>' : '')
@@ -512,7 +515,7 @@ export function buildDesktopBootstrapPage(): string {
           ? diagnostics.serviceLogs
             .filter((entry) => entry && entry.logPath)
             .map((entry) => (
-              '<div class="meta"><strong>' + escapeHtml(entry.service) + ':</strong> <code>'
+              '<div class="meta"><strong>' + escapeHtml(getServiceDisplayName(entry.service)) + ':</strong> <code>'
               + escapeHtml(entry.logPath) + '</code></div>'
             )).join('')
           : '';
