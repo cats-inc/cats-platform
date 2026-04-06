@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -6,15 +6,31 @@ interface AppPackageJson {
   version?: string;
 }
 
-function readAppPackageVersion(): string {
-  const packageJsonPath = join(
-    dirname(fileURLToPath(import.meta.url)),
-    '..',
-    '..',
-    '..',
-    '..',
-    'package.json',
+const APP_PACKAGE_JSON_CANDIDATE_PATHS = [
+  ['..', '..', '..', 'package.json'],
+  ['..', '..', '..', '..', 'package.json'],
+] as const;
+
+export function resolveAppPackageJsonPath(
+  moduleUrl: string = import.meta.url,
+): string {
+  const moduleDir = dirname(fileURLToPath(moduleUrl));
+
+  for (const segments of APP_PACKAGE_JSON_CANDIDATE_PATHS) {
+    const candidatePath = join(moduleDir, ...segments);
+    if (existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+
+  throw new Error(
+    `Could not locate cats-platform package.json from ${moduleDir}. `
+    + `Checked: ${APP_PACKAGE_JSON_CANDIDATE_PATHS.map((segments) => join(moduleDir, ...segments)).join(', ')}`,
   );
+}
+
+function readAppPackageVersion(moduleUrl: string = import.meta.url): string {
+  const packageJsonPath = resolveAppPackageJsonPath(moduleUrl);
   const packageJson = JSON.parse(
     readFileSync(packageJsonPath, 'utf8'),
   ) as AppPackageJson;

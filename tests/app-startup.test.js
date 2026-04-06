@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { join } from 'node:path';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 
 import {
   createAppStartupState,
@@ -7,6 +9,7 @@ import {
   getAppHelpText,
   getAppReadinessSnapshot,
   parseAppCliOptions,
+  resolveAppPackageJsonPath,
   resolveAppStartupState,
 } from '../build/server/app/server/startup.js';
 
@@ -81,3 +84,15 @@ test('getAppHelpText documents the startup contract flags', () => {
   assert.match(help, /--ready-output <plain\|json\|silent>/);
 });
 
+test('resolveAppPackageJsonPath supports both source and compiled startup module locations', () => {
+  const packageJsonPath = join(process.cwd(), 'package.json');
+  const sourceModuleUrl = pathToFileURL(
+    join(process.cwd(), 'src', 'app', 'server', 'startup.ts'),
+  ).href;
+  const builtModuleUrl = pathToFileURL(
+    join(process.cwd(), 'build', 'server', 'app', 'server', 'startup.js'),
+  ).href;
+
+  assert.equal(resolveAppPackageJsonPath(sourceModuleUrl), packageJsonPath);
+  assert.equal(resolveAppPackageJsonPath(builtModuleUrl), packageJsonPath);
+});
