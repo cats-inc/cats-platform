@@ -17,6 +17,7 @@ import {
   resolveInitialSetupProduct,
   validateGuideCatSetupStep,
 } from './plugins';
+import { syncDesktopHostPlatformShell } from './desktopHostBridge.js';
 import {
   nextSetupStep,
   previousSetupStep,
@@ -192,6 +193,7 @@ export function PlatformSetupWizard({
         guideCatModel: createGuideCat ? (model || undefined) : undefined,
         guideCatModelSelection: createGuideCat ? modelSelection : undefined,
       });
+      await syncDesktopHostPlatformShell(result);
       onComplete(result);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Setup failed.');

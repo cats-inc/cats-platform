@@ -62,6 +62,10 @@ import {
   type DesktopTrayController,
 } from './tray.js';
 import { buildDesktopTrayMenuState as buildElectronTrayMenuState } from './trayMenu.js';
+import {
+  applyDesktopHostPlatformShellUpdate,
+  parseDesktopHostPlatformShellUpdate,
+} from './platformShellUpdate.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
 import {
   applyDesktopWindowChrome,
@@ -1190,6 +1194,19 @@ async function main(): Promise<void> {
       background: hostConfig.background,
     });
     return latestDesktopStartupPreferences;
+  });
+  ipcMain.handle('cats-host:update-platform-shell', async (_event, payload: unknown) => {
+    const nextState = applyDesktopHostPlatformShellUpdate({
+      appShell: latestAppShellPayload,
+      persistedSetup: latestPersistedSetupState,
+      providerDiagnostics: latestProviderDiagnosticsPayload,
+    }, parseDesktopHostPlatformShellUpdate(payload));
+
+    latestAppShellPayload = nextState.appShell;
+    latestPersistedSetupState = nextState.persistedSetup;
+    latestProviderDiagnosticsPayload = nextState.providerDiagnostics;
+
+    publishSnapshot(buildSnapshot(null));
   });
 
   mainWindow = await createMainWindow(hostConfig, {

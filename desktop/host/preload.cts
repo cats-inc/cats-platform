@@ -39,6 +39,21 @@ interface DesktopStartupPreferences {
   openWindowOnStartup: boolean;
 }
 
+interface DesktopHostPlatformShellUpdate {
+  bootstrapAttemptId: string | null;
+  setupCompleteAt: string | null;
+  products: Array<{
+    id?: string;
+    productName?: string;
+    routePrefix?: string;
+    installState?: string;
+    setup?: {
+      selectable?: boolean;
+      disabledReason?: string;
+    } | null;
+  }>;
+}
+
 interface DesktopSetupSnapshot {
   helpers: Array<{
     id: string;
@@ -116,6 +131,11 @@ const bridge = {
       throw new Error('Invalid desktop startup preferences payload.');
     }
     return ipcRenderer.invoke('cats-host:update-desktop-preferences', prefs);
+  },
+  updatePlatformShell(
+    payload: DesktopHostPlatformShellUpdate,
+  ): Promise<void> {
+    return ipcRenderer.invoke('cats-host:update-platform-shell', payload);
   },
   onSnapshot(listener: (snapshot: DesktopBootstrapSnapshot) => void): () => void {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: DesktopBootstrapSnapshot) => {
