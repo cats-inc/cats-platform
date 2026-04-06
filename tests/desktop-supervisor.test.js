@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -65,7 +65,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
     catsHomeDir: 'C:/Users/test/.cats',
   });
 
-  const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, {});
+  const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, {}, 'win32');
 
   assert.equal(runtimeSpec.name, 'cats-runtime');
   assert.deepEqual(runtimeSpec.args.slice(1), [
@@ -189,6 +189,38 @@ test('managed desktop services augment PATH for macOS packaged CLI discovery', (
   assert.ok(runtimePathEntries.includes('/usr/sbin'));
   assert.ok(runtimePathEntries.includes('/sbin'));
   assert.deepEqual(appPathEntries, runtimePathEntries);
+});
+
+test('managed desktop services resolve the default nvm bin for macOS packaged CLI discovery', async () => {
+  const homeDir = await mkdtemp(join(tmpdir(), 'cats-desktop-nvm-home-'));
+  const nvmDir = join(homeDir, '.nvm');
+  const expectedNvmBin = join(nvmDir, 'versions', 'node', 'v24.14.1', 'bin');
+
+  try {
+    await mkdir(join(nvmDir, 'alias'), { recursive: true });
+    await mkdir(expectedNvmBin, { recursive: true });
+    await writeFile(join(nvmDir, 'alias', 'default'), 'node\n', 'utf8');
+    await writeFile(join(nvmDir, 'alias', 'node'), 'v24.14.1\n', 'utf8');
+
+    const env = {
+      HOME: homeDir,
+      PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+    };
+    const config = resolveDesktopHostConfig({
+      env,
+      userDataDir: join(homeDir, 'Library', 'Application Support', 'Cats'),
+      catsHomeDir: join(homeDir, '.cats'),
+    });
+
+    const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, env, 'darwin');
+    const runtimePathEntries = runtimeSpec.env.PATH.split(':');
+    const appPathEntries = appSpec.env.PATH.split(':');
+
+    assert.ok(runtimePathEntries.includes(expectedNvmBin));
+    assert.deepEqual(appPathEntries, runtimePathEntries);
+  } finally {
+    await rm(homeDir, { recursive: true, force: true });
+  }
 });
 
 test('desktop host config rejects invalid host overrides', () => {

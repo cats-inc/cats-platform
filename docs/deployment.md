@@ -265,6 +265,13 @@ Desktop-host specific overrides:
 | `CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP` | No | Run the manual-check skeleton during startup |
 | `CATS_DESKTOP_UPDATE_AUTO_DOWNLOAD` | No | Reserved toggle; remains `false` in this slice |
 
+Finder- or LaunchServices-started packaged apps on macOS do not source your
+interactive shell profile before the desktop host launches managed child
+services. The desktop host preserves the inherited `PATH`, appends common
+system and user bin directories, and on macOS/Linux also checks standard nvm
+hints (`NVM_BIN`, `NVM_DIR`, and `~/.nvm/alias/default`) so npm-installed CLI
+providers remain discoverable without requiring a login-shell bootstrap step.
+
 ### Secrets Management
 
 - Keep `.env` local and uncommitted

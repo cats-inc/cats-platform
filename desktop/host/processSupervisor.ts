@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { access, appendFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, join, posix, win32 } from 'node:path';
 
@@ -200,6 +201,74 @@ function normalizePathEntries(
   return normalized;
 }
 
+function readFirstNonEmptyLine(filePath: string): string | null {
+  try {
+    const raw = readFileSync(filePath, 'utf8');
+    return raw
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find(Boolean) || null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeNvmVersion(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const normalized = trimmed.startsWith('v') ? trimmed : `v${trimmed}`;
+  return /^v\d+(?:\.\d+){0,2}$/u.test(normalized) ? normalized : null;
+}
+
+function resolveUnixNvmDefaultVersion(nvmDir: string): string | null {
+  const seen = new Set<string>();
+  let current = 'default';
+
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    const directVersion = normalizeNvmVersion(current);
+    if (directVersion) {
+      return directVersion;
+    }
+
+    const next = readFirstNonEmptyLine(posix.join(nvmDir, 'alias', ...current.split('/')));
+    if (!next) {
+      return null;
+    }
+
+    current = next.replace(/^->\s*/u, '').trim();
+  }
+
+  return null;
+}
+
+function resolveUnixNvmPathEntries(
+  env: NodeJS.ProcessEnv,
+  home: string,
+): string[] {
+  const entries: string[] = [];
+  const nvmBin = env.NVM_BIN?.trim();
+  if (nvmBin && existsSync(nvmBin)) {
+    entries.push(nvmBin);
+  }
+
+  const nvmDir = env.NVM_DIR?.trim() || posix.join(home, '.nvm');
+  const defaultVersion = resolveUnixNvmDefaultVersion(nvmDir);
+  if (!defaultVersion) {
+    return entries;
+  }
+
+  const defaultBin = posix.join(nvmDir, 'versions', 'node', defaultVersion, 'bin');
+  if (existsSync(defaultBin)) {
+    entries.push(defaultBin);
+  }
+
+  return entries;
+}
+
 function resolveManagedServicePathEntries(
   env: NodeJS.ProcessEnv,
   platform: NodeJS.Platform,
@@ -216,10 +285,14 @@ function resolveManagedServicePathEntries(
         pathModule.join(home, 'bin'),
       ]
     : [];
+  const nvmPathEntries = home && (platform === 'darwin' || platform === 'linux')
+    ? resolveUnixNvmPathEntries(env, home)
+    : [];
 
   if (platform === 'darwin') {
     return normalizePathEntries([
       ...existing,
+      ...nvmPathEntries,
       '/opt/homebrew/bin',
       '/opt/homebrew/sbin',
       '/usr/local/bin',
@@ -235,6 +308,7 @@ function resolveManagedServicePathEntries(
   if (platform === 'linux') {
     return normalizePathEntries([
       ...existing,
+      ...nvmPathEntries,
       '/usr/local/bin',
       '/usr/local/sbin',
       ...homeScopedEntries,
@@ -272,6 +346,7 @@ export function buildManagedServiceSpecs(
   platform: NodeJS.Platform = process.platform,
 ): ManagedServiceSpec[] {
   const managedEnv = createManagedServiceEnv(env, platform);
+  const pathModule = platform === 'win32' ? win32 : posix;
 
   return [
     {
@@ -310,7 +385,7 @@ export function buildManagedServiceSpecs(
         CATS_HOST: config.appHost,
         CATS_PORT: String(config.appPort),
         CATS_PLATFORM_DIR: config.paths.platformDir,
-        CATS_DESKTOP_DIR: dirname(config.paths.hostStatePath),
+        CATS_DESKTOP_DIR: pathModule.dirname(config.paths.hostStatePath),
         CATS_RUNTIME_DIR: config.paths.runtimeRootDir,
         CATS_RUNTIME_BASE_URL: config.runtimeBaseUrl,
       },
