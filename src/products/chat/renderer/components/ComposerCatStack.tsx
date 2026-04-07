@@ -19,6 +19,7 @@ export function ComposerCatStack({
   const lead = leadCatId ? cats.find((c) => c.id === leadCatId) : cats[0];
   const others = cats.filter((c) => c.id !== lead?.id);
   const ordered = lead ? [lead, ...others] : cats;
+  const rendered = [...ordered].reverse();
 
   return (
     <div
@@ -28,9 +29,9 @@ export function ComposerCatStack({
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
-      {ordered.map((cat, index) => {
+      {rendered.map((cat, index) => {
         const isBoss = cat.id === bossCatId;
-        const isLead = index === 0;
+        const isLead = index === rendered.length - 1;
         return (
           <div
             key={cat.id}
@@ -39,8 +40,8 @@ export function ComposerCatStack({
             style={{
               ...(cat.avatarUrl
                 ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                : cat.avatarColor ? { background: cat.avatarColor } : {}),
-              zIndex: ordered.length - index,
+                : {}),
+              zIndex: index + 1,
             }}
           >
             {cat.avatarUrl ? null : catInitials(cat.name)}

@@ -261,18 +261,17 @@
 
 .composerCatStack {
   display: flex;
-  flex-direction: row-reverse;
   align-items: center;
   cursor: pointer;
 }
 
 .composerCatStack .composerStackAvatar + .composerStackAvatar {
-  margin-right: -10px;
-  transition: margin-right 0.2s ease;
+  margin-left: -10px;
+  transition: margin-left 0.2s ease;
 }
 
 .composerCatStack:hover .composerStackAvatar + .composerStackAvatar {
-  margin-right: 4px;
+  margin-left: 4px;
 }
 
 .composerStackRemove {

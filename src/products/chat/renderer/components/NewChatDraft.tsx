@@ -454,8 +454,9 @@ export function NewChatDraft({
                       })),
                     ];
                     const canRemove = allParticipants.length > 2;
-                    return allParticipants.map((participant, index) => {
-                      const isLead = index === 0;
+                    const rendered = [...allParticipants].reverse();
+                    return rendered.map((participant, index) => {
+                      const isLead = index === rendered.length - 1;
                       return (
                         <div
                           key={participant.key}
@@ -464,8 +465,8 @@ export function NewChatDraft({
                           style={{
                             ...(participant.avatarUrl
                               ? { backgroundImage: `url(${participant.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                              : { background: participant.avatarColor ?? '#90A4AE' }),
-                            zIndex: allParticipants.length - index,
+                              : {}),
+                            zIndex: index + 1,
                           }}
                         >
                           {participant.avatarUrl ? null : catInitials(participant.name)}

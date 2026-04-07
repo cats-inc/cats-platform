@@ -559,11 +559,13 @@
   position: relative;
 }
 
-.composerStackAvatar {
+.composerCatStack .composerStackAvatar {
   width: 24px;
   height: 24px;
   font-size: 0.6rem;
-  border: 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #fff;
+  color: #222;
 }
 
 .composerStackRemove {
