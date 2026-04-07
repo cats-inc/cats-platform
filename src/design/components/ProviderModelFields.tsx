@@ -1056,12 +1056,15 @@ export function ProviderModelFields({
                 }}
               >
                 {showSyntheticDefaultOption ? <option value="">Default</option> : null}
-                {controlValueOptions.map((option) => (
-                  <option key={`${control.key}-${String(option.value)}`} value={String(option.value)}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                  {controlValueOptions.map((option, index) => (
+                    <option
+                      key={`${control.key}-${String(option.value)}-${index}`}
+                      value={String(option.value)}
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               {control.description ? (
                 <span className="fieldHint">{control.description}</span>
               ) : null}

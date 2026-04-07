@@ -51,6 +51,7 @@ function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
           'gpt-5.4',
           'gpt-5.4-mini',
           'gpt-5.3-codex',
+          'gpt-5.3-codex-spark',
           'gpt-5.2-codex',
           'gpt-5.2',
           'gpt-5.1-codex-max',
@@ -64,6 +65,7 @@ function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
               'gpt-5.4',
               'gpt-5.4-mini',
               'gpt-5.3-codex',
+              'gpt-5.3-codex-spark',
               'gpt-5.2-codex',
               'gpt-5.2',
               'gpt-5.1-codex-max',
@@ -83,6 +85,13 @@ function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
             ],
           },
           {
+            value: 'medium',
+            label: 'Medium',
+            applicableEntryIds: [
+              'gpt-5.3-codex-spark',
+            ],
+          },
+          {
             value: 'high',
             label: 'High',
             applicableEntryIds: [
@@ -96,12 +105,20 @@ function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
             ],
           },
           {
+            value: 'high',
+            label: 'High (default)',
+            applicableEntryIds: [
+              'gpt-5.3-codex-spark',
+            ],
+          },
+          {
             value: 'xhigh',
             label: 'Extra high',
             applicableEntryIds: [
               'gpt-5.4',
               'gpt-5.4-mini',
               'gpt-5.3-codex',
+              'gpt-5.3-codex-spark',
               'gpt-5.2-codex',
               'gpt-5.2',
               'gpt-5.1-codex-max',
@@ -696,5 +713,63 @@ test('runtime reconciliation sanitizes Codex Extra High when reopening a gpt-5.1
       target.modelSelection?.controls?.['codex.reasoning_effort'],
     ),
     'medium',
+  );
+});
+
+test('runtime-backed Codex Spark selectors surface High as the explicit default', () => {
+  const { advancedCatalog } = reconcileReopenedTarget({
+    provider: 'codex',
+    model: 'gpt-5.3-codex-spark',
+    modelSelection: {
+      entryId: 'gpt-5.3-codex-spark',
+      entryMode: 'explicit',
+    },
+  });
+
+  assert.deepEqual(
+    listPersistentControlOptions(advancedCatalog.controls, 'gpt-5.3-codex-spark')[0]?.values,
+    [
+      {
+        value: 'low',
+        label: 'Low',
+        applicableEntryIds: [
+          'gpt-5.4',
+          'gpt-5.4-mini',
+          'gpt-5.3-codex',
+          'gpt-5.3-codex-spark',
+          'gpt-5.2-codex',
+          'gpt-5.2',
+          'gpt-5.1-codex-max',
+        ],
+      },
+      {
+        value: 'medium',
+        label: 'Medium',
+        applicableEntryIds: ['gpt-5.3-codex-spark'],
+      },
+      {
+        value: 'high',
+        label: 'High (default)',
+        applicableEntryIds: ['gpt-5.3-codex-spark'],
+      },
+      {
+        value: 'xhigh',
+        label: 'Extra high',
+        applicableEntryIds: [
+          'gpt-5.4',
+          'gpt-5.4-mini',
+          'gpt-5.3-codex',
+          'gpt-5.3-codex-spark',
+          'gpt-5.2-codex',
+          'gpt-5.2',
+          'gpt-5.1-codex-max',
+        ],
+      },
+    ],
+  );
+  assert.equal(hasExplicitDefaultEnumOption(advancedCatalog.controls[0], 'gpt-5.3-codex-spark'), true);
+  assert.equal(
+    resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'gpt-5.3-codex-spark', undefined),
+    'high',
   );
 });
