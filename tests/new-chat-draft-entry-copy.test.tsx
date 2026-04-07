@@ -41,6 +41,7 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     draftFiles: [],
     draftCwd: null,
     draftCatIds: [],
+    draftTemporaryParticipants: [],
     plusMenuOpen: false,
     plusMenuRef: { current: null },
     fileInputRef: { current: null },
@@ -56,6 +57,8 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onDraftFilesChange: () => {},
     onDraftCwdClear: () => {},
     onToggleDraftCat: () => {},
+    onAddDraftTemporaryParticipant: () => {},
+    onRemoveDraftTemporaryParticipant: () => {},
     autoResize: () => {},
     draftLeadCatId: null,
     onDraftLeadCatChange: () => {},
@@ -141,6 +144,30 @@ test('group route uses the greeting seam instead of a fixed heading', () => {
   );
 
   assert.match(markup, /Round up the room\./u);
+  assert.doesNotMatch(markup, /Start a group chat/u);
+});
+
+test('group route shows a lightweight participants chip for temporary members', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryMode: 'group',
+        draftTemporaryParticipants: [
+          {
+            participantId: 'participant-inline',
+            name: 'Inline Reviewer',
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+            modelSelection: null,
+            roleHint: 'Counterpoint',
+          },
+        ],
+      })}
+    />,
+  );
+
+  assert.match(markup, />1 participant</u);
   assert.doesNotMatch(markup, /Start a group chat/u);
 });
 

@@ -5,6 +5,7 @@ import type {
   ChatChannelSummary,
   ChatMessage,
   CreateChatChannelInput,
+  CreateTemporaryParticipantInput,
   NewChatEntryKind,
 } from '../api/contracts';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
@@ -25,6 +26,10 @@ export interface CatFormState {
   modelSelection: ProviderModelSelection | null;
   makeBoss: boolean;
   products: string[];
+}
+
+export interface DraftTemporaryParticipant extends CreateTemporaryParticipantInput {
+  participantId: string;
 }
 
 export function emptyCatForm(): CatFormState {
@@ -215,6 +220,7 @@ export function buildNewChatChannelInput(options: {
   repoPath?: string | null;
   leadCatId?: string | null;
   participantCatIds?: string[];
+  temporaryParticipants?: DraftTemporaryParticipant[];
   draftModel?: {
     provider: string;
     model: string | null;
@@ -229,6 +235,7 @@ export function buildNewChatChannelInput(options: {
     repoPath,
     leadCatId,
     participantCatIds = [],
+    temporaryParticipants = [],
     draftModel,
   } = options;
   const normalizedLeadCatId = leadCatId?.trim() || null;
@@ -242,6 +249,17 @@ export function buildNewChatChannelInput(options: {
     entryKind: resolvedEntryKind,
     skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
+    temporaryParticipants: temporaryParticipants.length > 0
+      ? temporaryParticipants.map((participant) => ({
+          participantId: participant.participantId,
+          name: participant.name,
+          provider: participant.provider,
+          instance: participant.instance ?? undefined,
+          model: participant.model ?? undefined,
+          modelSelection: participant.modelSelection ?? null,
+          roleHint: participant.roleHint ?? undefined,
+        }))
+      : undefined,
   };
 
   if (resolvedEntryKind === 'direct' && directLeadCatId) {
@@ -312,6 +330,18 @@ export function truncatePath(fullPath: string, maxLen = 20): string {
   const name = fullPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? fullPath;
   if (name.length <= maxLen) return name;
   return name.slice(0, maxLen - 3) + '...';
+}
+
+export function buildDraftParticipantExecutionLabel(participant: {
+  provider: string;
+  instance?: string | null;
+  model?: string | null;
+}): string {
+  return buildExecutionLabel(
+    participant.provider,
+    participant.instance ?? null,
+    participant.model ?? null,
+  );
 }
 
 export const GREETING_LINES = [

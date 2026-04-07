@@ -10,7 +10,13 @@ import {
   resolveVisibleDraftStarterSuggestions,
   type DraftStarterSuggestion,
 } from '../draftStarterSuggestions';
-import { isChatCat, pickDraftGreeting, truncatePath } from '../chatUtils';
+import {
+  buildDraftParticipantExecutionLabel,
+  isChatCat,
+  pickDraftGreeting,
+  truncatePath,
+  type DraftTemporaryParticipant,
+} from '../chatUtils';
 import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
 import { FolderBrowserContent } from './FolderBrowser';
@@ -32,6 +38,7 @@ export interface NewChatDraftProps {
   draftFiles: File[];
   draftCwd: string | null;
   draftCatIds: string[];
+  draftTemporaryParticipants: DraftTemporaryParticipant[];
   plusMenuOpen: boolean;
   plusMenuRef: RefObject<HTMLDivElement>;
   fileInputRef: RefObject<HTMLInputElement>;
@@ -48,6 +55,12 @@ export interface NewChatDraftProps {
   onDraftFilesChange: (files: File[]) => void;
   onDraftCwdClear: () => void;
   onToggleDraftCat: (catId: string) => void;
+  onAddDraftTemporaryParticipant: (
+    participant: Omit<DraftTemporaryParticipant, 'participantId'> & {
+      participantId?: string | null;
+    },
+  ) => void;
+  onRemoveDraftTemporaryParticipant: (participantId: string) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   draftLeadCatId: string | null;
   entryMode?: NewChatMode;
@@ -85,6 +98,7 @@ export function NewChatDraft({
   draftFiles,
   draftCwd,
   draftCatIds,
+  draftTemporaryParticipants,
   plusMenuOpen,
   plusMenuRef,
   fileInputRef,
@@ -101,6 +115,8 @@ export function NewChatDraft({
   onDraftFilesChange,
   onDraftCwdClear,
   onToggleDraftCat,
+  onAddDraftTemporaryParticipant,
+  onRemoveDraftTemporaryParticipant,
   autoResize,
   draftLeadCatId,
   entryMode = 'default',
@@ -129,6 +145,16 @@ export function NewChatDraft({
   onFolderBrowseSelect,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
+  function createTemporaryParticipantFormValue() {
+    return {
+      name: '',
+      roleHint: '',
+      provider: payload.chat.newChatDefaults?.provider ?? 'claude',
+      instance: payload.chat.newChatDefaults?.instance ?? '',
+      model: payload.chat.newChatDefaults?.model ?? '',
+      modelSelection: payload.chat.newChatDefaults?.modelSelection ?? null,
+    };
+  }
   const chatCats = payload.chat.cats.filter(isChatCat);
   const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
   const draftParticipants = resolveDraftParticipantSelection({ draftLeadCatId, draftCatIds });
@@ -145,7 +171,7 @@ export function NewChatDraft({
     ? chatCats.find((c) => c.id === draftParticipants.effectiveLeadCatId && c.status === 'active') ?? null
     : null;
   const effectiveLeadCat = leadCat ?? draftLeadCat;
-  const draftParticipantCount = draftParticipants.participantCatIds.length;
+  const draftParticipantCount = draftParticipants.participantCatIds.length + draftTemporaryParticipants.length;
   const draftSuggestionContext = resolveDraftStarterSuggestionContext({
     allowAddCat,
     draftLeadCatId,
@@ -166,6 +192,10 @@ export function NewChatDraft({
   const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
+  const [temporaryParticipantFormOpen, setTemporaryParticipantFormOpen] = useState(false);
+  const [temporaryParticipantForm, setTemporaryParticipantForm] = useState(
+    createTemporaryParticipantFormValue,
+  );
   function openSidePanelTo(section: string): void {
     setSidePanelOpen(true);
     switchSection(section);
@@ -197,8 +227,11 @@ export function NewChatDraft({
     : draftParticipantCount > 1
       ? `${draftParticipantCount} participants selected for this shared chat.`
       : activeChatCats.length > 0
-        ? 'Choose which Cats should join this shared chat.'
-        : 'Add Cats in Settings before starting a shared chat.';
+        ? 'Choose existing Cats or add temporary participants for this shared chat.'
+        : 'Add temporary participants here, or create Cats in Settings before starting a shared chat.';
+  const participantChipLabel = draftParticipantCount > 0
+    ? `${draftParticipantCount} participant${draftParticipantCount === 1 ? '' : 's'}`
+    : 'Choose participants';
 
   const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
     ? chatCats.find((c) => c.id === draftHighlightedCatId) ?? null
@@ -222,6 +255,23 @@ export function NewChatDraft({
   const isAckPending = isComposerAckBusy(busy);
   const isSubmittingFirstTurn = isComposerBusy(busy) || isAckPending;
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
+
+  function submitTemporaryParticipant(): void {
+    if (!temporaryParticipantForm.name.trim() || !temporaryParticipantForm.provider.trim()) {
+      return;
+    }
+
+    onAddDraftTemporaryParticipant({
+      name: temporaryParticipantForm.name.trim(),
+      provider: temporaryParticipantForm.provider.trim(),
+      instance: temporaryParticipantForm.instance.trim() || undefined,
+      model: temporaryParticipantForm.model.trim() || undefined,
+      modelSelection: temporaryParticipantForm.modelSelection,
+      roleHint: temporaryParticipantForm.roleHint.trim() || undefined,
+    });
+    setTemporaryParticipantForm(createTemporaryParticipantFormValue());
+    setTemporaryParticipantFormOpen(false);
+  }
 
   return (
     <div className="viewShell viewShellDraft">
@@ -386,6 +436,19 @@ export function NewChatDraft({
                   onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
                 />
               </div>
+            ) : isGroupDraft ? (
+              <button
+                type="button"
+                className="modelSelectorChip"
+                disabled={isSubmittingFirstTurn}
+                onClick={() => openSidePanelTo('cats')}
+                data-tooltip="Manage participants"
+              >
+                <span className="modelSelectorChipLabel">{participantChipLabel}</span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 4 5 6.5 7.5 4" />
+                </svg>
+              </button>
             ) : effectiveLeadCat ? (
               <ComposerCatStack
                 cats={[effectiveLeadCat, ...nonLeadDraftCatIds
@@ -511,21 +574,134 @@ export function NewChatDraft({
 
     sections.push({
       id: 'cats',
-      title: 'Cats',
-      children: chatCats.filter((c) => c.status === 'active').length > 0 ? (
-        <CatAvatarRow
-          cats={chatCats}
-          bossCatId={payload.chat.bossCatId}
-          selectedIds={draftCatIds}
-          highlightedId={draftHighlightedCatId}
-          leadCatId={effectiveLeadCat?.id ?? null}
-          toggleable
-          showLeadBadge
-          onToggle={onToggleDraftCat}
-          onHighlight={(id) => onHighlightDraftCat(id)}
-        />
-      ) : (
-        <p className="operatorEmptyState">No cats are available yet.</p>
+      title: isGroupDraft ? 'Participants' : 'Cats',
+      children: (
+        <div className="sidePanelSectionStack">
+          {isGroupDraft ? (
+            <p className="operatorEmptyState" style={{ margin: 0 }}>
+              {groupDraftSelectionLabel}
+            </p>
+          ) : null}
+          {chatCats.filter((c) => c.status === 'active').length > 0 ? (
+            <CatAvatarRow
+              cats={chatCats}
+              bossCatId={payload.chat.bossCatId}
+              selectedIds={draftCatIds}
+              highlightedId={draftHighlightedCatId}
+              leadCatId={effectiveLeadCat?.id ?? null}
+              toggleable
+              showLeadBadge
+              onToggle={onToggleDraftCat}
+              onHighlight={(id) => onHighlightDraftCat(id)}
+            />
+          ) : (
+            <p className="operatorEmptyState">No cats are available yet.</p>
+          )}
+          {isGroupDraft ? (
+            <>
+              {draftTemporaryParticipants.length > 0 ? (
+                <div className="addCatList">
+                  {draftTemporaryParticipants.map((participant) => (
+                    <div key={participant.participantId} className="addCatItem">
+                      <div>
+                        <strong>{participant.name}</strong>
+                        <p>{buildDraftParticipantExecutionLabel(participant)}</p>
+                        {participant.roleHint ? <p>{participant.roleHint}</p> : null}
+                      </div>
+                      <button
+                        className="addCatAssignButton addCatRemoveButton"
+                        type="button"
+                        disabled={isSubmittingFirstTurn}
+                        onClick={() => onRemoveDraftTemporaryParticipant(participant.participantId)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {temporaryParticipantFormOpen ? (
+                <form
+                  className="stackForm"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitTemporaryParticipant();
+                  }}
+                >
+                  <label className="fieldLabel">
+                    <span>Name</span>
+                    <input
+                      className="textInput"
+                      value={temporaryParticipantForm.name}
+                      onChange={(event) =>
+                        setTemporaryParticipantForm((current) => ({
+                          ...current,
+                          name: event.target.value,
+                        }))}
+                      placeholder="Runtime reviewer"
+                    />
+                  </label>
+                  <label className="fieldLabel">
+                    <span>Role Hint</span>
+                    <input
+                      className="textInput"
+                      value={temporaryParticipantForm.roleHint}
+                      onChange={(event) =>
+                        setTemporaryParticipantForm((current) => ({
+                          ...current,
+                          roleHint: event.target.value,
+                        }))}
+                      placeholder="Optional one-line role"
+                    />
+                  </label>
+                  <ProviderModelFields
+                    provider={temporaryParticipantForm.provider}
+                    instance={temporaryParticipantForm.instance}
+                    model={temporaryParticipantForm.model}
+                    modelSelection={temporaryParticipantForm.modelSelection}
+                    onTargetChange={(target: ProviderTargetSelection) => {
+                      setTemporaryParticipantForm((current) => ({
+                        ...current,
+                        provider: target.provider,
+                        instance: target.instance,
+                        model: target.model,
+                        modelSelection: target.modelSelection ?? null,
+                      }));
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="operatorActionButton"
+                      onClick={() => {
+                        setTemporaryParticipantForm(createTemporaryParticipantFormValue());
+                        setTemporaryParticipantFormOpen(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="primaryButton"
+                      disabled={!temporaryParticipantForm.name.trim() || !temporaryParticipantForm.provider.trim()}
+                    >
+                      Add temporary participant
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  className="operatorActionButton"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={() => setTemporaryParticipantFormOpen(true)}
+                >
+                  Add temporary participant
+                </button>
+              )}
+            </>
+          ) : null}
+        </div>
       ),
     });
 

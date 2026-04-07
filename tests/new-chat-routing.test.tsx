@@ -192,6 +192,32 @@ test('buildNewChatChannelInput marks direct drafts explicitly and preserves dire
   assert.deepEqual(input.participantCatIds, ['cat-lead']);
 });
 
+test('buildNewChatChannelInput forwards channel-only temporary participants for group drafts', () => {
+  const input = buildNewChatChannelInput({
+    body: 'Run a quick three-way review',
+    existingCount: 2,
+    entryKind: 'group',
+    temporaryParticipants: [
+      {
+        participantId: 'participant-inline',
+        name: 'Inline Reviewer',
+        provider: 'gemini',
+        instance: 'native',
+        model: 'gemini-3.1-pro',
+        modelSelection: null,
+        roleHint: 'Counterpoint',
+      },
+    ],
+  });
+
+  assert.equal(input.entryKind, 'group');
+  assert.equal(input.temporaryParticipants?.length, 1);
+  assert.equal(input.temporaryParticipants?.[0]?.participantId, 'participant-inline');
+  assert.equal(input.temporaryParticipants?.[0]?.name, 'Inline Reviewer');
+  assert.equal(input.temporaryParticipants?.[0]?.provider, 'gemini');
+  assert.equal(input.temporaryParticipants?.[0]?.roleHint, 'Counterpoint');
+});
+
 test('resolveDraftParticipantSelection dedupes toggled cats and keeps route lead first', () => {
   const selection = resolveDraftParticipantSelection({
     draftLeadCatId: 'cat-lead',

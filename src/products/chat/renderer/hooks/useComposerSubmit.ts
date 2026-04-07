@@ -40,6 +40,7 @@ import {
   buildNewChatChannelInput,
   createDraftChannelTitle,
   insertCreatedChannelIntoPayload,
+  type DraftTemporaryParticipant,
   type SelectedChannelView,
 } from '../chatUtils';
 import {
@@ -109,11 +110,13 @@ export function useComposerSubmit(options: {
   draftEntryKind: 'solo' | 'group' | 'direct';
   draftLeadCatId: string | null;
   draftParticipantCatIds: string[];
+  draftTemporaryParticipants: DraftTemporaryParticipant[];
   draftCwd: string | null;
   draftFiles: File[];
   channelFiles: File[];
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+  setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
@@ -142,11 +145,13 @@ export function useComposerSubmit(options: {
     draftEntryKind,
     draftLeadCatId,
     draftParticipantCatIds,
+    draftTemporaryParticipants,
     draftCwd,
     draftFiles,
     channelFiles,
     setDraftCwd,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     setDraftFiles,
@@ -376,6 +381,7 @@ export function useComposerSubmit(options: {
 
         setDraftCwd(null);
         setDraftCatIds([]);
+        setDraftTemporaryParticipants([]);
         setDraftHighlightedCatId(null);
         setDraftCatModelOverrides(new Map());
         setDraftFiles([]);
@@ -437,6 +443,7 @@ export function useComposerSubmit(options: {
             repoPath: draftCwd,
             leadCatId: draftLeadCatId,
             participantCatIds: draftParticipantCatIds,
+            temporaryParticipants: draftTemporaryParticipants,
           }), ackController.signal);
           channelId = createdChannel.id;
           if (!channelId) {
@@ -463,6 +470,7 @@ export function useComposerSubmit(options: {
           repoPath: draftCwd,
           leadCatId: draftLeadCatId,
           participantCatIds: draftParticipantCatIds,
+          temporaryParticipants: draftTemporaryParticipants,
           draftModel,
         }), ackController.signal);
         channelId = createdChannel.id;
@@ -566,6 +574,7 @@ export function useComposerSubmit(options: {
       if (isCatScopedLaneRoute) {
         setDraftCwd(null);
         setDraftCatIds([]);
+        setDraftTemporaryParticipants([]);
         setDraftHighlightedCatId(null);
         setDraftCatModelOverrides(new Map());
         setDraftFiles([]);
@@ -573,6 +582,7 @@ export function useComposerSubmit(options: {
       } else if (wasDraftingNewChat) {
         setDraftCwd(null);
         setDraftCatIds([]);
+        setDraftTemporaryParticipants([]);
         setDraftHighlightedCatId(null);
         setDraftCatModelOverrides(new Map());
         setDraftFiles([]);
@@ -611,6 +621,7 @@ export function useComposerSubmit(options: {
     composerDraft,
     currentPathname,
     draftParticipantCatIds,
+    draftTemporaryParticipants,
     draftCwd,
     draftFiles,
     draftEntryKind,
@@ -630,6 +641,7 @@ export function useComposerSubmit(options: {
     setChannelFiles,
     setComposerDraft,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     setDraftCwd,

@@ -33,6 +33,7 @@ import { sameProviderModelSelection } from '../../../shared/providerSelection';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import {
   BootShell,
+  type DraftTemporaryParticipant,
   emptyCatForm,
   pickGreeting,
   type CatFormState,
@@ -161,6 +162,7 @@ export default function App() {
   const [greeting] = useState(pickGreeting);
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
+  const [draftTemporaryParticipants, setDraftTemporaryParticipants] = useState<DraftTemporaryParticipant[]>([]);
   const draftParticipants = resolveDraftParticipantSelection({
     draftLeadCatId: draftRoute.routeLeadCatId,
     draftCatIds,
@@ -172,6 +174,7 @@ export default function App() {
     : newChatMode === 'group'
       || draftRoute.isLeadScopedNewChatRoute
       || draftParticipants.hasParticipants
+      || draftTemporaryParticipants.length > 0
       ? 'group'
       : 'solo';
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
@@ -278,6 +281,24 @@ export default function App() {
       }
       return next;
     });
+  }, []);
+
+  const onAddDraftTemporaryParticipant = useCallback((participant: Omit<DraftTemporaryParticipant, 'participantId'> & {
+    participantId?: string | null;
+  }) => {
+    setDraftTemporaryParticipants((prev) => [
+      ...prev,
+      {
+        ...participant,
+        participantId: participant.participantId?.trim()
+          || window.crypto.randomUUID(),
+      },
+    ]);
+  }, []);
+
+  const onRemoveDraftTemporaryParticipant = useCallback((participantId: string) => {
+    setDraftTemporaryParticipants((prev) =>
+      prev.filter((participant) => participant.participantId !== participantId));
   }, []);
 
   const onDirectLaneModelSave = useCallback(async (catId: string, value: ModelSelectorValue) => {
@@ -403,6 +424,7 @@ export default function App() {
     setChannelPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     resetDraftConcurrentTargets,
@@ -457,11 +479,13 @@ export default function App() {
     draftEntryKind,
     draftLeadCatId: draftParticipants.routeLeadCatId,
     draftParticipantCatIds: draftParticipants.participantCatIds,
+    draftTemporaryParticipants,
     draftCwd,
     draftFiles,
     channelFiles,
     setDraftCwd,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     setDraftFiles,
@@ -526,9 +550,15 @@ export default function App() {
     }
 
     setDraftCatIds([]);
+    setDraftTemporaryParticipants([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
-  }, [draftRoute.isGenericNewChatRoute, setDraftCatIds, showingNewChatDraft]);
+  }, [
+    draftRoute.isGenericNewChatRoute,
+    setDraftCatIds,
+    setDraftTemporaryParticipants,
+    showingNewChatDraft,
+  ]);
 
   useEffect(() => {
     if (!readyChat) {
@@ -1057,6 +1087,7 @@ export default function App() {
               draftFiles,
               draftCwd,
               draftCatIds,
+              draftTemporaryParticipants,
               plusMenuOpen,
               plusMenuRef,
               fileInputRef,
@@ -1072,6 +1103,8 @@ export default function App() {
               onDraftFilesChange: setDraftFiles,
               onDraftCwdClear: () => setDraftCwd(null),
               onToggleDraftCat: onToggleDraftCat,
+              onAddDraftTemporaryParticipant: onAddDraftTemporaryParticipant,
+              onRemoveDraftTemporaryParticipant: onRemoveDraftTemporaryParticipant,
               autoResize,
               draftLeadCatId,
               entryMode: newChatMode,

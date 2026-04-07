@@ -8,6 +8,7 @@ import type { NavigateFunction } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts.js';
 import type { ModelSelectorValue } from '../components/ModelSelector.js';
+import type { DraftTemporaryParticipant } from '../chatUtils.js';
 import {
   buildChannelPath,
   buildNewGroupChatPath,
@@ -46,6 +47,7 @@ export function useAppNavigationActions(options: {
   setChannelPlusMenuOpen: Dispatch<SetStateAction<boolean>>;
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+  setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
   resetDraftConcurrentTargets: () => void;
@@ -67,6 +69,7 @@ export function useAppNavigationActions(options: {
     setChannelPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     resetDraftConcurrentTargets,
@@ -83,6 +86,7 @@ export function useAppNavigationActions(options: {
     setPlusMenuOpen(false);
     setDraftCwd(null);
     setDraftCatIds([]);
+    setDraftTemporaryParticipants([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
     resetDraftConcurrentTargets();
@@ -97,6 +101,7 @@ export function useAppNavigationActions(options: {
     setPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     resetDraftConcurrentTargets,
@@ -306,7 +311,7 @@ export function useAppNavigationActions(options: {
 
   const onStartNewGroupChat = useCallback(async (): Promise<void> => {
     navigate(buildNewGroupChatPath());
-    resetFreshDraftState({ openAddCatPanel: true });
+    resetFreshDraftState();
   }, [navigate, resetFreshDraftState]);
 
   const onStartNewParallelChat = useCallback(async (): Promise<void> => {
