@@ -498,24 +498,6 @@ export function NewChatDraft({
                     });
                   })()}
                 </div>
-                {!hasReachedGroupParticipantLimit ? (
-                  <>
-                    <span className="parallelAddHint" style={{ marginRight: 8 }}>Add another model to collaborate</span>
-                    <button
-                      type="button"
-                      className="parallelAddButton"
-                      style={{ marginRight: 8 }}
-                      disabled={isSubmittingFirstTurn}
-                      onClick={() => openSidePanelTo('cats')}
-                      aria-label="Add another model to collaborate"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M8 3v10" />
-                        <path d="M3 8h10" />
-                      </svg>
-                    </button>
-                  </>
-                ) : null}
               </>
             ) : effectiveLeadCat ? (
               <ComposerCatStack
@@ -567,6 +549,23 @@ export function NewChatDraft({
               </button>
             )}
           </div>
+          {isGroupDraft && !hasReachedGroupParticipantLimit ? (
+            <div className="composerGroupAddRow">
+              <span className="parallelAddHint">Add another model to collaborate</span>
+              <button
+                type="button"
+                className="parallelAddButton"
+                disabled={isSubmittingFirstTurn}
+                onClick={() => openSidePanelTo('cats')}
+                aria-label="Add another model to collaborate"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3v10" />
+                  <path d="M3 8h10" />
+                </svg>
+              </button>
+            </div>
+          ) : null}
           <input
             ref={fileInputRef}
             type="file"

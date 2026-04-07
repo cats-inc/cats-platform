@@ -253,6 +253,15 @@
   border-color: rgba(60, 100, 180, 0.6);
 }
 
+.composerGroupAddRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+  padding-right: 34px;
+}
+
 .folderBrowserOverlay {
   position: fixed;
   inset: 0;
