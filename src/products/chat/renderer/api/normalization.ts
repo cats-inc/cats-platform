@@ -297,11 +297,27 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
           ? 'direct_cat_chat'
           : 'boss_chat',
       );
+      const participantCount = typeof channel.participantCount === 'number'
+        ? channel.participantCount
+        : typeof channel.catCount === 'number'
+          ? channel.catCount
+          : 0;
+      const activeParticipantCount = typeof channel.activeParticipantCount === 'number'
+        ? channel.activeParticipantCount
+        : typeof channel.activeCatCount === 'number'
+          ? channel.activeCatCount
+          : participantCount;
+      if (channel.participantCount === undefined) {
+        channel.participantCount = participantCount;
+      }
+      if (channel.activeParticipantCount === undefined) {
+        channel.activeParticipantCount = activeParticipantCount;
+      }
       if (channel.catCount === undefined) {
-        channel.catCount = 0;
+        channel.catCount = participantCount;
       }
       if (channel.activeCatCount === undefined) {
-        channel.activeCatCount = 0;
+        channel.activeCatCount = activeParticipantCount;
       }
       return channel;
     });

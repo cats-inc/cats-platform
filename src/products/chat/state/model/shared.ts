@@ -13,6 +13,7 @@ import {
   resolveChannelKind,
   resolveDirectLaneLeadParticipantId,
 } from '../../shared/channelTopology.js';
+import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import { createEmptyExecutionLease } from '../defaults.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 
@@ -53,27 +54,6 @@ export function inferChannelComposerMode(input: {
     return 'cat_led';
   }
   return input.activeParticipantIds.length > 0 ? 'cat_led' : 'solo';
-}
-
-function resolveChannelParticipantAssignments(
-  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
-): ChannelParticipantAssignment[] {
-  if (Array.isArray(channel.participantAssignments) && channel.participantAssignments.length > 0) {
-    return channel.participantAssignments;
-  }
-
-  return channel.catAssignments.map((assignment) => ({
-    participantId: assignment.participantId,
-    sourceKind: assignment.sourceKind,
-    sourceRefId: assignment.sourceRefId,
-    name: assignment.name,
-    status: assignment.status,
-    roles: structuredClone(assignment.roles),
-    roleHint: assignment.roleHint,
-    joinedAt: assignment.joinedAt,
-    leftAt: assignment.leftAt,
-    execution: structuredClone(assignment.execution),
-  }));
 }
 
 export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void {

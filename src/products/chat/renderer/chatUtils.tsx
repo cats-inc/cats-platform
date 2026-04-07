@@ -15,6 +15,10 @@ import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
 } from '../shared/channelEntry';
+import {
+  activeAssignedParticipants,
+  resolveAssignedParticipants,
+} from '../shared/channelParticipants';
 
 export type Surface = 'chats' | 'settings';
 
@@ -450,6 +454,8 @@ export function insertCreatedChannelIntoPayload(
     ?? normalizedChannel.roomRouting.lastOutcome?.completedAt
     ?? normalizedChannel.roomRouting.lastCheckpoint?.createdAt
     ?? null;
+  const assignedParticipants = resolveAssignedParticipants(normalizedChannel);
+  const activeParticipants = activeAssignedParticipants(normalizedChannel);
   const summary: ChatChannelSummary = {
     id: normalizedChannel.id,
     title: normalizedChannel.title,
@@ -457,8 +463,10 @@ export function insertCreatedChannelIntoPayload(
     channelKind: normalizedChannel.channelKind,
     status: normalizedChannel.status,
     unreadCount: normalizedChannel.unreadCount,
-    catCount: normalizedChannel.assignedCats.length,
-    activeCatCount: normalizedChannel.assignedCats.filter((cat) => cat.status === 'active').length,
+    catCount: assignedParticipants.length,
+    activeCatCount: activeParticipants.length,
+    participantCount: assignedParticipants.length,
+    activeParticipantCount: activeParticipants.length,
     repoPath: normalizedChannel.repoPath,
     chatCwd: normalizedChannel.chatCwd,
     lastMessageAt: normalizedChannel.lastMessageAt,

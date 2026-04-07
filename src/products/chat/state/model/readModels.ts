@@ -22,6 +22,7 @@ import {
   resolveChannelKind,
   resolveDirectLaneLeadParticipantId,
 } from '../../shared/channelTopology.js';
+import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import {
   resolveChatLifecycleState,
   type ChatLifecycleState,
@@ -33,31 +34,10 @@ import { requireCat, requireChannel } from './shared.js';
 export const ORCHESTRATOR_NAME = 'Orchestrator';
 export type { ChatLifecycleState } from '../../shared/lifecycle.js';
 
-function resolveChannelParticipantAssignments(
-  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
-): ChannelParticipantAssignment[] {
-  if (Array.isArray(channel.participantAssignments) && channel.participantAssignments.length > 0) {
-    return structuredClone(channel.participantAssignments);
-  }
-
-  return channel.catAssignments.map((assignment) => ({
-    participantId: assignment.participantId,
-    sourceKind: assignment.sourceKind,
-    sourceRefId: assignment.sourceRefId,
-    name: assignment.name,
-    status: assignment.status,
-    roles: structuredClone(assignment.roles),
-    roleHint: assignment.roleHint,
-    joinedAt: assignment.joinedAt,
-    leftAt: assignment.leftAt,
-    execution: structuredClone(assignment.execution),
-  }));
-}
-
 function activeParticipantCount(channel: ChatChannelState): number {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   return normalizeChannelAssignmentsForRoomMode(
-    resolveChannelParticipantAssignments(channel),
+    resolveChannelParticipantAssignments(channel, { clone: true }),
     roomRouting.mode,
     roomRouting.leadParticipantId,
   ).filter((assignment) => assignment.status === 'active').length;
@@ -139,7 +119,7 @@ function resolveLeadParticipantLeaseStatus(
 ): ParticipantSessionStatus | null {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   const participantAssignments = normalizeChannelAssignmentsForRoomMode(
-    resolveChannelParticipantAssignments(channel),
+    resolveChannelParticipantAssignments(channel, { clone: true }),
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
@@ -179,7 +159,7 @@ export function buildChannelView(
   const clonedChannel = structuredClone(channel);
   const roomRouting = resolveRoomRoutingState(clonedChannel.roomRouting);
   const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
-    resolveChannelParticipantAssignments(clonedChannel),
+    resolveChannelParticipantAssignments(clonedChannel, { clone: true }),
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
@@ -257,7 +237,7 @@ export function resolveChannelEntryParticipant(
 export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
-    resolveChannelParticipantAssignments(channel),
+    resolveChannelParticipantAssignments(channel, { clone: true }),
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
@@ -292,6 +272,8 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     unreadCount: channel.unreadCount,
     catCount: normalizedParticipantAssignments.length,
     activeCatCount: activeParticipantCount(channel),
+    participantCount: normalizedParticipantAssignments.length,
+    activeParticipantCount: activeParticipantCount(channel),
     repoPath: channel.repoPath,
     chatCwd: channel.chatCwd,
     lastMessageAt: channel.lastMessageAt,

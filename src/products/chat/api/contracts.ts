@@ -293,6 +293,7 @@ export interface ChatChannelState {
   lastActivatedAt: string | null;
   orchestratorLease: ParticipantExecutionLease;
   catAssignments: ChannelCatAssignment[];
+  /** Optional for legacy persisted snapshots; runtime normalization populates this. */
   participantAssignments?: ChannelParticipantAssignment[];
   messages: ChatMessage[];
   roomRouting?: RoomRoutingState;
@@ -311,8 +312,12 @@ export interface ChatChannelSummary {
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;
+  /** Legacy alias that now counts all channel participants, not only Cat-backed ones. */
   catCount: number;
+  /** Legacy alias that now counts all active channel participants, not only Cat-backed ones. */
   activeCatCount: number;
+  participantCount?: number;
+  activeParticipantCount?: number;
   repoPath: string | null;
   chatCwd: string | null;
   lastMessageAt: string | null;

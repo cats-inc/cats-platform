@@ -22,6 +22,10 @@ import type {
 } from '../../../shared/roomRouting.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import {
+  activeAssignedParticipants,
+  findAssignedParticipant,
+} from '../shared/channelParticipants.js';
+import {
   ORCHESTRATOR_NAME,
   buildChannelView,
   resolveOrchestratorDisplayName,
@@ -59,15 +63,6 @@ export interface MentionRouteResult {
 
 type AssignedParticipant = ChatChannelCat | ChatChannelParticipant;
 
-function activeAssignedParticipants(
-  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
-): AssignedParticipant[] {
-  const participants = channel.assignedParticipants && channel.assignedParticipants.length > 0
-    ? channel.assignedParticipants
-    : channel.assignedCats;
-  return participants.filter((participant) => participant.status === 'active');
-}
-
 function isSoloChatChannel(channel: Pick<ChatChannelView, 'composerMode' | 'roomRouting'>): boolean {
   return channel.composerMode === 'solo'
     && !isDirectLaneChannel(channel);
@@ -104,8 +99,7 @@ function buildDirectLeadParticipantRef(
   channel: ChatChannelView,
   leadParticipantId: string,
 ): RoomRoutingParticipantRef {
-  const leadParticipantName = activeAssignedParticipants(channel)
-    .find((participant) => participant.participantId === leadParticipantId)?.name
+  const leadParticipantName = findAssignedParticipant(channel, leadParticipantId)?.name
     ?? state.cats.find((cat) => cat.id === leadParticipantId)?.name
     ?? 'Direct Cat';
   return {
@@ -123,9 +117,10 @@ export function resolveRoomDefaultRoutingTarget(
     ? buildChannelView(state, channelOrId)
     : channelOrId;
   const routing = channel.roomRouting ?? null;
+  const activeParticipants = activeAssignedParticipants(channel);
 
   if (isDirectLaneChannel(channel) && routing?.leadParticipantId) {
-    const leadCat = activeAssignedParticipants(channel)
+    const leadCat = activeParticipants
       .find((participant) => participant.participantId === routing.leadParticipantId);
     if (leadCat) {
       const target = buildCatTarget(leadCat);
@@ -148,7 +143,7 @@ export function resolveRoomDefaultRoutingTarget(
   }
 
   if (channel.composerMode === 'cat_led' && routing?.leadParticipantId) {
-    const leadCat = activeAssignedParticipants(channel)
+    const leadCat = activeParticipants
       .find((participant) => participant.participantId === routing.leadParticipantId);
     if (leadCat) {
       const target = buildCatTarget(leadCat);
@@ -161,7 +156,7 @@ export function resolveRoomDefaultRoutingTarget(
       };
     }
 
-    const leadCatName = activeAssignedParticipants(channel)
+    const leadCatName = activeParticipants
       .find((participant) => participant.participantId === routing.leadParticipantId)?.name
       ?? state.cats.find((cat) => cat.id === routing.leadParticipantId)?.name
       ?? 'Lead Participant';

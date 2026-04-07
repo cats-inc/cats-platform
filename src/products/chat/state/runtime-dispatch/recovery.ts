@@ -5,6 +5,7 @@ import type {
 import type { RuntimeSessionInfo } from '../../../../platform/runtime/client.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
 import type { RoutingTarget } from '../mentionRouter.js';
+import { resolveParticipantExecutionAssignments } from '../../shared/channelParticipants.js';
 import {
   requireChannel,
   setChannelParticipantLease,
@@ -102,12 +103,11 @@ export function extractTargetLeasePatchFromState(
   const channel = requireChannel(state, channelId);
 
   if (target.participantKind === 'cat') {
-    const assignment = (
-      channel.participantAssignments?.find((candidate) => candidate.participantId === target.participantId)
-      ?? channel.catAssignments.find(
-        (candidate) => candidate.participantId === target.participantId || candidate.catId === target.participantId,
-      )
+    const { participantAssignment, catAssignment } = resolveParticipantExecutionAssignments(
+      channel,
+      target.participantId,
     );
+    const assignment = participantAssignment ?? catAssignment;
     if (!assignment) {
       throw new Error(`Channel participant assignment not found: ${target.participantId}`);
     }

@@ -61,6 +61,8 @@ test('createChannel keeps channel-only temporary participants outside cat assign
   assert.equal(summary.channelKind, 'multi_cat_room');
   assert.equal(summary.catCount, 2);
   assert.equal(summary.activeCatCount, 2);
+  assert.equal(summary.participantCount, 2);
+  assert.equal(summary.activeParticipantCount, 2);
   assert.equal(summary.leadCatId, null);
 });
 

@@ -14,6 +14,12 @@ import type { CompanionBoxStore } from './companion-box/index.js';
 import type { RuntimeSkillManifest } from '../../../platform/runtime/client.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { shouldHydrateCompanionSession } from '../companion/hydration.js';
+import {
+  activeAssignedParticipants,
+  findAssignedParticipant,
+  resolveParticipantExecutionAssignments,
+  resolveParticipantCatId,
+} from '../shared/channelParticipants.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import {
@@ -35,41 +41,6 @@ import type { DispatchRequest } from './room-routing/runtime.js';
 export type RuntimeTransportContext = 'telegram' | 'web';
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
-
-type AssignedParticipant = ChatChannelCat | ChatChannelParticipant;
-
-function assignedParticipants(
-  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
-): AssignedParticipant[] {
-  return channel.assignedParticipants && channel.assignedParticipants.length > 0
-    ? channel.assignedParticipants
-    : channel.assignedCats;
-}
-
-function activeAssignedParticipants(
-  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
-): AssignedParticipant[] {
-  return assignedParticipants(channel).filter((participant) => participant.status === 'active');
-}
-
-function findAssignedParticipant(
-  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
-  participantId: string,
-): AssignedParticipant | null {
-  return assignedParticipants(channel).find(
-    (participant) => participant.participantId === participantId,
-  ) ?? null;
-}
-
-function resolveParticipantCatId(participant: AssignedParticipant): string | null {
-  if ('catId' in participant && participant.catId) {
-    return participant.catId;
-  }
-
-  return participant.sourceKind === 'cat'
-    ? participant.sourceRefId
-    : null;
-}
 
 export function isSoloChatChannel(
   channel: Pick<ChatChannelState | ChatChannelView, 'channelKind' | 'composerMode' | 'roomRouting'>,
@@ -137,12 +108,11 @@ export function resolveExecutionMetadataForTarget(
     };
   }
 
-  const assignment = channel.catAssignments.find(
-    (candidate) => candidate.participantId === target.participantId
-      || candidate.catId === target.participantId,
-  ) ?? channel.participantAssignments?.find(
-    (candidate) => candidate.participantId === target.participantId && candidate.status === 'active',
+  const { participantAssignment, catAssignment } = resolveParticipantExecutionAssignments(
+    channel,
+    target.participantId,
   );
+  const assignment = participantAssignment ?? catAssignment;
   return {
     provider: assignment?.execution.target.provider ?? null,
     model: assignment?.execution.target.model ?? null,

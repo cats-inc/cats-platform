@@ -4,6 +4,7 @@ import type {
 } from '../../api/contracts.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import { buildChannelView, requireChannel, setChannelStatus } from '../model/index.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { buildCatTarget, buildOrchestratorTarget } from '../runtimeTargeting.js';
@@ -89,10 +90,11 @@ export async function activateChannelSessions(
   const hasStartedSession = results.some(
     (result) => result.status === 'started' || result.status === 'already_started',
   );
+  const hasConfiguredParticipants = resolveChannelParticipantAssignments(channelState).length > 0;
   nextState = setChannelStatus(
     nextState,
     channelId,
-    hasStartedSession ? 'active' : channelState.catAssignments.length > 0 ? 'configured' : 'planned',
+    hasStartedSession ? 'active' : hasConfiguredParticipants ? 'configured' : 'planned',
     now,
   );
 

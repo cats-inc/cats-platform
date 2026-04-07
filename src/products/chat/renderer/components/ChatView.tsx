@@ -69,16 +69,18 @@ import {
 } from '../../../../shared/providerCatalog';
 import { buildConcurrentChatMemberLabel } from '../../shared/concurrentChats';
 import {
+  activeAssignedParticipants,
+  findAssignedParticipant,
+  resolveParticipantCatId,
+  type ResolvedChannelParticipant,
+} from '../../shared/channelParticipants';
+import {
   isDirectConversationMode,
   isSoloThreadConversationMode,
   resolveConversationMode,
 } from '../conversationMode';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
-
-type VisibleAssignedParticipant =
-  | NonNullable<SelectedChannelView['assignedParticipants']>[number]
-  | SelectedChannelView['assignedCats'][number];
 
 type TopBarParticipant = {
   key: string;
@@ -89,18 +91,6 @@ type TopBarParticipant = {
   isLead: boolean;
   pulseCatId: string | null;
 };
-
-function resolveParticipantCatRef(participant: VisibleAssignedParticipant): string | null {
-  if ('catId' in participant && typeof participant.catId === 'string' && participant.catId.length > 0) {
-    return participant.catId;
-  }
-
-  if (participant.sourceKind === 'cat' && participant.sourceRefId) {
-    return participant.sourceRefId;
-  }
-
-  return null;
-}
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -216,18 +206,14 @@ export function ChatView({
   const hasConversationStarted = visibleMessages.length > 0;
 
   const leadParticipantId = selectedChannel.roomRouting.leadParticipantId;
-  const activeAssignedParticipants = useMemo<VisibleAssignedParticipant[]>(
-    () => (
-      selectedChannel.assignedParticipants && selectedChannel.assignedParticipants.length > 0
-        ? selectedChannel.assignedParticipants
-        : activeAssignedCats
-    ).filter((participant) => participant.status === 'active'),
-    [activeAssignedCats, selectedChannel.assignedParticipants],
+  const activeRoomParticipants = useMemo<ResolvedChannelParticipant[]>(
+    () => activeAssignedParticipants(selectedChannel),
+    [selectedChannel],
   );
   const leadParticipant = leadParticipantId
-    ? activeAssignedParticipants.find((participant) => participant.participantId === leadParticipantId)
+    ? activeRoomParticipants.find((participant) => participant.participantId === leadParticipantId)
       ?? null
-    : activeAssignedParticipants[0] ?? null;
+    : activeRoomParticipants[0] ?? null;
   const leadCat = leadParticipant?.sourceKind === 'cat'
     ? activeAssignedCats.find((candidate) => candidate.participantId === leadParticipant.participantId)
       ?? null
@@ -261,7 +247,7 @@ export function ChatView({
   const isDirectLane = isDirectConversationMode(conversationMode);
   const layoutMode: ChatLayoutMode = isDirectLane
     ? 'direct_lane'
-    : activeAssignedParticipants.length > 1
+    : activeRoomParticipants.length > 1
       ? 'multi_cat'
       : 'solo';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -301,19 +287,19 @@ export function ChatView({
       : presentChannelTitle(selectedChannel.title);
   const assignedCatRecords = useMemo(
     () =>
-      activeAssignedParticipants
+      activeRoomParticipants
         .map((participant) => {
-          const catRef = resolveParticipantCatRef(participant);
+          const catRef = resolveParticipantCatId(participant);
           return catRef
             ? payload.chat.cats.find((cat) => cat.id === catRef) ?? null
             : null;
         })
         .filter((cat): cat is ChatCat => cat != null),
-    [activeAssignedParticipants, payload.chat.cats],
+    [activeRoomParticipants, payload.chat.cats],
   );
   const assignedAdhocParticipants = useMemo(
-    () => activeAssignedParticipants.filter((participant) => participant.sourceKind !== 'cat'),
-    [activeAssignedParticipants],
+    () => activeRoomParticipants.filter((participant) => participant.sourceKind !== 'cat'),
+    [activeRoomParticipants],
   );
   const topBarParticipants = useMemo<TopBarParticipant[]>(() => {
     const ordered: TopBarParticipant[] = [];
@@ -343,9 +329,9 @@ export function ChatView({
           });
         }
       }
-      for (const participant of activeAssignedParticipants) {
+      for (const participant of activeRoomParticipants) {
         if (participant.sourceKind === 'cat') {
-          const catRef = resolveParticipantCatRef(participant);
+          const catRef = resolveParticipantCatId(participant);
           const catRecord = catRef
             ? payload.chat.cats.find((cat) => cat.id === catRef) ?? null
             : null;
@@ -381,7 +367,7 @@ export function ChatView({
       return true;
     });
   }, [
-    activeAssignedParticipants,
+    activeRoomParticipants,
     assignedCatRecords,
     bossCatRecord,
     isDirectLane,
@@ -394,9 +380,9 @@ export function ChatView({
   ]);
   const showRosterAvatars = isDirectLane
     ? Boolean(leadCat)
-    : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedParticipants.length > 0);
-  const participantChipLabel = activeAssignedParticipants.length > 0
-    ? `${activeAssignedParticipants.length} participant${activeAssignedParticipants.length === 1 ? '' : 's'}`
+    : Boolean((showBossCatAvatar && !isSoloComposer) || activeRoomParticipants.length > 0);
+  const participantChipLabel = activeRoomParticipants.length > 0
+    ? `${activeRoomParticipants.length} participant${activeRoomParticipants.length === 1 ? '' : 's'}`
     : 'Participants';
   const directLaneModelValue: ModelSelectorValue | null = directLaneCat
     ? {
@@ -687,11 +673,12 @@ export function ChatView({
                             ? message.metadata.targetId
                             : null;
                           const transcriptParticipant = transcriptParticipantTargetId
-                            ? activeAssignedParticipants.find((participant) =>
-                              participant.participantId === transcriptParticipantTargetId)
-                              ?? null
+                            ? findAssignedParticipant(
+                              selectedChannel,
+                              transcriptParticipantTargetId,
+                            )
                             : message.senderName && message.senderName !== 'Orchestrator'
-                              ? activeAssignedParticipants.find((participant) =>
+                              ? activeRoomParticipants.find((participant) =>
                                 participant.name === message.senderName)
                                 ?? null
                               : null;
@@ -715,7 +702,7 @@ export function ChatView({
                           })() : transcriptParticipant ? (
                             <div className="transcriptMessageTop">
                               <div
-                                className={transcriptParticipant.sourceKind === 'cat' && resolveParticipantCatRef(transcriptParticipant) === payload.chat.bossCatId
+                                className={transcriptParticipant.sourceKind === 'cat' && resolveParticipantCatId(transcriptParticipant) === payload.chat.bossCatId
                                   ? 'catAvatar catAvatarBoss transcriptAvatar'
                                   : 'catAvatar transcriptAvatar'}
                                 style={transcriptParticipant.avatarUrl
@@ -1129,7 +1116,7 @@ export function ChatView({
                     leadCatId={leadCat.catId}
                     onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
-                ) : !isSoloComposer && activeAssignedParticipants.length > 0 ? (
+                ) : !isSoloComposer && activeRoomParticipants.length > 0 ? (
                   <button
                     type="button"
                     className="modelSelectorChip"
@@ -1295,7 +1282,7 @@ export function ChatView({
   function buildSidePanelSections(): SidePanelSection[] {
     const sections: SidePanelSection[] = [];
 
-    if (showAddCatButton || activeAssignedParticipants.length > 0) {
+    if (showAddCatButton || activeRoomParticipants.length > 0) {
       sections.push({
         id: 'cats',
         title: assignedAdhocParticipants.length > 0 ? 'Participants' : 'Cats',
@@ -1453,7 +1440,7 @@ export function ChatView({
           );
         }
 
-        const leadParticipantCatRef = resolveParticipantCatRef(leadParticipant);
+        const leadParticipantCatRef = resolveParticipantCatId(leadParticipant);
         const catRecord = leadParticipantCatRef
           ? payload.chat.cats.find((c) => c.id === leadParticipantCatRef) ?? null
           : null;

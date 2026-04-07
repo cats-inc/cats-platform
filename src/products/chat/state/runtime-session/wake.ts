@@ -44,6 +44,10 @@ import {
   classifyRuntimeDispatchRecoveryError,
 } from '../runtime-dispatch/recovery.js';
 import {
+  findAssignedParticipant,
+  resolveParticipantExecutionAssignments,
+} from '../../shared/channelParticipants.js';
+import {
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
 } from '../workspace.js';
@@ -104,12 +108,13 @@ async function shouldReviveExistingTargetSession(
 
   const channel = requireChannel(state, channelId);
   const lease = target.participantKind === 'cat'
-    ? (
-        channel.participantAssignments?.find((assignment) =>
-          assignment.participantId === target.participantId)
-        ?? channel.catAssignments.find((assignment) =>
-          assignment.participantId === target.participantId || assignment.catId === target.participantId)
-      )?.execution.lease ?? null
+    ? (() => {
+        const { participantAssignment, catAssignment } = resolveParticipantExecutionAssignments(
+          channel,
+          target.participantId,
+        );
+        return participantAssignment?.execution.lease ?? catAssignment?.execution.lease ?? null;
+      })()
     : channel.orchestratorLease;
 
   if (!lease) {
@@ -450,11 +455,7 @@ export async function ensureTargetSession(
       };
     }
 
-    const participant = (
-      channel.assignedParticipants?.find((candidate) => candidate.participantId === target.participantId)
-      ?? channel.assignedCats.find((candidate) =>
-        candidate.participantId === target.participantId || candidate.catId === target.participantId)
-    );
+    const participant = findAssignedParticipant(channel, target.participantId);
     if (!participant) {
       const error = 'Target participant is no longer assigned to the selected chat.';
       return {

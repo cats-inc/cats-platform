@@ -20,6 +20,7 @@ import {
 } from '../../../../platform/orchestration/workflowContinuationReplay.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
+import { findAssignedParticipant } from '../../shared/channelParticipants.js';
 import { buildChannelView, requireChannel } from '../model/index.js';
 import {
   readWorkflowRecommendation,
@@ -90,14 +91,10 @@ function resolveReplayTarget(
     return buildOrchestratorTarget(state, channel);
   }
 
-  const cat = (
-    channel.assignedParticipants?.find((candidate) =>
-      candidate.status === 'active' && candidate.participantId === participant.participantId)
-    ?? channel.assignedCats.find((candidate) =>
-      candidate.status === 'active'
-      && (candidate.participantId === participant.participantId || candidate.catId === participant.participantId))
-  );
-  return cat ? buildCatTarget(cat) : null;
+  const channelParticipant = findAssignedParticipant(channel, participant.participantId);
+  return channelParticipant?.status === 'active'
+    ? buildCatTarget(channelParticipant)
+    : null;
 }
 
 function resolveReplayTargets(
