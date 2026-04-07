@@ -34,15 +34,26 @@ function mapCatAssignmentToParticipantAssignment(
   };
 }
 
+function mergeParticipantAssignments(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+): ChannelParticipantAssignment[] {
+  const catParticipants = channel.catAssignments.map(mapCatAssignmentToParticipantAssignment);
+  const adhocParticipants = Array.isArray(channel.participantAssignments)
+    ? channel.participantAssignments.filter((assignment) => assignment.sourceKind !== 'cat')
+    : [];
+
+  return [
+    ...catParticipants,
+    ...adhocParticipants,
+  ];
+}
+
 export function resolveChannelParticipantAssignments(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
   options: { clone?: boolean } = {},
 ): ChannelParticipantAssignment[] {
-  if (Array.isArray(channel.participantAssignments) && channel.participantAssignments.length > 0) {
-    return options.clone ? structuredClone(channel.participantAssignments) : channel.participantAssignments;
-  }
-
-  return channel.catAssignments.map(mapCatAssignmentToParticipantAssignment);
+  const assignments = mergeParticipantAssignments(channel);
+  return options.clone ? structuredClone(assignments) : assignments;
 }
 
 export function resolveAssignedParticipants(
