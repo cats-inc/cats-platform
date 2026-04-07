@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import type { GuideCatRecord } from '../../core/types.js';
 import { nameInitials } from '../../shared/nameInitials.js';
@@ -16,22 +16,94 @@ interface GuideCatSidecarProps {
   unreadCount: number;
 }
 
+export function resolveGuideCatSidecarAnchorSelector(pathname: string): string | null {
+  if (pathname === '/lobby') {
+    return '.platformLobby';
+  }
+  if (pathname === '/setup' || pathname.startsWith('/settings')) {
+    return null;
+  }
+  return '.canvas';
+}
+
+function useGuideCatSidecarAnchorStyle(): CSSProperties {
+  const location = useLocation();
+  const [anchorLeft, setAnchorLeft] = useState(0);
+
+  useEffect(() => {
+    const selector = resolveGuideCatSidecarAnchorSelector(location.pathname);
+    if (!selector) {
+      setAnchorLeft(0);
+      return;
+    }
+
+    let frameId = 0;
+    let resizeObserver: ResizeObserver | null = null;
+
+    const updateAnchor = () => {
+      frameId = 0;
+      const anchor = document.querySelector<HTMLElement>(selector);
+      const nextLeft = anchor
+        ? Math.max(0, Math.round(anchor.getBoundingClientRect().left))
+        : 0;
+      setAnchorLeft((current) => (current === nextLeft ? current : nextLeft));
+    };
+
+    const requestUpdate = () => {
+      if (frameId !== 0) {
+        return;
+      }
+      frameId = window.requestAnimationFrame(updateAnchor);
+    };
+
+    requestUpdate();
+    const anchor = document.querySelector<HTMLElement>(selector);
+    if (anchor && typeof ResizeObserver === 'function') {
+      resizeObserver = new ResizeObserver(() => {
+        requestUpdate();
+      });
+      resizeObserver.observe(anchor);
+    }
+
+    window.addEventListener('resize', requestUpdate);
+    document.addEventListener('scroll', requestUpdate, true);
+
+    return () => {
+      if (frameId !== 0) {
+        window.cancelAnimationFrame(frameId);
+      }
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', requestUpdate);
+      document.removeEventListener('scroll', requestUpdate, true);
+    };
+  }, [location.pathname]);
+
+  return {
+    '--guide-cat-anchor-left': `${anchorLeft}px`,
+  } as CSSProperties;
+}
+
 function CollapsedPill({
   name,
   avatarColor,
   unreadCount,
   onClick,
+  style,
 }: {
   name: string;
   avatarColor?: string;
   unreadCount: number;
   onClick: () => void;
+  style?: CSSProperties;
 }) {
   return (
     <button
       type="button"
       className="guideCatPill"
-      style={avatarColor ? { background: avatarColor } : undefined}
+      style={{
+        ...style,
+        ...(avatarColor ? { background: avatarColor } : {}),
+      }}
       onClick={onClick}
       aria-label={`Open guide: ${name}`}
     >
@@ -49,15 +121,20 @@ function WelcomePeek({
   avatarColor,
   onAction,
   onDismiss,
+  style,
 }: {
   name: string;
   ownerDisplayName: string;
   avatarColor?: string;
   onAction: (route: string) => void;
   onDismiss: () => void;
+  style?: CSSProperties;
 }) {
   return (
-    <div className="guideCatPeek">
+    <div
+      className="guideCatPeek"
+      style={style}
+    >
       <div className="guideCatPeekHeader">
         <span
           className="guideCatPeekAvatar"
@@ -95,15 +172,20 @@ function OpenPanel({
   avatarColor,
   onAction,
   onClose,
+  style,
 }: {
   name: string;
   ownerDisplayName: string;
   avatarColor?: string;
   onAction: (route: string) => void;
   onClose: () => void;
+  style?: CSSProperties;
 }) {
   return (
-    <div className="guideCatPanel">
+    <div
+      className="guideCatPanel"
+      style={style}
+    >
       <div className="guideCatPanelHeader">
         <span
           className="guideCatPanelAvatar"
@@ -145,6 +227,7 @@ function SidecarContent({
   toggle,
   collapse,
   dismissWelcome,
+  anchorStyle,
 }: {
   viewState: GuideCatSidecarViewState;
   guideCat: GuideCatRecord;
@@ -153,6 +236,7 @@ function SidecarContent({
   toggle: () => void;
   collapse: () => void;
   dismissWelcome: () => void;
+  anchorStyle: CSSProperties;
 }) {
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -190,6 +274,7 @@ function SidecarContent({
         name={guideCat.name}
         unreadCount={unreadCount}
         onClick={toggle}
+        style={anchorStyle}
       />
     );
   }
@@ -202,6 +287,7 @@ function SidecarContent({
           ownerDisplayName={ownerDisplayName}
           onAction={handleAction}
           onDismiss={dismissWelcome}
+          style={anchorStyle}
         />
       </div>
     );
@@ -214,6 +300,7 @@ function SidecarContent({
         ownerDisplayName={ownerDisplayName}
         onAction={handleAction}
         onClose={collapse}
+        style={anchorStyle}
       />
     </div>
   );
@@ -228,6 +315,7 @@ export function GuideCatSidecar({
   const { viewState, toggle, collapse, dismissWelcome } = useGuideCatSidecarState(
     guideCatSidecarSeen,
   );
+  const anchorStyle = useGuideCatSidecarAnchorStyle();
 
   return createPortal(
     <SidecarContent
@@ -238,6 +326,7 @@ export function GuideCatSidecar({
       toggle={toggle}
       collapse={collapse}
       dismissWelcome={dismissWelcome}
+      anchorStyle={anchorStyle}
     />,
     document.body,
   );

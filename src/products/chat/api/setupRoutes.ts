@@ -119,6 +119,7 @@ async function handleSetupReset(
       await writePlatformPreferences(context.dependencies.config.chatStatePath, {
         ...currentPrefs,
         lastProductSurface: null,
+        guideCatSidecarSeen: false,
       });
     } catch (error) {
       reportOwnerMemorySyncFailure('setup_reset_prefs', error);

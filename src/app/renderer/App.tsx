@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
@@ -15,6 +15,7 @@ import {
 } from './routeMap';
 import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
 import { PlatformLobby } from './PlatformLobby';
+import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
 
@@ -35,26 +36,44 @@ export default function PlatformApp() {
   const lastSyncedSurface = useRef<string | null>(null);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    void fetchPlatformEnvelope(controller.signal)
-      .then((envelope) => {
-        if (!controller.signal.aborted) {
+  const refreshEnvelope = useCallback(
+    async (
+      signal?: AbortSignal,
+      options?: { suppressErrors?: boolean },
+    ): Promise<void> => {
+      try {
+        const envelope = await fetchPlatformEnvelope(signal);
+        if (!signal?.aborted) {
           startTransition(() => setState({ status: 'ready', envelope }));
         }
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) {
+      } catch (error) {
+        if (!signal?.aborted && !options?.suppressErrors) {
           setState({
             status: 'error',
             message: error instanceof Error ? error.message : 'Failed to load',
           });
         }
-      });
+      }
+    },
+    [],
+  );
 
+  useEffect(() => {
+    const controller = new AbortController();
+    void refreshEnvelope(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [refreshEnvelope]);
+
+  useEffect(() => {
+    function handleEnvelopeRefresh(): void {
+      void refreshEnvelope(undefined, { suppressErrors: true });
+    }
+
+    window.addEventListener(PLATFORM_ENVELOPE_REFRESH_EVENT, handleEnvelopeRefresh);
+    return () => {
+      window.removeEventListener(PLATFORM_ENVELOPE_REFRESH_EVENT, handleEnvelopeRefresh);
+    };
+  }, [refreshEnvelope]);
 
   const envelope = state.status === 'ready' ? state.envelope : null;
   const setupComplete = Boolean(envelope?.setupCompleteAt);

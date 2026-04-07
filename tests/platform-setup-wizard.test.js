@@ -464,6 +464,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
         lastProductSurface: 'work',
         startAtLogin: true,
         openWindowOnStartup: false,
+        guideCatSidecarSeen: true,
       }),
     });
 
@@ -485,6 +486,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
     assert.equal(payload.setupCompleteAt, null, 'setupCompleteAt should be cleared');
     assert.equal(payload.lastProductSurface, null, 'lastProductSurface should be cleared');
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should be cleared');
+    assert.equal(payload.guideCatSidecarSeen, false, 'guideCatSidecarSeen should be cleared');
     assert.deepEqual(payload.desktop, {
       startAtLogin: true,
       openWindowOnStartup: false,
@@ -514,6 +516,7 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       startAtLogin: true,
       openWindowOnStartup: false,
       lobbyAnimationMode: 'reduced',
+      guideCatSidecarSeen: false,
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -539,6 +542,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       startAtLogin: true,
       openWindowOnStartup: false,
       lobbyAnimationMode: 'reduced',
+      guideCatSidecarSeen: false,
     });
 
     const secondResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
@@ -554,6 +558,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       startAtLogin: false,
       openWindowOnStartup: false,
       lobbyAnimationMode: 'reduced',
+      guideCatSidecarSeen: false,
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -574,6 +579,38 @@ test('POST /api/platform/preferences rejects invalid surface', async () => {
       body: JSON.stringify({ lastProductSurface: 'invalid' }),
     });
     assert.equal(response.status, 400);
+  });
+});
+
+test('POST /api/platform/preferences persists guideCatSidecarSeen into the app shell', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+      }),
+    });
+
+    const prefsResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ guideCatSidecarSeen: true }),
+    });
+    assert.equal(prefsResponse.status, 200);
+    assert.deepEqual(await prefsResponse.json(), {
+      lastProductSurface: null,
+      startAtLogin: true,
+      openWindowOnStartup: false,
+      lobbyAnimationMode: 'reduced',
+      guideCatSidecarSeen: true,
+    });
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shell = await shellResponse.json();
+    assert.equal(shell.guideCatSidecarSeen, true);
   });
 });
 

@@ -5,6 +5,7 @@ import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { CatCreationFields } from '../setup/CatCreationFields.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
+import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 
 export interface SettingsAssistantsProps {
   payload: AppShellPayload;
@@ -125,6 +126,7 @@ export function SettingsAssistants({
       }
       const result = (await response.json()) as { guideCat: GuideCatRecord };
       onPayloadUpdate({ ...payload, guideCat: result.guideCat });
+      dispatchPlatformEnvelopeRefresh();
       setGuideFeedback('Saved.');
     } catch (error) {
       setGuideFeedback(error instanceof Error ? error.message : 'Failed to save Guide Cat.');
@@ -150,6 +152,7 @@ export function SettingsAssistants({
       }
       onPayloadUpdate({ ...payload, guideCat: null });
       setGuideForm(guideCatFormStateFromRecord(null));
+      dispatchPlatformEnvelopeRefresh();
       setGuideFeedback('Guide Cat removed.');
     } catch (error) {
       setGuideFeedback(error instanceof Error ? error.message : 'Failed to remove Guide Cat.');

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
+import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsGeneralProps {
@@ -39,6 +40,7 @@ export function PlatformSettingsGeneral({
         ...payload,
         ownerAvatarUrl: nextAvatarUrl,
       });
+      dispatchPlatformEnvelopeRefresh();
       onFeedback('');
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : errorMessage);
@@ -89,6 +91,7 @@ export function PlatformSettingsGeneral({
         ...payload,
         desktop: persistedPrefs,
       });
+      dispatchPlatformEnvelopeRefresh();
       onFeedback('');
     } catch (error) {
       onPayloadUpdate({
@@ -131,6 +134,7 @@ export function PlatformSettingsGeneral({
           animationMode: body.lobbyAnimationMode ?? nextAnimationMode,
         },
       });
+      dispatchPlatformEnvelopeRefresh();
       onFeedback('');
     } catch (error) {
       onPayloadUpdate({

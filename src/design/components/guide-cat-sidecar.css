@@ -4,7 +4,7 @@
 
 .guideCatPill {
   position: fixed;
-  left: 16px;
+  left: max(16px, calc(var(--guide-cat-anchor-left, 0px) - 18px));
   top: 50%;
   transform: translateY(-50%);
   z-index: 20;
@@ -53,7 +53,7 @@
 
 .guideCatPeek {
   position: fixed;
-  left: 16px;
+  left: max(16px, calc(var(--guide-cat-anchor-left, 0px) + 16px));
   top: 50%;
   transform: translateY(-50%);
   z-index: 20;
@@ -151,9 +151,9 @@
 
 .guideCatPanel {
   position: fixed;
-  left: 0;
+  left: var(--guide-cat-anchor-left, 0px);
   top: 0;
-  width: 320px;
+  width: min(320px, calc(100vw - var(--guide-cat-anchor-left, 0px)));
   height: 100vh;
   z-index: 20;
   background: var(--panel);
@@ -262,6 +262,7 @@
   .guideCatPill {
     top: auto;
     bottom: 16px;
+    left: 16px;
     transform: none;
   }
 
@@ -270,6 +271,7 @@
   }
 
   .guideCatPeek {
+    left: 16px;
     top: auto;
     bottom: 64px;
     transform: none;
