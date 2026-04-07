@@ -168,7 +168,7 @@ fast without reviving static fallback catalogs.
 - [x] Task 3.6: After Task 3.9 lands, replace per-provider availability
       fan-out in the hot selector path with one runtime topology read plus one
       bulk runtime availability read
-- [ ] Task 3.7: Add a short-lived server-side truthful selector cache with
+- [x] Task 3.7: Add a short-lived server-side truthful selector cache with
       in-flight dedupe and bounded stale-while-revalidate behavior so repeated
       selector mounts do not refetch the same registry every time
 - [ ] Task 3.8: Make `GET /api/providers/{provider}/models` and
@@ -332,6 +332,7 @@ recovery
 | 2026-04-08 | Performance follow-through added: truthful selectors must stop rebuilding provider truth through minute-scale per-provider fan-out, and may instead use bulk runtime truth plus short-lived runtime-backed caching |
 | 2026-04-08 | Runtime follow-through added: platform docs now explicitly depend on a lighter runtime availability-only selector scope plus complementary timeout/cache tuning instead of assuming product-side caching alone fixes cold-start latency |
 | 2026-04-08 | Bulk truthful selector read landed: `cats-platform` now merges one runtime topology read with one `scope=availability` diagnostics read instead of fan-outing per provider, and the shared runtime client now exposes the additive diagnostics `scope` query for selector callers. |
+| 2026-04-08 | Short-lived selector cache landed: provider registry reads now reuse a 5-second truthful cache keyed by selector scope, dedupe in-flight fetches per runtime client, and serve bounded stale truth while a background refresh updates the cache. |
 
 ---
 

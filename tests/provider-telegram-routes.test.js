@@ -513,6 +513,126 @@ test('GET /api/providers retries a transient bulk availability failure before su
   assert.equal(diagnosticsAttempts, 2);
 });
 
+test('GET /api/providers reuses a fresh truthful selector cache on repeated opens', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderConfig = runtimeClient.getProviderConfig;
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  let configCalls = 0;
+  let diagnosticsCalls = 0;
+
+  runtimeClient.getProviderConfig = async () => {
+    configCalls += 1;
+    return originalGetProviderConfig.call(runtimeClient);
+  };
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    diagnosticsCalls += 1;
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const first = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(first.status, 200);
+    const second = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(second.status, 200);
+  });
+
+  assert.equal(configCalls, 1);
+  assert.equal(diagnosticsCalls, 1);
+});
+
+test('GET /api/providers dedupes in-flight truthful selector reads', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderConfig = runtimeClient.getProviderConfig;
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  let configCalls = 0;
+  let diagnosticsCalls = 0;
+
+  runtimeClient.getProviderConfig = async () => {
+    configCalls += 1;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    return originalGetProviderConfig.call(runtimeClient);
+  };
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    diagnosticsCalls += 1;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const [first, second] = await Promise.all([
+      fetch(`${baseUrl}/api/providers`),
+      fetch(`${baseUrl}/api/providers`),
+    ]);
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+  });
+
+  assert.equal(configCalls, 1);
+  assert.equal(diagnosticsCalls, 1);
+});
+
+test('GET /api/providers serves stale truthful selector cache while refreshing in background', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderConfig = runtimeClient.getProviderConfig;
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  const originalDateNow = Date.now;
+  let nowMs = Date.parse('2026-04-08T10:00:00.000Z');
+  let configCalls = 0;
+  let diagnosticsCalls = 0;
+  let releaseRefresh = null;
+  let refreshStartedResolve = null;
+  const refreshStarted = new Promise((resolve) => {
+    refreshStartedResolve = resolve;
+  });
+  const refreshGate = new Promise((resolve) => {
+    releaseRefresh = resolve;
+  });
+
+  Date.now = () => nowMs;
+  runtimeClient.getProviderConfig = async () => {
+    configCalls += 1;
+    return originalGetProviderConfig.call(runtimeClient);
+  };
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    diagnosticsCalls += 1;
+    if (diagnosticsCalls > 1) {
+      refreshStartedResolve?.();
+      await refreshGate;
+    }
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+
+  try {
+    await withServer(runtimeClient, async (baseUrl) => {
+      const first = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(first.status, 200);
+
+      nowMs += 6_000;
+      const secondPromise = fetch(`${baseUrl}/api/providers`);
+      const second = await Promise.race([
+        secondPromise,
+        new Promise((_, reject) => setTimeout(
+          () => reject(new Error('stale selector cache waited on refresh')),
+          50,
+        )),
+      ]);
+      assert.equal(second.status, 200);
+      const payload = await second.json();
+      assert.equal(payload.state, 'ready');
+
+      await refreshStarted;
+      releaseRefresh?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await secondPromise;
+    });
+  } finally {
+    Date.now = originalDateNow;
+  }
+
+  assert.equal(configCalls, 2);
+  assert.equal(diagnosticsCalls, 2);
+});
+
 test('GET /api/providers exposes runtime setup recovery when no usable targets remain', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.getProviderDiagnostics = async () => ({

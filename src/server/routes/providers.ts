@@ -19,6 +19,8 @@ interface ProviderRouteDependencies {
 }
 
 type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
+const TRUTHFUL_SELECTOR_CACHE_TTL_MS = 5_000;
+const TRUTHFUL_SELECTOR_STALE_WINDOW_MS = 15_000;
 
 interface TruthfulProviderRegistryReadModel {
   state: ProviderRegistryState;
@@ -29,6 +31,19 @@ interface TruthfulProviderRegistryReadModel {
   };
   warnings?: string[];
 }
+
+interface TruthfulProviderRegistryCacheEntry {
+  value: TruthfulProviderRegistryReadModel;
+  freshUntilMs: number;
+  staleUntilMs: number;
+}
+
+interface TruthfulProviderRegistryCacheState {
+  entries: Map<string, TruthfulProviderRegistryCacheEntry>;
+  inflight: Map<string, Promise<TruthfulProviderRegistryReadModel>>;
+}
+
+const truthfulProviderRegistryCache = new WeakMap<RuntimeClient, TruthfulProviderRegistryCacheState>();
 
 function isSelectableAvailabilityStatus(status: string | null | undefined): boolean {
   return status === 'ok' || status === 'degraded';
@@ -105,6 +120,34 @@ function mergeTruthfulProviderRegistry(
   });
 }
 
+function getTruthfulProviderRegistryCacheState(
+  runtimeClient: RuntimeClient,
+): TruthfulProviderRegistryCacheState {
+  let state = truthfulProviderRegistryCache.get(runtimeClient);
+  if (!state) {
+    state = {
+      entries: new Map(),
+      inflight: new Map(),
+    };
+    truthfulProviderRegistryCache.set(runtimeClient, state);
+  }
+  return state;
+}
+
+function buildTruthfulProviderRegistryCacheKey(
+  options: {
+    provider?: string | null;
+  } = {},
+): string {
+  return options.provider?.trim() || '*';
+}
+
+function shouldCacheTruthfulProviderRegistry(
+  value: TruthfulProviderRegistryReadModel,
+): boolean {
+  return value.state !== 'runtime_unreachable';
+}
+
 async function readProviderConfigWithRetry(
   dependencies: ProviderRouteDependencies,
 ): Promise<RuntimeProviderConfigRegistry> {
@@ -143,7 +186,7 @@ async function readProviderDiagnosticsWithRetry(
   throw lastError instanceof Error ? lastError : new Error('cats-runtime is unavailable.');
 }
 
-async function readTruthfulProviderRegistry(
+async function loadTruthfulProviderRegistryFromRuntime(
   dependencies: ProviderRouteDependencies,
   options: {
     provider?: string | null;
@@ -214,6 +257,62 @@ async function readTruthfulProviderRegistry(
     state: 'ready',
     providers,
   };
+}
+
+async function refreshTruthfulProviderRegistry(
+  dependencies: ProviderRouteDependencies,
+  cacheState: TruthfulProviderRegistryCacheState,
+  cacheKey: string,
+  options: {
+    provider?: string | null;
+  } = {},
+): Promise<TruthfulProviderRegistryReadModel> {
+  const inflight = cacheState.inflight.get(cacheKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const refreshPromise = loadTruthfulProviderRegistryFromRuntime(dependencies, options)
+    .then((value) => {
+      if (shouldCacheTruthfulProviderRegistry(value)) {
+        const now = Date.now();
+        cacheState.entries.set(cacheKey, {
+          value,
+          freshUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS,
+          staleUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS + TRUTHFUL_SELECTOR_STALE_WINDOW_MS,
+        });
+      }
+      return value;
+    })
+    .finally(() => {
+      cacheState.inflight.delete(cacheKey);
+    });
+
+  cacheState.inflight.set(cacheKey, refreshPromise);
+  return refreshPromise;
+}
+
+async function readTruthfulProviderRegistry(
+  dependencies: ProviderRouteDependencies,
+  options: {
+    provider?: string | null;
+  } = {},
+): Promise<TruthfulProviderRegistryReadModel> {
+  const cacheState = getTruthfulProviderRegistryCacheState(dependencies.runtimeClient);
+  const cacheKey = buildTruthfulProviderRegistryCacheKey(options);
+  const now = Date.now();
+  const cached = cacheState.entries.get(cacheKey);
+
+  if (cached && cached.freshUntilMs > now) {
+    return cached.value;
+  }
+
+  if (cached && cached.staleUntilMs > now) {
+    void refreshTruthfulProviderRegistry(dependencies, cacheState, cacheKey, options).catch(() => {});
+    return cached.value;
+  }
+
+  return refreshTruthfulProviderRegistry(dependencies, cacheState, cacheKey, options);
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
