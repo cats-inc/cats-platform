@@ -148,6 +148,56 @@ function shouldCacheTruthfulProviderRegistry(
   return value.state !== 'runtime_unreachable';
 }
 
+function writeTruthfulProviderRegistryCacheEntry(
+  cacheState: TruthfulProviderRegistryCacheState,
+  cacheKey: string,
+  value: TruthfulProviderRegistryReadModel,
+  timing: {
+    freshUntilMs?: number;
+    staleUntilMs?: number;
+  } = {},
+): void {
+  if (!shouldCacheTruthfulProviderRegistry(value)) {
+    return;
+  }
+
+  const now = Date.now();
+  cacheState.entries.set(cacheKey, {
+    value,
+    freshUntilMs: timing.freshUntilMs ?? (now + TRUTHFUL_SELECTOR_CACHE_TTL_MS),
+    staleUntilMs: timing.staleUntilMs ?? (
+      now + TRUTHFUL_SELECTOR_CACHE_TTL_MS + TRUTHFUL_SELECTOR_STALE_WINDOW_MS
+    ),
+  });
+}
+
+function deriveTruthfulProviderRegistryForProvider(
+  source: TruthfulProviderRegistryReadModel,
+  providerId: string,
+): TruthfulProviderRegistryReadModel {
+  if (source.state !== 'ready') {
+    return source;
+  }
+
+  const provider = source.providers.find((entry) => entry.id === providerId);
+  if (!provider) {
+    return {
+      state: 'no_usable_targets',
+      providers: [],
+      recovery: {
+        openRuntimeSetupPath: '/runtime/setup',
+      },
+      ...(source.warnings ? { warnings: [...source.warnings] } : {}),
+    };
+  }
+
+  return {
+    state: 'ready',
+    providers: [provider],
+    ...(source.warnings ? { warnings: [...source.warnings] } : {}),
+  };
+}
+
 async function readProviderConfigWithRetry(
   dependencies: ProviderRouteDependencies,
 ): Promise<RuntimeProviderConfigRegistry> {
@@ -192,21 +242,41 @@ async function loadTruthfulProviderRegistryFromRuntime(
     provider?: string | null;
   } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
-  let runtimeConfig: RuntimeProviderConfigRegistry;
-  try {
-    runtimeConfig = await readProviderConfigWithRetry(dependencies);
-  } catch (error) {
+  const requestedProvider = options.provider?.trim() || null;
+  const [runtimeConfigResult, diagnosticsResult] = await Promise.allSettled([
+    readProviderConfigWithRetry(dependencies),
+    readProviderDiagnosticsWithRetry(dependencies, {
+      provider: requestedProvider,
+    }),
+  ]);
+
+  if (runtimeConfigResult.status === 'rejected') {
     return {
       state: 'runtime_unreachable',
       providers: [],
       recovery: {
         retryable: true,
       },
-      warnings: [error instanceof Error ? error.message : 'cats-runtime is unavailable.'],
+      warnings: [runtimeConfigResult.reason instanceof Error
+        ? runtimeConfigResult.reason.message
+        : 'cats-runtime is unavailable.'],
     };
   }
 
-  const requestedProvider = options.provider?.trim() || null;
+  if (diagnosticsResult.status === 'rejected') {
+    return {
+      state: 'runtime_unreachable',
+      providers: [],
+      recovery: {
+        retryable: true,
+      },
+      warnings: [diagnosticsResult.reason instanceof Error
+        ? diagnosticsResult.reason.message
+        : 'cats-runtime is unavailable.'],
+    };
+  }
+
+  const runtimeConfig = runtimeConfigResult.value;
   const configuredProductProviders = listProductProviders().filter((provider) =>
     runtimeConfig[provider.id] && (!requestedProvider || provider.id === requestedProvider)
   );
@@ -221,26 +291,10 @@ async function loadTruthfulProviderRegistryFromRuntime(
     };
   }
 
-  let diagnostics: RuntimeProviderDiagnosticsPayload;
-  try {
-    diagnostics = await readProviderDiagnosticsWithRetry(dependencies, {
-      provider: requestedProvider,
-    });
-  } catch (error) {
-    return {
-      state: 'runtime_unreachable',
-      providers: [],
-      recovery: {
-        retryable: true,
-      },
-      warnings: [error instanceof Error ? error.message : 'cats-runtime is unavailable.'],
-    };
-  }
-
   const providers = mergeTruthfulProviderRegistry(
     configuredProductProviders,
     runtimeConfig,
-    diagnostics,
+    diagnosticsResult.value,
   );
 
   if (providers.length === 0) {
@@ -292,6 +346,53 @@ async function refreshTruthfulProviderRegistry(
   return refreshPromise;
 }
 
+function tryReadTruthfulProviderRegistryFromRootCache(
+  dependencies: ProviderRouteDependencies,
+  cacheState: TruthfulProviderRegistryCacheState,
+  provider: string,
+  now: number,
+): TruthfulProviderRegistryReadModel | Promise<TruthfulProviderRegistryReadModel> | null {
+  const rootCacheKey = buildTruthfulProviderRegistryCacheKey();
+  const rootCached = cacheState.entries.get(rootCacheKey);
+  if (rootCached && rootCached.staleUntilMs > now) {
+    const derived = deriveTruthfulProviderRegistryForProvider(rootCached.value, provider);
+    writeTruthfulProviderRegistryCacheEntry(
+      cacheState,
+      buildTruthfulProviderRegistryCacheKey({ provider }),
+      derived,
+      {
+        freshUntilMs: rootCached.freshUntilMs,
+        staleUntilMs: rootCached.staleUntilMs,
+      },
+    );
+
+    if (rootCached.freshUntilMs <= now) {
+      void refreshTruthfulProviderRegistry(
+        dependencies,
+        cacheState,
+        rootCacheKey,
+      ).catch(() => {});
+    }
+
+    return derived;
+  }
+
+  const rootInflight = cacheState.inflight.get(rootCacheKey);
+  if (rootInflight) {
+    return rootInflight.then((value) => {
+      const derived = deriveTruthfulProviderRegistryForProvider(value, provider);
+      writeTruthfulProviderRegistryCacheEntry(
+        cacheState,
+        buildTruthfulProviderRegistryCacheKey({ provider }),
+        derived,
+      );
+      return derived;
+    });
+  }
+
+  return null;
+}
+
 async function readTruthfulProviderRegistry(
   dependencies: ProviderRouteDependencies,
   options: {
@@ -310,6 +411,19 @@ async function readTruthfulProviderRegistry(
   if (cached && cached.staleUntilMs > now) {
     void refreshTruthfulProviderRegistry(dependencies, cacheState, cacheKey, options).catch(() => {});
     return cached.value;
+  }
+
+  const requestedProvider = options.provider?.trim() || null;
+  if (requestedProvider) {
+    const cachedFromRoot = tryReadTruthfulProviderRegistryFromRootCache(
+      dependencies,
+      cacheState,
+      requestedProvider,
+      now,
+    );
+    if (cachedFromRoot) {
+      return cachedFromRoot;
+    }
   }
 
   return refreshTruthfulProviderRegistry(dependencies, cacheState, cacheKey, options);
@@ -358,7 +472,7 @@ export async function handleProviderModels(
     return;
   }
 
-  const registry = await readTruthfulProviderRegistry(dependencies, { provider });
+  const registry = await readTruthfulProviderRegistry(dependencies);
   if (registry.state === 'runtime_unreachable') {
     sendRestError(
       response,
@@ -431,7 +545,7 @@ export async function handleAdvancedProviderModels(
     return;
   }
 
-  const registry = await readTruthfulProviderRegistry(dependencies, { provider });
+  const registry = await readTruthfulProviderRegistry(dependencies);
   if (registry.state === 'runtime_unreachable') {
     sendRestError(
       response,

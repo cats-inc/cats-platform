@@ -308,7 +308,7 @@ test('runtime client returns truthful provider diagnostics for filtered selector
     AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [10000]);
+  assert.deepEqual(timeoutCalls, [20000]);
 });
 
 test('runtime client uses the extended provider-registry timeout for provider config reads', async () => {

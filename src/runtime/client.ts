@@ -281,11 +281,13 @@ interface RuntimeClientOptions {
   apiKey?: string;
   timeoutMs?: number;
   providerRegistryTimeoutMs?: number;
+  selectorDiagnosticsTimeoutMs?: number;
   setupMutationTimeoutMs?: number;
 }
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
+const DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS = 20_000;
 const DEFAULT_RUNTIME_SETUP_MUTATION_TIMEOUT_MS = 120_000;
 
 export class RuntimeRequestError extends Error {
@@ -299,6 +301,7 @@ export class CatsRuntimeClient implements RuntimeClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly providerRegistryTimeoutMs: number;
+  private readonly selectorDiagnosticsTimeoutMs: number;
   private readonly setupMutationTimeoutMs: number;
 
   constructor(
@@ -309,6 +312,8 @@ export class CatsRuntimeClient implements RuntimeClient {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS;
     this.providerRegistryTimeoutMs = options.providerRegistryTimeoutMs
       ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS);
+    this.selectorDiagnosticsTimeoutMs = options.selectorDiagnosticsTimeoutMs
+      ?? Math.max(this.providerRegistryTimeoutMs, DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS);
     this.setupMutationTimeoutMs = options.setupMutationTimeoutMs
       ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_SETUP_MUTATION_TIMEOUT_MS);
   }
@@ -394,7 +399,11 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.providerRegistryTimeoutMs),
+      signal: AbortSignal.timeout(
+        query.scope === 'availability'
+          ? this.selectorDiagnosticsTimeoutMs
+          : this.providerRegistryTimeoutMs,
+      ),
     });
 
     if (!response.ok) {

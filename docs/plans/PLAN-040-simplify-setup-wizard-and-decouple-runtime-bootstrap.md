@@ -171,7 +171,7 @@ fast without reviving static fallback catalogs.
 - [x] Task 3.7: Add a short-lived server-side truthful selector cache with
       in-flight dedupe and bounded stale-while-revalidate behavior so repeated
       selector mounts do not refetch the same registry every time
-- [ ] Task 3.8: Make `GET /api/providers/{provider}/models` and
+- [x] Task 3.8: Make `GET /api/providers/{provider}/models` and
       `GET /api/providers/{provider}/models/advanced` reuse established
       truthful selector state or the shared selector cache instead of
       rebuilding the full provider registry before every catalog read
@@ -183,7 +183,7 @@ fast without reviving static fallback catalogs.
       `availability` at the per-target level, omitting `config`, `checks`,
       `setup`, `compatibility`, `metering`, `compatibilityEvidence`,
       `providerEvolution`, and `reprobe`
-- [ ] Task 3.10: Tune selector-specific timeout budgets for the new bulk read
+- [x] Task 3.10: Tune selector-specific timeout budgets for the new bulk read
       path, and keep the product cache TTL intentionally short so it
       complements the runtime's existing compatibility cache instead of
       pretending a broader diagnostics cache already exists
@@ -333,6 +333,7 @@ recovery
 | 2026-04-08 | Runtime follow-through added: platform docs now explicitly depend on a lighter runtime availability-only selector scope plus complementary timeout/cache tuning instead of assuming product-side caching alone fixes cold-start latency |
 | 2026-04-08 | Bulk truthful selector read landed: `cats-platform` now merges one runtime topology read with one `scope=availability` diagnostics read instead of fan-outing per provider, and the shared runtime client now exposes the additive diagnostics `scope` query for selector callers. |
 | 2026-04-08 | Short-lived selector cache landed: provider registry reads now reuse a 5-second truthful cache keyed by selector scope, dedupe in-flight fetches per runtime client, and serve bounded stale truth while a background refresh updates the cache. |
+| 2026-04-08 | Selector follow-through landed end-to-end: provider model and advanced-model routes now reuse the shared selector cache instead of rebuilding truth per provider, and selector-scoped diagnostics now use a longer timeout budget while config + availability reads run in parallel on cold cache misses. |
 
 ---
 

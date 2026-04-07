@@ -214,6 +214,20 @@ function createRuntimeStub() {
         warnings: [],
       };
     },
+    async getAdvancedProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultSelection: null,
+        entries: [
+          { id: `${provider}-default`, label: `${provider} default`, default: true },
+        ],
+        presets: [],
+        controls: [],
+        warnings: [],
+      };
+    },
     async createSession() {
       sessionCounter += 1;
       return {
@@ -732,6 +746,76 @@ test('GET /api/providers/:provider/models proxies runtime-owned catalog', async 
     assert.equal(payload.catalog.source, 'config');
     assert.equal(payload.catalog.models[0].id, 'openclaw-default');
   });
+});
+
+test('GET /api/providers/:provider/models reuses cached selector truth after registry load', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderConfig = runtimeClient.getProviderConfig;
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  const originalGetProviderModels = runtimeClient.getProviderModels;
+  let configCalls = 0;
+  let diagnosticsCalls = 0;
+  let modelCalls = 0;
+
+  runtimeClient.getProviderConfig = async () => {
+    configCalls += 1;
+    return originalGetProviderConfig.call(runtimeClient);
+  };
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    diagnosticsCalls += 1;
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+  runtimeClient.getProviderModels = async (provider, instance) => {
+    modelCalls += 1;
+    return originalGetProviderModels.call(runtimeClient, provider, instance);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const registryResponse = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(registryResponse.status, 200);
+
+    const modelsResponse = await fetch(`${baseUrl}/api/providers/codex/models`);
+    assert.equal(modelsResponse.status, 200);
+  });
+
+  assert.equal(configCalls, 1);
+  assert.equal(diagnosticsCalls, 1);
+  assert.equal(modelCalls, 1);
+});
+
+test('GET /api/providers/:provider/models/advanced reuses cached selector truth after registry load', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderConfig = runtimeClient.getProviderConfig;
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  const originalGetAdvancedProviderModels = runtimeClient.getAdvancedProviderModels;
+  let configCalls = 0;
+  let diagnosticsCalls = 0;
+  let advancedCalls = 0;
+
+  runtimeClient.getProviderConfig = async () => {
+    configCalls += 1;
+    return originalGetProviderConfig.call(runtimeClient);
+  };
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    diagnosticsCalls += 1;
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+  runtimeClient.getAdvancedProviderModels = async (provider, instance) => {
+    advancedCalls += 1;
+    return originalGetAdvancedProviderModels.call(runtimeClient, provider, instance);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const registryResponse = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(registryResponse.status, 200);
+
+    const advancedResponse = await fetch(`${baseUrl}/api/providers/codex/models/advanced`);
+    assert.equal(advancedResponse.status, 200);
+  });
+
+  assert.equal(configCalls, 1);
+  assert.equal(diagnosticsCalls, 1);
+  assert.equal(advancedCalls, 1);
 });
 
 test('GET /api/providers/:provider/models forwards the optional instance query', async () => {
