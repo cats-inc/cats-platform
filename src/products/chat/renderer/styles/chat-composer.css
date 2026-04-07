@@ -225,7 +225,7 @@
   gap: 8px;
   width: 100%;
   max-width: var(--chat-transcript-max-width, 680px);
-  margin: 12px auto 0;
+  margin: 10px auto 0;
   padding-right: 16px;
 }
 
