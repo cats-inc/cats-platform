@@ -291,7 +291,10 @@ function seedBossCatGreeting(
   }
 
   const channel = requireChannel(state, channelId);
-  if (channel.catAssignments.length > 0 || channel.messages.length > 0) {
+  if (
+    (channel.participantAssignments?.length ?? channel.catAssignments.length) > 0
+    || channel.messages.length > 0
+  ) {
     return state;
   }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
+  ChannelParticipantAssignment,
   ChannelCatAssignment,
   ChatCapabilities,
   ChatCat,
@@ -141,9 +142,79 @@ export function normalizeChannelAssignment(
   );
 
   return {
+    participantId: readString(assignmentRecord.participantId, fallbackCat.id),
+    sourceKind: 'cat',
+    sourceRefId: readString(assignmentRecord.sourceRefId, fallbackCat.id),
     catId: readString(assignmentRecord.catId, fallbackCat.id),
+    name: readString(assignmentRecord.name, fallbackCat.name),
     status: rawStatus === 'removed' ? 'removed' : 'active',
     roles: readStringArray(assignmentRecord.roles),
+    roleHint: readNullableString(assignmentRecord.roleHint),
+    joinedAt: readString(assignmentRecord.joinedAt, new Date().toISOString()),
+    leftAt: readNullableString(assignmentRecord.leftAt),
+    execution: {
+      ...execution,
+      modelSelection: parseProviderModelSelection(assignmentRecord.modelSelection)
+        ?? parseProviderModelSelection(asRecord(assignmentRecord.execution)?.modelSelection),
+    },
+  };
+}
+
+function channelParticipantAssignmentFromCatAssignment(
+  assignment: ChannelCatAssignment,
+): ChannelParticipantAssignment {
+  return {
+    participantId: assignment.participantId,
+    sourceKind: assignment.sourceKind,
+    sourceRefId: assignment.sourceRefId,
+    name: assignment.name,
+    status: assignment.status,
+    roles: structuredClone(assignment.roles),
+    roleHint: assignment.roleHint,
+    joinedAt: assignment.joinedAt,
+    leftAt: assignment.leftAt,
+    execution: structuredClone(assignment.execution),
+  };
+}
+
+function normalizeParticipantAssignment(
+  rawAssignment: unknown,
+  catsById: Map<string, ChatCat>,
+): ChannelParticipantAssignment | null {
+  const assignmentRecord = asRecord(rawAssignment);
+  if (!assignmentRecord) {
+    return null;
+  }
+
+  const rawStatus = readString(assignmentRecord.status, 'active');
+  const sourceKind = readString(assignmentRecord.sourceKind, 'adhoc') === 'cat'
+    ? 'cat'
+    : 'adhoc';
+  const sourceRefId = readNullableString(assignmentRecord.sourceRefId);
+  const fallbackCat = sourceKind === 'cat' && sourceRefId
+    ? catsById.get(sourceRefId) ?? null
+    : null;
+  const fallbackTarget = fallbackCat?.defaultExecutionTarget ?? {
+    provider: 'claude',
+    instance: null,
+    model: null,
+  };
+  const execution = normalizeExecutionState(
+    assignmentRecord.execution,
+    fallbackTarget,
+  );
+
+  return {
+    participantId: readString(
+      assignmentRecord.participantId,
+      sourceKind === 'cat' && sourceRefId ? sourceRefId : randomUUID(),
+    ),
+    sourceKind,
+    sourceRefId,
+    name: readString(assignmentRecord.name, fallbackCat?.name ?? 'Participant'),
+    status: rawStatus === 'removed' ? 'removed' : 'active',
+    roles: readStringArray(assignmentRecord.roles),
+    roleHint: readNullableString(assignmentRecord.roleHint),
     joinedAt: readString(assignmentRecord.joinedAt, new Date().toISOString()),
     leftAt: readNullableString(assignmentRecord.leftAt),
     execution: {
@@ -195,8 +266,21 @@ export function normalizeChannel(
     ? channelRecord.messages.map((message) => normalizeMessage(message, channelId))
     : [];
   const roomRouting = normalizeRoomRouting(channelRecord.roomRouting);
+  const participantAssignments = Array.isArray(channelRecord.participantAssignments)
+    ? channelRecord.participantAssignments
+        .map((assignment) => normalizeParticipantAssignment(assignment, catsById))
+        .filter(
+          (assignment): assignment is ChannelParticipantAssignment =>
+            assignment !== null,
+        )
+    : catAssignments.map((assignment) => channelParticipantAssignmentFromCatAssignment(assignment));
   const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
     catAssignments,
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
+  const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
+    participantAssignments,
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
@@ -208,11 +292,11 @@ export function normalizeChannel(
         ? channelRecord.channelKind
         : null,
     roomMode: roomRouting.mode,
-    participants: normalizedCatAssignments,
+    participants: normalizedParticipantAssignments,
   });
   if (channelKind === 'direct_lane') {
     roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
-      normalizedCatAssignments,
+      normalizedParticipantAssignments,
       roomRouting.leadParticipantId,
     );
   }
@@ -221,7 +305,7 @@ export function normalizeChannel(
     : channelRecord.composerMode === 'solo'
       ? 'solo'
       : channelKind === 'direct_lane'
-          || normalizedCatAssignments.some((assignment) => assignment.status === 'active')
+          || normalizedParticipantAssignments.some((assignment) => assignment.status === 'active')
           || Boolean(roomRouting.leadParticipantId)
         ? 'cat_led'
         : 'solo';
@@ -258,6 +342,7 @@ export function normalizeChannel(
         { provider: 'claude', instance: null, model: null },
       ),
     catAssignments: normalizedCatAssignments,
+    participantAssignments: normalizedParticipantAssignments,
     messages,
     roomRouting,
   };

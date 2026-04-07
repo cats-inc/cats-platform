@@ -1,14 +1,20 @@
 import type {
+  ChannelParticipantAssignment,
   ChannelCatAssignment,
   ChatChannelKind,
 } from '../api/contracts.js';
 import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 
-type ChannelParticipantTopologyRef = Pick<ChannelCatAssignment, 'catId' | 'status'>;
+type ChannelParticipantTopologyRef = Pick<
+  ChannelParticipantAssignment,
+  'participantId' | 'status'
+> | Pick<ChannelCatAssignment, 'catId' | 'status'>;
 type ChannelTopologyCarrier = {
   channelKind?: ChatChannelKind | null;
   roomRouting?: { mode?: RoomRoutingMode | null } | null;
+  participantAssignments?: readonly ChannelParticipantTopologyRef[] | null;
   catAssignments?: readonly ChannelParticipantTopologyRef[] | null;
+  assignedParticipants?: readonly ChannelParticipantTopologyRef[] | null;
   assignedCats?: readonly ChannelParticipantTopologyRef[] | null;
 };
 type ChannelTopologySummaryRef = {
@@ -16,16 +22,21 @@ type ChannelTopologySummaryRef = {
   roomMode?: RoomRoutingMode | null;
 };
 
-function dedupeChannelAssignments(
-  assignments: readonly ChannelCatAssignment[],
-): ChannelCatAssignment[] {
-  const seenCatIds = new Set<string>();
-  const normalized: ChannelCatAssignment[] = [];
+function readTopologyParticipantId(assignment: ChannelParticipantTopologyRef): string {
+  return 'participantId' in assignment ? assignment.participantId : assignment.catId;
+}
+
+function dedupeChannelAssignments<T extends ChannelParticipantTopologyRef>(
+  assignments: readonly T[],
+): T[] {
+  const seenParticipantIds = new Set<string>();
+  const normalized: T[] = [];
   for (const assignment of assignments) {
-    if (seenCatIds.has(assignment.catId)) {
+    const participantId = readTopologyParticipantId(assignment);
+    if (!participantId || seenParticipantIds.has(participantId)) {
       continue;
     }
-    seenCatIds.add(assignment.catId);
+    seenParticipantIds.add(participantId);
     normalized.push(assignment);
   }
   return normalized;
@@ -77,8 +88,14 @@ export function resolveChannelKind(input: {
 function readChannelTopologyParticipants(
   channel: ChannelTopologyCarrier,
 ): readonly ChannelParticipantTopologyRef[] {
+  if (channel.assignedParticipants && channel.assignedParticipants.length > 0) {
+    return channel.assignedParticipants;
+  }
   if (channel.assignedCats && channel.assignedCats.length > 0) {
     return channel.assignedCats;
+  }
+  if (channel.participantAssignments && channel.participantAssignments.length > 0) {
+    return channel.participantAssignments;
   }
   return channel.catAssignments ?? [];
 }
@@ -108,28 +125,34 @@ export function isDirectLaneSummary(
 }
 
 export function resolveDirectLaneLeadParticipantId(
-  assignments: readonly ChannelCatAssignment[],
+  assignments: readonly ChannelParticipantTopologyRef[],
   leadParticipantId: string | null | undefined,
 ): string | null {
   const dedupedAssignments = dedupeChannelAssignments(assignments);
   if (
     leadParticipantId
-    && dedupedAssignments.some((assignment) => assignment.catId === leadParticipantId)
+    && dedupedAssignments.some((assignment) => readTopologyParticipantId(assignment) === leadParticipantId)
   ) {
     return leadParticipantId;
   }
 
-  return dedupedAssignments.find((assignment) => assignment.status === 'active')?.catId
-    ?? dedupedAssignments[0]?.catId
-    ?? leadParticipantId
-    ?? null;
+  const activeAssignment = dedupedAssignments.find((assignment) => assignment.status === 'active');
+  const fallbackAssignment = dedupedAssignments[0] ?? null;
+
+  if (activeAssignment) {
+    return readTopologyParticipantId(activeAssignment);
+  }
+  if (fallbackAssignment) {
+    return readTopologyParticipantId(fallbackAssignment);
+  }
+  return leadParticipantId ?? null;
 }
 
-export function normalizeChannelAssignmentsForRoomMode(
-  assignments: readonly ChannelCatAssignment[],
+export function normalizeChannelAssignmentsForRoomMode<T extends ChannelParticipantTopologyRef>(
+  assignments: readonly T[],
   roomMode: RoomRoutingMode,
   leadParticipantId: string | null | undefined,
-): ChannelCatAssignment[] {
+): T[] {
   const dedupedAssignments = dedupeChannelAssignments(assignments);
   if (roomMode !== 'direct_cat_chat') {
     return dedupedAssignments;
@@ -143,5 +166,5 @@ export function normalizeChannelAssignmentsForRoomMode(
     return [];
   }
 
-  return dedupedAssignments.filter((assignment) => assignment.catId === directLeadId);
+  return dedupedAssignments.filter((assignment) => readTopologyParticipantId(assignment) === directLeadId);
 }

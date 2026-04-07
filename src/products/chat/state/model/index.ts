@@ -1,5 +1,6 @@
 import type {
   AssignChannelCatInput,
+  ChannelParticipantAssignment,
   CreateConcurrentChatGroupInput,
   CreateChatChannelInput,
   MessageUsageSummary,
@@ -34,6 +35,7 @@ import {
   createAssignmentRecord,
   createCatRecord,
   createMessageRecord,
+  createTemporaryParticipantAssignment,
 } from './recordBuilders.js';
 import {
   cloneState,
@@ -306,19 +308,40 @@ export function createConcurrentGroup(
   return nextState;
 }
 
+function resolveChannelParticipantAssignments(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+): ChannelParticipantAssignment[] {
+  if (Array.isArray(channel.participantAssignments) && channel.participantAssignments.length > 0) {
+    return channel.participantAssignments;
+  }
+
+  return channel.catAssignments.map((assignment) => ({
+    participantId: assignment.participantId,
+    sourceKind: assignment.sourceKind,
+    sourceRefId: assignment.sourceRefId,
+    name: assignment.name,
+    status: assignment.status,
+    roles: structuredClone(assignment.roles),
+    roleHint: assignment.roleHint,
+    joinedAt: assignment.joinedAt,
+    leftAt: assignment.leftAt,
+    execution: structuredClone(assignment.execution),
+  }));
+}
+
 function describeCreatedRoom(
   state: ChatState,
   channelId: string,
 ): string {
   const channel = requireChannel(state, channelId);
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  const activeAssignments = channel.catAssignments.filter((assignment) => assignment.status === 'active');
-  const activeCatNames = activeAssignments
-    .map((assignment) => state.cats.find((cat) => cat.id === assignment.catId)?.name ?? null)
+  const activeParticipantNames = resolveChannelParticipantAssignments(channel)
+    .filter((assignment) => assignment.status === 'active')
+    .map((assignment) => assignment.name.trim())
     .filter((name): name is string => Boolean(name));
 
   if (roomRouting.mode === 'direct_cat_chat') {
-    return `direct chat with ${activeCatNames[0] ?? 'the selected Cat'}`;
+    return `direct chat with ${activeParticipantNames[0] ?? 'the selected participant'}`;
   }
 
   if (channel.composerMode === 'solo' && channel.pendingProvider) {
@@ -330,12 +353,12 @@ function describeCreatedRoom(
     })}`;
   }
 
-  if (activeCatNames.length === 1) {
-    return `Cat-led chat with ${activeCatNames[0]}`;
+  if (activeParticipantNames.length === 1) {
+    return `participant-led chat with ${activeParticipantNames[0]}`;
   }
 
-  if (activeCatNames.length > 1) {
-    return `multi-Cat room with ${activeCatNames.join(', ')}`;
+  if (activeParticipantNames.length > 1) {
+    return `shared room with ${activeParticipantNames.join(', ')}`;
   }
 
   return 'Boss Chat';
@@ -362,6 +385,9 @@ export function createChannel(
   const catDrafts = input.cats ?? [];
   const createdCats = catDrafts.map((palInput) => createCatRecord(palInput, nowIso));
   const participantCatIds = input.participantCatIds ?? [];
+  const temporaryParticipants = input.temporaryParticipants ?? [];
+  const createdTemporaryParticipants = temporaryParticipants.map((participant) =>
+    createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
 
   // Auto-generate title for direct cat chats when title is empty
@@ -371,6 +397,8 @@ export function createChannel(
       ? createdCats[0]?.name
       : participantCatIds.length === 1
         ? nextState.cats.find((cat) => cat.id === participantCatIds[0])?.name
+        : createdTemporaryParticipants.length === 1
+          ? createdTemporaryParticipants[0]?.name ?? null
         : null;
     title = singleCatName ? `${singleCatName} Direct Chat` : 'New chat';
   }
@@ -380,10 +408,12 @@ export function createChannel(
     ?? (
       requestedRoomMode === 'direct_cat_chat' && createdCats.length === 1
         ? createdCats[0]?.id ?? null
-        : requestedRoomMode === 'direct_cat_chat' && createdCats.length === 0 && participantCatIds.length === 1
+      : requestedRoomMode === 'direct_cat_chat' && createdCats.length === 0 && participantCatIds.length === 1
           ? participantCatIds[0] ?? null
           : participantCatIds.length > 0
-            ? participantCatIds[0] ?? null
+          ? participantCatIds[0] ?? null
+          : createdTemporaryParticipants.length > 0
+            ? createdTemporaryParticipants[0]?.participantId ?? null
           : null
     );
 
@@ -409,8 +439,29 @@ export function createChannel(
     );
   }
 
+  const participantAssignments = [
+    ...catAssignments.map((assignment) => ({
+      participantId: assignment.participantId,
+      sourceKind: assignment.sourceKind,
+      sourceRefId: assignment.sourceRefId,
+      name: assignment.name,
+      status: assignment.status,
+      roles: structuredClone(assignment.roles),
+      roleHint: assignment.roleHint,
+      joinedAt: assignment.joinedAt,
+      leftAt: assignment.leftAt,
+      execution: structuredClone(assignment.execution),
+    })),
+    ...createdTemporaryParticipants.map((participant) => structuredClone(participant)),
+  ];
+
   const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
     catAssignments,
+    requestedRoomMode,
+    defaultLeadParticipantId,
+  );
+  const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
+    participantAssignments,
     requestedRoomMode,
     defaultLeadParticipantId,
   );
@@ -421,10 +472,10 @@ export function createChannel(
     topic,
     channelKind: inferChannelKind({
       roomMode: requestedRoomMode,
-      participants: normalizedCatAssignments,
+      participants: normalizedParticipantAssignments,
     }),
     recoverableDirectLaneCatId: null,
-    status: normalizedCatAssignments.length > 0 ? 'configured' : 'planned',
+    status: normalizedParticipantAssignments.length > 0 ? 'configured' : 'planned',
     unreadCount: 0,
     repoPath: normalizeOptionalText(input.repoPath),
     chatCwd: null,
@@ -438,9 +489,9 @@ export function createChannel(
       ?? (input.entryKind === 'solo' ? 'solo' : undefined)
       ?? inferChannelComposerMode({
         roomMode: requestedRoomMode,
-        activeCatIds: normalizedCatAssignments
+        activeParticipantIds: normalizedParticipantAssignments
           .filter((assignment) => assignment.status === 'active')
-          .map((assignment) => assignment.catId),
+          .map((assignment) => assignment.participantId),
       }),
     pendingProvider: normalizeOptionalText(input.pendingProvider),
     pendingModel: normalizeOptionalText(input.pendingModel),
@@ -452,6 +503,7 @@ export function createChannel(
     lastActivatedAt: null,
     orchestratorLease: createEmptyExecutionLease(),
     catAssignments: normalizedCatAssignments,
+    participantAssignments: normalizedParticipantAssignments,
     messages: [],
     roomRouting: createDefaultRoomRoutingState({
       mode: requestedRoomMode,

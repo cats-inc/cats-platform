@@ -1,8 +1,10 @@
 import type {
+  ChannelParticipantAssignment,
   ChannelCatAssignment,
   ChannelExportPayload,
   ChatCat,
   ChatChannelCat,
+  ChatChannelParticipant,
   ChatChannelState,
   ChatChannelSummary,
   ChatChannelView,
@@ -31,10 +33,31 @@ import { requireCat, requireChannel } from './shared.js';
 export const ORCHESTRATOR_NAME = 'Orchestrator';
 export type { ChatLifecycleState } from '../../shared/lifecycle.js';
 
-function activeCatCount(channel: ChatChannelState): number {
+function resolveChannelParticipantAssignments(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+): ChannelParticipantAssignment[] {
+  if (Array.isArray(channel.participantAssignments) && channel.participantAssignments.length > 0) {
+    return structuredClone(channel.participantAssignments);
+  }
+
+  return channel.catAssignments.map((assignment) => ({
+    participantId: assignment.participantId,
+    sourceKind: assignment.sourceKind,
+    sourceRefId: assignment.sourceRefId,
+    name: assignment.name,
+    status: assignment.status,
+    roles: structuredClone(assignment.roles),
+    roleHint: assignment.roleHint,
+    joinedAt: assignment.joinedAt,
+    leftAt: assignment.leftAt,
+    execution: structuredClone(assignment.execution),
+  }));
+}
+
+function activeParticipantCount(channel: ChatChannelState): number {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   return normalizeChannelAssignmentsForRoomMode(
-    channel.catAssignments,
+    resolveChannelParticipantAssignments(channel),
     roomRouting.mode,
     roomRouting.leadParticipantId,
   ).filter((assignment) => assignment.status === 'active').length;
@@ -45,17 +68,69 @@ function hydrateChannelCat(
   assignment: ChannelCatAssignment,
 ): ChatChannelCat {
   return {
+    participantId: assignment.participantId,
+    sourceKind: 'cat',
+    sourceRefId: assignment.sourceRefId,
     catId: cat.id,
     name: cat.name,
     roles: assignment.roles.length > 0 ? structuredClone(assignment.roles) : structuredClone(cat.roles),
+    roleHint: assignment.roleHint,
     skillProfile: cat.skillProfile,
     mcpProfile: cat.mcpProfile,
     status: assignment.status,
     joinedAt: assignment.joinedAt,
     leftAt: assignment.leftAt,
     avatarColor: cat.avatarColor,
+    avatarUrl: cat.avatarUrl,
     execution: structuredClone(assignment.execution),
     memory: structuredClone(cat.memory),
+  };
+}
+
+function hydrateChannelParticipant(
+  state: ChatState,
+  assignment: ChannelParticipantAssignment,
+): ChatChannelParticipant {
+  if (assignment.sourceKind === 'cat' && assignment.sourceRefId) {
+    const cat = state.cats.find((candidate) => candidate.id === assignment.sourceRefId) ?? null;
+    if (cat) {
+      return hydrateChannelCat(cat, {
+        participantId: assignment.participantId,
+        sourceKind: 'cat',
+        sourceRefId: assignment.sourceRefId,
+        catId: cat.id,
+        name: cat.name,
+        status: assignment.status,
+        roles: structuredClone(assignment.roles),
+        roleHint: assignment.roleHint,
+        joinedAt: assignment.joinedAt,
+        leftAt: assignment.leftAt,
+        execution: structuredClone(assignment.execution),
+      });
+    }
+  }
+
+  return {
+    participantId: assignment.participantId,
+    sourceKind: assignment.sourceKind,
+    sourceRefId: assignment.sourceRefId,
+    name: assignment.name,
+    roles: structuredClone(assignment.roles),
+    roleHint: assignment.roleHint,
+    skillProfile: null,
+    mcpProfile: null,
+    status: assignment.status,
+    joinedAt: assignment.joinedAt,
+    leftAt: assignment.leftAt,
+    avatarColor: null,
+    avatarUrl: null,
+    execution: structuredClone(assignment.execution),
+    memory: {
+      summary: null,
+      facts: [],
+      openLoops: [],
+      updatedAt: null,
+    },
   };
 }
 
@@ -63,19 +138,20 @@ function resolveLeadParticipantLeaseStatus(
   channel: ChatChannelState,
 ): ParticipantSessionStatus | null {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const participantAssignments = normalizeChannelAssignmentsForRoomMode(
+    resolveChannelParticipantAssignments(channel),
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
   const leadId = isDirectLaneChannel(channel)
     ? resolveDirectLaneLeadParticipantId(
-      channel.catAssignments,
+      participantAssignments,
       roomRouting.leadParticipantId,
     )
     : roomRouting.leadParticipantId;
   if (!leadId) return null;
-  const assignment = normalizeChannelAssignmentsForRoomMode(
-    channel.catAssignments,
-    roomRouting.mode,
-    roomRouting.leadParticipantId,
-  ).find(
-    (candidate) => candidate.catId === leadId && candidate.status === 'active',
+  const assignment = participantAssignments.find(
+    (candidate) => candidate.participantId === leadId && candidate.status === 'active',
   );
   return assignment?.execution.lease.status ?? null;
 }
@@ -102,32 +178,43 @@ export function buildChannelView(
     typeof channelOrId === 'string' ? requireChannel(state, channelOrId) : channelOrId;
   const clonedChannel = structuredClone(channel);
   const roomRouting = resolveRoomRoutingState(clonedChannel.roomRouting);
-  const normalizedAssignments = normalizeChannelAssignmentsForRoomMode(
+  const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
+    resolveChannelParticipantAssignments(clonedChannel),
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
+  const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
     clonedChannel.catAssignments,
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
-  clonedChannel.catAssignments = normalizedAssignments;
+  clonedChannel.participantAssignments = normalizedParticipantAssignments;
+  clonedChannel.catAssignments = normalizedCatAssignments;
   clonedChannel.channelKind = resolveChannelKind({
     channelKind: clonedChannel.channelKind,
     roomMode: roomRouting.mode,
-    participants: normalizedAssignments,
+    participants: normalizedParticipantAssignments,
   });
   if (isDirectLaneChannel(clonedChannel)) {
     roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
-      normalizedAssignments,
+      normalizedParticipantAssignments,
       roomRouting.leadParticipantId,
     );
     clonedChannel.orchestratorLease = createEmptyExecutionLease();
   }
 
+  const assignedParticipants = normalizedParticipantAssignments.map((assignment) =>
+    hydrateChannelParticipant(state, assignment));
+
   return {
     ...clonedChannel,
     roomRouting: roomRouting ?? createDefaultRoomRoutingState(),
-    assignedCats: normalizedAssignments
-      .filter((assignment) => state.cats.some((candidate) => candidate.id === assignment.catId))
-      .map((assignment) =>
-        hydrateChannelCat(requireCat(state, assignment.catId), assignment),
+    assignedParticipants,
+    assignedCats: assignedParticipants
+      .filter((participant): participant is ChatChannelCat =>
+        participant.sourceKind === 'cat'
+        && Boolean(participant.sourceRefId)
+        && state.cats.some((candidate) => candidate.id === participant.sourceRefId),
       ),
   };
 }
@@ -145,13 +232,16 @@ export function resolveChannelEntryParticipant(
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
 
   if (isDirectLaneChannel(channel) && roomRouting.leadParticipantId) {
-    const leadCat = channel.assignedCats.find((cat) => cat.catId === roomRouting.leadParticipantId);
-    if (leadCat) {
+    const leadParticipant = (
+      channel.assignedParticipants
+      ?? channel.assignedCats
+    )?.find((participant) => participant.participantId === roomRouting.leadParticipantId) ?? null;
+    if (leadParticipant) {
       return {
         participantKind: 'cat',
-        participantId: leadCat.catId,
-        participantName: leadCat.name,
-        lifecycleState: resolveParticipantLifecycleState(leadCat.execution.lease),
+        participantId: leadParticipant.participantId,
+        participantName: leadParticipant.name,
+        lifecycleState: resolveParticipantLifecycleState(leadParticipant.execution.lease),
       };
     }
   }
@@ -166,14 +256,18 @@ export function resolveChannelEntryParticipant(
 
 export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  const normalizedAssignments = normalizeChannelAssignmentsForRoomMode(
-    channel.catAssignments,
+  const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
+    resolveChannelParticipantAssignments(channel),
     roomRouting.mode,
     roomRouting.leadParticipantId,
   );
-  const leadCatId = isDirectLaneChannel(channel)
-    ? resolveDirectLaneLeadParticipantId(normalizedAssignments, roomRouting.leadParticipantId)
+  const leadParticipantId = isDirectLaneChannel(channel)
+    ? resolveDirectLaneLeadParticipantId(normalizedParticipantAssignments, roomRouting.leadParticipantId)
     : roomRouting.leadParticipantId;
+  const leadCatId = normalizedParticipantAssignments.some((assignment) =>
+    assignment.sourceKind === 'cat' && assignment.participantId === leadParticipantId)
+    ? leadParticipantId
+    : null;
   const workflowStatus = roomRouting.workflow.activeTurn?.status
     ?? roomRouting.workflow.lastOutcomeEvent?.status
     ?? null;
@@ -192,12 +286,12 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     channelKind: resolveChannelKind({
       channelKind: channel.channelKind,
       roomMode: roomRouting.mode,
-      participants: normalizedAssignments,
+      participants: normalizedParticipantAssignments,
     }),
     status: channel.status,
     unreadCount: channel.unreadCount,
-    catCount: normalizedAssignments.length,
-    activeCatCount: activeCatCount(channel),
+    catCount: normalizedParticipantAssignments.length,
+    activeCatCount: activeParticipantCount(channel),
     repoPath: channel.repoPath,
     chatCwd: channel.chatCwd,
     lastMessageAt: channel.lastMessageAt,
@@ -221,12 +315,14 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
 
 export function exportChannel(state: ChatState, channelId: string): ChannelExportPayload {
   const channel = requireChannel(state, channelId);
+  const view = buildChannelView(state, channel);
 
   return {
     exportedAt: new Date().toISOString(),
     orchestrator: structuredClone(state.globalOrchestrator),
     channel: structuredClone(channel),
-    assignedCats: buildChannelView(state, channel).assignedCats,
+    assignedParticipants: view.assignedParticipants,
+    assignedCats: view.assignedCats,
   };
 }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
+  ChannelParticipantAssignment,
   ChatCat,
   ChatChannelState,
   ChatState,
@@ -46,16 +47,42 @@ export function normalizeLeadParticipantId(value: string | undefined): string | 
 
 export function inferChannelComposerMode(input: {
   roomMode?: string;
-  activeCatIds: string[];
+  activeParticipantIds: string[];
 }): 'solo' | 'cat_led' {
   if (input.roomMode === 'direct_cat_chat') {
     return 'cat_led';
   }
-  return input.activeCatIds.length > 0 ? 'cat_led' : 'solo';
+  return input.activeParticipantIds.length > 0 ? 'cat_led' : 'solo';
+}
+
+function resolveChannelParticipantAssignments(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+): ChannelParticipantAssignment[] {
+  if (Array.isArray(channel.participantAssignments) && channel.participantAssignments.length > 0) {
+    return channel.participantAssignments;
+  }
+
+  return channel.catAssignments.map((assignment) => ({
+    participantId: assignment.participantId,
+    sourceKind: assignment.sourceKind,
+    sourceRefId: assignment.sourceRefId,
+    name: assignment.name,
+    status: assignment.status,
+    roles: structuredClone(assignment.roles),
+    roleHint: assignment.roleHint,
+    joinedAt: assignment.joinedAt,
+    leftAt: assignment.leftAt,
+    execution: structuredClone(assignment.execution),
+  }));
 }
 
 export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  channel.participantAssignments = normalizeChannelAssignmentsForRoomMode(
+    resolveChannelParticipantAssignments(channel),
+    roomRouting.mode,
+    roomRouting.leadParticipantId,
+  );
   channel.catAssignments = normalizeChannelAssignmentsForRoomMode(
     channel.catAssignments,
     roomRouting.mode,
@@ -64,29 +91,29 @@ export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void 
   channel.channelKind = resolveChannelKind({
     channelKind: channel.channelKind,
     roomMode: roomRouting.mode,
-    participants: channel.catAssignments,
+    participants: channel.participantAssignments,
   });
-  const activeCatIds = channel.catAssignments
+  const activeParticipantIds = channel.participantAssignments
     .filter((assignment) => assignment.status === 'active')
-    .map((assignment) => assignment.catId);
+    .map((assignment) => assignment.participantId);
   const currentLeadId = roomRouting.leadParticipantId;
-  const hasValidLead = Boolean(currentLeadId && activeCatIds.includes(currentLeadId));
+  const hasValidLead = Boolean(currentLeadId && activeParticipantIds.includes(currentLeadId));
 
   channel.composerMode = inferChannelComposerMode({
     roomMode: roomRouting.mode,
-    activeCatIds,
+    activeParticipantIds,
   });
 
   if (channel.channelKind === 'direct_lane') {
     roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
-      channel.catAssignments,
+      channel.participantAssignments,
       currentLeadId,
     );
     channel.orchestratorLease = createEmptyExecutionLease();
-  } else if (activeCatIds.length === 0) {
+  } else if (activeParticipantIds.length === 0) {
     roomRouting.leadParticipantId = null;
   } else if (!hasValidLead) {
-    roomRouting.leadParticipantId = activeCatIds[0] ?? null;
+    roomRouting.leadParticipantId = activeParticipantIds[0] ?? null;
   }
 
   channel.roomRouting = roomRouting;

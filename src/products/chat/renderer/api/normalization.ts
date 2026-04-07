@@ -29,20 +29,30 @@ function normalizeChannelKind(
   channel: Record<string, unknown>,
   roomMode: 'boss_chat' | 'direct_cat_chat',
 ): void {
+  const participantAssignments = Array.isArray(channel.participantAssignments)
+    ? channel.participantAssignments
+    : [];
   const catAssignments = Array.isArray(channel.catAssignments)
     ? channel.catAssignments
+    : [];
+  const assignedParticipants = Array.isArray(channel.assignedParticipants)
+    ? channel.assignedParticipants
     : [];
   const assignedCats = Array.isArray(channel.assignedCats)
     ? channel.assignedCats
     : [];
-  const participants: Array<{ catId: string; status: 'active' | 'removed' }> = (
-    catAssignments.length > 0
-      ? catAssignments
-      : assignedCats
+  const participants: Array<{ participantId: string; status: 'active' | 'removed' }> = (
+    participantAssignments.length > 0
+      ? participantAssignments
+      : assignedParticipants.length > 0
+        ? assignedParticipants
+        : catAssignments.length > 0
+          ? catAssignments
+          : assignedCats
   ).map((assignmentValue) => {
     const assignment = asRecord(assignmentValue) ?? {};
     return {
-      catId: readString(assignment.catId),
+      participantId: readString(assignment.participantId) || readString(assignment.catId),
       status: readString(assignment.status, 'active') === 'removed' ? 'removed' : 'active',
     };
   });
@@ -145,6 +155,25 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
     if (!Array.isArray(selectedChannel.catAssignments)) {
       selectedChannel.catAssignments = [];
     }
+    if (!Array.isArray(selectedChannel.participantAssignments)) {
+      selectedChannel.participantAssignments = Array.isArray(selectedChannel.catAssignments)
+        ? selectedChannel.catAssignments.map((assignmentValue) => {
+            const assignment = asRecord(assignmentValue) ?? {};
+            return {
+              participantId: readString(assignment.participantId, readString(assignment.catId)),
+              sourceKind: readString(assignment.sourceKind, 'cat') === 'cat' ? 'cat' : 'adhoc',
+              sourceRefId: readNullableString(assignment.sourceRefId) ?? readNullableString(assignment.catId),
+              name: readString(assignment.name, 'Participant'),
+              status: readString(assignment.status, 'active'),
+              roles: Array.isArray(assignment.roles) ? assignment.roles : [],
+              roleHint: readNullableString(assignment.roleHint),
+              joinedAt: readString(assignment.joinedAt),
+              leftAt: readNullableString(assignment.leftAt),
+              execution: assignment.execution,
+            };
+          })
+        : [];
+    }
 
     if (!Array.isArray(selectedChannel.assignedCats)) {
       if (Array.isArray(selectedChannel.catAssignments)) {
@@ -152,16 +181,53 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
           const assignment = asRecord(assignmentValue) ?? {};
           const cat = catsById.get(readString(assignment.catId)) ?? {};
           return {
+            participantId: readString(assignment.participantId, readString(assignment.catId)),
+            sourceKind: 'cat',
+            sourceRefId: readString(assignment.sourceRefId, readString(assignment.catId)),
             catId: readString(assignment.catId),
             name: readString(cat.name, 'Cat'),
             roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat.roles),
+            roleHint: readNullableString(assignment.roleHint),
             skillProfile: readNullableString(cat.skillProfile),
             mcpProfile: readNullableString(cat.mcpProfile),
             status: readString(assignment.status, 'active'),
             joinedAt: readString(assignment.joinedAt),
             leftAt: readNullableString(assignment.leftAt),
+            avatarColor: readNullableString(cat.avatarColor),
+            avatarUrl: readNullableString(cat.avatarUrl),
             execution: assignment.execution,
             memory: asRecord(cat.memory) ?? {
+              summary: null,
+              facts: [],
+              openLoops: [],
+              updatedAt: null,
+            },
+          };
+        });
+      }
+    }
+    if (!Array.isArray(selectedChannel.assignedParticipants)) {
+      if (Array.isArray(selectedChannel.participantAssignments)) {
+        selectedChannel.assignedParticipants = selectedChannel.participantAssignments.map((assignmentValue) => {
+          const assignment = asRecord(assignmentValue) ?? {};
+          const sourceRefId = readNullableString(assignment.sourceRefId);
+          const cat = sourceRefId ? (catsById.get(sourceRefId) ?? null) : null;
+          return {
+            participantId: readString(assignment.participantId),
+            sourceKind: readString(assignment.sourceKind, 'adhoc') === 'cat' ? 'cat' : 'adhoc',
+            sourceRefId,
+            name: readString(assignment.name, readString(cat?.name, 'Participant')),
+            roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat?.roles),
+            roleHint: readNullableString(assignment.roleHint),
+            skillProfile: readNullableString(cat?.skillProfile),
+            mcpProfile: readNullableString(cat?.mcpProfile),
+            status: readString(assignment.status, 'active'),
+            joinedAt: readString(assignment.joinedAt),
+            leftAt: readNullableString(assignment.leftAt),
+            avatarColor: readNullableString(cat?.avatarColor),
+            avatarUrl: readNullableString(cat?.avatarUrl),
+            execution: assignment.execution,
+            memory: asRecord(cat?.memory) ?? {
               summary: null,
               facts: [],
               openLoops: [],

@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
+  ChannelParticipantAssignment,
   ChannelCatAssignment,
   ChatCat,
   ChatChannelState,
   ChatMessage,
+  CreateTemporaryParticipantInput,
   CreateCatInput,
   MessageUsageSummary,
 } from '../../api/contracts.js';
@@ -137,9 +139,14 @@ export function createAssignmentRecord(
   const roles = normalizeList(input.roles);
 
   return {
+    participantId: cat.id,
+    sourceKind: 'cat',
+    sourceRefId: cat.id,
     catId: cat.id,
+    name: cat.name,
     status: 'active',
     roles: roles.length > 0 ? roles : cat.roles,
+    roleHint: null,
     joinedAt: nowIso,
     leftAt: null,
     execution: {
@@ -159,6 +166,42 @@ export function createAssignmentRecord(
           ? cat.defaultModelSelection
           : input.modelSelection,
       ),
+      lease: createEmptyExecutionLease(),
+    },
+  };
+}
+
+export function createTemporaryParticipantAssignment(
+  input: CreateTemporaryParticipantInput,
+  nowIso: string,
+): ChannelParticipantAssignment {
+  const name = input.name.trim();
+  const provider = input.provider.trim();
+
+  if (!name) {
+    throw new Error('Temporary participant name is required');
+  }
+  if (!provider) {
+    throw new Error('Temporary participant provider is required');
+  }
+
+  return {
+    participantId: normalizeOptionalText(input.participantId) ?? randomUUID(),
+    sourceKind: 'adhoc',
+    sourceRefId: null,
+    name,
+    status: 'active',
+    roles: [],
+    roleHint: normalizeOptionalText(input.roleHint),
+    joinedAt: nowIso,
+    leftAt: null,
+    execution: {
+      target: {
+        provider,
+        instance: normalizeOptionalText(input.instance),
+        model: normalizeOptionalText(input.model),
+      },
+      modelSelection: cloneProviderModelSelection(input.modelSelection),
       lease: createEmptyExecutionLease(),
     },
   };

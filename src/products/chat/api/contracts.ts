@@ -149,6 +149,8 @@ export interface ParticipantExecutionState {
   lease: ParticipantExecutionLease;
 }
 
+export type ChannelParticipantSourceKind = 'cat' | 'adhoc';
+
 export interface ChatCat {
   id: string;
   name: string;
@@ -168,26 +170,54 @@ export interface ChatCat {
 }
 
 export interface ChannelCatAssignment {
+  participantId: string;
+  sourceKind: 'cat';
+  sourceRefId: string;
   catId: string;
+  name: string;
   status: 'active' | 'removed';
   roles: string[];
+  roleHint: string | null;
   joinedAt: string;
   leftAt: string | null;
   execution: ParticipantExecutionState;
 }
 
-export interface ChatChannelCat {
-  catId: string;
+export interface ChannelParticipantAssignment {
+  participantId: string;
+  sourceKind: ChannelParticipantSourceKind;
+  sourceRefId: string | null;
+  name: string;
+  status: 'active' | 'removed';
+  roles: string[];
+  roleHint: string | null;
+  joinedAt: string;
+  leftAt: string | null;
+  execution: ParticipantExecutionState;
+}
+
+export interface ChatChannelParticipant {
+  participantId: string;
+  sourceKind: ChannelParticipantSourceKind;
+  sourceRefId: string | null;
   name: string;
   roles: string[];
+  roleHint: string | null;
   skillProfile: string | null;
   mcpProfile: string | null;
   status: 'active' | 'removed';
   joinedAt: string;
   leftAt: string | null;
   avatarColor: string | null;
+  avatarUrl: string | null;
   execution: ParticipantExecutionState;
   memory: MemoryCheckpointSummary;
+}
+
+export interface ChatChannelCat extends ChatChannelParticipant {
+  sourceKind: 'cat';
+  sourceRefId: string;
+  catId: string;
 }
 
 export interface ChatMessageOption {
@@ -263,12 +293,14 @@ export interface ChatChannelState {
   lastActivatedAt: string | null;
   orchestratorLease: ParticipantExecutionLease;
   catAssignments: ChannelCatAssignment[];
+  participantAssignments?: ChannelParticipantAssignment[];
   messages: ChatMessage[];
   roomRouting?: RoomRoutingState;
   workingMemory?: MemoryCheckpointSummary;
 }
 
 export interface ChatChannelView extends ChatChannelState {
+  assignedParticipants?: ChatChannelParticipant[];
   assignedCats: ChatChannelCat[];
 }
 
@@ -447,6 +479,16 @@ export interface CatDraftInput {
   mcpProfile?: string;
 }
 
+export interface CreateTemporaryParticipantInput {
+  participantId?: string;
+  name: string;
+  provider: string;
+  instance?: string;
+  model?: string;
+  modelSelection?: ProviderModelSelection | null;
+  roleHint?: string;
+}
+
 export interface CreateCatInput extends CatDraftInput {
   makeBoss?: boolean;
   products?: string[];
@@ -486,6 +528,8 @@ export interface CreateChatChannelInput {
   cats?: CatDraftInput[];
   /** Existing cat IDs to assign at creation time. */
   participantCatIds?: string[];
+  /** Channel-only non-Cat members created inline for this room. */
+  temporaryParticipants?: CreateTemporaryParticipantInput[];
   /** Internal UI affordance for the first user-sent turn in a newly created chat. */
   skipBossCatGreeting?: boolean;
 }
@@ -634,6 +678,7 @@ export interface ChannelExportPayload {
   exportedAt: string;
   orchestrator: GlobalOrchestratorSummary;
   channel: ChatChannelState;
+  assignedParticipants?: ChatChannelParticipant[];
   assignedCats: ChatChannelCat[];
 }
 
