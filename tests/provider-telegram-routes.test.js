@@ -477,16 +477,13 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
   ]);
 });
 
-test('GET /api/providers retries a transient runtime registry failure before surfacing an empty selector list', async () => {
+test('GET /api/providers surfaces runtime registry failures without a second long retry window', async () => {
   const runtimeClient = createRuntimeStub();
   let configAttempts = 0;
 
   runtimeClient.getProviderConfig = async () => {
     configAttempts += 1;
-    if (configAttempts === 1) {
-      throw new Error('provider registry cold start timed out');
-    }
-    return createRuntimeStub().getProviderConfig();
+    throw new Error('provider registry cold start timed out');
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -494,24 +491,21 @@ test('GET /api/providers retries a transient runtime registry failure before sur
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.state, 'ready');
-    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
+    assert.equal(payload.state, 'runtime_unreachable');
+    assert.deepEqual(payload.providers, []);
+    assert.equal(payload.warnings[0], 'provider registry cold start timed out');
   });
 
-  assert.equal(configAttempts, 2);
+  assert.equal(configAttempts, 1);
 });
 
-test('GET /api/providers retries a transient bulk availability failure before surfacing runtime_unreachable', async () => {
+test('GET /api/providers surfaces availability timeouts without retrying the selector request path', async () => {
   const runtimeClient = createRuntimeStub();
-  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
   let diagnosticsAttempts = 0;
 
   runtimeClient.getProviderDiagnostics = async (query = {}) => {
     diagnosticsAttempts += 1;
-    if (diagnosticsAttempts === 1) {
-      throw new Error('The operation was aborted due to timeout');
-    }
-    return originalGetProviderDiagnostics.call(runtimeClient, query);
+    throw new Error(`The operation was aborted due to timeout (${query.scope ?? 'full'})`);
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -519,12 +513,12 @@ test('GET /api/providers retries a transient bulk availability failure before su
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.state, 'ready');
-    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
-    assert.ok(payload.providers.some((provider) => provider.id === 'codex'));
+    assert.equal(payload.state, 'runtime_unreachable');
+    assert.deepEqual(payload.providers, []);
+    assert.equal(payload.warnings[0], 'The operation was aborted due to timeout (availability)');
   });
 
-  assert.equal(diagnosticsAttempts, 2);
+  assert.equal(diagnosticsAttempts, 1);
 });
 
 test('GET /api/providers reuses a fresh truthful selector cache on repeated opens', async () => {

@@ -281,7 +281,7 @@ interface RuntimeClientOptions {
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
-const DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS = 20_000;
+const DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS = 8_000;
 
 export class RuntimeRequestError extends Error {
   constructor(message: string, readonly status: number) {

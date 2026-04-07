@@ -198,42 +198,22 @@ function deriveTruthfulProviderRegistryForProvider(
   };
 }
 
-async function readProviderConfigWithRetry(
+async function readProviderConfig(
   dependencies: ProviderRouteDependencies,
 ): Promise<RuntimeProviderConfigRegistry> {
-  let lastError: unknown = null;
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      return await dependencies.runtimeClient.getProviderConfig();
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error('cats-runtime is unavailable.');
+  return dependencies.runtimeClient.getProviderConfig();
 }
 
-async function readProviderDiagnosticsWithRetry(
+async function readProviderDiagnostics(
   dependencies: ProviderRouteDependencies,
   options: {
     provider?: string | null;
   } = {},
 ): Promise<RuntimeProviderDiagnosticsPayload> {
-  let lastError: unknown = null;
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      return await dependencies.runtimeClient.getProviderDiagnostics({
-        ...(options.provider?.trim() ? { provider: options.provider.trim() } : {}),
-        scope: 'availability',
-      });
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error('cats-runtime is unavailable.');
+  return dependencies.runtimeClient.getProviderDiagnostics({
+    ...(options.provider?.trim() ? { provider: options.provider.trim() } : {}),
+    scope: 'availability',
+  });
 }
 
 async function loadTruthfulProviderRegistryFromRuntime(
@@ -244,8 +224,8 @@ async function loadTruthfulProviderRegistryFromRuntime(
 ): Promise<TruthfulProviderRegistryReadModel> {
   const requestedProvider = options.provider?.trim() || null;
   const [runtimeConfigResult, diagnosticsResult] = await Promise.allSettled([
-    readProviderConfigWithRetry(dependencies),
-    readProviderDiagnosticsWithRetry(dependencies, {
+    readProviderConfig(dependencies),
+    readProviderDiagnostics(dependencies, {
       provider: requestedProvider,
     }),
   ]);
