@@ -1,6 +1,6 @@
 # SPEC-012: First-Run Setup Wizard and Boss Cat Bootstrap
 
-Status: In Progress (First Slice Landed)
+Status: Historical (First Slice Landed, later superseded by Guide Cat setup and truthful selector direction)
 
 ## Summary
 
@@ -8,6 +8,14 @@ Status: In Progress (First Slice Landed)
 contract still needs to stay explicit. The first-run experience should not
 assume the operator already understands channels, cat registry structure,
 runtime dependencies, or transport bindings.
+
+> Historical note: this document captures the original `Boss Cat` bootstrap
+> slice. The current direction is defined by
+> [SPEC-049](./SPEC-049-guide-cat-setup-and-generalized-participant-entry.md)
+> and [PLAN-040](../plans/PLAN-040-simplify-setup-wizard-and-decouple-runtime-bootstrap.md),
+> which remove the setup-owned runtime-readiness step, replace Boss-Cat-first
+> framing with optional `Guide Cat`, and require truthful runtime-backed
+> provider/model selectors instead of fallback execution catalogs.
 
 The current product shell now routes uninitialized environments to `/setup`
 instead of dropping them into the normal chat shell, and the first slice ships

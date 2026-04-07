@@ -49,10 +49,14 @@ landed in the first documentation slice
 - [x] Task 2.4: Persist a created Guide Cat as platform-level reusable state
       rather than only as Boss Cat bootstrap, and keep the Guide-Cat-to-Boss
       mapping explicit instead of implicit.
+- [ ] Task 2.5: Rework Guide Cat target selection so setup only shows truthful
+      currently usable runtime-backed targets and models, with inline recovery
+      guidance instead of static fallback catalogs when no usable target exists.
 
 **Deliverables**: setup can create or skip Guide Cat without breaking the platform,
 and a created Guide Cat now persists as platform-level state without implicitly
-rewiring the global orchestrator target
+rewiring the global orchestrator target; Guide Cat setup no longer depends on
+misleading fallback execution choices
 
 ### Phase 3: Guide Cat Suggestions and Entry Surfaces
 
@@ -122,6 +126,9 @@ UI language
 - Decision 3: Introduce generalized participants incrementally behind
   compatibility adapters instead of rewriting all Cat-specific state in one
   patch.
+- Decision 4: Guide Cat setup and later product execution pickers must share
+  one truthful runtime-backed selector contract instead of drifting between
+  setup-only fallback behavior and product-only runtime truth.
 
 ## Testing Strategy
 
@@ -133,6 +140,8 @@ UI language
   - complete setup without Guide Cat and verify the platform still opens normally
   - complete setup with Guide Cat and verify the chosen target is visible in
     later settings or registry surfaces
+  - opt into Guide Cat when no usable runtime target exists and verify setup
+    shows inline runtime-setup guidance instead of fake provider/model choices
   - verify `+New chat` shows cached Guide Cat suggestions when present and
     static fallback ideas otherwise
 
@@ -142,6 +151,7 @@ UI language
 |------|--------|------------|
 | `Guide Cat` silently collapses back into `Boss Cat` semantics | High | Freeze boundary rules in ADR and terminology docs before code migration |
 | Setup scope grows into an advanced persona editor | High | Keep setup contract limited to name plus runtime target |
+| Setup keeps showing non-usable provider/model choices | High | Share one truthful selector contract across setup and in-product execution pickers |
 | Participant generalization stalls halfway and leaves more overlapping terms | High | Introduce explicit compatibility adapters and one canonical future model in docs before implementation |
 | Entry suggestions become dependent on a live session | Medium | Require cached output plus deterministic fallback ideas |
 

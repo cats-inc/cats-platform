@@ -88,6 +88,9 @@ contracts.
       keeps setup completable without any Guide Cat, and treats Guide Cat as a
       platform-level helper rather than implicitly equating it with Chat's
       `Boss Cat`
+- [ ] Unify setup and in-product execution-target selectors on one truthful
+      runtime-backed contract so provider/model dropdowns only show currently
+      usable choices instead of product fallback catalogs
 - [ ] Add Guide-Cat-backed entry suggestions with deterministic static
       fallbacks so `+New chat` and later `+Group chat` empty states can be
       prepared dynamically without depending on a permanently awake helper
@@ -102,9 +105,10 @@ contracts.
       channel/global state
 - [ ] Persist solo-composer model changes immediately on selector change instead of
       only committing the pending provider/model when the next message is sent
-- [ ] Add a platform-local provider catalog cache for runtime-backed model catalogs and
-      advanced catalogs so repeated setup, cat-creation, and selector mounts do not
-      refetch the same provider/instance metadata on every reopen
+- [ ] Add a platform-local cache for truthful runtime-backed selector reads,
+      model catalogs, and advanced catalogs so repeated setup, cat-creation,
+      and product selector mounts do not refetch the same provider/instance
+      metadata on every reopen while still preserving usable-target truth
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow

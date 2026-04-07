@@ -25,6 +25,13 @@ This setup step should stay lightweight:
 - if yes, capture only the Guide Cat name plus runtime target
 - do not ask for persona, skill profile, or memory profile during setup
 
+It should also stay truthful:
+
+- only show provider/model choices that are truly usable right now
+- if no usable target exists, explain that inline and deep-link to
+  `cats-runtime /setup`
+- do not pad the dropdown with theoretical or fallback catalog choices
+
 This spec also establishes the product-direction baseline that conversation
 participants should be generalized beyond Cat-only assumptions. `Guide Cat`
 should therefore land as part of a broader `entity` / `participant` direction,
@@ -35,10 +42,12 @@ not as another one-off special Cat mode.
 - give setup users one clear, optional first helper without forcing them to
   understand `Boss Cat`, orchestrator internals, or chat routing modes
 - use `Guide Cat` as the consistent product and developer term for this helper
-- capture a visible configured Cat identity for the first chosen
-  provider/instance/model target
+- capture a visible configured Cat identity for the first chosen usable runtime
+  target
 - keep setup lightweight enough that non-technical users are not scared off
 - let `Guide Cat` support multiple platform products, not only `Cats Chat`
+- make setup and later product provider/model pickers follow the same truthful
+  selector rule
 - establish a product baseline that conversations are about generalized
   participants, while Cats remain one product-facing participant class
 - support starter ideas and empty-state guidance that can be generated instead
@@ -49,6 +58,8 @@ not as another one-off special Cat mode.
 - asking for persona, skill profile, memory profile, or advanced behavioral
   settings during setup
 - forcing every owner to create a `Guide Cat` before the platform is usable
+- showing fallback provider/model catalogs in setup or in-product execution
+  pickers when those choices are not currently usable
 - deciding that `Guide Cat` is automatically the same thing as `Boss Cat`
 - deciding that `Guide Cat` is the only orchestrator or the only runtime-backed
   brain in the system
@@ -60,10 +71,12 @@ not as another one-off special Cat mode.
 - As a first-time owner, I want setup to ask whether I want a `Guide Cat` so I
   can opt into help without being forced into it.
 - As a first-time owner, I want to choose the runtime target for that Guide Cat
-  so I know which model/provider I configured.
+  from options that can actually be used right now.
 - As an owner, I want setup to stay short and not ask me to design a whole
   persona before I can use the platform.
 - As an owner, I want the platform to work even if I skip Guide Cat creation.
+- As an owner, I want runtime failures after setup to show up as recovery, not
+  as being thrown back into onboarding.
 - As a product developer, I want one stable term for this helper so naming does
   not drift between `assistant`, `Boss Cat`, `orchestrator`, and other aliases.
 - As a product developer, I want future chat entry surfaces to depend on a
@@ -84,46 +97,66 @@ not as another one-off special Cat mode.
    - optional model
    - optional explicit model selection if that is already part of the runtime
      target picker
-4. Setup shall not require persona, skill-profile, or memory-profile authoring
+4. Setup shall lazy-load runtime selector state only when the owner opts into
+   Guide Cat creation.
+5. The Guide Cat selector UI shall only show currently usable runtime-backed
+   targets and models. It shall not show static or informational product
+   catalogs as execution choices.
+6. If the runtime is reachable but no usable target exists, the Guide Cat step
+   shall show an inline blocking card that:
+   - explains that Guide Cat needs a usable AI provider first
+   - offers a link to `cats-runtime /setup`
+   - offers Refresh / Recheck
+   - keeps `Skip for now` available
+7. If the runtime is unreachable, the Guide Cat step shall show inline retry
+   and recovery affordances instead of fake provider/model dropdowns.
+8. Setup shall not require persona, skill-profile, or memory-profile authoring
    for Guide Cat creation.
-5. Setup completion shall succeed whether or not a Guide Cat was created.
-6. The created Guide Cat shall be stored as a platform-level reusable Cat/entity,
-   not merely as an ephemeral setup preference.
-7. The platform shall be able to reuse Guide Cat in `Chat`, `Work`, and `Code`
-   without implying that each product owns a separate first helper.
-8. The product shall not automatically equate `Guide Cat` with `Boss Cat` or
-   with the invisible orchestration system layer.
-9. The first migration slice shall replace the setup-time `Boss Cat`
-   bootstrap framing with `Guide Cat` onboarding, while keeping `Boss Cat` as
-   a distinct Chat role until a later product-mapping decision says otherwise.
-10. The platform may use Guide Cat to generate starter ideas, onboarding guidance,
-   and product-entry suggestions for surfaces such as `+New chat` and future
-   `+Group chat`.
-11. When Guide Cat is unavailable, missing, sleeping, or has no cached output,
+9. Setup completion shall succeed whether or not a Guide Cat was created.
+10. The created Guide Cat shall be stored as a platform-level reusable
+    Cat/entity, not merely as an ephemeral setup preference.
+11. The platform shall be able to reuse Guide Cat in `Chat`, `Work`, and
+    `Code` without implying that each product owns a separate first helper.
+12. The product shall not automatically equate `Guide Cat` with `Boss Cat` or
+    with the invisible orchestration system layer.
+13. The same truthful runtime-backed selector rule shall apply to later
+    in-product provider/model pickers that choose execution targets after
+    setup.
+14. After setup completes, runtime failure or provider loss shall be handled as
+    product or host recovery, not by routing the user back through onboarding.
+15. The first migration slice shall replace the setup-time `Boss Cat`
+    bootstrap framing with `Guide Cat` onboarding, while keeping `Boss Cat` as
+    a distinct Chat role until a later product-mapping decision says otherwise.
+16. The platform may use Guide Cat to generate starter ideas, onboarding
+    guidance, and product-entry suggestions for surfaces such as `+New chat`
+    and future `+Group chat`.
+17. When Guide Cat is unavailable, missing, sleeping, or has no cached output,
     the platform shall fall back to deterministic static starter suggestions.
-12. Guide Cat-generated entry suggestions shall be cacheable local product
+18. Guide Cat-generated entry suggestions shall be cacheable local product
     data; they shall not require a permanently running session.
-13. The first slice shall attempt one initial Guide Cat suggestion generation
+19. The first slice shall attempt one initial Guide Cat suggestion generation
     after setup completes when a Guide Cat exists, then reuse cached
     suggestions on entry surfaces and only lazy-refresh them when the cache is
     stale or missing.
-14. The long-term conversation model shall support generalized participants so
+20. The long-term conversation model shall support generalized participants so
     future non-Cat specialists can participate in rooms without inventing a
     second routing model.
 
 ### Non-Functional Requirements
 
 - **Setup simplicity**: Guide Cat setup should stay understandable in one quick
-  decision and one target-selection step.
-- **Naming consistency**: Product and implementation docs should prefer
-  `Guide Cat` over `assistant` for this role.
-- **Optionality**: No product should become unusable merely because Guide Cat
-  is absent.
+  decision and one truthful target-selection step
+- **Truthful selection**: setup and in-product execution pickers should prefer
+  omission plus recovery guidance over misleading fallback options
+- **Naming consistency**: product and implementation docs should prefer
+  `Guide Cat` over `assistant` for this role
+- **Optionality**: no product should become unusable merely because Guide Cat
+  is absent
 - **Runtime efficiency**: Guide Cat should use on-demand leased sessions rather
-  than an always-on background runtime requirement.
-- **Compatibility**: The first slice should coexist with current `Boss Cat`,
+  than an always-on background runtime requirement
+- **Compatibility**: the first slice should coexist with current `Boss Cat`,
   routing-mode, and Cat-registry contracts while the participant model is being
-  generalized.
+  generalized
 
 ## Design Overview
 
@@ -136,8 +169,12 @@ Setup start
     |                        |
     |                        yes
     |                        |
-    |                        +--> runtime readiness
-    |                        +--> Guide Cat name + target
+    |                        +--> truthful runtime selector check
+    |                        |      |
+    |                        |      +--> usable target(s): Guide Cat name + target
+    |                        |      +--> no usable target: inline runtime-setup link
+    |                        |      +--> runtime unreachable: inline retry/recovery
+    |                        |
     |                        +--> persist platform-level Guide Cat
     |                        |
     +------------------------+
@@ -149,6 +186,7 @@ Setup start
              +--> use cached Guide Cat suggestions when available
              +--> lazy-refresh when cached suggestions are stale or missing
              +--> otherwise use static fallback ideas
+             +--> if runtime later fails, stay in recovery, not onboarding
 ```
 
 ## Product Direction
@@ -164,6 +202,16 @@ Setup start
   - `Boss Cat`
   - the invisible orchestration system layer
   - the only runtime-backed intelligence surface in the platform
+
+### Truthful Target Selection
+
+- Guide Cat setup and later in-product execution selectors must use the same
+  truthful runtime-backed selection contract.
+- Product-supported provider catalogs remain useful for explanation or future
+  install guidance, but they are not valid execution dropdowns.
+- The presence of a runtime-owned model catalog does not, by itself, prove a
+  target is healthy; selector surfaces should combine usable-target truth with
+  runtime-owned model/default metadata.
 
 ### Generalized Participants
 
@@ -206,16 +254,18 @@ Starter ideas on entry surfaces should follow this order:
 
 ## References
 
+- [SPEC-013](./SPEC-013-provider-catalog-consumption-and-ui-seam.md)
 - [SPEC-012](./SPEC-012-first-run-setup-wizard-and-boss-cat-bootstrap.md)
 - [SPEC-018](./SPEC-018-direct-cat-chat-and-conversation-routing-layer.md)
 - [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md)
 - [ADR-011](../decisions/011-model-primary-orchestrator-as-visible-cat.md)
 - [ADR-042](../decisions/042-separate-channel-topology-from-routing-mode.md)
-- [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md)
 - [ADR-051](../decisions/051-generalize-participants-and-adopt-guide-cat-terminology.md)
+- [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md)
+- [PLAN-040](../plans/PLAN-040-simplify-setup-wizard-and-decouple-runtime-bootstrap.md)
 
 ---
 
 *Created: 2026-04-04*
+*Revised: 2026-04-07*
 *Author: Codex*
-*Related Plan: [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md)*
