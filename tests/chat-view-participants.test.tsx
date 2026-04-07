@@ -208,3 +208,32 @@ test('ChatView shows temporary participants in the top bar and composer affordan
   assert.match(markup, /data-tooltip="Runtime Verifier"/u);
   assert.match(markup, />2 participants</u);
 });
+
+test('ChatView renders temporary participant transcript speakers as room members', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-1',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Inline Reviewer',
+              body: 'I checked the proposal.',
+              createdAt: '2026-04-07T00:01:00.000Z',
+              metadata: {
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+              },
+            },
+          ],
+        }),
+      })}
+    />,
+  );
+
+  assert.match(markup, /transcriptAvatar/u);
+  assert.match(markup, /Inline Reviewer/u);
+  assert.match(markup, /catAvatarLeadBadge/u);
+});

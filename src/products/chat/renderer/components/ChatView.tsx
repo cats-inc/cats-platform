@@ -683,6 +683,18 @@ export function ChatView({
                       <div className={messageTone(message.senderKind)}>
                         {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
                           const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
+                          const transcriptParticipantTargetId = typeof message.metadata?.targetId === 'string'
+                            ? message.metadata.targetId
+                            : null;
+                          const transcriptParticipant = transcriptParticipantTargetId
+                            ? activeAssignedParticipants.find((participant) =>
+                              participant.participantId === transcriptParticipantTargetId)
+                              ?? null
+                            : message.senderName && message.senderName !== 'Orchestrator'
+                              ? activeAssignedParticipants.find((participant) =>
+                                participant.name === message.senderName)
+                                ?? null
+                              : null;
                           return speaker.kind === 'cat' && speaker.cat ? (() => {
                             const isBoss = speaker.cat.id === payload.chat.bossCatId;
                             const isLead = speaker.cat.id === leadParticipantId;
@@ -700,7 +712,26 @@ export function ChatView({
                                 <strong>{speaker.label}</strong>
                               </div>
                             );
-                          })() : speaker.label ? (
+                          })() : transcriptParticipant ? (
+                            <div className="transcriptMessageTop">
+                              <div
+                                className={transcriptParticipant.sourceKind === 'cat' && resolveParticipantCatRef(transcriptParticipant) === payload.chat.bossCatId
+                                  ? 'catAvatar catAvatarBoss transcriptAvatar'
+                                  : 'catAvatar transcriptAvatar'}
+                                style={transcriptParticipant.avatarUrl
+                                  ? {
+                                      backgroundImage: `url(${transcriptParticipant.avatarUrl})`,
+                                      backgroundSize: 'cover',
+                                      backgroundPosition: 'center',
+                                    }
+                                  : transcriptParticipant.avatarColor ? { background: transcriptParticipant.avatarColor } : undefined}
+                              >
+                                {transcriptParticipant.avatarUrl ? null : catInitials(transcriptParticipant.name)}
+                                {transcriptParticipant.participantId === leadParticipantId ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                              </div>
+                              <strong>{transcriptParticipant.name}</strong>
+                            </div>
+                          ) : speaker.label ? (
                             <div className="transcriptMessageTop">
                               <strong>{speaker.label}</strong>
                             </div>
