@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Superseded by [PLAN-040](./PLAN-040-simplify-setup-wizard-and-decouple-runtime-bootstrap.md) |
 | **Owner** | Codex |
 | **Assigned To** | Codex |
 | **Reviewer** | User / packaging + runtime workstreams |

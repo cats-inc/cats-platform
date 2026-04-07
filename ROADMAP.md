@@ -63,6 +63,11 @@ contracts.
       channel-scoped `participant` contracts so Chat, Work, and Code stop
       depending on Cat-only conversation semantics even while Cat language
       remains the product-facing default
+- [ ] Add product-level `cats-runtime` availability detection and recovery UX
+      so each product surface (Chat, Work, Code) can detect when the runtime
+      becomes unreachable or loses providers after setup, surface actionable
+      guidance, and help the user recover — this must exist independently of
+      the setup wizard since the runtime can go down at any time
 
 ### Phase 4: Cats Chat Launch Track
 
