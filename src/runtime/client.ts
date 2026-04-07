@@ -80,6 +80,7 @@ export interface RuntimeProviderDiagnosticsQuery {
   instance?: string | null;
   defaultOnly?: boolean;
   probe?: 'light' | 'live';
+  scope?: 'full' | 'availability';
 }
 
 export interface RuntimeHealthPayload {
@@ -372,6 +373,9 @@ export class CatsRuntimeClient implements RuntimeClient {
   ): Promise<RuntimeProviderDiagnosticsPayload> {
     const url = new URL(`${this.baseUrl}/diagnostics/providers`);
     url.searchParams.set('probe', query.probe ?? 'light');
+    if (query.scope === 'availability') {
+      url.searchParams.set('scope', 'availability');
+    }
     if (query.provider?.trim()) {
       url.searchParams.set('provider', query.provider.trim());
     }

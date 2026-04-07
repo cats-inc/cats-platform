@@ -165,7 +165,7 @@ fast without reviving static fallback catalogs.
       cat creation, and other in-product provider/model pickers
 - [ ] Task 3.5: Add refresh/recheck support when the user returns from
       `cats-runtime /setup`
-- [ ] Task 3.6: After Task 3.9 lands, replace per-provider availability
+- [x] Task 3.6: After Task 3.9 lands, replace per-provider availability
       fan-out in the hot selector path with one runtime topology read plus one
       bulk runtime availability read
 - [ ] Task 3.7: Add a short-lived server-side truthful selector cache with
@@ -175,7 +175,7 @@ fast without reviving static fallback catalogs.
       `GET /api/providers/{provider}/models/advanced` reuse established
       truthful selector state or the shared selector cache instead of
       rebuilding the full provider registry before every catalog read
-- [ ] Task 3.9: Coordinate with `cats-runtime` on an additive
+- [x] Task 3.9: Coordinate with `cats-runtime` on an additive
       `GET /diagnostics/providers?scope=availability` selector path that
       reuses `collectProviderDiagnostics(..., { includeArtifacts: false })`
       and keeps cheap top-level `probe` plus aggregated `summary` while
@@ -331,6 +331,7 @@ recovery
 | 2026-04-07 | Direction tightened again: remove setup Step 3 entirely, finish setup directly into `/lobby`, and drop any `Create Now` setup-time session path |
 | 2026-04-08 | Performance follow-through added: truthful selectors must stop rebuilding provider truth through minute-scale per-provider fan-out, and may instead use bulk runtime truth plus short-lived runtime-backed caching |
 | 2026-04-08 | Runtime follow-through added: platform docs now explicitly depend on a lighter runtime availability-only selector scope plus complementary timeout/cache tuning instead of assuming product-side caching alone fixes cold-start latency |
+| 2026-04-08 | Bulk truthful selector read landed: `cats-platform` now merges one runtime topology read with one `scope=availability` diagnostics read instead of fan-outing per provider, and the shared runtime client now exposes the additive diagnostics `scope` query for selector callers. |
 
 ---
 

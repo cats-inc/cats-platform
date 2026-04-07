@@ -413,7 +413,15 @@ function createCoreState(overrides = {}) {
 }
 
 test('GET /api/providers returns the runtime-backed provider registry', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
+  const runtimeClient = createRuntimeStub();
+  const diagnosticsCalls = [];
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    diagnosticsCalls.push({ ...query });
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/providers`);
     assert.equal(response.status, 200);
 
@@ -447,6 +455,12 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
     assert.equal(kilo.defaultBackend, 'cli');
     assert.equal(kilo.instances[0].label, 'cli/native');
   });
+
+  assert.deepEqual(diagnosticsCalls, [
+    {
+      scope: 'availability',
+    },
+  ]);
 });
 
 test('GET /api/providers retries a transient runtime registry failure before surfacing an empty selector list', async () => {
@@ -473,12 +487,14 @@ test('GET /api/providers retries a transient runtime registry failure before sur
   assert.equal(configAttempts, 2);
 });
 
-test('GET /api/providers keeps usable providers when one filtered availability read times out', async () => {
+test('GET /api/providers retries a transient bulk availability failure before surfacing runtime_unreachable', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  let diagnosticsAttempts = 0;
 
   runtimeClient.getProviderDiagnostics = async (query = {}) => {
-    if (query.provider === 'codex') {
+    diagnosticsAttempts += 1;
+    if (diagnosticsAttempts === 1) {
       throw new Error('The operation was aborted due to timeout');
     }
     return originalGetProviderDiagnostics.call(runtimeClient, query);
@@ -491,32 +507,78 @@ test('GET /api/providers keeps usable providers when one filtered availability r
     const payload = await response.json();
     assert.equal(payload.state, 'ready');
     assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
-    assert.equal(payload.providers.some((provider) => provider.id === 'codex'), false);
-    assert.ok(
-      Array.isArray(payload.warnings)
-      && payload.warnings.some((warning) => /codex/u.test(warning)),
-    );
+    assert.ok(payload.providers.some((provider) => provider.id === 'codex'));
   });
+
+  assert.equal(diagnosticsAttempts, 2);
 });
 
 test('GET /api/providers exposes runtime setup recovery when no usable targets remain', async () => {
   const runtimeClient = createRuntimeStub();
-  runtimeClient.getProviderDiagnostics = async (query = {}) => ({
+  runtimeClient.getProviderDiagnostics = async () => ({
     probe: 'light',
-    providers: query.provider === 'claude'
-      ? [
-          {
-            provider: 'claude',
-            backend: 'cli',
-            instance: 'native',
-            availability: {
-              status: 'unavailable',
-              summary: 'CLI missing',
-              attentionCodes: ['command_missing'],
-            },
-          },
-        ]
-      : [],
+    providers: [
+      {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        availability: {
+          status: 'unavailable',
+          summary: 'CLI missing',
+          attentionCodes: ['command_missing'],
+        },
+      },
+      {
+        provider: 'codex',
+        backend: 'agent',
+        instance: 'agent/bridge',
+        availability: {
+          status: 'unavailable',
+          summary: 'Bridge unavailable',
+          attentionCodes: ['registry_unavailable'],
+        },
+      },
+      {
+        provider: 'codex',
+        backend: 'cli',
+        instance: 'ubuntu',
+        availability: {
+          status: 'unavailable',
+          summary: 'CLI missing',
+          attentionCodes: ['command_missing'],
+        },
+      },
+      {
+        provider: 'openclaw',
+        backend: 'agent',
+        instance: 'gateway',
+        availability: {
+          status: 'unavailable',
+          summary: 'Gateway unavailable',
+          attentionCodes: ['gateway_unavailable'],
+        },
+      },
+      {
+        provider: 'kilo',
+        backend: 'cli',
+        instance: 'native',
+        availability: {
+          status: 'unavailable',
+          summary: 'CLI missing',
+          attentionCodes: ['command_missing'],
+        },
+      },
+      {
+        provider: 'opencode',
+        backend: 'cli',
+        instance: 'native',
+        availability: {
+          status: 'unavailable',
+          summary: 'CLI missing',
+          attentionCodes: ['command_missing'],
+        },
+      },
+    ],
   });
 
   await withServer(runtimeClient, async (baseUrl) => {

@@ -234,6 +234,7 @@ test('runtime client returns truthful provider diagnostics for filtered selector
       url.origin === 'http://runtime.test'
       && url.pathname === '/diagnostics/providers'
       && url.searchParams.get('probe') === 'light'
+      && url.searchParams.get('scope') === 'availability'
       && url.searchParams.get('provider') === 'claude'
     ) {
       return new Response(JSON.stringify({
@@ -273,7 +274,10 @@ test('runtime client returns truthful provider diagnostics for filtered selector
 
   try {
     const client = new CatsRuntimeClient('http://runtime.test');
-    const diagnostics = await client.getProviderDiagnostics({ provider: 'claude' });
+    const diagnostics = await client.getProviderDiagnostics({
+      provider: 'claude',
+      scope: 'availability',
+    });
     assert.deepEqual(diagnostics, {
       probe: 'light',
       providers: [
