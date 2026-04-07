@@ -230,6 +230,7 @@ async function handlePlatformSetupComplete(
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       guideCat: core.guideCat,
       lastProductSurface: body.selectedProduct,
+      lobby: { animationMode: 'reduced' },
     };
   }
 
@@ -368,6 +369,7 @@ async function handlePlatformPreferencesUpdate(
       lastProductSurface?: string;
       startAtLogin?: boolean;
       openWindowOnStartup?: boolean;
+      lobbyAnimationMode?: string;
     }>(context.request);
     const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
     const surface = body.lastProductSurface;
@@ -397,11 +399,23 @@ async function handlePlatformPreferencesUpdate(
       });
       return;
     }
+    if (
+      body.lobbyAnimationMode !== undefined
+      && body.lobbyAnimationMode !== 'off'
+      && body.lobbyAnimationMode !== 'reduced'
+      && body.lobbyAnimationMode !== 'full'
+    ) {
+      sendJson(context.response, 400, {
+        error: { code: 'bad_request', message: 'lobbyAnimationMode must be off, reduced, or full' },
+      });
+      return;
+    }
 
     const nextPrefs = {
       lastProductSurface: surface ?? currentPrefs.lastProductSurface,
       startAtLogin: body.startAtLogin ?? currentPrefs.startAtLogin,
       openWindowOnStartup: body.openWindowOnStartup ?? currentPrefs.openWindowOnStartup,
+      lobbyAnimationMode: body.lobbyAnimationMode ?? currentPrefs.lobbyAnimationMode,
     };
 
     await writePlatformPreferences(context.dependencies.config.chatStatePath, nextPrefs);

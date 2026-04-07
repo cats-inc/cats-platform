@@ -365,6 +365,9 @@ export async function buildAppShellPayload(
         startAtLogin: platformPrefs.startAtLogin,
         openWindowOnStartup: platformPrefs.openWindowOnStartup,
       },
+      lobby: {
+        animationMode: platformPrefs.lobbyAnimationMode,
+      },
       runtimeSetup,
     },
   );

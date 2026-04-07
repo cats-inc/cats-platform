@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 
+import type { PlatformLobbyAnimationMode } from '../../shared/platform-contract.js';
+
 interface BouncingCat {
   x: number;
   y: number;
@@ -22,6 +24,7 @@ const MOCK_CATS: Pick<BouncingCat, 'color' | 'initials'>[] = [
 const RADIUS = 20;
 const BASE_SPEED = 0.6;
 const OPACITY = 0.18;
+const REDUCED_MOTION_SPEED_MULTIPLIER = 0.18;
 
 function initCats(width: number, height: number): BouncingCat[] {
   return MOCK_CATS.map((cat) => {
@@ -61,65 +64,151 @@ function tick(cats: BouncingCat[], width: number, height: number): void {
   }
 }
 
-export function LobbyBouncingCats() {
+function tickWithSpeedMultiplier(
+  cats: BouncingCat[],
+  width: number,
+  height: number,
+  multiplier: number,
+): void {
+  if (multiplier === 1) {
+    tick(cats, width, height);
+    return;
+  }
+
+  for (const cat of cats) {
+    cat.x += cat.vx * multiplier;
+    cat.y += cat.vy * multiplier;
+
+    if (cat.x - cat.radius <= 0) {
+      cat.x = cat.radius;
+      cat.vx = Math.abs(cat.vx);
+    } else if (cat.x + cat.radius >= width) {
+      cat.x = width - cat.radius;
+      cat.vx = -Math.abs(cat.vx);
+    }
+
+    if (cat.y - cat.radius <= 0) {
+      cat.y = cat.radius;
+      cat.vy = Math.abs(cat.vy);
+    } else if (cat.y + cat.radius >= height) {
+      cat.y = height - cat.radius;
+      cat.vy = -Math.abs(cat.vy);
+    }
+  }
+}
+
+function clampCats(cats: BouncingCat[], width: number, height: number): void {
+  for (const cat of cats) {
+    cat.x = Math.min(Math.max(cat.radius, cat.x), width - cat.radius);
+    cat.y = Math.min(Math.max(cat.radius, cat.y), height - cat.radius);
+  }
+}
+
+function drawCats(
+  ctx: CanvasRenderingContext2D,
+  cats: readonly BouncingCat[],
+  width: number,
+  height: number,
+): void {
+  ctx.clearRect(0, 0, width, height);
+
+  for (const cat of cats) {
+    ctx.globalAlpha = OPACITY;
+    ctx.beginPath();
+    ctx.arc(cat.x, cat.y, cat.radius, 0, Math.PI * 2);
+    ctx.fillStyle = cat.color;
+    ctx.fill();
+
+    ctx.globalAlpha = OPACITY * 1.8;
+    ctx.font = `600 ${cat.radius * 0.85}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(cat.initials, cat.x, cat.y);
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+export function LobbyBouncingCats({
+  animationMode,
+}: {
+  animationMode: PlatformLobbyAnimationMode;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const catsRef = useRef<BouncingCat[] | null>(null);
   const frameRef = useRef(0);
 
   useEffect(() => {
+    if (animationMode === 'off') {
+      return undefined;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const canvasElement = canvas;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvasElement.getContext('2d');
     if (!ctx) return;
+    const speedMultiplier = animationMode === 'reduced'
+      ? REDUCED_MOTION_SPEED_MULTIPLIER
+      : 1;
 
-    function resize() {
-      const parent = canvas!.parentElement;
-      if (!parent) return;
-      canvas!.width = parent.clientWidth;
-      canvas!.height = parent.clientHeight;
+    function resizeCanvas() {
+      canvasElement.width = window.innerWidth;
+      canvasElement.height = window.innerHeight;
       if (!catsRef.current) {
-        catsRef.current = initCats(canvas!.width, canvas!.height);
+        catsRef.current = initCats(canvasElement.width, canvasElement.height);
+        return;
+      }
+      clampCats(catsRef.current, canvasElement.width, canvasElement.height);
+    }
+
+    function cancelFrame() {
+      if (frameRef.current !== 0) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = 0;
       }
     }
 
-    resize();
-    window.addEventListener('resize', resize);
-
-    function draw() {
-      const w = canvas!.width;
-      const h = canvas!.height;
+    function renderFrame(speedMultiplier: number) {
+      const w = canvasElement.width;
+      const h = canvasElement.height;
       const cats = catsRef.current;
       if (!ctx || !cats) return;
 
-      ctx.clearRect(0, 0, w, h);
-      tick(cats, w, h);
-
-      for (const cat of cats) {
-        ctx.globalAlpha = OPACITY;
-        ctx.beginPath();
-        ctx.arc(cat.x, cat.y, cat.radius, 0, Math.PI * 2);
-        ctx.fillStyle = cat.color;
-        ctx.fill();
-
-        ctx.globalAlpha = OPACITY * 1.8;
-        ctx.font = `600 ${cat.radius * 0.85}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff';
-        ctx.fillText(cat.initials, cat.x, cat.y);
-      }
-
-      frameRef.current = requestAnimationFrame(draw);
+      tickWithSpeedMultiplier(cats, w, h, speedMultiplier);
+      drawCats(ctx, cats, w, h);
     }
 
-    frameRef.current = requestAnimationFrame(draw);
+    function drawLoop() {
+      renderFrame(speedMultiplier);
+      frameRef.current = requestAnimationFrame(drawLoop);
+    }
+
+    function startLoop() {
+      cancelFrame();
+      resizeCanvas();
+      frameRef.current = requestAnimationFrame(drawLoop);
+    }
+
+    function handleResize() {
+      resizeCanvas();
+      renderFrame(speedMultiplier);
+    }
+
+    startLoop();
+    window.addEventListener('resize', handleResize);
 
     return () => {
-      cancelAnimationFrame(frameRef.current);
-      window.removeEventListener('resize', resize);
+      cancelFrame();
+      window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [animationMode]);
+
+  if (animationMode === 'off') {
+    return null;
+  }
 
   return (
     <canvas

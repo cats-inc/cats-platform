@@ -20,6 +20,7 @@ export function PlatformSettingsGeneral({
 }: PlatformSettingsGeneralProps) {
   const [cropOpen, setCropOpen] = useState(false);
   const [savingDesktopPrefs, setSavingDesktopPrefs] = useState(false);
+  const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
 
   async function updateOwnerAvatar(
     nextAvatarUrl: string | null,
@@ -100,11 +101,54 @@ export function PlatformSettingsGeneral({
     }
   }
 
+  async function updateLobbyAnimationMode(
+    nextAnimationMode: AppShellPayload['lobby']['animationMode'],
+    errorMessage: string,
+  ): Promise<void> {
+    const previousLobbyPrefs = payload.lobby;
+    onPayloadUpdate({
+      ...payload,
+      lobby: {
+        animationMode: nextAnimationMode,
+      },
+    });
+    setSavingLobbyPrefs(true);
+    try {
+      const response = await fetch('/api/platform/preferences', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ lobbyAnimationMode: nextAnimationMode }),
+      });
+      if (!response.ok) {
+        throw new Error(errorMessage);
+      }
+      const body = await response.json() as { lobbyAnimationMode?: AppShellPayload['lobby']['animationMode'] };
+      onPayloadUpdate({
+        ...payload,
+        lobby: {
+          animationMode: body.lobbyAnimationMode ?? nextAnimationMode,
+        },
+      });
+      onFeedback('');
+    } catch (error) {
+      onPayloadUpdate({
+        ...payload,
+        lobby: previousLobbyPrefs,
+      });
+      onFeedback(error instanceof Error ? error.message : errorMessage);
+    } finally {
+      setSavingLobbyPrefs(false);
+    }
+  }
+
   const avatarUrl = payload.ownerAvatarUrl;
   const initials = nameInitials(payload.ownerDisplayName);
   const desktopPrefs = payload.desktop ?? {
     startAtLogin: true,
     openWindowOnStartup: false,
+  };
+  const lobbyPrefs = payload.lobby ?? {
+    animationMode: 'reduced',
   };
 
   return (
@@ -157,6 +201,64 @@ export function PlatformSettingsGeneral({
               </button>
             ) : null}
           </div>
+        </div>
+
+        <div className="contentCard">
+          <h2>Lobby motion</h2>
+          <p className="heroNote">
+            Choose how lively the Lobby background should feel. Reduced is the default.
+          </p>
+          <label className="settingsCheckboxRow">
+            <input
+              type="radio"
+              name="lobby-animation-mode"
+              checked={lobbyPrefs.animationMode === 'off'}
+              disabled={savingLobbyPrefs}
+              onChange={() => {
+                void updateLobbyAnimationMode('off', 'Failed to update Lobby motion');
+              }}
+            />
+            <span className="settingsCheckboxMeta">
+              <span className="settingsCheckboxLabel">Off</span>
+              <span className="heroNote">
+                Keep the Lobby still and remove the bouncing cats background.
+              </span>
+            </span>
+          </label>
+          <label className="settingsCheckboxRow">
+            <input
+              type="radio"
+              name="lobby-animation-mode"
+              checked={lobbyPrefs.animationMode === 'reduced'}
+              disabled={savingLobbyPrefs}
+              onChange={() => {
+                void updateLobbyAnimationMode('reduced', 'Failed to update Lobby motion');
+              }}
+            />
+            <span className="settingsCheckboxMeta">
+              <span className="settingsCheckboxLabel">Reduced</span>
+              <span className="heroNote">
+                Keep the background alive, but soft and slow.
+              </span>
+            </span>
+          </label>
+          <label className="settingsCheckboxRow">
+            <input
+              type="radio"
+              name="lobby-animation-mode"
+              checked={lobbyPrefs.animationMode === 'full'}
+              disabled={savingLobbyPrefs}
+              onChange={() => {
+                void updateLobbyAnimationMode('full', 'Failed to update Lobby motion');
+              }}
+            />
+            <span className="settingsCheckboxMeta">
+              <span className="settingsCheckboxLabel">Full</span>
+              <span className="heroNote">
+                Let the cats bounce at full speed in the Lobby background.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="contentCard">

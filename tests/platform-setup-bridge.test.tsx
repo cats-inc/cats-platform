@@ -28,6 +28,9 @@ function createEnvelope() {
       startAtLogin: true,
       openWindowOnStartup: false,
     },
+    lobby: {
+      animationMode: 'reduced',
+    },
     runtime: {
       baseUrl: 'http://127.0.0.1:3110',
       reachable: true,

@@ -18,6 +18,9 @@ function createPayload(): AppShellPayload {
       startAtLogin: true,
       openWindowOnStartup: false,
     },
+    lobby: {
+      animationMode: 'reduced',
+    },
     products: [
       {
         id: 'chat',
@@ -70,7 +73,7 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('PlatformSettingsGeneral renders desktop startup preferences', () => {
+test('PlatformSettingsGeneral renders lobby motion and desktop startup preferences', () => {
   const markup = renderToStaticMarkup(
     <MemoryRouter initialEntries={['/settings/general']}>
       <PlatformSettingsGeneral
@@ -82,6 +85,8 @@ test('PlatformSettingsGeneral renders desktop startup preferences', () => {
     </MemoryRouter>,
   );
 
+  assert.match(markup, /Choose how lively the Lobby background should feel/u);
+  assert.match(markup, /Reduced is the default/u);
   assert.match(markup, /Start Cats Desktop when you sign in to your computer/u);
   assert.match(markup, /Open Cats when Cats Desktop starts/u);
   assert.match(markup, /checked/u);

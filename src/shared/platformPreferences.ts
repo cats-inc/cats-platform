@@ -1,19 +1,24 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { PlatformSurfaceId } from './platform-contract.js';
+import type {
+  PlatformLobbyAnimationMode,
+  PlatformSurfaceId,
+} from './platform-contract.js';
 import { resolvePlatformPreferencesPathFromChatState } from './platformPaths.js';
 
 export interface PlatformPreferences {
   lastProductSurface: PlatformSurfaceId | null;
   startAtLogin: boolean;
   openWindowOnStartup: boolean;
+  lobbyAnimationMode: PlatformLobbyAnimationMode;
 }
 
 const DEFAULTS: PlatformPreferences = {
   lastProductSurface: null,
   startAtLogin: true,
   openWindowOnStartup: false,
+  lobbyAnimationMode: 'reduced',
 };
 
 export function resolvePlatformPreferencesPath(chatStatePath: string): string {
@@ -27,6 +32,7 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
 
   const record = value as Record<string, unknown>;
   const surface = record.lastProductSurface;
+  const lobbyAnimationMode = record.lobbyAnimationMode;
   return {
     lastProductSurface:
       surface === 'chat' || surface === 'work' || surface === 'code'
@@ -34,6 +40,12 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
         : null,
     startAtLogin: record.startAtLogin !== false,
     openWindowOnStartup: record.openWindowOnStartup === true,
+    lobbyAnimationMode:
+      lobbyAnimationMode === 'off'
+      || lobbyAnimationMode === 'reduced'
+      || lobbyAnimationMode === 'full'
+        ? lobbyAnimationMode
+        : DEFAULTS.lobbyAnimationMode,
   };
 }
 

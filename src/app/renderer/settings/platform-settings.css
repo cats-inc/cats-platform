@@ -12,7 +12,8 @@
   border-top: 0;
 }
 
-.settingsCheckboxRow input[type='checkbox'] {
+.settingsCheckboxRow input[type='checkbox'],
+.settingsCheckboxRow input[type='radio'] {
   margin-top: 3px;
 }
 

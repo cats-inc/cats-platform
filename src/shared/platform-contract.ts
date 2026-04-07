@@ -9,6 +9,7 @@ export type PlatformProductGroupId = 'home' | 'office';
 export type PlatformProductInstallPolicy = 'required' | 'optional';
 export type PlatformProductInstallState = 'installed' | 'available' | 'installing' | 'attention';
 export type PlatformProductMaturity = 'active' | 'preview';
+export type PlatformLobbyAnimationMode = 'off' | 'reduced' | 'full';
 
 export interface PlatformAppDescriptor {
   name: 'cats';
@@ -52,6 +53,10 @@ export interface PlatformDesktopPreferences {
   openWindowOnStartup: boolean;
 }
 
+export interface PlatformLobbyPreferences {
+  animationMode: PlatformLobbyAnimationMode;
+}
+
 export interface PlatformOwnerContext {
   setupCompleteAt: string | null;
   ownerDisplayName: string;
@@ -65,6 +70,7 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
   app: PlatformAppDescriptor;
   products: PlatformProductDescriptor[];
   desktop: PlatformDesktopPreferences;
+  lobby: PlatformLobbyPreferences;
   runtime: RuntimeStatusSummary;
   runtimeSetup: RuntimeSetupSummary;
   metadata: PlatformResponseMetadata;

@@ -36,7 +36,7 @@ export function PlatformLobby({
 
   return (
     <div className="screen screenCentered lobbyScreen">
-      <LobbyBouncingCats />
+      <LobbyBouncingCats animationMode={envelope.lobby.animationMode} />
       <div className="platformLobby">
         <div className="lobbyTopBar">
           <span className="lobbyBrand">CATS INC</span>

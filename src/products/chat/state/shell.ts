@@ -3,6 +3,7 @@ import type { GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type {
   PlatformDesktopPreferences,
+  PlatformLobbyPreferences,
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
@@ -25,6 +26,7 @@ function resolveSetupCompleteAt(
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: PlatformSurfaceId | null;
     desktop?: PlatformDesktopPreferences;
+    lobby?: PlatformLobbyPreferences;
     guideCat?: GuideCatRecord | null;
   },
 ): string | null {
@@ -51,6 +53,7 @@ export function createAppShell(
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: PlatformSurfaceId | null;
     desktop?: PlatformDesktopPreferences;
+    lobby?: PlatformLobbyPreferences;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
   },
@@ -69,6 +72,9 @@ export function createAppShell(
     desktop: {
       startAtLogin: setup?.desktop?.startAtLogin ?? true,
       openWindowOnStartup: setup?.desktop?.openWindowOnStartup ?? false,
+    },
+    lobby: {
+      animationMode: setup?.lobby?.animationMode ?? 'reduced',
     },
     chat: {
       id: chat.id,
