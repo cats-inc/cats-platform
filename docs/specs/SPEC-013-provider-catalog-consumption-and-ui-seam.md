@@ -104,6 +104,14 @@ or future settings surfaces, but they are not valid execution pickers.
     comparably bounded usable-target check.
 16. Setup shall not fetch truthful selector state unless the owner has opted
     into Guide Cat creation for that render path.
+17. The selector hot path shall not depend on a full diagnostics payload when
+    it only needs usable-target availability truth. If the current runtime read
+    surface still bundles artifact summaries, full config inspection, or other
+    operator-grade diagnostics, the cross-project contract should add a lighter
+    availability-only scope or equivalent selector-oriented read model.
+18. Selector-specific runtime reads may use a dedicated timeout tuned for bulk
+    truthful availability reads. That timeout should reflect the chosen runtime
+    scope rather than inherit a per-target probing budget blindly.
 
 ### Non-Functional Requirements
 
@@ -120,6 +128,10 @@ or future settings surfaces, but they are not valid execution pickers.
 - **Concurrency discipline**: repeated selector mounts in one product session
   should coalesce onto shared runtime-backed reads instead of stampeding the
   same truth endpoints
+- **Cross-layer complementarity**: the product's short-lived selector cache
+  should cover repeated mount/reopen churn and complement longer runtime-owned
+  compatibility/diagnostics caches rather than duplicate them with another
+  long-lived stale window
 
 ## API Shape
 
@@ -230,11 +242,19 @@ Selector-specific notes:
 - When `cats-runtime` already exposes bulk provider availability truth, the
   product should favor one topology read plus one bulk availability read over
   per-provider availability fan-out.
+- When the runtime's existing diagnostics surface is still too heavy for
+  selector hot paths, the product/runtime contract should evolve toward an
+  availability-only scope that omits retained-artifact reads and other
+  operator-facing decoration the selector does not consume.
 - The product server may keep a short-lived truthful selector snapshot cache,
   plus in-flight request dedupe, so repeated setup/product mounts do not
   re-fetch the same provider registry on every reopen.
 - Truthful selector caching is allowed only as a reuse of recent runtime truth.
   It must not degrade into product-owned static provider or model fallback.
+- That product cache should stay materially shorter-lived than the runtime's
+  own deeper compatibility/probe caches; its job is to absorb repeated UI
+  mounts inside one interaction window, not to become a second long-lived
+  source of truth.
 - Model and advanced-model selector routes should reuse truthful selector state
   rather than revalidating the entire provider registry before every catalog
   fetch when the selected provider was already established as usable.

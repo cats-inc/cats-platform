@@ -175,6 +175,13 @@ fast without reviving static fallback catalogs.
       `GET /api/providers/{provider}/models/advanced` reuse established
       truthful selector state or the shared selector cache instead of
       rebuilding the full provider registry before every catalog read
+- [ ] Task 3.9: Coordinate with `cats-runtime` on a lighter availability-only
+      bulk read scope for selector hot paths so `cats-platform` does not pay
+      full diagnostics artifact/config assembly costs merely to decide whether
+      a target is selectable
+- [ ] Task 3.10: Tune selector-specific timeout budgets for the new bulk read
+      path, and keep the product cache TTL intentionally short so it
+      complements rather than duplicates runtime-owned compatibility caching
 
 **Deliverables**: setup and product selectors stop lying about what can be
 executed right now, and they do so without minute-scale hot-path latency
@@ -251,6 +258,13 @@ recovery
   Runtime-backed selectors may use short-lived runtime-truth caches and bulk
   availability reads, but they must not regress to static fallback catalogs or
   minute-scale sequential probe fan-out.
+- Decision 8: **Selector hot paths should consume a lighter runtime scope when
+  available**. Product selectors do not need retained artifact summaries or
+  full operator diagnostics payloads just to classify targets as selectable.
+- Decision 9: **Platform cache and timeout tuning must complement runtime
+  caching**. Product-side selector caches should stay short-lived and aimed at
+  repeated UI mounts, while deeper probe/compatibility caching remains
+  runtime-owned.
 
 ## Testing Strategy
 
@@ -264,6 +278,8 @@ recovery
   - selector cache-hit reads do not refetch runtime truth on every mount
   - model and advanced-model routes do not rebuild the full truthful registry
     for every request
+  - selector client/runtime timeout tuning uses the bulk-read contract rather
+    than inheriting an N-target probe budget by accident
 - **Integration Tests**:
   - setup completion without Guide Cat skips runtime selector work
   - setup completion with Guide Cat stores only a usable runtime target
@@ -272,6 +288,8 @@ recovery
   - completed setup plus later runtime failure stays in recovery, not onboarding
   - repeated setup/product selector opens reuse one truthful selector snapshot
     instead of stampeding the runtime
+  - bulk truthful selector reads stay bounded even when operator-grade
+    diagnostics include retained artifacts or other additive inspection data
 - **Manual Tests**:
   - runtime unavailable -> toggle Guide Cat -> inline recovery card, no fake
     dropdowns
@@ -280,6 +298,8 @@ recovery
   - runtime reachable with one usable target -> truthful provider/model choice
   - cold selector open returns after one topology read plus one bulk
     availability read rather than N sequential provider checks
+  - bulk selector read stays acceptably fast even when runtime has retained
+    compatibility/evolution artifacts on disk
   - warm selector reopen feels instant enough for setup step 2 and composer use
   - finish setup -> land on `/lobby`
   - post-setup runtime regression -> product or host recovery, not `/setup`
@@ -294,6 +314,7 @@ recovery
 | Desktop host still routes completed users back to onboarding | High | Land readiness/navigation updates together with the setup contract change |
 | Setup keeps growing side features again | Medium | Keep Guide Cat setup preference-only and keep `Create Now` out of scope |
 | Truthful selectors remain technically correct but too slow to use | High | Replace hot-path fan-out with bulk runtime truth, add short TTL cache plus in-flight dedupe, and reuse selector truth for model routes |
+| Bulk selector reads still inherit too much runtime diagnostics cost | High | Add a runtime-owned availability-only scope or equivalent lightweight bulk read so selector traffic does not force retained-artifact I/O and operator-grade payload assembly |
 
 ## Progress Log
 
@@ -303,6 +324,7 @@ recovery
 | 2026-04-07 | Direction tightened: setup and in-product selectors must only show truthful usable targets, and post-setup runtime failure must stay in recovery instead of bouncing the user back into onboarding |
 | 2026-04-07 | Direction tightened again: remove setup Step 3 entirely, finish setup directly into `/lobby`, and drop any `Create Now` setup-time session path |
 | 2026-04-08 | Performance follow-through added: truthful selectors must stop rebuilding provider truth through minute-scale per-provider fan-out, and may instead use bulk runtime truth plus short-lived runtime-backed caching |
+| 2026-04-08 | Runtime follow-through added: platform docs now explicitly depend on a lighter runtime availability-only selector scope plus complementary timeout/cache tuning instead of assuming product-side caching alone fixes cold-start latency |
 
 ---
 
