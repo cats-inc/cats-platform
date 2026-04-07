@@ -16,17 +16,49 @@ interface GuideCatSidecarProps {
   unreadCount: number;
 }
 
-export function resolveGuideCatSidecarAnchorSelector(pathname: string): string | null {
-  if (pathname === '/lobby') {
-    return '.platformLobby';
-  }
+export type GuideCatSidecarSurfaceMode = 'lobby' | 'product' | 'hidden';
+
+export function resolveGuideCatSidecarSurfaceMode(pathname: string): GuideCatSidecarSurfaceMode {
   if (pathname === '/setup' || pathname.startsWith('/settings')) {
+    return 'hidden';
+  }
+  return pathname === '/lobby' ? 'lobby' : 'product';
+}
+
+export function resolveGuideCatSidecarAnchorSelector(pathname: string): string | null {
+  if (resolveGuideCatSidecarSurfaceMode(pathname) === 'hidden') {
+    return null;
+  }
+  if (pathname === '/lobby') {
     return null;
   }
   return '.canvas';
 }
 
-function useGuideCatSidecarAnchorStyle(): CSSProperties {
+export function resolveGuideCatSidecarOffsets(
+  pathname: string,
+  anchorLeft: number,
+): { pillLeft: number; peekLeft: number; panelLeft: number } {
+  if (resolveGuideCatSidecarSurfaceMode(pathname) === 'lobby') {
+    return {
+      pillLeft: 18,
+      peekLeft: 56,
+      panelLeft: 0,
+    };
+  }
+
+  const panelLeft = Math.max(2, Math.round(anchorLeft) + 2);
+  return {
+    pillLeft: panelLeft + 14,
+    peekLeft: panelLeft + 42,
+    panelLeft,
+  };
+}
+
+function useGuideCatSidecarPlacement(): {
+  anchorStyle: CSSProperties;
+  surfaceMode: GuideCatSidecarSurfaceMode;
+} {
   const location = useLocation();
   const [anchorLeft, setAnchorLeft] = useState(0);
 
@@ -39,10 +71,31 @@ function useGuideCatSidecarAnchorStyle(): CSSProperties {
 
     let frameId = 0;
     let resizeObserver: ResizeObserver | null = null;
+    let mutationObserver: MutationObserver | null = null;
+    let observedAnchor: HTMLElement | null = null;
+
+    const bindResizeObserver = (anchor: HTMLElement | null) => {
+      if (observedAnchor === anchor) {
+        return;
+      }
+
+      resizeObserver?.disconnect();
+      observedAnchor = anchor;
+
+      if (anchor && typeof ResizeObserver === 'function') {
+        resizeObserver = new ResizeObserver(() => {
+          requestUpdate();
+        });
+        resizeObserver.observe(anchor);
+      } else {
+        resizeObserver = null;
+      }
+    };
 
     const updateAnchor = () => {
       frameId = 0;
       const anchor = document.querySelector<HTMLElement>(selector);
+      bindResizeObserver(anchor);
       const nextLeft = anchor
         ? Math.max(0, Math.round(anchor.getBoundingClientRect().left))
         : 0;
@@ -57,12 +110,16 @@ function useGuideCatSidecarAnchorStyle(): CSSProperties {
     };
 
     requestUpdate();
-    const anchor = document.querySelector<HTMLElement>(selector);
-    if (anchor && typeof ResizeObserver === 'function') {
-      resizeObserver = new ResizeObserver(() => {
+    if (typeof MutationObserver === 'function') {
+      mutationObserver = new MutationObserver(() => {
         requestUpdate();
       });
-      resizeObserver.observe(anchor);
+      mutationObserver.observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['class', 'style'],
+      });
     }
 
     window.addEventListener('resize', requestUpdate);
@@ -72,15 +129,22 @@ function useGuideCatSidecarAnchorStyle(): CSSProperties {
       if (frameId !== 0) {
         window.cancelAnimationFrame(frameId);
       }
+      mutationObserver?.disconnect();
       resizeObserver?.disconnect();
       window.removeEventListener('resize', requestUpdate);
       document.removeEventListener('scroll', requestUpdate, true);
     };
   }, [location.pathname]);
 
+  const offsets = resolveGuideCatSidecarOffsets(location.pathname, anchorLeft);
   return {
-    '--guide-cat-anchor-left': `${anchorLeft}px`,
-  } as CSSProperties;
+    anchorStyle: {
+      '--guide-cat-pill-left': `${offsets.pillLeft}px`,
+      '--guide-cat-peek-left': `${offsets.peekLeft}px`,
+      '--guide-cat-panel-left': `${offsets.panelLeft}px`,
+    } as CSSProperties,
+    surfaceMode: resolveGuideCatSidecarSurfaceMode(location.pathname),
+  };
 }
 
 function CollapsedPill({
@@ -173,6 +237,7 @@ function OpenPanel({
   onAction,
   onClose,
   style,
+  surfaceMode,
 }: {
   name: string;
   ownerDisplayName: string;
@@ -180,10 +245,15 @@ function OpenPanel({
   onAction: (route: string) => void;
   onClose: () => void;
   style?: CSSProperties;
+  surfaceMode: GuideCatSidecarSurfaceMode;
 }) {
   return (
     <div
-      className="guideCatPanel"
+      className={
+        surfaceMode === 'lobby'
+          ? 'guideCatPanel guideCatPanel--lobby'
+          : 'guideCatPanel guideCatPanel--product'
+      }
       style={style}
     >
       <div className="guideCatPanelHeader">
@@ -228,6 +298,7 @@ function SidecarContent({
   collapse,
   dismissWelcome,
   anchorStyle,
+  surfaceMode,
 }: {
   viewState: GuideCatSidecarViewState;
   guideCat: GuideCatRecord;
@@ -237,6 +308,7 @@ function SidecarContent({
   collapse: () => void;
   dismissWelcome: () => void;
   anchorStyle: CSSProperties;
+  surfaceMode: GuideCatSidecarSurfaceMode;
 }) {
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -301,6 +373,7 @@ function SidecarContent({
         onAction={handleAction}
         onClose={collapse}
         style={anchorStyle}
+        surfaceMode={surfaceMode}
       />
     </div>
   );
@@ -315,7 +388,7 @@ export function GuideCatSidecar({
   const { viewState, toggle, collapse, dismissWelcome } = useGuideCatSidecarState(
     guideCatSidecarSeen,
   );
-  const anchorStyle = useGuideCatSidecarAnchorStyle();
+  const { anchorStyle, surfaceMode } = useGuideCatSidecarPlacement();
 
   return createPortal(
     <SidecarContent
@@ -327,6 +400,7 @@ export function GuideCatSidecar({
       collapse={collapse}
       dismissWelcome={dismissWelcome}
       anchorStyle={anchorStyle}
+      surfaceMode={surfaceMode}
     />,
     document.body,
   );

@@ -4,18 +4,19 @@
 
 .guideCatPill {
   position: fixed;
-  left: max(16px, calc(var(--guide-cat-anchor-left, 0px) - 18px));
+  left: var(--guide-cat-pill-left, 16px);
   top: 50%;
   transform: translateY(-50%);
   z-index: 20;
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border-radius: 50%;
   background: #8B7E74;
   color: #fff;
-  font-size: 0.75rem;
+  opacity: 0.72;
+  font-size: 0.65rem;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -23,11 +24,13 @@
   border: none;
   cursor: pointer;
   box-shadow: var(--shadow-raised);
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
 }
 
-.guideCatPill:hover {
+.guideCatPill:hover,
+.guideCatPill:focus-visible {
   box-shadow: var(--shadow-sheet);
+  opacity: 1;
   transform: translateY(-50%) scale(1.06);
 }
 
@@ -53,7 +56,7 @@
 
 .guideCatPeek {
   position: fixed;
-  left: max(16px, calc(var(--guide-cat-anchor-left, 0px) + 16px));
+  left: var(--guide-cat-peek-left, 64px);
   top: 50%;
   transform: translateY(-50%);
   z-index: 20;
@@ -151,9 +154,9 @@
 
 .guideCatPanel {
   position: fixed;
-  left: var(--guide-cat-anchor-left, 0px);
+  left: var(--guide-cat-panel-left, 24px);
   top: 0;
-  width: min(320px, calc(100vw - var(--guide-cat-anchor-left, 0px)));
+  width: min(320px, calc(100vw - var(--guide-cat-panel-left, 24px) - 16px));
   height: 100vh;
   z-index: 20;
   background: var(--panel);
@@ -161,12 +164,30 @@
   box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06);
   display: grid;
   grid-template-rows: auto 1fr;
+}
+
+.guideCatPanel--lobby {
   animation: guideCatSlideIn 0.2s ease-out;
+}
+
+.guideCatPanel--product {
+  animation: guideCatPanelAppear 0.16s ease-out;
 }
 
 @keyframes guideCatSlideIn {
   from { transform: translateX(-100%); }
   to   { transform: translateX(0); }
+}
+
+@keyframes guideCatPanelAppear {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .guideCatPanelHeader {
