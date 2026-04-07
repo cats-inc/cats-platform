@@ -275,13 +275,14 @@ export default function PlatformApp() {
       : <ChatApp />;
   return (
     <>
-      {readyEnvelope.guideCat ? (
+      {readyEnvelope.guideCat && readyEnvelope.guideCat.status !== 'dismissed' ? (
         <GuideCatSidecar
           guideCat={readyEnvelope.guideCat}
           ownerDisplayName={readyEnvelope.ownerDisplayName}
           guideCatSidecarSeen={readyEnvelope.guideCatSidecarSeen ?? false}
           guideCatSidecarMode={readyEnvelope.guideCatSidecarMode ?? 'auto'}
           unreadCount={0}
+          onDismissed={() => void refreshEnvelope()}
         />
       ) : null}
       <Routes>

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
+
+import { useConfirmDialog, ConfirmDialog } from './ConfirmDialog.js';
 
 import type { GuideCatRecord } from '../../core/types.js';
 import {
@@ -16,6 +18,7 @@ interface GuideCatSidecarProps {
   guideCatSidecarSeen: boolean;
   guideCatSidecarMode: GuideCatSidecarMode;
   unreadCount: number;
+  onDismissed: () => void;
 }
 
 export type GuideCatSidecarSurfaceMode = 'lobby' | 'product' | 'hidden';
@@ -155,26 +158,39 @@ function CollapsedPill({
   name,
   unreadCount,
   onClick,
+  onDismissClick,
   style,
 }: {
   name: string;
   unreadCount: number;
   onClick: () => void;
+  onDismissClick?: () => void;
   style?: CSSProperties;
 }) {
   return (
-    <button
-      type="button"
-      className="guideCatPill"
-      style={style}
-      onClick={onClick}
-      aria-label={`Open guide: ${name}`}
-    >
-      <GuideCatAvatar className="guideCatPillAvatar" />
-      {unreadCount > 0 ? (
-        <span className="guideCatPillBadge">{unreadCount}</span>
+    <div className="guideCatPillWrap" style={style}>
+      <button
+        type="button"
+        className="guideCatPill"
+        onClick={onClick}
+        aria-label={`Open guide: ${name}`}
+      >
+        <GuideCatAvatar className="guideCatPillAvatar" />
+        {unreadCount > 0 ? (
+          <span className="guideCatPillBadge">{unreadCount}</span>
+        ) : null}
+      </button>
+      {onDismissClick ? (
+        <button
+          type="button"
+          className="guideCatPillDismiss"
+          onClick={(e: ReactMouseEvent) => { e.stopPropagation(); onDismissClick(); }}
+          aria-label="Dismiss guide cat"
+        >
+          &#x2715;
+        </button>
       ) : null}
-    </button>
+    </div>
   );
 }
 
@@ -293,6 +309,7 @@ function SidecarContent({
   toggle,
   collapse,
   dismissWelcome,
+  onDismissed,
   anchorStyle,
   surfaceMode,
 }: {
@@ -303,16 +320,39 @@ function SidecarContent({
   toggle: () => void;
   collapse: () => void;
   dismissWelcome: () => void;
+  onDismissed: () => void;
   anchorStyle: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
 }) {
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
+  const { dialog, confirm, handleClose } = useConfirmDialog();
 
   const handleAction = useCallback((route: string) => {
     collapse();
     navigate(route);
   }, [collapse, navigate]);
+
+  const handleDismissClick = useCallback(async () => {
+    const confirmed = await confirm({
+      title: 'Dismiss Guide Cat?',
+      message: 'Your guide cat will be hidden. You can restore it later from Settings.',
+      confirmLabel: 'Dismiss',
+      cancelLabel: 'Keep',
+    });
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/platform/guide-cat', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'dismissed' }),
+      });
+      if (response.ok) {
+        onDismissed();
+      }
+    } catch { /* ignore */ }
+  }, [confirm, onDismissed]);
 
   useEffect(() => {
     if (viewState !== 'open' && viewState !== 'welcome-peek') return;
@@ -338,12 +378,16 @@ function SidecarContent({
 
   if (viewState === 'collapsed') {
     return (
-      <CollapsedPill
-        name={guideCat.name}
-        unreadCount={unreadCount}
-        onClick={toggle}
-        style={anchorStyle}
-      />
+      <>
+        <CollapsedPill
+          name={guideCat.name}
+          unreadCount={unreadCount}
+          onClick={toggle}
+          onDismissClick={handleDismissClick}
+          style={anchorStyle}
+        />
+        <ConfirmDialog dialog={dialog} onClose={handleClose} />
+      </>
     );
   }
 
@@ -354,6 +398,7 @@ function SidecarContent({
           name={guideCat.name}
           unreadCount={0}
           onClick={toggle}
+          onDismissClick={handleDismissClick}
           style={anchorStyle}
         />
         <WelcomePeek
@@ -387,6 +432,7 @@ export function GuideCatSidecar({
   guideCatSidecarSeen,
   guideCatSidecarMode,
   unreadCount,
+  onDismissed,
 }: GuideCatSidecarProps) {
   const { viewState, toggle, collapse, dismissWelcome } = useGuideCatSidecarState(
     guideCatSidecarSeen,
@@ -403,6 +449,7 @@ export function GuideCatSidecar({
       toggle={toggle}
       collapse={collapse}
       dismissWelcome={dismissWelcome}
+      onDismissed={onDismissed}
       anchorStyle={anchorStyle}
       surfaceMode={surfaceMode}
     />,

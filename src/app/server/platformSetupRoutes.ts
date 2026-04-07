@@ -547,6 +547,51 @@ async function handleGuideCatUpdate(
   sendJson(context.response, 200, { guideCat: core.guideCat });
 }
 
+async function handleGuideCatStatusUpdate(
+  context: PlatformSetupContext,
+): Promise<void> {
+  let body: { status?: string };
+  try {
+    body = await readJsonBody<typeof body>(context.request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid request body';
+    sendJson(context.response, 400, { error: { code: 'bad_request', message } });
+    return;
+  }
+
+  if (body.status !== 'active' && body.status !== 'dismissed') {
+    sendJson(context.response, 400, {
+      error: { code: 'bad_request', message: 'status must be active or dismissed' },
+    });
+    return;
+  }
+
+  const now = context.dependencies.now?.() ?? new Date();
+  const nowIso = now.toISOString();
+  let core = await context.dependencies.chatStore.readCore();
+  const chatState = await context.dependencies.chatStore.read();
+
+  if (!core.guideCat) {
+    sendJson(context.response, 404, {
+      error: { code: 'not_found', message: 'No Guide Cat exists' },
+    });
+    return;
+  }
+
+  core = {
+    ...core,
+    updatedAt: nowIso,
+    guideCat: {
+      ...core.guideCat,
+      status: body.status,
+      updatedAt: nowIso,
+    },
+  };
+
+  await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  sendJson(context.response, 200, { guideCat: core.guideCat });
+}
+
 async function handleGuideCatDelete(
   context: PlatformSetupContext,
 ): Promise<void> {
@@ -731,11 +776,15 @@ export async function routePlatformSetupApi(
       await handleGuideCatUpdate(context);
       return true;
     }
+    if (context.method === 'PATCH') {
+      await handleGuideCatStatusUpdate(context);
+      return true;
+    }
     if (context.method === 'DELETE') {
       await handleGuideCatDelete(context);
       return true;
     }
-    sendMethodNotAllowed(context.response, ['PUT', 'DELETE']);
+    sendMethodNotAllowed(context.response, ['PUT', 'PATCH', 'DELETE']);
     return true;
   }
 

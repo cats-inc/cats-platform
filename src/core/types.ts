@@ -530,9 +530,12 @@ export interface OwnerProfileRecord {
   updatedAt: string;
 }
 
+export type GuideCatStatus = 'active' | 'dismissed';
+
 export interface GuideCatRecord {
   id: string;
   name: string;
+  status?: GuideCatStatus;
   executionTarget: ExecutionTargetSummary;
   modelSelection: ProviderModelSelection | null;
   createdAt: string;
