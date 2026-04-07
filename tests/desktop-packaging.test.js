@@ -525,7 +525,7 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'tar.gz'), true);
   assert.equal(packageJson.build.nsis.oneClick, false);
   assert.equal(packageJson.build.win.icon, 'icon.ico');
-  assert.equal(packageJson.build.win.signAndEditExecutable, true);
+  assert.equal(packageJson.build.win.signAndEditExecutable, false);
   assert.equal(packageJson.build.mac.icon, 'icon.icns');
   assert.equal(packageJson.build.linux.icon, 'icons/linux');
   assert.equal(packageJson.build.nsis.installerIcon, 'installerIcon.ico');
@@ -661,6 +661,11 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /npm-cli\.js/);
   assert.match(script, /npx-cli\.js/);
   assert.match(script, /process\.execPath/);
+  assert.match(script, /CSC_IDENTITY_AUTO_DISCOVERY:\s*'false'/);
+  assert.match(script, /WIN_CSC_LINK:\s*''/);
+  assert.match(script, /CSC_LINK:\s*''/);
+  assert.match(script, /WIN_CSC_KEY_PASSWORD:\s*''/);
+  assert.match(script, /CSC_KEY_PASSWORD:\s*''/);
   assert.match(script, /shell: false/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
   assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);

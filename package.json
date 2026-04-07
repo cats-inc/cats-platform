@@ -154,7 +154,7 @@
         }
       ],
       "icon": "icon.ico",
-      "signAndEditExecutable": true,
+      "signAndEditExecutable": false,
       "artifactName": "Cats-${version}-setup-${arch}.${ext}"
     },
     "mac": {

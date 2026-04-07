@@ -100,7 +100,14 @@ async function runCommand(command, args, cwd) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(invocation.command, invocation.args, {
       cwd,
-      env: process.env,
+      env: {
+        ...process.env,
+        CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+        WIN_CSC_LINK: '',
+        CSC_LINK: '',
+        WIN_CSC_KEY_PASSWORD: '',
+        CSC_KEY_PASSWORD: '',
+      },
       stdio: 'inherit',
       shell: false,
     });
