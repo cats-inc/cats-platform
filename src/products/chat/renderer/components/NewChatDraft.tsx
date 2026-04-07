@@ -450,8 +450,8 @@ export function NewChatDraft({
                       key={catId}
                       className="catAvatar"
                       style={cat.avatarUrl
-                        ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', width: 24, height: 24, fontSize: '0.6rem' }
-                        : { background: cat.avatarColor ?? '#90A4AE', width: 24, height: 24, fontSize: '0.6rem' }}
+                        ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', width: 24, height: 24, fontSize: '0.6rem', marginRight: 4 }
+                        : { background: cat.avatarColor ?? '#90A4AE', width: 24, height: 24, fontSize: '0.6rem', marginRight: 8 }}
                       data-tooltip={cat.name}
                     >
                       {cat.avatarUrl ? null : catInitials(cat.name)}
@@ -462,20 +462,20 @@ export function NewChatDraft({
                   <div
                     key={participant.participantId}
                     className="catAvatar"
-                    style={{ background: '#90A4AE', width: 24, height: 24, fontSize: '0.6rem' }}
+                    style={{ background: '#90A4AE', width: 24, height: 24, fontSize: '0.6rem', marginRight: 8 }}
                     data-tooltip={participant.name}
                   >
                     {catInitials(participant.name)}
                   </div>
                 ))}
-                <span className="parallelAddHint" style={{ marginRight: 8 }}>Add another participant</span>
+                <span className="parallelAddHint" style={{ marginRight: 8 }}>Add another model to collaborate</span>
                 <button
                   type="button"
                   className="parallelAddButton"
                   style={{ marginRight: 8 }}
                   disabled={isSubmittingFirstTurn}
                   onClick={() => openSidePanelTo('cats')}
-                  aria-label="Add another participant"
+                  aria-label="Add another model to collaborate"
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M8 3v10" />

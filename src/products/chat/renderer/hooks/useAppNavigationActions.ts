@@ -51,6 +51,7 @@ export function useAppNavigationActions(options: {
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
   resetDraftConcurrentTargets: () => void;
+  createInitialGroupParticipants: () => DraftTemporaryParticipant[];
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
@@ -73,6 +74,7 @@ export function useAppNavigationActions(options: {
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     resetDraftConcurrentTargets,
+    createInitialGroupParticipants,
     setDraftFiles,
     setChannelFiles,
     confirm: confirmDialog,
@@ -312,7 +314,8 @@ export function useAppNavigationActions(options: {
   const onStartNewGroupChat = useCallback(async (): Promise<void> => {
     navigate(buildNewGroupChatPath());
     resetFreshDraftState();
-  }, [navigate, resetFreshDraftState]);
+    setDraftTemporaryParticipants(createInitialGroupParticipants());
+  }, [navigate, resetFreshDraftState, setDraftTemporaryParticipants, createInitialGroupParticipants]);
 
   const onStartNewParallelChat = useCallback(async (): Promise<void> => {
     navigate(buildNewParallelChatPath());

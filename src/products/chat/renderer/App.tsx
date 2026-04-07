@@ -28,6 +28,7 @@ import {
   PRODUCT_PROVIDER_ORDER,
   getDefaultModel,
   getDefaultProviderInstance,
+  getProviderDisplayName,
 } from '../../../shared/providerCatalog';
 import { sameProviderModelSelection } from '../../../shared/providerSelection';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
@@ -112,6 +113,18 @@ function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelec
     baseTarget,
     createModelSelectorValueForProvider(fallbackProvider),
   ];
+}
+
+function createInitialGroupParticipants(baseProvider: string): DraftTemporaryParticipant[] {
+  const secondProvider = PRODUCT_PROVIDER_ORDER.find((p) => p !== baseProvider) ?? 'codex';
+  return [baseProvider, secondProvider].map((provider) => ({
+    participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
+    name: getProviderDisplayName(provider),
+    provider,
+    instance: getDefaultProviderInstance(provider) ?? undefined,
+    model: getDefaultModel(provider) || undefined,
+    modelSelection: null,
+  }));
 }
 
 function createNextCompareTarget(
@@ -428,6 +441,10 @@ export default function App() {
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     resetDraftConcurrentTargets,
+    createInitialGroupParticipants: useCallback(
+      () => createInitialGroupParticipants(draftModel.provider),
+      [draftModel.provider],
+    ),
     setDraftFiles,
     setChannelFiles,
     confirm: appConfirm,
