@@ -117,6 +117,12 @@ npm run desktop:package:macos
 npm run desktop:package:linux
 ```
 
+- refresh the packaged/tray icon set from `assets/app-icon-silhouette.svg`:
+
+```bash
+npm run desktop:icons
+```
+
 ```bash
 ./scripts/macos/build-macos-installer.sh
 ./scripts/linux/build-linux-installer.sh

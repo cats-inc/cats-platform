@@ -20,6 +20,19 @@ interface CreateDesktopTrayControllerOptions {
   onQuit: () => void;
 }
 
+function createBundledTrayImage(name: string): Electron.NativeImage | null {
+  try {
+    const iconPath = path.join(app.getAppPath(), 'assets', name);
+    const bundled = nativeImage.createFromPath(iconPath);
+    if (!bundled.isEmpty()) {
+      return bundled;
+    }
+  } catch {
+    // Fall through to alternate tray icon sources.
+  }
+  return null;
+}
+
 function buildStatusLabel(phase: DesktopBootstrapPhase, summary: string): string {
   if (phase === 'starting_services') {
     return 'Starting Cats services...';
@@ -31,18 +44,22 @@ function buildStatusLabel(phase: DesktopBootstrapPhase, summary: string): string
 }
 
 async function createTrayIcon(): Promise<Electron.NativeImage> {
-  // Linux cannot resolve an icon from the exe — use bundled icon instead.
-  if (process.platform === 'linux') {
-    try {
-      const iconPath = path.join(app.getAppPath(), 'assets', 'tray-icon.png');
-      const bundled = nativeImage.createFromPath(iconPath);
-      if (!bundled.isEmpty()) {
-        return bundled.resize({ width: 22, height: 22 });
-      }
-    } catch {
-      // Fall through to exe icon or default.
+  if (process.platform === 'darwin') {
+    const template = createBundledTrayImage('tray-iconTemplate.png');
+    if (template) {
+      template.setTemplateImage(true);
+      return template;
     }
   }
+
+  const bundled = createBundledTrayImage('tray-icon.png');
+  if (bundled) {
+    if (process.platform === 'linux') {
+      return bundled.resize({ width: 22, height: 22 });
+    }
+    return bundled;
+  }
+
   try {
     const icon = await app.getFileIcon(app.getPath('exe'), { size: 'normal' });
     if (!icon.isEmpty()) {

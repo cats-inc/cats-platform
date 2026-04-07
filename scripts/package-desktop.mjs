@@ -57,9 +57,11 @@ async function main() {
     throw new Error(`Unsupported platform filter: ${parsed.platform}`);
   }
 
+  const { generateElectronIcons } = await import('./shared/generate-electron-icons.mjs');
   const { resolveDesktopHostConfig } = await import('../build/desktop/config.js');
   const { stageDesktopPackagingOutputs } = await import('../build/desktop/packaging.js');
 
+  await generateElectronIcons();
   const config = resolveDesktopHostConfig({
     env: process.env,
     userDataDir: resolve(PROJECT_ROOT, '.desktop-package-user'),

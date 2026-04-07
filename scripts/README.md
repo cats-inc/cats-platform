@@ -6,7 +6,7 @@
 
 ```
 scripts/
-├── shared/    # Shared Unix shell helpers
+├── shared/    # Shared cross-platform helpers and generators
 ├── windows/   # PowerShell (.ps1)
 ├── linux/     # Bash (.sh)
 ├── macos/     # Bash (.sh)
@@ -80,6 +80,18 @@ These cover:
 - Windows NSIS installer builds plus installed-app smoke validation
 - macOS unsigned/test package builds plus unpacked app-bundle smoke validation
 - Linux unsigned/test package builds plus unpacked package smoke validation
+
+Desktop icon generation is also repo-owned now:
+
+- `scripts/shared/generate-electron-icons.mjs`
+- `npm run desktop:icons`
+
+That tool turns one source SVG into the Electron app/tray icon set needed for:
+
+- Windows app, shortcut, and NSIS installer icons
+- macOS app bundle icon (`.icns`)
+- Linux desktop/package PNG icon sizes
+- packaged tray icons, including a macOS template tray icon
 
 ## Collaboration Helpers
 
@@ -307,4 +319,3 @@ Representative usage:
 
 These are operational helper surfaces only. They are intentionally separate
 from the packaged setup wizard/bootstrap flow for now.
-

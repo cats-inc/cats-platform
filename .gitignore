@@ -17,6 +17,8 @@ htmlcov/
 dist/
 build/
 !assets/build/
+!assets/build/icons/
+!assets/build/icons/**
 release/
 config/*
 !config/.gitkeep

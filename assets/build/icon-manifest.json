@@ -1,0 +1,27 @@
+{
+  "sourceSvg": "assets/app-icon-silhouette.svg",
+  "app": {
+    "png": "assets/build/icon.png",
+    "ico": "assets/build/icon.ico",
+    "icns": "assets/build/icon.icns",
+    "installerIcon": "assets/build/installerIcon.ico",
+    "uninstallerIcon": "assets/build/uninstallerIcon.ico",
+    "installerHeaderIcon": "assets/build/installerHeaderIcon.ico",
+    "linuxIcons": {
+      "16": "assets/build/icons/linux/16x16.png",
+      "24": "assets/build/icons/linux/24x24.png",
+      "32": "assets/build/icons/linux/32x32.png",
+      "48": "assets/build/icons/linux/48x48.png",
+      "64": "assets/build/icons/linux/64x64.png",
+      "128": "assets/build/icons/linux/128x128.png",
+      "256": "assets/build/icons/linux/256x256.png",
+      "512": "assets/build/icons/linux/512x512.png"
+    }
+  },
+  "tray": {
+    "default": "assets/tray-icon.png",
+    "retina": "assets/tray-icon@2x.png",
+    "template": "assets/tray-iconTemplate.png",
+    "templateRetina": "assets/tray-iconTemplate@2x.png"
+  }
+}
