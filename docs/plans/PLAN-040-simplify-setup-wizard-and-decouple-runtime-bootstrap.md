@@ -216,7 +216,7 @@ recovery
       and runtime recovery boundaries
 - [x] Task 5.3: Update landing/setup docs to describe `/lobby` as the first
       post-setup destination
-- [ ] Task 5.4: Run full regression coverage for setup, selectors, and host
+- [x] Task 5.4: Run full regression coverage for setup, selectors, and host
       recovery routing
 
 **Deliverables**: codebase and docs tell the same story
@@ -339,6 +339,7 @@ recovery
 | 2026-04-08 | Selector follow-through landed end-to-end: provider model and advanced-model routes now reuse the shared selector cache instead of rebuilding truth per provider, and selector-scoped diagnostics now use a longer timeout budget while config + availability reads run in parallel on cold cache misses. |
 | 2026-04-08 | Post-setup host recovery landed: the desktop host now treats completed setup as app-root entry (`/`), opens Cats recovery instead of `/setup` when runtime/provider health regresses, and regression tests now lock that behavior for navigation, readiness, and tray actions. |
 | 2026-04-08 | Cleanup/docs follow-through landed: setup-summary reads remain available, but orphaned setup scan/apply client mutations were removed from `cats-platform`; live setup/deployment/architecture docs now describe truthful selector behavior, `/lobby` as the first post-setup route, and runtime recovery as a post-setup concern rather than onboarding. |
+| 2026-04-08 | Regression sweep completed for the affected surfaces: `cats-platform` passed targeted typecheck/build plus setup (`platform-setup-wizard`, `runtime-setup-flow`), selector (`runtime-client`, `provider-model-fields`), and host recovery (`desktop-bootstrap-navigation`, `desktop-readiness`, `desktop-tray`) coverage; `cats-runtime` also passed `src/http/providerDiagnostics.test.ts` and `npm run typecheck` for the additive availability-scope seam. |
 
 ---
 
