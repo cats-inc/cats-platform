@@ -6,17 +6,22 @@ import {
   appendMessage,
   buildChannelView,
   createChannel,
+  setChannelParticipantLease,
 } from '../src/products/chat/state/model/index.ts';
 import {
   resolveMentionRoute,
   resolveRoomDefaultRoutingTarget,
 } from '../src/products/chat/state/mentionRouter.ts';
 import {
+  canResumeWorkflowContinuationReplay,
+} from '../src/products/chat/state/runtime-dispatch/replay.ts';
+import {
   buildPromptForTarget,
   resolveChoiceResponseTarget,
   resolveExecutionMetadataForTarget,
 } from '../src/products/chat/state/runtimeTargeting.ts';
 import { shouldRewriteOrchestratorReply } from '../src/products/chat/state/runtime-session/shared.ts';
+import type { WorkflowContinuationReplaySnapshot } from '../src/platform/orchestration/workflowContinuationReplay.ts';
 
 function createTemporaryParticipantState() {
   const now = new Date('2026-04-07T10:00:00.000Z');
@@ -158,4 +163,53 @@ test('temporary participants build prompts, choice routing, and suppress solo re
     ),
     false,
   );
+});
+
+test('temporary participants remain resumable through workflow continuation replay', () => {
+  const { state, channelId, userMessageId } = createTemporaryParticipantState();
+  const readyState = setChannelParticipantLease(
+    state,
+    channelId,
+    'participant-verifier',
+    {
+      sessionId: 'session-verifier',
+      status: 'ready',
+    },
+    new Date('2026-04-07T10:02:00.000Z'),
+  );
+
+  const replay: WorkflowContinuationReplaySnapshot = {
+    channelId,
+    checkpointId: 'checkpoint-1',
+    sourceMessageId: userMessageId,
+    sourceParticipant: {
+      participantKind: 'cat',
+      participantId: 'participant-reviewer',
+      participantName: 'RuntimeReviewer',
+    },
+    targets: [
+      {
+        participantKind: 'cat',
+        participantId: 'participant-verifier',
+        participantName: 'RuntimeVerifier',
+      },
+    ],
+    mentionNames: ['RuntimeVerifier'],
+    trigger: 'continuation_mention',
+    branchStrategy: 'transplant_context',
+    workflowStageId: 'continuation_handoff',
+    workflowShape: 'sequential',
+    reviewRequired: false,
+    continuationSource: 'explicit_mentions',
+    workflowRecommendation: null,
+    unresolvedTargets: [],
+    blockedReason: null,
+    recordedAt: '2026-04-07T10:02:00.000Z',
+    replayState: 'ready',
+    replayTrigger: 'retry',
+    replayAttemptAt: null,
+    replayError: null,
+  };
+
+  assert.equal(canResumeWorkflowContinuationReplay(replay, readyState), true);
 });

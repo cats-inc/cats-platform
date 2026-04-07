@@ -90,8 +90,12 @@ function resolveReplayTarget(
     return buildOrchestratorTarget(state, channel);
   }
 
-  const cat = channel.assignedCats.find((candidate) =>
-    candidate.status === 'active' && candidate.catId === participant.participantId,
+  const cat = (
+    channel.assignedParticipants?.find((candidate) =>
+      candidate.status === 'active' && candidate.participantId === participant.participantId)
+    ?? channel.assignedCats.find((candidate) =>
+      candidate.status === 'active'
+      && (candidate.participantId === participant.participantId || candidate.catId === participant.participantId))
   );
   return cat ? buildCatTarget(cat) : null;
 }
