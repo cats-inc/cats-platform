@@ -270,7 +270,9 @@ export function useAppNavigationActions(options: {
   }, [confirmDialog, setBusy, setFeedback, setState]);
 
   const onNavigateSettings = useCallback((): void => {
-    navigate('/settings/general');
+    navigate('/settings/general', {
+      state: { platformShellSurface: 'chat' },
+    });
     setAccountMenuOpen(false);
     setAddCatOpen(false);
     setFeedback('');

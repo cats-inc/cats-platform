@@ -728,6 +728,7 @@ export default function App() {
         overflowMenuOpenId={overflowMenuOpenId}
         busy={busy}
         surface={surface}
+        shellSurface="code"
         routeChannelId={routeChannelId}
         accountMenuRef={accountMenuRef}
         onToggleSidebar={onToggleSidebar}

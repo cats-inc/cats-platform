@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import {
   isPlatformNonProductPath,
+  resolvePreferredPlatformSurface,
   resolvePlatformShellSurface,
   resolvePlatformSurfaceForPath,
   PLATFORM_SURFACE_ROUTES,
@@ -102,6 +103,14 @@ test('resolvePlatformShellSurface keeps settings inside the last active product 
   assert.equal(resolvePlatformShellSurface('/code/build', 'work'), 'code');
 });
 
+test('resolvePreferredPlatformSurface prioritizes explicit settings route state before session and stored fallbacks', () => {
+  assert.equal(resolvePreferredPlatformSurface('code', 'work', 'chat', 'chat'), 'code');
+  assert.equal(resolvePreferredPlatformSurface(null, 'work', 'chat', 'chat'), 'work');
+  assert.equal(resolvePreferredPlatformSurface(null, null, 'code', 'chat'), 'code');
+  assert.equal(resolvePreferredPlatformSurface(null, null, null, 'work'), 'work');
+  assert.equal(resolvePreferredPlatformSurface(null, null, null, null), 'chat');
+});
+
 test('Work and Code dashboard projections stay core-backed without inventing new schemas', () => {
   const core = createDefaultCoreState();
 
@@ -128,4 +137,3 @@ test('Work and Code dashboard projections stay core-backed without inventing new
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/artifacts'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/previews'));
 });
-

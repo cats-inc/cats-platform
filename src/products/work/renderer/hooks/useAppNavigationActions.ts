@@ -184,7 +184,9 @@ export function useAppNavigationActions(options: {
   }, [confirmDialog, setBusy, setFeedback, setState]);
 
   const onNavigateSettings = useCallback((): void => {
-    navigate('/settings/general');
+    navigate('/settings/general', {
+      state: { platformShellSurface: 'work' },
+    });
     setAccountMenuOpen(false);
     setAddCatOpen(false);
     setFeedback('');

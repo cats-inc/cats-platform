@@ -1012,6 +1012,7 @@ export default function App() {
         overflowMenuOpenId={overflowMenuOpenId}
         busy={busy}
         surface={surface}
+        shellSurface="chat"
         routeChannelId={routeChannelId}
         accountMenuRef={accountMenuRef}
         onToggleSidebar={onToggleSidebar}

@@ -67,6 +67,31 @@ export function resolvePlatformSurfaceForPath(pathname: string): PlatformSurface
   return 'chat';
 }
 
+export function resolvePreferredPlatformSurface(
+  routeSurface: string | null | undefined,
+  sessionSurface: string | null | undefined,
+  storedSurface: string | null | undefined,
+  fallbackSurface: string | null | undefined = 'chat',
+): PlatformSurfaceId {
+  if (routeSurface === 'chat' || routeSurface === 'work' || routeSurface === 'code') {
+    return routeSurface;
+  }
+
+  if (sessionSurface === 'chat' || sessionSurface === 'work' || sessionSurface === 'code') {
+    return sessionSurface;
+  }
+
+  if (storedSurface === 'chat' || storedSurface === 'work' || storedSurface === 'code') {
+    return storedSurface;
+  }
+
+  if (fallbackSurface === 'work' || fallbackSurface === 'code') {
+    return fallbackSurface;
+  }
+
+  return 'chat';
+}
+
 export function resolvePlatformShellSurface(
   pathname: string,
   lastKnownSurface: PlatformSurfaceId | null | undefined,

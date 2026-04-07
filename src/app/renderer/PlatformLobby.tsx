@@ -84,7 +84,9 @@ export function PlatformLobby({
             <button
               type="button"
               className="lobbyIdentity"
-              onClick={() => navigate('/settings/general')}
+              onClick={() => navigate('/settings/general', {
+                state: { platformShellSurface: envelope.lastProductSurface ?? 'chat' },
+              })}
               aria-label="Settings"
             >
               <span className="lobbyAvatar" style={avatarStyle}>

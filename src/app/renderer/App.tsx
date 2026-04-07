@@ -9,6 +9,7 @@ import WorkApp from '../../products/work/renderer/App';
 import CodeApp from '../../products/code/renderer/App';
 import {
   isPlatformNonProductPath,
+  resolvePreferredPlatformSurface,
   resolvePlatformShellSurface,
   resolvePlatformSurfaceForPath,
   PLATFORM_SURFACE_ROUTES,
@@ -27,6 +28,20 @@ type PlatformLoadState =
 function resolveProductEntryPath(surface: string): string {
   const route = PLATFORM_SURFACE_ROUTES[surface as keyof typeof PLATFORM_SURFACE_ROUTES];
   return route ? route.routePrefix : '/';
+}
+
+function readRequestedPlatformSurface(
+  value: unknown,
+): PlatformSurfaceId | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+
+  const record = value as { platformShellSurface?: unknown };
+  const surface = record.platformShellSurface;
+  return surface === 'chat' || surface === 'work' || surface === 'code'
+    ? surface
+    : null;
 }
 
 export default function PlatformApp() {
@@ -78,6 +93,14 @@ export default function PlatformApp() {
   const envelope = state.status === 'ready' ? state.envelope : null;
   const setupComplete = Boolean(envelope?.setupCompleteAt);
   const storedSurface = envelope?.lastProductSurface ?? null;
+  const routeSurface = readRequestedPlatformSurface(location.state);
+  const sessionSurface = lastSyncedSurface.current;
+  const preferredSurface = resolvePreferredPlatformSurface(
+    routeSurface,
+    sessionSurface,
+    storedSurface,
+    activeSurface,
+  );
 
   useEffect(() => {
     if (state.status !== 'ready') {
@@ -89,6 +112,13 @@ export default function PlatformApp() {
       setActiveSurface((current) => (current === nextSurface ? current : nextSurface));
     }
   }, [state.status, state.status === 'ready' ? state.envelope.lastProductSurface : null]);
+
+  useEffect(() => {
+    if (location.pathname === '/settings' || location.pathname.startsWith('/settings/')) {
+      setActiveSurface((current) => (current === preferredSurface ? current : preferredSurface));
+      return;
+    }
+  }, [location.pathname, preferredSurface]);
 
   useEffect(() => {
     if (!setupComplete) {
@@ -199,9 +229,9 @@ export default function PlatformApp() {
   }
 
   // Setup complete: products at their own prefix, settings at /settings/*.
-  const shellSurface = resolvePlatformShellSurface(location.pathname, activeSurface);
+  const shellSurface = resolvePlatformShellSurface(location.pathname, preferredSurface);
   const hasStoredSurface = Boolean(readyEnvelope.lastProductSurface);
-  const entryPath = hasStoredSurface ? resolveProductEntryPath(activeSurface) : '/lobby';
+  const entryPath = hasStoredSurface ? resolveProductEntryPath(preferredSurface) : '/lobby';
   const settingsSurfaceElement = shellSurface === 'work'
     ? <WorkApp />
     : shellSurface === 'code'

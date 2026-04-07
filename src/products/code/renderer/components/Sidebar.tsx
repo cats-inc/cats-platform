@@ -28,6 +28,7 @@ export interface SidebarProps {
   overflowMenuOpenId: string | null;
   busy: string;
   surface: Surface;
+  shellSurface?: PlatformSurfaceId;
   routeChannelId: string | null;
   accountMenuRef: RefObject<HTMLDivElement>;
   onToggleSidebar: () => void;
@@ -380,6 +381,7 @@ export function Sidebar({
   overflowMenuOpenId,
   busy,
   surface,
+  shellSurface,
   routeChannelId,
   accountMenuRef,
   onToggleSidebar,
@@ -400,7 +402,8 @@ export function Sidebar({
   onOpenRelay,
 }: SidebarProps) {
   const currentPath = globalThis.location?.pathname ?? '/code';
-  const activeSurface = resolvePlatformSurfaceFromPath(currentPath);
+  const activeSurface = shellSurface
+    ?? resolvePlatformSurfaceFromPath(currentPath);
   const chatCats = payload.chat.cats.filter(isChatCat);
   const showMyCats = chatCats.length > 0;
   const telegramBoundCatIds = new Set(
