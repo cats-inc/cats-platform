@@ -6,6 +6,7 @@ import {
   completePlatformSetup,
   markPlatformSetupOpened,
 } from './api';
+import { prefetchProviderRegistryFromClientCache } from '../providerRegistryClient.js';
 import {
   canContinueGuideCatSetupStep,
   GuideCatSetupFields,
@@ -113,6 +114,13 @@ export function PlatformSetupWizard({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [busy, canContinueGuideCatStep, finishSetup, ownerName, step]);
+
+  useEffect(() => {
+    if (step !== 2 || !envelope.runtime.reachable) {
+      return;
+    }
+    void prefetchProviderRegistryFromClientCache();
+  }, [envelope.runtime.reachable, step]);
 
   const dots = Array.from({ length: TOTAL_SETUP_STEPS }, (_, index) => index + 1);
 

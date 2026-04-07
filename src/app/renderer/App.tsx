@@ -19,6 +19,7 @@ import { PlatformLobby } from './PlatformLobby';
 import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
+import { prefetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 
 type PlatformLoadState =
   | { status: 'loading' }
@@ -137,6 +138,13 @@ export default function PlatformApp() {
       document.title = title;
     }
   }, [location.pathname, setupComplete, state.status]);
+
+  useEffect(() => {
+    if (state.status !== 'ready' || !state.envelope.runtime.reachable) {
+      return;
+    }
+    void prefetchProviderRegistryFromClientCache();
+  }, [state.status, state.status === 'ready' ? state.envelope.runtime.reachable : false]);
 
   useEffect(() => {
     if (state.status !== 'ready') {

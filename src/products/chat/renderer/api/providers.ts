@@ -1,53 +1,14 @@
 import type {
-  ProductProviderDescriptor,
   ProductProviderRegistryReadModel,
-  ProductProviderInstanceDescriptor,
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from '../../../../shared/providerCatalog.js';
-import { normalizeProductProviderEventCapabilities } from '../../../../shared/providerCatalog.js';
+import { fetchProviderRegistryFromClientCache } from '../../../../app/renderer/providerRegistryClient.js';
 
 import { readErrorMessage } from './http.js';
 
 export async function fetchProviderRegistry(): Promise<ProductProviderRegistryReadModel> {
-  const response = await fetch('/api/providers');
-  if (!response.ok) {
-    return {
-      state: 'runtime_unreachable',
-      providers: [],
-      recovery: {
-        retryable: true,
-      },
-      warnings: [await readErrorMessage(response, 'Failed to load providers.')],
-    };
-  }
-
-  const payload = (await response.json()) as ProductProviderRegistryReadModel;
-  const providers = Array.isArray(payload.providers) ? payload.providers : [];
-
-  return {
-    state: payload.state ?? (providers.length > 0 ? 'ready' : 'no_usable_targets'),
-    providers: providers.map((provider) => ({
-      id: provider.id,
-      label: provider.label,
-      defaultModel: provider.defaultModel ?? null,
-    defaultInstance: provider.defaultInstance ?? null,
-    defaultBackend: provider.defaultBackend ?? null,
-    instances: Array.isArray(provider.instances)
-      ? provider.instances.map((instance: ProductProviderInstanceDescriptor) => ({
-          id: instance.id,
-          label: instance.label,
-          target: instance.target ?? null,
-          backend: instance.backend ?? null,
-          default: Boolean(instance.default),
-          eventCapabilities: normalizeProductProviderEventCapabilities(instance.eventCapabilities),
-        }))
-      : [],
-    modelsPath: provider.modelsPath,
-    })),
-    recovery: payload.recovery,
-    warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
-  };
+  return fetchProviderRegistryFromClientCache();
 }
 
 export async function fetchProviderModels(
