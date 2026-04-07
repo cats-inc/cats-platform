@@ -7,7 +7,7 @@ import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js
 import type { RoutingTarget } from '../mentionRouter.js';
 import {
   requireChannel,
-  setChannelCatLease,
+  setChannelParticipantLease,
   setChannelChatCwd,
   setChannelOrchestratorLease,
 } from '../model/index.js';
@@ -102,11 +102,14 @@ export function extractTargetLeasePatchFromState(
   const channel = requireChannel(state, channelId);
 
   if (target.participantKind === 'cat') {
-    const assignment = channel.catAssignments.find(
-      (candidate) => candidate.catId === target.participantId,
+    const assignment = (
+      channel.participantAssignments?.find((candidate) => candidate.participantId === target.participantId)
+      ?? channel.catAssignments.find(
+        (candidate) => candidate.participantId === target.participantId || candidate.catId === target.participantId,
+      )
     );
     if (!assignment) {
-      throw new Error(`Channel cat assignment not found: ${target.participantId}`);
+      throw new Error(`Channel participant assignment not found: ${target.participantId}`);
     }
     return structuredClone(assignment.execution.lease);
   }
@@ -122,7 +125,7 @@ export function applyDispatchLeasePatch(
   now: Date,
 ): ChatState {
   if (target.participantKind === 'cat') {
-    return setChannelCatLease(
+    return setChannelParticipantLease(
       state,
       channelId,
       target.participantId,

@@ -1,0 +1,161 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
+import {
+  appendMessage,
+  buildChannelView,
+  createChannel,
+} from '../src/products/chat/state/model/index.ts';
+import {
+  resolveMentionRoute,
+  resolveRoomDefaultRoutingTarget,
+} from '../src/products/chat/state/mentionRouter.ts';
+import {
+  buildPromptForTarget,
+  resolveChoiceResponseTarget,
+  resolveExecutionMetadataForTarget,
+} from '../src/products/chat/state/runtimeTargeting.ts';
+import { shouldRewriteOrchestratorReply } from '../src/products/chat/state/runtime-session/shared.ts';
+
+function createTemporaryParticipantState() {
+  const now = new Date('2026-04-07T10:00:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Runtime review room',
+      topic: 'Check temporary participants',
+      entryKind: 'group',
+      temporaryParticipants: [
+        {
+          participantId: 'participant-reviewer',
+          name: 'RuntimeReviewer',
+          provider: 'gemini',
+          instance: 'native',
+          model: 'gemini-3.1-pro',
+          modelSelection: null,
+          roleHint: 'Counterpoint',
+        },
+        {
+          participantId: 'participant-verifier',
+          name: 'RuntimeVerifier',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-sonnet',
+          modelSelection: null,
+          roleHint: 'Validation',
+        },
+      ],
+      leadParticipantId: 'participant-reviewer',
+    },
+    now,
+  );
+  const channelId = state.channels[0]?.id;
+  if (!channelId) {
+    throw new Error('Expected created channel id.');
+  }
+
+  const appended = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Kenny',
+      body: 'Please review this plan.',
+    },
+    now,
+  );
+  state = appended.state;
+
+  return {
+    state,
+    channelId,
+    userMessageId: appended.message.id,
+  };
+}
+
+test('temporary participants become routable default and explicit targets', () => {
+  const { state, channelId } = createTemporaryParticipantState();
+
+  const defaultTarget = resolveRoomDefaultRoutingTarget(state, channelId);
+  assert.equal(defaultTarget.target?.participantId, 'participant-reviewer');
+  assert.equal(defaultTarget.target?.participantName, 'RuntimeReviewer');
+
+  const mentionRoute = resolveMentionRoute(
+    state,
+    channelId,
+    'Ask @RuntimeVerifier to validate the proposal.',
+    {
+      allowDefaultTarget: true,
+      explicitTrigger: 'explicit_mention',
+    },
+  );
+  assert.equal(mentionRoute.targets.length, 1);
+  assert.equal(mentionRoute.targets[0]?.participantId, 'participant-verifier');
+  assert.equal(mentionRoute.targets[0]?.participantName, 'RuntimeVerifier');
+});
+
+test('temporary participants build prompts, choice routing, and suppress solo rewrite fallback', () => {
+  const { state, channelId, userMessageId } = createTemporaryParticipantState();
+  const defaultTarget = resolveRoomDefaultRoutingTarget(state, channelId);
+  if (!defaultTarget.target) {
+    throw new Error('Expected a default routing target.');
+  }
+
+  const channel = buildChannelView(state, channelId);
+  const sourceMessage = channel.messages.find((message) => message.id === userMessageId);
+  if (!sourceMessage) {
+    throw new Error('Expected source message.');
+  }
+
+  const prompt = buildPromptForTarget(
+    state,
+    channelId,
+    {
+      sourceMessage,
+      sourceParticipant: null,
+      target: defaultTarget.target,
+      trigger: 'room_default',
+    },
+  );
+  assert.match(prompt.message, /temporary chat participant/i);
+  assert.match(prompt.message, /RuntimeReviewer/);
+  assert.match(prompt.message, /gemini/i);
+
+  const execution = resolveExecutionMetadataForTarget(state, channelId, defaultTarget.target);
+  assert.equal(execution.provider, 'gemini');
+  assert.equal(execution.model, 'gemini-3.1-pro');
+
+  const reviewerReply = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'RuntimeReviewer',
+      body: 'I have a follow-up question.',
+    },
+    new Date('2026-04-07T10:01:00.000Z'),
+    {
+      metadata: {
+        targetKind: 'cat',
+        targetId: 'participant-reviewer',
+      },
+    },
+  );
+  const choiceTarget = resolveChoiceResponseTarget(
+    reviewerReply.state,
+    buildChannelView(reviewerReply.state, channelId),
+    reviewerReply.message.id,
+  );
+  assert.equal(choiceTarget?.participantId, 'participant-reviewer');
+  assert.equal(choiceTarget?.participantName, 'RuntimeReviewer');
+
+  assert.equal(
+    shouldRewriteOrchestratorReply(
+      '@RuntimeVerifier please take it from here.',
+      'Orchestrator',
+      buildChannelView(state, channelId),
+    ),
+    false,
+  );
+});

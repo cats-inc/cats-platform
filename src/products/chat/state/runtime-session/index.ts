@@ -1,5 +1,5 @@
 export {
-  activeAssignedCats,
+  activeAssignedParticipants,
   shouldRewriteOrchestratorReply,
   type RuntimeSessionRoutingOptions,
 } from './shared.js';

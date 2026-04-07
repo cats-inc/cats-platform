@@ -8,6 +8,7 @@
 
 import type {
   ChatChannelCat,
+  ChatChannelParticipant,
   ChatChannelView,
   ChatState,
 } from '../api/contracts.js';
@@ -56,8 +57,15 @@ export interface MentionRouteResult {
   resolution: RoomRouteResolution;
 }
 
-function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
-  return channel.assignedCats.filter((cat) => cat.status === 'active');
+type AssignedParticipant = ChatChannelCat | ChatChannelParticipant;
+
+function activeAssignedParticipants(
+  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
+): AssignedParticipant[] {
+  const participants = channel.assignedParticipants && channel.assignedParticipants.length > 0
+    ? channel.assignedParticipants
+    : channel.assignedCats;
+  return participants.filter((participant) => participant.status === 'active');
 }
 
 function isSoloChatChannel(channel: Pick<ChatChannelView, 'composerMode' | 'roomRouting'>): boolean {
@@ -74,10 +82,10 @@ function buildOrchestratorTarget(state: ChatState, channel: ChatChannelView): Ro
   };
 }
 
-function buildCatTarget(cat: ChatChannelCat): RoutingTarget {
+function buildCatTarget(cat: AssignedParticipant): RoutingTarget {
   return {
     participantKind: 'cat',
-    participantId: cat.catId,
+    participantId: cat.participantId,
     participantName: cat.name,
     sessionId: cat.execution.lease.sessionId,
   };
@@ -93,14 +101,17 @@ function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
 
 function buildDirectLeadParticipantRef(
   state: ChatState,
+  channel: ChatChannelView,
   leadParticipantId: string,
 ): RoomRoutingParticipantRef {
-  const leadCatName = state.cats.find((cat) => cat.id === leadParticipantId)?.name
+  const leadParticipantName = activeAssignedParticipants(channel)
+    .find((participant) => participant.participantId === leadParticipantId)?.name
+    ?? state.cats.find((cat) => cat.id === leadParticipantId)?.name
     ?? 'Direct Cat';
   return {
     participantKind: 'cat',
     participantId: leadParticipantId,
-    participantName: leadCatName,
+    participantName: leadParticipantName,
   };
 }
 
@@ -114,8 +125,8 @@ export function resolveRoomDefaultRoutingTarget(
   const routing = channel.roomRouting ?? null;
 
   if (isDirectLaneChannel(channel) && routing?.leadParticipantId) {
-    const leadCat = activeAssignedCats(channel)
-      .find((cat) => cat.catId === routing.leadParticipantId);
+    const leadCat = activeAssignedParticipants(channel)
+      .find((participant) => participant.participantId === routing.leadParticipantId);
     if (leadCat) {
       const target = buildCatTarget(leadCat);
       return {
@@ -128,7 +139,7 @@ export function resolveRoomDefaultRoutingTarget(
     }
 
     return {
-      participant: buildDirectLeadParticipantRef(state, routing.leadParticipantId),
+      participant: buildDirectLeadParticipantRef(state, channel, routing.leadParticipantId),
       target: null,
       defaultTargetReason: 'direct_chat_lead',
       blockedReason: 'missing_direct_chat_lead',
@@ -137,8 +148,8 @@ export function resolveRoomDefaultRoutingTarget(
   }
 
   if (channel.composerMode === 'cat_led' && routing?.leadParticipantId) {
-    const leadCat = activeAssignedCats(channel)
-      .find((cat) => cat.catId === routing.leadParticipantId);
+    const leadCat = activeAssignedParticipants(channel)
+      .find((participant) => participant.participantId === routing.leadParticipantId);
     if (leadCat) {
       const target = buildCatTarget(leadCat);
       return {
@@ -150,8 +161,10 @@ export function resolveRoomDefaultRoutingTarget(
       };
     }
 
-    const leadCatName = state.cats.find((cat) => cat.id === routing.leadParticipantId)?.name
-      ?? 'Lead Cat';
+    const leadCatName = activeAssignedParticipants(channel)
+      .find((participant) => participant.participantId === routing.leadParticipantId)?.name
+      ?? state.cats.find((cat) => cat.id === routing.leadParticipantId)?.name
+      ?? 'Lead Participant';
     return {
       participant: {
         participantKind: 'cat',
@@ -226,7 +239,7 @@ export function resolveMentionRoute(
   const mentionNames = parseMentions(body, {
     excludedNames: ignoredMentionNames,
   });
-  const activeCats = activeAssignedCats(channel);
+  const activeCats = activeAssignedParticipants(channel);
   const catsByName = new Map(activeCats.map((cat) => [cat.name.toLowerCase(), cat]));
   const orchestratorTarget = buildOrchestratorTarget(state, channel);
   const isDirectLane = isDirectLaneChannel(channel);
@@ -284,7 +297,7 @@ export function resolveMentionRoute(
       continue;
     }
 
-    if (!targets.some((t) => t.participantId === cat.catId)) {
+    if (!targets.some((t) => t.participantId === cat.participantId)) {
       targets.push(buildCatTarget(cat));
     }
   }

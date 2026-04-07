@@ -9,7 +9,7 @@ import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { buildCatTarget, buildOrchestratorTarget } from '../runtimeTargeting.js';
 import { ensureTargetSession } from './wake.js';
 import {
-  activeAssignedCats,
+  activeAssignedParticipants,
   type RuntimeSessionRoutingOptions,
 } from './shared.js';
 
@@ -58,12 +58,12 @@ export async function activateChannelSessions(
   const initialChannel = buildChannelView(nextState, channelId);
   const roomRouting = resolveRoomRoutingState(initialChannel.roomRouting);
   const activationTargets = isDirectLaneChannel(initialChannel)
-    ? activeAssignedCats(initialChannel)
-        .filter((cat) => cat.catId === roomRouting.leadParticipantId)
-        .map((cat) => buildCatTarget(cat))
+    ? activeAssignedParticipants(initialChannel)
+        .filter((participant) => participant.participantId === roomRouting.leadParticipantId)
+        .map((participant) => buildCatTarget(participant))
     : [
         buildOrchestratorTarget(nextState, initialChannel),
-        ...activeAssignedCats(initialChannel).map((cat) => buildCatTarget(cat)),
+        ...activeAssignedParticipants(initialChannel).map((participant) => buildCatTarget(participant)),
       ];
 
   for (const target of activationTargets) {

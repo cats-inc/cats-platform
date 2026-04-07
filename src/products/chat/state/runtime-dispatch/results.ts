@@ -292,7 +292,7 @@ export function applyDispatchExecutions(
       nextState,
       channelId,
       execution.target.participantKind === 'cat'
-        ? { catId: execution.target.participantId }
+        ? { participantId: execution.target.participantId }
         : 'orchestrator',
       now,
     );

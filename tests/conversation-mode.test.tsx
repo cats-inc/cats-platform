@@ -57,6 +57,7 @@ function createChannel(
         lastOutcomeEvent: null,
       },
     },
+    assignedParticipants: undefined,
     workingMemory: {
       summary: null,
       facts: [],
@@ -175,4 +176,92 @@ test('resolveConversationMode distinguishes solo, cat-led, and multi-cat thread 
   assert.equal(resolveConversationMode(soloThread), 'solo_thread');
   assert.equal(resolveConversationMode(catLedThread), 'cat_led_thread');
   assert.equal(resolveConversationMode(multiCatRoom), 'multi_cat_room');
+});
+
+test('resolveConversationMode treats temporary participants as multi-participant rooms', () => {
+  const adhocRoom = createChannel({
+    composerMode: 'cat_led',
+    assignedParticipants: [
+      {
+        participantId: 'participant-inline',
+        sourceKind: 'adhoc',
+        sourceRefId: null,
+        name: 'Inline Reviewer',
+        roles: [],
+        roleHint: 'Counterpoint',
+        skillProfile: null,
+        mcpProfile: null,
+        status: 'active',
+        joinedAt: '2026-03-28T00:00:00.000Z',
+        leftAt: null,
+        avatarColor: null,
+        avatarUrl: null,
+        execution: {
+          target: {
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+          },
+          modelSelection: null,
+          lease: {
+            sessionId: null,
+            status: 'ready',
+            cwd: null,
+            lastError: null,
+            provider: null,
+            model: null,
+            startedAt: null,
+            lastUsedAt: null,
+          },
+        },
+        memory: {
+          summary: null,
+          facts: [],
+          openLoops: [],
+          updatedAt: null,
+        },
+      },
+      {
+        participantId: 'participant-verifier',
+        sourceKind: 'adhoc',
+        sourceRefId: null,
+        name: 'Verifier',
+        roles: [],
+        roleHint: null,
+        skillProfile: null,
+        mcpProfile: null,
+        status: 'active',
+        joinedAt: '2026-03-28T00:00:00.000Z',
+        leftAt: null,
+        avatarColor: null,
+        avatarUrl: null,
+        execution: {
+          target: {
+            provider: 'claude',
+            instance: 'native',
+            model: 'claude-sonnet',
+          },
+          modelSelection: null,
+          lease: {
+            sessionId: null,
+            status: 'ready',
+            cwd: null,
+            lastError: null,
+            provider: null,
+            model: null,
+            startedAt: null,
+            lastUsedAt: null,
+          },
+        },
+        memory: {
+          summary: null,
+          facts: [],
+          openLoops: [],
+          updatedAt: null,
+        },
+      },
+    ],
+  });
+
+  assert.equal(resolveConversationMode(adhocRoom), 'multi_cat_room');
 });

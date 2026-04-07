@@ -25,6 +25,7 @@ import {
   type ChatLayoutMode,
 } from '../../../../design/chatLayout';
 import {
+  buildDraftParticipantExecutionLabel,
   catInitials,
   messageTone,
   presentChannelTitle,
@@ -74,6 +75,32 @@ import {
 } from '../conversationMode';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
+
+type VisibleAssignedParticipant =
+  | NonNullable<SelectedChannelView['assignedParticipants']>[number]
+  | SelectedChannelView['assignedCats'][number];
+
+type TopBarParticipant = {
+  key: string;
+  label: string;
+  avatarColor: string | null;
+  avatarUrl: string | null;
+  isBoss: boolean;
+  isLead: boolean;
+  pulseCatId: string | null;
+};
+
+function resolveParticipantCatRef(participant: VisibleAssignedParticipant): string | null {
+  if ('catId' in participant && typeof participant.catId === 'string' && participant.catId.length > 0) {
+    return participant.catId;
+  }
+
+  if (participant.sourceKind === 'cat' && participant.sourceRefId) {
+    return participant.sourceRefId;
+  }
+
+  return null;
+}
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -189,8 +216,21 @@ export function ChatView({
   const hasConversationStarted = visibleMessages.length > 0;
 
   const leadParticipantId = selectedChannel.roomRouting.leadParticipantId;
-  const leadCat = leadParticipantId
-    ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
+  const activeAssignedParticipants = useMemo<VisibleAssignedParticipant[]>(
+    () => (
+      selectedChannel.assignedParticipants && selectedChannel.assignedParticipants.length > 0
+        ? selectedChannel.assignedParticipants
+        : activeAssignedCats
+    ).filter((participant) => participant.status === 'active'),
+    [activeAssignedCats, selectedChannel.assignedParticipants],
+  );
+  const leadParticipant = leadParticipantId
+    ? activeAssignedParticipants.find((participant) => participant.participantId === leadParticipantId)
+      ?? null
+    : activeAssignedParticipants[0] ?? null;
+  const leadCat = leadParticipant?.sourceKind === 'cat'
+    ? activeAssignedCats.find((candidate) => candidate.participantId === leadParticipant.participantId)
+      ?? null
     : null;
   const conversationMode = resolveConversationMode(selectedChannel);
   const compareMembers = compareGroup?.members ?? [];
@@ -221,7 +261,7 @@ export function ChatView({
   const isDirectLane = isDirectConversationMode(conversationMode);
   const layoutMode: ChatLayoutMode = isDirectLane
     ? 'direct_lane'
-    : activeAssignedCats.length > 1
+    : activeAssignedParticipants.length > 1
       ? 'multi_cat'
       : 'solo';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -261,38 +301,103 @@ export function ChatView({
       : presentChannelTitle(selectedChannel.title);
   const assignedCatRecords = useMemo(
     () =>
-      activeAssignedCats
-        .map((assignedCat) => payload.chat.cats.find((cat) => cat.id === assignedCat.catId) ?? null)
+      activeAssignedParticipants
+        .map((participant) => {
+          const catRef = resolveParticipantCatRef(participant);
+          return catRef
+            ? payload.chat.cats.find((cat) => cat.id === catRef) ?? null
+            : null;
+        })
         .filter((cat): cat is ChatCat => cat != null),
-    [activeAssignedCats, payload.chat.cats],
+    [activeAssignedParticipants, payload.chat.cats],
   );
-  const topBarCats = useMemo(() => {
-    const ordered: Array<ChatCat | null> = [];
+  const assignedAdhocParticipants = useMemo(
+    () => activeAssignedParticipants.filter((participant) => participant.sourceKind !== 'cat'),
+    [activeAssignedParticipants],
+  );
+  const topBarParticipants = useMemo<TopBarParticipant[]>(() => {
+    const ordered: TopBarParticipant[] = [];
     if (isDirectLane) {
-      ordered.push(leadCatRecord);
+      if (leadCatRecord) {
+        ordered.push({
+          key: `participant:${leadCatRecord.id}`,
+          label: leadCatRecord.name,
+          avatarColor: leadCatRecord.avatarColor ?? null,
+          avatarUrl: leadCatRecord.avatarUrl ?? null,
+          isBoss: leadCatRecord.id === payload.chat.bossCatId,
+          isLead: true,
+          pulseCatId: leadCatRecord.id,
+        });
+      }
     } else {
       if (showBossCatAvatar && !isSoloComposer) {
-        ordered.push(bossCatRecord);
+        if (bossCatRecord) {
+          ordered.push({
+            key: `participant:${bossCatRecord.id}`,
+            label: bossCatRecord.name,
+            avatarColor: bossCatRecord.avatarColor ?? null,
+            avatarUrl: bossCatRecord.avatarUrl ?? null,
+            isBoss: true,
+            isLead: bossCatRecord.id === leadParticipantId,
+            pulseCatId: bossCatRecord.id,
+          });
+        }
       }
-      ordered.push(...assignedCatRecords);
+      for (const participant of activeAssignedParticipants) {
+        if (participant.sourceKind === 'cat') {
+          const catRef = resolveParticipantCatRef(participant);
+          const catRecord = catRef
+            ? payload.chat.cats.find((cat) => cat.id === catRef) ?? null
+            : null;
+          ordered.push({
+            key: `participant:${participant.participantId}`,
+            label: participant.name,
+            avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
+            avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
+            isBoss: catRef === payload.chat.bossCatId,
+            isLead: participant.participantId === leadParticipantId,
+            pulseCatId: catRef,
+          });
+          continue;
+        }
+
+        ordered.push({
+          key: `participant:${participant.participantId}`,
+          label: participant.name,
+          avatarColor: participant.avatarColor ?? null,
+          avatarUrl: participant.avatarUrl ?? null,
+          isBoss: false,
+          isLead: participant.participantId === leadParticipantId,
+          pulseCatId: null,
+        });
+      }
     }
     const seen = new Set<string>();
-    return ordered.filter((cat): cat is ChatCat => {
-      if (!cat || seen.has(cat.id)) return false;
-      seen.add(cat.id);
+    return ordered.filter((participant) => {
+      if (seen.has(participant.key)) {
+        return false;
+      }
+      seen.add(participant.key);
       return true;
     });
   }, [
+    activeAssignedParticipants,
     assignedCatRecords,
     bossCatRecord,
     isDirectLane,
     isSoloComposer,
     leadCatRecord,
+    leadParticipantId,
+    payload.chat.bossCatId,
+    payload.chat.cats,
     showBossCatAvatar,
   ]);
   const showRosterAvatars = isDirectLane
     ? Boolean(leadCat)
-    : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedCats.length > 0);
+    : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedParticipants.length > 0);
+  const participantChipLabel = activeAssignedParticipants.length > 0
+    ? `${activeAssignedParticipants.length} participant${activeAssignedParticipants.length === 1 ? '' : 's'}`
+    : 'Participants';
   const directLaneModelValue: ModelSelectorValue | null = directLaneCat
     ? {
         provider: directLaneCat.defaultExecutionTarget.provider,
@@ -456,23 +561,27 @@ export function ChatView({
           <div className="channelTopBarStart">
             {showRosterAvatars ? (
               <div className="rosterAvatars rosterAvatarsExpanded">
-                {topBarCats.map((cat) => {
-                  const isBoss = cat.id === payload.chat.bossCatId;
-                  const isLead = cat.id === leadParticipantId;
+                {topBarParticipants.map((participant) => {
                   return (
                     <div
-                      key={cat.id}
+                      key={participant.key}
                       className={[
-                        isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
-                        activeTopBarCatIdSet.has(cat.id) ? 'catAvatarPulsing' : '',
+                        participant.isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
+                        participant.pulseCatId && activeTopBarCatIdSet.has(participant.pulseCatId)
+                          ? 'catAvatarPulsing'
+                          : '',
                       ].filter(Boolean).join(' ')}
-                      data-tooltip={cat.name}
-                      style={cat.avatarUrl
-                        ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                        : cat.avatarColor ? { background: cat.avatarColor } : undefined}
+                      data-tooltip={participant.label}
+                      style={participant.avatarUrl
+                        ? {
+                            backgroundImage: `url(${participant.avatarUrl})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }
+                        : participant.avatarColor ? { background: participant.avatarColor } : undefined}
                     >
-                      {cat.avatarUrl ? null : catInitials(cat.name)}
-                      {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                      {participant.avatarUrl ? null : catInitials(participant.label)}
+                      {participant.isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                     </div>
                   );
                 })}
@@ -989,6 +1098,19 @@ export function ChatView({
                     leadCatId={leadCat.catId}
                     onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
+                ) : !isSoloComposer && activeAssignedParticipants.length > 0 ? (
+                  <button
+                    type="button"
+                    className="modelSelectorChip"
+                    disabled={composerBusy}
+                    onClick={() => openSidePanelTo('cats')}
+                    data-tooltip="View participants"
+                  >
+                    <span className="modelSelectorChipLabel">{participantChipLabel}</span>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2.5 4 5 6.5 7.5 4" />
+                    </svg>
+                  </button>
                 ) : null}
                 {showCancelComposerAction ? (
                   <button
@@ -1142,10 +1264,10 @@ export function ChatView({
   function buildSidePanelSections(): SidePanelSection[] {
     const sections: SidePanelSection[] = [];
 
-    if (showAddCatButton || assignedCatRecords.length > 0) {
+    if (showAddCatButton || activeAssignedParticipants.length > 0) {
       sections.push({
         id: 'cats',
-        title: 'Cats',
+        title: assignedAdhocParticipants.length > 0 ? 'Participants' : 'Cats',
         children: (
           <div className="sidePanelSectionStack">
             {assignedCatRecords.length > 0 ? (
@@ -1160,9 +1282,26 @@ export function ChatView({
                 onToggle={() => {}}
                 onHighlight={() => {}}
               />
-            ) : (
-              <p className="operatorEmptyState">No cats are in this chat yet.</p>
-            )}
+            ) : null}
+            {assignedAdhocParticipants.length > 0 ? (
+              <div className="addCatList">
+                {assignedAdhocParticipants.map((participant) => (
+                  <div key={participant.participantId} className="addCatItem">
+                    <div>
+                      <strong>{participant.name}</strong>
+                      <p>{buildDraftParticipantExecutionLabel(participant.execution.target)}</p>
+                      {participant.roleHint ? <p>{participant.roleHint}</p> : null}
+                    </div>
+                    {participant.participantId === leadParticipant?.participantId ? (
+                      <span className="catInspectBadge">Lead</span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {assignedCatRecords.length === 0 && assignedAdhocParticipants.length === 0 ? (
+              <p className="operatorEmptyState">No participants are in this chat yet.</p>
+            ) : null}
             {showAddCatButton ? (
               <button
                 type="button"
@@ -1230,38 +1369,87 @@ export function ChatView({
           />
         );
       }
-      if (!isSoloComposer && leadCat) {
-        const catRecord = payload.chat.cats.find((c) => c.id === leadCat.catId);
-        const providerName = getProviderDisplayName(leadCat.execution.target.provider);
-        const modelLabel = leadCat.execution.target.model
-          ? (getProviderModels(leadCat.execution.target.provider)
-              .find((m) => m.value === leadCat.execution.target.model)?.label ?? leadCat.execution.target.model)
+      if (!isSoloComposer && leadParticipant) {
+        const providerName = getProviderDisplayName(leadParticipant.execution.target.provider);
+        const modelLabel = leadParticipant.execution.target.model
+          ? (getProviderModels(leadParticipant.execution.target.provider)
+              .find((m) => m.value === leadParticipant.execution.target.model)?.label
+                ?? leadParticipant.execution.target.model)
               .replace(/\s*\(default\)\s*/iu, '')
+          : null;
+        if (leadParticipant.sourceKind !== 'cat') {
+          return (
+            <div className="catInspectPanelBody">
+              <div className="catInspectIdentity">
+                <div
+                  className="catAvatar catInspectAvatar"
+                  style={leadParticipant.avatarUrl
+                    ? {
+                        backgroundImage: `url(${leadParticipant.avatarUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }
+                    : leadParticipant.avatarColor ? { background: leadParticipant.avatarColor } : undefined}
+                >
+                  {leadParticipant.avatarUrl ? null : catInitials(leadParticipant.name)}
+                </div>
+                <div>
+                  <strong>{leadParticipant.name}</strong>
+                  <span className="catInspectBadge">Temporary</span>
+                </div>
+              </div>
+              {leadParticipant.roleHint ? (
+                <div className="catInspectField">
+                  <span className="catInspectFieldLabel">Role</span>
+                  <span>{leadParticipant.roleHint}</span>
+                </div>
+              ) : null}
+              <div className="catInspectField">
+                <span className="catInspectFieldLabel">AI Service</span>
+                <span>{providerName}</span>
+              </div>
+              {leadParticipant.execution.target.instance ? (
+                <div className="catInspectField">
+                  <span className="catInspectFieldLabel">Connection</span>
+                  <span>{leadParticipant.execution.target.instance}</span>
+                </div>
+              ) : null}
+              <div className="catInspectField">
+                <span className="catInspectFieldLabel">Model</span>
+                <span>{modelLabel ?? 'default'}</span>
+              </div>
+            </div>
+          );
+        }
+
+        const leadParticipantCatRef = resolveParticipantCatRef(leadParticipant);
+        const catRecord = leadParticipantCatRef
+          ? payload.chat.cats.find((c) => c.id === leadParticipantCatRef) ?? null
           : null;
         return (
           <div className="catInspectPanelBody">
             <div className="catInspectIdentity">
               <div
-                className={leadCat.catId === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
+                className={leadParticipantCatRef === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
                 style={catRecord?.avatarUrl
                   ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}
+                  : leadParticipant.avatarColor ? { background: leadParticipant.avatarColor } : undefined}
               >
-                {catRecord?.avatarUrl ? null : catInitials(leadCat.name)}
+                {catRecord?.avatarUrl ? null : catInitials(leadParticipant.name)}
               </div>
               <div>
-                <strong>{leadCat.name}</strong>
-                {leadCat.catId === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
+                <strong>{leadParticipant.name}</strong>
+                {leadParticipantCatRef === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
               </div>
             </div>
             <div className="catInspectField">
               <span className="catInspectFieldLabel">AI Service</span>
               <span>{providerName}</span>
             </div>
-            {leadCat.execution.target.instance ? (
+            {leadParticipant.execution.target.instance ? (
               <div className="catInspectField">
                 <span className="catInspectFieldLabel">Connection</span>
-                <span>{leadCat.execution.target.instance}</span>
+                <span>{leadParticipant.execution.target.instance}</span>
               </div>
             ) : null}
             <div className="catInspectField">

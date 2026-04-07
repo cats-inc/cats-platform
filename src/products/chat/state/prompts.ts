@@ -1,6 +1,7 @@
 import type {
   GlobalOrchestratorSummary,
   ChatChannelCat,
+  ChatChannelParticipant,
   ChatChannelView,
   ChatMessage,
 } from '../api/contracts.js';
@@ -35,16 +36,27 @@ function formatRecentMessages(messages: ChatMessage[]): string {
     .join('\n');
 }
 
-function formatCatRoster(channel: ChatChannelView): string {
-  const activeCats = channel.assignedCats.filter((cat) => cat.status === 'active');
-  if (activeCats.length === 0) {
-    return 'No active cats in this chat yet.';
+type PromptParticipant = ChatChannelCat | ChatChannelParticipant;
+
+function activeParticipants(channel: ChatChannelView): PromptParticipant[] {
+  const participants = channel.assignedParticipants && channel.assignedParticipants.length > 0
+    ? channel.assignedParticipants
+    : channel.assignedCats;
+  return participants.filter((participant) => participant.status === 'active');
+}
+
+function formatParticipantRoster(channel: ChatChannelView): string {
+  const participants = activeParticipants(channel);
+  if (participants.length === 0) {
+    return 'No active participants in this chat yet.';
   }
 
-  return activeCats
-    .map((cat) => {
-      const roleLabel = cat.roles.length > 0 ? cat.roles.join(', ') : 'general';
-      return `- ${cat.name} (${cat.execution.target.provider}${cat.execution.target.model ? ` / ${cat.execution.target.model}` : ''}; roles: ${roleLabel})`;
+  return participants
+    .map((participant) => {
+      const roleLabel = participant.roles.length > 0
+        ? participant.roles.join(', ')
+        : participant.roleHint?.trim() || (participant.sourceKind === 'cat' ? 'general' : 'temporary');
+      return `- ${participant.name} (${participant.execution.target.provider}${participant.execution.target.model ? ` / ${participant.execution.target.model}` : ''}; roles: ${roleLabel})`;
     })
     .join('\n');
 }
@@ -133,7 +145,7 @@ export function buildOrchestratorPrompt(
   orchestratorName = ORCHESTRATOR_NAME,
   routingContext?: PromptRoutingContext,
 ): string {
-  const activeCatCount = channel.assignedCats.filter((cat) => cat.status === 'active').length;
+  const activeParticipantCount = activeParticipants(channel).length;
   const recentMessages = routingContext?.recentMessages ?? channel.messages;
   const sourceLabel = sourceMessage.senderKind === 'user'
     ? 'Latest user message'
@@ -148,9 +160,9 @@ export function buildOrchestratorPrompt(
       ? `This handoff came from ${routingContext.sourceParticipantName}.`
       : 'This turn currently originates from the operator.',
     'When referring to teammates, mention them with @Name so Chat can route follow-up turns.',
-    activeCatCount === 0
-      ? 'There are no other active cats in this chat right now, so answer the user directly instead of delegating.'
-      : 'If another active cat is better platformd, you may mention that cat to involve them.',
+    activeParticipantCount === 0
+      ? 'There are no other active participants in this chat right now, so answer the user directly instead of delegating.'
+      : 'If another active participant is better positioned, you may mention them to involve them.',
     `Never address yourself with @${orchestratorName} or @${ORCHESTRATOR_NAME}.`,
     'Never output internal routing notes, self-instructions, or coordinator scratchpad text.',
     transportGuidance,
@@ -159,7 +171,7 @@ export function buildOrchestratorPrompt(
     `Global system prompt:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
     `Coordinator memory checkpoint:\n${formatMemoryCheckpoint(orchestrator.memory)}`,
-    `Active cats:\n${formatCatRoster(channel)}`,
+    `Room roster:\n${formatParticipantRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(recentMessages)}`,
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Respond with the next useful contribution for the room.',
@@ -207,11 +219,13 @@ export function buildOrchestratorRewritePrompt(
 export function buildCatPrompt(
   channel: ChatChannelView,
   orchestrator: GlobalOrchestratorSummary,
-  cat: ChatChannelCat,
+  cat: PromptParticipant,
   sourceMessage: ChatMessage,
   routingContext?: PromptRoutingContext,
 ): string {
-  const roleLabel = cat.roles.length > 0 ? cat.roles.join(', ') : 'general';
+  const roleLabel = cat.roles.length > 0
+    ? cat.roles.join(', ')
+    : cat.roleHint?.trim() || (cat.sourceKind === 'cat' ? 'general' : 'temporary');
   const recentMessages = routingContext?.recentMessages ?? channel.messages;
   const sourceLabel = sourceMessage.senderKind === 'user'
     ? 'Latest user message'
@@ -219,9 +233,13 @@ export function buildCatPrompt(
   const transportGuidance = transportInstruction(routingContext?.transport);
 
   return joinPromptSections([
-    `You are ${cat.name}, a chat participant inside the Chat module for Cats Inc.`,
+    cat.sourceKind === 'cat'
+      ? `You are ${cat.name}, a chat participant inside the Chat module for Cats Inc.`
+      : `You are ${cat.name}, a temporary chat participant for this room inside the Chat module for Cats Inc.`,
     `Your provider is ${cat.execution.target.provider}${cat.execution.target.model ? ` and model ${cat.execution.target.model}` : ''}.`,
-    `Your roles in this chat: ${roleLabel}.`,
+    cat.sourceKind === 'cat'
+      ? `Your roles in this chat: ${roleLabel}.`
+      : `Your role in this room: ${roleLabel}.`,
     'The system layer has already routed this turn to you. Do not reinterpret target selection.',
     routingContext?.reason ?? 'System routing selected you for the current turn.',
     routingContext?.sourceParticipantName
@@ -234,7 +252,7 @@ export function buildCatPrompt(
     `Global orchestrator guidance:\n${orchestrator.systemPrompt}`,
     `Shared context:\n${formatSharedContext(channel, orchestrator)}`,
     `Your memory checkpoint:\n${formatMemoryCheckpoint(cat.memory)}`,
-    `Channel roster:\n${formatCatRoster(channel)}`,
+    `Channel roster:\n${formatParticipantRoster(channel)}`,
     `Recent messages:\n${formatRecentMessages(recentMessages)}`,
     `${sourceLabel}:\n${sourceMessage.body}`,
     'Reply with the work product or the next useful observation.',

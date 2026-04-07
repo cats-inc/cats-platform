@@ -1,5 +1,6 @@
 import type {
   AssignChannelCatInput,
+  ChannelCatAssignment,
   ChannelParticipantAssignment,
   CreateConcurrentChatGroupInput,
   CreateChatChannelInput,
@@ -930,6 +931,76 @@ export function setChannelCatExecutionTarget(
   return nextState;
 }
 
+function resolveParticipantExecutionAssignments(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+  participantId: string,
+): {
+  participantAssignment: ChannelParticipantAssignment | null;
+  catAssignment: ChannelCatAssignment | null;
+} {
+  const participantAssignment = channel.participantAssignments?.find(
+    (candidate) => candidate.participantId === participantId,
+  ) ?? null;
+  const catRef = participantAssignment?.sourceKind === 'cat'
+    ? participantAssignment.sourceRefId ?? participantAssignment.participantId
+    : null;
+  const catAssignment = channel.catAssignments.find((candidate) =>
+    candidate.participantId === participantId
+    || candidate.catId === participantId
+    || (catRef != null && candidate.catId === catRef)
+  ) ?? null;
+
+  return { participantAssignment, catAssignment };
+}
+
+export function setChannelParticipantExecutionTarget(
+  state: ChatState,
+  channelId: string,
+  participantId: string,
+  input: {
+    provider?: string | null;
+    model?: string | null;
+    instance?: string | null;
+    modelSelection?: AssignChannelCatInput['modelSelection'];
+  },
+  now: Date = new Date(),
+): ChatState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+  const { participantAssignment, catAssignment } = resolveParticipantExecutionAssignments(
+    channel,
+    participantId,
+  );
+
+  if (!participantAssignment && !catAssignment) {
+    throw new Error(`Channel participant assignment not found: ${participantId}`);
+  }
+
+  const assignments = [
+    participantAssignment,
+    catAssignment,
+  ].filter((assignment): assignment is ChannelParticipantAssignment | ChannelCatAssignment => assignment != null);
+
+  for (const assignment of assignments) {
+    if (input.provider !== undefined) {
+      assignment.execution.target.provider =
+        input.provider?.trim() || assignment.execution.target.provider;
+    }
+    if (input.model !== undefined) {
+      assignment.execution.target.model = normalizeOptionalText(input.model);
+    }
+    if (input.instance !== undefined) {
+      assignment.execution.target.instance = normalizeOptionalText(input.instance);
+    }
+    if (input.modelSelection !== undefined) {
+      assignment.execution.modelSelection = cloneProviderModelSelection(input.modelSelection);
+    }
+  }
+
+  channel.updatedAt = isoAt(now);
+  return nextState;
+}
+
 export function setChannelOrchestratorLease(
   state: ChatState,
   channelId: string,
@@ -959,6 +1030,41 @@ export function setChannelCatLease(
   }
 
   assignment.execution.lease = updateExecutionLease(assignment.execution.lease, leaseUpdate);
+  channel.updatedAt = isoAt(now);
+  return nextState;
+}
+
+export function setChannelParticipantLease(
+  state: ChatState,
+  channelId: string,
+  participantId: string,
+  leaseUpdate: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
+  now: Date = new Date(),
+): ChatState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+  const { participantAssignment, catAssignment } = resolveParticipantExecutionAssignments(
+    channel,
+    participantId,
+  );
+
+  if (!participantAssignment && !catAssignment) {
+    throw new Error(`Channel participant assignment not found: ${participantId}`);
+  }
+
+  if (participantAssignment) {
+    participantAssignment.execution.lease = updateExecutionLease(
+      participantAssignment.execution.lease,
+      leaseUpdate,
+    );
+  }
+  if (catAssignment) {
+    catAssignment.execution.lease = updateExecutionLease(
+      catAssignment.execution.lease,
+      leaseUpdate,
+    );
+  }
+
   channel.updatedAt = isoAt(now);
   return nextState;
 }

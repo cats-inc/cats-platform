@@ -8,7 +8,10 @@ export type ChatConversationMode =
   | 'multi_cat_room';
 
 export function resolveConversationMode(
-  channel: Pick<ChatChannelView, 'assignedCats' | 'channelKind' | 'composerMode' | 'roomRouting'>,
+  channel: Pick<
+    ChatChannelView,
+    'assignedParticipants' | 'assignedCats' | 'channelKind' | 'composerMode' | 'roomRouting'
+  >,
 ): ChatConversationMode {
   if (isDirectLaneChannel(channel)) {
     return 'direct_lane';
@@ -18,8 +21,12 @@ export function resolveConversationMode(
     return 'solo_thread';
   }
 
-  const activeCatCount = channel.assignedCats.filter((cat) => cat.status === 'active').length;
-  if (channel.channelKind === 'multi_cat_room' || activeCatCount > 1) {
+  const activeParticipants = (
+    channel.assignedParticipants && channel.assignedParticipants.length > 0
+      ? channel.assignedParticipants
+      : channel.assignedCats
+  ).filter((participant) => participant.status === 'active');
+  if (channel.channelKind === 'multi_cat_room' || activeParticipants.length > 1) {
     return 'multi_cat_room';
   }
 

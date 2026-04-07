@@ -1,4 +1,5 @@
 import type {
+  ChatChannelParticipant,
   ChatChannelCat,
   ChatChannelView,
 } from '../../api/contracts.js';
@@ -18,8 +19,13 @@ export interface RuntimeSessionRoutingOptions {
   runtimeDataDir?: string;
 }
 
-export function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
-  return channel.assignedCats.filter((cat) => cat.status === 'active');
+export function activeAssignedParticipants(
+  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
+): Array<ChatChannelParticipant | ChatChannelCat> {
+  const participants = channel.assignedParticipants && channel.assignedParticipants.length > 0
+    ? channel.assignedParticipants
+    : channel.assignedCats;
+  return participants.filter((participant) => participant.status === 'active');
 }
 
 export function shouldRewriteOrchestratorReply(
@@ -27,7 +33,7 @@ export function shouldRewriteOrchestratorReply(
   orchestratorName: string,
   channel: ChatChannelView,
 ): boolean {
-  if (activeAssignedCats(channel).length > 0) {
+  if (activeAssignedParticipants(channel).length > 0) {
     return false;
   }
 

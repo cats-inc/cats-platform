@@ -1,5 +1,6 @@
 import type {
   ChatChannelCat,
+  ChatChannelParticipant,
   ChatChannelState,
   ChatChannelView,
   ChatMessage,
@@ -35,8 +36,39 @@ export type RuntimeTransportContext = 'telegram' | 'web';
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
 
-function activeAssignedCats(channel: { assignedCats: ChatChannelCat[] }) {
-  return channel.assignedCats.filter((cat) => cat.status === 'active');
+type AssignedParticipant = ChatChannelCat | ChatChannelParticipant;
+
+function assignedParticipants(
+  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
+): AssignedParticipant[] {
+  return channel.assignedParticipants && channel.assignedParticipants.length > 0
+    ? channel.assignedParticipants
+    : channel.assignedCats;
+}
+
+function activeAssignedParticipants(
+  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
+): AssignedParticipant[] {
+  return assignedParticipants(channel).filter((participant) => participant.status === 'active');
+}
+
+function findAssignedParticipant(
+  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats'>,
+  participantId: string,
+): AssignedParticipant | null {
+  return assignedParticipants(channel).find(
+    (participant) => participant.participantId === participantId,
+  ) ?? null;
+}
+
+function resolveParticipantCatId(participant: AssignedParticipant): string | null {
+  if ('catId' in participant && participant.catId) {
+    return participant.catId;
+  }
+
+  return participant.sourceKind === 'cat'
+    ? participant.sourceRefId
+    : null;
 }
 
 export function isSoloChatChannel(
@@ -106,7 +138,10 @@ export function resolveExecutionMetadataForTarget(
   }
 
   const assignment = channel.catAssignments.find(
-    (candidate) => candidate.catId === target.participantId && candidate.status === 'active',
+    (candidate) => candidate.participantId === target.participantId
+      || candidate.catId === target.participantId,
+  ) ?? channel.participantAssignments?.find(
+    (candidate) => candidate.participantId === target.participantId && candidate.status === 'active',
   );
   return {
     provider: assignment?.execution.target.provider ?? null,
@@ -116,10 +151,10 @@ export function resolveExecutionMetadataForTarget(
   };
 }
 
-export function buildCatTarget(cat: ChatChannelCat): RoutingTarget {
+export function buildCatTarget(cat: ChatChannelCat | ChatChannelParticipant): RoutingTarget {
   return {
     participantKind: 'cat',
-    participantId: cat.catId,
+    participantId: cat.participantId,
     participantName: cat.name,
     sessionId: cat.execution.lease.sessionId,
   };
@@ -159,7 +194,7 @@ export function resolveChoiceResponseTarget(
     return null;
   }
 
-  const cat = activeAssignedCats(channel).find((candidate) => candidate.catId === targetId);
+  const cat = activeAssignedParticipants(channel).find((candidate) => candidate.participantId === targetId);
   return cat ? buildCatTarget(cat) : null;
 }
 
@@ -223,16 +258,17 @@ function resolveSessionSkillManifestForTarget(
     });
   }
 
-  const cat = channel.assignedCats.find((candidate) => candidate.catId === target.participantId);
+  const participant = findAssignedParticipant(channel, target.participantId);
+  const catId = participant ? resolveParticipantCatId(participant) : null;
   return resolveSkillProfileManifest({
-    profileId: cat?.skillProfile,
-    catId: cat?.catId ?? target.participantId,
+    profileId: participant?.skillProfile ?? null,
+    catId: catId ?? target.participantId,
     roomMode: channel.roomRouting?.mode ?? 'boss_chat',
     transport: resolvedTransport,
-    labels: ['participant:cat'],
+    labels: [participant?.sourceKind === 'cat' ? 'participant:cat' : 'participant:temporary'],
     metadata: {
       channelId: channel.id,
-      catName: cat?.name ?? target.participantName,
+      catName: participant?.name ?? target.participantName,
     },
   });
 }
@@ -301,7 +337,13 @@ async function resolveCompanionSessionForTarget(
     return null;
   }
 
-  const cat = requireCat(state, target.participantId);
+  const participant = findAssignedParticipant(channel, target.participantId);
+  const catId = participant ? resolveParticipantCatId(participant) : null;
+  if (!catId) {
+    return null;
+  }
+
+  const cat = requireCat(state, catId);
   const summary = await companionStore.getBoxSummary(cat.id, now);
   if (!shouldHydrateCompanionSession(cat, summary.box, channel)) {
     return null;
@@ -512,18 +554,16 @@ export function buildPromptForTarget(
     };
   }
 
-  const cat = channel.assignedCats.find(
-    (candidate) => candidate.catId === request.target.participantId,
-  );
-  if (!cat) {
-    throw new Error(`Target cat is no longer assigned to the selected chat: ${request.target.participantId}`);
+  const participant = findAssignedParticipant(channel, request.target.participantId);
+  if (!participant) {
+    throw new Error(`Target participant is no longer assigned to the selected chat: ${request.target.participantId}`);
   }
 
   return {
     message: buildCatPrompt(
       channel,
       state.globalOrchestrator,
-      cat,
+      participant,
       request.sourceMessage,
       routingContext,
     ),

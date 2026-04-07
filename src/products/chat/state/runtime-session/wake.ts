@@ -24,7 +24,7 @@ import {
   appendMessage,
   buildChannelView,
   requireChannel,
-  setChannelCatExecutionTarget,
+  setChannelParticipantExecutionTarget,
   setChannelChatCwd,
   setChannelOrchestratorLease,
   setChannelPendingExecutionTarget,
@@ -104,8 +104,12 @@ async function shouldReviveExistingTargetSession(
 
   const channel = requireChannel(state, channelId);
   const lease = target.participantKind === 'cat'
-    ? channel.catAssignments.find((assignment) =>
-        assignment.catId === target.participantId)?.execution.lease ?? null
+    ? (
+        channel.participantAssignments?.find((assignment) =>
+          assignment.participantId === target.participantId)
+        ?? channel.catAssignments.find((assignment) =>
+          assignment.participantId === target.participantId || assignment.catId === target.participantId)
+      )?.execution.lease ?? null
     : channel.orchestratorLease;
 
   if (!lease) {
@@ -274,7 +278,7 @@ export async function ensureTargetSession(
       const resetState = clearTargetSessionLease(
         state,
         channelId,
-        target.participantKind === 'cat' ? { catId: target.participantId } : 'orchestrator',
+        target.participantKind === 'cat' ? { participantId: target.participantId } : 'orchestrator',
         now,
       );
       return ensureTargetSession(
@@ -446,9 +450,13 @@ export async function ensureTargetSession(
       };
     }
 
-    const cat = channel.assignedCats.find((candidate) => candidate.catId === target.participantId);
-    if (!cat) {
-      const error = 'Target cat is no longer assigned to the selected chat.';
+    const participant = (
+      channel.assignedParticipants?.find((candidate) => candidate.participantId === target.participantId)
+      ?? channel.assignedCats.find((candidate) =>
+        candidate.participantId === target.participantId || candidate.catId === target.participantId)
+    );
+    if (!participant) {
+      const error = 'Target participant is no longer assigned to the selected chat.';
       return {
         state,
         target,
@@ -459,12 +467,12 @@ export async function ensureTargetSession(
     }
 
     const session = await runtimeClient.createSession({
-      provider: cat.execution.target.provider,
-      instance: cat.execution.target.instance,
-      model: cat.execution.target.model,
+      provider: participant.execution.target.provider,
+      instance: participant.execution.target.instance,
+      model: participant.execution.target.model,
       modelSelection:
-        cat.execution.modelSelection
-        ?? createExplicitProviderModelSelection(cat.execution.target.model),
+        participant.execution.modelSelection
+        ?? createExplicitProviderModelSelection(participant.execution.target.model),
       cwd: spawnCwd,
       workspaceKind,
       workspaceAccess: 'read_write',
@@ -482,17 +490,17 @@ export async function ensureTargetSession(
       attachmentWorkspacePath,
       targetWorkspacePath: session.cwd,
     });
-    nextState = setChannelCatExecutionTarget(
+    nextState = setChannelParticipantExecutionTarget(
       nextState,
       channelId,
       target.participantId,
       {
         provider: session.provider,
-        instance: cat.execution.target.instance,
-        model: session.model ?? cat.execution.target.model,
+        instance: participant.execution.target.instance,
+        model: session.model ?? participant.execution.target.model,
         modelSelection:
           session.modelSelection
-          ?? cat.execution.modelSelection
+          ?? participant.execution.modelSelection
           ?? null,
       },
       now,
@@ -500,7 +508,7 @@ export async function ensureTargetSession(
     nextState = setStartedSession(
       nextState,
       channelId,
-      { catId: target.participantId },
+      { participantId: target.participantId },
       session,
       now,
     );
@@ -537,7 +545,7 @@ export async function ensureTargetSession(
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown runtime error';
     nextState = target.participantKind === 'cat'
-      ? setErroredSession(nextState, channelId, { catId: target.participantId }, message, now)
+      ? setErroredSession(nextState, channelId, { participantId: target.participantId }, message, now)
       : setErroredSession(nextState, channelId, 'orchestrator', message, now);
     nextState = appendMessage(
       nextState,

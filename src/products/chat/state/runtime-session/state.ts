@@ -16,7 +16,7 @@ import {
 } from '../../../../core/actors.js';
 import {
   requireChannel,
-  setChannelCatLease,
+  setChannelParticipantLease,
   setChannelOrchestratorLease,
   setChannelRoomRouting,
   setChannelStatus,
@@ -65,16 +65,16 @@ export function resolveActorIdForTarget(target: RoutingTarget): string {
 export function setStartedSession(
   state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { catId: string },
+  target: 'orchestrator' | { participantId: string },
   session: RuntimeSessionInfo,
   now: Date,
 ): ChatState {
   const timestamp = now.toISOString();
   if (typeof target !== 'string') {
-    return setChannelCatLease(
+    return setChannelParticipantLease(
       state,
       channelId,
-      target.catId,
+      target.participantId,
       {
         sessionId: session.id,
         status: normalizeRuntimeStatus(session.status),
@@ -109,15 +109,15 @@ export function setStartedSession(
 export function setErroredSession(
   state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { catId: string },
+  target: 'orchestrator' | { participantId: string },
   message: string,
   now: Date,
 ): ChatState {
   if (typeof target !== 'string') {
-    return setChannelCatLease(
+    return setChannelParticipantLease(
       state,
       channelId,
-      target.catId,
+      target.participantId,
       {
         status: 'error',
         lastError: message,
@@ -144,7 +144,7 @@ export function markTargetWaking(
   now: Date,
 ): ChatState {
   if (target.participantKind === 'cat') {
-    return setChannelCatLease(
+    return setChannelParticipantLease(
       state,
       channelId,
       target.participantId,
@@ -175,14 +175,14 @@ export function ensureChannelMarkedActive(
 export function setReadyAfterMessage(
   state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { catId: string },
+  target: 'orchestrator' | { participantId: string },
   now: Date,
 ): ChatState {
   if (typeof target !== 'string') {
-    return setChannelCatLease(
+    return setChannelParticipantLease(
       state,
       channelId,
-      target.catId,
+      target.participantId,
       { status: 'ready', lastUsedAt: now.toISOString() },
       now,
     );
@@ -199,7 +199,7 @@ export function setReadyAfterMessage(
 export function clearTargetSessionLease(
   state: ChatState,
   channelId: string,
-  target: 'orchestrator' | { catId: string },
+  target: 'orchestrator' | { participantId: string },
   now: Date,
 ): ChatState {
   const clearedLease = {
@@ -211,10 +211,10 @@ export function clearTargetSessionLease(
   };
 
   if (typeof target !== 'string') {
-    return setChannelCatLease(
+    return setChannelParticipantLease(
       state,
       channelId,
-      target.catId,
+      target.participantId,
       clearedLease,
       now,
     );
