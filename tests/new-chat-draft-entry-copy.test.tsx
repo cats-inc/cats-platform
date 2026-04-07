@@ -167,7 +167,7 @@ test('group route shows add-participant hint inside the composer', () => {
     />,
   );
 
-  assert.match(markup, /Add participants/u);
+  assert.match(markup, /Add another participant/u);
   assert.doesNotMatch(markup, /Start a group chat/u);
 });
 
