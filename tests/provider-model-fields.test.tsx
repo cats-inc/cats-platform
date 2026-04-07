@@ -195,6 +195,23 @@ function reconcileReopenedTarget(input: {
   };
 }
 
+test('createStaticProviderModelCatalog preserves the curated Gemini CLI order', () => {
+  const catalog = createStaticProviderModelCatalog('gemini', { instance: 'native' });
+
+  assert.equal(catalog.defaultModel, 'gemini-3.1-pro-preview');
+  assert.deepEqual(
+    catalog.models.map((model) => model.id),
+    [
+      'gemini-3.1-pro-preview',
+      'gemini-3-flash-preview',
+      'gemini-3.1-flash-lite-preview',
+      'gemini-2.5-pro',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+    ],
+  );
+});
+
 test('static fallback catalogs do not overwrite an existing model selection during panel reopen', () => {
   assert.equal(
     shouldDeferCatalogTargetReconciliation({
