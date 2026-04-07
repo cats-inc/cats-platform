@@ -146,6 +146,9 @@ export function resolveVisibleDraftStarterSuggestions(input: {
   leadCatName?: string | null;
   suggestions?: ReadonlyArray<DraftStarterSuggestion | null | undefined> | null;
 }): DraftStarterSuggestion[] {
+  if (Array.isArray(input.suggestions) && input.suggestions.length === 0) {
+    return [];
+  }
   const providedSuggestions = sanitizeDraftStarterSuggestions(input.suggestions);
   if (providedSuggestions.length > 0) {
     return providedSuggestions;

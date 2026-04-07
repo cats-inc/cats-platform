@@ -164,3 +164,16 @@ test('draft uses externally supplied starter suggestions before static fallback 
   assert.match(markup, /Guide Cat suggests framing the first deliverable/u);
   assert.doesNotMatch(markup, /Ask Milo to take the first pass/u);
 });
+
+test('draft hides starter suggestions when the seam supplies an explicit empty override', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        starterSuggestions: [],
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /Plan today's priorities/u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
+});

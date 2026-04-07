@@ -251,7 +251,7 @@ export function NewChatDraft({
           ) : (
             <h1>{greeting}</h1>
           )}
-          {!composerDraft.trim() ? (
+          {!composerDraft.trim() && visibleStarterSuggestions.length > 0 ? (
             <div className="draftPromptSuggestions">
               <div className="chipRow">
                 {visibleStarterSuggestions.map((suggestion) => (

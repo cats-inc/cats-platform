@@ -54,6 +54,15 @@ test('visible starter suggestions prefer externally supplied ideas over fallback
   ]);
 });
 
+test('visible starter suggestions honor an explicit empty override', () => {
+  const suggestions = resolveVisibleDraftStarterSuggestions({
+    mode: 'group',
+    suggestions: [],
+  });
+
+  assert.deepEqual(suggestions, []);
+});
+
 test('visible starter suggestions fall back when supplied ideas are missing or blank', () => {
   const suggestions = resolveVisibleDraftStarterSuggestions({
     mode: 'group',
