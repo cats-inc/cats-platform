@@ -273,6 +273,31 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
       }
     }
   }
+  if (!Array.isArray(nextPayload.assistantPresets)) {
+    (nextPayload as Record<string, unknown>).assistantPresets = [];
+  } else {
+    (nextPayload as Record<string, unknown>).assistantPresets = nextPayload.assistantPresets.map((assistantValue) => {
+      const assistant = asRecord(assistantValue) ?? {};
+      if (!asRecord(assistant.executionTarget)) {
+        assistant.executionTarget = {
+          provider: readString(assistant.provider, 'claude'),
+          instance: readNullableString(assistant.instance),
+          model: readNullableString(assistant.model),
+        };
+      }
+      const executionTarget = asRecord(assistant.executionTarget);
+      if (executionTarget && executionTarget.instance === undefined) {
+        executionTarget.instance = readNullableString(assistant.instance);
+      }
+      if (assistant.modelSelection === undefined) {
+        assistant.modelSelection = null;
+      }
+      if (assistant.roleHint === undefined) {
+        assistant.roleHint = null;
+      }
+      return assistant;
+    });
+  }
   if (chatState.bossCatId === undefined) {
     chatState.bossCatId = null;
   }

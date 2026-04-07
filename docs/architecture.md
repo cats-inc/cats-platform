@@ -203,6 +203,8 @@ The platform now has an explicit architectural direction for two adjacent but
 separate concepts:
 
 - `Guide Cat`: the optional first helper created during setup
+- reusable `assistant presets`: lightweight saved execution presets owned by
+  `Settings > CATS > Assistants`
 - generalized `entity` / `participant` modeling for future conversation work
 
 `Guide Cat` is intentionally not the same thing as:
@@ -223,6 +225,14 @@ The long-term domain shape is:
 Current Chat contracts still expose Cat-specific fields such as
 `catAssignments`, `assignedCats`, `draftCatIds`, and `leadCatId`, but those are
 now a compatibility seam rather than the intended final shared model.
+
+Current platform settings behavior follows the same split:
+
+- `Guide Cat` remains a platform-level helper record
+- `Saved Assistants` are reusable lightweight presets with name, target, and
+  optional role hint
+- channel-only temporary participants stay inside the room and are not persisted
+  into the global settings registry
 
 ### Runtime Client and Runtime Boundary
 

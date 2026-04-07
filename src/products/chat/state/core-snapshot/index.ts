@@ -2,6 +2,7 @@ import type { ChatState } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 
 export {
+  normalizeAssistantPresetRecord,
   normalizeArchiveMetadata,
   normalizeBotBinding,
   normalizeCoreActivity,

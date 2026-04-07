@@ -1521,6 +1521,21 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
       createdAt: '2026-03-21T01:00:00.000Z',
       updatedAt: '2026-03-21T01:00:00.000Z',
     },
+    assistantPresets: [
+      {
+        id: 'assistant-preset-reviewer',
+        name: 'Pair Reviewer',
+        executionTarget: {
+          provider: 'codex',
+          instance: null,
+          model: 'gpt-5.4',
+        },
+        modelSelection: null,
+        roleHint: 'Checks task payloads before dispatch.',
+        createdAt: '2026-03-21T01:00:00.000Z',
+        updatedAt: '2026-03-21T01:00:00.000Z',
+      },
+    ],
     actors: [
       ...initialCore.actors,
       {
@@ -1664,6 +1679,8 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
   assert.equal(reloadedCore.ownerProfile.displayName, 'Boss Owner');
   assert.equal(reloadedCore.guideCat?.name, 'Guide Cat');
   assert.equal(reloadedCore.guideCat?.executionTarget.model, 'claude-sonnet');
+  assert.equal(reloadedCore.assistantPresets[0]?.name, 'Pair Reviewer');
+  assert.equal(reloadedCore.assistantPresets[0]?.executionTarget.model, 'gpt-5.4');
   assert.ok(reloadedCore.actors.some((actor) => actor.id === 'actor-stakeholder-1'));
   assert.ok(
     reloadedCore.conversations.some(
@@ -1818,4 +1835,3 @@ test('createChannel defaults empty draft fields to a neutral new-chat label', as
   assert.equal(state.channels[0].topic, '');
   assert.match(state.channels[0].id, UUID_PATTERN);
 });
-

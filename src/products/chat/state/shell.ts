@@ -1,5 +1,5 @@
 import type { AppConfig } from '../../../config.js';
-import type { GuideCatRecord } from '../../../core/types.js';
+import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type {
   PlatformDesktopPreferences,
@@ -57,6 +57,7 @@ export function createAppShell(
     lobby?: PlatformLobbyPreferences;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
+    assistantPresets?: AssistantPresetRecord[];
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -118,6 +119,7 @@ export function createAppShell(
     ownerAvatarUrl: setup?.ownerAvatarUrl ?? null,
     lastProductSurface: setup?.lastProductSurface ?? null,
     guideCat: setup?.guideCat ? structuredClone(setup.guideCat) : null,
+    assistantPresets: structuredClone(setup?.assistantPresets ?? []),
   };
 }
 

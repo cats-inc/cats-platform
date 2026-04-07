@@ -112,6 +112,7 @@ export function syncCoreStateWithChatState(
       updatedAt: ownerProfile.updatedAt || updatedAt,
     },
     guideCat: existingCore.guideCat ? structuredClone(existingCore.guideCat) : null,
+    assistantPresets: structuredClone(existingCore.assistantPresets ?? []),
     actors: [ownerActor, orchestratorActor, ...catActors, ...preservedActors],
     conversations: [...conversations, ...preservedConversations],
     projects: structuredClone(existingCore.projects ?? []),

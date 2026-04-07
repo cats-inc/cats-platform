@@ -67,6 +67,29 @@ Telegram webhook ingress may optionally enforce the standard
 `x-telegram-bot-api-secret-token` header when
 `CATS_TELEGRAM_WEBHOOK_SECRET` is configured.
 
+## Platform Settings API
+
+The platform host also exposes a small settings-oriented surface for
+owner-level records that are not Chat cats:
+
+```text
+PUT    /api/platform/guide-cat
+DELETE /api/platform/guide-cat
+GET    /api/platform/assistants
+POST   /api/platform/assistants
+PUT    /api/platform/assistants/{assistantId}
+DELETE /api/platform/assistants/{assistantId}
+```
+
+- `Guide Cat` remains a single optional platform helper.
+- `Saved Assistants` are reusable lightweight presets with:
+  - `name`
+  - `executionTarget`
+  - `modelSelection`
+  - optional `roleHint`
+- Channel-only temporary participants are intentionally excluded from this
+  registry and stay scoped to their room.
+
 ## Canonical Public API (SPEC-009)
 
 ### Cats

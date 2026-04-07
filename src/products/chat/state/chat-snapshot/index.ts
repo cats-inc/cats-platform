@@ -4,6 +4,7 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type {
+  AssistantPresetRecord,
   ArchiveMetadataRecord,
   BotBindingRecord,
   CoreActivityRecord,
@@ -26,6 +27,7 @@ import {
 import type { PersistedChatSnapshot } from '../core-snapshot/index.js';
 import {
   buildPersistedChatSnapshot,
+  normalizeAssistantPresetRecord,
   normalizeArchiveMetadata,
   normalizeBotBinding,
   normalizeCoreActivity,
@@ -212,10 +214,16 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
         .map((record) => normalizeDurableMemoryRecord(record))
         .filter((record): record is DurableMemoryRecord => record !== null)
     : [];
+  const assistantPresets = Array.isArray(stateRecord.assistantPresets)
+    ? stateRecord.assistantPresets
+        .map((record) => normalizeAssistantPresetRecord(record))
+        .filter((record): record is AssistantPresetRecord => record !== null)
+    : [];
   const normalized = syncCoreStateWithChatState(chat, {
     setupCompleteAt: readNullableString(stateRecord.setupCompleteAt),
     ownerProfile: normalizeOwnerProfile(stateRecord.ownerProfile),
     guideCat: normalizeGuideCatRecord(stateRecord.guideCat),
+    assistantPresets,
     actors,
     conversations,
     projects,

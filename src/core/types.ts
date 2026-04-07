@@ -539,12 +539,23 @@ export interface GuideCatRecord {
   updatedAt: string;
 }
 
+export interface AssistantPresetRecord {
+  id: string;
+  name: string;
+  executionTarget: ExecutionTargetSummary;
+  modelSelection: ProviderModelSelection | null;
+  roleHint: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CatsCoreState {
   version: typeof CATS_CORE_STATE_VERSION;
   updatedAt: string;
   setupCompleteAt: string | null;
   ownerProfile: OwnerProfileRecord;
   guideCat: GuideCatRecord | null;
+  assistantPresets: AssistantPresetRecord[];
   actors: CoreActorRecord[];
   conversations: CoreConversationRecord[];
   projects: CoreProjectRecord[];

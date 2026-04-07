@@ -127,6 +127,7 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
     const payload = await response.json();
     assert.equal(payload.setupCompleteAt, null);
     assert.equal(payload.guideCat, null);
+    assert.deepEqual(payload.assistantPresets, []);
     assert.equal(payload.lastProductSurface, null);
     assert.deepEqual(payload.desktop, {
       startAtLogin: true,
@@ -172,6 +173,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
     assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat', 'work', 'code']);
     assert.equal(payload.chat.cats.length, 0, 'platform setup should not inject Guide Cat into chat cats');
     assert.equal(payload.guideCat?.name, 'Meowster');
+    assert.deepEqual(payload.assistantPresets, []);
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
     assert.equal(payload.guideCat?.executionTarget.model, 'claude-sonnet');
     assert.equal(payload.chat.globalOrchestrator.executionTarget.provider, 'claude');
@@ -181,8 +183,81 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
     assert.equal(shellResponse.status, 200);
     const shellPayload = await shellResponse.json();
     assert.equal(shellPayload.guideCat?.name, 'Meowster');
+    assert.deepEqual(shellPayload.assistantPresets, []);
     assert.equal(shellPayload.chat.cats.length, 0);
     assert.equal(shellPayload.lastProductSurface, null);
+  });
+});
+
+test('platform assistant presets can be created, updated, listed, and removed without becoming chat cats', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const initialListResponse = await fetch(`${baseUrl}/api/platform/assistants`);
+    assert.equal(initialListResponse.status, 200);
+    assert.deepEqual(await initialListResponse.json(), { assistants: [] });
+
+    const createResponse = await fetch(`${baseUrl}/api/platform/assistants`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'API Reviewer',
+        provider: 'claude',
+        model: 'claude-sonnet',
+        roleHint: 'Checks payload shape before runtime dispatch.',
+      }),
+    });
+    assert.equal(createResponse.status, 201);
+    const createdPayload = await createResponse.json();
+    assert.equal(createdPayload.assistant.name, 'API Reviewer');
+    assert.equal(createdPayload.assistant.executionTarget.provider, 'claude');
+    assert.equal(createdPayload.assistant.executionTarget.model, 'claude-sonnet');
+    assert.equal(createdPayload.assistant.roleHint, 'Checks payload shape before runtime dispatch.');
+    assert.equal(createdPayload.assistants.length, 1);
+    const assistantId = createdPayload.assistant.id;
+
+    const shellAfterCreateResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellAfterCreateResponse.status, 200);
+    const shellAfterCreate = await shellAfterCreateResponse.json();
+    assert.equal(shellAfterCreate.chat.cats.length, 0);
+    assert.equal(shellAfterCreate.assistantPresets.length, 1);
+    assert.equal(shellAfterCreate.assistantPresets[0].name, 'API Reviewer');
+
+    const updateResponse = await fetch(`${baseUrl}/api/platform/assistants/${assistantId}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Runtime Debugger',
+        provider: 'codex',
+        model: 'gpt-5.4',
+        roleHint: 'Traces runtime session failures.',
+      }),
+    });
+    assert.equal(updateResponse.status, 200);
+    const updatedPayload = await updateResponse.json();
+    assert.equal(updatedPayload.assistant.name, 'Runtime Debugger');
+    assert.equal(updatedPayload.assistant.executionTarget.provider, 'codex');
+    assert.equal(updatedPayload.assistant.executionTarget.model, 'gpt-5.4');
+    assert.equal(updatedPayload.assistants.length, 1);
+
+    const listResponse = await fetch(`${baseUrl}/api/platform/assistants`);
+    assert.equal(listResponse.status, 200);
+    const listedPayload = await listResponse.json();
+    assert.equal(listedPayload.assistants.length, 1);
+    assert.equal(listedPayload.assistants[0].name, 'Runtime Debugger');
+
+    const deleteResponse = await fetch(`${baseUrl}/api/platform/assistants/${assistantId}`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteResponse.status, 200);
+    assert.deepEqual(await deleteResponse.json(), {
+      deletedId: assistantId,
+      assistants: [],
+    });
+
+    const shellAfterDeleteResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellAfterDeleteResponse.status, 200);
+    const shellAfterDelete = await shellAfterDeleteResponse.json();
+    assert.equal(shellAfterDelete.chat.cats.length, 0);
+    assert.deepEqual(shellAfterDelete.assistantPresets, []);
   });
 });
 

@@ -1,4 +1,4 @@
-import type { GuideCatRecord } from '../core/types.js';
+import type { AssistantPresetRecord, GuideCatRecord } from '../core/types.js';
 import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
 import type { ProviderModelSelection } from './providerSelection.js';
 import type { RuntimeSetupSummary } from './runtimeSetup.js';
@@ -76,6 +76,7 @@ export interface PlatformOwnerContext {
   ownerAvatarUrl: string | null;
   lastProductSurface: PlatformSurfaceId | null;
   guideCat: GuideCatRecord | null;
+  assistantPresets?: AssistantPresetRecord[];
 }
 
 export interface PlatformHostEnvelope extends PlatformOwnerContext {

@@ -16,6 +16,7 @@ export {
   normalizeCoreTrace,
 } from './workflowRecords.js';
 export {
+  normalizeAssistantPresetRecord,
   normalizeArchiveMetadata,
   normalizeBotBinding,
   normalizeDurableMemoryRecord,

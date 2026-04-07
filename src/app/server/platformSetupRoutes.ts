@@ -1,4 +1,6 @@
-import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
+import { randomUUID } from 'node:crypto';
+
+import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
@@ -31,6 +33,15 @@ interface LegacyPlatformSetupCompleteInput extends PlatformSetupCompleteInput {
   bossCatModelSelection?: ProviderModelSelection | null;
   /** @deprecated No longer sent by the wizard. */
   selectedProduct?: string;
+}
+
+interface AssistantPresetBody {
+  name?: string;
+  provider?: string;
+  instance?: string | null;
+  model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
+  roleHint?: string | null;
 }
 
 function reportSyncFailure(scope: string, error: unknown): void {
@@ -168,6 +179,7 @@ async function handlePlatformSetupComplete(
       ownerAvatarColor: core.ownerProfile.avatarColor,
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       guideCat: core.guideCat,
+      assistantPresets: core.assistantPresets,
       lastProductSurface: legacyProduct ?? null,
       lobby: { animationMode: 'reduced', cats: [] },
     };
@@ -255,6 +267,59 @@ async function handlePlatformPreferencesUpdate(
       error: { code: 'bad_request', message },
     });
   }
+}
+
+async function readAssistantPresetBody(
+  context: PlatformSetupContext,
+): Promise<{
+  name: string;
+  provider: string;
+  instance: string | null;
+  model: string;
+  modelSelection: ProviderModelSelection | null;
+  roleHint: string | null;
+} | null> {
+  let body: AssistantPresetBody;
+  try {
+    body = await readJsonBody<AssistantPresetBody>(context.request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid request body';
+    sendJson(context.response, 400, { error: { code: 'bad_request', message } });
+    return null;
+  }
+
+  const name = body.name?.trim();
+  if (!name) {
+    sendJson(context.response, 400, {
+      error: { code: 'bad_request', message: 'Assistant name is required' },
+    });
+    return null;
+  }
+
+  const provider = body.provider?.trim();
+  if (!provider) {
+    sendJson(context.response, 400, {
+      error: { code: 'bad_request', message: 'Assistant provider is required' },
+    });
+    return null;
+  }
+
+  const model = body.model?.trim();
+  if (!model) {
+    sendJson(context.response, 400, {
+      error: { code: 'bad_request', message: 'Assistant model is required' },
+    });
+    return null;
+  }
+
+  return {
+    name,
+    provider,
+    instance: body.instance?.trim() || null,
+    model,
+    modelSelection: cloneProviderModelSelection(body.modelSelection ?? null),
+    roleHint: body.roleHint?.trim() || null,
+  };
 }
 
 async function handleBootstrapDiagnosticsState(
@@ -361,6 +426,129 @@ async function handleGuideCatDelete(
   sendJson(context.response, 200, { guideCat: null });
 }
 
+async function handleAssistantPresetList(
+  context: PlatformSetupContext,
+): Promise<void> {
+  const core = await context.dependencies.chatStore.readCore();
+  sendJson(context.response, 200, { assistants: core.assistantPresets });
+}
+
+async function handleAssistantPresetCreate(
+  context: PlatformSetupContext,
+): Promise<void> {
+  const body = await readAssistantPresetBody(context);
+  if (!body) {
+    return;
+  }
+
+  const nowIso = (context.dependencies.now?.() ?? new Date()).toISOString();
+  let core = await context.dependencies.chatStore.readCore();
+  const chatState = await context.dependencies.chatStore.read();
+  const assistant = {
+    id: randomUUID(),
+    name: body.name,
+    executionTarget: {
+      provider: body.provider,
+      instance: body.instance,
+      model: body.model,
+    },
+    modelSelection: body.modelSelection,
+    roleHint: body.roleHint,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  core = {
+    ...core,
+    updatedAt: nowIso,
+    assistantPresets: [...core.assistantPresets, assistant],
+  };
+
+  await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  sendJson(context.response, 201, {
+    assistant,
+    assistants: core.assistantPresets,
+  });
+}
+
+async function handleAssistantPresetUpdate(
+  context: PlatformSetupContext,
+  assistantId: string,
+): Promise<void> {
+  const body = await readAssistantPresetBody(context);
+  if (!body) {
+    return;
+  }
+
+  const nowIso = (context.dependencies.now?.() ?? new Date()).toISOString();
+  let core = await context.dependencies.chatStore.readCore();
+  const chatState = await context.dependencies.chatStore.read();
+  const existingAssistant = core.assistantPresets.find((assistant) => assistant.id === assistantId);
+
+  if (!existingAssistant) {
+    sendJson(context.response, 404, {
+      error: { code: 'not_found', message: 'Assistant not found' },
+    });
+    return;
+  }
+
+  const assistant = {
+    ...existingAssistant,
+    name: body.name,
+    executionTarget: {
+      provider: body.provider,
+      instance: body.instance,
+      model: body.model,
+    },
+    modelSelection: body.modelSelection,
+    roleHint: body.roleHint,
+    updatedAt: nowIso,
+  };
+
+  core = {
+    ...core,
+    updatedAt: nowIso,
+    assistantPresets: core.assistantPresets.map((candidate) =>
+      candidate.id === assistantId ? assistant : candidate
+    ),
+  };
+
+  await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  sendJson(context.response, 200, {
+    assistant,
+    assistants: core.assistantPresets,
+  });
+}
+
+async function handleAssistantPresetDelete(
+  context: PlatformSetupContext,
+  assistantId: string,
+): Promise<void> {
+  const nowIso = (context.dependencies.now?.() ?? new Date()).toISOString();
+  let core = await context.dependencies.chatStore.readCore();
+  const chatState = await context.dependencies.chatStore.read();
+  const nextAssistants = core.assistantPresets.filter((assistant) => assistant.id !== assistantId);
+
+  if (nextAssistants.length === core.assistantPresets.length) {
+    sendJson(context.response, 404, {
+      error: { code: 'not_found', message: 'Assistant not found' },
+    });
+    return;
+  }
+
+  core = {
+    ...core,
+    updatedAt: nowIso,
+    assistantPresets: nextAssistants,
+  };
+
+  await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  sendJson(context.response, 200, {
+    deletedId: assistantId,
+    assistants: core.assistantPresets,
+  });
+}
+
 export async function routePlatformSetupApi(
   context: PlatformSetupContext,
 ): Promise<boolean> {
@@ -407,6 +595,36 @@ export async function routePlatformSetupApi(
     }
     if (context.method === 'DELETE') {
       await handleGuideCatDelete(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['PUT', 'DELETE']);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/platform/assistants') {
+    if (context.method === 'GET') {
+      await handleAssistantPresetList(context);
+      return true;
+    }
+    if (context.method === 'POST') {
+      await handleAssistantPresetCreate(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  const assistantPresetDetailMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/platform\/assistants\/([^/]+)$/u,
+  );
+  if (assistantPresetDetailMatch) {
+    if (context.method === 'PUT') {
+      await handleAssistantPresetUpdate(context, assistantPresetDetailMatch[0]!);
+      return true;
+    }
+    if (context.method === 'DELETE') {
+      await handleAssistantPresetDelete(context, assistantPresetDetailMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['PUT', 'DELETE']);

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { ChatState } from '../../api/contracts.js';
 import type {
+  AssistantPresetRecord,
   ArchiveMetadataRecord,
   BotBindingRecord,
   DurableMemoryRecord,
@@ -153,5 +154,31 @@ export function normalizeGuideCatRecord(rawGuideCat: unknown): GuideCatRecord | 
     modelSelection: parseProviderModelSelection(guideCatRecord.modelSelection),
     createdAt: readString(guideCatRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(guideCatRecord.updatedAt, new Date().toISOString()),
+  };
+}
+
+export function normalizeAssistantPresetRecord(
+  rawAssistantPreset: unknown,
+): AssistantPresetRecord | null {
+  const assistantPresetRecord = asRecord(rawAssistantPreset);
+  if (!assistantPresetRecord) {
+    return null;
+  }
+
+  return {
+    id: readString(assistantPresetRecord.id, randomUUID()),
+    name: readString(assistantPresetRecord.name, 'Assistant'),
+    executionTarget: normalizeExecutionTarget(
+      assistantPresetRecord.executionTarget,
+      {
+        provider: 'claude',
+        instance: null,
+        model: null,
+      },
+    ),
+    modelSelection: parseProviderModelSelection(assistantPresetRecord.modelSelection),
+    roleHint: readNullableString(assistantPresetRecord.roleHint),
+    createdAt: readString(assistantPresetRecord.createdAt, new Date().toISOString()),
+    updatedAt: readString(assistantPresetRecord.updatedAt, new Date().toISOString()),
   };
 }

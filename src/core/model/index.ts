@@ -114,6 +114,7 @@ export function createDefaultCoreState(): CatsCoreState {
     setupCompleteAt: null,
     ownerProfile,
     guideCat: null,
+    assistantPresets: [],
     actors: [
       createOwnerActor(ownerProfile),
       createDefaultOrchestratorActor(updatedAt),
