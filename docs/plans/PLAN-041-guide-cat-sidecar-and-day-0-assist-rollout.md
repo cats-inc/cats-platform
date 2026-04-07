@@ -17,9 +17,10 @@
 Implement a platform-shell Guide Cat sidecar that becomes the first visible
 day-0 assist surface after setup completes with Guide Cat enabled.
 
-This rollout should start with a shell-owned UI surface and host-owned view
-state, then add richer cross-surface continuity and explicit handoff into
-product-native conversations.
+This rollout should start with a shell-owned UI surface, host-owned view
+state, and runtime-backed Guide Cat replies when the existing dispatch
+pipeline is available, then add richer cross-surface continuity and explicit
+handoff into product-native conversations.
 
 ## Implementation Phases
 
@@ -43,7 +44,8 @@ without collapsing it into Chat direct-lane semantics
       `/lobby` without being owned by `PlatformLobby.tsx`.
 - [ ] Task 2.3: Show welcome-peek/open state on first Lobby entry after setup
       when `guideCat` exists.
-- [ ] Task 2.4: Add initial greeting plus deterministic day-0 quick actions.
+- [ ] Task 2.4: Wire the first slice to runtime-backed Guide Cat replies while
+      still rendering initial greeting plus day-0 quick actions.
 - [ ] Task 2.5: Persist dismissal/collapse state so the first-run presentation
       does not repeat aggressively.
 
@@ -108,8 +110,9 @@ conversation/workflow continuation
   Guide Cat docks left instead.
 - Decision 3: Treat the first slice as a host-owned assist surface, not an
   automatic Chat direct lane.
-- Decision 4: Start with deterministic greeting plus quick actions if needed;
-  runtime-backed conversational follow-through can layer on later.
+- Decision 4: Use runtime-backed Guide Cat replies in the first slice when the
+  existing dispatch pipeline is available; deterministic greeting and quick
+  actions remain the degraded fallback when runtime dispatch is unavailable.
 
 ## Testing Strategy
 
@@ -131,7 +134,7 @@ conversation/workflow continuation
 |------|--------|------------|
 | Guide sidecar collapses back into Chat-only semantics | High | Keep handoff explicit and host-owned state separate from direct-lane state |
 | Left-side dock conflicts with existing navigation or responsive layouts | High | Prototype with shell-level anchors and define narrow-width overlay fallback early |
-| The first slice overreaches into full runtime chat orchestration | Medium | Start with deterministic quick actions and add runtime-backed follow-through later |
+| Runtime-backed sidecar wiring adds avoidable complexity to the first slice | Medium | Reuse the existing dispatch pipeline boundary and keep deterministic greeting plus quick actions as degraded fallback |
 | Right-side inspectors become harder to use because shell overlays leak into product space | Medium | Preserve right-side ownership and validate with Chat/Work/Code inspector toggles |
 | First-run visibility becomes annoying on every visit | Medium | Persist dismissal/collapse state in host-owned preferences |
 

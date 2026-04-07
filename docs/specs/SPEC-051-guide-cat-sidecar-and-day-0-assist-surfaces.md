@@ -109,11 +109,11 @@ consumption surface for that requirement.
 16. Setup completion shall continue to route to `/lobby`; Guide Cat presence
     shall not override that route.
 17. If `guideCat == null`, the sidecar shall not auto-appear.
-18. The first slice may reuse deterministic quick actions and canned greeting
-    content before runtime-backed response generation is added.
+18. The first slice shall use runtime-backed Guide Cat replies when the
+    existing runtime dispatch pipeline is available.
 19. The sidecar shall tolerate runtime unavailability; Guide Cat absence or
-    runtime failure must degrade into local UI/help states rather than breaking
-    navigation.
+    runtime failure must degrade into local UI/help states, canned greeting
+    content, and deterministic quick actions rather than breaking navigation.
 20. Product transitions from Lobby into Chat, Work, or Code shall preserve
     Guide sidecar state when technically feasible inside the current host
     renderer lifecycle.
@@ -174,8 +174,11 @@ The first slice treats the sidecar as a host-owned assist surface:
 
 - visible guidance
 - quick actions
-- short conversational exchanges
+- short runtime-backed conversational exchanges when available
 - cross-surface continuity
+
+Deterministic quick actions and canned greeting content remain required as a
+degraded state when runtime dispatch is unavailable or temporarily failing.
 
 ### Product-Native Promotion
 
@@ -209,9 +212,6 @@ inside product-specific chat state.
 
 ## Open Questions
 
-- [ ] Should the first slice support true runtime-backed conversational replies
-      in the sidecar, or start with deterministic greeting + quick actions plus
-      a later runtime integration?
 - [ ] Should the sidecar preserve its exact open/collapsed state across app
       restarts, or only within the current app session?
 - [ ] Should `Open in Cats Chat` create a dedicated Guide thread, a guide-owned
