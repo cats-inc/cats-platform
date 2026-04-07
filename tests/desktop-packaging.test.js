@@ -7,6 +7,10 @@ import test from 'node:test';
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { resolveDesktopWindowIconPath } from '../build/desktop/windowIcon.js';
 import {
+  buildWindowsExecutableEditOptions,
+  resolveWindowsExecutableEditPlan,
+} from '../scripts/shared/edit-windows-exe-icon.mjs';
+import {
   createDesktopPackagingPlan,
   stageDesktopPackagingOutputs,
 } from '../build/desktop/packaging.js';
@@ -516,6 +520,7 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.scripts['desktop:smoke:macos'], 'bash ./scripts/macos/test-macos-package-smoke.sh');
   assert.equal(packageJson.scripts['start:server'], 'node build/server/index.js');
   assert.equal(packageJson.build.extraMetadata?.name, 'Cats');
+  assert.equal(packageJson.build.afterPack, './scripts/shared/edit-windows-exe-icon.mjs');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
   assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'dmg'), true);
   assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'pkg'), true);
@@ -569,6 +574,85 @@ test('resolveDesktopWindowIconPath finds packaged window icons for supported des
 
   assert.equal(resolveDesktopWindowIconPath(workingDir, 'win32'), null);
   assert.equal(resolveDesktopWindowIconPath(workingDir, 'linux'), null);
+});
+
+test('Windows afterPack hook edits the packaged executable icon without re-enabling signing', () => {
+  const plan = resolveWindowsExecutableEditPlan({
+    electronPlatformName: 'win32',
+    appOutDir: 'C:/release/win-unpacked',
+    packager: {
+      buildResourcesDir: 'C:/repo/assets/build',
+      appInfo: {
+        productName: 'Cats',
+        productFilename: 'Cats',
+        copyright: 'Copyright (c) Cats Inc.',
+        shortVersion: '0.1.0',
+        buildVersion: '0.1.0',
+        shortVersionWindows: '0.1.0.0',
+        companyName: 'Cats Inc.',
+        getVersionInWeirdWindowsForm() {
+          return '0.1.0.0';
+        },
+      },
+      platformSpecificBuildOptions: {
+        requestedExecutionLevel: 'asInvoker',
+      },
+    },
+  });
+
+  assert.equal(plan?.executablePath, 'C:\\release\\win-unpacked\\Cats.exe');
+  assert.equal(plan?.options.icon, 'C:\\repo\\assets\\build\\icon.ico');
+  assert.equal(plan?.options['version-string'].ProductName, 'Cats');
+  assert.equal(plan?.options['version-string'].CompanyName, 'Cats Inc.');
+  assert.equal(Object.hasOwn(plan?.options ?? {}, 'requested-execution-level'), false);
+
+  assert.equal(
+    resolveWindowsExecutableEditPlan({
+      electronPlatformName: 'darwin',
+      appOutDir: 'C:/release/darwin-unpacked',
+      packager: {
+        buildResourcesDir: 'C:/repo/assets/build',
+        appInfo: {
+          productFilename: 'Cats',
+          productName: 'Cats',
+          copyright: '',
+          shortVersion: '0.1.0',
+          buildVersion: '0.1.0',
+          shortVersionWindows: '0.1.0.0',
+          companyName: 'Cats Inc.',
+          getVersionInWeirdWindowsForm() {
+            return '0.1.0.0';
+          },
+        },
+        platformSpecificBuildOptions: {
+          requestedExecutionLevel: 'asInvoker',
+        },
+      },
+    }),
+    null,
+  );
+});
+
+test('Windows executable edit options preserve metadata while setting the packaged icon', () => {
+  const plan = buildWindowsExecutableEditOptions({
+    executablePath: 'C:/release/win-unpacked/Cats.exe',
+    iconPath: 'C:/repo/assets/build/icon.ico',
+    productName: 'Cats',
+    copyright: 'Copyright (c) Cats Inc.',
+    shortVersion: '0.1.0',
+    buildVersion: '0.1.0',
+    shortVersionWindows: '0.1.0.0',
+    weirdWindowsVersion: '0.1.0.0',
+    companyName: 'Cats Inc.',
+    internalName: 'Cats',
+    requestedExecutionLevel: 'highestAvailable',
+  });
+
+  assert.equal(plan.executablePath, 'C:/release/win-unpacked/Cats.exe');
+  assert.equal(plan.options['version-string'].FileDescription, 'Cats');
+  assert.equal(plan.options['version-string'].InternalName, 'Cats');
+  assert.equal(plan.options['requested-execution-level'], 'highestAvailable');
+  assert.equal(plan.options.icon, 'C:/repo/assets/build/icon.ico');
 });
 
 test('Windows installer smoke-check script validates bundled sidecars and host state', async () => {
