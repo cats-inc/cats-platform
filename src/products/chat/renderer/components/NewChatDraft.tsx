@@ -442,32 +442,56 @@ export function NewChatDraft({
               </div>
             ) : isGroupDraft ? (
               <>
-                {visibleDraftCatIds.map((catId) => {
-                  const cat = chatCats.find((c) => c.id === catId);
-                  if (!cat) return null;
-                  return (
-                    <div
-                      key={catId}
-                      className="catAvatar"
-                      style={cat.avatarUrl
-                        ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', width: 24, height: 24, fontSize: '0.6rem', marginRight: 4 }
-                        : { background: cat.avatarColor ?? '#90A4AE', width: 24, height: 24, fontSize: '0.6rem', marginRight: 8 }}
-                      data-tooltip={cat.name}
-                    >
-                      {cat.avatarUrl ? null : catInitials(cat.name)}
-                    </div>
-                  );
-                })}
-                {draftTemporaryParticipants.map((participant) => (
-                  <div
-                    key={participant.participantId}
-                    className="catAvatar"
-                    style={{ background: '#90A4AE', width: 24, height: 24, fontSize: '0.6rem', marginRight: 8 }}
-                    data-tooltip={participant.name}
-                  >
-                    {catInitials(participant.name)}
-                  </div>
-                ))}
+                <div className="composerCatStack" style={{ marginRight: 8 }}>
+                  {(() => {
+                    const allParticipants: Array<{ key: string; name: string; avatarColor: string | null; avatarUrl: string | null; isCat: boolean; catId: string | null; participantId: string | null }> = [
+                      ...visibleDraftCatIds.map((catId) => {
+                        const cat = chatCats.find((c) => c.id === catId);
+                        return { key: `cat:${catId}`, name: cat?.name ?? '', avatarColor: cat?.avatarColor ?? null, avatarUrl: cat?.avatarUrl ?? null, isCat: true, catId, participantId: null };
+                      }).filter((p) => p.name),
+                      ...draftTemporaryParticipants.map((p) => ({
+                        key: `temp:${p.participantId}`, name: p.name, avatarColor: null, avatarUrl: null, isCat: false, catId: null, participantId: p.participantId,
+                      })),
+                    ];
+                    const canRemove = allParticipants.length > 2;
+                    return allParticipants.map((participant, index) => {
+                      const isLead = index === 0;
+                      return (
+                        <div
+                          key={participant.key}
+                          className="catAvatar composerStackAvatar"
+                          data-tooltip={participant.name}
+                          style={{
+                            ...(participant.avatarUrl
+                              ? { backgroundImage: `url(${participant.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                              : { background: participant.avatarColor ?? '#90A4AE' }),
+                            zIndex: allParticipants.length - index,
+                          }}
+                        >
+                          {participant.avatarUrl ? null : catInitials(participant.name)}
+                          {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                          {canRemove && !isSubmittingFirstTurn ? (
+                            <button
+                              type="button"
+                              className="composerStackRemove"
+                              aria-label={`Remove ${participant.name}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (participant.isCat && participant.catId) {
+                                  onToggleDraftCat(participant.catId);
+                                } else if (participant.participantId) {
+                                  onRemoveDraftTemporaryParticipant(participant.participantId);
+                                }
+                              }}
+                            >
+                              &times;
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
                 <span className="parallelAddHint" style={{ marginRight: 8 }}>Add another model to collaborate</span>
                 <button
                   type="button"

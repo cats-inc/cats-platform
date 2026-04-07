@@ -261,17 +261,46 @@
 
 .composerCatStack {
   display: flex;
+  flex-direction: row-reverse;
   align-items: center;
   cursor: pointer;
 }
 
 .composerCatStack .composerStackAvatar + .composerStackAvatar {
-  margin-left: -10px;
-  transition: margin-left 0.2s ease;
+  margin-right: -10px;
+  transition: margin-right 0.2s ease;
 }
 
 .composerCatStack:hover .composerStackAvatar + .composerStackAvatar {
-  margin-left: 4px;
+  margin-right: 4px;
+}
+
+.composerStackRemove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.composerCatStack:hover .composerStackRemove {
+  display: flex;
+}
+
+.composerStackRemove:hover {
+  background: rgba(200, 50, 50, 0.85);
 }
 
 .catAvatarLeadBadge {
