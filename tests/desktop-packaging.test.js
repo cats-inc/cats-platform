@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { access, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
+import { resolveDesktopWindowIconPath } from '../build/desktop/windowIcon.js';
 import {
   createDesktopPackagingPlan,
   stageDesktopPackagingOutputs,
@@ -523,6 +524,15 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'deb'), true);
   assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'tar.gz'), true);
   assert.equal(packageJson.build.nsis.oneClick, false);
+  assert.equal(packageJson.build.win.icon, 'icon.ico');
+  assert.equal(packageJson.build.win.signAndEditExecutable, true);
+  assert.equal(packageJson.build.mac.icon, 'icon.icns');
+  assert.equal(packageJson.build.linux.icon, 'icons/linux');
+  assert.equal(packageJson.build.nsis.installerIcon, 'installerIcon.ico');
+  assert.equal(packageJson.build.nsis.uninstallerIcon, 'uninstallerIcon.ico');
+  assert.equal(packageJson.build.nsis.installerHeaderIcon, 'installerHeaderIcon.ico');
+  assert.equal(packageJson.build.files.includes('assets/build/icon.ico'), true);
+  assert.equal(packageJson.build.files.includes('assets/build/icon.png'), true);
   assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.to === 'desktop/setup-assets',
   ), true);
@@ -540,6 +550,25 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
     (entry) => entry.from === 'build/desktop-packaging/shared/cats-runtime/node_modules'
       && entry.to === 'cats-runtime/node_modules',
   ), true);
+});
+
+test('resolveDesktopWindowIconPath finds packaged window icons for supported desktop platforms', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-window-icon-'));
+  const iconIcoPath = join(workingDir, 'assets', 'build', 'icon.ico');
+  const iconPngPath = join(workingDir, 'assets', 'build', 'icon.png');
+
+  await seedFile(iconIcoPath, 'ico');
+  await seedFile(iconPngPath, 'png');
+
+  assert.equal(resolveDesktopWindowIconPath(workingDir, 'win32'), iconIcoPath);
+  assert.equal(resolveDesktopWindowIconPath(workingDir, 'linux'), iconPngPath);
+  assert.equal(resolveDesktopWindowIconPath(workingDir, 'darwin'), null);
+
+  await rm(iconIcoPath);
+  await rm(iconPngPath);
+
+  assert.equal(resolveDesktopWindowIconPath(workingDir, 'win32'), null);
+  assert.equal(resolveDesktopWindowIconPath(workingDir, 'linux'), null);
 });
 
 test('Windows installer smoke-check script validates bundled sidecars and host state', async () => {

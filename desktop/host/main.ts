@@ -71,6 +71,7 @@ import {
   applyDesktopWindowChrome,
   resolveDesktopWindowChromeOptions,
 } from './windowChrome.js';
+import { resolveDesktopWindowIconPath } from './windowIcon.js';
 import {
   readDesktopStartupPreferences,
   resolveDesktopStartupLaunchContext,
@@ -1013,6 +1014,7 @@ async function createMainWindow(
     showWindowOnStartup: boolean;
   },
 ): Promise<BrowserWindow> {
+  const windowIconPath = resolveDesktopWindowIconPath(app.getAppPath());
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -1021,6 +1023,7 @@ async function createMainWindow(
     show: false,
     title: 'Cats',
     backgroundColor: '#f5f1e8',
+    ...(windowIconPath ? { icon: windowIconPath } : {}),
     ...resolveDesktopWindowChromeOptions(),
     webPreferences: {
       preload: config.paths.preloadScript,

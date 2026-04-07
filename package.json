@@ -92,6 +92,8 @@
     },
     "files": [
       "build/desktop/**/*",
+      "assets/build/icon.ico",
+      "assets/build/icon.png",
       "assets/tray-icon*.png",
       "package.json"
     ],
@@ -151,8 +153,8 @@
           ]
         }
       ],
-      "icon": "assets/build/icon.ico",
-      "signAndEditExecutable": false,
+      "icon": "icon.ico",
+      "signAndEditExecutable": true,
       "artifactName": "Cats-${version}-setup-${arch}.${ext}"
     },
     "mac": {
@@ -176,7 +178,7 @@
           ]
         }
       ],
-      "icon": "assets/build/icon.icns",
+      "icon": "icon.icns",
       "artifactName": "Cats-${version}-${arch}.${ext}",
       "category": "public.app-category.productivity",
       "hardenedRuntime": false,
@@ -206,7 +208,7 @@
           ]
         }
       ],
-      "icon": "assets/build/icons/linux",
+      "icon": "icons/linux",
       "artifactName": "Cats-${version}-${arch}.${ext}",
       "category": "Utility"
     },
@@ -216,9 +218,9 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "assets/build/installerIcon.ico",
-      "uninstallerIcon": "assets/build/uninstallerIcon.ico",
-      "installerHeaderIcon": "assets/build/installerHeaderIcon.ico"
+      "installerIcon": "installerIcon.ico",
+      "uninstallerIcon": "uninstallerIcon.ico",
+      "installerHeaderIcon": "installerHeaderIcon.ico"
     }
   }
 }
