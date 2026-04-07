@@ -17,7 +17,7 @@ import { shouldHydrateCompanionSession } from '../companion/hydration.js';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
-  resolveParticipantExecutionAssignments,
+  resolvePrimaryParticipantExecutionAssignment,
   resolveParticipantCatId,
 } from '../shared/channelParticipants.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
@@ -108,11 +108,10 @@ export function resolveExecutionMetadataForTarget(
     };
   }
 
-  const { participantAssignment, catAssignment } = resolveParticipantExecutionAssignments(
+  const assignment = resolvePrimaryParticipantExecutionAssignment(
     channel,
     target.participantId,
   );
-  const assignment = participantAssignment ?? catAssignment;
   return {
     provider: assignment?.execution.target.provider ?? null,
     model: assignment?.execution.target.model ?? null,

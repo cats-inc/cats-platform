@@ -14,6 +14,7 @@ import {
   createConcurrentGroup,
   setChannelCatLease,
   setChannelOrchestratorLease,
+  setChannelParticipantLease,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
@@ -159,6 +160,42 @@ test('DELETE /api/channels/:id deletes linked runtime sessions by default', asyn
     const payload = await response.json();
     assert.equal(payload.deleted, true);
     assert.deepEqual(runtime.deletedSessions, ['session-delete-channel']);
+    assert.deepEqual(runtime.closedSessions, []);
+  }, { chatStore });
+});
+
+test('DELETE /api/channels/:id deletes linked temporary participant runtime sessions by default', async () => {
+  const runtime = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-04-02T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(state, {
+    title: 'Delete Temporary Participant Channel',
+    topic: 'cleanup temporary participant sessions',
+    temporaryParticipants: [
+      {
+        participantId: 'participant-inline',
+        name: 'Inline Reviewer',
+        provider: 'codex',
+        model: 'gpt-5.3-codex',
+      },
+    ],
+  }, now);
+  const channelId = state.selectedChannelId;
+  state = setChannelParticipantLease(state, channelId, 'participant-inline', {
+    status: 'ready',
+    sessionId: 'session-delete-temporary',
+    provider: 'codex',
+    model: 'gpt-5.3-codex',
+  }, now);
+  await chatStore.write(state);
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}`, {
+      method: 'DELETE',
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(runtime.deletedSessions, ['session-delete-temporary']);
     assert.deepEqual(runtime.closedSessions, []);
   }, { chatStore });
 });
@@ -376,4 +413,3 @@ test('DELETE /api/channels/:id treats missing runtime sessions as idempotent suc
     assert.equal(persisted.channels.length, 0);
   }, { chatStore });
 });
-

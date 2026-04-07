@@ -11,6 +11,7 @@ import {
   createCat,
   createChannel,
   setChannelCatLease,
+  setChannelParticipantLease,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
@@ -171,10 +172,53 @@ test('POST /api/channels/:id/deactivate closes runtime sessions for active lease
   }, chatStore);
 });
 
+test('POST /api/channels/:id/deactivate closes runtime sessions for temporary participants', async () => {
+  const runtime = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-03-29T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(state, {
+    title: 'Temporary participant room',
+    topic: 'deactivate temporary participant sessions',
+    temporaryParticipants: [
+      {
+        participantId: 'participant-inline',
+        name: 'Inline Reviewer',
+        provider: 'codex',
+        model: 'gpt-5.3-codex',
+      },
+    ],
+  }, now);
+  const channelId = state.selectedChannelId;
+  state = setChannelParticipantLease(state, channelId, 'participant-inline', {
+    status: 'ready',
+    sessionId: 'temp-session-1',
+    provider: 'codex',
+    model: 'gpt-5.3-codex',
+  }, now);
+  await chatStore.write(state);
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}/deactivate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.deactivation.closedSessionCount, 1);
+    assert.deepEqual(runtime.closedSessions, ['temp-session-1']);
+
+    const updatedState = await chatStore.read();
+    const updatedChannel = updatedState.channels.find((channel) => channel.id === channelId);
+    assert.ok(updatedChannel);
+    assert.equal(updatedChannel.participantAssignments?.[0]?.execution.lease.status, 'closed');
+    assert.equal(updatedChannel.participantAssignments?.[0]?.execution.lease.sessionId, null);
+  }, chatStore);
+});
+
 test('GET /api/channels/:id/deactivate returns 405', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/channels/any/deactivate`, { method: 'GET' });
     assert.equal(response.status, 405);
   });
 });
-

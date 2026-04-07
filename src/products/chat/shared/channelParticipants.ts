@@ -5,9 +5,17 @@ import type {
   ChatChannelParticipant,
   ChatChannelState,
   ChatChannelView,
+  ParticipantExecutionLease,
 } from '../api/contracts.js';
 
 export type ResolvedChannelParticipant = ChatChannelParticipant | ChatChannelCat;
+
+function pushUniqueNonEmpty(target: Set<string>, value: string | null | undefined): void {
+  const normalized = value?.trim();
+  if (normalized) {
+    target.add(normalized);
+  }
+}
 
 function mapCatAssignmentToParticipantAssignment(
   assignment: ChannelCatAssignment,
@@ -91,4 +99,96 @@ export function resolveParticipantExecutionAssignments(
   ) ?? null;
 
   return { participantAssignment, catAssignment };
+}
+
+export function resolvePrimaryParticipantExecutionAssignment(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+  participantId: string,
+): ChannelParticipantAssignment | ChannelCatAssignment | null {
+  const { participantAssignment, catAssignment } = resolveParticipantExecutionAssignments(
+    channel,
+    participantId,
+  );
+  if (participantAssignment?.sourceKind === 'cat' && catAssignment) {
+    return catAssignment;
+  }
+  return participantAssignment ?? catAssignment;
+}
+
+export function resolveParticipantExecutionLease(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+  participantId: string,
+): ParticipantExecutionLease | null {
+  return resolvePrimaryParticipantExecutionAssignment(
+    channel,
+    participantId,
+  )?.execution.lease ?? null;
+}
+
+export function resolveParticipantSessionId(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+  participantId: string,
+  options: {
+    statuses?: ReadonlyArray<ParticipantExecutionLease['status']>;
+  } = {},
+): string | null {
+  const lease = resolveParticipantExecutionLease(channel, participantId);
+  if (!lease) {
+    return null;
+  }
+  if (options.statuses && !options.statuses.includes(lease.status)) {
+    return null;
+  }
+  const sessionId = lease.sessionId?.trim();
+  return sessionId ? sessionId : null;
+}
+
+export function collectParticipantSessionIds(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+  options: {
+    includeRemoved?: boolean;
+    statuses?: ReadonlyArray<ParticipantExecutionLease['status']>;
+  } = {},
+): string[] {
+  const sessionIds = new Set<string>();
+  for (const assignment of resolveChannelParticipantAssignments(channel)) {
+    if (!options.includeRemoved && assignment.status === 'removed') {
+      continue;
+    }
+    const effectiveAssignment = resolvePrimaryParticipantExecutionAssignment(
+      channel,
+      assignment.participantId,
+    );
+    if (!effectiveAssignment) {
+      continue;
+    }
+    if (options.statuses && !options.statuses.includes(effectiveAssignment.execution.lease.status)) {
+      continue;
+    }
+    pushUniqueNonEmpty(sessionIds, effectiveAssignment.execution.lease.sessionId);
+  }
+  return [...sessionIds];
+}
+
+export function collectParticipantLeaseCwds(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
+  options: {
+    includeRemoved?: boolean;
+  } = {},
+): string[] {
+  const cwds = new Set<string>();
+  for (const assignment of resolveChannelParticipantAssignments(channel)) {
+    if (!options.includeRemoved && assignment.status === 'removed') {
+      continue;
+    }
+    const effectiveAssignment = resolvePrimaryParticipantExecutionAssignment(
+      channel,
+      assignment.participantId,
+    );
+    if (!effectiveAssignment) {
+      continue;
+    }
+    pushUniqueNonEmpty(cwds, effectiveAssignment.execution.lease.cwd);
+  }
+  return [...cwds];
 }

@@ -45,7 +45,7 @@ import {
 } from '../runtime-dispatch/recovery.js';
 import {
   findAssignedParticipant,
-  resolveParticipantExecutionAssignments,
+  resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
 import {
   ensureChannelAttachmentWorkspace,
@@ -108,13 +108,7 @@ async function shouldReviveExistingTargetSession(
 
   const channel = requireChannel(state, channelId);
   const lease = target.participantKind === 'cat'
-    ? (() => {
-        const { participantAssignment, catAssignment } = resolveParticipantExecutionAssignments(
-          channel,
-          target.participantId,
-        );
-        return participantAssignment?.execution.lease ?? catAssignment?.execution.lease ?? null;
-      })()
+    ? resolvePrimaryParticipantExecutionAssignment(channel, target.participantId)?.execution.lease ?? null
     : channel.orchestratorLease;
 
   if (!lease) {

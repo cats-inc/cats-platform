@@ -59,6 +59,7 @@ import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
+import { collectParticipantSessionIds } from '../shared/channelParticipants.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
 import { isRuntimeSessionWorkspacePath } from '../../../core/workspacePaths.js';
 import {
@@ -550,19 +551,9 @@ function waitForChannelCancellationPoll(): Promise<void> {
 export function collectActiveChannelSessionIds(
   channel: ReturnType<typeof requireChannel>,
 ): string[] {
-  const sessionIds: string[] = [];
-
-  for (const assignment of channel.catAssignments) {
-    if (
-      assignment.execution.lease.status === 'ready'
-      || assignment.execution.lease.status === 'initializing'
-    ) {
-      const sessionId = assignment.execution.lease.sessionId?.trim();
-      if (sessionId) {
-        sessionIds.push(sessionId);
-      }
-    }
-  }
+  const sessionIds = new Set(collectParticipantSessionIds(channel, {
+    statuses: ['ready', 'initializing'],
+  }));
 
   if (
     channel.orchestratorLease.status === 'ready'
@@ -570,11 +561,22 @@ export function collectActiveChannelSessionIds(
   ) {
     const sessionId = channel.orchestratorLease.sessionId?.trim();
     if (sessionId) {
-      sessionIds.push(sessionId);
+      sessionIds.add(sessionId);
     }
   }
 
-  return sessionIds;
+  return [...sessionIds];
+}
+
+function collectLinkedChannelSessionIds(
+  channel: ReturnType<typeof requireChannel>,
+): string[] {
+  const sessionIds = new Set(collectParticipantSessionIds(channel));
+  const orchestratorSessionId = channel.orchestratorLease.sessionId?.trim();
+  if (orchestratorSessionId) {
+    sessionIds.add(orchestratorSessionId);
+  }
+  return [...sessionIds];
 }
 
 export function hasActiveChannelTurn(channel: ReturnType<typeof requireChannel>): boolean {
@@ -854,14 +856,10 @@ export async function persistDeletedChannel(
   const currentState = await context.dependencies.chatStore.read();
   const channel = requireChannel(currentState, channelId);
 
-  await cleanupSessionsForProductDelete(context, [
-    channel.orchestratorLease.sessionId,
-    ...channel.catAssignments.map(
-      (assignment) => assignment.status === 'removed'
-        ? null
-        : assignment.execution.lease.sessionId,
-    ),
-  ]);
+  await cleanupSessionsForProductDelete(
+    context,
+    collectLinkedChannelSessionIds(channel),
+  );
 
   await context.dependencies.chatStore.write(
     deleteChannel(currentState, channelId),
@@ -913,12 +911,7 @@ export async function persistDeletedConcurrentGroup(
 
   await cleanupSessionsForProductDelete(context, group.memberChannelIds.flatMap((channelId) => {
     const channel = requireChannel(currentState, channelId);
-    return [
-      channel.orchestratorLease.sessionId,
-      ...channel.catAssignments.map((assignment) => assignment.status === 'removed'
-        ? null
-        : assignment.execution.lease.sessionId),
-    ];
+    return collectLinkedChannelSessionIds(channel);
   }));
 
   return context.dependencies.chatStore.write(deleteConcurrentGroup(currentState, groupId));

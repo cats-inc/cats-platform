@@ -12,11 +12,17 @@ import {
 import {
   buildChannelView,
   requireChannel,
-  setChannelCatLease,
+  setChannelParticipantLease,
   setChannelOrchestratorLease,
   setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
+import {
+  collectParticipantSessionIds,
+  resolveChannelParticipantAssignments,
+  resolveParticipantExecutionLease,
+  resolveParticipantSessionId,
+} from '../../shared/channelParticipants.js';
 import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
 import {
   ensureChannelAttachmentWorkspace,
@@ -91,9 +97,9 @@ function resolveChannelStreamSessionId(
     if (!leadParticipantId) {
       return null;
     }
-    const leadAssignment = channel.catAssignments.find((assignment) =>
-      assignment.catId === leadParticipantId);
-    const leadSessionId = leadAssignment?.execution?.lease?.sessionId?.trim();
+    const leadSessionId = resolveParticipantSessionId(channel, leadParticipantId, {
+      statuses: ['ready', 'initializing'],
+    });
     if (leadSessionId) {
       return leadSessionId;
     }
@@ -101,19 +107,19 @@ function resolveChannelStreamSessionId(
   }
 
   if (leadParticipantId) {
-    const leadAssignment = channel.catAssignments.find((assignment) =>
-      assignment.catId === leadParticipantId);
-    const leadSessionId = leadAssignment?.execution?.lease?.sessionId?.trim();
+    const leadSessionId = resolveParticipantSessionId(channel, leadParticipantId, {
+      statuses: ['ready', 'initializing'],
+    });
     if (leadSessionId) {
       return leadSessionId;
     }
   }
 
-  for (const assignment of channel.catAssignments) {
-    const sessionId = assignment.execution?.lease?.sessionId?.trim();
-    if (sessionId) {
-      return sessionId;
-    }
+  const participantSessionId = collectParticipantSessionIds(channel, {
+    statuses: ['ready', 'initializing'],
+  })[0] ?? null;
+  if (participantSessionId) {
+    return participantSessionId;
   }
 
   return channel.orchestratorLease?.sessionId?.trim() || null;
@@ -618,15 +624,16 @@ async function handleRestDeactivateChannel(
 
       // Update chat state leases to closed
       let nextState = state;
-      for (const assignment of channel.catAssignments) {
+      for (const assignment of resolveChannelParticipantAssignments(channel)) {
+        const lease = resolveParticipantExecutionLease(channel, assignment.participantId);
         if (
-          assignment.execution.lease.status === 'ready'
-          || assignment.execution.lease.status === 'initializing'
+          lease?.status === 'ready'
+          || lease?.status === 'initializing'
         ) {
-          nextState = setChannelCatLease(
+          nextState = setChannelParticipantLease(
             nextState,
             channelId,
-            assignment.catId,
+            assignment.participantId,
             { status: 'closed', sessionId: null },
             now,
           );

@@ -2,6 +2,7 @@ import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { requireChannel } from '../state/model/index.js';
+import { collectParticipantLeaseCwds } from '../shared/channelParticipants.js';
 import {
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
@@ -73,10 +74,8 @@ function collectChannelAttachmentSyncTargets(
   };
 
   pushIfPresent(channel.orchestratorLease.cwd);
-  for (const assignment of channel.catAssignments) {
-    if (assignment.status === 'active') {
-      pushIfPresent(assignment.execution.lease.cwd);
-    }
+  for (const cwd of collectParticipantLeaseCwds(channel)) {
+    pushIfPresent(cwd);
   }
 
   return [...targets];
