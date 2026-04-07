@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { flushSync } from 'react-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
@@ -28,6 +29,7 @@ function resolveProductEntryPath(surface: string): string {
 
 export default function PlatformApp() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   const lastSyncedSurface = useRef<string | null>(null);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
@@ -162,8 +164,11 @@ export default function PlatformApp() {
           element={
             <PlatformSetupWizard
               envelope={readyEnvelope}
-              onComplete={() => {
-                window.location.href = '/';
+              onComplete={(nextEnvelope) => {
+                flushSync(() => {
+                  setState({ status: 'ready', envelope: nextEnvelope });
+                });
+                navigate('/lobby', { replace: true });
               }}
             />
           }

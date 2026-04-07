@@ -146,7 +146,7 @@ export function PlatformSetupWizard({
             </label>
             {feedback ? <p className="feedbackText">{feedback}</p> : null}
             <button
-              className="primaryButton"
+              className="primaryButton setupPrimaryButton"
               disabled={!ownerName.trim()}
               type="button"
               onClick={() => setStep(nextSetupStep(step))}
@@ -204,12 +204,12 @@ export function PlatformSetupWizard({
                 Back
               </button>
               <button
-                className="primaryButton"
+                className="primaryButton setupPrimaryButton"
                 disabled={busy || !canContinueGuideCatStep}
                 type="button"
                 onClick={() => void finishSetup()}
               >
-                {busyAction === 'complete' ? 'Setting up...' : 'Finish setup'}
+                {busyAction === 'complete' ? 'Opening Cats...' : 'Open Cats'}
               </button>
             </div>
           </div>
