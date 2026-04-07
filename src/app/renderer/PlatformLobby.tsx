@@ -37,6 +37,7 @@ export function PlatformLobby({
     <div className="screen screenCentered">
       <div className="platformLobby">
         <div className="lobbyTopBar">
+          <span className="lobbyBrand">CATS INC</span>
           <button
             type="button"
             className="lobbyIdentity"
@@ -56,7 +57,7 @@ export function PlatformLobby({
         </div>
 
         <div className="lobbyProducts">
-          <p className="lobbyProductsEyebrow">CATS INC</p>
+          <p className="lobbyProductsEyebrow">Products</p>
           <div className="platformLobbyGrid">
             {entries.map((entry) => (
               <button
@@ -77,6 +78,24 @@ export function PlatformLobby({
                 ) : null}
               </button>
             ))}
+            {/* ── Mock product (layout preview) ── */}
+            <div className="contentCard platformLobbyCard platformLobbyCard--mock">
+              <div className="platformLobbyCardAccent" />
+              <span className="platformLobbyCardName">Cats Learn</span>
+              <span className="platformLobbyCardSub">Courses, flashcards, and study companions</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Mock apps section (layout preview) ── */}
+        <div className="lobbyProducts">
+          <p className="lobbyProductsEyebrow">Apps</p>
+          <div className="platformLobbyGrid">
+            <div className="contentCard platformLobbyCard platformLobbyCard--mock">
+              <div className="platformLobbyCardAccent" />
+              <span className="platformLobbyCardName">Pomodoro</span>
+              <span className="platformLobbyCardSub">Focus timer with break reminders</span>
+            </div>
           </div>
         </div>
       </div>
