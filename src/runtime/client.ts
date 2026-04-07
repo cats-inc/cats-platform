@@ -247,7 +247,7 @@ export interface RuntimeDeleteSessionResult {
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getSetupState(): Promise<RuntimeSetupReadModel>;
-  getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
+  getProviderConfig(options?: { selector?: boolean }): Promise<RuntimeProviderConfigRegistry>;
   getProviderDiagnostics(
     query?: RuntimeProviderDiagnosticsQuery,
   ): Promise<RuntimeProviderDiagnosticsPayload>;
@@ -276,11 +276,13 @@ interface RuntimeClientOptions {
   apiKey?: string;
   timeoutMs?: number;
   providerRegistryTimeoutMs?: number;
+  selectorConfigTimeoutMs?: number;
   selectorDiagnosticsTimeoutMs?: number;
 }
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
+const DEFAULT_RUNTIME_SELECTOR_CONFIG_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS = 8_000;
 
 export class RuntimeRequestError extends Error {
@@ -294,6 +296,7 @@ export class CatsRuntimeClient implements RuntimeClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly providerRegistryTimeoutMs: number;
+  private readonly selectorConfigTimeoutMs: number;
   private readonly selectorDiagnosticsTimeoutMs: number;
 
   constructor(
@@ -304,8 +307,10 @@ export class CatsRuntimeClient implements RuntimeClient {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS;
     this.providerRegistryTimeoutMs = options.providerRegistryTimeoutMs
       ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS);
+    this.selectorConfigTimeoutMs = options.selectorConfigTimeoutMs
+      ?? DEFAULT_RUNTIME_SELECTOR_CONFIG_TIMEOUT_MS;
     this.selectorDiagnosticsTimeoutMs = options.selectorDiagnosticsTimeoutMs
-      ?? Math.max(this.providerRegistryTimeoutMs, DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS);
+      ?? DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS;
   }
 
   async getHealth(): Promise<RuntimeStatusSummary> {
@@ -343,13 +348,17 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
   }
 
-  async getProviderConfig(): Promise<RuntimeProviderConfigRegistry> {
+  async getProviderConfig(
+    options: { selector?: boolean } = {},
+  ): Promise<RuntimeProviderConfigRegistry> {
     const response = await fetch(`${this.baseUrl}/providers/config`, {
       headers: {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.providerRegistryTimeoutMs),
+      signal: AbortSignal.timeout(
+        options.selector ? this.selectorConfigTimeoutMs : this.providerRegistryTimeoutMs,
+      ),
     });
 
     if (!response.ok) {

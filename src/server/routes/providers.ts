@@ -201,7 +201,7 @@ function deriveTruthfulProviderRegistryForProvider(
 async function readProviderConfig(
   dependencies: ProviderRouteDependencies,
 ): Promise<RuntimeProviderConfigRegistry> {
-  return dependencies.runtimeClient.getProviderConfig();
+  return dependencies.runtimeClient.getProviderConfig({ selector: true });
 }
 
 async function readProviderDiagnostics(
@@ -223,12 +223,24 @@ async function loadTruthfulProviderRegistryFromRuntime(
   } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
   const requestedProvider = options.provider?.trim() || null;
+  const startMs = Date.now();
   const [runtimeConfigResult, diagnosticsResult] = await Promise.allSettled([
     readProviderConfig(dependencies),
     readProviderDiagnostics(dependencies, {
       provider: requestedProvider,
     }),
   ]);
+  const elapsedMs = Date.now() - startMs;
+
+  const configOk = runtimeConfigResult.status === 'fulfilled';
+  const diagnosticsOk = diagnosticsResult.status === 'fulfilled';
+  console.log(
+    '[selector] provider registry load: config=%s diagnostics=%s elapsed=%dms provider=%s',
+    configOk ? 'ok' : `fail(${(runtimeConfigResult as PromiseRejectedResult).reason?.message ?? 'unknown'})`,
+    diagnosticsOk ? 'ok' : `fail(${(diagnosticsResult as PromiseRejectedResult).reason?.message ?? 'unknown'})`,
+    elapsedMs,
+    requestedProvider ?? '*',
+  );
 
   if (runtimeConfigResult.status === 'rejected') {
     return {
