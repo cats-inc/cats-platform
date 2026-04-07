@@ -440,18 +440,22 @@ export function NewChatDraft({
                 />
               </div>
             ) : isGroupDraft ? (
-              <button
-                type="button"
-                className="modelSelectorChip"
-                disabled={isSubmittingFirstTurn}
-                onClick={() => openSidePanelTo('cats')}
-                data-tooltip="Manage participants"
-              >
-                <span className="modelSelectorChipLabel">{participantChipLabel}</span>
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2.5 4 5 6.5 7.5 4" />
-                </svg>
-              </button>
+              <>
+                <span className="parallelAddHint" style={{ marginRight: 8 }}>Add participants</span>
+                <button
+                  type="button"
+                  className="parallelAddButton"
+                  style={{ marginRight: 8 }}
+                  disabled={isSubmittingFirstTurn}
+                  onClick={() => openSidePanelTo('cats')}
+                  aria-label="Add participants"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3v10" />
+                    <path d="M3 8h10" />
+                  </svg>
+                </button>
+              </>
             ) : effectiveLeadCat ? (
               <ComposerCatStack
                 cats={[effectiveLeadCat, ...nonLeadDraftCatIds

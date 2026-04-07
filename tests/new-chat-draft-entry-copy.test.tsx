@@ -147,7 +147,7 @@ test('group route uses the greeting seam instead of a fixed heading', () => {
   assert.doesNotMatch(markup, /Start a group chat/u);
 });
 
-test('group route shows a lightweight participants chip for temporary members', () => {
+test('group route shows add-participant hint inside the composer', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -167,7 +167,7 @@ test('group route shows a lightweight participants chip for temporary members', 
     />,
   );
 
-  assert.match(markup, />1 participant</u);
+  assert.match(markup, /Add participants/u);
   assert.doesNotMatch(markup, /Start a group chat/u);
 });
 
