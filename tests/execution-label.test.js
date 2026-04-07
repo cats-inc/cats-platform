@@ -46,8 +46,18 @@ test('buildExecutionLabel does not render raw instance identifiers in the chip l
 
 test('buildExecutionLabel resolves Claude native aliases to friendly model names', () => {
   assert.equal(
-    buildExecutionLabel('claude', 'cli/native', 'default'),
+    buildExecutionLabel('claude', 'cli/native', 'opus'),
+    'Claude-CLI · Opus 4.6 with 1M context',
+  );
+  assert.equal(
+    buildExecutionLabel('claude', 'cli/native', 'claude-opus-4-6'),
     'Claude-CLI · Opus 4.6 with 1M context',
   );
 });
 
+test('buildExecutionLabel does not treat default as a Claude opus alias', () => {
+  assert.equal(
+    buildExecutionLabel('claude', 'cli/native', 'default'),
+    'Claude-CLI · default',
+  );
+});

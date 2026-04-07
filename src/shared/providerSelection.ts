@@ -112,7 +112,7 @@ function normalizeProviderEntryAlias(input: {
   if (
     input.provider === 'claude'
     && input.backend === 'cli'
-    && input.catalog.models.some((option) => option.id === 'default')
+    && input.catalog.models.some((option) => option.id === 'opus')
   ) {
     return normalizedModel;
   }

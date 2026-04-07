@@ -193,7 +193,7 @@ export const PRODUCT_PROVIDER_MODELS: Record<ProductProviderId, ProviderModelOpt
     { value: 'openclaw-coder', label: 'openclaw-coder (default)', default: true },
   ],
   claude: [
-    { value: 'default', label: 'Opus 4.6 with 1M context', default: true },
+    { value: 'opus', label: 'Opus 4.6 with 1M context', default: true },
     { value: 'sonnet', label: 'Sonnet 4.6' },
     { value: 'haiku', label: 'Haiku 4.5' },
   ],
@@ -557,8 +557,8 @@ export function normalizeProductProviderModelId(
 
   if (provider === 'claude') {
     const lower = normalized.toLowerCase();
-    if (lower === 'claude-opus-4-6' || lower === 'claude-opus-4.6' || lower === 'default') {
-      return 'default';
+    if (lower === 'claude-opus-4-6' || lower === 'claude-opus-4.6' || lower === 'opus') {
+      return 'opus';
     }
     if (lower === 'claude-sonnet-4-6' || lower === 'claude-sonnet-4.6' || lower === 'sonnet') {
       return 'sonnet';

@@ -2708,7 +2708,7 @@ Abbreviated example response:
       "status": "ready",
       "executionTarget": {
         "provider": "claude",
-        "model": "claude-opus-4-6"
+        "model": "opus"
       }
     },
     "capabilities": {

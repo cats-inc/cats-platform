@@ -34,12 +34,12 @@ function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
         label: 'Reasoning effort',
         kind: 'enum',
         scope: 'both',
-        applicableEntryIds: ['default', 'sonnet'],
+        applicableEntryIds: ['opus', 'sonnet'],
         values: [
-          { value: 'low', label: 'Low', applicableEntryIds: ['default', 'sonnet'] },
-          { value: 'medium', label: 'Medium (default)', applicableEntryIds: ['default', 'sonnet'] },
-          { value: 'high', label: 'High', applicableEntryIds: ['default', 'sonnet'] },
-          { value: 'max', label: 'Max', applicableEntryIds: ['default'] },
+          { value: 'low', label: 'Low', applicableEntryIds: ['opus', 'sonnet'] },
+          { value: 'medium', label: 'Medium (default)', applicableEntryIds: ['opus', 'sonnet'] },
+          { value: 'high', label: 'High', applicableEntryIds: ['opus', 'sonnet'] },
+          { value: 'max', label: 'Max', applicableEntryIds: ['opus'] },
         ],
       }]
     : [{
@@ -558,12 +558,12 @@ test('persistent selector hides Claude effort controls for Haiku', () => {
       label: 'Reasoning effort',
       kind: 'enum',
       scope: 'both',
-      applicableEntryIds: ['default', 'sonnet'],
+      applicableEntryIds: ['opus', 'sonnet'],
       values: [
-        { value: 'low', label: 'Low', applicableEntryIds: ['default', 'sonnet'] },
-        { value: 'medium', label: 'Medium', applicableEntryIds: ['default', 'sonnet'] },
-        { value: 'high', label: 'High', applicableEntryIds: ['default', 'sonnet'] },
-        { value: 'max', label: 'Max', applicableEntryIds: ['default'] },
+        { value: 'low', label: 'Low', applicableEntryIds: ['opus', 'sonnet'] },
+        { value: 'medium', label: 'Medium', applicableEntryIds: ['opus', 'sonnet'] },
+        { value: 'high', label: 'High', applicableEntryIds: ['opus', 'sonnet'] },
+        { value: 'max', label: 'Max', applicableEntryIds: ['opus'] },
       ],
     },
   ];
@@ -574,9 +574,9 @@ test('persistent selector hides Claude effort controls for Haiku', () => {
 test('runtime reconciliation keeps Claude Max when reopening an Opus selection', () => {
   const { advancedCatalog, target } = reconcileReopenedTarget({
     provider: 'claude',
-    model: 'default',
+    model: 'opus',
     modelSelection: {
-      entryId: 'default',
+      entryId: 'opus',
       entryMode: 'explicit',
       controls: {
         'claude.reasoning_effort': 'max',
@@ -588,20 +588,20 @@ test('runtime reconciliation keeps Claude Max when reopening an Opus selection',
     shouldDeferCatalogTargetReconciliation({
       catalogSource: 'dynamic',
       advancedCatalogSource: advancedCatalog.source,
-      model: 'default',
+      model: 'opus',
       modelSelection: target.modelSelection,
     }),
     false,
   );
   assert.deepEqual(target.modelSelection, {
-    entryId: 'default',
+    entryId: 'opus',
     entryMode: 'explicit',
     controls: {
       'claude.reasoning_effort': 'max',
     },
   });
   assert.equal(
-    resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'default', target.modelSelection?.controls?.['claude.reasoning_effort']),
+    resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'opus', target.modelSelection?.controls?.['claude.reasoning_effort']),
     'max',
   );
 });

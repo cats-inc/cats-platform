@@ -37,7 +37,7 @@ function resolveModelLabel(provider: string, model: string | null | undefined): 
   const normalizedModel = normalizeProductProviderModelId(provider, model) ?? model;
   const catalogLabel = getProviderModels(provider).find((m) => m.value === normalizedModel)?.label;
   const fallbackLabel = provider === 'claude'
-    && (normalizedModel === 'default' || normalizedModel === 'sonnet' || normalizedModel === 'haiku')
+    && (normalizedModel === 'opus' || normalizedModel === 'sonnet' || normalizedModel === 'haiku')
     ? normalizedModel.charAt(0).toUpperCase() + normalizedModel.slice(1)
     : normalizedModel;
   return (catalogLabel ?? fallbackLabel)

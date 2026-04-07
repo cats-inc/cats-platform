@@ -99,7 +99,7 @@ test('resolveCatalogTargetSelection keeps a manual model choice for the same pro
     preserveCurrentModel: true,
   });
 
-  assert.equal(nextTarget.model, 'default');
+  assert.equal(nextTarget.model, 'opus');
 });
 
 test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native CLI catalog entries', () => {
@@ -117,11 +117,11 @@ test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native
       provider: 'claude',
       backend: 'cli',
       instance: 'native',
-      defaultModel: 'default',
+      defaultModel: 'opus',
       source: 'static',
       cache: null,
       models: [
-        { id: 'default', label: 'Opus 4.6 with 1M context', default: true },
+        { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
         { id: 'sonnet', label: 'Sonnet 4.6' },
         { id: 'haiku', label: 'Haiku 4.5' },
       ],
@@ -131,11 +131,11 @@ test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native
       provider: 'claude',
       backend: 'cli',
       instance: 'native',
-      defaultModel: 'default',
+      defaultModel: 'opus',
       source: 'static',
       cache: null,
       entries: [
-        { id: 'default', label: 'Opus 4.6 with 1M context', default: true },
+        { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
         { id: 'sonnet', label: 'Sonnet 4.6' },
         { id: 'haiku', label: 'Haiku 4.5' },
       ],
@@ -147,15 +147,15 @@ test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native
           kind: 'enum',
           scope: 'both',
           values: [
-            { value: 'low', label: 'Low', applicableEntryIds: ['default', 'sonnet'] },
-            { value: 'medium', label: 'Medium', applicableEntryIds: ['default', 'sonnet'] },
-            { value: 'high', label: 'High', applicableEntryIds: ['default', 'sonnet'] },
-            { value: 'max', label: 'Max', applicableEntryIds: ['default'] },
+            { value: 'low', label: 'Low', applicableEntryIds: ['opus', 'sonnet'] },
+            { value: 'medium', label: 'Medium', applicableEntryIds: ['opus', 'sonnet'] },
+            { value: 'high', label: 'High', applicableEntryIds: ['opus', 'sonnet'] },
+            { value: 'max', label: 'Max', applicableEntryIds: ['opus'] },
           ],
         },
       ],
       defaultSelection: {
-        entryId: 'default',
+        entryId: 'opus',
         entryMode: 'explicit',
         controls: {
           'claude.reasoning_effort': 'medium',
@@ -170,9 +170,9 @@ test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native
     preserveCurrentSelection: true,
   });
 
-  assert.equal(nextTarget.model, 'default');
+  assert.equal(nextTarget.model, 'opus');
   assert.deepEqual(nextTarget.modelSelection, {
-    entryId: 'default',
+    entryId: 'opus',
     entryMode: 'explicit',
   });
 });
@@ -207,11 +207,11 @@ test('isLegacyProviderModelTarget treats Claude native aliases as catalog models
         provider: 'claude',
         backend: 'cli',
         instance: 'native',
-        defaultModel: 'default',
+        defaultModel: 'opus',
         source: 'static',
         cache: null,
         models: [
-          { id: 'default', label: 'Opus 4.6 with 1M context', default: true },
+          { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
           { id: 'sonnet', label: 'Sonnet 4.6' },
           { id: 'haiku', label: 'Haiku 4.5' },
         ],
@@ -221,6 +221,30 @@ test('isLegacyProviderModelTarget treats Claude native aliases as catalog models
       modelSelection: null,
     }),
     false,
+  );
+});
+
+test('isLegacyProviderModelTarget treats Claude default as a legacy model id after the opus rename', () => {
+  assert.equal(
+    isLegacyProviderModelTarget({
+      catalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'opus',
+        source: 'static',
+        cache: null,
+        models: [
+          { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
+          { id: 'sonnet', label: 'Sonnet 4.6' },
+          { id: 'haiku', label: 'Haiku 4.5' },
+        ],
+        warnings: [],
+      },
+      model: 'default',
+      modelSelection: null,
+    }),
+    true,
   );
 });
 
@@ -718,4 +742,3 @@ test('normalizeProviderAdvancedModelCatalog preserves runtime preset availabilit
   ]);
   assert.equal(catalog.entries[0]?.limits?.contextWindowTokens, 200000);
 });
-
