@@ -178,9 +178,11 @@ fast without reviving static fallback catalogs.
 - [ ] Task 3.9: Coordinate with `cats-runtime` on an additive
       `GET /diagnostics/providers?scope=availability` selector path that
       reuses `collectProviderDiagnostics(..., { includeArtifacts: false })`
-      and returns only `provider`, `backend`, `instance`, `defaultTarget`, and
-      `availability`, omitting `config`, `checks`, `setup`, `compatibility`,
-      `metering`, `compatibilityEvidence`, `providerEvolution`, and `reprobe`
+      and keeps cheap top-level `probe` plus aggregated `summary` while
+      returning only `provider`, `backend`, `instance`, `defaultTarget`, and
+      `availability` at the per-target level, omitting `config`, `checks`,
+      `setup`, `compatibility`, `metering`, `compatibilityEvidence`,
+      `providerEvolution`, and `reprobe`
 - [ ] Task 3.10: Tune selector-specific timeout budgets for the new bulk read
       path, and keep the product cache TTL intentionally short so it
       complements the runtime's existing compatibility cache instead of
@@ -230,7 +232,7 @@ recovery
 | `src/app/server/platformSetupRoutes.ts` | Modify | Remove runtime-ready completion gate and selected-product requirement |
 | `src/app/renderer/App.tsx` | Modify | Route setup completion to `/lobby` and make `/` fall back to `/lobby` when no last-used surface exists |
 | `src/server/routes/providers.ts` | Modify | Stop returning static fallback catalogs for execution-selector routes and replace slow provider fan-out with bounded truthful reads plus caching |
-| `src/runtime/client.ts` | Modify | Prefer the runtime's bulk availability truth seam for selector reads instead of per-provider hot-path probing |
+| `src/runtime/client.ts` | Modify | Prefer the runtime's bulk availability truth seam for selector reads instead of per-provider hot-path probing, including `RuntimeProviderDiagnosticsQuery.scope?: 'full' | 'availability'` |
 | `../cats-runtime/src/http/routes/diagnostics.ts` | External follow-up | Add additive `scope=availability` support on `GET /diagnostics/providers` by reusing the existing `includeArtifacts: false` collection seam |
 | `../cats-runtime/docs/api.md` | External follow-up | Document the selector-oriented `scope=availability` diagnostics contract once the runtime workstream lands it |
 | `desktop/host/readiness.ts` | Modify | Keep runtime regressions in recovery, not onboarding |

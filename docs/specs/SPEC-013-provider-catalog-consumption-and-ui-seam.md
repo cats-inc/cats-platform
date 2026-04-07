@@ -186,11 +186,55 @@ Selector-oriented runtime follow-through for this route:
 - that availability scope should reuse the existing
   `collectProviderDiagnostics(..., { includeArtifacts: false })` seam rather
   than invent a second diagnostics pipeline
+- it may keep cheap top-level route metadata such as `probe` and aggregated
+  `summary` so callers do not lose zero-cost context they already get from the
+  diagnostics surface
 - that availability scope should return only the fields the selector needs:
   `provider`, `backend`, `instance`, `defaultTarget`, and `availability`
 - it should omit operator/detail fields the selector does not consume:
   `config`, `checks`, `setup`, `compatibility`, `metering`,
   `compatibilityEvidence`, `providerEvolution`, and `reprobe`
+
+Illustrative runtime-side availability-only response shape:
+
+```json
+{
+  "probe": "light",
+  "summary": {
+    "status": "degraded",
+    "totals": {
+      "providers": 3,
+      "ok": 2,
+      "degraded": 1,
+      "unavailable": 0
+    }
+  },
+  "providers": [
+    {
+      "provider": "claude",
+      "backend": "cli",
+      "instance": "native",
+      "defaultTarget": true,
+      "availability": {
+        "status": "ok",
+        "summary": "Ready",
+        "checkedAt": "2026-04-08T09:00:00.000Z"
+      }
+    },
+    {
+      "provider": "gemini",
+      "backend": "cli",
+      "instance": "wsl",
+      "defaultTarget": false,
+      "availability": {
+        "status": "degraded",
+        "summary": "Authentication required",
+        "checkedAt": "2026-04-08T09:00:01.000Z"
+      }
+    }
+  ]
+}
+```
 
 Illustrative response when runtime is reachable but no usable targets exist:
 
