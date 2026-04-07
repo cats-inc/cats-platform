@@ -136,9 +136,18 @@ contracts.
 - [ ] Turn the current Windows NSIS-first packaging slice into a release-grade
       desktop distribution path, including signed installers, branded assets,
       and a documented release pipeline rather than test-install outputs only
+- [ ] Harden the reusable desktop icon pipeline beyond the current first slice
+      so one source asset can safely generate app/tray icons even when future
+      SVGs use transparent backgrounds, gradients, or non-square visual
+      composition, instead of relying on the current top-left-background tray
+      template heuristic alone
 - [x] Extend the current desktop packaging contract beyond Windows staging so
       macOS and Linux also produce real installer artifacts instead of staged
       manifests only
+- [ ] Add release-facing verification for generated desktop icons beyond the
+      current generator regression coverage, including packaged-app assertions
+      that Windows/macOS/Linux installers and tray surfaces actually consume
+      the generated assets end to end
 - [ ] Strengthen the packaged host trust chain beyond the current HTTPS and
       allow-list checks, including signed update manifests, verified download
       integrity, and controlled apply/restart orchestration
