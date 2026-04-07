@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
+import { LobbyBouncingCats } from './LobbyBouncingCats.js';
 import { buildPlatformLobbyEntries, pickLobbyGreeting } from './lobbyModel.js';
 
 function resolveRuntimeDotClass(runtime: PlatformHostEnvelope['runtime']): string {
@@ -34,7 +35,8 @@ export function PlatformLobby({
       : undefined;
 
   return (
-    <div className="screen screenCentered">
+    <div className="screen screenCentered lobbyScreen">
+      <LobbyBouncingCats />
       <div className="platformLobby">
         <div className="lobbyTopBar">
           <span className="lobbyBrand">CATS INC</span>
