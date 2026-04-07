@@ -65,7 +65,7 @@ export function resolveGuideCatSidecarOffsets(
   const panelLeft = Math.max(2, Math.round(anchorLeft) + 2);
   return {
     pillLeft: panelLeft + 14,
-    peekLeft: panelLeft + 42,
+    peekLeft: panelLeft + 54,
     panelLeft,
   };
 }
