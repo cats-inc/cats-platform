@@ -105,50 +105,141 @@ function mergeTruthfulProviderRegistry(
   });
 }
 
-async function readTruthfulProviderRegistry(
+async function readProviderConfigWithRetry(
   dependencies: ProviderRouteDependencies,
-): Promise<TruthfulProviderRegistryReadModel> {
+): Promise<RuntimeProviderConfigRegistry> {
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const [runtimeConfig, diagnostics] = await Promise.all([
-        dependencies.runtimeClient.getProviderConfig(),
-        dependencies.runtimeClient.getProviderDiagnostics(),
-      ]);
-
-      const providers = mergeTruthfulProviderRegistry(
-        listProductProviders(),
-        runtimeConfig,
-        diagnostics,
-      );
-
-      if (providers.length === 0) {
-        return {
-          state: 'no_usable_targets',
-          providers: [],
-          recovery: {
-            openRuntimeSetupPath: '/runtime/setup',
-          },
-        };
-      }
-
-      return {
-        state: 'ready',
-        providers,
-      };
+      return await dependencies.runtimeClient.getProviderConfig();
     } catch (error) {
       lastError = error;
     }
   }
 
-  return {
-    state: 'runtime_unreachable',
+  throw lastError instanceof Error ? lastError : new Error('cats-runtime is unavailable.');
+}
+
+async function readProviderDiagnosticsWithRetry(
+  dependencies: ProviderRouteDependencies,
+  providerId: string,
+): Promise<RuntimeProviderDiagnosticsPayload> {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await dependencies.runtimeClient.getProviderDiagnostics({
+        provider: providerId,
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('cats-runtime is unavailable.');
+}
+
+async function readTruthfulProviderRegistry(
+  dependencies: ProviderRouteDependencies,
+  options: {
+    provider?: string | null;
+  } = {},
+): Promise<TruthfulProviderRegistryReadModel> {
+  let runtimeConfig: RuntimeProviderConfigRegistry;
+  try {
+    runtimeConfig = await readProviderConfigWithRetry(dependencies);
+  } catch (error) {
+    return {
+      state: 'runtime_unreachable',
+      providers: [],
+      recovery: {
+        retryable: true,
+      },
+      warnings: [error instanceof Error ? error.message : 'cats-runtime is unavailable.'],
+    };
+  }
+
+  const requestedProvider = options.provider?.trim() || null;
+  const configuredProductProviders = listProductProviders().filter((provider) =>
+    runtimeConfig[provider.id] && (!requestedProvider || provider.id === requestedProvider)
+  );
+
+  if (configuredProductProviders.length === 0) {
+    return {
+      state: 'no_usable_targets',
+      providers: [],
+      recovery: {
+        openRuntimeSetupPath: '/runtime/setup',
+      },
+    };
+  }
+
+  const warnings: string[] = [];
+  let successfulDiagnostics = 0;
+  const mergedDiagnostics: RuntimeProviderDiagnosticsPayload = {
+    probe: 'light',
     providers: [],
-    recovery: {
-      retryable: true,
-    },
-    warnings: lastError instanceof Error ? [lastError.message] : ['cats-runtime is unavailable.'],
+  };
+
+  for (const provider of configuredProductProviders) {
+    try {
+      const diagnostics = await readProviderDiagnosticsWithRetry(dependencies, provider.id);
+      successfulDiagnostics += 1;
+      mergedDiagnostics.probe = diagnostics.probe;
+      mergedDiagnostics.providers.push(...diagnostics.providers);
+    } catch (error) {
+      const reason = error instanceof Error
+        ? error.message
+        : String(error);
+      warnings.push(`Failed to load ${provider.id} availability: ${reason}`);
+    }
+  }
+
+  if (successfulDiagnostics === 0) {
+    return {
+      state: 'runtime_unreachable',
+      providers: [],
+      recovery: {
+        retryable: true,
+      },
+      warnings,
+    };
+  }
+
+  const providers = mergeTruthfulProviderRegistry(
+    configuredProductProviders,
+    runtimeConfig,
+    mergedDiagnostics,
+  );
+
+  if (providers.length === 0) {
+    if (successfulDiagnostics < configuredProductProviders.length) {
+      return {
+        state: 'runtime_unreachable',
+        providers: [],
+        recovery: {
+          retryable: true,
+          openRuntimeSetupPath: '/runtime/setup',
+        },
+        warnings,
+      };
+    }
+
+    return {
+      state: 'no_usable_targets',
+      providers: [],
+      recovery: {
+        openRuntimeSetupPath: '/runtime/setup',
+      },
+      warnings: warnings.length > 0 ? warnings : undefined,
+    };
+  }
+
+  return {
+    state: 'ready',
+    providers,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
 
@@ -195,7 +286,7 @@ export async function handleProviderModels(
     return;
   }
 
-  const registry = await readTruthfulProviderRegistry(dependencies);
+  const registry = await readTruthfulProviderRegistry(dependencies, { provider });
   if (registry.state === 'runtime_unreachable') {
     sendRestError(
       response,
@@ -268,7 +359,7 @@ export async function handleAdvancedProviderModels(
     return;
   }
 
-  const registry = await readTruthfulProviderRegistry(dependencies);
+  const registry = await readTruthfulProviderRegistry(dependencies, { provider });
   if (registry.state === 'runtime_unreachable') {
     sendRestError(
       response,

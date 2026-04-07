@@ -74,6 +74,14 @@ export interface RuntimeProviderDiagnosticsPayload {
   providers: RuntimeProviderDiagnosticsEntry[];
 }
 
+export interface RuntimeProviderDiagnosticsQuery {
+  provider?: string | null;
+  backend?: string | null;
+  instance?: string | null;
+  defaultOnly?: boolean;
+  probe?: 'light' | 'live';
+}
+
 export interface RuntimeHealthPayload {
   service?: string;
   status?: string;
@@ -244,7 +252,9 @@ export interface RuntimeClient {
   scanSetup(input?: RuntimeSetupScanInput): Promise<RuntimeSetupReadModel>;
   applySetup(providers: string[]): Promise<RuntimeSetupReadModel>;
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
-  getProviderDiagnostics(): Promise<RuntimeProviderDiagnosticsPayload>;
+  getProviderDiagnostics(
+    query?: RuntimeProviderDiagnosticsQuery,
+  ): Promise<RuntimeProviderDiagnosticsPayload>;
   getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
   getAdvancedProviderModels(provider: string, instance?: string | null): Promise<ProviderAdvancedModelCatalog>;
   createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo>;
@@ -357,9 +367,23 @@ export class CatsRuntimeClient implements RuntimeClient {
     return normalizeRuntimeProviderConfigRegistry(await response.json());
   }
 
-  async getProviderDiagnostics(): Promise<RuntimeProviderDiagnosticsPayload> {
+  async getProviderDiagnostics(
+    query: RuntimeProviderDiagnosticsQuery = {},
+  ): Promise<RuntimeProviderDiagnosticsPayload> {
     const url = new URL(`${this.baseUrl}/diagnostics/providers`);
-    url.searchParams.set('probe', 'light');
+    url.searchParams.set('probe', query.probe ?? 'light');
+    if (query.provider?.trim()) {
+      url.searchParams.set('provider', query.provider.trim());
+    }
+    if (query.backend?.trim()) {
+      url.searchParams.set('backend', query.backend.trim());
+    }
+    if (query.instance?.trim()) {
+      url.searchParams.set('instance', query.instance.trim());
+    }
+    if (query.defaultOnly === true) {
+      url.searchParams.set('defaultOnly', 'true');
+    }
 
     const response = await fetch(url, {
       headers: {

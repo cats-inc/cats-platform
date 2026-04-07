@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { mkdtempSync } from 'node:fs';
-import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -128,71 +127,77 @@ function createRuntimeStub() {
         },
       };
     },
-    async getProviderDiagnostics() {
+    async getProviderDiagnostics(query = {}) {
+      const allProviders = [
+        {
+          provider: 'openclaw',
+          backend: 'agent',
+          instance: 'gateway',
+          availability: {
+            status: 'ok',
+            summary: 'Gateway reachable',
+            attentionCodes: [],
+          },
+        },
+        {
+          provider: 'claude',
+          backend: 'cli',
+          instance: 'native',
+          availability: {
+            status: 'ok',
+            summary: 'CLI ready',
+            attentionCodes: [],
+          },
+        },
+        {
+          provider: 'codex',
+          backend: 'agent',
+          instance: 'agent/bridge',
+          availability: {
+            status: 'ok',
+            summary: 'Bridge ready',
+            attentionCodes: [],
+          },
+        },
+        {
+          provider: 'codex',
+          backend: 'cli',
+          instance: 'ubuntu',
+          availability: {
+            status: 'degraded',
+            summary: 'WSL target needs attention but is still usable',
+            attentionCodes: ['probe_degraded'],
+          },
+        },
+        {
+          provider: 'opencode',
+          backend: 'cli',
+          instance: 'native',
+          availability: {
+            status: 'unavailable',
+            summary: 'CLI missing',
+            attentionCodes: ['command_missing'],
+          },
+        },
+        {
+          provider: 'kilo',
+          backend: 'cli',
+          instance: 'native',
+          availability: {
+            status: 'ok',
+            summary: 'CLI ready',
+            attentionCodes: [],
+          },
+        },
+      ];
+
+      const filteredProviders = typeof query.provider === 'string' && query.provider.trim().length > 0
+        ? allProviders.filter((entry) => entry.provider === query.provider)
+        : allProviders;
+
       return {
         probe: 'light',
-        providers: [
-          {
-            provider: 'openclaw',
-            backend: 'agent',
-            instance: 'gateway',
-            availability: {
-              status: 'ok',
-              summary: 'Gateway reachable',
-              attentionCodes: [],
-            },
-          },
-          {
-            provider: 'claude',
-            backend: 'cli',
-            instance: 'native',
-            availability: {
-              status: 'ok',
-              summary: 'CLI ready',
-              attentionCodes: [],
-            },
-          },
-          {
-            provider: 'codex',
-            backend: 'agent',
-            instance: 'agent/bridge',
-            availability: {
-              status: 'ok',
-              summary: 'Bridge ready',
-              attentionCodes: [],
-            },
-          },
-          {
-            provider: 'codex',
-            backend: 'cli',
-            instance: 'ubuntu',
-            availability: {
-              status: 'degraded',
-              summary: 'WSL target needs attention but is still usable',
-              attentionCodes: ['probe_degraded'],
-            },
-          },
-          {
-            provider: 'opencode',
-            backend: 'cli',
-            instance: 'native',
-            availability: {
-              status: 'unavailable',
-              summary: 'CLI missing',
-              attentionCodes: ['command_missing'],
-            },
-          },
-          {
-            provider: 'kilo',
-            backend: 'cli',
-            instance: 'native',
-            availability: {
-              status: 'ok',
-              summary: 'CLI ready',
-              attentionCodes: [],
-            },
-          },
-        ],
+        providers: filteredProviders,
       };
     },
     async getProviderModels(provider) {
@@ -468,22 +473,50 @@ test('GET /api/providers retries a transient runtime registry failure before sur
   assert.equal(configAttempts, 2);
 });
 
+test('GET /api/providers keeps usable providers when one filtered availability read times out', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    if (query.provider === 'codex') {
+      throw new Error('The operation was aborted due to timeout');
+    }
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.state, 'ready');
+    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
+    assert.equal(payload.providers.some((provider) => provider.id === 'codex'), false);
+    assert.ok(
+      Array.isArray(payload.warnings)
+      && payload.warnings.some((warning) => /codex/u.test(warning)),
+    );
+  });
+});
+
 test('GET /api/providers exposes runtime setup recovery when no usable targets remain', async () => {
   const runtimeClient = createRuntimeStub();
-  runtimeClient.getProviderDiagnostics = async () => ({
+  runtimeClient.getProviderDiagnostics = async (query = {}) => ({
     probe: 'light',
-    providers: [
-      {
-        provider: 'claude',
-        backend: 'cli',
-        instance: 'native',
-        availability: {
-          status: 'unavailable',
-          summary: 'CLI missing',
-          attentionCodes: ['command_missing'],
-        },
-      },
-    ],
+    providers: query.provider === 'claude'
+      ? [
+          {
+            provider: 'claude',
+            backend: 'cli',
+            instance: 'native',
+            availability: {
+              status: 'unavailable',
+              summary: 'CLI missing',
+              attentionCodes: ['command_missing'],
+            },
+          },
+        ]
+      : [],
   });
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -499,22 +532,11 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
 
 test('GET /runtime/setup redirects to the configured cats-runtime setup page', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await new Promise((resolve, reject) => {
-      const target = new URL('/runtime/setup', baseUrl);
-      const request = httpRequest({
-        host: target.hostname,
-        port: target.port,
-        path: target.pathname,
-        method: 'GET',
-      }, (message) => {
-        message.resume();
-        message.on('end', () => resolve(message));
-      });
-      request.on('error', reject);
-      request.end();
+    const response = await fetch(new URL('/runtime/setup', baseUrl), {
+      redirect: 'manual',
     });
-    assert.equal(response.statusCode, 302);
-    assert.equal(response.headers.location, 'http://127.0.0.1:3110/setup');
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get('location'), 'http://127.0.0.1:3110/setup');
   });
 });
 

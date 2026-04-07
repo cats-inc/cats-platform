@@ -218,7 +218,7 @@ test('runtime setup scan and apply use the extended setup timeout budget', async
   assert.deepEqual(timeoutCalls, [120000, 5000, 120000, 5000]);
 });
 
-test('runtime client returns truthful provider diagnostics for selector reads', async () => {
+test('runtime client returns truthful provider diagnostics for filtered selector reads', async () => {
   const timeoutCalls = [];
   const originalFetch = globalThis.fetch;
   const originalAbortSignalTimeout = AbortSignal.timeout;
@@ -229,8 +229,13 @@ test('runtime client returns truthful provider diagnostics for selector reads', 
   };
 
   globalThis.fetch = async (input) => {
-    const url = String(input);
-    if (url === 'http://runtime.test/diagnostics/providers?probe=light') {
+    const url = new URL(String(input));
+    if (
+      url.origin === 'http://runtime.test'
+      && url.pathname === '/diagnostics/providers'
+      && url.searchParams.get('probe') === 'light'
+      && url.searchParams.get('provider') === 'claude'
+    ) {
       return new Response(JSON.stringify({
         probe: 'light',
         providers: [
@@ -263,12 +268,12 @@ test('runtime client returns truthful provider diagnostics for selector reads', 
       });
     }
 
-    throw new Error(`Unexpected runtime client request: ${url}`);
+    throw new Error(`Unexpected runtime client request: ${url.toString()}`);
   };
 
   try {
     const client = new CatsRuntimeClient('http://runtime.test');
-    const diagnostics = await client.getProviderDiagnostics();
+    const diagnostics = await client.getProviderDiagnostics({ provider: 'claude' });
     assert.deepEqual(diagnostics, {
       probe: 'light',
       providers: [
