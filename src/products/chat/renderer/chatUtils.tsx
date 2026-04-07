@@ -8,6 +8,7 @@ import type {
   CreateTemporaryParticipantInput,
   NewChatEntryKind,
 } from '../api/contracts';
+import type { AssistantPresetRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
@@ -34,6 +35,7 @@ export interface CatFormState {
 
 export interface DraftTemporaryParticipant extends CreateTemporaryParticipantInput {
   participantId: string;
+  presetId?: string | null;
 }
 
 export function emptyCatForm(): CatFormState {
@@ -346,6 +348,35 @@ export function buildDraftParticipantExecutionLabel(participant: {
     participant.instance ?? null,
     participant.model ?? null,
   );
+}
+
+export function createDraftTemporaryParticipantFromAssistantPreset(
+  assistantPreset: AssistantPresetRecord,
+  options: {
+    participantId?: string | null;
+    randomUUID?: () => string;
+  } = {},
+): DraftTemporaryParticipant {
+  return {
+    participantId:
+      options.participantId?.trim()
+      || options.randomUUID?.()
+      || globalThis.crypto.randomUUID(),
+    presetId: assistantPreset.id,
+    name: assistantPreset.name,
+    provider: assistantPreset.executionTarget.provider,
+    instance: assistantPreset.executionTarget.instance ?? undefined,
+    model: assistantPreset.executionTarget.model ?? undefined,
+    modelSelection: assistantPreset.modelSelection ?? null,
+    roleHint: assistantPreset.roleHint ?? undefined,
+  };
+}
+
+export function draftHasAssistantPresetParticipant(
+  draftTemporaryParticipants: readonly DraftTemporaryParticipant[],
+  assistantPresetId: string,
+): boolean {
+  return draftTemporaryParticipants.some((participant) => participant.presetId === assistantPresetId);
 }
 
 export const GREETING_LINES = [

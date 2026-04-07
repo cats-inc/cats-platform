@@ -12,6 +12,8 @@ import {
 } from '../draftStarterSuggestions';
 import {
   buildDraftParticipantExecutionLabel,
+  createDraftTemporaryParticipantFromAssistantPreset,
+  draftHasAssistantPresetParticipant,
   isChatCat,
   pickDraftGreeting,
   truncatePath,
@@ -156,6 +158,7 @@ export function NewChatDraft({
     };
   }
   const chatCats = payload.chat.cats.filter(isChatCat);
+  const assistantPresets = payload.assistantPresets ?? [];
   const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
   const draftParticipants = resolveDraftParticipantSelection({ draftLeadCatId, draftCatIds });
   const leadCat = draftLeadCatId
@@ -226,9 +229,9 @@ export function NewChatDraft({
     ? '1 participant selected so far. Add more or send when ready.'
     : draftParticipantCount > 1
       ? `${draftParticipantCount} participants selected for this shared chat.`
-      : activeChatCats.length > 0
-        ? 'Choose existing Cats or add temporary participants for this shared chat.'
-        : 'Add temporary participants here, or create Cats in Settings before starting a shared chat.';
+      : activeChatCats.length > 0 || assistantPresets.length > 0
+        ? 'Choose Cats, reuse saved Assistants, or add temporary participants for this shared chat.'
+        : 'Add temporary participants here, or create Cats and Assistants in Settings before starting a shared chat.';
   const participantChipLabel = draftParticipantCount > 0
     ? `${draftParticipantCount} participant${draftParticipantCount === 1 ? '' : 's'}`
     : 'Choose participants';
@@ -599,6 +602,40 @@ export function NewChatDraft({
           )}
           {isGroupDraft ? (
             <>
+              {assistantPresets.length > 0 ? (
+                <div className="addCatList">
+                  {assistantPresets.map((assistantPreset) => {
+                    const alreadyAdded = draftHasAssistantPresetParticipant(
+                      draftTemporaryParticipants,
+                      assistantPreset.id,
+                    );
+                    return (
+                      <div key={assistantPreset.id} className="addCatItem">
+                        <div>
+                          <strong>{assistantPreset.name}</strong>
+                          <p>{buildDraftParticipantExecutionLabel({
+                            provider: assistantPreset.executionTarget.provider,
+                            instance: assistantPreset.executionTarget.instance,
+                            model: assistantPreset.executionTarget.model,
+                          })}</p>
+                          {assistantPreset.roleHint ? <p>{assistantPreset.roleHint}</p> : null}
+                        </div>
+                        <button
+                          className="addCatAssignButton"
+                          type="button"
+                          disabled={isSubmittingFirstTurn || alreadyAdded}
+                          onClick={() =>
+                            onAddDraftTemporaryParticipant(
+                              createDraftTemporaryParticipantFromAssistantPreset(assistantPreset),
+                            )}
+                        >
+                          {alreadyAdded ? 'Added' : 'Add'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
               {draftTemporaryParticipants.length > 0 ? (
                 <div className="addCatList">
                   {draftTemporaryParticipants.map((participant) => (

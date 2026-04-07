@@ -9,6 +9,8 @@ import {
   applyPendingExecutionTargetPreview,
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
+  createDraftTemporaryParticipantFromAssistantPreset,
+  draftHasAssistantPresetParticipant,
   insertCreatedChannelIntoPayload,
 } from '../src/products/chat/renderer/chatUtils.tsx';
 import {
@@ -216,6 +218,37 @@ test('buildNewChatChannelInput forwards channel-only temporary participants for 
   assert.equal(input.temporaryParticipants?.[0]?.name, 'Inline Reviewer');
   assert.equal(input.temporaryParticipants?.[0]?.provider, 'gemini');
   assert.equal(input.temporaryParticipants?.[0]?.roleHint, 'Counterpoint');
+});
+
+test('assistant presets can be instantiated as draft temporary participants without becoming cats', () => {
+  const participant = createDraftTemporaryParticipantFromAssistantPreset(
+    {
+      id: 'assistant-reviewer',
+      name: 'Pair Reviewer',
+      executionTarget: {
+        provider: 'codex',
+        instance: null,
+        model: 'gpt-5.4',
+      },
+      modelSelection: null,
+      roleHint: 'Checks draft routes before runtime dispatch.',
+      createdAt: '2026-04-07T00:00:00.000Z',
+      updatedAt: '2026-04-07T00:00:00.000Z',
+    },
+    {
+      randomUUID: () => 'participant-from-assistant',
+    },
+  );
+
+  assert.equal(participant.participantId, 'participant-from-assistant');
+  assert.equal(participant.presetId, 'assistant-reviewer');
+  assert.equal(participant.name, 'Pair Reviewer');
+  assert.equal(participant.provider, 'codex');
+  assert.equal(participant.model, 'gpt-5.4');
+  assert.equal(
+    draftHasAssistantPresetParticipant([participant], 'assistant-reviewer'),
+    true,
+  );
 });
 
 test('resolveDraftParticipantSelection dedupes toggled cats and keeps route lead first', () => {
