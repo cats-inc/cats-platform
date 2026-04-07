@@ -44,6 +44,31 @@ function readRequestedPlatformSurface(
     : null;
 }
 
+export function resolvePlatformDocumentTitle(input: {
+  loadStatus: PlatformLoadState['status'];
+  pathname: string;
+  setupComplete: boolean;
+}): string | null {
+  if (input.loadStatus !== 'ready') {
+    return 'Cats';
+  }
+
+  if (!input.setupComplete) {
+    return 'Cats';
+  }
+
+  if (
+    input.pathname === '/lobby'
+    || input.pathname.startsWith('/lobby/')
+    || input.pathname === '/products'
+    || input.pathname.startsWith('/products/')
+  ) {
+    return 'Cats';
+  }
+
+  return null;
+}
+
 export default function PlatformApp() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -101,6 +126,17 @@ export default function PlatformApp() {
     storedSurface,
     activeSurface,
   );
+
+  useEffect(() => {
+    const title = resolvePlatformDocumentTitle({
+      loadStatus: state.status,
+      pathname: location.pathname,
+      setupComplete,
+    });
+    if (title) {
+      document.title = title;
+    }
+  }, [location.pathname, setupComplete, state.status]);
 
   useEffect(() => {
     if (state.status !== 'ready') {
