@@ -3,7 +3,7 @@ export { expectJson, readErrorMessage } from './http.js';
 
 export {
   fetchAdvancedProviderModels,
-  fetchProviders,
+  fetchProviderRegistry,
   fetchProviderModels,
 } from './providers.js';
 

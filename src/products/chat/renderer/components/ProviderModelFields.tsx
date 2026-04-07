@@ -3,7 +3,7 @@ import { ProviderModelFields as SharedProviderModelFields } from '../../../../de
 import {
   fetchAdvancedProviderModels,
   fetchProviderModels,
-  fetchProviders,
+  fetchProviderRegistry,
 } from '../api';
 
 interface ProviderModelFieldsProps {
@@ -28,7 +28,7 @@ export function ProviderModelFields({
       model={model}
       modelSelection={modelSelection}
       onTargetChange={onTargetChange}
-      fetchProviders={fetchProviders}
+      fetchProviderRegistry={fetchProviderRegistry}
       fetchProviderModels={fetchProviderModels}
       fetchAdvancedProviderModels={fetchAdvancedProviderModels}
     />

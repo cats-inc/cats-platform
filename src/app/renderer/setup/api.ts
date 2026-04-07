@@ -81,7 +81,7 @@ export async function markPlatformSetupOpened(
   return (await response.json()) as ProductBootstrapDiagnosticsReadModel;
 }
 
-export async function fetchProviders(): Promise<ProductProviderRegistryReadModel> {
+export async function fetchProviderRegistry(): Promise<ProductProviderRegistryReadModel> {
   const response = await fetch('/api/providers');
   if (!response.ok) {
     return {

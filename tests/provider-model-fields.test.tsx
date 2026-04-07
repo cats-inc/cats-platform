@@ -6,7 +6,6 @@ import {
   countRequestScopedControls,
   filterPersistentControlValues,
   hasExplicitDefaultEnumOption,
-  normalizeProviderRegistryReadModel,
   listPersistentControlOptions,
   resolveProviderRegistryHint,
   resolveProviderRegistryPlaceholder,
@@ -368,16 +367,6 @@ test('provider registry empty states distinguish runtime failure from no usable 
       },
     }),
     'cats-runtime is connected, but it did not report any currently usable provider targets.',
-  );
-});
-
-test('array-based provider registry inputs normalize to no_usable_targets when empty', () => {
-  assert.deepEqual(
-    normalizeProviderRegistryReadModel([]),
-    {
-      state: 'no_usable_targets',
-      providers: [],
-    },
   );
 });
 

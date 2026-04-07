@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   createProviderAdvancedCatalogFromModelCatalog,
-  type ProductProviderDescriptor,
   type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
   type ProductProviderRegistryReadModel,
@@ -32,7 +31,7 @@ interface SharedProviderModelFieldsProps {
   model: string;
   modelSelection?: ProviderModelSelection | null;
   onTargetChange: (target: ProviderTargetSelection) => void;
-  fetchProviders: () => Promise<ProductProviderDescriptor[] | ProductProviderRegistryReadModel>;
+  fetchProviderRegistry: () => Promise<ProductProviderRegistryReadModel>;
   fetchProviderModels: (provider: string, instance?: string | null) => Promise<ProviderModelCatalog>;
   fetchAdvancedProviderModels: (
     provider: string,
@@ -89,16 +88,9 @@ function createDefaultProviderRegistryReadModel(): ProductProviderRegistryReadMo
   };
 }
 
-export function normalizeProviderRegistryReadModel(
-  value: ProductProviderDescriptor[] | ProductProviderRegistryReadModel,
+function sanitizeProviderRegistryReadModel(
+  value: ProductProviderRegistryReadModel,
 ): ProductProviderRegistryReadModel {
-  if (Array.isArray(value)) {
-    return {
-      state: value.length > 0 ? 'ready' : 'no_usable_targets',
-      providers: value,
-    };
-  }
-
   return {
     state: value.state,
     providers: Array.isArray(value.providers) ? value.providers : [],
@@ -392,12 +384,12 @@ export function ProviderModelFields({
   model,
   modelSelection,
   onTargetChange,
-  fetchProviders,
+  fetchProviderRegistry,
   fetchProviderModels,
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
 }: SharedProviderModelFieldsProps) {
-  const [providers, setProviders] = useState<ProductProviderDescriptor[]>([]);
+  const [providers, setProviders] = useState<ProductProviderRegistryReadModel['providers']>([]);
   const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>(() =>
     createDefaultProviderRegistryReadModel(),
   );
@@ -427,10 +419,10 @@ export function ProviderModelFields({
   useEffect(() => {
     let cancelled = false;
 
-    void fetchProviders()
+    void fetchProviderRegistry()
       .then((nextRegistryResult) => {
         if (!cancelled) {
-          const nextRegistry = normalizeProviderRegistryReadModel(nextRegistryResult);
+          const nextRegistry = sanitizeProviderRegistryReadModel(nextRegistryResult);
           setProviders(nextRegistry.providers);
           setProviderRegistry(nextRegistry);
           setProvidersLoaded(true);
@@ -457,7 +449,7 @@ export function ProviderModelFields({
     return () => {
       cancelled = true;
     };
-  }, [fetchProviders, providerRegistryReloadToken]);
+  }, [fetchProviderRegistry, providerRegistryReloadToken]);
 
   const providerOptions = providers;
   const selectedProvider = providerOptions.find((option) => option.id === provider) ?? null;
@@ -654,7 +646,7 @@ export function ProviderModelFields({
     hasBlankLegacyDraft,
   ]);
 
-  const instanceOptions = selectedProvider
+  const instanceOptions: ProductProviderInstanceDescriptor[] = selectedProvider
     ? (
         selectedProvider.instances.some((option) => option.id === resolvedInstance)
           ? selectedProvider.instances

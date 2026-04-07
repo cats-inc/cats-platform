@@ -9,7 +9,7 @@ import { normalizeProductProviderEventCapabilities } from '../../../../shared/pr
 
 import { readErrorMessage } from './http.js';
 
-export async function fetchProviders(): Promise<ProductProviderRegistryReadModel> {
+export async function fetchProviderRegistry(): Promise<ProductProviderRegistryReadModel> {
   const response = await fetch('/api/providers');
   if (!response.ok) {
     return {

@@ -3,7 +3,7 @@ import { CatCreationFields as SharedCatCreationFields } from '../../../../design
 import {
   fetchAdvancedProviderModels,
   fetchProviderModels,
-  fetchProviders,
+  fetchProviderRegistry,
 } from '../api';
 
 export interface CatCreationFieldsProps {
@@ -32,7 +32,7 @@ export function CatCreationFields(props: CatCreationFieldsProps) {
   return (
     <SharedCatCreationFields
       {...props}
-      fetchProviders={fetchProviders}
+      fetchProviderRegistry={fetchProviderRegistry}
       fetchProviderModels={fetchProviderModels}
       fetchAdvancedProviderModels={fetchAdvancedProviderModels}
     />
