@@ -84,13 +84,13 @@
 
 .guideCatPeekAvatar {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border-radius: 50%;
   background: #8B7E74;
   color: #fff;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
