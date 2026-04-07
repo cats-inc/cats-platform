@@ -1,5 +1,4 @@
 import {
-  createStaticProviderAdvancedModelCatalog,
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
   type ProductProviderEventCapabilities,
@@ -18,6 +17,7 @@ import {
   type TaskRuntimeExecutionRequest,
 } from '../shared/taskExecutionBridge.js';
 import {
+  normalizeRuntimeProviderDiagnosticsPayload,
   normalizeRuntimeProviderConfigRegistry,
   readRuntimeErrorText,
 } from './clientParsing.js';
@@ -49,6 +49,30 @@ export interface RuntimeProviderConfigEntry {
 }
 
 export type RuntimeProviderConfigRegistry = Record<string, RuntimeProviderConfigEntry>;
+
+export type RuntimeProviderAvailabilityStatus =
+  | 'ok'
+  | 'degraded'
+  | 'unavailable'
+  | 'unknown';
+
+export interface RuntimeProviderDiagnosticsAvailability {
+  status: RuntimeProviderAvailabilityStatus;
+  summary: string | null;
+  attentionCodes: string[];
+}
+
+export interface RuntimeProviderDiagnosticsEntry {
+  provider: string;
+  backend: string | null;
+  instance: string | null;
+  availability: RuntimeProviderDiagnosticsAvailability;
+}
+
+export interface RuntimeProviderDiagnosticsPayload {
+  probe: string;
+  providers: RuntimeProviderDiagnosticsEntry[];
+}
 
 export interface RuntimeHealthPayload {
   service?: string;
@@ -220,6 +244,7 @@ export interface RuntimeClient {
   scanSetup(input?: RuntimeSetupScanInput): Promise<RuntimeSetupReadModel>;
   applySetup(providers: string[]): Promise<RuntimeSetupReadModel>;
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
+  getProviderDiagnostics(): Promise<RuntimeProviderDiagnosticsPayload>;
   getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
   getAdvancedProviderModels(provider: string, instance?: string | null): Promise<ProviderAdvancedModelCatalog>;
   createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo>;
@@ -325,6 +350,29 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     return normalizeRuntimeProviderConfigRegistry(await response.json());
+  }
+
+  async getProviderDiagnostics(): Promise<RuntimeProviderDiagnosticsPayload> {
+    const url = new URL(`${this.baseUrl}/diagnostics/providers`);
+    url.searchParams.set('probe', 'light');
+
+    const response = await fetch(url, {
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to fetch provider diagnostics (${response.status})`),
+        response.status,
+      );
+    }
+
+    return normalizeRuntimeProviderDiagnosticsPayload(await response.json());
   }
 
   async getSetupState(): Promise<RuntimeSetupReadModel> {
@@ -453,22 +501,10 @@ export class CatsRuntimeClient implements RuntimeClient {
 
     if (!response.ok) {
       const rawBody = await response.text();
-      if (response.status >= 400 && response.status < 500) {
-        throw new RuntimeRequestError(
-          readRuntimeErrorText(rawBody, `Failed to fetch advanced provider models (${response.status})`),
-          response.status,
-        );
-      }
-
-      return createStaticProviderAdvancedModelCatalog(provider, {
-        instance: instance?.trim() || null,
-        warnings: [
-          readRuntimeErrorText(
-            rawBody,
-            `Advanced provider catalog unavailable (${response.status})`,
-          ),
-        ],
-      });
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to fetch advanced provider models (${response.status})`),
+        response.status,
+      );
     }
 
     return normalizeProviderAdvancedModelCatalog(await response.json(), provider);

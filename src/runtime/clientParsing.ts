@@ -1,4 +1,7 @@
 import type {
+  RuntimeProviderDiagnosticsAvailability,
+  RuntimeProviderDiagnosticsEntry,
+  RuntimeProviderDiagnosticsPayload,
   RuntimeProviderConfigEntry,
   RuntimeProviderConfigRegistry,
   RuntimeProviderInstanceConfig,
@@ -105,4 +108,86 @@ export function normalizeRuntimeProviderConfigRegistry(
       })
       .filter((entry): entry is readonly [string, RuntimeProviderConfigEntry] => entry !== null),
   );
+}
+
+function normalizeRuntimeProviderDiagnosticsAvailability(
+  value: unknown,
+): RuntimeProviderDiagnosticsAvailability {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {
+      status: 'unknown',
+      summary: null,
+      attentionCodes: [],
+    };
+  }
+
+  const availability = value as Record<string, unknown>;
+  const rawStatus = typeof availability.status === 'string'
+    ? availability.status.trim().toLowerCase()
+    : '';
+
+  return {
+    status:
+      rawStatus === 'ok'
+      || rawStatus === 'degraded'
+      || rawStatus === 'unavailable'
+      || rawStatus === 'unknown'
+        ? rawStatus
+        : 'unknown',
+    summary:
+      typeof availability.summary === 'string' && availability.summary.trim().length > 0
+        ? availability.summary
+        : null,
+    attentionCodes: Array.isArray(availability.attentionCodes)
+      ? availability.attentionCodes
+        .filter((code): code is string => typeof code === 'string' && code.trim().length > 0)
+      : [],
+  };
+}
+
+export function normalizeRuntimeProviderDiagnosticsPayload(
+  payload: unknown,
+): RuntimeProviderDiagnosticsPayload {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return {
+      probe: 'light',
+      providers: [],
+    };
+  }
+
+  const root = payload as Record<string, unknown>;
+  const rawProviders = Array.isArray(root.providers) ? root.providers : [];
+
+  return {
+    probe:
+      typeof root.probe === 'string' && root.probe.trim().length > 0
+        ? root.probe
+        : 'light',
+    providers: rawProviders
+      .map((rawEntry) => {
+        if (!rawEntry || typeof rawEntry !== 'object' || Array.isArray(rawEntry)) {
+          return null;
+        }
+
+        const entry = rawEntry as Record<string, unknown>;
+        const provider = typeof entry.provider === 'string' ? entry.provider.trim() : '';
+        if (!provider) {
+          return null;
+        }
+
+        return {
+          provider,
+          backend:
+            typeof entry.backend === 'string' && entry.backend.trim().length > 0
+              ? entry.backend
+              : null,
+          instance:
+            typeof entry.instance === 'string' && entry.instance.trim().length > 0
+              ? entry.instance
+              : null,
+          availability: normalizeRuntimeProviderDiagnosticsAvailability(entry.availability),
+        } satisfies RuntimeProviderDiagnosticsEntry;
+      })
+      .filter((entry): entry is RuntimeProviderDiagnosticsEntry => entry !== null),
+  };
 }

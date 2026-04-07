@@ -2,10 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   createProviderAdvancedCatalogFromModelCatalog,
-  createStaticProviderAdvancedModelCatalog,
-  createStaticProviderModelCatalog,
-  getProviderDisplayName,
-  listProductProviders,
   type ProductProviderDescriptor,
   type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
@@ -42,15 +38,44 @@ interface SharedProviderModelFieldsProps {
   ) => Promise<ProviderAdvancedModelCatalog>;
 }
 
-function createFallbackProvider(provider: string): ProductProviderDescriptor {
+function createEmptyProviderModelCatalog(
+  provider: string,
+  instance?: string | null,
+  warning?: string | null,
+): ProviderModelCatalog {
   return {
-    id: provider as ProductProviderDescriptor['id'],
-    label: getProviderDisplayName(provider),
+    provider,
+    backend: null,
+    instance: instance?.trim() || null,
     defaultModel: null,
-    defaultInstance: null,
-    defaultBackend: null,
-    instances: [],
-    modelsPath: `/api/providers/${provider}/models`,
+    source: 'config',
+    cache: null,
+    models: [],
+    warnings: warning ? [warning] : [],
+  };
+}
+
+function createEmptyProviderAdvancedModelCatalog(
+  provider: string,
+  instance?: string | null,
+  warning?: string | null,
+): ProviderAdvancedModelCatalog {
+  return {
+    provider,
+    backend: null,
+    instance: instance?.trim() || null,
+    defaultModel: null,
+    source: 'config',
+    cache: null,
+    entries: [],
+    presets: [],
+    controls: [],
+    defaultSelection: null,
+    support: {
+      tier: 'entry_only',
+      notes: [],
+    },
+    warnings: warning ? [warning] : [],
   };
 }
 
@@ -269,6 +294,13 @@ export function shouldDeferCatalogTargetReconciliation(input: {
   );
 }
 
+export function shouldAllowLegacyManualModelEntry(input: {
+  entryCount: number;
+  isLegacyModelTarget: boolean;
+}): boolean {
+  return input.entryCount > 0 || input.isLegacyModelTarget;
+}
+
 function instanceKey(value: string | null | undefined): string {
   return value?.trim() || '';
 }
@@ -307,12 +339,14 @@ export function ProviderModelFields({
   fetchProviderModels,
   fetchAdvancedProviderModels,
 }: SharedProviderModelFieldsProps) {
-  const [providers, setProviders] = useState<ProductProviderDescriptor[]>(() => listProductProviders());
+  const [providers, setProviders] = useState<ProductProviderDescriptor[]>([]);
+  const [providersLoaded, setProvidersLoaded] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(Boolean(provider));
   const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
-    createStaticProviderModelCatalog(provider),
+    createEmptyProviderModelCatalog(provider),
   );
   const [advancedCatalog, setAdvancedCatalog] = useState<ProviderAdvancedModelCatalog>(() =>
-    createStaticProviderAdvancedModelCatalog(provider),
+    createEmptyProviderAdvancedModelCatalog(provider),
   );
   const [legacyManualTargetKey, setLegacyManualTargetKey] = useState<string | null>(null);
   const manualSelectionTargetKey = useRef<string | null>(null);
@@ -328,27 +362,33 @@ export function ProviderModelFields({
 
     void fetchProviders()
       .then((nextProviders) => {
-        if (!cancelled && nextProviders.length > 0) {
+        if (!cancelled) {
           setProviders(nextProviders);
+          setProvidersLoaded(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setProviders([]);
+          setProvidersLoaded(true);
+        }
+      });
 
     return () => {
       cancelled = true;
     };
   }, [fetchProviders]);
 
-  const providerOptions = providers.some((option) => option.id === provider)
-    ? providers
-    : [createFallbackProvider(provider), ...providers];
-  const selectedProvider =
-    providerOptions.find((option) => option.id === provider) ?? createFallbackProvider(provider);
-  const resolvedInstance = resolveSelectedProviderInstance(selectedProvider, instance);
-  const fallbackCatalog = createStaticProviderModelCatalog(provider, {
-    instance: resolvedInstance || null,
-  });
-  const fallbackAdvancedCatalog = createProviderAdvancedCatalogFromModelCatalog(fallbackCatalog);
+  const providerOptions = providers;
+  const selectedProvider = providerOptions.find((option) => option.id === provider) ?? null;
+  const resolvedInstance = selectedProvider
+    ? resolveSelectedProviderInstance(selectedProvider, instance)
+    : '';
+  const fallbackCatalog = createEmptyProviderModelCatalog(provider, resolvedInstance || null);
+  const fallbackAdvancedCatalog = createEmptyProviderAdvancedModelCatalog(
+    provider,
+    resolvedInstance || null,
+  );
   const effectiveCatalog = catalogMatchesTarget({
     catalogProvider: catalog.provider,
     catalogInstance: catalog.instance,
@@ -366,7 +406,7 @@ export function ProviderModelFields({
     ? advancedCatalog
     : fallbackAdvancedCatalog;
   const targetKey = `${provider}::${resolvedInstance}`;
-  const persistedLegacyModelTarget = shouldTreatPersistedTargetAsLegacyModel({
+  const persistedLegacyModelTarget = !catalogLoading && shouldTreatPersistedTargetAsLegacyModel({
     catalog: effectiveCatalog,
     model,
     modelSelection,
@@ -374,11 +414,13 @@ export function ProviderModelFields({
   const entryOptions = effectiveAdvancedCatalog.entries.length > 0
     ? effectiveAdvancedCatalog.entries
     : effectiveCatalog.models;
-  const noCatalogEntries = entryOptions.length === 0;
   const isLegacyModelTarget =
-    noCatalogEntries
-    || legacyManualTargetKey === targetKey
+    legacyManualTargetKey === targetKey
     || persistedLegacyModelTarget;
+  const allowLegacyManualModelEntry = shouldAllowLegacyManualModelEntry({
+    entryCount: entryOptions.length,
+    isLegacyModelTarget,
+  });
   const hasBlankLegacyDraft =
     legacyManualTargetKey === targetKey
     && (model?.trim() || '').length === 0
@@ -388,12 +430,15 @@ export function ProviderModelFields({
     || isLegacyModelTarget;
 
   useEffect(() => {
+    if (!selectedProvider) {
+      return;
+    }
     if (previousTargetKey.current !== targetKey) {
       previousTargetKey.current = targetKey;
       manualSelectionTargetKey.current = null;
       setLegacyManualTargetKey(null);
     }
-    if (resolvedInstance !== instance) {
+    if (resolvedInstance && resolvedInstance !== instance) {
       onTargetChangeRef.current({
         provider,
         instance: resolvedInstance,
@@ -401,16 +446,25 @@ export function ProviderModelFields({
         modelSelection,
       });
     }
-  }, [instance, model, modelSelection, provider, resolvedInstance, targetKey]);
+  }, [instance, model, modelSelection, provider, resolvedInstance, selectedProvider, targetKey]);
 
   useEffect(() => {
     let cancelled = false;
-    const nextFallbackCatalog = createStaticProviderModelCatalog(provider, {
-      instance: resolvedInstance || null,
-    });
+    const nextFallbackCatalog = createEmptyProviderModelCatalog(provider, resolvedInstance || null);
+    const nextFallbackAdvancedCatalog = createEmptyProviderAdvancedModelCatalog(
+      provider,
+      resolvedInstance || null,
+    );
 
     setCatalog(nextFallbackCatalog);
-    setAdvancedCatalog(createProviderAdvancedCatalogFromModelCatalog(nextFallbackCatalog));
+    setAdvancedCatalog(nextFallbackAdvancedCatalog);
+    setCatalogLoading(Boolean(selectedProvider && provider));
+
+    if (!selectedProvider || !provider) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     void Promise.allSettled([
       fetchProviderModels(provider, resolvedInstance || null),
@@ -422,15 +476,39 @@ export function ProviderModelFields({
 
       const nextCatalog = modelsResult.status === 'fulfilled'
         ? modelsResult.value
-        : nextFallbackCatalog;
+        : createEmptyProviderModelCatalog(
+            provider,
+            resolvedInstance || null,
+            modelsResult.reason instanceof Error
+              ? modelsResult.reason.message
+              : 'Runtime model catalog unavailable.',
+          );
       setCatalog(nextCatalog);
 
       if (advancedResult.status === 'fulfilled') {
         setAdvancedCatalog(advancedResult.value);
-        return;
+      } else if (modelsResult.status === 'fulfilled') {
+        const advancedFallbackCatalog = createProviderAdvancedCatalogFromModelCatalog(nextCatalog);
+        setAdvancedCatalog({
+          ...advancedFallbackCatalog,
+          warnings: [
+            ...advancedFallbackCatalog.warnings,
+            advancedResult.reason instanceof Error
+              ? advancedResult.reason.message
+              : 'Runtime advanced model catalog unavailable.',
+          ],
+        });
+      } else {
+        setAdvancedCatalog(createEmptyProviderAdvancedModelCatalog(
+          provider,
+          resolvedInstance || null,
+          advancedResult.reason instanceof Error
+            ? advancedResult.reason.message
+            : 'Runtime advanced model catalog unavailable.',
+        ));
       }
 
-      setAdvancedCatalog(createProviderAdvancedCatalogFromModelCatalog(nextCatalog));
+      setCatalogLoading(false);
     });
 
     return () => {
@@ -441,6 +519,7 @@ export function ProviderModelFields({
     fetchProviderModels,
     provider,
     resolvedInstance,
+    selectedProvider,
   ]);
 
   useEffect(() => {
@@ -495,16 +574,20 @@ export function ProviderModelFields({
     hasBlankLegacyDraft,
   ]);
 
-  const instanceOptions = selectedProvider.instances.some((option) => option.id === resolvedInstance)
-    ? selectedProvider.instances
-    : resolvedInstance
-      ? [{
-          id: resolvedInstance,
-          label: resolvedInstance,
-          target: resolvedInstance,
-          backend: null,
-        }, ...selectedProvider.instances]
-      : selectedProvider.instances;
+  const instanceOptions = selectedProvider
+    ? (
+        selectedProvider.instances.some((option) => option.id === resolvedInstance)
+          ? selectedProvider.instances
+          : resolvedInstance
+            ? [{
+                id: resolvedInstance,
+                label: resolvedInstance,
+                target: resolvedInstance,
+                backend: null,
+              }, ...selectedProvider.instances]
+            : selectedProvider.instances
+      )
+    : [];
   const showInstanceField = shouldShowInstanceField({
     resolvedInstance,
     instanceOptions,
@@ -520,7 +603,7 @@ export function ProviderModelFields({
     ? model
     : entryOptions[0]?.id ?? '';
   const selectedEntryId = isLegacyModelTarget ? CUSTOM_LEGACY_MODEL_VALUE : (
-    selectedCatalogEntryId || CUSTOM_LEGACY_MODEL_VALUE
+    selectedCatalogEntryId || ''
   );
   const presetOptions = !isLegacyModelTarget
     ? effectiveAdvancedCatalog.presets.filter((preset) =>
@@ -541,6 +624,21 @@ export function ProviderModelFields({
   const selectedEntryNotes = !isLegacyModelTarget
     ? entryOptions.find((option) => option.id === selectedCatalogEntryId)?.notes ?? []
     : [];
+  const primaryCatalogWarning = effectiveAdvancedCatalog.warnings[0]
+    ?? effectiveCatalog.warnings[0]
+    ?? null;
+  const providerPlaceholder = providersLoaded
+    ? 'No runtime-backed providers available'
+    : 'Loading available providers...';
+  const modelPlaceholder = !selectedProvider
+    ? (providersLoaded
+        ? 'Select an available provider first'
+        : 'Waiting for available providers...')
+    : catalogLoading
+      ? 'Loading available models...'
+      : allowLegacyManualModelEntry
+        ? 'Select a model'
+        : 'No runtime-backed models available';
 
   function emitSelection(next: {
     model?: string;
@@ -582,10 +680,14 @@ export function ProviderModelFields({
         <span>AI Service</span>
         <select
           className="textInput"
-          value={provider}
+          value={selectedProvider?.id ?? ''}
+          disabled={providerOptions.length === 0}
           onChange={(event) => {
             const nextProvider = providerOptions.find((option) => option.id === event.target.value)
-              ?? createFallbackProvider(event.target.value);
+              ?? null;
+            if (!nextProvider) {
+              return;
+            }
             const nextInstance = resolveSelectedProviderInstance(nextProvider, '');
             manualSelectionTargetKey.current = null;
             setLegacyManualTargetKey(null);
@@ -597,12 +699,30 @@ export function ProviderModelFields({
             });
           }}
         >
-          {providerOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
+          {providerOptions.length === 0 ? (
+            <option value="">{providerPlaceholder}</option>
+          ) : (
+            <>
+              {!selectedProvider ? (
+                <option value="" disabled>
+                  Select an available provider
+                </option>
+              ) : null}
+              {providerOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </>
+          )}
         </select>
+        {providerOptions.length === 0 ? (
+          <span className="fieldHint">
+            {providersLoaded
+              ? 'cats-runtime did not report any currently usable provider targets.'
+              : 'Checking cats-runtime for usable provider targets.'}
+          </span>
+        ) : null}
       </label>
       {showInstanceField ? (
         <label className="fieldLabel">
@@ -644,6 +764,7 @@ export function ProviderModelFields({
         <select
           className="textInput"
           value={selectedEntryId}
+          disabled={!isLegacyModelTarget && entryOptions.length === 0}
           onChange={(event) => {
             if (event.target.value === CUSTOM_LEGACY_MODEL_VALUE) {
               emitLegacyModel(persistedLegacyModelTarget ? model : '');
@@ -656,17 +777,28 @@ export function ProviderModelFields({
             });
           }}
         >
+          {!isLegacyModelTarget ? (
+            <option value="" disabled={entryOptions.length > 0}>
+              {modelPlaceholder}
+            </option>
+          ) : null}
           {entryOptions.map((option) => (
             <option key={option.id} value={option.id}>
               {option.label}
               {option.status ? ` (${option.status})` : ''}
             </option>
           ))}
-          <option value={CUSTOM_LEGACY_MODEL_VALUE}>Custom legacy model...</option>
+          {allowLegacyManualModelEntry ? (
+            <option value={CUSTOM_LEGACY_MODEL_VALUE}>Custom legacy model...</option>
+          ) : null}
         </select>
         {selectedEntryNotes.length > 0 ? (
           <span className="fieldHint">
             {selectedEntryNotes[0]}
+          </span>
+        ) : primaryCatalogWarning ? (
+          <span className="fieldHint">
+            {primaryCatalogWarning}
           </span>
         ) : null}
       </label>

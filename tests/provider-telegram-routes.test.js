@@ -127,6 +127,73 @@ function createRuntimeStub() {
         },
       };
     },
+    async getProviderDiagnostics() {
+      return {
+        probe: 'light',
+        providers: [
+          {
+            provider: 'openclaw',
+            backend: 'agent',
+            instance: 'gateway',
+            availability: {
+              status: 'ok',
+              summary: 'Gateway reachable',
+              attentionCodes: [],
+            },
+          },
+          {
+            provider: 'claude',
+            backend: 'cli',
+            instance: 'native',
+            availability: {
+              status: 'ok',
+              summary: 'CLI ready',
+              attentionCodes: [],
+            },
+          },
+          {
+            provider: 'codex',
+            backend: 'agent',
+            instance: 'agent/bridge',
+            availability: {
+              status: 'ok',
+              summary: 'Bridge ready',
+              attentionCodes: [],
+            },
+          },
+          {
+            provider: 'codex',
+            backend: 'cli',
+            instance: 'ubuntu',
+            availability: {
+              status: 'degraded',
+              summary: 'WSL target needs attention but is still usable',
+              attentionCodes: ['probe_degraded'],
+            },
+          },
+          {
+            provider: 'opencode',
+            backend: 'cli',
+            instance: 'native',
+            availability: {
+              status: 'unavailable',
+              summary: 'CLI missing',
+              attentionCodes: ['command_missing'],
+            },
+          },
+          {
+            provider: 'kilo',
+            backend: 'cli',
+            instance: 'native',
+            availability: {
+              status: 'ok',
+              summary: 'CLI ready',
+              attentionCodes: [],
+            },
+          },
+        ],
+      };
+    },
     async getProviderModels(provider) {
       return {
         provider,
@@ -345,6 +412,7 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
     assert.equal(response.status, 200);
 
     const payload = await response.json();
+    assert.equal(payload.state, 'ready');
     assert.ok(Array.isArray(payload.providers));
     const openclaw = payload.providers.find((provider) => provider.id === 'openclaw');
     assert.equal(openclaw.label, 'OpenClaw');
@@ -365,8 +433,8 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
     assert.equal(codex.instances[0].label, 'agent/bridge');
     const opencodeIndex = payload.providers.findIndex((provider) => provider.id === 'opencode');
     const kiloIndex = payload.providers.findIndex((provider) => provider.id === 'kilo');
-    assert.ok(opencodeIndex >= 0);
-    assert.equal(kiloIndex, opencodeIndex + 1);
+    assert.equal(opencodeIndex, -1);
+    assert.ok(kiloIndex >= 0);
     const kilo = payload.providers[kiloIndex];
     assert.equal(kilo.label, 'Kilo');
     assert.equal(kilo.defaultInstance, 'native');
@@ -417,7 +485,7 @@ test('GET /api/providers/:provider/models forwards the optional instance query',
   assert.deepEqual(calls, [{ provider: 'codex', instance: 'agent/bridge' }]);
 });
 
-test('GET /api/providers/:provider/models falls back to static data', async () => {
+test('GET /api/providers/:provider/models returns an explicit runtime error instead of static fallback data', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.getProviderModels = async () => {
     throw new Error('runtime unavailable');
@@ -425,31 +493,22 @@ test('GET /api/providers/:provider/models falls back to static data', async () =
 
   await withServer(runtimeClient, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/providers/claude/models`);
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 503);
 
     const payload = await response.json();
-    assert.equal(payload.catalog.provider, 'claude');
-    assert.equal(payload.catalog.source, 'static');
-    assert.ok(payload.catalog.warnings[0].includes('runtime unavailable'));
+    assert.equal(payload.error.code, 'provider_catalog_unavailable');
+    assert.match(payload.error.message, /runtime unavailable/u);
   });
 });
 
-test('GET /api/providers/:provider/models falls back to static kilo catalog data', async () => {
-  const runtimeClient = createRuntimeStub();
-  runtimeClient.getProviderModels = async () => {
-    throw new Error('runtime unavailable');
-  };
-
-  await withServer(runtimeClient, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/providers/kilo/models`);
-    assert.equal(response.status, 200);
+test('GET /api/providers/:provider/models rejects providers that runtime marks unavailable', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/opencode/models`);
+    assert.equal(response.status, 409);
 
     const payload = await response.json();
-    assert.equal(payload.catalog.provider, 'kilo');
-    assert.equal(payload.catalog.source, 'static');
-    assert.equal(payload.catalog.defaultModel, 'kilo/openai/gpt-5.4');
-    assert.equal(payload.catalog.models[0].id, 'kilo/openai/gpt-5.4');
-    assert.ok(payload.catalog.warnings[0].includes('runtime unavailable'));
+    assert.equal(payload.error.code, 'provider_target_unavailable');
+    assert.match(payload.error.message, /No usable opencode target/u);
   });
 });
 
@@ -1531,4 +1590,3 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
     },
   );
 });
-

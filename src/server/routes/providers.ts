@@ -1,14 +1,14 @@
 import type { ServerResponse } from 'node:http';
 
 import {
-  createStaticProviderAdvancedModelCatalog,
-  createStaticProviderModelCatalog,
   isKnownProvider,
   listProductProviders,
   type ProductProviderDescriptor,
   type ProductProviderInstanceDescriptor,
 } from '../../shared/providerCatalog.js';
 import type {
+  RuntimeProviderDiagnosticsEntry,
+  RuntimeProviderDiagnosticsPayload,
   RuntimeProviderConfigRegistry,
   RuntimeRequestError,
   RuntimeClient,
@@ -18,28 +18,132 @@ interface ProviderRouteDependencies {
   runtimeClient: RuntimeClient;
 }
 
-function mergeProviderRegistry(
+type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
+
+interface TruthfulProviderRegistryReadModel {
+  state: ProviderRegistryState;
+  providers: ProductProviderDescriptor[];
+  recovery?: {
+    retryable?: boolean;
+    openRuntimeSetupPath?: string;
+  };
+  warnings?: string[];
+}
+
+function isSelectableAvailabilityStatus(status: string | null | undefined): boolean {
+  return status === 'ok' || status === 'degraded';
+}
+
+function findDiagnosticsForProvider(
+  payload: RuntimeProviderDiagnosticsPayload,
+  providerId: string,
+): RuntimeProviderDiagnosticsEntry[] {
+  return payload.providers.filter((entry) => entry.provider === providerId);
+}
+
+function findInstanceDiagnostic(
+  entries: RuntimeProviderDiagnosticsEntry[],
+  instanceId: string,
+  backend: string | null,
+): RuntimeProviderDiagnosticsEntry | null {
+  return entries.find((entry) => entry.instance === instanceId)
+    ?? entries.find((entry) =>
+      entry.instance === null
+      && backend !== null
+      && entry.backend === backend)
+    ?? null;
+}
+
+function mergeTruthfulProviderRegistry(
   productProviders: ProductProviderDescriptor[],
   runtimeConfig: RuntimeProviderConfigRegistry,
+  diagnostics: RuntimeProviderDiagnosticsPayload,
 ): ProductProviderDescriptor[] {
-  return productProviders.map((provider) => {
+  return productProviders.flatMap((provider) => {
     const runtimeProvider = runtimeConfig[provider.id];
-    const instances: ProductProviderInstanceDescriptor[] = runtimeProvider?.instances.map((instance) => ({
-      id: instance.id,
-      label: instance.target ?? instance.id,
-      target: instance.target,
-      backend: instance.backend,
-      default: runtimeProvider.defaultInstance === instance.id,
-      eventCapabilities: instance.eventCapabilities,
-    })) ?? [];
+    if (!runtimeProvider) {
+      return [];
+    }
+
+    const diagnosticsEntries = findDiagnosticsForProvider(diagnostics, provider.id);
+    const instances: ProductProviderInstanceDescriptor[] = runtimeProvider.instances
+      .filter((instance) => {
+        const diagnostic = findInstanceDiagnostic(
+          diagnosticsEntries,
+          instance.id,
+          instance.backend,
+        );
+        return isSelectableAvailabilityStatus(diagnostic?.availability.status);
+      })
+      .map((instance) => ({
+        id: instance.id,
+        label: instance.target ?? instance.id,
+        target: instance.target,
+        backend: instance.backend,
+        default: runtimeProvider.defaultInstance === instance.id,
+        eventCapabilities: instance.eventCapabilities,
+      }));
+
+    if (instances.length === 0) {
+      return [];
+    }
+
+    const defaultInstance = instances.find((instance) => instance.default)?.id
+      ?? instances[0]?.id
+      ?? null;
+    const defaultBackend = instances.find((instance) => instance.id === defaultInstance)?.backend
+      ?? runtimeProvider.defaultBackend
+      ?? instances[0]?.backend
+      ?? provider.defaultBackend;
+
+    return [{
+      ...provider,
+      defaultInstance,
+      defaultBackend,
+      instances,
+    }];
+  });
+}
+
+async function readTruthfulProviderRegistry(
+  dependencies: ProviderRouteDependencies,
+): Promise<TruthfulProviderRegistryReadModel> {
+  try {
+    const [runtimeConfig, diagnostics] = await Promise.all([
+      dependencies.runtimeClient.getProviderConfig(),
+      dependencies.runtimeClient.getProviderDiagnostics(),
+    ]);
+
+    const providers = mergeTruthfulProviderRegistry(
+      listProductProviders(),
+      runtimeConfig,
+      diagnostics,
+    );
+
+    if (providers.length === 0) {
+      return {
+        state: 'no_usable_targets',
+        providers: [],
+        recovery: {
+          openRuntimeSetupPath: '/runtime/setup',
+        },
+      };
+    }
 
     return {
-      ...provider,
-      defaultInstance: runtimeProvider?.defaultInstance ?? provider.defaultInstance,
-      defaultBackend: runtimeProvider?.defaultBackend ?? provider.defaultBackend,
-      instances,
+      state: 'ready',
+      providers,
     };
-  });
+  } catch (error) {
+    return {
+      state: 'runtime_unreachable',
+      providers: [],
+      recovery: {
+        retryable: true,
+      },
+      warnings: error instanceof Error ? [error.message] : ['cats-runtime is unavailable.'],
+    };
+  }
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
@@ -71,14 +175,7 @@ export async function handleProviderRegistry(
   dependencies: ProviderRouteDependencies,
   response: ServerResponse,
 ): Promise<void> {
-  const productProviders = listProductProviders();
-
-  try {
-    const runtimeConfig = await dependencies.runtimeClient.getProviderConfig();
-    sendJson(response, 200, { providers: mergeProviderRegistry(productProviders, runtimeConfig) });
-  } catch {
-    sendJson(response, 200, { providers: productProviders });
-  }
+  sendJson(response, 200, await readTruthfulProviderRegistry(dependencies));
 }
 
 export async function handleProviderModels(
@@ -92,8 +189,44 @@ export async function handleProviderModels(
     return;
   }
 
+  const registry = await readTruthfulProviderRegistry(dependencies);
+  if (registry.state === 'runtime_unreachable') {
+    sendRestError(
+      response,
+      503,
+      'runtime_unreachable',
+      registry.warnings?.[0] ?? 'cats-runtime is unavailable.',
+      { provider, instance: instance ?? null },
+    );
+    return;
+  }
+
+  const providerDescriptor = registry.providers.find((entry) => entry.id === provider);
+  if (!providerDescriptor) {
+    sendRestError(
+      response,
+      409,
+      'provider_target_unavailable',
+      `No usable ${provider} target is currently available in cats-runtime.`,
+      { provider, instance: instance ?? null },
+    );
+    return;
+  }
+
+  const normalizedInstance = instance?.trim() || null;
+  if (normalizedInstance && !providerDescriptor.instances.some((entry) => entry.id === normalizedInstance)) {
+    sendRestError(
+      response,
+      409,
+      'provider_target_unavailable',
+      `${provider} instance "${normalizedInstance}" is not currently usable in cats-runtime.`,
+      { provider, instance: normalizedInstance },
+    );
+    return;
+  }
+
   try {
-    const catalog = await dependencies.runtimeClient.getProviderModels(provider, instance);
+    const catalog = await dependencies.runtimeClient.getProviderModels(provider, normalizedInstance);
     sendJson(response, 200, { catalog });
   } catch (error) {
     const runtimeError = error as RuntimeRequestError | Error;
@@ -108,15 +241,13 @@ export async function handleProviderModels(
       return;
     }
 
-    const warning = error instanceof Error
-      ? `Runtime catalog unavailable: ${error.message}`
-      : 'Runtime catalog unavailable.';
-    sendJson(response, 200, {
-      catalog: createStaticProviderModelCatalog(provider, {
-        instance: instance ?? null,
-        warnings: [warning],
-      }),
-    });
+    sendRestError(
+      response,
+      503,
+      'provider_catalog_unavailable',
+      error instanceof Error ? error.message : 'Runtime catalog unavailable.',
+      { provider, instance: normalizedInstance },
+    );
   }
 }
 
@@ -131,8 +262,44 @@ export async function handleAdvancedProviderModels(
     return;
   }
 
+  const registry = await readTruthfulProviderRegistry(dependencies);
+  if (registry.state === 'runtime_unreachable') {
+    sendRestError(
+      response,
+      503,
+      'runtime_unreachable',
+      registry.warnings?.[0] ?? 'cats-runtime is unavailable.',
+      { provider, instance: instance ?? null },
+    );
+    return;
+  }
+
+  const providerDescriptor = registry.providers.find((entry) => entry.id === provider);
+  if (!providerDescriptor) {
+    sendRestError(
+      response,
+      409,
+      'provider_target_unavailable',
+      `No usable ${provider} target is currently available in cats-runtime.`,
+      { provider, instance: instance ?? null },
+    );
+    return;
+  }
+
+  const normalizedInstance = instance?.trim() || null;
+  if (normalizedInstance && !providerDescriptor.instances.some((entry) => entry.id === normalizedInstance)) {
+    sendRestError(
+      response,
+      409,
+      'provider_target_unavailable',
+      `${provider} instance "${normalizedInstance}" is not currently usable in cats-runtime.`,
+      { provider, instance: normalizedInstance },
+    );
+    return;
+  }
+
   try {
-    const catalog = await dependencies.runtimeClient.getAdvancedProviderModels(provider, instance);
+    const catalog = await dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance);
     sendJson(response, 200, { catalog });
   } catch (error) {
     const runtimeError = error as RuntimeRequestError | Error;
@@ -147,14 +314,12 @@ export async function handleAdvancedProviderModels(
       return;
     }
 
-    const warning = error instanceof Error
-      ? `Runtime advanced catalog unavailable: ${error.message}`
-      : 'Runtime advanced catalog unavailable.';
-    sendJson(response, 200, {
-      catalog: createStaticProviderAdvancedModelCatalog(provider, {
-        instance: instance ?? null,
-        warnings: [warning],
-      }),
-    });
+    sendRestError(
+      response,
+      503,
+      'provider_advanced_catalog_unavailable',
+      error instanceof Error ? error.message : 'Runtime advanced catalog unavailable.',
+      { provider, instance: normalizedInstance },
+    );
   }
 }

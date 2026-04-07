@@ -11,6 +11,7 @@ import {
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
   sanitizePersistentTargetSelection,
+  shouldAllowLegacyManualModelEntry,
   shouldTreatPersistedTargetAsLegacyModel,
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
@@ -199,6 +200,23 @@ test('static fallback catalogs still resolve an initial empty target', () => {
       modelSelection: null,
     }),
     false,
+  );
+});
+
+test('empty truthful catalogs do not automatically unlock manual legacy model entry', () => {
+  assert.equal(
+    shouldAllowLegacyManualModelEntry({
+      entryCount: 0,
+      isLegacyModelTarget: false,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldAllowLegacyManualModelEntry({
+      entryCount: 0,
+      isLegacyModelTarget: true,
+    }),
+    true,
   );
 });
 

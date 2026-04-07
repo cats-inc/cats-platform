@@ -68,6 +68,12 @@ function createRuntimeStub() {
     async getProviderConfig() {
       return {};
     },
+    async getProviderDiagnostics() {
+      return {
+        probe: 'light',
+        providers: [],
+      };
+    },
     async getProviderModels(provider) {
       return {
         provider,
@@ -524,7 +530,42 @@ test('GET /health reports runtime reachability', async () => {
 });
 
 test('GET /api/providers/:provider/models/advanced returns the runtime advanced catalog additively', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
+  const runtime = createRuntimeStub();
+  runtime.getProviderConfig = async () => ({
+    codex: {
+      defaultInstance: 'default',
+      defaultBackend: 'cli',
+      instances: [
+        {
+          id: 'default',
+          target: 'cli/default',
+          backend: 'cli',
+          command: 'codex',
+          runner: null,
+          runtime: null,
+          transport: null,
+          model: 'codex-default',
+        },
+      ],
+    },
+  });
+  runtime.getProviderDiagnostics = async () => ({
+    probe: 'light',
+    providers: [
+      {
+        provider: 'codex',
+        backend: 'cli',
+        instance: 'default',
+        availability: {
+          status: 'ok',
+          summary: 'CLI ready',
+          attentionCodes: [],
+        },
+      },
+    ],
+  });
+
+  await withServer(runtime, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/providers/codex/models/advanced`);
     assert.equal(response.status, 200);
 

@@ -218,6 +218,108 @@ test('runtime setup scan and apply use the extended setup timeout budget', async
   assert.deepEqual(timeoutCalls, [120000, 5000, 120000, 5000]);
 });
 
+test('runtime client returns truthful provider diagnostics for selector reads', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url === 'http://runtime.test/diagnostics/providers?probe=light') {
+      return new Response(JSON.stringify({
+        probe: 'light',
+        providers: [
+          {
+            provider: 'claude',
+            backend: 'cli',
+            instance: 'native',
+            availability: {
+              status: 'ok',
+              summary: 'CLI ready',
+              attentionCodes: [],
+            },
+          },
+          {
+            provider: 'codex',
+            backend: 'agent',
+            instance: 'bridge',
+            availability: {
+              status: 'degraded',
+              summary: 'Bridge ready with warnings',
+              attentionCodes: ['probe_degraded'],
+            },
+          },
+        ],
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const diagnostics = await client.getProviderDiagnostics();
+    assert.deepEqual(diagnostics, {
+      probe: 'light',
+      providers: [
+        {
+          provider: 'claude',
+          backend: 'cli',
+          instance: 'native',
+          availability: {
+            status: 'ok',
+            summary: 'CLI ready',
+            attentionCodes: [],
+          },
+        },
+        {
+          provider: 'codex',
+          backend: 'agent',
+          instance: 'bridge',
+          availability: {
+            status: 'degraded',
+            summary: 'Bridge ready with warnings',
+            attentionCodes: ['probe_degraded'],
+          },
+        },
+      ],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime client does not fall back to static advanced catalogs on upstream errors', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url === 'http://runtime.test/providers/codex/models/advanced') {
+      return new Response(JSON.stringify({
+        error: 'advanced catalog unavailable',
+      }), {
+        status: 503,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    await assert.rejects(
+      () => client.getAdvancedProviderModels('codex'),
+      /advanced catalog unavailable/u,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('runtime client preserves the runtime-sanitized modelSelection returned from session creation', async () => {
   const requests = [];
   let session;
@@ -325,4 +427,3 @@ test('runtime client preserves the runtime-sanitized modelSelection returned fro
     ],
   });
 });
-

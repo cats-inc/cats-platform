@@ -447,14 +447,21 @@ PATCH /api/preferences
 ```text
 GET /api/providers
 GET /api/providers/{provider}/models
+GET /api/providers/{provider}/models/advanced
 ```
 
-- `GET /api/providers` returns the product-supported provider families used by
-  setup and cat-creation UI.
-- `GET /api/providers/{provider}/models` returns a product-level provider model
-  catalog. The server prefers `cats-runtime` as the source of truth and may
-  fall back to curated static data with warnings when runtime lookup is
-  unavailable.
+- `GET /api/providers` returns the truthful runtime-backed execution targets
+  currently usable for setup and in-product provider/model selectors. The
+  response includes `state` (`ready`, `no_usable_targets`, or
+  `runtime_unreachable`) plus only the provider instances that `cats-runtime`
+  currently reports as usable.
+- `GET /api/providers/{provider}/models` returns the runtime-owned model catalog
+  for a currently usable execution target. If the target is not currently
+  usable, or if the runtime lookup fails, the route returns an explicit error
+  instead of falling back to curated static data.
+- `GET /api/providers/{provider}/models/advanced` follows the same truthful
+  contract for advanced catalog reads used by structured provider/model
+  selectors.
 
 ### Cats Work
 
