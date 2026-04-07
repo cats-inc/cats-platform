@@ -219,7 +219,15 @@ test('runtime setup scan and apply use the extended setup timeout budget', async
 });
 
 test('runtime client returns truthful provider diagnostics for selector reads', async () => {
+  const timeoutCalls = [];
   const originalFetch = globalThis.fetch;
+  const originalAbortSignalTimeout = AbortSignal.timeout;
+
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  };
+
   globalThis.fetch = async (input) => {
     const url = String(input);
     if (url === 'http://runtime.test/diagnostics/providers?probe=light') {
@@ -288,7 +296,60 @@ test('runtime client returns truthful provider diagnostics for selector reads', 
     });
   } finally {
     globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortSignalTimeout;
   }
+
+  assert.deepEqual(timeoutCalls, [10000]);
+});
+
+test('runtime client uses the extended provider-registry timeout for provider config reads', async () => {
+  const timeoutCalls = [];
+  const originalFetch = globalThis.fetch;
+  const originalAbortSignalTimeout = AbortSignal.timeout;
+
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  };
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url === 'http://runtime.test/providers/config') {
+      return new Response(JSON.stringify({
+        providers: {
+          claude: {
+            defaultInstance: 'native',
+            defaultBackend: 'cli',
+            instances: [
+              {
+                id: 'native',
+                target: 'cli/native',
+                backend: 'cli',
+              },
+            ],
+          },
+        },
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const registry = await client.getProviderConfig();
+    assert.equal(registry.claude?.defaultInstance, 'native');
+  } finally {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortSignalTimeout;
+  }
+
+  assert.deepEqual(timeoutCalls, [10000]);
 });
 
 test('runtime client does not fall back to static advanced catalogs on upstream errors', async () => {

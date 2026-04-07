@@ -322,6 +322,20 @@ export interface ProductProviderDescriptor {
   modelsPath: string;
 }
 
+export type ProductProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
+
+export interface ProductProviderRegistryRecovery {
+  retryable?: boolean;
+  openRuntimeSetupPath?: string;
+}
+
+export interface ProductProviderRegistryReadModel {
+  state: ProductProviderRegistryState;
+  providers: ProductProviderDescriptor[];
+  recovery?: ProductProviderRegistryRecovery;
+  warnings?: string[];
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;

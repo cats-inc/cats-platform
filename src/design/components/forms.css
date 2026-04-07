@@ -38,6 +38,13 @@
   margin-top: 2px;
 }
 
+.providerCatalogRecoveryActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
 .providerSupportBadge {
   display: inline-flex;
   align-items: center;

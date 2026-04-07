@@ -1,5 +1,6 @@
 import type {
   ProductProviderDescriptor,
+  ProductProviderRegistryReadModel,
   ProductProviderInstanceDescriptor,
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
@@ -80,21 +81,28 @@ export async function markPlatformSetupOpened(
   return (await response.json()) as ProductBootstrapDiagnosticsReadModel;
 }
 
-export async function fetchProviders(): Promise<ProductProviderDescriptor[]> {
+export async function fetchProviders(): Promise<ProductProviderRegistryReadModel> {
   const response = await fetch('/api/providers');
   if (!response.ok) {
-    return [];
+    return {
+      state: 'runtime_unreachable',
+      providers: [],
+      recovery: {
+        retryable: true,
+      },
+      warnings: [await readErrorMessage(response, 'Failed to load providers.')],
+    };
   }
 
-  const payload = (await response.json()) as { providers?: ProductProviderDescriptor[] };
-  if (!Array.isArray(payload.providers)) {
-    return [];
-  }
+  const payload = (await response.json()) as ProductProviderRegistryReadModel;
+  const providers = Array.isArray(payload.providers) ? payload.providers : [];
 
-  return payload.providers.map((provider) => ({
-    id: provider.id,
-    label: provider.label,
-    defaultModel: provider.defaultModel ?? null,
+  return {
+    state: payload.state ?? (providers.length > 0 ? 'ready' : 'no_usable_targets'),
+    providers: providers.map((provider) => ({
+      id: provider.id,
+      label: provider.label,
+      defaultModel: provider.defaultModel ?? null,
     defaultInstance: provider.defaultInstance ?? null,
     defaultBackend: provider.defaultBackend ?? null,
     instances: Array.isArray(provider.instances)
@@ -108,7 +116,10 @@ export async function fetchProviders(): Promise<ProductProviderDescriptor[]> {
         }))
       : [],
     modelsPath: provider.modelsPath,
-  }));
+    })),
+    recovery: payload.recovery,
+    warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
+  };
 }
 
 export async function fetchProviderModels(

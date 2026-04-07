@@ -4,6 +4,7 @@ import type {
 } from '../../shared/providerSelection.js';
 import type {
   ProductProviderDescriptor,
+  ProductProviderRegistryReadModel,
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
@@ -30,12 +31,13 @@ export interface CatCreationFieldsProps {
   availableSurfaces?: string[];
   enabledSurfaces?: string[];
   hideProductToggles?: boolean;
-  fetchProviders: () => Promise<ProductProviderDescriptor[]>;
+  fetchProviders: () => Promise<ProductProviderDescriptor[] | ProductProviderRegistryReadModel>;
   fetchProviderModels: (provider: string, instance?: string | null) => Promise<ProviderModelCatalog>;
   fetchAdvancedProviderModels: (
     provider: string,
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
+  onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
 }
 
 export function CatCreationFields({
@@ -61,6 +63,7 @@ export function CatCreationFields({
   fetchProviders,
   fetchProviderModels,
   fetchAdvancedProviderModels,
+  onProviderRegistryChange,
 }: CatCreationFieldsProps) {
   const normalizedProducts = products ?? [];
   const selectableSurfaces = availableSurfaces ?? [];
@@ -132,6 +135,7 @@ export function CatCreationFields({
         fetchProviders={fetchProviders}
         fetchProviderModels={fetchProviderModels}
         fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+        onProviderRegistryChange={onProviderRegistryChange}
       />
     </>
   );

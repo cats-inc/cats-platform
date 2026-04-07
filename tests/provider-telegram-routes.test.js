@@ -443,6 +443,30 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
   });
 });
 
+test('GET /api/providers retries a transient runtime registry failure before surfacing an empty selector list', async () => {
+  const runtimeClient = createRuntimeStub();
+  let configAttempts = 0;
+
+  runtimeClient.getProviderConfig = async () => {
+    configAttempts += 1;
+    if (configAttempts === 1) {
+      throw new Error('provider registry cold start timed out');
+    }
+    return createRuntimeStub().getProviderConfig();
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.state, 'ready');
+    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
+  });
+
+  assert.equal(configAttempts, 2);
+});
+
 test('GET /api/providers/:provider/models proxies runtime-owned catalog', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/providers/openclaw/models`);

@@ -5,6 +5,8 @@ import {
   type ProductProviderDescriptor,
   type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
+  type ProductProviderRegistryReadModel,
+  type ProductProviderRegistryState,
   type ProviderAdvancedCatalogControl,
   type ProviderAdvancedCatalogPreset,
   type ProviderAdvancedControlValue,
@@ -30,12 +32,13 @@ interface SharedProviderModelFieldsProps {
   model: string;
   modelSelection?: ProviderModelSelection | null;
   onTargetChange: (target: ProviderTargetSelection) => void;
-  fetchProviders: () => Promise<ProductProviderDescriptor[]>;
+  fetchProviders: () => Promise<ProductProviderDescriptor[] | ProductProviderRegistryReadModel>;
   fetchProviderModels: (provider: string, instance?: string | null) => Promise<ProviderModelCatalog>;
   fetchAdvancedProviderModels: (
     provider: string,
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
+  onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
 }
 
 function createEmptyProviderModelCatalog(
@@ -77,6 +80,60 @@ function createEmptyProviderAdvancedModelCatalog(
     },
     warnings: warning ? [warning] : [],
   };
+}
+
+function createDefaultProviderRegistryReadModel(): ProductProviderRegistryReadModel {
+  return {
+    state: 'ready',
+    providers: [],
+  };
+}
+
+export function normalizeProviderRegistryReadModel(
+  value: ProductProviderDescriptor[] | ProductProviderRegistryReadModel,
+): ProductProviderRegistryReadModel {
+  if (Array.isArray(value)) {
+    return {
+      state: value.length > 0 ? 'ready' : 'no_usable_targets',
+      providers: value,
+    };
+  }
+
+  return {
+    state: value.state,
+    providers: Array.isArray(value.providers) ? value.providers : [],
+    recovery: value.recovery,
+    warnings: Array.isArray(value.warnings) ? value.warnings : [],
+  };
+}
+
+export function resolveProviderRegistryPlaceholder(input: {
+  providersLoaded: boolean;
+  registryState: ProductProviderRegistryState;
+}): string {
+  if (!input.providersLoaded) {
+    return 'Loading available providers...';
+  }
+
+  return input.registryState === 'runtime_unreachable'
+    ? 'Could not load runtime-backed providers'
+    : 'No runtime-backed providers available';
+}
+
+export function resolveProviderRegistryHint(input: {
+  providersLoaded: boolean;
+  registry: ProductProviderRegistryReadModel;
+}): string {
+  if (!input.providersLoaded) {
+    return 'Checking cats-runtime for usable provider targets.';
+  }
+
+  if (input.registry.state === 'runtime_unreachable') {
+    return input.registry.warnings?.[0]
+      ?? 'Could not load currently usable provider targets from cats-runtime.';
+  }
+
+  return 'cats-runtime is connected, but it did not report any currently usable provider targets.';
 }
 
 function presetAppliesToEntry(
@@ -338,9 +395,14 @@ export function ProviderModelFields({
   fetchProviders,
   fetchProviderModels,
   fetchAdvancedProviderModels,
+  onProviderRegistryChange,
 }: SharedProviderModelFieldsProps) {
   const [providers, setProviders] = useState<ProductProviderDescriptor[]>([]);
+  const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>(() =>
+    createDefaultProviderRegistryReadModel(),
+  );
   const [providersLoaded, setProvidersLoaded] = useState(false);
+  const [providerRegistryReloadToken, setProviderRegistryReloadToken] = useState(0);
   const [catalogLoading, setCatalogLoading] = useState(Boolean(provider));
   const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
     createEmptyProviderModelCatalog(provider),
@@ -352,32 +414,50 @@ export function ProviderModelFields({
   const manualSelectionTargetKey = useRef<string | null>(null);
   const previousTargetKey = useRef<string>('');
   const onTargetChangeRef = useRef(onTargetChange);
+  const onProviderRegistryChangeRef = useRef(onProviderRegistryChange);
 
   useEffect(() => {
     onTargetChangeRef.current = onTargetChange;
   }, [onTargetChange]);
 
   useEffect(() => {
+    onProviderRegistryChangeRef.current = onProviderRegistryChange;
+  }, [onProviderRegistryChange]);
+
+  useEffect(() => {
     let cancelled = false;
 
     void fetchProviders()
-      .then((nextProviders) => {
+      .then((nextRegistryResult) => {
         if (!cancelled) {
-          setProviders(nextProviders);
+          const nextRegistry = normalizeProviderRegistryReadModel(nextRegistryResult);
+          setProviders(nextRegistry.providers);
+          setProviderRegistry(nextRegistry);
           setProvidersLoaded(true);
+          onProviderRegistryChangeRef.current?.(nextRegistry);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
+          const nextRegistry: ProductProviderRegistryReadModel = {
+            state: 'runtime_unreachable',
+            providers: [],
+            recovery: {
+              retryable: true,
+            },
+            warnings: [error instanceof Error ? error.message : 'Failed to load providers.'],
+          };
           setProviders([]);
+          setProviderRegistry(nextRegistry);
           setProvidersLoaded(true);
+          onProviderRegistryChangeRef.current?.(nextRegistry);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [fetchProviders]);
+  }, [fetchProviders, providerRegistryReloadToken]);
 
   const providerOptions = providers;
   const selectedProvider = providerOptions.find((option) => option.id === provider) ?? null;
@@ -627,18 +707,28 @@ export function ProviderModelFields({
   const primaryCatalogWarning = effectiveAdvancedCatalog.warnings[0]
     ?? effectiveCatalog.warnings[0]
     ?? null;
-  const providerPlaceholder = providersLoaded
-    ? 'No runtime-backed providers available'
-    : 'Loading available providers...';
+  const providerPlaceholder = resolveProviderRegistryPlaceholder({
+    providersLoaded,
+    registryState: providerRegistry.state,
+  });
   const modelPlaceholder = !selectedProvider
     ? (providersLoaded
-        ? 'Select an available provider first'
+        ? providerRegistry.state === 'runtime_unreachable'
+          ? 'Retry loading providers first'
+          : 'Select an available provider first'
         : 'Waiting for available providers...')
     : catalogLoading
       ? 'Loading available models...'
       : allowLegacyManualModelEntry
         ? 'Select a model'
         : 'No runtime-backed models available';
+  const providerRegistryHint = resolveProviderRegistryHint({
+    providersLoaded,
+    registry: providerRegistry,
+  });
+  const canRetryProviderRegistry = providersLoaded
+    && providerOptions.length === 0
+    && providerRegistry.recovery?.retryable !== false;
 
   function emitSelection(next: {
     model?: string;
@@ -717,11 +807,25 @@ export function ProviderModelFields({
           )}
         </select>
         {providerOptions.length === 0 ? (
-          <span className="fieldHint">
-            {providersLoaded
-              ? 'cats-runtime did not report any currently usable provider targets.'
-              : 'Checking cats-runtime for usable provider targets.'}
-          </span>
+          <>
+            <span className="fieldHint">
+              {providerRegistryHint}
+            </span>
+            {canRetryProviderRegistry ? (
+              <div className="providerCatalogRecoveryActions">
+                <button
+                  className="secondaryButton"
+                  type="button"
+                  onClick={() => {
+                    setProvidersLoaded(false);
+                    setProviderRegistryReloadToken((current) => current + 1);
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
+            ) : null}
+          </>
         ) : null}
       </label>
       {showInstanceField ? (

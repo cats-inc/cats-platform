@@ -108,42 +108,48 @@ function mergeTruthfulProviderRegistry(
 async function readTruthfulProviderRegistry(
   dependencies: ProviderRouteDependencies,
 ): Promise<TruthfulProviderRegistryReadModel> {
-  try {
-    const [runtimeConfig, diagnostics] = await Promise.all([
-      dependencies.runtimeClient.getProviderConfig(),
-      dependencies.runtimeClient.getProviderDiagnostics(),
-    ]);
+  let lastError: unknown = null;
 
-    const providers = mergeTruthfulProviderRegistry(
-      listProductProviders(),
-      runtimeConfig,
-      diagnostics,
-    );
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const [runtimeConfig, diagnostics] = await Promise.all([
+        dependencies.runtimeClient.getProviderConfig(),
+        dependencies.runtimeClient.getProviderDiagnostics(),
+      ]);
 
-    if (providers.length === 0) {
+      const providers = mergeTruthfulProviderRegistry(
+        listProductProviders(),
+        runtimeConfig,
+        diagnostics,
+      );
+
+      if (providers.length === 0) {
+        return {
+          state: 'no_usable_targets',
+          providers: [],
+          recovery: {
+            openRuntimeSetupPath: '/runtime/setup',
+          },
+        };
+      }
+
       return {
-        state: 'no_usable_targets',
-        providers: [],
-        recovery: {
-          openRuntimeSetupPath: '/runtime/setup',
-        },
+        state: 'ready',
+        providers,
       };
+    } catch (error) {
+      lastError = error;
     }
-
-    return {
-      state: 'ready',
-      providers,
-    };
-  } catch (error) {
-    return {
-      state: 'runtime_unreachable',
-      providers: [],
-      recovery: {
-        retryable: true,
-      },
-      warnings: error instanceof Error ? [error.message] : ['cats-runtime is unavailable.'],
-    };
   }
+
+  return {
+    state: 'runtime_unreachable',
+    providers: [],
+    recovery: {
+      retryable: true,
+    },
+    warnings: lastError instanceof Error ? [lastError.message] : ['cats-runtime is unavailable.'],
+  };
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {

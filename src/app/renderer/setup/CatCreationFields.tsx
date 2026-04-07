@@ -1,3 +1,6 @@
+import type {
+  ProductProviderRegistryReadModel,
+} from '../../../shared/providerCatalog.js';
 import type { ProviderModelSelection, ProviderTargetSelection } from '../../../shared/providerSelection';
 import { CatCreationFields as SharedCatCreationFields } from '../../../design/components/CatCreationFields';
 import {
@@ -20,6 +23,7 @@ export interface CatCreationFieldsProps {
   autoFocusName?: boolean;
   hideMakeBoss?: boolean;
   hideProductToggles?: boolean;
+  onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
 }
 
 export function CatCreationFields(props: CatCreationFieldsProps) {

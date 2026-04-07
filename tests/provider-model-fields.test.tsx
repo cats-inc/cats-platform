@@ -6,7 +6,10 @@ import {
   countRequestScopedControls,
   filterPersistentControlValues,
   hasExplicitDefaultEnumOption,
+  normalizeProviderRegistryReadModel,
   listPersistentControlOptions,
+  resolveProviderRegistryHint,
+  resolveProviderRegistryPlaceholder,
   resolveDisplayedEnumControlValue,
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
@@ -328,6 +331,54 @@ test('support badge labels match runtime catalog support tiers', () => {
     label: 'Read-only',
     tone: 'readOnly',
   });
+});
+
+test('provider registry empty states distinguish runtime failure from no usable targets', () => {
+  assert.equal(
+    resolveProviderRegistryPlaceholder({
+      providersLoaded: false,
+      registryState: 'ready',
+    }),
+    'Loading available providers...',
+  );
+  assert.equal(
+    resolveProviderRegistryPlaceholder({
+      providersLoaded: true,
+      registryState: 'runtime_unreachable',
+    }),
+    'Could not load runtime-backed providers',
+  );
+  assert.equal(
+    resolveProviderRegistryHint({
+      providersLoaded: true,
+      registry: {
+        state: 'runtime_unreachable',
+        providers: [],
+        warnings: ['Runtime provider registry timed out.'],
+      },
+    }),
+    'Runtime provider registry timed out.',
+  );
+  assert.equal(
+    resolveProviderRegistryHint({
+      providersLoaded: true,
+      registry: {
+        state: 'no_usable_targets',
+        providers: [],
+      },
+    }),
+    'cats-runtime is connected, but it did not report any currently usable provider targets.',
+  );
+});
+
+test('array-based provider registry inputs normalize to no_usable_targets when empty', () => {
+  assert.deepEqual(
+    normalizeProviderRegistryReadModel([]),
+    {
+      state: 'no_usable_targets',
+      providers: [],
+    },
+  );
 });
 
 test('static fallback catalogs do not classify unknown persisted models as legacy before runtime data arrives', () => {

@@ -7,8 +7,8 @@ import {
   markPlatformSetupOpened,
 } from './api';
 import {
+  canContinueGuideCatSetupStep,
   GuideCatSetupFields,
-  validateGuideCatSetupStep,
 } from './plugins';
 import { syncDesktopHostPlatformShell } from './desktopHostBridge.js';
 import {
@@ -40,7 +40,8 @@ export function PlatformSetupWizard({
   const setupOpenedRecorded = useRef(false);
 
   const busy = busyAction !== null;
-  const canContinueGuideCatStep = !createGuideCat || validateGuideCatSetupStep({
+  const canContinueGuideCatStep = canContinueGuideCatSetupStep({
+    createGuideCat,
     model,
   });
   const attemptId = envelope.bootstrapAttemptId ?? null;
@@ -180,6 +181,7 @@ export function PlatformSetupWizard({
                 modelSelection={modelSelection}
                 catName={guideCatName}
                 runtimeReachable={envelope.runtime.reachable}
+                runtimeBaseUrl={envelope.runtime.baseUrl}
                 onTargetChange={(target) => {
                   setProvider(target.provider);
                   setInstance(target.instance);
