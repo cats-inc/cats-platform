@@ -140,9 +140,14 @@ export function normalizeGuideCatRecord(rawGuideCat: unknown): GuideCatRecord | 
     return null;
   }
 
+  const rawStatus = readString(guideCatRecord.status, 'active');
+  const status: GuideCatRecord['status'] =
+    rawStatus === 'dismissed' ? 'dismissed' : 'active';
+
   return {
     id: readString(guideCatRecord.id, 'guide-cat-primary'),
     name: readString(guideCatRecord.name, 'Guide Cat'),
+    status,
     executionTarget: normalizeExecutionTarget(
       guideCatRecord.executionTarget,
       {

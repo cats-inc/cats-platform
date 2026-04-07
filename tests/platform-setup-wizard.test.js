@@ -653,6 +653,49 @@ test('POST /api/platform/preferences persists guideCatSidecarMode into the app s
   });
 });
 
+test('PATCH /api/platform/guide-cat dismissal survives later guide cat edits', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+        guideCatName: 'Guide Cat',
+      }),
+    });
+
+    const dismissResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'dismissed' }),
+    });
+    assert.equal(dismissResponse.status, 200);
+    const dismissedPayload = await dismissResponse.json();
+    assert.equal(dismissedPayload.guideCat.status, 'dismissed');
+
+    const updateResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Resting Guide',
+        provider: 'claude',
+        model: 'claude-sonnet',
+      }),
+    });
+    assert.equal(updateResponse.status, 200);
+    const updatedPayload = await updateResponse.json();
+    assert.equal(updatedPayload.guideCat.name, 'Resting Guide');
+    assert.equal(updatedPayload.guideCat.status, 'dismissed');
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shell = await shellResponse.json();
+    assert.equal(shell.guideCat?.name, 'Resting Guide');
+    assert.equal(shell.guideCat?.status, 'dismissed');
+  });
+});
+
 test('GET /api/app-shell treats legacy active chat state as setup-complete even when setupCompleteAt is missing', async () => {
   const chatStore = new MemoryChatStore();
   const seeded = createCat(

@@ -158,6 +158,7 @@ async function handlePlatformSetupComplete(
         guideCat: {
           id: createdGuideCatId,
           name: guideCatName?.trim() || 'Guide Cat',
+          status: core.guideCat?.status ?? 'active',
           executionTarget: {
             provider: guideCatProvider || 'claude',
             instance: guideCatInstance?.trim() || null,
@@ -532,6 +533,7 @@ async function handleGuideCatUpdate(
     guideCat: {
       id: existingId,
       name,
+      status: core.guideCat?.status ?? 'active',
       executionTarget: {
         provider: body.provider?.trim() || 'claude',
         instance: body.instance?.trim() || null,

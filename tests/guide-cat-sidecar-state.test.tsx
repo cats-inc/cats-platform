@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import {
   collapseGuideCatSidecarState,
@@ -8,6 +9,7 @@ import {
 } from '../src/app/renderer/useGuideCatSidecarState.ts';
 import {
   GUIDE_CAT_AVATAR_URL,
+  GuideCatSidecarView,
   resolveGuideCatSidecarAnchorSelector,
   resolveGuideCatSidecarOffsets,
   resolveGuideCatSidecarSurfaceMode,
@@ -91,4 +93,48 @@ test('Guide Cat sidecar uses different offsets for Lobby and product surfaces', 
 
 test('Guide Cat sidecar avatar resolves from the shared guide cat asset', () => {
   assert.match(GUIDE_CAT_AVATAR_URL, /guide-cat-avatar.*\.svg|guide-cat-avatar/u);
+});
+
+test('Guide Cat sidecar welcome-peek renders the dismiss confirmation dialog when present', () => {
+  const markup = renderToStaticMarkup(
+    <GuideCatSidecarView
+      viewState="welcome-peek"
+      guideCat={{
+        id: 'guide-cat-primary',
+        name: 'Guide Cat',
+        status: 'active',
+        executionTarget: {
+          provider: 'claude',
+          instance: null,
+          model: 'claude-sonnet',
+        },
+        modelSelection: null,
+        createdAt: '2026-04-08T00:00:00.000Z',
+        updatedAt: '2026-04-08T00:00:00.000Z',
+      }}
+      ownerDisplayName="Kenny"
+      unreadCount={0}
+      onToggle={() => {}}
+      onAction={() => {}}
+      onCollapse={() => {}}
+      onDismissWelcome={() => {}}
+      onDismissClick={() => {}}
+      anchorStyle={{}}
+      surfaceMode="lobby"
+      dialog={{
+        options: {
+          title: 'Dismiss Guide Cat?',
+          message: 'Your guide cat will be hidden. You can restore it later from Settings.',
+          confirmLabel: 'Dismiss',
+          cancelLabel: 'Keep',
+        },
+      }}
+      onDialogClose={() => {}}
+    />,
+  );
+
+  assert.match(markup, /Dismiss Guide Cat\?/u);
+  assert.match(markup, /restore it later from Settings/u);
+  assert.match(markup, /Keep/u);
+  assert.match(markup, /Dismiss/u);
 });

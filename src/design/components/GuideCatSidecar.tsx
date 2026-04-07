@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type Ref,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { useConfirmDialog, ConfirmDialog } from './ConfirmDialog.js';
+import { useConfirmDialog, ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog.js';
 
 import type { GuideCatRecord } from '../../core/types.js';
 import {
@@ -301,6 +309,96 @@ function GuideCatAvatar({ className }: { className: string }) {
   );
 }
 
+export interface GuideCatSidecarViewProps {
+  viewState: GuideCatSidecarViewState;
+  guideCat: GuideCatRecord;
+  ownerDisplayName: string;
+  unreadCount: number;
+  onToggle: () => void;
+  onAction: (route: string) => void;
+  onCollapse: () => void;
+  onDismissWelcome: () => void;
+  onDismissClick: () => void;
+  anchorStyle: CSSProperties;
+  surfaceMode: GuideCatSidecarSurfaceMode;
+  dialog: { options: ConfirmDialogOptions } | null;
+  onDialogClose: (confirmed: boolean) => void;
+  rootRef?: Ref<HTMLDivElement>;
+}
+
+export function GuideCatSidecarView({
+  viewState,
+  guideCat,
+  ownerDisplayName,
+  unreadCount,
+  onToggle,
+  onAction,
+  onCollapse,
+  onDismissWelcome,
+  onDismissClick,
+  anchorStyle,
+  surfaceMode,
+  dialog,
+  onDialogClose,
+  rootRef,
+}: GuideCatSidecarViewProps) {
+  if (viewState === 'hidden') {
+    return null;
+  }
+
+  let content: JSX.Element;
+  if (viewState === 'collapsed') {
+    content = (
+      <CollapsedPill
+        name={guideCat.name}
+        unreadCount={unreadCount}
+        onClick={onToggle}
+        onDismissClick={onDismissClick}
+        style={anchorStyle}
+      />
+    );
+  } else if (viewState === 'welcome-peek') {
+    content = (
+      <div ref={rootRef}>
+        <CollapsedPill
+          name={guideCat.name}
+          unreadCount={0}
+          onClick={onToggle}
+          onDismissClick={onDismissClick}
+          style={anchorStyle}
+        />
+        <WelcomePeek
+          name={guideCat.name}
+          ownerDisplayName={ownerDisplayName}
+          onAction={onAction}
+          onDismiss={onDismissWelcome}
+          style={anchorStyle}
+        />
+      </div>
+    );
+  } else {
+    content = (
+      <div ref={rootRef}>
+        <OpenPanel
+          name={guideCat.name}
+          ownerDisplayName={ownerDisplayName}
+          onAction={onAction}
+          onClose={onCollapse}
+          style={anchorStyle}
+          surfaceMode={surfaceMode}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {content}
+      <ConfirmDialog dialog={dialog} onClose={onDialogClose} />
+    </>
+  );
+}
+
 function SidecarContent({
   viewState,
   guideCat,
@@ -374,55 +472,23 @@ function SidecarContent({
     };
   }, [viewState, collapse]);
 
-  if (viewState === 'hidden') return null;
-
-  if (viewState === 'collapsed') {
-    return (
-      <>
-        <CollapsedPill
-          name={guideCat.name}
-          unreadCount={unreadCount}
-          onClick={toggle}
-          onDismissClick={handleDismissClick}
-          style={anchorStyle}
-        />
-        <ConfirmDialog dialog={dialog} onClose={handleClose} />
-      </>
-    );
-  }
-
-  if (viewState === 'welcome-peek') {
-    return (
-      <div ref={panelRef}>
-        <CollapsedPill
-          name={guideCat.name}
-          unreadCount={0}
-          onClick={toggle}
-          onDismissClick={handleDismissClick}
-          style={anchorStyle}
-        />
-        <WelcomePeek
-          name={guideCat.name}
-          ownerDisplayName={ownerDisplayName}
-          onAction={handleAction}
-          onDismiss={dismissWelcome}
-          style={anchorStyle}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div ref={panelRef}>
-      <OpenPanel
-        name={guideCat.name}
-        ownerDisplayName={ownerDisplayName}
-        onAction={handleAction}
-        onClose={collapse}
-        style={anchorStyle}
-        surfaceMode={surfaceMode}
-      />
-    </div>
+    <GuideCatSidecarView
+      viewState={viewState}
+      guideCat={guideCat}
+      ownerDisplayName={ownerDisplayName}
+      unreadCount={unreadCount}
+      onToggle={toggle}
+      onAction={handleAction}
+      onCollapse={collapse}
+      onDismissWelcome={dismissWelcome}
+      onDismissClick={handleDismissClick}
+      anchorStyle={anchorStyle}
+      surfaceMode={surfaceMode}
+      dialog={dialog}
+      onDialogClose={handleClose}
+      rootRef={panelRef}
+    />
   );
 }
 
