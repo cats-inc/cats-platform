@@ -116,11 +116,11 @@ export function PlatformSetupWizard({
   }, [busy, canContinueGuideCatStep, finishSetup, ownerName, step]);
 
   useEffect(() => {
-    if (step !== 2 || !envelope.runtime.reachable) {
+    if (step !== 2) {
       return;
     }
     void prefetchProviderRegistryFromClientCache();
-  }, [envelope.runtime.reachable, step]);
+  }, [step]);
 
   const dots = Array.from({ length: TOTAL_SETUP_STEPS }, (_, index) => index + 1);
 
