@@ -200,12 +200,6 @@ function WelcomePeek({
       style={style}
     >
       <div className="guideCatPeekHeader">
-        <span
-          className="guideCatPeekAvatar"
-          style={avatarColor ? { background: avatarColor } : undefined}
-        >
-          {nameInitials(name)}
-        </span>
         <span className="guideCatPeekName">Hi! I&rsquo;m {name}</span>
       </div>
       <p className="guideCatPeekGreeting">
@@ -354,6 +348,12 @@ function SidecarContent({
   if (viewState === 'welcome-peek') {
     return (
       <div ref={panelRef}>
+        <CollapsedPill
+          name={guideCat.name}
+          unreadCount={0}
+          onClick={toggle}
+          style={anchorStyle}
+        />
         <WelcomePeek
           name={guideCat.name}
           ownerDisplayName={ownerDisplayName}

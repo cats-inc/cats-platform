@@ -71,6 +71,33 @@
   animation: guideCatPeekIn 0.2s ease-out;
 }
 
+/* speech bubble tail pointing left toward the pill */
+.guideCatPeek::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid var(--border);
+}
+
+.guideCatPeek::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 7px solid var(--panel);
+}
+
 @keyframes guideCatPeekIn {
   from { opacity: 0; transform: translateY(-50%) translateX(-8px); }
   to   { opacity: 1; transform: translateY(-50%) translateX(0); }
@@ -79,23 +106,6 @@
 .guideCatPeekHeader {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-}
-
-.guideCatPeekAvatar {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 50%;
-  background: #8B7E74;
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  flex-shrink: 0;
 }
 
 .guideCatPeekName {
