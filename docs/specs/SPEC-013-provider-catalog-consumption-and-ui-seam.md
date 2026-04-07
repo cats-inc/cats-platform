@@ -29,6 +29,7 @@ or future settings surfaces, but they are not valid execution pickers.
 - expose a stable product API for truthful execution-target selectors
 - keep the renderer off direct `cats-runtime` HTTP calls
 - reuse the same selector contract in setup and in-product target pickers
+- keep truthful selector reads fast enough for setup and in-product composer use
 - preserve a separate place for informational product-supported catalogs when
   needed
 - stop static fallback behavior from leaking into execution selection UI
@@ -89,6 +90,20 @@ or future settings surfaces, but they are not valid execution pickers.
     surface shall not be reused as an execution picker.
 12. Setup and in-product execution pickers shall share one renderer seam and
     one product API contract so truthfulness does not drift by surface.
+13. `cats-platform` may keep a short-lived server-side cache for selector read
+    models and may dedupe concurrent selector reads, but cached results shall
+    still originate from runtime-owned truth rather than product static
+    fallback catalogs.
+14. Selector read paths shall prefer a bounded runtime bulk-availability read
+    model when `cats-runtime` already exposes one, rather than rebuilding
+    selector truth through per-provider availability fan-out on the hot path.
+15. `GET /api/providers/{provider}/models` and
+    `GET /api/providers/{provider}/models/advanced` shall not trigger a fresh
+    full provider-registry rebuild for every request. They shall reuse already
+    established truthful selector state, a short-lived selector cache, or a
+    comparably bounded usable-target check.
+16. Setup shall not fetch truthful selector state unless the owner has opted
+    into Guide Cat creation for that render path.
 
 ### Non-Functional Requirements
 
@@ -99,6 +114,12 @@ or future settings surfaces, but they are not valid execution pickers.
 - **Consistency**: setup and in-product selectors must tell the same story
 - **Graceful recovery**: selector routes should return explicit recovery states
   rather than forcing the UI to infer them from generic transport failures
+- **Latency discipline**: selector cache-hit reads should avoid a new runtime
+  registry fan-out, and cache-miss reads should stay bounded to a topology read
+  plus one bulk availability read rather than N sequential provider probes
+- **Concurrency discipline**: repeated selector mounts in one product session
+  should coalesce onto shared runtime-backed reads instead of stampeding the
+  same truth endpoints
 
 ## API Shape
 
@@ -133,6 +154,14 @@ Illustrative response when usable targets exist:
   ]
 }
 ```
+
+The product may attach additive freshness metadata for diagnostics or
+instrumentation, but the selector payload itself must remain runtime-backed:
+
+- cache metadata, when present, describes reuse of a recent runtime truth
+  snapshot
+- cache reuse is an optimization, not permission to synthesize providers or
+  models that the runtime did not report
 
 Illustrative response when runtime is reachable but no usable targets exist:
 
@@ -198,6 +227,17 @@ Selector-specific notes:
   different read models and must remain separate.
 - The product server may compose runtime availability plus runtime model
   catalog reads, but the renderer should not.
+- When `cats-runtime` already exposes bulk provider availability truth, the
+  product should favor one topology read plus one bulk availability read over
+  per-provider availability fan-out.
+- The product server may keep a short-lived truthful selector snapshot cache,
+  plus in-flight request dedupe, so repeated setup/product mounts do not
+  re-fetch the same provider registry on every reopen.
+- Truthful selector caching is allowed only as a reuse of recent runtime truth.
+  It must not degrade into product-owned static provider or model fallback.
+- Model and advanced-model selector routes should reuse truthful selector state
+  rather than revalidating the entire provider registry before every catalog
+  fetch when the selected provider was already established as usable.
 - If the current `GET /api/providers` route name is kept, its selector usage
   semantics must be updated to match this spec. If that route name becomes too
   overloaded, a dedicated selector endpoint is acceptable.
@@ -231,5 +271,5 @@ Selector-specific notes:
 ---
 
 *Created: 2026-03-19*
-*Revised: 2026-04-07*
+*Revised: 2026-04-08*
 *Author: Codex*

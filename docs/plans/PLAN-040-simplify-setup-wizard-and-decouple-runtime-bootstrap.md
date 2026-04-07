@@ -53,6 +53,13 @@ once `cats-platform` setup is complete, later runtime failure is a recovery
 problem inside the product or host recovery surface, not a reason to send the
 user back through onboarding.
 
+The current truthful-selector slice also has a performance problem: `cats-platform`
+can still make setup and in-product provider pickers feel broken if it rebuilds
+selector truth through repeated provider-registry fan-out, repeated remount
+fetches, or redundant truth checks ahead of every model-catalog read. This plan
+therefore also freezes the rule that truthful selectors must stay operationally
+fast without reviving static fallback catalogs.
+
 ### New Flow
 
 **Step 1: Welcome**
@@ -158,9 +165,19 @@ user back through onboarding.
       cat creation, and other in-product provider/model pickers
 - [ ] Task 3.5: Add refresh/recheck support when the user returns from
       `cats-runtime /setup`
+- [ ] Task 3.6: Replace per-provider availability fan-out in the hot selector
+      path with one runtime topology read plus one bulk runtime availability
+      read when `cats-runtime` already exposes that truth surface
+- [ ] Task 3.7: Add a short-lived server-side truthful selector cache with
+      in-flight dedupe and bounded stale-while-revalidate behavior so repeated
+      selector mounts do not refetch the same registry every time
+- [ ] Task 3.8: Make `GET /api/providers/{provider}/models` and
+      `GET /api/providers/{provider}/models/advanced` reuse established
+      truthful selector state or the shared selector cache instead of
+      rebuilding the full provider registry before every catalog read
 
 **Deliverables**: setup and product selectors stop lying about what can be
-executed right now
+executed right now, and they do so without minute-scale hot-path latency
 
 ### Phase 4: Finish Setup Into `/lobby` and Keep Recovery Out of Onboarding
 
@@ -202,7 +219,8 @@ recovery
 | `src/app/renderer/setup/plugins.tsx` | Modify | Reuse shared truthful selector UI state for Guide Cat |
 | `src/app/server/platformSetupRoutes.ts` | Modify | Remove runtime-ready completion gate and selected-product requirement |
 | `src/app/renderer/App.tsx` | Modify | Route setup completion to `/lobby` and make `/` fall back to `/lobby` when no last-used surface exists |
-| `src/server/routes/providers.ts` | Modify | Stop returning static fallback catalogs for execution-selector routes |
+| `src/server/routes/providers.ts` | Modify | Stop returning static fallback catalogs for execution-selector routes and replace slow provider fan-out with bounded truthful reads plus caching |
+| `src/runtime/client.ts` | Modify | Prefer the runtime's bulk availability truth seam for selector reads instead of per-provider hot-path probing |
 | `desktop/host/readiness.ts` | Modify | Keep runtime regressions in recovery, not onboarding |
 | `desktop/host/bootstrapNavigation.ts` | Modify | Align post-setup routing with recovery semantics |
 | `docs/specs/SPEC-046-*.md` | Modify | Freeze `/lobby` as the first post-setup destination |
@@ -229,6 +247,10 @@ recovery
   is explicitly reset.
 - Decision 6: **Do not add `Create Now` in this slice**. Guide Cat setup stays
   preference-only; setup-time session creation is intentionally out of scope.
+- Decision 7: **Truthful selector performance is part of the contract**.
+  Runtime-backed selectors may use short-lived runtime-truth caches and bulk
+  availability reads, but they must not regress to static fallback catalogs or
+  minute-scale sequential probe fan-out.
 
 ## Testing Strategy
 
@@ -239,18 +261,26 @@ recovery
   - Finish is blocked only when the user opted into Guide Cat but no usable
     target exists
   - setup completion routes to `/lobby`
+  - selector cache-hit reads do not refetch runtime truth on every mount
+  - model and advanced-model routes do not rebuild the full truthful registry
+    for every request
 - **Integration Tests**:
   - setup completion without Guide Cat skips runtime selector work
   - setup completion with Guide Cat stores only a usable runtime target
   - selector routes no longer fall back to static catalogs on runtime failure
   - setup completion does not require a selected product surface
   - completed setup plus later runtime failure stays in recovery, not onboarding
+  - repeated setup/product selector opens reuse one truthful selector snapshot
+    instead of stampeding the runtime
 - **Manual Tests**:
   - runtime unavailable -> toggle Guide Cat -> inline recovery card, no fake
     dropdowns
   - runtime reachable with no usable targets -> inline link to
-    `cats-runtime /setup`
+      `cats-runtime /setup`
   - runtime reachable with one usable target -> truthful provider/model choice
+  - cold selector open returns after one topology read plus one bulk
+    availability read rather than N sequential provider checks
+  - warm selector reopen feels instant enough for setup step 2 and composer use
   - finish setup -> land on `/lobby`
   - post-setup runtime regression -> product or host recovery, not `/setup`
 
@@ -263,6 +293,7 @@ recovery
 | Removing setup-time product choice leaves the first entry ambiguous | Low | Make `/lobby` the deterministic first post-setup route and let the first launched product establish `lastProductSurface` |
 | Desktop host still routes completed users back to onboarding | High | Land readiness/navigation updates together with the setup contract change |
 | Setup keeps growing side features again | Medium | Keep Guide Cat setup preference-only and keep `Create Now` out of scope |
+| Truthful selectors remain technically correct but too slow to use | High | Replace hot-path fan-out with bulk runtime truth, add short TTL cache plus in-flight dedupe, and reuse selector truth for model routes |
 
 ## Progress Log
 
@@ -271,6 +302,7 @@ recovery
 | 2026-04-07 | Plan created to simplify the wizard and decouple runtime bootstrap from setup completion |
 | 2026-04-07 | Direction tightened: setup and in-product selectors must only show truthful usable targets, and post-setup runtime failure must stay in recovery instead of bouncing the user back into onboarding |
 | 2026-04-07 | Direction tightened again: remove setup Step 3 entirely, finish setup directly into `/lobby`, and drop any `Create Now` setup-time session path |
+| 2026-04-08 | Performance follow-through added: truthful selectors must stop rebuilding provider truth through minute-scale per-provider fan-out, and may instead use bulk runtime truth plus short-lived runtime-backed caching |
 
 ---
 

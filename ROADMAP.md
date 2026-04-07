@@ -91,6 +91,10 @@ contracts.
 - [ ] Unify setup and in-product execution-target selectors on one truthful
       runtime-backed contract so provider/model dropdowns only show currently
       usable choices instead of product fallback catalogs
+- [ ] Replace the current truthful-selector hot path with one runtime topology
+      read plus one bulk runtime availability read, so setup step 2 and product
+      provider pickers stop paying N sequential provider checks just to decide
+      what is selectable
 - [ ] Add Guide-Cat-backed entry suggestions with deterministic static
       fallbacks so `+New chat` and later `+Group chat` empty states can be
       prepared dynamically without depending on a permanently awake helper
@@ -108,7 +112,12 @@ contracts.
 - [ ] Add a platform-local cache for truthful runtime-backed selector reads,
       model catalogs, and advanced catalogs so repeated setup, cat-creation,
       and product selector mounts do not refetch the same provider/instance
-      metadata on every reopen while still preserving usable-target truth
+      metadata on every reopen while still preserving usable-target truth and
+      without reintroducing product-owned static fallback catalogs
+- [ ] Stop rebuilding the full truthful selector registry in front of every
+      `/api/providers/{provider}/models` and `/api/providers/{provider}/models/advanced`
+      request; once a provider target is already known usable, model-catalog
+      reads should reuse that truth or a short-lived shared selector cache
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow
