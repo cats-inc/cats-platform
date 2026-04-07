@@ -1,9 +1,18 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { platformSurfaceProductName, platformSurfaceRoutePrefix } from '../../core/platformSurface.js';
-import { resolveRuntimeConnectionChip } from '../../design/components/runtimeChips.js';
+import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
-import { buildPlatformLobbySections } from './lobbyModel.js';
+import { buildPlatformLobbyEntries, pickLobbyGreeting } from './lobbyModel.js';
+
+function resolveRuntimeDotClass(runtime: PlatformHostEnvelope['runtime']): string {
+  if (!runtime.reachable) return 'lobbyIdentityDot lobbyIdentityDot--warn';
+  const status = typeof runtime.status === 'string' ? runtime.status.toLowerCase() : '';
+  if (status === 'degraded' || status === 'warming' || status === 'starting') {
+    return 'lobbyIdentityDot lobbyIdentityDot--warn';
+  }
+  return 'lobbyIdentityDot lobbyIdentityDot--ok';
+}
 
 export function PlatformLobby({
   envelope,
@@ -11,110 +20,64 @@ export function PlatformLobby({
   envelope: PlatformHostEnvelope;
 }) {
   const navigate = useNavigate();
-  const sections = buildPlatformLobbySections({
+  const [greeting] = useState(pickLobbyGreeting);
+  const entries = buildPlatformLobbyEntries({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
   });
-  const runtimeChip = resolveRuntimeConnectionChip(envelope.runtime);
-  const returnSurface = envelope.lastProductSurface ?? 'chat';
+  const dotClass = resolveRuntimeDotClass(envelope.runtime);
+
+  const avatarStyle = envelope.ownerAvatarUrl
+    ? { backgroundImage: `url(${envelope.ownerAvatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
+    : envelope.ownerAvatarColor
+      ? { background: envelope.ownerAvatarColor }
+      : undefined;
 
   return (
     <div className="screen screenCentered">
       <div className="platformLobby">
-        <section className="contentCard setupCard platformLobbyHero">
-          <div className="viewIntro">
-            <p className="eyebrow">Cats</p>
-            <h1>Lobby</h1>
-            <p className="heroNote">
-              Move between Home and Office without leaving the platform shell.
-            </p>
-          </div>
-
-          <div className="platformLobbyMeta">
-            <span className={runtimeChip.className}>{runtimeChip.label}</span>
-            <span className="statusChip statusChipMuted">
-              Owner: {envelope.ownerDisplayName}
+        <div className="lobbyTopBar">
+          <button
+            type="button"
+            className="lobbyIdentity"
+            onClick={() => navigate('/settings/general')}
+            aria-label="Settings"
+          >
+            <span className="lobbyAvatar" style={avatarStyle}>
+              {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
             </span>
-            <span className="statusChip statusChipAccent">
-              Last used: {platformSurfaceProductName(returnSurface)}
-            </span>
+            <span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>
+            <span className={dotClass} />
+          </button>
+        </div>
+
+        <div className="lobbyHero">
+          <h1 className="lobbyGreeting">{greeting}</h1>
+        </div>
+
+        <div className="lobbyProducts">
+          <p className="lobbyProductsEyebrow">CATS INC</p>
+          <div className="platformLobbyGrid">
+            {entries.map((entry) => (
+              <button
+                key={entry.surface}
+                type="button"
+                className={
+                  'contentCard platformLobbyCard'
+                  + ` platformLobbyCard--${entry.surface}`
+                  + (entry.lastUsed ? ' platformLobbyCard--recent' : '')
+                }
+                onClick={() => navigate(entry.routePrefix)}
+              >
+                <div className="platformLobbyCardAccent" />
+                <span className="platformLobbyCardName">{entry.productName}</span>
+                <span className="platformLobbyCardSub">{entry.subtitle}</span>
+                {entry.lastUsed ? (
+                  <span className="platformLobbyCardHint">Continue</span>
+                ) : null}
+              </button>
+            ))}
           </div>
-
-          <div className="setupActionGroup">
-            <button
-              type="button"
-              className="primaryButton"
-              onClick={() => navigate(platformSurfaceRoutePrefix(returnSurface))}
-            >
-              Open {platformSurfaceProductName(returnSurface)}
-            </button>
-            <button
-              type="button"
-              className="secondaryButton"
-              onClick={() => navigate('/settings/general')}
-            >
-              Settings
-            </button>
-          </div>
-        </section>
-
-        <div className="platformLobbyGrid">
-          {sections.map((section) => (
-            <section key={section.id} className="contentCard platformLobbySection">
-              <div className="contentCardHeader">
-                <h2>{section.label}</h2>
-              </div>
-              <p className="heroNote platformLobbySectionNote">{section.description}</p>
-              <div className="setupProductGrid">
-                {section.entries.map((entry) => (
-                  <button
-                    key={entry.surface}
-                    type="button"
-                    className="setupProductCard platformLobbyProductCard"
-                    onClick={() => navigate(entry.routePrefix)}
-                  >
-                    <div className="platformLobbyProductHeader">
-                      <span className="setupProductLabel">{entry.productName}</span>
-                    </div>
-                    <div className="platformLobbyProductMeta">
-                      <span className="statusChip statusChipReady">
-                        {entry.installPolicy === 'required' ? 'Required' : 'Optional'}
-                      </span>
-                      {entry.installState !== 'installed' ? (
-                        <span className="statusChip statusChipMuted">
-                          {entry.installState === 'available'
-                            ? 'Available'
-                            : entry.installState === 'installing'
-                              ? 'Installing'
-                              : 'Needs attention'}
-                        </span>
-                      ) : null}
-                      {entry.maturity === 'preview' ? (
-                        <span className="statusChip statusChipMuted">Preview</span>
-                      ) : null}
-                      {entry.lastUsed ? (
-                        <span className="statusChip statusChipAccent">Last used</span>
-                      ) : null}
-                    </div>
-                    <span className="setupProductDescription">{entry.subtitle}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-
-          <section className="contentCard platformLobbySection">
-            <div className="contentCardHeader">
-              <h2>Apps</h2>
-            </div>
-            <div className="emptyStateCard platformLobbyEmptyState">
-              <strong>No extra apps installed yet</strong>
-              <p>
-                Shared and third-party apps will appear here once the host starts
-                installing them.
-              </p>
-            </div>
-          </section>
         </div>
       </div>
     </div>

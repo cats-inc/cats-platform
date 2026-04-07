@@ -1,6 +1,5 @@
 import type {
   PlatformProductDescriptor,
-  PlatformProductGroupId,
   PlatformSurfaceId,
 } from '../../shared/platform-contract.js';
 
@@ -9,68 +8,34 @@ export interface PlatformLobbyProductEntry {
   productName: string;
   subtitle: string;
   routePrefix: `/${string}`;
-  installPolicy: PlatformProductDescriptor['installPolicy'];
-  installState: PlatformProductDescriptor['installState'];
-  maturity: PlatformProductDescriptor['maturity'];
   lastUsed: boolean;
 }
 
-export interface PlatformLobbySection {
-  id: PlatformProductGroupId;
-  label: string;
-  description: string;
-  entries: PlatformLobbyProductEntry[];
-}
-
-const PLATFORM_LOBBY_SECTION_META: Record<
-  PlatformProductGroupId,
-  Pick<PlatformLobbySection, 'label' | 'description'>
-> = {
-  home: {
-    label: 'Home',
-    description: 'Companions, conversations, and your day-to-day Cats entry.',
-  },
-  office: {
-    label: 'Office',
-    description: 'Workflows, projects, repos, and operator-facing tools.',
-  },
-};
-
-const PLATFORM_LOBBY_SECTION_ORDER: readonly PlatformProductGroupId[] = ['home', 'office'];
-
-export function buildPlatformLobbySections(options: {
+export function buildPlatformLobbyEntries(options: {
   products: readonly PlatformProductDescriptor[];
   lastUsedSurface: PlatformSurfaceId | null;
-}): PlatformLobbySection[] {
-  const sections = new Map<PlatformProductGroupId, PlatformLobbySection>();
+}): PlatformLobbyProductEntry[] {
+  return options.products
+    .filter((d) => d.surface !== null)
+    .map((d) => ({
+      surface: d.surface!,
+      productName: d.productName,
+      subtitle: d.subtitle,
+      routePrefix: d.routePrefix,
+      lastUsed: d.surface === options.lastUsedSurface,
+    }));
+}
 
-  for (const descriptor of options.products) {
-    if (!descriptor.surface) {
-      continue;
-    }
+const LOBBY_GREETING_LINES = [
+  'Meow. Ready when you are.',
+  'Your cat hasn\u2019t napped yet.',
+  'Cats on the keyboard.',
+  'Tail up, let\u2019s go.',
+  'Purring in standby.',
+  'Claws sharpened. What\u2019s the task?',
+  'This cat doesn\u2019t sleep on the job.',
+];
 
-    const sectionId = descriptor.group;
-    const existing = sections.get(sectionId) ?? {
-      id: sectionId,
-      label: PLATFORM_LOBBY_SECTION_META[sectionId].label,
-      description: PLATFORM_LOBBY_SECTION_META[sectionId].description,
-      entries: [],
-    };
-
-    existing.entries.push({
-      surface: descriptor.surface,
-      productName: descriptor.productName,
-      subtitle: descriptor.subtitle,
-      routePrefix: descriptor.routePrefix,
-      installPolicy: descriptor.installPolicy,
-      installState: descriptor.installState,
-      maturity: descriptor.maturity,
-      lastUsed: descriptor.surface === options.lastUsedSurface,
-    });
-    sections.set(sectionId, existing);
-  }
-
-  return PLATFORM_LOBBY_SECTION_ORDER
-    .map((sectionId) => sections.get(sectionId))
-    .filter((section): section is PlatformLobbySection => Boolean(section));
+export function pickLobbyGreeting(): string {
+  return LOBBY_GREETING_LINES[Math.floor(Math.random() * LOBBY_GREETING_LINES.length)];
 }
