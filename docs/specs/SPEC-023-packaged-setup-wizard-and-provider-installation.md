@@ -481,8 +481,8 @@ teaching the renderer or the user about the underlying script topology.
   runtime on a repo-owned packaged helper contract, including install, upgrade,
   and API warm-state follow-through for Ollama.
 - The packaged setup bridge is no longer Windows-only: staged desktop assets
-  now include repo-owned Linux/macOS helper scripts plus the shared Unix shell
-  support files they source, `electron/setupBridge.ts` executes those helpers
+  now include repo-owned Linux/macOS helper scripts plus the platform-local
+  shell support files they source, `electron/setupBridge.ts` executes those helpers
   through `bash`, `electron/main.ts` auto-primes the platform-specific
   readiness audit on Windows/macOS/Linux, and each target installer manifest is
   now scoped to the setup assets and local-provider rollout for that platform.

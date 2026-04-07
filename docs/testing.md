@@ -124,7 +124,7 @@ These smoke-checks validate:
 - bundled `cats` sidecar assets under the packaged `Resources/` tree
 - bundled `cats-runtime` assets under the packaged `Resources/` tree
 - bundled platform-specific packaged setup helpers for macOS or Linux
-- bundled shared Unix helper libraries used by those packaged setup scripts
+- bundled platform-local helper libraries used by those packaged setup scripts
 - the packaged `desktop-package-plan.json` still advertises the expected
   target platform and helper rollout
 

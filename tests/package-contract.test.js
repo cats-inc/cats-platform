@@ -147,8 +147,10 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('scripts/windows/Install-DockerCLITools.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Check-CLITools.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Upgrade-CLITools.ps1'), true);
-  assert.equal(packedPaths.has('scripts/shared/unix-provider-cli-common.sh'), true);
-  assert.equal(packedPaths.has('scripts/shared/unix-node-cli-common.sh'), true);
+  assert.equal(packedPaths.has('scripts/linux/provider-cli-common.sh'), true);
+  assert.equal(packedPaths.has('scripts/linux/node-cli-common.sh'), true);
+  assert.equal(packedPaths.has('scripts/macos/provider-cli-common.sh'), true);
+  assert.equal(packedPaths.has('scripts/macos/node-cli-common.sh'), true);
   assert.equal(packedPaths.has('package.json'), true);
 
   assert.equal([...packedPaths].some((path) => path.startsWith('src/')), false);

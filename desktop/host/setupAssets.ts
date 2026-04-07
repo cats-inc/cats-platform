@@ -135,6 +135,38 @@ function createUnixSetupAssets(platform: UnixAssetPlatform): DesktopSetupAsset[]
   ];
 }
 
+function createUnixSetupSupportAssets(platform: UnixAssetPlatform): DesktopSetupSupportAsset[] {
+  const platformLabel = platform === 'linux' ? 'Linux' : 'macOS';
+  const sourceRoot = `scripts/${platform}`;
+  const stageRoot = `shared/setup-assets/${platform}`;
+  const packagedRoot = `desktop/setup-assets/${platform}`;
+
+  return [
+    {
+      id: `${platform}-provider-cli-common-support-script`,
+      label: `${platformLabel} packaged setup provider helper library`,
+      sourceRelativePath: `${sourceRoot}/provider-cli-common.sh`,
+      stageRelativePath: `${stageRoot}/provider-cli-common.sh`,
+      packagedRelativePath: `${packagedRoot}/provider-cli-common.sh`,
+      targetPlatforms: [platform],
+      notes: [
+        `Platform-local ${platformLabel} provider installer library that packaged helpers source at runtime.`,
+      ],
+    },
+    {
+      id: `${platform}-node-cli-common-support-script`,
+      label: `${platformLabel} packaged setup npm helper library`,
+      sourceRelativePath: `${sourceRoot}/node-cli-common.sh`,
+      stageRelativePath: `${stageRoot}/node-cli-common.sh`,
+      packagedRelativePath: `${packagedRoot}/node-cli-common.sh`,
+      targetPlatforms: [platform],
+      notes: [
+        `Platform-local ${platformLabel} npm/install audit library that packaged helpers source at runtime.`,
+      ],
+    },
+  ];
+}
+
 export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
   {
     id: 'windows-npm-prefix-helper-script',
@@ -404,28 +436,8 @@ export const DESKTOP_SETUP_SUPPORT_ASSETS: DesktopSetupSupportAsset[] = [
       'Shared PowerShell helper used by Windows packaged setup flows that need a hidden background process wrapper.',
     ],
   },
-  {
-    id: 'unix-provider-cli-common-support-script',
-    label: 'Unix packaged setup provider helper library',
-    sourceRelativePath: 'scripts/shared/unix-provider-cli-common.sh',
-    stageRelativePath: 'shared/setup-assets/shared/unix-provider-cli-common.sh',
-    packagedRelativePath: 'desktop/setup-assets/shared/unix-provider-cli-common.sh',
-    targetPlatforms: ['linux', 'macos'],
-    notes: [
-      'Shared Unix provider installer library that packaged Linux/macOS helpers source at runtime.',
-    ],
-  },
-  {
-    id: 'unix-node-cli-common-support-script',
-    label: 'Unix packaged setup npm helper library',
-    sourceRelativePath: 'scripts/shared/unix-node-cli-common.sh',
-    stageRelativePath: 'shared/setup-assets/shared/unix-node-cli-common.sh',
-    packagedRelativePath: 'desktop/setup-assets/shared/unix-node-cli-common.sh',
-    targetPlatforms: ['linux', 'macos'],
-    notes: [
-      'Shared Unix npm/install audit library that packaged Linux/macOS helpers source at runtime.',
-    ],
-  },
+  ...createUnixSetupSupportAssets('linux'),
+  ...createUnixSetupSupportAssets('macos'),
 ];
 
 export async function stageDesktopSetupAssets(

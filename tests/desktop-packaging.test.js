@@ -55,12 +55,9 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
 }
 
-async function seedSharedUnixSetupAssets(packageRoot) {
-  await seedFile(join(packageRoot, 'scripts', 'shared', 'unix-provider-cli-common.sh'), '#!/usr/bin/env bash\n');
-  await seedFile(join(packageRoot, 'scripts', 'shared', 'unix-node-cli-common.sh'), '#!/usr/bin/env bash\n');
-}
-
 async function seedUnixSetupAssets(packageRoot, platform) {
+  await seedFile(join(packageRoot, 'scripts', platform, 'provider-cli-common.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'node-cli-common.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'setup-node-global-prefix.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-node-cli-tools.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-claude-code.sh'), '#!/usr/bin/env bash\n');
@@ -464,7 +461,13 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     linuxTarget?.artifacts.some(
-      (artifact) => artifact.id === 'unix-provider-cli-common-support-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'linux-provider-cli-common-support-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTarget?.artifacts.some(
+      (artifact) => artifact.id === 'linux-node-cli-common-support-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -488,7 +491,13 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     macosTarget?.artifacts.some(
-      (artifact) => artifact.id === 'unix-node-cli-common-support-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'macos-provider-cli-common-support-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    macosTarget?.artifacts.some(
+      (artifact) => artifact.id === 'macos-node-cli-common-support-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -585,12 +594,12 @@ test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and
 
   assert.match(linuxScript, /release\/linux-unpacked/);
   assert.match(linuxScript, /desktop\/setup-assets\/linux\/setup-node-global-prefix\.sh/);
-  assert.match(linuxScript, /desktop\/setup-assets\/shared\/unix-provider-cli-common\.sh/);
+  assert.match(linuxScript, /desktop\/setup-assets\/linux\/provider-cli-common\.sh/);
   assert.match(linuxScript, /linux-node-cli-pack-script/);
   assert.match(linuxScript, /linux-install-readiness-audit/);
   assert.match(macosScript, /release\/mac-universal\/Cats\.app/);
   assert.match(macosScript, /desktop\/setup-assets\/macos\/setup-node-global-prefix\.sh/);
-  assert.match(macosScript, /desktop\/setup-assets\/shared\/unix-node-cli-common\.sh/);
+  assert.match(macosScript, /desktop\/setup-assets\/macos\/node-cli-common\.sh/);
   assert.match(macosScript, /macos-node-cli-pack-script/);
   assert.match(macosScript, /macos-install-readiness-audit/);
 });
@@ -644,8 +653,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     type: 'module',
   }, null, 2));
   await seedWindowsSetupAssets(packageRoot);
-  await seedSharedUnixSetupAssets(packageRoot);
   await seedUnixSetupAssets(packageRoot, 'linux');
+  await seedUnixSetupAssets(packageRoot, 'macos');
   await seedRuntimeSidecar(runtimeRoot);
 
   const config = resolveDesktopHostConfig({
@@ -697,8 +706,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-junie.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-kiro-cli.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'check-installation.sh'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'shared', 'unix-provider-cli-common.sh'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'shared', 'unix-node-cli-common.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'provider-cli-common.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'node-cli-common.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'manifest.json'));
   await access(join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'));
   await access(join(plan.outputRoot, 'targets', 'linux-x64', 'installer-manifest.json'));
@@ -1038,7 +1047,13 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     linuxTargetManifest.artifacts.some(
-      (artifact) => artifact.id === 'unix-provider-cli-common-support-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'linux-provider-cli-common-support-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    linuxTargetManifest.artifacts.some(
+      (artifact) => artifact.id === 'linux-node-cli-common-support-script' && artifact.role === 'setup_asset',
     ),
     true,
   );

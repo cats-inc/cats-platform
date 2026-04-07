@@ -6,8 +6,8 @@ fi
 readonly CATS_PLATFORM_UNIX_NODE_COMMON_SH=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=unix-provider-cli-common.sh
-. "$SCRIPT_DIR/unix-provider-cli-common.sh"
+# shellcheck source=provider-cli-common.sh
+. "$SCRIPT_DIR/provider-cli-common.sh"
 
 normalize_npm_registry() {
   case "$1" in

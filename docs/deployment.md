@@ -85,8 +85,10 @@ npm run desktop:stage
   - `build/desktop-packaging/shared/setup-assets/windows/*`
   - `build/desktop-packaging/shared/setup-assets/linux/*`
   - `build/desktop-packaging/shared/setup-assets/macos/*`
-  - `build/desktop-packaging/shared/setup-assets/shared/unix-provider-cli-common.sh`
-  - `build/desktop-packaging/shared/setup-assets/shared/unix-node-cli-common.sh`
+  - `build/desktop-packaging/shared/setup-assets/linux/provider-cli-common.sh`
+  - `build/desktop-packaging/shared/setup-assets/linux/node-cli-common.sh`
+  - `build/desktop-packaging/shared/setup-assets/macos/provider-cli-common.sh`
+  - `build/desktop-packaging/shared/setup-assets/macos/node-cli-common.sh`
   - `build/desktop-packaging/shared/setup-assets/manifest.json`
   - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 - current platform wrappers:

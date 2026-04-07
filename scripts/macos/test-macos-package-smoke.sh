@@ -49,8 +49,8 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-goose.sh" 'bun
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-junie.sh" 'bundled macOS Junie installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-kiro-cli.sh" 'bundled macOS Kiro installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/check-installation.sh" 'bundled macOS readiness audit helper'
-assert_file "${RESOURCES_ROOT}/desktop/setup-assets/shared/unix-provider-cli-common.sh" 'bundled shared Unix provider helper library'
-assert_file "${RESOURCES_ROOT}/desktop/setup-assets/shared/unix-node-cli-common.sh" 'bundled shared Unix npm helper library'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/provider-cli-common.sh" 'bundled macOS provider helper library'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/node-cli-common.sh" 'bundled macOS npm helper library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/manifest.json" 'bundled setup-assets manifest'
 assert_file "${PLAN_PATH}" 'bundled desktop packaging plan'
 
@@ -76,7 +76,8 @@ assert(macTarget.installerFormats.includes('dmg'), 'macOS target includes dmg pa
 assert(macTarget.installerFormats.includes('pkg'), 'macOS target includes pkg packaging');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-node-cli-pack-script'), 'macOS target includes the bundled node CLI pack asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-setup-readiness-audit-script'), 'macOS target includes the bundled readiness audit asset');
-assert(macTarget.artifacts.some((artifact) => artifact.id === 'unix-node-cli-common-support-script'), 'macOS target includes the shared Unix npm helper asset');
+assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-provider-cli-common-support-script'), 'macOS target includes the macOS provider helper asset');
+assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-node-cli-common-support-script'), 'macOS target includes the macOS npm helper asset');
 assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'kiro' && provider.platform === 'macos'), 'installer contract keeps Kiro in the macOS bundled local-provider rollout');
 assert(plan.installer.providerSetup.helperCatalog.some((helper) => helper.id === 'macos-install-readiness-audit'), 'installer contract includes macOS readiness helper metadata');
 assert(!plan.installer.providerSetup.helperCatalog.some((helper) => helper.id === 'windows-install-readiness-audit'), 'installer contract omits Windows-only helper metadata from the macOS package');

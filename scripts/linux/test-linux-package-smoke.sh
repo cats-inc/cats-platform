@@ -49,8 +49,8 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-goose.sh" 'bun
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-junie.sh" 'bundled Linux Junie installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-kiro-cli.sh" 'bundled Linux Kiro installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/check-installation.sh" 'bundled Linux readiness audit helper'
-assert_file "${RESOURCES_ROOT}/desktop/setup-assets/shared/unix-provider-cli-common.sh" 'bundled shared Unix provider helper library'
-assert_file "${RESOURCES_ROOT}/desktop/setup-assets/shared/unix-node-cli-common.sh" 'bundled shared Unix npm helper library'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/provider-cli-common.sh" 'bundled Linux provider helper library'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/node-cli-common.sh" 'bundled Linux npm helper library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/manifest.json" 'bundled setup-assets manifest'
 assert_file "${PLAN_PATH}" 'bundled desktop packaging plan'
 
@@ -76,7 +76,8 @@ assert(linuxTarget.installerFormats.includes('appimage'), 'Linux target includes
 assert(linuxTarget.installerFormats.includes('deb'), 'Linux target includes deb packaging');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-node-cli-pack-script'), 'Linux target includes the bundled node CLI pack asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-setup-readiness-audit-script'), 'Linux target includes the bundled readiness audit asset');
-assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'unix-provider-cli-common-support-script'), 'Linux target includes the shared Unix provider helper asset');
+assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-provider-cli-common-support-script'), 'Linux target includes the Linux provider helper asset');
+assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-node-cli-common-support-script'), 'Linux target includes the Linux npm helper asset');
 assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'kiro' && provider.platform === 'linux'), 'installer contract keeps Kiro in the Linux bundled local-provider rollout');
 assert(plan.installer.providerSetup.helperCatalog.some((helper) => helper.id === 'linux-install-readiness-audit'), 'installer contract includes Linux readiness helper metadata');
 assert(!plan.installer.providerSetup.helperCatalog.some((helper) => helper.id === 'windows-install-readiness-audit'), 'installer contract omits Windows-only helper metadata from the Linux package');

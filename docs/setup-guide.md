@@ -389,8 +389,10 @@ The current substrate writes:
 - `build/desktop-packaging/shared/setup-assets/macos/*`
   - npm prefix helper, node CLI pack installer, Claude/Cursor/Goose/Junie/Kiro
     native installers, and the macOS readiness audit
-- `build/desktop-packaging/shared/setup-assets/shared/unix-provider-cli-common.sh`
-- `build/desktop-packaging/shared/setup-assets/shared/unix-node-cli-common.sh`
+- `build/desktop-packaging/shared/setup-assets/linux/provider-cli-common.sh`
+- `build/desktop-packaging/shared/setup-assets/linux/node-cli-common.sh`
+- `build/desktop-packaging/shared/setup-assets/macos/provider-cli-common.sh`
+- `build/desktop-packaging/shared/setup-assets/macos/node-cli-common.sh`
 - `build/desktop-packaging/shared/setup-assets/manifest.json`
 - `build/desktop-packaging/targets/<target>/installer-manifest.json`
 
