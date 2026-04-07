@@ -54,6 +54,17 @@ function hide(): void {
   }, 50);
 }
 
+function hideImmediately(): void {
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null;
+  }
+
+  if (portal) {
+    portal.classList.remove('tooltipVisible');
+  }
+}
+
 export function initTooltipPortal(): () => void {
   function onOver(event: MouseEvent): void {
     const target = (event.target as HTMLElement).closest?.('[data-tooltip]') as HTMLElement | null;
@@ -65,12 +76,18 @@ export function initTooltipPortal(): () => void {
     if (target) hide();
   }
 
+  function onClick(): void {
+    hideImmediately();
+  }
+
   document.addEventListener('mouseover', onOver, true);
   document.addEventListener('mouseout', onOut, true);
+  document.addEventListener('click', onClick, true);
 
   return () => {
     document.removeEventListener('mouseover', onOver, true);
     document.removeEventListener('mouseout', onOut, true);
+    document.removeEventListener('click', onClick, true);
     if (portal) {
       portal.remove();
       portal = null;
