@@ -109,6 +109,7 @@ export function PlatformSettingsGeneral({
     onPayloadUpdate({
       ...payload,
       lobby: {
+        ...payload.lobby,
         animationMode: nextAnimationMode,
       },
     });
@@ -126,6 +127,7 @@ export function PlatformSettingsGeneral({
       onPayloadUpdate({
         ...payload,
         lobby: {
+          ...payload.lobby,
           animationMode: body.lobbyAnimationMode ?? nextAnimationMode,
         },
       });

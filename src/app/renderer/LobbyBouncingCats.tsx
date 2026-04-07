@@ -1,97 +1,79 @@
 import { useEffect, useRef } from 'react';
 
-import type { PlatformLobbyAnimationMode } from '../../shared/platform-contract.js';
+import { nameInitials } from '../../shared/nameInitials.js';
+import type {
+  PlatformLobbyAnimationMode,
+  PlatformLobbyCatSummary,
+} from '../../shared/platform-contract.js';
 
 interface BouncingCat {
   x: number;
   y: number;
   vx: number;
   vy: number;
-  radius: number;
   color: string;
   initials: string;
+  isBoss: boolean;
+  image: HTMLImageElement | null;
 }
 
-const MOCK_CATS: Pick<BouncingCat, 'color' | 'initials'>[] = [
-  { color: '#E0B323', initials: 'MO' },
-  { color: '#6E8450', initials: 'LU' },
-  { color: '#4F6C92', initials: 'KI' },
-  { color: '#C4653A', initials: 'SO' },
-  { color: '#90A4AE', initials: 'TA' },
-  { color: '#8B6DAF', initials: 'MI' },
-];
-
-const RADIUS = 20;
+const RADIUS = 14;
 const BASE_SPEED = 0.6;
 const OPACITY = 0.18;
 const REDUCED_MOTION_SPEED_MULTIPLIER = 0.18;
+const BOSS_RING_WIDTH = 2;
+const BOSS_RING_COLOR = '#e8c84a';
+const FALLBACK_COLOR = '#8B7E74';
 
-function initCats(width: number, height: number): BouncingCat[] {
-  return MOCK_CATS.map((cat) => {
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function initCats(
+  cats: PlatformLobbyCatSummary[],
+  width: number,
+  height: number,
+): BouncingCat[] {
+  return cats.map((cat) => {
     const angle = Math.random() * Math.PI * 2;
     const speed = BASE_SPEED + Math.random() * 0.3;
     return {
-      ...cat,
-      radius: RADIUS,
       x: RADIUS + Math.random() * (width - RADIUS * 2),
       y: RADIUS + Math.random() * (height - RADIUS * 2),
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
+      color: cat.avatarColor ?? FALLBACK_COLOR,
+      initials: nameInitials(cat.name),
+      isBoss: cat.isBoss,
+      image: null,
     };
   });
 }
 
-function tick(cats: BouncingCat[], width: number, height: number): void {
-  for (const cat of cats) {
-    cat.x += cat.vx;
-    cat.y += cat.vy;
-
-    if (cat.x - cat.radius <= 0) {
-      cat.x = cat.radius;
-      cat.vx = Math.abs(cat.vx);
-    } else if (cat.x + cat.radius >= width) {
-      cat.x = width - cat.radius;
-      cat.vx = -Math.abs(cat.vx);
-    }
-
-    if (cat.y - cat.radius <= 0) {
-      cat.y = cat.radius;
-      cat.vy = Math.abs(cat.vy);
-    } else if (cat.y + cat.radius >= height) {
-      cat.y = height - cat.radius;
-      cat.vy = -Math.abs(cat.vy);
-    }
-  }
-}
-
-function tickWithSpeedMultiplier(
-  cats: BouncingCat[],
-  width: number,
-  height: number,
-  multiplier: number,
-): void {
-  if (multiplier === 1) {
-    tick(cats, width, height);
-    return;
-  }
-
+function tick(cats: BouncingCat[], width: number, height: number, multiplier: number): void {
   for (const cat of cats) {
     cat.x += cat.vx * multiplier;
     cat.y += cat.vy * multiplier;
 
-    if (cat.x - cat.radius <= 0) {
-      cat.x = cat.radius;
+    if (cat.x - RADIUS <= 0) {
+      cat.x = RADIUS;
       cat.vx = Math.abs(cat.vx);
-    } else if (cat.x + cat.radius >= width) {
-      cat.x = width - cat.radius;
+    } else if (cat.x + RADIUS >= width) {
+      cat.x = width - RADIUS;
       cat.vx = -Math.abs(cat.vx);
     }
 
-    if (cat.y - cat.radius <= 0) {
-      cat.y = cat.radius;
+    if (cat.y - RADIUS <= 0) {
+      cat.y = RADIUS;
       cat.vy = Math.abs(cat.vy);
-    } else if (cat.y + cat.radius >= height) {
-      cat.y = height - cat.radius;
+    } else if (cat.y + RADIUS >= height) {
+      cat.y = height - RADIUS;
       cat.vy = -Math.abs(cat.vy);
     }
   }
@@ -99,8 +81,8 @@ function tickWithSpeedMultiplier(
 
 function clampCats(cats: BouncingCat[], width: number, height: number): void {
   for (const cat of cats) {
-    cat.x = Math.min(Math.max(cat.radius, cat.x), width - cat.radius);
-    cat.y = Math.min(Math.max(cat.radius, cat.y), height - cat.radius);
+    cat.x = Math.min(Math.max(RADIUS, cat.x), width - RADIUS);
+    cat.y = Math.min(Math.max(RADIUS, cat.y), height - RADIUS);
   }
 }
 
@@ -114,17 +96,38 @@ function drawCats(
 
   for (const cat of cats) {
     ctx.globalAlpha = OPACITY;
-    ctx.beginPath();
-    ctx.arc(cat.x, cat.y, cat.radius, 0, Math.PI * 2);
-    ctx.fillStyle = cat.color;
-    ctx.fill();
 
-    ctx.globalAlpha = OPACITY * 1.8;
-    ctx.font = `600 ${cat.radius * 0.85}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(cat.initials, cat.x, cat.y);
+    // boss ring
+    if (cat.isBoss) {
+      ctx.beginPath();
+      ctx.arc(cat.x, cat.y, RADIUS + BOSS_RING_WIDTH, 0, Math.PI * 2);
+      ctx.strokeStyle = BOSS_RING_COLOR;
+      ctx.lineWidth = BOSS_RING_WIDTH;
+      ctx.stroke();
+    }
+
+    if (cat.image) {
+      // circular image clip
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cat.x, cat.y, RADIUS, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(cat.image, cat.x - RADIUS, cat.y - RADIUS, RADIUS * 2, RADIUS * 2);
+      ctx.restore();
+    } else {
+      // color circle with initials
+      ctx.beginPath();
+      ctx.arc(cat.x, cat.y, RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = cat.color;
+      ctx.fill();
+
+      ctx.globalAlpha = OPACITY * 1.8;
+      ctx.font = `700 ${RADIUS * 0.65}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(cat.initials, cat.x, cat.y);
+    }
   }
 
   ctx.globalAlpha = 1;
@@ -132,15 +135,17 @@ function drawCats(
 
 export function LobbyBouncingCats({
   animationMode,
+  cats: catSummaries,
 }: {
   animationMode: PlatformLobbyAnimationMode;
+  cats: readonly PlatformLobbyCatSummary[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const catsRef = useRef<BouncingCat[] | null>(null);
   const frameRef = useRef(0);
 
   useEffect(() => {
-    if (animationMode === 'off') {
+    if (animationMode === 'off' || catSummaries.length === 0) {
       return undefined;
     }
 
@@ -158,7 +163,7 @@ export function LobbyBouncingCats({
       canvasElement.width = window.innerWidth;
       canvasElement.height = window.innerHeight;
       if (!catsRef.current) {
-        catsRef.current = initCats(canvasElement.width, canvasElement.height);
+        catsRef.current = initCats([...catSummaries], canvasElement.width, canvasElement.height);
         return;
       }
       clampCats(catsRef.current, canvasElement.width, canvasElement.height);
@@ -171,42 +176,41 @@ export function LobbyBouncingCats({
       }
     }
 
-    function renderFrame(speedMultiplier: number) {
+    function drawLoop() {
       const w = canvasElement.width;
       const h = canvasElement.height;
       const cats = catsRef.current;
       if (!ctx || !cats) return;
-
-      tickWithSpeedMultiplier(cats, w, h, speedMultiplier);
+      tick(cats, w, h, speedMultiplier);
       drawCats(ctx, cats, w, h);
-    }
-
-    function drawLoop() {
-      renderFrame(speedMultiplier);
       frameRef.current = requestAnimationFrame(drawLoop);
     }
 
-    function startLoop() {
-      cancelFrame();
-      resizeCanvas();
-      frameRef.current = requestAnimationFrame(drawLoop);
+    resizeCanvas();
+    frameRef.current = requestAnimationFrame(drawLoop);
+
+    // load avatar images async
+    const bouncingCats = catsRef.current;
+    if (bouncingCats) {
+      for (let i = 0; i < catSummaries.length; i++) {
+        const url = catSummaries[i]?.avatarUrl;
+        if (url && bouncingCats[i]) {
+          loadImage(url).then((img) => {
+            bouncingCats[i].image = img;
+          }).catch(() => { /* keep color fallback */ });
+        }
+      }
     }
 
-    function handleResize() {
-      resizeCanvas();
-      renderFrame(speedMultiplier);
-    }
-
-    startLoop();
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', resizeCanvas);
 
     return () => {
       cancelFrame();
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', resizeCanvas);
     };
-  }, [animationMode]);
+  }, [animationMode, catSummaries]);
 
-  if (animationMode === 'off') {
+  if (animationMode === 'off' || catSummaries.length === 0) {
     return null;
   }
 

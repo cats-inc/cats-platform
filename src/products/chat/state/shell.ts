@@ -3,6 +3,7 @@ import type { GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type {
   PlatformDesktopPreferences,
+  PlatformLobbyCatSummary,
   PlatformLobbyPreferences,
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
@@ -75,6 +76,7 @@ export function createAppShell(
     },
     lobby: {
       animationMode: setup?.lobby?.animationMode ?? 'reduced',
+      cats: buildLobbyCats(summary.cats, chat.bossCatId),
     },
     chat: {
       id: chat.id,
@@ -117,4 +119,19 @@ export function createAppShell(
     lastProductSurface: setup?.lastProductSurface ?? null,
     guideCat: setup?.guideCat ? structuredClone(setup.guideCat) : null,
   };
+}
+
+function buildLobbyCats(
+  cats: readonly { id: string; name: string; avatarColor: string | null; avatarUrl: string | null; status: string }[],
+  bossCatId: string | null,
+): PlatformLobbyCatSummary[] {
+  return cats
+    .filter((cat) => cat.status === 'active')
+    .map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      avatarColor: cat.avatarColor,
+      avatarUrl: cat.avatarUrl,
+      isBoss: cat.id === bossCatId,
+    }));
 }

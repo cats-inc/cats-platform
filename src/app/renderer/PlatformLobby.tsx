@@ -30,13 +30,11 @@ export function PlatformLobby({
 
   const avatarStyle = envelope.ownerAvatarUrl
     ? { backgroundImage: `url(${envelope.ownerAvatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
-    : envelope.ownerAvatarColor
-      ? { background: envelope.ownerAvatarColor }
-      : undefined;
+    : undefined;
 
   return (
     <div className="screen screenCentered lobbyScreen">
-      <LobbyBouncingCats animationMode={envelope.lobby.animationMode} />
+      <LobbyBouncingCats animationMode={envelope.lobby.animationMode} cats={envelope.lobby.cats} />
       <div className="platformLobby">
         <div className="lobbyTopBar">
           <span className="lobbyBrand">CATS INC</span>

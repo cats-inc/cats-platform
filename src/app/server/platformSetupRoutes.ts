@@ -230,7 +230,7 @@ async function handlePlatformSetupComplete(
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       guideCat: core.guideCat,
       lastProductSurface: body.selectedProduct,
-      lobby: { animationMode: 'reduced' },
+      lobby: { animationMode: 'reduced', cats: [] },
     };
   }
 

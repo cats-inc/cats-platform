@@ -53,8 +53,17 @@ export interface PlatformDesktopPreferences {
   openWindowOnStartup: boolean;
 }
 
+export interface PlatformLobbyCatSummary {
+  id: string;
+  name: string;
+  avatarColor: string | null;
+  avatarUrl: string | null;
+  isBoss: boolean;
+}
+
 export interface PlatformLobbyPreferences {
   animationMode: PlatformLobbyAnimationMode;
+  cats: PlatformLobbyCatSummary[];
 }
 
 export interface PlatformOwnerContext {
