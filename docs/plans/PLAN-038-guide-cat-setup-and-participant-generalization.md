@@ -24,6 +24,12 @@ This plan deliberately separates lightweight onboarding from the deeper
 conversation-model rewrite. The first implementation slice should improve setup
 and entry discoverability without forcing a flag-day participant migration.
 
+The post-setup visible day-0 assist surface is now documented separately in:
+
+- [ADR-054](../decisions/054-use-a-platform-level-guide-sidecar-for-day-0-assist.md)
+- [SPEC-051](../specs/SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md)
+- [PLAN-041](./PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md)
+
 ## Implementation Phases
 
 ### Phase 1: Freeze Terminology and Product Boundaries

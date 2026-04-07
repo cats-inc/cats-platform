@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-041](./PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md) | Guide Cat Sidecar and Day-0 Assist Rollout | Draft | [SPEC-051](../specs/SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md), [ADR-054](../decisions/054-use-a-platform-level-guide-sidecar-for-day-0-assist.md) |
 | [PLAN-039](./PLAN-039-normalize-desktop-source-and-build-output-layout.md) | Normalize Desktop Source and Build Output Layout Across `cats-platform` and `cats-runtime` | Draft | N/A |
 | [PLAN-038](./PLAN-038-guide-cat-setup-and-participant-generalization.md) | Guide Cat Setup and Participant Generalization | Draft | [SPEC-049](../specs/SPEC-049-guide-cat-setup-and-generalized-participant-entry.md), [ADR-051](../decisions/051-generalize-participants-and-adopt-guide-cat-terminology.md) |
 | [PLAN-037](./PLAN-037-runtime-session-deletion-on-product-delete.md) | Runtime Session Deletion on Product Delete | Draft | [SPEC-048](../specs/SPEC-048-runtime-session-deletion-on-product-delete.md), [ADR-049](../decisions/049-cascade-product-deletes-into-runtime-session-deletion.md) |
@@ -94,6 +95,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-07*
 
 *See also: [specs/](../specs/) for feature specifications*

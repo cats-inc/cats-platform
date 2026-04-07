@@ -268,7 +268,10 @@ Starter ideas on `/lobby` and other entry surfaces should follow this order:
 - [ADR-011](../decisions/011-model-primary-orchestrator-as-visible-cat.md)
 - [ADR-042](../decisions/042-separate-channel-topology-from-routing-mode.md)
 - [ADR-051](../decisions/051-generalize-participants-and-adopt-guide-cat-terminology.md)
+- [ADR-054](../decisions/054-use-a-platform-level-guide-sidecar-for-day-0-assist.md)
+- [SPEC-051](./SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md)
 - [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md)
+- [PLAN-041](../plans/PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md)
 - [PLAN-040](../plans/PLAN-040-simplify-setup-wizard-and-decouple-runtime-bootstrap.md)
 
 ---
