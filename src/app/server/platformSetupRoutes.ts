@@ -49,6 +49,33 @@ function reportSyncFailure(scope: string, error: unknown): void {
   process.stderr.write(`[cats-platform-setup] ${scope}: ${message}\n`);
 }
 
+function buildSetupDebugContext(input: {
+  ownerDisplayName: string;
+  createGuideCat: boolean;
+  guideCatName?: string | null;
+  guideCatProvider?: string | null;
+  guideCatInstance?: string | null;
+  guideCatModel?: string | null;
+  guideCatModelSelection?: ProviderModelSelection | null;
+  guideCatId?: string | null;
+  setupCompleteAt?: string | null;
+  attemptId?: string | null;
+}): Record<string, unknown> {
+  const createGuideCat = input.createGuideCat;
+  return {
+    ownerDisplayName: input.ownerDisplayName,
+    createGuideCat,
+    guideCatId: input.guideCatId ?? null,
+    guideCatName: createGuideCat ? input.guideCatName?.trim() || 'Guide Cat' : null,
+    guideCatProvider: createGuideCat ? input.guideCatProvider?.trim() || 'claude' : null,
+    guideCatInstance: createGuideCat ? input.guideCatInstance?.trim() || null : null,
+    guideCatModel: createGuideCat ? input.guideCatModel ?? null : null,
+    hasGuideCatModelSelection: createGuideCat ? Boolean(input.guideCatModelSelection) : false,
+    setupCompleteAt: input.setupCompleteAt ?? null,
+    attemptId: input.attemptId ?? null,
+  };
+}
+
 function normalizeAttemptId(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
@@ -100,105 +127,193 @@ async function handlePlatformSetupComplete(
   const guideCatModel = body.guideCatModel ?? body.bossCatModel;
   const guideCatModelSelection = body.guideCatModelSelection ?? body.bossCatModelSelection ?? null;
   let createdGuideCatId: string | null = null;
-
-  if (createGuideCat) {
-    const nowIso = now.toISOString();
-    createdGuideCatId = core.guideCat?.id ?? GUIDE_CAT_PRIMARY_ID;
-    core = {
-      ...core,
-      updatedAt: nowIso,
-      guideCat: {
-        id: createdGuideCatId,
-        name: guideCatName?.trim() || 'Guide Cat',
-        executionTarget: {
-          provider: guideCatProvider || 'claude',
-          instance: guideCatInstance?.trim() || null,
-          model: guideCatModel ?? null,
-        },
-        modelSelection: cloneProviderModelSelection(guideCatModelSelection),
-        createdAt: core.guideCat?.createdAt ?? nowIso,
-        updatedAt: nowIso,
-      },
-    };
-  }
-
-  core = {
-    ...core,
-    setupCompleteAt: now.toISOString(),
-    ownerProfile: {
-      ...core.ownerProfile,
-      displayName: ownerDisplayName,
-      avatarColor: core.ownerProfile.avatarColor ?? '#90A4AE',
-      updatedAt: now.toISOString(),
-    },
-  };
-
-  // Commit chat/core as one persisted snapshot so setup cannot land in a half-written state.
-  await context.dependencies.chatStore.writeSnapshot(chatState, core);
-
-  // Best-effort: honour legacy selectedProduct if the client still sends it.
   const legacyProduct = body.selectedProduct;
-  if (legacyProduct === 'chat' || legacyProduct === 'work' || legacyProduct === 'code') {
-    try {
-      const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
-      await writePlatformPreferences(context.dependencies.config.chatStatePath, {
-        ...currentPrefs,
-        lastProductSurface: legacyProduct,
-      });
-    } catch (error) {
-      reportSyncFailure('setup_complete_prefs', error);
-    }
-  }
-
-  try {
-    await context.dependencies.memoryService.flushOwnerProfile({
-      reason: 'owner_profile_sync',
-      now,
-    });
-  } catch (error) {
-    reportSyncFailure('setup_complete_memory', error);
-  }
-
-  let payload: object;
-  try {
-    payload = await buildAppShellPayload(context.dependencies);
-  } catch (error) {
-    reportSyncFailure('setup_complete_payload', error);
-    const runtimeSetup = await readRuntimeSetupSummary(context.dependencies.runtimeClient).catch(
-      () => undefined,
-    );
-    payload = {
-      app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
-      products: listPlatformProductDescriptors(),
-      runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
-      runtimeSetup: runtimeSetup ?? null,
-      metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
-      bootstrapAttemptId: body.attemptId ?? null,
-      setupCompleteAt: core.setupCompleteAt,
-      ownerDisplayName: core.ownerProfile.displayName,
-      ownerAvatarColor: core.ownerProfile.avatarColor,
-      ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
-      guideCat: core.guideCat,
-      assistantPresets: core.assistantPresets,
-      lastProductSurface: legacyProduct ?? null,
-      lobby: { animationMode: 'reduced', cats: [] },
-    };
-  }
+  const attemptId = body.attemptId ?? null;
 
   await recordProductEvent(context, {
     now,
-    attemptId: body.attemptId ?? null,
-    kind: 'setup_completed',
-    status: 'ok',
-    summary: 'Packaged setup completed.',
-    context: {
+    attemptId,
+    kind: 'setup_started',
+    status: 'info',
+    summary: 'Packaged setup submission started.',
+    context: buildSetupDebugContext({
+      attemptId,
+      ownerDisplayName,
       createGuideCat,
-      guideCatId: createdGuideCatId,
-      setupCompleteAt: core.setupCompleteAt,
-    },
+      guideCatName,
+      guideCatProvider,
+      guideCatInstance,
+      guideCatModel,
+      guideCatModelSelection,
+    }),
   });
 
-  sendJson(context.response, 200, payload);
+  try {
+    if (createGuideCat) {
+      const nowIso = now.toISOString();
+      createdGuideCatId = core.guideCat?.id ?? GUIDE_CAT_PRIMARY_ID;
+      core = {
+        ...core,
+        updatedAt: nowIso,
+        guideCat: {
+          id: createdGuideCatId,
+          name: guideCatName?.trim() || 'Guide Cat',
+          executionTarget: {
+            provider: guideCatProvider || 'claude',
+            instance: guideCatInstance?.trim() || null,
+            model: guideCatModel ?? null,
+          },
+          modelSelection: cloneProviderModelSelection(guideCatModelSelection),
+          createdAt: core.guideCat?.createdAt ?? nowIso,
+          updatedAt: nowIso,
+        },
+      };
+    }
+
+    core = {
+      ...core,
+      setupCompleteAt: now.toISOString(),
+      ownerProfile: {
+        ...core.ownerProfile,
+        displayName: ownerDisplayName,
+        avatarColor: core.ownerProfile.avatarColor ?? '#90A4AE',
+        updatedAt: now.toISOString(),
+      },
+    };
+
+    // Commit chat/core as one persisted snapshot so setup cannot land in a half-written state.
+    await context.dependencies.chatStore.writeSnapshot(chatState, core);
+    await recordProductEvent(context, {
+      now,
+      attemptId,
+      kind: 'setup_state_persisted',
+      status: 'info',
+      summary: 'Setup state snapshot persisted.',
+      context: buildSetupDebugContext({
+        attemptId,
+        ownerDisplayName,
+        createGuideCat,
+        guideCatId: createdGuideCatId,
+        guideCatName,
+        guideCatProvider,
+        guideCatInstance,
+        guideCatModel,
+        guideCatModelSelection,
+        setupCompleteAt: core.setupCompleteAt,
+      }),
+    });
+
+    // Best-effort: honour legacy selectedProduct if the client still sends it.
+    if (legacyProduct === 'chat' || legacyProduct === 'work' || legacyProduct === 'code') {
+      try {
+        const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
+        await writePlatformPreferences(context.dependencies.config.chatStatePath, {
+          ...currentPrefs,
+          lastProductSurface: legacyProduct,
+        });
+      } catch (error) {
+        reportSyncFailure('setup_complete_prefs', error);
+      }
+    }
+
+    try {
+      await context.dependencies.memoryService.flushOwnerProfile({
+        reason: 'owner_profile_sync',
+        now,
+      });
+    } catch (error) {
+      reportSyncFailure('setup_complete_memory', error);
+    }
+
+    let payload: object;
+    try {
+      payload = await buildAppShellPayload(context.dependencies);
+    } catch (error) {
+      reportSyncFailure('setup_complete_payload', error);
+      await recordProductEvent(context, {
+        now,
+        attemptId,
+        kind: 'setup_payload_fallback',
+        status: 'degraded',
+        summary: 'Setup completed but app shell payload used a fallback envelope.',
+        context: buildSetupDebugContext({
+          attemptId,
+          ownerDisplayName,
+          createGuideCat,
+          guideCatId: createdGuideCatId,
+          guideCatName,
+          guideCatProvider,
+          guideCatInstance,
+          guideCatModel,
+          guideCatModelSelection,
+          setupCompleteAt: core.setupCompleteAt,
+        }),
+        error: toBootstrapEventError(error),
+      });
+      const runtimeSetup = await readRuntimeSetupSummary(context.dependencies.runtimeClient).catch(
+        () => undefined,
+      );
+      payload = {
+        app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
+        products: listPlatformProductDescriptors(),
+        runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
+        runtimeSetup: runtimeSetup ?? null,
+        metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
+        bootstrapAttemptId: attemptId,
+        setupCompleteAt: core.setupCompleteAt,
+        ownerDisplayName: core.ownerProfile.displayName,
+        ownerAvatarColor: core.ownerProfile.avatarColor,
+        ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
+        guideCat: core.guideCat,
+        assistantPresets: core.assistantPresets,
+        lastProductSurface: legacyProduct ?? null,
+        lobby: { animationMode: 'reduced', cats: [] },
+      };
+    }
+
+    await recordProductEvent(context, {
+      now,
+      attemptId,
+      kind: 'setup_completed',
+      status: 'ok',
+      summary: 'Packaged setup completed.',
+      context: {
+        createGuideCat,
+        guideCatId: createdGuideCatId,
+        setupCompleteAt: core.setupCompleteAt,
+      },
+    });
+
+    sendJson(context.response, 200, payload);
+  } catch (error) {
+    reportSyncFailure('setup_complete', error);
+    await recordProductEvent(context, {
+      now,
+      attemptId,
+      kind: 'setup_failed',
+      status: 'unavailable',
+      summary: 'Packaged setup failed before completion response was returned.',
+      context: buildSetupDebugContext({
+        attemptId,
+        ownerDisplayName,
+        createGuideCat,
+        guideCatId: createdGuideCatId,
+        guideCatName,
+        guideCatProvider,
+        guideCatInstance,
+        guideCatModel,
+        guideCatModelSelection,
+        setupCompleteAt: core.setupCompleteAt,
+      }),
+      error: toBootstrapEventError(error),
+    });
+    sendJson(context.response, 500, {
+      error: {
+        code: 'internal_error',
+        message: error instanceof Error ? error.message : 'Unexpected server error',
+      },
+    });
+  }
 }
 
 async function handlePlatformPreferencesUpdate(

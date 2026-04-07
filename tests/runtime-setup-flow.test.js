@@ -232,7 +232,7 @@ test('POST /api/platform/setup/complete succeeds even when runtime bootstrap is 
     assert.equal(diagnostics.attemptId, 'attempt-complete');
     assert.deepEqual(
       diagnostics.events.map((event) => event.kind),
-      ['setup_completed'],
+      ['setup_completed', 'setup_state_persisted', 'setup_started'],
     );
   });
 });

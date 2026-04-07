@@ -9,11 +9,17 @@ import { runServerStartupRecoveryPasses } from './startupRecovery.js';
 
 export type { ServerDependencies } from './contracts.js';
 
+function reportUnhandledServerError(error: unknown): void {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`[cats-platform-server] unhandled_route_error: ${message}\n`);
+}
+
 export function createServer(dependencies: ServerDependencies) {
   const resolvedDependencies = resolveServerDependencies(dependencies);
 
   const server = createHttpServer((request, response) => {
     void routeRequest(request, response, resolvedDependencies).catch((error) => {
+      reportUnhandledServerError(error);
       sendJson(response, 500, {
         error: {
           code: 'internal_error',

@@ -20,6 +20,16 @@ function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
 }
 
+function reportStoreDiagnostic(
+  scope: string,
+  details: Record<string, unknown>,
+): void {
+  const serialized = Object.entries(details)
+    .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
+    .join(' ');
+  process.stderr.write(`[cats-platform-store] ${scope}${serialized ? ` ${serialized}` : ''}\n`);
+}
+
 export interface ChatStore extends CoreStore {
   read(): Promise<ChatState>;
   write(state: ChatState): Promise<ChatState>;
@@ -147,11 +157,23 @@ export class FileChatStore implements ChatStore {
     try {
       const recovered = await this.tryReadSnapshotFile(backupPath);
       await writePersistedChatSnapshot(this.filePath, recovered);
+      reportStoreDiagnostic('recover_from_backup', {
+        filePath: this.filePath,
+        backupPath,
+        setupCompleteAt: recovered.setupCompleteAt,
+        ownerDisplayName: recovered.ownerProfile.displayName,
+      });
       return this.cacheSnapshot(recovered);
     } catch (error) {
       if (isErrnoException(error) && error.code === 'ENOENT') {
         return null;
       }
+      reportStoreDiagnostic('recover_from_backup_failed', {
+        filePath: this.filePath,
+        backupPath,
+        code: isErrnoException(error) ? error.code ?? null : null,
+        message: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }
@@ -161,20 +183,40 @@ export class FileChatStore implements ChatStore {
       return this.cacheSnapshot(await this.tryReadSnapshotFile(this.filePath));
     } catch (error) {
       if (isErrnoException(error) && error.code === 'ENOENT') {
+        reportStoreDiagnostic('snapshot_missing_primary_creating_default', {
+          filePath: this.filePath,
+        });
         const snapshot = createDefaultSnapshot();
         await writePersistedChatSnapshot(this.filePath, snapshot);
         return this.cacheSnapshot(snapshot);
       }
 
       if (this.lastKnownSnapshot) {
+        reportStoreDiagnostic('snapshot_read_failed_using_memory_cache', {
+          filePath: this.filePath,
+          code: isErrnoException(error) ? error.code ?? null : null,
+          message: error instanceof Error ? error.message : String(error),
+          setupCompleteAt: this.lastKnownSnapshot.setupCompleteAt,
+        });
         return structuredClone(this.lastKnownSnapshot);
       }
 
       const recoveredFromBackup = await this.recoverFromBackup();
       if (recoveredFromBackup) {
+        reportStoreDiagnostic('snapshot_read_failed_recovered_from_backup', {
+          filePath: this.filePath,
+          code: isErrnoException(error) ? error.code ?? null : null,
+          message: error instanceof Error ? error.message : String(error),
+          setupCompleteAt: recoveredFromBackup.setupCompleteAt,
+        });
         return structuredClone(recoveredFromBackup);
       }
 
+      reportStoreDiagnostic('snapshot_read_failed_creating_default', {
+        filePath: this.filePath,
+        code: isErrnoException(error) ? error.code ?? null : null,
+        message: error instanceof Error ? error.message : String(error),
+      });
       const snapshot = createDefaultSnapshot();
       await writePersistedChatSnapshot(this.filePath, snapshot);
       return this.cacheSnapshot(snapshot);
