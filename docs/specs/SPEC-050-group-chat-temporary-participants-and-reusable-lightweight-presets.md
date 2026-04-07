@@ -33,6 +33,11 @@ This spec sets the product direction that `+ Group chat` should allow direct
 creation of temporary members for the current chat, while still providing a
 promotion path to reusable lightweight presets and, later, full Cats.
 
+It also narrows the recommended first delivery slice: the first implementation
+should land `channel participant` support for existing Cats plus ad hoc
+temporary participants. Reusable `participant preset` support should be treated
+as a follow-up slice rather than bundled into the same first implementation.
+
 ## Goals
 
 - let owners compose ad hoc multi-member group chats without a registry-first
@@ -130,6 +135,112 @@ This creates the wrong tradeoff:
 - is what the transcript, roster, mentions, and lead-routing surfaces should
   operate on
 
+## First Delivery Recommendation
+
+The final product model is intentionally three-layer, but the first
+implementation slice should be smaller.
+
+### Slice 1: Channel Participants for Existing Cats and Ad Hoc Members
+
+Slice 1 should deliver:
+
+- existing Cats remain selectable as group members
+- `+ Group chat` can create ad hoc temporary members for the current channel
+- the room stores and renders a distinct `channel participant` record
+- channel participants can be sourced from:
+  - `cat`
+  - `adhoc`
+- roster, transcript naming, mentions, and lead-selection work against channel
+  participants rather than assuming every member is a Cat
+- temporary members remain channel-scoped and do not appear in `My Cats`
+
+Slice 1 should explicitly defer:
+
+- reusable `participant preset` creation
+- `Save as preset`
+- promotion into full Cats
+- saved team-composition templates
+
+### Slice 2: Reusable Lightweight Presets and Promotion Paths
+
+Slice 2 can then add:
+
+- reusable `participant preset` records
+- `Save as preset`
+- `Promote to Cat`
+- possible preset-registry IA
+- possible team-template persistence
+
+This split keeps the first delivery goal concrete:
+`let owners add room-only temporary specialists without first creating Cats`.
+
+## Channel Participant Minimal Shape
+
+The first slice should introduce a distinct channel-participant record instead
+of representing temporary members as hidden Cats.
+
+The minimal product-facing shape should be:
+
+```ts
+interface ChannelParticipant {
+  id: string;
+  channelId: string;
+  name: string;
+  sourceKind: 'cat' | 'adhoc';
+  sourceRefId: string | null;
+  status: 'active' | 'archived';
+  executionTarget: {
+    provider: string;
+    instance: string | null;
+    model: string | null;
+    modelSelection: unknown | null;
+  };
+  roleHint: string | null;
+}
+```
+
+First-slice notes:
+
+- `sourceKind: 'cat'` means this room member was instantiated from an existing
+  Cat, but the room still talks to the participant layer.
+- `sourceKind: 'adhoc'` means the member was created inline for this channel.
+- `sourceRefId` points back to the source Cat when relevant; it is `null` for
+  ad hoc members.
+- `roleHint` is a lightweight display label in Slice 1. It must not imply
+  persona authoring, skill binding, or automatic prompt injection by default.
+
+This schema is intentionally small. It captures the room-level member identity
+and the execution-target snapshot needed for stable room behavior without
+smuggling in full Cat semantics.
+
+## Migration Direction
+
+Current code and contracts still assume Cat-centric membership in many places,
+including patterns such as:
+
+- `draftCatIds`
+- `participantCatIds`
+- `assignedCats`
+
+The first implementation slice should migrate those surfaces toward a channel-
+participant seam instead of deepening the Cat-only model.
+
+Recommended approach:
+
+1. keep current full-Cat flows working
+2. introduce a distinct room-member record for group-chat participants
+3. adapt roster, mention, and lead-selection behavior to consume that record
+4. bridge existing Cat-backed behavior through `sourceKind: 'cat'`
+5. add `sourceKind: 'adhoc'` for inline temporary participants
+
+The first slice should not represent ad hoc members as hidden Cats. That would
+leak Cat-only assumptions back into:
+
+- `My Cats`
+- Cat-specific settings and actions
+- Cat-memory and skill semantics
+- transport and registry ownership
+
 ## Requirements
 
 ### Functional Requirements
@@ -148,28 +259,25 @@ This creates the wrong tradeoff:
    the group roster and transcript, not merely as provider/model settings.
 5. These ad hoc members shall be channel-scoped by default and shall not appear
    in `My Cats` automatically.
-6. The group member picker shall allow promoting a channel-scoped member into a
-   reusable lightweight participant preset.
-7. The product shall support promoting a participant preset into a full Cat as
-   an explicit later action.
-8. Reusable participant presets shall be available as future member choices in
-   later `+ Group chat` flows.
-9. Participant presets shall remain lighter than full Cats and shall not
-   require persona, memory, or skill configuration.
-10. Full Cats, presets, and channel-scoped members shall remain distinguishable
-    in product semantics even if some early implementation slices share storage
-    mechanics.
-11. Group-chat roster, mention, and lead-selection behavior shall operate on the
-    channel participant layer rather than assuming every member is a full Cat.
-12. The product shall not make raw provider/model objects the primary visible
-    concept for group members. The owner should add `participants`, not
-    anonymous targets.
-13. If a full Cat or preset is used to create a channel participant, the
-    channel shall retain the execution-target snapshot needed to keep that room
-    stable even if the source object changes later.
-14. The product may offer `Save as preset` and `Save as Cat` from the same
-    room-member affordance, but those shall remain distinct actions with
-    different persistence semantics.
+6. Group-chat roster, mention, and lead-selection behavior shall operate on the
+   channel participant layer rather than assuming every member is a full Cat.
+7. The product shall not make raw provider/model objects the primary visible
+   concept for group members. The owner should add `participants`, not
+   anonymous targets.
+8. If a full Cat is used to create a channel participant, the channel shall
+   retain the execution-target snapshot needed to keep that room stable even if
+   the source Cat changes later.
+9. The first delivered slice shall use a distinct channel-participant record for
+   ad hoc members rather than representing them as hidden Cats.
+10. A later slice may allow promoting a channel-scoped member into a reusable
+    lightweight participant preset.
+11. A later slice may allow promoting a participant preset into a full Cat as an
+    explicit owner action.
+12. Reusable participant presets, when delivered, shall remain lighter than full
+    Cats and shall not require persona, memory, or skill configuration.
+13. Full Cats, presets, and channel-scoped members shall remain distinguishable
+    in product semantics even if some intermediate implementation slices bridge
+    through compatibility seams.
 
 ### Non-Functional Requirements
 
@@ -182,9 +290,13 @@ This creates the wrong tradeoff:
 - **Token Efficiency**: Temporary participants and reusable lightweight presets
   should default to minimal injected context. Persistence alone must not imply
   heavier prompt hydration.
-- **Migration Compatibility**: Early slices may reuse current Cat-backed wiring
-  internally, but the outward product model must preserve the distinction
-  between full Cats, reusable lightweight presets, and channel-scoped members.
+- **Minimal Role Semantics**: Slice-1 `roleHint` should remain a lightweight
+  display hint. It should not automatically behave like a persona block or a
+  skill profile.
+- **Migration Compatibility**: Early slices may bridge existing Cat-backed
+  behavior for source Cats, but the outward product model must preserve the
+  distinction between full Cats, reusable lightweight presets, and channel-
+  scoped members.
 
 ## Design Overview
 
@@ -212,8 +324,8 @@ This creates the wrong tradeoff:
 - Let the participant chip / side panel own member composition.
 - In that member flow, offer:
   - `Existing Cats`
-  - `Saved presets`
   - `Temporary participant`
+- Add `Saved presets` only when Slice 2 actually lands.
 - Treat `Create full Cat` as a later promotion path, not the default first step
   for ad hoc group composition.
 
@@ -225,9 +337,9 @@ The long-term shape should separate:
 - reusable `participant preset`
 - channel-scoped `participant`
 
-For near-term compatibility, the implementation may still bridge through
-current Cat-based routes and state, but it should do so in a way that does not
-collapse these product distinctions back together.
+For near-term compatibility, the implementation may bridge existing Cat-backed
+flows for `sourceKind: 'cat'`, but it should not model ad hoc members as hidden
+Cats.
 
 ### Token and Prompt Direction
 
@@ -245,20 +357,19 @@ No implicit durable memory, persona block, or skill profile should be loaded
 unless the owner explicitly upgrades that participant into a richer object or
 attaches more context.
 
+In Slice 1, `roleHint` should be treated as UI-level labeling plus optional
+light metadata. It should not be auto-expanded into a mini-persona prompt.
+
 ## Open Questions
 
-- [ ] Should reusable participant presets live under `Settings > Cats`, under a
-      separate `Participants` / `Presets` surface, or stay chat-local in the
-      first slice?
-- [ ] Should the first delivery slice allow saving one member at a time as a
-      preset, or should it also support saving a whole group composition as a
-      reusable team template?
-- [ ] Should participant presets ever appear in `My Cats`, or should that
-      roster remain reserved for full Cats only?
-- [ ] In the first migration slice, should channel-scoped temporary members be
-      represented internally as lightweight hidden Cats for compatibility, or
-      should the first slice introduce a separate persisted preset/member shape
-      immediately?
+- [ ] Slice 2 decision: should reusable participant presets live under
+      `Settings > Cats`, under a separate `Participants` / `Presets` surface,
+      or stay chat-local first?
+- [ ] Slice 2 decision: should the first reusable layer save one member at a
+      time as a preset, or should it also support saving a whole group
+      composition as a reusable team template?
+- [ ] Slice 2 decision: should participant presets ever appear in `My Cats`, or
+      should that roster remain reserved for full Cats only?
 
 ## References
 
@@ -273,5 +384,6 @@ attaches more context.
 ---
 
 *Created: 2026-04-07*
+*Revised: 2026-04-07*
 *Author: Codex*
 *Related Plan: TBD*
