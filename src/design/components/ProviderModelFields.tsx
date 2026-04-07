@@ -128,6 +128,13 @@ export function resolveProviderRegistryHint(input: {
   return 'cats-runtime is connected, but it did not report any currently usable provider targets.';
 }
 
+export function resolveProviderRegistrySetupHref(
+  registry: ProductProviderRegistryReadModel,
+): string | null {
+  const href = registry.recovery?.openRuntimeSetupPath?.trim();
+  return href ? href : null;
+}
+
 function presetAppliesToEntry(
   preset: ProviderAdvancedCatalogPreset,
   entryId: string,
@@ -718,6 +725,7 @@ export function ProviderModelFields({
     providersLoaded,
     registry: providerRegistry,
   });
+  const providerRegistrySetupHref = resolveProviderRegistrySetupHref(providerRegistry);
   const canRetryProviderRegistry = providersLoaded
     && providerOptions.length === 0
     && providerRegistry.recovery?.retryable !== false;
@@ -815,6 +823,27 @@ export function ProviderModelFields({
                 >
                   Retry
                 </button>
+                {providerRegistrySetupHref ? (
+                  <a
+                    className="secondaryButton"
+                    href={providerRegistrySetupHref}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open Cats Runtime setup
+                  </a>
+                ) : null}
+              </div>
+            ) : providerRegistrySetupHref ? (
+              <div className="providerCatalogRecoveryActions">
+                <a
+                  className="secondaryButton"
+                  href={providerRegistrySetupHref}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open Cats Runtime setup
+                </a>
               </div>
             ) : null}
           </>

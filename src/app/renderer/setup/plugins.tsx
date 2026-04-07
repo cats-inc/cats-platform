@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { CatCreationFields } from './CatCreationFields.js';
 import type { ProductProviderRegistryReadModel } from '../../../shared/providerCatalog.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { resolveProviderRegistrySetupHref } from '../../../design/components/ProviderModelFields.js';
 
 export interface GuideCatSetupFieldsProps {
   provider: string;
@@ -36,7 +37,8 @@ export function GuideCatSetupFields({
     state: 'ready',
     providers: [],
   });
-  const runtimeSetupHref = `${runtimeBaseUrl.replace(/\/$/, '')}/setup`;
+  const runtimeSetupHref = resolveProviderRegistrySetupHref(providerRegistry)
+    ?? `${runtimeBaseUrl.replace(/\/$/, '')}/setup`;
   const runtimeStatusChip = providerRegistry.state === 'runtime_unreachable'
     ? { className: 'statusChip statusChipWarm', label: 'Provider registry unavailable' }
     : providerRegistry.state === 'no_usable_targets'

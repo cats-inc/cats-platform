@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { mkdtempSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -465,6 +466,56 @@ test('GET /api/providers retries a transient runtime registry failure before sur
   });
 
   assert.equal(configAttempts, 2);
+});
+
+test('GET /api/providers exposes runtime setup recovery when no usable targets remain', async () => {
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.getProviderDiagnostics = async () => ({
+    probe: 'light',
+    providers: [
+      {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        availability: {
+          status: 'unavailable',
+          summary: 'CLI missing',
+          attentionCodes: ['command_missing'],
+        },
+      },
+    ],
+  });
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.state, 'no_usable_targets');
+    assert.deepEqual(payload.providers, []);
+    assert.equal(payload.recovery?.openRuntimeSetupPath, '/runtime/setup');
+  });
+});
+
+test('GET /runtime/setup redirects to the configured cats-runtime setup page', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await new Promise((resolve, reject) => {
+      const target = new URL('/runtime/setup', baseUrl);
+      const request = httpRequest({
+        host: target.hostname,
+        port: target.port,
+        path: target.pathname,
+        method: 'GET',
+      }, (message) => {
+        message.resume();
+        message.on('end', () => resolve(message));
+      });
+      request.on('error', reject);
+      request.end();
+    });
+    assert.equal(response.statusCode, 302);
+    assert.equal(response.headers.location, 'http://127.0.0.1:3110/setup');
+  });
 });
 
 test('GET /api/providers/:provider/models proxies runtime-owned catalog', async () => {

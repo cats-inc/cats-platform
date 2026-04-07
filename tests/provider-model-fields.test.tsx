@@ -8,6 +8,7 @@ import {
   hasExplicitDefaultEnumOption,
   listPersistentControlOptions,
   resolveProviderRegistryHint,
+  resolveProviderRegistrySetupHref,
   resolveProviderRegistryPlaceholder,
   resolveDisplayedEnumControlValue,
   resolveProviderSupportBadge,
@@ -367,6 +368,26 @@ test('provider registry empty states distinguish runtime failure from no usable 
       },
     }),
     'cats-runtime is connected, but it did not report any currently usable provider targets.',
+  );
+  assert.equal(
+    resolveProviderRegistrySetupHref({
+      state: 'no_usable_targets',
+      providers: [],
+      recovery: {
+        openRuntimeSetupPath: '/runtime/setup',
+      },
+    }),
+    '/runtime/setup',
+  );
+  assert.equal(
+    resolveProviderRegistrySetupHref({
+      state: 'runtime_unreachable',
+      providers: [],
+      recovery: {
+        retryable: true,
+      },
+    }),
+    null,
   );
 });
 

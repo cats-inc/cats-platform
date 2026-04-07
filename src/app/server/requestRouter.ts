@@ -204,6 +204,17 @@ async function handleShellOpenFolder(
   }
 }
 
+function sendRuntimeSetupRedirect(
+  dependencies: ResolvedServerDependencies,
+  response: import('node:http').ServerResponse,
+): void {
+  const runtimeBaseUrl = dependencies.shared.config.runtimeBaseUrl.replace(/\/$/, '');
+  response.writeHead(302, {
+    Location: `${runtimeBaseUrl}/setup`,
+  });
+  response.end();
+}
+
 export async function routeRequest(
   request: IncomingMessage,
   response: import('node:http').ServerResponse,
@@ -285,6 +296,15 @@ export async function routeRequest(
       return;
     }
     await handleShellOpenFolder(request, response);
+    return;
+  }
+
+  if (url.pathname === '/runtime/setup') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return;
+    }
+    sendRuntimeSetupRedirect(dependencies, response);
     return;
   }
 
