@@ -291,6 +291,76 @@ async function handleBootstrapDiagnosticsOpened(
   sendJson(context.response, 200, payload);
 }
 
+async function handleGuideCatUpdate(
+  context: PlatformSetupContext,
+): Promise<void> {
+  let body: {
+    name?: string;
+    provider?: string;
+    instance?: string | null;
+    model?: string | null;
+    modelSelection?: ProviderModelSelection | null;
+  };
+  try {
+    body = await readJsonBody<typeof body>(context.request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid request body';
+    sendJson(context.response, 400, { error: { code: 'bad_request', message } });
+    return;
+  }
+
+  const name = body.name?.trim();
+  if (!name) {
+    sendJson(context.response, 400, {
+      error: { code: 'bad_request', message: 'Guide Cat name is required' },
+    });
+    return;
+  }
+
+  const now = context.dependencies.now?.() ?? new Date();
+  const nowIso = now.toISOString();
+  let core = await context.dependencies.chatStore.readCore();
+  const chatState = await context.dependencies.chatStore.read();
+
+  const existingId = core.guideCat?.id ?? GUIDE_CAT_PRIMARY_ID;
+  core = {
+    ...core,
+    updatedAt: nowIso,
+    guideCat: {
+      id: existingId,
+      name,
+      executionTarget: {
+        provider: body.provider?.trim() || 'claude',
+        instance: body.instance?.trim() || null,
+        model: body.model ?? null,
+      },
+      modelSelection: cloneProviderModelSelection(body.modelSelection ?? null),
+      createdAt: core.guideCat?.createdAt ?? nowIso,
+      updatedAt: nowIso,
+    },
+  };
+
+  await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  sendJson(context.response, 200, { guideCat: core.guideCat });
+}
+
+async function handleGuideCatDelete(
+  context: PlatformSetupContext,
+): Promise<void> {
+  const now = context.dependencies.now?.() ?? new Date();
+  let core = await context.dependencies.chatStore.readCore();
+  const chatState = await context.dependencies.chatStore.read();
+
+  core = {
+    ...core,
+    updatedAt: now.toISOString(),
+    guideCat: null,
+  };
+
+  await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  sendJson(context.response, 200, { guideCat: null });
+}
+
 export async function routePlatformSetupApi(
   context: PlatformSetupContext,
 ): Promise<boolean> {
@@ -327,6 +397,19 @@ export async function routePlatformSetupApi(
       return true;
     }
     await handlePlatformPreferencesUpdate(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/platform/guide-cat') {
+    if (context.method === 'PUT') {
+      await handleGuideCatUpdate(context);
+      return true;
+    }
+    if (context.method === 'DELETE') {
+      await handleGuideCatDelete(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['PUT', 'DELETE']);
     return true;
   }
 

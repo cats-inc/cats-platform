@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
 import { SettingsCats } from '../../../products/chat/renderer/components/settings-cats/SettingsCats.js';
+import { SettingsAssistants } from './SettingsAssistants.js';
 import { PlatformSettingsChat } from './PlatformSettingsChat.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
 import { PlatformSettingsGeneral } from './PlatformSettingsGeneral.js';
@@ -46,10 +47,11 @@ export function PlatformSettingsRoutes({
           />
         )}
       />
+      <Route path="cats" element={<Navigate to="/settings/cats/my-cats" replace />} />
       <Route
-        path="cats"
+        path="cats/my-cats"
         element={(
-          <PlatformSettingsShell section="cats" title="Cats" products={payload.products}>
+          <PlatformSettingsShell section="cats:my-cats" title="My Cats" products={payload.products}>
             <SettingsCats
               payload={payload}
               feedback={feedback}
@@ -57,6 +59,17 @@ export function PlatformSettingsRoutes({
               onPayloadUpdate={onPayloadUpdate}
               onFeedback={onFeedback}
               onBusy={onBusy}
+            />
+          </PlatformSettingsShell>
+        )}
+      />
+      <Route
+        path="cats/assistants"
+        element={(
+          <PlatformSettingsShell section="cats:assistants" title="Assistants" products={payload.products}>
+            <SettingsAssistants
+              payload={payload}
+              onPayloadUpdate={onPayloadUpdate}
             />
           </PlatformSettingsShell>
         )}

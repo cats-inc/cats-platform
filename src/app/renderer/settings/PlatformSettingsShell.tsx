@@ -6,7 +6,7 @@ import type {
   PlatformProductSettingsDescriptor,
 } from '../../../shared/platform-contract.js';
 
-type PlatformSettingsSection = 'general' | 'cats' | 'runtime' | 'data' | string;
+type PlatformSettingsSection = 'general' | 'cats' | 'cats:my-cats' | 'cats:assistants' | 'runtime' | 'data' | string;
 
 interface PlatformSettingsProductEntry extends PlatformProductSettingsDescriptor {
   productId: PlatformProductDescriptor['id'];
@@ -52,13 +52,23 @@ export function PlatformSettingsShell({
         >
           General
         </button>
-        <button
-          className={section === 'cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-          type="button"
-          onClick={() => navigate('/settings/cats')}
-        >
-          Cats
-        </button>
+        <p className="settingsNavSubheading">Cats</p>
+        <div className="settingsSidebarGroup">
+          <button
+            className={section === 'cats:my-cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+            type="button"
+            onClick={() => navigate('/settings/cats/my-cats')}
+          >
+            My Cats
+          </button>
+          <button
+            className={section === 'cats:assistants' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+            type="button"
+            onClick={() => navigate('/settings/cats/assistants')}
+          >
+            Assistants
+          </button>
+        </div>
         {productEntries.map((entry) => (
           <button
             key={`${entry.productId}:${entry.id}`}
