@@ -63,6 +63,9 @@ export interface PlatformLobbyCatSummary {
 
 export interface PlatformLobbyPreferences {
   animationMode: PlatformLobbyAnimationMode;
+}
+
+export interface PlatformLobbyState extends PlatformLobbyPreferences {
   cats: PlatformLobbyCatSummary[];
 }
 
@@ -79,7 +82,7 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
   app: PlatformAppDescriptor;
   products: PlatformProductDescriptor[];
   desktop: PlatformDesktopPreferences;
-  lobby: PlatformLobbyPreferences;
+  lobby: PlatformLobbyState;
   runtime: RuntimeStatusSummary;
   runtimeSetup: RuntimeSetupSummary;
   metadata: PlatformResponseMetadata;

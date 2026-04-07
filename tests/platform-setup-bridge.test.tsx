@@ -30,6 +30,7 @@ function createEnvelope() {
     },
     lobby: {
       animationMode: 'reduced',
+      cats: [],
     },
     runtime: {
       baseUrl: 'http://127.0.0.1:3110',

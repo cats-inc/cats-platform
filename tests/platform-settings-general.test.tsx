@@ -20,6 +20,7 @@ function createPayload(): AppShellPayload {
     },
     lobby: {
       animationMode: 'reduced',
+      cats: [],
     },
     products: [
       {
