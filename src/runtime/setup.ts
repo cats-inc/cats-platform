@@ -41,10 +41,6 @@ export interface RuntimeSetupReadModel {
   };
 }
 
-export interface RuntimeSetupScanInput {
-  manual?: boolean;
-}
-
 function readRuntimeSetupError(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message;

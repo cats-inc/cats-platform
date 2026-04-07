@@ -46,8 +46,6 @@ function createRuntimeSetupStub({
   let appliedAt = null;
 
   const stub = {
-    appliedProviders: [],
-    scanCalls: [],
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -57,25 +55,6 @@ function createRuntimeSetupStub({
       };
     },
     async getSetupState() {
-      return buildReadModel();
-    },
-    async scanSetup(input = {}) {
-      this.scanCalls.push({ manual: input.manual === true });
-      if (input.manual === true) {
-        lastManualScanAt = '2026-03-30T11:05:00.000Z';
-      }
-      lastScanAt = '2026-03-30T11:05:00.000Z';
-      return buildReadModel();
-    },
-    async applySetup(providerNames) {
-      this.appliedProviders.push([...providerNames]);
-      currentBootstrapRequired = false;
-      appliedAt = '2026-03-30T11:10:00.000Z';
-      currentProviders = currentProviders.map((provider) =>
-        providerNames.includes(provider.provider)
-          ? { ...provider, available: true, remediationCount: 0 }
-          : provider,
-      );
       return buildReadModel();
     },
   };

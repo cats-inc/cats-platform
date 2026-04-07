@@ -123,29 +123,29 @@ fast without reviving static fallback catalogs.
 
 ### Phase 1: Freeze Direction and Update Contracts
 
-- [ ] Task 1.1: Mark PLAN-033 and SPEC-044 as historical and record why they
+- [x] Task 1.1: Mark PLAN-033 and SPEC-044 as historical and record why they
       were rejected
-- [ ] Task 1.2: Update SPEC-013 so setup and in-product selectors use truthful
+- [x] Task 1.2: Update SPEC-013 so setup and in-product selectors use truthful
       runtime-backed execution choices instead of catalog fallback
-- [ ] Task 1.3: Update SPEC-049 and PLAN-038 so Guide Cat setup explicitly
+- [x] Task 1.3: Update SPEC-049 and PLAN-038 so Guide Cat setup explicitly
       depends on truthful selector state when the user opts in
-- [ ] Task 1.4: Document the runtime API semantics that distinguish configured
+- [x] Task 1.4: Document the runtime API semantics that distinguish configured
       topology, availability truth, and best-known model catalogs
 
 **Deliverables**: one coherent docs baseline exists before code changes begin
 
 ### Phase 2: Remove the Runtime-Readiness Wizard Step
 
-- [ ] Task 2.1: Remove the dedicated runtime-readiness step from
+- [x] Task 2.1: Remove the dedicated runtime-readiness step from
       `PlatformSetupWizard.tsx`
-- [ ] Task 2.2: Update setup flow navigation from 4 steps to 2
-- [ ] Task 2.3: Remove wizard-local runtime-scan/apply state and auto-scan
+- [x] Task 2.2: Update setup flow navigation from 4 steps to 2
+- [x] Task 2.3: Remove wizard-local runtime-scan/apply state and auto-scan
       logic
-- [ ] Task 2.4: Remove the runtime-ready completion gate from
+- [x] Task 2.4: Remove the runtime-ready completion gate from
       `POST /api/platform/setup/complete`
-- [ ] Task 2.5: Remove platform-side runtime setup proxy routes that only
+- [x] Task 2.5: Remove platform-side runtime setup proxy routes that only
       existed to support the deleted wizard step
-- [ ] Task 2.6: Remove the setup-time product-selection step and redirect
+- [x] Task 2.6: Remove the setup-time product-selection step and redirect
       successful completion to `/lobby`
 
 **Deliverables**: setup no longer pretends to be a second runtime bootstrap UI
@@ -210,11 +210,11 @@ recovery
 
 ### Phase 5: Cleanup and Documentation
 
-- [ ] Task 5.1: Remove orphaned runtime-setup client/types that were only used
+- [x] Task 5.1: Remove orphaned runtime-setup client/types that were only used
       by the deleted wizard step
-- [ ] Task 5.2: Update user-facing docs to describe truthful selector behavior
+- [x] Task 5.2: Update user-facing docs to describe truthful selector behavior
       and runtime recovery boundaries
-- [ ] Task 5.3: Update landing/setup docs to describe `/lobby` as the first
+- [x] Task 5.3: Update landing/setup docs to describe `/lobby` as the first
       post-setup destination
 - [ ] Task 5.4: Run full regression coverage for setup, selectors, and host
       recovery routing
@@ -327,8 +327,10 @@ recovery
 | Date | Update |
 |------|--------|
 | 2026-04-07 | Plan created to simplify the wizard and decouple runtime bootstrap from setup completion |
+| 2026-04-07 | Documentation baseline landed: the older packaged runtime-gate direction was demoted to historical docs, Guide Cat setup/docs were rewritten around truthful runtime-backed targets, and runtime API semantics were clarified so configured topology is not confused with current availability truth. |
 | 2026-04-07 | Direction tightened: setup and in-product selectors must only show truthful usable targets, and post-setup runtime failure must stay in recovery instead of bouncing the user back into onboarding |
 | 2026-04-07 | Direction tightened again: remove setup Step 3 entirely, finish setup directly into `/lobby`, and drop any `Create Now` setup-time session path |
+| 2026-04-07 | Wizard simplification landed: the runtime-readiness step, setup-owned scan/apply flow, runtime completion gate, and setup-time product selection were removed so setup now completes in 2 steps and lands on `/lobby`. |
 | 2026-04-08 | Performance follow-through added: truthful selectors must stop rebuilding provider truth through minute-scale per-provider fan-out, and may instead use bulk runtime truth plus short-lived runtime-backed caching |
 | 2026-04-08 | Runtime follow-through added: platform docs now explicitly depend on a lighter runtime availability-only selector scope plus complementary timeout/cache tuning instead of assuming product-side caching alone fixes cold-start latency |
 | 2026-04-08 | Truthful selector contract landed end-to-end: `/api/providers` now reports distinct ready/no-usable/runtime-unreachable states, setup and in-product pickers share the same truthful `ProviderModelFields` seam, static fallback execution catalogs are gone, and empty-state selector UIs auto-recheck when the window returns from runtime setup. |
@@ -336,6 +338,7 @@ recovery
 | 2026-04-08 | Short-lived selector cache landed: provider registry reads now reuse a 5-second truthful cache keyed by selector scope, dedupe in-flight fetches per runtime client, and serve bounded stale truth while a background refresh updates the cache. |
 | 2026-04-08 | Selector follow-through landed end-to-end: provider model and advanced-model routes now reuse the shared selector cache instead of rebuilding truth per provider, and selector-scoped diagnostics now use a longer timeout budget while config + availability reads run in parallel on cold cache misses. |
 | 2026-04-08 | Post-setup host recovery landed: the desktop host now treats completed setup as app-root entry (`/`), opens Cats recovery instead of `/setup` when runtime/provider health regresses, and regression tests now lock that behavior for navigation, readiness, and tray actions. |
+| 2026-04-08 | Cleanup/docs follow-through landed: setup-summary reads remain available, but orphaned setup scan/apply client mutations were removed from `cats-platform`; live setup/deployment/architecture docs now describe truthful selector behavior, `/lobby` as the first post-setup route, and runtime recovery as a post-setup concern rather than onboarding. |
 
 ---
 

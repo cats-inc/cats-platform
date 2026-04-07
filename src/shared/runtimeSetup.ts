@@ -37,13 +37,3 @@ export interface RuntimeSetupSummary {
   canApply: boolean;
   error: string | null;
 }
-
-export interface PlatformRuntimeSetupScanInput {
-  attemptId?: string | null;
-  manual?: boolean;
-}
-
-export interface PlatformRuntimeSetupApplyInput {
-  attemptId?: string | null;
-  providers?: string[];
-}

@@ -25,10 +25,7 @@ import {
   readRuntimeNdjsonResponse,
   readRuntimeSseResponse,
 } from './clientStreams.js';
-import type {
-  RuntimeSetupReadModel,
-  RuntimeSetupScanInput,
-} from './setup.js';
+import type { RuntimeSetupReadModel } from './setup.js';
 
 export interface RuntimeProviderInstanceConfig {
   id: string;
@@ -250,8 +247,6 @@ export interface RuntimeDeleteSessionResult {
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getSetupState(): Promise<RuntimeSetupReadModel>;
-  scanSetup(input?: RuntimeSetupScanInput): Promise<RuntimeSetupReadModel>;
-  applySetup(providers: string[]): Promise<RuntimeSetupReadModel>;
   getProviderConfig(): Promise<RuntimeProviderConfigRegistry>;
   getProviderDiagnostics(
     query?: RuntimeProviderDiagnosticsQuery,
@@ -282,13 +277,11 @@ interface RuntimeClientOptions {
   timeoutMs?: number;
   providerRegistryTimeoutMs?: number;
   selectorDiagnosticsTimeoutMs?: number;
-  setupMutationTimeoutMs?: number;
 }
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
 const DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS = 20_000;
-const DEFAULT_RUNTIME_SETUP_MUTATION_TIMEOUT_MS = 120_000;
 
 export class RuntimeRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -302,7 +295,6 @@ export class CatsRuntimeClient implements RuntimeClient {
   private readonly timeoutMs: number;
   private readonly providerRegistryTimeoutMs: number;
   private readonly selectorDiagnosticsTimeoutMs: number;
-  private readonly setupMutationTimeoutMs: number;
 
   constructor(
     private readonly baseUrl: string,
@@ -314,8 +306,6 @@ export class CatsRuntimeClient implements RuntimeClient {
       ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS);
     this.selectorDiagnosticsTimeoutMs = options.selectorDiagnosticsTimeoutMs
       ?? Math.max(this.providerRegistryTimeoutMs, DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS);
-    this.setupMutationTimeoutMs = options.setupMutationTimeoutMs
-      ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_SETUP_MUTATION_TIMEOUT_MS);
   }
 
   async getHealth(): Promise<RuntimeStatusSummary> {
@@ -435,65 +425,6 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     return (await response.json()) as RuntimeSetupReadModel;
-  }
-
-  async scanSetup(input: RuntimeSetupScanInput = {}): Promise<RuntimeSetupReadModel> {
-    const response = await fetch(`${this.baseUrl}/setup-scan`, {
-      method: 'POST',
-      headers: {
-        ...this.authHeaders(),
-        'content-type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        manual: input.manual === true,
-      }),
-      signal: AbortSignal.timeout(this.setupMutationTimeoutMs),
-    });
-
-    if (!response.ok) {
-      const rawBody = await response.text();
-      throw new RuntimeRequestError(
-        readRuntimeErrorText(rawBody, `Failed to run runtime setup scan (${response.status})`),
-        response.status,
-      );
-    }
-
-    await response.json().catch(() => null);
-    return await this.getSetupState();
-  }
-
-  async applySetup(providers: string[]): Promise<RuntimeSetupReadModel> {
-    const normalizedProviders = providers
-      .map((provider) => provider.trim())
-      .filter((provider) => provider.length > 0);
-    if (normalizedProviders.length === 0) {
-      throw new Error('At least one provider is required to apply runtime setup.');
-    }
-
-    const response = await fetch(`${this.baseUrl}/setup-apply`, {
-      method: 'POST',
-      headers: {
-        ...this.authHeaders(),
-        'content-type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        providers: normalizedProviders,
-      }),
-      signal: AbortSignal.timeout(this.setupMutationTimeoutMs),
-    });
-
-    if (!response.ok) {
-      const rawBody = await response.text();
-      throw new RuntimeRequestError(
-        readRuntimeErrorText(rawBody, `Failed to apply runtime setup (${response.status})`),
-        response.status,
-      );
-    }
-
-    await response.json().catch(() => null);
-    return await this.getSetupState();
   }
 
   async getProviderModels(

@@ -22,6 +22,8 @@ The current slices are:
 - a `cats-runtime` health and app-shell API
 - a chat-first `React/Vite` renderer with a route-gated setup wizard, settings
   surfaces, and a preview-ready side pane
+- a 2-step setup wizard that optionally configures a Guide Cat from truthful
+  runtime-backed provider/model choices, then lands on `/lobby`
 - file-backed chat state, cat execution, and transcript persistence
 - runtime-backed channel activation, mode-aware sleep/wake entry, and routed messaging through `cats-runtime`
 - a global orchestrator surface, direct-cat routing, deterministic `@mention`
@@ -84,8 +86,8 @@ The current slices are:
 - [x] Add basic runtime-backed channel operations
 - [x] Add a global cat registry, chat assignment, mention routing, and transcript export
 - [x] Separate cat identity and memory from provider-specific execution state
-- [x] Add first-run `/setup` onboarding with default Boss Cat bootstrap and
-      chat-first entry routing
+- [x] Add first-run `/setup` onboarding with optional Guide Cat setup,
+      truthful selector states, and `/lobby`-first entry routing
 - [x] Land chat session sleep/wake lifecycle, direct Cat chat defaults, stable
       room-routing / wake semantics, and room-header presence indicators
 - [x] Land Cat-private room entry from `My Cats` plus Telegram binding markers

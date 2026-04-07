@@ -134,7 +134,7 @@ test('runtime client reuses the shared execution-request serializer for outbound
   ]);
 });
 
-test('runtime setup scan and apply use the extended setup timeout budget', async () => {
+test('runtime setup summary reads still use the standard runtime timeout budget', async () => {
   const timeoutCalls = [];
   const originalFetch = globalThis.fetch;
   const originalAbortSignalTimeout = AbortSignal.timeout;
@@ -144,26 +144,8 @@ test('runtime setup scan and apply use the extended setup timeout budget', async
     return new AbortController().signal;
   };
 
-  globalThis.fetch = async (input, init = {}) => {
+  globalThis.fetch = async (input) => {
     const url = String(input);
-
-    if (url.endsWith('/setup-scan')) {
-      return new Response(JSON.stringify({ status: 'completed' }), {
-        status: 200,
-        headers: {
-          'content-type': 'application/json',
-        },
-      });
-    }
-
-    if (url.endsWith('/setup-apply')) {
-      return new Response(JSON.stringify({ status: 'completed' }), {
-        status: 200,
-        headers: {
-          'content-type': 'application/json',
-        },
-      });
-    }
 
     if (url.endsWith('/setup-state')) {
       return new Response(JSON.stringify({
@@ -208,14 +190,14 @@ test('runtime setup scan and apply use the extended setup timeout budget', async
 
   try {
     const client = new CatsRuntimeClient('http://runtime.test');
-    await client.scanSetup({ manual: true });
-    await client.applySetup(['claude']);
+    const payload = await client.getSetupState();
+    assert.equal(payload.bootstrapRequired, true);
   } finally {
     globalThis.fetch = originalFetch;
     AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [120000, 5000, 120000, 5000]);
+  assert.deepEqual(timeoutCalls, [5000]);
 });
 
 test('runtime client returns truthful provider diagnostics for filtered selector reads', async () => {

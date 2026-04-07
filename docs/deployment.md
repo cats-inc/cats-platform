@@ -47,10 +47,13 @@ The first desktop-host slice is now in-tree:
 - a host-owned bootstrap page performs the first prerequisite scan against
   `cats-runtime` diagnostics and then:
   - continues into `/setup` for first-run flows
-  - or opens `/new` when setup and provider readiness are already satisfied
+  - or opens `/` for completed setups so the app can resolve to `/lobby`, the
+    last-used product, or in-product recovery
 - The renderer does not talk to provider CLIs or spawn local runtimes directly
 - the packaged experience still keeps setup and provider remediation in the
   host rather than pushing shell work into the renderer
+- after setup completes, runtime/provider regressions stay in recovery instead
+  of routing the user back into onboarding
 - current launch command:
 
 ```bash

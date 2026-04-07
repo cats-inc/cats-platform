@@ -48,6 +48,18 @@ Open:
 - Renderer: `http://127.0.0.1:5173`
 - API: `http://127.0.0.1:8181/health`
 
+Current first-run behavior:
+
+- `/setup` is a 2-step flow: owner name, then optional Guide Cat
+- Guide Cat provider/model selectors only show truthful runtime-backed usable
+  targets from `cats-runtime`
+- if no usable provider target is currently available, the Guide Cat step
+  shows recovery messaging plus a deep-link to Cats Runtime setup instead of
+  static fallback catalog choices
+- finishing setup lands on `/lobby`
+- if runtime/provider health regresses later, Cats stays in recovery instead
+  of sending the user back through onboarding
+
 ### Optional: auto-start local cats with Tailscale Funnel or ngrok for webhook mode
 
 For self-hosted Telegram webhook development, `cats` now includes helper
@@ -162,7 +174,7 @@ What this does:
 - starts `cats-runtime` in `app-managed` mode
 - starts `cats-platform` in `app-managed` mode
 - waits for both `/health` readiness contracts
-- runs a lightweight prerequisite scan before opening chat or setup
+- runs a lightweight prerequisite scan before opening setup or the main app
 
 The host bootstrap page is intentionally separate from the React setup wizard.
 It is the desktop-owned seam for:
@@ -208,6 +220,9 @@ recommended resume step when a helper reports a resumable interruption. When a
 packaged setup step blocks on a restart or other recovery action, the bootstrap
 issue panel also reports that state as an install-category issue instead of
 showing only provider remediation.
+Once setup is complete, the desktop host keeps runtime/provider regressions in
+recovery: it opens Cats or runtime diagnostics instead of routing the user
+back into onboarding.
 On packaged Windows/macOS/Linux hosts, the desktop host now also auto-runs the
 repo-owned platform-specific readiness audit during bootstrap whenever no more
 specific packaged setup recovery action is active, so the first-run provider
