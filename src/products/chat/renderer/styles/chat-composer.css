@@ -258,8 +258,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  padding-top: 4px;
-  padding-right: 34px;
+  padding-bottom: 4px;
 }
 
 .folderBrowserOverlay {
