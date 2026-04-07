@@ -128,6 +128,12 @@ npm run desktop:package:linux
 npm run desktop:icons
 ```
 
+- circular avatar-style clip:
+
+```bash
+npm run desktop:icons -- --shape circle
+```
+
 ```bash
 ./scripts/macos/build-macos-installer.sh
 ./scripts/linux/build-linux-installer.sh

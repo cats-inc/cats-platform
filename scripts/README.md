@@ -93,6 +93,11 @@ That tool turns one source SVG into the Electron app/tray icon set needed for:
 - Linux desktop/package PNG icon sizes
 - packaged tray icons, including a macOS template tray icon
 
+It also supports shape-controlled outputs:
+
+- default square output: `npm run desktop:icons`
+- circular avatar clip: `npm run desktop:icons -- --shape circle`
+
 ## Collaboration Helpers
 
 `cats` also keeps repo-owned cross-platform skill sync helpers so local agent

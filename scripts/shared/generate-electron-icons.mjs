@@ -15,6 +15,8 @@ const PROJECT_ROOT = resolve(SCRIPT_DIR, '..', '..');
 const DEFAULT_INPUT = resolve(PROJECT_ROOT, 'assets', 'app-icon-silhouette.svg');
 const DEFAULT_ASSETS_ROOT = resolve(PROJECT_ROOT, 'assets');
 const DEFAULT_BUILD_RESOURCES_DIR = resolve(DEFAULT_ASSETS_ROOT, 'build');
+const DEFAULT_ICON_SHAPE = 'square';
+const SUPPORTED_ICON_SHAPES = new Set(['square', 'circle']);
 
 const LINUX_ICON_SIZES = [16, 24, 32, 48, 64, 128, 256, 512];
 const ICO_SIZES = [16, 24, 32, 48, 64, 128, 256];
@@ -41,14 +43,26 @@ Options:
   --input <path>               Source SVG. Defaults to assets/app-icon-silhouette.svg
   --assets-root <path>         Asset root for tray outputs. Defaults to assets/
   --build-resources <path>     Build-resource root for app icons. Defaults to assets/build
+  --shape <square|circle>      Output mask shape. Defaults to square
   --help                       Show this help text.
 `);
+}
+
+function normalizeIconShape(value) {
+  if (!value) {
+    return DEFAULT_ICON_SHAPE;
+  }
+  if (!SUPPORTED_ICON_SHAPES.has(value)) {
+    throw new Error(`Unsupported icon shape: ${value}`);
+  }
+  return value;
 }
 
 function parseArgs(argv) {
   let inputSvgPath = DEFAULT_INPUT;
   let assetsRoot = DEFAULT_ASSETS_ROOT;
   let buildResourcesDir = DEFAULT_BUILD_RESOURCES_DIR;
+  let iconShape = DEFAULT_ICON_SHAPE;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -58,6 +72,7 @@ function parseArgs(argv) {
         inputSvgPath,
         assetsRoot,
         buildResourcesDir,
+        iconShape,
       };
     }
     if (value === '--input') {
@@ -75,6 +90,11 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (value === '--shape') {
+      iconShape = normalizeIconShape(argv[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
     throw new Error(`Unknown option: ${value}`);
   }
 
@@ -83,6 +103,7 @@ function parseArgs(argv) {
     inputSvgPath,
     assetsRoot,
     buildResourcesDir,
+    iconShape,
   };
 }
 
@@ -95,11 +116,39 @@ async function writeBuffer(filePath, value) {
   await writeFile(filePath, value);
 }
 
-async function renderSvgPng(svgBuffer, size) {
+async function rasterizeSvgPng(svgBuffer, size) {
   return sharp(svgBuffer, { density: 1024 })
     .resize(size, size, { fit: 'contain' })
+    .ensureAlpha()
     .png()
     .toBuffer();
+}
+
+function buildCircleMask(size) {
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff" /></svg>`,
+  );
+}
+
+async function applyIconShapeMask(pngBuffer, size, iconShape) {
+  if (iconShape === 'square') {
+    return pngBuffer;
+  }
+
+  return sharp(pngBuffer)
+    .composite([
+      {
+        input: buildCircleMask(size),
+        blend: 'dest-in',
+      },
+    ])
+    .png()
+    .toBuffer();
+}
+
+async function renderSvgPng(svgBuffer, size, iconShape) {
+  const pngBuffer = await rasterizeSvgPng(svgBuffer, size);
+  return applyIconShapeMask(pngBuffer, size, iconShape);
 }
 
 function rgbaDistance(rawBuffer, index, background) {
@@ -109,7 +158,7 @@ function rgbaDistance(rawBuffer, index, background) {
     + Math.abs(rawBuffer[index + 3] - background[3]);
 }
 
-async function renderTrayTemplate(svgBuffer, size) {
+async function renderTrayTemplate(svgBuffer, size, iconShape) {
   const { data, info } = await sharp(svgBuffer, { density: 1024 })
     .resize(size, size, { fit: 'contain' })
     .ensureAlpha()
@@ -133,13 +182,15 @@ async function renderTrayTemplate(svgBuffer, size) {
     output[index + 3] = alpha;
   }
 
-  return sharp(output, {
+  const templatePngBuffer = await sharp(output, {
     raw: {
       width: info.width,
       height: info.height,
       channels: 4,
     },
   }).png().toBuffer();
+
+  return applyIconShapeMask(templatePngBuffer, size, iconShape);
 }
 
 function buildIcns(pngBuffersBySize) {
@@ -164,6 +215,7 @@ export async function generateElectronIcons(options = {}) {
   const buildResourcesDir = options.buildResourcesDir
     ? resolve(PROJECT_ROOT, options.buildResourcesDir)
     : DEFAULT_BUILD_RESOURCES_DIR;
+  const iconShape = normalizeIconShape(options.iconShape);
   const linuxIconDir = resolve(buildResourcesDir, 'icons', 'linux');
 
   const svgBuffer = await readFile(inputSvgPath);
@@ -174,7 +226,7 @@ export async function generateElectronIcons(options = {}) {
     ...ICO_SIZES,
     1024,
   ])) {
-    pngBuffersBySize.set(size, await renderSvgPng(svgBuffer, size));
+    pngBuffersBySize.set(size, await renderSvgPng(svgBuffer, size, iconShape));
   }
 
   await rm(linuxIconDir, { recursive: true, force: true });
@@ -209,11 +261,12 @@ export async function generateElectronIcons(options = {}) {
   await writeBuffer(iconIcnsPath, icnsBuffer);
   await writeBuffer(trayIconPath, pngBuffersBySize.get(32));
   await writeBuffer(trayIcon2xPath, pngBuffersBySize.get(64));
-  await writeBuffer(trayTemplatePath, await renderTrayTemplate(svgBuffer, 16));
-  await writeBuffer(trayTemplate2xPath, await renderTrayTemplate(svgBuffer, 32));
+  await writeBuffer(trayTemplatePath, await renderTrayTemplate(svgBuffer, 16, iconShape));
+  await writeBuffer(trayTemplate2xPath, await renderTrayTemplate(svgBuffer, 32, iconShape));
 
   const manifest = {
     sourceSvg: toProjectRelative(inputSvgPath),
+    shape: iconShape,
     app: {
       png: toProjectRelative(appPngPath),
       ico: toProjectRelative(iconIcoPath),
