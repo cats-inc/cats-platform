@@ -129,11 +129,6 @@ export function NewChatDraft({
   onFolderBrowseSelect,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
-  const draftGreetingMode = entryMode === 'parallel'
-    ? 'parallel'
-    : entryMode === 'group'
-      ? 'group'
-      : 'new';
   const chatCats = payload.chat.cats.filter(isChatCat);
   const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
   const draftParticipants = resolveDraftParticipantSelection({ draftLeadCatId, draftCatIds });
@@ -195,8 +190,8 @@ export function NewChatDraft({
       return explicitGreeting;
     }
 
-    return pickDraftGreeting(draftGreetingMode, { pool: greetingPool });
-  }, [draftGreetingMode, greeting, greetingPoolKey]);
+    return pickDraftGreeting({ pool: greetingPool });
+  }, [greeting, greetingPoolKey]);
   const groupDraftSelectionLabel = draftParticipantCount === 1
     ? '1 participant selected so far. Add more or send when ready.'
     : draftParticipantCount > 1

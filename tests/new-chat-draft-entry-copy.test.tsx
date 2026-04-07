@@ -192,26 +192,19 @@ test('draft hides starter suggestions when the seam supplies an explicit empty o
   assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
-test('draft greeting pools can be assigned independently per fresh-chat mode', () => {
+test('fresh draft greetings share one pool and still honor an explicit override pool', () => {
   assert.equal(
-    pickDraftGreeting('new', {
-      pool: ['Solo One', 'Solo Two'],
+    pickDraftGreeting({
+      pool: ['Shared One', 'Shared Two'],
       random: () => 0,
     }),
-    'Solo One',
+    'Shared One',
   );
   assert.equal(
-    pickDraftGreeting('group', {
-      pool: ['Group One', 'Group Two'],
+    pickDraftGreeting({
+      pool: ['Shared One', 'Shared Two'],
       random: () => 0.99,
     }),
-    'Group Two',
-  );
-  assert.equal(
-    pickDraftGreeting('parallel', {
-      pool: ['Parallel One', 'Parallel Two'],
-      random: () => 0.51,
-    }),
-    'Parallel Two',
+    'Shared Two',
   );
 });

@@ -324,13 +324,7 @@ export const GREETING_LINES = [
   "This cat doesn't sleep on the job.",
 ];
 
-export type DraftGreetingMode = 'new' | 'group' | 'parallel';
-
-export const DEFAULT_DRAFT_GREETING_POOLS: Record<DraftGreetingMode, ReadonlyArray<string>> = {
-  new: GREETING_LINES,
-  group: GREETING_LINES,
-  parallel: GREETING_LINES,
-};
+export const DRAFT_GREETING_LINES = GREETING_LINES;
 
 function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): string[] {
   return (pool ?? [])
@@ -339,17 +333,16 @@ function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): 
 }
 
 export function pickGreeting(
-  pool: ReadonlyArray<string> = GREETING_LINES,
+  pool: ReadonlyArray<string> = DRAFT_GREETING_LINES,
   random: () => number = Math.random,
 ): string {
   const normalizedPool = normalizeGreetingPool(pool);
-  const fallbackPool = normalizeGreetingPool(GREETING_LINES);
+  const fallbackPool = normalizeGreetingPool(DRAFT_GREETING_LINES);
   const activePool = normalizedPool.length > 0 ? normalizedPool : fallbackPool;
   return activePool[Math.floor(random() * activePool.length)];
 }
 
 export function pickDraftGreeting(
-  mode: DraftGreetingMode,
   options: {
     pool?: ReadonlyArray<string> | null;
     random?: () => number;
@@ -357,8 +350,8 @@ export function pickDraftGreeting(
 ): string {
   return pickGreeting(
     normalizeGreetingPool(options.pool).length > 0
-      ? options.pool ?? GREETING_LINES
-      : DEFAULT_DRAFT_GREETING_POOLS[mode],
+      ? options.pool ?? DRAFT_GREETING_LINES
+      : DRAFT_GREETING_LINES,
     options.random,
   );
 }

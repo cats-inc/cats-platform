@@ -27,15 +27,27 @@ export function buildPlatformLobbyEntries(options: {
 }
 
 const LOBBY_GREETING_LINES = [
-  'Meow. Ready when you are.',
-  'Your cat hasn\u2019t napped yet.',
-  'Cats on the keyboard.',
-  'Tail up, let\u2019s go.',
-  'Purring in standby.',
-  'Claws sharpened. What\u2019s the task?',
-  'This cat doesn\u2019t sleep on the job.',
+  'Choose a surface and get moving.',
+  'Home base is ready.',
+  'Chat, Work, or Code. Your call.',
+  'Everything is staged. Pick a lane.',
+  'Open the surface that fits the task.',
+  'Cats Inc is awake.',
+  'Continue where the work makes sense.',
 ];
 
-export function pickLobbyGreeting(): string {
-  return LOBBY_GREETING_LINES[Math.floor(Math.random() * LOBBY_GREETING_LINES.length)];
+function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): string[] {
+  return (pool ?? [])
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+export function pickLobbyGreeting(
+  pool: ReadonlyArray<string> = LOBBY_GREETING_LINES,
+  random: () => number = Math.random,
+): string {
+  const normalizedPool = normalizeGreetingPool(pool);
+  const fallbackPool = normalizeGreetingPool(LOBBY_GREETING_LINES);
+  const activePool = normalizedPool.length > 0 ? normalizedPool : fallbackPool;
+  return activePool[Math.floor(random() * activePool.length)];
 }
