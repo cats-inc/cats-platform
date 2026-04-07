@@ -18,9 +18,9 @@ The next slice should make that host role visible in the UI.
 
 This spec defines a host-owned landing and inventory model where:
 
-- setup still chooses a primary first-party product
-- `/` continues to open the user's selected or last-used product in the current
-  slice
+- setup completes into `/lobby` instead of choosing a product inside the wizard
+- `/` continues to open the user's last-used product when one exists, and
+  otherwise falls back to `/lobby`
 - the host-owned landing is now named `Lobby`
 - the platform exposes a dedicated host surface for required products, optional
   products, and installed apps
@@ -62,7 +62,8 @@ installed apps as a first-class inventory concept.
   implicit
 - give users a dedicated place to inspect what is installed
 - allow the host to distinguish baseline products from optional products
-- keep setup centered on first-party product choice
+- keep setup centered on owner identity plus optional Guide Cat, not first-party
+  product choice
 - preserve direct deep-link entry into product routes
 - move product-specific settings under product ownership without hiding them
 - keep the model future-friendly for a later app publishing and installation
@@ -72,6 +73,8 @@ installed apps as a first-class inventory concept.
 
 - As a new user, I want setup to end in a clear platform experience instead of
   feeling like a one-off wizard disconnected from the host.
+- As a new user, I want to choose my first product from the host landing after
+  setup, not from inside the setup wizard.
 - As a returning user, I want to keep opening directly into the product I last
   used.
 - As a user, I want a clear place to see which official products are part of
@@ -89,11 +92,11 @@ installed apps as a first-class inventory concept.
 1. The platform host shall expose a host-owned landing or inventory route for
    products and apps.
 2. The platform shall continue to support setup-first entry through `/setup`.
-3. Completing setup shall continue to record a selected primary product.
-4. The platform root `/` shall continue to resolve to the user's selected or
-   last-used product entry.
-5. Completing setup shall continue to open the selected primary product entry
-   in the current slice rather than forcing a stop at `/products`.
+3. Completing setup shall route the user into `/lobby`.
+4. Completing setup shall not require the user to choose a primary product
+   inside the setup wizard.
+5. The platform root `/` shall resolve to the user's last-used product entry
+   when one exists, and to `/lobby` otherwise.
 6. The host-owned landing shall provide a visible list of first-party products.
 7. Each product entry on the landing shall show at least:
    - label
@@ -117,8 +120,9 @@ installed apps as a first-class inventory concept.
     `/settings/*` namespace.
 14. The platform shall preserve direct product routes such as `/chat/*`,
     `/work/*`, and `/code/*`.
-15. The setup wizard shall continue to derive its first-product choices from a
-    host-owned registration source rather than hardcoded renderer branching.
+15. The host-owned landing and setup follow-through shall derive visible
+    product inventory from a host-owned registration source rather than
+    hardcoded renderer branching.
 16. The host shall use one canonical settings namespace and may remove pre-launch
     aliases instead of preserving compatibility redirects.
 17. The host envelope shall expose enough structured metadata to render product
@@ -243,9 +247,10 @@ The layout may evolve, but Home/Office should remain the primary organizer for
 the current Lobby, while install policy and install state remain per-product
 metadata.
 
-The setup wizard should also surface install policy and preview maturity on its
-product cards so the same host registration metadata remains visible before and
-after setup completion.
+The setup wizard may still surface install policy and preview maturity as
+informational context, but it no longer needs a product-selection step. The
+same host registration metadata should remain visible again immediately after
+setup on `/lobby`.
 
 ## Registration Model
 

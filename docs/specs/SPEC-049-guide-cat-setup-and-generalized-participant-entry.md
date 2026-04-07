@@ -14,8 +14,8 @@
 setup implementation detail of `Boss Cat` bootstrap.
 
 Immediately after the owner enters their name in the platform setup wizard, the
-product should offer an optional `Guide Cat`, before starting-product
-selection. `Guide Cat` remains a Cat in product language, but it should be
+product should offer an optional `Guide Cat` before setup completes and routes
+into the host-owned `/lobby`. `Guide Cat` remains a Cat in product language, but it should be
 modeled as a platform-level reusable helper that can support `Cats Chat`,
 `Cats Work`, and `Cats Code`.
 
@@ -75,6 +75,8 @@ not as another one-off special Cat mode.
 - As an owner, I want setup to stay short and not ask me to design a whole
   persona before I can use the platform.
 - As an owner, I want the platform to work even if I skip Guide Cat creation.
+- As an owner, I want setup to finish into a neutral host landing instead of
+  forcing me to choose a product inside the wizard.
 - As an owner, I want runtime failures after setup to show up as recovery, not
   as being thrown back into onboarding.
 - As a product developer, I want one stable term for this helper so naming does
@@ -86,8 +88,8 @@ not as another one-off special Cat mode.
 
 ### Functional Requirements
 
-1. Immediately after owner-name capture, and before starting-product
-   selection, the platform setup wizard shall offer optional Guide Cat creation.
+1. Immediately after owner-name capture, and before setup completes, the
+   platform setup wizard shall offer optional Guide Cat creation.
 2. The setup wizard shall use `Guide Cat` as the primary user-facing and
    developer-facing term for this helper.
 3. If the owner opts into Guide Cat creation, setup shall collect only:
@@ -122,23 +124,27 @@ not as another one-off special Cat mode.
 13. The same truthful runtime-backed selector rule shall apply to later
     in-product provider/model pickers that choose execution targets after
     setup.
-14. After setup completes, runtime failure or provider loss shall be handled as
+14. Completing setup shall route the user to `/lobby` rather than forcing a
+    product-selection step inside the wizard.
+15. The first product launch after setup shall happen from `/lobby`, and later
+    product launches may establish or update `lastProductSurface`.
+16. After setup completes, runtime failure or provider loss shall be handled as
     product or host recovery, not by routing the user back through onboarding.
-15. The first migration slice shall replace the setup-time `Boss Cat`
+17. The first migration slice shall replace the setup-time `Boss Cat`
     bootstrap framing with `Guide Cat` onboarding, while keeping `Boss Cat` as
     a distinct Chat role until a later product-mapping decision says otherwise.
-16. The platform may use Guide Cat to generate starter ideas, onboarding
+18. The platform may use Guide Cat to generate starter ideas, onboarding
     guidance, and product-entry suggestions for surfaces such as `+New chat`
-    and future `+Group chat`.
-17. When Guide Cat is unavailable, missing, sleeping, or has no cached output,
+    and `/lobby`, plus future `+Group chat`.
+19. When Guide Cat is unavailable, missing, sleeping, or has no cached output,
     the platform shall fall back to deterministic static starter suggestions.
-18. Guide Cat-generated entry suggestions shall be cacheable local product
+20. Guide Cat-generated entry suggestions shall be cacheable local product
     data; they shall not require a permanently running session.
-19. The first slice shall attempt one initial Guide Cat suggestion generation
+21. The first slice shall attempt one initial Guide Cat suggestion generation
     after setup completes when a Guide Cat exists, then reuse cached
     suggestions on entry surfaces and only lazy-refresh them when the cache is
     stale or missing.
-20. The long-term conversation model shall support generalized participants so
+22. The long-term conversation model shall support generalized participants so
     future non-Cat specialists can participate in rooms without inventing a
     second routing model.
 
@@ -179,13 +185,14 @@ Setup start
     |                        |
     +------------------------+
     |
-    +--> Choose starting product
+    +--> complete setup
     |
-    +--> enter selected product
+    +--> enter /lobby
              |
              +--> use cached Guide Cat suggestions when available
              +--> lazy-refresh when cached suggestions are stale or missing
              +--> otherwise use static fallback ideas
+             +--> first product launch happens from the lobby
              +--> if runtime later fails, stay in recovery, not onboarding
 ```
 
@@ -227,7 +234,7 @@ longer be the only participant shape that the architecture can represent.
 
 ### Guide Cat Suggestions
 
-Starter ideas on entry surfaces should follow this order:
+Starter ideas on `/lobby` and other entry surfaces should follow this order:
 
 1. attempt one initial background generation right after setup completes when a
    Guide Cat exists

@@ -15,7 +15,7 @@ This plan introduces the first host-owned landing and inventory slice for
 The implementation should keep today's strengths:
 
 - setup remains the first-run entry
-- `/` still resolves to the user's selected or last-used product
+- `/` still resolves to the user's last-used product when one exists
 - product routes remain owned by their product trees
 
 While adding a clearer platform-host model:
@@ -50,10 +50,10 @@ contracts.
       - installed apps
       - host actions and runtime summary
 - [x] Add a clear navigation entry to open the landing from inside the platform.
-- [x] Keep `/` routing behavior aligned with the existing selected/last-used
-      product model.
-- [x] Keep setup-complete navigation aligned with the current product-first
-      entry flow rather than forcing a landing detour in this slice.
+- [x] Keep `/` routing behavior aligned with the last-used product model while
+      allowing `/lobby` fallback when no last-used product exists.
+- [ ] Update setup-complete navigation so the first post-setup destination is
+      `/lobby` rather than an immediately selected product.
 
 **Deliverables**: a visible host launcher and inventory surface.
 
@@ -74,11 +74,10 @@ ownership boundaries.
 
 ## Phase 4: Integrate Setup and Product Entry
 
-- [x] Ensure setup continues to choose a primary product from the host
-      registration source.
+- [ ] Remove setup-time primary-product selection from the flow.
 - [x] Reuse the same product descriptors for both setup and landing.
-- [x] Ensure setup and landing can distinguish required products from optional
-      products without changing the user-facing primary-product selection flow.
+- [ ] Ensure setup and landing can distinguish required products from optional
+      products without requiring a setup-time primary-product selection flow.
 - [x] Surface the current default product and last-used product clearly on the
       landing.
 - [x] Add launch actions that route into the correct product entry points.
@@ -118,8 +117,8 @@ distribution system.
 - Treat install policy (`required` vs `optional`) as separate from both
   `product` and `app`.
 - Keep the current root-entry behavior while adding a host-owned landing route.
-- Keep setup-complete entry product-first in this slice, while exposing
-  `/lobby` as the host-owned launcher and inventory surface.
+- Finish setup into `/lobby`, and let the first launched product establish the
+  initial `lastProductSurface`.
 - Reuse the host registration source across setup and landing instead of
   maintaining separate metadata islands.
 
@@ -131,12 +130,13 @@ distribution system.
   `/lobby`, `/settings/*`, and product prefixes
 - **Manual Testing**:
   1. Fresh setup still opens the wizard.
-  2. Completing setup still enters the selected product.
+  2. Completing setup lands on `/lobby`.
   3. `/lobby` shows Home, Office, and installed apps, with per-product
      install metadata.
-  4. Settings opened from Chat, Work, or Code keep the current product sidebar
+  4. Launching a product from `/lobby` establishes the later `/` entry path.
+  5. Settings opened from Chat, Work, or Code keep the current product sidebar
      while using canonical `/settings/*` routes.
-  5. Existing direct links into `/chat/*`, `/work/*`, and `/code/*` still work.
+  6. Existing direct links into `/chat/*`, `/work/*`, and `/code/*` still work.
 
 ## Risks and Mitigations
 
@@ -145,7 +145,7 @@ distribution system.
 | Host and product settings ownership stays mixed during migration | High | Add explicit canonical routes plus compatibility redirects early |
 | Terminology drifts between docs and UI | Medium | Land ADR/SPEC copy first and reuse labels from a shared source where possible |
 | Product/app descriptors become overfit to the current first-party slice | Medium | Keep descriptors minimal and centered on inventory, launch semantics, and install policy |
-| Landing adds friction to the fast chat entry path | Medium | Preserve `/` -> last-used product while making `/lobby` a clear optional host entry |
+| Landing adds friction to the fast chat entry path | Medium | Preserve `/` -> last-used product after first launch while making `/lobby` the deterministic first post-setup entry |
 
 ## Progress Log
 
@@ -155,6 +155,7 @@ distribution system.
 | 2026-03-31 | Added shared platform product registry, exposed `products` in the platform envelope, and reused the same descriptors across setup and Lobby. |
 | 2026-03-31 | Moved platform settings to host-owned `/settings/*` and surfaced install-policy metadata in setup cards. |
 | 2026-04-04 | Removed pre-launch `/chat/settings/*` aliases and kept canonical settings inside the active product shell. |
+| 2026-04-07 | Direction updated so setup no longer chooses a primary product; completion should land in `/lobby`, and the first launched product should establish later `/` entry behavior. |
 
 ---
 
