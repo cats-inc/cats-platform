@@ -488,7 +488,7 @@ export function NewChatDraft({
             ) : (
               <button
                 className="composerSendButton"
-                disabled={!composerDraft.trim() || isSubmittingFirstTurn}
+                disabled={!composerDraft.trim() || isSubmittingFirstTurn || (isGroupDraft && draftParticipantCount < 2)}
                 type="submit"
                 aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
               >
