@@ -37,6 +37,7 @@ import {
   type DraftTemporaryParticipant,
   emptyCatForm,
   pickGreeting,
+  resolveGenericDraftTemporaryParticipants,
   type CatFormState,
 } from './chatUtils';
 import { AppRoutes } from './AppRoutes';
@@ -343,6 +344,10 @@ export default function App() {
     draftModel.modelSelection,
     draftModel.provider,
   ]);
+  const seedDraftGroupParticipants = useCallback(
+    () => createInitialGroupParticipants(draftModel.provider),
+    [draftModel.provider],
+  );
 
   const {
     accountMenuOpen,
@@ -441,10 +446,7 @@ export default function App() {
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     resetDraftConcurrentTargets,
-    createInitialGroupParticipants: useCallback(
-      () => createInitialGroupParticipants(draftModel.provider),
-      [draftModel.provider],
-    ),
+    createInitialGroupParticipants: seedDraftGroupParticipants,
     setDraftFiles,
     setChannelFiles,
     confirm: appConfirm,
@@ -567,11 +569,18 @@ export default function App() {
     }
 
     setDraftCatIds([]);
-    setDraftTemporaryParticipants([]);
+    setDraftTemporaryParticipants((current) =>
+      resolveGenericDraftTemporaryParticipants(
+        newChatMode,
+        current,
+        seedDraftGroupParticipants,
+      ));
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
   }, [
     draftRoute.isGenericNewChatRoute,
+    newChatMode,
+    seedDraftGroupParticipants,
     setDraftCatIds,
     setDraftTemporaryParticipants,
     showingNewChatDraft,

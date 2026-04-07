@@ -8,6 +8,7 @@ import type {
   CreateTemporaryParticipantInput,
   NewChatEntryKind,
 } from '../api/contracts';
+import type { NewChatMode } from '../shared/channelPaths.js';
 import type { AssistantPresetRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
@@ -36,6 +37,20 @@ export interface CatFormState {
 export interface DraftTemporaryParticipant extends CreateTemporaryParticipantInput {
   participantId: string;
   presetId?: string | null;
+}
+
+export function resolveGenericDraftTemporaryParticipants(
+  mode: NewChatMode,
+  existingParticipants: DraftTemporaryParticipant[],
+  createGroupParticipants: () => DraftTemporaryParticipant[],
+): DraftTemporaryParticipant[] {
+  if (mode !== 'group') {
+    return [];
+  }
+
+  return existingParticipants.length > 0
+    ? existingParticipants
+    : createGroupParticipants();
 }
 
 export function emptyCatForm(): CatFormState {

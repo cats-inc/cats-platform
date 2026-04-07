@@ -12,6 +12,7 @@ import {
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
   insertCreatedChannelIntoPayload,
+  resolveGenericDraftTemporaryParticipants,
 } from '../src/products/chat/renderer/chatUtils.tsx';
 import {
   resolveDraftParticipantSelection,
@@ -249,6 +250,57 @@ test('assistant presets can be instantiated as draft temporary participants with
     draftHasAssistantPresetParticipant([participant], 'assistant-reviewer'),
     true,
   );
+});
+
+test('generic group draft route seeds default temporary participants when none exist yet', () => {
+  const participants = resolveGenericDraftTemporaryParticipants(
+    'group',
+    [],
+    () => [
+      {
+        participantId: 'participant-claude',
+        name: 'Claude',
+        provider: 'claude',
+        instance: 'native',
+        model: 'claude-opus-4-6',
+        modelSelection: null,
+      },
+      {
+        participantId: 'participant-codex',
+        name: 'Codex',
+        provider: 'codex',
+        instance: null,
+        model: 'gpt-5.4',
+        modelSelection: null,
+      },
+    ],
+  );
+
+  assert.equal(participants.length, 2);
+  assert.equal(participants[0]?.provider, 'claude');
+  assert.equal(participants[1]?.provider, 'codex');
+});
+
+test('generic group draft route preserves existing temporary participants during route entry', () => {
+  const participants = resolveGenericDraftTemporaryParticipants(
+    'group',
+    [
+      {
+        participantId: 'participant-existing',
+        name: 'Existing Reviewer',
+        provider: 'gemini',
+        instance: 'native',
+        model: 'gemini-3.1-pro',
+        modelSelection: null,
+      },
+    ],
+    () => {
+      throw new Error('should not reseed existing draft participants');
+    },
+  );
+
+  assert.equal(participants.length, 1);
+  assert.equal(participants[0]?.provider, 'gemini');
 });
 
 test('resolveDraftParticipantSelection dedupes toggled cats and keeps route lead first', () => {
