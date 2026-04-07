@@ -58,6 +58,7 @@ export function createAppShell(
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
     guideCatSidecarSeen?: boolean;
+    guideCatSidecarMode?: string;
     assistantPresets?: AssistantPresetRecord[];
   },
 ): AppShellPayload {
@@ -121,6 +122,7 @@ export function createAppShell(
     lastProductSurface: setup?.lastProductSurface ?? null,
     guideCat: setup?.guideCat ? structuredClone(setup.guideCat) : null,
     guideCatSidecarSeen: setup?.guideCatSidecarSeen ?? false,
+    guideCatSidecarMode: setup?.guideCatSidecarMode ?? 'auto',
     assistantPresets: structuredClone(setup?.assistantPresets ?? []),
   };
 }

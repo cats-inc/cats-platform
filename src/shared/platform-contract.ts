@@ -10,6 +10,7 @@ export type PlatformProductInstallPolicy = 'required' | 'optional';
 export type PlatformProductInstallState = 'installed' | 'available' | 'installing' | 'attention';
 export type PlatformProductMaturity = 'active' | 'preview';
 export type PlatformLobbyAnimationMode = 'off' | 'reduced' | 'full';
+export type GuideCatSidecarMode = 'auto' | 'drawer' | 'bubble';
 
 export interface PlatformAppDescriptor {
   name: 'cats';
@@ -77,6 +78,7 @@ export interface PlatformOwnerContext {
   lastProductSurface: PlatformSurfaceId | null;
   guideCat: GuideCatRecord | null;
   guideCatSidecarSeen?: boolean;
+  guideCatSidecarMode?: GuideCatSidecarMode;
   assistantPresets?: AssistantPresetRecord[];
 }
 

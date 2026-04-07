@@ -9,10 +9,13 @@ import {
   type GuideCatSidecarViewState,
 } from '../../app/renderer/useGuideCatSidecarState.js';
 
+import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
+
 interface GuideCatSidecarProps {
   guideCat: GuideCatRecord;
   ownerDisplayName: string;
   guideCatSidecarSeen: boolean;
+  guideCatSidecarMode: GuideCatSidecarMode;
   unreadCount: number;
 }
 
@@ -383,10 +386,12 @@ export function GuideCatSidecar({
   guideCat,
   ownerDisplayName,
   guideCatSidecarSeen,
+  guideCatSidecarMode,
   unreadCount,
 }: GuideCatSidecarProps) {
   const { viewState, toggle, collapse, dismissWelcome } = useGuideCatSidecarState(
     guideCatSidecarSeen,
+    guideCatSidecarMode,
   );
   const { anchorStyle, surfaceMode } = useGuideCatSidecarPlacement();
 

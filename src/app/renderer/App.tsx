@@ -280,6 +280,7 @@ export default function PlatformApp() {
           guideCat={readyEnvelope.guideCat}
           ownerDisplayName={readyEnvelope.ownerDisplayName}
           guideCatSidecarSeen={readyEnvelope.guideCatSidecarSeen ?? false}
+          guideCatSidecarMode={readyEnvelope.guideCatSidecarMode ?? 'auto'}
           unreadCount={0}
         />
       ) : null}

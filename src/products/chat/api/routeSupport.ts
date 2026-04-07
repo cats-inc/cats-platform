@@ -364,6 +364,7 @@ export async function buildAppShellPayload(
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       guideCat: core.guideCat,
       guideCatSidecarSeen: platformPrefs.guideCatSidecarSeen,
+      guideCatSidecarMode: platformPrefs.guideCatSidecarMode,
       assistantPresets: core.assistantPresets,
       botBindings,
       lastProductSurface: platformPrefs.lastProductSurface,

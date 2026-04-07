@@ -326,6 +326,7 @@ async function handlePlatformPreferencesUpdate(
       openWindowOnStartup?: boolean;
       lobbyAnimationMode?: string;
       guideCatSidecarSeen?: boolean;
+      guideCatSidecarMode?: string;
     }>(context.request);
     const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
     const surface = body.lastProductSurface;
@@ -374,12 +375,25 @@ async function handlePlatformPreferencesUpdate(
       return;
     }
 
+    if (
+      body.guideCatSidecarMode !== undefined
+      && body.guideCatSidecarMode !== 'auto'
+      && body.guideCatSidecarMode !== 'drawer'
+      && body.guideCatSidecarMode !== 'bubble'
+    ) {
+      sendJson(context.response, 400, {
+        error: { code: 'bad_request', message: 'guideCatSidecarMode must be auto, drawer, or bubble' },
+      });
+      return;
+    }
+
     const nextPrefs = {
       lastProductSurface: surface ?? currentPrefs.lastProductSurface,
       startAtLogin: body.startAtLogin ?? currentPrefs.startAtLogin,
       openWindowOnStartup: body.openWindowOnStartup ?? currentPrefs.openWindowOnStartup,
       lobbyAnimationMode: body.lobbyAnimationMode ?? currentPrefs.lobbyAnimationMode,
       guideCatSidecarSeen: body.guideCatSidecarSeen ?? currentPrefs.guideCatSidecarSeen,
+      guideCatSidecarMode: body.guideCatSidecarMode ?? currentPrefs.guideCatSidecarMode,
     };
 
     await writePlatformPreferences(context.dependencies.config.chatStatePath, nextPrefs);

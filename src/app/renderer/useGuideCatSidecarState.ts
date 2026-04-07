@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
+import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
 import { dispatchPlatformEnvelopeRefresh } from './platformEnvelopeEvents.js';
 
 export type GuideCatSidecarViewState = 'hidden' | 'collapsed' | 'welcome-peek' | 'open';
@@ -27,13 +28,21 @@ function persistSidecarSeen(): void {
     .catch(() => {});
 }
 
+function resolveOpenState(mode: GuideCatSidecarMode): GuideCatSidecarInnerState {
+  return mode === 'bubble' ? 'welcome-peek' : 'open';
+}
+
 export function toggleGuideCatSidecarState(
   prev: GuideCatSidecarInnerState,
+  mode: GuideCatSidecarMode,
 ): { nextState: GuideCatSidecarInnerState; persistSeen: boolean } {
   if (prev === 'collapsed') {
-    return { nextState: 'open', persistSeen: false };
+    return { nextState: resolveOpenState(mode), persistSeen: false };
   }
   if (prev === 'welcome-peek') {
+    if (mode === 'bubble') {
+      return { nextState: 'collapsed', persistSeen: true };
+    }
     return { nextState: 'open', persistSeen: true };
   }
   return { nextState: 'collapsed', persistSeen: false };
@@ -48,12 +57,23 @@ export function collapseGuideCatSidecarState(
   };
 }
 
+function resolveInitialState(
+  sidecarSeen: boolean,
+  mode: GuideCatSidecarMode,
+): GuideCatSidecarInnerState {
+  if (!sidecarSeen && mode !== 'drawer') {
+    return 'welcome-peek';
+  }
+  return 'collapsed';
+}
+
 export function useGuideCatSidecarState(
   sidecarSeen: boolean,
+  mode: GuideCatSidecarMode,
 ): GuideCatSidecarState {
   const location = useLocation();
   const [innerState, setInnerState] = useState<GuideCatSidecarInnerState>(
-    () => sidecarSeen ? 'collapsed' : 'welcome-peek',
+    () => resolveInitialState(sidecarSeen, mode),
   );
 
   const isHiddenRoute =
@@ -64,13 +84,13 @@ export function useGuideCatSidecarState(
 
   const toggle = useCallback(() => {
     setInnerState((prev) => {
-      const transition = toggleGuideCatSidecarState(prev);
+      const transition = toggleGuideCatSidecarState(prev, mode);
       if (transition.persistSeen) {
         persistSidecarSeen();
       }
       return transition.nextState;
     });
-  }, []);
+  }, [mode]);
 
   const collapse = useCallback(() => {
     setInnerState((prev) => {

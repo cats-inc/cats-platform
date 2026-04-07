@@ -22,6 +22,7 @@ export function PlatformSettingsGeneral({
   const [cropOpen, setCropOpen] = useState(false);
   const [savingDesktopPrefs, setSavingDesktopPrefs] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
+  const [savingSidecarMode, setSavingSidecarMode] = useState(false);
 
   async function updateOwnerAvatar(
     nextAvatarUrl: string | null,
@@ -147,6 +148,38 @@ export function PlatformSettingsGeneral({
     }
   }
 
+  async function updateGuideCatSidecarMode(
+    nextMode: 'auto' | 'drawer' | 'bubble',
+    errorMessage: string,
+  ): Promise<void> {
+    const previousMode = payload.guideCatSidecarMode ?? 'auto';
+    onPayloadUpdate({
+      ...payload,
+      guideCatSidecarMode: nextMode,
+    });
+    setSavingSidecarMode(true);
+    try {
+      const response = await fetch('/api/platform/preferences', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ guideCatSidecarMode: nextMode }),
+      });
+      if (!response.ok) {
+        throw new Error(errorMessage);
+      }
+      dispatchPlatformEnvelopeRefresh();
+      onFeedback('');
+    } catch (error) {
+      onPayloadUpdate({
+        ...payload,
+        guideCatSidecarMode: previousMode,
+      });
+      onFeedback(error instanceof Error ? error.message : errorMessage);
+    } finally {
+      setSavingSidecarMode(false);
+    }
+  }
+
   const avatarUrl = payload.ownerAvatarUrl;
   const initials = nameInitials(payload.ownerDisplayName);
   const desktopPrefs = payload.desktop ?? {
@@ -266,6 +299,66 @@ export function PlatformSettingsGeneral({
             </span>
           </label>
         </div>
+
+        {payload.guideCat ? (
+          <div className="contentCard">
+            <h2>Guide Cat assist</h2>
+            <p className="heroNote">
+              Choose how {payload.guideCat.name} appears when you click the floating avatar.
+            </p>
+            <label className="settingsCheckboxRow">
+              <input
+                type="radio"
+                name="guide-cat-sidecar-mode"
+                checked={(payload.guideCatSidecarMode ?? 'auto') === 'auto'}
+                disabled={savingSidecarMode}
+                onChange={() => {
+                  void updateGuideCatSidecarMode('auto', 'Failed to update guide cat mode');
+                }}
+              />
+              <span className="settingsCheckboxMeta">
+                <span className="settingsCheckboxLabel">Auto</span>
+                <span className="heroNote">
+                  First time shows a speech bubble, then switches to a full side panel.
+                </span>
+              </span>
+            </label>
+            <label className="settingsCheckboxRow">
+              <input
+                type="radio"
+                name="guide-cat-sidecar-mode"
+                checked={(payload.guideCatSidecarMode ?? 'auto') === 'drawer'}
+                disabled={savingSidecarMode}
+                onChange={() => {
+                  void updateGuideCatSidecarMode('drawer', 'Failed to update guide cat mode');
+                }}
+              />
+              <span className="settingsCheckboxMeta">
+                <span className="settingsCheckboxLabel">Side panel</span>
+                <span className="heroNote">
+                  Always open a full side panel when you click the guide cat avatar.
+                </span>
+              </span>
+            </label>
+            <label className="settingsCheckboxRow">
+              <input
+                type="radio"
+                name="guide-cat-sidecar-mode"
+                checked={(payload.guideCatSidecarMode ?? 'auto') === 'bubble'}
+                disabled={savingSidecarMode}
+                onChange={() => {
+                  void updateGuideCatSidecarMode('bubble', 'Failed to update guide cat mode');
+                }}
+              />
+              <span className="settingsCheckboxMeta">
+                <span className="settingsCheckboxLabel">Speech bubble</span>
+                <span className="heroNote">
+                  Always show a compact speech bubble with quick actions.
+                </span>
+              </span>
+            </label>
+          </div>
+        ) : null}
 
         <div className="contentCard">
           <h2>Desktop startup</h2>

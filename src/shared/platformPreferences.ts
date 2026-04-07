@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import type {
+  GuideCatSidecarMode,
   PlatformLobbyAnimationMode,
   PlatformSurfaceId,
 } from './platform-contract.js';
@@ -13,6 +14,7 @@ export interface PlatformPreferences {
   openWindowOnStartup: boolean;
   lobbyAnimationMode: PlatformLobbyAnimationMode;
   guideCatSidecarSeen: boolean;
+  guideCatSidecarMode: GuideCatSidecarMode;
 }
 
 const DEFAULTS: PlatformPreferences = {
@@ -21,6 +23,7 @@ const DEFAULTS: PlatformPreferences = {
   openWindowOnStartup: false,
   lobbyAnimationMode: 'reduced',
   guideCatSidecarSeen: false,
+  guideCatSidecarMode: 'auto',
 };
 
 export function resolvePlatformPreferencesPath(chatStatePath: string): string {
@@ -49,6 +52,12 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
         ? lobbyAnimationMode
         : DEFAULTS.lobbyAnimationMode,
     guideCatSidecarSeen: record.guideCatSidecarSeen === true,
+    guideCatSidecarMode:
+      record.guideCatSidecarMode === 'auto'
+      || record.guideCatSidecarMode === 'drawer'
+      || record.guideCatSidecarMode === 'bubble'
+        ? record.guideCatSidecarMode
+        : DEFAULTS.guideCatSidecarMode,
   };
 }
 
