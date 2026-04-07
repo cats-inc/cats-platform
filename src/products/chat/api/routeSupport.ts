@@ -363,6 +363,7 @@ export async function buildAppShellPayload(
       ownerAvatarColor: core.ownerProfile.avatarColor,
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       guideCat: core.guideCat,
+      guideCatSidecarSeen: platformPrefs.guideCatSidecarSeen,
       assistantPresets: core.assistantPresets,
       botBindings,
       lastProductSurface: platformPrefs.lastProductSurface,

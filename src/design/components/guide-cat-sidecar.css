@@ -1,0 +1,301 @@
+/* ── Guide Cat Sidecar ── */
+
+/* ── Collapsed pill (avatar icon on left edge) ── */
+
+.guideCatPill {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-raised);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.guideCatPill:hover {
+  box-shadow: var(--shadow-sheet);
+  transform: translateY(-50%) scale(1.06);
+}
+
+.guideCatPillBadge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  border: 2px solid var(--app-bg);
+}
+
+/* ── Welcome peek (small floating card) ── */
+
+.guideCatPeek {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: 260px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-raised);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  animation: guideCatPeekIn 0.2s ease-out;
+}
+
+@keyframes guideCatPeekIn {
+  from { opacity: 0; transform: translateY(-50%) translateX(-8px); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.guideCatPeekHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.guideCatPeekAvatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.guideCatPeekName {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.guideCatPeekGreeting {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.guideCatPeekActions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.guideCatPeekAction {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.guideCatPeekAction:hover {
+  background: var(--panel-hover);
+}
+
+.guideCatPeekDismiss {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted-soft);
+  font-size: var(--text-xs);
+  text-align: center;
+  cursor: pointer;
+}
+
+.guideCatPeekDismiss:hover {
+  color: var(--muted);
+}
+
+/* ── Open panel (full left-docked panel) ── */
+
+.guideCatPanel {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 320px;
+  height: 100vh;
+  z-index: 20;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  animation: guideCatSlideIn 0.2s ease-out;
+}
+
+@keyframes guideCatSlideIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+.guideCatPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.guideCatPanelAvatar {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.guideCatPanelName {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.guideCatPanelClose {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.guideCatPanelClose:hover {
+  background: var(--panel-hover);
+}
+
+.guideCatPanelBody {
+  padding: var(--space-4);
+  overflow-y: auto;
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+
+.guideCatPanelGreeting {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.guideCatPanelActions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.guideCatPanelAction {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.guideCatPanelAction:hover {
+  background: var(--panel-hover);
+}
+
+/* ── Responsive: narrow viewport ── */
+
+@media (max-width: 640px) {
+  .guideCatPill {
+    top: auto;
+    bottom: 16px;
+    transform: none;
+  }
+
+  .guideCatPill:hover {
+    transform: scale(1.06);
+  }
+
+  .guideCatPeek {
+    top: auto;
+    bottom: 64px;
+    transform: none;
+    width: min(260px, calc(100vw - 32px));
+  }
+
+  @keyframes guideCatPeekIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .guideCatPanel {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100vw;
+    height: min(calc(100vh - 60px), 420px);
+    border-right: none;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+    border-radius: 16px 16px 0 0;
+  }
+
+  @keyframes guideCatSlideIn {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+}

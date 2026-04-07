@@ -57,6 +57,7 @@ export function createAppShell(
     lobby?: PlatformLobbyPreferences;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
+    guideCatSidecarSeen?: boolean;
     assistantPresets?: AssistantPresetRecord[];
   },
 ): AppShellPayload {
@@ -119,6 +120,7 @@ export function createAppShell(
     ownerAvatarUrl: setup?.ownerAvatarUrl ?? null,
     lastProductSurface: setup?.lastProductSurface ?? null,
     guideCat: setup?.guideCat ? structuredClone(setup.guideCat) : null,
+    guideCatSidecarSeen: setup?.guideCatSidecarSeen ?? false,
     assistantPresets: structuredClone(setup?.assistantPresets ?? []),
   };
 }

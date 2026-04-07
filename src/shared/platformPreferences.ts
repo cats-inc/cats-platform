@@ -12,6 +12,7 @@ export interface PlatformPreferences {
   startAtLogin: boolean;
   openWindowOnStartup: boolean;
   lobbyAnimationMode: PlatformLobbyAnimationMode;
+  guideCatSidecarSeen: boolean;
 }
 
 const DEFAULTS: PlatformPreferences = {
@@ -19,6 +20,7 @@ const DEFAULTS: PlatformPreferences = {
   startAtLogin: true,
   openWindowOnStartup: false,
   lobbyAnimationMode: 'reduced',
+  guideCatSidecarSeen: false,
 };
 
 export function resolvePlatformPreferencesPath(chatStatePath: string): string {
@@ -46,6 +48,7 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
       || lobbyAnimationMode === 'full'
         ? lobbyAnimationMode
         : DEFAULTS.lobbyAnimationMode,
+    guideCatSidecarSeen: record.guideCatSidecarSeen === true,
   };
 }
 

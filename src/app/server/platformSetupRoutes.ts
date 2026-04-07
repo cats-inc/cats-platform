@@ -325,6 +325,7 @@ async function handlePlatformPreferencesUpdate(
       startAtLogin?: boolean;
       openWindowOnStartup?: boolean;
       lobbyAnimationMode?: string;
+      guideCatSidecarSeen?: boolean;
     }>(context.request);
     const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
     const surface = body.lastProductSurface;
@@ -366,11 +367,19 @@ async function handlePlatformPreferencesUpdate(
       return;
     }
 
+    if (body.guideCatSidecarSeen !== undefined && typeof body.guideCatSidecarSeen !== 'boolean') {
+      sendJson(context.response, 400, {
+        error: { code: 'bad_request', message: 'guideCatSidecarSeen must be a boolean' },
+      });
+      return;
+    }
+
     const nextPrefs = {
       lastProductSurface: surface ?? currentPrefs.lastProductSurface,
       startAtLogin: body.startAtLogin ?? currentPrefs.startAtLogin,
       openWindowOnStartup: body.openWindowOnStartup ?? currentPrefs.openWindowOnStartup,
       lobbyAnimationMode: body.lobbyAnimationMode ?? currentPrefs.lobbyAnimationMode,
+      guideCatSidecarSeen: body.guideCatSidecarSeen ?? currentPrefs.guideCatSidecarSeen,
     };
 
     await writePlatformPreferences(context.dependencies.config.chatStatePath, nextPrefs);

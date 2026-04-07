@@ -13,6 +13,7 @@ import {
   resolvePlatformSurfaceForPath,
   PLATFORM_SURFACE_ROUTES,
 } from './routeMap';
+import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
 import { PlatformLobby } from './PlatformLobby';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
@@ -188,16 +189,26 @@ export default function PlatformApp() {
       ? <CodeApp />
       : <ChatApp />;
   return (
-    <Routes>
-      <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
-      <Route path="/products" element={<Navigate to="/lobby" replace />} />
-      <Route path="/settings/*" element={settingsSurfaceElement} />
-      <Route path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
-      <Route path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
-      <Route path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />
-      <Route path="/setup" element={<Navigate to={entryPath} replace />} />
-      <Route path="/" element={<Navigate to={entryPath} replace />} />
-      <Route path="*" element={<Navigate to={entryPath} replace />} />
-    </Routes>
+    <>
+      {readyEnvelope.guideCat ? (
+        <GuideCatSidecar
+          guideCat={readyEnvelope.guideCat}
+          ownerDisplayName={readyEnvelope.ownerDisplayName}
+          guideCatSidecarSeen={readyEnvelope.guideCatSidecarSeen ?? false}
+          unreadCount={0}
+        />
+      ) : null}
+      <Routes>
+        <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
+        <Route path="/products" element={<Navigate to="/lobby" replace />} />
+        <Route path="/settings/*" element={settingsSurfaceElement} />
+        <Route path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
+        <Route path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
+        <Route path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />
+        <Route path="/setup" element={<Navigate to={entryPath} replace />} />
+        <Route path="/" element={<Navigate to={entryPath} replace />} />
+        <Route path="*" element={<Navigate to={entryPath} replace />} />
+      </Routes>
+    </>
   );
 }
