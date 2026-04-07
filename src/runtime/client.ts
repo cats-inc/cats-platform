@@ -450,7 +450,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: AbortSignal.timeout(this.providerRegistryTimeoutMs),
     });
 
     if (!response.ok) {
@@ -478,7 +478,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: AbortSignal.timeout(this.providerRegistryTimeoutMs),
     });
 
     if (!response.ok) {

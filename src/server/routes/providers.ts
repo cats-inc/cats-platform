@@ -500,10 +500,20 @@ export async function handleProviderModels(
     return;
   }
 
+  const modelStartMs = Date.now();
   try {
     const catalog = await dependencies.runtimeClient.getProviderModels(provider, normalizedInstance);
+    console.log(
+      '[selector] models load: provider=%s instance=%s elapsed=%dms',
+      provider, normalizedInstance ?? '*', Date.now() - modelStartMs,
+    );
     sendJson(response, 200, { catalog });
   } catch (error) {
+    console.log(
+      '[selector] models load failed: provider=%s instance=%s elapsed=%dms error=%s',
+      provider, normalizedInstance ?? '*', Date.now() - modelStartMs,
+      error instanceof Error ? error.message : String(error),
+    );
     const runtimeError = error as RuntimeRequestError | Error;
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
       sendRestError(
@@ -573,10 +583,20 @@ export async function handleAdvancedProviderModels(
     return;
   }
 
+  const advancedStartMs = Date.now();
   try {
     const catalog = await dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance);
+    console.log(
+      '[selector] advanced models load: provider=%s instance=%s elapsed=%dms',
+      provider, normalizedInstance ?? '*', Date.now() - advancedStartMs,
+    );
     sendJson(response, 200, { catalog });
   } catch (error) {
+    console.log(
+      '[selector] advanced models load failed: provider=%s instance=%s elapsed=%dms error=%s',
+      provider, normalizedInstance ?? '*', Date.now() - advancedStartMs,
+      error instanceof Error ? error.message : String(error),
+    );
     const runtimeError = error as RuntimeRequestError | Error;
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
       sendRestError(
