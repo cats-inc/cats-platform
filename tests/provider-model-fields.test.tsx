@@ -6,6 +6,7 @@ import {
   countRequestScopedControls,
   filterPersistentControlValues,
   hasExplicitDefaultEnumOption,
+  PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   listPersistentControlOptions,
   resolveProviderRegistryHint,
   resolveProviderRegistrySetupHref,
@@ -14,6 +15,7 @@ import {
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
   sanitizePersistentTargetSelection,
+  shouldAutoRecheckProviderRegistry,
   shouldAllowLegacyManualModelEntry,
   shouldTreatPersistedTargetAsLegacyModel,
   shouldShowInstanceField,
@@ -423,6 +425,74 @@ test('provider registry empty states distinguish runtime failure from no usable 
     }),
     null,
   );
+});
+
+test('provider registry auto-recheck only triggers for empty truthful states after returning to a visible window', () => {
+  assert.equal(shouldAutoRecheckProviderRegistry({
+    providersLoaded: false,
+    providerCount: 0,
+    registryState: 'runtime_unreachable',
+    retryable: true,
+    hasSetupHref: true,
+    documentVisible: true,
+    lastAutoRecheckAt: 0,
+    now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
+  }), false);
+
+  assert.equal(shouldAutoRecheckProviderRegistry({
+    providersLoaded: true,
+    providerCount: 1,
+    registryState: 'runtime_unreachable',
+    retryable: true,
+    hasSetupHref: true,
+    documentVisible: true,
+    lastAutoRecheckAt: 0,
+    now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
+  }), false);
+
+  assert.equal(shouldAutoRecheckProviderRegistry({
+    providersLoaded: true,
+    providerCount: 0,
+    registryState: 'runtime_unreachable',
+    retryable: true,
+    hasSetupHref: false,
+    documentVisible: true,
+    lastAutoRecheckAt: 0,
+    now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
+  }), false);
+
+  assert.equal(shouldAutoRecheckProviderRegistry({
+    providersLoaded: true,
+    providerCount: 0,
+    registryState: 'runtime_unreachable',
+    retryable: true,
+    hasSetupHref: true,
+    documentVisible: false,
+    lastAutoRecheckAt: 0,
+    now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
+  }), false);
+
+  assert.equal(shouldAutoRecheckProviderRegistry({
+    providersLoaded: true,
+    providerCount: 0,
+    registryState: 'no_usable_targets',
+    retryable: true,
+    hasSetupHref: true,
+    documentVisible: true,
+    lastAutoRecheckAt: 1000,
+    now: 1000 + PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - 1,
+  }), false);
+
+  assert.equal(shouldAutoRecheckProviderRegistry({
+    providersLoaded: true,
+    providerCount: 0,
+    registryState: 'no_usable_targets',
+    retryable: true,
+    hasSetupHref: true,
+    documentVisible: true,
+    lastAutoRecheckAt: 1000,
+    now: 1000 + PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
+  }), true);
 });
 
 test('static fallback catalogs do not classify unknown persisted models as legacy before runtime data arrives', () => {

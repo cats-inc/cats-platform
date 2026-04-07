@@ -40,6 +40,8 @@ interface SharedProviderModelFieldsProps {
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
 }
 
+export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 3000;
+
 function createEmptyProviderModelCatalog(
   provider: string,
   instance?: string | null,
@@ -133,6 +135,31 @@ export function resolveProviderRegistrySetupHref(
 ): string | null {
   const href = registry.recovery?.openRuntimeSetupPath?.trim();
   return href ? href : null;
+}
+
+export function shouldAutoRecheckProviderRegistry(input: {
+  providersLoaded: boolean;
+  providerCount: number;
+  registryState: ProductProviderRegistryState;
+  retryable: boolean;
+  hasSetupHref: boolean;
+  documentVisible: boolean;
+  lastAutoRecheckAt: number;
+  now: number;
+}): boolean {
+  if (!input.providersLoaded) {
+    return false;
+  }
+
+  if (input.providerCount > 0 || input.registryState === 'ready') {
+    return false;
+  }
+
+  if (!input.retryable || !input.hasSetupHref || !input.documentVisible) {
+    return false;
+  }
+
+  return input.now - input.lastAutoRecheckAt >= PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS;
 }
 
 function presetAppliesToEntry(
@@ -402,6 +429,7 @@ export function ProviderModelFields({
   );
   const [providersLoaded, setProvidersLoaded] = useState(false);
   const [providerRegistryReloadToken, setProviderRegistryReloadToken] = useState(0);
+  const [lastAutoProviderRegistryRecheckAt, setLastAutoProviderRegistryRecheckAt] = useState(0);
   const [catalogLoading, setCatalogLoading] = useState(Boolean(provider));
   const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
     createEmptyProviderModelCatalog(provider),
@@ -730,6 +758,52 @@ export function ProviderModelFields({
     && providerOptions.length === 0
     && providerRegistry.recovery?.retryable !== false;
 
+  function reloadProviderRegistry(options?: { markAutoRecheckAt?: number }): void {
+    if (options?.markAutoRecheckAt !== undefined) {
+      setLastAutoProviderRegistryRecheckAt(options.markAutoRecheckAt);
+    }
+    setProvidersLoaded(false);
+    setProviderRegistryReloadToken((current) => current + 1);
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    function maybeAutoRecheck(): void {
+      const now = Date.now();
+      const shouldRecheck = shouldAutoRecheckProviderRegistry({
+        providersLoaded,
+        providerCount: providerOptions.length,
+        registryState: providerRegistry.state,
+        retryable: providerRegistry.recovery?.retryable !== false,
+        hasSetupHref: Boolean(providerRegistrySetupHref),
+        documentVisible: document.visibilityState !== 'hidden',
+        lastAutoRecheckAt: lastAutoProviderRegistryRecheckAt,
+        now,
+      });
+      if (!shouldRecheck) {
+        return;
+      }
+      reloadProviderRegistry({ markAutoRecheckAt: now });
+    }
+
+    window.addEventListener('focus', maybeAutoRecheck);
+    document.addEventListener('visibilitychange', maybeAutoRecheck);
+    return () => {
+      window.removeEventListener('focus', maybeAutoRecheck);
+      document.removeEventListener('visibilitychange', maybeAutoRecheck);
+    };
+  }, [
+    lastAutoProviderRegistryRecheckAt,
+    providerOptions.length,
+    providerRegistry.recovery?.retryable,
+    providerRegistry.state,
+    providerRegistrySetupHref,
+    providersLoaded,
+  ]);
+
   function emitSelection(next: {
     model?: string;
     instance?: string;
@@ -816,10 +890,7 @@ export function ProviderModelFields({
                 <button
                   className="secondaryButton"
                   type="button"
-                  onClick={() => {
-                    setProvidersLoaded(false);
-                    setProviderRegistryReloadToken((current) => current + 1);
-                  }}
+                  onClick={() => reloadProviderRegistry()}
                 >
                   Retry
                 </button>

@@ -152,18 +152,18 @@ fast without reviving static fallback catalogs.
 
 ### Phase 3: Introduce a Truthful Selector Contract
 
-- [ ] Task 3.1: Narrow `GET /api/providers` for selector consumers, or add a
+- [x] Task 3.1: Narrow `GET /api/providers` for selector consumers, or add a
       dedicated selector endpoint, so the response distinguishes:
       - usable targets available
       - runtime reachable but no usable targets
       - runtime unreachable
-- [ ] Task 3.2: Remove static provider/model fallback from setup and in-product
+- [x] Task 3.2: Remove static provider/model fallback from setup and in-product
       execution pickers
-- [ ] Task 3.3: Ensure provider/model controls are only populated from usable
+- [x] Task 3.3: Ensure provider/model controls are only populated from usable
       runtime targets plus runtime-owned model/default metadata
-- [ ] Task 3.4: Reuse the same selector read model and renderer seam for setup,
+- [x] Task 3.4: Reuse the same selector read model and renderer seam for setup,
       cat creation, and other in-product provider/model pickers
-- [ ] Task 3.5: Add refresh/recheck support when the user returns from
+- [x] Task 3.5: Add refresh/recheck support when the user returns from
       `cats-runtime /setup`
 - [x] Task 3.6: After Task 3.9 lands, replace per-provider availability
       fan-out in the hot selector path with one runtime topology read plus one
@@ -331,6 +331,7 @@ recovery
 | 2026-04-07 | Direction tightened again: remove setup Step 3 entirely, finish setup directly into `/lobby`, and drop any `Create Now` setup-time session path |
 | 2026-04-08 | Performance follow-through added: truthful selectors must stop rebuilding provider truth through minute-scale per-provider fan-out, and may instead use bulk runtime truth plus short-lived runtime-backed caching |
 | 2026-04-08 | Runtime follow-through added: platform docs now explicitly depend on a lighter runtime availability-only selector scope plus complementary timeout/cache tuning instead of assuming product-side caching alone fixes cold-start latency |
+| 2026-04-08 | Truthful selector contract landed end-to-end: `/api/providers` now reports distinct ready/no-usable/runtime-unreachable states, setup and in-product pickers share the same truthful `ProviderModelFields` seam, static fallback execution catalogs are gone, and empty-state selector UIs auto-recheck when the window returns from runtime setup. |
 | 2026-04-08 | Bulk truthful selector read landed: `cats-platform` now merges one runtime topology read with one `scope=availability` diagnostics read instead of fan-outing per provider, and the shared runtime client now exposes the additive diagnostics `scope` query for selector callers. |
 | 2026-04-08 | Short-lived selector cache landed: provider registry reads now reuse a 5-second truthful cache keyed by selector scope, dedupe in-flight fetches per runtime client, and serve bounded stale truth while a background refresh updates the cache. |
 | 2026-04-08 | Selector follow-through landed end-to-end: provider model and advanced-model routes now reuse the shared selector cache instead of rebuilding truth per provider, and selector-scoped diagnostics now use a longer timeout budget while config + availability reads run in parallel on cold cache misses. |
