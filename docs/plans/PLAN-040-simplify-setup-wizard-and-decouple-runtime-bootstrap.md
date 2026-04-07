@@ -193,17 +193,17 @@ executed right now, and they do so without minute-scale hot-path latency
 
 ### Phase 4: Finish Setup Into `/lobby` and Keep Recovery Out of Onboarding
 
-- [ ] Task 4.1: Update setup completion handling so the first post-setup route
+- [x] Task 4.1: Update setup completion handling so the first post-setup route
       is `/lobby`
-- [ ] Task 4.2: Remove the requirement that setup completion persist a selected
+- [x] Task 4.2: Remove the requirement that setup completion persist a selected
       product surface
-- [ ] Task 4.3: Update root-entry rules so `/` resolves to the last-used
+- [x] Task 4.3: Update root-entry rules so `/` resolves to the last-used
       product when known and `/lobby` otherwise
-- [ ] Task 4.4: Update desktop readiness and navigation logic so completed
+- [x] Task 4.4: Update desktop readiness and navigation logic so completed
       platform setup does not regress to onboarding when runtime health changes
-- [ ] Task 4.5: Route runtime-down or no-provider states after setup into
+- [x] Task 4.5: Route runtime-down or no-provider states after setup into
       product-side or host recovery UX instead of `/setup`
-- [ ] Task 4.6: Add targeted tests for post-setup runtime regression behavior
+- [x] Task 4.6: Add targeted tests for post-setup runtime regression behavior
 
 **Deliverables**: setup lands on `/lobby`; onboarding remains onboarding; runtime failure becomes
 recovery
@@ -334,6 +334,7 @@ recovery
 | 2026-04-08 | Bulk truthful selector read landed: `cats-platform` now merges one runtime topology read with one `scope=availability` diagnostics read instead of fan-outing per provider, and the shared runtime client now exposes the additive diagnostics `scope` query for selector callers. |
 | 2026-04-08 | Short-lived selector cache landed: provider registry reads now reuse a 5-second truthful cache keyed by selector scope, dedupe in-flight fetches per runtime client, and serve bounded stale truth while a background refresh updates the cache. |
 | 2026-04-08 | Selector follow-through landed end-to-end: provider model and advanced-model routes now reuse the shared selector cache instead of rebuilding truth per provider, and selector-scoped diagnostics now use a longer timeout budget while config + availability reads run in parallel on cold cache misses. |
+| 2026-04-08 | Post-setup host recovery landed: the desktop host now treats completed setup as app-root entry (`/`), opens Cats recovery instead of `/setup` when runtime/provider health regresses, and regression tests now lock that behavior for navigation, readiness, and tray actions. |
 
 ---
 

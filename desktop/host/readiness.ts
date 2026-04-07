@@ -120,7 +120,7 @@ function normalizeHealthStatus(value: string | undefined): DesktopHealthStatus |
 }
 
 function resolveAppEntryPath(setupCompleteAt: string | null | undefined): string {
-  return setupCompleteAt ? '/new' : '/setup';
+  return setupCompleteAt ? '/' : '/setup';
 }
 
 function hasReadyProviderPath(summary: DesktopProviderSummary | null): boolean {
@@ -162,6 +162,21 @@ function buildIssues(
   const issues: DesktopPrerequisiteIssue[] = [];
   const setupComplete = Boolean(appShell?.setupCompleteAt);
   const lastSetupAction = setup?.lastAction ?? null;
+  const providerRecoveryRemediation = setupComplete
+    ? {
+        kind: 'open_runtime_diagnostics' as const,
+        label: 'Open runtime diagnostics',
+        resumable: true,
+        requiresRestart: false,
+        docsPath: 'cats-platform/docs/deployment.md',
+      }
+    : {
+        kind: 'open_setup' as const,
+        label: 'Open setup',
+        resumable: true,
+        requiresRestart: false,
+        docsPath: 'cats-platform/docs/setup-guide.md',
+      };
 
   if (lastError) {
     issues.push({
@@ -206,18 +221,12 @@ function buildIssues(
       severity: setupComplete ? 'error' : 'info',
       title: 'No provider targets are configured yet',
       detail: setupComplete
-        ? 'Setup is complete, but there is no ready provider path for chat yet.'
+        ? 'Setup is complete. Open Cats to recover in-app after you restore a provider path.'
         : 'Continue into setup to choose an API baseline or optional local CLI provider path.',
       target: 'providers',
       category: 'provider',
       resumeKey: 'provider_setup',
-      remediation: {
-        kind: 'open_setup',
-        label: 'Open setup',
-        resumable: true,
-        requiresRestart: false,
-        docsPath: 'cats-platform/docs/setup-guide.md',
-      },
+      remediation: providerRecoveryRemediation,
     });
   } else if (!hasReadyProviderPath(providerSummary)) {
     issues.push({
@@ -228,13 +237,7 @@ function buildIssues(
       target: 'providers',
       category: 'provider',
       resumeKey: 'provider_remediation',
-      remediation: {
-        kind: 'open_setup',
-        label: 'Open setup',
-        resumable: true,
-        requiresRestart: false,
-        docsPath: 'cats-platform/docs/setup-guide.md',
-      },
+      remediation: providerRecoveryRemediation,
     });
   }
 
@@ -247,13 +250,7 @@ function buildIssues(
       target: providerIssue.target,
       category: 'provider',
       resumeKey: `provider_${providerIssue.provider}_${providerIssue.instance}`,
-      remediation: {
-        kind: 'open_setup',
-        label: 'Open setup',
-        resumable: true,
-        requiresRestart: false,
-        docsPath: 'cats-platform/docs/setup-guide.md',
-      },
+      remediation: providerRecoveryRemediation,
     });
   }
 
@@ -395,6 +392,7 @@ function buildBootstrapProgress(
   services: ManagedServiceSnapshot[],
   phase: DesktopBootstrapSnapshot['phase'],
   issues: DesktopPrerequisiteIssue[],
+  setupCompleted: boolean,
   lastError: string | null | undefined,
 ): DesktopBootstrapProgress {
   const runtimeService = services.find((service) => service.name === 'cats-runtime');
@@ -449,14 +447,18 @@ function buildBootstrapProgress(
         : phase === 'ready_for_chat'
           ? 'skipped'
           : phase === 'needs_prerequisites'
-            ? 'completed'
+            ? setupCompleted
+              ? 'skipped'
+              : 'completed'
             : phase === 'failed'
               ? 'failed'
               : setupReady
                 ? 'completed'
                 : 'pending',
       detail: phase === 'needs_prerequisites'
-        ? 'Setup remains available for provider remediation.'
+        ? setupCompleted
+          ? 'Setup is already complete; remaining issues should resolve through runtime recovery.'
+          : 'Setup remains available for provider remediation.'
         : null,
       blocking: false,
     },
@@ -465,11 +467,17 @@ function buildBootstrapProgress(
       label: 'Enter ready chat flow',
       status: phase === 'ready_for_chat'
         ? 'completed'
-        : phase === 'failed' || phase === 'needs_prerequisites'
+        : phase === 'needs_prerequisites'
+          ? setupCompleted
+            ? 'completed'
+            : 'failed'
+          : phase === 'failed'
           ? 'failed'
           : 'pending',
       detail: phase === 'needs_prerequisites'
-        ? 'A provider path still needs remediation before chat can open.'
+        ? setupCompleted
+          ? 'Cats will open into recovery until a provider path becomes ready again.'
+          : 'A provider path still needs remediation before chat can open.'
         : null,
       blocking: false,
     },
@@ -491,6 +499,7 @@ function buildActions(
   options: {
     appReady: boolean;
     runtimeReady: boolean;
+    setupComplete: boolean;
     setup: DesktopSetupState | null | undefined;
   },
 ): DesktopHostAction[] {
@@ -547,6 +556,18 @@ function buildActions(
   }
 
   if (phase === 'needs_prerequisites' || phase === 'failed') {
+    if (phase === 'needs_prerequisites' && options.setupComplete) {
+      push('open_chat', 'Open Cats', true);
+      if (canResumeSetup) {
+        push('resume_setup', 'Resume Packaged Setup');
+      }
+      push('retry', 'Retry Scan');
+      if (options.runtimeReady) {
+        push('open_runtime_diagnostics', 'Open Runtime Diagnostics');
+      }
+      push('quit', 'Quit');
+      return actions;
+    }
     if (canResumeSetup) {
       push('resume_setup', 'Resume Packaged Setup', true);
       push('retry', phase === 'failed' ? 'Retry Startup' : 'Retry Scan');
@@ -641,21 +662,26 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'starting_services';
     status = 'degraded';
     summary = 'Starting local Cats services and waiting for readiness.';
-  } else if (
-    !hasRuntimeHealth
-    || !hasAppHealth
-    || !hasAppShell
-    || (requiresProviderDiagnostics && !input.providerDiagnostics)
-  ) {
+  } else if (!hasAppHealth || !hasAppShell || (requiresProviderDiagnostics && !input.providerDiagnostics)) {
     phase = 'checking_prerequisites';
     status = 'degraded';
     summary = 'Local services are ready. Running prerequisite checks.';
   } else if (!setupCompleted) {
-    phase = 'ready_for_setup';
-    status = 'degraded';
-    summary = hasReadyProviderPath(providerSummary)
-      ? 'Desktop services are ready. Continue into setup.'
-      : 'Desktop services are ready. Continue into setup to choose a provider path.';
+    if (!hasRuntimeHealth) {
+      phase = 'checking_prerequisites';
+      status = 'degraded';
+      summary = 'Local services are ready. Running prerequisite checks.';
+    } else {
+      phase = 'ready_for_setup';
+      status = 'degraded';
+      summary = hasReadyProviderPath(providerSummary)
+        ? 'Desktop services are ready. Continue into setup.'
+        : 'Desktop services are ready. Continue into setup to choose a provider path.';
+    }
+  } else if (!hasRuntimeHealth) {
+    phase = 'needs_prerequisites';
+    status = 'unavailable';
+    summary = 'Cats Runtime is unavailable. Open Cats to recover in-app once the runtime is back.';
   } else if (!input.providerDiagnostics || hasReadyProviderPath(providerSummary)) {
     phase = 'ready_for_chat';
     status = normalizeHealthStatus(input.runtimeHealth?.status)
@@ -663,11 +689,12 @@ export function buildDesktopBootstrapSnapshot(
       ?? 'ok';
     summary = input.providerDiagnostics
       ? 'Desktop services and at least one provider path are ready.'
-      : 'Desktop services are ready. Opening Cats Chat without a startup provider reprobe.';
+      : 'Desktop services are ready. Opening Cats without a startup provider reprobe.';
   } else {
     phase = 'needs_prerequisites';
     status = 'unavailable';
-    summary = providerSummary?.summary || 'Cats needs provider remediation before chat can open.';
+    summary = providerSummary?.summary
+      || 'Cats needs provider recovery, but setup remains complete and Cats can still open.';
   }
 
   const background = input.background ?? createDesktopBackgroundState(input.config);
@@ -680,7 +707,13 @@ export function buildDesktopBootstrapSnapshot(
     lastAction: null,
     updatedAt: null,
   };
-  const progress = buildBootstrapProgress(input.services, phase, issues, input.lastError);
+  const progress = buildBootstrapProgress(
+    input.services,
+    phase,
+    issues,
+    setupCompleted,
+    input.lastError,
+  );
 
   return {
     service: DESKTOP_HOST_NAME,
@@ -710,6 +743,7 @@ export function buildDesktopBootstrapSnapshot(
     actions: buildActions(phase, {
       appReady: Boolean(appService?.ready),
       runtimeReady: Boolean(runtimeService?.ready),
+      setupComplete: setupCompleted,
       setup,
     }),
     lastError: input.lastError ?? null,

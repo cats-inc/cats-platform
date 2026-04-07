@@ -166,7 +166,7 @@ test('desktop bootstrap opens chat when setup and provider readiness are complet
 
   assert.equal(snapshot.phase, 'ready_for_chat');
   assert.equal(snapshot.status, 'ok');
-  assert.equal(snapshot.app.entryPath, '/new');
+  assert.equal(snapshot.app.entryPath, '/');
   assert.ok(snapshot.actions.some((action) => action.id === 'open_chat'));
   assert.equal(snapshot.progress.steps.at(-1)?.status, 'completed');
   assert.equal(snapshot.packaging.targets.length >= 3, true);
@@ -206,7 +206,7 @@ test('desktop bootstrap opens chat after setup without requiring startup provide
 
   assert.equal(snapshot.phase, 'ready_for_chat');
   assert.equal(snapshot.status, 'ok');
-  assert.equal(snapshot.app.entryPath, '/new');
+  assert.equal(snapshot.app.entryPath, '/');
   assert.equal(snapshot.runtime.providerSummary, null);
   assert.match(snapshot.summary, /without a startup provider reprobe/i);
 });
@@ -630,13 +630,46 @@ test('desktop bootstrap surfaces provider remediation after setup if no provider
 
   assert.equal(snapshot.phase, 'needs_prerequisites');
   assert.ok(snapshot.issues.some((issue) => /provider target/i.test(issue.title)));
+  assert.ok(snapshot.actions.some((action) => action.id === 'open_chat' && action.primary));
   assert.ok(snapshot.actions.some((action) => action.id === 'retry'));
-  assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
-  assert.equal(snapshot.issues[0]?.remediation?.kind, 'open_setup');
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
+  assert.equal(snapshot.issues[0]?.remediation?.kind, 'open_runtime_diagnostics');
   assert.equal(
     snapshot.progress.steps.find((step) => step.id === 'enter-chat')?.status,
-    'failed',
+    'completed',
   );
+  assert.match(snapshot.progress.steps.find((step) => step.id === 'enter-chat')?.detail ?? '', /recover/i);
+});
+
+test('desktop bootstrap keeps completed setup out of onboarding when runtime health is unavailable', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: false },
+    },
+    appShell: {
+      setupCompleteAt: '2026-04-08T09:00:00.000Z',
+    },
+    runtimeHealth: null,
+    providerDiagnostics: null,
+  });
+
+  assert.equal(snapshot.phase, 'needs_prerequisites');
+  assert.equal(snapshot.app.entryPath, '/');
+  assert.ok(snapshot.actions.some((action) => action.id === 'open_chat' && action.primary));
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
+  assert.equal(
+    snapshot.issues.find((issue) => issue.id === 'cats-runtime-unreachable')?.remediation?.kind,
+    'open_runtime_diagnostics',
+  );
+  assert.match(snapshot.summary, /recover in-app/i);
 });
 
 test('desktop bootstrap keeps optional local-model audit follow-through non-blocking', () => {

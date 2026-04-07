@@ -21,17 +21,18 @@ test('desktop bootstrap navigation opens the product entry when chat is ready', 
   const nextUrl = resolveDesktopBootstrapNavigation({
     phase: 'ready_for_chat',
     app: {
-      entryPath: '/new',
+      entryPath: '/',
+      setupCompleteAt: '2026-04-08T09:00:00.000Z',
     },
   }, {
     appBaseUrl: 'http://127.0.0.1:8181',
     showWindowOnStartup: true,
   });
 
-  assert.equal(nextUrl, 'http://127.0.0.1:8181/new');
+  assert.equal(nextUrl, 'http://127.0.0.1:8181/');
 });
 
-test('desktop bootstrap navigation stays on the host page when startup is hidden or recovery is needed', () => {
+test('desktop bootstrap navigation stays on the host page when startup is hidden', () => {
   assert.equal(resolveDesktopBootstrapNavigation({
     phase: 'ready_for_setup',
     app: {
@@ -41,15 +42,17 @@ test('desktop bootstrap navigation stays on the host page when startup is hidden
     appBaseUrl: 'http://127.0.0.1:8181',
     showWindowOnStartup: false,
   }), null);
+});
 
+test('desktop bootstrap navigation opens Cats recovery instead of setup after onboarding is complete', () => {
   assert.equal(resolveDesktopBootstrapNavigation({
     phase: 'needs_prerequisites',
     app: {
-      entryPath: '/setup',
+      entryPath: '/',
+      setupCompleteAt: '2026-04-08T09:00:00.000Z',
     },
   }, {
     appBaseUrl: 'http://127.0.0.1:8181',
     showWindowOnStartup: true,
-  }), null);
+  }), 'http://127.0.0.1:8181/');
 });
-

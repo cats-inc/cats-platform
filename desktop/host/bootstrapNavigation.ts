@@ -19,5 +19,9 @@ export function resolveDesktopBootstrapNavigation(
     return `${options.appBaseUrl}${snapshot.app.entryPath}`;
   }
 
+  if (snapshot.phase === 'needs_prerequisites' && snapshot.app.setupCompleteAt) {
+    return `${options.appBaseUrl}${snapshot.app.entryPath}`;
+  }
+
   return null;
 }
