@@ -9,6 +9,7 @@ import {
   applyPendingExecutionTargetPreview,
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
+  createInitialGroupParticipants,
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
   insertCreatedChannelIntoPayload,
@@ -256,29 +257,23 @@ test('generic group draft route seeds default temporary participants when none e
   const participants = resolveGenericDraftTemporaryParticipants(
     'group',
     [],
-    () => [
-      {
-        participantId: 'participant-claude',
-        name: 'Claude',
-        provider: 'claude',
-        instance: 'native',
-        model: 'claude-opus-4-6',
-        modelSelection: null,
-      },
-      {
-        participantId: 'participant-codex',
-        name: 'Codex',
-        provider: 'codex',
-        instance: null,
-        model: 'gpt-5.4',
-        modelSelection: null,
-      },
-    ],
+    () => createInitialGroupParticipants('claude', 8),
   );
 
   assert.equal(participants.length, 2);
   assert.equal(participants[0]?.provider, 'claude');
-  assert.equal(participants[1]?.provider, 'codex');
+  assert.notEqual(participants[1]?.provider, 'claude');
+});
+
+test('initial group participants keep the default seed at two and still honor lower max caps', () => {
+  const defaultSeed = createInitialGroupParticipants('claude', 8);
+  const limitedSeed = createInitialGroupParticipants('claude', 1);
+
+  assert.equal(defaultSeed.length, 2);
+  assert.equal(defaultSeed[0]?.provider, 'claude');
+  assert.notEqual(defaultSeed[1]?.provider, 'claude');
+  assert.equal(limitedSeed.length, 1);
+  assert.equal(limitedSeed[0]?.provider, 'claude');
 });
 
 test('generic group draft route preserves existing temporary participants during route entry', () => {

@@ -34,9 +34,10 @@ import { sameProviderModelSelection } from '../../../shared/providerSelection';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import {
   BootShell,
+  pickGreeting,
+  createInitialGroupParticipants,
   type DraftTemporaryParticipant,
   emptyCatForm,
-  pickGreeting,
   resolveGenericDraftTemporaryParticipants,
   type CatFormState,
 } from './chatUtils';
@@ -114,24 +115,6 @@ function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelec
     baseTarget,
     createModelSelectorValueForProvider(fallbackProvider),
   ];
-}
-
-function createInitialGroupParticipants(
-  baseProvider: string,
-  maxParticipants: number = Number.POSITIVE_INFINITY,
-): DraftTemporaryParticipant[] {
-  const providerSequence = [
-    baseProvider,
-    ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== baseProvider),
-  ].slice(0, Math.max(0, maxParticipants));
-  return providerSequence.map((provider) => ({
-    participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
-    name: getProviderDisplayName(provider),
-    provider,
-    instance: getDefaultProviderInstance(provider) ?? undefined,
-    model: getDefaultModel(provider) || undefined,
-    modelSelection: null,
-  }));
 }
 
 function createNextCompareTarget(

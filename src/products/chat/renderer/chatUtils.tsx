@@ -14,6 +14,12 @@ import type { ProviderModelSelection } from '../../../shared/providerSelection.j
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import {
+  PRODUCT_PROVIDER_ORDER,
+  getDefaultModel,
+  getDefaultProviderInstance,
+  getProviderDisplayName,
+} from '../../../shared/providerCatalog.js';
+import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
 } from '../shared/channelEntry';
@@ -37,6 +43,31 @@ export interface CatFormState {
 export interface DraftTemporaryParticipant extends CreateTemporaryParticipantInput {
   participantId: string;
   presetId?: string | null;
+}
+
+export const DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT = 2;
+
+export function createInitialGroupParticipants(
+  baseProvider: string,
+  maxParticipants: number = DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT,
+): DraftTemporaryParticipant[] {
+  const cappedMaxParticipants = Number.isFinite(maxParticipants)
+    ? Math.max(0, maxParticipants)
+    : DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT;
+  const targetCount = Math.min(DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT, cappedMaxParticipants);
+  const providerSequence = [
+    baseProvider,
+    ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== baseProvider),
+  ].slice(0, targetCount);
+
+  return providerSequence.map((provider) => ({
+    participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
+    name: getProviderDisplayName(provider),
+    provider,
+    instance: getDefaultProviderInstance(provider) ?? undefined,
+    model: getDefaultModel(provider) || undefined,
+    modelSelection: null,
+  }));
 }
 
 export function resolveGenericDraftTemporaryParticipants(
