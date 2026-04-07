@@ -1,8 +1,5 @@
 import { CatCreationFields } from './CatCreationFields.js';
-import type { PlatformProductDescriptor } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import { buildExecutionLabel } from '../../../shared/executionLabel.js';
-import type { ProductSetupPlugin } from './types.js';
 
 export interface GuideCatSetupFieldsProps {
   provider: string;
@@ -68,51 +65,4 @@ export function validateGuideCatSetupStep(input: {
   model: string;
 }): boolean {
   return Boolean(input.model.trim());
-}
-
-export function getPlatformSetupPlugins(products: readonly PlatformProductDescriptor[]): ProductSetupPlugin[] {
-  return products.flatMap((product) => {
-    if (!product.surface) {
-      return [];
-    }
-
-    return [{
-      surface: product.surface,
-      label: product.productName,
-      description: product.subtitle,
-      enabled: product.setup.selectable,
-      disabledReason: product.setup.disabledReason,
-      installPolicy: product.installPolicy,
-      installState: product.installState,
-      maturity: product.maturity,
-    }];
-  });
-}
-
-export function resolveInitialSetupProduct(
-  plugins: readonly ProductSetupPlugin[],
-): ProductSetupPlugin['surface'] {
-  return plugins.find((plugin) => plugin.enabled)?.surface
-    ?? plugins[0]?.surface
-    ?? 'chat';
-}
-
-export function describeGuideCatSetupChoice(input: {
-  createGuideCat: boolean;
-  guideCatName: string;
-  provider: string;
-  instance: string;
-  model: string;
-}): { title: string; detail: string } | null {
-  if (!input.createGuideCat) {
-    return null;
-  }
-
-  const title = input.guideCatName.trim() || 'Guide Cat';
-  const detail = buildExecutionLabel(
-    input.provider,
-    input.instance || null,
-    input.model || null,
-  );
-  return { title, detail };
 }

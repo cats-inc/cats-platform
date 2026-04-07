@@ -1,6 +1,6 @@
-export type SetupStep = 1 | 2 | 3 | 4;
+export type SetupStep = 1 | 2;
 
-const SETUP_STEP_SEQUENCE: SetupStep[] = [1, 2, 3, 4];
+const SETUP_STEP_SEQUENCE: SetupStep[] = [1, 2];
 
 export const TOTAL_SETUP_STEPS = SETUP_STEP_SEQUENCE.length;
 

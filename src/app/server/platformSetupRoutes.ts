@@ -1,10 +1,6 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
-import type {
-  PlatformRuntimeSetupApplyInput,
-  PlatformRuntimeSetupScanInput,
-} from '../../shared/runtimeSetup.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
 import {
   appendPlatformOnboardingEvent,
@@ -13,11 +9,8 @@ import {
 import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import { readPlatformPreferences, writePlatformPreferences } from '../../shared/platformPreferences.js';
-import { RuntimeRequestError } from '../../runtime/client.js';
 import {
-  isRuntimeSetupReady,
   readRuntimeSetupSummary,
-  summarizeRuntimeSetupReadModel,
 } from '../../runtime/setup.js';
 import {
   buildAppShellPayload,
@@ -36,22 +29,13 @@ interface LegacyPlatformSetupCompleteInput extends PlatformSetupCompleteInput {
   bossCatInstance?: string;
   bossCatModel?: string;
   bossCatModelSelection?: ProviderModelSelection | null;
+  /** @deprecated No longer sent by the wizard. */
+  selectedProduct?: string;
 }
 
 function reportSyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
   process.stderr.write(`[cats-platform-setup] ${scope}: ${message}\n`);
-}
-
-function normalizeProviderList(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .filter((entry): entry is string => typeof entry === 'string')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
 }
 
 function normalizeAttemptId(value: unknown): string | null {
@@ -67,39 +51,6 @@ async function recordProductEvent(
   } catch (error) {
     reportSyncFailure(`bootstrap_diagnostics:${input.kind}`, error);
   }
-}
-
-function sendRuntimeSetupError(
-  context: PlatformSetupContext,
-  error: unknown,
-  fallbackCode: string,
-  fallbackMessage: string,
-): void {
-  const message = error instanceof Error ? error.message : fallbackMessage;
-  const status = error instanceof RuntimeRequestError
-    ? error.status
-    : 503;
-  sendJson(context.response, status, {
-    error: {
-      code: fallbackCode,
-      message,
-    },
-  });
-}
-
-function sendRuntimeSetupRequired(
-  context: PlatformSetupContext,
-  summary: Awaited<ReturnType<typeof readRuntimeSetupSummary>>,
-): void {
-  sendJson(context.response, 409, {
-    error: {
-      code: 'runtime_setup_required',
-      message: summary.error ?? summary.summary,
-      details: {
-        runtimeSetup: summary,
-      },
-    },
-  });
 }
 
 async function handlePlatformSetupComplete(
@@ -127,23 +78,6 @@ async function handlePlatformSetupComplete(
         message: 'Setup has already been completed',
       },
     });
-    return;
-  }
-
-  const runtimeSetup = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
-  if (!isRuntimeSetupReady(runtimeSetup)) {
-    await recordProductEvent(context, {
-      now,
-      attemptId: body.attemptId ?? null,
-      kind: 'runtime_setup_blocked',
-      status: 'degraded',
-      summary: 'Packaged setup completion is blocked until Cats Runtime is ready.',
-      context: {
-        runtimeStatus: runtimeSetup.status,
-        bootstrapRequired: runtimeSetup.bootstrapRequired,
-      },
-    });
-    sendRuntimeSetupRequired(context, runtimeSetup);
     return;
   }
 
@@ -191,15 +125,18 @@ async function handlePlatformSetupComplete(
   // Commit chat/core as one persisted snapshot so setup cannot land in a half-written state.
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
 
-  // Best-effort side effects — failures must not prevent the 200.
-  try {
-    const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
-    await writePlatformPreferences(context.dependencies.config.chatStatePath, {
-      ...currentPrefs,
-      lastProductSurface: body.selectedProduct,
-    });
-  } catch (error) {
-    reportSyncFailure('setup_complete_prefs', error);
+  // Best-effort: honour legacy selectedProduct if the client still sends it.
+  const legacyProduct = body.selectedProduct;
+  if (legacyProduct === 'chat' || legacyProduct === 'work' || legacyProduct === 'code') {
+    try {
+      const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
+      await writePlatformPreferences(context.dependencies.config.chatStatePath, {
+        ...currentPrefs,
+        lastProductSurface: legacyProduct,
+      });
+    } catch (error) {
+      reportSyncFailure('setup_complete_prefs', error);
+    }
   }
 
   try {
@@ -216,12 +153,14 @@ async function handlePlatformSetupComplete(
     payload = await buildAppShellPayload(context.dependencies);
   } catch (error) {
     reportSyncFailure('setup_complete_payload', error);
-    // Return a minimal PlatformHostEnvelope so the client knows setup committed.
+    const runtimeSetup = await readRuntimeSetupSummary(context.dependencies.runtimeClient).catch(
+      () => undefined,
+    );
     payload = {
       app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
       products: listPlatformProductDescriptors(),
       runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
-      runtimeSetup,
+      runtimeSetup: runtimeSetup ?? null,
       metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
       bootstrapAttemptId: body.attemptId ?? null,
       setupCompleteAt: core.setupCompleteAt,
@@ -229,7 +168,7 @@ async function handlePlatformSetupComplete(
       ownerAvatarColor: core.ownerProfile.avatarColor,
       ownerAvatarUrl: core.ownerProfile.avatarUrl ?? null,
       guideCat: core.guideCat,
-      lastProductSurface: body.selectedProduct,
+      lastProductSurface: legacyProduct ?? null,
       lobby: { animationMode: 'reduced', cats: [] },
     };
   }
@@ -239,9 +178,8 @@ async function handlePlatformSetupComplete(
     attemptId: body.attemptId ?? null,
     kind: 'setup_completed',
     status: 'ok',
-    summary: `Packaged setup completed for ${body.selectedProduct}.`,
+    summary: 'Packaged setup completed.',
     context: {
-      selectedProduct: body.selectedProduct,
       createGuideCat,
       guideCatId: createdGuideCatId,
       setupCompleteAt: core.setupCompleteAt,
@@ -249,116 +187,6 @@ async function handlePlatformSetupComplete(
   });
 
   sendJson(context.response, 200, payload);
-}
-
-async function handleRuntimeSetupState(
-  context: PlatformSetupContext,
-): Promise<void> {
-  const summary = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
-  sendJson(context.response, 200, summary);
-}
-
-async function handleRuntimeSetupScan(
-  context: PlatformSetupContext,
-): Promise<void> {
-  let body: PlatformRuntimeSetupScanInput = {};
-  try {
-    body = await readJsonBody<PlatformRuntimeSetupScanInput>(context.request);
-  } catch {
-    body = {};
-  }
-
-  try {
-    const readModel = await context.dependencies.runtimeClient.scanSetup({
-      manual: body.manual === true,
-    });
-    sendJson(context.response, 200, summarizeRuntimeSetupReadModel(readModel));
-  } catch (error) {
-    sendRuntimeSetupError(
-      context,
-      error,
-      'runtime_setup_scan_failed',
-      'Failed to refresh Cats Runtime setup.',
-    );
-  }
-}
-
-async function handleRuntimeSetupApply(
-  context: PlatformSetupContext,
-): Promise<void> {
-  let body: PlatformRuntimeSetupApplyInput = {};
-  try {
-    body = await readJsonBody<PlatformRuntimeSetupApplyInput>(context.request);
-  } catch {
-    body = {};
-  }
-
-  const requestedProviders = normalizeProviderList(body.providers);
-  let providers = requestedProviders;
-  let currentSummary: Awaited<ReturnType<typeof readRuntimeSetupSummary>> | null = null;
-
-  if (providers.length === 0) {
-    currentSummary = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
-    providers = currentSummary.suggestedProviders;
-  }
-
-  if (providers.length === 0) {
-    sendRuntimeSetupRequired(
-      context,
-      currentSummary ?? await readRuntimeSetupSummary(context.dependencies.runtimeClient),
-    );
-    return;
-  }
-
-  await recordProductEvent(context, {
-    now: context.dependencies.now?.() ?? new Date(),
-    attemptId: normalizeAttemptId(body.attemptId),
-    kind: 'runtime_apply_requested',
-    status: 'info',
-    summary: `Requested runtime apply for ${providers.join(', ')}.`,
-    context: {
-      providers,
-      providerCount: providers.length,
-    },
-  });
-
-  try {
-    const readModel = await context.dependencies.runtimeClient.applySetup(providers);
-    const summary = summarizeRuntimeSetupReadModel(readModel);
-    await recordProductEvent(context, {
-      now: context.dependencies.now?.() ?? new Date(),
-      attemptId: normalizeAttemptId(body.attemptId),
-      kind: 'runtime_apply_confirmed',
-      status: 'ok',
-      summary: `Runtime apply completed for ${providers.join(', ')}.`,
-      context: {
-        providers,
-        providerCount: providers.length,
-        runtimeStatus: summary.status,
-        bootstrapRequired: summary.bootstrapRequired,
-      },
-    });
-    sendJson(context.response, 200, summary);
-  } catch (error) {
-    await recordProductEvent(context, {
-      now: context.dependencies.now?.() ?? new Date(),
-      attemptId: normalizeAttemptId(body.attemptId),
-      kind: 'runtime_apply_failed',
-      status: 'unavailable',
-      summary: `Runtime apply failed for ${providers.join(', ')}.`,
-      context: {
-        providers,
-        providerCount: providers.length,
-      },
-      error: toBootstrapEventError(error),
-    });
-    sendRuntimeSetupError(
-      context,
-      error,
-      'runtime_setup_apply_failed',
-      'Failed to apply Cats Runtime setup.',
-    );
-  }
 }
 
 async function handlePlatformPreferencesUpdate(
@@ -481,33 +309,6 @@ export async function routePlatformSetupApi(
       return true;
     }
     await handleBootstrapDiagnosticsOpened(context);
-    return true;
-  }
-
-  if (context.url.pathname === '/api/platform/runtime-setup') {
-    if (context.method !== 'GET') {
-      sendMethodNotAllowed(context.response, ['GET']);
-      return true;
-    }
-    await handleRuntimeSetupState(context);
-    return true;
-  }
-
-  if (context.url.pathname === '/api/platform/runtime-setup/scan') {
-    if (context.method !== 'POST') {
-      sendMethodNotAllowed(context.response, ['POST']);
-      return true;
-    }
-    await handleRuntimeSetupScan(context);
-    return true;
-  }
-
-  if (context.url.pathname === '/api/platform/runtime-setup/apply') {
-    if (context.method !== 'POST') {
-      sendMethodNotAllowed(context.response, ['POST']);
-      return true;
-    }
-    await handleRuntimeSetupApply(context);
     return true;
   }
 

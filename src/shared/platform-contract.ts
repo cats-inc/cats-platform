@@ -92,7 +92,6 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
 export interface PlatformSetupCompleteInput {
   attemptId?: string | null;
   ownerDisplayName: string;
-  selectedProduct: PlatformSurfaceId;
   createGuideCat?: boolean;
   guideCatName?: string;
   guideCatProvider?: string;

@@ -55,15 +55,17 @@ export default function PlatformApp() {
 
   const envelope = state.status === 'ready' ? state.envelope : null;
   const setupComplete = Boolean(envelope?.setupCompleteAt);
-  const storedSurface = envelope?.lastProductSurface ?? 'chat';
+  const storedSurface = envelope?.lastProductSurface ?? null;
 
   useEffect(() => {
     if (state.status !== 'ready') {
       return;
     }
 
-    const nextSurface = state.envelope.lastProductSurface ?? 'chat';
-    setActiveSurface((current) => (current === nextSurface ? current : nextSurface));
+    const nextSurface = state.envelope.lastProductSurface ?? null;
+    if (nextSurface) {
+      setActiveSurface((current) => (current === nextSurface ? current : nextSurface));
+    }
   }, [state.status, state.status === 'ready' ? state.envelope.lastProductSurface : null]);
 
   useEffect(() => {
@@ -71,8 +73,11 @@ export default function PlatformApp() {
       return;
     }
     const currentSurface = resolvePlatformSurfaceForPath(location.pathname);
-    // Skip sync when at `/` and about to redirect to a non-chat product.
+    // Skip sync when at `/` and about to redirect (no stored surface, or non-chat product).
     if (location.pathname === '/' && storedSurface !== 'chat') {
+      return;
+    }
+    if (location.pathname === '/' && !storedSurface) {
       return;
     }
     // Skip sync for platform-level routes that aren't product surfaces.
@@ -170,7 +175,8 @@ export default function PlatformApp() {
 
   // Setup complete: products at their own prefix, settings at /settings/*.
   const shellSurface = resolvePlatformShellSurface(location.pathname, activeSurface);
-  const entryPath = resolveProductEntryPath(activeSurface);
+  const hasStoredSurface = Boolean(readyEnvelope.lastProductSurface);
+  const entryPath = hasStoredSurface ? resolveProductEntryPath(activeSurface) : '/lobby';
   const settingsSurfaceElement = shellSurface === 'work'
     ? <WorkApp />
     : shellSurface === 'code'
