@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { nameInitials } from '../../shared/nameInitials.js';
-import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
+import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared/platform-contract.js';
 import { LobbyBouncingCats } from './LobbyBouncingCats.js';
 import { buildPlatformLobbyEntries, pickLobbyGreeting } from './lobbyModel.js';
 
@@ -13,6 +13,44 @@ function resolveRuntimeDotClass(runtime: PlatformHostEnvelope['runtime']): strin
     return 'lobbyIdentityDot lobbyIdentityDot--warn';
   }
   return 'lobbyIdentityDot lobbyIdentityDot--ok';
+}
+
+function buildDirectLanePath(catId: string): string {
+  return `/chat/my-cats/${encodeURIComponent(catId)}`;
+}
+
+function LobbyCatRoster({
+  cats,
+  onSelect,
+}: {
+  cats: readonly PlatformLobbyCatSummary[];
+  onSelect: (catId: string) => void;
+}) {
+  if (cats.length === 0) return null;
+
+  return (
+    <div className="lobbyCatRoster">
+      {cats.map((cat) => {
+        const style = cat.avatarUrl
+          ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
+          : cat.avatarColor ? { background: cat.avatarColor } : undefined;
+
+        return (
+          <button
+            key={cat.id}
+            type="button"
+            className={cat.isBoss ? 'lobbyCatAvatar lobbyCatAvatarBoss' : 'lobbyCatAvatar'}
+            style={style}
+            data-tooltip={cat.name}
+            aria-label={cat.name}
+            onClick={() => onSelect(cat.id)}
+          >
+            {cat.avatarUrl ? null : nameInitials(cat.name)}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function PlatformLobby({
@@ -38,18 +76,24 @@ export function PlatformLobby({
       <div className="platformLobby">
         <div className="lobbyTopBar">
           <span className="lobbyBrand">CATS INC</span>
-          <button
-            type="button"
-            className="lobbyIdentity"
-            onClick={() => navigate('/settings/general')}
-            aria-label="Settings"
-          >
-            <span className="lobbyAvatar" style={avatarStyle}>
-              {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
-            </span>
-            <span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>
-            <span className={dotClass} />
-          </button>
+          <div className="lobbyTopBarEnd">
+            <LobbyCatRoster
+              cats={envelope.lobby.cats}
+              onSelect={(catId) => navigate(buildDirectLanePath(catId))}
+            />
+            <button
+              type="button"
+              className="lobbyIdentity"
+              onClick={() => navigate('/settings/general')}
+              aria-label="Settings"
+            >
+              <span className="lobbyAvatar" style={avatarStyle}>
+                {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
+              </span>
+              <span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>
+              <span className={dotClass} />
+            </button>
+          </div>
         </div>
 
         <div className="lobbyHero">
