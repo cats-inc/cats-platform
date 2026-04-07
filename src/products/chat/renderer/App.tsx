@@ -116,9 +116,15 @@ function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelec
   ];
 }
 
-function createInitialGroupParticipants(baseProvider: string): DraftTemporaryParticipant[] {
-  const secondProvider = PRODUCT_PROVIDER_ORDER.find((p) => p !== baseProvider) ?? 'codex';
-  return [baseProvider, secondProvider].map((provider) => ({
+function createInitialGroupParticipants(
+  baseProvider: string,
+  maxParticipants: number = Number.POSITIVE_INFINITY,
+): DraftTemporaryParticipant[] {
+  const providerSequence = [
+    baseProvider,
+    ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== baseProvider),
+  ].slice(0, Math.max(0, maxParticipants));
+  return providerSequence.map((provider) => ({
     participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
     name: getProviderDisplayName(provider),
     provider,
@@ -201,6 +207,9 @@ export default function App() {
   );
   const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<string | null>(null);
   const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<Map<string, ModelSelectorValue>>(new Map);
+  const maxDraftGroupParticipants = state.status === 'ready'
+    ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
+    : Number.POSITIVE_INFINITY;
   const wasGenericNewChatRoute = useRef(false);
   const latestNewChatDefaultsSaveId = useRef(0);
   const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -281,6 +290,9 @@ export default function App() {
   const onToggleDraftCat = useCallback((catId: string) => {
     setDraftCatIds((prev) => {
       const isRemoving = prev.includes(catId);
+      if (!isRemoving && prev.length + draftTemporaryParticipants.length >= maxDraftGroupParticipants) {
+        return prev;
+      }
       const next = isRemoving ? prev.filter((id) => id !== catId) : [...prev, catId];
       if (isRemoving) {
         setDraftHighlightedCatId((current) =>
@@ -295,20 +307,25 @@ export default function App() {
       }
       return next;
     });
-  }, []);
+  }, [draftTemporaryParticipants.length, maxDraftGroupParticipants]);
 
   const onAddDraftTemporaryParticipant = useCallback((participant: Omit<DraftTemporaryParticipant, 'participantId'> & {
     participantId?: string | null;
   }) => {
-    setDraftTemporaryParticipants((prev) => [
-      ...prev,
-      {
-        ...participant,
-        participantId: participant.participantId?.trim()
-          || window.crypto.randomUUID(),
-      },
-    ]);
-  }, []);
+    setDraftTemporaryParticipants((prev) => {
+      if (draftParticipants.participantCatIds.length + prev.length >= maxDraftGroupParticipants) {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          ...participant,
+          participantId: participant.participantId?.trim()
+            || window.crypto.randomUUID(),
+        },
+      ];
+    });
+  }, [draftParticipants.participantCatIds.length, maxDraftGroupParticipants]);
 
   const onRemoveDraftTemporaryParticipant = useCallback((participantId: string) => {
     setDraftTemporaryParticipants((prev) =>
@@ -345,8 +362,8 @@ export default function App() {
     draftModel.provider,
   ]);
   const seedDraftGroupParticipants = useCallback(
-    () => createInitialGroupParticipants(draftModel.provider),
-    [draftModel.provider],
+    () => createInitialGroupParticipants(draftModel.provider, maxDraftGroupParticipants),
+    [draftModel.provider, maxDraftGroupParticipants],
   );
 
   const {

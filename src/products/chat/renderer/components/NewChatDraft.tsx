@@ -176,6 +176,8 @@ export function NewChatDraft({
     : null;
   const effectiveLeadCat = leadCat ?? draftLeadCat;
   const draftParticipantCount = draftParticipants.participantCatIds.length + draftTemporaryParticipants.length;
+  const maxGroupParticipants = payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY;
+  const hasReachedGroupParticipantLimit = draftParticipantCount >= maxGroupParticipants;
   const draftSuggestionContext = resolveDraftStarterSuggestionContext({
     allowAddCat,
     draftLeadCatId,
@@ -261,6 +263,9 @@ export function NewChatDraft({
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
 
   function submitTemporaryParticipant(): void {
+    if (hasReachedGroupParticipantLimit) {
+      return;
+    }
     if (!temporaryParticipantForm.name.trim() || !temporaryParticipantForm.provider.trim()) {
       return;
     }
@@ -493,20 +498,24 @@ export function NewChatDraft({
                     });
                   })()}
                 </div>
-                <span className="parallelAddHint" style={{ marginRight: 8 }}>Add another model to collaborate</span>
-                <button
-                  type="button"
-                  className="parallelAddButton"
-                  style={{ marginRight: 8 }}
-                  disabled={isSubmittingFirstTurn}
-                  onClick={() => openSidePanelTo('cats')}
-                  aria-label="Add another model to collaborate"
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 3v10" />
-                    <path d="M3 8h10" />
-                  </svg>
-                </button>
+                {!hasReachedGroupParticipantLimit ? (
+                  <>
+                    <span className="parallelAddHint" style={{ marginRight: 8 }}>Add another model to collaborate</span>
+                    <button
+                      type="button"
+                      className="parallelAddButton"
+                      style={{ marginRight: 8 }}
+                      disabled={isSubmittingFirstTurn}
+                      onClick={() => openSidePanelTo('cats')}
+                      aria-label="Add another model to collaborate"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 3v10" />
+                        <path d="M3 8h10" />
+                      </svg>
+                    </button>
+                  </>
+                ) : null}
               </>
             ) : effectiveLeadCat ? (
               <ComposerCatStack
@@ -679,7 +688,7 @@ export function NewChatDraft({
                         <button
                           className="addCatAssignButton"
                           type="button"
-                          disabled={isSubmittingFirstTurn || alreadyAdded}
+                          disabled={isSubmittingFirstTurn || alreadyAdded || hasReachedGroupParticipantLimit}
                           onClick={() =>
                             onAddDraftTemporaryParticipant(
                               createDraftTemporaryParticipantFromAssistantPreset(assistantPreset),
@@ -713,7 +722,7 @@ export function NewChatDraft({
                   ))}
                 </div>
               ) : null}
-              {temporaryParticipantFormOpen ? (
+              {temporaryParticipantFormOpen && !hasReachedGroupParticipantLimit ? (
                 <form
                   className="stackForm"
                   onSubmit={(event) => {
@@ -776,13 +785,17 @@ export function NewChatDraft({
                     <button
                       type="submit"
                       className="primaryButton"
-                      disabled={!temporaryParticipantForm.name.trim() || !temporaryParticipantForm.provider.trim()}
+                      disabled={
+                        hasReachedGroupParticipantLimit
+                        || !temporaryParticipantForm.name.trim()
+                        || !temporaryParticipantForm.provider.trim()
+                      }
                     >
                       Add temporary participant
                     </button>
                   </div>
                 </form>
-              ) : (
+              ) : !hasReachedGroupParticipantLimit ? (
                 <button
                   type="button"
                   className="operatorActionButton"
@@ -791,7 +804,7 @@ export function NewChatDraft({
                 >
                   Add temporary participant
                 </button>
-              )}
+              ) : null}
             </>
           ) : null}
         </div>

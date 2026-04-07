@@ -12,6 +12,7 @@ function createPayload(): AppShellPayload {
       bossCatId: null,
       botBindings: [],
       capabilities: {
+        maxCats: 5,
         maxParallelChats: 5,
       },
       cats: [
@@ -169,6 +170,35 @@ test('group route shows add-participant hint inside the composer', () => {
 
   assert.match(markup, /Add another model to collaborate/u);
   assert.doesNotMatch(markup, /Start a group chat/u);
+});
+
+test('group route hides add-participant hint and button when max participants is reached', () => {
+  const payload = createPayload();
+  payload.chat.capabilities.maxCats = 2;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryMode: 'group',
+        payload,
+        draftCatIds: ['cat-lead'],
+        draftTemporaryParticipants: [
+          {
+            participantId: 'participant-inline',
+            name: 'Inline Reviewer',
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+            modelSelection: null,
+            roleHint: 'Counterpoint',
+          },
+        ],
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /Add another model to collaborate/u);
+  assert.doesNotMatch(markup, /aria-label="Add another model to collaborate"/u);
 });
 
 test('direct-lane draft keeps private chat copy', () => {
