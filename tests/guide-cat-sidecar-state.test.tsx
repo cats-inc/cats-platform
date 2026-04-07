@@ -6,6 +6,7 @@ import {
   toggleGuideCatSidecarState,
 } from '../src/app/renderer/useGuideCatSidecarState.ts';
 import {
+  GUIDE_CAT_AVATAR_URL,
   resolveGuideCatSidecarAnchorSelector,
   resolveGuideCatSidecarOffsets,
   resolveGuideCatSidecarSurfaceMode,
@@ -69,4 +70,8 @@ test('Guide Cat sidecar uses different offsets for Lobby and product surfaces', 
     peekLeft: 304,
     panelLeft: 262,
   });
+});
+
+test('Guide Cat sidecar avatar resolves from the shared guide cat asset', () => {
+  assert.match(GUIDE_CAT_AVATAR_URL, /guide-cat-avatar.*\.svg|guide-cat-avatar/u);
 });

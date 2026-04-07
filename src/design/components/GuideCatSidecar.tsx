@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import type { GuideCatRecord } from '../../core/types.js';
-import { nameInitials } from '../../shared/nameInitials.js';
 import {
   useGuideCatSidecarState,
   type GuideCatSidecarViewState,
@@ -20,6 +19,8 @@ interface GuideCatSidecarProps {
 }
 
 export type GuideCatSidecarSurfaceMode = 'lobby' | 'product' | 'hidden';
+export const GUIDE_CAT_AVATAR_URL = new URL('../../../assets/guide-cat-avatar.svg', import.meta.url)
+  .href;
 
 export function resolveGuideCatSidecarSurfaceMode(pathname: string): GuideCatSidecarSurfaceMode {
   if (pathname === '/setup' || pathname.startsWith('/settings')) {
@@ -152,13 +153,11 @@ function useGuideCatSidecarPlacement(): {
 
 function CollapsedPill({
   name,
-  avatarColor,
   unreadCount,
   onClick,
   style,
 }: {
   name: string;
-  avatarColor?: string;
   unreadCount: number;
   onClick: () => void;
   style?: CSSProperties;
@@ -167,14 +166,11 @@ function CollapsedPill({
     <button
       type="button"
       className="guideCatPill"
-      style={{
-        ...style,
-        ...(avatarColor ? { background: avatarColor } : {}),
-      }}
+      style={style}
       onClick={onClick}
       aria-label={`Open guide: ${name}`}
     >
-      {nameInitials(name)}
+      <GuideCatAvatar className="guideCatPillAvatar" />
       {unreadCount > 0 ? (
         <span className="guideCatPillBadge">{unreadCount}</span>
       ) : null}
@@ -185,14 +181,12 @@ function CollapsedPill({
 function WelcomePeek({
   name,
   ownerDisplayName,
-  avatarColor,
   onAction,
   onDismiss,
   style,
 }: {
   name: string;
   ownerDisplayName: string;
-  avatarColor?: string;
   onAction: (route: string) => void;
   onDismiss: () => void;
   style?: CSSProperties;
@@ -203,6 +197,7 @@ function WelcomePeek({
       style={style}
     >
       <div className="guideCatPeekHeader">
+        <GuideCatAvatar className="guideCatPeekAvatar" />
         <span className="guideCatPeekName">Hi! I&rsquo;m {name}</span>
       </div>
       <p className="guideCatPeekGreeting">
@@ -230,7 +225,6 @@ function WelcomePeek({
 function OpenPanel({
   name,
   ownerDisplayName,
-  avatarColor,
   onAction,
   onClose,
   style,
@@ -238,7 +232,6 @@ function OpenPanel({
 }: {
   name: string;
   ownerDisplayName: string;
-  avatarColor?: string;
   onAction: (route: string) => void;
   onClose: () => void;
   style?: CSSProperties;
@@ -254,12 +247,7 @@ function OpenPanel({
       style={style}
     >
       <div className="guideCatPanelHeader">
-        <span
-          className="guideCatPanelAvatar"
-          style={avatarColor ? { background: avatarColor } : undefined}
-        >
-          {nameInitials(name)}
-        </span>
+        <GuideCatAvatar className="guideCatPanelAvatar" />
         <span className="guideCatPanelName">{name}</span>
         <button type="button" className="guideCatPanelClose" onClick={onClose} aria-label="Close">
           &#x2715;
@@ -283,6 +271,17 @@ function OpenPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+function GuideCatAvatar({ className }: { className: string }) {
+  return (
+    <img
+      className={className}
+      src={GUIDE_CAT_AVATAR_URL}
+      alt=""
+      aria-hidden="true"
+    />
   );
 }
 

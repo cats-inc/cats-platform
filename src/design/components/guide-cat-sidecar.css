@@ -34,6 +34,13 @@
   transform: translateY(-50%) scale(1.06);
 }
 
+.guideCatPillAvatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .guideCatPillBadge {
   position: absolute;
   top: -2px;
@@ -106,6 +113,16 @@
 .guideCatPeekHeader {
   display: flex;
   align-items: center;
+  gap: var(--space-3);
+}
+
+.guideCatPeekAvatar {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .guideCatPeekName {
@@ -209,18 +226,11 @@
 }
 
 .guideCatPanelAvatar {
-  display: grid;
+  display: block;
   width: 28px;
   height: 28px;
-  place-items: center;
   border-radius: 50%;
-  background: #8B7E74;
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
+  object-fit: cover;
   flex-shrink: 0;
 }
 
