@@ -136,6 +136,9 @@ contracts.
 - [ ] Turn the current Windows NSIS-first packaging slice into a release-grade
       desktop distribution path, including signed installers, branded assets,
       and a documented release pipeline rather than test-install outputs only
+- [ ] Replace the current deprecated `rcedit`-based Windows executable icon
+      edit step with a supported or vendored path so release packaging does
+      not depend on an unsupported npm package
 - [ ] Harden the reusable desktop icon pipeline beyond the current first slice
       so one source asset can safely generate app/tray icons even when future
       SVGs use transparent backgrounds, gradients, or non-square visual
@@ -480,4 +483,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-05*
+*Last updated: 2026-04-08*
