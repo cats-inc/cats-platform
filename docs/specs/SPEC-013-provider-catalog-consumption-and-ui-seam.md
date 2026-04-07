@@ -105,10 +105,11 @@ or future settings surfaces, but they are not valid execution pickers.
 16. Setup shall not fetch truthful selector state unless the owner has opted
     into Guide Cat creation for that render path.
 17. The selector hot path shall not depend on a full diagnostics payload when
-    it only needs usable-target availability truth. If the current runtime read
-    surface still bundles artifact summaries, full config inspection, or other
-    operator-grade diagnostics, the cross-project contract should add a lighter
-    availability-only scope or equivalent selector-oriented read model.
+    it only needs usable-target availability truth. The current runtime
+    diagnostics payload still bundles retained-artifact reads, full config
+    inspection, metering, and operator-facing detail, so the cross-project
+    contract should add a lighter availability-only scope or equivalent
+    selector-oriented read model.
 18. Selector-specific runtime reads may use a dedicated timeout tuned for bulk
     truthful availability reads. That timeout should reflect the chosen runtime
     scope rather than inherit a per-target probing budget blindly.
@@ -129,9 +130,9 @@ or future settings surfaces, but they are not valid execution pickers.
   should coalesce onto shared runtime-backed reads instead of stampeding the
   same truth endpoints
 - **Cross-layer complementarity**: the product's short-lived selector cache
-  should cover repeated mount/reopen churn and complement longer runtime-owned
-  compatibility/diagnostics caches rather than duplicate them with another
-  long-lived stale window
+  should cover repeated mount/reopen churn and complement the runtime's
+  existing compatibility cache plus any later selector-oriented runtime cache,
+  rather than duplicate them with another long-lived stale window
 
 ## API Shape
 
@@ -174,6 +175,22 @@ instrumentation, but the selector payload itself must remain runtime-backed:
   snapshot
 - cache reuse is an optimization, not permission to synthesize providers or
   models that the runtime did not report
+
+Selector-oriented runtime follow-through for this route:
+
+- `cats-platform` should consume one runtime topology read plus one runtime
+  availability-only bulk read
+- the intended runtime-side minimal path is additive rather than a new endpoint:
+  extend `GET /diagnostics/providers` with something like
+  `scope=availability`
+- that availability scope should reuse the existing
+  `collectProviderDiagnostics(..., { includeArtifacts: false })` seam rather
+  than invent a second diagnostics pipeline
+- that availability scope should return only the fields the selector needs:
+  `provider`, `backend`, `instance`, `defaultTarget`, and `availability`
+- it should omit operator/detail fields the selector does not consume:
+  `config`, `checks`, `setup`, `compatibility`, `metering`,
+  `compatibilityEvidence`, `providerEvolution`, and `reprobe`
 
 Illustrative response when runtime is reachable but no usable targets exist:
 
@@ -252,9 +269,9 @@ Selector-specific notes:
 - Truthful selector caching is allowed only as a reuse of recent runtime truth.
   It must not degrade into product-owned static provider or model fallback.
 - That product cache should stay materially shorter-lived than the runtime's
-  own deeper compatibility/probe caches; its job is to absorb repeated UI
-  mounts inside one interaction window, not to become a second long-lived
-  source of truth.
+  existing compatibility cache and any future selector-oriented runtime cache;
+  its job is to absorb repeated UI mounts inside one interaction window, not
+  to become a second long-lived source of truth.
 - Model and advanced-model selector routes should reuse truthful selector state
   rather than revalidating the entire provider registry before every catalog
   fetch when the selected provider was already established as usable.

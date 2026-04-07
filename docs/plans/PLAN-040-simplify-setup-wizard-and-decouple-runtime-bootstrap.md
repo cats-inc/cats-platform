@@ -165,9 +165,9 @@ fast without reviving static fallback catalogs.
       cat creation, and other in-product provider/model pickers
 - [ ] Task 3.5: Add refresh/recheck support when the user returns from
       `cats-runtime /setup`
-- [ ] Task 3.6: Replace per-provider availability fan-out in the hot selector
-      path with one runtime topology read plus one bulk runtime availability
-      read when `cats-runtime` already exposes that truth surface
+- [ ] Task 3.6: After Task 3.9 lands, replace per-provider availability
+      fan-out in the hot selector path with one runtime topology read plus one
+      bulk runtime availability read
 - [ ] Task 3.7: Add a short-lived server-side truthful selector cache with
       in-flight dedupe and bounded stale-while-revalidate behavior so repeated
       selector mounts do not refetch the same registry every time
@@ -175,13 +175,16 @@ fast without reviving static fallback catalogs.
       `GET /api/providers/{provider}/models/advanced` reuse established
       truthful selector state or the shared selector cache instead of
       rebuilding the full provider registry before every catalog read
-- [ ] Task 3.9: Coordinate with `cats-runtime` on a lighter availability-only
-      bulk read scope for selector hot paths so `cats-platform` does not pay
-      full diagnostics artifact/config assembly costs merely to decide whether
-      a target is selectable
+- [ ] Task 3.9: Coordinate with `cats-runtime` on an additive
+      `GET /diagnostics/providers?scope=availability` selector path that
+      reuses `collectProviderDiagnostics(..., { includeArtifacts: false })`
+      and returns only `provider`, `backend`, `instance`, `defaultTarget`, and
+      `availability`, omitting `config`, `checks`, `setup`, `compatibility`,
+      `metering`, `compatibilityEvidence`, `providerEvolution`, and `reprobe`
 - [ ] Task 3.10: Tune selector-specific timeout budgets for the new bulk read
       path, and keep the product cache TTL intentionally short so it
-      complements rather than duplicates runtime-owned compatibility caching
+      complements the runtime's existing compatibility cache instead of
+      pretending a broader diagnostics cache already exists
 
 **Deliverables**: setup and product selectors stop lying about what can be
 executed right now, and they do so without minute-scale hot-path latency
@@ -228,12 +231,13 @@ recovery
 | `src/app/renderer/App.tsx` | Modify | Route setup completion to `/lobby` and make `/` fall back to `/lobby` when no last-used surface exists |
 | `src/server/routes/providers.ts` | Modify | Stop returning static fallback catalogs for execution-selector routes and replace slow provider fan-out with bounded truthful reads plus caching |
 | `src/runtime/client.ts` | Modify | Prefer the runtime's bulk availability truth seam for selector reads instead of per-provider hot-path probing |
+| `../cats-runtime/src/http/routes/diagnostics.ts` | External follow-up | Add additive `scope=availability` support on `GET /diagnostics/providers` by reusing the existing `includeArtifacts: false` collection seam |
+| `../cats-runtime/docs/api.md` | External follow-up | Document the selector-oriented `scope=availability` diagnostics contract once the runtime workstream lands it |
 | `desktop/host/readiness.ts` | Modify | Keep runtime regressions in recovery, not onboarding |
 | `desktop/host/bootstrapNavigation.ts` | Modify | Align post-setup routing with recovery semantics |
 | `docs/specs/SPEC-046-*.md` | Modify | Freeze `/lobby` as the first post-setup destination |
 | `docs/specs/SPEC-013-*.md` | Modify | Freeze truthful selector contract |
 | `docs/specs/SPEC-049-*.md` | Modify | Freeze Guide Cat setup behavior around usable targets |
-| `cats-runtime/docs/api.md` | Modify | Clarify configured-topology vs availability vs catalog semantics |
 
 ## Technical Decisions
 
@@ -263,8 +267,8 @@ recovery
   full operator diagnostics payloads just to classify targets as selectable.
 - Decision 9: **Platform cache and timeout tuning must complement runtime
   caching**. Product-side selector caches should stay short-lived and aimed at
-  repeated UI mounts, while deeper probe/compatibility caching remains
-  runtime-owned.
+  repeated UI mounts, while the runtime's existing compatibility cache and any
+  future selector-oriented runtime cache remain runtime-owned.
 
 ## Testing Strategy
 
@@ -288,8 +292,8 @@ recovery
   - completed setup plus later runtime failure stays in recovery, not onboarding
   - repeated setup/product selector opens reuse one truthful selector snapshot
     instead of stampeding the runtime
-  - bulk truthful selector reads stay bounded even when operator-grade
-    diagnostics include retained artifacts or other additive inspection data
+  - bulk truthful selector reads use the availability-only runtime scope
+    instead of paying for operator-grade diagnostics assembly
 - **Manual Tests**:
   - runtime unavailable -> toggle Guide Cat -> inline recovery card, no fake
     dropdowns
@@ -314,7 +318,7 @@ recovery
 | Desktop host still routes completed users back to onboarding | High | Land readiness/navigation updates together with the setup contract change |
 | Setup keeps growing side features again | Medium | Keep Guide Cat setup preference-only and keep `Create Now` out of scope |
 | Truthful selectors remain technically correct but too slow to use | High | Replace hot-path fan-out with bulk runtime truth, add short TTL cache plus in-flight dedupe, and reuse selector truth for model routes |
-| Bulk selector reads still inherit too much runtime diagnostics cost | High | Add a runtime-owned availability-only scope or equivalent lightweight bulk read so selector traffic does not force retained-artifact I/O and operator-grade payload assembly |
+| Bulk selector reads still inherit too much runtime diagnostics cost | High | Make Task 3.9 a hard prerequisite for Task 3.6 so selector traffic does not force retained-artifact I/O and operator-grade payload assembly |
 
 ## Progress Log
 
