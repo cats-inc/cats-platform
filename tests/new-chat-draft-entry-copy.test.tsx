@@ -3,6 +3,7 @@ import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
+import { pickDraftGreeting } from '../src/products/chat/renderer/chatUtils.tsx';
 import { NewChatDraft, type NewChatDraftProps } from '../src/products/chat/renderer/components/NewChatDraft.tsx';
 
 function createPayload(): AppShellPayload {
@@ -95,7 +96,7 @@ test('generic new chat draft with one selected cat renders cat-led copy', () => 
   assert.doesNotMatch(markup, /Group Chat/u);
 });
 
-test('generic new chat draft with multiple selected cats renders group chat copy', () => {
+test('generic new chat draft with multiple selected cats keeps a lightweight greeting and group prompts', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -124,10 +125,23 @@ test('generic new chat draft with multiple selected cats renders group chat copy
     />,
   );
 
-  assert.match(markup, /Group Chat/u);
-  assert.match(markup, /2 participants selected for this shared chat\./u);
+  assert.match(markup, /Meow\. Ready when you are\./u);
   assert.match(markup, /split roles, and ask for a coordinated plan/u);
   assert.doesNotMatch(markup, /Cat-led Chat/u);
+});
+
+test('group route uses the greeting seam instead of a fixed heading', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryMode: 'group',
+        greeting: 'Round up the room.',
+      })}
+    />,
+  );
+
+  assert.match(markup, /Round up the room\./u);
+  assert.doesNotMatch(markup, /Start a group chat/u);
 });
 
 test('direct-lane draft keeps private chat copy', () => {
@@ -176,4 +190,28 @@ test('draft hides starter suggestions when the seam supplies an explicit empty o
 
   assert.doesNotMatch(markup, /Plan today's priorities/u);
   assert.doesNotMatch(markup, /draftPromptChip/u);
+});
+
+test('draft greeting pools can be assigned independently per fresh-chat mode', () => {
+  assert.equal(
+    pickDraftGreeting('new', {
+      pool: ['Solo One', 'Solo Two'],
+      random: () => 0,
+    }),
+    'Solo One',
+  );
+  assert.equal(
+    pickDraftGreeting('group', {
+      pool: ['Group One', 'Group Two'],
+      random: () => 0.99,
+    }),
+    'Group Two',
+  );
+  assert.equal(
+    pickDraftGreeting('parallel', {
+      pool: ['Parallel One', 'Parallel Two'],
+      random: () => 0.51,
+    }),
+    'Parallel Two',
+  );
 });

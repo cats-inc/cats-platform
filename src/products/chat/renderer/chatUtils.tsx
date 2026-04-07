@@ -324,8 +324,43 @@ export const GREETING_LINES = [
   "This cat doesn't sleep on the job.",
 ];
 
-export function pickGreeting(): string {
-  return GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+export type DraftGreetingMode = 'new' | 'group' | 'parallel';
+
+export const DEFAULT_DRAFT_GREETING_POOLS: Record<DraftGreetingMode, ReadonlyArray<string>> = {
+  new: GREETING_LINES,
+  group: GREETING_LINES,
+  parallel: GREETING_LINES,
+};
+
+function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): string[] {
+  return (pool ?? [])
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+export function pickGreeting(
+  pool: ReadonlyArray<string> = GREETING_LINES,
+  random: () => number = Math.random,
+): string {
+  const normalizedPool = normalizeGreetingPool(pool);
+  const fallbackPool = normalizeGreetingPool(GREETING_LINES);
+  const activePool = normalizedPool.length > 0 ? normalizedPool : fallbackPool;
+  return activePool[Math.floor(random() * activePool.length)];
+}
+
+export function pickDraftGreeting(
+  mode: DraftGreetingMode,
+  options: {
+    pool?: ReadonlyArray<string> | null;
+    random?: () => number;
+  } = {},
+): string {
+  return pickGreeting(
+    normalizeGreetingPool(options.pool).length > 0
+      ? options.pool ?? GREETING_LINES
+      : DEFAULT_DRAFT_GREETING_POOLS[mode],
+    options.random,
+  );
 }
 
 export function resolveBossCatName(payload: AppShellPayload): string | null {

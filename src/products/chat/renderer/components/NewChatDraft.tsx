@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
+import { useMemo, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts';
 import type { NewChatMode } from '../../shared/channelPaths.js';
@@ -10,7 +10,7 @@ import {
   resolveVisibleDraftStarterSuggestions,
   type DraftStarterSuggestion,
 } from '../draftStarterSuggestions';
-import { isChatCat, truncatePath } from '../chatUtils';
+import { isChatCat, pickDraftGreeting, truncatePath } from '../chatUtils';
 import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
 import { FolderBrowserContent } from './FolderBrowser';
@@ -27,7 +27,8 @@ export interface NewChatDraftProps {
   payload: AppShellPayload;
   composerDraft: string;
   busy: string;
-  greeting: string;
+  greeting?: string | null;
+  greetingPool?: ReadonlyArray<string> | null;
   draftFiles: File[];
   draftCwd: string | null;
   draftCatIds: string[];
@@ -79,7 +80,8 @@ export function NewChatDraft({
   payload,
   composerDraft,
   busy,
-  greeting,
+  greeting = null,
+  greetingPool = null,
   draftFiles,
   draftCwd,
   draftCatIds,
@@ -127,6 +129,11 @@ export function NewChatDraft({
   onFolderBrowseSelect,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
+  const draftGreetingMode = entryMode === 'parallel'
+    ? 'parallel'
+    : entryMode === 'group'
+      ? 'group'
+      : 'new';
   const chatCats = payload.chat.cats.filter(isChatCat);
   const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
   const draftParticipants = resolveDraftParticipantSelection({ draftLeadCatId, draftCatIds });
@@ -179,6 +186,17 @@ export function NewChatDraft({
     leadCatName: effectiveLeadCat?.name ?? null,
     suggestions: starterSuggestions,
   });
+  const greetingPoolKey = Array.isArray(greetingPool)
+    ? greetingPool.map((line) => line.trim()).filter((line) => line.length > 0).join('\u0000')
+    : '';
+  const resolvedGreeting = useMemo(() => {
+    const explicitGreeting = greeting?.trim();
+    if (explicitGreeting) {
+      return explicitGreeting;
+    }
+
+    return pickDraftGreeting(draftGreetingMode, { pool: greetingPool });
+  }, [draftGreetingMode, greeting, greetingPoolKey]);
   const groupDraftSelectionLabel = draftParticipantCount === 1
     ? '1 participant selected so far. Add more or send when ready.'
     : draftParticipantCount > 1
@@ -223,23 +241,7 @@ export function NewChatDraft({
               </p>
             </>
           ) : isGroupDraft ? (
-            <>
-              <p className="eyebrow">Group Chat</p>
-              <h1>Start a group chat</h1>
-              <p className="heroNote">{groupDraftSelectionLabel}</p>
-              {allowAddCat ? (
-                <div className="draftGreetingActions">
-                  <button
-                    className="secondaryButton"
-                    type="button"
-                    disabled={isSubmittingFirstTurn || activeChatCats.length === 0}
-                    onClick={onOpenAddCat}
-                  >
-                    {draftCatIds.length > 0 ? 'Edit participants' : 'Choose participants'}
-                  </button>
-                </div>
-              ) : null}
-            </>
+            <h1>{resolvedGreeting}</h1>
           ) : isCatLedDraft && effectiveLeadCat ? (
             <>
               <p className="eyebrow">Cat-led Chat</p>
@@ -249,7 +251,7 @@ export function NewChatDraft({
               </p>
             </>
           ) : (
-            <h1>{greeting}</h1>
+            <h1>{resolvedGreeting}</h1>
           )}
           {!composerDraft.trim() && visibleStarterSuggestions.length > 0 ? (
             <div className="draftPromptSuggestions">

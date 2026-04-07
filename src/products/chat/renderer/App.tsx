@@ -1054,7 +1054,6 @@ export default function App() {
             draftSurfaceProps={{
               composerDraft,
               busy,
-              greeting,
               draftFiles,
               draftCwd,
               draftCatIds,
