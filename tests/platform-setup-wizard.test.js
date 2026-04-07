@@ -465,6 +465,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
         startAtLogin: true,
         openWindowOnStartup: false,
         guideCatSidecarSeen: true,
+        guideCatSidecarMode: 'bubble',
       }),
     });
 
@@ -487,6 +488,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
     assert.equal(payload.lastProductSurface, null, 'lastProductSurface should be cleared');
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should be cleared');
     assert.equal(payload.guideCatSidecarSeen, false, 'guideCatSidecarSeen should be cleared');
+    assert.equal(payload.guideCatSidecarMode, 'auto', 'guideCatSidecarMode should reset to auto');
     assert.deepEqual(payload.desktop, {
       startAtLogin: true,
       openWindowOnStartup: false,
@@ -517,6 +519,7 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       openWindowOnStartup: false,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: false,
+      guideCatSidecarMode: 'auto',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -543,6 +546,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       openWindowOnStartup: false,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: false,
+      guideCatSidecarMode: 'auto',
     });
 
     const secondResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
@@ -559,6 +563,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       openWindowOnStartup: false,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: false,
+      guideCatSidecarMode: 'auto',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -605,12 +610,46 @@ test('POST /api/platform/preferences persists guideCatSidecarSeen into the app s
       openWindowOnStartup: false,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: true,
+      guideCatSidecarMode: 'auto',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(shellResponse.status, 200);
     const shell = await shellResponse.json();
     assert.equal(shell.guideCatSidecarSeen, true);
+  });
+});
+
+test('POST /api/platform/preferences persists guideCatSidecarMode into the app shell', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+      }),
+    });
+
+    const prefsResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ guideCatSidecarMode: 'bubble' }),
+    });
+    assert.equal(prefsResponse.status, 200);
+    assert.deepEqual(await prefsResponse.json(), {
+      lastProductSurface: null,
+      startAtLogin: true,
+      openWindowOnStartup: false,
+      lobbyAnimationMode: 'reduced',
+      guideCatSidecarSeen: false,
+      guideCatSidecarMode: 'bubble',
+    });
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shell = await shellResponse.json();
+    assert.equal(shell.guideCatSidecarMode, 'bubble');
   });
 });
 

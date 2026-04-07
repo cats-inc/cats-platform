@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   collapseGuideCatSidecarState,
+  resolveGuideCatSidecarPreferenceState,
   toggleGuideCatSidecarState,
 } from '../src/app/renderer/useGuideCatSidecarState.ts';
 import {
@@ -27,19 +28,35 @@ test('Guide Cat sidecar collapse persists seen state only when dismissing welcom
   });
 });
 
-test('Guide Cat sidecar toggle persists seen state when promoting welcome-peek into open', () => {
-  assert.deepEqual(toggleGuideCatSidecarState('collapsed'), {
+test('Guide Cat sidecar toggle respects interaction mode transitions', () => {
+  assert.deepEqual(toggleGuideCatSidecarState('collapsed', 'auto'), {
     nextState: 'open',
     persistSeen: false,
   });
-  assert.deepEqual(toggleGuideCatSidecarState('welcome-peek'), {
+  assert.deepEqual(toggleGuideCatSidecarState('collapsed', 'bubble'), {
+    nextState: 'welcome-peek',
+    persistSeen: false,
+  });
+  assert.deepEqual(toggleGuideCatSidecarState('welcome-peek', 'drawer'), {
     nextState: 'open',
     persistSeen: true,
   });
-  assert.deepEqual(toggleGuideCatSidecarState('open'), {
+  assert.deepEqual(toggleGuideCatSidecarState('welcome-peek', 'bubble'), {
+    nextState: 'collapsed',
+    persistSeen: true,
+  });
+  assert.deepEqual(toggleGuideCatSidecarState('open', 'drawer'), {
     nextState: 'collapsed',
     persistSeen: false,
   });
+});
+
+test('Guide Cat sidecar preference state recalculates from seen flag and interaction mode', () => {
+  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'auto'), 'welcome-peek');
+  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'bubble'), 'welcome-peek');
+  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'drawer'), 'collapsed');
+  assert.equal(resolveGuideCatSidecarPreferenceState(true, 'auto'), 'collapsed');
+  assert.equal(resolveGuideCatSidecarPreferenceState(true, 'bubble'), 'collapsed');
 });
 
 test('Guide Cat sidecar anchors to Lobby content and product canvas but hides on setup/settings', () => {

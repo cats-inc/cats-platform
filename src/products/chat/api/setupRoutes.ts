@@ -120,6 +120,7 @@ async function handleSetupReset(
         ...currentPrefs,
         lastProductSurface: null,
         guideCatSidecarSeen: false,
+        guideCatSidecarMode: 'auto',
       });
     } catch (error) {
       reportOwnerMemorySyncFailure('setup_reset_prefs', error);

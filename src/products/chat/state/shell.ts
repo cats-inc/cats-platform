@@ -2,6 +2,7 @@ import type { AppConfig } from '../../../config.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type {
+  GuideCatSidecarMode,
   PlatformDesktopPreferences,
   PlatformLobbyCatSummary,
   PlatformLobbyPreferences,
@@ -58,7 +59,7 @@ export function createAppShell(
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
     guideCatSidecarSeen?: boolean;
-    guideCatSidecarMode?: string;
+    guideCatSidecarMode?: GuideCatSidecarMode;
     assistantPresets?: AssistantPresetRecord[];
   },
 ): AppShellPayload {

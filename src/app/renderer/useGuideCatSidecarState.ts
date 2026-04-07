@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
@@ -57,7 +57,7 @@ export function collapseGuideCatSidecarState(
   };
 }
 
-function resolveInitialState(
+export function resolveGuideCatSidecarPreferenceState(
   sidecarSeen: boolean,
   mode: GuideCatSidecarMode,
 ): GuideCatSidecarInnerState {
@@ -73,12 +73,23 @@ export function useGuideCatSidecarState(
 ): GuideCatSidecarState {
   const location = useLocation();
   const [innerState, setInnerState] = useState<GuideCatSidecarInnerState>(
-    () => resolveInitialState(sidecarSeen, mode),
+    () => resolveGuideCatSidecarPreferenceState(sidecarSeen, mode),
   );
 
   const isHiddenRoute =
     location.pathname === '/setup'
     || location.pathname.startsWith('/settings');
+
+  useEffect(() => {
+    if (!isHiddenRoute) {
+      return;
+    }
+
+    setInnerState((prev) => {
+      const nextState = resolveGuideCatSidecarPreferenceState(sidecarSeen, mode);
+      return prev === nextState ? prev : nextState;
+    });
+  }, [isHiddenRoute, mode, sidecarSeen]);
 
   const viewState: GuideCatSidecarViewState = isHiddenRoute ? 'hidden' : innerState;
 
