@@ -155,7 +155,6 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: true,
         guideCatName: 'Meowster',
         guideCatProvider: 'claude',
@@ -168,7 +167,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
 
     assert.ok(payload.setupCompleteAt, 'setupCompleteAt should be set');
     assert.equal(payload.ownerDisplayName, 'Kenny');
-    assert.equal(payload.lastProductSurface, 'chat');
+    assert.equal(payload.lastProductSurface, null);
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
     assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat', 'work', 'code']);
     assert.equal(payload.chat.cats.length, 0, 'platform setup should not inject Guide Cat into chat cats');
@@ -183,6 +182,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
     const shellPayload = await shellResponse.json();
     assert.equal(shellPayload.guideCat?.name, 'Meowster');
     assert.equal(shellPayload.chat.cats.length, 0);
+    assert.equal(shellPayload.lastProductSurface, null);
   });
 });
 
@@ -193,7 +193,6 @@ test('POST /api/platform/setup/complete persists Guide Cat modelSelection withou
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: true,
         guideCatName: 'Meowster',
         guideCatProvider: 'codex',
@@ -229,7 +228,6 @@ test('POST /api/platform/setup/complete with createGuideCat=false does not creat
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: false,
       }),
     });
@@ -239,7 +237,7 @@ test('POST /api/platform/setup/complete with createGuideCat=false does not creat
 
     assert.ok(payload.setupCompleteAt, 'setupCompleteAt should be set');
     assert.equal(payload.ownerDisplayName, 'Kenny');
-    assert.equal(payload.lastProductSurface, 'chat');
+    assert.equal(payload.lastProductSurface, null);
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
     assert.equal(payload.chat.cats.length, 0, 'no cats should be created');
     assert.equal(payload.guideCat, null);
@@ -253,7 +251,6 @@ test('POST /api/platform/setup/complete returns 409 if already completed', async
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: false,
       }),
     });
@@ -263,7 +260,6 @@ test('POST /api/platform/setup/complete returns 409 if already completed', async
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny Again',
-        selectedProduct: 'chat',
         createGuideCat: false,
       }),
     });
@@ -279,7 +275,6 @@ test('POST /api/platform/setup/complete with createGuideCat=true defaults name t
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: true,
         guideCatName: '',
         guideCatProvider: 'claude',
@@ -301,7 +296,6 @@ test('chat functions normally after platform setup without Guide Cat', async () 
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: false,
       }),
     });
@@ -316,7 +310,7 @@ test('chat functions normally after platform setup without Guide Cat', async () 
   });
 });
 
-test('POST /api/platform/setup/complete can create Guide Cat even when starting product is not chat', async () => {
+test('POST /api/platform/setup/complete still honors legacy selectedProduct for older clients', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
@@ -349,7 +343,6 @@ test('POST /api/platform/setup/complete still accepts legacy Boss Cat aliases as
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createBossCat: true,
         bossCatName: 'Legacy Boss',
         bossCatProvider: 'claude',
@@ -393,6 +386,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        lastProductSurface: 'work',
         startAtLogin: true,
         openWindowOnStartup: false,
       }),
@@ -403,7 +397,6 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: false,
       }),
     });
@@ -431,7 +424,6 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: false,
       }),
     });
@@ -446,6 +438,7 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       lastProductSurface: 'work',
       startAtLogin: true,
       openWindowOnStartup: false,
+      lobbyAnimationMode: 'reduced',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -470,6 +463,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       lastProductSurface: 'code',
       startAtLogin: true,
       openWindowOnStartup: false,
+      lobbyAnimationMode: 'reduced',
     });
 
     const secondResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
@@ -484,6 +478,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       lastProductSurface: 'code',
       startAtLogin: false,
       openWindowOnStartup: false,
+      lobbyAnimationMode: 'reduced',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -529,4 +524,3 @@ test('GET /api/app-shell treats legacy active chat state as setup-complete even 
     assert.ok(payload.chat.bossCatId, 'boss cat should remain visible');
   }, chatStore);
 });
-

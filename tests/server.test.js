@@ -5319,7 +5319,6 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createBossCat: false,
       }),
     });
@@ -5765,7 +5764,6 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createBossCat: false,
       }),
     });
@@ -5875,7 +5873,6 @@ test('archived cats cannot receive new Telegram bot bindings', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createBossCat: false,
       }),
     });
@@ -5924,7 +5921,6 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createBossCat: false,
       }),
     });
@@ -6025,7 +6021,6 @@ test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async (
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createBossCat: false,
       }),
     });
@@ -6070,7 +6065,6 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createBossCat: false,
       }),
     });
@@ -6538,4 +6532,3 @@ test('attachment serving keeps no-repo chat files out of the state tree', async 
     assert.equal(await secondAttachmentResponse.arrayBuffer().then((buffer) => buffer.byteLength), 4);
   });
 });
-

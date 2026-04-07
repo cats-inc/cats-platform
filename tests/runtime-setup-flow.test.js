@@ -206,101 +206,14 @@ test('POST /api/platform/bootstrap-diagnostics/opened records a product-owned se
   });
 });
 
-test('POST /api/platform/runtime-setup/scan proxies the runtime setup scan', async () => {
-  const runtimeStub = createRuntimeSetupStub({ providers: [] });
-
-  await withServer(runtimeStub, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/platform/runtime-setup/scan`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ manual: true }),
-    });
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.status, 'scan_required');
-    assert.deepEqual(runtimeStub.scanCalls, [{ manual: true }]);
-  });
-});
-
-test('POST /api/platform/runtime-setup/apply uses ready providers and exits bootstrap mode', async () => {
-  const runtimeStub = createRuntimeSetupStub();
-
-  await withServer(runtimeStub, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/platform/runtime-setup/apply`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.status, 'ready');
-    assert.equal(payload.bootstrapRequired, false);
-    assert.deepEqual(runtimeStub.appliedProviders, [['claude']]);
-  });
-});
-
-test('runtime setup apply records product diagnostics events for the active bootstrap attempt', async () => {
-  const runtimeStub = createRuntimeSetupStub();
-
-  await withServer(runtimeStub, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/platform/runtime-setup/apply`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ attemptId: 'attempt-apply' }),
-    });
-
-    assert.equal(response.status, 200);
-
-    const diagnosticsResponse = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
-    assert.equal(diagnosticsResponse.status, 200);
-    const diagnostics = await diagnosticsResponse.json();
-    assert.equal(diagnostics.attemptId, 'attempt-apply');
-    assert.deepEqual(
-      diagnostics.events.map((event) => event.kind),
-      ['runtime_apply_confirmed', 'runtime_apply_requested'],
-    );
-  });
-});
-
-test('POST /api/platform/setup/complete rejects setup until runtime bootstrap is applied', async () => {
+test('POST /api/platform/setup/complete succeeds even when runtime bootstrap is still required', async () => {
   await withServer(createRuntimeSetupStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
-        createGuideCat: false,
-      }),
-    });
-
-    assert.equal(response.status, 409);
-    const payload = await response.json();
-    assert.equal(payload.error.code, 'runtime_setup_required');
-    assert.equal(payload.error.details.runtimeSetup.status, 'attention_required');
-  });
-});
-
-test('platform setup succeeds after runtime setup apply completes', async () => {
-  const runtimeStub = createRuntimeSetupStub();
-
-  await withServer(runtimeStub, async (baseUrl) => {
-    const applyResponse = await fetch(`${baseUrl}/api/platform/runtime-setup/apply`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ attemptId: 'attempt-complete' }),
-    });
-    assert.equal(applyResponse.status, 200);
-
     const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         attemptId: 'attempt-complete',
         ownerDisplayName: 'Kenny',
-        selectedProduct: 'chat',
         createGuideCat: false,
       }),
     });
@@ -308,18 +221,23 @@ test('platform setup succeeds after runtime setup apply completes', async () => 
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.ok(payload.setupCompleteAt);
-    assert.equal(payload.runtimeSetup.status, 'ready');
+    assert.equal(payload.runtimeSetup.status, 'attention_required');
+    assert.equal(payload.runtimeSetup.bootstrapRequired, true);
     assert.equal(payload.ownerDisplayName, 'Kenny');
+    assert.equal(payload.lastProductSurface, null);
 
     const diagnosticsResponse = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
     assert.equal(diagnosticsResponse.status, 200);
     const diagnostics = await diagnosticsResponse.json();
     assert.equal(diagnostics.attemptId, 'attempt-complete');
-    assert.equal(diagnostics.events[0].kind, 'setup_completed');
+    assert.deepEqual(
+      diagnostics.events.map((event) => event.kind),
+      ['setup_completed'],
+    );
   });
 });
 
-test('legacy POST /api/setup/complete also respects runtime setup gating', async () => {
+test('legacy POST /api/setup/complete also succeeds without runtime bootstrap apply', async () => {
   await withServer(createRuntimeSetupStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/setup/complete`, {
       method: 'POST',
@@ -331,10 +249,11 @@ test('legacy POST /api/setup/complete also respects runtime setup gating', async
       }),
     });
 
-    assert.equal(response.status, 409);
+    assert.equal(response.status, 200);
     const payload = await response.json();
-    assert.equal(payload.error.code, 'runtime_setup_required');
-    assert.equal(payload.error.details.runtimeSetup.bootstrapRequired, true);
+    assert.ok(payload.setupCompleteAt);
+    assert.equal(payload.runtimeSetup.status, 'attention_required');
+    assert.equal(payload.runtimeSetup.bootstrapRequired, true);
+    assert.ok(payload.chat.bossCatId);
   });
 });
-

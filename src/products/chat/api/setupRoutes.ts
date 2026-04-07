@@ -7,7 +7,6 @@ import {
 import { createDefaultChatState } from '../state/defaults.js';
 import { createCat } from '../state/model/index.js';
 import type { SetupCompleteInput } from './contracts.js';
-import { isRuntimeSetupReady, readRuntimeSetupSummary } from '../../../runtime/setup.js';
 import {
   buildAppShellPayload,
   handleRestError,
@@ -36,18 +35,6 @@ async function handleSetupComplete(
         409,
         'already_complete',
         'Setup has already been completed',
-      );
-      return;
-    }
-
-    const runtimeSetup = await readRuntimeSetupSummary(context.dependencies.runtimeClient);
-    if (!isRuntimeSetupReady(runtimeSetup)) {
-      sendRestError(
-        context,
-        409,
-        'runtime_setup_required',
-        runtimeSetup.error ?? runtimeSetup.summary,
-        { runtimeSetup },
       );
       return;
     }
