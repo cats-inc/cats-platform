@@ -19,6 +19,8 @@ function createPayload(): AppShellPayload {
         {
           id: 'cat-lead',
           name: 'Milo',
+          avatarColor: '#7A5B3A',
+          avatarUrl: null,
           status: 'active',
           products: ['chat'],
           defaultExecutionTarget: {
@@ -197,8 +199,44 @@ test('group route hides add-participant hint and button when max participants is
     />,
   );
 
-  assert.doesNotMatch(markup, /Add another model to collaborate/u);
-  assert.doesNotMatch(markup, /aria-label="Add another model to collaborate"/u);
+  assert.match(markup, /class="composerGroupAddRow" style="visibility:hidden"/u);
+  assert.match(markup, /aria-label="Add another model to collaborate"/u);
+  assert.match(markup, /tabindex="-1"/u);
+});
+
+test('group route keeps cat avatar styling in the participant stack while temporary participants stay neutral', () => {
+  const payload = createPayload();
+  payload.chat.bossCatId = 'cat-lead';
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryMode: 'group',
+        payload,
+        draftCatIds: ['cat-lead'],
+        draftTemporaryParticipants: [
+          {
+            participantId: 'participant-inline',
+            name: 'Inline Reviewer',
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+            modelSelection: null,
+            roleHint: 'Counterpoint',
+          },
+        ],
+      })}
+    />,
+  );
+
+  assert.match(
+    markup,
+    /class="catAvatar composerStackAvatar catAvatarBoss" data-tooltip="Milo" style="background:#7A5B3A;color:#fff;z-index:2"/u,
+  );
+  assert.match(
+    markup,
+    /class="catAvatar composerStackAvatar" data-tooltip="Inline Reviewer" style="z-index:1"/u,
+  );
 });
 
 test('direct-lane draft keeps private chat copy', () => {

@@ -2,8 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
-import type { AppShellPayload, ChatChannelView } from '../src/products/chat/api/contracts.ts';
+import type {
+  AppShellPayload,
+  ChatCat,
+  ChatChannelCat,
+  ChatChannelParticipant,
+  ChatChannelView,
+} from '../src/products/chat/api/contracts.ts';
 import { ChatView, type ChatViewProps } from '../src/products/chat/renderer/components/ChatView.tsx';
+import { buildDraftParticipantExecutionLabel } from '../src/products/chat/renderer/chatUtils.tsx';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 
 function createPayload(): AppShellPayload {
@@ -21,6 +28,128 @@ function createPayload(): AppShellPayload {
       showVerboseMessages: false,
     },
   } as unknown as AppShellPayload;
+}
+
+function createChatCat(overrides: Partial<ChatCat> = {}): ChatCat {
+  return {
+    id: 'cat-lead',
+    name: 'Milo',
+    roles: [],
+    skillProfile: null,
+    mcpProfile: null,
+    status: 'active',
+    createdAt: '2026-04-07T00:00:00.000Z',
+    updatedAt: '2026-04-07T00:00:00.000Z',
+    archivedAt: null,
+    avatarColor: '#7A5B3A',
+    avatarUrl: null,
+    defaultExecutionTarget: {
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-sonnet',
+    },
+    defaultModelSelection: null,
+    products: ['chat'],
+    memory: {
+      summary: null,
+      facts: [],
+      openLoops: [],
+      updatedAt: null,
+    },
+    ...overrides,
+  };
+}
+
+function createTemporaryParticipant(
+  overrides: Partial<ChatChannelParticipant> = {},
+): ChatChannelParticipant {
+  return {
+    participantId: 'participant-inline',
+    sourceKind: 'adhoc',
+    sourceRefId: null,
+    name: 'Inline Reviewer',
+    roles: [],
+    roleHint: 'Counterpoint',
+    skillProfile: null,
+    mcpProfile: null,
+    status: 'active',
+    joinedAt: '2026-04-07T00:00:00.000Z',
+    leftAt: null,
+    avatarColor: '#F04A70',
+    avatarUrl: null,
+    execution: {
+      target: {
+        provider: 'gemini',
+        instance: 'native',
+        model: 'gemini-3.1-pro',
+      },
+      modelSelection: null,
+      lease: {
+        sessionId: null,
+        status: 'ready',
+        cwd: null,
+        lastError: null,
+        provider: null,
+        model: null,
+        startedAt: null,
+        lastUsedAt: null,
+      },
+    },
+    memory: {
+      summary: null,
+      facts: [],
+      openLoops: [],
+      updatedAt: null,
+    },
+    ...overrides,
+  };
+}
+
+function createCatParticipant(
+  cat: ChatCat,
+  overrides: Partial<ChatChannelCat> = {},
+): ChatChannelCat {
+  return {
+    participantId: `participant:${cat.id}`,
+    sourceKind: 'cat',
+    sourceRefId: cat.id,
+    catId: cat.id,
+    name: cat.name,
+    roles: [],
+    roleHint: null,
+    skillProfile: null,
+    mcpProfile: null,
+    status: 'active',
+    joinedAt: '2026-04-07T00:00:00.000Z',
+    leftAt: null,
+    avatarColor: cat.avatarColor,
+    avatarUrl: cat.avatarUrl,
+    execution: {
+      target: {
+        provider: cat.defaultExecutionTarget.provider,
+        instance: cat.defaultExecutionTarget.instance,
+        model: cat.defaultExecutionTarget.model,
+      },
+      modelSelection: cat.defaultModelSelection ?? null,
+      lease: {
+        sessionId: null,
+        status: 'ready',
+        cwd: null,
+        lastError: null,
+        provider: null,
+        model: null,
+        startedAt: null,
+        lastUsedAt: null,
+      },
+    },
+    memory: {
+      summary: null,
+      facts: [],
+      openLoops: [],
+      updatedAt: null,
+    },
+    ...overrides,
+  };
 }
 
 function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelView {
@@ -61,59 +190,12 @@ function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelVie
     participantAssignments: [],
     catAssignments: [],
     assignedParticipants: [
-      {
-        participantId: 'participant-inline',
-        sourceKind: 'adhoc',
-        sourceRefId: null,
-        name: 'Inline Reviewer',
-        roles: [],
-        roleHint: 'Counterpoint',
-        skillProfile: null,
-        mcpProfile: null,
-        status: 'active',
-        joinedAt: '2026-04-07T00:00:00.000Z',
-        leftAt: null,
-        avatarColor: '#F04A70',
-        avatarUrl: null,
-        execution: {
-          target: {
-            provider: 'gemini',
-            instance: 'native',
-            model: 'gemini-3.1-pro',
-          },
-          modelSelection: null,
-          lease: {
-            sessionId: null,
-            status: 'ready',
-            cwd: null,
-            lastError: null,
-            provider: null,
-            model: null,
-            startedAt: null,
-            lastUsedAt: null,
-          },
-        },
-        memory: {
-          summary: null,
-          facts: [],
-          openLoops: [],
-          updatedAt: null,
-        },
-      },
-      {
+      createTemporaryParticipant(),
+      createTemporaryParticipant({
         participantId: 'participant-verifier',
-        sourceKind: 'adhoc',
-        sourceRefId: null,
         name: 'Runtime Verifier',
-        roles: [],
         roleHint: null,
-        skillProfile: null,
-        mcpProfile: null,
-        status: 'active',
-        joinedAt: '2026-04-07T00:00:00.000Z',
-        leftAt: null,
         avatarColor: '#2B9CF0',
-        avatarUrl: null,
         execution: {
           target: {
             provider: 'claude',
@@ -132,13 +214,7 @@ function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelVie
             lastUsedAt: null,
           },
         },
-        memory: {
-          summary: null,
-          facts: [],
-          openLoops: [],
-          updatedAt: null,
-        },
-      },
+      }),
     ],
     assignedCats: [],
     messages: [],
@@ -207,9 +283,64 @@ test('ChatView shows temporary participants in the top bar and composer affordan
 
   assert.match(markup, /data-tooltip="Inline Reviewer"/u);
   assert.match(markup, /data-tooltip="Runtime Verifier"/u);
-  assert.match(markup, />2 participants</u);
+  assert.match(markup, /data-tooltip="2 participants"/u);
   assert.match(markup, /channelParticipantAvatar/u);
   assert.doesNotMatch(markup, /#F04A70|#2B9CF0/u);
+});
+
+test('ChatView keeps Cat visuals in room stacks while temporary participants stay neutral', () => {
+  const leadCat = createChatCat();
+  const leadParticipant = createCatParticipant(leadCat, {
+    participantId: 'participant-cat-lead',
+  });
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        payload: {
+          ...createPayload(),
+          chat: {
+            ...createPayload().chat,
+            bossCatId: leadCat.id,
+            cats: [leadCat],
+          },
+        } as unknown as AppShellPayload,
+        selectedChannel: createChannel({
+          assignedParticipants: [
+            leadParticipant,
+            createTemporaryParticipant(),
+            createTemporaryParticipant({
+              participantId: 'participant-verifier',
+              name: 'Runtime Verifier',
+              avatarColor: '#2B9CF0',
+            }),
+          ],
+          assignedCats: [leadParticipant],
+          roomRouting: {
+            ...createChannel().roomRouting!,
+            leadParticipantId: leadParticipant.participantId,
+          },
+        }),
+      })}
+    />,
+  );
+
+  assert.match(
+    markup,
+    /class="catAvatar catAvatarBoss" data-tooltip="Milo" style="background:#7A5B3A"/u,
+  );
+  assert.match(
+    markup,
+    /class="catAvatar channelParticipantAvatar" data-tooltip="Inline Reviewer"/u,
+  );
+  assert.match(
+    markup,
+    /class="catAvatar composerStackAvatar catAvatarBoss" data-tooltip="Milo" style="background:#7A5B3A;z-index:3"/u,
+  );
+  assert.match(
+    markup,
+    /class="catAvatar composerStackAvatar channelParticipantAvatar" data-tooltip="Inline Reviewer" style="z-index:2"/u,
+  );
+  assert.doesNotMatch(markup, />3 participants</u);
 });
 
 test('ChatView renders temporary participant transcript speakers as room members', () => {
@@ -239,6 +370,36 @@ test('ChatView renders temporary participant transcript speakers as room members
   assert.match(markup, /transcriptAvatar/u);
   assert.match(markup, /Inline Reviewer/u);
   assert.match(markup, /catAvatarLeadBadge/u);
+});
+
+test('ChatView resolves temporary participant transcript speakers by execution label snapshot', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-1',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Runtime',
+              body: 'I checked the proposal.',
+              createdAt: '2026-04-07T00:01:00.000Z',
+              metadata: {
+                executionLabelSnapshot: buildDraftParticipantExecutionLabel(
+                  createTemporaryParticipant().execution.target,
+                ),
+              },
+            },
+          ],
+        }),
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="catAvatar transcriptAvatar channelParticipantAvatar"/u);
+  assert.match(markup, /Inline Reviewer/u);
+  assert.doesNotMatch(markup, /#F04A70/u);
 });
 
 test('ChatView prefers room participants over fallback Cat names in transcript speakers', () => {
@@ -364,7 +525,7 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   );
 
   assert.match(markup, /typingIndicator/u);
-  assert.match(markup, /transcriptAvatar/u);
+  assert.match(markup, /class="catAvatar transcriptAvatar channelParticipantAvatar"/u);
   assert.match(markup, /Inline Reviewer/u);
   assert.match(markup, /catAvatarPulsing/u);
 });

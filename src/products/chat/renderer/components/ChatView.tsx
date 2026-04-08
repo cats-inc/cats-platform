@@ -89,10 +89,9 @@ type TopBarParticipant = {
   avatarUrl: string | null;
   isBoss: boolean;
   isLead: boolean;
-  isAdhoc: boolean;
+  useNeutralAvatar: boolean;
   pulseParticipantId: string | null;
   pulseCatId: string | null;
-  useAvatarColorFallback: boolean;
 };
 
 export interface ChatViewProps {
@@ -228,7 +227,7 @@ export function ChatView({
     return buildAvatarStyle(
       catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
       catRecord?.avatarColor ?? participant.avatarColor ?? null,
-      participant.sourceKind === 'cat',
+      catRecord != null,
     );
   }
 
@@ -312,6 +311,95 @@ export function ChatView({
   const leadCatRecord = leadCat
     ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
     : null;
+  const catsById = useMemo(
+    () => new Map(payload.chat.cats.map((cat) => [cat.id, cat] as const)),
+    [payload.chat.cats],
+  );
+
+  function resolveParticipantCatRecord(
+    participant: ResolvedChannelParticipant | null | undefined,
+  ): ChatCat | null {
+    if (!participant) {
+      return null;
+    }
+    const catId = resolveParticipantCatId(participant);
+    return catId ? catsById.get(catId) ?? null : null;
+  }
+
+  function participantUsesNeutralAvatar(
+    participant: ResolvedChannelParticipant | null | undefined,
+    catRecord: ChatCat | null = resolveParticipantCatRecord(participant),
+  ): boolean {
+    return !participant || catRecord == null;
+  }
+
+  function resolveParticipantDisplayName(
+    participant: ResolvedChannelParticipant,
+    catRecord: ChatCat | null = resolveParticipantCatRecord(participant),
+  ): string {
+    return catRecord?.name ?? participant.name;
+  }
+
+  function resolveParticipantAvatarUrl(
+    participant: ResolvedChannelParticipant,
+    catRecord: ChatCat | null = resolveParticipantCatRecord(participant),
+  ): string | null {
+    return catRecord?.avatarUrl ?? participant.avatarUrl ?? null;
+  }
+
+  function buildParticipantAvatarClassName(
+    participant: ResolvedChannelParticipant,
+    options: {
+      transcript?: boolean;
+      composer?: boolean;
+      catRecord?: ChatCat | null;
+    } = {},
+  ): string {
+    const catRecord = options.catRecord ?? resolveParticipantCatRecord(participant);
+    return [
+      'catAvatar',
+      options.transcript ? 'transcriptAvatar' : '',
+      options.composer ? 'composerStackAvatar' : '',
+      catRecord?.id === payload.chat.bossCatId ? 'catAvatarBoss' : '',
+      participantUsesNeutralAvatar(participant, catRecord) ? 'channelParticipantAvatar' : '',
+    ].filter(Boolean).join(' ');
+  }
+
+  function readMessageExecutionLabelSnapshot(
+    message: SelectedChannelView['messages'][number],
+  ): string | null {
+    const snapshot = message.metadata?.executionLabelSnapshot;
+    return typeof snapshot === 'string' && snapshot.trim() ? snapshot.trim() : null;
+  }
+
+  function resolveMessageParticipant(
+    message: SelectedChannelView['messages'][number],
+  ): ResolvedChannelParticipant | null {
+    const targetId = typeof message.metadata?.targetId === 'string'
+      ? message.metadata.targetId.trim()
+      : '';
+    if (targetId) {
+      return findAssignedParticipant(selectedChannel, targetId);
+    }
+
+    const candidateLabels = new Set<string>();
+    const trimmedSenderName = message.senderName?.trim();
+    if (trimmedSenderName && trimmedSenderName !== 'Orchestrator') {
+      candidateLabels.add(trimmedSenderName);
+    }
+    const executionLabelSnapshot = readMessageExecutionLabelSnapshot(message);
+    if (executionLabelSnapshot) {
+      candidateLabels.add(executionLabelSnapshot);
+    }
+    if (candidateLabels.size === 0) {
+      return null;
+    }
+
+    return activeRoomParticipants.find((participant) => {
+      const executionLabel = buildDraftParticipantExecutionLabel(participant.execution.target);
+      return candidateLabels.has(participant.name) || candidateLabels.has(executionLabel);
+    }) ?? null;
+  }
   const topBarTitle = isDirectLane
     ? (directLaneCat?.name ?? leadCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
     : isCompareGroup && compareGroup
@@ -344,10 +432,9 @@ export function ChatView({
           avatarUrl: leadCatRecord.avatarUrl ?? null,
           isBoss: leadCatRecord.id === payload.chat.bossCatId,
           isLead: true,
-          isAdhoc: false,
+          useNeutralAvatar: false,
           pulseParticipantId: leadParticipant?.participantId ?? null,
           pulseCatId: leadCatRecord.id,
-          useAvatarColorFallback: true,
         });
       }
     } else {
@@ -360,45 +447,24 @@ export function ChatView({
             avatarUrl: bossCatRecord.avatarUrl ?? null,
             isBoss: true,
             isLead: bossCatRecord.id === leadParticipantId,
-            isAdhoc: false,
+            useNeutralAvatar: false,
             pulseParticipantId: null,
             pulseCatId: bossCatRecord.id,
-            useAvatarColorFallback: true,
           });
         }
       }
       for (const participant of activeRoomParticipants) {
-        if (participant.sourceKind === 'cat') {
-          const catRef = resolveParticipantCatId(participant);
-          const catRecord = catRef
-            ? payload.chat.cats.find((cat) => cat.id === catRef) ?? null
-            : null;
-          ordered.push({
-            key: `participant:${participant.participantId}`,
-            label: participant.name,
-            avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
-            avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
-            isBoss: catRef === payload.chat.bossCatId,
-            isLead: participant.participantId === leadParticipantId,
-            isAdhoc: false,
-            pulseParticipantId: participant.participantId,
-            pulseCatId: catRef,
-            useAvatarColorFallback: true,
-          });
-          continue;
-        }
-
+        const catRecord = resolveParticipantCatRecord(participant);
         ordered.push({
           key: `participant:${participant.participantId}`,
-          label: participant.name,
-          avatarColor: participant.avatarColor ?? null,
-          avatarUrl: participant.avatarUrl ?? null,
-          isBoss: false,
+          label: resolveParticipantDisplayName(participant, catRecord),
+          avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
+          avatarUrl: resolveParticipantAvatarUrl(participant, catRecord),
+          isBoss: catRecord?.id === payload.chat.bossCatId,
           isLead: participant.participantId === leadParticipantId,
-          isAdhoc: true,
+          useNeutralAvatar: participantUsesNeutralAvatar(participant, catRecord),
           pulseParticipantId: participant.participantId,
-          pulseCatId: null,
-          useAvatarColorFallback: false,
+          pulseCatId: catRecord?.id ?? null,
         });
       }
     }
@@ -412,14 +478,13 @@ export function ChatView({
     });
   }, [
     activeRoomParticipants,
-    assignedCatRecords,
     bossCatRecord,
+    catsById,
     isDirectLane,
     isSoloComposer,
     leadCatRecord,
     leadParticipantId,
     payload.chat.bossCatId,
-    payload.chat.cats,
     showBossCatAvatar,
   ]);
   const showRosterAvatars = isDirectLane
@@ -428,6 +493,22 @@ export function ChatView({
   const participantChipLabel = activeRoomParticipants.length > 0
     ? `${activeRoomParticipants.length} participant${activeRoomParticipants.length === 1 ? '' : 's'}`
     : 'Participants';
+  const composerParticipants = useMemo(
+    () => {
+      if (activeRoomParticipants.length === 0) {
+        return [];
+      }
+      const lead = leadParticipant
+        ? activeRoomParticipants.find((participant) =>
+          participant.participantId === leadParticipant.participantId)
+          ?? leadParticipant
+        : activeRoomParticipants[0] ?? null;
+      const others = activeRoomParticipants.filter((participant) =>
+        participant.participantId !== lead?.participantId);
+      return lead ? [lead, ...others] : activeRoomParticipants;
+    },
+    [activeRoomParticipants, leadParticipant],
+  );
   const directLaneModelValue: ModelSelectorValue | null = directLaneCat
     ? {
         provider: directLaneCat.defaultExecutionTarget.provider,
@@ -648,7 +729,7 @@ export function ChatView({
                       key={participant.key}
                       className={[
                         participant.isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
-                        participant.isAdhoc ? 'channelParticipantAvatar' : '',
+                        participant.useNeutralAvatar ? 'channelParticipantAvatar' : '',
                         participant.pulseParticipantId
                           && activeTopBarParticipantIdSet.has(participant.pulseParticipantId)
                           ? 'catAvatarPulsing'
@@ -661,7 +742,7 @@ export function ChatView({
                       style={buildAvatarStyle(
                         participant.avatarUrl,
                         participant.avatarColor,
-                        participant.useAvatarColorFallback,
+                        !participant.useNeutralAvatar,
                       )}
                     >
                       {participant.avatarUrl ? null : catInitials(participant.label)}
@@ -767,33 +848,38 @@ export function ChatView({
                       <div className={messageTone(message.senderKind)}>
                         {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
                           const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
-                          const transcriptParticipantTargetId = typeof message.metadata?.targetId === 'string'
-                            ? message.metadata.targetId
-                            : null;
-                          const transcriptParticipant = transcriptParticipantTargetId
-                            ? findAssignedParticipant(
-                              selectedChannel,
-                              transcriptParticipantTargetId,
-                            )
-                            : message.senderName && message.senderName !== 'Orchestrator'
-                              ? activeRoomParticipants.find((participant) =>
-                                participant.name === message.senderName)
-                                ?? null
-                              : null;
+                          const transcriptParticipant = resolveMessageParticipant(message);
+                          const transcriptParticipantCat = resolveParticipantCatRecord(
+                            transcriptParticipant,
+                          );
                           return transcriptParticipant ? (
                             <div className="transcriptMessageTop">
                               <div
-                                className={transcriptParticipant.sourceKind === 'cat' && resolveParticipantCatId(transcriptParticipant) === payload.chat.bossCatId
-                                  ? 'catAvatar catAvatarBoss transcriptAvatar'
-                                  : transcriptParticipant.sourceKind === 'cat'
-                                    ? 'catAvatar transcriptAvatar'
-                                    : 'catAvatar transcriptAvatar channelParticipantAvatar'}
-                                style={buildParticipantAvatarStyle(transcriptParticipant)}
+                                className={buildParticipantAvatarClassName(
+                                  transcriptParticipant,
+                                  {
+                                    transcript: true,
+                                    catRecord: transcriptParticipantCat,
+                                  },
+                                )}
+                                style={buildParticipantAvatarStyle(
+                                  transcriptParticipant,
+                                  transcriptParticipantCat,
+                                )}
                               >
-                                {transcriptParticipant.avatarUrl ? null : catInitials(transcriptParticipant.name)}
+                                {resolveParticipantAvatarUrl(
+                                  transcriptParticipant,
+                                  transcriptParticipantCat,
+                                ) ? null : catInitials(resolveParticipantDisplayName(
+                                  transcriptParticipant,
+                                  transcriptParticipantCat,
+                                ))}
                                 {transcriptParticipant.participantId === leadParticipantId ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                               </div>
-                              <strong>{transcriptParticipant.name}</strong>
+                              <strong>{resolveParticipantDisplayName(
+                                transcriptParticipant,
+                                transcriptParticipantCat,
+                              )}</strong>
                             </div>
                           ) : speaker.kind === 'cat' && speaker.cat ? (() => {
                             const isBoss = speaker.cat.id === payload.chat.bossCatId;
@@ -956,7 +1042,7 @@ export function ChatView({
                       ? resolveParticipantCatId(liveSpeakerParticipant)
                       : null;
                     const liveSpeakerParticipantCat = liveSpeakerParticipantCatId
-                      ? payload.chat.cats.find((c) => c.id === liveSpeakerParticipantCatId) ?? null
+                      ? catsById.get(liveSpeakerParticipantCatId) ?? null
                       : null;
                     const speakerLabel = liveSpeakerParticipant?.name
                       ?? liveSpeakerParticipantCat?.name
@@ -972,25 +1058,33 @@ export function ChatView({
                           {liveSpeakerParticipant ? (
                             <div className="transcriptMessageTop">
                               <div
-                                className={liveSpeakerParticipant.sourceKind === 'cat'
-                                  && liveSpeakerParticipantCatId === payload.chat.bossCatId
-                                  ? 'catAvatar catAvatarBoss transcriptAvatar'
-                                  : liveSpeakerParticipant.sourceKind === 'cat'
-                                    ? 'catAvatar transcriptAvatar'
-                                    : 'catAvatar transcriptAvatar channelParticipantAvatar'}
+                                className={buildParticipantAvatarClassName(
+                                  liveSpeakerParticipant,
+                                  {
+                                    transcript: true,
+                                    catRecord: liveSpeakerParticipantCat,
+                                  },
+                                )}
                                 style={buildParticipantAvatarStyle(
                                   liveSpeakerParticipant,
                                   liveSpeakerParticipantCat,
                                 )}
                               >
-                                {liveSpeakerParticipantCat?.avatarUrl || liveSpeakerParticipant.avatarUrl
-                                  ? null
-                                  : catInitials(liveSpeakerParticipant.name)}
+                                {resolveParticipantAvatarUrl(
+                                  liveSpeakerParticipant,
+                                  liveSpeakerParticipantCat,
+                                ) ? null : catInitials(resolveParticipantDisplayName(
+                                  liveSpeakerParticipant,
+                                  liveSpeakerParticipantCat,
+                                ))}
                                 {liveSpeakerParticipant.participantId === leadParticipantId
                                   ? <span className="catAvatarLeadBadge">&#x2605;</span>
                                   : null}
                               </div>
-                              <strong>{liveSpeakerParticipant.name}</strong>
+                              <strong>{resolveParticipantDisplayName(
+                                liveSpeakerParticipant,
+                                liveSpeakerParticipantCat,
+                              )}</strong>
                             </div>
                           ) : speakerCat ? (
                             <div className="transcriptMessageTop">
@@ -1233,28 +1327,41 @@ export function ChatView({
                       onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                     />
                   </div>
-                ) : !isSoloComposer && leadCat ? (
-                  <ComposerCatStack
-                    cats={assignedCatRecords.length > 0
-                      ? assignedCatRecords
-                      : leadCatRecord ? [leadCatRecord] : []}
-                    bossCatId={payload.chat.bossCatId}
-                    leadCatId={leadCat.catId}
-                    onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
-                  />
                 ) : !isSoloComposer && activeRoomParticipants.length > 0 ? (
-                  <button
-                    type="button"
-                    className="modelSelectorChip"
-                    disabled={composerBusy}
-                    onClick={() => openSidePanelTo('cats')}
-                    data-tooltip="View participants"
+                  <div
+                    className="composerCatStack"
+                    style={{ marginRight: 10 }}
+                    onClick={composerBusy ? undefined : () => openSidePanelTo('cats')}
+                    role={composerBusy ? undefined : 'button'}
+                    tabIndex={composerBusy ? undefined : 0}
+                    data-tooltip={participantChipLabel}
                   >
-                    <span className="modelSelectorChipLabel">{participantChipLabel}</span>
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2.5 4 5 6.5 7.5 4" />
-                    </svg>
-                  </button>
+                    {[...composerParticipants].reverse().map((participant, index, rendered) => {
+                      const participantCat = resolveParticipantCatRecord(participant);
+                      const label = resolveParticipantDisplayName(participant, participantCat);
+                      return (
+                        <div
+                          key={participant.participantId}
+                          className={buildParticipantAvatarClassName(participant, {
+                            composer: true,
+                            catRecord: participantCat,
+                          })}
+                          data-tooltip={label}
+                          style={{
+                            ...buildParticipantAvatarStyle(participant, participantCat),
+                            zIndex: index + 1,
+                          }}
+                        >
+                          {resolveParticipantAvatarUrl(participant, participantCat)
+                            ? null
+                            : catInitials(label)}
+                          {participant.participantId === (rendered[rendered.length - 1]?.participantId ?? null)
+                            ? <span className="catAvatarLeadBadge">&#x2605;</span>
+                            : null}
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : null}
                 {showCancelComposerAction ? (
                   <button

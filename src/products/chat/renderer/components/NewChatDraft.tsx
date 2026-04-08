@@ -480,14 +480,20 @@ export function NewChatDraft({
                     const rendered = [...allParticipants].reverse();
                     return rendered.map((participant, index) => {
                       const isLead = index === rendered.length - 1;
+                      const isBoss = participant.isCat && participant.catId === payload.chat.bossCatId;
                       return (
                         <div
                           key={participant.key}
-                          className="catAvatar composerStackAvatar"
+                          className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
                           data-tooltip={participant.name}
                           style={{
                             ...(participant.avatarUrl
                               ? { backgroundImage: `url(${participant.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                              : participant.isCat
+                                ? {
+                                  background: participant.avatarColor ?? '#8B7E74',
+                                  color: '#fff',
+                                }
                               : {}),
                             zIndex: index + 1,
                           }}
