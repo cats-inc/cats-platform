@@ -36,12 +36,12 @@ export function resolveSelectedChannelEntryLifecycle(
 
   if (
     isDirectLaneChannel(selectedChannel)
-    && selectedChannel.roomRouting.leadParticipantId
+    && selectedChannel.roomRouting.defaultRecipientId
   ) {
     const leadCat = selectedChannel.assignedCats.find(
       (cat) =>
         cat.status === 'active'
-        && cat.catId === selectedChannel.roomRouting.leadParticipantId,
+        && cat.catId === selectedChannel.roomRouting.defaultRecipientId,
     );
     if (!leadCat) {
       return null;

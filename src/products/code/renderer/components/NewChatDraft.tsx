@@ -40,7 +40,7 @@ export interface NewChatDraftProps {
   onDraftCwdClear: () => void;
   onToggleDraftCat: (catId: string) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   onDraftLeadCatChange: (catId: string | null) => void;
   allowAddCat?: boolean;
   selectedModel?: ModelSelectorValue;
@@ -85,7 +85,7 @@ export function NewChatDraft({
   onDraftCwdClear,
   onToggleDraftCat,
   autoResize,
-  draftLeadCatId,
+  draftDefaultRecipientCatId,
   onDraftLeadCatChange,
   allowAddCat = true,
   selectedModel,
@@ -106,28 +106,28 @@ export function NewChatDraft({
   onFolderBrowseSelect,
 }: NewChatDraftProps) {
   const chatCats = payload.chat.cats.filter(isChatCat);
-  const leadCat = draftLeadCatId
-    ? chatCats.find((cat) => cat.id === draftLeadCatId && cat.status === 'active') ?? null
+  const defaultRecipientCat = draftDefaultRecipientCatId
+    ? chatCats.find((cat) => cat.id === draftDefaultRecipientCatId && cat.status === 'active') ?? null
     : null;
   const hasTelegramBinding = Boolean(
-    leadCat && payload.chat.botBindings.some((binding) =>
+    defaultRecipientCat && payload.chat.botBindings.some((binding) =>
       binding.platform === 'telegram'
       && binding.status === 'active'
-      && binding.catId === leadCat.id),
+      && binding.catId === defaultRecipientCat.id),
   );
-  const draftLeadCat = !leadCat && draftCatIds.length > 0
+  const draftDefaultRecipientCat = !defaultRecipientCat && draftCatIds.length > 0
     ? chatCats.find((c) => c.id === draftCatIds[0] && c.status === 'active') ?? null
     : null;
-  const effectiveLeadCat = leadCat ?? draftLeadCat;
+  const effectiveDefaultRecipientCat = defaultRecipientCat ?? draftDefaultRecipientCat;
   const hasDraftCats = draftCatIds.length > 0;
-  const showSoloSelector = !effectiveLeadCat;
-  const nonLeadDraftCatIds = draftLeadCat
-    ? draftCatIds.filter((id) => id !== draftLeadCat.id)
-    : leadCat
-      ? draftCatIds.filter((id) => id !== leadCat.id)
+  const showSoloSelector = !effectiveDefaultRecipientCat;
+  const nonLeadDraftCatIds = draftDefaultRecipientCat
+    ? draftCatIds.filter((id) => id !== draftDefaultRecipientCat.id)
+    : defaultRecipientCat
+      ? draftCatIds.filter((id) => id !== defaultRecipientCat.id)
       : draftCatIds;
-  const visibleDraftCatIds = leadCat
-    ? [leadCat.id, ...draftCatIds.filter((id) => id !== leadCat.id)]
+  const visibleDraftCatIds = defaultRecipientCat
+    ? [defaultRecipientCat.id, ...draftCatIds.filter((id) => id !== defaultRecipientCat.id)]
     : draftCatIds;
   const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -143,17 +143,17 @@ export function NewChatDraft({
     }
   }
   const hasMultipleCats = chatCats.filter((c) => c.status === 'active').length > 1;
-  const isDirectLaneContext = !allowAddCat && Boolean(draftLeadCatId) && Boolean(leadCat);
+  const isDirectLaneContext = !allowAddCat && Boolean(draftDefaultRecipientCatId) && Boolean(defaultRecipientCat);
 
   const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
     ? chatCats.find((c) => c.id === draftHighlightedCatId) ?? null
     : null;
-  const activePanelModel: ModelSelectorValue | null = isDirectLaneContext && leadCat
+  const activePanelModel: ModelSelectorValue | null = isDirectLaneContext && defaultRecipientCat
     ? {
-        provider: leadCat.defaultExecutionTarget.provider,
-        model: leadCat.defaultExecutionTarget.model,
-        instance: leadCat.defaultExecutionTarget.instance,
-        modelSelection: leadCat.defaultModelSelection ?? null,
+        provider: defaultRecipientCat.defaultExecutionTarget.provider,
+        model: defaultRecipientCat.defaultExecutionTarget.model,
+        instance: defaultRecipientCat.defaultExecutionTarget.instance,
+        modelSelection: defaultRecipientCat.defaultModelSelection ?? null,
       }
     : highlightedCat
       ? (draftCatModelOverrides.get(highlightedCat.id) ?? {
@@ -172,10 +172,10 @@ export function NewChatDraft({
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
         <div className="draftGreeting">
-          {leadCat ? (
+          {defaultRecipientCat ? (
             <>
               <p className="eyebrow">Private Chat</p>
-              <h1>{leadCat.name}</h1>
+              <h1>{defaultRecipientCat.name}</h1>
               <p className="heroNote">
                 {hasTelegramBinding ? 'Telegram-bound private lane.' : 'Private lane for this Cat.'}
               </p>
@@ -297,13 +297,13 @@ export function NewChatDraft({
                 </span>
               ) : null}
             </div>
-            {effectiveLeadCat ? (
+            {effectiveDefaultRecipientCat ? (
               <ComposerCatStack
-                cats={[effectiveLeadCat, ...nonLeadDraftCatIds
+                cats={[effectiveDefaultRecipientCat, ...nonLeadDraftCatIds
                   .map((id) => chatCats.find((c) => c.id === id))
                   .filter((c): c is NonNullable<typeof c> => c != null)]}
                 bossCatId={payload.chat.bossCatId}
-                leadCatId={effectiveLeadCat.id}
+                defaultRecipientCatId={effectiveDefaultRecipientCat.id}
                 onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
               />
             ) : activePanelModel && chipLabel ? (
@@ -368,7 +368,7 @@ export function NewChatDraft({
           bossCatId={payload.chat.bossCatId}
           selectedIds={draftCatIds}
           highlightedId={draftHighlightedCatId}
-          leadCatId={effectiveLeadCat?.id ?? null}
+          defaultRecipientCatId={effectiveDefaultRecipientCat?.id ?? null}
           toggleable
           showLeadBadge
           onToggle={onToggleDraftCat}
@@ -380,15 +380,15 @@ export function NewChatDraft({
     });
 
     const executionChildren = (() => {
-      if (isDirectLaneContext && leadCat && activePanelModel) {
+      if (isDirectLaneContext && defaultRecipientCat && activePanelModel) {
         return (
           <>
             <CatAvatarRow
-              cats={[leadCat]}
+              cats={[defaultRecipientCat]}
               bossCatId={payload.chat.bossCatId}
-              selectedIds={[leadCat.id]}
-              highlightedId={leadCat.id}
-              leadCatId={leadCat.id}
+              selectedIds={[defaultRecipientCat.id]}
+              highlightedId={defaultRecipientCat.id}
+              defaultRecipientCatId={defaultRecipientCat.id}
               toggleable={false}
               showLeadBadge
               onToggle={() => {}}
@@ -400,7 +400,7 @@ export function NewChatDraft({
               model={activePanelModel.model ?? ''}
               modelSelection={activePanelModel.modelSelection}
               onTargetChange={(target: ProviderTargetSelection) => {
-                onDirectLaneModelChange?.(leadCat.id, {
+                onDirectLaneModelChange?.(defaultRecipientCat.id, {
                   provider: target.provider,
                   model: target.model || null,
                   instance: target.instance || null,
@@ -414,14 +414,14 @@ export function NewChatDraft({
       if (activePanelModel) {
         return (
           <>
-            <div style={effectiveLeadCat && !isDirectLaneContext ? { pointerEvents: 'none', opacity: 0.45 } : undefined}>
+            <div style={effectiveDefaultRecipientCat && !isDirectLaneContext ? { pointerEvents: 'none', opacity: 0.45 } : undefined}>
               <ProviderModelFields
                 provider={activePanelModel.provider}
                 instance={activePanelModel.instance ?? ''}
                 model={activePanelModel.model ?? ''}
                 modelSelection={activePanelModel.modelSelection}
                 onTargetChange={(target: ProviderTargetSelection) => {
-                  if (!effectiveLeadCat && onModelChange) {
+                  if (!effectiveDefaultRecipientCat && onModelChange) {
                     onModelChange({
                       provider: target.provider,
                       model: target.model || null,

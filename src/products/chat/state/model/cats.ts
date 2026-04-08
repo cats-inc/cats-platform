@@ -13,7 +13,7 @@ import { createCatRecord } from './recordBuilders.js';
 import {
   cloneState,
   isoAt,
-  syncChannelLeadAndComposerMode,
+  syncChannelDefaultRecipientAndComposerMode,
 } from './shared.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 
@@ -34,12 +34,12 @@ function demoteDirectLaneIfLeadingCatRemoved(
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   if (
     isDirectLaneChannel(channel)
-    && roomRouting.leadParticipantId === catId
+    && roomRouting.defaultRecipientId === catId
   ) {
     channel.recoverableDirectLaneCatId = options.preserveRecoverableDirectLane ? catId : null;
     channel.channelKind = 'boss_thread';
     roomRouting.mode = 'boss_chat';
-    roomRouting.leadParticipantId = null;
+    roomRouting.defaultRecipientId = null;
     channel.roomRouting = roomRouting;
   } else if (!options.preserveRecoverableDirectLane && channel.recoverableDirectLaneCatId === catId) {
     channel.recoverableDirectLaneCatId = null;
@@ -77,7 +77,7 @@ function restoreRecoverableDirectLane(
 
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   roomRouting.mode = 'direct_cat_chat';
-  roomRouting.leadParticipantId = catId;
+  roomRouting.defaultRecipientId = catId;
   channel.roomRouting = roomRouting;
   channel.channelKind = 'direct_lane';
   channel.recoverableDirectLaneCatId = null;
@@ -85,7 +85,7 @@ function restoreRecoverableDirectLane(
   if (channel.status === 'planned') {
     channel.status = 'configured';
   }
-  syncChannelLeadAndComposerMode(channel);
+  syncChannelDefaultRecipientAndComposerMode(channel);
 }
 
 function detachCatFromChannels(
@@ -123,7 +123,7 @@ function detachCatFromChannels(
     demoteDirectLaneIfLeadingCatRemoved(channel, catId, {
       preserveRecoverableDirectLane: options.preserveRecoverableDirectLane,
     });
-    syncChannelLeadAndComposerMode(channel);
+    syncChannelDefaultRecipientAndComposerMode(channel);
   }
 }
 

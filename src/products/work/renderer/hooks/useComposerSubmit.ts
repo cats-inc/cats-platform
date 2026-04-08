@@ -48,7 +48,7 @@ function isDirectLaneSelectedForCat(
   }
 
   return isDirectLaneChannel(channel)
-    && channel.roomRouting.leadParticipantId === catId;
+    && channel.roomRouting.defaultRecipientId === catId;
 }
 
 export function useComposerSubmit(options: {
@@ -60,7 +60,7 @@ export function useComposerSubmit(options: {
   setComposerDraft: Dispatch<SetStateAction<string>>;
   showingNewChatDraft: boolean;
   showingMyCatDirectLane: boolean;
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   draftCatIds: string[];
   draftCwd: string | null;
   draftFiles: File[];
@@ -86,7 +86,7 @@ export function useComposerSubmit(options: {
     setComposerDraft,
     showingNewChatDraft,
     showingMyCatDirectLane,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     draftCatIds,
     draftCwd,
     draftFiles,
@@ -116,9 +116,9 @@ export function useComposerSubmit(options: {
 
     const initialPayload = state.payload;
     const wasDraftingNewChat = showingNewChatDraft;
-    const isCatScopedLaneRoute = Boolean(draftLeadCatId) && showingMyCatDirectLane;
+    const isCatScopedLaneRoute = Boolean(draftDefaultRecipientCatId) && showingMyCatDirectLane;
     const initialSelectedChannel = normalizeSelectedChannelView(initialPayload.chat.selectedChannel ?? null);
-    const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftLeadCatId)
+    const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftDefaultRecipientCatId)
       ? initialSelectedChannel
       : null;
     let payload = initialPayload;
@@ -127,9 +127,9 @@ export function useComposerSubmit(options: {
       ? hydratedDirectLane?.id ?? ''
       : initialPayload.chat.selectedChannelId;
     let rollbackPath = showingMyCatDirectLane
-      ? buildMyCatPath(draftLeadCatId ?? '')
+      ? buildMyCatPath(draftDefaultRecipientCatId ?? '')
       : wasDraftingNewChat
-        ? buildNewChatPath(draftLeadCatId)
+        ? buildNewChatPath(draftDefaultRecipientCatId)
         : currentPathname;
     const originalDraftFiles = [...draftFiles];
     const originalChannelFiles = [...channelFiles];
@@ -152,8 +152,8 @@ export function useComposerSubmit(options: {
             skipBossCatGreeting: true,
             repoPath: draftCwd ?? undefined,
             roomMode: 'direct_cat_chat' as const,
-            leadParticipantId: draftLeadCatId ?? undefined,
-            participantCatIds: draftLeadCatId ? [draftLeadCatId] : draftCatIds,
+            defaultRecipientId: draftDefaultRecipientCatId ?? undefined,
+            participantCatIds: draftDefaultRecipientCatId ? [draftDefaultRecipientCatId] : draftCatIds,
           });
           channelId = createdChannel.id;
           if (!channelId) {
@@ -177,7 +177,7 @@ export function useComposerSubmit(options: {
           body,
           existingCount: initialPayload.chat.channels.length,
           repoPath: draftCwd,
-          leadCatId: draftLeadCatId,
+          defaultRecipientCatId: draftDefaultRecipientCatId,
           participantCatIds: draftCatIds,
           draftModel,
         }));
@@ -293,7 +293,7 @@ export function useComposerSubmit(options: {
     draftCatIds,
     draftCwd,
     draftFiles,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     draftModel.instance,
     draftModel.modelSelection,
     draftModel.model,

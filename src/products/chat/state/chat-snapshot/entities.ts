@@ -20,7 +20,7 @@ import { createDefaultChatState, createEmptyExecutionLease, createEmptyMemoryChe
 import {
   resolveChannelKind,
   normalizeChannelAssignmentsForRoomMode,
-  resolveDirectLaneLeadParticipantId,
+  resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
 import {
   extractChatMessageChoicesFromBody,
@@ -277,12 +277,12 @@ export function normalizeChannel(
   const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
     catAssignments,
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
   const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
     participantAssignments,
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
   const channelKind = resolveChannelKind({
     channelKind:
@@ -295,9 +295,9 @@ export function normalizeChannel(
     participants: normalizedParticipantAssignments,
   });
   if (channelKind === 'direct_lane') {
-    roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
+    roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(
       normalizedParticipantAssignments,
-      roomRouting.leadParticipantId,
+      roomRouting.defaultRecipientId,
     );
   }
   const inferredComposerMode = channelRecord.composerMode === 'cat_led'
@@ -306,7 +306,7 @@ export function normalizeChannel(
       ? 'solo'
       : channelKind === 'direct_lane'
           || normalizedParticipantAssignments.some((assignment) => assignment.status === 'active')
-          || Boolean(roomRouting.leadParticipantId)
+          || Boolean(roomRouting.defaultRecipientId)
         ? 'cat_led'
         : 'solo';
 

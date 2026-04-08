@@ -241,16 +241,16 @@ export function ChatView({
   );
   const hasConversationStarted = visibleMessages.length > 0;
 
-  const leadParticipantId = selectedChannel.roomRouting.leadParticipantId;
+  const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
   const activeRoomParticipants = useMemo<ResolvedChannelParticipant[]>(
     () => activeAssignedParticipants(selectedChannel),
     [selectedChannel],
   );
-  const leadParticipant = leadParticipantId
-    ? activeRoomParticipants.find((participant) => participant.participantId === leadParticipantId)
+  const leadParticipant = defaultRecipientId
+    ? activeRoomParticipants.find((participant) => participant.participantId === defaultRecipientId)
       ?? null
     : activeRoomParticipants[0] ?? null;
-  const leadCat = leadParticipant?.sourceKind === 'cat'
+  const defaultRecipientCat = leadParticipant?.sourceKind === 'cat'
     ? activeAssignedCats.find((candidate) => candidate.participantId === leadParticipant.participantId)
       ?? null
     : null;
@@ -309,14 +309,14 @@ export function ChatView({
     setSidePanelSection(section);
   }
 
-  const directLaneCat = isDirectLane && leadCat
-    ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
+  const directLaneCat = isDirectLane && defaultRecipientCat
+    ? payload.chat.cats.find((c) => c.id === defaultRecipientCat.catId) ?? null
     : null;
   const bossCatRecord = payload.chat.bossCatId
     ? payload.chat.cats.find((c) => c.id === payload.chat.bossCatId) ?? null
     : null;
-  const leadCatRecord = leadCat
-    ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
+  const leadCatRecord = defaultRecipientCat
+    ? payload.chat.cats.find((c) => c.id === defaultRecipientCat.catId) ?? null
     : null;
   const catsById = useMemo(
     () => new Map(payload.chat.cats.map((cat) => [cat.id, cat] as const)),
@@ -453,7 +453,7 @@ export function ChatView({
             avatarColor: bossCatRecord.avatarColor ?? null,
             avatarUrl: bossCatRecord.avatarUrl ?? null,
             isBoss: true,
-            isLead: bossCatRecord.id === leadParticipantId,
+            isLead: bossCatRecord.id === defaultRecipientId,
             useNeutralAvatar: false,
             pulseParticipantId: null,
             pulseCatId: bossCatRecord.id,
@@ -468,7 +468,7 @@ export function ChatView({
           avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
           avatarUrl: resolveParticipantAvatarUrl(participant, catRecord),
           isBoss: catRecord?.id === payload.chat.bossCatId,
-          isLead: participant.participantId === leadParticipantId,
+          isLead: participant.participantId === defaultRecipientId,
           useNeutralAvatar: participantUsesNeutralAvatar(participant, catRecord),
           pulseParticipantId: participant.participantId,
           pulseCatId: catRecord?.id ?? null,
@@ -490,12 +490,12 @@ export function ChatView({
     isDirectLane,
     isSoloComposer,
     leadCatRecord,
-    leadParticipantId,
+    defaultRecipientId,
     payload.chat.bossCatId,
     showBossCatAvatar,
   ]);
   const showRosterAvatars = isDirectLane
-    ? Boolean(leadCat)
+    ? Boolean(defaultRecipientCat)
     : Boolean((showBossCatAvatar && !isSoloComposer) || activeRoomParticipants.length > 0);
   const participantChipLabel = activeRoomParticipants.length > 0
     ? `${activeRoomParticipants.length} participant${activeRoomParticipants.length === 1 ? '' : 's'}`
@@ -575,13 +575,13 @@ export function ChatView({
     if (runningParticipantIds.length > 0) {
       return [...new Set(runningParticipantIds)];
     }
-    if (liveIndicator?.active && selectedChannel.roomRouting?.leadParticipantId) {
-      return [selectedChannel.roomRouting.leadParticipantId];
+    if (liveIndicator?.active && selectedChannel.roomRouting?.defaultRecipientId) {
+      return [selectedChannel.roomRouting.defaultRecipientId];
     }
     return [];
   }, [
     liveIndicator?.active,
-    selectedChannel.roomRouting?.leadParticipantId,
+    selectedChannel.roomRouting?.defaultRecipientId,
     selectedChannel.roomRouting?.workflow?.activeTurn,
   ]);
   const activeTopBarParticipantIdSet = useMemo(
@@ -594,13 +594,13 @@ export function ChatView({
       return activeWorkflowParticipantId;
     }
     if (liveIndicator?.active) {
-      return selectedChannel.roomRouting?.leadParticipantId ?? null;
+      return selectedChannel.roomRouting?.defaultRecipientId ?? null;
     }
     return null;
   }, [
     activeTopBarParticipantIds,
     liveIndicator?.active,
-    selectedChannel.roomRouting?.leadParticipantId,
+    selectedChannel.roomRouting?.defaultRecipientId,
   ]);
   const liveSpeakerParticipant = useMemo(
     () => liveSpeakerParticipantId
@@ -900,7 +900,7 @@ export function ChatView({
                                   transcriptParticipant,
                                   transcriptParticipantCat,
                                 ))}
-                                {transcriptParticipant.participantId === leadParticipantId ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                                {transcriptParticipant.participantId === defaultRecipientId ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                               </div>
                               <strong>{resolveParticipantDisplayName(
                                 transcriptParticipant,
@@ -909,7 +909,7 @@ export function ChatView({
                             </div>
                           ) : speaker.kind === 'cat' && speaker.cat ? (() => {
                             const isBoss = speaker.cat.id === payload.chat.bossCatId;
-                            const isLead = speaker.cat.id === leadParticipantId;
+                            const isLead = speaker.cat.id === defaultRecipientId;
                             return (
                               <div className="transcriptMessageTop">
                                 <div
@@ -1103,7 +1103,7 @@ export function ChatView({
                                   liveSpeakerParticipant,
                                   liveSpeakerParticipantCat,
                                 ))}
-                                {liveSpeakerParticipant.participantId === leadParticipantId
+                                {liveSpeakerParticipant.participantId === defaultRecipientId
                                   ? <span className="catAvatarLeadBadge">&#x2605;</span>
                                   : null}
                               </div>
@@ -1343,7 +1343,7 @@ export function ChatView({
                   <ComposerCatStack
                     cats={[directLaneCat]}
                     bossCatId={payload.chat.bossCatId}
-                    leadCatId={directLaneCat.id}
+                    defaultRecipientCatId={directLaneCat.id}
                     onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
                 ) : isSoloComposer && selectedModel && onModelChange ? (
@@ -1552,8 +1552,8 @@ export function ChatView({
                 cats={assignedCatRecords}
                 bossCatId={payload.chat.bossCatId}
                 selectedIds={assignedCatRecords.map((cat) => cat.id)}
-                highlightedId={leadCat?.catId ?? null}
-                leadCatId={leadCat?.catId ?? null}
+                highlightedId={defaultRecipientCat?.catId ?? null}
+                defaultRecipientCatId={defaultRecipientCat?.catId ?? null}
                 toggleable={false}
                 showLeadBadge
                 onToggle={() => {}}
@@ -1655,7 +1655,7 @@ export function ChatView({
               bossCatId={payload.chat.bossCatId}
               selectedIds={[directLaneCat.id]}
               highlightedId={directLaneCat.id}
-              leadCatId={directLaneCat.id}
+              defaultRecipientCatId={directLaneCat.id}
               toggleable={false}
               showLeadBadge
               onToggle={() => {}}

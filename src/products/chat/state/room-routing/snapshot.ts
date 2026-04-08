@@ -374,7 +374,8 @@ export function normalizeRoomRouting(rawRoomRouting: unknown): RoomRoutingState 
 
   return {
     mode: normalizeRoomRoutingMode(roomRoutingRecord?.mode, fallback.mode),
-    leadParticipantId: readNullableString(roomRoutingRecord?.leadParticipantId),
+    defaultRecipientId: readNullableString(roomRoutingRecord?.defaultRecipientId)
+      ?? readNullableString(roomRoutingRecord?.leadParticipantId),
     maxContinuations: readNumber(
       roomRoutingRecord?.maxContinuations,
       fallback.maxContinuations,

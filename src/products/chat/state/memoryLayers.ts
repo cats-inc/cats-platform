@@ -101,7 +101,7 @@ function deriveOrchestratorMemory(
     facts: uniqueStrings([
       `Current room: ${channel.title}`,
       participantNames.length > 0 ? `Specialist Cats: ${participantNames.join(', ')}` : null,
-      channel.roomRouting?.leadParticipantId ? `Lead participant: ${channel.roomRouting.leadParticipantId}` : null,
+      channel.roomRouting?.defaultRecipientId ? `Lead participant: ${channel.roomRouting.defaultRecipientId}` : null,
     ]).slice(0, 6),
     openLoops: deriveOpenLoops(channel),
     updatedAt: nowIso,

@@ -72,7 +72,7 @@ test('removing chat from cat products detaches active chat participation and cle
     topic: 'Dropping chat should detach the cat from active lanes.',
     roomMode: 'direct_cat_chat',
     participantCatIds: [catId],
-    leadParticipantId: catId,
+    defaultRecipientId: catId,
     skipBossCatGreeting: true,
   }, now);
 
@@ -83,7 +83,7 @@ test('removing chat from cat products detaches active chat participation and cle
   assert.equal(assignment?.status, 'removed');
   assert.equal(assignment?.execution.lease.status, 'removed');
   assert.equal(state.channels[0].roomRouting?.mode, 'boss_chat');
-  assert.equal(state.channels[0].roomRouting?.leadParticipantId, null);
+  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
   assert.equal(state.channels[0].composerMode, 'solo');
 });
 

@@ -6,7 +6,7 @@ export interface CatAvatarRowProps {
   bossCatId: string | null;
   selectedIds: string[];
   highlightedId: string | null;
-  leadCatId?: string | null;
+  defaultRecipientCatId?: string | null;
   toggleable: boolean;
   showLeadBadge?: boolean;
   onToggle: (catId: string) => void;
@@ -18,7 +18,7 @@ export function CatAvatarRow({
   bossCatId,
   selectedIds,
   highlightedId,
-  leadCatId,
+  defaultRecipientCatId,
   toggleable,
   showLeadBadge,
   onToggle,
@@ -36,7 +36,7 @@ export function CatAvatarRow({
         const isSelected = selectedSet.has(cat.id);
         const isHighlighted = cat.id === highlightedId;
         const isBoss = cat.id === bossCatId;
-        const isLead = cat.id === leadCatId;
+        const isLead = cat.id === defaultRecipientCatId;
         const classNames = [
           'catAvatar',
           'catAvatarRowItem',

@@ -321,7 +321,7 @@ test('FileCompanionBoxStore read methods do not rewrite existing snapshots', asy
       topic: 'Hydration check',
       roomRouting: {
         mode: 'direct_cat_chat',
-        leadParticipantId: 'cat-read-only',
+        defaultRecipientId: 'cat-read-only',
         explicitParticipantIds: [],
         mentionParticipantIds: [],
         defaultTargetParticipantId: 'cat-read-only',

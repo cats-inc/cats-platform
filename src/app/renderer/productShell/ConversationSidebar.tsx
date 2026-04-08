@@ -34,8 +34,8 @@ export interface ConversationSidebarCat {
 export interface ConversationSidebarChannel {
   id: string;
   title: string;
-  leadCatId?: string | null;
-  leadParticipantLeaseStatus?: ParticipantSessionStatus | null;
+  defaultRecipientCatId?: string | null;
+  defaultRecipientLeaseStatus?: ParticipantSessionStatus | null;
   channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
   roomMode?: RoomRoutingMode | null;
 }
@@ -93,7 +93,7 @@ export interface ConversationSidebarHelpers<
   ) => TCat[];
   isDirectLaneSummary: (channel: TChannel) => boolean;
   findDirectLaneForCat: (channels: TChannel[], catId: string) => TChannel | null;
-  resolveMyCatStatusDot: (leaseStatus: TChannel['leadParticipantLeaseStatus']) => TDot;
+  resolveMyCatStatusDot: (leaseStatus: TChannel['defaultRecipientLeaseStatus']) => TDot;
   statusDotClassName: (dot: TDot) => string;
   statusDotLabel: (dot: TDot) => string;
 }
@@ -191,12 +191,12 @@ function resolveCatForChannel<
   channel: TChannel,
   payload: ConversationSidebarPayload<TCat, TChannel>,
 ): { name: string; avatarColor: string | null; avatarUrl: string | null; isBoss: boolean } | null {
-  const leadCatId = channel.leadCatId;
-  if (!leadCatId) {
+  const defaultRecipientCatId = channel.defaultRecipientCatId;
+  if (!defaultRecipientCatId) {
     return null;
   }
 
-  const cat = payload.chat.cats.find((candidate) => candidate.id === leadCatId);
+  const cat = payload.chat.cats.find((candidate) => candidate.id === defaultRecipientCatId);
   if (!cat) {
     return null;
   }
@@ -655,7 +655,7 @@ export function ConversationSidebar<
                   const hasTelegramBinding = telegramBoundCatIds.has(cat.id);
                   const directLane = helpers.findDirectLaneForCat(payload.chat.channels, cat.id);
                   const dot = helpers.resolveMyCatStatusDot(
-                    directLane?.leadParticipantLeaseStatus,
+                    directLane?.defaultRecipientLeaseStatus,
                   );
                   const dotClass = helpers.statusDotClassName(dot);
                   const dotTitle = helpers.statusDotLabel(dot);

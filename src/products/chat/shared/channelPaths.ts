@@ -23,8 +23,8 @@ function normalizeRouteToken(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-export function buildNewChatPath(leadCatId?: string | null): string {
-  const normalizedLeadCatId = normalizeRouteToken(leadCatId);
+export function buildNewChatPath(defaultRecipientCatId?: string | null): string {
+  const normalizedLeadCatId = normalizeRouteToken(defaultRecipientCatId);
   if (!normalizedLeadCatId) {
     return NEW_CHAT_PATH;
   }
@@ -52,7 +52,7 @@ export function buildMyCatPath(catId: string): string {
   return `${MY_CATS_PATH_PREFIX}/${encodeURIComponent(normalizedCatId)}`;
 }
 
-export function readNewChatLeadCatId(search: string): string | null {
+export function readNewChatDefaultRecipientCatId(search: string): string | null {
   const params = new URLSearchParams(search);
   return normalizeRouteToken(params.get(NEW_CHAT_CAT_QUERY_PARAM));
 }

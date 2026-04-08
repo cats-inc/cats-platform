@@ -10,7 +10,7 @@ import {
   isNewChatPath,
   isOpaqueChannelId,
   NEW_CHAT_PATH,
-  readNewChatLeadCatId,
+  readNewChatDefaultRecipientCatId,
   resolveAppEntryPath,
   resolveDefaultChatPath,
   resolveVisibleChatPath,
@@ -91,8 +91,8 @@ test('new-chat route helpers preserve direct-cat draft state without creating a 
   assert.equal(buildNewGroupChatPath(), '/chat/new?mode=group');
   assert.equal(buildMyCatPath(catId), `/chat/my-cats/${catId}`);
   assert.equal(buildNewChatPath('   '), NEW_CHAT_PATH);
-  assert.equal(readNewChatLeadCatId(`?cat=${catId}`), catId);
-  assert.equal(readNewChatLeadCatId(''), null);
+  assert.equal(readNewChatDefaultRecipientCatId(`?cat=${catId}`), catId);
+  assert.equal(readNewChatDefaultRecipientCatId(''), null);
 });
 
 test('slugifyChannelLabel falls back to chat for non-Latin input', () => {

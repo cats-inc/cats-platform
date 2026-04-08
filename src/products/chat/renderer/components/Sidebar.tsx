@@ -69,9 +69,9 @@ function resolveCatForChannel(
   channel: ChatChannelSummary,
   payload: AppShellPayload,
 ): { name: string; avatarColor: string | null; avatarUrl: string | null; isBoss: boolean } | null {
-  const leadCatId = channel.leadCatId;
-  if (!leadCatId) return null;
-  const cat = payload.chat.cats.find((c) => c.id === leadCatId);
+  const defaultRecipientCatId = channel.defaultRecipientCatId;
+  if (!defaultRecipientCatId) return null;
+  const cat = payload.chat.cats.find((c) => c.id === defaultRecipientCatId);
   if (!cat) return null;
   return {
     name: cat.name,
@@ -768,7 +768,7 @@ export function Sidebar({
                   const isActive = activeMyCatId === cat.id;
                   const hasTelegramBinding = telegramBoundCatIds.has(cat.id);
                   const directLane = findDirectLaneForCat(payload.chat.channels, cat.id);
-                  const dot = resolveMyCatStatusDot(directLane?.leadParticipantLeaseStatus);
+                  const dot = resolveMyCatStatusDot(directLane?.defaultRecipientLeaseStatus);
                   const dotClass = statusDotClassName(dot);
                   const dotTitle = statusDotLabel(dot);
                   const overflowKey = `cat:${cat.id}`;

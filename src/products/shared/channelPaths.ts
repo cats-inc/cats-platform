@@ -35,9 +35,9 @@ export function resolveWorkspaceAppEntryPath(
 
 export function buildWorkspaceNewChatPath(
   chatPrefix: string,
-  leadCatId?: string | null,
+  defaultRecipientCatId?: string | null,
 ): string {
-  const normalizedLeadCatId = normalizeRouteToken(leadCatId);
+  const normalizedLeadCatId = normalizeRouteToken(defaultRecipientCatId);
   const newChatPath = resolveWorkspaceNewChatPath(chatPrefix);
   if (!normalizedLeadCatId) {
     return newChatPath;

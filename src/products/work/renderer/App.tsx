@@ -17,7 +17,7 @@ import { ConfirmDialog, useConfirmDialog } from '../../../design/components/Conf
 import {
   CHAT_PREFIX,
   isNewChatPath,
-  readNewChatLeadCatId,
+  readNewChatDefaultRecipientCatId,
 } from '../shared/channelPaths';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
@@ -101,7 +101,7 @@ export default function App() {
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isNewChatPath(location.pathname);
-  const draftLeadCatId = routeMyCatId ?? readNewChatLeadCatId(location.search);
+  const draftDefaultRecipientCatId = routeMyCatId ?? readNewChatDefaultRecipientCatId(location.search);
   const showingMyCatDirectLane = Boolean(routeMyCatId);
 
   const [state, setState] = useState<AppLoadState>({ status: 'loading' });
@@ -219,7 +219,7 @@ export default function App() {
     channelPlusMenuOpen,
     plusMenuOpen,
     draftCwd,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     navigate,
     setAddCatOpen,
     setAddCatTab,
@@ -278,7 +278,7 @@ export default function App() {
   } = deriveAppRouteState({
     state,
     routeChannelId,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     showingMyCatDirectLane,
   });
   const {
@@ -303,7 +303,7 @@ export default function App() {
     setComposerDraft,
     showingNewChatDraft,
     showingMyCatDirectLane,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     draftCatIds,
     draftCwd,
     draftFiles,
@@ -356,7 +356,7 @@ export default function App() {
   }, [routeChannelTitle]);
 
   useEffect(() => {
-    const isGenericNewChatRoute = showingNewChatDraft && !draftLeadCatId;
+    const isGenericNewChatRoute = showingNewChatDraft && !draftDefaultRecipientCatId;
     const justEnteredGenericNewChatRoute = isGenericNewChatRoute && !wasGenericNewChatRoute.current;
     wasGenericNewChatRoute.current = isGenericNewChatRoute;
     if (!justEnteredGenericNewChatRoute) {
@@ -366,7 +366,7 @@ export default function App() {
     setDraftCatIds([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
-  }, [draftLeadCatId, setDraftCatIds, showingNewChatDraft]);
+  }, [draftDefaultRecipientCatId, setDraftCatIds, showingNewChatDraft]);
 
   useEffect(() => {
     if (!readyChat) {
@@ -447,7 +447,7 @@ export default function App() {
     selectedChannelId,
     selectedChannelViewId,
     selectedChannelEntryLifecycle,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     showingMyCatDirectLane,
     routeDirectLaneSummary,
     readySelectedChannel,
@@ -698,7 +698,7 @@ export default function App() {
   } = deriveAppViewState({
     pathname: location.pathname,
     payload,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     selectedChannel,
     selectedDirectLane,
     routeDirectLaneSummary,
@@ -826,7 +826,7 @@ export default function App() {
               onDraftCwdClear: () => setDraftCwd(null),
               onToggleDraftCat: onToggleDraftCat,
               autoResize,
-              draftLeadCatId,
+              draftDefaultRecipientCatId,
               selectedModel: draftModel,
               onModelChange: onDraftModelChange,
               draftHighlightedCatId,
@@ -842,7 +842,7 @@ export default function App() {
               selectableCats,
               assignableCatCount,
               addCatTab,
-              showingNewChatDraft: showingNewChatDraft && !draftLeadCatId,
+              showingNewChatDraft: showingNewChatDraft && !draftDefaultRecipientCatId,
               draftCatIdSet,
               assignedCatIds,
               catForm,
@@ -853,7 +853,7 @@ export default function App() {
               onToggleDraftCat: onToggleDraftCat,
               onCatFormChange: setCatForm,
               onCreateCat: (event) => {
-                if (showingNewChatDraft && !draftLeadCatId) {
+                if (showingNewChatDraft && !draftDefaultRecipientCatId) {
                   void onCreateAndDraftCat(event);
                   return;
                 }

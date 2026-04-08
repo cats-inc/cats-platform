@@ -60,7 +60,7 @@ export async function activateChannelSessions(
   const roomRouting = resolveRoomRoutingState(initialChannel.roomRouting);
   const activationTargets = isDirectLaneChannel(initialChannel)
     ? activeAssignedParticipants(initialChannel)
-        .filter((participant) => participant.participantId === roomRouting.leadParticipantId)
+        .filter((participant) => participant.participantId === roomRouting.defaultRecipientId)
         .map((participant) => buildCatTarget(participant))
     : [
         buildOrchestratorTarget(nextState, initialChannel),

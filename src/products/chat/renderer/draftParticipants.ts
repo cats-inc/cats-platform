@@ -7,7 +7,7 @@ import {
 } from '../shared/channelPaths.js';
 
 export interface DraftParticipantSelection {
-  routeLeadCatId: string | null;
+  routeDefaultRecipientCatId: string | null;
   toggleCatIds: string[];
   participantCatIds: string[];
   effectiveLeadCatId: string | null;
@@ -16,9 +16,9 @@ export interface DraftParticipantSelection {
 }
 
 export interface DraftRouteContext {
-  routeLeadCatId: string | null;
+  routeDefaultRecipientCatId: string | null;
   isDirectLaneRoute: boolean;
-  isLeadScopedNewChatRoute: boolean;
+  isRecipientScopedNewChatRoute: boolean;
   isGenericNewChatRoute: boolean;
 }
 
@@ -28,10 +28,10 @@ function normalizeCatId(value: string | null | undefined): string | null {
 }
 
 export function resolveDraftParticipantSelection(input: {
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   draftCatIds: readonly string[];
 }): DraftParticipantSelection {
-  const routeLeadCatId = normalizeCatId(input.draftLeadCatId);
+  const routeDefaultRecipientCatId = normalizeCatId(input.draftDefaultRecipientCatId);
   const toggleCatIds: string[] = [];
   const seen = new Set<string>();
 
@@ -44,33 +44,33 @@ export function resolveDraftParticipantSelection(input: {
     toggleCatIds.push(catId);
   }
 
-  const participantCatIds = routeLeadCatId
-    ? [routeLeadCatId, ...toggleCatIds.filter((catId) => catId !== routeLeadCatId)]
+  const participantCatIds = routeDefaultRecipientCatId
+    ? [routeDefaultRecipientCatId, ...toggleCatIds.filter((catId) => catId !== routeDefaultRecipientCatId)]
     : toggleCatIds;
 
   return {
-    routeLeadCatId,
+    routeDefaultRecipientCatId,
     toggleCatIds,
     participantCatIds,
     effectiveLeadCatId: participantCatIds[0] ?? null,
-    hasRouteLeadCat: Boolean(routeLeadCatId),
+    hasRouteLeadCat: Boolean(routeDefaultRecipientCatId),
     hasParticipants: participantCatIds.length > 0,
   };
 }
 
 export function resolveDraftRouteContext(input: {
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   showingMyCatDirectLane: boolean;
 }): DraftRouteContext {
-  const routeLeadCatId = normalizeCatId(input.draftLeadCatId);
-  const isDirectLaneRoute = Boolean(input.showingMyCatDirectLane && routeLeadCatId);
-  const isLeadScopedNewChatRoute = Boolean(routeLeadCatId) && !isDirectLaneRoute;
+  const routeDefaultRecipientCatId = normalizeCatId(input.draftDefaultRecipientCatId);
+  const isDirectLaneRoute = Boolean(input.showingMyCatDirectLane && routeDefaultRecipientCatId);
+  const isRecipientScopedNewChatRoute = Boolean(routeDefaultRecipientCatId) && !isDirectLaneRoute;
 
   return {
-    routeLeadCatId,
+    routeDefaultRecipientCatId,
     isDirectLaneRoute,
-    isLeadScopedNewChatRoute,
-    isGenericNewChatRoute: !routeLeadCatId && !input.showingMyCatDirectLane,
+    isRecipientScopedNewChatRoute,
+    isGenericNewChatRoute: !routeDefaultRecipientCatId && !input.showingMyCatDirectLane,
   };
 }
 
@@ -79,13 +79,13 @@ export function resolveDraftRoutePath(input: {
   nextLeadCatId?: string | null;
 }): string {
   const nextLeadCatId = normalizeCatId(input.nextLeadCatId);
-  const leadCatId = nextLeadCatId ?? input.route.routeLeadCatId;
+  const defaultRecipientCatId = nextLeadCatId ?? input.route.routeDefaultRecipientCatId;
 
   if (input.route.isDirectLaneRoute) {
-    return leadCatId ? buildMyCatPath(leadCatId) : NEW_CHAT_PATH;
+    return defaultRecipientCatId ? buildMyCatPath(defaultRecipientCatId) : NEW_CHAT_PATH;
   }
 
-  return buildNewChatPath(leadCatId);
+  return buildNewChatPath(defaultRecipientCatId);
 }
 
 export function resolveMissingDraftLeadPath(input: {

@@ -85,7 +85,7 @@ function createPayload(): AppShellPayload {
         messages: [],
         roomRouting: {
           mode: 'direct_cat_chat',
-          leadParticipantId: 'companion-cat',
+          defaultRecipientId: 'companion-cat',
           lastOutcome: null,
           lastCheckpoint: null,
           lastWakeRequest: null,
@@ -121,8 +121,8 @@ function createPayload(): AppShellPayload {
           pendingProvider: null,
           pendingModel: null,
           pendingModelSelection: null,
-          leadCatId: 'companion-cat',
-          leadParticipantLeaseStatus: 'ready',
+          defaultRecipientCatId: 'companion-cat',
+          defaultRecipientLeaseStatus: 'ready',
           roomMode: 'direct_cat_chat',
           routingStatus: undefined,
           lastRoutingAt: null,
@@ -238,7 +238,7 @@ test('Code app route state keeps shared direct-lane selection semantics', () => 
   const routeState = deriveCodeAppRouteState({
     state: { status: 'ready', payload },
     routeChannelId: 'direct-lane-1',
-    draftLeadCatId: 'companion-cat',
+    draftDefaultRecipientCatId: 'companion-cat',
     showingMyCatDirectLane: true,
   });
 
@@ -255,7 +255,7 @@ test('Work app view state keeps shared settings and direct-lane derivation seman
   const viewState = deriveWorkAppViewState({
     pathname: '/settings/cats',
     payload,
-    draftLeadCatId: null,
+    draftDefaultRecipientCatId: null,
     selectedChannel: null,
     selectedDirectLane,
     routeDirectLaneSummary: payload.chat.channels[0] ?? null,

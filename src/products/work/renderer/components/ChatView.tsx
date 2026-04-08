@@ -144,9 +144,9 @@ export function ChatView({
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
 
-  const leadParticipantId = selectedChannel.roomRouting.leadParticipantId;
-  const leadCat = leadParticipantId
-    ? activeAssignedCats.find((c) => c.catId === leadParticipantId)
+  const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
+  const defaultRecipientCat = defaultRecipientId
+    ? activeAssignedCats.find((c) => c.catId === defaultRecipientId)
     : null;
   const conversationMode = resolveConversationMode(selectedChannel);
   const isSoloComposer = isSoloThreadConversationMode(conversationMode);
@@ -166,14 +166,14 @@ export function ChatView({
     setSidePanelSection(section);
   }
 
-  const directLaneCat = isDirectLane && leadCat
-    ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
+  const directLaneCat = isDirectLane && defaultRecipientCat
+    ? payload.chat.cats.find((c) => c.id === defaultRecipientCat.catId) ?? null
     : null;
   const bossCatRecord = payload.chat.bossCatId
     ? payload.chat.cats.find((c) => c.id === payload.chat.bossCatId) ?? null
     : null;
-  const leadCatRecord = leadCat
-    ? payload.chat.cats.find((c) => c.id === leadCat.catId) ?? null
+  const leadCatRecord = defaultRecipientCat
+    ? payload.chat.cats.find((c) => c.id === defaultRecipientCat.catId) ?? null
     : null;
   const topBarTitle = isDirectLane
     ? (directLaneCat?.name ?? leadCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
@@ -210,7 +210,7 @@ export function ChatView({
     showBossCatAvatar,
   ]);
   const showRosterAvatars = isDirectLane
-    ? Boolean(leadCat)
+    ? Boolean(defaultRecipientCat)
     : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedCats.length > 0);
   const directLaneModelValue: ModelSelectorValue | null = directLaneCat
     ? {
@@ -333,7 +333,7 @@ export function ChatView({
               <div className="rosterAvatars rosterAvatarsExpanded">
                 {topBarCats.map((cat) => {
                   const isBoss = cat.id === payload.chat.bossCatId;
-                  const isLead = cat.id === leadParticipantId;
+                  const isLead = cat.id === defaultRecipientId;
                   return (
                     <div
                       key={cat.id}
@@ -421,7 +421,7 @@ export function ChatView({
                         const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
                         return speaker.kind === 'cat' && speaker.cat ? (() => {
                           const isBoss = speaker.cat.id === payload.chat.bossCatId;
-                          const isLead = speaker.cat.id === leadParticipantId;
+                          const isLead = speaker.cat.id === defaultRecipientId;
                           return (
                             <div className="transcriptMessageTop">
                               <div
@@ -688,7 +688,7 @@ export function ChatView({
                   <ComposerCatStack
                     cats={[directLaneCat]}
                     bossCatId={payload.chat.bossCatId}
-                    leadCatId={directLaneCat.id}
+                    defaultRecipientCatId={directLaneCat.id}
                     onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
                 ) : isSoloComposer && selectedModel && onModelChange ? (
@@ -698,13 +698,13 @@ export function ChatView({
                       onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                     />
                   </div>
-                ) : !isSoloComposer && leadCat ? (
+                ) : !isSoloComposer && defaultRecipientCat ? (
                   <ComposerCatStack
                     cats={assignedCatRecords.length > 0
                       ? assignedCatRecords
                       : leadCatRecord ? [leadCatRecord] : []}
                     bossCatId={payload.chat.bossCatId}
-                    leadCatId={leadCat.catId}
+                    defaultRecipientCatId={defaultRecipientCat.catId}
                     onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
                   />
                 ) : null}
@@ -769,8 +769,8 @@ export function ChatView({
                 cats={assignedCatRecords}
                 bossCatId={payload.chat.bossCatId}
                 selectedIds={assignedCatRecords.map((cat) => cat.id)}
-                highlightedId={leadCat?.catId ?? null}
-                leadCatId={leadCat?.catId ?? null}
+                highlightedId={defaultRecipientCat?.catId ?? null}
+                defaultRecipientCatId={defaultRecipientCat?.catId ?? null}
                 toggleable={false}
                 showLeadBadge
                 onToggle={() => {}}
@@ -805,7 +805,7 @@ export function ChatView({
               bossCatId={payload.chat.bossCatId}
               selectedIds={[directLaneCat.id]}
               highlightedId={directLaneCat.id}
-              leadCatId={directLaneCat.id}
+              defaultRecipientCatId={directLaneCat.id}
               toggleable={false}
               showLeadBadge
               onToggle={() => {}}
@@ -846,38 +846,38 @@ export function ChatView({
           />
         );
       }
-      if (!isSoloComposer && leadCat) {
-        const catRecord = payload.chat.cats.find((c) => c.id === leadCat.catId);
-        const providerName = getProviderDisplayName(leadCat.execution.target.provider);
-        const modelLabel = leadCat.execution.target.model
-          ? (getProviderModels(leadCat.execution.target.provider)
-              .find((m) => m.value === leadCat.execution.target.model)?.label ?? leadCat.execution.target.model)
+      if (!isSoloComposer && defaultRecipientCat) {
+        const catRecord = payload.chat.cats.find((c) => c.id === defaultRecipientCat.catId);
+        const providerName = getProviderDisplayName(defaultRecipientCat.execution.target.provider);
+        const modelLabel = defaultRecipientCat.execution.target.model
+          ? (getProviderModels(defaultRecipientCat.execution.target.provider)
+              .find((m) => m.value === defaultRecipientCat.execution.target.model)?.label ?? defaultRecipientCat.execution.target.model)
               .replace(/\s*\(default\)\s*/iu, '')
           : null;
         return (
           <div className="catInspectPanelBody">
             <div className="catInspectIdentity">
               <div
-                className={leadCat.catId === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
+                className={defaultRecipientCat.catId === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
                 style={catRecord?.avatarUrl
                   ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : leadCat.avatarColor ? { background: leadCat.avatarColor } : undefined}
+                  : defaultRecipientCat.avatarColor ? { background: defaultRecipientCat.avatarColor } : undefined}
               >
-                {catRecord?.avatarUrl ? null : catInitials(leadCat.name)}
+                {catRecord?.avatarUrl ? null : catInitials(defaultRecipientCat.name)}
               </div>
               <div>
-                <strong>{leadCat.name}</strong>
-                {leadCat.catId === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
+                <strong>{defaultRecipientCat.name}</strong>
+                {defaultRecipientCat.catId === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
               </div>
             </div>
             <div className="catInspectField">
               <span className="catInspectFieldLabel">AI Service</span>
               <span>{providerName}</span>
             </div>
-            {leadCat.execution.target.instance ? (
+            {defaultRecipientCat.execution.target.instance ? (
               <div className="catInspectField">
                 <span className="catInspectFieldLabel">Connection</span>
-                <span>{leadCat.execution.target.instance}</span>
+                <span>{defaultRecipientCat.execution.target.instance}</span>
               </div>
             ) : null}
             <div className="catInspectField">

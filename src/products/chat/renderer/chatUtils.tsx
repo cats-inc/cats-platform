@@ -278,7 +278,7 @@ export function buildNewChatChannelInput(options: {
   existingCount: number;
   entryKind?: NewChatEntryKind;
   repoPath?: string | null;
-  leadCatId?: string | null;
+  defaultRecipientCatId?: string | null;
   participantCatIds?: string[];
   temporaryParticipants?: DraftTemporaryParticipant[];
   draftModel?: {
@@ -293,12 +293,12 @@ export function buildNewChatChannelInput(options: {
     existingCount,
     entryKind,
     repoPath,
-    leadCatId,
+    defaultRecipientCatId,
     participantCatIds = [],
     temporaryParticipants = [],
     draftModel,
   } = options;
-  const normalizedLeadCatId = leadCatId?.trim() || null;
+  const normalizedLeadCatId = defaultRecipientCatId?.trim() || null;
   const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
   const resolvedEntryKind = entryKind
     ?? (normalizedLeadCatId || normalizedParticipantCatIds.length > 0 ? 'group' : 'solo');
@@ -326,7 +326,7 @@ export function buildNewChatChannelInput(options: {
     return {
       ...baseInput,
       roomMode: 'direct_cat_chat',
-      leadParticipantId: directLeadCatId,
+      defaultRecipientId: directLeadCatId,
       participantCatIds: [directLeadCatId, ...normalizedParticipantCatIds.filter((id) => id !== directLeadCatId)],
     };
   }
@@ -334,7 +334,7 @@ export function buildNewChatChannelInput(options: {
   if (normalizedLeadCatId) {
     return {
       ...baseInput,
-      leadParticipantId: normalizedLeadCatId,
+      defaultRecipientId: normalizedLeadCatId,
       participantCatIds: [normalizedLeadCatId, ...normalizedParticipantCatIds],
     };
   }
@@ -561,7 +561,7 @@ export function insertCreatedChannelIntoPayload(
   }
 
   const next = structuredClone(payload);
-  const leadCatId = normalizedChannel.roomRouting.leadParticipantId ?? null;
+  const defaultRecipientCatId = normalizedChannel.roomRouting.defaultRecipientId ?? null;
   const workflowStatus = normalizedChannel.roomRouting.workflow.activeTurn?.status
     ?? normalizedChannel.roomRouting.workflow.lastOutcomeEvent?.status
     ?? null;
@@ -596,7 +596,7 @@ export function insertCreatedChannelIntoPayload(
     pendingProvider: normalizedChannel.pendingProvider,
     pendingModel: normalizedChannel.pendingModel,
     pendingModelSelection: normalizedChannel.pendingModelSelection ?? null,
-    leadCatId,
+    defaultRecipientCatId,
     roomMode: normalizedChannel.roomRouting.mode,
     routingStatus: routingStatus ?? undefined,
     lastRoutingAt,

@@ -142,7 +142,7 @@ test('assigning the first cat upgrades a solo chat into cat-led mode and removin
     now,
   );
   assert.equal(state.channels[0].composerMode, 'cat_led');
-  assert.equal(state.channels[0].roomRouting?.leadParticipantId, catId);
+  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, catId);
 
   state = removeCatFromChannel(
     state,
@@ -151,7 +151,7 @@ test('assigning the first cat upgrades a solo chat into cat-led mode and removin
     new Date('2026-03-23T00:05:00.000Z'),
   );
   assert.equal(state.channels[0].composerMode, 'solo');
-  assert.equal(state.channels[0].roomRouting?.leadParticipantId, null);
+  assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
 });
 
 test('channel topology infers direct lanes and multi-cat rooms independently from routing mode', () => {
@@ -176,7 +176,7 @@ test('channel topology infers direct lanes and multi-cat rooms independently fro
       topic: 'Direct lanes expose their own channel kind.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -356,7 +356,7 @@ test('archiving a direct-lane cat preserves history but demotes the room back to
       topic: 'Keep this transcript visible after archiving the cat.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [catId],
-      leadParticipantId: catId,
+      defaultRecipientId: catId,
       skipBossCatGreeting: true,
     },
     now,
@@ -374,7 +374,7 @@ test('archiving a direct-lane cat preserves history but demotes the room back to
   assert.equal(assignment.execution.lease.sessionId, null);
   assert.equal(assignment.execution.lease.status, 'removed');
   assert.equal(channel.roomRouting?.mode, 'boss_chat');
-  assert.equal(channel.roomRouting?.leadParticipantId, null);
+  assert.equal(channel.roomRouting?.defaultRecipientId, null);
   assert.equal(channel.composerMode, 'solo');
 });
 
@@ -401,7 +401,7 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
       topic: 'Recover should not silently rebuild the lane.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [catId],
-      leadParticipantId: catId,
+      defaultRecipientId: catId,
       skipBossCatGreeting: true,
     },
     now,
@@ -424,7 +424,7 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
   assert.equal(assignment.execution.lease.status, 'not_started');
   assert.equal(channel.channelKind, 'direct_lane');
   assert.equal(channel.roomRouting?.mode, 'direct_cat_chat');
-  assert.equal(channel.roomRouting?.leadParticipantId, catId);
+  assert.equal(channel.roomRouting?.defaultRecipientId, catId);
   assert.equal(channel.composerMode, 'cat_led');
   assert.equal(channel.recoverableDirectLaneCatId ?? null, null);
 });
@@ -451,7 +451,7 @@ test('deleting a direct-lane cat clears hidden-lane routing state so the room st
       topic: 'Deleting the cat should not strand the channel.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [catId],
-      leadParticipantId: catId,
+      defaultRecipientId: catId,
       skipBossCatGreeting: true,
     },
     now,
@@ -463,7 +463,7 @@ test('deleting a direct-lane cat clears hidden-lane routing state so the room st
   assert.equal(state.cats.length, 0);
   assert.equal(channel.catAssignments.length, 0);
   assert.equal(channel.roomRouting?.mode, 'boss_chat');
-  assert.equal(channel.roomRouting?.leadParticipantId, null);
+  assert.equal(channel.roomRouting?.defaultRecipientId, null);
   assert.equal(channel.composerMode, 'solo');
 });
 
@@ -480,7 +480,7 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
     },
     now,
   );
-  const leadCatId = state.cats[0].id;
+  const defaultRecipientCatId = state.cats[0].id;
 
   state = createCat(
     state,
@@ -499,8 +499,8 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
       title: 'Strict direct lane',
       topic: 'Only the lead cat should remain assignable.',
       roomMode: 'direct_cat_chat',
-      participantCatIds: [leadCatId],
-      leadParticipantId: leadCatId,
+      participantCatIds: [defaultRecipientCatId],
+      defaultRecipientId: defaultRecipientCatId,
       skipBossCatGreeting: true,
     },
     now,
@@ -536,7 +536,7 @@ test('FileChatStore normalizes contaminated direct lanes back to the lead cat to
     },
     now,
   );
-  const leadCatId = state.cats[0].id;
+  const defaultRecipientCatId = state.cats[0].id;
 
   state = createCat(
     state,
@@ -555,8 +555,8 @@ test('FileChatStore normalizes contaminated direct lanes back to the lead cat to
       title: 'Legacy Direct',
       topic: 'Normalize stale topology on read.',
       roomMode: 'direct_cat_chat',
-      participantCatIds: [leadCatId],
-      leadParticipantId: leadCatId,
+      participantCatIds: [defaultRecipientCatId],
+      defaultRecipientId: defaultRecipientCatId,
       skipBossCatGreeting: true,
     },
     now,
@@ -608,9 +608,9 @@ test('FileChatStore normalizes contaminated direct lanes back to the lead cat to
   const recoveredChannel = recoveredState.channels.find((candidate) => candidate.id === channelId);
   assert.ok(recoveredChannel);
   assert.equal(recoveredChannel.catAssignments.length, 1);
-  assert.equal(recoveredChannel.catAssignments[0].catId, leadCatId);
+  assert.equal(recoveredChannel.catAssignments[0].catId, defaultRecipientCatId);
   assert.equal(recoveredChannel.roomRouting?.mode, 'direct_cat_chat');
-  assert.equal(recoveredChannel.roomRouting?.leadParticipantId, leadCatId);
+  assert.equal(recoveredChannel.roomRouting?.defaultRecipientId, defaultRecipientCatId);
   assert.equal(recoveredChannel.orchestratorLease.sessionId, null);
   assert.equal(recoveredChannel.orchestratorLease.status, 'not_started');
   assert.equal(recoveredChannel.orchestratorLease.provider, null);
@@ -905,7 +905,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
   assert.equal(
     reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'cat_led_lead',
+    'cat_led_recipient',
   );
   assert.deepEqual(
     reloadedChannel?.roomRouting?.wakeHistory.map((wake) => wake.reason),

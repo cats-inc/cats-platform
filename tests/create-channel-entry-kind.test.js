@@ -32,7 +32,7 @@ test('createChannel treats entryKind=direct as a direct lane when roomMode is om
 
   const channel = next.channels[0];
   assert.equal(channel?.roomRouting?.mode, 'direct_cat_chat');
-  assert.equal(channel?.roomRouting?.leadParticipantId, catId);
+  assert.equal(channel?.roomRouting?.defaultRecipientId, catId);
   assert.equal(channel?.channelKind, 'direct_lane');
   assert.equal(channel?.composerMode, 'cat_led');
 });

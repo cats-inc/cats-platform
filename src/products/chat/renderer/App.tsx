@@ -20,7 +20,7 @@ import { ConfirmDialog, useConfirmDialog } from '../../../design/components/Conf
 import {
   CHAT_PREFIX,
   isNewChatPath,
-  readNewChatLeadCatId,
+  readNewChatDefaultRecipientCatId,
   readNewChatMode,
 } from '../shared/channelPaths';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
@@ -152,9 +152,9 @@ export default function App() {
   const showingNewChatDraft = isNewChatPath(location.pathname);
   const newChatMode = showingNewChatDraft ? readNewChatMode(location.search) : 'default';
   const showingParallelChatDraft = newChatMode === 'parallel';
-  const draftLeadCatId = routeMyCatId ?? readNewChatLeadCatId(location.search);
+  const draftDefaultRecipientCatId = routeMyCatId ?? readNewChatDefaultRecipientCatId(location.search);
   const draftRoute = resolveDraftRouteContext({
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     showingMyCatDirectLane: Boolean(routeMyCatId),
   });
 
@@ -169,7 +169,7 @@ export default function App() {
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftTemporaryParticipants, setDraftTemporaryParticipants] = useState<DraftTemporaryParticipant[]>([]);
   const draftParticipants = resolveDraftParticipantSelection({
-    draftLeadCatId: draftRoute.routeLeadCatId,
+    draftDefaultRecipientCatId: draftRoute.routeDefaultRecipientCatId,
     draftCatIds,
   });
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
@@ -177,7 +177,7 @@ export default function App() {
   const draftEntryKind: NewChatEntryKind = draftRoute.isDirectLaneRoute
     ? 'direct'
     : newChatMode === 'group'
-      || draftRoute.isLeadScopedNewChatRoute
+      || draftRoute.isRecipientScopedNewChatRoute
       || draftParticipants.hasParticipants
       || draftTemporaryParticipants.length > 0
       ? 'group'
@@ -221,7 +221,7 @@ export default function App() {
       ? state.payload.chat.channels.find(
           (ch) =>
             ch.channelKind === 'direct_lane'
-            && ch.leadCatId === catId,
+            && ch.defaultRecipientCatId === catId,
         )
       : null;
     if (channel) {
@@ -240,7 +240,7 @@ export default function App() {
       ? state.payload.chat.channels.find(
           (ch) =>
             ch.channelKind === 'direct_lane'
-            && ch.leadCatId === catId,
+            && ch.defaultRecipientCatId === catId,
         )
       : null;
     if (channel) {
@@ -445,7 +445,7 @@ export default function App() {
     channelPlusMenuOpen,
     plusMenuOpen,
     draftCwd,
-    draftLeadCatId: draftRoute.routeLeadCatId,
+    draftDefaultRecipientCatId: draftRoute.routeDefaultRecipientCatId,
     showingMyCatDirectLane: draftRoute.isDirectLaneRoute,
     navigate,
     setAddCatOpen,
@@ -514,7 +514,7 @@ export default function App() {
   } = deriveAppRouteState({
     state,
     routeChannelId,
-    draftLeadCatId: draftRoute.routeLeadCatId,
+    draftDefaultRecipientCatId: draftRoute.routeDefaultRecipientCatId,
     showingMyCatDirectLane: draftRoute.isDirectLaneRoute,
   });
   const {
@@ -542,7 +542,7 @@ export default function App() {
     showingNewChatDraft,
     showingMyCatDirectLane: draftRoute.isDirectLaneRoute,
     draftEntryKind,
-    draftLeadCatId: draftParticipants.routeLeadCatId,
+    draftDefaultRecipientCatId: draftParticipants.routeDefaultRecipientCatId,
     draftParticipantCatIds: draftParticipants.participantCatIds,
     draftTemporaryParticipants,
     draftCwd,
@@ -711,7 +711,7 @@ export default function App() {
     selectedChannelId,
     selectedChannelViewId,
     selectedChannelEntryLifecycle,
-    draftLeadCatId: draftRoute.routeLeadCatId,
+    draftDefaultRecipientCatId: draftRoute.routeDefaultRecipientCatId,
     showingMyCatDirectLane: draftRoute.isDirectLaneRoute,
     routeDirectLaneSummary,
     readySelectedChannel,
@@ -1037,7 +1037,7 @@ export default function App() {
   } = deriveAppViewState({
     pathname: location.pathname,
     payload,
-    draftLeadCatId: draftRoute.routeLeadCatId,
+    draftDefaultRecipientCatId: draftRoute.routeDefaultRecipientCatId,
     showingGenericNewChatDraft: showingNewChatDraft && draftRoute.isGenericNewChatRoute,
     selectedChannel,
     selectedDirectLane,
@@ -1184,7 +1184,7 @@ export default function App() {
               onRemoveDraftTemporaryParticipant: onRemoveDraftTemporaryParticipant,
               onUpdateDraftTemporaryParticipant: onUpdateDraftTemporaryParticipant,
               autoResize,
-              draftLeadCatId,
+              draftDefaultRecipientCatId,
               entryMode: newChatMode,
               selectedModel: draftModel,
               onModelChange: onDraftModelChange,

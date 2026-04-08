@@ -24,7 +24,7 @@ export function useCompanionPresence(
     const directLane = payload.chat.channels.find(
       (channel) =>
         channel.channelKind === 'direct_lane'
-        && channel.leadCatId === catId,
+        && channel.defaultRecipientCatId === catId,
     );
 
     if (!directLane) {
@@ -37,7 +37,7 @@ export function useCompanionPresence(
       };
     }
 
-    const sessionStatus = directLane.leadParticipantLeaseStatus ?? null;
+    const sessionStatus = directLane.defaultRecipientLeaseStatus ?? null;
     const lifecycle = resolveChatLifecycleState(sessionStatus);
 
     return {

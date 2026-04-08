@@ -16,7 +16,7 @@ export function useAppDraftUiActions(options: {
   channelPlusMenuOpen: boolean;
   plusMenuOpen: boolean;
   draftCwd: string | null;
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   navigate: NavigateFunction;
   setAddCatOpen: Dispatch<SetStateAction<boolean>>;
   setAddCatTab: Dispatch<SetStateAction<'existing' | 'new'>>;
@@ -33,7 +33,7 @@ export function useAppDraftUiActions(options: {
     channelPlusMenuOpen,
     plusMenuOpen,
     draftCwd,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     navigate,
     setAddCatOpen,
     setAddCatTab,
@@ -85,7 +85,7 @@ export function useAppDraftUiActions(options: {
   }
 
   function changeDraftLeadCat(catId: string | null): void {
-    if (catId === draftLeadCatId) {
+    if (catId === draftDefaultRecipientCatId) {
       return;
     }
 

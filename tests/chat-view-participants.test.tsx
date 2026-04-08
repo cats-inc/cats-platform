@@ -220,7 +220,7 @@ function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelVie
     messages: [],
     roomRouting: {
       mode: 'boss_chat',
-      leadParticipantId: 'participant-inline',
+      defaultRecipientId: 'participant-inline',
       lastOutcome: null,
       lastCheckpoint: null,
       lastWakeRequest: null,
@@ -317,7 +317,7 @@ test('ChatView keeps Cat visuals in room stacks while temporary participants sta
           assignedCats: [leadParticipant],
           roomRouting: {
             ...createChannel().roomRouting!,
-            leadParticipantId: leadParticipant.participantId,
+            defaultRecipientId: leadParticipant.participantId,
           },
         }),
       })}

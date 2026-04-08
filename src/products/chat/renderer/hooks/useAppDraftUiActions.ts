@@ -19,7 +19,7 @@ export function useAppDraftUiActions(options: {
   channelPlusMenuOpen: boolean;
   plusMenuOpen: boolean;
   draftCwd: string | null;
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   showingMyCatDirectLane: boolean;
   navigate: NavigateFunction;
   setAddCatOpen: Dispatch<SetStateAction<boolean>>;
@@ -37,7 +37,7 @@ export function useAppDraftUiActions(options: {
     channelPlusMenuOpen,
     plusMenuOpen,
     draftCwd,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     showingMyCatDirectLane,
     navigate,
     setAddCatOpen,
@@ -90,14 +90,14 @@ export function useAppDraftUiActions(options: {
   }
 
   function changeDraftLeadCat(catId: string | null): void {
-    if (catId === draftLeadCatId) {
+    if (catId === draftDefaultRecipientCatId) {
       return;
     }
 
     navigate(
       resolveDraftRoutePath({
         route: resolveDraftRouteContext({
-          draftLeadCatId,
+          draftDefaultRecipientCatId,
           showingMyCatDirectLane,
         }),
         nextLeadCatId: catId,

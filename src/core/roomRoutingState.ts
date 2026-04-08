@@ -24,12 +24,12 @@ export function createDefaultRoomWorkflowState(): RoomWorkflowState {
 export function createDefaultRoomRoutingState(
   overrides: {
     mode?: RoomRoutingMode;
-    leadParticipantId?: string | null;
+    defaultRecipientId?: string | null;
   } = {},
 ): RoomRoutingState {
   return {
     mode: overrides.mode ?? 'boss_chat',
-    leadParticipantId: overrides.leadParticipantId ?? null,
+    defaultRecipientId: overrides.defaultRecipientId ?? null,
     maxContinuations: DEFAULT_MAX_ROUTING_CONTINUATIONS,
     maxDispatchesPerTurn: DEFAULT_MAX_ROUTING_DISPATCHES,
     maxTargetVisitsPerTurn: DEFAULT_MAX_ROUTING_TARGET_VISITS,

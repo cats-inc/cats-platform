@@ -148,14 +148,14 @@ test('buildNewChatChannelInput keeps lead-cat new chats as visible threads', () 
     body: 'Ship the landing page',
     existingCount: 2,
     entryKind: 'group',
-    leadCatId: 'cat-lead',
+    defaultRecipientCatId: 'cat-lead',
     participantCatIds: ['cat-lead', 'cat-helper'],
     repoPath: 'C:/work/demo',
   });
 
   assert.equal(input.entryKind, 'group');
   assert.equal(input.roomMode, undefined);
-  assert.equal(input.leadParticipantId, 'cat-lead');
+  assert.equal(input.defaultRecipientId, 'cat-lead');
   assert.deepEqual(input.participantCatIds, ['cat-lead', 'cat-helper']);
   assert.equal(input.composerMode, undefined);
   assert.equal(input.skipBossCatGreeting, true);
@@ -187,13 +187,13 @@ test('buildNewChatChannelInput marks direct drafts explicitly and preserves dire
     body: 'Wake up and check Telegram',
     existingCount: 2,
     entryKind: 'direct',
-    leadCatId: 'cat-lead',
+    defaultRecipientCatId: 'cat-lead',
     participantCatIds: ['cat-lead'],
   });
 
   assert.equal(input.entryKind, 'direct');
   assert.equal(input.roomMode, 'direct_cat_chat');
-  assert.equal(input.leadParticipantId, 'cat-lead');
+  assert.equal(input.defaultRecipientId, 'cat-lead');
   assert.deepEqual(input.participantCatIds, ['cat-lead']);
 });
 
@@ -319,11 +319,11 @@ test('generic group draft route preserves existing temporary participants during
 
 test('resolveDraftParticipantSelection dedupes toggled cats and keeps route lead first', () => {
   const selection = resolveDraftParticipantSelection({
-    draftLeadCatId: 'cat-lead',
+    draftDefaultRecipientCatId: 'cat-lead',
     draftCatIds: ['cat-helper', 'cat-lead', 'cat-helper', '   '],
   });
 
-  assert.equal(selection.routeLeadCatId, 'cat-lead');
+  assert.equal(selection.routeDefaultRecipientCatId, 'cat-lead');
   assert.deepEqual(selection.toggleCatIds, ['cat-helper', 'cat-lead']);
   assert.deepEqual(selection.participantCatIds, ['cat-lead', 'cat-helper']);
   assert.equal(selection.effectiveLeadCatId, 'cat-lead');
@@ -333,11 +333,11 @@ test('resolveDraftParticipantSelection dedupes toggled cats and keeps route lead
 
 test('resolveDraftParticipantSelection falls back to the first selected cat when no route lead exists', () => {
   const selection = resolveDraftParticipantSelection({
-    draftLeadCatId: null,
+    draftDefaultRecipientCatId: null,
     draftCatIds: ['cat-helper', 'cat-reviewer'],
   });
 
-  assert.equal(selection.routeLeadCatId, null);
+  assert.equal(selection.routeDefaultRecipientCatId, null);
   assert.deepEqual(selection.toggleCatIds, ['cat-helper', 'cat-reviewer']);
   assert.deepEqual(selection.participantCatIds, ['cat-helper', 'cat-reviewer']);
   assert.equal(selection.effectiveLeadCatId, 'cat-helper');
@@ -348,39 +348,39 @@ test('resolveDraftParticipantSelection falls back to the first selected cat when
 test('resolveDraftRouteContext distinguishes generic, lead-scoped, and direct-lane routes', () => {
   assert.deepEqual(
     resolveDraftRouteContext({
-      draftLeadCatId: null,
+      draftDefaultRecipientCatId: null,
       showingMyCatDirectLane: false,
     }),
     {
-      routeLeadCatId: null,
+      routeDefaultRecipientCatId: null,
       isDirectLaneRoute: false,
-      isLeadScopedNewChatRoute: false,
+      isRecipientScopedNewChatRoute: false,
       isGenericNewChatRoute: true,
     },
   );
 
   assert.deepEqual(
     resolveDraftRouteContext({
-      draftLeadCatId: 'cat-lead',
+      draftDefaultRecipientCatId: 'cat-lead',
       showingMyCatDirectLane: false,
     }),
     {
-      routeLeadCatId: 'cat-lead',
+      routeDefaultRecipientCatId: 'cat-lead',
       isDirectLaneRoute: false,
-      isLeadScopedNewChatRoute: true,
+      isRecipientScopedNewChatRoute: true,
       isGenericNewChatRoute: false,
     },
   );
 
   assert.deepEqual(
     resolveDraftRouteContext({
-      draftLeadCatId: 'cat-direct',
+      draftDefaultRecipientCatId: 'cat-direct',
       showingMyCatDirectLane: true,
     }),
     {
-      routeLeadCatId: 'cat-direct',
+      routeDefaultRecipientCatId: 'cat-direct',
       isDirectLaneRoute: true,
-      isLeadScopedNewChatRoute: false,
+      isRecipientScopedNewChatRoute: false,
       isGenericNewChatRoute: false,
     },
   );
@@ -388,15 +388,15 @@ test('resolveDraftRouteContext distinguishes generic, lead-scoped, and direct-la
 
 test('resolveDraftRoutePath keeps generic, lead-scoped, and direct draft entries aligned', () => {
   const genericRoute = resolveDraftRouteContext({
-    draftLeadCatId: null,
+    draftDefaultRecipientCatId: null,
     showingMyCatDirectLane: false,
   });
   const leadScopedRoute = resolveDraftRouteContext({
-    draftLeadCatId: 'cat-lead',
+    draftDefaultRecipientCatId: 'cat-lead',
     showingMyCatDirectLane: false,
   });
   const directLaneRoute = resolveDraftRouteContext({
-    draftLeadCatId: 'cat-direct',
+    draftDefaultRecipientCatId: 'cat-direct',
     showingMyCatDirectLane: true,
   });
 
@@ -428,7 +428,7 @@ test('resolveMissingDraftLeadPath falls back to visible chats only for direct-la
   assert.equal(
     resolveMissingDraftLeadPath({
       route: resolveDraftRouteContext({
-        draftLeadCatId: 'cat-direct',
+        draftDefaultRecipientCatId: 'cat-direct',
         showingMyCatDirectLane: true,
       }),
       channels: [hiddenDirectLane, visibleThread],
@@ -439,7 +439,7 @@ test('resolveMissingDraftLeadPath falls back to visible chats only for direct-la
   assert.equal(
     resolveMissingDraftLeadPath({
       route: resolveDraftRouteContext({
-        draftLeadCatId: 'cat-lead',
+        draftDefaultRecipientCatId: 'cat-lead',
         showingMyCatDirectLane: false,
       }),
       channels: [hiddenDirectLane, visibleThread],

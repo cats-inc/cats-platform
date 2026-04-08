@@ -525,7 +525,7 @@ test('adding the first companion cat to a Recents thread hydrates the cat-led ru
     const shellPayload = await shellResponse.json();
     const selectedChannel = shellPayload.chat.selectedChannel;
     assert.equal(selectedChannel.composerMode, 'cat_led');
-    assert.equal(selectedChannel.roomRouting.leadParticipantId, cat.id);
+    assert.equal(selectedChannel.roomRouting.defaultRecipientId, cat.id);
 
     const createdSession = runtimeClient.createdSessions.at(-1);
     assert.ok(createdSession);

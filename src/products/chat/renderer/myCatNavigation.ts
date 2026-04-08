@@ -13,7 +13,7 @@ export function findDirectLaneForCat(
   catId: string,
 ): ChatChannelSummary | null {
   return channels.find((channel) =>
-    channel.leadCatId === catId && isDirectLaneSummary(channel),
+    channel.defaultRecipientCatId === catId && isDirectLaneSummary(channel),
   ) ?? null;
 }
 

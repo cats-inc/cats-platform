@@ -802,7 +802,7 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
   );
   assert.equal(
     channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'cat_led_lead',
+    'cat_led_recipient',
   );
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(
@@ -985,7 +985,7 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
       topic: 'Talk directly to Companion.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -1013,7 +1013,7 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assert.equal(channel.orchestratorLease.sessionId, null);
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'default_target');
-  assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason, 'direct_chat_lead');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason, 'direct_chat_recipient');
   assert.equal(channel.roomRouting?.wakeHistory[0]?.reason, 'room_default');
   assert.equal(channel.roomRouting?.wakeHistory[0]?.participant.participantId, companionId);
   assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
@@ -1054,7 +1054,7 @@ test('direct cat chat treats lead-cat mentions as plain text and stays on the la
       topic: 'Treat lead-cat mentions as plain text inside the lane.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -1122,7 +1122,7 @@ test('direct cat chat blocks explicit Boss Cat mentions instead of routing out o
       topic: 'Stay on the direct lane even when Boss Cat is mentioned.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -1186,7 +1186,7 @@ test('direct cat chat ignores workflow recommendations that target Boss Cat', as
       topic: 'Structured handoffs must not escape the direct lane.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -1257,7 +1257,7 @@ test('direct cat chat recreates a stale lead-cat session once when runtime repor
       topic: 'Recover stale direct session leases.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -1341,7 +1341,7 @@ test('direct cat chat recreates a closed lead-cat session once when runtime dema
       topic: 'Recover closed direct session leases.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -1425,7 +1425,7 @@ test('session-full errors stop immediately and clear the direct lane lease inste
       topic: 'Stop when the runtime session is full.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -1512,7 +1512,7 @@ test('direct cat chat blocks unmentioned turns when the lead cat is no longer as
       topic: 'Talk directly to Companion.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
@@ -1538,7 +1538,7 @@ test('direct cat chat blocks unmentioned turns when the lead cat is no longer as
   assert.equal(runtimeClient.sentMessages.length, 0);
   assert.equal(channel.orchestratorLease.sessionId, null);
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'blocked');
-  assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'missing_direct_chat_lead');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'missing_direct_chat_recipient');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantId, companionId);
   assert.equal(channel.roomRouting?.wakeHistory.length, 0);
   assert.match(channel.messages.at(-1)?.body ?? '', /no longer has an active lead Cat/i);
@@ -1567,7 +1567,7 @@ test('already-awake route targets record skipped wake requests without a complet
       topic: 'Keep skipped wake requests machine-readable.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [companionId],
-      leadParticipantId: companionId,
+      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,

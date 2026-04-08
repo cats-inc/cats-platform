@@ -660,7 +660,7 @@ test('POST /api/channels supports direct Cat chat with existingCatIds and initia
     assert.equal(createChannelPayload.channel.assignedCats.length, 1);
     assert.equal(createChannelPayload.channel.assignedCats[0].catId, companionCatId);
     assert.equal(createChannelPayload.channel.roomRouting.mode, 'direct_cat_chat');
-    assert.equal(createChannelPayload.channel.roomRouting.leadParticipantId, companionCatId);
+    assert.equal(createChannelPayload.channel.roomRouting.defaultRecipientId, companionCatId);
     assert.deepEqual(createChannelPayload.channel.workingMemory, {
       summary: null,
       facts: [],

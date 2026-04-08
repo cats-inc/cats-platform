@@ -458,7 +458,7 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat ses
       topic: 'Do not stream from Boss Cat fallbacks.',
       roomMode: 'direct_cat_chat',
       participantCatIds: [catId],
-      leadParticipantId: catId,
+      defaultRecipientId: catId,
       skipBossCatGreeting: true,
     },
     seededAt,
@@ -5447,7 +5447,7 @@ test('POST /api/channels/:channelId/activations recreates closed direct-lane ses
       title: 'Resume lane',
       topic: 'Manual activation should revive closed sessions.',
       roomMode: 'direct_cat_chat',
-      leadParticipantId: catId,
+      defaultRecipientId: catId,
       participantCatIds: [catId],
       skipBossCatGreeting: true,
     },
@@ -5542,7 +5542,7 @@ test('POST /api/channels keeps direct lanes scoped to the lead cat only', async 
     });
     assert.equal(firstCatResponse.status, 201);
     const firstCatPayload = await firstCatResponse.json();
-    const leadCatId = firstCatPayload.cat.id;
+    const defaultRecipientCatId = firstCatPayload.cat.id;
 
     const secondCatResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
@@ -5564,8 +5564,8 @@ test('POST /api/channels keeps direct lanes scoped to the lead cat only', async 
         title: 'Scoped direct lane',
         topic: 'A direct lane should only keep its lead cat.',
         roomMode: 'direct_cat_chat',
-        leadParticipantId: leadCatId,
-        participantCatIds: [leadCatId, extraCatId],
+        defaultRecipientId: defaultRecipientCatId,
+        participantCatIds: [defaultRecipientCatId, extraCatId],
         skipBossCatGreeting: true,
       }),
     });
@@ -5574,8 +5574,8 @@ test('POST /api/channels keeps direct lanes scoped to the lead cat only', async 
 
     assert.equal(createChannelPayload.channel.roomRouting.mode, 'direct_cat_chat');
     assert.equal(createChannelPayload.channel.assignedCats.length, 1);
-    assert.equal(createChannelPayload.channel.assignedCats[0].catId, leadCatId);
-    assert.equal(createChannelPayload.channel.roomRouting.leadParticipantId, leadCatId);
+    assert.equal(createChannelPayload.channel.assignedCats[0].catId, defaultRecipientCatId);
+    assert.equal(createChannelPayload.channel.roomRouting.defaultRecipientId, defaultRecipientCatId);
   });
 });
 
@@ -5603,7 +5603,7 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-lead cat to 
     });
     assert.equal(leadCatResponse.status, 201);
     const leadCatPayload = await leadCatResponse.json();
-    const leadCatId = leadCatPayload.cat.id;
+    const defaultRecipientCatId = leadCatPayload.cat.id;
 
     const extraCatResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
@@ -5625,8 +5625,8 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-lead cat to 
         title: 'Strict direct lane',
         topic: 'Reject adding any non-lead cats.',
         roomMode: 'direct_cat_chat',
-        participantCatIds: [leadCatId],
-        leadParticipantId: leadCatId,
+        participantCatIds: [defaultRecipientCatId],
+        defaultRecipientId: defaultRecipientCatId,
         skipBossCatGreeting: true,
       }),
     });
@@ -5651,8 +5651,8 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-lead cat to 
     assert.equal(channelResponse.status, 200);
     const channelPayload = await channelResponse.json();
     assert.equal(channelPayload.channel.assignedCats.length, 1);
-    assert.equal(channelPayload.channel.assignedCats[0].catId, leadCatId);
-    assert.equal(channelPayload.channel.roomRouting.leadParticipantId, leadCatId);
+    assert.equal(channelPayload.channel.assignedCats[0].catId, defaultRecipientCatId);
+    assert.equal(channelPayload.channel.roomRouting.defaultRecipientId, defaultRecipientCatId);
   });
 });
 
@@ -5764,7 +5764,7 @@ test('PATCH /api/preferences only selects the requested direct chat lead without
         topic: 'Wake the lead cat on persisted room entry.',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
-        leadParticipantId: catId,
+        defaultRecipientId: catId,
         skipBossCatGreeting: true,
       }),
     });
@@ -5846,7 +5846,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
         topic: 'Archive should not leave a hidden zombie lane.',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
-        leadParticipantId: catId,
+        defaultRecipientId: catId,
         skipBossCatGreeting: true,
       }),
     });
@@ -5871,7 +5871,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
     assert.ok(runtimeClient.closedSessions.includes('session-1'));
     assert.equal(archivePayload.chat.selectedChannel.id, channelId);
     assert.equal(archivePayload.chat.selectedChannel.roomRouting.mode, 'boss_chat');
-    assert.equal(archivePayload.chat.selectedChannel.roomRouting.leadParticipantId, null);
+    assert.equal(archivePayload.chat.selectedChannel.roomRouting.defaultRecipientId, null);
     assert.equal(archivePayload.chat.selectedChannel.composerMode, 'solo');
     assert.equal(archivePayload.chat.selectedChannel.assignedCats[0]?.status, 'removed');
     assert.equal(archivePayload.chat.channels[0]?.roomMode, 'boss_chat');
@@ -5988,7 +5988,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
         topic: 'Recover should rebuild the direct lane without waking it.',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
-        leadParticipantId: catId,
+        defaultRecipientId: catId,
         skipBossCatGreeting: true,
       }),
     });
@@ -6037,8 +6037,8 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
     assert.equal(recoveredCat?.avatarUrl, 'data:image/png;base64,recoverable-avatar');
     assert.equal(recoveredChannel?.channelKind, 'direct_lane');
     assert.equal(recoveredChannel?.roomMode, 'direct_cat_chat');
-    assert.equal(recoveredChannel?.leadCatId, catId);
-    assert.equal(recoveredChannel?.leadParticipantLeaseStatus, 'not_started');
+    assert.equal(recoveredChannel?.defaultRecipientCatId, catId);
+    assert.equal(recoveredChannel?.defaultRecipientLeaseStatus, 'not_started');
     assert.equal(unarchivePayload.chat.botBindings.length, 0);
 
     const reboundResponse = await fetch(`${baseUrl}/api/bot-bindings`, {
@@ -6184,7 +6184,7 @@ test('first send does not fall back to Boss Cat when a direct chat lead is missi
         topic: 'Do not wake Boss Cat when the direct lead is gone.',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
-        leadParticipantId: catId,
+        defaultRecipientId: catId,
         skipBossCatGreeting: true,
       }),
     });
@@ -6259,7 +6259,7 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
         topic: 'App shell reads should not wake runtime sessions.',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
-        leadParticipantId: catId,
+        defaultRecipientId: catId,
         skipBossCatGreeting: true,
       }),
     });

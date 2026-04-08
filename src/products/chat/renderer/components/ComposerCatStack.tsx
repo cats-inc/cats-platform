@@ -4,19 +4,19 @@ import { catInitials } from '../chatUtils';
 export interface ComposerCatStackProps {
   cats: ChatCat[];
   bossCatId: string | null;
-  leadCatId: string | null;
+  defaultRecipientCatId: string | null;
   onClick?: () => void;
 }
 
 export function ComposerCatStack({
   cats,
   bossCatId,
-  leadCatId,
+  defaultRecipientCatId,
   onClick,
 }: ComposerCatStackProps) {
   if (cats.length === 0) return null;
 
-  const lead = leadCatId ? cats.find((c) => c.id === leadCatId) : cats[0];
+  const lead = defaultRecipientCatId ? cats.find((c) => c.id === defaultRecipientCatId) : cats[0];
   const others = cats.filter((c) => c.id !== lead?.id);
   const ordered = lead ? [lead, ...others] : cats;
   const rendered = [...ordered].reverse();

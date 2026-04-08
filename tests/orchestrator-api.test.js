@@ -1823,7 +1823,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
   seededChannel.composerMode = 'solo';
   seededChannel.roomRouting = createDefaultRoomRoutingState({
     mode: 'boss_chat',
-    leadParticipantId: null,
+    defaultRecipientId: null,
   });
   const inlineAssignment = seededChannel.catAssignments[0];
   const reviewerAssignment = seededChannel.catAssignments[1];

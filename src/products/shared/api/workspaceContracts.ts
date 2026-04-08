@@ -277,8 +277,8 @@ export interface ChatChannelSummary {
   pendingProvider?: string | null;
   pendingModel?: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
-  leadCatId?: string | null;
-  leadParticipantLeaseStatus?: ParticipantSessionStatus | null;
+  defaultRecipientCatId?: string | null;
+  defaultRecipientLeaseStatus?: ParticipantSessionStatus | null;
   roomMode?: RoomRoutingMode;
   routingStatus?: RoomRoutingTurnStatus;
   lastRoutingAt?: string | null;
@@ -421,7 +421,7 @@ export interface CreateChatChannelInput {
   formationMode?: ChannelFormationMode;
   composerMode?: ComposerMode;
   roomMode?: RoomRoutingMode;
-  leadParticipantId?: string;
+  defaultRecipientId?: string;
   pendingProvider?: string;
   pendingModel?: string;
   pendingInstance?: string;

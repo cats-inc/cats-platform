@@ -124,10 +124,10 @@ function mergeDispatchRoomRoutingState(
     baselineRoomRouting.mode,
     dispatchRoomRouting.mode,
   );
-  nextRoomRouting.leadParticipantId = mergeChangedValue(
-    nextRoomRouting.leadParticipantId,
-    baselineRoomRouting.leadParticipantId,
-    dispatchRoomRouting.leadParticipantId,
+  nextRoomRouting.defaultRecipientId = mergeChangedValue(
+    nextRoomRouting.defaultRecipientId,
+    baselineRoomRouting.defaultRecipientId,
+    dispatchRoomRouting.defaultRecipientId,
   );
   nextRoomRouting.maxContinuations = mergeChangedValue(
     nextRoomRouting.maxContinuations,

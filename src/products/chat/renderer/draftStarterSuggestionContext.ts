@@ -10,16 +10,16 @@ export interface DraftStarterSuggestionContext {
 
 export function resolveDraftStarterSuggestionContext(input: {
   allowAddCat?: boolean;
-  draftLeadCatId?: string | null;
-  hasLeadCat: boolean;
+  draftDefaultRecipientCatId?: string | null;
+  hasDefaultRecipientCat: boolean;
   entryMode?: NewChatMode;
   participantCount: number;
   parallelTargetCount?: number;
 }): DraftStarterSuggestionContext {
   const isParallelMode = (input.parallelTargetCount ?? 0) >= 2;
   const isGroupDraft = input.entryMode === 'group' || input.participantCount > 1;
-  const isDirectLaneContext = !input.allowAddCat && Boolean(input.draftLeadCatId) && input.hasLeadCat;
-  const isCatLedDraft = !isDirectLaneContext && input.hasLeadCat && !isGroupDraft;
+  const isDirectLaneContext = !input.allowAddCat && Boolean(input.draftDefaultRecipientCatId) && input.hasDefaultRecipientCat;
+  const isCatLedDraft = !isDirectLaneContext && input.hasDefaultRecipientCat && !isGroupDraft;
   const mode: DraftStarterSuggestionMode = isParallelMode
     ? 'parallel'
     : isDirectLaneContext

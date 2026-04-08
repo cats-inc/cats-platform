@@ -46,7 +46,7 @@ test('mergeCompletedDispatchState preserves newer room-routing config while appl
   const latestState = structuredClone(baselineState);
   const latestChannel = requireChannel(latestState, channelId);
   latestChannel.roomRouting.maxDispatchesPerTurn += 3;
-  latestChannel.roomRouting.leadParticipantId = 'cat-owner-updated-routing';
+  latestChannel.roomRouting.defaultRecipientId = 'cat-owner-updated-routing';
 
   const mergedState = mergeCompletedDispatchState(
     latestState,
@@ -63,7 +63,7 @@ test('mergeCompletedDispatchState preserves newer room-routing config while appl
     latestChannel.roomRouting.maxDispatchesPerTurn,
   );
   assert.equal(
-    mergedChannel.roomRouting.leadParticipantId,
+    mergedChannel.roomRouting.defaultRecipientId,
     'cat-owner-updated-routing',
   );
   assert.deepEqual(
@@ -200,7 +200,7 @@ test('mergeCompletedDispatchState preserves temporary participant execution leas
       topic: 'Keep adhoc participant session leases while dispatch state merges.',
       entryKind: 'group',
       skipBossCatGreeting: true,
-      leadParticipantId: 'participant-inline',
+      defaultRecipientId: 'participant-inline',
       temporaryParticipants: [
         {
           participantId: 'participant-inline',

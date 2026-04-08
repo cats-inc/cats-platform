@@ -29,15 +29,15 @@ export function resolveAppEntryPath(setupCompleteAt: string | null | undefined):
   return resolveWorkspaceAppEntryPath(CHAT_PREFIX, setupCompleteAt);
 }
 
-export function buildNewChatPath(leadCatId?: string | null): string {
-  return buildWorkspaceNewChatPath(CHAT_PREFIX, leadCatId);
+export function buildNewChatPath(defaultRecipientCatId?: string | null): string {
+  return buildWorkspaceNewChatPath(CHAT_PREFIX, defaultRecipientCatId);
 }
 
 export function buildMyCatPath(catId: string): string {
   return buildWorkspaceMyCatPath(CHAT_PREFIX, catId);
 }
 
-export function readNewChatLeadCatId(search: string): string | null {
+export function readNewChatDefaultRecipientCatId(search: string): string | null {
   return readWorkspaceNewChatLeadCatId(search);
 }
 

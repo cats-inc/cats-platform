@@ -38,13 +38,13 @@ export interface TelegramRoomBridgeCreateRoomInput {
   title: string;
   topic: string;
   roomMode: RoomRoutingMode;
-  leadParticipantId?: string;
+  defaultRecipientId?: string;
   participantCatIds: string[];
 }
 
 export interface TelegramRoomBridgeReusableRoomLookupInput {
   roomMode: RoomRoutingMode;
-  leadParticipantId?: string;
+  defaultRecipientId?: string;
   participantCatIds: string[];
 }
 
@@ -350,7 +350,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
       title: roomMode === 'direct_cat_chat' ? '' : buildRoomTitle(message, boundCat.catName),
       topic: buildRoomTopic(activeBinding, senderName, input.receipt.chatId),
       roomMode,
-      leadParticipantId: roomMode === 'direct_cat_chat' ? boundCat.catId ?? undefined : undefined,
+      defaultRecipientId: roomMode === 'direct_cat_chat' ? boundCat.catId ?? undefined : undefined,
       participantCatIds: roomMode === 'direct_cat_chat' && boundCat.catId ? [boundCat.catId] : [],
     };
 

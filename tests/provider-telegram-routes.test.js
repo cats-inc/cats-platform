@@ -1759,7 +1759,7 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
         topic: 'Companion direct lane',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
-        leadParticipantId: catId,
+        defaultRecipientId: catId,
         skipBossCatGreeting: true,
       }),
     });
@@ -1815,7 +1815,7 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
     assert.equal(roomResponse.status, 200);
     const roomPayload = await roomResponse.json();
     assert.equal(roomPayload.channel.roomRouting.mode, 'direct_cat_chat');
-    assert.equal(roomPayload.channel.roomRouting.leadParticipantId, catId);
+    assert.equal(roomPayload.channel.roomRouting.defaultRecipientId, catId);
 
     const messagesResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}/messages`);
     assert.equal(messagesResponse.status, 200);
@@ -1904,7 +1904,7 @@ test('telegram webhook normalizes legacy boss room mode for cat-bound bots into 
     assert.equal(roomResponse.status, 200);
     const roomPayload = await roomResponse.json();
     assert.equal(roomPayload.channel.roomRouting.mode, 'direct_cat_chat');
-    assert.equal(roomPayload.channel.roomRouting.leadParticipantId, bossCatId);
+    assert.equal(roomPayload.channel.roomRouting.defaultRecipientId, bossCatId);
   }, chatStore);
 });
 

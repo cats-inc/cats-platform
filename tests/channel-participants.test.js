@@ -48,7 +48,7 @@ test('createChannel keeps channel-only temporary participants outside cat assign
     [],
   );
   assert.equal(persistedChannel.participantAssignments?.length, 2);
-  assert.equal(persistedChannel.roomRouting?.leadParticipantId, 'participant-lead');
+  assert.equal(persistedChannel.roomRouting?.defaultRecipientId, 'participant-lead');
 
   const channelView = buildChannelView(state, channelId);
   assert.equal(channelView.assignedParticipants?.length, 2);
@@ -63,7 +63,7 @@ test('createChannel keeps channel-only temporary participants outside cat assign
   assert.equal(summary.activeCatCount, 2);
   assert.equal(summary.participantCount, 2);
   assert.equal(summary.activeParticipantCount, 2);
-  assert.equal(summary.leadCatId, null);
+  assert.equal(summary.defaultRecipientCatId, null);
 });
 
 test('FileChatStore round-trips temporary participants through persisted snapshots', async () => {
@@ -99,7 +99,7 @@ test('FileChatStore round-trips temporary participants through persisted snapsho
   assert.equal(channelView.assignedParticipants?.[0]?.name, 'Inline Specialist');
   assert.equal(channelView.assignedParticipants?.[0]?.execution.target.provider, 'codex');
   assert.equal(channelView.assignedParticipants?.[0]?.execution.target.model, 'gpt-5.3-codex');
-  assert.equal(channelView.roomRouting.leadParticipantId, 'participant-inline');
+  assert.equal(channelView.roomRouting.defaultRecipientId, 'participant-inline');
   assert.deepEqual(channelView.assignedCats, []);
 });
 

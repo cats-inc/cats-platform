@@ -20,7 +20,7 @@ import {
   isDirectLaneChannel,
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
-  resolveDirectLaneLeadParticipantId,
+  resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import {
@@ -39,7 +39,7 @@ function activeParticipantCount(channel: ChatChannelState): number {
   return normalizeChannelAssignmentsForRoomMode(
     resolveChannelParticipantAssignments(channel, { clone: true }),
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   ).filter((assignment) => assignment.status === 'active').length;
 }
 
@@ -121,14 +121,14 @@ function resolveLeadParticipantLeaseStatus(
   const participantAssignments = normalizeChannelAssignmentsForRoomMode(
     resolveChannelParticipantAssignments(channel, { clone: true }),
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
   const leadId = isDirectLaneChannel(channel)
-    ? resolveDirectLaneLeadParticipantId(
+    ? resolveDirectLaneRecipientId(
       participantAssignments,
-      roomRouting.leadParticipantId,
+      roomRouting.defaultRecipientId,
     )
-    : roomRouting.leadParticipantId;
+    : roomRouting.defaultRecipientId;
   if (!leadId) return null;
   const assignment = participantAssignments.find(
     (candidate) => candidate.participantId === leadId && candidate.status === 'active',
@@ -161,12 +161,12 @@ export function buildChannelView(
   const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
     resolveChannelParticipantAssignments(clonedChannel, { clone: true }),
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
   const normalizedCatAssignments = normalizeChannelAssignmentsForRoomMode(
     clonedChannel.catAssignments,
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
   clonedChannel.participantAssignments = normalizedParticipantAssignments;
   clonedChannel.catAssignments = normalizedCatAssignments;
@@ -176,9 +176,9 @@ export function buildChannelView(
     participants: normalizedParticipantAssignments,
   });
   if (isDirectLaneChannel(clonedChannel)) {
-    roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
+    roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(
       normalizedParticipantAssignments,
-      roomRouting.leadParticipantId,
+      roomRouting.defaultRecipientId,
     );
     clonedChannel.orchestratorLease = createEmptyExecutionLease();
   }
@@ -211,11 +211,11 @@ export function resolveChannelEntryParticipant(
   const channel = buildChannelView(state, channelOrId);
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
 
-  if (isDirectLaneChannel(channel) && roomRouting.leadParticipantId) {
+  if (isDirectLaneChannel(channel) && roomRouting.defaultRecipientId) {
     const leadParticipant = (
       channel.assignedParticipants
       ?? channel.assignedCats
-    )?.find((participant) => participant.participantId === roomRouting.leadParticipantId) ?? null;
+    )?.find((participant) => participant.participantId === roomRouting.defaultRecipientId) ?? null;
     if (leadParticipant) {
       return {
         participantKind: 'cat',
@@ -239,14 +239,14 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
   const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
     resolveChannelParticipantAssignments(channel, { clone: true }),
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
-  const leadParticipantId = isDirectLaneChannel(channel)
-    ? resolveDirectLaneLeadParticipantId(normalizedParticipantAssignments, roomRouting.leadParticipantId)
-    : roomRouting.leadParticipantId;
-  const leadCatId = normalizedParticipantAssignments.some((assignment) =>
-    assignment.sourceKind === 'cat' && assignment.participantId === leadParticipantId)
-    ? leadParticipantId
+  const defaultRecipientId = isDirectLaneChannel(channel)
+    ? resolveDirectLaneRecipientId(normalizedParticipantAssignments, roomRouting.defaultRecipientId)
+    : roomRouting.defaultRecipientId;
+  const defaultRecipientCatId = normalizedParticipantAssignments.some((assignment) =>
+    assignment.sourceKind === 'cat' && assignment.participantId === defaultRecipientId)
+    ? defaultRecipientId
     : null;
   const workflowStatus = roomRouting.workflow.activeTurn?.status
     ?? roomRouting.workflow.lastOutcomeEvent?.status
@@ -282,8 +282,8 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     pendingProvider: channel.pendingProvider ?? null,
     pendingModel: channel.pendingModel ?? null,
     pendingModelSelection: structuredClone(channel.pendingModelSelection ?? null),
-    leadCatId: leadCatId ?? null,
-    leadParticipantLeaseStatus: resolveLeadParticipantLeaseStatus(channel),
+    defaultRecipientCatId: defaultRecipientCatId ?? null,
+    defaultRecipientLeaseStatus: resolveLeadParticipantLeaseStatus(channel),
     roomMode: roomRouting.mode,
     routingStatus: routingStatus ?? roomRouting.lastOutcome?.status ?? 'idle',
     lastRoutingAt:

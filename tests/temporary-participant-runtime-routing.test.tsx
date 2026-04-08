@@ -51,7 +51,7 @@ function createTemporaryParticipantState() {
           roleHint: 'Validation',
         },
       ],
-      leadParticipantId: 'participant-reviewer',
+      defaultRecipientId: 'participant-reviewer',
     },
     now,
   );

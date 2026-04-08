@@ -26,15 +26,15 @@ export type RoomRouteSelectionKind =
   | 'blocked';
 
 export type RoomRouteBlockedReason =
-  | 'missing_direct_chat_lead'
-  | 'missing_cat_led_lead'
+  | 'missing_direct_chat_recipient'
+  | 'missing_cat_led_recipient'
   | 'no_valid_targets'
   | 'user_cancelled';
 
 export type RoomRouteDefaultTargetReason =
   | 'boss_chat_default'
-  | 'direct_chat_lead'
-  | 'cat_led_lead';
+  | 'direct_chat_recipient'
+  | 'cat_led_recipient';
 
 export type RoomRoutingTurnStatus =
   | 'idle'
@@ -261,7 +261,7 @@ export interface RoomWorkflowState {
 
 export interface RoomRoutingState {
   mode: RoomRoutingMode;
-  leadParticipantId: string | null;
+  defaultRecipientId: string | null;
   maxContinuations: number;
   maxDispatchesPerTurn: number;
   maxTargetVisitsPerTurn: number;

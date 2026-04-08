@@ -11,7 +11,7 @@ import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js
 import {
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
-  resolveDirectLaneLeadParticipantId,
+  resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import { createEmptyExecutionLease } from '../defaults.js';
@@ -41,7 +41,7 @@ export function createChannelId(): string {
   return randomUUID();
 }
 
-export function normalizeLeadParticipantId(value: string | undefined): string | null {
+export function normalizeDefaultRecipientId(value: string | undefined): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;
 }
@@ -56,17 +56,17 @@ export function inferChannelComposerMode(input: {
   return input.activeParticipantIds.length > 0 ? 'cat_led' : 'solo';
 }
 
-export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void {
+export function syncChannelDefaultRecipientAndComposerMode(channel: ChatChannelState): void {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   channel.participantAssignments = normalizeChannelAssignmentsForRoomMode(
     resolveChannelParticipantAssignments(channel),
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
   channel.catAssignments = normalizeChannelAssignmentsForRoomMode(
     channel.catAssignments,
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
   channel.channelKind = resolveChannelKind({
     channelKind: channel.channelKind,
@@ -76,7 +76,7 @@ export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void 
   const activeParticipantIds = channel.participantAssignments
     .filter((assignment) => assignment.status === 'active')
     .map((assignment) => assignment.participantId);
-  const currentLeadId = roomRouting.leadParticipantId;
+  const currentLeadId = roomRouting.defaultRecipientId;
   const hasValidLead = Boolean(currentLeadId && activeParticipantIds.includes(currentLeadId));
 
   channel.composerMode = inferChannelComposerMode({
@@ -85,15 +85,15 @@ export function syncChannelLeadAndComposerMode(channel: ChatChannelState): void 
   });
 
   if (channel.channelKind === 'direct_lane') {
-    roomRouting.leadParticipantId = resolveDirectLaneLeadParticipantId(
+    roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(
       channel.participantAssignments,
       currentLeadId,
     );
     channel.orchestratorLease = createEmptyExecutionLease();
   } else if (activeParticipantIds.length === 0) {
-    roomRouting.leadParticipantId = null;
+    roomRouting.defaultRecipientId = null;
   } else if (!hasValidLead) {
-    roomRouting.leadParticipantId = activeParticipantIds[0] ?? null;
+    roomRouting.defaultRecipientId = activeParticipantIds[0] ?? null;
   }
 
   channel.roomRouting = roomRouting;

@@ -102,7 +102,7 @@ test('direct chat entry lifecycle stays null when the lead cat is missing instea
     assignedCats: [],
     roomRouting: {
       mode: 'boss_chat',
-      leadParticipantId: 'companion-cat',
+      defaultRecipientId: 'companion-cat',
       maxContinuations: 6,
       maxDispatchesPerTurn: 12,
       maxTargetVisitsPerTurn: 2,

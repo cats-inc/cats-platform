@@ -124,16 +124,16 @@ export function isDirectLaneSummary(
   }) === 'direct_lane';
 }
 
-export function resolveDirectLaneLeadParticipantId(
+export function resolveDirectLaneRecipientId(
   assignments: readonly ChannelParticipantTopologyRef[],
-  leadParticipantId: string | null | undefined,
+  defaultRecipientId: string | null | undefined,
 ): string | null {
   const dedupedAssignments = dedupeChannelAssignments(assignments);
   if (
-    leadParticipantId
-    && dedupedAssignments.some((assignment) => readTopologyParticipantId(assignment) === leadParticipantId)
+    defaultRecipientId
+    && dedupedAssignments.some((assignment) => readTopologyParticipantId(assignment) === defaultRecipientId)
   ) {
-    return leadParticipantId;
+    return defaultRecipientId;
   }
 
   const activeAssignment = dedupedAssignments.find((assignment) => assignment.status === 'active');
@@ -145,22 +145,22 @@ export function resolveDirectLaneLeadParticipantId(
   if (fallbackAssignment) {
     return readTopologyParticipantId(fallbackAssignment);
   }
-  return leadParticipantId ?? null;
+  return defaultRecipientId ?? null;
 }
 
 export function normalizeChannelAssignmentsForRoomMode<T extends ChannelParticipantTopologyRef>(
   assignments: readonly T[],
   roomMode: RoomRoutingMode,
-  leadParticipantId: string | null | undefined,
+  defaultRecipientId: string | null | undefined,
 ): T[] {
   const dedupedAssignments = dedupeChannelAssignments(assignments);
   if (roomMode !== 'direct_cat_chat') {
     return dedupedAssignments;
   }
 
-  const directLeadId = resolveDirectLaneLeadParticipantId(
+  const directLeadId = resolveDirectLaneRecipientId(
     dedupedAssignments,
-    leadParticipantId,
+    defaultRecipientId,
   );
   if (!directLeadId) {
     return [];

@@ -37,7 +37,7 @@ export function useAppShellRouting(options: {
   selectedChannelId: string | null;
   selectedChannelViewId: string | null;
   selectedChannelEntryLifecycle: ChatLifecycleState | null;
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   showingMyCatDirectLane: boolean;
   routeDirectLaneSummary: { id: string } | null;
   readySelectedChannel: SelectedChannelView | null;
@@ -52,7 +52,7 @@ export function useAppShellRouting(options: {
     selectedChannelId,
     selectedChannelViewId,
     selectedChannelEntryLifecycle,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     showingMyCatDirectLane,
     routeDirectLaneSummary,
     readySelectedChannel,
@@ -134,12 +134,12 @@ export function useAppShellRouting(options: {
   ]);
 
   useEffect(() => {
-    if (state.status !== 'ready' || !draftLeadCatId) {
+    if (state.status !== 'ready' || !draftDefaultRecipientCatId) {
       return;
     }
 
     const catExists = state.payload.chat.cats.some((cat) =>
-      cat.id === draftLeadCatId && cat.status === 'active');
+      cat.id === draftDefaultRecipientCatId && cat.status === 'active');
     if (!catExists) {
       navigate(
         showingMyCatDirectLane
@@ -148,18 +148,18 @@ export function useAppShellRouting(options: {
         { replace: true },
       );
     }
-  }, [draftLeadCatId, navigate, showingMyCatDirectLane, state]);
+  }, [draftDefaultRecipientCatId, navigate, showingMyCatDirectLane, state]);
 
   useEffect(() => {
     if (
       state.status !== 'ready'
       || !showingMyCatDirectLane
-      || !draftLeadCatId
+      || !draftDefaultRecipientCatId
       || !routeDirectLaneSummary
       || (
         readySelectedChannel
         && isDirectLaneChannel(readySelectedChannel)
-        && readySelectedChannel.roomRouting.leadParticipantId === draftLeadCatId
+        && readySelectedChannel.roomRouting.defaultRecipientId === draftDefaultRecipientCatId
       )
     ) {
       return;
@@ -179,7 +179,7 @@ export function useAppShellRouting(options: {
 
     return () => controller.abort();
   }, [
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     readySelectedChannel,
     routeDirectLaneSummary,
     setState,

@@ -204,7 +204,7 @@ test('memory substrate flushes companion and owner data into canonical records a
       },
       roomRouting: {
         mode: 'direct_cat_chat',
-        leadParticipantId: 'cat-memory',
+        defaultRecipientId: 'cat-memory',
         explicitParticipantIds: [],
         mentionParticipantIds: [],
         defaultTargetParticipantId: 'cat-memory',

@@ -64,7 +64,7 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onRemoveDraftTemporaryParticipant: () => {},
     onUpdateDraftTemporaryParticipant: () => {},
     autoResize: () => {},
-    draftLeadCatId: null,
+    draftDefaultRecipientCatId: null,
     onDraftLeadCatChange: () => {},
     draftHighlightedCatId: null,
     onHighlightDraftCat: () => {},
@@ -78,7 +78,7 @@ test('lead-scoped new chat draft renders cat-led copy instead of private chat co
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        draftLeadCatId: 'cat-lead',
+        draftDefaultRecipientCatId: 'cat-lead',
       })}
     />,
   );
@@ -244,7 +244,7 @@ test('direct-lane draft keeps private chat copy', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        draftLeadCatId: 'cat-lead',
+        draftDefaultRecipientCatId: 'cat-lead',
         allowAddCat: false,
       })}
     />,
@@ -260,7 +260,7 @@ test('draft uses externally supplied starter suggestions before static fallback 
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        draftLeadCatId: 'cat-lead',
+        draftDefaultRecipientCatId: 'cat-lead',
         starterSuggestions: [
           {
             id: 'guide-cat-start',

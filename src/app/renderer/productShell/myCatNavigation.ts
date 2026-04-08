@@ -2,7 +2,7 @@ import type { ParticipantSessionStatus, RoomRoutingMode } from '../../../shared/
 import { isDirectLaneSummary, type ProductChannelKind } from './channelTopology.js';
 
 type ChatChannelSummaryRef = {
-  leadCatId?: string | null;
+  defaultRecipientCatId?: string | null;
   channelKind?: ProductChannelKind | null;
   roomMode?: RoomRoutingMode | null;
 };
@@ -32,7 +32,7 @@ export function findDirectLaneForCat<TChannel extends ChatChannelSummaryRef>(
   catId: string,
 ): TChannel | null {
   return channels.find((channel) =>
-    channel.leadCatId === catId && isDirectLaneSummary(channel),
+    channel.defaultRecipientCatId === catId && isDirectLaneSummary(channel),
   ) ?? null;
 }
 

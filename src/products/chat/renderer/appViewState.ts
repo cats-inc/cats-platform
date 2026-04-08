@@ -30,16 +30,16 @@ function isDirectLaneSelectedForCat(
   }
 
   return isDirectConversationMode(resolveConversationMode(channel))
-    && channel.roomRouting.leadParticipantId === catId;
+    && channel.roomRouting.defaultRecipientId === catId;
 }
 
 export function deriveAppRouteState(input: {
   state: AppLoadState;
   routeChannelId: string | null;
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   showingMyCatDirectLane: boolean;
 }) {
-  const { draftLeadCatId, routeChannelId, showingMyCatDirectLane, state } = input;
+  const { draftDefaultRecipientCatId, routeChannelId, showingMyCatDirectLane, state } = input;
   const readyPayload = state.status === 'ready' ? state.payload : null;
   const readyChat = state.status === 'ready' ? state.payload.chat : null;
   const readySelectedChannel = normalizeSelectedChannelView(readyChat?.selectedChannel ?? null);
@@ -54,8 +54,8 @@ export function deriveAppRouteState(input: {
     ? readyChat?.channels.find((channel) => channel.id === routeChannelId)?.title ?? null
     : null;
   const routeDirectLaneSummary =
-    showingMyCatDirectLane && draftLeadCatId && readyChat
-      ? findDirectLaneForCat(readyChat.channels, draftLeadCatId)
+    showingMyCatDirectLane && draftDefaultRecipientCatId && readyChat
+      ? findDirectLaneForCat(readyChat.channels, draftDefaultRecipientCatId)
       : null;
   const selectedChannel = routeChannelId
     && readySelectedChannel?.id === routeChannelId
@@ -63,8 +63,8 @@ export function deriveAppRouteState(input: {
     : null;
   const selectedDirectLane =
     showingMyCatDirectLane
-    && draftLeadCatId
-    && isDirectLaneSelectedForCat(readySelectedChannel, draftLeadCatId)
+    && draftDefaultRecipientCatId
+    && isDirectLaneSelectedForCat(readySelectedChannel, draftDefaultRecipientCatId)
       ? readySelectedChannel
       : null;
   const operatorRefreshKey = readyChat
@@ -97,7 +97,7 @@ export function deriveAppRouteState(input: {
 export function deriveAppViewState(input: {
   pathname: string;
   payload: AppShellPayload;
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   showingGenericNewChatDraft: boolean;
   selectedChannel: SelectedChannelView | null;
   selectedDirectLane: SelectedChannelView | null;
@@ -109,7 +109,7 @@ export function deriveAppViewState(input: {
   const {
     addCatOpen,
     draftCatIds,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     pathname,
     payload,
     routeDirectLaneSummary,
@@ -130,10 +130,10 @@ export function deriveAppViewState(input: {
   const selectedConversationMode = selectedChannel
     ? resolveConversationMode(selectedChannel)
     : null;
-  const activeMyCatId = draftLeadCatId
-    ? draftLeadCatId
+  const activeMyCatId = draftDefaultRecipientCatId
+    ? draftDefaultRecipientCatId
     : isDirectConversationMode(activeConversationMode)
-      ? activeChannelView?.roomRouting.leadParticipantId ?? null
+      ? activeChannelView?.roomRouting.defaultRecipientId ?? null
       : null;
   const activeAssignedCats =
     activeChannelView?.assignedCats.filter((cat) => cat.status === 'active') ?? [];

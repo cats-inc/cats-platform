@@ -36,7 +36,7 @@ export function shouldConnectLiveIndicatorStream(
 export function resolveLiveIndicatorSpeakerLabel(
   selectedChannel: SelectedChannelView | null,
 ): string | null {
-  if (!selectedChannel || selectedChannel.roomRouting.leadParticipantId) {
+  if (!selectedChannel || selectedChannel.roomRouting.defaultRecipientId) {
     return null;
   }
 
@@ -61,7 +61,7 @@ export function useLiveIndicator(options: {
   const sourceRef = useRef<EventSource | null>(null);
   const stateRef = useRef<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
 
-  const leadCatId = selectedChannel?.roomRouting.leadParticipantId ?? null;
+  const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
 
   useEffect(() => {
     stateRef.current = state;
@@ -175,7 +175,7 @@ export function useLiveIndicator(options: {
       return undefined;
     }
 
-    const workingCatId = leadCatId;
+    const workingCatId = defaultRecipientCatId;
     const speakerLabel = workingCatId
       ? null
       : resolveLiveIndicatorSpeakerLabel(selectedChannel);
@@ -200,7 +200,7 @@ export function useLiveIndicator(options: {
       clearReconnectTimer();
       closeSource();
     };
-  }, [channelId, busy, leadCatId]);
+  }, [channelId, busy, defaultRecipientCatId]);
 
   return state;
 }

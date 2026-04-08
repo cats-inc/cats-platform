@@ -211,7 +211,7 @@ export function buildNewChatChannelInput(options: {
   body: string;
   existingCount: number;
   repoPath?: string | null;
-  leadCatId?: string | null;
+  defaultRecipientCatId?: string | null;
   participantCatIds?: string[];
   draftModel?: {
     provider: string;
@@ -224,11 +224,11 @@ export function buildNewChatChannelInput(options: {
     body,
     existingCount,
     repoPath,
-    leadCatId,
+    defaultRecipientCatId,
     participantCatIds = [],
     draftModel,
   } = options;
-  const normalizedLeadCatId = leadCatId?.trim() || null;
+  const normalizedLeadCatId = defaultRecipientCatId?.trim() || null;
   const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount),
@@ -240,7 +240,7 @@ export function buildNewChatChannelInput(options: {
   if (normalizedLeadCatId) {
     return {
       ...baseInput,
-      leadParticipantId: normalizedLeadCatId,
+      defaultRecipientId: normalizedLeadCatId,
       participantCatIds: [normalizedLeadCatId, ...normalizedParticipantCatIds],
     };
   }
@@ -346,7 +346,7 @@ export function createOptimisticUserMessage(
 export function createOptimisticDraftPayload(
   payload: AppShellPayload,
   body: string,
-  leadCatId?: string | null,
+  defaultRecipientCatId?: string | null,
   options: {
     composerMode?: 'solo' | 'cat_led';
     pendingProvider?: string | null;
@@ -360,7 +360,7 @@ export function createOptimisticDraftPayload(
   const title = createDraftChannelTitle(body, payload.chat.channels.length);
   const topic = createDraftChannelTopic(body);
   const message = createOptimisticUserMessage(channelId, body, payload.ownerDisplayName, createdAt);
-  const composerMode = options.composerMode ?? (leadCatId ? 'cat_led' : 'solo');
+  const composerMode = options.composerMode ?? (defaultRecipientCatId ? 'cat_led' : 'solo');
   const channelSummary: ChatChannelSummary = {
     id: channelId,
     title,
@@ -377,8 +377,8 @@ export function createOptimisticDraftPayload(
     pendingProvider: options.pendingProvider ?? null,
     pendingModel: options.pendingModel ?? null,
     pendingModelSelection: options.pendingModelSelection ?? null,
-    ...(leadCatId ? {
-      leadCatId,
+    ...(defaultRecipientCatId ? {
+      defaultRecipientCatId,
     } : {}),
   };
   const selectedChannel = normalizeSelectedChannelView({
@@ -501,7 +501,7 @@ export function insertCreatedChannelIntoPayload(
   }
 
   const next = structuredClone(payload);
-  const leadCatId = normalizedChannel.roomRouting.leadParticipantId ?? null;
+  const defaultRecipientCatId = normalizedChannel.roomRouting.defaultRecipientId ?? null;
   const workflowStatus = normalizedChannel.roomRouting.workflow.activeTurn?.status
     ?? normalizedChannel.roomRouting.workflow.lastOutcomeEvent?.status
     ?? null;
@@ -532,7 +532,7 @@ export function insertCreatedChannelIntoPayload(
     pendingProvider: normalizedChannel.pendingProvider,
     pendingModel: normalizedChannel.pendingModel,
     pendingModelSelection: normalizedChannel.pendingModelSelection ?? null,
-    leadCatId,
+    defaultRecipientCatId,
     roomMode: normalizedChannel.roomRouting.mode,
     routingStatus: routingStatus ?? undefined,
     lastRoutingAt,

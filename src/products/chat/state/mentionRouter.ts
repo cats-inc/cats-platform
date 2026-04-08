@@ -97,14 +97,14 @@ function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
 function buildDirectLeadParticipantRef(
   state: ChatState,
   channel: ChatChannelView,
-  leadParticipantId: string,
+  defaultRecipientId: string,
 ): RoomRoutingParticipantRef {
-  const leadParticipantName = findAssignedParticipant(channel, leadParticipantId)?.name
-    ?? state.cats.find((cat) => cat.id === leadParticipantId)?.name
+  const leadParticipantName = findAssignedParticipant(channel, defaultRecipientId)?.name
+    ?? state.cats.find((cat) => cat.id === defaultRecipientId)?.name
     ?? 'Direct Cat';
   return {
     participantKind: 'cat',
-    participantId: leadParticipantId,
+    participantId: defaultRecipientId,
     participantName: leadParticipantName,
   };
 }
@@ -119,56 +119,56 @@ export function resolveRoomDefaultRoutingTarget(
   const routing = channel.roomRouting ?? null;
   const activeParticipants = activeAssignedParticipants(channel);
 
-  if (isDirectLaneChannel(channel) && routing?.leadParticipantId) {
+  if (isDirectLaneChannel(channel) && routing?.defaultRecipientId) {
     const leadCat = activeParticipants
-      .find((participant) => participant.participantId === routing.leadParticipantId);
+      .find((participant) => participant.participantId === routing.defaultRecipientId);
     if (leadCat) {
       const target = buildCatTarget(leadCat);
       return {
         participant: toParticipantRef(target),
         target,
-        defaultTargetReason: 'direct_chat_lead',
+        defaultTargetReason: 'direct_chat_recipient',
         blockedReason: null,
         note: null,
       };
     }
 
     return {
-      participant: buildDirectLeadParticipantRef(state, channel, routing.leadParticipantId),
+      participant: buildDirectLeadParticipantRef(state, channel, routing.defaultRecipientId),
       target: null,
-      defaultTargetReason: 'direct_chat_lead',
-      blockedReason: 'missing_direct_chat_lead',
+      defaultTargetReason: 'direct_chat_recipient',
+      blockedReason: 'missing_direct_chat_recipient',
       note: 'This direct chat no longer has an active lead Cat. Re-add the Cat or mention another participant explicitly.',
     };
   }
 
-  if (channel.composerMode === 'cat_led' && routing?.leadParticipantId) {
+  if (channel.composerMode === 'cat_led' && routing?.defaultRecipientId) {
     const leadCat = activeParticipants
-      .find((participant) => participant.participantId === routing.leadParticipantId);
+      .find((participant) => participant.participantId === routing.defaultRecipientId);
     if (leadCat) {
       const target = buildCatTarget(leadCat);
       return {
         participant: toParticipantRef(target),
         target,
-        defaultTargetReason: 'cat_led_lead',
+        defaultTargetReason: 'cat_led_recipient',
         blockedReason: null,
         note: null,
       };
     }
 
     const leadCatName = activeParticipants
-      .find((participant) => participant.participantId === routing.leadParticipantId)?.name
-      ?? state.cats.find((cat) => cat.id === routing.leadParticipantId)?.name
+      .find((participant) => participant.participantId === routing.defaultRecipientId)?.name
+      ?? state.cats.find((cat) => cat.id === routing.defaultRecipientId)?.name
       ?? 'Lead Participant';
     return {
       participant: {
         participantKind: 'cat',
-        participantId: routing.leadParticipantId,
+        participantId: routing.defaultRecipientId,
         participantName: leadCatName,
       },
       target: null,
-      defaultTargetReason: 'cat_led_lead',
-      blockedReason: 'missing_cat_led_lead',
+      defaultTargetReason: 'cat_led_recipient',
+      blockedReason: 'missing_cat_led_recipient',
       note: 'This chat no longer has an active lead Cat. Re-add the Cat or pick another lead before continuing.',
     };
   }

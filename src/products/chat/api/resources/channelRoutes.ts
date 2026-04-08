@@ -94,12 +94,12 @@ function logBackgroundDispatchPersistenceError(
 function resolveChannelStreamSessionId(
   channel: ReturnType<typeof requireChannel>,
 ): string | null {
-  const leadParticipantId = channel.roomRouting?.leadParticipantId ?? null;
+  const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
   if (isDirectLaneChannel(channel)) {
-    if (!leadParticipantId) {
+    if (!defaultRecipientId) {
       return null;
     }
-    const leadSessionId = resolveParticipantSessionId(channel, leadParticipantId, {
+    const leadSessionId = resolveParticipantSessionId(channel, defaultRecipientId, {
       statuses: ['ready', 'initializing'],
     });
     if (leadSessionId) {
@@ -108,8 +108,8 @@ function resolveChannelStreamSessionId(
     return null;
   }
 
-  if (leadParticipantId) {
-    const leadSessionId = resolveParticipantSessionId(channel, leadParticipantId, {
+  if (defaultRecipientId) {
+    const leadSessionId = resolveParticipantSessionId(channel, defaultRecipientId, {
       statuses: ['ready', 'initializing'],
     });
     if (leadSessionId) {

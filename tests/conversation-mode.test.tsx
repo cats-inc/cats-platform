@@ -46,7 +46,7 @@ function createChannel(
     messages: [],
     roomRouting: {
       mode: 'boss_chat',
-      leadParticipantId: null,
+      defaultRecipientId: null,
       lastOutcome: null,
       lastCheckpoint: null,
       lastWakeRequest: null,
@@ -75,7 +75,7 @@ test('resolveConversationMode keeps direct lanes topology-first even when room m
     roomRouting: {
       ...createChannel().roomRouting!,
       mode: 'boss_chat',
-      leadParticipantId: 'cat-1',
+      defaultRecipientId: 'cat-1',
     },
     assignedCats: [{
       catId: 'cat-1',

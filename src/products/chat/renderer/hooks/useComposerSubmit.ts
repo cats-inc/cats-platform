@@ -63,7 +63,7 @@ function isDirectLaneSelectedForCat(
   }
 
   return isDirectLaneChannel(channel)
-    && channel.roomRouting.leadParticipantId === catId;
+    && channel.roomRouting.defaultRecipientId === catId;
 }
 
 function isChannelDispatchRunning(
@@ -108,7 +108,7 @@ export function useComposerSubmit(options: {
   showingNewChatDraft: boolean;
   showingMyCatDirectLane: boolean;
   draftEntryKind: 'solo' | 'group' | 'direct';
-  draftLeadCatId: string | null;
+  draftDefaultRecipientCatId: string | null;
   draftParticipantCatIds: string[];
   draftTemporaryParticipants: DraftTemporaryParticipant[];
   draftCwd: string | null;
@@ -143,7 +143,7 @@ export function useComposerSubmit(options: {
     showingNewChatDraft,
     showingMyCatDirectLane,
     draftEntryKind,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     draftParticipantCatIds,
     draftTemporaryParticipants,
     draftCwd,
@@ -283,11 +283,11 @@ export function useComposerSubmit(options: {
     const wasDraftingNewChat = showingNewChatDraft;
     const initialSelectedChannel = normalizeSelectedChannelView(initialPayload.chat.selectedChannel ?? null);
     const draftRoute = resolveDraftRouteContext({
-      draftLeadCatId,
+      draftDefaultRecipientCatId,
       showingMyCatDirectLane,
     });
     const isCatScopedLaneRoute = draftRoute.isDirectLaneRoute;
-    const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftLeadCatId)
+    const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftDefaultRecipientCatId)
       ? initialSelectedChannel
       : null;
     let payload = initialPayload;
@@ -441,7 +441,7 @@ export function useComposerSubmit(options: {
             existingCount: initialPayload.chat.channels.length,
             entryKind: 'direct',
             repoPath: draftCwd,
-            leadCatId: draftLeadCatId,
+            defaultRecipientCatId: draftDefaultRecipientCatId,
             participantCatIds: draftParticipantCatIds,
             temporaryParticipants: draftTemporaryParticipants,
           }), ackController.signal);
@@ -468,7 +468,7 @@ export function useComposerSubmit(options: {
           existingCount: initialPayload.chat.channels.length,
           entryKind: draftEntryKind,
           repoPath: draftCwd,
-          leadCatId: draftLeadCatId,
+          defaultRecipientCatId: draftDefaultRecipientCatId,
           participantCatIds: draftParticipantCatIds,
           temporaryParticipants: draftTemporaryParticipants,
           draftModel,
@@ -625,7 +625,7 @@ export function useComposerSubmit(options: {
     draftCwd,
     draftFiles,
     draftEntryKind,
-    draftLeadCatId,
+    draftDefaultRecipientCatId,
     draftModel.instance,
     draftModel.modelSelection,
     draftModel.model,

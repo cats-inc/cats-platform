@@ -142,7 +142,7 @@ test('POST /api/channels/:id/cancel stops an in-flight group room dispatch', asy
       topic: 'Verify stop during an active group dispatch.',
       entryKind: 'group',
       skipBossCatGreeting: true,
-      leadParticipantId: 'participant-inline',
+      defaultRecipientId: 'participant-inline',
       temporaryParticipants: [
         {
           participantId: 'participant-inline',

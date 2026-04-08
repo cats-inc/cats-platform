@@ -64,7 +64,7 @@ test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', ()
     pendingInstance: 'cli/native',
     pendingModel: 'gemini-3.1-pro',
     roomRouting: {
-      leadParticipantId: null,
+      defaultRecipientId: null,
     },
   } as never);
 
@@ -78,7 +78,7 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for cat-led chats', () => {
     pendingInstance: 'cli/native',
     pendingModel: 'gemini-3.1-pro',
     roomRouting: {
-      leadParticipantId: null,
+      defaultRecipientId: null,
     },
   } as never), null);
 
@@ -88,7 +88,7 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for cat-led chats', () => {
     pendingInstance: 'cli/native',
     pendingModel: 'gemini-3.1-pro',
     roomRouting: {
-      leadParticipantId: 'cat-1',
+      defaultRecipientId: 'cat-1',
     },
   } as never), null);
 });

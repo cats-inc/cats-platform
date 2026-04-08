@@ -110,37 +110,37 @@ export function isDirectLaneSummary(
   }) === 'direct_lane';
 }
 
-export function resolveDirectLaneLeadParticipantId(
+export function resolveDirectLaneRecipientId(
   assignments: readonly ChannelParticipantTopologyRef[],
-  leadParticipantId: string | null | undefined,
+  defaultRecipientId: string | null | undefined,
 ): string | null {
   const dedupedAssignments = dedupeChannelAssignments(assignments);
   if (
-    leadParticipantId
-    && dedupedAssignments.some((assignment) => assignment.catId === leadParticipantId)
+    defaultRecipientId
+    && dedupedAssignments.some((assignment) => assignment.catId === defaultRecipientId)
   ) {
-    return leadParticipantId;
+    return defaultRecipientId;
   }
 
   return dedupedAssignments.find((assignment) => assignment.status === 'active')?.catId
     ?? dedupedAssignments[0]?.catId
-    ?? leadParticipantId
+    ?? defaultRecipientId
     ?? null;
 }
 
 export function normalizeChannelAssignmentsForRoomMode(
   assignments: readonly ChannelParticipantTopologyRef[],
   roomMode: RoomRoutingMode,
-  leadParticipantId: string | null | undefined,
+  defaultRecipientId: string | null | undefined,
 ): ChannelParticipantTopologyRef[] {
   const dedupedAssignments = dedupeChannelAssignments(assignments);
   if (roomMode !== 'direct_cat_chat') {
     return dedupedAssignments;
   }
 
-  const directLeadId = resolveDirectLaneLeadParticipantId(
+  const directLeadId = resolveDirectLaneRecipientId(
     dedupedAssignments,
-    leadParticipantId,
+    defaultRecipientId,
   );
   if (!directLeadId) {
     return [];

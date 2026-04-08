@@ -200,7 +200,7 @@ function buildSessionContextForTarget(
       channelTitle: channel.title,
       channelKind: channel.channelKind ?? 'boss_thread',
       roomMode: channel.roomRouting?.mode ?? 'boss_chat',
-      leadParticipantId: channel.roomRouting?.leadParticipantId ?? null,
+      defaultRecipientId: channel.roomRouting?.defaultRecipientId ?? null,
       transport: resolvedTransport,
       targetKind: target.participantKind,
       targetId: target.participantId,

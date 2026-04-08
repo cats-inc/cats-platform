@@ -27,7 +27,7 @@ import {
   inferChannelKind,
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
-  resolveDirectLaneLeadParticipantId,
+  resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
@@ -49,12 +49,12 @@ import {
   findChannelIndex,
   inferChannelComposerMode,
   isoAt,
-  normalizeLeadParticipantId,
+  normalizeDefaultRecipientId,
   normalizeList,
   normalizeOptionalText,
   requireCat,
   requireChannel,
-  syncChannelLeadAndComposerMode,
+  syncChannelDefaultRecipientAndComposerMode,
   updateExecutionLease,
 } from './shared.js';
 import {
@@ -403,7 +403,7 @@ export function createChannel(
     title = singleCatName ? `${singleCatName} Direct Chat` : 'New chat';
   }
   title = title || 'New chat';
-  const requestedLeadParticipantId = normalizeLeadParticipantId(input.leadParticipantId);
+  const requestedLeadParticipantId = normalizeDefaultRecipientId(input.defaultRecipientId);
   const defaultLeadParticipantId = requestedLeadParticipantId
     ?? (
       requestedRoomMode === 'direct_cat_chat' && createdCats.length === 1
@@ -507,12 +507,12 @@ export function createChannel(
     messages: [],
     roomRouting: createDefaultRoomRoutingState({
       mode: requestedRoomMode,
-      leadParticipantId: defaultLeadParticipantId,
+      defaultRecipientId: defaultLeadParticipantId,
     }),
     workingMemory: createEmptyMemoryCheckpoint(),
   };
 
-  syncChannelLeadAndComposerMode(channel);
+  syncChannelDefaultRecipientAndComposerMode(channel);
   nextState.channels.unshift(channel);
   nextState.selectedChannelId = channelId;
 
@@ -554,7 +554,7 @@ export function assignCatToChannel(
   channel.catAssignments = normalizeChannelAssignmentsForRoomMode(
     channel.catAssignments,
     roomRouting.mode,
-    roomRouting.leadParticipantId,
+    roomRouting.defaultRecipientId,
   );
   channel.channelKind = resolveChannelKind({
     channelKind: channel.channelKind,
@@ -562,9 +562,9 @@ export function assignCatToChannel(
     participants: channel.catAssignments,
   });
   if (channel.channelKind === 'direct_lane') {
-    const directLeadCatId = resolveDirectLaneLeadParticipantId(
+    const directLeadCatId = resolveDirectLaneRecipientId(
       channel.catAssignments,
-      roomRouting.leadParticipantId,
+      roomRouting.defaultRecipientId,
     );
     if (directLeadCatId && directLeadCatId !== input.catId) {
       throw new Error('Direct lanes can only contain their lead cat');
@@ -598,7 +598,7 @@ export function assignCatToChannel(
       channel.status = 'configured';
     }
 
-    syncChannelLeadAndComposerMode(channel);
+    syncChannelDefaultRecipientAndComposerMode(channel);
 
     applyMessageToChannel(
       channel,
@@ -651,7 +651,7 @@ export function assignCatToChannel(
     existing.execution.lease.status = 'not_started';
   }
 
-  syncChannelLeadAndComposerMode(channel);
+  syncChannelDefaultRecipientAndComposerMode(channel);
 
   applyMessageToChannel(
     channel,
@@ -704,7 +704,7 @@ export function removeCatFromChannel(
     lastUsedAt: null,
   };
 
-  syncChannelLeadAndComposerMode(channel);
+  syncChannelDefaultRecipientAndComposerMode(channel);
 
   const cat = requireCat(nextState, catId);
   applyMessageToChannel(

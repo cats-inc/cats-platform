@@ -113,7 +113,7 @@ function createChannel(overrides: Record<string, unknown> = {}) {
     messages: [],
     roomRouting: {
       mode: 'boss_chat',
-      leadParticipantId: null,
+      defaultRecipientId: null,
       lastOutcome: null,
       lastCheckpoint: null,
       lastWakeRequest: null,
@@ -265,7 +265,7 @@ test('deriveAppViewState does not auto-insert Boss Cat for multi-participant roo
   const viewState = deriveAppViewState({
     pathname: '/chat/chats/channel-1',
     payload,
-    draftLeadCatId: null,
+    draftDefaultRecipientCatId: null,
     showingGenericNewChatDraft: false,
     selectedChannel: selectedChannel as never,
     selectedDirectLane: null,
@@ -371,7 +371,7 @@ test('deriveAppViewState still shows Boss Cat avatar for cat-led threads without
   const viewState = deriveAppViewState({
     pathname: '/chat/chats/channel-1',
     payload,
-    draftLeadCatId: null,
+    draftDefaultRecipientCatId: null,
     showingGenericNewChatDraft: false,
     selectedChannel: selectedChannel as never,
     selectedDirectLane: null,

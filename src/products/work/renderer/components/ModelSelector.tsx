@@ -55,7 +55,7 @@ export interface ModelSelectorPanelProps {
   bossCatId: string | null;
   selectedCatIds: string[];
   highlightedCatId: string | null;
-  leadCatId?: string | null;
+  defaultRecipientCatId?: string | null;
   onToggleCat?: (catId: string) => void;
   onHighlightCat?: (catId: string) => void;
   modelValue: ModelSelectorValue;
@@ -72,7 +72,7 @@ export function ModelSelectorPanel({
   highlightedCatId,
   onToggleCat,
   onHighlightCat,
-  leadCatId,
+  defaultRecipientCatId,
   modelValue,
   onModelChange,
   fieldsDisabled,
@@ -122,7 +122,7 @@ export function ModelSelectorPanel({
         bossCatId={bossCatId}
         selectedIds={selectedCatIds}
         highlightedId={highlightedCatId}
-        leadCatId={leadCatId}
+        defaultRecipientCatId={defaultRecipientCatId}
         toggleable={mode === 'draft'}
         showLeadBadge
         onToggle={onToggleCat ?? (() => {})}

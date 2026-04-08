@@ -426,7 +426,7 @@ async function handleGetCompanionSessionContext(
           topic: 'Companion hydration preview.',
           roomRouting: createDefaultRoomRoutingState({
             mode: 'direct_cat_chat',
-            leadParticipantId: cat.id,
+            defaultRecipientId: cat.id,
           }),
           workingMemory: undefined,
         };

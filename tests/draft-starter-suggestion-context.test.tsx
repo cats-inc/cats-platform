@@ -7,8 +7,8 @@ test('starter suggestion context marks direct lanes separately from cat-led draf
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: false,
-      draftLeadCatId: 'cat-lead',
-      hasLeadCat: true,
+      draftDefaultRecipientCatId: 'cat-lead',
+      hasDefaultRecipientCat: true,
       entryMode: 'default',
       participantCount: 1,
       parallelTargetCount: 0,
@@ -24,8 +24,8 @@ test('starter suggestion context marks direct lanes separately from cat-led draf
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: true,
-      draftLeadCatId: 'cat-lead',
-      hasLeadCat: true,
+      draftDefaultRecipientCatId: 'cat-lead',
+      hasDefaultRecipientCat: true,
       entryMode: 'default',
       participantCount: 1,
       parallelTargetCount: 0,
@@ -43,8 +43,8 @@ test('starter suggestion context keeps group and parallel routes distinct', () =
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: true,
-      draftLeadCatId: null,
-      hasLeadCat: true,
+      draftDefaultRecipientCatId: null,
+      hasDefaultRecipientCat: true,
       entryMode: 'group',
       participantCount: 2,
       parallelTargetCount: 0,
@@ -60,8 +60,8 @@ test('starter suggestion context keeps group and parallel routes distinct', () =
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: true,
-      draftLeadCatId: null,
-      hasLeadCat: false,
+      draftDefaultRecipientCatId: null,
+      hasDefaultRecipientCat: false,
       entryMode: 'default',
       participantCount: 0,
       parallelTargetCount: 2,
@@ -79,8 +79,8 @@ test('starter suggestion context falls back to solo when no cats are selected', 
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: true,
-      draftLeadCatId: null,
-      hasLeadCat: false,
+      draftDefaultRecipientCatId: null,
+      hasDefaultRecipientCat: false,
       entryMode: 'default',
       participantCount: 0,
       parallelTargetCount: 0,

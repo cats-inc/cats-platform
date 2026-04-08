@@ -244,7 +244,7 @@ test('clicking a My Cats entry with an existing hidden direct lane stays on the 
       id: 'direct-thread-1',
       title: 'Companion',
       channelKind: 'direct_lane',
-      leadCatId: 'companion-cat',
+      defaultRecipientCatId: 'companion-cat',
       roomMode: 'direct_cat_chat',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
@@ -269,7 +269,7 @@ test('My Cats lookup still finds direct lanes by channelKind when roomMode is le
       id: 'direct-thread-1',
       title: 'Companion',
       channelKind: 'direct_lane',
-      leadCatId: 'companion-cat',
+      defaultRecipientCatId: 'companion-cat',
       roomMode: 'boss_chat',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ];
@@ -284,7 +284,7 @@ test('direct_cat_chat channels are excluded from the Recents list', () => {
       id: 'direct-thread',
       title: 'Companion',
       channelKind: 'direct_lane',
-      leadCatId: 'companion-cat',
+      defaultRecipientCatId: 'companion-cat',
       roomMode: 'boss_chat',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
@@ -308,31 +308,31 @@ test('Cat with no existing direct lane shows no dot', () => {
   const channels: ChatChannelSummary[] = [];
   const lane = findDirectLaneForCat(channels, 'companion-cat');
   assert.equal(lane, null);
-  assert.equal(resolveMyCatStatusDot(lane?.leadParticipantLeaseStatus), 'no_dot');
+  assert.equal(resolveMyCatStatusDot(lane?.defaultRecipientLeaseStatus), 'no_dot');
 });
 
 test('Cat with direct lane + ready shows awake (green)', () => {
   const lane = createChannel({
-    id: 'dl-1', title: 'C', channelKind: 'direct_lane', leadCatId: 'companion-cat', roomMode: 'boss_chat',
-    leadParticipantLeaseStatus: 'ready',
+    id: 'dl-1', title: 'C', channelKind: 'direct_lane', defaultRecipientCatId: 'companion-cat', roomMode: 'boss_chat',
+    defaultRecipientLeaseStatus: 'ready',
   } as Partial<ChatChannelSummary> & { id: string; title: string });
-  assert.equal(resolveMyCatStatusDot(lane.leadParticipantLeaseStatus), 'awake');
+  assert.equal(resolveMyCatStatusDot(lane.defaultRecipientLeaseStatus), 'awake');
 });
 
 test('Cat with direct lane + initializing shows waking_up (yellow)', () => {
   const lane = createChannel({
-    id: 'dl-2', title: 'C', leadCatId: 'companion-cat', roomMode: 'direct_cat_chat',
-    leadParticipantLeaseStatus: 'initializing',
+    id: 'dl-2', title: 'C', defaultRecipientCatId: 'companion-cat', roomMode: 'direct_cat_chat',
+    defaultRecipientLeaseStatus: 'initializing',
   } as Partial<ChatChannelSummary> & { id: string; title: string });
-  assert.equal(resolveMyCatStatusDot(lane.leadParticipantLeaseStatus), 'waking_up');
+  assert.equal(resolveMyCatStatusDot(lane.defaultRecipientLeaseStatus), 'waking_up');
 });
 
 test('Cat with direct lane + not_started shows sleeping (gray)', () => {
   const lane = createChannel({
-    id: 'dl-3', title: 'C', leadCatId: 'companion-cat', roomMode: 'direct_cat_chat',
-    leadParticipantLeaseStatus: 'not_started',
+    id: 'dl-3', title: 'C', defaultRecipientCatId: 'companion-cat', roomMode: 'direct_cat_chat',
+    defaultRecipientLeaseStatus: 'not_started',
   } as Partial<ChatChannelSummary> & { id: string; title: string });
-  assert.equal(resolveMyCatStatusDot(lane.leadParticipantLeaseStatus), 'sleeping');
+  assert.equal(resolveMyCatStatusDot(lane.defaultRecipientLeaseStatus), 'sleeping');
 });
 
 test('Cat with direct lane + closed shows sleeping (gray)', () => {
@@ -349,11 +349,11 @@ test('Cat with direct lane + error shows error (red)', () => {
 
 test('Cat active in non-direct room only does not affect My Cats dot', () => {
   const channels = [
-    createChannel({ id: 'boss-room', title: 'Work', leadCatId: 'companion-cat' }),
+    createChannel({ id: 'boss-room', title: 'Work', defaultRecipientCatId: 'companion-cat' }),
   ];
   const lane = findDirectLaneForCat(channels, 'companion-cat');
   assert.equal(lane, null, 'boss_chat room should not be found as direct lane');
-  assert.equal(resolveMyCatStatusDot(lane?.leadParticipantLeaseStatus), 'no_dot');
+  assert.equal(resolveMyCatStatusDot(lane?.defaultRecipientLeaseStatus), 'no_dot');
 });
 
 test('clicking My Cats row still preserves existing navigation behavior with status dots', () => {
@@ -361,9 +361,9 @@ test('clicking My Cats row still preserves existing navigation behavior with sta
     createChannel({
       id: 'direct-thread-1',
       title: 'Companion',
-      leadCatId: 'companion-cat',
+      defaultRecipientCatId: 'companion-cat',
       roomMode: 'direct_cat_chat',
-      leadParticipantLeaseStatus: 'ready',
+      defaultRecipientLeaseStatus: 'ready',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
   const actions: Array<{ kind: 'navigate'; path: string }> = [];
@@ -445,8 +445,8 @@ test('changing selected chat does not affect footer runtime dot', () => {
 test('My Cats status dots and footer runtime dot coexist', () => {
   const payload = createPayload(
     [createChannel({
-      id: 'dl-1', title: 'Companion', leadCatId: 'companion-cat',
-      roomMode: 'direct_cat_chat', leadParticipantLeaseStatus: 'ready',
+      id: 'dl-1', title: 'Companion', defaultRecipientCatId: 'companion-cat',
+      roomMode: 'direct_cat_chat', defaultRecipientLeaseStatus: 'ready',
     } as Partial<ChatChannelSummary> & { id: string; title: string })],
     createRuntime(true, 'ok'),
   );

@@ -31,15 +31,15 @@ export function createChatTelegramRoomBridge(input: {
         return null;
       }
 
-      const leadCatId = room.leadParticipantId
+      const defaultRecipientCatId = room.defaultRecipientId
         ?? (room.participantCatIds.length === 1 ? room.participantCatIds[0] : null);
-      if (!leadCatId) {
+      if (!defaultRecipientCatId) {
         return null;
       }
 
       return state.channels.find((channel) =>
         channel.roomRouting?.mode === 'direct_cat_chat'
-        && channel.roomRouting.leadParticipantId === leadCatId,
+        && channel.roomRouting.defaultRecipientId === defaultRecipientCatId,
       )?.id ?? null;
     },
     createRoom(state, room, timestamp) {
@@ -49,7 +49,7 @@ export function createChatTelegramRoomBridge(input: {
           title: room.title,
           topic: room.topic,
           roomMode: room.roomMode,
-          leadParticipantId: room.leadParticipantId,
+          defaultRecipientId: room.defaultRecipientId,
           participantCatIds: room.participantCatIds,
           skipBossCatGreeting: true,
         },
