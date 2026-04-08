@@ -51,35 +51,35 @@ This plan intentionally avoids `PLAN-042` and uses `PLAN-043`.
 
 ### Phase 1: Unify Visible Runtime Status
 
-- [ ] Task 1.1: Extract or centralize the runtime lamp state mapping now copied
+- [x] Task 1.1: Extract or centralize the runtime lamp state mapping now copied
       across Lobby, Chat, Work, and Code.
-- [ ] Task 1.2: Apply one shared tooltip copy model to the sidebar avatar lamps
+- [x] Task 1.2: Apply one shared tooltip copy model to the sidebar avatar lamps
       and Lobby avatar lamp.
-- [ ] Task 1.3: Ensure the shared account-avatar component can consume that
+- [x] Task 1.3: Ensure the shared account-avatar component can consume that
       shared runtime presentation model.
-- [ ] Task 1.4: Add targeted tests for status mapping and tooltip copy.
+- [x] Task 1.4: Add targeted tests for status mapping and tooltip copy.
 
 **Deliverables**: one consistent runtime lamp behavior across post-setup
 surfaces
 
 ### Phase 2: Add the Recovery Menu Entry
 
-- [ ] Task 2.1: Extend the shared `AccountIdentityMenu` with one new neutral,
+- [x] Task 2.1: Extend the shared `AccountIdentityMenu` with one new neutral,
       always-visible recovery item while keeping the existing `Cats Runtime`
       item.
-- [ ] Task 2.2: Freeze the new entry label as a working copy only. `Environment`
+- [x] Task 2.2: Freeze the new entry label as a working copy only. `Environment`
       is acceptable for the first slice, but should not be treated as
       permanently ratified product wording yet.
-- [ ] Task 2.3: Implement the runtime-owned/default portion of the first-slice
+- [x] Task 2.3: Implement the runtime-owned/default portion of the first-slice
       routing rule for the new recovery item:
       Cats Runtime setup when runtime needs setup/remediation, otherwise
       Cats Runtime dashboard/root as the default safe destination.
-- [ ] Task 2.4: Keep the recovery-entry action-selection seam ready for Phase 3
+- [x] Task 2.4: Keep the recovery-entry action-selection seam ready for Phase 3
       to prepend the optional desktop packaged setup/resume branch when host
       state makes it relevant.
-- [ ] Task 2.5: Ensure the new entry is reachable from Lobby and all product
+- [x] Task 2.5: Ensure the new entry is reachable from Lobby and all product
       sidebars through the shared menu.
-- [ ] Task 2.6: Add targeted tests for menu contents and recovery-entry
+- [x] Task 2.6: Add targeted tests for menu contents and recovery-entry
       behavior.
 
 **Deliverables**: a shallow in-product recovery entry no longer buried in
@@ -88,15 +88,15 @@ runtime-owned default routing path before desktop-specific repair is added
 
 ### Phase 3: Connect Desktop Repair Only When Relevant
 
-- [ ] Task 3.1: Reuse the existing desktop host bridge only for the minimum
+- [x] Task 3.1: Reuse the existing desktop host bridge only for the minimum
       recovery-entry needs:
       current desktop host/setup state and packaged-setup entry/resume actions.
-- [ ] Task 3.2: Add the desktop-specific highest-priority routing branch to the
+- [x] Task 3.2: Add the desktop-specific highest-priority routing branch to the
       first-slice rule:
       packaged setup/resume when host state explicitly marks it as relevant.
-- [ ] Task 3.3: Preserve graceful degradation when the desktop host bridge is
+- [x] Task 3.3: Preserve graceful degradation when the desktop host bridge is
       unavailable.
-- [ ] Task 3.4: Add targeted tests for desktop vs non-desktop recovery-entry
+- [x] Task 3.4: Add targeted tests for desktop vs non-desktop recovery-entry
       behavior.
 
 **Deliverables**: desktop packaged setup becomes an available repair lane,
@@ -186,6 +186,7 @@ phase-2 usability shows it is actually needed
 | Date | Update |
 |------|--------|
 | 2026-04-08 | Plan created as `PLAN-043` to avoid collision with the separately active `PLAN-042` workstream |
+| 2026-04-08 | Phases 1-3 implemented: shared runtime status model (`runtimeStatusPresentation.ts`), Environment menu entry in `AccountIdentityMenu`, desktop recovery bridge (`desktopRecoveryBridge.ts`, `environmentRecoveryAction.ts`), bootstrap page visual refresh aligned with platform design tokens |
 
 ---
 
