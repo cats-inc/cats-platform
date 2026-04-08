@@ -515,7 +515,6 @@ export function NewChatDraft({
                     const canRemove = allParticipants.length > 2;
                     const rendered = [...allParticipants].reverse();
                     return rendered.map((participant, index) => {
-                      const isLead = index === rendered.length - 1;
                       const isBoss = participant.isCat && participant.catId === payload.chat.bossCatId;
                       return (
                         <div
@@ -535,7 +534,6 @@ export function NewChatDraft({
                           }}
                         >
                           {participant.avatarUrl ? null : catInitials(participant.name)}
-                          {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                           {canRemove && !isSubmittingFirstTurn ? (
                             <button
                               type="button"

@@ -31,7 +31,6 @@ export function ComposerCatStack({
     >
       {rendered.map((cat, index) => {
         const isBoss = cat.id === bossCatId;
-        const isLead = index === rendered.length - 1;
         return (
           <div
             key={cat.id}
@@ -45,7 +44,6 @@ export function ComposerCatStack({
             }}
           >
             {cat.avatarUrl ? null : catInitials(cat.name)}
-            {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
           </div>
         );
       })}

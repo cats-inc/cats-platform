@@ -44,7 +44,6 @@ export function ComposerCatStack({
             }}
           >
             {cat.avatarUrl ? null : catInitials(cat.name)}
-            {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
           </div>
         );
       })}
