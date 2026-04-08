@@ -46,6 +46,7 @@ import {
   unarchiveCat,
   setChannelCatLease,
   setChannelChatCwd,
+  updateChannelParticipantProfile,
   setChannelStatus,
   ungroupConcurrentGroup,
 } from '../state/model/index.js';
@@ -876,6 +877,26 @@ export async function persistRenamedChannel(
 ): Promise<ChatState> {
   const currentState = await context.dependencies.chatStore.read();
   const nextState = renameChannel(currentState, channelId, title, nowFrom(context.dependencies));
+  return context.dependencies.chatStore.write(nextState);
+}
+
+export async function persistUpdatedChannelParticipant(
+  context: ChatApiRouteContext,
+  channelId: string,
+  participantId: string,
+  input: {
+    name?: string | null;
+    roleHint?: string | null;
+  },
+): Promise<ChatState> {
+  const currentState = await context.dependencies.chatStore.read();
+  const nextState = updateChannelParticipantProfile(
+    currentState,
+    channelId,
+    participantId,
+    input,
+    nowFrom(context.dependencies),
+  );
   return context.dependencies.chatStore.write(nextState);
 }
 

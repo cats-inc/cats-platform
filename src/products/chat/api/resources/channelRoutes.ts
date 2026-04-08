@@ -31,6 +31,7 @@ import type {
   CreateChatChannelInput,
   SendChannelMessageInput,
   UpdateChannelInput,
+  UpdateChannelParticipantInput,
 } from '../contracts.js';
 import {
   persistAttachmentsForChannels,
@@ -49,6 +50,7 @@ import {
   persistCreatedChannel,
   persistDeletedChannel,
   persistRenamedChannel,
+  persistUpdatedChannelParticipant,
   requireValidChatScopeId,
   sendChannelExport,
   sendRestError,
@@ -272,6 +274,36 @@ async function handleRestPatchChannel(
       sendJson(context.response, 200, {
         channel: toChannelSummary(requireChannel(persisted, channelId)),
       });
+    });
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleRestPatchChannelParticipant(
+  context: ChatApiRouteContext,
+  chatScopeId: string,
+  channelId: string,
+  participantId: string,
+): Promise<void> {
+  try {
+    requireValidChatScopeId(chatScopeId);
+    const body = await readJsonBody<UpdateChannelParticipantInput>(context.request);
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      if (body.name === undefined && body.roleHint === undefined) {
+        sendJson(context.response, 400, {
+          error: 'participant_update_required',
+          message: 'At least one participant field must be updated.',
+        });
+        return;
+      }
+
+      await persistUpdatedChannelParticipant(context, channelId, participantId, {
+        name: body.name,
+        roleHint: body.roleHint,
+      });
+      sendJson(context.response, 200, { updated: true, channelId, participantId });
+      publishChannelMutationEvents(context, channelId);
     });
   } catch (error) {
     handleRestError(context, error);
@@ -952,6 +984,24 @@ export async function routeChatChannelResourceApi(
       context,
       DEFAULT_CHAT_SCOPE_ID,
       canonicalChannelExportMatch[0]!,
+    );
+    return true;
+  }
+
+  const canonicalChannelParticipantMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/participants\/([^/]+)$/u,
+  );
+  if (canonicalChannelParticipantMatch) {
+    if (context.method !== 'PATCH') {
+      sendMethodNotAllowed(context.response, ['PATCH']);
+      return true;
+    }
+    await handleRestPatchChannelParticipant(
+      context,
+      DEFAULT_CHAT_SCOPE_ID,
+      canonicalChannelParticipantMatch[0]!,
+      canonicalChannelParticipantMatch[1]!,
     );
     return true;
   }

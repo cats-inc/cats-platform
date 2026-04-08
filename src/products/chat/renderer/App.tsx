@@ -34,6 +34,7 @@ import { sameProviderModelSelection } from '../../../shared/providerSelection';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import {
   BootShell,
+  createDraftTemporaryParticipant,
   pickGreeting,
   createInitialGroupParticipants,
   type DraftTemporaryParticipant,
@@ -64,6 +65,7 @@ import {
   fetchAppShell,
   relayConcurrentChatMessage,
   updateCatProfile,
+  updateChannelParticipantApi,
   updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
 } from './api';
@@ -299,20 +301,45 @@ export default function App() {
       if (draftParticipants.participantCatIds.length + prev.length >= maxDraftGroupParticipants) {
         return prev;
       }
+      const takenNames = [
+        ...draftParticipants.participantCatIds.map((catId) =>
+          (state.status === 'ready'
+            ? state.payload.chat.cats.find((cat) => cat.id === catId)?.name
+            : null) ?? ''),
+        ...prev.map((candidate) => candidate.name),
+      ].filter((name) => name.trim().length > 0);
       return [
         ...prev,
-        {
+        createDraftTemporaryParticipant({
           ...participant,
-          participantId: participant.participantId?.trim()
-            || window.crypto.randomUUID(),
-        },
+          takenNames,
+          randomUUID: () => window.crypto.randomUUID(),
+        }),
       ];
     });
-  }, [draftParticipants.participantCatIds.length, maxDraftGroupParticipants]);
+  }, [draftParticipants.participantCatIds, maxDraftGroupParticipants, state]);
 
   const onRemoveDraftTemporaryParticipant = useCallback((participantId: string) => {
     setDraftTemporaryParticipants((prev) =>
       prev.filter((participant) => participant.participantId !== participantId));
+  }, []);
+
+  const onUpdateDraftTemporaryParticipant = useCallback((
+    participantId: string,
+    input: { name?: string | null; roleHint?: string | null },
+  ) => {
+    setDraftTemporaryParticipants((prev) =>
+      prev.map((participant) =>
+        participant.participantId === participantId
+          ? {
+              ...participant,
+              ...(input.name !== undefined ? { name: input.name?.trim() || participant.name } : {}),
+              ...(input.roleHint !== undefined
+                ? { roleHint: input.roleHint?.trim() || undefined }
+                : {}),
+            }
+          : participant),
+    );
   }, []);
 
   const onDirectLaneModelSave = useCallback(async (catId: string, value: ModelSelectorValue) => {
@@ -328,6 +355,25 @@ export default function App() {
       // Silent fail — the panel shows current state from payload
     }
   }, [setState]);
+
+  const onUpdateChannelParticipant = useCallback(async (
+    channelId: string,
+    participantId: string,
+    input: { name?: string; roleHint?: string | null },
+  ) => {
+    setBusy(`channel:participant:update:${participantId}`);
+    try {
+      const payload = await updateChannelParticipantApi(channelId, participantId, input);
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setFeedback('');
+      });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Failed to update participant.');
+    } finally {
+      setBusy('');
+    }
+  }, [setBusy, setFeedback, setState]);
 
   const onDraftCatModelOverride = useCallback((catId: string, value: ModelSelectorValue) => {
     setDraftCatModelOverrides((prev) => {
@@ -1107,6 +1153,10 @@ export default function App() {
               onCompareSendScopeChange: setCompareSendScope,
               onRelayMessage: onRelayCompareMessage,
               liveIndicator,
+              onUpdateChannelParticipant: visibleChatChannelId
+                ? (participantId, input) =>
+                  onUpdateChannelParticipant(visibleChatChannelId, participantId, input)
+                : undefined,
             }}
             draftSurfaceProps={{
               composerDraft,
@@ -1132,6 +1182,7 @@ export default function App() {
               onToggleDraftCat: onToggleDraftCat,
               onAddDraftTemporaryParticipant: onAddDraftTemporaryParticipant,
               onRemoveDraftTemporaryParticipant: onRemoveDraftTemporaryParticipant,
+              onUpdateDraftTemporaryParticipant: onUpdateDraftTemporaryParticipant,
               autoResize,
               draftLeadCatId,
               entryMode: newChatMode,

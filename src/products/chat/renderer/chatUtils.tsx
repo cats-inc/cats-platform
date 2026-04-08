@@ -17,7 +17,6 @@ import {
   PRODUCT_PROVIDER_ORDER,
   getDefaultModel,
   getDefaultProviderInstance,
-  getProviderDisplayName,
 } from '../../../shared/providerCatalog.js';
 import {
   normalizeSelectedChannelView,
@@ -27,6 +26,10 @@ import {
   activeAssignedParticipants,
   resolveAssignedParticipants,
 } from '../shared/channelParticipants';
+import {
+  buildAutoTemporaryParticipantName,
+  resolveTemporaryParticipantName,
+} from '../shared/participantNaming';
 
 export type Surface = 'chats' | 'settings';
 
@@ -60,14 +63,19 @@ export function createInitialGroupParticipants(
     ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== baseProvider),
   ].slice(0, targetCount);
 
-  return providerSequence.map((provider) => ({
-    participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
-    name: getProviderDisplayName(provider),
-    provider,
-    instance: getDefaultProviderInstance(provider) ?? undefined,
-    model: getDefaultModel(provider) || undefined,
-    modelSelection: null,
-  }));
+  const takenNames: string[] = [];
+  return providerSequence.map((provider) => {
+    const name = buildAutoTemporaryParticipantName(provider, takenNames);
+    takenNames.push(name);
+    return {
+      participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
+      name,
+      provider,
+      instance: getDefaultProviderInstance(provider) ?? undefined,
+      model: getDefaultModel(provider) || undefined,
+      modelSelection: null,
+    };
+  });
 }
 
 export function resolveGenericDraftTemporaryParticipants(
@@ -415,6 +423,42 @@ export function createDraftTemporaryParticipantFromAssistantPreset(
     model: assistantPreset.executionTarget.model ?? undefined,
     modelSelection: assistantPreset.modelSelection ?? null,
     roleHint: assistantPreset.roleHint ?? undefined,
+  };
+}
+
+export function createDraftTemporaryParticipant(options: {
+  participantId?: string | null;
+  name?: string | null;
+  provider: string;
+  instance?: string | null;
+  model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
+  roleHint?: string | null;
+  presetId?: string | null;
+  takenNames?: ReadonlyArray<string>;
+  randomUUID?: () => string;
+}): DraftTemporaryParticipant {
+  const participantId =
+    options.participantId?.trim()
+    || options.randomUUID?.()
+    || globalThis.crypto?.randomUUID?.()
+    || `participant-${Date.now()}`;
+
+  return {
+    participantId,
+    presetId: options.presetId?.trim() || undefined,
+    name: resolveTemporaryParticipantName(
+      {
+        name: options.name,
+        provider: options.provider,
+      },
+      options.takenNames,
+    ),
+    provider: options.provider.trim(),
+    instance: options.instance?.trim() || undefined,
+    model: options.model?.trim() || undefined,
+    modelSelection: options.modelSelection ?? null,
+    roleHint: options.roleHint?.trim() || undefined,
   };
 }
 

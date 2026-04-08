@@ -18,6 +18,7 @@ import {
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { defaultCatProducts, normalizePlatformSurfaceList } from '../../../../shared/platformSurfaces.js';
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { resolveTemporaryParticipantName } from '../../shared/participantNaming.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import { parseMentions } from '../mentionParsing.js';
 import { normalizeList, normalizeOptionalText } from './shared.js';
@@ -175,12 +176,9 @@ export function createTemporaryParticipantAssignment(
   input: CreateTemporaryParticipantInput,
   nowIso: string,
 ): ChannelParticipantAssignment {
-  const name = input.name.trim();
+  const name = resolveTemporaryParticipantName(input);
   const provider = input.provider.trim();
 
-  if (!name) {
-    throw new Error('Temporary participant name is required');
-  }
   if (!provider) {
     throw new Error('Temporary participant provider is required');
   }

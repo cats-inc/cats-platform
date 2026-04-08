@@ -33,6 +33,7 @@ import {
   resolveChannelParticipantAssignments,
   resolveParticipantExecutionAssignments,
 } from '../../shared/channelParticipants.js';
+import { resolveTemporaryParticipantName } from '../../shared/participantNaming.js';
 import { buildConcurrentChatMemberLabel } from '../../shared/concurrentChats.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
@@ -370,7 +371,22 @@ export function createChannel(
   const createdCats = catDrafts.map((palInput) => createCatRecord(palInput, nowIso));
   const participantCatIds = input.participantCatIds ?? [];
   const temporaryParticipants = input.temporaryParticipants ?? [];
-  const createdTemporaryParticipants = temporaryParticipants.map((participant) =>
+  const takenParticipantNames = [
+    ...createdCats.map((cat) => cat.name),
+    ...participantCatIds.map((catId) => {
+      const existingCat = state.cats.find((cat) => cat.id === catId);
+      return existingCat?.name ?? '';
+    }).filter((name) => name.length > 0),
+  ];
+  const resolvedTemporaryParticipants = temporaryParticipants.map((participant) => {
+    const name = resolveTemporaryParticipantName(participant, takenParticipantNames);
+    takenParticipantNames.push(name);
+    return {
+      ...participant,
+      name,
+    };
+  });
+  const createdTemporaryParticipants = resolvedTemporaryParticipants.map((participant) =>
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
 
@@ -956,6 +972,52 @@ export function setChannelParticipantExecutionTarget(
     if (input.modelSelection !== undefined) {
       assignment.execution.modelSelection = cloneProviderModelSelection(input.modelSelection);
     }
+  }
+
+  channel.updatedAt = isoAt(now);
+  return nextState;
+}
+
+export function updateChannelParticipantProfile(
+  state: ChatState,
+  channelId: string,
+  participantId: string,
+  input: {
+    name?: string | null;
+    roleHint?: string | null;
+  },
+  now: Date = new Date(),
+): ChatState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+  const participantAssignment = resolveChannelParticipantAssignments(channel).find(
+    (candidate) => candidate.participantId === participantId,
+  ) ?? null;
+
+  if (!participantAssignment) {
+    throw new Error(`Channel participant assignment not found: ${participantId}`);
+  }
+  if (participantAssignment.sourceKind === 'cat') {
+    throw new Error('Only temporary participants can be renamed here.');
+  }
+
+  const adhocAssignment = channel.participantAssignments?.find(
+    (candidate) => candidate.participantId === participantId,
+  ) ?? null;
+  if (!adhocAssignment) {
+    throw new Error(`Temporary participant assignment not found: ${participantId}`);
+  }
+
+  if (input.name !== undefined) {
+    const nextName = input.name?.trim() || '';
+    if (!nextName) {
+      throw new Error('Temporary participant name is required');
+    }
+    adhocAssignment.name = nextName;
+  }
+
+  if (input.roleHint !== undefined) {
+    adhocAssignment.roleHint = normalizeOptionalText(input.roleHint);
   }
 
   channel.updatedAt = isoAt(now);

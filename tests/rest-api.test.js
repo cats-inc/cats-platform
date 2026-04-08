@@ -586,6 +586,47 @@ test('PATCH /api/channels/:channelId persists solo chat AI reply settings', asyn
   });
 });
 
+test('PATCH /api/channels/:channelId/participants/:participantId renames temporary participants', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Group',
+        topic: 'Shared chat',
+        entryKind: 'group',
+        temporaryParticipants: [
+          {
+            participantId: 'participant-inline',
+            name: 'Claude',
+            provider: 'claude',
+            roleHint: 'Counterpoint',
+          },
+        ],
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const patchResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/participants/participant-inline`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'Reviewer Claude' }),
+      },
+    );
+    assert.equal(patchResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+    assert.equal(channelPayload.channel.assignedParticipants[0].name, 'Reviewer Claude');
+    assert.equal(channelPayload.channel.assignedParticipants[0].roleHint, 'Counterpoint');
+  });
+});
+
 test('POST /api/channels supports direct Cat chat with existingCatIds and initializes working memory', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
@@ -726,4 +767,3 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
     assert.equal(afterDeletePayload.botBindings[0].botName, 'boss_cat_bot');
   });
 });
-

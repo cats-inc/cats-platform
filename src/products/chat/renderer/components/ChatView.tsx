@@ -143,6 +143,10 @@ export interface ChatViewProps {
   compareSendScope?: 'all_members' | 'active_only';
   onCompareSendScopeChange?: (value: 'all_members' | 'active_only') => void;
   onRelayMessage?: (messageId: string, command: ConcurrentChatRelayCommandKind) => Promise<void>;
+  onUpdateChannelParticipant?: (
+    participantId: string,
+    input: { name?: string; roleHint?: string | null },
+  ) => Promise<void>;
 }
 
 export function ChatView({
@@ -188,6 +192,7 @@ export function ChatView({
   compareSendScope = 'all_members',
   onCompareSendScopeChange,
   onRelayMessage,
+  onUpdateChannelParticipant,
 }: ChatViewProps) {
   function messageStackTone(senderKind: string): string {
     switch (senderKind) {
@@ -284,6 +289,8 @@ export function ChatView({
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
+  const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [editingParticipantName, setEditingParticipantName] = useState('');
   useEffect(() => {
     if (!openRelayMenuId) return;
     function onClickOutside(event: MouseEvent): void {
@@ -707,6 +714,25 @@ export function ChatView({
     } catch {
       // Ignore clipboard failures; the message stays available in the transcript.
     }
+  }
+
+  function beginParticipantRename(participant: ResolvedChannelParticipant): void {
+    setEditingParticipantId(participant.participantId);
+    setEditingParticipantName(participant.name);
+  }
+
+  function cancelParticipantRename(): void {
+    setEditingParticipantId(null);
+    setEditingParticipantName('');
+  }
+
+  async function submitParticipantRename(participantId: string): Promise<void> {
+    const nextName = editingParticipantName.trim();
+    if (!nextName || !onUpdateChannelParticipant) {
+      return;
+    }
+    await onUpdateChannelParticipant(participantId, { name: nextName });
+    cancelParticipantRename();
   }
 
   return (
@@ -1542,10 +1568,60 @@ export function ChatView({
                       <strong>{participant.name}</strong>
                       <p>{buildDraftParticipantExecutionLabel(participant.execution.target)}</p>
                       {participant.roleHint ? <p>{participant.roleHint}</p> : null}
+                      {editingParticipantId === participant.participantId ? (
+                        <form
+                          className="stackForm"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void submitParticipantRename(participant.participantId);
+                          }}
+                        >
+                          <label className="fieldLabel">
+                            <span>Name</span>
+                            <input
+                              className="textInput"
+                              value={editingParticipantName}
+                              onChange={(event) => setEditingParticipantName(event.target.value)}
+                              placeholder="Participant name"
+                            />
+                          </label>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              type="button"
+                              className="operatorActionButton"
+                              onClick={cancelParticipantRename}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              className="primaryButton"
+                              disabled={
+                                !editingParticipantName.trim()
+                                || busy === `channel:participant:update:${participant.participantId}`
+                              }
+                            >
+                              Save name
+                            </button>
+                          </div>
+                        </form>
+                      ) : null}
                     </div>
-                    {participant.participantId === leadParticipant?.participantId ? (
-                      <span className="catInspectBadge">Lead</span>
-                    ) : null}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {participant.participantId === leadParticipant?.participantId ? (
+                        <span className="catInspectBadge">Lead</span>
+                      ) : null}
+                      {onUpdateChannelParticipant ? (
+                        <button
+                          type="button"
+                          className="addCatAssignButton"
+                          disabled={busy === `channel:participant:update:${participant.participantId}`}
+                          onClick={() => beginParticipantRename(participant)}
+                        >
+                          Rename
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
               </div>

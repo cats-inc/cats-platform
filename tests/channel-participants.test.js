@@ -102,3 +102,28 @@ test('FileChatStore round-trips temporary participants through persisted snapsho
   assert.equal(channelView.roomRouting.leadParticipantId, 'participant-inline');
   assert.deepEqual(channelView.assignedCats, []);
 });
+
+test('createChannel auto-names temporary participants when the draft omits names', () => {
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Auto-named room',
+      topic: 'Auto-name ad hoc participants from provider labels.',
+      temporaryParticipants: [
+        {
+          participantId: 'participant-claude-1',
+          provider: 'claude',
+        },
+        {
+          participantId: 'participant-claude-2',
+          provider: 'claude',
+        },
+      ],
+    },
+    new Date('2026-04-08T00:00:00.000Z'),
+  );
+
+  const channelView = buildChannelView(state, state.selectedChannelId);
+  assert.equal(channelView.assignedParticipants?.[0]?.name, 'Claude');
+  assert.equal(channelView.assignedParticipants?.[1]?.name, 'Claude 2');
+});

@@ -62,6 +62,7 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onToggleDraftCat: () => {},
     onAddDraftTemporaryParticipant: () => {},
     onRemoveDraftTemporaryParticipant: () => {},
+    onUpdateDraftTemporaryParticipant: () => {},
     autoResize: () => {},
     draftLeadCatId: null,
     onDraftLeadCatChange: () => {},

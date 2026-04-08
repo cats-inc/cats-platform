@@ -44,6 +44,7 @@ export {
   sendConcurrentChatMessage,
   sendChatMessage,
   ungroupConcurrentChatGroup,
+  updateChannelParticipantApi,
   updateCatProfile,
   uploadChannelAttachments,
 } from './chat.js';

@@ -604,6 +604,11 @@ export interface UpdateChannelInput {
   pendingModelSelection?: ProviderModelSelection | null;
 }
 
+export interface UpdateChannelParticipantInput {
+  name?: string;
+  roleHint?: string | null;
+}
+
 export interface ChannelActivationResult {
   targetKind: 'orchestrator' | 'cat';
   targetId: string;

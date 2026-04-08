@@ -9,6 +9,7 @@ import {
   applyPendingExecutionTargetPreview,
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
+  createDraftTemporaryParticipant,
   createInitialGroupParticipants,
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
@@ -251,6 +252,24 @@ test('assistant presets can be instantiated as draft temporary participants with
     draftHasAssistantPresetParticipant([participant], 'assistant-reviewer'),
     true,
   );
+});
+
+test('draft temporary participants auto-name from provider and avoid collisions', () => {
+  const first = createDraftTemporaryParticipant({
+    provider: 'claude',
+    takenNames: ['Milo'],
+    randomUUID: () => 'participant-1',
+  });
+  const second = createDraftTemporaryParticipant({
+    provider: 'claude',
+    takenNames: ['Milo', first.name],
+    randomUUID: () => 'participant-2',
+  });
+
+  assert.equal(first.name, 'Claude');
+  assert.equal(second.name, 'Claude 2');
+  assert.equal(first.participantId, 'participant-1');
+  assert.equal(second.participantId, 'participant-2');
 });
 
 test('generic group draft route seeds default temporary participants when none exist yet', () => {

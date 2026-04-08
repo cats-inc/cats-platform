@@ -13,6 +13,7 @@ import {
 import {
   buildDraftParticipantExecutionLabel,
   catInitials,
+  createDraftTemporaryParticipant,
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
   isChatCat,
@@ -64,6 +65,10 @@ export interface NewChatDraftProps {
     },
   ) => void;
   onRemoveDraftTemporaryParticipant: (participantId: string) => void;
+  onUpdateDraftTemporaryParticipant: (
+    participantId: string,
+    input: { name?: string | null; roleHint?: string | null },
+  ) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   draftLeadCatId: string | null;
   entryMode?: NewChatMode;
@@ -120,6 +125,7 @@ export function NewChatDraft({
   onToggleDraftCat,
   onAddDraftTemporaryParticipant,
   onRemoveDraftTemporaryParticipant,
+  onUpdateDraftTemporaryParticipant,
   autoResize,
   draftLeadCatId,
   entryMode = 'default',
@@ -150,7 +156,6 @@ export function NewChatDraft({
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   function createTemporaryParticipantFormValue() {
     return {
-      name: '',
       roleHint: '',
       provider: payload.chat.newChatDefaults?.provider ?? 'claude',
       instance: payload.chat.newChatDefaults?.instance ?? '',
@@ -199,6 +204,8 @@ export function NewChatDraft({
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   const [temporaryParticipantFormOpen, setTemporaryParticipantFormOpen] = useState(false);
+  const [editingTemporaryParticipantId, setEditingTemporaryParticipantId] = useState<string | null>(null);
+  const [editingTemporaryParticipantName, setEditingTemporaryParticipantName] = useState('');
   const [temporaryParticipantForm, setTemporaryParticipantForm] = useState(
     createTemporaryParticipantFormValue,
   );
@@ -266,20 +273,44 @@ export function NewChatDraft({
     if (hasReachedGroupParticipantLimit) {
       return;
     }
-    if (!temporaryParticipantForm.name.trim() || !temporaryParticipantForm.provider.trim()) {
+    if (!temporaryParticipantForm.provider.trim()) {
       return;
     }
 
-    onAddDraftTemporaryParticipant({
-      name: temporaryParticipantForm.name.trim(),
+    const takenNames = [
+      ...visibleDraftCatIds.map((catId) => chatCats.find((cat) => cat.id === catId)?.name ?? ''),
+      ...draftTemporaryParticipants.map((participant) => participant.name),
+    ].filter((name) => name.trim().length > 0);
+
+    onAddDraftTemporaryParticipant(createDraftTemporaryParticipant({
       provider: temporaryParticipantForm.provider.trim(),
       instance: temporaryParticipantForm.instance.trim() || undefined,
       model: temporaryParticipantForm.model.trim() || undefined,
       modelSelection: temporaryParticipantForm.modelSelection,
       roleHint: temporaryParticipantForm.roleHint.trim() || undefined,
-    });
+      takenNames,
+    }));
     setTemporaryParticipantForm(createTemporaryParticipantFormValue());
     setTemporaryParticipantFormOpen(false);
+  }
+
+  function beginTemporaryParticipantRename(participant: DraftTemporaryParticipant): void {
+    setEditingTemporaryParticipantId(participant.participantId);
+    setEditingTemporaryParticipantName(participant.name);
+  }
+
+  function cancelTemporaryParticipantRename(): void {
+    setEditingTemporaryParticipantId(null);
+    setEditingTemporaryParticipantName('');
+  }
+
+  function submitTemporaryParticipantRename(participantId: string): void {
+    const nextName = editingTemporaryParticipantName.trim();
+    if (!nextName) {
+      return;
+    }
+    onUpdateDraftTemporaryParticipant(participantId, { name: nextName });
+    cancelTemporaryParticipantRename();
   }
 
   return (
@@ -715,15 +746,65 @@ export function NewChatDraft({
                         <strong>{participant.name}</strong>
                         <p>{buildDraftParticipantExecutionLabel(participant)}</p>
                         {participant.roleHint ? <p>{participant.roleHint}</p> : null}
+                        {editingTemporaryParticipantId === participant.participantId ? (
+                          <form
+                            className="stackForm"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              submitTemporaryParticipantRename(participant.participantId);
+                            }}
+                          >
+                            <label className="fieldLabel">
+                              <span>Name</span>
+                              <input
+                                className="textInput"
+                                value={editingTemporaryParticipantName}
+                                onChange={(event) => setEditingTemporaryParticipantName(event.target.value)}
+                                placeholder="Participant name"
+                              />
+                            </label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                type="button"
+                                className="operatorActionButton"
+                                onClick={cancelTemporaryParticipantRename}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                className="primaryButton"
+                                disabled={!editingTemporaryParticipantName.trim()}
+                              >
+                                Save name
+                              </button>
+                            </div>
+                          </form>
+                        ) : null}
                       </div>
-                      <button
-                        className="addCatAssignButton addCatRemoveButton"
-                        type="button"
-                        disabled={isSubmittingFirstTurn}
-                        onClick={() => onRemoveDraftTemporaryParticipant(participant.participantId)}
-                      >
-                        Remove
-                      </button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="addCatAssignButton"
+                          type="button"
+                          disabled={isSubmittingFirstTurn}
+                          onClick={() => beginTemporaryParticipantRename(participant)}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          className="addCatAssignButton addCatRemoveButton"
+                          type="button"
+                          disabled={isSubmittingFirstTurn}
+                          onClick={() => {
+                            if (editingTemporaryParticipantId === participant.participantId) {
+                              cancelTemporaryParticipantRename();
+                            }
+                            onRemoveDraftTemporaryParticipant(participant.participantId);
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -736,19 +817,9 @@ export function NewChatDraft({
                     submitTemporaryParticipant();
                   }}
                 >
-                  <label className="fieldLabel">
-                    <span>Name</span>
-                    <input
-                      className="textInput"
-                      value={temporaryParticipantForm.name}
-                      onChange={(event) =>
-                        setTemporaryParticipantForm((current) => ({
-                          ...current,
-                          name: event.target.value,
-                        }))}
-                      placeholder="Runtime reviewer"
-                    />
-                  </label>
+                  <p className="operatorEmptyState" style={{ margin: 0 }}>
+                    Name will be assigned automatically from the provider. You can rename it after adding.
+                  </p>
                   <label className="fieldLabel">
                     <span>Role Hint</span>
                     <input
@@ -793,11 +864,10 @@ export function NewChatDraft({
                       className="primaryButton"
                       disabled={
                         hasReachedGroupParticipantLimit
-                        || !temporaryParticipantForm.name.trim()
                         || !temporaryParticipantForm.provider.trim()
                       }
                     >
-                      Add temporary participant
+                      Add participant
                     </button>
                   </div>
                 </form>

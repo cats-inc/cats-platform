@@ -15,6 +15,7 @@ import type {
   SendConcurrentChatMessageInput,
   SendChannelMessageInput,
   SendChannelMessageResponse,
+  UpdateChannelParticipantInput,
   UpdateConcurrentChatGroupInput,
 } from '../../api/contracts';
 
@@ -165,6 +166,32 @@ export async function removeCatFromChannelApi(
   return refetchAfterMutation(
     response,
     `cats channel cat removal returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function updateChannelParticipantApi(
+  channelId: string,
+  participantId: string,
+  input: UpdateChannelParticipantInput,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(
+    `/api/channels/${encodeURIComponent(channelId)}/participants/${encodeURIComponent(participantId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+      signal,
+    },
+  );
+
+  return refetchAfterMutation(
+    response,
+    `cats channel participant update returned ${response.status}`,
     signal,
   );
 }
