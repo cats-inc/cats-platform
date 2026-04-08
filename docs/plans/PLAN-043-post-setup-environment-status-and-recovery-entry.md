@@ -50,30 +50,33 @@ This plan intentionally avoids `PLAN-042` and uses `PLAN-043`.
 
 ### Phase 1: Unify Visible Runtime Status
 
-- [ ] Task 2.1: Extract or centralize the runtime lamp state mapping now copied
+- [ ] Task 1.1: Extract or centralize the runtime lamp state mapping now copied
       across Lobby, Chat, Work, and Code.
-- [ ] Task 2.2: Apply one shared tooltip copy model to the sidebar avatar lamps
+- [ ] Task 1.2: Apply one shared tooltip copy model to the sidebar avatar lamps
       and Lobby avatar lamp.
-- [ ] Task 2.3: Ensure the shared account-avatar component can consume that
+- [ ] Task 1.3: Ensure the shared account-avatar component can consume that
       shared runtime presentation model.
-- [ ] Task 2.4: Add targeted tests for status mapping and tooltip copy.
+- [ ] Task 1.4: Add targeted tests for status mapping and tooltip copy.
 
 **Deliverables**: one consistent runtime lamp behavior across post-setup
 surfaces
 
 ### Phase 2: Add the Recovery Menu Entry
 
-- [ ] Task 3.1: Extend the shared `AccountIdentityMenu` with one new neutral,
+- [ ] Task 2.1: Extend the shared `AccountIdentityMenu` with one new neutral,
       always-visible recovery item while keeping the existing `Cats Runtime`
       item.
-- [ ] Task 3.2: Freeze the new entry label as a working copy only. `Environment`
+- [ ] Task 2.2: Freeze the new entry label as a working copy only. `Environment`
       is acceptable for the first slice, but should not be treated as
       permanently ratified product wording yet.
-- [ ] Task 3.3: Route the new recovery item into the most relevant existing
-      repair surface rather than a new dedicated page.
-- [ ] Task 3.4: Ensure the new entry is reachable from Lobby and all product
+- [ ] Task 2.3: Implement the first-slice routing rule for the new recovery
+      item:
+      packaged setup/resume when host state explicitly marks it as relevant,
+      otherwise Cats Runtime setup when runtime needs setup/remediation,
+      otherwise Cats Runtime dashboard/root as the default safe destination.
+- [ ] Task 2.4: Ensure the new entry is reachable from Lobby and all product
       sidebars through the shared menu.
-- [ ] Task 3.5: Add targeted tests for menu contents and recovery-entry
+- [ ] Task 2.5: Add targeted tests for menu contents and recovery-entry
       behavior.
 
 **Deliverables**: a shallow in-product recovery entry no longer buried in
@@ -81,14 +84,14 @@ settings and no mandatory new recovery surface in the first slice
 
 ### Phase 3: Connect Desktop Repair Only When Relevant
 
-- [ ] Task 4.1: Reuse the existing desktop host bridge only for the minimum
+- [ ] Task 3.1: Reuse the existing desktop host bridge only for the minimum
       recovery-entry needs:
       current desktop host/setup state and packaged-setup entry/resume actions.
-- [ ] Task 4.2: Keep packaged setup conditional on relevant desktop host state
+- [ ] Task 3.2: Keep packaged setup conditional on relevant desktop host state
       instead of showing desktop repair controls all the time.
-- [ ] Task 4.3: Preserve graceful degradation when the desktop host bridge is
+- [ ] Task 3.3: Preserve graceful degradation when the desktop host bridge is
       unavailable.
-- [ ] Task 4.4: Add targeted tests for desktop vs non-desktop recovery-entry
+- [ ] Task 3.4: Add targeted tests for desktop vs non-desktop recovery-entry
       behavior.
 
 **Deliverables**: desktop packaged setup becomes an available repair lane,
@@ -96,12 +99,12 @@ without dominating the product-owned recovery entry
 
 ### Phase 4: Optional Lightweight Resolver Follow-Up
 
-- [ ] Task 5.1: Only if direct routing proves insufficient, add one lightweight
+- [ ] Task 4.1: Only if direct routing proves insufficient, add one lightweight
       resolver surface that stays bounded to status, impact, and next-step
       routing.
-- [ ] Task 5.2: If this optional resolver lands, keep it lighter than Settings
+- [ ] Task 4.2: If this optional resolver lands, keep it lighter than Settings
       and lighter than the desktop bootstrap page.
-- [ ] Task 5.3: If this optional resolver lands, ensure it still routes users
+- [ ] Task 4.3: If this optional resolver lands, ensure it still routes users
       into existing repair surfaces rather than becoming a second dashboard.
 
 **Deliverables**: optional follow-up only; no new recovery surface unless
@@ -109,11 +112,11 @@ phase-2 usability shows it is actually needed
 
 ### Phase 5: Tighten Docs and Verification
 
-- [ ] Task 6.1: Update user-facing docs that currently imply runtime recovery is
+- [ ] Task 5.1: Update user-facing docs that currently imply runtime recovery is
       mainly a bootstrap-page or settings-only story.
-- [ ] Task 6.2: Update tests covering account menu contents, Lobby avatar
+- [ ] Task 5.2: Update tests covering account menu contents, Lobby avatar
       status, and product sidebar status surfaces.
-- [ ] Task 6.3: Validate that post-setup runtime problems still do not route the
+- [ ] Task 5.3: Validate that post-setup runtime problems still do not route the
       user back through onboarding.
 
 **Deliverables**: implementation-ready docs plus bounded verification coverage
@@ -122,7 +125,7 @@ phase-2 usability shows it is actually needed
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/design/components/AccountIdentityMenu.tsx` | Modify | Add the new `Environment` menu item and preserve the existing `Cats Runtime` entry |
+| `src/design/components/AccountIdentityMenu.tsx` | Modify | Add the new recovery menu item, using `Environment` only as the current working label, and preserve the existing `Cats Runtime` entry |
 | `src/app/renderer/PlatformLobby.tsx` | Modify | Consume the shared runtime presentation model for the lobby avatar status |
 | `src/products/chat/renderer/components/Sidebar.tsx` | Modify | Replace local runtime-footer copy logic with the shared model |
 | `src/products/work/renderer/components/Sidebar.tsx` | Modify | Replace local runtime-footer copy logic with the shared model |

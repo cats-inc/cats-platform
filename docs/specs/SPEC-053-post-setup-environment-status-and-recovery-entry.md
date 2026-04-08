@@ -95,33 +95,26 @@ surface instead of being forced through onboarding again.
    It shall not appear only when the system already knows something is wrong.
 8. The new recovery entry shall be reachable without going through
    `Settings > Runtime`.
-9. The first implementation slice should prefer direct routing into existing
+9. The first implementation slice shall prefer direct routing into existing
    repair surfaces over creating a new dedicated recovery surface.
-10. Existing repair surfaces for that entry may include:
-    - Cats Runtime dashboard/root
-    - Cats Runtime setup
-    - desktop packaged setup or packaged setup resume
-11. Cats Runtime shall remain the primary deep runtime repair surface.
-12. Desktop packaged setup shall remain supplementary. It shall not replace
+10. The first-slice recovery-entry routing rule shall be:
+    - if desktop host state says packaged setup or packaged setup resume is
+      currently relevant and recommended, open that packaged setup surface
+    - else if the current runtime state indicates setup or remediation is
+      needed, open Cats Runtime setup
+    - else open Cats Runtime dashboard/root as the default safe destination
+11. In environments where the desktop host bridge is unavailable, the recovery
+    entry shall omit desktop packaged-setup routing and keep only runtime-owned
+    actions.
+12. Cats Runtime shall remain the primary deep runtime repair surface.
+13. Desktop packaged setup shall remain supplementary. It shall not replace
     Cats Runtime as the primary deep runtime repair surface.
-13. If direct routing later proves insufficient, the product may add one
-    lightweight resolver surface.
-14. Any lightweight resolver added later shall stay bounded to:
-    - current plain-language status
-    - short impact statement
-    - one recommended next step
-    - optional secondary links
-15. Any lightweight resolver added later shall not become a second full
-    diagnostics dashboard or operations console.
-16. Post-setup environment problems shall stay inside product/runtime/desktop
+14. Post-setup environment problems shall stay inside product/runtime/desktop
     recovery flows. They shall not route the user back through onboarding as the
     normal recovery story.
-17. `Settings > Runtime` may remain as a secondary detail page, but it shall no
+15. `Settings > Runtime` may remain as a secondary detail page, but it shall no
     longer be the primary or only post-setup entry point for environment
     recovery.
-18. In non-desktop environments where the desktop host bridge is unavailable,
-    the recovery entry shall degrade gracefully and keep only product/runtime-
-    owned actions.
 
 ### UX Requirements
 
@@ -129,16 +122,8 @@ surface instead of being forced through onboarding again.
 2. The account menu should stay short and familiar.
 3. The new `Environment` label should remain neutral; it should not read like a
    crash screen or an admin tool.
-4. If a lightweight resolver is added later, it should behave like a
-   receptionist: it should route the user to the right place, not become the
-   mechanic.
-5. If a lightweight resolver is added later, it should still feel calm and
-   useful when Cats Runtime is healthy, not like a page that only exists for
-   failure.
-6. The first slice should prefer one primary action at a time instead of
+4. The first slice should prefer one primary action at a time instead of
    presenting many competing repair choices.
-7. If a lightweight resolver is added later, it should feel lighter than
-   Settings and lighter than the desktop bootstrap page.
 
 ## Design Overview
 
@@ -157,9 +142,14 @@ Account menu
 Preferred first slice:
   direct route to an existing repair surface
         |
-        +--> Cats Runtime dashboard/setup
+        +--> Desktop packaged setup/resume
+        |      only when host says it is relevant
         |
-        +--> Desktop packaged setup (only when relevant)
+        +--> Cats Runtime setup
+        |      when runtime needs setup/remediation
+        |
+        +--> Cats Runtime dashboard/root
+               default safe destination
         |
         v
 Optional follow-up only if needed:
@@ -185,6 +175,15 @@ Optional follow-up only if needed:
 - lightweight resolver:
   optional follow-up only if direct routing proves insufficient
 
+### Recovery Entry Routing Rules
+
+- Use desktop packaged setup or packaged setup resume only when current desktop
+  host state explicitly marks it as the relevant next step.
+- Otherwise, use Cats Runtime setup when current runtime state says setup or
+  remediation is needed.
+- Otherwise, use Cats Runtime dashboard/root as the default safe destination.
+- In non-desktop contexts, skip desktop packaged-setup routing entirely.
+
 ### Example Status Copy Direction
 
 - Ready:
@@ -195,6 +194,24 @@ Optional follow-up only if needed:
   `Cats Runtime is offline. Open Environment for recovery options.`
 - Unknown:
   `Cats Runtime status is still loading.`
+
+## Optional Follow-Up Guardrails
+
+- If direct routing later proves insufficient, the product may add one
+  lightweight resolver surface.
+- Any lightweight resolver added later should stay bounded to:
+  - current plain-language status
+  - short impact statement
+  - one recommended next step
+  - optional secondary links
+- Any lightweight resolver added later should behave like a receptionist:
+  it routes the user to the right place, rather than becoming the mechanic.
+- Any lightweight resolver added later should still feel calm and useful when
+  Cats Runtime is healthy, not like a page that only exists for failure.
+- Any lightweight resolver added later should feel lighter than Settings and
+  lighter than the desktop bootstrap page.
+- Any lightweight resolver added later shall not become a second full
+  diagnostics dashboard or operations console.
 
 ## Dependencies
 
