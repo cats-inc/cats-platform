@@ -124,6 +124,52 @@ function findButtonByLabel(
   return findButtonByLabel(children, label);
 }
 
+function findAccountMenuButtonByLabel(
+  node: ReactNode,
+  label: string,
+): { props: { onClick?: () => void } } {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      try {
+        return findAccountMenuButtonByLabel(child, label);
+      } catch {
+        continue;
+      }
+    }
+    throw new Error(`Account menu button "${label}" not found.`);
+  }
+
+  if (!isValidElement(node)) {
+    throw new Error(`Account menu button "${label}" not found.`);
+  }
+
+  if (
+    node.type === 'button'
+    && node.props.className === 'accountMenuItem'
+    && textContent(node.props.children).includes(label)
+  ) {
+    return node as { props: { onClick?: () => void } };
+  }
+
+  const children = node.props.children;
+  if (!children) {
+    throw new Error(`Account menu button "${label}" not found.`);
+  }
+
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      try {
+        return findAccountMenuButtonByLabel(child, label);
+      } catch {
+        continue;
+      }
+    }
+    throw new Error(`Account menu button "${label}" not found.`);
+  }
+
+  return findAccountMenuButtonByLabel(children, label);
+}
+
 function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
 ): ChatChannelSummary {
@@ -347,6 +393,66 @@ test('Sidebar exposes a dedicated Group chat primary action', () => {
 
   findButtonByLabel(tree, 'Group chat').props.onClick?.();
   assert.deepEqual(actions, ['group']);
+});
+
+test('Sidebar account menu opens Cats Runtime at the runtime root in a new tab', () => {
+  const opened: Array<[string | undefined, string | undefined, string | undefined]> = [];
+  const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      open(url?: string, target?: string, features?: string) {
+        opened.push([url, target, features]);
+        return null;
+      },
+    },
+  });
+
+  try {
+    const tree = Sidebar({
+      payload: createPayload(),
+      sidebarOpen: true,
+      accountMenuOpen: true,
+      overflowMenuOpenId: null,
+      busy: '',
+      surface: 'chats',
+      routeChannelId: 'compare-1',
+      accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+      onToggleSidebar: () => {},
+      onCollapsedSidebarClick: () => {},
+      onOpenChatsOverview: () => {},
+      onStartNewChat: () => {},
+      onStartNewGroupChat: () => {},
+      onStartNewParallelChat: () => {},
+      onSelect: () => {},
+      onDeleteChannel: () => {},
+      onRenameChannel: () => {},
+      onRenameConcurrentGroup: () => {},
+      onUngroupConcurrentGroup: () => {},
+      onDeleteConcurrentGroup: () => {},
+      onArchiveCat: () => {},
+      onAccountMenuToggle: () => {},
+      onOverflowMenuToggle: () => {},
+      onNavigateSettings: () => {},
+      onSwitchProduct: () => {},
+      activeMyCatId: null,
+      onDirectChatCat: () => {},
+    });
+
+    const runtimeButton = findAccountMenuButtonByLabel(tree, 'Cats Runtime');
+    runtimeButton.props.onClick?.();
+
+    assert.deepEqual(opened, [
+      ['http://localhost:8484/', '_blank', 'noopener,noreferrer'],
+    ]);
+  } finally {
+    if (originalWindowDescriptor) {
+      Object.defineProperty(globalThis, 'window', originalWindowDescriptor);
+    } else {
+      delete (globalThis as { window?: Window }).window;
+    }
+  }
 });
 
 test('new-chat route helpers keep group and parallel entry intents explicit', () => {

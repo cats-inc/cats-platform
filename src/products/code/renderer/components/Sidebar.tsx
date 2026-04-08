@@ -17,6 +17,7 @@ import {
 import { isDirectLaneSummary } from '../../shared/channelTopology';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolvePlatformSurfaceFromPath } from '../../../../core/platformSurface.js';
+import { openCatsRuntimeRoot } from '../../../../shared/catsRuntimeLink.js';
 import { PlatformSurfaceSwitcher } from '../../../../design/components/PlatformSurfaceSwitcher.js';
 
 export type SidebarViewMode = 'latest' | 'by_cat' | 'by_chat_type';
@@ -439,6 +440,11 @@ export function Sidebar({
     return renderChannelList(recentsChannels);
   }
 
+  function handleOpenCatsRuntime(): void {
+    onAccountMenuToggle();
+    openCatsRuntimeRoot(payload.runtime.baseUrl);
+  }
+
   return (
     <aside
       className={sidebarOpen ? 'sidebar' : 'sidebar sidebarCollapsed'}
@@ -618,6 +624,13 @@ export function Sidebar({
               onClick={onNavigateSettings}
             >
               Settings
+            </button>
+            <button
+              className="accountMenuItem"
+              type="button"
+              onClick={handleOpenCatsRuntime}
+            >
+              Cats Runtime
             </button>
           </div>
         ) : null}

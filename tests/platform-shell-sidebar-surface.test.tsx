@@ -142,6 +142,22 @@ function findSurfaceSwitcherActiveSurface(node: ReactNode): PlatformSurfaceId {
   return findSurfaceSwitcherActiveSurface(node.props.children);
 }
 
+function textContent(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map((child) => textContent(child)).join(' ');
+  }
+
+  if (!isValidElement(node)) {
+    return '';
+  }
+
+  return textContent(node.props.children);
+}
+
 function withLocationPathname(pathname: string, run: () => void): void {
   const originalLocation = globalThis.location;
   Object.defineProperty(globalThis, 'location', {
@@ -224,4 +240,64 @@ test('Code sidebar keeps the Code product selected on platform settings routes',
 
     assert.equal(findSurfaceSwitcherActiveSurface(tree), 'code');
   });
+});
+
+test('Work and Code sidebars expose Cats Runtime in the account menu', () => {
+  const workTree = WorkSidebar({
+    payload: createPayload(),
+    sidebarOpen: true,
+    accountMenuOpen: true,
+    overflowMenuOpenId: null,
+    busy: '',
+    surface: 'chats',
+    shellSurface: 'work',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onStartWorkIntake: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+  });
+
+  const codeTree = CodeSidebar({
+    payload: createPayload() as unknown as CodeAppShellPayload,
+    sidebarOpen: true,
+    accountMenuOpen: true,
+    overflowMenuOpenId: null,
+    busy: '',
+    surface: 'chats',
+    shellSurface: 'code',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+    onOpenBuild: () => {},
+    onOpenRelay: () => {},
+  });
+
+  assert.match(textContent(workTree), /Cats Runtime/u);
+  assert.match(textContent(codeTree), /Cats Runtime/u);
 });
