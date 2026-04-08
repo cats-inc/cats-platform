@@ -41,6 +41,22 @@ test('shouldConnectLiveIndicatorStream ignores parallel relay busy state on the 
   );
 });
 
+test('shouldConnectLiveIndicatorStream only follows concurrent dispatch for running member channels', () => {
+  const channelId = '12345678-1234-4234-8234-123456789abc';
+  assert.equal(
+    shouldConnectLiveIndicatorStream(channelId, 'concurrent:dispatch'),
+    false,
+  );
+  assert.equal(
+    shouldConnectLiveIndicatorStream(channelId, 'concurrent:dispatch', 'idle'),
+    false,
+  );
+  assert.equal(
+    shouldConnectLiveIndicatorStream(channelId, 'concurrent:dispatch', 'running'),
+    true,
+  );
+});
+
 test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', () => {
   const label = resolveLiveIndicatorSpeakerLabel({
     composerMode: 'solo',

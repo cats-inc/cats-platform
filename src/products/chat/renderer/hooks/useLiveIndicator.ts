@@ -25,6 +25,23 @@ export { EMPTY_LIVE_INDICATOR } from '../../../../shared/liveIndicator.js';
 const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
 const LIVE_INDICATOR_RETRY_LIMIT = 8;
 
+function isDispatchBusyForCurrentChannel(
+  channelId: string | null,
+  busy: string,
+  routingStatus?: string | null,
+): boolean {
+  if (!channelId || !isComposerDispatchBusy(busy)) {
+    return false;
+  }
+
+  const targetedChannelId = getComposerDispatchChannelId(busy);
+  if (targetedChannelId) {
+    return targetedChannelId === channelId;
+  }
+
+  return busy === 'concurrent:dispatch' && routingStatus === 'running';
+}
+
 export function shouldConnectLiveIndicatorStream(
   channelId: string | null,
   busy: string,
@@ -35,9 +52,11 @@ export function shouldConnectLiveIndicatorStream(
   }
 
   const channelRouting = routingStatus === 'running';
-  const dispatchBusyForCurrentChannel =
-    busy === 'concurrent:dispatch'
-    || getComposerDispatchChannelId(busy) === channelId;
+  const dispatchBusyForCurrentChannel = isDispatchBusyForCurrentChannel(
+    channelId,
+    busy,
+    routingStatus,
+  );
   if ((!isComposerDispatchBusy(busy) || !dispatchBusyForCurrentChannel) && !channelRouting) {
     return false;
   }
@@ -88,9 +107,11 @@ export function useLiveIndicator(options: {
 
   useEffect(() => {
     const channelRouting = routingStatus === 'running';
-    const dispatchBusyForCurrentChannel =
-      busy === 'concurrent:dispatch'
-      || getComposerDispatchChannelId(busy) === channelId;
+    const dispatchBusyForCurrentChannel = isDispatchBusyForCurrentChannel(
+      channelId,
+      busy,
+      routingStatus,
+    );
     const shouldShowWaitingIndicator =
       ((isComposerDispatchBusy(busy) && dispatchBusyForCurrentChannel) || channelRouting)
       && Boolean(channelId);
