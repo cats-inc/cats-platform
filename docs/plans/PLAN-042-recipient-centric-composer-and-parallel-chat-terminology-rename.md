@@ -332,6 +332,10 @@ documented in `SPEC-052`.
 | Date | Update |
 |------|--------|
 | 2026-04-08 | Plan created from ADR-055 and SPEC-052 to drive the recipient-centric composer rename and the Parallel Chat terminology cleanup |
+| 2026-04-08 | Phase 1-2 landed: `RoomWorkflowShape` `parallel` renamed to `concurrent` with snapshot migration |
+| 2026-04-08 | Phase 4 landed: `ConcurrentChat*` renamed to `ParallelChat*`, `concurrentGroups` to `parallelChatGroups`, busy keys to `parallelChat:*` |
+| 2026-04-08 | Phase 3 landed: `leadParticipantId` renamed to `defaultRecipientId`, `leadCatId` to `defaultRecipientCatId` across 94 files |
+| 2026-04-08 | Phase 5 started: `ComposerRecipientChip` component added, ChatView and NewChatDraft composer slots unified, lead badges removed |
 
 ---
 
