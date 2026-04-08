@@ -1,0 +1,49 @@
+import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
+import type { ProductChannelKind } from './channelTopology.js';
+
+export type ChatConversationMode =
+  | 'direct_lane'
+  | 'solo_thread'
+  | 'cat_led_thread'
+  | 'multi_cat_room';
+
+type ConversationModeCarrier = {
+  assignedCats: Array<{ status: string }>;
+  channelKind?: ProductChannelKind | null;
+  composerMode?: string | null;
+  roomRouting?: { mode?: RoomRoutingMode | null } | null;
+};
+
+export function resolveConversationMode(
+  channel: ConversationModeCarrier,
+): ChatConversationMode {
+  if (
+    channel.channelKind === 'direct_lane'
+    || channel.roomRouting?.mode === 'direct_cat_chat'
+  ) {
+    return 'direct_lane';
+  }
+
+  if (channel.composerMode === 'solo') {
+    return 'solo_thread';
+  }
+
+  const activeCatCount = channel.assignedCats.filter((cat) => cat.status === 'active').length;
+  if (channel.channelKind === 'multi_cat_room' || activeCatCount > 1) {
+    return 'multi_cat_room';
+  }
+
+  return 'cat_led_thread';
+}
+
+export function isDirectConversationMode(
+  conversationMode: ChatConversationMode | null | undefined,
+): boolean {
+  return conversationMode === 'direct_lane';
+}
+
+export function isSoloThreadConversationMode(
+  conversationMode: ChatConversationMode | null | undefined,
+): boolean {
+  return conversationMode === 'solo_thread';
+}

@@ -9,6 +9,10 @@ import {
 } from 'react';
 
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type {
+  ParticipantSessionStatus,
+  RoomRoutingMode,
+} from '../../../shared/roomRouting.js';
 import { resolvePlatformSurfaceFromPath } from '../../../core/platformSurface.js';
 import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
 import { PlatformSurfaceSwitcher } from '../../../design/components/PlatformSurfaceSwitcher.js';
@@ -27,7 +31,9 @@ export interface ConversationSidebarChannel {
   id: string;
   title: string;
   leadCatId?: string | null;
-  leadParticipantLeaseStatus?: string | null;
+  leadParticipantLeaseStatus?: ParticipantSessionStatus | null;
+  channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
+  roomMode?: RoomRoutingMode | null;
 }
 
 export interface ConversationSidebarBotBinding {
