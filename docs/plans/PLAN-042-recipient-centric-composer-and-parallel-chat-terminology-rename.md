@@ -110,6 +110,11 @@ Working contract targets for the first implementation slice:
 **Dependency note**: Phase 3 must not remove or replace direct-lane
 `leadParticipantId` behavior until Task 1.4 has frozen the topology split.
 
+**Dependency note**: Phases 2-4 should treat Task 1.5 as the UI-behavior input
+for contract work. If implementation later discovers that the frozen composer
+contract is insufficient, the plan should explicitly reopen Phase 1 rather than
+quietly letting Phase 5 redefine the model after contract changes have landed.
+
 **Deliverables**: one stable rename map and contract boundary before code
 changes spread across state, renderer, and tests.
 
@@ -200,7 +205,8 @@ aligned.
 
 ### Phase 5: Renderer and Interaction Refactor
 
-- [ ] Task 5.1: Freeze the actual composer UI for:
+- [ ] Task 5.1: Implement the frozen first-slice composer contract from
+      Phase 1 Task 1.5 in the actual Chat UI for:
       - named recipients
       - implicit recipients
       - multi-recipient stacks
