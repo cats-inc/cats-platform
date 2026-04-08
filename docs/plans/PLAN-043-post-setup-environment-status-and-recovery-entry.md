@@ -40,8 +40,9 @@ This plan keeps the first slice intentionally thin:
 1. unify the runtime lamp semantics and tooltip copy
 2. add one always-visible neutral recovery item to the shared account menu
 3. route that item into existing repair surfaces first:
-   - `Cats Runtime` remains the deep runtime repair surface
-   - desktop packaged setup only appears when desktop host state says it matters
+   - Phase 2 lands the runtime-owned/default branches
+   - Phase 3 adds the desktop packaged-setup branch when host state says it
+     matters
 4. only add a lightweight resolver if direct routing proves insufficient
 
 This plan intentionally avoids `PLAN-042` and uses `PLAN-043`.
@@ -69,33 +70,38 @@ surfaces
 - [ ] Task 2.2: Freeze the new entry label as a working copy only. `Environment`
       is acceptable for the first slice, but should not be treated as
       permanently ratified product wording yet.
-- [ ] Task 2.3: Implement the first-slice routing rule for the new recovery
-      item:
-      packaged setup/resume when host state explicitly marks it as relevant,
-      otherwise Cats Runtime setup when runtime needs setup/remediation,
-      otherwise Cats Runtime dashboard/root as the default safe destination.
-- [ ] Task 2.4: Ensure the new entry is reachable from Lobby and all product
+- [ ] Task 2.3: Implement the runtime-owned/default portion of the first-slice
+      routing rule for the new recovery item:
+      Cats Runtime setup when runtime needs setup/remediation, otherwise
+      Cats Runtime dashboard/root as the default safe destination.
+- [ ] Task 2.4: Keep the recovery-entry action-selection seam ready for Phase 3
+      to prepend the optional desktop packaged setup/resume branch when host
+      state makes it relevant.
+- [ ] Task 2.5: Ensure the new entry is reachable from Lobby and all product
       sidebars through the shared menu.
-- [ ] Task 2.5: Add targeted tests for menu contents and recovery-entry
+- [ ] Task 2.6: Add targeted tests for menu contents and recovery-entry
       behavior.
 
 **Deliverables**: a shallow in-product recovery entry no longer buried in
-settings and no mandatory new recovery surface in the first slice
+settings, no mandatory new recovery surface in the first slice, and a working
+runtime-owned default routing path before desktop-specific repair is added
 
 ### Phase 3: Connect Desktop Repair Only When Relevant
 
 - [ ] Task 3.1: Reuse the existing desktop host bridge only for the minimum
       recovery-entry needs:
       current desktop host/setup state and packaged-setup entry/resume actions.
-- [ ] Task 3.2: Keep packaged setup conditional on relevant desktop host state
-      instead of showing desktop repair controls all the time.
+- [ ] Task 3.2: Add the desktop-specific highest-priority routing branch to the
+      first-slice rule:
+      packaged setup/resume when host state explicitly marks it as relevant.
 - [ ] Task 3.3: Preserve graceful degradation when the desktop host bridge is
       unavailable.
 - [ ] Task 3.4: Add targeted tests for desktop vs non-desktop recovery-entry
       behavior.
 
 **Deliverables**: desktop packaged setup becomes an available repair lane,
-without dominating the product-owned recovery entry
+completing the full first-slice routing rule without dominating the
+product-owned recovery entry
 
 ### Phase 4: Optional Lightweight Resolver Follow-Up
 
