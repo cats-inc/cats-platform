@@ -16,11 +16,10 @@ import {
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import { executeEnvironmentRecovery } from '../../../../shared/environmentRecoveryAction.js';
 import {
   resolveRuntimeDotClassName,
   resolveRuntimePresentationStatus,
-  resolveRuntimeRecoveryTarget,
-  resolveRuntimeRecoveryUrl,
   resolveRuntimeTooltip,
 } from '../../../../shared/runtimeStatusPresentation.js';
 import { resolvePlatformSurfaceFromPath } from '../../../../core/platformSurface.js';
@@ -813,9 +812,10 @@ export function Sidebar({
         onOpenChange={handleAccountMenuOpenChange}
         onNavigateSettings={onNavigateSettings}
         onNavigateEnvironment={() => {
-          const target = resolveRuntimeRecoveryTarget(runtimeFooterStatus);
-          const url = resolveRuntimeRecoveryUrl(payload.runtime.baseUrl, target);
-          window.open(url, '_blank', 'noopener,noreferrer');
+          void executeEnvironmentRecovery({
+            runtimeStatus: runtimeFooterStatus,
+            runtimeBaseUrl: payload.runtime.baseUrl,
+          });
         }}
         runtimeBaseUrl={payload.runtime.baseUrl}
         containerClassName="sidebarFooter"

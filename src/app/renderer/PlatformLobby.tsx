@@ -4,11 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { AccountIdentityMenu } from '../../design/components/AccountIdentityMenu.js';
 import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared/platform-contract.js';
+import { executeEnvironmentRecovery } from '../../shared/environmentRecoveryAction.js';
 import {
   resolveRuntimeLobbyDotClassName,
   resolveRuntimePresentationStatus,
-  resolveRuntimeRecoveryTarget,
-  resolveRuntimeRecoveryUrl,
   resolveRuntimeTooltip,
 } from '../../shared/runtimeStatusPresentation.js';
 import { LobbyBouncingCats } from './LobbyBouncingCats.js';
@@ -90,9 +89,10 @@ export function PlatformLobby({
                 state: { platformShellSurface: envelope.lastProductSurface ?? 'chat' },
               })}
               onNavigateEnvironment={() => {
-                const target = resolveRuntimeRecoveryTarget(runtimeStatus);
-                const url = resolveRuntimeRecoveryUrl(envelope.runtime.baseUrl, target);
-                window.open(url, '_blank', 'noopener,noreferrer');
+                void executeEnvironmentRecovery({
+                  runtimeStatus,
+                  runtimeBaseUrl: envelope.runtime.baseUrl,
+                });
               }}
               runtimeBaseUrl={envelope.runtime.baseUrl}
               triggerClassName="lobbyIdentity"

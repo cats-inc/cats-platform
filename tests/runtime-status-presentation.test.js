@@ -164,6 +164,27 @@ describe('resolveRuntimeRecoveryTarget', () => {
   it('returns runtime-root for unknown', () => {
     assert.equal(resolveRuntimeRecoveryTarget('unknown'), 'runtime-root');
   });
+
+  it('returns desktop-setup when desktopSetupRelevant is true', () => {
+    assert.equal(
+      resolveRuntimeRecoveryTarget('ready', { desktopSetupRelevant: true }),
+      'desktop-setup',
+    );
+  });
+
+  it('returns desktop-setup over runtime-setup when desktop is relevant', () => {
+    assert.equal(
+      resolveRuntimeRecoveryTarget('unavailable', { desktopSetupRelevant: true }),
+      'desktop-setup',
+    );
+  });
+
+  it('ignores desktopSetupRelevant when false', () => {
+    assert.equal(
+      resolveRuntimeRecoveryTarget('unavailable', { desktopSetupRelevant: false }),
+      'runtime-setup',
+    );
+  });
 });
 
 describe('resolveRuntimeRecoveryUrl', () => {

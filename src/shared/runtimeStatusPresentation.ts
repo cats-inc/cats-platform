@@ -60,11 +60,15 @@ export function resolveRuntimeDotClassName(
 
 // -- Recovery entry routing --
 
-export type RuntimeRecoveryTarget = 'runtime-root' | 'runtime-setup';
+export type RuntimeRecoveryTarget = 'desktop-setup' | 'runtime-setup' | 'runtime-root';
 
 export function resolveRuntimeRecoveryTarget(
   status: RuntimePresentationStatus,
+  options?: { desktopSetupRelevant?: boolean },
 ): RuntimeRecoveryTarget {
+  if (options?.desktopSetupRelevant) {
+    return 'desktop-setup';
+  }
   if (status === 'unavailable' || status === 'degraded') {
     return 'runtime-setup';
   }

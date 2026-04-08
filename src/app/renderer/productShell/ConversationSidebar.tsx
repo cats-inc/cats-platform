@@ -16,11 +16,10 @@ import type {
 import { resolvePlatformSurfaceFromPath } from '../../../core/platformSurface.js';
 import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
 import { PlatformSurfaceSwitcher } from '../../../design/components/PlatformSurfaceSwitcher.js';
+import { executeEnvironmentRecovery } from '../../../shared/environmentRecoveryAction.js';
 import {
   resolveRuntimeDotClassName,
   resolveRuntimePresentationStatus,
-  resolveRuntimeRecoveryTarget,
-  resolveRuntimeRecoveryUrl,
   resolveRuntimeTooltip,
 } from '../../../shared/runtimeStatusPresentation.js';
 
@@ -703,9 +702,10 @@ export function ConversationSidebar<
         onOpenChange={handleAccountMenuOpenChange}
         onNavigateSettings={onNavigateSettings}
         onNavigateEnvironment={() => {
-          const target = resolveRuntimeRecoveryTarget(runtimeFooterStatus);
-          const url = resolveRuntimeRecoveryUrl(payload.runtime.baseUrl, target);
-          window.open(url, '_blank', 'noopener,noreferrer');
+          void executeEnvironmentRecovery({
+            runtimeStatus: runtimeFooterStatus,
+            runtimeBaseUrl: payload.runtime.baseUrl,
+          });
         }}
         runtimeBaseUrl={payload.runtime.baseUrl}
         containerClassName="sidebarFooter"
