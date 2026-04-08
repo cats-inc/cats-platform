@@ -10,15 +10,18 @@ export function buildDesktopBootstrapPage(): string {
     <style>
       :root {
         color-scheme: light;
-        --bg: #f5f1e8;
-        --panel: rgba(255, 252, 247, 0.86);
-        --ink: #1f1a14;
-        --muted: #6e6254;
-        --accent: #9d4f2e;
-        --warning: #b56b00;
-        --danger: #9b2c2c;
-        --ok: #1f6f50;
-        --line: rgba(54, 38, 26, 0.12);
+        --bg: #FAFAF7;
+        --panel: #ffffff;
+        --panel-hover: #E8E4DC;
+        --ink: #1A1A1A;
+        --muted: #6B6560;
+        --accent: #C4653A;
+        --warning: #8D6830;
+        --danger: #C0392B;
+        --ok: #207A53;
+        --line: #E4DFD7;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        --shadow-raised: 0 4px 16px rgba(0, 0, 0, 0.08);
       }
       * { box-sizing: border-box; }
       html, body {
@@ -28,10 +31,8 @@ export function buildDesktopBootstrapPage(): string {
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: "Segoe UI", "Aptos", sans-serif;
-        background:
-          radial-gradient(circle at top left, rgba(231, 197, 175, 0.8), transparent 28rem),
-          linear-gradient(135deg, #f7f0e2 0%, #f0e5d8 40%, #efe9df 100%);
+        font-family: "Aptos", system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+        background: var(--bg);
         color: var(--ink);
       }
       main {
@@ -39,10 +40,9 @@ export function buildDesktopBootstrapPage(): string {
         margin: 32px auto;
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 28px;
+        border-radius: 16px;
         padding: 28px;
-        backdrop-filter: blur(18px);
-        box-shadow: 0 18px 48px rgba(68, 43, 23, 0.12);
+        box-shadow: var(--shadow);
       }
       main[data-page-mode="loading"] [data-recovery-only="true"] {
         display: none;
@@ -55,55 +55,58 @@ export function buildDesktopBootstrapPage(): string {
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       }
       h1, h2 { margin: 0; font-weight: 700; }
-      h1 { font-size: 30px; letter-spacing: -0.04em; }
+      h1 { font-size: 1.6rem; letter-spacing: -0.03em; }
       h2 {
-        font-size: 15px;
+        font-size: 0.72rem;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: var(--muted);
+        letter-spacing: 0.12em;
+        color: var(--accent);
+        font-weight: 700;
       }
       p { margin: 0; }
-      .hero { display: grid; gap: 12px; margin-bottom: 24px; }
+      .hero { display: grid; gap: 10px; margin-bottom: 24px; }
       .badge {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
+        gap: 6px;
+        padding: 3px 10px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.7);
-        border: 1px solid var(--line);
+        font-size: 0.72rem;
+        font-weight: 600;
         width: fit-content;
-        color: var(--muted);
       }
+      .badge.status-ok { background: rgba(61, 167, 121, 0.11); color: var(--ok); }
+      .badge.status-degraded { background: rgba(191, 146, 73, 0.12); color: var(--warning); }
+      .badge.status-unavailable { background: rgba(192, 57, 43, 0.1); color: var(--danger); }
       .status-ok { color: var(--ok); }
       .status-degraded { color: var(--warning); }
       .status-unavailable { color: var(--danger); }
       .grid {
         display: grid;
         grid-template-columns: 1.2fr 0.8fr;
-        gap: 20px;
+        gap: 16px;
         align-items: start;
       }
       .column {
         display: grid;
-        gap: 20px;
+        gap: 16px;
       }
       .panel {
         border: 1px solid var(--line);
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.7);
-        padding: 18px;
+        border-radius: 16px;
+        background: var(--panel);
+        padding: 16px;
         display: grid;
-        gap: 14px;
+        gap: 12px;
       }
-      .summary { font-size: 18px; line-height: 1.5; }
+      .summary { font-size: 0.92rem; line-height: 1.5; color: var(--muted); }
       .service-row, .issue-row {
         display: grid;
-        gap: 6px;
-        padding: 12px 14px;
-        border-radius: 16px;
+        gap: 4px;
+        padding: 10px 12px;
+        border-radius: 12px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.85);
+        background: var(--panel);
       }
       .setup-summary {
         display: grid;
@@ -112,78 +115,87 @@ export function buildDesktopBootstrapPage(): string {
       .row-title {
         display: flex;
         justify-content: space-between;
-        gap: 16px;
+        gap: 12px;
         align-items: center;
         flex-wrap: wrap;
       }
-      .row-title strong { font-size: 15px; }
-      .meta { font-size: 13px; color: var(--muted); }
+      .row-title strong { font-size: 0.85rem; }
+      .meta { font-size: 0.78rem; color: var(--muted); }
       .interruption-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
       }
       .interruption-chip {
         display: inline-flex;
         align-items: center;
         border-radius: 999px;
-        padding: 4px 8px;
-        background: rgba(157, 79, 46, 0.08);
+        padding: 2px 8px;
+        background: rgba(196, 101, 58, 0.08);
         border: 1px solid var(--line);
         color: var(--accent);
-        font-size: 12px;
+        font-size: 0.69rem;
+        font-weight: 600;
       }
-      .issues, .services, .actions { display: grid; gap: 12px; }
-      .actions { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+      .issues, .services { display: grid; gap: 8px; }
+      .actions {
+        display: grid;
+        gap: 8px;
+      }
+      .actions button[data-primary="true"] {
+        order: -1;
+      }
       .diagnostics-list, .chronology-list {
         display: grid;
-        gap: 10px;
+        gap: 8px;
       }
       .chronology-item {
-        padding: 10px 12px;
-        border-radius: 14px;
+        padding: 8px 10px;
+        border-radius: 12px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.8);
+        background: var(--panel);
         display: grid;
-        gap: 4px;
+        gap: 3px;
       }
       .timeline-meta {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
         color: var(--muted);
-        font-size: 12px;
+        font-size: 0.69rem;
       }
       button {
         border: 0;
-        border-radius: 16px;
-        padding: 12px 14px;
+        border-radius: 12px;
+        padding: 10px 14px;
         font: inherit;
+        font-size: 0.85rem;
         font-weight: 600;
         cursor: pointer;
-        background: #fff;
+        background: var(--panel);
         color: var(--ink);
         border: 1px solid var(--line);
-        transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+        transition: background 140ms ease;
       }
       button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 18px rgba(74, 47, 24, 0.08);
+        background: var(--panel-hover);
       }
       button[data-primary="true"] {
-        background: linear-gradient(135deg, var(--accent), #bb6e48);
+        background: var(--accent);
         color: #fff;
         border-color: transparent;
       }
+      button[data-primary="true"]:hover {
+        background: #b55a32;
+      }
       button:disabled {
         cursor: default;
-        opacity: 0.6;
-        transform: none;
-        box-shadow: none;
+        opacity: 0.5;
+        pointer-events: none;
       }
       code {
         font-family: "Cascadia Code", "Consolas", monospace;
-        font-size: 12px;
+        font-size: 0.75rem;
         white-space: pre-wrap;
       }
       .grid,
@@ -214,7 +226,7 @@ export function buildDesktopBootstrapPage(): string {
         word-break: break-word;
       }
       @media (max-width: 860px) {
-        main { padding: 18px; margin: 12px auto; }
+        main { padding: 16px; margin: 12px auto; }
         .grid { grid-template-columns: 1fr; }
       }
     </style>
@@ -222,8 +234,8 @@ export function buildDesktopBootstrapPage(): string {
   <body>
     <main id="host-shell" data-page-mode="loading">
       <section class="hero">
-        <span id="phase-badge" class="badge">Starting desktop host</span>
-        <h1>Cats Desktop Host</h1>
+        <span id="phase-badge" class="badge status-degraded">Starting desktop host</span>
+        <h1>Cats</h1>
         <p id="summary" class="summary">Waiting for local services.</p>
       </section>
       <section class="grid">
