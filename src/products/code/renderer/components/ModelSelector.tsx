@@ -1,177 +1,48 @@
-import { useEffect, useRef, useState } from 'react';
-import { buildExecutionLabel } from '../../../../shared/executionLabel';
-import type {
-  ProviderModelSelection,
-  ProviderTargetSelection,
-} from '../../../../shared/providerSelection';
 import type { ChatCat } from '../../api/contracts';
-import { catInitials, isChatCat } from '../chatUtils';
 import { ProviderModelFields } from './ProviderModelFields';
 import { CatAvatarRow } from './CatAvatarRow';
+import {
+  WorkspaceModelSelector,
+  WorkspaceModelSelectorPanel,
+  buildModelSelectorLabel,
+  ModelSelectorChip,
+  type ModelSelectorChipProps,
+  type ModelSelectorPanelMode,
+  type ModelSelectorValue,
+  type WorkspaceModelSelectorPanelProps,
+} from '../../../shared/renderer/components/ModelSelector.js';
 
-export interface ModelSelectorValue {
-  provider: string;
-  model: string | null;
-  instance: string | null;
-  modelSelection: ProviderModelSelection | null;
-}
+export { ModelSelectorChip, buildModelSelectorLabel };
+export type { ModelSelectorChipProps, ModelSelectorPanelMode, ModelSelectorValue };
 
-// --- Chip ---
-
-export interface ModelSelectorChipProps {
-  label: string;
-  onClick?: () => void;
-}
-
-export function ModelSelectorChip({ label, onClick }: ModelSelectorChipProps) {
-  return (
-    <button
-      type="button"
-      className="modelSelectorChip"
-      disabled={!onClick}
-      onClick={onClick}
-      data-tooltip="Select model"
-    >
-      <span className="modelSelectorChipLabel">{label}</span>
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2.5 4 5 6.5 7.5 4" />
-      </svg>
-    </button>
-  );
-}
-
-export function buildModelSelectorLabel(value: ModelSelectorValue, catName?: string | null): string {
-  const base = buildExecutionLabel(value.provider, value.instance, value.model);
-  return catName ? `${catName} \u00b7 ${base}` : base;
-}
-
-// --- Panel ---
-
-export type ModelSelectorPanelMode = 'draft' | 'direct-lane';
-
-export interface ModelSelectorPanelProps {
-  mode: ModelSelectorPanelMode;
+export interface ModelSelectorPanelProps extends Omit<
+  WorkspaceModelSelectorPanelProps,
+  'ProviderModelFieldsComponent' | 'CatAvatarRowComponent' | 'cats'
+> {
   cats: ChatCat[];
-  bossCatId: string | null;
-  selectedCatIds: string[];
-  highlightedCatId: string | null;
-  defaultRecipientCatId?: string | null;
-  onToggleCat?: (catId: string) => void;
-  onHighlightCat?: (catId: string) => void;
-  modelValue: ModelSelectorValue;
-  onModelChange: (value: ModelSelectorValue) => void;
-  fieldsDisabled?: boolean;
-  onClose: () => void;
 }
 
-export function ModelSelectorPanel({
-  mode,
-  cats,
-  bossCatId,
-  selectedCatIds,
-  highlightedCatId,
-  onToggleCat,
-  onHighlightCat,
-  defaultRecipientCatId,
-  modelValue,
-  onModelChange,
-  fieldsDisabled,
-  onClose,
-}: ModelSelectorPanelProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onClickOutside(event: MouseEvent): void {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [onClose]);
-
-  const chatCats = cats
-    .filter((c) => c.status === 'active' && isChatCat(c));
-
-  function handleTargetChange(target: ProviderTargetSelection): void {
-    onModelChange({
-      provider: target.provider,
-      model: target.model || null,
-      instance: target.instance || null,
-      modelSelection: target.modelSelection ?? null,
-    });
-  }
-
-  const headerLabel = 'AI Reply';
-
+export function ModelSelectorPanel(props: ModelSelectorPanelProps) {
   return (
-    <div className="modelSelectorPanel" ref={panelRef}>
-      <div className="modelSelectorPanelHeader">
-        <strong>{headerLabel}</strong>
-        <button
-          type="button"
-          className="chromeButton"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          &times;
-        </button>
-      </div>
-      <CatAvatarRow
-        cats={chatCats}
-        bossCatId={bossCatId}
-        selectedIds={selectedCatIds}
-        highlightedId={highlightedCatId}
-        defaultRecipientCatId={defaultRecipientCatId}
-        toggleable={mode === 'draft'}
-        showLeadBadge
-        onToggle={onToggleCat ?? (() => {})}
-        onHighlight={onHighlightCat ?? (() => {})}
-      />
-      <div
-        className="modelSelectorPanelBody"
-        style={fieldsDisabled ? { pointerEvents: 'none', opacity: 0.45 } : undefined}
-      >
-        <ProviderModelFields
-          provider={modelValue.provider}
-          instance={modelValue.instance ?? ''}
-          model={modelValue.model ?? ''}
-          modelSelection={modelValue.modelSelection}
-          onTargetChange={handleTargetChange}
-        />
-      </div>
-    </div>
+    <WorkspaceModelSelectorPanel
+      {...props}
+      ProviderModelFieldsComponent={ProviderModelFields}
+      CatAvatarRowComponent={CatAvatarRow}
+    />
   );
 }
-
-// --- Legacy wrapper (backward compat) ---
 
 interface ModelSelectorProps {
   value: ModelSelectorValue;
   onChange: (value: ModelSelectorValue) => void;
 }
 
-export function ModelSelector({ value, onChange }: ModelSelectorProps) {
-  const [panelOpen, setPanelOpen] = useState(false);
-
+export function ModelSelector(props: ModelSelectorProps) {
   return (
-    <>
-      <ModelSelectorChip
-        label={buildModelSelectorLabel(value)}
-        onClick={() => setPanelOpen(!panelOpen)}
-      />
-      {panelOpen ? (
-        <ModelSelectorPanel
-          mode="draft"
-          cats={[]}
-          bossCatId={null}
-          selectedCatIds={[]}
-          highlightedCatId={null}
-          modelValue={value}
-          onModelChange={onChange}
-          onClose={() => setPanelOpen(false)}
-        />
-      ) : null}
-    </>
+    <WorkspaceModelSelector
+      {...props}
+      ProviderModelFieldsComponent={ProviderModelFields}
+      CatAvatarRowComponent={CatAvatarRow}
+    />
   );
 }
