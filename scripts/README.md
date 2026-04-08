@@ -95,8 +95,8 @@ That tool turns one source SVG into the Electron app/tray icon set needed for:
 
 It also supports shape-controlled outputs:
 
-- default square output: `npm run desktop:icons`
-- circular avatar clip: `npm run desktop:icons -- --shape circle`
+- default circular avatar clip: `npm run desktop:icons`
+- explicit square output: `npm run desktop:icons -- --shape square`
 
 ## Collaboration Helpers
 

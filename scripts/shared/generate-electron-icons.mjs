@@ -15,7 +15,7 @@ const PROJECT_ROOT = resolve(SCRIPT_DIR, '..', '..');
 const DEFAULT_INPUT = resolve(PROJECT_ROOT, 'assets', 'app-icon-silhouette.svg');
 const DEFAULT_ASSETS_ROOT = resolve(PROJECT_ROOT, 'assets');
 const DEFAULT_BUILD_RESOURCES_DIR = resolve(DEFAULT_ASSETS_ROOT, 'build');
-const DEFAULT_ICON_SHAPE = 'square';
+const DEFAULT_ICON_SHAPE = 'circle';
 const SUPPORTED_ICON_SHAPES = new Set(['square', 'circle']);
 
 const LINUX_ICON_SIZES = [16, 24, 32, 48, 64, 128, 256, 512];
@@ -43,7 +43,7 @@ Options:
   --input <path>               Source SVG. Defaults to assets/app-icon-silhouette.svg
   --assets-root <path>         Asset root for tray outputs. Defaults to assets/
   --build-resources <path>     Build-resource root for app icons. Defaults to assets/build
-  --shape <square|circle>      Output mask shape. Defaults to square
+  --shape <square|circle>      Output mask shape. Defaults to circle
   --help                       Show this help text.
 `);
 }

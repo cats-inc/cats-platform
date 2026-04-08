@@ -1,6 +1,6 @@
 {
   "sourceSvg": "assets/app-icon-silhouette.svg",
-  "shape": "square",
+  "shape": "circle",
   "app": {
     "png": "assets/build/icon.png",
     "ico": "assets/build/icon.ico",

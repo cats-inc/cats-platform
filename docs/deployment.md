@@ -128,10 +128,10 @@ npm run desktop:package:linux
 npm run desktop:icons
 ```
 
-- circular avatar-style clip:
+- square fallback:
 
 ```bash
-npm run desktop:icons -- --shape circle
+npm run desktop:icons -- --shape square
 ```
 
 ```bash

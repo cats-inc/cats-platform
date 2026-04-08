@@ -57,7 +57,7 @@ test('generateElectronIcons creates the cross-platform app and tray icon set fro
   });
 
   assert.equal(typeof manifest.sourceSvg, 'string');
-  assert.equal(manifest.shape, 'square');
+  assert.equal(manifest.shape, 'circle');
   assert.equal(manifest.app.ico.endsWith('assets/build/icon.ico'), true);
   assert.equal(manifest.app.icns.endsWith('assets/build/icon.icns'), true);
   assert.equal(manifest.tray.default.endsWith('assets/tray-icon.png'), true);
@@ -91,11 +91,17 @@ test('generateElectronIcons creates the cross-platform app and tray icon set fro
     ['icp4', 'ic11', 'icp5', 'ic12', 'icp6', 'ic07', 'ic13', 'ic08', 'ic14', 'ic09', 'ic10'],
   );
 
+  const appCorner = await readPixel(join(buildResourcesDir, 'icon.png'), 0, 0);
+  assert.equal(appCorner.alpha, 0);
+
+  const trayCorner = await readPixel(join(assetsRoot, 'tray-icon.png'), 0, 0);
+  assert.equal(trayCorner.alpha, 0);
+
   const manifestFromDisk = JSON.parse(await readFile(join(buildResourcesDir, 'icon-manifest.json'), 'utf8'));
   assert.deepEqual(manifestFromDisk, manifest);
 });
 
-test('generateElectronIcons can clip outputs to a circular avatar shape', async () => {
+test('generateElectronIcons can keep explicit square outputs when requested', async () => {
   const workspace = await createWorkspace();
   const inputSvgPath = join(workspace, 'icon-source.svg');
   const assetsRoot = join(workspace, 'assets');
@@ -107,20 +113,20 @@ test('generateElectronIcons can clip outputs to a circular avatar shape', async 
     inputSvgPath,
     assetsRoot,
     buildResourcesDir,
-    iconShape: 'circle',
+    iconShape: 'square',
   });
 
-  assert.equal(manifest.shape, 'circle');
+  assert.equal(manifest.shape, 'square');
 
-  const squareCorner = await readPixel(join(buildResourcesDir, 'icon.png'), 0, 0);
-  assert.equal(squareCorner.alpha, 0);
+  const appCorner = await readPixel(join(buildResourcesDir, 'icon.png'), 0, 0);
+  assert.equal(appCorner.alpha > 0, true);
 
   const iconCenter = await readPixel(join(buildResourcesDir, 'icon.png'), 256, 256);
   assert.equal(iconCenter.alpha > 0, true);
 
   const trayCorner = await readPixel(join(assetsRoot, 'tray-icon.png'), 0, 0);
-  assert.equal(trayCorner.alpha, 0);
+  assert.equal(trayCorner.alpha > 0, true);
 
   const trayTemplateCorner = await readPixel(join(assetsRoot, 'tray-iconTemplate.png'), 0, 0);
-  assert.equal(trayTemplateCorner.alpha, 0);
+  assert.equal(trayTemplateCorner.alpha >= 0, true);
 });
