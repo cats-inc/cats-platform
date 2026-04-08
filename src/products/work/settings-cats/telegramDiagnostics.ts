@@ -1,1 +1,1 @@
-export * from '../../../core/settingsCatsTelegramDiagnostics.js';
+export * from '../../shared/settings-cats/telegramDiagnostics.js';
