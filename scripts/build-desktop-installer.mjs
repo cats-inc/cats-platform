@@ -96,19 +96,28 @@ async function resolveCommandInvocation(command, args) {
   };
 }
 
+export function buildInstallerEnvironment(baseEnv = process.env) {
+  const env = {
+    ...baseEnv,
+    CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+  };
+
+  for (const key of ['WIN_CSC_LINK', 'CSC_LINK', 'WIN_CSC_KEY_PASSWORD', 'CSC_KEY_PASSWORD']) {
+    const value = env[key];
+    if (typeof value !== 'string' || value.trim() === '') {
+      delete env[key];
+    }
+  }
+
+  return env;
+}
+
 async function runCommand(command, args, cwd) {
   const invocation = await resolveCommandInvocation(command, args);
   return new Promise((resolvePromise, reject) => {
     const child = spawn(invocation.command, invocation.args, {
       cwd,
-      env: {
-        ...process.env,
-        CSC_IDENTITY_AUTO_DISCOVERY: 'false',
-        WIN_CSC_LINK: '',
-        CSC_LINK: '',
-        WIN_CSC_KEY_PASSWORD: '',
-        CSC_KEY_PASSWORD: '',
-      },
+      env: buildInstallerEnvironment(process.env),
       stdio: 'inherit',
       shell: false,
     });

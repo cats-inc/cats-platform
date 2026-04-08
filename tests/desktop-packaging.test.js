@@ -10,7 +10,10 @@ import {
   buildWindowsExecutableEditOptions,
   resolveWindowsExecutableEditPlan,
 } from '../scripts/shared/edit-windows-exe-icon.mjs';
-import { parseArgs as parseBuildDesktopInstallerArgs } from '../scripts/build-desktop-installer.mjs';
+import {
+  buildInstallerEnvironment,
+  parseArgs as parseBuildDesktopInstallerArgs,
+} from '../scripts/build-desktop-installer.mjs';
 import {
   assertDesktopIconAssetsPresent,
   parseArgs as parsePackageDesktopArgs,
@@ -606,8 +609,8 @@ test('Windows afterPack hook edits the packaged executable icon without re-enabl
     },
   });
 
-  assert.equal(plan?.executablePath, 'C:\\release\\win-unpacked\\Cats.exe');
-  assert.equal(plan?.options.icon, 'C:\\repo\\assets\\build\\icon.ico');
+  assert.equal(plan?.executablePath, join('C:/release/win-unpacked', 'Cats.exe'));
+  assert.equal(plan?.options.icon, join('C:/repo/assets/build', 'icon.ico'));
   assert.equal(plan?.options['version-string'].ProductName, 'Cats');
   assert.equal(plan?.options['version-string'].CompanyName, 'Cats Inc.');
   assert.equal(Object.hasOwn(plan?.options ?? {}, 'requested-execution-level'), false);
@@ -752,14 +755,47 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /npx-cli\.js/);
   assert.match(script, /process\.execPath/);
   assert.match(script, /CSC_IDENTITY_AUTO_DISCOVERY:\s*'false'/);
-  assert.match(script, /WIN_CSC_LINK:\s*''/);
-  assert.match(script, /CSC_LINK:\s*''/);
-  assert.match(script, /WIN_CSC_KEY_PASSWORD:\s*''/);
-  assert.match(script, /CSC_KEY_PASSWORD:\s*''/);
+  assert.match(script, /for \(const key of \['WIN_CSC_LINK', 'CSC_LINK', 'WIN_CSC_KEY_PASSWORD', 'CSC_KEY_PASSWORD'\]\)/);
+  assert.match(script, /typeof value !== 'string' \|\| value\.trim\(\) === ''/);
+  assert.match(script, /delete env\[key\]/);
   assert.match(script, /shell: false/);
   assert.match(script, /scripts\/package-desktop\.mjs', '--platform', resolvedTarget/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
   assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);
+});
+
+test('buildInstallerEnvironment drops empty-signing overrides instead of passing project-root-like paths', () => {
+  const env = buildInstallerEnvironment({
+    PATH: process.env.PATH,
+    CSC_LINK: '',
+    WIN_CSC_LINK: '',
+    CSC_KEY_PASSWORD: '',
+    WIN_CSC_KEY_PASSWORD: '',
+    KEEP_ME: '1',
+  });
+
+  assert.equal(env.CSC_IDENTITY_AUTO_DISCOVERY, 'false');
+  assert.equal(env.KEEP_ME, '1');
+  assert.equal('CSC_LINK' in env, false);
+  assert.equal('WIN_CSC_LINK' in env, false);
+  assert.equal('CSC_KEY_PASSWORD' in env, false);
+  assert.equal('WIN_CSC_KEY_PASSWORD' in env, false);
+});
+
+test('buildInstallerEnvironment preserves explicit signing credentials when provided', () => {
+  const env = buildInstallerEnvironment({
+    PATH: process.env.PATH,
+    CSC_LINK: 'file:///tmp/macos-signing.p12',
+    WIN_CSC_LINK: 'file:///tmp/windows-signing.p12',
+    CSC_KEY_PASSWORD: 'mac-secret',
+    WIN_CSC_KEY_PASSWORD: 'win-secret',
+  });
+
+  assert.equal(env.CSC_IDENTITY_AUTO_DISCOVERY, 'false');
+  assert.equal(env.CSC_LINK, 'file:///tmp/macos-signing.p12');
+  assert.equal(env.WIN_CSC_LINK, 'file:///tmp/windows-signing.p12');
+  assert.equal(env.CSC_KEY_PASSWORD, 'mac-secret');
+  assert.equal(env.WIN_CSC_KEY_PASSWORD, 'win-secret');
 });
 
 test('desktop packaging scripts keep icon selection outside the build flags', () => {
