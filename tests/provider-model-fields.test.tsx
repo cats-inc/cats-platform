@@ -17,7 +17,6 @@ import {
   sanitizePersistentTargetSelection,
   shouldAutoRecheckProviderRegistry,
   shouldAllowLegacyManualModelEntry,
-  shouldMaskRuntimeUnreachableProviderRegistry,
   shouldTreatPersistedTargetAsLegacyModel,
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
@@ -494,32 +493,6 @@ test('provider registry auto-recheck only triggers for empty truthful states aft
     lastAutoRecheckAt: 1000,
     now: 1000 + PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   }), true);
-});
-
-test('transient runtime-unreachable selector states stay in loading mode during the grace window', () => {
-  assert.equal(shouldMaskRuntimeUnreachableProviderRegistry({
-    providersLoaded: true,
-    providerCount: 0,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    graceWindowOpen: true,
-  }), true);
-
-  assert.equal(shouldMaskRuntimeUnreachableProviderRegistry({
-    providersLoaded: true,
-    providerCount: 0,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    graceWindowOpen: false,
-  }), false);
-
-  assert.equal(shouldMaskRuntimeUnreachableProviderRegistry({
-    providersLoaded: true,
-    providerCount: 1,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    graceWindowOpen: true,
-  }), false);
 });
 
 test('static fallback catalogs do not classify unknown persisted models as legacy before runtime data arrives', () => {

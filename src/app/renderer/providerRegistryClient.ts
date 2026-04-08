@@ -118,26 +118,15 @@ export async function fetchProviderRegistryFromClientCache(options: {
     && providerRegistryClientCache.value
     && providerRegistryClientCache.freshUntilMs > now
   ) {
-    console.log('[selector:client] cache hit, state=%s', providerRegistryClientCache.value.state);
     return providerRegistryClientCache.value;
   }
 
   if (!options.force && providerRegistryClientCache.inflight) {
-    console.log('[selector:client] joining in-flight request');
     return providerRegistryClientCache.inflight;
   }
 
-  const startMs = Date.now();
-  console.log('[selector:client] fetching /api/providers');
   const request = loadProviderRegistry(options.fetchImpl ?? fetch)
     .then((value) => {
-      const elapsedMs = Date.now() - startMs;
-      console.log(
-        '[selector:client] fetch complete: state=%s providers=%d elapsed=%dms',
-        value.state,
-        value.providers.length,
-        elapsedMs,
-      );
       if (shouldCacheProviderRegistryValue(value)) {
         providerRegistryClientCache.value = value;
         providerRegistryClientCache.freshUntilMs = Date.now() + PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS;

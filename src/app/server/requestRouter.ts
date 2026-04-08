@@ -331,7 +331,6 @@ export async function routeRequest(
     }
     await handleProviderRegistry({
       runtimeClient: dependencies.shared.runtimeClient,
-      chatStatePath: dependencies.shared.config.chatStatePath,
     }, response);
     return;
   }
@@ -349,7 +348,6 @@ export async function routeRequest(
       response,
       {
         runtimeClient: dependencies.shared.runtimeClient,
-        chatStatePath: dependencies.shared.config.chatStatePath,
       },
       providerModelsMatch[0]!,
       url.searchParams.get('instance'),
@@ -370,7 +368,6 @@ export async function routeRequest(
       response,
       {
         runtimeClient: dependencies.shared.runtimeClient,
-        chatStatePath: dependencies.shared.config.chatStatePath,
       },
       advancedProviderModelsMatch[0]!,
       url.searchParams.get('instance'),

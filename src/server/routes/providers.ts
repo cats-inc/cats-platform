@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { ServerResponse } from 'node:http';
 
 import {
@@ -7,7 +6,6 @@ import {
   type ProductProviderDescriptor,
   type ProductProviderInstanceDescriptor,
 } from '../../shared/providerCatalog.js';
-import { appendPlatformOnboardingEvent } from '../../shared/platformOnboardingHistory.js';
 import type {
   RuntimeProviderDiagnosticsEntry,
   RuntimeProviderDiagnosticsPayload,
@@ -18,14 +16,12 @@ import type {
 
 interface ProviderRouteDependencies {
   runtimeClient: RuntimeClient;
-  chatStatePath?: string;
 }
 
 type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
 const TRUTHFUL_SELECTOR_CACHE_TTL_MS = 5_000;
 const TRUTHFUL_SELECTOR_STALE_WINDOW_MS = 15_000;
 const TRUTHFUL_SELECTOR_CONFIG_ENRICHMENT_BUDGET_MS = 500;
-const TRUTHFUL_SELECTOR_SLOW_LOG_THRESHOLD_MS = 1_000;
 
 interface TruthfulProviderRegistryReadModel {
   state: ProviderRegistryState;
@@ -46,20 +42,6 @@ interface TruthfulProviderRegistryCacheEntry {
 interface TruthfulProviderRegistryCacheState {
   entries: Map<string, TruthfulProviderRegistryCacheEntry>;
   inflight: Map<string, Promise<TruthfulProviderRegistryReadModel>>;
-}
-
-type SelectorConfigEnrichmentStatus =
-  | 'fulfilled'
-  | 'rejected'
-  | 'timed_out'
-  | 'skipped'
-  | 'pending';
-
-interface SelectorConfigEnrichmentResult {
-  status: SelectorConfigEnrichmentStatus;
-  elapsedMs: number;
-  value?: RuntimeProviderConfigRegistry;
-  reason?: unknown;
 }
 
 const truthfulProviderRegistryCache = new WeakMap<RuntimeClient, TruthfulProviderRegistryCacheState>();
@@ -342,20 +324,17 @@ async function readProviderDiagnostics(
   });
 }
 
-function formatSelectorLegError(reason: unknown): string {
-  if (reason instanceof Error && reason.message.trim().length > 0) {
-    return reason.message;
-  }
-  if (typeof reason === 'string' && reason.trim().length > 0) {
-    return reason;
-  }
-  return 'unknown';
-}
-
-async function settleSelectorConfigEnrichment(
-  task: Promise<SelectorConfigEnrichmentResult>,
-  startedAtMs: number,
-): Promise<SelectorConfigEnrichmentResult> {
+async function readProviderConfigBestEffort(
+  dependencies: ProviderRouteDependencies,
+): Promise<RuntimeProviderConfigRegistry | null> {
+  const task = readProviderConfig(dependencies)
+    .then((value) => ({
+      status: 'fulfilled' as const,
+      value,
+    }))
+    .catch(() => ({
+      status: 'rejected' as const,
+    }));
   const timeoutToken = Symbol('selector-config-timeout');
   const winner = await Promise.race([
     task,
@@ -365,82 +344,10 @@ async function settleSelectorConfigEnrichment(
   ]);
 
   if (winner === timeoutToken) {
-    return {
-      status: 'timed_out',
-      elapsedMs: Date.now() - startedAtMs,
-    };
+    return null;
   }
 
-  return winner;
-}
-
-async function appendSelectorBreadcrumb(
-  dependencies: ProviderRouteDependencies,
-  input: {
-    provider?: string | null;
-    state: ProviderRegistryState;
-    totalElapsedMs: number;
-    providerCount: number;
-    diagnosticsStatus: 'fulfilled' | 'rejected';
-    diagnosticsElapsedMs: number;
-    diagnosticsError?: string;
-    configStatus: SelectorConfigEnrichmentStatus;
-    configElapsedMs: number;
-    configError?: string;
-    usedRuntimeConfig: boolean;
-  },
-): Promise<void> {
-  const chatStatePath = dependencies.chatStatePath?.trim();
-  if (!chatStatePath || !path.isAbsolute(chatStatePath)) {
-    return;
-  }
-
-  const shouldLog = input.state === 'runtime_unreachable'
-    || input.totalElapsedMs >= TRUTHFUL_SELECTOR_SLOW_LOG_THRESHOLD_MS
-    || input.configStatus === 'rejected'
-    || input.configStatus === 'timed_out';
-  if (!shouldLog) {
-    return;
-  }
-
-  const providerLabel = input.provider?.trim() || '*';
-  const summary = input.state === 'runtime_unreachable'
-    ? `Selector registry failed after ${input.totalElapsedMs}ms (provider=${providerLabel})`
-    : input.state === 'no_usable_targets'
-      ? `Selector registry found no usable targets after ${input.totalElapsedMs}ms (provider=${providerLabel})`
-      : `Selector registry ready after ${input.totalElapsedMs}ms (provider=${providerLabel})`;
-
-  try {
-    await appendPlatformOnboardingEvent(chatStatePath, {
-      kind: 'selector_registry_read',
-      status: input.state === 'runtime_unreachable'
-        ? 'unavailable'
-        : input.totalElapsedMs >= TRUTHFUL_SELECTOR_SLOW_LOG_THRESHOLD_MS
-          || input.configStatus !== 'fulfilled'
-          ? 'degraded'
-          : 'info',
-      summary,
-      context: {
-        provider: input.provider?.trim() || null,
-        state: input.state,
-        totalElapsedMs: input.totalElapsedMs,
-        providerCount: input.providerCount,
-        diagnostics: {
-          status: input.diagnosticsStatus,
-          elapsedMs: input.diagnosticsElapsedMs,
-          ...(input.diagnosticsError ? { error: input.diagnosticsError } : {}),
-        },
-        config: {
-          status: input.configStatus,
-          elapsedMs: input.configElapsedMs,
-          usedRuntimeConfig: input.usedRuntimeConfig,
-          ...(input.configError ? { error: input.configError } : {}),
-        },
-      },
-    });
-  } catch {
-    // Logging must stay best-effort and never break selector reads.
-  }
+  return winner.status === 'fulfilled' ? winner.value : null;
 }
 
 async function loadTruthfulProviderRegistryFromRuntime(
@@ -450,53 +357,14 @@ async function loadTruthfulProviderRegistryFromRuntime(
   } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
   const requestedProvider = options.provider?.trim() || null;
-  const startMs = Date.now();
-  const configStartedAtMs = Date.now();
-  const configTask = readProviderConfig(dependencies)
-    .then((value) => ({
-      status: 'fulfilled',
-      value,
-      elapsedMs: Date.now() - configStartedAtMs,
-    } as const))
-    .catch((reason: unknown) => ({
-      status: 'rejected',
-      reason,
-      elapsedMs: Date.now() - configStartedAtMs,
-    } as const));
-  const diagnosticsStartedAtMs = Date.now();
+  const configTask = readProviderConfigBestEffort(dependencies);
 
   let diagnostics: RuntimeProviderDiagnosticsPayload;
-  let diagnosticsElapsedMs = 0;
   try {
     diagnostics = await readProviderDiagnostics(dependencies, {
       provider: requestedProvider,
     });
-    diagnosticsElapsedMs = Date.now() - diagnosticsStartedAtMs;
   } catch (error) {
-    const elapsedMs = Date.now() - startMs;
-    const configResult: SelectorConfigEnrichmentResult = {
-      status: 'pending',
-      elapsedMs: Date.now() - configStartedAtMs,
-    };
-    console.log(
-      '[selector] provider registry load: config=%s diagnostics=%s elapsed=%dms provider=%s',
-      configResult.status,
-      `fail(${formatSelectorLegError(error)})`,
-      elapsedMs,
-      requestedProvider ?? '*',
-    );
-    await appendSelectorBreadcrumb(dependencies, {
-      provider: requestedProvider,
-      state: 'runtime_unreachable',
-      totalElapsedMs: elapsedMs,
-      providerCount: 0,
-      diagnosticsStatus: 'rejected',
-      diagnosticsElapsedMs: Date.now() - diagnosticsStartedAtMs,
-      diagnosticsError: formatSelectorLegError(error),
-      configStatus: configResult.status,
-      configElapsedMs: configResult.elapsedMs,
-      usedRuntimeConfig: false,
-    });
     return {
       state: 'runtime_unreachable',
       providers: [],
@@ -515,25 +383,6 @@ async function loadTruthfulProviderRegistryFromRuntime(
   );
 
   if (configuredProductProviders.length === 0) {
-    const elapsedMs = Date.now() - startMs;
-    console.log(
-      '[selector] provider registry load: config=%s diagnostics=%s elapsed=%dms provider=%s',
-      'skipped',
-      'ok',
-      elapsedMs,
-      requestedProvider ?? '*',
-    );
-    await appendSelectorBreadcrumb(dependencies, {
-      provider: requestedProvider,
-      state: 'no_usable_targets',
-      totalElapsedMs: elapsedMs,
-      providerCount: 0,
-      diagnosticsStatus: 'fulfilled',
-      diagnosticsElapsedMs,
-      configStatus: 'skipped',
-      configElapsedMs: 0,
-      usedRuntimeConfig: false,
-    });
     return {
       state: 'no_usable_targets',
       providers: [],
@@ -543,43 +392,12 @@ async function loadTruthfulProviderRegistryFromRuntime(
     };
   }
 
-  const configResult = await settleSelectorConfigEnrichment(configTask, configStartedAtMs);
-  const runtimeConfig = configResult.status === 'fulfilled' ? configResult.value : null;
+  const runtimeConfig = await configTask;
   const providers = mergeTruthfulProviderRegistry(
     configuredProductProviders,
     runtimeConfig ?? null,
     diagnostics,
   );
-  const elapsedMs = Date.now() - startMs;
-  const configLog = configResult.status === 'fulfilled'
-    ? 'ok'
-    : configResult.status === 'rejected'
-      ? `fail(${formatSelectorLegError(configResult.reason)})`
-      : configResult.status;
-  console.log(
-    '[selector] provider registry load: config=%s diagnostics=%s elapsed=%dms provider=%s providers=%d',
-    configLog,
-    'ok',
-    elapsedMs,
-    requestedProvider ?? '*',
-    providers.length,
-  );
-
-  const finalState: ProviderRegistryState = providers.length > 0 ? 'ready' : 'no_usable_targets';
-  await appendSelectorBreadcrumb(dependencies, {
-    provider: requestedProvider,
-    state: finalState,
-    totalElapsedMs: elapsedMs,
-    providerCount: providers.length,
-    diagnosticsStatus: 'fulfilled',
-    diagnosticsElapsedMs,
-    configStatus: configResult.status,
-    configElapsedMs: configResult.elapsedMs,
-    configError: configResult.status === 'rejected'
-      ? formatSelectorLegError(configResult.reason)
-      : undefined,
-    usedRuntimeConfig: runtimeConfig !== null,
-  });
 
   if (providers.length === 0) {
     return {
@@ -792,20 +610,10 @@ export async function handleProviderModels(
     return;
   }
 
-  const modelStartMs = Date.now();
   try {
     const catalog = await dependencies.runtimeClient.getProviderModels(provider, normalizedInstance);
-    console.log(
-      '[selector] models load: provider=%s instance=%s elapsed=%dms',
-      provider, normalizedInstance ?? '*', Date.now() - modelStartMs,
-    );
     sendJson(response, 200, { catalog });
   } catch (error) {
-    console.log(
-      '[selector] models load failed: provider=%s instance=%s elapsed=%dms error=%s',
-      provider, normalizedInstance ?? '*', Date.now() - modelStartMs,
-      error instanceof Error ? error.message : String(error),
-    );
     const runtimeError = error as RuntimeRequestError | Error;
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
       sendRestError(
@@ -875,20 +683,10 @@ export async function handleAdvancedProviderModels(
     return;
   }
 
-  const advancedStartMs = Date.now();
   try {
     const catalog = await dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance);
-    console.log(
-      '[selector] advanced models load: provider=%s instance=%s elapsed=%dms',
-      provider, normalizedInstance ?? '*', Date.now() - advancedStartMs,
-    );
     sendJson(response, 200, { catalog });
   } catch (error) {
-    console.log(
-      '[selector] advanced models load failed: provider=%s instance=%s elapsed=%dms error=%s',
-      provider, normalizedInstance ?? '*', Date.now() - advancedStartMs,
-      error instanceof Error ? error.message : String(error),
-    );
     const runtimeError = error as RuntimeRequestError | Error;
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
       sendRestError(
