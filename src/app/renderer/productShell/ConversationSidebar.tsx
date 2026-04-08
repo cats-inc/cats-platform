@@ -16,8 +16,11 @@ import type {
 import { resolvePlatformSurfaceFromPath } from '../../../core/platformSurface.js';
 import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
 import { PlatformSurfaceSwitcher } from '../../../design/components/PlatformSurfaceSwitcher.js';
-
-type RuntimeFooterStatus = 'unknown' | 'connected' | 'degraded' | 'unavailable';
+import {
+  resolveRuntimeDotClassName,
+  resolveRuntimePresentationStatus,
+  resolveRuntimeTooltip,
+} from '../../../shared/runtimeStatusPresentation.js';
 
 export interface ConversationSidebarCat {
   id: string;
@@ -127,56 +130,6 @@ export interface ConversationSidebarProps<
   onDirectChatCat: (catId: string) => void;
 }
 
-function resolveRuntimeFooterStatus(
-  payload: ConversationSidebarPayload,
-): RuntimeFooterStatus {
-  const runtime = payload.runtime;
-  if (!runtime || typeof runtime.reachable !== 'boolean') {
-    return 'unknown';
-  }
-  if (!runtime.reachable) {
-    return 'unavailable';
-  }
-
-  const status = typeof runtime.status === 'string' ? runtime.status.toLowerCase() : '';
-  if (status === 'ok' || status === 'healthy' || status === 'ready') {
-    return 'connected';
-  }
-  if (status === 'degraded' || status === 'warming' || status === 'starting') {
-    return 'degraded';
-  }
-  if (status === 'error' || status === 'unavailable' || status === 'failed') {
-    return 'unavailable';
-  }
-
-  return 'connected';
-}
-
-function runtimeFooterStatusLabel(status: RuntimeFooterStatus): string {
-  switch (status) {
-    case 'connected':
-      return 'Cats Runtime connected';
-    case 'degraded':
-      return 'Cats Runtime degraded';
-    case 'unavailable':
-      return 'Cats Runtime unavailable';
-    default:
-      return 'Cats Runtime status unknown';
-  }
-}
-
-function runtimeFooterStatusClassName(status: RuntimeFooterStatus): string {
-  switch (status) {
-    case 'connected':
-      return 'runtimeStatusDot isConnected';
-    case 'degraded':
-      return 'runtimeStatusDot isDegraded';
-    case 'unavailable':
-      return 'runtimeStatusDot isUnavailable';
-    default:
-      return 'runtimeStatusDot isUnknown';
-  }
-}
 
 function useFloatingSidebarMenu(
   anchorRef: RefObject<HTMLElement | null>,
@@ -561,8 +514,8 @@ export function ConversationSidebar<
     (channel) => !helpers.isDirectLaneSummary(channel),
   );
 
-  const runtimeFooterStatus = resolveRuntimeFooterStatus(payload);
-  const runtimeFooterLabel = runtimeFooterStatusLabel(runtimeFooterStatus);
+  const runtimeFooterStatus = resolveRuntimePresentationStatus(payload.runtime);
+  const runtimeFooterLabel = resolveRuntimeTooltip(runtimeFooterStatus);
 
   function handleAccountMenuOpenChange(nextOpen: boolean): void {
     if (nextOpen !== accountMenuOpen) {
@@ -773,7 +726,7 @@ export function ConversationSidebar<
         )}
         statusIndicator={(
           <span
-            className={runtimeFooterStatusClassName(runtimeFooterStatus)}
+            className={resolveRuntimeDotClassName(runtimeFooterStatus)}
             data-tooltip={runtimeFooterLabel}
             aria-label={runtimeFooterLabel}
           />

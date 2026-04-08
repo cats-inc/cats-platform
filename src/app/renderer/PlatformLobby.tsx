@@ -4,17 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { AccountIdentityMenu } from '../../design/components/AccountIdentityMenu.js';
 import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared/platform-contract.js';
+import {
+  resolveRuntimeLobbyDotClassName,
+  resolveRuntimePresentationStatus,
+  resolveRuntimeTooltip,
+} from '../../shared/runtimeStatusPresentation.js';
 import { LobbyBouncingCats } from './LobbyBouncingCats.js';
 import { buildPlatformLobbyEntries, pickLobbyGreeting } from './lobbyModel.js';
-
-function resolveRuntimeDotClass(runtime: PlatformHostEnvelope['runtime']): string {
-  if (!runtime.reachable) return 'lobbyIdentityDot lobbyIdentityDot--warn';
-  const status = typeof runtime.status === 'string' ? runtime.status.toLowerCase() : '';
-  if (status === 'degraded' || status === 'warming' || status === 'starting') {
-    return 'lobbyIdentityDot lobbyIdentityDot--warn';
-  }
-  return 'lobbyIdentityDot lobbyIdentityDot--ok';
-}
 
 function buildDirectLanePath(catId: string): string {
   return `/chat/my-cats/${encodeURIComponent(catId)}`;
@@ -66,7 +62,9 @@ export function PlatformLobby({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
   });
-  const dotClass = resolveRuntimeDotClass(envelope.runtime);
+  const runtimeStatus = resolveRuntimePresentationStatus(envelope.runtime);
+  const dotClass = resolveRuntimeLobbyDotClassName(runtimeStatus);
+  const runtimeTooltip = resolveRuntimeTooltip(runtimeStatus);
 
   const avatarStyle = envelope.ownerAvatarUrl
     ? { backgroundImage: `url(${envelope.ownerAvatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
@@ -99,7 +97,7 @@ export function PlatformLobby({
                 </span>
               )}
               meta={<span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>}
-              statusIndicator={<span className={dotClass} />}
+              statusIndicator={<span className={dotClass} data-tooltip={runtimeTooltip} aria-label={runtimeTooltip} />}
             />
           </div>
         </div>
