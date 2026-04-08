@@ -5,6 +5,8 @@
  * so Lobby, product sidebars, and any future consumer stay consistent.
  */
 
+import type { RuntimeSetupStatus } from './runtimeSetup.js';
+
 export type RuntimePresentationStatus = 'ready' | 'degraded' | 'unavailable' | 'unknown';
 
 export interface RuntimePresentationInput {
@@ -62,12 +64,27 @@ export function resolveRuntimeDotClassName(
 
 export type RuntimeRecoveryTarget = 'desktop-setup' | 'runtime-setup' | 'runtime-root';
 
+export function needsRuntimeSetupRecovery(
+  runtimeSetupStatus?: RuntimeSetupStatus | null,
+): boolean {
+  return runtimeSetupStatus === 'ready_to_apply'
+    || runtimeSetupStatus === 'scan_required'
+    || runtimeSetupStatus === 'attention_required'
+    || runtimeSetupStatus === 'unavailable';
+}
+
 export function resolveRuntimeRecoveryTarget(
   status: RuntimePresentationStatus,
-  options?: { desktopSetupRelevant?: boolean },
+  options?: {
+    desktopSetupRelevant?: boolean;
+    runtimeSetupStatus?: RuntimeSetupStatus | null;
+  },
 ): RuntimeRecoveryTarget {
   if (options?.desktopSetupRelevant) {
     return 'desktop-setup';
+  }
+  if (needsRuntimeSetupRecovery(options?.runtimeSetupStatus)) {
+    return 'runtime-setup';
   }
   if (status === 'unavailable' || status === 'degraded') {
     return 'runtime-setup';
@@ -80,6 +97,9 @@ export function resolveRuntimeRecoveryUrl(
   target: RuntimeRecoveryTarget,
 ): string {
   const base = new URL('/', runtimeBaseUrl).toString().replace(/\/$/, '');
+  if (target === 'desktop-setup') {
+    throw new Error('Desktop setup targets must be handled before resolving a runtime URL.');
+  }
   if (target === 'runtime-setup') {
     return `${base}/setup`;
   }

@@ -3,40 +3,56 @@
  *
  * Encapsulates the routing logic for the account-menu "Environment" entry.
  * Checks the desktop host bridge first for packaged setup relevance,
- * then falls back to Cats Runtime URLs based on current runtime status.
+ * then falls back to Cats Runtime URLs based on current runtime/setup state.
  */
 
+import { openBrowserUrl } from './catsRuntimeLink.js';
 import {
   getDesktopSetupRecommendation,
   triggerDesktopPackagedSetup,
 } from './desktopRecoveryBridge.js';
+import type { RuntimeSetupStatus } from './runtimeSetup.js';
 import {
   resolveRuntimeRecoveryTarget,
   resolveRuntimeRecoveryUrl,
   type RuntimePresentationStatus,
 } from './runtimeStatusPresentation.js';
 
+export interface EnvironmentRecoveryActionDependencies {
+  getDesktopSetupRecommendation?: typeof getDesktopSetupRecommendation;
+  triggerDesktopPackagedSetup?: typeof triggerDesktopPackagedSetup;
+  openBrowserUrl?: (url: string) => void;
+}
+
 export async function executeEnvironmentRecovery(input: {
   runtimeStatus: RuntimePresentationStatus;
   runtimeBaseUrl: string;
-}): Promise<void> {
-  const desktopRecommendation = await getDesktopSetupRecommendation();
+  runtimeSetupStatus?: RuntimeSetupStatus | null;
+}, dependencies: EnvironmentRecoveryActionDependencies = {}): Promise<void> {
+  const readDesktopSetupRecommendation = dependencies.getDesktopSetupRecommendation
+    ?? getDesktopSetupRecommendation;
+  const runDesktopPackagedSetup = dependencies.triggerDesktopPackagedSetup
+    ?? triggerDesktopPackagedSetup;
+  const openRecoveryUrl = dependencies.openBrowserUrl
+    ?? openBrowserUrl;
 
-  const target = resolveRuntimeRecoveryTarget(input.runtimeStatus, {
+  const desktopRecommendation = await readDesktopSetupRecommendation();
+  const runtimeFallbackTarget = resolveRuntimeRecoveryTarget(input.runtimeStatus, {
+    runtimeSetupStatus: input.runtimeSetupStatus,
+  });
+
+  let target = resolveRuntimeRecoveryTarget(input.runtimeStatus, {
     desktopSetupRelevant: desktopRecommendation.available,
+    runtimeSetupStatus: input.runtimeSetupStatus,
   });
 
   if (target === 'desktop-setup') {
-    const triggered = await triggerDesktopPackagedSetup();
+    const triggered = await runDesktopPackagedSetup();
     if (triggered) {
       return;
     }
-    // Desktop setup trigger failed — fall through to runtime URL.
+    target = runtimeFallbackTarget;
   }
 
-  const url = resolveRuntimeRecoveryUrl(input.runtimeBaseUrl, target);
-  const context = globalThis as typeof globalThis & {
-    window?: { open?: (url: string, target: string, features: string) => unknown };
-  };
-  context.window?.open?.(url, '_blank', 'noopener,noreferrer');
+  openRecoveryUrl(resolveRuntimeRecoveryUrl(input.runtimeBaseUrl, target));
 }

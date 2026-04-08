@@ -92,6 +92,7 @@ export function PlatformLobby({
                 void executeEnvironmentRecovery({
                   runtimeStatus,
                   runtimeBaseUrl: envelope.runtime.baseUrl,
+                  runtimeSetupStatus: envelope.runtimeSetup.status,
                 });
               }}
               runtimeBaseUrl={envelope.runtime.baseUrl}

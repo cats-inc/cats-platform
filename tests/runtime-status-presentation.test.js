@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  needsRuntimeSetupRecovery,
   resolveRuntimePresentationStatus,
   resolveRuntimeTooltip,
   resolveRuntimeDotClassName,
@@ -149,6 +150,20 @@ describe('resolveRuntimeDotClassName', () => {
 });
 
 describe('resolveRuntimeRecoveryTarget', () => {
+  it('returns runtime-setup when runtime setup needs attention', () => {
+    assert.equal(
+      resolveRuntimeRecoveryTarget('ready', { runtimeSetupStatus: 'attention_required' }),
+      'runtime-setup',
+    );
+  });
+
+  it('returns runtime-setup when runtime setup is ready to apply', () => {
+    assert.equal(
+      resolveRuntimeRecoveryTarget('ready', { runtimeSetupStatus: 'ready_to_apply' }),
+      'runtime-setup',
+    );
+  });
+
   it('returns runtime-setup for unavailable', () => {
     assert.equal(resolveRuntimeRecoveryTarget('unavailable'), 'runtime-setup');
   });
@@ -188,6 +203,13 @@ describe('resolveRuntimeRecoveryTarget', () => {
 });
 
 describe('resolveRuntimeRecoveryUrl', () => {
+  it('throws for desktop-setup because it is not a runtime URL target', () => {
+    assert.throws(
+      () => resolveRuntimeRecoveryUrl('http://localhost:8100', 'desktop-setup'),
+      /Desktop setup targets/i,
+    );
+  });
+
   it('returns root URL for runtime-root target', () => {
     assert.equal(
       resolveRuntimeRecoveryUrl('http://localhost:8100', 'runtime-root'),
@@ -207,6 +229,21 @@ describe('resolveRuntimeRecoveryUrl', () => {
       resolveRuntimeRecoveryUrl('http://localhost:8100/', 'runtime-setup'),
       'http://localhost:8100/setup',
     );
+  });
+});
+
+describe('needsRuntimeSetupRecovery', () => {
+  it('returns true for runtime setup states that need remediation', () => {
+    assert.equal(needsRuntimeSetupRecovery('ready_to_apply'), true);
+    assert.equal(needsRuntimeSetupRecovery('scan_required'), true);
+    assert.equal(needsRuntimeSetupRecovery('attention_required'), true);
+    assert.equal(needsRuntimeSetupRecovery('unavailable'), true);
+  });
+
+  it('returns false when runtime setup is ready or absent', () => {
+    assert.equal(needsRuntimeSetupRecovery('ready'), false);
+    assert.equal(needsRuntimeSetupRecovery(null), false);
+    assert.equal(needsRuntimeSetupRecovery(undefined), false);
   });
 });
 

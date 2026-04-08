@@ -29,6 +29,7 @@ test('AccountIdentityMenu renders shared account actions with configurable place
   assert.match(markup, /accountMenu--below/u);
   assert.match(markup, /accountMenu--alignEnd/u);
   assert.match(markup, />Settings</u);
+  assert.match(markup, />Environment</u);
   assert.match(markup, />Cats Runtime</u);
 });
 
