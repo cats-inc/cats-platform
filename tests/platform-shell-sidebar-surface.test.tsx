@@ -10,6 +10,21 @@ import type { AppShellPayload as WorkAppShellPayload } from '../src/products/wor
 import type { AppShellPayload as CodeAppShellPayload } from '../src/products/code/api/contracts.ts';
 import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
 
+function matchesComponent(
+  node: ReactNode,
+  component: (props: Record<string, unknown>) => ReactNode,
+): boolean {
+  if (!isValidElement(node)) {
+    return false;
+  }
+
+  if (node.type === component) {
+    return true;
+  }
+
+  return typeof node.type !== 'string' && node.type?.name === component.name;
+}
+
 function createPayload(): WorkAppShellPayload {
   return {
     app: {
@@ -136,7 +151,7 @@ function findSurfaceSwitcherActiveSurface(node: ReactNode): PlatformSurfaceId {
     throw new Error('PlatformSurfaceSwitcher not found.');
   }
 
-  if (node.type === PlatformSurfaceSwitcher) {
+  if (matchesComponent(node, PlatformSurfaceSwitcher)) {
     return node.props.activeSurface as PlatformSurfaceId;
   }
 
@@ -161,7 +176,7 @@ function findAccountIdentityMenu(
     throw new Error('AccountIdentityMenu not found.');
   }
 
-  if (node.type === AccountIdentityMenu) {
+  if (matchesComponent(node, AccountIdentityMenu)) {
     return node as { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } };
   }
 
