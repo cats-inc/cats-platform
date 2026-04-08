@@ -1,11 +1,10 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route } from 'react-router-dom';
 
-import type { AppShellPayload } from '../api/contracts.js';
 import {
   resolveAppEntryPath,
   resolveVisibleChatPath,
 } from '../shared/channelPaths.js';
-import { BootShell, type SelectedChannelView } from './chatUtils.js';
+import { BootShell } from './chatUtils.js';
 import {
   AddCatPanel,
   type AddCatPanelProps,
@@ -22,8 +21,10 @@ import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
-
-function noop(): void {}
+import {
+  WorkspaceAppRoutes,
+  type WorkspaceAppRoutesProps,
+} from '../../shared/renderer/WorkspaceAppRoutes.js';
 
 type ChatSurfaceProps = Omit<
   ChatViewProps,
@@ -35,21 +36,20 @@ type DraftSurfaceProps = Omit<
   'payload' | 'onOpenAddCat' | 'onDraftLeadCatChange' | 'allowAddCat'
 >;
 
-export interface AppRoutesProps {
-  payload: AppShellPayload;
-  selectedChannel: SelectedChannelView | null;
-  directLaneChannel: SelectedChannelView | null;
-  showDirectLaneBoot: boolean;
-  feedback: string;
-  busy: string;
+export interface AppRoutesProps extends Omit<
+  WorkspaceAppRoutesProps,
+  | 'entryPath'
+  | 'chatsPath'
+  | 'extraRoutes'
+  | 'renderBootShell'
+  | 'renderChatView'
+  | 'renderNewChatDraft'
+  | 'renderAddCatPanel'
+> {
   chatSurfaceProps: ChatSurfaceProps;
   draftSurfaceProps: DraftSurfaceProps;
-  addCatOpen: boolean;
-  onToggleAddCat: () => void;
   addCatPanelProps: Omit<AddCatPanelProps, 'busy' | 'feedback'>;
   folderBrowserProps: FolderBrowserContentProps;
-  onOpenDraftAddCat: () => void;
-  onChangeDraftLeadCat: (catId: string | null) => void;
 }
 
 export function AppRoutes({
@@ -69,136 +69,78 @@ export function AppRoutes({
   onChangeDraftLeadCat,
 }: AppRoutesProps) {
   const folderBrowserSurfaceProps = folderBrowserProps;
+  const selectedChannelContext = payload.chat.selectedChannel
+    ? {
+        title: payload.chat.selectedChannel.title,
+        repoPath: payload.chat.selectedChannel.repoPath,
+        chatCwd: payload.chat.selectedChannel.chatCwd,
+      }
+    : null;
 
-  return (
-    <>
-      <Routes>
-        <Route
-          index
-          element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
-        />
-        <Route
-          path="relay"
-          element={
-            <CodeRelayView
-              selectedChannelContext={payload.chat.selectedChannel
-                ? {
-                    title: payload.chat.selectedChannel.title,
-                    repoPath: payload.chat.selectedChannel.repoPath,
-                    chatCwd: payload.chat.selectedChannel.chatCwd,
-                  }
-                : null}
-            />
-          }
-        />
-        <Route
-          path="build"
-          element={
-            <CodeBuilderView
-              selectedChannelContext={payload.chat.selectedChannel
-                ? {
-                    title: payload.chat.selectedChannel.title,
-                    repoPath: payload.chat.selectedChannel.repoPath,
-                    chatCwd: payload.chat.selectedChannel.chatCwd,
-                  }
-                : null}
-            />
-          }
-        />
-        <Route
-          path="artifacts/:artifactId"
-          element={<ArtifactDetailView />}
-        />
-        <Route
-          path="chats/:channelId"
-          element={
-            selectedChannel ? (
-              <ChatView
-                {...chatSurfaceProps}
-                payload={payload}
-                selectedChannel={selectedChannel}
-                onOpenAddCat={onToggleAddCat}
-              />
-            ) : (
-              <BootShell />
-            )
-          }
-        />
-        <Route
-          path="chats"
-          element={
-            <Navigate
-              to={resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId)}
-              replace
-            />
-          }
-        />
-        <Route
-          path="my-cats/:catId"
-          element={
-            showDirectLaneBoot ? (
-              <BootShell />
-            ) : directLaneChannel ? (
-              <ChatView
-                {...chatSurfaceProps}
-                payload={payload}
-                selectedChannel={directLaneChannel}
-                onOpenAddCat={noop}
-                showAddCatButton={false}
-              />
-            ) : (
-              <NewChatDraft
-                {...draftSurfaceProps}
-                payload={payload}
-                onOpenAddCat={noop}
-                onDraftLeadCatChange={noop}
-                allowAddCat={false}
-                folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
-                folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
-                folderBrowseParentPath={folderBrowserSurfaceProps.folderBrowseParentPath}
-                folderBrowseEntries={folderBrowserSurfaceProps.folderBrowseEntries}
-                folderBrowseLoading={folderBrowserSurfaceProps.folderBrowseLoading}
-                folderBrowseError={folderBrowserSurfaceProps.folderBrowseError}
-                onFolderBrowsePathChange={folderBrowserSurfaceProps.onPathChange}
-                onFolderBrowse={folderBrowserSurfaceProps.onBrowse}
-                onFolderBrowseSelect={folderBrowserSurfaceProps.onSelect}
-              />
-            )
-          }
-        />
-        <Route
-          path="new"
-          element={
-            <NewChatDraft
-              {...draftSurfaceProps}
-              payload={payload}
-              onOpenAddCat={onOpenDraftAddCat}
-              onDraftLeadCatChange={onChangeDraftLeadCat}
-              folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
-              folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
-              folderBrowseParentPath={folderBrowserSurfaceProps.folderBrowseParentPath}
-              folderBrowseEntries={folderBrowserSurfaceProps.folderBrowseEntries}
-              folderBrowseLoading={folderBrowserSurfaceProps.folderBrowseLoading}
-              folderBrowseError={folderBrowserSurfaceProps.folderBrowseError}
-              onFolderBrowsePathChange={folderBrowserSurfaceProps.onPathChange}
-              onFolderBrowse={folderBrowserSurfaceProps.onBrowse}
-              onFolderBrowseSelect={folderBrowserSurfaceProps.onSelect}
-            />
-          }
-        />
-        <Route
-          path="*"
-          element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
-        />
-      </Routes>
-
-      {addCatOpen ? (
-        <AddCatPanel
-          {...addCatPanelProps}
-          busy={busy}
-          feedback={feedback}
-        />
-      ) : null}
-    </>
-  );
+  return WorkspaceAppRoutes({
+    payload,
+    selectedChannel,
+    directLaneChannel,
+    showDirectLaneBoot,
+    feedback,
+    busy,
+    addCatOpen,
+    entryPath: resolveAppEntryPath(payload.setupCompleteAt),
+    chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
+    extraRoutes: [
+      <Route
+        key="relay"
+        path="relay"
+        element={<CodeRelayView selectedChannelContext={selectedChannelContext} />}
+      />,
+      <Route
+        key="build"
+        path="build"
+        element={<CodeBuilderView selectedChannelContext={selectedChannelContext} />}
+      />,
+      <Route
+        key="artifact-detail"
+        path="artifacts/:artifactId"
+        element={<ArtifactDetailView />}
+      />,
+    ],
+    renderBootShell: () => <BootShell />,
+    renderChatView: (channel, options) => (
+      <ChatView
+        {...chatSurfaceProps}
+        payload={payload}
+        selectedChannel={channel}
+        onOpenAddCat={options.onOpenAddCat}
+        showAddCatButton={options.showAddCatButton}
+      />
+    ),
+    renderNewChatDraft: (options) => (
+      <NewChatDraft
+        {...draftSurfaceProps}
+        payload={payload}
+        onOpenAddCat={options.onOpenAddCat}
+        onDraftLeadCatChange={options.onDraftLeadCatChange}
+        allowAddCat={options.allowAddCat}
+        folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
+        folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
+        folderBrowseParentPath={folderBrowserSurfaceProps.folderBrowseParentPath}
+        folderBrowseEntries={folderBrowserSurfaceProps.folderBrowseEntries}
+        folderBrowseLoading={folderBrowserSurfaceProps.folderBrowseLoading}
+        folderBrowseError={folderBrowserSurfaceProps.folderBrowseError}
+        onFolderBrowsePathChange={folderBrowserSurfaceProps.onPathChange}
+        onFolderBrowse={folderBrowserSurfaceProps.onBrowse}
+        onFolderBrowseSelect={folderBrowserSurfaceProps.onSelect}
+      />
+    ),
+    renderAddCatPanel: (options) => (
+      <AddCatPanel
+        {...addCatPanelProps}
+        busy={options.busy}
+        feedback={options.feedback}
+      />
+    ),
+    onToggleAddCat,
+    onOpenDraftAddCat,
+    onChangeDraftLeadCat,
+  });
 }
