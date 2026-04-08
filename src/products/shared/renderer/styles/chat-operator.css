@@ -1,0 +1,21 @@
+.viewShellChannel {
+  min-height: max-content;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.channelWorkspace {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.chatPaneSidePanel {
+  width: 360px;
+}
+
+.chatPaneSidePanelBelowBar {
+  top: 60px;
+  height: calc(100vh - 60px);
+}

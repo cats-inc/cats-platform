@@ -1,4 +1,2 @@
-@import './styles/settings.css';
-@import './styles/chat.css';
-@import './styles/extras.css';
+@import '../../shared/renderer/styles.css';
 @import './styles/code-builder.css';

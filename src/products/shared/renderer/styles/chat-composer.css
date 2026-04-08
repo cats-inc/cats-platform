@@ -1,0 +1,642 @@
+/* Composer plus menu and draft context */
+
+.composerPlusButton {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.composerPlusButton:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.composerSendButton {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.composerSendButton:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.composerSendButton:hover:not(:disabled) {
+  background: #333;
+}
+
+.composerLeftGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.composerPlusWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.composerPlusMenu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  min-width: 200px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 30;
+  padding: 4px;
+}
+
+.composerPlusMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.composerPlusMenuItem:hover {
+  background: var(--panel-hover);
+}
+
+.composerPlusMenuItem svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.folderBrowserOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 18, 13, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.folderBrowserModal {
+  display: flex;
+  width: min(720px, 100%);
+  max-height: min(78vh, 720px);
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid rgba(125, 110, 83, 0.16);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(250, 246, 240, 0.98) 100%);
+  box-shadow: 0 28px 80px rgba(52, 38, 20, 0.18);
+}
+
+.folderBrowserHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.folderBrowserHeader h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.folderBrowserHeader p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.folderBrowserClose {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.folderBrowserClose:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.folderBrowserPathRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.folderBrowserPathInput {
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text);
+  font: inherit;
+}
+
+.folderBrowserPathInput:focus {
+  outline: none;
+  border-color: rgba(158, 125, 66, 0.42);
+  box-shadow: 0 0 0 3px rgba(191, 160, 107, 0.14);
+}
+
+.folderBrowserPathButton,
+.folderBrowserNavButton,
+.folderBrowserSecondaryButton,
+.folderBrowserPrimaryButton {
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.folderBrowserPathButton,
+.folderBrowserNavButton,
+.folderBrowserSecondaryButton {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  background: rgba(121, 101, 68, 0.1);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.folderBrowserPathButton:hover,
+.folderBrowserNavButton:hover,
+.folderBrowserSecondaryButton:hover {
+  background: rgba(121, 101, 68, 0.16);
+  color: var(--text);
+}
+
+.folderBrowserPathButton:disabled,
+.folderBrowserNavButton:disabled,
+.folderBrowserPrimaryButton:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+/* Inline folder browser (accordion side panel) */
+
+.folderBrowserInline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.folderBrowserInline .folderBrowserPathRow {
+  gap: 6px;
+}
+
+.folderBrowserInline .folderBrowserPathInput {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+.folderBrowserInline .folderBrowserToolbar {
+  min-width: 0;
+}
+
+.folderBrowserInline .folderBrowserCurrentPath {
+  min-width: 0;
+  flex: 1;
+}
+
+.folderBrowserListScroll {
+  flex: 1;
+  min-height: 120px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.folderBrowserFooterSticky {
+  position: sticky;
+  bottom: 0;
+  padding-top: 4px;
+  background: var(--panel);
+}
+
+.folderBrowserToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.folderBrowserCurrentPath {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folderBrowserList {
+  min-height: 240px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.folderBrowserEntry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.folderBrowserEntry:hover {
+  background: rgba(121, 101, 68, 0.12);
+}
+
+.folderBrowserEntry svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.folderBrowserStatus,
+.folderBrowserError {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.folderBrowserError {
+  padding: 0 4px;
+  color: #8f4f3f;
+}
+
+.folderBrowserFooter {
+  display: flex;
+  justify-content: end;
+  gap: 10px;
+}
+
+.folderBrowserPrimaryButton {
+  padding: 10px 16px;
+  background: #3e5f43;
+  color: #f7f2ea;
+}
+
+.folderBrowserPrimaryButton:hover {
+  background: #35533a;
+}
+
+.composerCwdChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+}
+
+.composerCwdChip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composerCwdClickable {
+  cursor: pointer;
+}
+
+.composerCwdClickable:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerChipClose {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-soft);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.composerChipClose:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerAvatarStack {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+.composerStackItem {
+  position: relative;
+}
+
+.composerStackAvatar {
+  width: 24px;
+  height: 24px;
+  font-size: 0.6rem;
+  border: 0;
+}
+
+.composerStackRemove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.6rem;
+  cursor: pointer;
+  display: none;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  z-index: 2;
+}
+
+.composerStackItem:hover .composerStackRemove {
+  display: grid;
+}
+
+.composerStackRemove:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+/* Attachment preview cards */
+
+.composerAttachments {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0 8px;
+  overflow-x: auto;
+}
+
+.attachmentCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 120px;
+  min-width: 120px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--canvas-bg);
+  overflow: hidden;
+}
+
+.attachmentRemove {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.attachmentCard:hover .attachmentRemove {
+  opacity: 1;
+}
+
+.attachmentRemove:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.attachmentPreview {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+}
+
+.attachmentFileIcon {
+  display: grid;
+  place-items: center;
+  height: 80px;
+  color: var(--muted-soft);
+}
+
+.attachmentName {
+  padding: 6px 8px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Composer mention highlight overlay ── */
+
+.composerInputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.composerHighlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow-y: hidden;
+  color: var(--text);
+}
+
+.composerHighlightMention {
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 999px;
+  background: #8B7E74;
+  box-shadow: 0 0 0 0.16em #8B7E74;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.composerInputOverlay {
+  position: relative;
+  color: transparent;
+  caret-color: var(--text);
+}
+
+.composerInputOverlay::placeholder {
+  color: var(--muted-soft);
+}
+
+.addCatRemoveButton {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.addCatRemoveButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.viewIntro h1,
+.overviewHeader h1,
+.loadingPanel h1,
+.errorPanel h1 {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 980px) {
+  .claudeShell,
+  .claudeShellSidebarCollapsed {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .screen.claudeShell {
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebar,
+  .sidebarCollapsed {
+    height: auto;
+    min-height: auto;
+  }
+
+  .claudeShell > .canvas {
+    height: auto;
+    min-height: 60vh;
+    overflow: visible;
+  }
+
+  .viewShellScrollable,
+  .viewShellChannel {
+    height: auto;
+  }
+
+  .overviewHeader,
+  .channelTopBar {
+    grid-template-columns: 1fr;
+  }
+
+  .channelParticipantsBar,
+  .channelParticipantsList {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .channelShell {
+    height: auto;
+  }
+
+  .transcriptMessage {
+    max-width: 100%;
+  }
+
+  .composerCard {
+    border-radius: 20px;
+  }
+
+  .settingsShell {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 20px 0;
+  }
+
+  .settingsSidebar {
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  .settingsTab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 10px;
+  }
+}
+
