@@ -329,7 +329,10 @@ export async function routeRequest(
       sendMethodNotAllowed(response, ['GET']);
       return;
     }
-    await handleProviderRegistry({ runtimeClient: dependencies.shared.runtimeClient }, response);
+    await handleProviderRegistry({
+      runtimeClient: dependencies.shared.runtimeClient,
+      chatStatePath: dependencies.shared.config.chatStatePath,
+    }, response);
     return;
   }
 
@@ -344,7 +347,10 @@ export async function routeRequest(
     }
     await handleProviderModels(
       response,
-      { runtimeClient: dependencies.shared.runtimeClient },
+      {
+        runtimeClient: dependencies.shared.runtimeClient,
+        chatStatePath: dependencies.shared.config.chatStatePath,
+      },
       providerModelsMatch[0]!,
       url.searchParams.get('instance'),
     );
@@ -362,7 +368,10 @@ export async function routeRequest(
     }
     await handleAdvancedProviderModels(
       response,
-      { runtimeClient: dependencies.shared.runtimeClient },
+      {
+        runtimeClient: dependencies.shared.runtimeClient,
+        chatStatePath: dependencies.shared.config.chatStatePath,
+      },
       advancedProviderModelsMatch[0]!,
       url.searchParams.get('instance'),
     );

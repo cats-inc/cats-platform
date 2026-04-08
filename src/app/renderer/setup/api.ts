@@ -79,8 +79,10 @@ export async function markPlatformSetupOpened(
   return (await response.json()) as ProductBootstrapDiagnosticsReadModel;
 }
 
-export async function fetchProviderRegistry(): Promise<ProductProviderRegistryReadModel> {
-  return fetchProviderRegistryFromClientCache();
+export async function fetchProviderRegistry(options?: {
+  force?: boolean;
+}): Promise<ProductProviderRegistryReadModel> {
+  return fetchProviderRegistryFromClientCache(options);
 }
 
 export async function fetchProviderModels(

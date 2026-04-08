@@ -7,8 +7,10 @@ import { fetchProviderRegistryFromClientCache } from '../../../../app/renderer/p
 
 import { readErrorMessage } from './http.js';
 
-export async function fetchProviderRegistry(): Promise<ProductProviderRegistryReadModel> {
-  return fetchProviderRegistryFromClientCache();
+export async function fetchProviderRegistry(options?: {
+  force?: boolean;
+}): Promise<ProductProviderRegistryReadModel> {
+  return fetchProviderRegistryFromClientCache(options);
 }
 
 export async function fetchProviderModels(

@@ -185,6 +185,7 @@ export function normalizeRuntimeProviderDiagnosticsPayload(
             typeof entry.instance === 'string' && entry.instance.trim().length > 0
               ? entry.instance
               : null,
+          defaultTarget: entry.defaultTarget === true,
           availability: normalizeRuntimeProviderDiagnosticsAvailability(entry.availability),
         } satisfies RuntimeProviderDiagnosticsEntry;
       })

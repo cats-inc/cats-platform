@@ -122,7 +122,7 @@ export async function fetchProviderRegistryFromClientCache(options: {
     return providerRegistryClientCache.value;
   }
 
-  if (providerRegistryClientCache.inflight) {
+  if (!options.force && providerRegistryClientCache.inflight) {
     console.log('[selector:client] joining in-flight request');
     return providerRegistryClientCache.inflight;
   }

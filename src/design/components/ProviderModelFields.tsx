@@ -31,7 +31,7 @@ interface SharedProviderModelFieldsProps {
   model: string;
   modelSelection?: ProviderModelSelection | null;
   onTargetChange: (target: ProviderTargetSelection) => void;
-  fetchProviderRegistry: () => Promise<ProductProviderRegistryReadModel>;
+  fetchProviderRegistry: (options?: { force?: boolean }) => Promise<ProductProviderRegistryReadModel>;
   fetchProviderModels: (provider: string, instance?: string | null) => Promise<ProviderModelCatalog>;
   fetchAdvancedProviderModels: (
     provider: string,
@@ -41,6 +41,7 @@ interface SharedProviderModelFieldsProps {
 }
 
 export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 3000;
+export const PROVIDER_REGISTRY_TRANSIENT_FAILURE_GRACE_MS = 20_000;
 
 function createEmptyProviderModelCatalog(
   provider: string,
@@ -155,11 +156,29 @@ export function shouldAutoRecheckProviderRegistry(input: {
     return false;
   }
 
-  if (!input.retryable || !input.hasSetupHref || !input.documentVisible) {
+  if (!input.retryable || !input.documentVisible) {
+    return false;
+  }
+
+  if (input.registryState !== 'runtime_unreachable' && !input.hasSetupHref) {
     return false;
   }
 
   return input.now - input.lastAutoRecheckAt >= PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS;
+}
+
+export function shouldMaskRuntimeUnreachableProviderRegistry(input: {
+  providersLoaded: boolean;
+  providerCount: number;
+  registryState: ProductProviderRegistryState;
+  retryable: boolean;
+  graceWindowOpen: boolean;
+}): boolean {
+  return input.providersLoaded
+    && input.providerCount === 0
+    && input.registryState === 'runtime_unreachable'
+    && input.retryable
+    && input.graceWindowOpen;
 }
 
 function presetAppliesToEntry(
@@ -430,6 +449,7 @@ export function ProviderModelFields({
   const [providersLoaded, setProvidersLoaded] = useState(false);
   const [providerRegistryReloadToken, setProviderRegistryReloadToken] = useState(0);
   const [lastAutoProviderRegistryRecheckAt, setLastAutoProviderRegistryRecheckAt] = useState(0);
+  const [providerRegistryGraceWindowOpen, setProviderRegistryGraceWindowOpen] = useState(false);
   const [catalogLoading, setCatalogLoading] = useState(Boolean(provider));
   const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
     createEmptyProviderModelCatalog(provider),
@@ -442,6 +462,7 @@ export function ProviderModelFields({
   const previousTargetKey = useRef<string>('');
   const onTargetChangeRef = useRef(onTargetChange);
   const onProviderRegistryChangeRef = useRef(onProviderRegistryChange);
+  const providerRegistryRequestIdRef = useRef(0);
 
   useEffect(() => {
     onTargetChangeRef.current = onTargetChange;
@@ -451,33 +472,54 @@ export function ProviderModelFields({
     onProviderRegistryChangeRef.current = onProviderRegistryChange;
   }, [onProviderRegistryChange]);
 
+  function commitProviderRegistry(
+    requestId: number,
+    nextRegistryResult: ProductProviderRegistryReadModel,
+  ): void {
+    if (requestId !== providerRegistryRequestIdRef.current) {
+      return;
+    }
+    const nextRegistry = sanitizeProviderRegistryReadModel(nextRegistryResult);
+    setProviders(nextRegistry.providers);
+    setProviderRegistry(nextRegistry);
+    setProvidersLoaded(true);
+    onProviderRegistryChangeRef.current?.(nextRegistry);
+  }
+
+  function commitProviderRegistryError(
+    requestId: number,
+    error: unknown,
+  ): void {
+    if (requestId !== providerRegistryRequestIdRef.current) {
+      return;
+    }
+    const nextRegistry: ProductProviderRegistryReadModel = {
+      state: 'runtime_unreachable',
+      providers: [],
+      recovery: {
+        retryable: true,
+      },
+      warnings: [error instanceof Error ? error.message : 'Failed to load providers.'],
+    };
+    setProviders([]);
+    setProviderRegistry(nextRegistry);
+    setProvidersLoaded(true);
+    onProviderRegistryChangeRef.current?.(nextRegistry);
+  }
+
   useEffect(() => {
     let cancelled = false;
+    const requestId = ++providerRegistryRequestIdRef.current;
 
     void fetchProviderRegistry()
       .then((nextRegistryResult) => {
         if (!cancelled) {
-          const nextRegistry = sanitizeProviderRegistryReadModel(nextRegistryResult);
-          setProviders(nextRegistry.providers);
-          setProviderRegistry(nextRegistry);
-          setProvidersLoaded(true);
-          onProviderRegistryChangeRef.current?.(nextRegistry);
+          commitProviderRegistry(requestId, nextRegistryResult);
         }
       })
       .catch((error) => {
         if (!cancelled) {
-          const nextRegistry: ProductProviderRegistryReadModel = {
-            state: 'runtime_unreachable',
-            providers: [],
-            recovery: {
-              retryable: true,
-            },
-            warnings: [error instanceof Error ? error.message : 'Failed to load providers.'],
-          };
-          setProviders([]);
-          setProviderRegistry(nextRegistry);
-          setProvidersLoaded(true);
-          onProviderRegistryChangeRef.current?.(nextRegistry);
+          commitProviderRegistryError(requestId, error);
         }
       });
 
@@ -734,12 +776,20 @@ export function ProviderModelFields({
   const primaryCatalogWarning = effectiveAdvancedCatalog.warnings[0]
     ?? effectiveCatalog.warnings[0]
     ?? null;
-  const providerPlaceholder = resolveProviderRegistryPlaceholder({
+  const maskRuntimeUnreachable = shouldMaskRuntimeUnreachableProviderRegistry({
     providersLoaded,
+    providerCount: providerOptions.length,
+    registryState: providerRegistry.state,
+    retryable: providerRegistry.recovery?.retryable !== false,
+    graceWindowOpen: providerRegistryGraceWindowOpen,
+  });
+  const effectiveProvidersLoaded = providersLoaded && !maskRuntimeUnreachable;
+  const providerPlaceholder = resolveProviderRegistryPlaceholder({
+    providersLoaded: effectiveProvidersLoaded,
     registryState: providerRegistry.state,
   });
   const modelPlaceholder = !selectedProvider
-    ? (providersLoaded
+    ? (effectiveProvidersLoaded
         ? providerRegistry.state === 'runtime_unreachable'
           ? 'Retry loading providers first'
           : 'Select an available provider first'
@@ -750,11 +800,11 @@ export function ProviderModelFields({
         ? 'Select a model'
         : 'No runtime-backed models available';
   const providerRegistryHint = resolveProviderRegistryHint({
-    providersLoaded,
+    providersLoaded: effectiveProvidersLoaded,
     registry: providerRegistry,
   });
   const providerRegistrySetupHref = resolveProviderRegistrySetupHref(providerRegistry);
-  const canRetryProviderRegistry = providersLoaded
+  const canRetryProviderRegistry = effectiveProvidersLoaded
     && providerOptions.length === 0
     && providerRegistry.recovery?.retryable !== false;
 
@@ -765,6 +815,73 @@ export function ProviderModelFields({
     setProvidersLoaded(false);
     setProviderRegistryReloadToken((current) => current + 1);
   }
+
+  function forceReloadProviderRegistry(options?: { markAutoRecheckAt?: number }): void {
+    if (options?.markAutoRecheckAt !== undefined) {
+      setLastAutoProviderRegistryRecheckAt(options.markAutoRecheckAt);
+    }
+    setProvidersLoaded(false);
+    const requestId = ++providerRegistryRequestIdRef.current;
+    void fetchProviderRegistry({ force: true })
+      .then((nextRegistryResult) => {
+        commitProviderRegistry(requestId, nextRegistryResult);
+      })
+      .catch((error) => {
+        commitProviderRegistryError(requestId, error);
+      });
+  }
+
+  useEffect(() => {
+    const shouldOpenGraceWindow = providersLoaded
+      && providerOptions.length === 0
+      && providerRegistry.state === 'runtime_unreachable'
+      && providerRegistry.recovery?.retryable !== false;
+    if (!shouldOpenGraceWindow) {
+      setProviderRegistryGraceWindowOpen(false);
+      return;
+    }
+
+    setProviderRegistryGraceWindowOpen(true);
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setProviderRegistryGraceWindowOpen(false);
+    }, PROVIDER_REGISTRY_TRANSIENT_FAILURE_GRACE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [
+    providerOptions.length,
+    providerRegistry.recovery?.retryable,
+    providerRegistry.state,
+    providersLoaded,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const shouldSilentlyRecover = shouldMaskRuntimeUnreachableProviderRegistry({
+      providersLoaded,
+      providerCount: providerOptions.length,
+      registryState: providerRegistry.state,
+      retryable: providerRegistry.recovery?.retryable !== false,
+      graceWindowOpen: providerRegistryGraceWindowOpen,
+    });
+    if (!shouldSilentlyRecover) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      forceReloadProviderRegistry({ markAutoRecheckAt: Date.now() });
+    }, PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS);
+    return () => window.clearTimeout(timeout);
+  }, [
+    providerOptions.length,
+    providerRegistry.state,
+    providerRegistry.recovery?.retryable,
+    providerRegistryGraceWindowOpen,
+    providersLoaded,
+  ]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -890,7 +1007,7 @@ export function ProviderModelFields({
                 <button
                   className="secondaryButton"
                   type="button"
-                  onClick={() => reloadProviderRegistry()}
+                  onClick={() => forceReloadProviderRegistry()}
                 >
                   Retry
                 </button>

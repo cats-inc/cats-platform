@@ -140,11 +140,11 @@ export default function PlatformApp() {
   }, [location.pathname, setupComplete, state.status]);
 
   useEffect(() => {
-    if (state.status !== 'ready') {
+    if (state.status !== 'ready' || !setupComplete) {
       return;
     }
     void prefetchProviderRegistryFromClientCache();
-  }, [state.status]);
+  }, [setupComplete, state.status]);
 
   useEffect(() => {
     if (state.status !== 'ready') {

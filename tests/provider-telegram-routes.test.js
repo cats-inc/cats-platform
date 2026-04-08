@@ -133,6 +133,7 @@ function createRuntimeStub() {
           provider: 'openclaw',
           backend: 'agent',
           instance: 'gateway',
+          defaultTarget: true,
           availability: {
             status: 'ok',
             summary: 'Gateway reachable',
@@ -143,6 +144,7 @@ function createRuntimeStub() {
           provider: 'claude',
           backend: 'cli',
           instance: 'native',
+          defaultTarget: true,
           availability: {
             status: 'ok',
             summary: 'CLI ready',
@@ -153,6 +155,7 @@ function createRuntimeStub() {
           provider: 'codex',
           backend: 'agent',
           instance: 'agent/bridge',
+          defaultTarget: true,
           availability: {
             status: 'ok',
             summary: 'Bridge ready',
@@ -163,6 +166,7 @@ function createRuntimeStub() {
           provider: 'codex',
           backend: 'cli',
           instance: 'ubuntu',
+          defaultTarget: false,
           availability: {
             status: 'degraded',
             summary: 'WSL target needs attention but is still usable',
@@ -173,6 +177,7 @@ function createRuntimeStub() {
           provider: 'opencode',
           backend: 'cli',
           instance: 'native',
+          defaultTarget: true,
           availability: {
             status: 'unavailable',
             summary: 'CLI missing',
@@ -183,6 +188,7 @@ function createRuntimeStub() {
           provider: 'kilo',
           backend: 'cli',
           instance: 'native',
+          defaultTarget: true,
           availability: {
             status: 'ok',
             summary: 'CLI ready',
@@ -477,7 +483,7 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
   ]);
 });
 
-test('GET /api/providers surfaces runtime registry failures without a second long retry window', async () => {
+test('GET /api/providers stays ready when runtime config enrichment fails but availability truth succeeds', async () => {
   const runtimeClient = createRuntimeStub();
   let configAttempts = 0;
 
@@ -491,12 +497,34 @@ test('GET /api/providers surfaces runtime registry failures without a second lon
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.state, 'runtime_unreachable');
-    assert.deepEqual(payload.providers, []);
-    assert.equal(payload.warnings[0], 'provider registry cold start timed out');
+    assert.equal(payload.state, 'ready');
+    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
+    const codex = payload.providers.find((provider) => provider.id === 'codex');
+    assert.equal(codex.defaultInstance, 'agent/bridge');
+    assert.ok(codex.instances.some((instance) => instance.id === 'agent/bridge'));
   });
 
   assert.equal(configAttempts, 1);
+});
+
+test('GET /api/providers does not wait on a hung runtime config enrichment read', async () => {
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.getProviderConfig = async () => new Promise(() => {});
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await Promise.race([
+      fetch(`${baseUrl}/api/providers`),
+      new Promise((_, reject) => setTimeout(
+        () => reject(new Error('selector waited on config enrichment')),
+        1_500,
+      )),
+    ]);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.state, 'ready');
+    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
+  });
 });
 
 test('GET /api/providers surfaces availability timeouts without retrying the selector request path', async () => {
@@ -650,6 +678,7 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
         provider: 'claude',
         backend: 'cli',
         instance: 'native',
+        defaultTarget: true,
         availability: {
           status: 'unavailable',
           summary: 'CLI missing',
@@ -660,6 +689,7 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
         provider: 'codex',
         backend: 'agent',
         instance: 'agent/bridge',
+        defaultTarget: true,
         availability: {
           status: 'unavailable',
           summary: 'Bridge unavailable',
@@ -670,6 +700,7 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
         provider: 'codex',
         backend: 'cli',
         instance: 'ubuntu',
+        defaultTarget: false,
         availability: {
           status: 'unavailable',
           summary: 'CLI missing',
@@ -680,6 +711,7 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
         provider: 'openclaw',
         backend: 'agent',
         instance: 'gateway',
+        defaultTarget: true,
         availability: {
           status: 'unavailable',
           summary: 'Gateway unavailable',
@@ -690,6 +722,7 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
         provider: 'kilo',
         backend: 'cli',
         instance: 'native',
+        defaultTarget: true,
         availability: {
           status: 'unavailable',
           summary: 'CLI missing',
@@ -700,6 +733,7 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
         provider: 'opencode',
         backend: 'cli',
         instance: 'native',
+        defaultTarget: true,
         availability: {
           status: 'unavailable',
           summary: 'CLI missing',

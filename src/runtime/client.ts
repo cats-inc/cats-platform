@@ -63,6 +63,7 @@ export interface RuntimeProviderDiagnosticsEntry {
   provider: string;
   backend: string | null;
   instance: string | null;
+  defaultTarget: boolean;
   availability: RuntimeProviderDiagnosticsAvailability;
 }
 

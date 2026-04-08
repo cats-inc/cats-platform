@@ -226,6 +226,7 @@ test('runtime client returns truthful provider diagnostics for filtered selector
             provider: 'claude',
             backend: 'cli',
             instance: 'native',
+            defaultTarget: true,
             availability: {
               status: 'ok',
               summary: 'CLI ready',
@@ -236,6 +237,7 @@ test('runtime client returns truthful provider diagnostics for filtered selector
             provider: 'codex',
             backend: 'agent',
             instance: 'bridge',
+            defaultTarget: false,
             availability: {
               status: 'degraded',
               summary: 'Bridge ready with warnings',
@@ -267,6 +269,7 @@ test('runtime client returns truthful provider diagnostics for filtered selector
           provider: 'claude',
           backend: 'cli',
           instance: 'native',
+          defaultTarget: true,
           availability: {
             status: 'ok',
             summary: 'CLI ready',
@@ -277,6 +280,7 @@ test('runtime client returns truthful provider diagnostics for filtered selector
           provider: 'codex',
           backend: 'agent',
           instance: 'bridge',
+          defaultTarget: false,
           availability: {
             status: 'degraded',
             summary: 'Bridge ready with warnings',

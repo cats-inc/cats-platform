@@ -197,3 +197,47 @@ test('client provider registry cache does not keep runtime_unreachable results w
   assert.equal(second.state, 'ready');
   assert.equal(second.providers[0]?.id, 'claude');
 });
+
+test('client provider registry cache force refresh bypasses a stuck in-flight request', async () => {
+  clearProviderRegistryClientCache();
+  let calls = 0;
+
+  void fetchProviderRegistryFromClientCache({
+    fetchImpl: async () => {
+      calls += 1;
+      return new Promise(() => {});
+    },
+  });
+
+  const forced = await fetchProviderRegistryFromClientCache({
+    force: true,
+    fetchImpl: async () => {
+      calls += 1;
+      return new Response(JSON.stringify({
+        state: 'ready',
+        providers: [{
+          id: 'claude',
+          label: 'Claude',
+          defaultModel: 'sonnet',
+          defaultInstance: 'native',
+          defaultBackend: 'cli',
+          instances: [{
+            id: 'native',
+            label: 'cli/native',
+            target: 'cli/native',
+            backend: 'cli',
+            default: true,
+          }],
+          modelsPath: '/api/providers/claude/models',
+        }],
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(forced.state, 'ready');
+  assert.equal(forced.providers[0]?.id, 'claude');
+});
