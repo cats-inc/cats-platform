@@ -189,3 +189,61 @@ test('mergeCompletedDispatchState treats overlapping workflow mutations as lates
   assert.equal(mergedWorkflow.activeTurn?.updatedAt, '2026-04-03T12:20:06.000Z');
 });
 
+test('mergeCompletedDispatchState preserves temporary participant execution leases', async () => {
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-04-08T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Temporary participant merge',
+      topic: 'Keep adhoc participant session leases while dispatch state merges.',
+      entryKind: 'group',
+      skipBossCatGreeting: true,
+      leadParticipantId: 'participant-inline',
+      temporaryParticipants: [
+        {
+          participantId: 'participant-inline',
+          name: 'Inline Reviewer',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-opus-4-6',
+          modelSelection: null,
+          roleHint: 'Primary review pass.',
+        },
+      ],
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const baselineState = structuredClone(state);
+  const latestState = structuredClone(state);
+  const dispatchState = structuredClone(state);
+  const dispatchParticipant = requireChannel(dispatchState, channelId).participantAssignments.find(
+    (assignment) => assignment.participantId === 'participant-inline',
+  );
+  assert.ok(dispatchParticipant);
+  dispatchParticipant.execution.lease = {
+    sessionId: 'session-inline',
+    status: 'ready',
+    cwd: 'C:/repo/cats-platform',
+    lastError: null,
+    provider: 'claude',
+    model: 'claude-opus-4-6',
+    startedAt: '2026-04-08T12:00:05.000Z',
+    lastUsedAt: '2026-04-08T12:00:05.000Z',
+  };
+
+  const mergedState = mergeCompletedDispatchState(
+    latestState,
+    baselineState,
+    dispatchState,
+    channelId,
+    seededAt,
+  );
+  const mergedParticipant = requireChannel(mergedState, channelId).participantAssignments.find(
+    (assignment) => assignment.participantId === 'participant-inline',
+  );
+  assert.equal(mergedParticipant?.execution.lease.sessionId, 'session-inline');
+  assert.equal(mergedParticipant?.execution.lease.status, 'ready');
+});

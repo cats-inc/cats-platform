@@ -64,6 +64,26 @@ function mergeDispatchAssignmentLeases(
   baselineChannel: ChatChannelState,
   dispatchChannel: ChatChannelState,
 ): void {
+  const latestParticipantAssignments = latestChannel.participantAssignments ?? [];
+  const baselineParticipantAssignments = baselineChannel.participantAssignments ?? [];
+  const dispatchParticipantAssignments = dispatchChannel.participantAssignments ?? [];
+
+  for (const latestAssignment of latestParticipantAssignments) {
+    const baselineAssignment = baselineParticipantAssignments.find((assignment) =>
+      assignment.participantId === latestAssignment.participantId);
+    const dispatchAssignment = dispatchParticipantAssignments.find((assignment) =>
+      assignment.participantId === latestAssignment.participantId);
+    if (!baselineAssignment || !dispatchAssignment) {
+      continue;
+    }
+
+    latestAssignment.execution.lease = mergeChangedValue(
+      latestAssignment.execution.lease,
+      baselineAssignment.execution.lease,
+      dispatchAssignment.execution.lease,
+    );
+  }
+
   for (const latestAssignment of latestChannel.catAssignments) {
     const baselineAssignment = baselineChannel.catAssignments.find((assignment) =>
       assignment.catId === latestAssignment.catId);
