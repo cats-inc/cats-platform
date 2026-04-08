@@ -1,1 +1,1 @@
-export * from '../../../app/renderer/productShell/channelTopology.js';
+export * from '../../shared/channelTopology.js';
