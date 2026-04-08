@@ -23,6 +23,11 @@ import {
 } from '../chatUtils';
 import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
+import {
+  ComposerRecipientChip,
+  buildRecipientFromCat,
+  buildImplicitRecipient,
+} from './ComposerRecipientChip';
 import { FolderBrowserContent } from './FolderBrowser';
 import {
   buildModelSelectorLabel,
@@ -555,21 +560,23 @@ export function NewChatDraft({
                 </div>
               </>
             ) : effectiveDefaultRecipientCat ? (
-              <ComposerCatStack
-                cats={[effectiveDefaultRecipientCat, ...nonLeadDraftCatIds
-                  .map((id) => chatCats.find((c) => c.id === id))
-                  .filter((c): c is NonNullable<typeof c> => c != null)]}
-                bossCatId={payload.chat.bossCatId}
-                defaultRecipientCatId={effectiveDefaultRecipientCat.id}
+              <ComposerRecipientChip
+                recipients={[
+                  buildRecipientFromCat(effectiveDefaultRecipientCat, payload.chat.bossCatId),
+                  ...nonLeadDraftCatIds
+                    .map((id) => chatCats.find((c) => c.id === id))
+                    .filter((c): c is NonNullable<typeof c> => c != null)
+                    .map((c) => buildRecipientFromCat(c, payload.chat.bossCatId)),
+                ]}
+                disabled={isSubmittingFirstTurn}
                 onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
               />
             ) : activePanelModel && chipLabel ? (
-              <div style={{ marginRight: 8 }}>
-                <ModelSelectorChip
-                  label={chipLabel}
-                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
-                />
-              </div>
+              <ComposerRecipientChip
+                recipients={[buildImplicitRecipient(activePanelModel)]}
+                disabled={isSubmittingFirstTurn}
+                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
+              />
             ) : null}
             {showCancelPendingSend ? (
               <button
