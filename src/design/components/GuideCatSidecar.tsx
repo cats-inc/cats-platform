@@ -210,7 +210,7 @@ function WelcomePeek({
 }: {
   ownerDisplayName: string;
   onAction: (route: string) => void;
-  onDismiss: () => void;
+  onDismiss?: () => void;
   style?: CSSProperties;
 }) {
   return (
@@ -233,9 +233,11 @@ function WelcomePeek({
           Explore products
         </button>
       </div>
-      <button type="button" className="guideCatPeekDismiss" onClick={onDismiss}>
-        Hide for now
-      </button>
+      {onDismiss ? (
+        <button type="button" className="guideCatPeekDismiss" onClick={onDismiss}>
+          Hide for now
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -311,7 +313,7 @@ export interface GuideCatSidecarViewProps {
   onToggle: () => void;
   onAction: (route: string) => void;
   onCollapse: () => void;
-  onDismissWelcome: () => void;
+  onDismissWelcome?: () => void;
   onDismissClick: () => void;
   anchorStyle: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
@@ -397,6 +399,7 @@ function SidecarContent({
   guideCat,
   ownerDisplayName,
   unreadCount,
+  proactive,
   toggle,
   collapse,
   dismissWelcome,
@@ -408,6 +411,7 @@ function SidecarContent({
   guideCat: GuideCatRecord;
   ownerDisplayName: string;
   unreadCount: number;
+  proactive: boolean;
   toggle: () => void;
   collapse: () => void;
   dismissWelcome: () => void;
@@ -447,6 +451,8 @@ function SidecarContent({
 
   useEffect(() => {
     if (viewState !== 'open' && viewState !== 'welcome-peek') return;
+    // System-initiated peek: user must explicitly dismiss via "Hide for now"
+    if (viewState === 'welcome-peek' && proactive) return;
 
     function onClickOutside(event: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
@@ -463,7 +469,7 @@ function SidecarContent({
       document.removeEventListener('mousedown', onClickOutside);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [viewState, collapse]);
+  }, [viewState, collapse, proactive]);
 
   return (
     <GuideCatSidecarView
@@ -474,7 +480,7 @@ function SidecarContent({
       onToggle={toggle}
       onAction={handleAction}
       onCollapse={collapse}
-      onDismissWelcome={dismissWelcome}
+      onDismissWelcome={proactive ? dismissWelcome : undefined}
       onDismissClick={handleDismissClick}
       anchorStyle={anchorStyle}
       surfaceMode={surfaceMode}
@@ -493,7 +499,7 @@ export function GuideCatSidecar({
   unreadCount,
   onDismissed,
 }: GuideCatSidecarProps) {
-  const { viewState, toggle, collapse, dismissWelcome } = useGuideCatSidecarState(
+  const { viewState, proactive, toggle, collapse, dismissWelcome } = useGuideCatSidecarState(
     guideCatSidecarSeen,
     guideCatSidecarMode,
   );
@@ -505,6 +511,7 @@ export function GuideCatSidecar({
       guideCat={guideCat}
       ownerDisplayName={ownerDisplayName}
       unreadCount={unreadCount}
+      proactive={proactive}
       toggle={toggle}
       collapse={collapse}
       dismissWelcome={dismissWelcome}

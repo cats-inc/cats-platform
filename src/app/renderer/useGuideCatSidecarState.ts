@@ -9,6 +9,8 @@ type GuideCatSidecarInnerState = Exclude<GuideCatSidecarViewState, 'hidden'>;
 
 export interface GuideCatSidecarState {
   viewState: GuideCatSidecarViewState;
+  /** True when the current peek/open was initiated by the system, not by user click. */
+  proactive: boolean;
   toggle: () => void;
   collapse: () => void;
   dismissWelcome: () => void;
@@ -75,6 +77,9 @@ export function useGuideCatSidecarState(
   const [innerState, setInnerState] = useState<GuideCatSidecarInnerState>(
     () => resolveGuideCatSidecarPreferenceState(sidecarSeen, mode),
   );
+  const [proactive, setProactive] = useState(
+    () => resolveGuideCatSidecarPreferenceState(sidecarSeen, mode) === 'welcome-peek',
+  );
 
   const isHiddenRoute =
     location.pathname === '/setup'
@@ -94,6 +99,7 @@ export function useGuideCatSidecarState(
   const viewState: GuideCatSidecarViewState = isHiddenRoute ? 'hidden' : innerState;
 
   const toggle = useCallback(() => {
+    setProactive(false);
     setInnerState((prev) => {
       const transition = toggleGuideCatSidecarState(prev, mode);
       if (transition.persistSeen) {
@@ -104,6 +110,7 @@ export function useGuideCatSidecarState(
   }, [mode]);
 
   const collapse = useCallback(() => {
+    setProactive(false);
     setInnerState((prev) => {
       const transition = collapseGuideCatSidecarState(prev);
       if (transition.persistSeen) {
@@ -114,9 +121,10 @@ export function useGuideCatSidecarState(
   }, []);
 
   const dismissWelcome = useCallback(() => {
+    setProactive(false);
     setInnerState('collapsed');
     persistSidecarSeen();
   }, []);
 
-  return { viewState, toggle, collapse, dismissWelcome };
+  return { viewState, proactive, toggle, collapse, dismissWelcome };
 }
