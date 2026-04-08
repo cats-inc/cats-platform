@@ -134,6 +134,9 @@ npm run desktop:icons
 npm run desktop:icons -- --shape square
 ```
 
+- packaging/build commands consume the existing icon files in place; they do
+  not regenerate icons during the package step
+
 ```bash
 ./scripts/macos/build-macos-installer.sh
 ./scripts/linux/build-linux-installer.sh

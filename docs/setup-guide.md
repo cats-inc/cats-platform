@@ -537,7 +537,7 @@ Use `-SkipLaunch` if you only want file/layout verification.
 Current limitations of the first real installer slice:
 
 - unsigned build
-- icon set is generated from `assets/app-icon-silhouette.svg`; refresh it with `npm run desktop:icons` for the default circular avatar-style outputs, or use `npm run desktop:icons -- --shape square` to switch back to square outputs
+- icon set is generated from `assets/app-icon-silhouette.svg`; refresh it with `npm run desktop:icons` for the default circular avatar-style outputs, or use `npm run desktop:icons -- --shape square` to switch back to square outputs. Packaging consumes whatever files are already present and does not regenerate icons during build.
 - update install/apply remains manual
 - update manifests must be HTTPS, and any `downloadUrl` must stay on the
   manifest host or a host listed in `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS`

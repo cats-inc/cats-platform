@@ -9,8 +9,6 @@ import { spawn } from 'node:child_process';
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
 const RUNTIME_ROOT = resolve(PROJECT_ROOT, '..', 'cats-runtime');
-const DEFAULT_ICON_SHAPE = 'circle';
-const SUPPORTED_ICON_SHAPES = new Set(['square', 'circle']);
 
 function printHelp() {
   process.stdout.write(`Usage: node scripts/build-desktop-installer.mjs [options]
@@ -20,33 +18,21 @@ Options:
   --arch <x64|arm64|universal>            Override the configured target architectures.
   --format <nsis|dmg|pkg|zip|AppImage|deb|tar.gz>
                                          Override the configured installer formats.
-  --shape <square|circle>                 Override icon output shape. Defaults to circle.
   --help                                  Show this help text.
 
 Without --arch/--format, the electron-builder target matrix from package.json is preserved.
 `);
 }
 
-function normalizeIconShape(value) {
-  if (!value) {
-    return DEFAULT_ICON_SHAPE;
-  }
-  if (!SUPPORTED_ICON_SHAPES.has(value)) {
-    throw new Error(`Unsupported icon shape: ${value}`);
-  }
-  return value;
-}
-
 export function parseArgs(argv) {
   let target = 'current';
   let arch = null;
   let format = null;
-  let shape = DEFAULT_ICON_SHAPE;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, target, arch, format, shape };
+      return { help: true, target, arch, format };
     }
     if (value === '--target') {
       target = argv[index + 1] ?? 'current';
@@ -63,15 +49,10 @@ export function parseArgs(argv) {
       index += 1;
       continue;
     }
-    if (value === '--shape') {
-      shape = normalizeIconShape(argv[index + 1] ?? '');
-      index += 1;
-      continue;
-    }
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, target, arch, format, shape };
+  return { help: false, target, arch, format };
 }
 
 async function resolveNodeCliScript(command) {
@@ -236,7 +217,7 @@ async function main() {
   await runCommand('npm', ['run', 'build'], PROJECT_ROOT);
   await runCommand(
     'node',
-    ['scripts/package-desktop.mjs', '--platform', resolvedTarget, '--shape', parsed.shape],
+    ['scripts/package-desktop.mjs', '--platform', resolvedTarget],
     PROJECT_ROOT,
   );
   await runCommand('npx', electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format), PROJECT_ROOT);

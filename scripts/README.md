@@ -98,6 +98,10 @@ It also supports shape-controlled outputs:
 - default circular avatar clip: `npm run desktop:icons`
 - explicit square output: `npm run desktop:icons -- --shape square`
 
+Desktop packaging does not regenerate these icon assets. Prepare the files you
+want first, then run the packaging scripts and let them consume the existing
+files under `assets/build/` and `assets/tray-icon*.png`.
+
 ## Collaboration Helpers
 
 `cats` also keeps repo-owned cross-platform skill sync helpers so local agent

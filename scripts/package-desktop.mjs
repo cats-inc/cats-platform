@@ -1,13 +1,32 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
+import { access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const DEFAULT_ICON_SHAPE = 'circle';
-const SUPPORTED_ICON_SHAPES = new Set(['square', 'circle']);
+const REQUIRED_DESKTOP_ICON_RELATIVE_PATHS = [
+  'assets/build/icon.png',
+  'assets/build/icon.ico',
+  'assets/build/icon.icns',
+  'assets/build/installerIcon.ico',
+  'assets/build/uninstallerIcon.ico',
+  'assets/build/installerHeaderIcon.ico',
+  'assets/build/icons/linux/16x16.png',
+  'assets/build/icons/linux/24x24.png',
+  'assets/build/icons/linux/32x32.png',
+  'assets/build/icons/linux/48x48.png',
+  'assets/build/icons/linux/64x64.png',
+  'assets/build/icons/linux/128x128.png',
+  'assets/build/icons/linux/256x256.png',
+  'assets/build/icons/linux/512x512.png',
+  'assets/tray-icon.png',
+  'assets/tray-icon@2x.png',
+  'assets/tray-iconTemplate.png',
+  'assets/tray-iconTemplate@2x.png',
+];
 
 function printHelp() {
   process.stdout.write(`Usage: node scripts/package-desktop.mjs [options]
@@ -15,30 +34,18 @@ function printHelp() {
 Options:
   --platform <all|windows|macos|linux>  Filter staged target manifests
   --output-dir <path>                   Override packaging output root
-  --shape <square|circle>               Override icon output shape. Defaults to circle
   --help                                Show this help text
 `);
-}
-
-function normalizeIconShape(value) {
-  if (!value) {
-    return DEFAULT_ICON_SHAPE;
-  }
-  if (!SUPPORTED_ICON_SHAPES.has(value)) {
-    throw new Error(`Unsupported icon shape: ${value}`);
-  }
-  return value;
 }
 
 export function parseArgs(argv) {
   let platform = 'all';
   let outputDir = null;
-  let shape = DEFAULT_ICON_SHAPE;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, platform, outputDir, shape };
+      return { help: true, platform, outputDir };
     }
     if (value === '--platform') {
       platform = argv[index + 1] ?? 'all';
@@ -50,15 +57,29 @@ export function parseArgs(argv) {
       index += 1;
       continue;
     }
-    if (value === '--shape') {
-      shape = normalizeIconShape(argv[index + 1] ?? '');
-      index += 1;
-      continue;
-    }
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, platform, outputDir, shape };
+  return { help: false, platform, outputDir };
+}
+
+export function resolveRequiredDesktopIconPaths(projectRoot = PROJECT_ROOT) {
+  return REQUIRED_DESKTOP_ICON_RELATIVE_PATHS.map((relativePath) => resolve(projectRoot, relativePath));
+}
+
+export async function assertDesktopIconAssetsPresent(projectRoot = PROJECT_ROOT) {
+  const requiredPaths = resolveRequiredDesktopIconPaths(projectRoot);
+  for (let index = 0; index < requiredPaths.length; index += 1) {
+    const absolutePath = requiredPaths[index];
+    try {
+      await access(absolutePath);
+    } catch {
+      throw new Error(
+        `Missing required desktop icon asset: ${REQUIRED_DESKTOP_ICON_RELATIVE_PATHS[index]}. `
+        + 'Prepare the file manually or run `npm run desktop:icons` before packaging.',
+      );
+    }
+  }
 }
 
 async function main() {
@@ -77,11 +98,10 @@ async function main() {
     throw new Error(`Unsupported platform filter: ${parsed.platform}`);
   }
 
-  const { generateElectronIcons } = await import('./shared/generate-electron-icons.mjs');
   const { resolveDesktopHostConfig } = await import('../build/desktop/config.js');
   const { stageDesktopPackagingOutputs } = await import('../build/desktop/packaging.js');
 
-  await generateElectronIcons({ iconShape: parsed.shape });
+  await assertDesktopIconAssetsPresent(PROJECT_ROOT);
   const config = resolveDesktopHostConfig({
     env: process.env,
     userDataDir: resolve(PROJECT_ROOT, '.desktop-package-user'),

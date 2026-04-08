@@ -11,7 +11,11 @@ import {
   resolveWindowsExecutableEditPlan,
 } from '../scripts/shared/edit-windows-exe-icon.mjs';
 import { parseArgs as parseBuildDesktopInstallerArgs } from '../scripts/build-desktop-installer.mjs';
-import { parseArgs as parsePackageDesktopArgs } from '../scripts/package-desktop.mjs';
+import {
+  assertDesktopIconAssetsPresent,
+  parseArgs as parsePackageDesktopArgs,
+  resolveRequiredDesktopIconPaths,
+} from '../scripts/package-desktop.mjs';
 import {
   createDesktopPackagingPlan,
   stageDesktopPackagingOutputs,
@@ -736,7 +740,6 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /<current\|windows\|macos\|linux>/);
   assert.match(script, /--arch <x64\|arm64\|universal>/);
   assert.match(script, /--format <nsis\|dmg\|pkg\|zip\|AppImage\|deb\|tar\.gz>/);
-  assert.match(script, /--shape <square\|circle>/);
   assert.match(script, /Without --arch\/--format, the electron-builder target matrix from package\.json is preserved\./);
   assert.match(script, /case 'darwin':/);
   assert.match(script, /case 'linux':/);
@@ -754,50 +757,54 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /WIN_CSC_KEY_PASSWORD:\s*''/);
   assert.match(script, /CSC_KEY_PASSWORD:\s*''/);
   assert.match(script, /shell: false/);
-  assert.match(script, /scripts\/package-desktop\.mjs', '--platform', resolvedTarget, '--shape', parsed\.shape/);
+  assert.match(script, /scripts\/package-desktop\.mjs', '--platform', resolvedTarget/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
   assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);
 });
 
-test('desktop packaging scripts default to circle icons and accept explicit shape overrides', () => {
+test('desktop packaging scripts keep icon selection outside the build flags', () => {
   assert.deepEqual(parsePackageDesktopArgs([]), {
     help: false,
     platform: 'all',
     outputDir: null,
-    shape: 'circle',
   });
-  assert.deepEqual(parsePackageDesktopArgs(['--platform', 'windows', '--shape', 'square']), {
+  assert.deepEqual(parsePackageDesktopArgs(['--platform', 'windows']), {
     help: false,
     platform: 'windows',
     outputDir: null,
-    shape: 'square',
   });
-  assert.throws(
-    () => parsePackageDesktopArgs(['--shape', 'triangle']),
-    /Unsupported icon shape: triangle/,
-  );
 
   assert.deepEqual(parseBuildDesktopInstallerArgs([]), {
     help: false,
     target: 'current',
     arch: null,
     format: null,
-    shape: 'circle',
   });
   assert.deepEqual(
-    parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb', '--shape', 'square']),
+    parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb']),
     {
       help: false,
       target: 'linux',
       arch: 'arm64',
       format: 'deb',
-      shape: 'square',
     },
   );
-  assert.throws(
-    () => parseBuildDesktopInstallerArgs(['--shape', 'triangle']),
-    /Unsupported icon shape: triangle/,
+});
+
+test('package-desktop requires prebuilt icon assets instead of regenerating them', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-package-icons-'));
+
+  await assert.rejects(
+    assertDesktopIconAssetsPresent(workingDir),
+    /Missing required desktop icon asset: assets\/build\/icon\.png/,
   );
+
+  const requiredPaths = resolveRequiredDesktopIconPaths(workingDir);
+  for (const iconPath of requiredPaths) {
+    await seedFile(iconPath, 'icon');
+  }
+
+  await assert.doesNotReject(assertDesktopIconAssetsPresent(workingDir));
 });
 
 test('stageDesktopPackagingOutputs writes staging manifests and shared assets', async () => {
