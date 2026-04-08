@@ -593,12 +593,12 @@ test('startup recovery skips startup-recovered parallel continuation replays unt
             },
           ],
           branchStrategy: 'transplant_context',
-          workflowStageId: 'parallel_fan_out',
-          workflowShape: 'parallel',
+          workflowStageId: 'concurrent_fan_out',
+          workflowShape: 'concurrent',
           continuationSource: 'workflow_recommendation',
           workflowRecommendation: {
             source: 'boss_replan',
-            workflowShape: 'parallel',
+            workflowShape: 'concurrent',
             reviewRequired: false,
             candidateTargets: [
               {

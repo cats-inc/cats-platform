@@ -76,7 +76,7 @@ export type CoreTaskControlPlaneReason =
   | 'workflow_review_required'
   | 'child_tasks_in_progress';
 
-export type CoreTaskWorkflowShape = 'sequential' | 'parallel' | 'converge';
+export type CoreTaskWorkflowShape = 'sequential' | 'concurrent' | 'converge';
 
 export const CORE_TASK_CONTROL_PLANE_SEVERITIES = [
   'muted',
@@ -124,7 +124,7 @@ export const CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS = [
 
 export const CORE_TASK_WORKFLOW_SHAPES = [
   'sequential',
-  'parallel',
+  'concurrent',
   'converge',
 ] as const satisfies readonly CoreTaskWorkflowShape[];
 
@@ -170,7 +170,7 @@ export interface CoreTaskControlPlaneWorkflowRecommendationTargetView {
 
 export interface CoreTaskControlPlaneWorkflowRecommendationView {
   source: 'checkpoint' | 'boss_replan' | 'system_inference' | null;
-  workflowShape: 'sequential' | 'parallel' | 'converge' | null;
+  workflowShape: 'sequential' | 'concurrent' | 'converge' | null;
   continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
   branchStrategy: string | null;
   rationale: string | null;
@@ -182,7 +182,7 @@ export interface CoreTaskControlPlaneWorkflowRecommendationView {
 export interface CoreTaskControlPlaneWorkflowContinuationView {
   checkpointId: string | null;
   stageId: string | null;
-  workflowShape: 'sequential' | 'parallel' | 'converge' | null;
+  workflowShape: 'sequential' | 'concurrent' | 'converge' | null;
   continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
   reviewRequired: boolean;
   convergeTargetId: string | null;
@@ -533,10 +533,12 @@ function readWorkflowRecommendationFromMetadata(
         : null,
     workflowShape:
       workflowShape === 'sequential'
-      || workflowShape === 'parallel'
+      || workflowShape === 'concurrent'
       || workflowShape === 'converge'
         ? workflowShape
-        : null,
+        : workflowShape === 'parallel'
+          ? ('concurrent' as CoreTaskWorkflowShape)
+          : null,
     continuationSource:
       continuationSource === 'explicit_mentions'
       || continuationSource === 'workflow_recommendation'
@@ -570,9 +572,11 @@ function resolveLatestWorkflowRecommendation(input: {
 function readWorkflowShape(
   value: unknown,
 ): CoreTaskWorkflowShape | null {
-  return value === 'sequential' || value === 'parallel' || value === 'converge'
-    ? value
-    : null;
+  return value === 'sequential' || value === 'concurrent' || value === 'converge'
+    ? (value as CoreTaskWorkflowShape)
+    : value === 'parallel'
+      ? ('concurrent' as CoreTaskWorkflowShape)
+      : null;
 }
 
 function readEffectiveWorkflowShape(

@@ -65,8 +65,8 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
         dispatchCount: 2,
         continuationCount: 1,
         targetCount: 2,
-        workflowStageId: 'parallel_fan_out',
-        workflowShape: 'parallel',
+        workflowStageId: 'concurrent_fan_out',
+        workflowShape: 'concurrent',
         branchStates: [
           {
             id: 'branch-1',
@@ -185,7 +185,7 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
     view.governanceSummary?.runtimeDeliveryManifest?.requestedActions,
     ['create_commit'],
   );
-  assert.equal(view.workflowSummary?.shape, 'parallel');
+  assert.equal(view.workflowSummary?.shape, 'concurrent');
   assert.equal(view.workflowSummary?.branchStatusCounts.completed, 1);
   assert.deepEqual(
     view.approvalActions.map((action) => action.kind),
@@ -209,8 +209,8 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   assert.equal(inspector.checkpoints[0].id, 'checkpoint-room-1');
   assert.equal(inspector.governanceSummary?.approval.pending, true);
   assert.equal(inspector.workflowSummary?.dispatchCount, 2);
-  assert.equal(inspector.workflowStageId, 'parallel_fan_out');
-  assert.equal(inspector.workflowShape, 'parallel');
+  assert.equal(inspector.workflowStageId, 'concurrent_fan_out');
+  assert.equal(inspector.workflowShape, 'concurrent');
   assert.equal(inspector.branchStates[0].participantName, 'Agent-1');
   assert.equal(inspector.approvalActions[1].kind, 'reroute');
   assert.equal(inspector.incidentActions[0].kind, 'retry');

@@ -387,10 +387,12 @@ function readWorkflowRecommendationFromMetadata(
         : null,
     workflowShape:
       workflowShape === 'sequential'
-      || workflowShape === 'parallel'
+      || workflowShape === 'concurrent'
       || workflowShape === 'converge'
         ? workflowShape
-        : null,
+        : workflowShape === 'parallel'
+          ? 'concurrent'
+          : null,
     continuationSource:
       continuationSource === 'explicit_mentions'
       || continuationSource === 'workflow_recommendation'

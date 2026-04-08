@@ -66,7 +66,7 @@ export interface ChatWorkflowRecommendationTargetView {
 
 export interface ChatWorkflowRecommendationView {
   source: 'checkpoint' | 'boss_replan' | 'system_inference' | null;
-  workflowShape: 'sequential' | 'parallel' | 'converge' | null;
+  workflowShape: 'sequential' | 'concurrent' | 'converge' | null;
   continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
   branchStrategy: string | null;
   rationale: string | null;

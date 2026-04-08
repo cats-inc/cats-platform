@@ -361,6 +361,7 @@ function readWorkflowContinuationReplayRequest(
     || (!workflowRecommendation && targets.length === 0)
     || (
       workflowShape !== 'sequential'
+      && workflowShape !== 'concurrent'
       && workflowShape !== 'parallel'
       && workflowShape !== 'converge'
     )

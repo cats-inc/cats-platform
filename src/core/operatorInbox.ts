@@ -114,9 +114,11 @@ export interface CoreOperatorInboxSummary {
 }
 
 function readWorkflowShape(value: unknown): CoreTaskWorkflowShape | null {
-  return value === 'sequential' || value === 'parallel' || value === 'converge'
-    ? value
-    : null;
+  return value === 'sequential' || value === 'concurrent' || value === 'converge'
+    ? (value as CoreTaskWorkflowShape)
+    : value === 'parallel'
+      ? ('concurrent' as CoreTaskWorkflowShape)
+      : null;
 }
 
 function readEffectiveWorkflowShape(item: Pick<

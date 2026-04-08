@@ -202,7 +202,7 @@ function requiresCompleteRecommendationResolution(
   recommendation: WorkflowRecommendation,
   unresolvedTargets: string[],
 ): boolean {
-  return recommendation.workflowShape === 'parallel'
+  return recommendation.workflowShape === 'concurrent'
     && recommendation.candidateTargets.length > 1
     && unresolvedTargets.length > 0;
 }
@@ -211,7 +211,7 @@ function requiresCompleteConcreteReplayResolution(
   request: WorkflowContinuationReplaySnapshot,
   missingTargets: string[],
 ): boolean {
-  return request.workflowShape === 'parallel'
+  return request.workflowShape === 'concurrent'
     && request.targets.length > 1
     && missingTargets.length > 0;
 }

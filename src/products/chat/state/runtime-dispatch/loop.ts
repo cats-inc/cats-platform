@@ -584,8 +584,8 @@ export async function processDispatchQueue(
     }
 
     if (allowedRequests.length > 1) {
-      activeTurn.workflowShape = 'parallel';
-      activeTurn.stageId = 'parallel_fan_out';
+      activeTurn.workflowShape = 'concurrent';
+      activeTurn.stageId = 'concurrent_fan_out';
       appendWorkflowEvent(
         workflow,
         activeTurn,

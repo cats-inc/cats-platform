@@ -54,7 +54,7 @@ export type OrchestratorExecutionStepKind =
   | 'dispatch_group'
   | 'dispatch_target'
   | 'continuation_handoff'
-  | 'parallel_fan_out'
+  | 'concurrent_fan_out'
   | 'report_outcome'
   | 'recovery';
 export type OrchestratorExecutionStepStatus =

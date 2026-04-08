@@ -47,9 +47,11 @@ function readString(value: unknown): string | null {
 }
 
 function readWorkflowShape(value: unknown): RoomWorkflowShape | null {
-  return value === 'sequential' || value === 'parallel' || value === 'converge'
-    ? value
-    : null;
+  return value === 'sequential' || value === 'concurrent' || value === 'converge'
+    ? (value as RoomWorkflowShape)
+    : value === 'parallel'
+      ? ('concurrent' as RoomWorkflowShape)
+      : null;
 }
 
 function readWorkflowSource(value: unknown): WorkflowRecommendation['source'] {

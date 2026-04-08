@@ -77,7 +77,7 @@ export type RoomWorkflowTargetStatus =
 
 export type RoomWorkflowShape =
   | 'sequential'
-  | 'parallel'
+  | 'concurrent'
   | 'converge';
 
 export type RoomWorkflowBranchStrategy =

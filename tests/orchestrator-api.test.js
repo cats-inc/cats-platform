@@ -1632,7 +1632,7 @@ test('recommendation-only parallel continuation replay waits for all recovered t
         return usage(JSON.stringify({
           workflowRecommendation: {
             source: 'checkpoint',
-            workflowShape: 'parallel',
+            workflowShape: 'concurrent',
             reviewRequired: false,
             candidateTargetNames: ['Followup-Agent', 'Verifier-Agent'],
             branchStrategy: 'transplant_context',
@@ -1718,7 +1718,7 @@ test('recommendation-only parallel continuation replay waits for all recovered t
     const blockedCorePayload = await blockedCoreResponse.json();
     const blockedTask = blockedCorePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
     assert.ok(blockedTask);
-    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowStageId, 'parallel_fan_out');
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowStageId, 'concurrent_fan_out');
     assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
 
     const firstReassignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${followupCat.id}`, {
@@ -1741,7 +1741,7 @@ test('recommendation-only parallel continuation replay waits for all recovered t
     assert.ok(stillBlockedTask);
     assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
     assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.replayState, 'ready');
-    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.workflowStageId, 'parallel_fan_out');
+    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.workflowStageId, 'concurrent_fan_out');
     assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
     assert.ok(
       stillBlockedCorePayload.activities.some((activity) =>
@@ -2603,7 +2603,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
   const activeTurn = createWorkflowTurn(
     sourceMessage,
     now.toISOString(),
-    'parallel_fan_out',
+    'concurrent_fan_out',
     'parallel',
   );
   activeTurn.id = 'turn-startup-recovered-parallel';
@@ -2671,7 +2671,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
           unresolvedTargets: [],
           workflowRecommendation: {
             source: 'boss_replan',
-            workflowShape: 'parallel',
+            workflowShape: 'concurrent',
             reviewRequired: false,
             candidateTargets: [
               {

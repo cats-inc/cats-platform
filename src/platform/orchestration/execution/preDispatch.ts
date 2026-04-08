@@ -52,14 +52,14 @@ export function buildPreDispatchExecutionPlan(
   steps.push({
     id: rootStepId,
     phase: 'dispatch',
-    kind: input.initialShape === 'parallel' ? 'parallel_fan_out' : 'dispatch_group',
+    kind: input.initialShape === 'concurrent' ? 'concurrent_fan_out' : 'dispatch_group',
     status: input.initialTargets.length === 0
       ? 'blocked'
       : approval.status === 'pending'
         ? 'pending'
         : 'ready',
-    title: input.initialShape === 'parallel'
-      ? 'Initial parallel fan-out'
+    title: input.initialShape === 'concurrent'
+      ? 'Initial concurrent fan-out'
       : 'Initial dispatch stage',
     summary: input.initialTargets.length === 0
       ? 'No valid initial targets were resolved for this turn.'

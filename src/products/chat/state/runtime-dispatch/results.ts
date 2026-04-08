@@ -100,10 +100,10 @@ function resolveContinuationStage(
   reviewRequired: boolean;
 } {
   if (recommendation && targetCount === 0) {
-    if (recommendation.workflowShape === 'parallel') {
+    if (recommendation.workflowShape === 'concurrent') {
       return {
-        stageId: 'parallel_fan_out',
-        workflowShape: 'parallel',
+        stageId: 'concurrent_fan_out',
+        workflowShape: 'concurrent',
         reviewRequired: false,
       };
     }
@@ -126,7 +126,7 @@ function resolveContinuationStage(
   }
 
   return {
-    stageId: targetCount > 1 ? 'parallel_fan_out' : 'continuation_handoff',
+    stageId: targetCount > 1 ? 'concurrent_fan_out' : 'continuation_handoff',
     workflowShape: workflowShapeForTargets(targetCount),
     reviewRequired: false,
   };

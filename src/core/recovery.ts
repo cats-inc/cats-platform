@@ -105,7 +105,7 @@ export const CORE_TASK_RECOVERY_DELIVERY_ACTIONS = [
   'publish_preview',
 ] as const satisfies readonly CoreRuntimeDeliveryAction[];
 
-export type CoreTaskRecoveryWorkflowShape = 'sequential' | 'parallel' | 'converge';
+export type CoreTaskRecoveryWorkflowShape = 'sequential' | 'concurrent' | 'converge';
 export type CoreTaskRecoveryResumeReason = 'target_recovered';
 export type CoreTaskRecoveryReplayPhase = OrchestratorReplayActivityPhase;
 export type CoreTaskRecoveryReplaySource = OrchestratorReplayActivitySource;
@@ -113,7 +113,7 @@ export type CoreTaskRecoveryReplayTrigger = OrchestratorDispatchReplayTrigger;
 
 export const CORE_TASK_RECOVERY_WORKFLOW_SHAPES = [
   'sequential',
-  'parallel',
+  'concurrent',
   'converge',
 ] as const satisfies readonly CoreTaskRecoveryWorkflowShape[];
 
@@ -486,9 +486,11 @@ function buildWorkflowContinuationReplayView(
 }
 
 function readWorkflowShape(value: unknown): CoreTaskRecoveryWorkflowShape | null {
-  return value === 'sequential' || value === 'parallel' || value === 'converge'
-    ? value
-    : null;
+  return value === 'sequential' || value === 'concurrent' || value === 'converge'
+    ? (value as CoreTaskRecoveryWorkflowShape)
+    : value === 'parallel'
+      ? ('concurrent' as CoreTaskRecoveryWorkflowShape)
+      : null;
 }
 
 function buildRecoveryContext(input: {

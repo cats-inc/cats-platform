@@ -79,13 +79,13 @@ function buildRootWorkflowStep(
   return {
     id: `dispatch-group-${turn.id}`,
     phase: 'dispatch',
-    kind: turn.workflowShape === 'parallel' ? 'parallel_fan_out' : 'dispatch_group',
+    kind: turn.workflowShape === 'concurrent' ? 'concurrent_fan_out' : 'dispatch_group',
     status: mapStepStatusFromWorkflow(turn.status),
-    title: turn.workflowShape === 'parallel'
-      ? 'Parallel room execution'
+    title: turn.workflowShape === 'concurrent'
+      ? 'Concurrent room execution'
       : 'Room execution stage',
-    summary: turn.workflowShape === 'parallel'
-      ? `This turn fanned out to ${turn.targetStatuses.length} parallel branch(es).`
+    summary: turn.workflowShape === 'concurrent'
+      ? `This turn fanned out to ${turn.targetStatuses.length} concurrent branch(es).`
       : turn.dispatchCount === 0
         ? 'This turn has not dispatched any work yet.'
         : `This turn routed work through ${turn.dispatchCount} dispatch(es).`,
@@ -135,12 +135,15 @@ function buildEventStep(
   channel: OrchestratorChannelView,
   event: RoomWorkflowEvent,
 ): OrchestratorExecutionStep | null {
+  const rawShape = event.metadata.workflowShape === 'parallel'
+    ? 'concurrent'
+    : event.metadata.workflowShape;
   const workflowShape = (
-    event.metadata.workflowShape === 'parallel'
-    || event.metadata.workflowShape === 'sequential'
-    || event.metadata.workflowShape === 'converge'
+    rawShape === 'concurrent'
+    || rawShape === 'sequential'
+    || rawShape === 'converge'
   )
-    ? event.metadata.workflowShape
+    ? rawShape
     : turn.workflowShape;
   const stageId = typeof event.metadata.workflowStageId === 'string'
     ? event.metadata.workflowStageId
@@ -167,7 +170,7 @@ function buildEventStep(
   let retryable = false;
 
   if (event.kind === 'fan_out') {
-    kind = 'parallel_fan_out';
+    kind = 'concurrent_fan_out';
     phase = 'dispatch';
   } else if (event.kind === 'guard_blocked') {
     kind = 'recovery';
@@ -203,8 +206,8 @@ function buildEventStep(
     phase,
     kind,
     status: mapStepStatusFromWorkflow(event.status),
-    title: kind === 'parallel_fan_out'
-      ? 'Parallel fan-out'
+    title: kind === 'concurrent_fan_out'
+      ? 'Concurrent fan-out'
       : kind === 'continuation_handoff'
         ? 'Continuation handoff'
         : kind === 'report_outcome'

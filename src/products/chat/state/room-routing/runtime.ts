@@ -80,7 +80,7 @@ export function mergeUnresolvedMentions(
 }
 
 export function workflowShapeForTargets(targetCount: number): RoomWorkflowShape {
-  return targetCount > 1 ? 'parallel' : 'sequential';
+  return targetCount > 1 ? 'concurrent' : 'sequential';
 }
 
 export function workflowStageIdForTrigger(trigger: RoomRoutingTrigger): string {

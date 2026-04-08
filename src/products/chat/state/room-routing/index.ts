@@ -139,7 +139,7 @@ const ROOM_WORKFLOW_TARGET_STATUSES = new Set<RoomWorkflowTargetStatus>([
 
 const ROOM_WORKFLOW_SHAPES = new Set<RoomWorkflowShape>([
   'sequential',
-  'parallel',
+  'concurrent',
   'converge',
 ]);
 
@@ -308,6 +308,9 @@ export function normalizeRoomWorkflowShape(
   value: unknown,
   fallback: RoomWorkflowShape = 'sequential',
 ): RoomWorkflowShape {
+  if (value === 'parallel') {
+    return 'concurrent';
+  }
   return typeof value === 'string' && ROOM_WORKFLOW_SHAPES.has(value as RoomWorkflowShape)
     ? value as RoomWorkflowShape
     : fallback;

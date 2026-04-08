@@ -246,7 +246,7 @@ test('explicit multi-target mentions fan out in parallel and persist replies in 
   );
   assert.equal(dispatched.results[0].targetName, 'Agent-2');
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.status, 'completed');
-  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'parallel');
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'concurrent');
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.stageId, 'turn_completed');
   assert.deepEqual(
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.map((target) => target.status),

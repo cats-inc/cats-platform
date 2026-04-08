@@ -38,7 +38,7 @@ function resolveTransport(
 }
 
 function workflowShapeForTargets(targetCount: number) {
-  return targetCount > 1 ? 'parallel' : 'sequential';
+  return targetCount > 1 ? 'concurrent' : 'sequential';
 }
 
 function workflowStageIdForTrigger(trigger: RoomRoutingTrigger): string {

@@ -108,9 +108,11 @@ function readTrigger(value: unknown): RoomRoutingTrigger | null {
 }
 
 function readWorkflowShape(value: unknown): RoomWorkflowShape | null {
-  return value === 'sequential' || value === 'parallel' || value === 'converge'
-    ? value
-    : null;
+  return value === 'sequential' || value === 'concurrent' || value === 'converge'
+    ? (value as RoomWorkflowShape)
+    : value === 'parallel'
+      ? ('concurrent' as RoomWorkflowShape)
+      : null;
 }
 
 function readBranchStrategy(value: unknown): RoomWorkflowBranchStrategy | null {
