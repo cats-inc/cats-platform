@@ -58,6 +58,30 @@ export function resolveRuntimeDotClassName(
   }
 }
 
+// -- Recovery entry routing --
+
+export type RuntimeRecoveryTarget = 'runtime-root' | 'runtime-setup';
+
+export function resolveRuntimeRecoveryTarget(
+  status: RuntimePresentationStatus,
+): RuntimeRecoveryTarget {
+  if (status === 'unavailable' || status === 'degraded') {
+    return 'runtime-setup';
+  }
+  return 'runtime-root';
+}
+
+export function resolveRuntimeRecoveryUrl(
+  runtimeBaseUrl: string,
+  target: RuntimeRecoveryTarget,
+): string {
+  const base = new URL('/', runtimeBaseUrl).toString().replace(/\/$/, '');
+  if (target === 'runtime-setup') {
+    return `${base}/setup`;
+  }
+  return `${base}/`;
+}
+
 // -- Lobby identity dot (PlatformLobby) --
 
 export function resolveRuntimeLobbyDotClassName(

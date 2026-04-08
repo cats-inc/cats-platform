@@ -19,6 +19,8 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import {
   resolveRuntimeDotClassName,
   resolveRuntimePresentationStatus,
+  resolveRuntimeRecoveryTarget,
+  resolveRuntimeRecoveryUrl,
   resolveRuntimeTooltip,
 } from '../../../../shared/runtimeStatusPresentation.js';
 import { resolvePlatformSurfaceFromPath } from '../../../../core/platformSurface.js';
@@ -810,6 +812,11 @@ export function Sidebar({
         open={accountMenuOpen}
         onOpenChange={handleAccountMenuOpenChange}
         onNavigateSettings={onNavigateSettings}
+        onNavigateEnvironment={() => {
+          const target = resolveRuntimeRecoveryTarget(runtimeFooterStatus);
+          const url = resolveRuntimeRecoveryUrl(payload.runtime.baseUrl, target);
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }}
         runtimeBaseUrl={payload.runtime.baseUrl}
         containerClassName="sidebarFooter"
         triggerClassName="sidebarFooterButton"

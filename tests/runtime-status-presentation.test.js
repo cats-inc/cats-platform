@@ -6,6 +6,8 @@ import {
   resolveRuntimeTooltip,
   resolveRuntimeDotClassName,
   resolveRuntimeLobbyDotClassName,
+  resolveRuntimeRecoveryTarget,
+  resolveRuntimeRecoveryUrl,
 } from '../build/server/shared/runtimeStatusPresentation.js';
 
 describe('resolveRuntimePresentationStatus', () => {
@@ -143,6 +145,47 @@ describe('resolveRuntimeDotClassName', () => {
 
   it('maps unknown to isUnknown', () => {
     assert.match(resolveRuntimeDotClassName('unknown'), /isUnknown/);
+  });
+});
+
+describe('resolveRuntimeRecoveryTarget', () => {
+  it('returns runtime-setup for unavailable', () => {
+    assert.equal(resolveRuntimeRecoveryTarget('unavailable'), 'runtime-setup');
+  });
+
+  it('returns runtime-setup for degraded', () => {
+    assert.equal(resolveRuntimeRecoveryTarget('degraded'), 'runtime-setup');
+  });
+
+  it('returns runtime-root for ready', () => {
+    assert.equal(resolveRuntimeRecoveryTarget('ready'), 'runtime-root');
+  });
+
+  it('returns runtime-root for unknown', () => {
+    assert.equal(resolveRuntimeRecoveryTarget('unknown'), 'runtime-root');
+  });
+});
+
+describe('resolveRuntimeRecoveryUrl', () => {
+  it('returns root URL for runtime-root target', () => {
+    assert.equal(
+      resolveRuntimeRecoveryUrl('http://localhost:8100', 'runtime-root'),
+      'http://localhost:8100/',
+    );
+  });
+
+  it('returns setup URL for runtime-setup target', () => {
+    assert.equal(
+      resolveRuntimeRecoveryUrl('http://localhost:8100', 'runtime-setup'),
+      'http://localhost:8100/setup',
+    );
+  });
+
+  it('handles trailing slash in base URL', () => {
+    assert.equal(
+      resolveRuntimeRecoveryUrl('http://localhost:8100/', 'runtime-setup'),
+      'http://localhost:8100/setup',
+    );
   });
 });
 

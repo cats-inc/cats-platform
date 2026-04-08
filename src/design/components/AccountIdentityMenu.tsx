@@ -10,6 +10,7 @@ export interface AccountIdentityMenuProps {
   open: boolean;
   onOpenChange: (nextOpen: boolean) => void;
   onNavigateSettings: () => void;
+  onNavigateEnvironment?: () => void;
   runtimeBaseUrl: string;
   containerClassName?: string;
   triggerClassName: string;
@@ -38,6 +39,7 @@ export function AccountIdentityMenu({
   open,
   onOpenChange,
   onNavigateSettings,
+  onNavigateEnvironment,
   runtimeBaseUrl,
   containerClassName,
   triggerClassName,
@@ -77,6 +79,11 @@ export function AccountIdentityMenu({
   function handleSettingsClick(): void {
     onOpenChange(false);
     onNavigateSettings();
+  }
+
+  function handleEnvironmentClick(): void {
+    onOpenChange(false);
+    onNavigateEnvironment?.();
   }
 
   function handleCatsRuntimeClick(): void {
@@ -119,6 +126,15 @@ export function AccountIdentityMenu({
             onClick={handleSettingsClick}
           >
             Settings
+          </button>
+          <div className="accountMenuDivider" role="separator" />
+          <button
+            className="accountMenuItem"
+            type="button"
+            role="menuitem"
+            onClick={handleEnvironmentClick}
+          >
+            Environment
           </button>
           <button
             className="accountMenuItem"

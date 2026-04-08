@@ -7,6 +7,8 @@ import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared
 import {
   resolveRuntimeLobbyDotClassName,
   resolveRuntimePresentationStatus,
+  resolveRuntimeRecoveryTarget,
+  resolveRuntimeRecoveryUrl,
   resolveRuntimeTooltip,
 } from '../../shared/runtimeStatusPresentation.js';
 import { LobbyBouncingCats } from './LobbyBouncingCats.js';
@@ -87,6 +89,11 @@ export function PlatformLobby({
               onNavigateSettings={() => navigate('/settings/general', {
                 state: { platformShellSurface: envelope.lastProductSurface ?? 'chat' },
               })}
+              onNavigateEnvironment={() => {
+                const target = resolveRuntimeRecoveryTarget(runtimeStatus);
+                const url = resolveRuntimeRecoveryUrl(envelope.runtime.baseUrl, target);
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }}
               runtimeBaseUrl={envelope.runtime.baseUrl}
               triggerClassName="lobbyIdentity"
               menuPlacement="below"
