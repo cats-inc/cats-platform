@@ -104,27 +104,18 @@ This policy may be chosen:
 
 ### 4a. Reply progression does not silently rewrite channel defaults
 
-The product distinguishes:
+Stored channel defaults, transient current-turn recipients, and workflow
+continuation targets are separate concepts.
 
-- stored channel defaults
-- transient current-turn recipients
-- workflow-proposed continuation recipients
+The first slice should therefore reject "last replier wins" behavior:
 
-This means:
+- an explicit addressed reply does not silently rewrite the stored default
+- workflow continuation may preselect the next transient recipient set
+- changing the stored channel default requires explicit user action
 
-- an explicit addressed turn that happens to receive a reply from participant B
-  does not by itself rewrite the channel's stored default recipients to B
-- sequential or concurrent dispatch may still create a transient next-turn
-  continuation target or recipient set
-- that continuation state is not the same thing as silently rewriting the
-  saved channel default
-
-Changing the stored channel default should require explicit user action in the
-first slice.
-
-Later slices may allow an explicit workflow commit that updates the channel
-default, but the system should not auto-promote "who replied last" into the new
-default just because the conversation moved.
+The exact user-facing mutation affordance is spec-owned and may evolve later,
+but the architecture should not auto-promote "who replied last" into the new
+channel default.
 
 ### 5. A multi-recipient stack does not imply one specific policy
 

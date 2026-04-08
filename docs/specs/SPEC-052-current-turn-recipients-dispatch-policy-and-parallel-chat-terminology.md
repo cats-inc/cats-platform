@@ -85,6 +85,9 @@ The contract terms remain:
 - `sequential`
 - `concurrent`
 
+The composer should also expose an obvious entry point for editing the current
+turn's recipient set.
+
 ### Workflow / Orchestration Surface
 
 Workflow continuation answers:
@@ -227,15 +230,33 @@ For the first slice:
 This keeps conversation progress flexible without reintroducing a permanent
 lead concept.
 
+### Future Default-Recipient Controls
+
+A later slice may allow the operator to explicitly update the stored
+channel-level default recipients.
+
+Acceptable future surfaces include:
+
+- an action inside the composer recipient control
+- a room-level recipient settings surface
+
+This future path is deferred, not rejected.
+The first slice does not need to ship that mutation UI, but the model should
+not assume that stored defaults are immutable forever.
+
 ## Layout Requirements
 
 1. The composer recipient slot shall represent current-turn recipient(s) only.
 2. The composer recipient slot shall not be used as a full room-roster summary.
 3. The header and participant surfaces shall carry room membership and room
    context.
-4. Transcript bubbles shall continue to show actual speakers, not inferred
+4. The composer shall expose an explicit affordance for editing current-turn
+   recipient(s), including multi-recipient order when relevant.
+5. The composer shall expose dispatch policy as a separate affordance adjacent
+   to recipient selection rather than encoding it into recipient chips alone.
+6. Transcript bubbles shall continue to show actual speakers, not inferred
    leads.
-5. Workflow and orchestration UI shall not masquerade as extra recipients in
+7. Workflow and orchestration UI shall not masquerade as extra recipients in
    the same chip style.
 
 ## Terminology Requirements
