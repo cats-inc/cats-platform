@@ -145,8 +145,7 @@ export function deriveAppViewState(input: {
     (cat) => cat.id === payload.chat.bossCatId,
   )?.avatarColor ?? null;
   const showBossCatAvatar = Boolean(payload.chat.bossCatId)
-    && !isSoloThreadConversationMode(selectedConversationMode)
-    && !isDirectConversationMode(selectedConversationMode)
+    && selectedConversationMode === 'cat_led_thread'
     && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
   const selectableCats = payload.chat.cats.filter(
     (cat) => cat.status === 'active' && cat.id !== payload.chat.bossCatId && isChatCat(cat),
