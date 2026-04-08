@@ -203,13 +203,11 @@ function CollapsedPill({
 }
 
 function WelcomePeek({
-  name,
   ownerDisplayName,
   onAction,
   onDismiss,
   style,
 }: {
-  name: string;
   ownerDisplayName: string;
   onAction: (route: string) => void;
   onDismiss: () => void;
@@ -220,10 +218,6 @@ function WelcomePeek({
       className="guideCatPeek"
       style={style}
     >
-      <div className="guideCatPeekHeader">
-        <GuideCatAvatar className="guideCatPeekAvatar" />
-        <span className="guideCatPeekName">Hi! I&rsquo;m {name}</span>
-      </div>
       <p className="guideCatPeekGreeting">
         Welcome, {ownerDisplayName}. I&rsquo;m your guide cat.
         Here are some things to get you started.
@@ -368,7 +362,6 @@ export function GuideCatSidecarView({
           style={anchorStyle}
         />
         <WelcomePeek
-          name={guideCat.name}
           ownerDisplayName={ownerDisplayName}
           onAction={onAction}
           onDismiss={onDismissWelcome}

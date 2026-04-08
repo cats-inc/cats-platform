@@ -141,27 +141,6 @@
   to   { opacity: 1; transform: translateY(-50%) translateX(0); }
 }
 
-.guideCatPeekHeader {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.guideCatPeekAvatar {
-  display: block;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.guideCatPeekName {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text);
-}
-
 .guideCatPeekGreeting {
   font-size: var(--text-sm);
   color: var(--muted);
