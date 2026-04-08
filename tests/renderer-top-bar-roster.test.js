@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { readStylesheet } from './helpers/readStylesheet.js';
 
 const PRODUCT_SURFACES = ['chat', 'work', 'code'];
 
@@ -28,9 +29,8 @@ for (const product of PRODUCT_SURFACES) {
   });
 
   test(`${product} chat-thread styles keep top-bar avatars expanded without hover`, async () => {
-    const source = await readFile(
+    const source = await readStylesheet(
       new URL(`../src/products/${product}/renderer/styles/chat-thread.css`, import.meta.url),
-      'utf8',
     );
 
     assert.match(source, /\.rosterAvatarsExpanded \.catAvatar/u);

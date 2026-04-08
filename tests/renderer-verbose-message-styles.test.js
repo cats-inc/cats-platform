@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
+import { readStylesheet } from './helpers/readStylesheet.js';
 
 for (const product of ['chat', 'work', 'code']) {
   test(`${product} transcript system messages render as subtle cards instead of plain centered text`, async () => {
-    const source = await readFile(
+    const source = await readStylesheet(
       path.join(
         process.cwd(),
         'src',
@@ -15,7 +15,6 @@ for (const product of ['chat', 'work', 'code']) {
         'styles',
         'chat-thread.css',
       ),
-      'utf8',
     );
 
     assert.match(source, /\.transcriptMessageSystem\s*\{/u);

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { readStylesheet } from './helpers/readStylesheet.js';
 
 const PRODUCT_SURFACES = ['chat', 'work', 'code'];
 
@@ -21,9 +22,8 @@ for (const product of PRODUCT_SURFACES) {
   });
 
   test(`${product} chat-thread styles keep the resume icon button aligned with the side-panel toggle`, async () => {
-    const source = await readFile(
+    const source = await readStylesheet(
       new URL(`../src/products/${product}/renderer/styles/chat-thread.css`, import.meta.url),
-      'utf8',
     );
 
     assert.match(source, /\.channelActionIconButton,\s*\.sidePanelToggle/u);

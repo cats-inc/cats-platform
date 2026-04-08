@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readStylesheetSync } from './helpers/readStylesheet.js';
 
 for (const product of ['chat', 'work', 'code']) {
   test(`${product} transcript mention pills inherit the surrounding font size`, () => {
-    const stylesheet = readFileSync(
+    const stylesheet = readStylesheetSync(
       new URL(`../src/products/${product}/renderer/styles/chat-thread.css`, import.meta.url),
-      'utf8',
     );
 
     const mentionRule = stylesheet.match(/\.messageBodyMention\s*\{[^}]+\}/u)?.[0] ?? '';

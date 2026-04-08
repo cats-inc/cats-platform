@@ -1,2 +1,2 @@
-/* Setup styles now live in src/design/components/platform-setup.css */
-@import '../../../../design/components/platform-setup.css';
+@import '../../../shared/renderer/styles/chat-setup.css';
+
