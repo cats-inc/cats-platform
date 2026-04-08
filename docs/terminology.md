@@ -25,12 +25,12 @@
 | Chat | A topic-centered conversation thread inside `Cats Chat`. Chat is the primary navigation unit, even when one or more Cats participate in it. |
 | Cat | A reusable product-facing identity in the Cats platform. A Cat is not the same thing as a provider choice, and Cats are expected to become one class of generalized reusable entities rather than the only possible participant shape. |
 | Guide Cat | The canonical product and developer term for the optional first helper offered during setup. Guide Cat is a Cat identity that may help across `Chat`, `Work`, and `Code`, but it is not automatically the same thing as `Boss Cat` or the invisible orchestration layer. |
-| Boss Cat | The user-facing product term for the current default lead Cat used for new chats and default public transport entry. The default Boss Cat may begin neutral and minimally personalized before the user customizes it. |
+| Boss Cat | The user-facing product term for the default public orchestrator and transport-facing Cat. Boss Cat is distinct from the current-turn recipient slot and is not automatically the front-stage counterpart for every new chat. |
 | Default Boss Cat | The auto-provisioned neutral Boss Cat available before the user renames, personalizes, or replaces it. |
 | Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
-| Boss Chat | The default conversation mode where unmentioned turns route first to `Boss Cat`, which can then coordinate or involve other Cats. |
-| Direct Cat Chat | A Cat-scoped private-lane mode where one chosen Cat is the lead participant and unmentioned turns default to that Cat rather than to `Boss Cat`. When opened from `My Cats`, it is an in-place lane, not a normal `Recents` thread. |
-| Group chat | A chat with more than one Cat participant, while still having one lead Cat for default reply behavior. Informal "family chat" companion usage is a kind of group chat, not a separate runtime mode. |
+| Boss Chat | Historical term for an orchestrator-first chat where unmentioned turns route to `Boss Cat`. Newer Chat docs should prefer recipient and dispatch-policy language instead of expanding `Boss Chat` semantics. |
+| Direct Cat Chat | A Cat-scoped private-lane mode where one chosen Cat is the default direct counterpart for ordinary turns. When opened from `My Cats`, it is an in-place lane, not a normal `Recents` thread. |
+| Group chat | A chat with more than one participant. Group chat may expose one or more default recipients plus a dispatch policy; it is not defined by a permanent lead Cat. |
 | My Cats | A lightweight sidebar roster for quick Cat access, in-place private-lane entry, and transport ownership hints. Selecting a Cat opens that Cat's direct lane in place and does not create a normal `Recents` thread. It is not the full registry management surface. |
 | Chat view mode | The sidebar list mode used to organize chats, such as `Latest`, `By Cat`, or `By Chat Type`. |
 | Cat registry | The chat-global list of reusable cats that can be assigned into one or more chats. Full management lives under `Settings > Cats`. |
@@ -47,9 +47,12 @@
 | Routing layer | The product-owned system layer that resolves mentions, default targets, wake-before-route behavior, and per-room routing mode before prompts are sent to runtime sessions. |
 | Entity | The broader reusable identity model the platform is moving toward. It is expected to subsume Cats, owner-facing helpers, system-facing specialists, and other named collaborators with prompt, memory, and execution metadata. |
 | Participant | One entity's membership inside one conversation context, including role, status, and execution lease. |
-| Lead participant | The default target participant for a room mode when an operator turn does not contain an explicit valid `@mention`. |
-| Conversation topology | The stable shape of a conversation such as direct lane, solo thread, Cat-led thread, or group room. Topology answers "what kind of room is this?" rather than "who should answer the next turn?" |
-| Turn strategy | The per-turn execution shape such as default routing, explicit mention routing, compare/parallel execution, or future fan-out/converge behavior. Turn strategy should not be confused with participant class. |
+| Current-turn recipient | The participant or implicit model target that the next outgoing message is addressed to. The composer slot next to Send should represent current-turn recipient(s), not the whole room roster. |
+| Implicit recipient | A provider/model-backed execution target shown in the composer when the next turn is aimed at pending provider/model selection rather than at a named participant. |
+| Dispatch policy | The per-turn rule that decides whether the selected recipients should reply `sequentially` or `concurrently`. Dispatch policy is separate from recipient selection and from later workflow continuation. |
+| Parallel Chat | The Cats Chat product mode that binds multiple isolated child chats into one comparison container. `Parallel Chat` is distinct from thread-internal concurrent dispatch inside one chat thread. |
+| Conversation topology | The stable shape of a conversation such as direct lane, single-counterpart thread, or team room. Topology answers "what kind of room is this?" rather than "who should answer the next turn?" or "how should that turn dispatch?" |
+| Turn strategy | The per-turn execution shape such as default recipient routing, explicit mention routing, sequential handoff, concurrent dispatch inside one thread, or later converge behavior. Turn strategy should not be confused with participant class. |
 | Skill profile | A product-owned capability mapping that decides which runtime skill names should be requested for a Cat in a given room or transport context. |
 | Runtime skill catalog | The `cats-runtime` hosted catalog of execution-ready `SKILL.md` packages that can be validated, resolved, and mounted into sessions. |
 | Runtime skill manifest | The product-to-runtime request payload that carries requested skill names plus optional context metadata for one session or wake flow. |
@@ -89,4 +92,4 @@
 
 ---
 
-Last updated: 2026-04-04
+Last updated: 2026-04-08

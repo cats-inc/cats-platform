@@ -48,11 +48,12 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-052](./SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md) | Current-Turn Recipients, Dispatch Policy, and Parallel Chat Terminology | Approved | TBD |
 | [SPEC-051](./SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md) | Guide Cat Sidecar and Day-0 Assist Surfaces | Draft | [PLAN-041](../plans/PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md) |
 | [SPEC-050](./SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md) | Group Chat Temporary Participants and Reusable Lightweight Presets | Draft | TBD |
 | [SPEC-049](./SPEC-049-guide-cat-setup-and-generalized-participant-entry.md) | Guide Cat Setup and Generalized Participant Entry | Draft | [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md) |
 | [SPEC-048](./SPEC-048-runtime-session-deletion-on-product-delete.md) | Runtime Session Deletion on Product Delete | Approved | [PLAN-037](../plans/PLAN-037-runtime-session-deletion-on-product-delete.md) |
-| [SPEC-047](./SPEC-047-compare-chat-concurrent-groups-and-relay.md) | Parallel Chat, Concurrent Groups, and Relay Actions | Implemented (First Slice Landed) | [PLAN-036](../plans/PLAN-036-compare-chat-concurrent-groups-and-relay.md) |
+| [SPEC-047](./SPEC-047-compare-chat-concurrent-groups-and-relay.md) | Parallel Chat, Parallel Chat Groups, and Relay Actions | Implemented (First Slice Landed) | [PLAN-036](../plans/PLAN-036-compare-chat-concurrent-groups-and-relay.md) |
 | [SPEC-046](./SPEC-046-platform-product-landing-and-installed-apps.md) | Platform Product Landing and Installed Apps | Draft | [PLAN-035](../plans/PLAN-035-platform-product-landing-and-installed-apps.md) |
 | [SPEC-045](./SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md) | Cross-Layer Bootstrap and Onboarding Diagnostics | Approved | [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md) |
 | [SPEC-044](./SPEC-044-integrate-packaged-setup-with-runtime-bootstrap.md) | Integrate Packaged Setup with Runtime Bootstrap | Approved | [PLAN-033](../plans/PLAN-033-integrate-packaged-setup-with-runtime-bootstrap.md) |
@@ -67,7 +68,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md) | Cross-Product Task Strategy Handoff and Runtime Bridge | Draft | TBD |
 | [SPEC-034](./SPEC-034-room-owned-workspace-bootstrap-and-ownership.md) | Room-Owned Workspace Bootstrap and Ownership Semantics | Draft (Pending Review) | - |
 | [SPEC-031](./SPEC-031-built-in-memory-extraction-durable-sync-and-retrieval-context.md) | Built-In Memory Extraction, Durable Sync, and Retrieval Context | Draft (Pending Review) | - |
-| [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md) | Composer-Scoped Lead Cat and Boss Auto-Helper Semantics | Draft (Pending Review) | - |
+| [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md) | Composer-Scoped Lead Cat and Boss Auto-Helper Semantics | Superseded by SPEC-052 | - |
 | [SPEC-029](./SPEC-029-companion-boxes-ingestion-and-response-profiles.md) | Companion Boxes, Ingestion, and Response Profiles | In Progress (First Slice Landed) | [PLAN-019](../plans/PLAN-019-companion-box-sidecar-and-session-hydration.md) |
 | [SPEC-028](./SPEC-028-automated-tunnel-and-telegram-webhook-lifecycle.md) | Telegram Polling-First Setup and Optional Webhook Ingress | In Progress (Polling-first slice landed) | - |
 | [SPEC-027](./SPEC-027-chat-first-information-architecture-and-default-boss-cat.md) | Chat-First Information Architecture and Default Boss Cat | Approved | - |
@@ -108,6 +109,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-07*
+*Last updated: 2026-04-08*
 
 *See also: [plans/](../plans/) for implementation plans*

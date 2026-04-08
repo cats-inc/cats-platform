@@ -8,6 +8,13 @@
 | **Owner** | Codex |
 | **Reviewer** | User |
 
+> Revision note (2026-04-08): [ADR-055](../decisions/055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
+> and [SPEC-052](./SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md)
+> retire lead-based composer language. This spec still governs direct-lane
+> routing behavior, but references below to a room "lead" should be read as
+> historical wording for the default direct counterpart until this document is
+> fully refreshed.
+
 ## Summary
 
 `cats` should support two first-class conversation modes:

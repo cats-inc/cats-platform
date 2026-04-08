@@ -1,8 +1,12 @@
-# PLAN-036: Parallel Chat, Concurrent Groups, and Relay
+# PLAN-036: Parallel Chat, Parallel Chat Groups, and Relay
 
 ## Goal
 
-Ship the first Cats Chat parallel-mode slice that binds multiple private child chats into one concurrent group, supports fan-out sends, and lets the user relay one assistant reply into the other private chats with command-driven prompts.
+> Terminology note (2026-04-08): this historical plan now uses
+> `parallel-chat group` language to match ADR-055 / SPEC-052, even though the
+> first landed implementation still contains older `concurrent*` identifiers.
+
+Ship the first Cats Chat parallel-mode slice that binds multiple private child chats into one parallel-chat group, supports fan-out sends, and lets the user relay one assistant reply into the other private chats with command-driven prompts.
 
 ## Scope
 
@@ -10,7 +14,7 @@ Ship the first Cats Chat parallel-mode slice that binds multiple private child c
 
 - Add `Parallel chat` entry to the sidebar.
 - Add parallel draft creation UI with multiple provider/model targets.
-- Add concurrent-group navigation in the chat surface.
+- Add parallel-chat-group navigation in the chat surface.
 - Add parallel send-scope toggle: `All chats` vs `Only this chat`.
 - Add bubble actions:
   - user bubble hover copy
@@ -19,10 +23,10 @@ Ship the first Cats Chat parallel-mode slice that binds multiple private child c
 
 ### State / API
 
-- Extend chat shell contracts with concurrent-group summaries.
-- Normalize concurrent groups into renderer payloads.
-- Add concurrent-group create / send / relay routes.
-- Preserve concurrent-group metadata when channels are renamed or deleted.
+- Extend chat shell contracts with parallel-chat-group summaries.
+- Normalize parallel-chat groups into renderer payloads.
+- Add parallel-chat-group create / send / relay routes.
+- Preserve parallel-chat-group metadata when channels are renamed or deleted.
 
 ### Tests / Verification
 
@@ -32,7 +36,7 @@ Ship the first Cats Chat parallel-mode slice that binds multiple private child c
 
 ## Implementation Notes
 
-1. Treat concurrent-group members as ordinary chats plus a higher-level `concurrentGroups` binding layer.
+1. Treat parallel-chat-group members as ordinary chats plus a higher-level `parallelChatGroups` binding layer.
 2. Do not overload `orchestratorRoles` with ad hoc `groupId` metadata.
 3. Use a dedicated busy key (`concurrent:dispatch`) so parallel sends can disable Enter / Send without disabling text editing.
 4. Keep relay prompt construction centralized so future policy work stays additive.

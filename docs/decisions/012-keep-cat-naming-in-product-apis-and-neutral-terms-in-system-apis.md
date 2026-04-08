@@ -7,6 +7,13 @@
 
 Accepted
 
+Revision note (2026-04-08):
+
+- [ADR-055](./055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
+  retires lead-based composer terminology for current Cats Chat work.
+- References to `leadCatId` in this ADR are historical examples of older room
+  routing vocabulary, not the current forward naming target.
+
 ## Context
 
 `cats` already made a deliberate public naming move:

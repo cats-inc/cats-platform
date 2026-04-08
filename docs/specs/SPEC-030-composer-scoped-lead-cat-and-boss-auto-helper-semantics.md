@@ -1,6 +1,10 @@
 # SPEC-030: Composer-Scoped Lead Cat and Boss Auto-Helper Semantics
 
-Status: In Progress (Solo composer mode landed)
+Status: Superseded by SPEC-052
+
+This record remains for historical context only.
+Its lead-based composer model and `solo` framing no longer match the current
+recipient-centric direction for Cats Chat.
 
 ## Summary
 

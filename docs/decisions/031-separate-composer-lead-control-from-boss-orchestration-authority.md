@@ -6,7 +6,11 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-055
+
+This record remains for historical context only.
+Its lead-based composer model no longer matches the current recipient-centric
+direction for Cats Chat.
 
 ## Context
 

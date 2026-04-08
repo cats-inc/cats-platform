@@ -1,6 +1,12 @@
-# SPEC-047: Parallel Chat, Concurrent Groups, and Relay Actions
+# SPEC-047: Parallel Chat, Parallel Chat Groups, and Relay Actions
 
 ## Summary
+
+> Terminology note (2026-04-08): this spec now uses `Parallel Chat` /
+> `parallel-chat group` language to match [ADR-055](../decisions/055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
+> and [SPEC-052](./SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md).
+> Current code may still contain older `concurrent*` identifiers until the
+> rename refactor lands.
 
 Cats Chat needs a parallel mode that sits between a normal solo chat and a fully shared group chat. A user should be able to open multiple private AI threads at once, send the same prompt to all of them, switch between them quickly, and selectively relay one model's reply into the other private threads using reusable command patterns.
 
@@ -14,13 +20,13 @@ Cats Chat needs a parallel mode that sits between a normal solo chat and a fully
 
 1. Add a new sidebar entry below `New chat` named `Parallel chat`.
 2. `Parallel chat` creation must let the user choose at least two provider/model targets.
-3. A parallel chat creates multiple private child chats that remain bound as one concurrent group.
+3. A parallel chat creates multiple private child chats that remain bound as one parallel-chat group.
 4. When the active parallel chat sends a turn with scope `All chats`, the same user prompt is dispatched to every member chat and the next send stays locked until all member replies complete or fail.
-5. While a concurrent-group dispatch is in flight, the composer must remain editable even though Enter and Send are disabled.
+5. While a parallel-chat-group dispatch is in flight, the composer must remain editable even though Enter and Send are disabled.
 6. The active parallel chat must expose circular previous / next navigation across bound chats.
 7. Assistant bubbles in parallel chats must expose persistent relay actions.
 8. User bubbles must expose hover-only copy actions.
-9. Relay actions must send transformed commands to other concurrent-group members instead of copying text into their composers.
+9. Relay actions must send transformed commands to other parallel-chat-group members instead of copying text into their composers.
 10. The first slice must support these relay commands:
     - `check_this`
     - `adopt_this`
@@ -29,24 +35,24 @@ Cats Chat needs a parallel mode that sits between a normal solo chat and a fully
     - `counter_this`
     - `synthesize_this`
 11. The first slice may expose only the `all_others` relay policy in the UI, but the API must preserve a path for single-target relay later.
-12. Recents must visually keep concurrent-group members together and label each member by its provider/model target, not just by the shared room title.
+12. Recents must visually keep parallel-chat-group members together and label each member by its provider/model target, not just by the shared room title.
 13. The composer must let the user switch a turn between `All chats` and `Only this chat`.
 
 ## Backend / Contract Requirements
 
-1. Chat shell payloads must include concurrent-group summaries alongside normal channel summaries.
+1. Chat shell payloads must include parallel-chat-group summaries alongside normal channel summaries.
 2. REST endpoints must support:
-   - concurrent-group creation
-   - concurrent-group fan-out send
-   - concurrent-group relay send
-3. Concurrent-group send routes must wait for all targeted child chats to finish before returning.
+  - parallel-chat-group creation
+  - parallel-chat-group fan-out send
+  - parallel-chat-group relay send
+3. Parallel-chat-group send routes must wait for all targeted child chats to finish before returning.
 4. The first slice may reject shared attachments for parallel fan-out with a clear user-facing error.
 
 ## UX Notes
 
 - Use `Parallel chat` as the user-facing label instead of `Concurrent chat`.
 - Parallel chat is the container. Compare / debate / adopt behaviors are optional relay workflows on top of that container.
-- Concurrent groups should feel like "bound private threads", not like a room where all AIs watch the same transcript.
+- Parallel-chat groups should feel like "bound private threads", not like a room where all AIs watch the same transcript.
 - Relay actions should read like intentional workflow commands, not like raw copy/paste.
 
 ## First Slice Status
@@ -58,7 +64,7 @@ Implemented (first slice landed):
 - parallel navigation
 - parallel send scope toggle
 - relay action menu for `all_others`
-- concurrent-group REST endpoints and client contracts
+- parallel-chat-group REST endpoints and client contracts
 
 Deferred:
 

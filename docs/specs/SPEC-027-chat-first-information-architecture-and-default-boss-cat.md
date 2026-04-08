@@ -7,6 +7,12 @@ Status: Approved
 > This accepted spec still governs chat-first IA, `My Cats`, direct lanes, and
 > Cat-led chat behavior, while `+ New Chat` for normal `Recents` threads now
 > follows the solo-composer refinement in `SPEC-030`.
+>
+> Revision note (2026-04-08): [ADR-055](../decisions/055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
+> and [SPEC-052](./SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md)
+> now supersede the lead-based composer model from `SPEC-030`. Remaining
+> `leadCat` references below should be treated as historical wording until this
+> broader IA spec is refreshed.
 
 ## Summary
 
