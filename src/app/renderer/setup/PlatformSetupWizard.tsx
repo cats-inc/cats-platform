@@ -21,6 +21,13 @@ import {
 
 type PendingAction = 'complete' | null;
 
+export function shouldPrefetchGuideCatProviderRegistry(input: {
+  step: SetupStep;
+  createGuideCat: boolean;
+}): boolean {
+  return input.step === 2 && input.createGuideCat;
+}
+
 export function PlatformSetupWizard({
   envelope,
   onComplete,
@@ -116,11 +123,11 @@ export function PlatformSetupWizard({
   }, [busy, canContinueGuideCatStep, finishSetup, ownerName, step]);
 
   useEffect(() => {
-    if (step !== 2) {
+    if (!shouldPrefetchGuideCatProviderRegistry({ step, createGuideCat })) {
       return;
     }
     void prefetchProviderRegistryFromClientCache();
-  }, [step]);
+  }, [createGuideCat, step]);
 
   const dots = Array.from({ length: TOTAL_SETUP_STEPS }, (_, index) => index + 1);
 
