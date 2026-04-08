@@ -43,6 +43,11 @@ import { ActivityFeed } from './ActivityFeed';
 import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
 import {
+  ComposerRecipientChip,
+  buildRecipientFromCat,
+  buildImplicitRecipient,
+} from './ComposerRecipientChip';
+import {
   buildModelSelectorLabel,
   ModelSelectorChip,
   type ModelSelectorValue,
@@ -1339,56 +1344,37 @@ export function ChatView({
                   );
                 })()}
               </div>
-                {isDirectLane && directLaneCat && directLaneModelValue ? (
-                  <ComposerCatStack
-                    cats={[directLaneCat]}
-                    bossCatId={payload.chat.bossCatId}
-                    defaultRecipientCatId={directLaneCat.id}
-                    onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
-                  />
-                ) : isSoloComposer && selectedModel && onModelChange ? (
-                  <div style={{ marginRight: 8 }}>
-                    <ModelSelectorChip
-                      label={buildModelSelectorLabel(selectedModel)}
-                      onClick={composerBusy ? undefined : () => openSidePanelTo('execution')}
+                {(() => {
+                  const recipientTargets = isDirectLane && directLaneCat
+                    ? [buildRecipientFromCat(directLaneCat, payload.chat.bossCatId)]
+                    : !isSoloComposer && activeRoomParticipants.length > 0
+                      ? composerParticipants.map((participant) => {
+                        const participantCat = resolveParticipantCatRecord(participant);
+                        const label = resolveParticipantDisplayName(participant, participantCat);
+                        return {
+                          kind: 'named' as const,
+                          participantId: participant.participantId,
+                          catId: participantCat?.id ?? undefined,
+                          name: label,
+                          avatarColor: participantCat?.avatarColor ?? participant.avatarColor ?? null,
+                          avatarUrl: participantCat?.avatarUrl ?? participant.avatarUrl ?? null,
+                          isBoss: participantCat?.id === payload.chat.bossCatId,
+                        };
+                      })
+                      : isSoloComposer && selectedModel
+                        ? [buildImplicitRecipient(selectedModel)]
+                        : [];
+                  if (recipientTargets.length === 0) return null;
+                  return (
+                    <ComposerRecipientChip
+                      recipients={recipientTargets}
+                      disabled={composerBusy}
+                      onClick={composerBusy ? undefined : () => openSidePanelTo(
+                        isDirectLane || isSoloComposer ? 'execution' : 'cats',
+                      )}
                     />
-                  </div>
-                ) : !isSoloComposer && activeRoomParticipants.length > 0 ? (
-                  <div
-                    className="composerCatStack"
-                    style={{ marginRight: 10 }}
-                    onClick={composerBusy ? undefined : () => openSidePanelTo('cats')}
-                    role={composerBusy ? undefined : 'button'}
-                    tabIndex={composerBusy ? undefined : 0}
-                    data-tooltip={participantChipLabel}
-                  >
-                    {[...composerParticipants].reverse().map((participant, index, rendered) => {
-                      const participantCat = resolveParticipantCatRecord(participant);
-                      const label = resolveParticipantDisplayName(participant, participantCat);
-                      return (
-                        <div
-                          key={participant.participantId}
-                          className={buildParticipantAvatarClassName(participant, {
-                            composer: true,
-                            catRecord: participantCat,
-                          })}
-                          data-tooltip={label}
-                          style={{
-                            ...buildParticipantAvatarStyle(participant, participantCat),
-                            zIndex: index + 1,
-                          }}
-                        >
-                          {resolveParticipantAvatarUrl(participant, participantCat)
-                            ? null
-                            : catInitials(label)}
-                          {participant.participantId === (rendered[rendered.length - 1]?.participantId ?? null)
-                            ? <span className="catAvatarLeadBadge">&#x2605;</span>
-                            : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
+                  );
+                })()}
                 {showCancelComposerAction ? (
                   <button
                     className="composerSendButton composerCancelButton"

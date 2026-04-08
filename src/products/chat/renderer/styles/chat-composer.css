@@ -604,6 +604,93 @@
   color: var(--text);
 }
 
+/* ─── Composer Recipient Chip ─── */
+
+.composerRecipientChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  margin-right: 8px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.composerRecipientChip:hover:not(:disabled) {
+  background: var(--sidebar-hover-bg);
+}
+
+.composerRecipientChip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.composerRecipientChipAvatars {
+  display: inline-flex;
+  align-items: center;
+}
+
+.composerRecipientChipAvatarSlot {
+  position: relative;
+  display: inline-flex;
+}
+
+.composerRecipientChipAvatarSlot + .composerRecipientChipAvatarSlot {
+  margin-left: -6px;
+}
+
+.recipientChipAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 700;
+  border: 1.5px solid var(--panel, #fff);
+}
+
+.recipientChipAvatarBoss {
+  box-shadow: 0 0 0 1.5px #e8c84a;
+}
+
+.recipientChipIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--panel-hover);
+  color: var(--muted);
+  border: 1.5px solid var(--panel, #fff);
+}
+
+.composerRecipientChipLabel {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composerRecipientChipOverflow {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.composerRecipientChipCaret {
+  flex-shrink: 0;
+  color: var(--muted-soft);
+}
+
 /* Attachment preview cards */
 
 .composerAttachments {
