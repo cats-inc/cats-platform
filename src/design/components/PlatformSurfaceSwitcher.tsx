@@ -17,6 +17,10 @@ interface PlatformSurfaceSwitcherProps {
   onSelectSurface: (surface: PlatformSurfaceId) => void;
 }
 
+const useIsomorphicLayoutEffect = typeof window === 'undefined'
+  ? useEffect
+  : useLayoutEffect;
+
 export function PlatformSurfaceSwitcher({
   activeSurface,
   onSelectSurface,
@@ -57,7 +61,7 @@ export function PlatformSurfaceSwitcher({
     };
   }, [open]);
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!open) {
       setMenuStyle(undefined);
       return undefined;

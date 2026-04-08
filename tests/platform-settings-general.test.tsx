@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
-import { MemoryRouter } from 'react-router-dom';
+import { StaticRouter } from 'react-router-dom';
 
 import { PlatformSettingsGeneral } from '../src/app/renderer/settings/PlatformSettingsGeneral.tsx';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
@@ -76,14 +76,14 @@ function createPayload(): AppShellPayload {
 
 test('PlatformSettingsGeneral renders lobby motion and desktop startup preferences', () => {
   const markup = renderToStaticMarkup(
-    <MemoryRouter initialEntries={['/settings/general']}>
+    <StaticRouter location="/settings/general">
       <PlatformSettingsGeneral
         payload={createPayload()}
         feedback=""
         onPayloadUpdate={() => {}}
         onFeedback={() => {}}
       />
-    </MemoryRouter>,
+    </StaticRouter>,
   );
 
   assert.match(markup, /Choose how lively the Lobby background should feel/u);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
-import { MemoryRouter } from 'react-router-dom';
+import { StaticRouter } from 'react-router-dom';
 
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
@@ -76,9 +76,9 @@ function createEnvelope(): PlatformHostEnvelope {
 
 test('PlatformLobby renders the shared account menu trigger in the top bar', () => {
   const markup = renderToStaticMarkup(
-    <MemoryRouter initialEntries={['/lobby']}>
+    <StaticRouter location="/lobby">
       <PlatformLobby envelope={createEnvelope()} />
-    </MemoryRouter>,
+    </StaticRouter>,
   );
 
   assert.match(markup, /class="lobbyIdentity"/u);
