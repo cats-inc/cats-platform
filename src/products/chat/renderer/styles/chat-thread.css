@@ -243,6 +243,13 @@
   outline-offset: 0px;
 }
 
+.channelParticipantAvatar {
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #fff;
+  color: #222;
+}
+
 
 .channelIdentity {
   display: none;

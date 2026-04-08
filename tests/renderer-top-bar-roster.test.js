@@ -15,6 +15,14 @@ for (const product of PRODUCT_SURFACES) {
     assert.match(source, /const activeTopBarCatIds = useMemo/u);
     assert.match(source, /liveIndicator\?\.activeCatIds/u);
     assert.match(source, /new Set\(activeTopBarCatIds\)/u);
+    if (product === 'chat') {
+      assert.match(source, /const activeTopBarParticipantIds = useMemo/u);
+      assert.match(source, /new Set\(activeTopBarParticipantIds\)/u);
+      assert.match(source, /activeTopBarParticipantIdSet\.has\(participant\.pulseParticipantId\)/u);
+      assert.match(source, /activeTopBarCatIdSet\.has\(participant\.pulseCatId\)/u);
+      return;
+    }
+
     assert.match(source, /activeTopBarCatIdSet\.has\(cat\.id\) \? 'catAvatarPulsing'/u);
     assert.doesNotMatch(source, /liveIndicator\?\.active && liveIndicator\.catId === cat\.id/u);
   });

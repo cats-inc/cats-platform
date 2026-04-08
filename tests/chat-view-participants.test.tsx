@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload, ChatChannelView } from '../src/products/chat/api/contracts.ts';
 import { ChatView, type ChatViewProps } from '../src/products/chat/renderer/components/ChatView.tsx';
+import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -72,7 +73,7 @@ function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelVie
         status: 'active',
         joinedAt: '2026-04-07T00:00:00.000Z',
         leftAt: null,
-        avatarColor: null,
+        avatarColor: '#F04A70',
         avatarUrl: null,
         execution: {
           target: {
@@ -111,7 +112,7 @@ function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelVie
         status: 'active',
         joinedAt: '2026-04-07T00:00:00.000Z',
         leftAt: null,
-        avatarColor: null,
+        avatarColor: '#2B9CF0',
         avatarUrl: null,
         execution: {
           target: {
@@ -207,6 +208,8 @@ test('ChatView shows temporary participants in the top bar and composer affordan
   assert.match(markup, /data-tooltip="Inline Reviewer"/u);
   assert.match(markup, /data-tooltip="Runtime Verifier"/u);
   assert.match(markup, />2 participants</u);
+  assert.match(markup, /channelParticipantAvatar/u);
+  assert.doesNotMatch(markup, /#F04A70|#2B9CF0/u);
 });
 
 test('ChatView renders temporary participant transcript speakers as room members', () => {
@@ -236,4 +239,132 @@ test('ChatView renders temporary participant transcript speakers as room members
   assert.match(markup, /transcriptAvatar/u);
   assert.match(markup, /Inline Reviewer/u);
   assert.match(markup, /catAvatarLeadBadge/u);
+});
+
+test('ChatView prefers room participants over fallback Cat names in transcript speakers', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        payload: {
+          ...createPayload(),
+          chat: {
+            ...createPayload().chat,
+            cats: [
+              {
+                id: 'cat-inline-reviewer',
+                name: 'Inline Reviewer',
+                status: 'active',
+                avatarColor: '#11AA55',
+                avatarUrl: null,
+              },
+            ],
+          },
+        } as unknown as AppShellPayload,
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-1',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Inline Reviewer',
+              body: 'I checked the proposal.',
+              createdAt: '2026-04-07T00:01:00.000Z',
+              metadata: {},
+            },
+          ],
+        }),
+      })}
+    />,
+  );
+
+  assert.match(markup, /Inline Reviewer/u);
+  assert.doesNotMatch(markup, /#11AA55/u);
+});
+
+test('ChatView gives temporary participants a live progress avatar and top-bar pulse while they are speaking', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-1',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-1',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 1,
+                targetStatuses: [
+                  {
+                    id: 'target-1',
+                    dispatchId: 'dispatch-1',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-inline',
+                      participantName: 'Inline Reviewer',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-1',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'running',
+                    queuedAt: '2026-04-07T00:01:01.000Z',
+                    startedAt: '2026-04-07T00:01:02.000Z',
+                    completedAt: null,
+                    responseMessageId: null,
+                    error: null,
+                  },
+                ],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:02.000Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'waiting',
+          speakerLabel: 'Gemini',
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /typingIndicator/u);
+  assert.match(markup, /transcriptAvatar/u);
+  assert.match(markup, /Inline Reviewer/u);
+  assert.match(markup, /catAvatarPulsing/u);
 });
