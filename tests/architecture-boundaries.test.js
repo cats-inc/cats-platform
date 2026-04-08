@@ -986,7 +986,7 @@ test('renderer app consumes dedicated draft-ui actions instead of defining menu 
   assert.match(hookSource, /export function useAppDraftUiActions/u);
   assert.match(hookSource, /openDraftFilePicker/u);
   assert.match(hookSource, /openDraftAddCatPanel/u);
-  assert.match(hookSource, /changeDraftLeadCat/u);
+  assert.match(hookSource, /changeDraftDefaultRecipient/u);
 });
 
 test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {

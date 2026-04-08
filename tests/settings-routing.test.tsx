@@ -52,7 +52,7 @@ function createProps(): AppRoutesProps {
     addCatPanelProps: {} as AppRoutesProps['addCatPanelProps'],
     folderBrowserProps: {} as AppRoutesProps['folderBrowserProps'],
     onOpenDraftAddCat: () => {},
-    onChangeDraftLeadCat: () => {},
+    onChangeDraftDefaultRecipient: () => {},
     companionMode: false,
     companionCat: null,
     onToggleCompanionMode: () => {},

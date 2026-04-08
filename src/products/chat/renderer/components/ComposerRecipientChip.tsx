@@ -21,9 +21,33 @@ export interface ComposerRecipientChipProps {
   disabled?: boolean;
 }
 
-export function buildRecipientFromCat(cat: ChatCat, bossCatId: string | null): RecipientChipTarget {
+export function buildNamedRecipient(input: {
+  participantId?: string;
+  catId?: string;
+  name: string;
+  avatarColor?: string | null;
+  avatarUrl?: string | null;
+  provider?: string | null;
+  instance?: string | null;
+  model?: string | null;
+  isBoss?: boolean;
+}): RecipientChipTarget {
   return {
     kind: 'named',
+    participantId: input.participantId,
+    catId: input.catId,
+    name: input.name,
+    avatarColor: input.avatarColor ?? null,
+    avatarUrl: input.avatarUrl ?? null,
+    provider: input.provider ?? null,
+    instance: input.instance ?? null,
+    model: input.model ?? null,
+    isBoss: input.isBoss ?? false,
+  };
+}
+
+export function buildRecipientFromCat(cat: ChatCat, bossCatId: string | null): RecipientChipTarget {
+  return buildNamedRecipient({
     catId: cat.id,
     name: cat.name,
     avatarColor: cat.avatarColor,
@@ -31,7 +55,7 @@ export function buildRecipientFromCat(cat: ChatCat, bossCatId: string | null): R
     provider: cat.defaultExecutionTarget?.provider ?? null,
     model: cat.defaultExecutionTarget?.model ?? null,
     isBoss: cat.id === bossCatId,
-  };
+  });
 }
 
 export function buildImplicitRecipient(input: {

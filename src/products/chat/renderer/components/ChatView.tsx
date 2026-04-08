@@ -44,6 +44,7 @@ import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
 import {
   ComposerRecipientChip,
+  buildNamedRecipient,
   buildRecipientFromCat,
   buildImplicitRecipient,
 } from './ComposerRecipientChip';
@@ -93,7 +94,6 @@ type TopBarParticipant = {
   avatarColor: string | null;
   avatarUrl: string | null;
   isBoss: boolean;
-  isLead: boolean;
   useNeutralAvatar: boolean;
   pulseParticipantId: string | null;
   pulseCatId: string | null;
@@ -251,12 +251,13 @@ export function ChatView({
     () => activeAssignedParticipants(selectedChannel),
     [selectedChannel],
   );
-  const leadParticipant = defaultRecipientId
+  const defaultRecipientParticipant = defaultRecipientId
     ? activeRoomParticipants.find((participant) => participant.participantId === defaultRecipientId)
       ?? null
     : activeRoomParticipants[0] ?? null;
-  const defaultRecipientCat = leadParticipant?.sourceKind === 'cat'
-    ? activeAssignedCats.find((candidate) => candidate.participantId === leadParticipant.participantId)
+  const defaultRecipientCat = defaultRecipientParticipant?.sourceKind === 'cat'
+    ? activeAssignedCats.find((candidate) =>
+      candidate.participantId === defaultRecipientParticipant.participantId)
       ?? null
     : null;
   const conversationMode = resolveConversationMode(selectedChannel);
@@ -320,7 +321,7 @@ export function ChatView({
   const bossCatRecord = payload.chat.bossCatId
     ? payload.chat.cats.find((c) => c.id === payload.chat.bossCatId) ?? null
     : null;
-  const leadCatRecord = defaultRecipientCat
+  const defaultRecipientCatRecord = defaultRecipientCat
     ? payload.chat.cats.find((c) => c.id === defaultRecipientCat.catId) ?? null
     : null;
   const catsById = useMemo(
@@ -413,7 +414,7 @@ export function ChatView({
     }) ?? null;
   }
   const topBarTitle = isDirectLane
-    ? (directLaneCat?.name ?? leadCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
+    ? (directLaneCat?.name ?? defaultRecipientCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
     : isCompareGroup && compareGroup
       ? presentChannelTitle(compareGroup.title)
       : presentChannelTitle(selectedChannel.title);
@@ -436,17 +437,16 @@ export function ChatView({
   const topBarParticipants = useMemo<TopBarParticipant[]>(() => {
     const ordered: TopBarParticipant[] = [];
     if (isDirectLane) {
-      if (leadCatRecord) {
+      if (defaultRecipientCatRecord) {
         ordered.push({
-          key: `participant:${leadCatRecord.id}`,
-          label: leadCatRecord.name,
-          avatarColor: leadCatRecord.avatarColor ?? null,
-          avatarUrl: leadCatRecord.avatarUrl ?? null,
-          isBoss: leadCatRecord.id === payload.chat.bossCatId,
-          isLead: true,
+          key: `participant:${defaultRecipientCatRecord.id}`,
+          label: defaultRecipientCatRecord.name,
+          avatarColor: defaultRecipientCatRecord.avatarColor ?? null,
+          avatarUrl: defaultRecipientCatRecord.avatarUrl ?? null,
+          isBoss: defaultRecipientCatRecord.id === payload.chat.bossCatId,
           useNeutralAvatar: false,
-          pulseParticipantId: leadParticipant?.participantId ?? null,
-          pulseCatId: leadCatRecord.id,
+          pulseParticipantId: defaultRecipientParticipant?.participantId ?? null,
+          pulseCatId: defaultRecipientCatRecord.id,
         });
       }
     } else {
@@ -458,7 +458,6 @@ export function ChatView({
             avatarColor: bossCatRecord.avatarColor ?? null,
             avatarUrl: bossCatRecord.avatarUrl ?? null,
             isBoss: true,
-            isLead: bossCatRecord.id === defaultRecipientId,
             useNeutralAvatar: false,
             pulseParticipantId: null,
             pulseCatId: bossCatRecord.id,
@@ -473,7 +472,6 @@ export function ChatView({
           avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
           avatarUrl: resolveParticipantAvatarUrl(participant, catRecord),
           isBoss: catRecord?.id === payload.chat.bossCatId,
-          isLead: participant.participantId === defaultRecipientId,
           useNeutralAvatar: participantUsesNeutralAvatar(participant, catRecord),
           pulseParticipantId: participant.participantId,
           pulseCatId: catRecord?.id ?? null,
@@ -492,10 +490,10 @@ export function ChatView({
     activeRoomParticipants,
     bossCatRecord,
     catsById,
+    defaultRecipientParticipant,
     isDirectLane,
     isSoloComposer,
-    leadCatRecord,
-    defaultRecipientId,
+    defaultRecipientCatRecord,
     payload.chat.bossCatId,
     showBossCatAvatar,
   ]);
@@ -505,22 +503,6 @@ export function ChatView({
   const participantChipLabel = activeRoomParticipants.length > 0
     ? `${activeRoomParticipants.length} participant${activeRoomParticipants.length === 1 ? '' : 's'}`
     : 'Participants';
-  const composerParticipants = useMemo(
-    () => {
-      if (activeRoomParticipants.length === 0) {
-        return [];
-      }
-      const lead = leadParticipant
-        ? activeRoomParticipants.find((participant) =>
-          participant.participantId === leadParticipant.participantId)
-          ?? leadParticipant
-        : activeRoomParticipants[0] ?? null;
-      const others = activeRoomParticipants.filter((participant) =>
-        participant.participantId !== lead?.participantId);
-      return lead ? [lead, ...others] : activeRoomParticipants;
-    },
-    [activeRoomParticipants, leadParticipant],
-  );
   const directLaneModelValue: ModelSelectorValue | null = directLaneCat
     ? {
         provider: directLaneCat.defaultExecutionTarget.provider,
@@ -622,6 +604,39 @@ export function ChatView({
       selectedChannel,
     ],
   );
+  const composerRecipients = useMemo(() => {
+    if (isDirectLane && directLaneCat) {
+      return [buildRecipientFromCat(directLaneCat, payload.chat.bossCatId)];
+    }
+    if (isSoloComposer && selectedModel) {
+      return [buildImplicitRecipient(selectedModel)];
+    }
+    if (!defaultRecipientParticipant) {
+      return [];
+    }
+
+    const participantCat = resolveParticipantCatRecord(defaultRecipientParticipant);
+    if (participantCat) {
+      return [buildRecipientFromCat(participantCat, payload.chat.bossCatId)];
+    }
+
+    return [
+      buildNamedRecipient({
+        participantId: defaultRecipientParticipant.participantId,
+        name: resolveParticipantDisplayName(defaultRecipientParticipant, null),
+        provider: defaultRecipientParticipant.execution.target.provider,
+        instance: defaultRecipientParticipant.execution.target.instance ?? null,
+        model: defaultRecipientParticipant.execution.target.model ?? null,
+      }),
+    ];
+  }, [
+    defaultRecipientParticipant,
+    directLaneCat,
+    isDirectLane,
+    isSoloComposer,
+    payload.chat.bossCatId,
+    selectedModel,
+  ]);
   const layoutMetrics = useMemo(
     () => resolveLayoutMetrics(layoutMode, viewportWidth),
     [layoutMode, viewportWidth],
@@ -777,7 +792,6 @@ export function ChatView({
                       )}
                     >
                       {participant.avatarUrl ? null : catInitials(participant.label)}
-                      {participant.isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                     </div>
                   );
                 })}
@@ -905,7 +919,6 @@ export function ChatView({
                                   transcriptParticipant,
                                   transcriptParticipantCat,
                                 ))}
-                                {transcriptParticipant.participantId === defaultRecipientId ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                               </div>
                               <strong>{resolveParticipantDisplayName(
                                 transcriptParticipant,
@@ -914,7 +927,6 @@ export function ChatView({
                             </div>
                           ) : speaker.kind === 'cat' && speaker.cat ? (() => {
                             const isBoss = speaker.cat.id === payload.chat.bossCatId;
-                            const isLead = speaker.cat.id === defaultRecipientId;
                             return (
                               <div className="transcriptMessageTop">
                                 <div
@@ -924,7 +936,6 @@ export function ChatView({
                                     : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
                                 >
                                   {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
-                                  {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                                 </div>
                                 <strong>{speaker.label}</strong>
                               </div>
@@ -1108,9 +1119,6 @@ export function ChatView({
                                   liveSpeakerParticipant,
                                   liveSpeakerParticipantCat,
                                 ))}
-                                {liveSpeakerParticipant.participantId === defaultRecipientId
-                                  ? <span className="catAvatarLeadBadge">&#x2605;</span>
-                                  : null}
                               </div>
                               <strong>{resolveParticipantDisplayName(
                                 liveSpeakerParticipant,
@@ -1345,29 +1353,10 @@ export function ChatView({
                 })()}
               </div>
                 {(() => {
-                  const recipientTargets = isDirectLane && directLaneCat
-                    ? [buildRecipientFromCat(directLaneCat, payload.chat.bossCatId)]
-                    : !isSoloComposer && activeRoomParticipants.length > 0
-                      ? composerParticipants.map((participant) => {
-                        const participantCat = resolveParticipantCatRecord(participant);
-                        const label = resolveParticipantDisplayName(participant, participantCat);
-                        return {
-                          kind: 'named' as const,
-                          participantId: participant.participantId,
-                          catId: participantCat?.id ?? undefined,
-                          name: label,
-                          avatarColor: participantCat?.avatarColor ?? participant.avatarColor ?? null,
-                          avatarUrl: participantCat?.avatarUrl ?? participant.avatarUrl ?? null,
-                          isBoss: participantCat?.id === payload.chat.bossCatId,
-                        };
-                      })
-                      : isSoloComposer && selectedModel
-                        ? [buildImplicitRecipient(selectedModel)]
-                        : [];
-                  if (recipientTargets.length === 0) return null;
+                  if (composerRecipients.length === 0) return null;
                   return (
                     <ComposerRecipientChip
-                      recipients={recipientTargets}
+                      recipients={composerRecipients}
                       disabled={composerBusy}
                       onClick={composerBusy ? undefined : () => openSidePanelTo(
                         isDirectLane || isSoloComposer ? 'execution' : 'cats',
@@ -1541,7 +1530,6 @@ export function ChatView({
                 highlightedId={defaultRecipientCat?.catId ?? null}
                 defaultRecipientCatId={defaultRecipientCat?.catId ?? null}
                 toggleable={false}
-                showLeadBadge
                 onToggle={() => {}}
                 onHighlight={() => {}}
               />
@@ -1594,9 +1582,6 @@ export function ChatView({
                       ) : null}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {participant.participantId === leadParticipant?.participantId ? (
-                        <span className="catInspectBadge">Lead</span>
-                      ) : null}
                       {onUpdateChannelParticipant ? (
                         <button
                           type="button"
@@ -1643,7 +1628,6 @@ export function ChatView({
               highlightedId={directLaneCat.id}
               defaultRecipientCatId={directLaneCat.id}
               toggleable={false}
-              showLeadBadge
               onToggle={() => {}}
               onHighlight={() => {}}
             />
@@ -1682,43 +1666,43 @@ export function ChatView({
           />
         );
       }
-      if (!isSoloComposer && leadParticipant) {
-        const providerName = getProviderDisplayName(leadParticipant.execution.target.provider);
-        const modelLabel = leadParticipant.execution.target.model
-          ? (getProviderModels(leadParticipant.execution.target.provider)
-              .find((m) => m.value === leadParticipant.execution.target.model)?.label
-                ?? leadParticipant.execution.target.model)
+      if (!isSoloComposer && defaultRecipientParticipant) {
+        const providerName = getProviderDisplayName(defaultRecipientParticipant.execution.target.provider);
+        const modelLabel = defaultRecipientParticipant.execution.target.model
+          ? (getProviderModels(defaultRecipientParticipant.execution.target.provider)
+              .find((m) => m.value === defaultRecipientParticipant.execution.target.model)?.label
+                ?? defaultRecipientParticipant.execution.target.model)
               .replace(/\s*\(default\)\s*/iu, '')
           : null;
-        if (leadParticipant.sourceKind !== 'cat') {
+        if (defaultRecipientParticipant.sourceKind !== 'cat') {
           return (
             <div className="catInspectPanelBody">
               <div className="catInspectIdentity">
                 <div
                   className="catAvatar catInspectAvatar channelParticipantAvatar"
-                  style={buildParticipantAvatarStyle(leadParticipant)}
+                  style={buildParticipantAvatarStyle(defaultRecipientParticipant)}
                 >
-                  {leadParticipant.avatarUrl ? null : catInitials(leadParticipant.name)}
+                  {defaultRecipientParticipant.avatarUrl ? null : catInitials(defaultRecipientParticipant.name)}
                 </div>
                 <div>
-                  <strong>{leadParticipant.name}</strong>
+                  <strong>{defaultRecipientParticipant.name}</strong>
                   <span className="catInspectBadge">Temporary</span>
                 </div>
               </div>
-              {leadParticipant.roleHint ? (
+              {defaultRecipientParticipant.roleHint ? (
                 <div className="catInspectField">
                   <span className="catInspectFieldLabel">Role</span>
-                  <span>{leadParticipant.roleHint}</span>
+                  <span>{defaultRecipientParticipant.roleHint}</span>
                 </div>
               ) : null}
               <div className="catInspectField">
                 <span className="catInspectFieldLabel">AI Service</span>
                 <span>{providerName}</span>
               </div>
-              {leadParticipant.execution.target.instance ? (
+              {defaultRecipientParticipant.execution.target.instance ? (
                 <div className="catInspectField">
                   <span className="catInspectFieldLabel">Connection</span>
-                  <span>{leadParticipant.execution.target.instance}</span>
+                  <span>{defaultRecipientParticipant.execution.target.instance}</span>
                 </div>
               ) : null}
               <div className="catInspectField">
@@ -1729,34 +1713,34 @@ export function ChatView({
           );
         }
 
-        const leadParticipantCatRef = resolveParticipantCatId(leadParticipant);
-        const catRecord = leadParticipantCatRef
-          ? payload.chat.cats.find((c) => c.id === leadParticipantCatRef) ?? null
+        const defaultRecipientCatRef = resolveParticipantCatId(defaultRecipientParticipant);
+        const catRecord = defaultRecipientCatRef
+          ? payload.chat.cats.find((c) => c.id === defaultRecipientCatRef) ?? null
           : null;
         return (
           <div className="catInspectPanelBody">
             <div className="catInspectIdentity">
               <div
-                className={leadParticipantCatRef === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
+                className={defaultRecipientCatRef === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
                 style={catRecord?.avatarUrl
                   ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : leadParticipant.avatarColor ? { background: leadParticipant.avatarColor } : undefined}
+                  : defaultRecipientParticipant.avatarColor ? { background: defaultRecipientParticipant.avatarColor } : undefined}
               >
-                {catRecord?.avatarUrl ? null : catInitials(leadParticipant.name)}
+                {catRecord?.avatarUrl ? null : catInitials(defaultRecipientParticipant.name)}
               </div>
               <div>
-                <strong>{leadParticipant.name}</strong>
-                {leadParticipantCatRef === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
+                <strong>{defaultRecipientParticipant.name}</strong>
+                {defaultRecipientCatRef === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
               </div>
             </div>
             <div className="catInspectField">
               <span className="catInspectFieldLabel">AI Service</span>
               <span>{providerName}</span>
             </div>
-            {leadParticipant.execution.target.instance ? (
+            {defaultRecipientParticipant.execution.target.instance ? (
               <div className="catInspectField">
                 <span className="catInspectFieldLabel">Connection</span>
-                <span>{leadParticipant.execution.target.instance}</span>
+                <span>{defaultRecipientParticipant.execution.target.instance}</span>
               </div>
             ) : null}
             <div className="catInspectField">

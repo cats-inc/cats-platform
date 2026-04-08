@@ -8,7 +8,6 @@ export interface CatAvatarRowProps {
   highlightedId: string | null;
   defaultRecipientCatId?: string | null;
   toggleable: boolean;
-  showLeadBadge?: boolean;
   onToggle: (catId: string) => void;
   onHighlight: (catId: string) => void;
 }
@@ -20,7 +19,6 @@ export function CatAvatarRow({
   highlightedId,
   defaultRecipientCatId,
   toggleable,
-  showLeadBadge,
   onToggle,
   onHighlight,
 }: CatAvatarRowProps) {
@@ -36,7 +34,6 @@ export function CatAvatarRow({
         const isSelected = selectedSet.has(cat.id);
         const isHighlighted = cat.id === highlightedId;
         const isBoss = cat.id === bossCatId;
-        const isLead = cat.id === defaultRecipientCatId;
         const classNames = [
           'catAvatar',
           'catAvatarRowItem',
@@ -65,9 +62,6 @@ export function CatAvatarRow({
             }}
           >
             {cat.avatarUrl ? null : catInitials(cat.name)}
-            {showLeadBadge && isLead ? (
-              <span className="catAvatarLeadBadge">&#x2605;</span>
-            ) : null}
           </div>
         );
       })}

@@ -221,7 +221,7 @@ export function handleRestError(
     return;
   }
   if (message.startsWith('Parallel chat group not found:')) {
-    sendRestError(context, 404, 'concurrent_group_not_found', message);
+    sendRestError(context, 404, 'parallel_chat_group_not_found', message);
     return;
   }
   if (message.startsWith('Cat not found:')) {

@@ -151,7 +151,7 @@ export function SettingsCatsDetailPanelContent({
             disabled={busy === `cat:makeBoss:${cat.id}`}
             onClick={async () => {
               const confirmed = confirmDialog
-                ? await confirmDialog({ title: 'Change Boss Cat', message: `Make ${cat.name} the Boss Cat? This will change the default lead for new chats.`, confirmLabel: 'Confirm' })
+                ? await confirmDialog({ title: 'Change Boss Cat', message: `Make ${cat.name} the Boss Cat? This will change the default recipient for new chats.`, confirmLabel: 'Confirm' })
                 : true;
               if (confirmed) {
                 void onMakeBossCat(cat.id);

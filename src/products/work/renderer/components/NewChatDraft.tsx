@@ -41,7 +41,7 @@ export interface NewChatDraftProps {
   onToggleDraftCat: (catId: string) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   draftDefaultRecipientCatId: string | null;
-  onDraftLeadCatChange: (catId: string | null) => void;
+  onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
@@ -86,7 +86,7 @@ export function NewChatDraft({
   onToggleDraftCat,
   autoResize,
   draftDefaultRecipientCatId,
-  onDraftLeadCatChange,
+  onDraftDefaultRecipientChange,
   allowAddCat = true,
   selectedModel,
   onModelChange,

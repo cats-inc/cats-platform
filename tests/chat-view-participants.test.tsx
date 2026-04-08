@@ -276,19 +276,20 @@ function createProps(overrides: Partial<ChatViewProps> = {}): ChatViewProps {
   };
 }
 
-test('ChatView shows temporary participants in the top bar and composer affordance', () => {
+test('ChatView shows temporary participants in the top bar and the current recipient chip', () => {
   const markup = renderToStaticMarkup(
     <ChatView {...createProps()} />,
   );
 
   assert.match(markup, /data-tooltip="Inline Reviewer"/u);
   assert.match(markup, /data-tooltip="Runtime Verifier"/u);
-  assert.match(markup, /data-tooltip="2 participants"/u);
+  assert.match(markup, /composerRecipientChip/u);
+  assert.doesNotMatch(markup, /data-tooltip="2 participants"/u);
   assert.match(markup, /channelParticipantAvatar/u);
   assert.doesNotMatch(markup, /#F04A70|#2B9CF0/u);
 });
 
-test('ChatView keeps Cat visuals in room stacks while temporary participants stay neutral', () => {
+test('ChatView keeps Cat visuals in room stacks while the recipient chip stays recipient-centric', () => {
   const leadCat = createChatCat();
   const leadParticipant = createCatParticipant(leadCat, {
     participantId: 'participant-cat-lead',
@@ -334,13 +335,13 @@ test('ChatView keeps Cat visuals in room stacks while temporary participants sta
   );
   assert.match(
     markup,
-    /class="catAvatar composerStackAvatar catAvatarBoss" data-tooltip="Milo" style="background:#7A5B3A;z-index:3"/u,
+    /recipientChipAvatarBoss/u,
   );
   assert.match(
     markup,
-    /class="catAvatar composerStackAvatar channelParticipantAvatar" data-tooltip="Inline Reviewer" style="z-index:2"/u,
+    /class="composerRecipientChipLabel">Milo/u,
   );
-  assert.doesNotMatch(markup, />3 participants</u);
+  assert.doesNotMatch(markup, /composerStackAvatar/u);
 });
 
 test('ChatView renders temporary participant transcript speakers as room members', () => {
@@ -369,7 +370,7 @@ test('ChatView renders temporary participant transcript speakers as room members
 
   assert.match(markup, /transcriptAvatar/u);
   assert.match(markup, /Inline Reviewer/u);
-  assert.match(markup, /catAvatarLeadBadge/u);
+  assert.doesNotMatch(markup, /catAvatarLeadBadge/u);
 });
 
 test('ChatView resolves temporary participant transcript speakers by execution label snapshot', () => {

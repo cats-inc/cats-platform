@@ -439,7 +439,7 @@ export default function App() {
     openDraftFilePicker,
     openDraftFolderPicker,
     openDraftAddCatPanel,
-    changeDraftLeadCat,
+    changeDraftDefaultRecipient,
   } = useAppDraftUiActions({
     addCatOpen,
     channelPlusMenuOpen,
@@ -1237,7 +1237,7 @@ export default function App() {
               onSelect: selectCurrentFolder,
             }}
             onOpenDraftAddCat={openDraftAddCatPanel}
-            onChangeDraftLeadCat={changeDraftLeadCat}
+            onChangeDraftDefaultRecipient={changeDraftDefaultRecipient}
             companionMode={companionMode}
             companionCat={companionCat}
             onToggleCompanionMode={onToggleCompanionMode}

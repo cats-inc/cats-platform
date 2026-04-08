@@ -65,7 +65,7 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onUpdateDraftTemporaryParticipant: () => {},
     autoResize: () => {},
     draftDefaultRecipientCatId: null,
-    onDraftLeadCatChange: () => {},
+    onDraftDefaultRecipientChange: () => {},
     draftHighlightedCatId: null,
     onHighlightDraftCat: () => {},
     draftCatModelOverrides: new Map(),
@@ -205,7 +205,7 @@ test('group route hides add-participant hint and button when max participants is
   assert.match(markup, /tabindex="-1"/u);
 });
 
-test('group route keeps cat avatar styling in the participant stack while temporary participants stay neutral', () => {
+test('group route keeps the composer recipient chip focused on the current recipient', () => {
   const payload = createPayload();
   payload.chat.bossCatId = 'cat-lead';
 
@@ -232,12 +232,10 @@ test('group route keeps cat avatar styling in the participant stack while tempor
 
   assert.match(
     markup,
-    /class="catAvatar composerStackAvatar catAvatarBoss" data-tooltip="Milo" style="background:#7A5B3A;color:#fff;z-index:2"/u,
+    /recipientChipAvatarBoss/u,
   );
-  assert.match(
-    markup,
-    /class="catAvatar composerStackAvatar" data-tooltip="Inline Reviewer" style="z-index:1"/u,
-  );
+  assert.match(markup, /class="composerRecipientChipLabel">Milo/u);
+  assert.doesNotMatch(markup, /composerStackAvatar/u);
 });
 
 test('direct-lane draft keeps private chat copy', () => {
@@ -272,7 +270,7 @@ test('draft uses externally supplied starter suggestions before static fallback 
   );
 
   assert.match(markup, /Guide Cat suggests framing the first deliverable/u);
-  assert.doesNotMatch(markup, /Ask Milo to take the first pass/u);
+  assert.doesNotMatch(markup, /Ask Milo to take the first pass, then tighten the plan together\./u);
 });
 
 test('draft hides starter suggestions when the seam supplies an explicit empty override', () => {

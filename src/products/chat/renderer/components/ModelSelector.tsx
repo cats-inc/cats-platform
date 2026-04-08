@@ -124,7 +124,6 @@ export function ModelSelectorPanel({
         highlightedId={highlightedCatId}
         defaultRecipientCatId={defaultRecipientCatId}
         toggleable={mode === 'draft'}
-        showLeadBadge
         onToggle={onToggleCat ?? (() => {})}
         onHighlight={onHighlightCat ?? (() => {})}
       />

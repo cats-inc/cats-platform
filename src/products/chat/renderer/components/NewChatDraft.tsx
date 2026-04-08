@@ -12,7 +12,6 @@ import {
 } from '../draftStarterSuggestions';
 import {
   buildDraftParticipantExecutionLabel,
-  catInitials,
   createDraftTemporaryParticipant,
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
@@ -22,9 +21,9 @@ import {
   type DraftTemporaryParticipant,
 } from '../chatUtils';
 import { CatAvatarRow } from './CatAvatarRow';
-import { ComposerCatStack } from './ComposerCatStack';
 import {
   ComposerRecipientChip,
+  buildNamedRecipient,
   buildRecipientFromCat,
   buildImplicitRecipient,
 } from './ComposerRecipientChip';
@@ -78,7 +77,7 @@ export interface NewChatDraftProps {
   draftDefaultRecipientCatId: string | null;
   entryMode?: NewChatMode;
   starterSuggestions?: ReadonlyArray<DraftStarterSuggestion> | null;
-  onDraftLeadCatChange: (catId: string | null) => void;
+  onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
@@ -135,7 +134,7 @@ export function NewChatDraft({
   draftDefaultRecipientCatId,
   entryMode = 'default',
   starterSuggestions,
-  onDraftLeadCatChange,
+  onDraftDefaultRecipientChange,
   allowAddCat = true,
   selectedModel,
   onModelChange,
@@ -182,9 +181,14 @@ export function NewChatDraft({
       && binding.catId === defaultRecipientCat.id),
   );
   const draftDefaultRecipientCat = !defaultRecipientCat && draftCatIds.length > 0
-    ? chatCats.find((c) => c.id === draftParticipants.effectiveLeadCatId && c.status === 'active') ?? null
+    ? chatCats.find((c) =>
+      c.id === draftParticipants.effectiveDefaultRecipientCatId && c.status === 'active')
+      ?? null
     : null;
   const effectiveDefaultRecipientCat = defaultRecipientCat ?? draftDefaultRecipientCat;
+  const effectiveDefaultRecipientTemporaryParticipant = effectiveDefaultRecipientCat
+    ? null
+    : draftTemporaryParticipants[0] ?? null;
   const draftParticipantCount = draftParticipants.participantCatIds.length + draftTemporaryParticipants.length;
   const maxGroupParticipants = payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY;
   const hasReachedGroupParticipantLimit = draftParticipantCount >= maxGroupParticipants;
@@ -197,15 +201,7 @@ export function NewChatDraft({
     parallelTargetCount: parallelTargets?.length ?? 0,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
-  const hasDraftCats = draftCatIds.length > 0;
-  const showSoloSelector = !effectiveDefaultRecipientCat;
-  const nonLeadDraftCatIds = draftDefaultRecipientCat
-    ? draftCatIds.filter((id) => id !== draftDefaultRecipientCat.id)
-    : defaultRecipientCat
-      ? draftCatIds.filter((id) => id !== defaultRecipientCat.id)
-      : draftCatIds;
   const visibleDraftCatIds = draftParticipants.participantCatIds;
-  const totalCats = (showSoloSelector ? 1 : 0) + visibleDraftCatIds.length;
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   const [temporaryParticipantFormOpen, setTemporaryParticipantFormOpen] = useState(false);
@@ -226,7 +222,7 @@ export function NewChatDraft({
   }
   const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
     mode: draftSuggestionContext.mode,
-    leadCatName: effectiveDefaultRecipientCat?.name ?? null,
+    defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
     suggestions: starterSuggestions,
   });
   const greetingPoolKey = Array.isArray(greetingPool)
@@ -247,10 +243,6 @@ export function NewChatDraft({
       : activeChatCats.length > 0 || assistantPresets.length > 0
         ? 'Choose Cats, reuse saved Assistants, or add temporary participants for this shared chat.'
         : 'Add temporary participants here, or create Cats and Assistants in Settings before starting a shared chat.';
-  const participantChipLabel = draftParticipantCount > 0
-    ? `${draftParticipantCount} participant${draftParticipantCount === 1 ? '' : 's'}`
-    : 'Choose participants';
-
   const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
     ? chatCats.find((c) => c.id === draftHighlightedCatId) ?? null
     : null;
@@ -273,6 +265,32 @@ export function NewChatDraft({
   const isAckPending = isComposerAckBusy(busy);
   const isSubmittingFirstTurn = isComposerBusy(busy) || isAckPending;
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
+  const draftComposerRecipients = useMemo(() => {
+    if (effectiveDefaultRecipientCat) {
+      return [buildRecipientFromCat(effectiveDefaultRecipientCat, payload.chat.bossCatId)];
+    }
+    if (effectiveDefaultRecipientTemporaryParticipant) {
+      return [
+        buildNamedRecipient({
+          participantId: effectiveDefaultRecipientTemporaryParticipant.participantId,
+          name: effectiveDefaultRecipientTemporaryParticipant.name,
+          provider: effectiveDefaultRecipientTemporaryParticipant.provider,
+          instance: effectiveDefaultRecipientTemporaryParticipant.instance ?? null,
+          model: effectiveDefaultRecipientTemporaryParticipant.model ?? null,
+        }),
+      ];
+    }
+    if (activePanelModel && chipLabel) {
+      return [buildImplicitRecipient(activePanelModel)];
+    }
+    return [];
+  }, [
+    activePanelModel,
+    chipLabel,
+    effectiveDefaultRecipientCat,
+    effectiveDefaultRecipientTemporaryParticipant,
+    payload.chat.bossCatId,
+  ]);
 
   function submitTemporaryParticipant(): void {
     if (hasReachedGroupParticipantLimit) {
@@ -337,7 +355,7 @@ export function NewChatDraft({
               <p className="eyebrow">Cat-led Chat</p>
               <h1>Start with {effectiveDefaultRecipientCat.name}</h1>
               <p className="heroNote">
-                {effectiveDefaultRecipientCat.name} will lead this draft. Add more Cats anytime, or keep the thread focused.
+                Ask {effectiveDefaultRecipientCat.name} to take the first pass. Add more Cats anytime, or keep the thread focused.
               </p>
             </>
           ) : (
@@ -499,81 +517,15 @@ export function NewChatDraft({
                   onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
                 />
               </div>
-            ) : isGroupDraft ? (
-              <>
-                <div className="composerCatStack" style={{ marginRight: 8 }}>
-                  {(() => {
-                    const allParticipants: Array<{ key: string; name: string; avatarColor: string | null; avatarUrl: string | null; isCat: boolean; catId: string | null; participantId: string | null }> = [
-                      ...visibleDraftCatIds.map((catId) => {
-                        const cat = chatCats.find((c) => c.id === catId);
-                        return { key: `cat:${catId}`, name: cat?.name ?? '', avatarColor: cat?.avatarColor ?? null, avatarUrl: cat?.avatarUrl ?? null, isCat: true, catId, participantId: null };
-                      }).filter((p) => p.name),
-                      ...draftTemporaryParticipants.map((p) => ({
-                        key: `temp:${p.participantId}`, name: p.name, avatarColor: null, avatarUrl: null, isCat: false, catId: null, participantId: p.participantId,
-                      })),
-                    ];
-                    const canRemove = allParticipants.length > 2;
-                    const rendered = [...allParticipants].reverse();
-                    return rendered.map((participant, index) => {
-                      const isBoss = participant.isCat && participant.catId === payload.chat.bossCatId;
-                      return (
-                        <div
-                          key={participant.key}
-                          className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
-                          data-tooltip={participant.name}
-                          style={{
-                            ...(participant.avatarUrl
-                              ? { backgroundImage: `url(${participant.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                              : participant.isCat
-                                ? {
-                                  background: participant.avatarColor ?? '#8B7E74',
-                                  color: '#fff',
-                                }
-                              : {}),
-                            zIndex: index + 1,
-                          }}
-                        >
-                          {participant.avatarUrl ? null : catInitials(participant.name)}
-                          {canRemove && !isSubmittingFirstTurn ? (
-                            <button
-                              type="button"
-                              className="composerStackRemove"
-                              aria-label={`Remove ${participant.name}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (participant.isCat && participant.catId) {
-                                  onToggleDraftCat(participant.catId);
-                                } else if (participant.participantId) {
-                                  onRemoveDraftTemporaryParticipant(participant.participantId);
-                                }
-                              }}
-                            >
-                              &times;
-                            </button>
-                          ) : null}
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </>
-            ) : effectiveDefaultRecipientCat ? (
+            ) : draftComposerRecipients.length > 0 ? (
               <ComposerRecipientChip
-                recipients={[
-                  buildRecipientFromCat(effectiveDefaultRecipientCat, payload.chat.bossCatId),
-                  ...nonLeadDraftCatIds
-                    .map((id) => chatCats.find((c) => c.id === id))
-                    .filter((c): c is NonNullable<typeof c> => c != null)
-                    .map((c) => buildRecipientFromCat(c, payload.chat.bossCatId)),
-                ]}
+                recipients={draftComposerRecipients}
                 disabled={isSubmittingFirstTurn}
-                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
-              />
-            ) : activePanelModel && chipLabel ? (
-              <ComposerRecipientChip
-                recipients={[buildImplicitRecipient(activePanelModel)]}
-                disabled={isSubmittingFirstTurn}
-                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
+                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo(
+                  effectiveDefaultRecipientCat || effectiveDefaultRecipientTemporaryParticipant
+                    ? 'cats'
+                    : 'execution',
+                )}
               />
             ) : null}
             {showCancelPendingSend ? (
@@ -700,7 +652,6 @@ export function NewChatDraft({
               highlightedId={draftHighlightedCatId}
               defaultRecipientCatId={effectiveDefaultRecipientCat?.id ?? null}
               toggleable
-              showLeadBadge
               onToggle={onToggleDraftCat}
               onHighlight={(id) => onHighlightDraftCat(id)}
             />
@@ -903,7 +854,6 @@ export function NewChatDraft({
               highlightedId={defaultRecipientCat.id}
               defaultRecipientCatId={defaultRecipientCat.id}
               toggleable={false}
-              showLeadBadge
               onToggle={() => {}}
               onHighlight={() => {}}
             />

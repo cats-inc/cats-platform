@@ -88,7 +88,7 @@ export function useWorkspaceAppDraftUiActions<CatFormState>(
     setFeedback('');
   }
 
-  function changeDraftLeadCat(catId: string | null): void {
+  function changeDraftDefaultRecipient(catId: string | null): void {
     if (catId === draftDefaultRecipientCatId) {
       return;
     }
@@ -104,6 +104,6 @@ export function useWorkspaceAppDraftUiActions<CatFormState>(
     openDraftFilePicker,
     openDraftFolderPicker,
     openDraftAddCatPanel,
-    changeDraftLeadCat,
+    changeDraftDefaultRecipient,
   };
 }

@@ -27,7 +27,7 @@ export interface WorkspaceAppRoutesProps {
   ) => ReactNode;
   renderNewChatDraft: (options: {
     onOpenAddCat: () => void;
-    onDraftLeadCatChange: (catId: string | null) => void;
+    onDraftDefaultRecipientChange: (catId: string | null) => void;
     allowAddCat: boolean;
   }) => ReactNode;
   renderAddCatPanel: (options: {
@@ -36,7 +36,7 @@ export interface WorkspaceAppRoutesProps {
   }) => ReactNode;
   onToggleAddCat: () => void;
   onOpenDraftAddCat: () => void;
-  onChangeDraftLeadCat: (catId: string | null) => void;
+  onChangeDraftDefaultRecipient: (catId: string | null) => void;
 }
 
 export function WorkspaceAppRoutes({
@@ -56,7 +56,7 @@ export function WorkspaceAppRoutes({
   renderAddCatPanel,
   onToggleAddCat,
   onOpenDraftAddCat,
-  onChangeDraftLeadCat,
+  onChangeDraftDefaultRecipient,
 }: WorkspaceAppRoutesProps) {
   return (
     <>
@@ -90,7 +90,7 @@ export function WorkspaceAppRoutes({
                   })
                 : renderNewChatDraft({
                     onOpenAddCat: noop,
-                    onDraftLeadCatChange: noop,
+                    onDraftDefaultRecipientChange: noop,
                     allowAddCat: false,
                   })
           }
@@ -99,7 +99,7 @@ export function WorkspaceAppRoutes({
           path="new"
           element={renderNewChatDraft({
             onOpenAddCat: onOpenDraftAddCat,
-            onDraftLeadCatChange: onChangeDraftLeadCat,
+            onDraftDefaultRecipientChange: onChangeDraftDefaultRecipient,
             allowAddCat: true,
           })}
         />

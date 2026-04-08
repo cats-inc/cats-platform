@@ -19,7 +19,7 @@ export function ActivityFeed({ items }: ActivityFeedProps) {
       </div>
       {items.length === 0 ? (
         <p className="operatorEmptyState">
-          Activity appears here when the room lead or other Cats start moving.
+          Activity appears here when the room starts moving.
         </p>
       ) : (
         <div className="operatorTimeline">

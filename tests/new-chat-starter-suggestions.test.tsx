@@ -13,14 +13,14 @@ test('starter suggestions default to solo fallback prompts', () => {
   assert.match(suggestions[0]?.prompt ?? '', /Plan today's priorities/u);
 });
 
-test('starter suggestions personalize cat-led and direct prompts with the lead cat name', () => {
+test('starter suggestions personalize cat-led and direct prompts with the default recipient name', () => {
   const catLed = resolveDraftStarterSuggestions({
     mode: 'cat_led',
-    leadCatName: 'Milo',
+    defaultRecipientName: 'Milo',
   });
   const direct = resolveDraftStarterSuggestions({
     mode: 'direct',
-    leadCatName: 'Milo',
+    defaultRecipientName: 'Milo',
   });
 
   assert.match(catLed[0]?.prompt ?? '', /Milo/u);

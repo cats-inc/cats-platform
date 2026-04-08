@@ -14,7 +14,7 @@ import {
 } from '../api';
 import {
   resolveDraftRouteContext,
-  resolveMissingDraftLeadPath,
+  resolveMissingDraftDefaultRecipientPath,
 } from '../draftParticipants.js';
 import {
   isOptimisticDraftChannelId,
@@ -148,7 +148,7 @@ export function useAppShellRouting(options: {
     const catExists = state.payload.chat.cats.some((cat) =>
       cat.id === draftDefaultRecipientCatId && cat.status === 'active');
     if (!catExists) {
-      navigate(resolveMissingDraftLeadPath({
+      navigate(resolveMissingDraftDefaultRecipientPath({
         route: draftRoute,
         channels: state.payload.chat.channels,
         selectedChannelId: state.payload.chat.selectedChannelId,

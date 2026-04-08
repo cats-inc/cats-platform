@@ -10,8 +10,8 @@ export interface DraftParticipantSelection {
   routeDefaultRecipientCatId: string | null;
   toggleCatIds: string[];
   participantCatIds: string[];
-  effectiveLeadCatId: string | null;
-  hasRouteLeadCat: boolean;
+  effectiveDefaultRecipientCatId: string | null;
+  hasRouteDefaultRecipient: boolean;
   hasParticipants: boolean;
 }
 
@@ -52,8 +52,8 @@ export function resolveDraftParticipantSelection(input: {
     routeDefaultRecipientCatId,
     toggleCatIds,
     participantCatIds,
-    effectiveLeadCatId: participantCatIds[0] ?? null,
-    hasRouteLeadCat: Boolean(routeDefaultRecipientCatId),
+    effectiveDefaultRecipientCatId: participantCatIds[0] ?? null,
+    hasRouteDefaultRecipient: Boolean(routeDefaultRecipientCatId),
     hasParticipants: participantCatIds.length > 0,
   };
 }
@@ -76,10 +76,10 @@ export function resolveDraftRouteContext(input: {
 
 export function resolveDraftRoutePath(input: {
   route: DraftRouteContext;
-  nextLeadCatId?: string | null;
+  nextDefaultRecipientCatId?: string | null;
 }): string {
-  const nextLeadCatId = normalizeCatId(input.nextLeadCatId);
-  const defaultRecipientCatId = nextLeadCatId ?? input.route.routeDefaultRecipientCatId;
+  const nextDefaultRecipientCatId = normalizeCatId(input.nextDefaultRecipientCatId);
+  const defaultRecipientCatId = nextDefaultRecipientCatId ?? input.route.routeDefaultRecipientCatId;
 
   if (input.route.isDirectLaneRoute) {
     return defaultRecipientCatId ? buildMyCatPath(defaultRecipientCatId) : NEW_CHAT_PATH;
@@ -88,7 +88,7 @@ export function resolveDraftRoutePath(input: {
   return buildNewChatPath(defaultRecipientCatId);
 }
 
-export function resolveMissingDraftLeadPath(input: {
+export function resolveMissingDraftDefaultRecipientPath(input: {
   route: DraftRouteContext;
   channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>>;
   selectedChannelId: string | null | undefined;

@@ -32,7 +32,7 @@ type ChatSurfaceProps = Omit<
 
 type DraftSurfaceProps = Omit<
   NewChatDraftProps,
-  'payload' | 'onOpenAddCat' | 'onDraftLeadCatChange' | 'allowAddCat'
+  'payload' | 'onOpenAddCat' | 'onDraftDefaultRecipientChange' | 'allowAddCat'
 >;
 
 export interface AppRoutesProps extends Omit<
@@ -65,7 +65,7 @@ export function AppRoutes({
   addCatPanelProps,
   folderBrowserProps,
   onOpenDraftAddCat,
-  onChangeDraftLeadCat,
+  onChangeDraftDefaultRecipient,
 }: AppRoutesProps) {
   const folderBrowserSurfaceProps = folderBrowserProps;
 
@@ -98,7 +98,7 @@ export function AppRoutes({
         {...draftSurfaceProps}
         payload={payload}
         onOpenAddCat={options.onOpenAddCat}
-        onDraftLeadCatChange={options.onDraftLeadCatChange}
+        onDraftDefaultRecipientChange={options.onDraftDefaultRecipientChange}
         allowAddCat={options.allowAddCat}
         folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}
         folderBrowseCurrentPath={folderBrowserSurfaceProps.folderBrowseCurrentPath}
@@ -120,6 +120,6 @@ export function AppRoutes({
     ),
     onToggleAddCat,
     onOpenDraftAddCat,
-    onChangeDraftLeadCat,
+    onChangeDraftDefaultRecipient,
   });
 }

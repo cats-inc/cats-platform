@@ -89,7 +89,7 @@ export function useAppDraftUiActions(options: {
     setFeedback('');
   }
 
-  function changeDraftLeadCat(catId: string | null): void {
+  function changeDraftDefaultRecipient(catId: string | null): void {
     if (catId === draftDefaultRecipientCatId) {
       return;
     }
@@ -100,7 +100,7 @@ export function useAppDraftUiActions(options: {
           draftDefaultRecipientCatId,
           showingMyCatDirectLane,
         }),
-        nextLeadCatId: catId,
+        nextDefaultRecipientCatId: catId,
       }),
       { replace: true },
     );
@@ -114,6 +114,6 @@ export function useAppDraftUiActions(options: {
     openDraftFilePicker,
     openDraftFolderPicker,
     openDraftAddCatPanel,
-    changeDraftLeadCat,
+    changeDraftDefaultRecipient,
   };
 }

@@ -35,7 +35,7 @@ function withCatName(
 
 export function resolveDraftStarterSuggestions(input: {
   mode: DraftStarterSuggestionMode;
-  leadCatName?: string | null;
+  defaultRecipientName?: string | null;
 }): DraftStarterSuggestion[] {
   switch (input.mode) {
     case 'direct':
@@ -44,7 +44,7 @@ export function resolveDraftStarterSuggestions(input: {
           id: 'direct-update',
           prompt: withCatName(
             'Ask {cat} for a focused update or recommendation on this task.',
-            input.leadCatName,
+            input.defaultRecipientName,
             'this Cat',
           ),
         },
@@ -52,7 +52,7 @@ export function resolveDraftStarterSuggestions(input: {
           id: 'direct-next-step',
           prompt: withCatName(
             'Give {cat} a concrete task and ask for the next step.',
-            input.leadCatName,
+            input.defaultRecipientName,
             'this Cat',
           ),
         },
@@ -60,7 +60,7 @@ export function resolveDraftStarterSuggestions(input: {
           id: 'direct-iterate',
           prompt: withCatName(
             'Use this lane to iterate quickly with {cat} on one problem.',
-            input.leadCatName,
+            input.defaultRecipientName,
             'this Cat',
           ),
         },
@@ -71,7 +71,7 @@ export function resolveDraftStarterSuggestions(input: {
           id: 'cat-led-first-pass',
           prompt: withCatName(
             'Ask {cat} to take the first pass, then tighten the plan together.',
-            input.leadCatName,
+            input.defaultRecipientName,
             'this Cat',
           ),
         },
@@ -79,7 +79,7 @@ export function resolveDraftStarterSuggestions(input: {
           id: 'cat-led-review',
           prompt: withCatName(
             'Have {cat} review an idea and suggest the next concrete moves.',
-            input.leadCatName,
+            input.defaultRecipientName,
             'this Cat',
           ),
         },
@@ -87,7 +87,7 @@ export function resolveDraftStarterSuggestions(input: {
           id: 'cat-led-brief',
           prompt: withCatName(
             'Let {cat} turn a rough brief into a clear action plan.',
-            input.leadCatName,
+            input.defaultRecipientName,
             'this Cat',
           ),
         },
@@ -143,7 +143,7 @@ export function resolveDraftStarterSuggestions(input: {
 
 export function resolveVisibleDraftStarterSuggestions(input: {
   mode: DraftStarterSuggestionMode;
-  leadCatName?: string | null;
+  defaultRecipientName?: string | null;
   suggestions?: ReadonlyArray<DraftStarterSuggestion | null | undefined> | null;
 }): DraftStarterSuggestion[] {
   if (Array.isArray(input.suggestions) && input.suggestions.length === 0) {
@@ -155,6 +155,6 @@ export function resolveVisibleDraftStarterSuggestions(input: {
   }
   return resolveDraftStarterSuggestions({
     mode: input.mode,
-    leadCatName: input.leadCatName,
+    defaultRecipientName: input.defaultRecipientName,
   });
 }
