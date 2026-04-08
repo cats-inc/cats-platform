@@ -38,38 +38,17 @@ What is still missing is a calm post-setup recovery entry that:
 This plan keeps the first slice intentionally thin:
 
 1. unify the runtime lamp semantics and tooltip copy
-2. add one always-visible neutral `Environment` item to the shared account menu
-3. add one canonical `/environment` resolver surface inside `cats-platform`
-4. let that resolver route users into:
-   - `Cats Runtime` for deep runtime repair
-   - desktop packaged setup only when desktop host state says it matters
-
-The resolver will be route-backed for consistency and testability, but it
-should render as a lightweight sheet or panel rather than a full settings page.
+2. add one always-visible neutral recovery item to the shared account menu
+3. route that item into existing repair surfaces first:
+   - `Cats Runtime` remains the deep runtime repair surface
+   - desktop packaged setup only appears when desktop host state says it matters
+4. only add a lightweight resolver if direct routing proves insufficient
 
 This plan intentionally avoids `PLAN-042` and uses `PLAN-043`.
 
 ## Implementation Phases
 
-### Phase 1: Freeze the Shared IA and Copy
-
-- [ ] Task 1.1: Define one shared post-setup runtime status model for Lobby and
-      product sidebars.
-- [ ] Task 1.2: Replace technical status wording with plain-language tooltip and
-      resolver copy.
-- [ ] Task 1.3: Freeze the account-menu IA:
-      `Settings`, `Cats Runtime`, and `Environment`.
-- [ ] Task 1.4: Freeze the rule that the `Environment` entry is always visible
-      in post-setup account menus.
-- [ ] Task 1.5: Freeze the rule that `cats-platform` stays a thin resolver and
-      does not become a second diagnostics dashboard.
-- [ ] Task 1.6: Freeze the rule that `/environment` is canonical and is
-      presented as a route-backed sheet/panel instead of a settings page.
-
-**Deliverables**: one approved IA/copy baseline for post-setup environment
-status and recovery
-
-### Phase 2: Unify Visible Runtime Status
+### Phase 1: Unify Visible Runtime Status
 
 - [ ] Task 2.1: Extract or centralize the runtime lamp state mapping now copied
       across Lobby, Chat, Work, and Code.
@@ -82,45 +61,59 @@ status and recovery
 **Deliverables**: one consistent runtime lamp behavior across post-setup
 surfaces
 
-### Phase 3: Add the Lightweight Environment Entry
+### Phase 2: Add the Recovery Menu Entry
 
-- [ ] Task 3.1: Extend the shared `AccountIdentityMenu` with a new neutral
-      always-visible `Environment` item while keeping the existing
-      `Cats Runtime` item.
-- [ ] Task 3.2: Add one canonical environment resolver surface in the platform
-      host renderer through the dedicated host-level route `/environment`.
-- [ ] Task 3.3: Keep the resolver intentionally thin:
-      status summary, impact, recommended action, and optional secondary links.
-- [ ] Task 3.4: Present `/environment` as a route-backed sheet or lightweight
-      panel rather than a settings page.
-- [ ] Task 3.5: Ensure the resolver is reachable from Lobby and all product
+- [ ] Task 3.1: Extend the shared `AccountIdentityMenu` with one new neutral,
+      always-visible recovery item while keeping the existing `Cats Runtime`
+      item.
+- [ ] Task 3.2: Freeze the new entry label as a working copy only. `Environment`
+      is acceptable for the first slice, but should not be treated as
+      permanently ratified product wording yet.
+- [ ] Task 3.3: Route the new recovery item into the most relevant existing
+      repair surface rather than a new dedicated page.
+- [ ] Task 3.4: Ensure the new entry is reachable from Lobby and all product
       sidebars through the shared menu.
+- [ ] Task 3.5: Add targeted tests for menu contents and recovery-entry
+      behavior.
 
 **Deliverables**: a shallow in-product recovery entry no longer buried in
-settings
+settings and no mandatory new recovery surface in the first slice
 
-### Phase 4: Connect Desktop Repair Only When Relevant
+### Phase 3: Connect Desktop Repair Only When Relevant
 
 - [ ] Task 4.1: Reuse the existing desktop host bridge only for the minimum
-      resolver needs:
+      recovery-entry needs:
       current desktop host/setup state and packaged-setup entry/resume actions.
 - [ ] Task 4.2: Keep packaged setup conditional on relevant desktop host state
       instead of showing desktop repair controls all the time.
 - [ ] Task 4.3: Preserve graceful degradation when the desktop host bridge is
       unavailable.
-- [ ] Task 4.4: Add targeted tests for desktop vs non-desktop resolver
+- [ ] Task 4.4: Add targeted tests for desktop vs non-desktop recovery-entry
       behavior.
 
 **Deliverables**: desktop packaged setup becomes an available repair lane,
-without dominating the product-owned resolver
+without dominating the product-owned recovery entry
+
+### Phase 4: Optional Lightweight Resolver Follow-Up
+
+- [ ] Task 5.1: Only if direct routing proves insufficient, add one lightweight
+      resolver surface that stays bounded to status, impact, and next-step
+      routing.
+- [ ] Task 5.2: If this optional resolver lands, keep it lighter than Settings
+      and lighter than the desktop bootstrap page.
+- [ ] Task 5.3: If this optional resolver lands, ensure it still routes users
+      into existing repair surfaces rather than becoming a second dashboard.
+
+**Deliverables**: optional follow-up only; no new recovery surface unless
+phase-2 usability shows it is actually needed
 
 ### Phase 5: Tighten Docs and Verification
 
-- [ ] Task 5.1: Update user-facing docs that currently imply runtime recovery is
+- [ ] Task 6.1: Update user-facing docs that currently imply runtime recovery is
       mainly a bootstrap-page or settings-only story.
-- [ ] Task 5.2: Update tests covering account menu contents, Lobby avatar
+- [ ] Task 6.2: Update tests covering account menu contents, Lobby avatar
       status, and product sidebar status surfaces.
-- [ ] Task 5.3: Validate that post-setup runtime problems still do not route the
+- [ ] Task 6.3: Validate that post-setup runtime problems still do not route the
       user back through onboarding.
 
 **Deliverables**: implementation-ready docs plus bounded verification coverage
@@ -130,16 +123,16 @@ without dominating the product-owned resolver
 | File | Action | Description |
 |------|--------|-------------|
 | `src/design/components/AccountIdentityMenu.tsx` | Modify | Add the new `Environment` menu item and preserve the existing `Cats Runtime` entry |
-| `src/app/renderer/App.tsx` | Modify | Register the lightweight environment resolver route/surface |
 | `src/app/renderer/PlatformLobby.tsx` | Modify | Consume the shared runtime presentation model for the lobby avatar status |
 | `src/products/chat/renderer/components/Sidebar.tsx` | Modify | Replace local runtime-footer copy logic with the shared model |
 | `src/products/work/renderer/components/Sidebar.tsx` | Modify | Replace local runtime-footer copy logic with the shared model |
 | `src/products/code/renderer/components/Sidebar.tsx` | Modify | Replace local runtime-footer copy logic with the shared model |
-| `src/app/renderer/environment/PlatformEnvironmentResolver.tsx` | Create | Lightweight product-owned resolver surface |
-| `src/shared/runtimeStatusPresentation.ts` | Create | Shared state + tooltip/copy mapping for runtime lamps and resolver summary |
-| `src/app/renderer/routeMap.ts` | Modify | Register canonical route ownership for the resolver surface if needed |
+| `src/shared/runtimeStatusPresentation.ts` | Create | Shared state + tooltip/copy mapping for runtime lamps and recovery-entry routing hints |
 | `tests/platform-lobby-account-menu.test.tsx` | Modify | Cover the new account-menu entry and status copy |
-| `tests/platform-routing.test.js` or dedicated resolver tests | Modify/Create | Verify route-level resolver behavior |
+| `src/app/renderer/App.tsx` | Modify (Optional) | Only if an optional lightweight resolver surface is later added |
+| `src/app/renderer/environment/PlatformEnvironmentResolver.tsx` | Create (Optional) | Lightweight product-owned resolver surface if direct routing proves insufficient |
+| `src/app/renderer/routeMap.ts` | Modify (Optional) | Only if a dedicated resolver route or surface is later added |
+| `tests/platform-routing.test.js` or dedicated resolver tests | Modify/Create (Optional) | Only if an optional resolver surface is later added |
 | `tests/desktop-setup-bridge.test.js` or targeted desktop tests | Modify | Verify desktop-host fallback and packaged-setup gating |
 
 ## Technical Decisions
@@ -147,26 +140,27 @@ without dominating the product-owned resolver
 - Decision 1: No new ADR is required for the first slice because accepted
   runtime/host/platform ownership boundaries remain unchanged.
 - Decision 2: `Cats Runtime` remains the primary deep runtime repair surface;
-  `cats-platform` only adds a shallow resolver.
+  `cats-platform` only adds a shallow recovery entry in the first slice.
 - Decision 3: Desktop packaged setup remains supplementary and should appear
   only when host-owned repair state makes it relevant.
-- Decision 4: The first slice should prefer one canonical environment surface
-  over multiple per-product recovery widgets.
+- Decision 4: The first slice prefers direct routing into existing repair
+  surfaces over creating a new dedicated recovery page.
 - Decision 5: The `Environment` entry is always visible after setup so the IA
   does not change based on current health.
-- Decision 6: The canonical surface is `/environment`, presented as a
-  route-backed sheet/panel instead of a settings page.
+- Decision 6: `Environment` is a working label for now, not a permanently
+  frozen product term.
 
 ## Testing Strategy
 
 - **Unit Tests**: shared runtime status mapping, tooltip copy selection, account
-  menu state, resolver action selection
-- **Integration Tests**: route-level resolver behavior, desktop-host bridge
-  presence/absence handling, post-setup recovery navigation
+  menu state, recovery-entry action selection
+- **Integration Tests**: post-setup recovery navigation, desktop-host bridge
+  presence/absence handling, and optional resolver routing if phase 4 lands
 - **Manual Testing**:
   - verify Lobby and sidebar avatar lamps show the same copy
   - verify the account menu shows `Settings`, `Cats Runtime`, and `Environment`
-  - verify `Environment` routes to calm recovery guidance
+  - verify `Environment` routes to the appropriate existing repair surface
+  - if phase 4 lands, verify the lightweight resolver stays calm and bounded
   - verify runtime-only and desktop-packaged actions appear in the right cases
 
 ## Risks & Mitigations

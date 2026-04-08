@@ -19,16 +19,17 @@ This spec defines a narrow post-setup IA for environment awareness and recovery:
   already see in Lobby and product sidebars
 - keep the existing `Cats Runtime` menu entry as the deep runtime dashboard and
   setup surface
-- add one neutral `Environment` entry in the account menu so recovery is not
-  buried under `Settings > Runtime`
-- keep `cats-platform` thin by using that new surface as a lightweight resolver,
-  not as a second full diagnostics dashboard
+- add one neutral recovery entry in the account menu so recovery is not buried
+  under `Settings > Runtime`
+- keep `cats-platform` thin by routing users into existing repair surfaces first
+- allow a lightweight product-owned resolver only if direct routing later proves
+  insufficient
 - surface desktop packaged setup only as an additional repair lane when host
   state says it is relevant
 
 The goal is to reduce friction and panic at the same time:
 users can always see whether Cats Runtime is healthy, can always find a recovery
-entry from the avatar menu, and are still routed to the correct deep repair
+entry from the avatar menu, and are still routed to the correct existing repair
 surface instead of being forced through onboarding again.
 
 ## Goals
@@ -41,6 +42,7 @@ surface instead of being forced through onboarding again.
   surface
 - preserve Electron packaged setup as the desktop-only repair lane for
   host-owned issues
+- prefer menu-level recovery routing before creating any new recovery surface
 - keep `cats-platform` from turning into a second host/runtime operations
   console
 
@@ -52,6 +54,7 @@ surface instead of being forced through onboarding again.
 - making the desktop bootstrap page the default post-setup recovery surface
 - exposing raw host logs, chronology, or three-layer diagnostics by default in
   the first user-facing resolver slice
+- requiring a new dedicated recovery page in the first implementation slice
 - forcing users back into onboarding when runtime health changes after setup
 
 ## User Stories
@@ -86,38 +89,39 @@ surface instead of being forced through onboarding again.
    plain-language copy, not host/runtime jargon such as `bootstrap`,
    `diagnostics`, or `degraded`.
 5. The account-avatar popup menu shall keep the existing `Cats Runtime` entry.
-6. The account-avatar popup menu shall add one new neutral recovery entry:
-   `Environment`.
-7. The `Environment` entry shall always be visible in post-setup account menus.
+6. The account-avatar popup menu shall add one new neutral recovery entry.
+   `Environment` is the current working label, not yet frozen public copy.
+7. That recovery entry shall always be visible in post-setup account menus.
    It shall not appear only when the system already knows something is wrong.
-8. The new `Environment` entry shall open a product-owned lightweight resolver
-   surface that is reachable without going through `Settings > Runtime`.
-9. The first slice shall use one canonical host-level resolver route:
-   `/environment`.
-10. The `/environment` surface shall be presented as a route-backed sheet or
-    route-backed lightweight panel, not as a full settings page.
-11. The lightweight resolver shall show only bounded recovery information:
-   - current plain-language status
-   - short impact statement
-   - one recommended next step
-   - optional secondary links
-12. The lightweight resolver shall direct users to `Cats Runtime` for deep
-    runtime remediation, including the existing runtime dashboard and setup
-    surfaces.
-13. The lightweight resolver may surface a desktop packaged setup action only
-    when the current host state indicates a relevant desktop repair or resumable
-    packaged-setup path.
-14. Desktop packaged setup shall remain supplementary in the resolver. It shall
-    not replace `Cats Runtime` as the primary deep runtime repair surface.
-15. Post-setup environment problems shall stay inside product/runtime/desktop
+8. The new recovery entry shall be reachable without going through
+   `Settings > Runtime`.
+9. The first implementation slice should prefer direct routing into existing
+   repair surfaces over creating a new dedicated recovery surface.
+10. Existing repair surfaces for that entry may include:
+    - Cats Runtime dashboard/root
+    - Cats Runtime setup
+    - desktop packaged setup or packaged setup resume
+11. Cats Runtime shall remain the primary deep runtime repair surface.
+12. Desktop packaged setup shall remain supplementary. It shall not replace
+    Cats Runtime as the primary deep runtime repair surface.
+13. If direct routing later proves insufficient, the product may add one
+    lightweight resolver surface.
+14. Any lightweight resolver added later shall stay bounded to:
+    - current plain-language status
+    - short impact statement
+    - one recommended next step
+    - optional secondary links
+15. Any lightweight resolver added later shall not become a second full
+    diagnostics dashboard or operations console.
+16. Post-setup environment problems shall stay inside product/runtime/desktop
     recovery flows. They shall not route the user back through onboarding as the
     normal recovery story.
-16. `Settings > Runtime` may remain as a secondary detail page, but it shall no
+17. `Settings > Runtime` may remain as a secondary detail page, but it shall no
     longer be the primary or only post-setup entry point for environment
     recovery.
-17. In non-desktop environments where the desktop host bridge is unavailable,
-    the resolver shall degrade gracefully and keep only product/runtime-owned
-    actions.
+18. In non-desktop environments where the desktop host bridge is unavailable,
+    the recovery entry shall degrade gracefully and keep only product/runtime-
+    owned actions.
 
 ### UX Requirements
 
@@ -125,14 +129,16 @@ surface instead of being forced through onboarding again.
 2. The account menu should stay short and familiar.
 3. The new `Environment` label should remain neutral; it should not read like a
    crash screen or an admin tool.
-4. The lightweight resolver should behave like a receptionist:
-   it should route the user to the right place, not become the mechanic.
-5. When Cats Runtime is healthy, the resolver should still feel calm and useful,
-   not like a page that only exists for failure.
+4. If a lightweight resolver is added later, it should behave like a
+   receptionist: it should route the user to the right place, not become the
+   mechanic.
+5. If a lightweight resolver is added later, it should still feel calm and
+   useful when Cats Runtime is healthy, not like a page that only exists for
+   failure.
 6. The first slice should prefer one primary action at a time instead of
    presenting many competing repair choices.
-7. The `/environment` surface should feel lighter than Settings and lighter
-   than the desktop bootstrap page, even though it is still route-backed.
+7. If a lightweight resolver is added later, it should feel lighter than
+   Settings and lighter than the desktop bootstrap page.
 
 ## Design Overview
 
@@ -145,22 +151,23 @@ Avatar lamp + tooltip
 Account menu
   - Settings
   - Cats Runtime
-  - Environment
+  - Environment (working label)
         |
         v
-Canonical `/environment` route
-  rendered as a route-backed sheet/panel
-        |
-        v
-Lightweight Environment resolver
-  - status summary
-  - impact
-  - recommended next step
-  - optional secondary links
+Preferred first slice:
+  direct route to an existing repair surface
         |
         +--> Cats Runtime dashboard/setup
         |
         +--> Desktop packaged setup (only when relevant)
+        |
+        v
+Optional follow-up only if needed:
+  lightweight resolver
+    - status summary
+    - impact
+    - recommended next step
+    - optional secondary links
 ```
 
 ### Surface Roles
@@ -171,13 +178,12 @@ Lightweight Environment resolver
   one-sentence status explanation
 - `Cats Runtime` menu item:
   direct deep runtime entry
-- `Environment` menu item:
-  always-visible calm product-owned resolver entry
-- `/environment` route:
-  canonical lightweight recovery surface, presented as a sheet/panel instead of
-  a settings page
+- new recovery menu item:
+  always-visible calm product-owned recovery entry
 - Desktop packaged setup action:
   desktop-only repair lane for host-owned or resumable packaged setup issues
+- lightweight resolver:
+  optional follow-up only if direct routing proves insufficient
 
 ### Example Status Copy Direction
 
@@ -199,11 +205,14 @@ Lightweight Environment resolver
 
 ## Resolved Decisions
 
-- The first slice uses one canonical `/environment` route.
-- The `/environment` route is presented as a route-backed sheet or lightweight
-  panel, not as a settings page.
-- The `Environment` entry is always visible in post-setup account menus so the
-  IA remains stable and discoverable even when runtime state is healthy.
+- The post-setup recovery entry stays in the account menu and remains always
+  visible so the IA stays stable and discoverable even when runtime state is
+  healthy.
+- The first slice prefers direct routing into existing repair surfaces instead
+  of requiring a new dedicated recovery page.
+- `Environment` is a working label for now, not yet frozen copy.
+- A lightweight resolver is allowed as a later bounded follow-up if direct
+  routing proves insufficient.
 
 ## References
 
