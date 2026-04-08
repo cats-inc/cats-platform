@@ -112,16 +112,16 @@ export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
 export type ComposerMode = 'solo' | 'cat_led';
 export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
 export type NewChatEntryKind = 'solo' | 'group' | 'direct';
-export type ConcurrentChatMode = 'parallel';
-export type ConcurrentChatStatus = 'active' | 'archived';
-export type ConcurrentChatRelayCommandKind =
+export type ParallelChatMode = 'parallel';
+export type ParallelChatStatus = 'active' | 'archived';
+export type ParallelChatRelayCommandKind =
   | 'check_this'
   | 'adopt_this'
   | 'debate_this'
   | 'improve_this'
   | 'counter_this'
   | 'synthesize_this';
-export type ConcurrentChatRelayTargetPolicy = 'all_others' | 'single';
+export type ParallelChatRelayTargetPolicy = 'all_others' | 'single';
 
 export interface MessageUsageSummary {
   inputTokens: number;
@@ -334,42 +334,42 @@ export interface ChatChannelSummary {
   orchestratorRoles?: string[];
 }
 
-export interface ConcurrentChatTarget {
+export interface ParallelChatTarget {
   provider: string;
   instance: string | null;
   model: string | null;
   modelSelection?: ProviderModelSelection | null;
 }
 
-export interface ConcurrentChatGroupState {
+export interface ParallelChatGroupState {
   id: string;
   title: string;
-  mode: ConcurrentChatMode;
-  status: ConcurrentChatStatus;
+  mode: ParallelChatMode;
+  status: ParallelChatStatus;
   memberChannelIds: string[];
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
 }
 
-export interface ConcurrentChatGroupMemberSummary extends ConcurrentChatTarget {
+export interface ParallelChatGroupMemberSummary extends ParallelChatTarget {
   channelId: string;
   title: string;
   index: number;
   lastMessageAt: string | null;
 }
 
-export interface ConcurrentChatGroupSummary {
+export interface ParallelChatGroupSummary {
   id: string;
   title: string;
-  mode: ConcurrentChatMode;
-  status: ConcurrentChatStatus;
+  mode: ParallelChatMode;
+  status: ParallelChatStatus;
   memberCount: number;
   memberChannelIds: string[];
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
-  members: ConcurrentChatGroupMemberSummary[];
+  members: ParallelChatGroupMemberSummary[];
 }
 
 export interface GlobalOrchestratorSummary {
@@ -417,7 +417,7 @@ export interface ChatState {
   bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelState[];
-  concurrentGroups: ConcurrentChatGroupState[];
+  parallelChatGroups: ParallelChatGroupState[];
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
@@ -460,7 +460,7 @@ export interface ChatShellState {
   bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelSummary[];
-  concurrentGroups: ConcurrentChatGroupSummary[];
+  parallelChatGroups: ParallelChatGroupSummary[];
   selectedChannel: ChatChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
@@ -539,11 +539,11 @@ export interface CreateChatChannelInput {
   skipBossCatGreeting?: boolean;
 }
 
-export interface CreateConcurrentChatGroupInput {
+export interface CreateParallelChatGroupInput {
   title: string;
   repoPath?: string;
   responseLanguage?: string;
-  targets: ConcurrentChatTarget[];
+  targets: ParallelChatTarget[];
 }
 
 export interface UpdateGlobalOrchestratorInput {
@@ -568,31 +568,31 @@ export interface SendChannelMessageInput {
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
 
-export interface ConcurrentChatAttachmentInput {
+export interface ParallelChatAttachmentInput {
   name: string;
   data: string;
 }
 
-export interface SendConcurrentChatMessageInput {
+export interface SendParallelChatMessageInput {
   activeChannelId: string;
   body: string;
-  attachments?: ConcurrentChatAttachmentInput[];
+  attachments?: ParallelChatAttachmentInput[];
 }
 
-export interface CancelConcurrentChatGroupInput {
+export interface CancelParallelChatGroupInput {
   activeChannelId: string;
 }
 
-export interface RelayConcurrentChatMessageInput {
+export interface RelayParallelChatMessageInput {
   activeChannelId: string;
   sourceChannelId: string;
   sourceMessageId: string;
-  command: ConcurrentChatRelayCommandKind;
-  targetPolicy?: ConcurrentChatRelayTargetPolicy;
+  command: ParallelChatRelayCommandKind;
+  targetPolicy?: ParallelChatRelayTargetPolicy;
   targetChannelId?: string;
 }
 
-export interface UpdateConcurrentChatGroupInput {
+export interface UpdateParallelChatGroupInput {
   title?: string;
 }
 
@@ -654,26 +654,26 @@ export interface CancelChannelResponse {
   };
 }
 
-export interface ConcurrentChatDispatchResult {
+export interface ParallelChatDispatchResult {
   channelId: string;
   status: 'sent' | 'error' | 'skipped';
   sourceMessageId?: string;
   error?: string;
 }
 
-export interface CreateConcurrentChatGroupResponse {
+export interface CreateParallelChatGroupResponse {
   appShell: AppShellPayload;
-  group: ConcurrentChatGroupSummary;
+  group: ParallelChatGroupSummary;
 }
 
-export interface ConcurrentChatDispatchResponse {
+export interface ParallelChatDispatchResponse {
   appShell: AppShellPayload;
   groupId: string;
   phase: 'acknowledged' | 'completed';
-  results: ConcurrentChatDispatchResult[];
+  results: ParallelChatDispatchResult[];
 }
 
-export interface CancelConcurrentChatGroupResponse {
+export interface CancelParallelChatGroupResponse {
   appShell: AppShellPayload;
   groupId: string;
   cancellation: {

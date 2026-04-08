@@ -5,13 +5,13 @@ import {
   sendMethodNotAllowed,
 } from '../../../../shared/http.js';
 import {
-  buildConcurrentChatMemberLabel,
-  buildConcurrentRelayIncomingNote,
-  buildConcurrentRelayOutgoingNote,
-  buildConcurrentRelayPrompt,
-  findConcurrentRelayCommand,
-  normalizeConcurrentRelayCommand,
-} from '../../shared/concurrentChats.js';
+  buildParallelChatMemberLabel,
+  buildParallelChatRelayIncomingNote,
+  buildParallelChatRelayOutgoingNote,
+  buildParallelChatRelayPrompt,
+  findParallelChatRelayCommand,
+  normalizeParallelChatRelayCommand,
+} from '../../shared/parallelChats.js';
 import {
   beginChannelMessageDispatch,
   continueBegunChannelMessageDispatch,
@@ -19,21 +19,21 @@ import {
 } from '../../state/runtimeActions.js';
 import {
   appendMessage,
-  createConcurrentGroup,
+  createParallelChatGroup,
   replaceState,
   requireChannel,
   selectChannel,
-  touchConcurrentGroup,
+  touchParallelChatGroup,
 } from '../../state/model/index.js';
 import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
 import type {
-  CancelConcurrentChatGroupInput,
-  ConcurrentChatDispatchResponse,
-  ConcurrentChatDispatchResult,
-  CreateConcurrentChatGroupInput,
-  RelayConcurrentChatMessageInput,
+  CancelParallelChatGroupInput,
+  ParallelChatDispatchResponse,
+  ParallelChatDispatchResult,
+  CreateParallelChatGroupInput,
+  RelayParallelChatMessageInput,
   SendChannelMessageInput,
-  SendConcurrentChatMessageInput,
+  SendParallelChatMessageInput,
   ChatState,
 } from '../contracts.js';
 import { persistAttachmentsForChannels } from '../attachmentSupport.js';
@@ -44,27 +44,27 @@ import {
   handleRestError,
   hasActiveChannelTurn,
   nowFrom,
-  persistDeletedConcurrentGroup,
-  persistRenamedConcurrentGroup,
-  persistUngroupedConcurrentGroup,
+  persistDeletedParallelChatGroup,
+  persistRenamedParallelChatGroup,
+  persistUngroupedParallelChatGroup,
   sendRestError,
   waitForCancelledChannelTurns,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
-import type { UpdateConcurrentChatGroupInput } from '../contracts.js';
+import type { UpdateParallelChatGroupInput } from '../contracts.js';
 import {
   channelDispatchCancellationRegistry,
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../../state/runtime-dispatch/cancellation.js';
 import { publishRoomMutation } from '../transportEventPublisher.js';
 
-function requireConcurrentGroup(
+function requireParallelChatGroup(
   state: ChatState,
   groupId: string,
-): ChatState['concurrentGroups'][number] {
-  const group = state.concurrentGroups.find((candidate) => candidate.id === groupId);
+): ChatState['parallelChatGroups'][number] {
+  const group = state.parallelChatGroups.find((candidate) => candidate.id === groupId);
   if (!group) {
-    throw new Error(`Concurrent group not found: ${groupId}`);
+    throw new Error(`Parallel chat group not found: ${groupId}`);
   }
 
   return group;
@@ -77,12 +77,12 @@ class RelayResponseSentError extends Error {
   }
 }
 
-class ConcurrentAttachmentWorkspaceError extends Error {
+class ParallelChatAttachmentWorkspaceError extends Error {
   readonly channelIds: string[];
 
   constructor(channelIds: string[]) {
     super('parallel_attachment_workspace_required');
-    this.name = 'ConcurrentAttachmentWorkspaceError';
+    this.name = 'ParallelChatAttachmentWorkspaceError';
     this.channelIds = channelIds;
   }
 }
@@ -99,15 +99,15 @@ function buildAttachedFilesMessageBody(
   return `[Attached files in working directory:]\n${refs}\n\n${body}`;
 }
 
-type ConcurrentGroupState = ChatState['concurrentGroups'][number];
+type ParallelChatGroupState = ChatState['parallelChatGroups'][number];
 
-interface PreparedConcurrentDispatch {
+interface PreparedParallelChatDispatch {
   state: ChatState;
   activeChannelId: string;
   channelInputs: Map<string, SendChannelMessageInput>;
 }
 
-interface BegunConcurrentDispatch {
+interface BegunParallelChatDispatch {
   channelId: string;
   begun: Awaited<ReturnType<typeof beginChannelMessageDispatch>> | null;
   status: 'sent' | 'error' | 'skipped';
@@ -115,16 +115,16 @@ interface BegunConcurrentDispatch {
   error?: string;
 }
 
-interface StagedConcurrentDispatch {
+interface StagedParallelChatDispatch {
   groupId: string;
   now: Date;
   nowIso: string;
   lockedChannelIds: string[];
   acknowledgedState: ChatState;
-  begunDispatches: BegunConcurrentDispatch[];
+  begunDispatches: BegunParallelChatDispatch[];
 }
 
-function publishConcurrentMutationEvents(
+function publishParallelChatMutationEvents(
   context: ChatApiRouteContext,
   channelIds: string[],
   kind: 'created' | 'updated' | 'message_added' = 'updated',
@@ -139,7 +139,7 @@ function publishConcurrentMutationEvents(
   });
 }
 
-function logConcurrentFinalizeError(error: unknown): void {
+function logParallelChatFinalizeError(error: unknown): void {
   const detail = error instanceof Error
     ? (error.stack ?? error.message)
     : String(error);
@@ -167,45 +167,45 @@ async function runLockedChannels<T>(
   return runLocked(0);
 }
 
-async function withLockedConcurrentGroup<T>(
+async function withLockedParallelChatGroup<T>(
   context: ChatApiRouteContext,
   groupId: string,
   operation: (
     state: ChatState,
-    group: ConcurrentGroupState,
+    group: ParallelChatGroupState,
   ) => Promise<T>,
 ): Promise<T> {
   const state = await context.dependencies.chatStore.read();
-  const group = requireConcurrentGroup(state, groupId);
+  const group = requireParallelChatGroup(state, groupId);
 
   return runLockedChannels(
     context,
     group.memberChannelIds,
     async () => {
       const lockedState = await context.dependencies.chatStore.read();
-      return operation(lockedState, requireConcurrentGroup(lockedState, groupId));
+      return operation(lockedState, requireParallelChatGroup(lockedState, groupId));
     },
   );
 }
 
-async function dispatchConcurrentBodies(
+async function dispatchParallelChatBodies(
   context: ChatApiRouteContext,
   options: {
     groupId: string;
-    sharedAttachments?: NonNullable<SendConcurrentChatMessageInput['attachments']>;
+    sharedAttachments?: NonNullable<SendParallelChatMessageInput['attachments']>;
     persistAcknowledgedStateBeforeDispatch?: boolean;
     prepare: (
       state: ChatState,
-      group: ConcurrentGroupState,
-    ) => Promise<PreparedConcurrentDispatch>;
+      group: ParallelChatGroupState,
+    ) => Promise<PreparedParallelChatDispatch>;
   },
-): Promise<ConcurrentChatDispatchResponse> {
-  const staged = await withLockedConcurrentGroup(
+): Promise<ParallelChatDispatchResponse> {
+  const staged = await withLockedParallelChatGroup(
     context,
     options.groupId,
     async (lockedState, lockedGroup) => {
       const prepared = await options.prepare(lockedState, lockedGroup);
-      return stageConcurrentBodies(context, {
+      return stageParallelChatBodies(context, {
         groupId: options.groupId,
         state: prepared.state,
         activeChannelId: prepared.activeChannelId,
@@ -217,30 +217,30 @@ async function dispatchConcurrentBodies(
     },
   );
 
-  return finalizeConcurrentBodies(context, staged);
+  return finalizeParallelChatBodies(context, staged);
 }
 
-async function acknowledgeConcurrentBodies(
+async function acknowledgeParallelChatBodies(
   context: ChatApiRouteContext,
   options: {
     groupId: string;
-    sharedAttachments?: NonNullable<SendConcurrentChatMessageInput['attachments']>;
+    sharedAttachments?: NonNullable<SendParallelChatMessageInput['attachments']>;
     persistAcknowledgedStateBeforeDispatch?: boolean;
     prepare: (
       state: ChatState,
-      group: ConcurrentGroupState,
-    ) => Promise<PreparedConcurrentDispatch>;
+      group: ParallelChatGroupState,
+    ) => Promise<PreparedParallelChatDispatch>;
   },
 ): Promise<{
-  staged: StagedConcurrentDispatch;
-  response: ConcurrentChatDispatchResponse;
+  staged: StagedParallelChatDispatch;
+  response: ParallelChatDispatchResponse;
 }> {
-  const staged = await withLockedConcurrentGroup(
+  const staged = await withLockedParallelChatGroup(
     context,
     options.groupId,
     async (lockedState, lockedGroup) => {
       const prepared = await options.prepare(lockedState, lockedGroup);
-      return stageConcurrentBodies(context, {
+      return stageParallelChatBodies(context, {
         groupId: options.groupId,
         state: prepared.state,
         activeChannelId: prepared.activeChannelId,
@@ -272,7 +272,7 @@ async function acknowledgeConcurrentBodies(
   };
 }
 
-async function stageConcurrentBodies(
+async function stageParallelChatBodies(
   context: ChatApiRouteContext,
   options: {
     groupId: string;
@@ -280,10 +280,10 @@ async function stageConcurrentBodies(
     activeChannelId: string;
     channelInputs: Map<string, SendChannelMessageInput>;
     lockedChannelIds: string[];
-    sharedAttachments?: NonNullable<SendConcurrentChatMessageInput['attachments']>;
+    sharedAttachments?: NonNullable<SendParallelChatMessageInput['attachments']>;
     persistAcknowledgedStateBeforeDispatch?: boolean;
   },
-): Promise<StagedConcurrentDispatch> {
+): Promise<StagedParallelChatDispatch> {
   const now = nowFrom(context.dependencies);
   const nowIso = now.toISOString();
   const baseState = selectChannel(options.state, options.activeChannelId, now);
@@ -301,7 +301,7 @@ async function stageConcurrentBodies(
     const missingAttachmentChannelIds = [...options.channelInputs.keys()].filter((channelId) =>
       !attachmentsByChannelId.has(channelId));
     if (missingAttachmentChannelIds.length > 0) {
-      throw new ConcurrentAttachmentWorkspaceError(missingAttachmentChannelIds);
+      throw new ParallelChatAttachmentWorkspaceError(missingAttachmentChannelIds);
     }
 
     effectiveChannelInputs = new Map(
@@ -321,7 +321,7 @@ async function stageConcurrentBodies(
     );
   }
 
-  const begunDispatches: BegunConcurrentDispatch[] = [];
+  const begunDispatches: BegunParallelChatDispatch[] = [];
   for (const [channelId, input] of effectiveChannelInputs.entries()) {
     const trimmedBody = input.body.trim();
     if (!trimmedBody) {
@@ -373,7 +373,7 @@ async function stageConcurrentBodies(
 
   let mergedState = acknowledgedState;
   if (options.persistAcknowledgedStateBeforeDispatch) {
-    touchConcurrentGroup(mergedState, options.groupId, nowIso, nowIso);
+    touchParallelChatGroup(mergedState, options.groupId, nowIso, nowIso);
     await context.dependencies.chatStore.write(mergedState);
   }
 
@@ -387,10 +387,10 @@ async function stageConcurrentBodies(
   };
 }
 
-async function finalizeConcurrentBodies(
+async function finalizeParallelChatBodies(
   context: ChatApiRouteContext,
-  staged: StagedConcurrentDispatch,
-): Promise<ConcurrentChatDispatchResponse> {
+  staged: StagedParallelChatDispatch,
+): Promise<ParallelChatDispatchResponse> {
   const dispatches = await Promise.all(
     staged.begunDispatches.map(async (dispatch) => {
       if (!dispatch.begun || dispatch.status !== 'sent') {
@@ -457,7 +457,7 @@ async function finalizeConcurrentBodies(
     staged.lockedChannelIds,
     async () => {
       let mergedState = await context.dependencies.chatStore.read();
-      const results: ConcurrentChatDispatchResult[] = [];
+      const results: ParallelChatDispatchResult[] = [];
 
       for (const dispatch of dispatches) {
         if (!mergedState.channels.some((channel) => channel.id === dispatch.channelId)) {
@@ -494,8 +494,8 @@ async function finalizeConcurrentBodies(
         });
       }
 
-      if (mergedState.concurrentGroups.some((group) => group.id === staged.groupId)) {
-        touchConcurrentGroup(mergedState, staged.groupId, staged.nowIso, staged.nowIso);
+      if (mergedState.parallelChatGroups.some((group) => group.id === staged.groupId)) {
+        touchParallelChatGroup(mergedState, staged.groupId, staged.nowIso, staged.nowIso);
       }
       const persisted = await context.dependencies.chatStore.write(mergedState);
       const appShell = await buildAppShellPayload(context.dependencies, persisted);
@@ -509,11 +509,11 @@ async function finalizeConcurrentBodies(
   );
 }
 
-async function handleCreateConcurrentGroup(
+async function handleCreateParallelChatGroup(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<CreateConcurrentChatGroupInput>(context.request);
+    const body = await readJsonBody<CreateParallelChatGroupInput>(context.request);
     if (!Array.isArray(body.targets) || body.targets.length < 2) {
       sendRestError(
         context,
@@ -529,7 +529,7 @@ async function handleCreateConcurrentGroup(
       return;
     }
 
-    const nextState = createConcurrentGroup(
+    const nextState = createParallelChatGroup(
       await context.dependencies.chatStore.read(),
       {
         title,
@@ -539,10 +539,10 @@ async function handleCreateConcurrentGroup(
       },
       nowFrom(context.dependencies),
     );
-    const groupId = nextState.concurrentGroups[0]?.id ?? '';
+    const groupId = nextState.parallelChatGroups[0]?.id ?? '';
     const persisted = await context.dependencies.chatStore.write(nextState);
     const appShell = await buildAppShellPayload(context.dependencies, persisted);
-    const group = appShell.chat.concurrentGroups.find((candidate) => candidate.id === groupId);
+    const group = appShell.chat.parallelChatGroups.find((candidate) => candidate.id === groupId);
     if (!group) {
       throw new Error('Parallel chat group was created but not returned in the app shell.');
     }
@@ -556,58 +556,58 @@ async function handleCreateConcurrentGroup(
   }
 }
 
-async function handlePatchConcurrentGroup(
+async function handlePatchParallelChatGroup(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<UpdateConcurrentChatGroupInput>(context.request);
+    const body = await readJsonBody<UpdateParallelChatGroupInput>(context.request);
     const title = body.title?.trim();
     if (!title) {
       sendRestError(context, 400, 'title_required', 'Parallel chat title must not be empty.');
       return;
     }
 
-    await persistRenamedConcurrentGroup(context, groupId, title);
+    await persistRenamedParallelChatGroup(context, groupId, title);
     sendJson(context.response, 200, { updated: true, groupId });
   } catch (error) {
     handleRestError(context, error);
   }
 }
 
-async function handleUngroupConcurrentGroup(
+async function handleUngroupParallelChatGroup(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<void> {
   try {
-    await persistUngroupedConcurrentGroup(context, groupId);
+    await persistUngroupedParallelChatGroup(context, groupId);
     sendJson(context.response, 200, { ungrouped: true, groupId });
   } catch (error) {
     handleRestError(context, error);
   }
 }
 
-async function handleDeleteConcurrentGroup(
+async function handleDeleteParallelChatGroup(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<void> {
   try {
-    await persistDeletedConcurrentGroup(context, groupId);
+    await persistDeletedParallelChatGroup(context, groupId);
     sendJson(context.response, 200, { deleted: true, groupId });
   } catch (error) {
     handleRestError(context, error);
   }
 }
 
-async function handleSendConcurrentGroupMessage(
+async function handleSendParallelChatGroupMessage(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<SendConcurrentChatMessageInput>(context.request);
+    const body = await readJsonBody<SendParallelChatMessageInput>(context.request);
 
     const state = await context.dependencies.chatStore.read();
-    const group = requireConcurrentGroup(state, groupId);
+    const group = requireParallelChatGroup(state, groupId);
     if (!group.memberChannelIds.includes(body.activeChannelId)) {
       sendRestError(
         context,
@@ -618,7 +618,7 @@ async function handleSendConcurrentGroupMessage(
       return;
     }
 
-    const acknowledged = await acknowledgeConcurrentBodies(context, {
+    const acknowledged = await acknowledgeParallelChatBodies(context, {
       groupId,
       sharedAttachments: body.attachments,
       persistAcknowledgedStateBeforeDispatch: true,
@@ -631,18 +631,18 @@ async function handleSendConcurrentGroupMessage(
       }),
     });
     sendJson(context.response, 200, acknowledged.response);
-    publishConcurrentMutationEvents(
+    publishParallelChatMutationEvents(
       context,
       acknowledged.staged.lockedChannelIds,
       'message_added',
     );
     if (acknowledged.staged.begunDispatches.some((dispatch) => dispatch.begun && dispatch.status === 'sent')) {
-      void finalizeConcurrentBodies(context, acknowledged.staged)
+      void finalizeParallelChatBodies(context, acknowledged.staged)
         .catch((error) => {
-          logConcurrentFinalizeError(error);
+          logParallelChatFinalizeError(error);
         })
         .finally(() => {
-          publishConcurrentMutationEvents(
+          publishParallelChatMutationEvents(
             context,
             acknowledged.staged.lockedChannelIds,
             'updated',
@@ -650,7 +650,7 @@ async function handleSendConcurrentGroupMessage(
         });
     }
   } catch (error) {
-    if (error instanceof ConcurrentAttachmentWorkspaceError) {
+    if (error instanceof ParallelChatAttachmentWorkspaceError) {
       const noun = error.channelIds.length === 1 ? 'chat has' : 'chats have';
       sendRestError(
         context,
@@ -664,16 +664,16 @@ async function handleSendConcurrentGroupMessage(
   }
 }
 
-async function handleCancelConcurrentGroup(
+async function handleCancelParallelChatGroup(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<CancelConcurrentChatGroupInput>(context.request);
+    const body = await readJsonBody<CancelParallelChatGroupInput>(context.request);
     const now = nowFrom(context.dependencies);
     const nowIso = now.toISOString();
     const state = await context.dependencies.chatStore.read();
-    const group = requireConcurrentGroup(state, groupId);
+    const group = requireParallelChatGroup(state, groupId);
     if (!group.memberChannelIds.includes(body.activeChannelId)) {
       sendRestError(
         context,
@@ -719,13 +719,13 @@ async function handleCancelConcurrentGroup(
   }
 }
 
-async function handleRelayConcurrentGroupMessage(
+async function handleRelayParallelChatGroupMessage(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<RelayConcurrentChatMessageInput>(context.request);
-    const normalizedCommand = normalizeConcurrentRelayCommand(body.command);
+    const body = await readJsonBody<RelayParallelChatMessageInput>(context.request);
+    const normalizedCommand = normalizeParallelChatRelayCommand(body.command);
     if (!normalizedCommand) {
       sendRestError(
         context,
@@ -735,7 +735,7 @@ async function handleRelayConcurrentGroupMessage(
       );
       return;
     }
-    const response = await dispatchConcurrentBodies(context, {
+    const response = await dispatchParallelChatBodies(context, {
       groupId,
       persistAcknowledgedStateBeforeDispatch: true,
       prepare: async (state, group) => {
@@ -788,7 +788,7 @@ async function handleRelayConcurrentGroupMessage(
           throw new RelayResponseSentError();
         }
 
-        const sourceMemberLabel = buildConcurrentChatMemberLabel({
+        const sourceMemberLabel = buildParallelChatMemberLabel({
           provider: sourceChannel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
           instance:
             sourceChannel.pendingInstance
@@ -803,10 +803,10 @@ async function handleRelayConcurrentGroupMessage(
             ?? state.globalOrchestrator.executionModelSelection
             ?? null,
         });
-        const commandDefinition = findConcurrentRelayCommand(normalizedCommand);
+        const commandDefinition = findParallelChatRelayCommand(normalizedCommand);
         const targetMemberLabels = normalizedTargetChannelIds.map((channelId) => {
           const targetChannel = requireChannel(state, channelId);
-          return buildConcurrentChatMemberLabel({
+          return buildParallelChatMemberLabel({
             provider: targetChannel.pendingProvider ?? state.globalOrchestrator.executionTarget.provider,
             instance:
               targetChannel.pendingInstance
@@ -822,7 +822,7 @@ async function handleRelayConcurrentGroupMessage(
               ?? null,
           });
         });
-        const relayBody = buildConcurrentRelayPrompt({
+        const relayBody = buildParallelChatRelayPrompt({
           command: normalizedCommand,
           sourceMemberLabel,
           sourceBody: sourceMessage.body,
@@ -835,7 +835,7 @@ async function handleRelayConcurrentGroupMessage(
           {
             senderKind: 'system',
             senderName: 'Chat',
-            body: buildConcurrentRelayOutgoingNote({
+            body: buildParallelChatRelayOutgoingNote({
               command: normalizedCommand,
               sourceMessageId: body.sourceMessageId,
               targetMemberLabels,
@@ -862,7 +862,7 @@ async function handleRelayConcurrentGroupMessage(
             {
               senderKind: 'system',
               senderName: 'Chat',
-              body: buildConcurrentRelayIncomingNote({
+              body: buildParallelChatRelayIncomingNote({
                 command: normalizedCommand,
                 sourceMessageId: body.sourceMessageId,
                 sourceMemberLabel,
@@ -913,81 +913,81 @@ async function handleRelayConcurrentGroupMessage(
   }
 }
 
-export async function routeConcurrentGroupResourceApi(
+export async function routeParallelChatGroupResourceApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
   if (context.url.pathname === '/api/concurrent-groups') {
     if (context.method === 'POST') {
-      await handleCreateConcurrentGroup(context);
+      await handleCreateParallelChatGroup(context);
       return true;
     }
     sendMethodNotAllowed(context.response, ['POST']);
     return true;
   }
 
-  const concurrentGroupDetailMatch = matchRoute(
+  const parallelChatGroupDetailMatch = matchRoute(
     context.url.pathname,
     /^\/api\/concurrent-groups\/([^/]+)$/u,
   );
-  if (concurrentGroupDetailMatch) {
+  if (parallelChatGroupDetailMatch) {
     if (context.method === 'PATCH') {
-      await handlePatchConcurrentGroup(context, concurrentGroupDetailMatch[0]!);
+      await handlePatchParallelChatGroup(context, parallelChatGroupDetailMatch[0]!);
       return true;
     }
     if (context.method === 'DELETE') {
-      await handleDeleteConcurrentGroup(context, concurrentGroupDetailMatch[0]!);
+      await handleDeleteParallelChatGroup(context, parallelChatGroupDetailMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['PATCH', 'DELETE']);
     return true;
   }
 
-  const concurrentGroupMessagesMatch = matchRoute(
+  const parallelChatGroupMessagesMatch = matchRoute(
     context.url.pathname,
     /^\/api\/concurrent-groups\/([^/]+)\/messages$/u,
   );
-  if (concurrentGroupMessagesMatch) {
+  if (parallelChatGroupMessagesMatch) {
     if (context.method === 'POST') {
-      await handleSendConcurrentGroupMessage(context, concurrentGroupMessagesMatch[0]!);
+      await handleSendParallelChatGroupMessage(context, parallelChatGroupMessagesMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['POST']);
     return true;
   }
 
-  const concurrentGroupCancelMatch = matchRoute(
+  const parallelChatGroupCancelMatch = matchRoute(
     context.url.pathname,
     /^\/api\/concurrent-groups\/([^/]+)\/cancel$/u,
   );
-  if (concurrentGroupCancelMatch) {
+  if (parallelChatGroupCancelMatch) {
     if (context.method === 'POST') {
-      await handleCancelConcurrentGroup(context, concurrentGroupCancelMatch[0]!);
+      await handleCancelParallelChatGroup(context, parallelChatGroupCancelMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['POST']);
     return true;
   }
 
-  const concurrentGroupRelayMatch = matchRoute(
+  const parallelChatGroupRelayMatch = matchRoute(
     context.url.pathname,
     /^\/api\/concurrent-groups\/([^/]+)\/relay$/u,
   );
-  if (concurrentGroupRelayMatch) {
+  if (parallelChatGroupRelayMatch) {
     if (context.method === 'POST') {
-      await handleRelayConcurrentGroupMessage(context, concurrentGroupRelayMatch[0]!);
+      await handleRelayParallelChatGroupMessage(context, parallelChatGroupRelayMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['POST']);
     return true;
   }
 
-  const concurrentGroupUngroupMatch = matchRoute(
+  const parallelChatGroupUngroupMatch = matchRoute(
     context.url.pathname,
     /^\/api\/concurrent-groups\/([^/]+)\/ungroup$/u,
   );
-  if (concurrentGroupUngroupMatch) {
+  if (parallelChatGroupUngroupMatch) {
     if (context.method === 'POST') {
-      await handleUngroupConcurrentGroup(context, concurrentGroupUngroupMatch[0]!);
+      await handleUngroupParallelChatGroup(context, parallelChatGroupUngroupMatch[0]!);
       return true;
     }
     sendMethodNotAllowed(context.response, ['POST']);

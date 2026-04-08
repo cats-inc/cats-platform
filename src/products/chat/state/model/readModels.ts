@@ -9,13 +9,13 @@ import type {
   ChatChannelSummary,
   ChatChannelView,
   ChatState,
-  ConcurrentChatGroupSummary,
+  ParallelChatGroupSummary,
   GlobalOrchestratorSummary,
   ParticipantExecutionLease,
 } from '../../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
-import { buildConcurrentChatMemberLabel } from '../../shared/concurrentChats.js';
+import { buildParallelChatMemberLabel } from '../../shared/parallelChats.js';
 import {
   isDirectLaneChannel,
   normalizeChannelAssignmentsForRoomMode,
@@ -313,8 +313,8 @@ export function buildChannelExportFilename(state: ChatState, channelId: string):
   return createChannelExportFilename(channel.title, channel.id);
 }
 
-function summarizeConcurrentGroups(state: ChatState): ConcurrentChatGroupSummary[] {
-  return state.concurrentGroups
+function summarizeParallelChatGroups(state: ChatState): ParallelChatGroupSummary[] {
+  return state.parallelChatGroups
     .map((group) => {
       const members = group.memberChannelIds
         .map((channelId) => requireChannel(state, channelId))
@@ -360,7 +360,7 @@ function summarizeConcurrentGroups(state: ChatState): ConcurrentChatGroupSummary
         lastMessageAt,
         members: members.map((member) => ({
           ...member,
-          title: buildConcurrentChatMemberLabel(member),
+          title: buildParallelChatMemberLabel(member),
         })),
       };
     })
@@ -370,7 +370,7 @@ function summarizeConcurrentGroups(state: ChatState): ConcurrentChatGroupSummary
 export function summarizeState(state: ChatState): {
   cats: ChatCat[];
   channels: ChatChannelSummary[];
-  concurrentGroups: ConcurrentChatGroupSummary[];
+  parallelChatGroups: ParallelChatGroupSummary[];
   selectedChannel: ChatChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
 } {
@@ -380,7 +380,7 @@ export function summarizeState(state: ChatState): {
   return {
     cats: structuredClone(state.cats),
     channels: state.channels.map((channel) => toChannelSummary(channel)),
-    concurrentGroups: summarizeConcurrentGroups(state),
+    parallelChatGroups: summarizeParallelChatGroups(state),
     selectedChannel: selectedChannelState ? buildChannelView(state, selectedChannelState) : null,
     globalOrchestrator: structuredClone(state.globalOrchestrator),
   };

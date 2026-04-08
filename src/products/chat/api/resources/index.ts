@@ -2,7 +2,7 @@ import type {
   ChatApiRouteContext,
 } from '../routeSupport.js';
 import { routeChatChannelResourceApi } from './channelRoutes.js';
-import { routeConcurrentGroupResourceApi } from './concurrentGroupRoutes.js';
+import { routeParallelChatGroupResourceApi } from './parallelChatGroupRoutes.js';
 import { routeChatEventApi } from './eventRoutes.js';
 import { routeChatOrchestratorResourceApi } from './orchestratorRoutes.js';
 import { routeChatPreferenceResourceApi } from './preferenceRoutes.js';
@@ -22,7 +22,7 @@ export async function routeChatResourceApi(
     return true;
   }
 
-  if (await routeConcurrentGroupResourceApi(context)) {
+  if (await routeParallelChatGroupResourceApi(context)) {
     return true;
   }
 

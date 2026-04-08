@@ -18,13 +18,13 @@ import {
 } from '../../shared/channelPaths.js';
 import { resolveMyCatNavigationTarget } from '../myCatNavigation.js';
 import {
-  deleteConcurrentChatGroup,
+  deleteParallelChatGroup,
   deleteChatChannel,
   deleteGlobalCat,
   renameChatChannel,
-  renameConcurrentChatGroup,
+  renameParallelChatGroup,
   resetSetup,
-  ungroupConcurrentChatGroup,
+  ungroupParallelChatGroup,
   updateCatProfile,
 } from '../api/index.js';
 
@@ -50,7 +50,7 @@ export function useAppNavigationActions(options: {
   setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
-  resetDraftConcurrentTargets: () => void;
+  resetDraftParallelChatTargets: () => void;
   createInitialGroupParticipants: () => DraftTemporaryParticipant[];
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
@@ -73,7 +73,7 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
-    resetDraftConcurrentTargets,
+    resetDraftParallelChatTargets,
     createInitialGroupParticipants,
     setDraftFiles,
     setChannelFiles,
@@ -91,7 +91,7 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
-    resetDraftConcurrentTargets();
+    resetDraftParallelChatTargets();
     setDraftFiles([]);
     setChannelPlusMenuOpen(false);
     setChannelFiles([]);
@@ -106,7 +106,7 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
-    resetDraftConcurrentTargets,
+    resetDraftParallelChatTargets,
     setDraftFiles,
     setChannelPlusMenuOpen,
     setChannelFiles,
@@ -168,13 +168,13 @@ export function useAppNavigationActions(options: {
     }
   }, [navigate, setAddCatOpen, setBusy, setFeedback, setState]);
 
-  const onRenameConcurrentGroup = useCallback(async (
+  const onRenameParallelChatGroup = useCallback(async (
     groupId: string,
     title: string,
   ): Promise<void> => {
     setBusy(`concurrent-group:rename:${groupId}`);
     try {
-      const payload = await renameConcurrentChatGroup(groupId, { title });
+      const payload = await renameParallelChatGroup(groupId, { title });
       startTransition(() => {
         setState({ status: 'ready', payload });
         setFeedback('');
@@ -186,10 +186,10 @@ export function useAppNavigationActions(options: {
     }
   }, [setBusy, setFeedback, setState]);
 
-  const onUngroupConcurrentGroup = useCallback(async (groupId: string): Promise<void> => {
+  const onUngroupParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
     setBusy(`concurrent-group:ungroup:${groupId}`);
     try {
-      const payload = await ungroupConcurrentChatGroup(groupId);
+      const payload = await ungroupParallelChatGroup(groupId);
       startTransition(() => {
         setState({ status: 'ready', payload });
         setFeedback('');
@@ -201,9 +201,9 @@ export function useAppNavigationActions(options: {
     }
   }, [setBusy, setFeedback, setState]);
 
-  const onDeleteConcurrentGroup = useCallback(async (groupId: string): Promise<void> => {
+  const onDeleteParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
     const groupTitle = state.status === 'ready'
-      ? (state.payload.chat.concurrentGroups.find((group) => group.id === groupId)?.title ?? 'this parallel chat')
+      ? (state.payload.chat.parallelChatGroups.find((group) => group.id === groupId)?.title ?? 'this parallel chat')
       : 'this parallel chat';
     const confirmed = confirmDialog
       ? await confirmDialog({
@@ -216,7 +216,7 @@ export function useAppNavigationActions(options: {
 
     setBusy(`concurrent-group:delete:${groupId}`);
     try {
-      const payload = await deleteConcurrentChatGroup(groupId);
+      const payload = await deleteParallelChatGroup(groupId);
       startTransition(() => {
         setState({ status: 'ready', payload });
         setAddCatOpen(false);
@@ -332,9 +332,9 @@ export function useAppNavigationActions(options: {
     onSelect,
     onRenameChannel,
     onDeleteChannel,
-    onRenameConcurrentGroup,
-    onUngroupConcurrentGroup,
-    onDeleteConcurrentGroup,
+    onRenameParallelChatGroup,
+    onUngroupParallelChatGroup,
+    onDeleteParallelChatGroup,
     onArchiveCat,
     onDeleteCat,
     onNavigateSettings,

@@ -47,9 +47,9 @@ export interface SidebarProps {
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
-  onRenameConcurrentGroup: (groupId: string, title: string) => void;
-  onUngroupConcurrentGroup: (groupId: string) => void;
-  onDeleteConcurrentGroup: (groupId: string) => void;
+  onRenameParallelChatGroup: (groupId: string, title: string) => void;
+  onUngroupParallelChatGroup: (groupId: string) => void;
+  onDeleteParallelChatGroup: (groupId: string) => void;
   onArchiveCat: (catId: string) => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
@@ -520,9 +520,9 @@ export function Sidebar({
   onSelect,
   onDeleteChannel,
   onRenameChannel,
-  onRenameConcurrentGroup,
-  onUngroupConcurrentGroup,
-  onDeleteConcurrentGroup,
+  onRenameParallelChatGroup,
+  onUngroupParallelChatGroup,
+  onDeleteParallelChatGroup,
   onArchiveCat,
   onAccountMenuToggle,
   onOverflowMenuToggle,
@@ -569,13 +569,13 @@ export function Sidebar({
   }
 
   const recentsChannels = payload.chat.channels.filter((ch) => !isDirectCatChat(ch));
-  const activeConcurrentGroups = (payload.chat.concurrentGroups ?? []).filter(
+  const activeParallelChatGroups = (payload.chat.parallelChatGroups ?? []).filter(
     (group) => group.status === 'active',
   );
-  const concurrentGroupByChannelId = new Map<string, typeof activeConcurrentGroups[number]>();
-  for (const group of activeConcurrentGroups) {
+  const parallelChatGroupByChannelId = new Map<string, typeof activeParallelChatGroups[number]>();
+  for (const group of activeParallelChatGroups) {
     for (const channelId of group.memberChannelIds) {
-      concurrentGroupByChannelId.set(channelId, group);
+      parallelChatGroupByChannelId.set(channelId, group);
     }
   }
 
@@ -584,7 +584,7 @@ export function Sidebar({
     | { kind: 'channel'; channel: ChatChannelSummary }
     | {
         kind: 'compare_group';
-        group: typeof activeConcurrentGroups[number];
+        group: typeof activeParallelChatGroups[number];
         channels: ChatChannelSummary[];
         titleOverrides: Map<string, string>;
       }
@@ -597,7 +597,7 @@ export function Sidebar({
       continue;
     }
 
-    const compareGroup = concurrentGroupByChannelId.get(channel.id);
+    const compareGroup = parallelChatGroupByChannelId.get(channel.id);
     if (compareGroup && !seenGroupIds.has(compareGroup.id)) {
       const groupChannels = compareGroup.memberChannelIds
         .map((channelId) => channelById.get(channelId) ?? null)
@@ -648,9 +648,9 @@ export function Sidebar({
             busy={busy}
             overflowOpen={overflowMenuOpenId === groupOverflowId}
             onSelect={() => { if (firstChannelId) onSelect(firstChannelId); }}
-            onRename={(title) => { void onRenameConcurrentGroup(entry.group.id, title); }}
-            onUngroup={() => { void onUngroupConcurrentGroup(entry.group.id); }}
-            onDelete={() => { onOverflowMenuToggle(null); void onDeleteConcurrentGroup(entry.group.id); }}
+            onRename={(title) => { void onRenameParallelChatGroup(entry.group.id, title); }}
+            onUngroup={() => { void onUngroupParallelChatGroup(entry.group.id); }}
+            onDelete={() => { onOverflowMenuToggle(null); void onDeleteParallelChatGroup(entry.group.id); }}
             onOverflowToggle={() => onOverflowMenuToggle(overflowMenuOpenId === groupOverflowId ? null : groupOverflowId)}
             renameBusyKey={`concurrent-group:rename:${entry.group.id}`}
             ungroupBusyKey={`concurrent-group:ungroup:${entry.group.id}`}

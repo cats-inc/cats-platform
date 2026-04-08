@@ -26,23 +26,23 @@ test('composer busy helpers treat missing busy state as idle instead of throwing
 
 test('composer busy helpers still recognize active ACK, dispatch, and stop states', () => {
   assert.equal(isComposerBusy('message:ack:channel-1'), true);
-  assert.equal(isComposerBusy('concurrent:ack'), true);
-  assert.equal(isComposerBusy('concurrent:dispatch'), true);
-  assert.equal(isComposerBusy('concurrent:relay'), true);
+  assert.equal(isComposerBusy('parallelChat:ack'), true);
+  assert.equal(isComposerBusy('parallelChat:dispatch'), true);
+  assert.equal(isComposerBusy('parallelChat:relay'), true);
   assert.equal(isComposerAckBusy('message:ack:channel-1'), true);
   assert.equal(isComposerDispatchBusy('message:send:channel-1'), true);
   assert.equal(isComposerStopBusy('message:stop:channel-1'), true);
-  assert.equal(isComposerSelectionBlocked('concurrent:stop'), true);
+  assert.equal(isComposerSelectionBlocked('parallelChat:stop'), true);
   assert.equal(getComposerBusyChannelId('message:send:channel-1'), 'channel-1');
   assert.equal(getComposerDispatchChannelId('message:send:channel-1'), 'channel-1');
 });
 
 test('composer busy helpers keep relay semantics distinct from dispatch and selection blocking', () => {
-  assert.equal(isComposerBusy('concurrent:relay'), true);
-  assert.equal(isComposerAckBusy('concurrent:relay'), false);
-  assert.equal(isComposerDispatchBusy('concurrent:relay'), false);
-  assert.equal(isComposerSelectionBlocked('concurrent:relay'), false);
-  assert.equal(isComposerStopBusy('concurrent:relay'), false);
-  assert.equal(getComposerBusyChannelId('concurrent:relay'), null);
-  assert.equal(getComposerDispatchChannelId('concurrent:relay'), null);
+  assert.equal(isComposerBusy('parallelChat:relay'), true);
+  assert.equal(isComposerAckBusy('parallelChat:relay'), false);
+  assert.equal(isComposerDispatchBusy('parallelChat:relay'), false);
+  assert.equal(isComposerSelectionBlocked('parallelChat:relay'), false);
+  assert.equal(isComposerStopBusy('parallelChat:relay'), false);
+  assert.equal(getComposerBusyChannelId('parallelChat:relay'), null);
+  assert.equal(getComposerDispatchChannelId('parallelChat:relay'), null);
 });

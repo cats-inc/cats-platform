@@ -24,12 +24,12 @@ import {
 import { isDirectLaneChannel } from '../../shared/channelTopology';
 import {
   cancelChatChannel,
-  cancelConcurrentChatGroup,
+  cancelParallelChatGroup,
   encodeAttachmentFiles,
-  createConcurrentChatGroup,
+  createParallelChatGroup,
   createChatChannel,
   fetchAppShell,
-  sendConcurrentChatMessage,
+  sendParallelChatMessage,
   sendChatMessage,
   updateSelectedChannel,
   uploadChannelAttachments,
@@ -74,7 +74,7 @@ function isChannelDispatchRunning(
     channel.id === channelId && channel.routingStatus === 'running');
 }
 
-function isAnyConcurrentDispatchRunning(
+function isAnyParallelChatDispatchRunning(
   payload: AppShellPayload,
   channelIds: string[],
 ): boolean {
@@ -124,8 +124,8 @@ export function useComposerSubmit(options: {
   draftModel: ModelSelectorValue;
   soloChannelModel: ModelSelectorValue;
   showingParallelChatDraft: boolean;
-  draftConcurrentTargets: ModelSelectorValue[];
-  resetDraftConcurrentTargets: () => void;
+  draftParallelChatTargets: ModelSelectorValue[];
+  resetDraftParallelChatTargets: () => void;
   compareGroupId: string | null;
   compareSendScope: 'all_members' | 'active_only';
   selectedChannel: SelectedChannelView | null;
@@ -159,8 +159,8 @@ export function useComposerSubmit(options: {
     draftModel,
     soloChannelModel,
     showingParallelChatDraft,
-    draftConcurrentTargets,
-    resetDraftConcurrentTargets,
+    draftParallelChatTargets,
+    resetDraftParallelChatTargets,
     compareGroupId,
     compareSendScope,
     selectedChannel,
@@ -194,7 +194,7 @@ export function useComposerSubmit(options: {
     }
 
     const stillRunning = activeRequest.kind === 'concurrent'
-      ? isAnyConcurrentDispatchRunning(
+      ? isAnyParallelChatDispatchRunning(
           state.payload,
           activeRequest.channelIds ?? [activeRequest.channelId],
         )
@@ -204,7 +204,7 @@ export function useComposerSubmit(options: {
     }
 
     const expectedBusy = activeRequest.kind === 'concurrent'
-      ? 'concurrent:dispatch'
+      ? 'parallelChat:dispatch'
       : `message:send:${activeRequest.channelId}`;
     if (normalizedBusy === expectedBusy) {
       activeDispatchRequestRef.current = null;
@@ -220,7 +220,7 @@ export function useComposerSubmit(options: {
     }
 
     const expectedBusy = activeRequest.kind === 'concurrent'
-      ? 'concurrent:dispatch'
+      ? 'parallelChat:dispatch'
       : `message:send:${activeRequest.channelId}`;
     if (normalizedBusy !== expectedBusy) {
       return;
@@ -247,7 +247,7 @@ export function useComposerSubmit(options: {
         }
 
         const stillRunning = currentRequest.kind === 'concurrent'
-          ? isAnyConcurrentDispatchRunning(
+          ? isAnyParallelChatDispatchRunning(
               payload,
               currentRequest.channelIds ?? [currentRequest.channelId],
             )
@@ -319,15 +319,15 @@ export function useComposerSubmit(options: {
     let keepBusyAfterReturn = false;
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
-        if (draftConcurrentTargets.length < 2) {
+        if (draftParallelChatTargets.length < 2) {
           throw new Error('Choose at least two parallel chats before sending.');
         }
 
-        setBusy('concurrent:ack');
-        const created = await createConcurrentChatGroup({
+        setBusy('parallelChat:ack');
+        const created = await createParallelChatGroup({
           title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
           repoPath: draftCwd ?? undefined,
-          targets: draftConcurrentTargets.map((target) => ({
+          targets: draftParallelChatTargets.map((target) => ({
             provider: target.provider,
             instance: target.instance ?? null,
             model: target.model ?? null,
@@ -354,7 +354,7 @@ export function useComposerSubmit(options: {
         const encodedAttachments = draftFiles.length > 0
           ? await encodeAttachmentFiles(draftFiles)
           : undefined;
-        const dispatch = await sendConcurrentChatMessage(created.group.id, {
+        const dispatch = await sendParallelChatMessage(created.group.id, {
           activeChannelId,
           body,
           attachments: encodedAttachments,
@@ -364,7 +364,7 @@ export function useComposerSubmit(options: {
         }
         rollbackPayload = dispatch.appShell;
         setState({ status: 'ready', payload: dispatch.appShell });
-        if (isAnyConcurrentDispatchRunning(dispatch.appShell, created.group.memberChannelIds)) {
+        if (isAnyParallelChatDispatchRunning(dispatch.appShell, created.group.memberChannelIds)) {
           activeDispatchRequestRef.current = {
             id: submitId,
             kind: 'concurrent',
@@ -372,7 +372,7 @@ export function useComposerSubmit(options: {
             groupId: created.group.id,
             channelIds: created.group.memberChannelIds,
           };
-          setBusy('concurrent:dispatch');
+          setBusy('parallelChat:dispatch');
           keepBusyAfterReturn = true;
         } else {
           activeDispatchRequestRef.current = null;
@@ -385,7 +385,7 @@ export function useComposerSubmit(options: {
         setDraftHighlightedCatId(null);
         setDraftCatModelOverrides(new Map());
         setDraftFiles([]);
-        resetDraftConcurrentTargets();
+        resetDraftParallelChatTargets();
         return;
       }
 
@@ -397,15 +397,15 @@ export function useComposerSubmit(options: {
         rollbackPath = currentPathname;
         setComposerDraft('');
         setChannelFiles([]);
-        setBusy('concurrent:ack');
-        const activeGroupChannelIds = initialPayload.chat.concurrentGroups.find((group) =>
+        setBusy('parallelChat:ack');
+        const activeGroupChannelIds = initialPayload.chat.parallelChatGroups.find((group) =>
           group.id === compareGroupId,
         )?.memberChannelIds ?? [channelId];
 
         const encodedAttachments = channelFiles.length > 0
           ? await encodeAttachmentFiles(channelFiles)
           : undefined;
-        const dispatch = await sendConcurrentChatMessage(compareGroupId, {
+        const dispatch = await sendParallelChatMessage(compareGroupId, {
           activeChannelId: channelId,
           body,
           attachments: encodedAttachments,
@@ -415,7 +415,7 @@ export function useComposerSubmit(options: {
         }
         rollbackPayload = dispatch.appShell;
         setState({ status: 'ready', payload: dispatch.appShell });
-        if (isAnyConcurrentDispatchRunning(dispatch.appShell, activeGroupChannelIds)) {
+        if (isAnyParallelChatDispatchRunning(dispatch.appShell, activeGroupChannelIds)) {
           activeDispatchRequestRef.current = {
             id: submitId,
             kind: 'concurrent',
@@ -423,7 +423,7 @@ export function useComposerSubmit(options: {
             groupId: compareGroupId,
             channelIds: activeGroupChannelIds,
           };
-          setBusy('concurrent:dispatch');
+          setBusy('parallelChat:dispatch');
           keepBusyAfterReturn = true;
         } else {
           activeDispatchRequestRef.current = null;
@@ -631,8 +631,8 @@ export function useComposerSubmit(options: {
     draftModel.model,
     draftModel.provider,
     showingParallelChatDraft,
-    draftConcurrentTargets,
-    resetDraftConcurrentTargets,
+    draftParallelChatTargets,
+    resetDraftParallelChatTargets,
     compareGroupId,
     compareSendScope,
     navigate,
@@ -667,13 +667,13 @@ export function useComposerSubmit(options: {
     setFeedback('');
     setBusy(
       activeRequest.kind === 'concurrent'
-        ? 'concurrent:stop'
+        ? 'parallelChat:stop'
         : `message:stop:${activeRequest.channelId}`,
     );
 
     try {
       const cancellation = activeRequest.kind === 'concurrent'
-        ? await cancelConcurrentChatGroup(activeRequest.groupId ?? '', {
+        ? await cancelParallelChatGroup(activeRequest.groupId ?? '', {
             activeChannelId: activeRequest.channelId,
           })
         : await cancelChatChannel(activeRequest.channelId);

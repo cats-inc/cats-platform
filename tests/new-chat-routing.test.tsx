@@ -54,7 +54,7 @@ function createPayload(): AppShellPayload {
       channels: [],
       selectedChannelId: null,
       selectedChannel: null,
-      concurrentGroups: [],
+      parallelChatGroups: [],
       globalOrchestrator: {
         mode: 'global',
         status: 'ready',

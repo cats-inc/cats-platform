@@ -1,18 +1,18 @@
 import type {
-  ConcurrentChatRelayCommandKind,
-  ConcurrentChatTarget,
+  ParallelChatRelayCommandKind,
+  ParallelChatTarget,
 } from '../api/contracts.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 import { parseMentionsWithPositions } from '../../../core/mentionParsing.js';
 
-export interface ConcurrentChatRelayCommandDefinition {
-  id: ConcurrentChatRelayCommandKind;
+export interface ParallelChatRelayCommandDefinition {
+  id: ParallelChatRelayCommandKind;
   label: string;
   shortLabel: string;
   description: string;
 }
 
-export const CONCURRENT_CHAT_RELAY_COMMANDS: ConcurrentChatRelayCommandDefinition[] = [
+export const PARALLEL_CHAT_RELAY_COMMANDS: ParallelChatRelayCommandDefinition[] = [
   {
     id: 'check_this',
     label: 'Check this',
@@ -51,7 +51,7 @@ export const CONCURRENT_CHAT_RELAY_COMMANDS: ConcurrentChatRelayCommandDefinitio
   },
 ];
 
-export function buildConcurrentChatMemberLabel(target: ConcurrentChatTarget): string {
+export function buildParallelChatMemberLabel(target: ParallelChatTarget): string {
   return buildExecutionLabel(target.provider, target.instance, target.model);
 }
 
@@ -59,21 +59,21 @@ export function createParallelChatTitle(existingCount: number): string {
   return existingCount > 0 ? `Parallel chat ${existingCount + 1}` : 'Parallel chat';
 }
 
-export function findConcurrentRelayCommand(
-  command: ConcurrentChatRelayCommandKind,
-): ConcurrentChatRelayCommandDefinition {
-  return CONCURRENT_CHAT_RELAY_COMMANDS.find((entry) => entry.id === command)
-    ?? CONCURRENT_CHAT_RELAY_COMMANDS[0]!;
+export function findParallelChatRelayCommand(
+  command: ParallelChatRelayCommandKind,
+): ParallelChatRelayCommandDefinition {
+  return PARALLEL_CHAT_RELAY_COMMANDS.find((entry) => entry.id === command)
+    ?? PARALLEL_CHAT_RELAY_COMMANDS[0]!;
 }
 
-export function normalizeConcurrentRelayCommand(
+export function normalizeParallelChatRelayCommand(
   command: string | null | undefined,
-): ConcurrentChatRelayCommandKind | null {
+): ParallelChatRelayCommandKind | null {
   if (!command) {
     return null;
   }
-  return CONCURRENT_CHAT_RELAY_COMMANDS.some((entry) => entry.id === command)
-    ? command as ConcurrentChatRelayCommandKind
+  return PARALLEL_CHAT_RELAY_COMMANDS.some((entry) => entry.id === command)
+    ? command as ParallelChatRelayCommandKind
     : null;
 }
 
@@ -96,23 +96,23 @@ function formatRelayTargetLabels(labels: string[]): string {
   return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
 }
 
-export function buildConcurrentRelayOutgoingNote(input: {
-  command: ConcurrentChatRelayCommandKind;
+export function buildParallelChatRelayOutgoingNote(input: {
+  command: ParallelChatRelayCommandKind;
   sourceMessageId: string;
   targetMemberLabels: string[];
 }): string {
-  const commandLabel = findConcurrentRelayCommand(input.command).label;
+  const commandLabel = findParallelChatRelayCommand(input.command).label;
   return `Shared reply #${formatRelayMessageId(input.sourceMessageId)} via ${commandLabel} to ${
     formatRelayTargetLabels(input.targetMemberLabels)
   }.`;
 }
 
-export function buildConcurrentRelayIncomingNote(input: {
-  command: ConcurrentChatRelayCommandKind;
+export function buildParallelChatRelayIncomingNote(input: {
+  command: ParallelChatRelayCommandKind;
   sourceMessageId: string;
   sourceMemberLabel: string;
 }): string {
-  const commandLabel = findConcurrentRelayCommand(input.command).label;
+  const commandLabel = findParallelChatRelayCommand(input.command).label;
   return `Received ${commandLabel} from ${input.sourceMemberLabel} for reply #${
     formatRelayMessageId(input.sourceMessageId)
   }.`;
@@ -135,8 +135,8 @@ function escapeRelayQuotedMentions(body: string): string {
   return escaped;
 }
 
-export function buildConcurrentRelayPrompt(input: {
-  command: ConcurrentChatRelayCommandKind;
+export function buildParallelChatRelayPrompt(input: {
+  command: ParallelChatRelayCommandKind;
   sourceMemberLabel: string;
   sourceBody: string;
 }): string {

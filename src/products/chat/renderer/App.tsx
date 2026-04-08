@@ -13,7 +13,7 @@ import {
 
 import type {
   AppShellPayload,
-  ConcurrentChatRelayCommandKind,
+  ParallelChatRelayCommandKind,
   NewChatEntryKind,
 } from '../api/contracts';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog';
@@ -63,7 +63,7 @@ import { useChatEvents } from './hooks/useChatEvents';
 import {
   activateChatChannel,
   fetchAppShell,
-  relayConcurrentChatMessage,
+  relayParallelChatMessage,
   updateCatProfile,
   updateChannelParticipantApi,
   updateChannelPendingExecutionTarget,
@@ -183,7 +183,7 @@ export default function App() {
       ? 'group'
       : 'solo';
   const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
-  const [draftConcurrentTargets, setDraftConcurrentTargets] = useState<ModelSelectorValue[]>(
+  const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<ModelSelectorValue[]>(
     () => createInitialCompareTargets(createDefaultModelSelectorValue()),
   );
   const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
@@ -382,8 +382,8 @@ export default function App() {
       return copy;
     });
   }, []);
-  const resetDraftConcurrentTargets = useCallback(() => {
-    setDraftConcurrentTargets(createInitialCompareTargets(draftModel));
+  const resetDraftParallelChatTargets = useCallback(() => {
+    setDraftParallelChatTargets(createInitialCompareTargets(draftModel));
   }, [
     draftModel.instance,
     draftModel.model,
@@ -463,9 +463,9 @@ export default function App() {
     onSelect,
     onRenameChannel,
     onDeleteChannel,
-    onRenameConcurrentGroup,
-    onUngroupConcurrentGroup,
-    onDeleteConcurrentGroup,
+    onRenameParallelChatGroup,
+    onUngroupParallelChatGroup,
+    onDeleteParallelChatGroup,
     onArchiveCat,
     onDeleteCat,
     onNavigateSettings,
@@ -491,7 +491,7 @@ export default function App() {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
-    resetDraftConcurrentTargets,
+    resetDraftParallelChatTargets,
     createInitialGroupParticipants: seedDraftGroupParticipants,
     setDraftFiles,
     setChannelFiles,
@@ -558,10 +558,10 @@ export default function App() {
     draftModel,
     soloChannelModel,
     showingParallelChatDraft,
-    draftConcurrentTargets,
-    resetDraftConcurrentTargets,
+    draftParallelChatTargets,
+    resetDraftParallelChatTargets,
     compareGroupId: state.status === 'ready' && selectedChannel
-      ? state.payload.chat.concurrentGroups.find((group) =>
+      ? state.payload.chat.parallelChatGroups.find((group) =>
           group.memberChannelIds.includes(selectedChannel.id),
         )?.id ?? null
       : null,
@@ -920,24 +920,24 @@ export default function App() {
     state.status,
   ]);
 
-  const selectedConcurrentGroup = readyPayload && selectedChannel
-    ? readyPayload.chat.concurrentGroups.find((group) =>
+  const selectedParallelChatGroup = readyPayload && selectedChannel
+    ? readyPayload.chat.parallelChatGroups.find((group) =>
         group.memberChannelIds.includes(selectedChannel.id),
       ) ?? null
     : null;
 
   useEffect(() => {
     setCompareSendScope('all_members');
-  }, [selectedConcurrentGroup?.id]);
+  }, [selectedParallelChatGroup?.id]);
 
-  const onDraftConcurrentTargetChange = useCallback((index: number, value: ModelSelectorValue) => {
-    setDraftConcurrentTargets((prev) =>
+  const onDraftParallelChatTargetChange = useCallback((index: number, value: ModelSelectorValue) => {
+    setDraftParallelChatTargets((prev) =>
       prev.map((target, currentIndex) => (currentIndex === index ? value : target)),
     );
   }, []);
 
-  const onAddDraftConcurrentTarget = useCallback(() => {
-    setDraftConcurrentTargets((prev) => [
+  const onAddDraftParallelChatTarget = useCallback(() => {
+    setDraftParallelChatTargets((prev) => [
       ...prev,
       createNextCompareTarget(prev, draftModel),
     ]);
@@ -948,8 +948,8 @@ export default function App() {
     draftModel.provider,
   ]);
 
-  const onRemoveDraftConcurrentTarget = useCallback((index: number) => {
-    setDraftConcurrentTargets((prev) => {
+  const onRemoveDraftParallelChatTarget = useCallback((index: number) => {
+    setDraftParallelChatTargets((prev) => {
       if (prev.length <= 2) {
         return prev;
       }
@@ -960,16 +960,16 @@ export default function App() {
 
   const onRelayCompareMessage = useCallback(async (
     messageId: string,
-    command: ConcurrentChatRelayCommandKind,
+    command: ParallelChatRelayCommandKind,
   ): Promise<void> => {
-    if (!selectedChannel || !selectedConcurrentGroup) {
+    if (!selectedChannel || !selectedParallelChatGroup) {
       return;
     }
 
-    setBusy('concurrent:relay');
+    setBusy('parallelChat:relay');
     setFeedback('');
     try {
-      const dispatch = await relayConcurrentChatMessage(selectedConcurrentGroup.id, {
+      const dispatch = await relayParallelChatMessage(selectedParallelChatGroup.id, {
         activeChannelId: selectedChannel.id,
         sourceChannelId: selectedChannel.id,
         sourceMessageId: messageId,
@@ -993,7 +993,7 @@ export default function App() {
     }
   }, [
     selectedChannel,
-    selectedConcurrentGroup,
+    selectedParallelChatGroup,
     setBusy,
     setFeedback,
     setState,
@@ -1079,9 +1079,9 @@ export default function App() {
         onSelect={onSelect}
         onDeleteChannel={onDeleteChannel}
         onRenameChannel={onRenameChannel}
-        onRenameConcurrentGroup={onRenameConcurrentGroup}
-        onUngroupConcurrentGroup={onUngroupConcurrentGroup}
-        onDeleteConcurrentGroup={onDeleteConcurrentGroup}
+        onRenameParallelChatGroup={onRenameParallelChatGroup}
+        onUngroupParallelChatGroup={onUngroupParallelChatGroup}
+        onDeleteParallelChatGroup={onDeleteParallelChatGroup}
         onArchiveCat={onArchiveCat}
         onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
         onOverflowMenuToggle={setOverflowMenuOpenId}
@@ -1148,7 +1148,7 @@ export default function App() {
               onModelChange:
                 selectedChannel?.composerMode === 'solo' ? setSoloChannelModel : undefined,
               onDirectLaneModelChange: onDirectLaneModelSave,
-              compareGroup: selectedConcurrentGroup,
+              compareGroup: selectedParallelChatGroup,
               compareSendScope,
               onCompareSendScopeChange: setCompareSendScope,
               onRelayMessage: onRelayCompareMessage,
@@ -1193,10 +1193,10 @@ export default function App() {
               draftCatModelOverrides,
               onDraftCatModelOverride,
               onDirectLaneModelChange: onDirectLaneModelSave,
-              parallelTargets: showingParallelChatDraft ? draftConcurrentTargets : undefined,
-              onParallelTargetChange: showingParallelChatDraft ? onDraftConcurrentTargetChange : undefined,
-              onAddParallelTarget: showingParallelChatDraft ? onAddDraftConcurrentTarget : undefined,
-              onRemoveParallelTarget: showingParallelChatDraft ? onRemoveDraftConcurrentTarget : undefined,
+              parallelTargets: showingParallelChatDraft ? draftParallelChatTargets : undefined,
+              onParallelTargetChange: showingParallelChatDraft ? onDraftParallelChatTargetChange : undefined,
+              onAddParallelTarget: showingParallelChatDraft ? onAddDraftParallelChatTarget : undefined,
+              onRemoveParallelTarget: showingParallelChatDraft ? onRemoveDraftParallelChatTarget : undefined,
             }}
             addCatOpen={showAddCatPanel}
             onToggleAddCat={toggleAddCatPanel}

@@ -36,7 +36,7 @@ test('shouldConnectLiveIndicatorStream requires an active send on a real channel
 
 test('shouldConnectLiveIndicatorStream ignores parallel relay busy state on the source channel', () => {
   assert.equal(
-    shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', 'concurrent:relay'),
+    shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', 'parallelChat:relay'),
     false,
   );
 });
@@ -44,15 +44,15 @@ test('shouldConnectLiveIndicatorStream ignores parallel relay busy state on the 
 test('shouldConnectLiveIndicatorStream only follows concurrent dispatch for running member channels', () => {
   const channelId = '12345678-1234-4234-8234-123456789abc';
   assert.equal(
-    shouldConnectLiveIndicatorStream(channelId, 'concurrent:dispatch'),
+    shouldConnectLiveIndicatorStream(channelId, 'parallelChat:dispatch'),
     false,
   );
   assert.equal(
-    shouldConnectLiveIndicatorStream(channelId, 'concurrent:dispatch', 'idle'),
+    shouldConnectLiveIndicatorStream(channelId, 'parallelChat:dispatch', 'idle'),
     false,
   );
   assert.equal(
-    shouldConnectLiveIndicatorStream(channelId, 'concurrent:dispatch', 'running'),
+    shouldConnectLiveIndicatorStream(channelId, 'parallelChat:dispatch', 'running'),
     true,
   );
 });

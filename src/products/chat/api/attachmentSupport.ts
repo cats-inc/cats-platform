@@ -7,9 +7,9 @@ import {
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
 } from '../state/workspace.js';
-import type { SendConcurrentChatMessageInput, ChatState } from './contracts.js';
+import type { SendParallelChatMessageInput, ChatState } from './contracts.js';
 
-type EncodedAttachmentInput = NonNullable<SendConcurrentChatMessageInput['attachments']>[number];
+type EncodedAttachmentInput = NonNullable<SendParallelChatMessageInput['attachments']>[number];
 
 export interface StoredChannelAttachment {
   name: string;

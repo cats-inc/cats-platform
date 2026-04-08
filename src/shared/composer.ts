@@ -27,12 +27,12 @@ export function isComposerBusy(busy: string | null | undefined): boolean {
   return (
     normalizedBusy === 'message:prepare'
     || normalizedBusy.startsWith('message:ack:')
-    || normalizedBusy === 'concurrent:ack'
+    || normalizedBusy === 'parallelChat:ack'
     || normalizedBusy.startsWith('message:send:')
-    || normalizedBusy === 'concurrent:dispatch'
-    || normalizedBusy === 'concurrent:relay'
+    || normalizedBusy === 'parallelChat:dispatch'
+    || normalizedBusy === 'parallelChat:relay'
     || normalizedBusy.startsWith('message:stop:')
-    || normalizedBusy === 'concurrent:stop'
+    || normalizedBusy === 'parallelChat:stop'
   );
 }
 
@@ -41,18 +41,18 @@ export function isComposerAckBusy(busy: string | null | undefined): boolean {
   return (
     normalizedBusy === 'message:prepare'
     || normalizedBusy.startsWith('message:ack:')
-    || normalizedBusy === 'concurrent:ack'
+    || normalizedBusy === 'parallelChat:ack'
   );
 }
 
 export function isComposerDispatchBusy(busy: string | null | undefined): boolean {
   const normalizedBusy = normalizeComposerBusy(busy);
-  return normalizedBusy.startsWith('message:send') || normalizedBusy === 'concurrent:dispatch';
+  return normalizedBusy.startsWith('message:send') || normalizedBusy === 'parallelChat:dispatch';
 }
 
 export function isComposerStopBusy(busy: string | null | undefined): boolean {
   const normalizedBusy = normalizeComposerBusy(busy);
-  return normalizedBusy.startsWith('message:stop:') || normalizedBusy === 'concurrent:stop';
+  return normalizedBusy.startsWith('message:stop:') || normalizedBusy === 'parallelChat:stop';
 }
 
 export function isComposerSelectionBlocked(busy: string | null | undefined): boolean {
@@ -60,9 +60,9 @@ export function isComposerSelectionBlocked(busy: string | null | undefined): boo
   return (
     normalizedBusy === 'message:prepare'
     || normalizedBusy.startsWith('message:ack:')
-    || normalizedBusy === 'concurrent:ack'
+    || normalizedBusy === 'parallelChat:ack'
     || normalizedBusy.startsWith('message:stop:')
-    || normalizedBusy === 'concurrent:stop'
+    || normalizedBusy === 'parallelChat:stop'
   );
 }
 

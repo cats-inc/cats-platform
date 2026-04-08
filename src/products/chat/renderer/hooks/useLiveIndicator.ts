@@ -39,7 +39,7 @@ function isDispatchBusyForCurrentChannel(
     return targetedChannelId === channelId;
   }
 
-  return busy === 'concurrent:dispatch' && routingStatus === 'running';
+  return busy === 'parallelChat:dispatch' && routingStatus === 'running';
 }
 
 export function shouldConnectLiveIndicatorStream(

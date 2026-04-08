@@ -8,7 +8,7 @@ import type {
   ChatChannelState,
   ChatMessage,
   ChatState,
-  ConcurrentChatGroupState,
+  ParallelChatGroupState,
   GlobalOrchestratorSummary,
   NewChatDefaults,
 } from '../../api/contracts.js';
@@ -433,7 +433,7 @@ export function normalizeNewChatDefaults(rawDefaults: unknown): NewChatDefaults 
   };
 }
 
-export function normalizeConcurrentChatGroup(rawGroup: unknown): ConcurrentChatGroupState | null {
+export function normalizeParallelChatGroup(rawGroup: unknown): ParallelChatGroupState | null {
   const groupRecord = asRecord(rawGroup);
   if (!groupRecord) {
     return null;

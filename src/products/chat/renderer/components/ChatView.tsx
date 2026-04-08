@@ -12,8 +12,8 @@ import type {
   AppShellPayload,
   ChatCat,
   ChatChannelView,
-  ConcurrentChatGroupSummary,
-  ConcurrentChatRelayCommandKind,
+  ParallelChatGroupSummary,
+  ParallelChatRelayCommandKind,
 } from '../../api/contracts';
 import { resolveCatStatusIndicator } from '../../shared/catStatusResolution';
 import { CatStatusRow } from './CatStatusRow';
@@ -67,7 +67,7 @@ import {
   getProviderDisplayName,
   getProviderModels,
 } from '../../../../shared/providerCatalog';
-import { buildConcurrentChatMemberLabel } from '../../shared/concurrentChats';
+import { buildParallelChatMemberLabel } from '../../shared/parallelChats';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
@@ -139,10 +139,10 @@ export interface ChatViewProps {
   showAddCatButton?: boolean;
   liveIndicator?: LiveIndicatorState;
   onToggleCompanionMode?: () => void;
-  compareGroup?: ConcurrentChatGroupSummary | null;
+  compareGroup?: ParallelChatGroupSummary | null;
   compareSendScope?: 'all_members' | 'active_only';
   onCompareSendScopeChange?: (value: 'all_members' | 'active_only') => void;
-  onRelayMessage?: (messageId: string, command: ConcurrentChatRelayCommandKind) => Promise<void>;
+  onRelayMessage?: (messageId: string, command: ParallelChatRelayCommandKind) => Promise<void>;
   onUpdateChannelParticipant?: (
     participantId: string,
     input: { name?: string; roleHint?: string | null },
@@ -270,10 +270,10 @@ export function ChatView({
     [compareMembers, payload.chat.channels],
   );
   const compareDispatchBusy =
-    busy === 'concurrent:ack'
-    || busy === 'concurrent:dispatch'
-    || busy === 'concurrent:relay'
-    || busy === 'concurrent:stop';
+    busy === 'parallelChat:ack'
+    || busy === 'parallelChat:dispatch'
+    || busy === 'parallelChat:relay'
+    || busy === 'parallelChat:stop';
   const compareRoutingBusy = compareGroupChannels.some((channel) =>
     channel.routingStatus === 'running',
   );
@@ -663,7 +663,7 @@ export function ChatView({
   const composerBusy = isComposerBusy(busy) || compareBusy;
   const composerAckBusy = isComposerAckBusy(busy);
   const composerDispatchChannelId = getComposerDispatchChannelId(busy);
-  const stopBusy = busy.startsWith('message:stop:') || busy === 'concurrent:stop';
+  const stopBusy = busy.startsWith('message:stop:') || busy === 'parallelChat:stop';
   const resumeBusy = busy === 'channel:resume';
   const canResumeChannel = !composerBusy && !resumeBusy;
   const showCancelComposerAction = composerAckBusy && onCancelPendingSend != null;
@@ -675,8 +675,8 @@ export function ChatView({
     isCompareGroup
     && onStopMessage != null
     && (
-      busy === 'concurrent:dispatch'
-      || busy === 'concurrent:stop'
+      busy === 'parallelChat:dispatch'
+      || busy === 'parallelChat:stop'
     );
   const showStopComposerAction = !showCancelComposerAction && (canStopSingleChat || canStopParallelChat);
   const comparePrevChannelId = isCompareGroup && compareMemberIndex >= 0
@@ -1490,7 +1490,7 @@ export function ChatView({
                 <div className="parallelFooterTabs" role="tablist" aria-label="Parallel chats">
                   {compareMembers.map((member) => {
                     const active = member.channelId === selectedChannel.id;
-                    const label = buildConcurrentChatMemberLabel(member);
+                    const label = buildParallelChatMemberLabel(member);
                     return (
                       <button
                         key={member.channelId}

@@ -3,20 +3,20 @@ import type {
   AppShellPayload,
   AssignChannelCatInput,
   CancelChannelResponse,
-  CancelConcurrentChatGroupInput,
-  CancelConcurrentChatGroupResponse,
+  CancelParallelChatGroupInput,
+  CancelParallelChatGroupResponse,
   ChatChannelView,
-  ConcurrentChatDispatchResponse,
-  CreateConcurrentChatGroupInput,
-  CreateConcurrentChatGroupResponse,
+  ParallelChatDispatchResponse,
+  CreateParallelChatGroupInput,
+  CreateParallelChatGroupResponse,
   CreateChatChannelInput,
-  RelayConcurrentChatMessageInput,
+  RelayParallelChatMessageInput,
   CreateCatInput,
-  SendConcurrentChatMessageInput,
+  SendParallelChatMessageInput,
   SendChannelMessageInput,
   SendChannelMessageResponse,
   UpdateChannelParticipantInput,
-  UpdateConcurrentChatGroupInput,
+  UpdateParallelChatGroupInput,
 } from '../../api/contracts';
 
 import { fetchAppShell, refetchAfterMutation } from './appShell.js';
@@ -249,7 +249,7 @@ export async function uploadChannelAttachments(
 
 export async function encodeAttachmentFiles(
   files: File[],
-): Promise<NonNullable<SendConcurrentChatMessageInput['attachments']>> {
+): Promise<NonNullable<SendParallelChatMessageInput['attachments']>> {
   return Promise.all(
     files.map(async (file) => {
       const buffer = await file.arrayBuffer();
@@ -311,10 +311,10 @@ export async function cancelChatChannel(
   );
 }
 
-export async function createConcurrentChatGroup(
-  input: CreateConcurrentChatGroupInput,
+export async function createParallelChatGroup(
+  input: CreateParallelChatGroupInput,
   signal?: AbortSignal,
-): Promise<CreateConcurrentChatGroupResponse> {
+): Promise<CreateParallelChatGroupResponse> {
   const response = await fetch('/api/concurrent-groups', {
     method: 'POST',
     headers: {
@@ -325,17 +325,17 @@ export async function createConcurrentChatGroup(
     signal,
   });
 
-  return expectJson<CreateConcurrentChatGroupResponse>(
+  return expectJson<CreateParallelChatGroupResponse>(
     response,
     `parallel chat creation returned ${response.status}`,
   );
 }
 
-export async function sendConcurrentChatMessage(
+export async function sendParallelChatMessage(
   groupId: string,
-  input: SendConcurrentChatMessageInput,
+  input: SendParallelChatMessageInput,
   signal?: AbortSignal,
-): Promise<ConcurrentChatDispatchResponse> {
+): Promise<ParallelChatDispatchResponse> {
   const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/messages`, {
     method: 'POST',
     headers: {
@@ -346,17 +346,17 @@ export async function sendConcurrentChatMessage(
     signal,
   });
 
-  return expectJson<ConcurrentChatDispatchResponse>(
+  return expectJson<ParallelChatDispatchResponse>(
     response,
     `parallel chat dispatch returned ${response.status}`,
   );
 }
 
-export async function relayConcurrentChatMessage(
+export async function relayParallelChatMessage(
   groupId: string,
-  input: RelayConcurrentChatMessageInput,
+  input: RelayParallelChatMessageInput,
   signal?: AbortSignal,
-): Promise<ConcurrentChatDispatchResponse> {
+): Promise<ParallelChatDispatchResponse> {
   const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/relay`, {
     method: 'POST',
     headers: {
@@ -367,17 +367,17 @@ export async function relayConcurrentChatMessage(
     signal,
   });
 
-  return expectJson<ConcurrentChatDispatchResponse>(
+  return expectJson<ParallelChatDispatchResponse>(
     response,
     `parallel chat relay returned ${response.status}`,
   );
 }
 
-export async function cancelConcurrentChatGroup(
+export async function cancelParallelChatGroup(
   groupId: string,
-  input: CancelConcurrentChatGroupInput,
+  input: CancelParallelChatGroupInput,
   signal?: AbortSignal,
-): Promise<CancelConcurrentChatGroupResponse> {
+): Promise<CancelParallelChatGroupResponse> {
   const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/cancel`, {
     method: 'POST',
     headers: {
@@ -388,15 +388,15 @@ export async function cancelConcurrentChatGroup(
     signal,
   });
 
-  return expectJson<CancelConcurrentChatGroupResponse>(
+  return expectJson<CancelParallelChatGroupResponse>(
     response,
     `parallel chat cancel returned ${response.status}`,
   );
 }
 
-export async function renameConcurrentChatGroup(
+export async function renameParallelChatGroup(
   groupId: string,
-  input: UpdateConcurrentChatGroupInput,
+  input: UpdateParallelChatGroupInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
   const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}`, {
@@ -416,7 +416,7 @@ export async function renameConcurrentChatGroup(
   );
 }
 
-export async function ungroupConcurrentChatGroup(
+export async function ungroupParallelChatGroup(
   groupId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
@@ -435,7 +435,7 @@ export async function ungroupConcurrentChatGroup(
   );
 }
 
-export async function deleteConcurrentChatGroup(
+export async function deleteParallelChatGroup(
   groupId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {

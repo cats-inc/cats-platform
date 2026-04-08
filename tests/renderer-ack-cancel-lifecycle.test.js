@@ -14,11 +14,11 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
   assert.match(source, /const ackController = new AbortController\(\);/u);
   assert.match(source, /createChatChannel\([\s\S]+ackController\.signal\)/u);
   assert.match(source, /sendChatMessage\([\s\S]+ackController\.signal\)/u);
-  assert.match(source, /sendConcurrentChatMessage\([\s\S]+ackController\.signal\)/u);
+  assert.match(source, /sendParallelChatMessage\([\s\S]+ackController\.signal\)/u);
   assert.match(source, /const onCancelPendingSend = useCallback/u);
   assert.match(source, /activeRequest\.controller\.abort\(\);/u);
   assert.match(source, /const onStopMessage = useCallback\(async/u);
-  assert.match(source, /cancelConcurrentChatGroup/u);
+  assert.match(source, /cancelParallelChatGroup/u);
   assert.match(source, /cancelChatChannel/u);
 });
 

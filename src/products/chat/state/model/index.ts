@@ -2,7 +2,7 @@ import type {
   AssignChannelCatInput,
   ChannelCatAssignment,
   ChannelParticipantAssignment,
-  CreateConcurrentChatGroupInput,
+  CreateParallelChatGroupInput,
   CreateChatChannelInput,
   MessageUsageSummary,
   NewChatDefaults,
@@ -34,7 +34,7 @@ import {
   resolveParticipantExecutionAssignments,
 } from '../../shared/channelParticipants.js';
 import { resolveTemporaryParticipantName } from '../../shared/participantNaming.js';
-import { buildConcurrentChatMemberLabel } from '../../shared/concurrentChats.js';
+import { buildParallelChatMemberLabel } from '../../shared/parallelChats.js';
 import { createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   applyMessageToChannel,
@@ -113,7 +113,7 @@ export function renameChannel(
   const nextTitle = title.trim() || channel.title;
   channel.title = nextTitle;
   channel.updatedAt = isoAt(now);
-  for (const group of nextState.concurrentGroups) {
+  for (const group of nextState.parallelChatGroups) {
     if (group.memberChannelIds.includes(channelId)) {
       group.title = nextTitle;
       group.updatedAt = channel.updatedAt;
@@ -122,16 +122,16 @@ export function renameChannel(
   return nextState;
 }
 
-export function renameConcurrentGroup(
+export function renameParallelChatGroup(
   state: ChatState,
   groupId: string,
   title: string,
   now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
-  const group = nextState.concurrentGroups.find((candidate) => candidate.id === groupId);
+  const group = nextState.parallelChatGroups.find((candidate) => candidate.id === groupId);
   if (!group) {
-    throw new Error(`Concurrent group not found: ${groupId}`);
+    throw new Error(`Parallel chat group not found: ${groupId}`);
   }
 
   const nextTitle = title.trim() || group.title;
@@ -149,18 +149,18 @@ export function renameConcurrentGroup(
   return nextState;
 }
 
-export function ungroupConcurrentGroup(
+export function ungroupParallelChatGroup(
   state: ChatState,
   groupId: string,
   now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
-  const groupIndex = nextState.concurrentGroups.findIndex((group) => group.id === groupId);
+  const groupIndex = nextState.parallelChatGroups.findIndex((group) => group.id === groupId);
   if (groupIndex === -1) {
-    throw new Error(`Concurrent group not found: ${groupId}`);
+    throw new Error(`Parallel chat group not found: ${groupId}`);
   }
 
-  const group = nextState.concurrentGroups[groupIndex]!;
+  const group = nextState.parallelChatGroups[groupIndex]!;
   const updatedAt = isoAt(now);
   const normalizedGroupTitle = group.title.trim();
 
@@ -174,7 +174,7 @@ export function ungroupConcurrentGroup(
       continue;
     }
 
-    channel.title = buildConcurrentChatMemberLabel({
+    channel.title = buildParallelChatMemberLabel({
       provider: channel.pendingProvider ?? nextState.globalOrchestrator.executionTarget.provider,
       instance:
         channel.pendingInstance
@@ -192,23 +192,23 @@ export function ungroupConcurrentGroup(
     channel.updatedAt = updatedAt;
   }
 
-  nextState.concurrentGroups.splice(groupIndex, 1);
+  nextState.parallelChatGroups.splice(groupIndex, 1);
   return nextState;
 }
 
-export function deleteConcurrentGroup(
+export function deleteParallelChatGroup(
   state: ChatState,
   groupId: string,
 ): ChatState {
   const nextState = cloneState(state);
-  const group = nextState.concurrentGroups.find((candidate) => candidate.id === groupId);
+  const group = nextState.parallelChatGroups.find((candidate) => candidate.id === groupId);
   if (!group) {
-    throw new Error(`Concurrent group not found: ${groupId}`);
+    throw new Error(`Parallel chat group not found: ${groupId}`);
   }
 
   const deletedChannelIds = new Set(group.memberChannelIds);
   nextState.channels = nextState.channels.filter((channel) => !deletedChannelIds.has(channel.id));
-  nextState.concurrentGroups = nextState.concurrentGroups.filter((candidate) => candidate.id !== groupId);
+  nextState.parallelChatGroups = nextState.parallelChatGroups.filter((candidate) => candidate.id !== groupId);
 
   if (deletedChannelIds.has(nextState.selectedChannelId)) {
     nextState.selectedChannelId = nextState.channels[0]?.id ?? '';
@@ -222,7 +222,7 @@ export function deleteChannel(
   channelId: string,
 ): ChatState {
   const nextState = cloneState(state);
-  const groupSiblingChannelId = nextState.concurrentGroups.find((group) =>
+  const groupSiblingChannelId = nextState.parallelChatGroups.find((group) =>
     group.memberChannelIds.includes(channelId),
   )?.memberChannelIds.find((memberChannelId) => memberChannelId !== channelId) ?? '';
   const index = findChannelIndex(nextState, channelId);
@@ -231,7 +231,7 @@ export function deleteChannel(
   }
 
   nextState.channels.splice(index, 1);
-  nextState.concurrentGroups = nextState.concurrentGroups
+  nextState.parallelChatGroups = nextState.parallelChatGroups
     .map((group) => ({
       ...group,
       memberChannelIds: group.memberChannelIds.filter((memberChannelId) => memberChannelId !== channelId),
@@ -245,13 +245,13 @@ export function deleteChannel(
   return nextState;
 }
 
-export function touchConcurrentGroup(
+export function touchParallelChatGroup(
   state: ChatState,
   groupId: string,
   nowIso: string,
   lastMessageAt: string | null,
 ): void {
-  const group = state.concurrentGroups.find((candidate) => candidate.id === groupId);
+  const group = state.parallelChatGroups.find((candidate) => candidate.id === groupId);
   if (!group) {
     return;
   }
@@ -260,16 +260,16 @@ export function touchConcurrentGroup(
   group.lastMessageAt = lastMessageAt;
 }
 
-export function findConcurrentGroupByChannelId(
+export function findParallelChatGroupByChannelId(
   state: ChatState,
   channelId: string,
-): ChatState['concurrentGroups'][number] | null {
-  return state.concurrentGroups.find((group) => group.memberChannelIds.includes(channelId)) ?? null;
+): ChatState['parallelChatGroups'][number] | null {
+  return state.parallelChatGroups.find((group) => group.memberChannelIds.includes(channelId)) ?? null;
 }
 
-export function createConcurrentGroup(
+export function createParallelChatGroup(
   state: ChatState,
-  input: CreateConcurrentChatGroupInput,
+  input: CreateParallelChatGroupInput,
   now: Date = new Date(),
 ): ChatState {
   if (input.targets.length < 2) {
@@ -300,7 +300,7 @@ export function createConcurrentGroup(
     memberChannelIds.unshift(nextState.selectedChannelId);
   }
 
-  nextState.concurrentGroups.unshift({
+  nextState.parallelChatGroups.unshift({
     id: createChannelId(),
     title: input.title.trim() || 'Parallel chat',
     mode: 'parallel',
@@ -330,7 +330,7 @@ function describeCreatedRoom(
   }
 
   if (channel.composerMode === 'solo' && channel.pendingProvider) {
-    return `solo chat with ${buildConcurrentChatMemberLabel({
+    return `solo chat with ${buildParallelChatMemberLabel({
       provider: channel.pendingProvider,
       instance: channel.pendingInstance,
       model: channel.pendingModel,

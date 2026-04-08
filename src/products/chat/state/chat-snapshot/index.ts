@@ -51,7 +51,7 @@ import {
   normalizeCapabilities,
   normalizeChannel,
   normalizeChatCat,
-  normalizeConcurrentChatGroup,
+  normalizeParallelChatGroup,
   normalizeGlobalOrchestrator,
   normalizeNewChatDefaults,
 } from './entities.js';
@@ -82,9 +82,14 @@ export function normalizeChatState(rawState: unknown): ChatState {
         .map((channel) => normalizeChannel(channel, catsById))
         .filter((channel): channel is ChatChannelState => channel !== null)
     : fallback.channels;
-  const normalizedConcurrentGroups = Array.isArray(stateRecord.concurrentGroups)
-    ? stateRecord.concurrentGroups
-        .map((group) => normalizeConcurrentChatGroup(group))
+  const rawParallelChatGroups = Array.isArray(stateRecord.parallelChatGroups)
+    ? stateRecord.parallelChatGroups
+    : Array.isArray((stateRecord as Record<string, unknown>).concurrentGroups)
+      ? (stateRecord as Record<string, unknown>).concurrentGroups as unknown[]
+      : null;
+  const normalizedParallelChatGroups = rawParallelChatGroups
+    ? rawParallelChatGroups
+        .map((group) => normalizeParallelChatGroup(group))
         .filter((group): group is NonNullable<typeof group> => group !== null)
         .map((group) => ({
           ...group,
@@ -108,7 +113,7 @@ export function normalizeChatState(rawState: unknown): ChatState {
     bossCatId: readNullableString(stateRecord.bossCatId),
     cats: Array.from(catsById.values()),
     channels: normalizedChannels.length > 0 ? normalizedChannels : fallback.channels,
-    concurrentGroups: normalizedConcurrentGroups,
+    parallelChatGroups: normalizedParallelChatGroups,
     globalOrchestrator: normalizeGlobalOrchestrator(stateRecord.globalOrchestrator),
     newChatDefaults: normalizeNewChatDefaults(stateRecord.newChatDefaults),
     capabilities: normalizeCapabilities(stateRecord.capabilities),

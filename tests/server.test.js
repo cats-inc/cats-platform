@@ -5341,7 +5341,7 @@ test('ungrouping a parallel chat materializes member chats as standalone recents
     assert.equal(appShellResponse.status, 200);
     const payload = await appShellResponse.json();
 
-    assert.equal(payload.chat.concurrentGroups.length, 0);
+    assert.equal(payload.chat.parallelChatGroups.length, 0);
     const memberTitles = payload.chat.channels
       .filter((channel) => memberChannelIds.includes(channel.id))
       .map((channel) => channel.title);

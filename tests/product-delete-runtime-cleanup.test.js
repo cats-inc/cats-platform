@@ -11,7 +11,7 @@ import {
   assignCatToChannel,
   createCat,
   createChannel,
-  createConcurrentGroup,
+  createParallelChatGroup,
   setChannelCatLease,
   setChannelOrchestratorLease,
   setChannelParticipantLease,
@@ -343,15 +343,15 @@ test('DELETE /api/concurrent-groups/:id deletes member chat runtime sessions by 
   const chatStore = new MemoryChatStore();
   const now = new Date('2026-04-02T12:00:00.000Z');
   let state = await chatStore.read();
-  state = createConcurrentGroup(state, {
+  state = createParallelChatGroup(state, {
     title: 'Parallel Cleanup',
     targets: [
       { provider: 'claude' },
       { provider: 'codex' },
     ],
   }, now);
-  const groupId = state.concurrentGroups[0].id;
-  const [firstChannelId, secondChannelId] = state.concurrentGroups[0].memberChannelIds;
+  const groupId = state.parallelChatGroups[0].id;
+  const [firstChannelId, secondChannelId] = state.parallelChatGroups[0].memberChannelIds;
   state = setChannelOrchestratorLease(state, firstChannelId, {
     status: 'ready',
     sessionId: 'session-parallel-1',
@@ -377,7 +377,7 @@ test('DELETE /api/concurrent-groups/:id deletes member chat runtime sessions by 
     );
 
     const persisted = await store.read();
-    assert.equal(persisted.concurrentGroups.length, 0);
+    assert.equal(persisted.parallelChatGroups.length, 0);
     assert.equal(persisted.channels.length, 0);
   }, { chatStore });
 });

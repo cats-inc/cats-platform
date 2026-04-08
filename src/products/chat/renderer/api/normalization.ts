@@ -348,8 +348,8 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
     });
   }
 
-  if (!Array.isArray(chatState.concurrentGroups)) {
-    chatState.concurrentGroups = [];
+  if (!Array.isArray(chatState.parallelChatGroups)) {
+    chatState.parallelChatGroups = [];
   }
 
   return nextPayload;

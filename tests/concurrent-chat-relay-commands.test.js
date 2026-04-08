@@ -2,25 +2,25 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  buildConcurrentRelayIncomingNote,
-  buildConcurrentRelayOutgoingNote,
-  buildConcurrentRelayPrompt,
-  normalizeConcurrentRelayCommand,
-} from '../build/server/products/chat/shared/concurrentChats.js';
+  buildParallelChatRelayIncomingNote,
+  buildParallelChatRelayOutgoingNote,
+  buildParallelChatRelayPrompt,
+  normalizeParallelChatRelayCommand,
+} from '../build/server/products/chat/shared/parallelChats.js';
 
-test('normalizeConcurrentRelayCommand accepts current supported relay commands', () => {
-  assert.equal(normalizeConcurrentRelayCommand('improve_this'), 'improve_this');
+test('normalizeParallelChatRelayCommand accepts current supported relay commands', () => {
+  assert.equal(normalizeParallelChatRelayCommand('improve_this'), 'improve_this');
 });
 
-test('normalizeConcurrentRelayCommand rejects unsupported relay commands', () => {
-  assert.equal(normalizeConcurrentRelayCommand('build_on_this'), null);
-  assert.equal(normalizeConcurrentRelayCommand('bogus_command'), null);
-  assert.equal(normalizeConcurrentRelayCommand(''), null);
+test('normalizeParallelChatRelayCommand rejects unsupported relay commands', () => {
+  assert.equal(normalizeParallelChatRelayCommand('build_on_this'), null);
+  assert.equal(normalizeParallelChatRelayCommand('bogus_command'), null);
+  assert.equal(normalizeParallelChatRelayCommand(''), null);
 });
 
-test('buildConcurrentRelayPrompt throws for unsupported relay commands', () => {
+test('buildParallelChatRelayPrompt throws for unsupported relay commands', () => {
   assert.throws(
-    () => buildConcurrentRelayPrompt({
+    () => buildParallelChatRelayPrompt({
       command: 'bogus_command',
       sourceMemberLabel: 'Claude · opus',
       sourceBody: 'Test body',
@@ -29,8 +29,8 @@ test('buildConcurrentRelayPrompt throws for unsupported relay commands', () => {
   );
 });
 
-test('buildConcurrentRelayPrompt escapes quoted mentions so relay routing does not parse them', () => {
-  const prompt = buildConcurrentRelayPrompt({
+test('buildParallelChatRelayPrompt escapes quoted mentions so relay routing does not parse them', () => {
+  const prompt = buildParallelChatRelayPrompt({
     command: 'check_this',
     sourceMemberLabel: 'Claude · opus',
     sourceBody: 'Check what @anthropic-ai suggested and compare with @OpenAI.',
@@ -42,9 +42,9 @@ test('buildConcurrentRelayPrompt escapes quoted mentions so relay routing does n
   assert.equal(prompt.includes('@\u200BOpenAI'), true);
 });
 
-test('buildConcurrentRelayOutgoingNote records which reply, command, and targets were shared', () => {
+test('buildParallelChatRelayOutgoingNote records which reply, command, and targets were shared', () => {
   assert.equal(
-    buildConcurrentRelayOutgoingNote({
+    buildParallelChatRelayOutgoingNote({
       command: 'improve_this',
       sourceMessageId: '1234567890abcdef',
       targetMemberLabels: ['Gemini-CLI', 'Codex-CLI'],
@@ -53,9 +53,9 @@ test('buildConcurrentRelayOutgoingNote records which reply, command, and targets
   );
 });
 
-test('buildConcurrentRelayIncomingNote records which command was received from which source', () => {
+test('buildParallelChatRelayIncomingNote records which command was received from which source', () => {
   assert.equal(
-    buildConcurrentRelayIncomingNote({
+    buildParallelChatRelayIncomingNote({
       command: 'synthesize_this',
       sourceMessageId: '1234567890abcdef',
       sourceMemberLabel: 'Claude-CLI',

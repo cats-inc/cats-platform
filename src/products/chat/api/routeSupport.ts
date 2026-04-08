@@ -34,10 +34,10 @@ import {
   createChannel,
   createCat,
   deleteChannel,
-  deleteConcurrentGroup,
+  deleteParallelChatGroup,
   deleteCat,
   renameChannel,
-  renameConcurrentGroup,
+  renameParallelChatGroup,
   exportChannel,
   requireChannel,
   requireCat,
@@ -48,7 +48,7 @@ import {
   setChannelChatCwd,
   updateChannelParticipantProfile,
   setChannelStatus,
-  ungroupConcurrentGroup,
+  ungroupParallelChatGroup,
 } from '../state/model/index.js';
 import {
   channelDispatchCancellationRegistry,
@@ -220,7 +220,7 @@ export function handleRestError(
     sendRestError(context, 404, 'channel_not_found', message);
     return;
   }
-  if (message.startsWith('Concurrent group not found:')) {
+  if (message.startsWith('Parallel chat group not found:')) {
     sendRestError(context, 404, 'concurrent_group_not_found', message);
     return;
   }
@@ -900,13 +900,13 @@ export async function persistUpdatedChannelParticipant(
   return context.dependencies.chatStore.write(nextState);
 }
 
-export async function persistRenamedConcurrentGroup(
+export async function persistRenamedParallelChatGroup(
   context: ChatApiRouteContext,
   groupId: string,
   title: string,
 ): Promise<ChatState> {
   const currentState = await context.dependencies.chatStore.read();
-  const nextState = renameConcurrentGroup(
+  const nextState = renameParallelChatGroup(
     currentState,
     groupId,
     title,
@@ -915,22 +915,22 @@ export async function persistRenamedConcurrentGroup(
   return context.dependencies.chatStore.write(nextState);
 }
 
-export async function persistUngroupedConcurrentGroup(
+export async function persistUngroupedParallelChatGroup(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<ChatState> {
   const currentState = await context.dependencies.chatStore.read();
-  return context.dependencies.chatStore.write(ungroupConcurrentGroup(currentState, groupId));
+  return context.dependencies.chatStore.write(ungroupParallelChatGroup(currentState, groupId));
 }
 
-export async function persistDeletedConcurrentGroup(
+export async function persistDeletedParallelChatGroup(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<ChatState> {
   const currentState = await context.dependencies.chatStore.read();
-  const group = currentState.concurrentGroups.find((candidate) => candidate.id === groupId);
+  const group = currentState.parallelChatGroups.find((candidate) => candidate.id === groupId);
   if (!group) {
-    throw new Error(`Concurrent group not found: ${groupId}`);
+    throw new Error(`Parallel chat group not found: ${groupId}`);
   }
 
   await cleanupSessionsForProductDelete(context, group.memberChannelIds.flatMap((channelId) => {
@@ -938,7 +938,7 @@ export async function persistDeletedConcurrentGroup(
     return collectLinkedChannelSessionIds(channel);
   }));
 
-  return context.dependencies.chatStore.write(deleteConcurrentGroup(currentState, groupId));
+  return context.dependencies.chatStore.write(deleteParallelChatGroup(currentState, groupId));
 }
 
 export async function persistCreatedCat(
