@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { AccountIdentityMenu } from '../../design/components/AccountIdentityMenu.js';
 import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared/platform-contract.js';
 import { LobbyBouncingCats } from './LobbyBouncingCats.js';
@@ -60,6 +61,7 @@ export function PlatformLobby({
 }) {
   const navigate = useNavigate();
   const [greeting] = useState(pickLobbyGreeting);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const entries = buildPlatformLobbyEntries({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
@@ -81,20 +83,24 @@ export function PlatformLobby({
               cats={envelope.lobby.cats}
               onSelect={(catId) => navigate(buildDirectLanePath(catId))}
             />
-            <button
-              type="button"
-              className="lobbyIdentity"
-              onClick={() => navigate('/settings/general', {
+            <AccountIdentityMenu
+              open={accountMenuOpen}
+              onOpenChange={setAccountMenuOpen}
+              onNavigateSettings={() => navigate('/settings/general', {
                 state: { platformShellSurface: envelope.lastProductSurface ?? 'chat' },
               })}
-              aria-label="Settings"
-            >
-              <span className="lobbyAvatar" style={avatarStyle}>
-                {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
-              </span>
-              <span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>
-              <span className={dotClass} />
-            </button>
+              runtimeBaseUrl={envelope.runtime.baseUrl}
+              triggerClassName="lobbyIdentity"
+              menuPlacement="below"
+              menuAlignment="end"
+              avatar={(
+                <span className="lobbyAvatar" style={avatarStyle}>
+                  {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
+                </span>
+              )}
+              meta={<span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>}
+              statusIndicator={<span className={dotClass} />}
+            />
           </div>
         </div>
 

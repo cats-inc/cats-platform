@@ -55,15 +55,12 @@ export function useAppChrome(): AppChromeController {
   const channelFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!accountMenuOpen && !overflowMenuOpenId && !plusMenuOpen && !channelPlusMenuOpen && !addCatOpen) {
+    if (!overflowMenuOpenId && !plusMenuOpen && !channelPlusMenuOpen && !addCatOpen) {
       return;
     }
 
     function handleClick(event: MouseEvent) {
       const target = event.target as Node;
-      if (accountMenuOpen && accountMenuRef.current && !accountMenuRef.current.contains(target)) {
-        setAccountMenuOpen(false);
-      }
       if (overflowMenuOpenId) {
         const menu = document.querySelector('.recentOverflowMenu') ?? document.querySelector('.myCatOverflowMenu');
         const button = (event.target as Element).closest?.('.recentOverflowButton, .myCatOverflowButton');
@@ -84,7 +81,7 @@ export function useAppChrome(): AppChromeController {
 
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [accountMenuOpen, overflowMenuOpenId, plusMenuOpen, channelPlusMenuOpen, addCatOpen]);
+  }, [overflowMenuOpenId, plusMenuOpen, channelPlusMenuOpen, addCatOpen]);
 
   useEffect(() => {
     writeSidebarOpenPreference(

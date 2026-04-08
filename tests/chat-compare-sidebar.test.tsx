@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isValidElement, type ReactNode, type RefObject } from 'react';
 
+import { AccountIdentityMenu } from '../src/design/components/AccountIdentityMenu.tsx';
 import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
 import {
   buildNewGroupChatPath,
@@ -124,50 +125,45 @@ function findButtonByLabel(
   return findButtonByLabel(children, label);
 }
 
-function findAccountMenuButtonByLabel(
+function findAccountIdentityMenu(
   node: ReactNode,
-  label: string,
-): { props: { onClick?: () => void } } {
+): { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } } {
   if (Array.isArray(node)) {
     for (const child of node) {
       try {
-        return findAccountMenuButtonByLabel(child, label);
+        return findAccountIdentityMenu(child);
       } catch {
         continue;
       }
     }
-    throw new Error(`Account menu button "${label}" not found.`);
+    throw new Error('AccountIdentityMenu not found.');
   }
 
   if (!isValidElement(node)) {
-    throw new Error(`Account menu button "${label}" not found.`);
+    throw new Error('AccountIdentityMenu not found.');
   }
 
-  if (
-    node.type === 'button'
-    && node.props.className === 'accountMenuItem'
-    && textContent(node.props.children).includes(label)
-  ) {
-    return node as { props: { onClick?: () => void } };
+  if (node.type === AccountIdentityMenu) {
+    return node as { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } };
   }
 
   const children = node.props.children;
   if (!children) {
-    throw new Error(`Account menu button "${label}" not found.`);
+    throw new Error('AccountIdentityMenu not found.');
   }
 
   if (Array.isArray(children)) {
     for (const child of children) {
       try {
-        return findAccountMenuButtonByLabel(child, label);
+        return findAccountIdentityMenu(child);
       } catch {
         continue;
       }
     }
-    throw new Error(`Account menu button "${label}" not found.`);
+    throw new Error('AccountIdentityMenu not found.');
   }
 
-  return findAccountMenuButtonByLabel(children, label);
+  return findAccountIdentityMenu(children);
 }
 
 function createChannel(
@@ -395,64 +391,41 @@ test('Sidebar exposes a dedicated Group chat primary action', () => {
   assert.deepEqual(actions, ['group']);
 });
 
-test('Sidebar account menu opens Cats Runtime at the runtime root in a new tab', () => {
-  const opened: Array<[string | undefined, string | undefined, string | undefined]> = [];
-  const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
-
-  Object.defineProperty(globalThis, 'window', {
-    configurable: true,
-    value: {
-      open(url?: string, target?: string, features?: string) {
-        opened.push([url, target, features]);
-        return null;
-      },
-    },
+test('Sidebar wires the shared account identity menu to the runtime root', () => {
+  const tree = Sidebar({
+    payload: createPayload(),
+    sidebarOpen: true,
+    accountMenuOpen: true,
+    overflowMenuOpenId: null,
+    busy: '',
+    surface: 'chats',
+    routeChannelId: 'compare-1',
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onStartNewGroupChat: () => {},
+    onStartNewParallelChat: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onRenameConcurrentGroup: () => {},
+    onUngroupConcurrentGroup: () => {},
+    onDeleteConcurrentGroup: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
   });
 
-  try {
-    const tree = Sidebar({
-      payload: createPayload(),
-      sidebarOpen: true,
-      accountMenuOpen: true,
-      overflowMenuOpenId: null,
-      busy: '',
-      surface: 'chats',
-      routeChannelId: 'compare-1',
-      accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
-      onToggleSidebar: () => {},
-      onCollapsedSidebarClick: () => {},
-      onOpenChatsOverview: () => {},
-      onStartNewChat: () => {},
-      onStartNewGroupChat: () => {},
-      onStartNewParallelChat: () => {},
-      onSelect: () => {},
-      onDeleteChannel: () => {},
-      onRenameChannel: () => {},
-      onRenameConcurrentGroup: () => {},
-      onUngroupConcurrentGroup: () => {},
-      onDeleteConcurrentGroup: () => {},
-      onArchiveCat: () => {},
-      onAccountMenuToggle: () => {},
-      onOverflowMenuToggle: () => {},
-      onNavigateSettings: () => {},
-      onSwitchProduct: () => {},
-      activeMyCatId: null,
-      onDirectChatCat: () => {},
-    });
-
-    const runtimeButton = findAccountMenuButtonByLabel(tree, 'Cats Runtime');
-    runtimeButton.props.onClick?.();
-
-    assert.deepEqual(opened, [
-      ['http://localhost:8484/', '_blank', 'noopener,noreferrer'],
-    ]);
-  } finally {
-    if (originalWindowDescriptor) {
-      Object.defineProperty(globalThis, 'window', originalWindowDescriptor);
-    } else {
-      delete (globalThis as { window?: Window }).window;
-    }
-  }
+  const accountMenu = findAccountIdentityMenu(tree);
+  assert.equal(accountMenu.props.open, true);
+  assert.equal(accountMenu.props.runtimeBaseUrl, 'http://localhost:8484');
+  assert.equal(accountMenu.props.menuWidth, 'trigger');
 });
 
 test('new-chat route helpers keep group and parallel entry intents explicit', () => {

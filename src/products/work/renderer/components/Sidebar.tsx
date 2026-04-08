@@ -17,7 +17,7 @@ import {
 import { isDirectLaneSummary } from '../../shared/channelTopology';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolvePlatformSurfaceFromPath } from '../../../../core/platformSurface.js';
-import { openCatsRuntimeRoot } from '../../../../shared/catsRuntimeLink.js';
+import { AccountIdentityMenu } from '../../../../design/components/AccountIdentityMenu.js';
 import { PlatformSurfaceSwitcher } from '../../../../design/components/PlatformSurfaceSwitcher.js';
 
 export type SidebarViewMode = 'latest' | 'by_cat' | 'by_chat_type';
@@ -437,10 +437,14 @@ export function Sidebar({
     return renderChannelList(recentsChannels);
   }
 
-  function handleOpenCatsRuntime(): void {
-    onAccountMenuToggle();
-    openCatsRuntimeRoot(payload.runtime.baseUrl);
+  function handleAccountMenuOpenChange(nextOpen: boolean): void {
+    if (nextOpen !== accountMenuOpen) {
+      onAccountMenuToggle();
+    }
   }
+
+  const runtimeFooterStatus = resolveRuntimeFooterStatus(payload);
+  const runtimeFooterLabel = runtimeFooterStatusLabel(runtimeFooterStatus);
 
   return (
     <aside
@@ -563,13 +567,16 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="sidebarFooter" ref={accountMenuRef}>
-        <button
-          className="sidebarFooterButton"
-          type="button"
-          onClick={onAccountMenuToggle}
-          aria-label="Account menu"
-        >
+      <AccountIdentityMenu
+        open={accountMenuOpen}
+        onOpenChange={handleAccountMenuOpenChange}
+        onNavigateSettings={onNavigateSettings}
+        runtimeBaseUrl={payload.runtime.baseUrl}
+        containerClassName="sidebarFooter"
+        triggerClassName="sidebarFooterButton"
+        menuWidth="trigger"
+        rootRef={accountMenuRef}
+        avatar={(
           <div
             className="profileBadge"
             style={payload.ownerAvatarUrl
@@ -578,34 +585,20 @@ export function Sidebar({
           >
             {payload.ownerAvatarUrl ? null : catInitials(payload.ownerDisplayName)}
           </div>
+        )}
+        meta={(
           <div className="sidebarFooterMeta">
             <strong>{payload.ownerDisplayName}</strong>
           </div>
+        )}
+        statusIndicator={(
           <span
-            className={runtimeFooterStatusClassName(resolveRuntimeFooterStatus(payload))}
-            data-tooltip={runtimeFooterStatusLabel(resolveRuntimeFooterStatus(payload))}
-            aria-label={runtimeFooterStatusLabel(resolveRuntimeFooterStatus(payload))}
+            className={runtimeFooterStatusClassName(runtimeFooterStatus)}
+            data-tooltip={runtimeFooterLabel}
+            aria-label={runtimeFooterLabel}
           />
-        </button>
-        {accountMenuOpen ? (
-          <div className="accountMenu">
-            <button
-              className="accountMenuItem"
-              type="button"
-              onClick={onNavigateSettings}
-            >
-              Settings
-            </button>
-            <button
-              className="accountMenuItem"
-              type="button"
-              onClick={handleOpenCatsRuntime}
-            >
-              Cats Runtime
-            </button>
-          </div>
-        ) : null}
-      </div>
+        )}
+      />
     </aside>
   );
 }

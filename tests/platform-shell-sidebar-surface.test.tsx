@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isValidElement, type ReactNode, type RefObject } from 'react';
 
+import { AccountIdentityMenu } from '../src/design/components/AccountIdentityMenu.tsx';
 import { PlatformSurfaceSwitcher } from '../src/design/components/PlatformSurfaceSwitcher.tsx';
 import { Sidebar as WorkSidebar } from '../src/products/work/renderer/components/Sidebar.tsx';
 import { Sidebar as CodeSidebar } from '../src/products/code/renderer/components/Sidebar.tsx';
@@ -142,20 +143,29 @@ function findSurfaceSwitcherActiveSurface(node: ReactNode): PlatformSurfaceId {
   return findSurfaceSwitcherActiveSurface(node.props.children);
 }
 
-function textContent(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-
+function findAccountIdentityMenu(
+  node: ReactNode,
+): { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } } {
   if (Array.isArray(node)) {
-    return node.map((child) => textContent(child)).join(' ');
+    for (const child of node) {
+      try {
+        return findAccountIdentityMenu(child);
+      } catch {
+        continue;
+      }
+    }
+    throw new Error('AccountIdentityMenu not found.');
   }
 
   if (!isValidElement(node)) {
-    return '';
+    throw new Error('AccountIdentityMenu not found.');
   }
 
-  return textContent(node.props.children);
+  if (node.type === AccountIdentityMenu) {
+    return node as { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } };
+  }
+
+  return findAccountIdentityMenu(node.props.children);
 }
 
 function withLocationPathname(pathname: string, run: () => void): void {
@@ -298,6 +308,14 @@ test('Work and Code sidebars expose Cats Runtime in the account menu', () => {
     onOpenRelay: () => {},
   });
 
-  assert.match(textContent(workTree), /Cats Runtime/u);
-  assert.match(textContent(codeTree), /Cats Runtime/u);
+  const workAccountMenu = findAccountIdentityMenu(workTree);
+  const codeAccountMenu = findAccountIdentityMenu(codeTree);
+
+  assert.equal(workAccountMenu.props.open, true);
+  assert.equal(workAccountMenu.props.runtimeBaseUrl, 'http://localhost:8484');
+  assert.equal(workAccountMenu.props.menuWidth, 'trigger');
+
+  assert.equal(codeAccountMenu.props.open, true);
+  assert.equal(codeAccountMenu.props.runtimeBaseUrl, 'http://localhost:8484');
+  assert.equal(codeAccountMenu.props.menuWidth, 'trigger');
 });

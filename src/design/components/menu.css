@@ -1,9 +1,9 @@
+.accountIdentityMenu {
+  position: relative;
+}
+
 .accountMenu {
   position: absolute;
-  left: 0;
-  bottom: 100%;
-  margin-bottom: 4px;
-  width: 100%;
   min-width: 160px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -11,6 +11,28 @@
   box-shadow: var(--shadow-raised);
   z-index: 10;
   padding: 3px;
+}
+
+.accountMenu--above {
+  bottom: 100%;
+  margin-bottom: 4px;
+}
+
+.accountMenu--below {
+  top: 100%;
+  margin-top: 4px;
+}
+
+.accountMenu--alignStart {
+  left: 0;
+}
+
+.accountMenu--alignEnd {
+  right: 0;
+}
+
+.accountMenu--matchTrigger {
+  width: 100%;
 }
 
 .accountMenuItem {
