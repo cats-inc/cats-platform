@@ -102,6 +102,30 @@ This policy may be chosen:
 - when the channel is created
 - again before each send as a per-turn override
 
+### 4a. Reply progression does not silently rewrite channel defaults
+
+The product distinguishes:
+
+- stored channel defaults
+- transient current-turn recipients
+- workflow-proposed continuation recipients
+
+This means:
+
+- an explicit addressed turn that happens to receive a reply from participant B
+  does not by itself rewrite the channel's stored default recipients to B
+- sequential or concurrent dispatch may still create a transient next-turn
+  continuation target or recipient set
+- that continuation state is not the same thing as silently rewriting the
+  saved channel default
+
+Changing the stored channel default should require explicit user action in the
+first slice.
+
+Later slices may allow an explicit workflow commit that updates the channel
+default, but the system should not auto-promote "who replied last" into the new
+default just because the conversation moved.
+
 ### 5. A multi-recipient stack does not imply one specific policy
 
 Multiple recipients shown in the composer stack mean only:
@@ -127,6 +151,10 @@ This means the terminology cleanup is two-sided:
 - thread workflow shape moves from `parallel` to `concurrent`
 - `Parallel Chat` internals should stop using `concurrentGroups` style names
   and move to `parallelChat*` naming
+
+This migration may land in sequenced implementation phases rather than one
+flag-day patch, but both sides belong to the same tracked terminology cleanup
+and should complete before launch.
 
 ## Consequences
 
@@ -193,4 +221,5 @@ This means the terminology cleanup is two-sided:
 ---
 
 *Decision made: 2026-04-08*
-*Decision makers: User, Codex*
+*Decision maker: User*
+*Documented by: Codex*

@@ -119,6 +119,14 @@ That default may contain:
 - one named participant
 - multiple named participants
 
+Stored default recipients are channel-level defaults.
+
+They should not be rewritten merely because:
+
+- a different participant was explicitly addressed for one turn
+- a different participant happened to reply last
+- one sequential step in a workflow passed through another participant
+
 ### Dispatch Policy
 
 `dispatch policy` is how the addressed recipients should respond.
@@ -148,6 +156,9 @@ Examples:
 
 This layer must remain separate from both recipient selection and dispatch
 policy.
+
+Workflow continuation may preselect the next turn's transient recipient set,
+but that is not equivalent to rewriting the stored channel defaults.
 
 ## Interaction Rules
 
@@ -203,6 +214,19 @@ Before each send, the operator may override:
 
 If no override is applied, the channel defaults are used.
 
+### Default-Recipient Progression
+
+For the first slice:
+
+- explicit mention routing does not silently rewrite stored channel defaults
+- a participant replying last does not silently become the new default
+- workflow continuation may preselect the next transient current-turn
+  recipient(s)
+- changing the stored channel default requires explicit user action
+
+This keeps conversation progress flexible without reintroducing a permanent
+lead concept.
+
 ## Layout Requirements
 
 1. The composer recipient slot shall represent current-turn recipient(s) only.
@@ -228,6 +252,10 @@ If no override is applied, the channel defaults are used.
 
 This spec intentionally requires a real rename pass before launch rather than a
 long-lived compatibility seam.
+
+The required renames may land in sequenced implementation phases rather than a
+single patch, but the shipped product should not preserve both vocabularies as
+competing active terminology.
 
 ### Thread Workflow Contracts
 

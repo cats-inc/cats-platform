@@ -33,6 +33,10 @@ This is not a pure string-replace pass. The implementation must also separate:
 - dispatch policy
 - workflow continuation
 
+The work may land in multiple commits and phases.
+It does not need one flag-day patch, but it should remain one tracked
+pre-launch migration rather than splitting into unrelated terminology efforts.
+
 ## Hard Constraints
 
 - Do not leave a long-lived compatibility seam for the old `lead` vocabulary.
@@ -83,6 +87,11 @@ Working contract targets for the first implementation slice:
       - one implicit recipient
       - one named participant
       - multiple named participants
+- [ ] Task 1.2a: Freeze default-recipient progression rules:
+      - explicit mention replies do not auto-rewrite stored defaults
+      - "last replier wins" is not the rule
+      - workflow continuation may preselect the next transient recipients
+      - explicit user action is required to change stored channel defaults
 - [ ] Task 1.3: Decide where `dispatchPolicy` lives:
       - channel default
       - send-turn override
