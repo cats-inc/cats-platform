@@ -276,20 +276,20 @@ function createProps(overrides: Partial<ChatViewProps> = {}): ChatViewProps {
   };
 }
 
-test('ChatView shows temporary participants in the top bar and the current recipient chip', () => {
+test('ChatView shows temporary participants in the top bar and composer avatar stack', () => {
   const markup = renderToStaticMarkup(
     <ChatView {...createProps()} />,
   );
 
   assert.match(markup, /data-tooltip="Inline Reviewer"/u);
   assert.match(markup, /data-tooltip="Runtime Verifier"/u);
-  assert.match(markup, /composerRecipientChip/u);
+  assert.match(markup, /composerCatStack/u);
   assert.doesNotMatch(markup, /data-tooltip="2 participants"/u);
   assert.match(markup, /channelParticipantAvatar/u);
   assert.doesNotMatch(markup, /#F04A70|#2B9CF0/u);
 });
 
-test('ChatView keeps Cat visuals in room stacks while the recipient chip stays recipient-centric', () => {
+test('ChatView keeps Cat visuals in room stacks while the composer stack preserves boss styling', () => {
   const leadCat = createChatCat();
   const leadParticipant = createCatParticipant(leadCat, {
     participantId: 'participant-cat-lead',
@@ -335,13 +335,16 @@ test('ChatView keeps Cat visuals in room stacks while the recipient chip stays r
   );
   assert.match(
     markup,
-    /recipientChipAvatarBoss/u,
+    /class="catAvatar composerStackAvatar catAvatarBoss" data-tooltip="Milo"/u,
   );
   assert.match(
     markup,
-    /class="composerRecipientChipLabel">Milo/u,
+    /class="catAvatar composerStackAvatar channelParticipantAvatar" data-tooltip="Inline Reviewer"/u,
   );
-  assert.doesNotMatch(markup, /composerStackAvatar/u);
+  assert.match(
+    markup,
+    /class="catAvatar composerStackAvatar channelParticipantAvatar" data-tooltip="Runtime Verifier"/u,
+  );
 });
 
 test('ChatView renders temporary participant transcript speakers as room members', () => {

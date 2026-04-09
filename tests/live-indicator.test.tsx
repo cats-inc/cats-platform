@@ -12,6 +12,7 @@ import {
 import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
+  resolveTranscriptFollowState,
   resolveVisibleLiveIndicator,
 } from '../src/shared/liveIndicator.ts';
 
@@ -141,6 +142,35 @@ test('resolveVisibleLiveIndicator keeps active progress while only the user turn
   );
 
   assert.equal(visible, liveIndicator);
+});
+
+test('resolveTranscriptFollowState derives scroll keys from transcript content instead of channel timestamps', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    previewText: 'Thinking',
+  };
+
+  const followState = resolveTranscriptFollowState(
+    liveIndicator,
+    [
+      {
+        id: 'msg-1',
+        senderKind: 'user',
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'msg-2',
+        senderKind: 'agent',
+        createdAt: '2026-04-09T12:00:01.000Z',
+      },
+    ],
+    '2026-04-09T12:00:03.000Z',
+  );
+
+  assert.equal(followState.visibleLiveIndicator, liveIndicator);
+  assert.match(followState.transcriptScrollKey, /^2::msg-2::2026-04-09T12:00:01.000Z::/u);
 });
 
 test('shared live indicator effect depends on stable derived fields instead of selected channel identity', async () => {

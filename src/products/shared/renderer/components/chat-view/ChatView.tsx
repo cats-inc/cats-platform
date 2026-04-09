@@ -15,8 +15,7 @@ import {
   type ChatLayoutMode,
 } from '../../../../../design/chatLayout.js';
 import {
-  buildLiveIndicatorScrollKey,
-  resolveVisibleLiveIndicator,
+  resolveTranscriptFollowState,
 } from '../../../../../shared/liveIndicator.js';
 import {
   presentChannelTitle,
@@ -125,14 +124,15 @@ export function ChatView({
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
-  const visibleLiveIndicator = useMemo(
-    () => resolveVisibleLiveIndicator(
+  const transcriptFollowState = useMemo(
+    () => resolveTranscriptFollowState(
       liveIndicator,
       selectedChannel.messages,
       selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null,
     ),
     [liveIndicator, selectedChannel.messages, selectedChannel.roomRouting.workflow.activeTurn?.updatedAt],
   );
+  const { visibleLiveIndicator, transcriptScrollKey } = transcriptFollowState;
 
   const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
   const defaultRecipientCat = defaultRecipientId
@@ -224,19 +224,6 @@ export function ChatView({
   const runIdsKey = useMemo(
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
     [operatorView],
-  );
-  const liveIndicatorScrollKey = useMemo(
-    () => buildLiveIndicatorScrollKey(visibleLiveIndicator),
-    [visibleLiveIndicator],
-  );
-  const transcriptScrollKey = useMemo(
-    () => [
-      selectedChannel.messages.length,
-      selectedChannel.messages.at(-1)?.id ?? '',
-      selectedChannel.messages.at(-1)?.createdAt ?? '',
-      liveIndicatorScrollKey,
-    ].join('::'),
-    [liveIndicatorScrollKey, selectedChannel.messages],
   );
   const activeTopBarCatIds = useMemo(() => {
     const ids = visibleLiveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];

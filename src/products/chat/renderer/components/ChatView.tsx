@@ -18,8 +18,7 @@ import { resolveCatStatusIndicator } from '../../shared/catStatusResolution';
 import { CatStatusRow } from './CatStatusRow';
 import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
 import {
-  buildLiveIndicatorScrollKey,
-  resolveVisibleLiveIndicator,
+  resolveTranscriptFollowState,
 } from '../../../../shared/liveIndicator.js';
 import { SidePanel } from '../../../../design/components/SidePanel';
 import {
@@ -193,14 +192,15 @@ export function ChatView({
     (message) => payload.chat.showVerboseMessages || message.metadata?.verbosity !== 'verbose',
   );
   const hasConversationStarted = visibleMessages.length > 0;
-  const visibleLiveIndicator = useMemo(
-    () => resolveVisibleLiveIndicator(
+  const transcriptFollowState = useMemo(
+    () => resolveTranscriptFollowState(
       liveIndicator,
       visibleMessages,
       selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null,
     ),
     [liveIndicator, selectedChannel.roomRouting.workflow.activeTurn?.updatedAt, visibleMessages],
   );
+  const { visibleLiveIndicator, transcriptScrollKey } = transcriptFollowState;
 
   const conversationMode = resolveConversationMode(selectedChannel);
   const compareMembers = compareGroup?.members ?? [];
@@ -335,19 +335,6 @@ export function ChatView({
   const runIdsKey = useMemo(
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
     [operatorView],
-  );
-  const liveIndicatorScrollKey = useMemo(
-    () => buildLiveIndicatorScrollKey(visibleLiveIndicator),
-    [visibleLiveIndicator],
-  );
-  const transcriptScrollKey = useMemo(
-    () => [
-      visibleMessages.length,
-      visibleMessages.at(-1)?.id ?? '',
-      visibleMessages.at(-1)?.createdAt ?? '',
-      liveIndicatorScrollKey,
-    ].join('::'),
-    [liveIndicatorScrollKey, visibleMessages],
   );
   const activeTopBarCatIds = useMemo(() => {
     const ids = visibleLiveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];

@@ -36,6 +36,7 @@ export interface LiveIndicatorState {
 }
 
 export interface LiveIndicatorTranscriptMessageLike {
+  id: string;
   senderKind: string;
   createdAt: string;
 }
@@ -184,6 +185,32 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   }, Number.NEGATIVE_INFINITY);
 
   return latestVisibleReplyTimestamp >= activeTurnTimestamp ? null : liveIndicator;
+}
+
+export function resolveTranscriptFollowState<TMessage extends LiveIndicatorTranscriptMessageLike>(
+  liveIndicator: LiveIndicatorState | null | undefined,
+  messages: ReadonlyArray<TMessage>,
+  activeTurnUpdatedAt: string | null | undefined,
+): {
+  visibleLiveIndicator: LiveIndicatorState | null;
+  transcriptScrollKey: string;
+} {
+  const visibleLiveIndicator = resolveVisibleLiveIndicator(
+    liveIndicator,
+    messages,
+    activeTurnUpdatedAt,
+  );
+  const lastMessage = messages.at(-1);
+
+  return {
+    visibleLiveIndicator,
+    transcriptScrollKey: [
+      messages.length,
+      lastMessage?.id ?? '',
+      lastMessage?.createdAt ?? '',
+      buildLiveIndicatorScrollKey(visibleLiveIndicator),
+    ].join('::'),
+  };
 }
 
 function applyProgressEvent(

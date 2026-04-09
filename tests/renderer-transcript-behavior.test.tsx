@@ -59,11 +59,12 @@ for (const product of PRODUCT_SURFACES) {
 
     assert.match(source, /useTranscriptAutoScroll/u);
     assert.match(source, /resolveComposerWorkspacePath/u);
+    assert.match(source, /resolveTranscriptFollowState/u);
     assert.match(source, /ref=\{transcriptListRef\}/u);
     assert.match(source, /ref=\{composerCardRef\}/u);
     assert.match(source, /(?:ref|bottomSentinelRef)=\{bottomSentinelRef\}/u);
-    assert.match(source, /const transcriptScrollKey = useMemo/u);
-    assert.match(source, /(?:visibleMessages|selectedChannel\.messages)\.at\(-1\)\?\.createdAt/u);
+    assert.match(source, /const transcriptFollowState = useMemo/u);
+    assert.match(source, /const \{ visibleLiveIndicator, transcriptScrollKey \} = transcriptFollowState/u);
     assert.doesNotMatch(source, /scrollKey:\s*\[\s*selectedChannel\.updatedAt/u);
     assert.match(source, /if \(!composerWorkspacePath\) return null;/u);
     assert.match(source, /liveIndicator\.previewText \?\? ''/u);
