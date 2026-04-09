@@ -127,11 +127,36 @@ function createRuntime(reachable: boolean, status = 'ok') {
 function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: string; reachable: boolean; status: string; service: string }): AppShellPayload {
   return {
     ownerDisplayName: 'Ken',
+    ownerAvatarColor: null,
+    ownerAvatarUrl: null,
     setupCompleteAt: '2026-03-23T00:00:00.000Z',
-    runtimeReachable: true,
-    runtimeBaseUrl: 'http://localhost:8484',
-    ...(runtime ? { runtime } : {}),
+    lastProductSurface: 'chat',
+    guideCat: null,
+    app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
+    products: [],
+    desktop: {
+      startAtLogin: false,
+      openWindowOnStartup: true,
+    },
+    lobby: {
+      animationMode: 'full',
+      cats: [],
+    },
+    runtime: runtime ?? createRuntime(true, 'ok'),
+    runtimeSetup: {
+      complete: true,
+      checklist: [],
+      availableProviders: [],
+    },
+    metadata: {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      host: 'localhost',
+      port: 8484,
+    },
+    bootstrapAttemptId: null,
     chat: {
+      id: 'chat',
+      name: 'Cats Chat',
       bossCatId: 'boss-cat',
       cats: [
         {
@@ -171,23 +196,44 @@ function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: stri
       selectedChannel: null,
       selectedChannelId: null,
       globalOrchestrator: {
+        mode: 'global',
         status: 'ready',
         nextFocus: 'Steady state',
         entrypoints: [],
         referenceProjects: [],
         notes: [],
         executionTarget: { provider: 'openai', instance: null, model: 'gpt-5' },
+        executionModelSelection: null,
         systemPrompt: 'You are Boss Cat.',
+        skillProfile: null,
+        mcpProfile: null,
+        memory: { summary: null, updatedAt: null },
+        telegramBotName: null,
+        updatedAt: '2026-03-23T00:00:00.000Z',
       },
       capabilities: {
-        chat: true,
-        work: false,
-        code: false,
+        multiChannel: true,
+        persistence: 'file-backed',
+        mentions: 'basic',
+        splitView: 'planned',
+        transcriptExport: true,
+        participantManagement: 'basic',
+        runtimeSessions: true,
+        maxBossCats: 1,
+        maxCats: 8,
+        maxParallelChats: 5,
+        availableSurfaces: ['chat'],
+      },
+      newChatDefaults: {
+        provider: 'openai',
+        instance: null,
+        model: 'gpt-5',
+        modelSelection: null,
       },
       showVerboseMessages: false,
       botBindings: [],
     },
-  };
+  } as AppShellPayload;
 }
 
 function createSidebarTree(
@@ -202,20 +248,24 @@ function createSidebarTree(
     busy: '',
     surface: 'chats',
     routeChannelId: null,
-    sidebarView: 'latest',
     accountMenuRef: { current: null } as RefObject<HTMLDivElement | null>,
     onToggleSidebar: () => {},
     onCollapsedSidebarClick: () => {},
     onOpenChatsOverview: () => {},
     onStartNewChat: () => {},
     onStartNewGroupChat: () => {},
+    onStartNewParallelChat: () => {},
     onSelect: () => {},
     onDeleteChannel: () => {},
-    onDeleteCat: () => {},
+    onRenameChannel: () => {},
+    onRenameParallelChatGroup: () => {},
+    onUngroupParallelChatGroup: () => {},
+    onDeleteParallelChatGroup: () => {},
+    onArchiveCat: () => {},
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
-    onSidebarViewChange: () => {},
+    onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat,
   });
@@ -391,6 +441,12 @@ function findRuntimeDotTitle(node: ReactNode): string | null {
     return null;
   }
   if (!isValidElement(node)) return null;
+  if (
+    'statusIndicator' in node.props
+    && 'runtimeBaseUrl' in node.props
+  ) {
+    return findRuntimeDotTitle(node.props.statusIndicator);
+  }
   const cls = typeof node.props.className === 'string' ? node.props.className : '';
   const tooltip = node.props['data-tooltip'] ?? node.props.title;
   if (cls.includes('runtimeStatusDot') && typeof tooltip === 'string') {
@@ -409,28 +465,33 @@ function findRuntimeDotTitle(node: ReactNode): string | null {
 }
 
 test('no runtime health yet shows gray dot with unknown tooltip', () => {
-  const payload = createPayload([]);
+  const payload = createPayload([], {
+    baseUrl: 'http://localhost:3110',
+    reachable: undefined as unknown as boolean,
+    status: null as unknown as string,
+    service: 'cats-runtime',
+  });
   const tree = createSidebarTree(payload, () => {});
   const title = findRuntimeDotTitle(tree);
-  assert.equal(title, 'Cats Runtime status unknown');
+  assert.equal(title, 'Checking Cats Runtime status…');
 });
 
 test('reachable healthy runtime shows green dot', () => {
   const payload = createPayload([], createRuntime(true, 'ok'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime connected');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is connected');
 });
 
 test('reachable degraded runtime shows yellow dot', () => {
   const payload = createPayload([], createRuntime(true, 'degraded'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime degraded');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is starting up');
 });
 
 test('unreachable runtime shows red dot', () => {
   const payload = createPayload([], createRuntime(false, 'error'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime unavailable');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is offline');
 });
 
 test('changing selected chat does not affect footer runtime dot', () => {
@@ -439,7 +500,7 @@ test('changing selected chat does not affect footer runtime dot', () => {
     createRuntime(true, 'ok'),
   );
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime connected');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is connected');
 });
 
 test('My Cats status dots and footer runtime dot coexist', () => {
@@ -451,5 +512,5 @@ test('My Cats status dots and footer runtime dot coexist', () => {
     createRuntime(true, 'ok'),
   );
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime connected');
+  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is connected');
 });

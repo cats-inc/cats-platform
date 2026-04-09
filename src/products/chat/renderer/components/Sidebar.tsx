@@ -1,6 +1,12 @@
-import { useEffect, useRef, useState, type CSSProperties, type RefObject, type MouseEvent as ReactMouseEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 
-import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts';
+import {
+  ConversationSidebar,
+  type ConversationSidebarAction,
+  type ConversationSidebarRecentEntry,
+} from '../../../../app/renderer/productShell/ConversationSidebar.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts.js';
 import {
   catInitials,
   isChatCat,
@@ -14,19 +20,7 @@ import {
   statusDotClassName,
   statusDotLabel,
 } from '../myCatNavigation';
-import { isDirectLaneSummary } from '../../shared/channelTopology';
-import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
-import { executeEnvironmentRecovery } from '../../../../shared/environmentRecoveryAction.js';
-import {
-  resolveRuntimeDotClassName,
-  resolveRuntimePresentationStatus,
-  resolveRuntimeTooltip,
-} from '../../../../shared/runtimeStatusPresentation.js';
-import { resolvePlatformSurfaceFromPath } from '../../../../core/platformSurface.js';
-import { AccountIdentityMenu } from '../../../../design/components/AccountIdentityMenu.js';
-import { PlatformSurfaceSwitcher } from '../../../../design/components/PlatformSurfaceSwitcher.js';
-
-export type SidebarViewMode = 'latest' | 'by_cat' | 'by_chat_type';
+import { isDirectLaneSummary } from '../../shared/channelTopology.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
@@ -59,520 +53,81 @@ export interface SidebarProps {
   onDirectChatCat: (catId: string) => void;
 }
 
-type ChatCatRecord = AppShellPayload['chat']['cats'][number];
-
-function isDirectCatChat(channel: ChatChannelSummary): boolean {
-  return isDirectLaneSummary(channel);
+function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
+  return [
+    {
+      key: 'new-chat',
+      label: 'New chat',
+      onClick: props.onStartNewChat,
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M8 3v10" />
+          <path d="M3 8h10" />
+        </svg>
+      ),
+    },
+    {
+      key: 'group-chat',
+      label: 'Group chat',
+      onClick: props.onStartNewGroupChat,
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="5" cy="6" r="2.25" />
+          <circle cx="11" cy="6" r="2.25" />
+          <path d="M2.75 12c.35-1.85 1.6-2.85 3.75-2.85S9.9 10.15 10.25 12" />
+          <path d="M8.6 12c.28-1.48 1.26-2.28 2.9-2.28 1.56 0 2.46.7 2.75 2.28" />
+        </svg>
+      ),
+    },
+    {
+      key: 'parallel-chat',
+      label: 'Parallel chat',
+      onClick: props.onStartNewParallelChat,
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M2 13V3h12v10H2z" />
+          <path d="M7 3v10" />
+          <path d="M11 3v10" />
+        </svg>
+      ),
+    },
+  ];
 }
 
-function resolveCatForChannel(
-  channel: ChatChannelSummary,
-  payload: AppShellPayload,
-): { name: string; avatarColor: string | null; avatarUrl: string | null; isBoss: boolean } | null {
-  const defaultRecipientCatId = channel.defaultRecipientCatId;
-  if (!defaultRecipientCatId) return null;
-  const cat = payload.chat.cats.find((c) => c.id === defaultRecipientCatId);
-  if (!cat) return null;
-  return {
-    name: cat.name,
-    avatarColor: cat.avatarColor,
-    avatarUrl: cat.avatarUrl ?? null,
-    isBoss: cat.id === payload.chat.bossCatId,
-  };
-}
-
-function useFloatingSidebarMenu(
-  anchorRef: RefObject<HTMLElement | null>,
-  menuRef: RefObject<HTMLElement | null>,
-  open: boolean,
-): CSSProperties | undefined {
-  const [style, setStyle] = useState<CSSProperties | undefined>(undefined);
-
-  useEffect(() => {
-    if (!open) {
-      setStyle(undefined);
-      return undefined;
-    }
-
-    function updatePosition() {
-      const anchor = anchorRef.current;
-      if (!anchor) return;
-      const rect = anchor.getBoundingClientRect();
-      const menuWidth = menuRef.current?.offsetWidth ?? 136;
-      const menuHeight = menuRef.current?.offsetHeight ?? 0;
-      let left = rect.right + 8;
-      if (left + menuWidth > window.innerWidth - 8) {
-        left = Math.max(8, rect.left - menuWidth - 8);
-      }
-      let top = rect.top - 4;
-      if (menuHeight > 0 && top + menuHeight > window.innerHeight - 8) {
-        top = Math.max(8, window.innerHeight - menuHeight - 8);
-      }
-      setStyle({
-        position: 'fixed',
-        top,
-        left,
-      });
-    }
-
-    updatePosition();
-
-    const scrollParent = anchorRef.current?.closest('.sidebarScrollable');
-    window.addEventListener('resize', updatePosition);
-    scrollParent?.addEventListener('scroll', updatePosition, { passive: true });
-
-    return () => {
-      window.removeEventListener('resize', updatePosition);
-      scrollParent?.removeEventListener('scroll', updatePosition);
-    };
-  }, [anchorRef, menuRef, open]);
-
-  return style;
-}
-
-
-function ChannelItem({
-  channel,
-  payload,
-  isSelected,
-  busy,
-  overflowOpen,
-  onSelect,
-  onRename,
-  onDelete,
-  onOverflowToggle,
-  titleOverride,
-  disableRename,
-}: {
-  channel: ChatChannelSummary;
-  payload: AppShellPayload;
-  isSelected: boolean;
-  busy: string;
-  overflowOpen: boolean;
-  onSelect: () => void;
-  onRename: (title: string) => void;
-  onDelete: () => void;
-  onOverflowToggle: () => void;
-  titleOverride?: string;
-  disableRename?: boolean;
-}) {
-  const cat = resolveCatForChannel(channel, payload);
-  const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const overflowButtonRef = useRef<HTMLButtonElement>(null);
-  const overflowMenuRef = useRef<HTMLDivElement>(null);
-  const overflowMenuStyle = useFloatingSidebarMenu(overflowButtonRef, overflowMenuRef, overflowOpen);
-
-  function startRename() {
-    onOverflowToggle();
-    setRenameValue(channel.title);
-    setRenaming(true);
-    requestAnimationFrame(() => inputRef.current?.select());
-  }
-
-  function commitRename() {
-    const trimmed = renameValue.trim();
-    setRenaming(false);
-    if (trimmed && trimmed !== channel.title) {
-      onRename(trimmed);
-    }
-  }
-
-  function cancelRename() {
-    setRenaming(false);
-  }
-
-  return (
-    <article
-      className={[
-        'recentItemCard',
-        isSelected ? 'recentItemSelected' : '',
-        overflowOpen ? 'recentItemOverflowOpen' : '',
-      ].filter(Boolean).join(' ')}
-      onClick={() => {
-        if (!renaming) onSelect();
-      }}
-    >
-      {renaming ? (
-        <input
-          ref={inputRef}
-          className="recentRenameInput"
-          type="text"
-          value={renameValue}
-          onChange={(e) => setRenameValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitRename();
-            if (e.key === 'Escape') cancelRename();
-          }}
-          onBlur={commitRename}
-        />
-      ) : (
-        <button
-          className="recentSelectButton"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect();
-          }}
-          type="button"
-        >
-          <strong>{presentChannelTitle(titleOverride ?? channel.title)}</strong>
-        </button>
-      )}
-      {!renaming ? (
-        <span className="recentItemTrailing">
-          {cat ? (
-            <span
-              className={cat.isBoss ? 'recentCatAvatar recentCatAvatarBoss' : 'recentCatAvatar'}
-              data-tooltip={cat.name}
-              style={cat.avatarUrl
-                ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                : { background: cat.avatarColor ?? '#90A4AE' }}
-            >
-              {cat.avatarUrl ? null : catInitials(cat.name)}
-            </span>
-          ) : null}
-          <button
-            ref={overflowButtonRef}
-            className="recentOverflowButton"
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onOverflowToggle(); }}
-          >
-            &#x22EF;
-          </button>
-        </span>
-      ) : null}
-      {overflowOpen ? (
-        <div
-          ref={overflowMenuRef}
-          className="recentOverflowMenu"
-          style={overflowMenuStyle}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {!disableRename ? (
-            <>
-              <button type="button" onClick={startRename}>
-                Rename
-              </button>
-              <div className="recentOverflowMenuDivider" />
-            </>
-          ) : null}
-          <button
-            type="button"
-            disabled={busy === `channel:delete:${channel.id}`}
-            onClick={onDelete}
-          >
-            {busy === `channel:delete:${channel.id}` ? 'Deleting...' : 'Delete'}
-          </button>
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function GroupHeaderItem({
-  title,
-  isSelected,
-  busy,
-  overflowOpen,
-  onSelect,
-  onRename,
-  onUngroup,
-  onDelete,
-  onOverflowToggle,
-  renameBusyKey,
-  ungroupBusyKey,
-  deleteKey,
-}: {
-  title: string;
-  isSelected: boolean;
-  busy: string;
-  overflowOpen: boolean;
-  onSelect: () => void;
-  onRename: (title: string) => void;
-  onUngroup: () => void;
-  onDelete: () => void;
-  onOverflowToggle: () => void;
-  renameBusyKey: string;
-  ungroupBusyKey: string;
-  deleteKey: string;
-}) {
-  const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const overflowButtonRef = useRef<HTMLButtonElement>(null);
-  const overflowMenuRef = useRef<HTMLDivElement>(null);
-  const overflowMenuStyle = useFloatingSidebarMenu(overflowButtonRef, overflowMenuRef, overflowOpen);
-  const renameBusy = busy === renameBusyKey;
-  const ungroupBusy = busy === ungroupBusyKey;
-  const deleteBusy = busy === deleteKey;
-
-  function startRename() {
-    onOverflowToggle();
-    setRenameValue(title);
-    setRenaming(true);
-    requestAnimationFrame(() => inputRef.current?.select());
-  }
-
-  function commitRename() {
-    const trimmed = renameValue.trim();
-    setRenaming(false);
-    if (trimmed && trimmed !== title) {
-      onRename(trimmed);
-    }
-  }
-
-  function cancelRename() {
-    setRenaming(false);
-  }
-
-  return (
-    <article
-      className={[
-        'recentItemCard',
-        overflowOpen ? 'recentItemOverflowOpen' : '',
-      ].filter(Boolean).join(' ')}
-      onClick={() => { if (!renaming) onSelect(); }}
-    >
-      {renaming ? (
-        <input
-          ref={inputRef}
-          className="recentRenameInput"
-          type="text"
-          value={renameValue}
-          onChange={(e) => setRenameValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitRename();
-            if (e.key === 'Escape') cancelRename();
-          }}
-          onBlur={commitRename}
-        />
-      ) : (
-        <button
-          className="recentSelectButton"
-          onClick={(e) => { e.stopPropagation(); onSelect(); }}
-          type="button"
-        >
-          <strong>{presentChannelTitle(title)}</strong>
-        </button>
-      )}
-      {!renaming ? (
-        <span className="recentItemTrailing">
-          <span className="recentParallelGlyph">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 13V3h12v10H2z" />
-              <path d="M7 3v10" />
-              <path d="M11 3v10" />
-            </svg>
-          </span>
-          <button
-            ref={overflowButtonRef}
-            className="recentOverflowButton"
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onOverflowToggle(); }}
-          >
-            &#x22EF;
-          </button>
-        </span>
-      ) : null}
-      {overflowOpen ? (
-        <div
-          ref={overflowMenuRef}
-          className="recentOverflowMenu"
-          style={overflowMenuStyle}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button type="button" disabled={renameBusy} onClick={startRename}>
-            {renameBusy ? 'Renaming...' : 'Rename'}
-          </button>
-          <button
-            type="button"
-            disabled={ungroupBusy}
-            onClick={() => {
-              onOverflowToggle();
-              onUngroup();
-            }}
-          >
-            {ungroupBusy ? 'Ungrouping...' : 'Ungroup'}
-          </button>
-          <div className="recentOverflowMenuDivider" />
-          <button
-            type="button"
-            disabled={deleteBusy}
-            onClick={onDelete}
-          >
-            {deleteBusy ? 'Deleting...' : 'Delete All'}
-          </button>
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function MyCatRowItem({
-  cat,
-  isBoss,
-  isActive,
-  hasTelegramBinding,
-  dotClass,
-  dotTitle,
-  overflowOpen,
-  onDirectChat,
-  onArchive,
-  onOverflowToggle,
-}: {
-  cat: ChatCatRecord;
-  isBoss: boolean;
-  isActive: boolean;
-  hasTelegramBinding: boolean;
-  dotClass: string;
-  dotTitle: string;
-  overflowOpen: boolean;
-  onDirectChat: () => void;
-  onArchive: () => void;
-  onOverflowToggle: () => void;
-}) {
-  const overflowButtonRef = useRef<HTMLButtonElement>(null);
-  const overflowMenuRef = useRef<HTMLDivElement>(null);
-  const overflowMenuStyle = useFloatingSidebarMenu(overflowButtonRef, overflowMenuRef, overflowOpen);
-
-  return (
-    <div
-      className={[
-        'myCatRow',
-        isActive ? 'myCatRowActive' : '',
-        overflowOpen ? 'myCatRowOverflowOpen' : '',
-      ].filter(Boolean).join(' ')}
-      onClick={onDirectChat}
-    >
-      <button
-        className={isActive ? 'myCatItem myCatItemActive' : 'myCatItem'}
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDirectChat();
-        }}
-      >
-        <span
-          className={isBoss ? 'myCatAvatarWrap catAvatar catAvatarBoss' : 'myCatAvatarWrap catAvatar'}
-          style={cat.avatarUrl
-            ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-            : cat.avatarColor ? { background: cat.avatarColor } : undefined}
-        >
-          {cat.avatarUrl ? null : catInitials(cat.name)}
-          {dotClass ? <span className={dotClass} data-tooltip={dotTitle} /> : null}
-        </span>
-        <span className="myCatName">{cat.name}</span>
-      </button>
-      <span className="myCatTrailing">
-        {hasTelegramBinding ? (
-          <span className="myCatTelegramIcon" data-tooltip="Telegram bot bound" aria-label="Telegram bot bound">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20.66 3.88 2.92 10.9a.73.73 0 0 0 .04 1.38l4.45 1.4 1.72 5.52a.78.78 0 0 0 1.24.37l2.48-2.02 4.87 3.6a.78.78 0 0 0 1.2-.46L21.7 4.76c.17-.7-.52-1.27-1.04-0.88ZM10.1 14.6l-.44 3.15-1.34-4.3 9.38-6.2Z" />
-            </svg>
-          </span>
-        ) : null}
-        <button
-          ref={overflowButtonRef}
-          className="myCatOverflowButton"
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onOverflowToggle(); }}
-        >
-          &#x22EF;
-        </button>
-      </span>
-      {overflowOpen ? (
-        <div
-          ref={overflowMenuRef}
-          className="myCatOverflowMenu"
-          style={overflowMenuStyle}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            disabled={false}
-            onClick={onArchive}
-          >
-            Archive
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-export function Sidebar({
-  payload,
-  sidebarOpen,
-  accountMenuOpen,
-  overflowMenuOpenId,
-  busy,
-  surface,
-  shellSurface,
-  routeChannelId,
-  accountMenuRef,
-  onToggleSidebar,
-  onCollapsedSidebarClick,
-  onOpenChatsOverview,
-  onStartNewChat,
-  onStartNewGroupChat,
-  onStartNewParallelChat,
-  onSelect,
-  onDeleteChannel,
-  onRenameChannel,
-  onRenameParallelChatGroup,
-  onUngroupParallelChatGroup,
-  onDeleteParallelChatGroup,
-  onArchiveCat,
-  onAccountMenuToggle,
-  onOverflowMenuToggle,
-  onNavigateSettings,
-  onSwitchProduct,
-  activeMyCatId,
-  onDirectChatCat,
-}: SidebarProps) {
-  const activeSurface = shellSurface
-    ?? resolvePlatformSurfaceFromPath(globalThis.location?.pathname ?? '/chat');
-  const chatCats = payload.chat.cats.filter(isChatCat);
-  const showMyCats = chatCats.length > 0;
-  const telegramBoundCatIds = new Set(
-    (payload.chat.botBindings ?? [])
-      .filter((binding) => binding.platform === 'telegram' && binding.status === 'active')
-      .map((binding) => binding.catId)
-      .filter((catId): catId is string => Boolean(catId)),
-  );
-
-  function renderChannelList(
-    channels: ChatChannelSummary[],
-    titleOverrides?: Map<string, string>,
-    options?: { disableRename?: boolean },
-  ) {
-    if (channels.length === 0) {
-      return <div className="recentEmpty"><p>No chats yet</p></div>;
-    }
-    return channels.map((channel) => (
-      <ChannelItem
-        key={channel.id}
-        channel={channel}
-        payload={payload}
-        isSelected={routeChannelId === channel.id}
-        busy={busy}
-        overflowOpen={overflowMenuOpenId === channel.id}
-        onSelect={() => onSelect(channel.id)}
-        onRename={(title) => { void onRenameChannel(channel.id, title); }}
-        onDelete={() => { onOverflowMenuToggle(null); void onDeleteChannel(channel.id); }}
-        onOverflowToggle={() => onOverflowMenuToggle(overflowMenuOpenId === channel.id ? null : channel.id)}
-        titleOverride={titleOverrides?.get(channel.id)}
-        disableRename={options?.disableRename}
-      />
-    ));
-  }
-
-  const recentsChannels = payload.chat.channels.filter((ch) => !isDirectCatChat(ch));
-  const activeParallelChatGroups = (payload.chat.parallelChatGroups ?? []).filter(
+function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry<ChatChannelSummary>[] {
+  const recentsChannels = props.payload.chat.channels.filter((channel) => !isDirectLaneSummary(channel));
+  const activeParallelChatGroups = (props.payload.chat.parallelChatGroups ?? []).filter(
     (group) => group.status === 'active',
   );
   const parallelChatGroupByChannelId = new Map<string, typeof activeParallelChatGroups[number]>();
+
   for (const group of activeParallelChatGroups) {
     for (const channelId of group.memberChannelIds) {
       parallelChatGroupByChannelId.set(channelId, group);
@@ -580,15 +135,7 @@ export function Sidebar({
   }
 
   const channelById = new Map(recentsChannels.map((channel) => [channel.id, channel] as const));
-  const recentEntries: Array<
-    | { kind: 'channel'; channel: ChatChannelSummary }
-    | {
-        kind: 'compare_group';
-        group: typeof activeParallelChatGroups[number];
-        channels: ChatChannelSummary[];
-        titleOverrides: Map<string, string>;
-      }
-  > = [];
+  const recentEntries: ConversationSidebarRecentEntry<ChatChannelSummary>[] = [];
   const seenChannelIds = new Set<string>();
   const seenGroupIds = new Set<string>();
 
@@ -607,244 +154,88 @@ export function Sidebar({
         seenGroupIds.add(compareGroup.id);
         groupChannels.forEach((member) => seenChannelIds.add(member.id));
         recentEntries.push({
-          kind: 'compare_group',
-          group: compareGroup,
-          channels: groupChannels,
-          titleOverrides: new Map(compareGroup.members.map((member) => [member.channelId, member.title])),
+          kind: 'group',
+          key: compareGroup.id,
+          title: compareGroup.title,
+          overflowKey: `group:${compareGroup.id}`,
+          isSelected: compareGroup.memberChannelIds.includes(props.routeChannelId ?? ''),
+          onSelect: () => {
+            const firstChannelId = compareGroup.memberChannelIds[0];
+            if (firstChannelId) {
+              props.onSelect(firstChannelId);
+            }
+          },
+          onRename: (title) => {
+            void props.onRenameParallelChatGroup(compareGroup.id, title);
+          },
+          onUngroup: () => {
+            void props.onUngroupParallelChatGroup(compareGroup.id);
+          },
+          onDelete: () => {
+            props.onOverflowMenuToggle(null);
+            void props.onDeleteParallelChatGroup(compareGroup.id);
+          },
+          renameBusyKey: `concurrent-group:rename:${compareGroup.id}`,
+          ungroupBusyKey: `concurrent-group:ungroup:${compareGroup.id}`,
+          deleteBusyKey: `concurrent-group:delete:${compareGroup.id}`,
+          channels: groupChannels.map((memberChannel) => ({
+            channel: memberChannel,
+            titleOverride: compareGroup.members.find(
+              (member) => member.channelId === memberChannel.id,
+            )?.title,
+            disableRename: true,
+          })),
         });
         continue;
       }
     }
 
     seenChannelIds.add(channel.id);
-    recentEntries.push({ kind: 'channel', channel });
-  }
-
-  function renderByLatest() {
-    if (recentEntries.length === 0) {
-      return <div className="recentEmpty"><p>No chats yet</p></div>;
-    }
-
-    return recentEntries.map((entry) => {
-      if (entry.kind === 'channel') {
-        return (
-          <div key={entry.channel.id}>
-            {renderChannelList([entry.channel])}
-          </div>
-        );
-      }
-
-      const isGroupSelected = entry.group.memberChannelIds.includes(routeChannelId ?? '');
-      const firstChannelId = entry.group.memberChannelIds[0] ?? '';
-      const groupOverflowId = `group:${entry.group.id}`;
-      return (
-        <section
-          key={entry.group.id}
-          className="recentGroupCard"
-        >
-          <GroupHeaderItem
-            title={entry.group.title}
-            isSelected={isGroupSelected}
-            busy={busy}
-            overflowOpen={overflowMenuOpenId === groupOverflowId}
-            onSelect={() => { if (firstChannelId) onSelect(firstChannelId); }}
-            onRename={(title) => { void onRenameParallelChatGroup(entry.group.id, title); }}
-            onUngroup={() => { void onUngroupParallelChatGroup(entry.group.id); }}
-            onDelete={() => { onOverflowMenuToggle(null); void onDeleteParallelChatGroup(entry.group.id); }}
-            onOverflowToggle={() => onOverflowMenuToggle(overflowMenuOpenId === groupOverflowId ? null : groupOverflowId)}
-            renameBusyKey={`concurrent-group:rename:${entry.group.id}`}
-            ungroupBusyKey={`concurrent-group:ungroup:${entry.group.id}`}
-            deleteKey={`concurrent-group:delete:${entry.group.id}`}
-          />
-          <div className="recentGroupList">
-            {renderChannelList(entry.channels, entry.titleOverrides, { disableRename: true })}
-          </div>
-        </section>
-      );
+    recentEntries.push({
+      kind: 'channel',
+      channel,
     });
   }
 
-  function handleAccountMenuOpenChange(nextOpen: boolean): void {
-    if (nextOpen !== accountMenuOpen) {
-      onAccountMenuToggle();
-    }
-  }
+  return recentEntries;
+}
 
-  const runtimeFooterStatus = resolveRuntimePresentationStatus(payload.runtime);
-  const runtimeFooterLabel = resolveRuntimeTooltip(runtimeFooterStatus);
-
-  return (
-    <aside
-      className={sidebarOpen ? 'sidebar' : 'sidebar sidebarCollapsed'}
-      onClick={(event) => onCollapsedSidebarClick(event)}
-    >
-      <div className="sidebarInner">
-        <div className="brandRow">
-          <div className="brandCopy">
-            <PlatformSurfaceSwitcher
-              activeSurface={activeSurface}
-              onSelectSurface={onSwitchProduct}
-            />
-          </div>
-          <button
-            className="chromeButton"
-            type="button"
-            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-            onClick={onToggleSidebar}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="1" y="2" width="14" height="12" rx="2" />
-              <path d="M6 2v12" />
-            </svg>
-          </button>
-        </div>
-
-        <nav className="navGroup" aria-label="Primary">
-          <button
-            className="navItem"
-            onClick={() => void onStartNewChat()}
-            type="button"
-          >
-            <span className="navGlyph" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 3v10" />
-                <path d="M3 8h10" />
-              </svg>
-            </span>
-            <span className="navLabel">New chat</span>
-          </button>
-          <button
-            className="navItem"
-            onClick={() => void onStartNewGroupChat()}
-            type="button"
-          >
-            <span className="navGlyph" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="5" cy="6" r="2.25" />
-                <circle cx="11" cy="6" r="2.25" />
-                <path d="M2.75 12c.35-1.85 1.6-2.85 3.75-2.85S9.9 10.15 10.25 12" />
-                <path d="M8.6 12c.28-1.48 1.26-2.28 2.9-2.28 1.56 0 2.46.7 2.75 2.28" />
-              </svg>
-            </span>
-            <span className="navLabel">Group chat</span>
-          </button>
-          <button
-            className="navItem"
-            onClick={() => void onStartNewParallelChat()}
-            type="button"
-          >
-            <span className="navGlyph" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 13V3h12v10H2z" />
-                <path d="M7 3v10" />
-                <path d="M11 3v10" />
-              </svg>
-            </span>
-            <span className="navLabel">Parallel chat</span>
-          </button>
-        </nav>
-
-        <div className="sidebarScrollable">
-        <nav className="navGroup navGroupChat" aria-label="Chat">
-          <button
-            className={surface === 'chats' ? 'navItem navItemActive' : 'navItem'}
-            onClick={onOpenChatsOverview}
-            type="button"
-          >
-            <span className="navGlyph navGlyphSquare" aria-hidden="true" />
-            <span className="navLabel">Chats</span>
-          </button>
-        </nav>
-
-        {showMyCats ? (
-          <section className="myCatsSection">
-            <p className="sectionLabel">My Cats</p>
-            <div className="myCatsList">
-              {sortChatCatsForDisplay(
-                chatCats.filter((cat) => cat.status === 'active'),
-                { bossCatIds: payload.chat.bossCatId },
-              ).map((cat) => {
-                  const isBoss = cat.id === payload.chat.bossCatId;
-                  const isActive = activeMyCatId === cat.id;
-                  const hasTelegramBinding = telegramBoundCatIds.has(cat.id);
-                  const directLane = findDirectLaneForCat(payload.chat.channels, cat.id);
-                  const dot = resolveMyCatStatusDot(directLane?.defaultRecipientLeaseStatus);
-                  const dotClass = statusDotClassName(dot);
-                  const dotTitle = statusDotLabel(dot);
-                  const overflowKey = `cat:${cat.id}`;
-                  const catOverflowOpen = overflowMenuOpenId === overflowKey;
-                  return (
-                    <MyCatRowItem
-                      key={cat.id}
-                      cat={cat}
-                      isBoss={isBoss}
-                      isActive={isActive}
-                      hasTelegramBinding={hasTelegramBinding}
-                      dotClass={dotClass}
-                      dotTitle={dotTitle}
-                      overflowOpen={catOverflowOpen}
-                      onDirectChat={() => onDirectChatCat(cat.id)}
-                      onArchive={() => {
-                        onOverflowMenuToggle(null);
-                        void onArchiveCat(cat.id);
-                      }}
-                      onOverflowToggle={() => onOverflowMenuToggle(catOverflowOpen ? null : overflowKey)}
-                    />
-                  );
-                })}
-            </div>
-          </section>
-        ) : null}
-
-        <section className="recentSection">
-          <div className="recentHeader">
-            <p className="sectionLabel">Recents</p>
-          </div>
-          <div className="recentList">
-            {renderByLatest()}
-          </div>
-        </section>
-        </div>
-      </div>
-
-      <AccountIdentityMenu
-        open={accountMenuOpen}
-        onOpenChange={handleAccountMenuOpenChange}
-        onNavigateSettings={onNavigateSettings}
-        onNavigateEnvironment={() => {
-          void executeEnvironmentRecovery({
-            runtimeStatus: runtimeFooterStatus,
-            runtimeBaseUrl: payload.runtime.baseUrl,
-          });
-        }}
-        runtimeBaseUrl={payload.runtime.baseUrl}
-        containerClassName="sidebarFooter"
-        triggerClassName="sidebarFooterButton"
-        menuWidth="trigger"
-        rootRef={accountMenuRef}
-        avatar={(
-          <div
-            className="profileBadge"
-            style={payload.ownerAvatarUrl
-              ? { backgroundImage: `url(${payload.ownerAvatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-              : undefined}
-          >
-            {payload.ownerAvatarUrl ? null : catInitials(payload.ownerDisplayName)}
-          </div>
-        )}
-        meta={(
-          <div className="sidebarFooterMeta">
-            <strong>{payload.ownerDisplayName}</strong>
-          </div>
-        )}
-        statusIndicator={(
-          <span
-            className={resolveRuntimeDotClassName(runtimeFooterStatus)}
-            data-tooltip={runtimeFooterLabel}
-            aria-label={runtimeFooterLabel}
-          />
-        )}
-      />
-    </aside>
-  );
+export function Sidebar(props: SidebarProps) {
+  return ConversationSidebar({
+    payload: props.payload,
+    sidebarOpen: props.sidebarOpen,
+    accountMenuOpen: props.accountMenuOpen,
+    overflowMenuOpenId: props.overflowMenuOpenId,
+    busy: props.busy,
+    surface: props.surface,
+    shellSurface: props.shellSurface,
+    routeChannelId: props.routeChannelId,
+    accountMenuRef: props.accountMenuRef,
+    primaryActions: createPrimaryActions(props),
+    recentEntries: buildRecentEntries(props),
+    helpers: {
+      catInitials,
+      presentChannelTitle,
+      isVisibleCat: isChatCat,
+      sortCatsForDisplay: sortChatCatsForDisplay,
+      isDirectLaneSummary,
+      findDirectLaneForCat,
+      resolveMyCatStatusDot,
+      statusDotClassName,
+      statusDotLabel,
+    },
+    onToggleSidebar: props.onToggleSidebar,
+    onCollapsedSidebarClick: props.onCollapsedSidebarClick,
+    onOpenChatsOverview: props.onOpenChatsOverview,
+    onSelect: props.onSelect,
+    onDeleteChannel: props.onDeleteChannel,
+    onRenameChannel: props.onRenameChannel,
+    onArchiveCat: props.onArchiveCat,
+    onAccountMenuToggle: props.onAccountMenuToggle,
+    onOverflowMenuToggle: props.onOverflowMenuToggle,
+    onNavigateSettings: props.onNavigateSettings,
+    onSwitchProduct: props.onSwitchProduct,
+    activeMyCatId: props.activeMyCatId,
+    onDirectChatCat: props.onDirectChatCat,
+  });
 }
