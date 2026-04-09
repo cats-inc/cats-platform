@@ -88,6 +88,7 @@ import { ChatViewFrame } from '../../../shared/renderer/components/chat-view/Cha
 import { ChatViewTopBar } from '../../../shared/renderer/components/chat-view/ChatViewTopBar';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
+import { ChatParticipantsSection } from './chat-view/ChatParticipantsSection';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 import { TranscriptMessageActions } from './chat-view/TranscriptMessageActions';
 
@@ -1328,98 +1329,25 @@ export function ChatView({
         id: 'cats',
         title: assignedAdhocParticipants.length > 0 ? 'Participants' : 'Cats',
         children: (
-          <div className="sidePanelSectionStack">
-            {assignedCatRecords.length > 0 ? (
-              <CatAvatarRow
-                cats={assignedCatRecords}
-                bossCatId={payload.chat.bossCatId}
-                selectedIds={assignedCatRecords.map((cat) => cat.id)}
-                highlightedId={defaultRecipientCat?.catId ?? null}
-                defaultRecipientCatId={defaultRecipientCat?.catId ?? null}
-                toggleable={false}
-                onToggle={() => {}}
-                onHighlight={() => {}}
-              />
-            ) : null}
-            {assignedAdhocParticipants.length > 0 ? (
-              <div className="addCatList">
-                {assignedAdhocParticipants.map((participant) => (
-                  <div key={participant.participantId} className="addCatItem">
-                    <div>
-                      <strong>{participant.name}</strong>
-                      <p>{buildDraftParticipantExecutionLabel(participant.execution.target)}</p>
-                      {participant.roleHint ? <p>{participant.roleHint}</p> : null}
-                      {editingParticipantId === participant.participantId ? (
-                        <form
-                          className="stackForm"
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            void submitParticipantRename(participant.participantId);
-                          }}
-                        >
-                          <label className="fieldLabel">
-                            <span>Name</span>
-                            <input
-                              className="textInput"
-                              value={editingParticipantName}
-                              onChange={(event) => setEditingParticipantName(event.target.value)}
-                              placeholder="Participant name"
-                            />
-                          </label>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                              type="button"
-                              className="operatorActionButton"
-                              onClick={cancelParticipantRename}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="submit"
-                              className="primaryButton"
-                              disabled={
-                                !editingParticipantName.trim()
-                                || busy === `channel:participant:update:${participant.participantId}`
-                              }
-                            >
-                              Save name
-                            </button>
-                          </div>
-                        </form>
-                      ) : null}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {onUpdateChannelParticipant ? (
-                        <button
-                          type="button"
-                          className="addCatAssignButton"
-                          disabled={busy === `channel:participant:update:${participant.participantId}`}
-                          onClick={() => beginParticipantRename(participant)}
-                        >
-                          Rename
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            {assignedCatRecords.length === 0 && assignedAdhocParticipants.length === 0 ? (
-              <p className="operatorEmptyState">No participants are in this chat yet.</p>
-            ) : null}
-            {showAddCatButton ? (
-              <button
-                type="button"
-                className="operatorActionButton"
-                onClick={() => {
-                  setSidePanelOpen(false);
-                  onOpenAddCat?.();
-                }}
-              >
-                Choose cats
-              </button>
-            ) : null}
-          </div>
+          <ChatParticipantsSection
+            assignedCatRecords={assignedCatRecords}
+            assignedAdhocParticipants={assignedAdhocParticipants}
+            bossCatId={payload.chat.bossCatId}
+            defaultRecipientCatId={defaultRecipientCat?.catId ?? null}
+            editingParticipantId={editingParticipantId}
+            editingParticipantName={editingParticipantName}
+            busy={busy}
+            canRenameParticipants={onUpdateChannelParticipant != null}
+            showAddCatButton={showAddCatButton}
+            onEditingParticipantNameChange={setEditingParticipantName}
+            onBeginParticipantRename={beginParticipantRename}
+            onCancelParticipantRename={cancelParticipantRename}
+            onSubmitParticipantRename={(participantId) => {
+              void submitParticipantRename(participantId);
+            }}
+            onOpenAddCat={onOpenAddCat}
+            onCloseSidePanel={() => setSidePanelOpen(false)}
+          />
         ),
       });
     }
