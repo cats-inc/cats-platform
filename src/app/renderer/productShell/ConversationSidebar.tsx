@@ -1,5 +1,5 @@
 import {
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -180,7 +180,7 @@ function useFloatingSidebarMenu(
 ): CSSProperties | undefined {
   const [style, setStyle] = useState<CSSProperties | undefined>(undefined);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) {
       setStyle(undefined);
       return undefined;
@@ -222,7 +222,17 @@ function useFloatingSidebarMenu(
     };
   }, [anchorRef, menuRef, open]);
 
-  return style;
+  if (!open) {
+    return undefined;
+  }
+
+  return style ?? {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    visibility: 'hidden',
+    pointerEvents: 'none',
+  };
 }
 
 function resolveCatForChannel<

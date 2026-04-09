@@ -325,6 +325,44 @@ test('solo draft without a recipient keeps the provider-model control as a model
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
 });
 
+test('parallel draft keeps follower targets on the same model-chip treatment as the lead target', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        parallelTargets: [
+          {
+            provider: 'claude-cli',
+            instance: null,
+            model: 'opus-4.6-1m',
+            modelSelection: null,
+          },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+          },
+          {
+            provider: 'gemini-cli',
+            instance: null,
+            model: 'gemini-2.5-pro',
+            modelSelection: null,
+          },
+        ],
+      })}
+    />,
+  );
+
+  const modelChipMatches = markup.match(/class="modelSelectorChip"/gu) ?? [];
+  const recipientChipMatches = markup.match(/class="composerRecipientChip"/gu) ?? [];
+  const implicitIconMatches = markup.match(/recipientChipIcon/gu) ?? [];
+
+  assert.match(markup, /class="parallelStubStack"/u);
+  assert.equal(modelChipMatches.length, 3);
+  assert.equal(recipientChipMatches.length, 0);
+  assert.equal(implicitIconMatches.length, 0);
+});
+
 test('direct-lane draft keeps private chat copy', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft

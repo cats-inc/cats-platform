@@ -12,7 +12,11 @@ import type {
   AppShellPayload,
   ParallelChatRelayCommandKind,
 } from '../../api/contracts.js';
-import { PRODUCT_PROVIDER_ORDER } from '../../../../shared/providerCatalog.js';
+import {
+  PRODUCT_PROVIDER_ORDER,
+  getDefaultModel,
+  getDefaultProviderInstance,
+} from '../../../../shared/providerCatalog.js';
 import type { ModelSelectorValue } from '../components/ModelSelector.js';
 import type { SelectedChannelView } from '../../shared/channelEntry.js';
 import { relayParallelChatMessage } from '../api/index.js';
@@ -22,22 +26,26 @@ type LoadStateLike =
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
 
-function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelectorValue[] {
+export function createDefaultTargetForProvider(provider: string): ModelSelectorValue {
+  return {
+    provider,
+    model: getDefaultModel(provider) || null,
+    instance: getDefaultProviderInstance(provider),
+    modelSelection: null,
+  };
+}
+
+export function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelectorValue[] {
   const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
     ?? 'codex';
 
   return [
     baseTarget,
-    {
-      provider: fallbackProvider,
-      model: null,
-      instance: null,
-      modelSelection: null,
-    },
+    createDefaultTargetForProvider(fallbackProvider),
   ];
 }
 
-function createNextCompareTarget(
+export function createNextCompareTarget(
   currentTargets: ModelSelectorValue[],
   fallbackTarget: ModelSelectorValue,
 ): ModelSelectorValue {
@@ -46,12 +54,16 @@ function createNextCompareTarget(
   ) ?? PRODUCT_PROVIDER_ORDER.find((provider) => provider !== fallbackTarget.provider)
     ?? fallbackTarget.provider;
 
-  return {
-    provider: nextProvider,
-    model: null,
-    instance: null,
-    modelSelection: null,
-  };
+  if (nextProvider === fallbackTarget.provider) {
+    return {
+      provider: fallbackTarget.provider,
+      model: fallbackTarget.model,
+      instance: fallbackTarget.instance,
+      modelSelection: fallbackTarget.modelSelection,
+    };
+  }
+
+  return createDefaultTargetForProvider(nextProvider);
 }
 
 export function useParallelChatDraft(options: {
