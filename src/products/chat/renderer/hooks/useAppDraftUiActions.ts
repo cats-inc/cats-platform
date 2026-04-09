@@ -1,3 +1,5 @@
+import { useWorkspaceAppDraftUiActions } from '../../../shared/renderer/hooks/useWorkspaceAppDraftUiActions.js';
+import { CHAT_PREFIX } from '../../shared/channelPaths.js';
 import type {
   Dispatch,
   RefObject,
@@ -50,51 +52,16 @@ export function useAppDraftUiActions(options: {
     fileInputRef,
     openFolderBrowser,
   } = options;
-
-  function toggleAddCatPanel(): void {
-    setAddCatOpen(!addCatOpen);
-    setAddCatTab('existing');
-    setFeedback('');
-    setCatForm(emptyCatForm());
-  }
-
-  function toggleChannelPlusMenu(): void {
-    setChannelPlusMenuOpen(!channelPlusMenuOpen);
-  }
-
-  function openChannelFilePicker(): void {
-    channelFileInputRef.current?.click();
-    setChannelPlusMenuOpen(false);
-  }
-
-  function toggleDraftPlusMenu(): void {
-    setPlusMenuOpen(!plusMenuOpen);
-  }
-
-  function openDraftFilePicker(): void {
-    fileInputRef.current?.click();
-    setPlusMenuOpen(false);
-  }
-
-  function openDraftFolderPicker(): void {
-    void openFolderBrowser(draftCwd);
-    setPlusMenuOpen(false);
-  }
-
-  function openDraftAddCatPanel(): void {
-    setPlusMenuOpen(false);
-    setAddCatOpen(true);
-    setAddCatTab('existing');
-    setCatForm(emptyCatForm());
-    setFeedback('');
-  }
-
-  function changeDraftDefaultRecipient(catId: string | null): void {
-    if (catId === draftDefaultRecipientCatId) {
-      return;
-    }
-
-    navigate(
+  return useWorkspaceAppDraftUiActions({
+    addCatOpen,
+    channelPlusMenuOpen,
+    plusMenuOpen,
+    draftCwd,
+    draftDefaultRecipientCatId,
+    navigate,
+    chatPrefix: CHAT_PREFIX,
+    emptyCatForm,
+    resolveDraftDefaultRecipientPath: (catId) =>
       resolveDraftRoutePath({
         route: resolveDraftRouteContext({
           draftDefaultRecipientCatId,
@@ -102,18 +69,14 @@ export function useAppDraftUiActions(options: {
         }),
         nextDefaultRecipientCatId: catId,
       }),
-      { replace: true },
-    );
-  }
-
-  return {
-    toggleAddCatPanel,
-    toggleChannelPlusMenu,
-    openChannelFilePicker,
-    toggleDraftPlusMenu,
-    openDraftFilePicker,
-    openDraftFolderPicker,
-    openDraftAddCatPanel,
-    changeDraftDefaultRecipient,
-  };
+    setAddCatOpen,
+    setAddCatTab,
+    setFeedback,
+    setCatForm,
+    setPlusMenuOpen,
+    setChannelPlusMenuOpen,
+    channelFileInputRef,
+    fileInputRef,
+    openFolderBrowser,
+  });
 }

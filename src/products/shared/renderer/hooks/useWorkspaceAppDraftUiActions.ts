@@ -16,6 +16,7 @@ export interface WorkspaceAppDraftUiActionsOptions<CatFormState> {
   navigate: NavigateFunction;
   chatPrefix: string;
   emptyCatForm: () => CatFormState;
+  resolveDraftDefaultRecipientPath?: (catId: string | null) => string;
   setAddCatOpen: Dispatch<SetStateAction<boolean>>;
   setAddCatTab: Dispatch<SetStateAction<'existing' | 'new'>>;
   setFeedback: Dispatch<SetStateAction<string>>;
@@ -39,6 +40,7 @@ export function useWorkspaceAppDraftUiActions<CatFormState>(
     navigate,
     chatPrefix,
     emptyCatForm,
+    resolveDraftDefaultRecipientPath,
     setAddCatOpen,
     setAddCatTab,
     setFeedback,
@@ -93,7 +95,11 @@ export function useWorkspaceAppDraftUiActions<CatFormState>(
       return;
     }
 
-    navigate(buildWorkspaceNewChatPath(chatPrefix, catId), { replace: true });
+    navigate(
+      resolveDraftDefaultRecipientPath?.(catId)
+      ?? buildWorkspaceNewChatPath(chatPrefix, catId),
+      { replace: true },
+    );
   }
 
   return {
