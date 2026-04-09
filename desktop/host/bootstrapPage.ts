@@ -474,6 +474,43 @@ export function buildDesktopBootstrapPage(): string {
       return 'Starting up\u2026';
     }
 
+    function clearSlowHintTimer() {
+      if (slowHintHandle !== null) {
+        clearTimeout(slowHintHandle);
+        slowHintHandle = null;
+      }
+    }
+
+    function hideSlowHint() {
+      slowHint.classList.remove('visible');
+      slowHint.textContent = '';
+    }
+
+    function showSlowHintMessage(message) {
+      slowHint.textContent = message;
+      slowHint.classList.add('visible');
+    }
+
+    function resetSlowHintCycle() {
+      clearSlowHintTimer();
+      slowHintStep = 0;
+      retryHintActive = false;
+      hideSlowHint();
+    }
+
+    function showRetryLoadingState() {
+      showRecoveryDetails = false;
+      retryHintActive = true;
+      clearSlowHintTimer();
+      splashEl.classList.remove('hidden');
+      recoveryEl.classList.add('hidden');
+      splashDot.className = 'dot dot-warn dot-pulse';
+      splashDot.style.display = '';
+      splashText.textContent = 'Trying again\u2026';
+      errorArea.classList.remove('visible');
+      showSlowHintMessage(retryHintMessage);
+    }
+
     function updateSplash(snap) {
       var isError = resolvePageMode(snap) === 'recovery';
       var isPending = snap.phase === 'starting_services' || snap.phase === 'checking_prerequisites';
@@ -486,11 +523,13 @@ export function buildDesktopBootstrapPage(): string {
       /* Update text */
       splashText.textContent = isError ? '' : friendlyLoadingSummary(snap.phase);
 
-      /* Dismiss slow-launch hint on error or ready */
+      /* Dismiss or resume slow-launch hint state */
       if (isError || isReady) {
-        slowHint.classList.remove('visible');
-        if (slowHintHandle) { clearTimeout(slowHintHandle); slowHintHandle = null; }
-        slowHintStep = slowHintMessages.length;
+        resetSlowHintCycle();
+      } else if (retryHintActive) {
+        showSlowHintMessage(retryHintMessage);
+      } else {
+        scheduleSlowHint();
       }
 
       /* Show/hide error area */
@@ -597,8 +636,12 @@ export function buildDesktopBootstrapPage(): string {
           primary: action.primary,
           disabled: action.disabled,
           onclick: function () {
-            this.disabled = true;
             var self = this;
+            self.disabled = true;
+            if (action.id === 'retry') {
+              runRetryAction(self, Boolean(action.disabled));
+              return;
+            }
             bridge.runAction(action.id)
               .then(function () {
                 if (action.id === 'resume_setup') refreshSetup();
@@ -904,25 +947,39 @@ export function buildDesktopBootstrapPage(): string {
     var showRecoveryDetails = false;
     var slowHintHandle = null;
     var slowHintStep = 0;
+    var retryHintActive = false;
     var slowHintMessages = [
       'First launch takes a moment. Still stretching\u2026',
       'Want to play? Hang in there, almost ready~',
       'Almost done, really! Just a whisker away~'
     ];
+    var retryHintMessage = 'Mew\u2026 sorry. Let me try that one more time, okay?';
 
     function scheduleSlowHint() {
-      if (slowHintStep >= slowHintMessages.length) return;
+      if (retryHintActive || slowHintHandle !== null || slowHintStep >= slowHintMessages.length) {
+        return;
+      }
       slowHintHandle = window.setTimeout(function () {
         slowHintHandle = null;
         if (showRecoveryDetails) return;
         if (currentSnapshot && resolvePageMode(currentSnapshot) === 'recovery') return;
         var phase = currentSnapshot && currentSnapshot.phase;
         if (phase === 'ready_for_setup' || phase === 'ready_for_chat') return;
-        slowHint.textContent = slowHintMessages[slowHintStep];
-        slowHint.classList.add('visible');
+        showSlowHintMessage(slowHintMessages[slowHintStep]);
         slowHintStep += 1;
         scheduleSlowHint();
       }, 20000);
+    }
+
+    function runRetryAction(button, restoreDisabled) {
+      showRetryLoadingState();
+      bridge.runAction('retry')
+        .catch(function () {
+          retryHintActive = false;
+          hideSlowHint();
+          doRender();
+        })
+        .finally(function () { button.disabled = restoreDisabled; });
     }
 
     function showRecovery(snap) {
@@ -1010,7 +1067,7 @@ export function buildDesktopBootstrapPage(): string {
 
       btnRetry.addEventListener('click', function () {
         btnRetry.disabled = true;
-        bridge.runAction('retry').finally(function () { btnRetry.disabled = false; });
+        runRetryAction(btnRetry, false);
       });
       btnDetails.addEventListener('click', function () {
         showRecoveryDetails = true;
@@ -1018,8 +1075,6 @@ export function buildDesktopBootstrapPage(): string {
       });
 
       loadInitialSnapshot();
-
-      scheduleSlowHint();
     }
 
     main();
