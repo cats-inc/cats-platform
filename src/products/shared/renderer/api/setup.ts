@@ -1,43 +1,57 @@
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 
-import { normalizeAppShellPayload } from './normalization.js';
+import { normalizeAppShellPayload as normalizeWorkspaceAppShellPayload } from './normalization.js';
 import { expectJson } from './http.js';
 
-export async function completeSetup(
-  input: {
-    ownerDisplayName: string;
-    bossCatName?: string;
-    bossCatProvider: string;
-    bossCatInstance?: string;
-    bossCatModel?: string;
-  },
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch('/api/setup/complete', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
+export function createSetupApi<TPayload>(
+  normalizePayload: (payload: TPayload) => TPayload,
+) {
+  async function completeSetup(
+    input: {
+      ownerDisplayName: string;
+      bossCatName?: string;
+      bossCatProvider: string;
+      bossCatInstance?: string;
+      bossCatModel?: string;
     },
-    body: JSON.stringify(input),
-    signal,
-  });
+    signal?: AbortSignal,
+  ): Promise<TPayload> {
+    const response = await fetch('/api/setup/complete', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+      signal,
+    });
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(response, `setup completion returned ${response.status}`),
-  );
+    return normalizePayload(
+      await expectJson<TPayload>(response, `setup completion returned ${response.status}`),
+    );
+  }
+
+  async function resetSetup(signal?: AbortSignal): Promise<TPayload> {
+    const response = await fetch('/api/setup/reset', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal,
+    });
+
+    return normalizePayload(
+      await expectJson<TPayload>(response, `setup reset returned ${response.status}`),
+    );
+  }
+
+  return {
+    completeSetup,
+    resetSetup,
+  };
 }
 
-export async function resetSetup(signal?: AbortSignal): Promise<AppShellPayload> {
-  const response = await fetch('/api/setup/reset', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-    },
-    signal,
-  });
+const workspaceSetupApi = createSetupApi<AppShellPayload>(normalizeWorkspaceAppShellPayload);
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(response, `setup reset returned ${response.status}`),
-  );
-}
+export const completeSetup = workspaceSetupApi.completeSetup;
+export const resetSetup = workspaceSetupApi.resetSetup;

@@ -1,43 +1,10 @@
-import type { AppShellPayload } from '../../api/contracts';
+import type { AppShellPayload } from '../../api/contracts.js';
+
+import { createSetupApi } from '../../../shared/renderer/api/setup.js';
 
 import { normalizeAppShellPayload } from './normalization.js';
-import { expectJson } from './http.js';
 
-export async function completeSetup(
-  input: {
-    ownerDisplayName: string;
-    bossCatName?: string;
-    bossCatProvider: string;
-    bossCatInstance?: string;
-    bossCatModel?: string;
-  },
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch('/api/setup/complete', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(input),
-    signal,
-  });
+const chatSetupApi = createSetupApi<AppShellPayload>(normalizeAppShellPayload);
 
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(response, `setup completion returned ${response.status}`),
-  );
-}
-
-export async function resetSetup(signal?: AbortSignal): Promise<AppShellPayload> {
-  const response = await fetch('/api/setup/reset', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-    },
-    signal,
-  });
-
-  return normalizeAppShellPayload(
-    await expectJson<AppShellPayload>(response, `setup reset returned ${response.status}`),
-  );
-}
+export const completeSetup = chatSetupApi.completeSetup;
+export const resetSetup = chatSetupApi.resetSetup;
