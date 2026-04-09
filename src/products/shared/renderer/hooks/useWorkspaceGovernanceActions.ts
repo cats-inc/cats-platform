@@ -148,3 +148,5 @@ export function useWorkspaceGovernanceActions(options: {
     onOperatorAction,
   };
 }
+
+export const useGovernanceActions = useWorkspaceGovernanceActions;
