@@ -12,6 +12,7 @@ import {
   resolveProviderRegistrySetupHref,
   resolveProviderRegistryPlaceholder,
   resolveDisplayedEnumControlValue,
+  resolveProviderModelFieldsViewState,
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
   sanitizePersistentTargetSelection,
@@ -20,6 +21,7 @@ import {
   shouldTreatPersistedTargetAsLegacyModel,
   shouldShowInstanceField,
   shouldDeferCatalogTargetReconciliation,
+  updatePersistentControlValues,
 } from '../src/design/components/ProviderModelFields.tsx';
 import {
   createStaticProviderModelCatalog,
@@ -858,5 +860,125 @@ test('runtime-backed Codex Spark selectors surface High as the explicit default'
   assert.equal(
     resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'gpt-5.3-codex-spark', undefined),
     'high',
+  );
+});
+
+test('provider model field view state derives instance, entry, and catalog warnings from the resolved target', () => {
+  const selectedProvider = {
+    id: 'codex',
+    label: 'Codex',
+    backend: 'cli',
+    instances: [
+      {
+        id: 'native',
+        label: 'cli/native',
+        target: 'cli/native',
+        backend: 'cli',
+      },
+      {
+        id: 'secondary',
+        label: 'cli/secondary',
+        target: 'cli/secondary',
+        backend: 'cli',
+      },
+    ],
+  };
+
+  const viewState = resolveProviderModelFieldsViewState({
+    selectedProvider,
+    provider: 'codex',
+    instance: '',
+    model: 'gpt-5.4',
+    modelSelection: null,
+    catalogLoading: false,
+    providersLoaded: true,
+    providerRegistry: {
+      state: 'ready',
+      providers: [selectedProvider],
+      recovery: {
+        retryable: true,
+        openRuntimeSetupPath: '/runtime/setup',
+      },
+      warnings: [],
+    },
+    effectiveCatalog: {
+      provider: 'codex',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'gpt-5.4',
+      source: 'dynamic',
+      cache: null,
+      models: [
+        { id: 'gpt-5.4', label: 'GPT-5.4', default: true, notes: ['Stable default'] },
+      ],
+      warnings: ['Runtime model catalog unavailable.'],
+    },
+    effectiveAdvancedCatalog: {
+      provider: 'codex',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'gpt-5.4',
+      source: 'dynamic',
+      cache: null,
+      entries: [
+        { id: 'gpt-5.4', label: 'GPT-5.4', default: true, notes: ['Stable default'] },
+      ],
+      presets: [],
+      controls: [],
+      defaultSelection: null,
+      support: {
+        tier: 'entry_only',
+        notes: [],
+      },
+      warnings: ['Advanced catalog unavailable.'],
+    },
+    isLegacyModelTarget: false,
+  });
+
+  assert.equal(viewState.resolvedInstance, 'native');
+  assert.equal(viewState.showInstanceField, true);
+  assert.equal(viewState.selectedEntryId, 'gpt-5.4');
+  assert.equal(viewState.modelPlaceholder, 'Select a model');
+  assert.equal(viewState.primaryCatalogWarning, 'Advanced catalog unavailable.');
+  assert.equal(viewState.providerRegistrySetupHref, '/runtime/setup');
+  assert.equal(viewState.canRetryProviderRegistry, false);
+});
+
+test('updating persistent control values adds, updates, and removes keyed control state', () => {
+  const control = {
+    key: 'codex.reasoning_effort',
+    label: 'Reasoning effort',
+    kind: 'enum',
+    scope: 'both',
+    values: [
+      { value: 'low', label: 'Low' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'high', label: 'High' },
+    ],
+  } as const;
+
+  assert.deepEqual(
+    updatePersistentControlValues({
+      control,
+      currentValues: {},
+      rawValue: 'high',
+    }),
+    {
+      'codex.reasoning_effort': 'high',
+    },
+  );
+
+  assert.deepEqual(
+    updatePersistentControlValues({
+      control,
+      currentValues: {
+        'codex.reasoning_effort': 'high',
+        'codex.temperature': 0.2,
+      },
+      rawValue: '',
+    }),
+    {
+      'codex.temperature': 0.2,
+    },
   );
 });

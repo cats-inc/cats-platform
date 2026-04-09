@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 import {
-  type ProductProviderInstanceDescriptor,
   type ProductProviderRegistryReadModel,
-  type ProviderAdvancedCatalogControl,
   type ProviderAdvancedControlValue,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
-import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
 import {
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
@@ -21,31 +18,22 @@ import {
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   buildSelectionForEntry,
   catalogMatchesTarget,
-  countRequestScopedControls,
   createDefaultProviderRegistryReadModel,
   createEmptyProviderAdvancedModelCatalog,
   createEmptyProviderModelCatalog,
   filterPersistentControlValues,
   hasExplicitDefaultEnumOption,
   listApplicableControlValueOptions,
-  listPersistentControlOptions,
-  parseControlInputValue,
+  resolveProviderModelFieldsViewState,
   resolveAdvancedCatalogFallback,
   resolveDisplayedEnumControlValue,
-  resolveProviderRegistryHint,
-  resolveProviderRegistryPlaceholder,
-  resolveProviderRegistrySetupHref,
-  resolveProviderSupportBadge,
-  resolveSelectedInstanceEventCapabilities,
   sanitizePersistentTargetSelection,
   sanitizeProviderRegistryReadModel,
   serializeControlInputValue,
-  shouldAllowLegacyManualModelEntry,
   shouldAutoRecheckProviderRegistry,
   shouldDeferCatalogTargetReconciliation,
-  shouldShowInstanceField,
   shouldTreatPersistedTargetAsLegacyModel,
-  listPresetOptionsForEntry,
+  updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
 export {
@@ -57,6 +45,7 @@ export {
   hasExplicitDefaultEnumOption,
   listPersistentControlOptions,
   resolveDisplayedEnumControlValue,
+  resolveProviderModelFieldsViewState,
   resolveProviderRegistryHint,
   resolveProviderRegistryPlaceholder,
   resolveProviderRegistrySetupHref,
@@ -68,6 +57,7 @@ export {
   shouldDeferCatalogTargetReconciliation,
   shouldShowInstanceField,
   shouldTreatPersistedTargetAsLegacyModel,
+  updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
 interface SharedProviderModelFieldsProps {
@@ -213,16 +203,9 @@ export function ProviderModelFields({
     model,
     modelSelection,
   });
-  const entryOptions = effectiveAdvancedCatalog.entries.length > 0
-    ? effectiveAdvancedCatalog.entries
-    : effectiveCatalog.models;
   const isLegacyModelTarget =
     legacyManualTargetKey === targetKey
     || persistedLegacyModelTarget;
-  const allowLegacyManualModelEntry = shouldAllowLegacyManualModelEntry({
-    entryCount: entryOptions.length,
-    isLegacyModelTarget,
-  });
   const hasBlankLegacyDraft =
     legacyManualTargetKey === targetKey
     && (model?.trim() || '').length === 0
@@ -361,83 +344,43 @@ export function ProviderModelFields({
     hasBlankLegacyDraft,
   ]);
 
-  const instanceOptions: ProductProviderInstanceDescriptor[] = selectedProvider
-    ? (
-        selectedProvider.instances.some((option) => option.id === resolvedInstance)
-          ? selectedProvider.instances
-          : resolvedInstance
-            ? [{
-                id: resolvedInstance,
-                label: resolvedInstance,
-                target: resolvedInstance,
-                backend: null,
-              }, ...selectedProvider.instances]
-            : selectedProvider.instances
-      )
-    : [];
-  const showInstanceField = shouldShowInstanceField({
-    resolvedInstance,
+  const {
+    entryOptions,
     instanceOptions,
-  });
-  const selectedInstanceCapabilities = resolveSelectedInstanceEventCapabilities({
-    resolvedInstance,
-    instanceOptions,
-  });
-  const selectedInstanceCapabilitySummary = formatProviderEventCapabilitiesSummary(
-    selectedInstanceCapabilities,
-  );
-  const selectedCatalogEntryId = entryOptions.some((option) => option.id === model)
-    ? model
-    : entryOptions[0]?.id ?? '';
-  const selectedEntryId = isLegacyModelTarget ? CUSTOM_LEGACY_MODEL_VALUE : (
-    selectedCatalogEntryId || ''
-  );
-  const presetOptions = listPresetOptionsForEntry(
-    effectiveAdvancedCatalog,
+    showInstanceField,
+    selectedInstanceCapabilitySummary,
     selectedCatalogEntryId,
+    selectedEntryId,
+    presetOptions,
+    selectedPresetId,
+    controlOptions,
+    requestScopedControlCount,
+    controlValues,
+    supportBadge,
+    selectedEntryNotes,
+    primaryCatalogWarning,
+    providerPlaceholder,
+    modelPlaceholder,
+    providerRegistryHint,
+    providerRegistrySetupHref,
+    canRetryProviderRegistry,
+    allowLegacyManualModelEntry,
+  } = resolveProviderModelFieldsViewState({
+    selectedProvider,
+    provider,
+    instance,
+    model,
+    modelSelection,
+    catalogLoading,
+    providersLoaded,
+    providerRegistry: {
+      ...providerRegistry,
+      providers: providerOptions,
+    },
+    effectiveCatalog,
+    effectiveAdvancedCatalog,
     isLegacyModelTarget,
-  );
-  const selectedPresetId = !isLegacyModelTarget
-    && presetOptions.some((preset) => preset.id === modelSelection?.presetId)
-    ? modelSelection?.presetId ?? ''
-    : '';
-  const controlOptions = !isLegacyModelTarget
-    ? listPersistentControlOptions(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
-    : [];
-  const requestScopedControlCount = !isLegacyModelTarget
-    ? countRequestScopedControls(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
-    : 0;
-  const controlValues = modelSelection?.controls ?? {};
-  const supportBadge = resolveProviderSupportBadge(effectiveAdvancedCatalog.support.tier);
-  const selectedEntryNotes = !isLegacyModelTarget
-    ? entryOptions.find((option) => option.id === selectedCatalogEntryId)?.notes ?? []
-    : [];
-  const primaryCatalogWarning = effectiveAdvancedCatalog.warnings[0]
-    ?? effectiveCatalog.warnings[0]
-    ?? null;
-  const providerPlaceholder = resolveProviderRegistryPlaceholder({
-    providersLoaded,
-    registryState: providerRegistry.state,
   });
-  const modelPlaceholder = !selectedProvider
-    ? (providersLoaded
-        ? providerRegistry.state === 'runtime_unreachable'
-          ? 'Retry loading providers first'
-          : 'Select an available provider first'
-        : 'Waiting for available providers...')
-    : catalogLoading
-      ? 'Loading available models...'
-      : allowLegacyManualModelEntry
-        ? 'Select a model'
-        : 'No runtime-backed models available';
-  const providerRegistryHint = resolveProviderRegistryHint({
-    providersLoaded,
-    registry: providerRegistry,
-  });
-  const providerRegistrySetupHref = resolveProviderRegistrySetupHref(providerRegistry);
-  const canRetryProviderRegistry = providersLoaded
-    && providerOptions.length === 0
-    && providerRegistry.recovery?.retryable !== false;
 
   function reloadProviderRegistry(options?: { markAutoRecheckAt?: number }): void {
     if (options?.markAutoRecheckAt !== undefined) {
@@ -633,7 +576,7 @@ export function ProviderModelFields({
               });
             }}
           >
-            {instanceOptions.map((option: ProductProviderInstanceDescriptor) => (
+            {instanceOptions.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
@@ -762,17 +705,13 @@ export function ProviderModelFields({
                 className="textInput"
                 value={serializeControlInputValue(value)}
                 onChange={(event) => {
-                  const nextControls = event.target.value
-                    ? {
-                        ...controlValues,
-                        [control.key]: parseControlInputValue(control, event.target.value),
-                      }
-                    : Object.fromEntries(
-                        Object.entries(controlValues).filter(([key]) => key !== control.key),
-                      );
                   emitSelection({
                     presetId: selectedPresetId || null,
-                    controls: Object.keys(nextControls).length > 0 ? nextControls : undefined,
+                    controls: updatePersistentControlValues({
+                      control,
+                      currentValues: controlValues,
+                      rawValue: event.target.value,
+                    }),
                   });
                 }}
               >
@@ -808,17 +747,13 @@ export function ProviderModelFields({
                 className="textInput"
                 value={displayedValue}
                 onChange={(event) => {
-                  const nextControls = event.target.value
-                    ? {
-                        ...controlValues,
-                        [control.key]: parseControlInputValue(control, event.target.value),
-                      }
-                    : Object.fromEntries(
-                        Object.entries(controlValues).filter(([key]) => key !== control.key),
-                      );
                   emitSelection({
                     presetId: selectedPresetId || null,
-                    controls: Object.keys(nextControls).length > 0 ? nextControls : undefined,
+                    controls: updatePersistentControlValues({
+                      control,
+                      currentValues: controlValues,
+                      rawValue: event.target.value,
+                    }),
                   });
                 }}
               >
@@ -851,18 +786,13 @@ export function ProviderModelFields({
               step={control.kind === 'number' ? control.step ?? 1 : undefined}
               placeholder="Optional"
               onChange={(event) => {
-                const nextRaw = event.target.value;
-                const nextControls = nextRaw
-                  ? {
-                      ...controlValues,
-                      [control.key]: parseControlInputValue(control, nextRaw),
-                    }
-                  : Object.fromEntries(
-                      Object.entries(controlValues).filter(([key]) => key !== control.key),
-                    );
                 emitSelection({
                   presetId: selectedPresetId || null,
-                  controls: Object.keys(nextControls).length > 0 ? nextControls : undefined,
+                  controls: updatePersistentControlValues({
+                    control,
+                    currentValues: controlValues,
+                    rawValue: event.target.value,
+                  }),
                 });
               }}
             />

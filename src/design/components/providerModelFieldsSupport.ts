@@ -15,9 +15,11 @@ import {
   cloneProviderModelSelection,
   createExplicitProviderModelSelection,
   isLegacyProviderModelTarget,
+  resolveSelectedProviderInstance,
   type ProviderModelSelection,
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
+import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
 
 export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 3000;
 
@@ -441,4 +443,186 @@ export function listPresetOptionsForEntry(
   }
   return advancedCatalog.presets.filter((preset) =>
     presetAppliesToEntry(preset, selectedCatalogEntryId));
+}
+
+export function updatePersistentControlValues(input: {
+  control: ProviderAdvancedCatalogControl;
+  currentValues: Record<string, ProviderAdvancedControlValue>;
+  rawValue: string;
+}): Record<string, ProviderAdvancedControlValue> | undefined {
+  const { control, currentValues, rawValue } = input;
+  if (rawValue) {
+    return {
+      ...currentValues,
+      [control.key]: parseControlInputValue(control, rawValue),
+    };
+  }
+
+  const nextEntries = Object.entries(currentValues)
+    .filter(([key]) => key !== control.key);
+  return nextEntries.length > 0 ? Object.fromEntries(nextEntries) : undefined;
+}
+
+export function resolveProviderModelFieldsViewState(input: {
+  selectedProvider: ProductProviderRegistryReadModel['providers'][number] | null;
+  provider: string;
+  instance: string;
+  model: string;
+  modelSelection?: ProviderModelSelection | null;
+  catalogLoading: boolean;
+  providersLoaded: boolean;
+  providerRegistry: ProductProviderRegistryReadModel;
+  effectiveCatalog: ProviderModelCatalog;
+  effectiveAdvancedCatalog: ProviderAdvancedModelCatalog;
+  isLegacyModelTarget: boolean;
+}): {
+  resolvedInstance: string;
+  instanceOptions: ProductProviderInstanceDescriptor[];
+  showInstanceField: boolean;
+  selectedInstanceCapabilitySummary: string | null;
+  entryOptions: ProviderAdvancedModelCatalog['entries'] | ProviderModelCatalog['models'];
+  selectedCatalogEntryId: string;
+  selectedEntryId: string;
+  presetOptions: ProviderAdvancedCatalogPreset[];
+  selectedPresetId: string;
+  controlOptions: ProviderAdvancedCatalogControl[];
+  requestScopedControlCount: number;
+  controlValues: Record<string, ProviderAdvancedControlValue>;
+  supportBadge: {
+    label: string;
+    tone: 'advanced' | 'catalog' | 'readOnly';
+  };
+  selectedEntryNotes: string[];
+  primaryCatalogWarning: string | null;
+  providerPlaceholder: string;
+  modelPlaceholder: string;
+  providerRegistryHint: string;
+  providerRegistrySetupHref: string | null;
+  canRetryProviderRegistry: boolean;
+  allowLegacyManualModelEntry: boolean;
+} {
+  const {
+    selectedProvider,
+    provider,
+    instance,
+    model,
+    modelSelection,
+    catalogLoading,
+    providersLoaded,
+    providerRegistry,
+    effectiveCatalog,
+    effectiveAdvancedCatalog,
+    isLegacyModelTarget,
+  } = input;
+  const resolvedInstance = selectedProvider
+    ? resolveSelectedProviderInstance(selectedProvider, instance)
+    : '';
+  const entryOptions = effectiveAdvancedCatalog.entries.length > 0
+    ? effectiveAdvancedCatalog.entries
+    : effectiveCatalog.models;
+  const allowLegacyManualModelEntry = shouldAllowLegacyManualModelEntry({
+    entryCount: entryOptions.length,
+    isLegacyModelTarget,
+  });
+  const instanceOptions: ProductProviderInstanceDescriptor[] = selectedProvider
+    ? (
+        selectedProvider.instances.some((option) => option.id === resolvedInstance)
+          ? selectedProvider.instances
+          : resolvedInstance
+            ? [{
+                id: resolvedInstance,
+                label: resolvedInstance,
+                target: resolvedInstance,
+                backend: null,
+              }, ...selectedProvider.instances]
+            : selectedProvider.instances
+      )
+    : [];
+  const showInstanceField = shouldShowInstanceField({
+    resolvedInstance,
+    instanceOptions,
+  });
+  const selectedInstanceCapabilities = resolveSelectedInstanceEventCapabilities({
+    resolvedInstance,
+    instanceOptions,
+  });
+  const selectedInstanceCapabilitySummary = formatProviderEventCapabilitiesSummary(
+    selectedInstanceCapabilities,
+  );
+  const selectedCatalogEntryId = entryOptions.some((option) => option.id === model)
+    ? model
+    : entryOptions[0]?.id ?? '';
+  const selectedEntryId = isLegacyModelTarget ? CUSTOM_LEGACY_MODEL_VALUE : (
+    selectedCatalogEntryId || ''
+  );
+  const presetOptions = listPresetOptionsForEntry(
+    effectiveAdvancedCatalog,
+    selectedCatalogEntryId,
+    isLegacyModelTarget,
+  );
+  const selectedPresetId = !isLegacyModelTarget
+    && presetOptions.some((preset) => preset.id === modelSelection?.presetId)
+    ? modelSelection?.presetId ?? ''
+    : '';
+  const controlOptions = !isLegacyModelTarget
+    ? listPersistentControlOptions(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
+    : [];
+  const requestScopedControlCount = !isLegacyModelTarget
+    ? countRequestScopedControls(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
+    : 0;
+  const controlValues = modelSelection?.controls ?? {};
+  const supportBadge = resolveProviderSupportBadge(effectiveAdvancedCatalog.support.tier);
+  const selectedEntryNotes = !isLegacyModelTarget
+    ? entryOptions.find((option) => option.id === selectedCatalogEntryId)?.notes ?? []
+    : [];
+  const primaryCatalogWarning = effectiveAdvancedCatalog.warnings[0]
+    ?? effectiveCatalog.warnings[0]
+    ?? null;
+  const providerPlaceholder = resolveProviderRegistryPlaceholder({
+    providersLoaded,
+    registryState: providerRegistry.state,
+  });
+  const modelPlaceholder = !selectedProvider
+    ? (providersLoaded
+        ? providerRegistry.state === 'runtime_unreachable'
+          ? 'Retry loading providers first'
+          : 'Select an available provider first'
+        : 'Waiting for available providers...')
+    : catalogLoading
+      ? 'Loading available models...'
+      : allowLegacyManualModelEntry
+        ? 'Select a model'
+        : 'No runtime-backed models available';
+  const providerRegistryHint = resolveProviderRegistryHint({
+    providersLoaded,
+    registry: providerRegistry,
+  });
+  const providerRegistrySetupHref = resolveProviderRegistrySetupHref(providerRegistry);
+  const canRetryProviderRegistry = providersLoaded
+    && providerRegistry.providers.length === 0
+    && providerRegistry.recovery?.retryable !== false;
+
+  return {
+    resolvedInstance,
+    instanceOptions,
+    showInstanceField,
+    selectedInstanceCapabilitySummary,
+    entryOptions,
+    selectedCatalogEntryId,
+    selectedEntryId,
+    presetOptions,
+    selectedPresetId,
+    controlOptions,
+    requestScopedControlCount,
+    controlValues,
+    supportBadge,
+    selectedEntryNotes,
+    primaryCatalogWarning,
+    providerPlaceholder,
+    modelPlaceholder,
+    providerRegistryHint,
+    providerRegistrySetupHref,
+    canRetryProviderRegistry,
+    allowLegacyManualModelEntry,
+  };
 }
