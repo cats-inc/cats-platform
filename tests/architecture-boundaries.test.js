@@ -824,17 +824,21 @@ test('renderer app consumes a dedicated app-shell routing hook instead of defini
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
     'utf8',
   );
-  const hookSource = await readFile(
+  const chatHookSource = await readFile(
     new URL('../src/products/chat/renderer/hooks/useAppShellRouting.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts', import.meta.url),
     'utf8',
   );
 
   assert.match(appSource, /useAppShellRouting/u);
   assert.doesNotMatch(appSource, /void fetchAppShell\(controller\.signal\)/u);
   assert.doesNotMatch(appSource, /updateSelectedChannel\(routeChannelId,\s*controller\.signal\)/u);
-  assert.match(hookSource, /export function useAppShellRouting/u);
-  assert.match(hookSource, /fetchAppShell/u);
-  assert.match(hookSource, /updateSelectedChannel/u);
+  assert.match(chatHookSource, /useWorkspaceAppShellRouting/u);
+  assert.match(sharedHookSource, /fetchAppShell/u);
+  assert.match(sharedHookSource, /updateSelectedChannel/u);
 });
 
 test('renderer app consumes a dedicated folder-browser hook instead of defining browse flows inline', async () => {

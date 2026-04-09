@@ -6,11 +6,13 @@ import {
 } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 
-import { isComposerBusy } from '../../../../shared/composer.js';
+import {
+  isComposerBusy,
+} from '../../../../shared/composer.js';
 import type { AppShellPayload, ChatChannelSummary } from '../../api/workspaceContracts.js';
 import {
-  fetchAppShell,
-  updateSelectedChannel,
+  fetchAppShell as fetchWorkspaceAppShell,
+  updateSelectedChannel as updateWorkspaceSelectedChannel,
 } from '../api/index.js';
 import {
   buildWorkspaceChannelPath,
@@ -22,14 +24,27 @@ import { shouldWakeRouteChannelOnEntry, type SelectedChannelView } from '../../c
 import { isDirectLaneChannel } from '../../channelTopology.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
 
-type LoadStateLike =
+type RoutingChannelLike = Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>;
+type RoutingCatLike = { id: string; status: string };
+
+export interface WorkspaceRoutingPayloadLike {
+  chat: {
+    channels: ReadonlyArray<RoutingChannelLike>;
+    cats: ReadonlyArray<RoutingCatLike>;
+    selectedChannelId: string | null;
+  };
+}
+
+type LoadStateLike<TPayload extends WorkspaceRoutingPayloadLike> =
   | { status: 'loading' }
-  | { status: 'ready'; payload: AppShellPayload }
+  | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
 
-export interface WorkspaceAppShellRoutingOptions {
-  state: LoadStateLike;
-  setState: Dispatch<SetStateAction<LoadStateLike>>;
+export interface WorkspaceAppShellRoutingOptions<
+  TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+> {
+  state: LoadStateLike<TPayload>;
+  setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
   navigate: NavigateFunction;
   busy: string;
   chatPrefix: string;
@@ -42,9 +57,20 @@ export interface WorkspaceAppShellRoutingOptions {
   showingMyCatDirectLane: boolean;
   routeDirectLaneSummary: { id: string } | null;
   readySelectedChannel: SelectedChannelView | null;
+  fetchAppShell?: (signal: AbortSignal) => Promise<TPayload>;
+  updateSelectedChannel?: (channelId: string, signal: AbortSignal) => Promise<TPayload>;
+  isRouteSelectionBlocked?: (busy: string | null | undefined) => boolean;
+  resolveMissingDraftDefaultRecipientPath?: (input: {
+    channels: ReadonlyArray<RoutingChannelLike>;
+    selectedChannelId: string | null;
+    draftDefaultRecipientCatId: string;
+    showingMyCatDirectLane: boolean;
+  }) => string;
 }
 
-export function useWorkspaceAppShellRouting(options: WorkspaceAppShellRoutingOptions) {
+export function useWorkspaceAppShellRouting<
+  TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+>(options: WorkspaceAppShellRoutingOptions<TPayload>) {
   const {
     state,
     setState,
@@ -60,6 +86,13 @@ export function useWorkspaceAppShellRouting(options: WorkspaceAppShellRoutingOpt
     showingMyCatDirectLane,
     routeDirectLaneSummary,
     readySelectedChannel,
+    fetchAppShell = fetchWorkspaceAppShell as unknown as (signal: AbortSignal) => Promise<TPayload>,
+    updateSelectedChannel = updateWorkspaceSelectedChannel as unknown as (
+      channelId: string,
+      signal: AbortSignal,
+    ) => Promise<TPayload>,
+    isRouteSelectionBlocked = isComposerBusy,
+    resolveMissingDraftDefaultRecipientPath,
   } = options;
 
   useEffect(() => {
@@ -88,7 +121,7 @@ export function useWorkspaceAppShellRouting(options: WorkspaceAppShellRoutingOpt
       return;
     }
 
-    if (isComposerBusy(busy)) {
+    if (isRouteSelectionBlocked(busy)) {
       return;
     }
 
@@ -100,7 +133,7 @@ export function useWorkspaceAppShellRouting(options: WorkspaceAppShellRoutingOpt
       navigate(
         resolveWorkspaceVisibleChatPath(
           chatPrefix,
-          state.payload.chat.channels as ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>>,
+          state.payload.chat.channels,
           selectedChannelId,
         ),
         { replace: true },
@@ -130,7 +163,7 @@ export function useWorkspaceAppShellRouting(options: WorkspaceAppShellRoutingOpt
           navigate(
             resolveWorkspaceVisibleChatPath(
               chatPrefix,
-              state.payload.chat.channels as ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>>,
+              state.payload.chat.channels,
               selectedChannelId,
             ),
             { replace: true },
@@ -161,17 +194,32 @@ export function useWorkspaceAppShellRouting(options: WorkspaceAppShellRoutingOpt
       cat.id === draftDefaultRecipientCatId && cat.status === 'active');
     if (!catExists) {
       navigate(
-        showingMyCatDirectLane
-          ? resolveWorkspaceVisibleChatPath(
-              chatPrefix,
-              state.payload.chat.channels as ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>>,
-              state.payload.chat.selectedChannelId,
-            )
-          : resolveWorkspaceNewChatPath(chatPrefix),
+        resolveMissingDraftDefaultRecipientPath?.({
+          channels: state.payload.chat.channels,
+          selectedChannelId: state.payload.chat.selectedChannelId,
+          draftDefaultRecipientCatId,
+          showingMyCatDirectLane,
+        })
+          ?? (
+            showingMyCatDirectLane
+              ? resolveWorkspaceVisibleChatPath(
+                  chatPrefix,
+                  state.payload.chat.channels,
+                  state.payload.chat.selectedChannelId,
+                )
+              : resolveWorkspaceNewChatPath(chatPrefix)
+          ),
         { replace: true },
       );
     }
-  }, [chatPrefix, draftDefaultRecipientCatId, navigate, showingMyCatDirectLane, state]);
+  }, [
+    chatPrefix,
+    draftDefaultRecipientCatId,
+    navigate,
+    resolveMissingDraftDefaultRecipientPath,
+    showingMyCatDirectLane,
+    state,
+  ]);
 
   useEffect(() => {
     if (
@@ -212,8 +260,10 @@ export function useWorkspaceAppShellRouting(options: WorkspaceAppShellRoutingOpt
 }
 
 export function createUseAppShellRouting(chatPrefix: string) {
-  return function useAppShellRouting(
-    options: Omit<WorkspaceAppShellRoutingOptions, 'chatPrefix'>,
+  return function useAppShellRouting<
+    TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+  >(
+    options: Omit<WorkspaceAppShellRoutingOptions<TPayload>, 'chatPrefix'>,
   ) {
     return useWorkspaceAppShellRouting({
       ...options,
