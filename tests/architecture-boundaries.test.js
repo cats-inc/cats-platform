@@ -1724,6 +1724,25 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   );
 });
 
+test('ProviderModelFields composes dedicated support helpers instead of defining catalog helpers inline', async () => {
+  const componentSource = await readFile(
+    new URL('../src/design/components/ProviderModelFields.tsx', import.meta.url),
+    'utf8',
+  );
+  const supportSource = await readFile(
+    new URL('../src/design/components/providerModelFieldsSupport.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(componentSource, /providerModelFieldsSupport\.js/u);
+  assert.doesNotMatch(componentSource, /function createEmptyProviderModelCatalog\(/u);
+  assert.doesNotMatch(componentSource, /function sanitizeProviderRegistryReadModel\(/u);
+  assert.doesNotMatch(componentSource, /function shouldAutoRecheckProviderRegistry\(/u);
+  assert.match(supportSource, /export function createEmptyProviderModelCatalog/u);
+  assert.match(supportSource, /export function sanitizeProviderRegistryReadModel/u);
+  assert.match(supportSource, /export function shouldAutoRecheckProviderRegistry/u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api/index.ts', import.meta.url),

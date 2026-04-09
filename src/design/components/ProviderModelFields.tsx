@@ -1,29 +1,74 @@
 import { useEffect, useRef, useState } from 'react';
 
 import {
-  createProviderAdvancedCatalogFromModelCatalog,
-  type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
   type ProductProviderRegistryReadModel,
-  type ProductProviderRegistryState,
   type ProviderAdvancedCatalogControl,
-  type ProviderAdvancedCatalogPreset,
   type ProviderAdvancedControlValue,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
 import {
-  cloneProviderModelResolution,
-  cloneProviderModelSelection,
-  createExplicitProviderModelSelection,
-  isLegacyProviderModelTarget,
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
   sameProviderModelSelection,
   type ProviderModelSelection,
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
+import {
+  CUSTOM_LEGACY_MODEL_VALUE,
+  PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
+  buildSelectionForEntry,
+  catalogMatchesTarget,
+  countRequestScopedControls,
+  createDefaultProviderRegistryReadModel,
+  createEmptyProviderAdvancedModelCatalog,
+  createEmptyProviderModelCatalog,
+  filterPersistentControlValues,
+  hasExplicitDefaultEnumOption,
+  listApplicableControlValueOptions,
+  listPersistentControlOptions,
+  parseControlInputValue,
+  resolveAdvancedCatalogFallback,
+  resolveDisplayedEnumControlValue,
+  resolveProviderRegistryHint,
+  resolveProviderRegistryPlaceholder,
+  resolveProviderRegistrySetupHref,
+  resolveProviderSupportBadge,
+  resolveSelectedInstanceEventCapabilities,
+  sanitizePersistentTargetSelection,
+  sanitizeProviderRegistryReadModel,
+  serializeControlInputValue,
+  shouldAllowLegacyManualModelEntry,
+  shouldAutoRecheckProviderRegistry,
+  shouldDeferCatalogTargetReconciliation,
+  shouldShowInstanceField,
+  shouldTreatPersistedTargetAsLegacyModel,
+  listPresetOptionsForEntry,
+} from './providerModelFieldsSupport.js';
+
+export {
+  CUSTOM_LEGACY_MODEL_VALUE,
+  PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
+  catalogMatchesTarget,
+  countRequestScopedControls,
+  filterPersistentControlValues,
+  hasExplicitDefaultEnumOption,
+  listPersistentControlOptions,
+  resolveDisplayedEnumControlValue,
+  resolveProviderRegistryHint,
+  resolveProviderRegistryPlaceholder,
+  resolveProviderRegistrySetupHref,
+  resolveProviderSupportBadge,
+  resolveSelectedInstanceEventCapabilities,
+  sanitizePersistentTargetSelection,
+  shouldAllowLegacyManualModelEntry,
+  shouldAutoRecheckProviderRegistry,
+  shouldDeferCatalogTargetReconciliation,
+  shouldShowInstanceField,
+  shouldTreatPersistedTargetAsLegacyModel,
+} from './providerModelFieldsSupport.js';
 
 interface SharedProviderModelFieldsProps {
   provider: string;
@@ -38,382 +83,6 @@ interface SharedProviderModelFieldsProps {
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
-}
-
-export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 3000;
-
-function createEmptyProviderModelCatalog(
-  provider: string,
-  instance?: string | null,
-  warning?: string | null,
-): ProviderModelCatalog {
-  return {
-    provider,
-    backend: null,
-    instance: instance?.trim() || null,
-    defaultModel: null,
-    source: 'config',
-    cache: null,
-    models: [],
-    warnings: warning ? [warning] : [],
-  };
-}
-
-function createEmptyProviderAdvancedModelCatalog(
-  provider: string,
-  instance?: string | null,
-  warning?: string | null,
-): ProviderAdvancedModelCatalog {
-  return {
-    provider,
-    backend: null,
-    instance: instance?.trim() || null,
-    defaultModel: null,
-    source: 'config',
-    cache: null,
-    entries: [],
-    presets: [],
-    controls: [],
-    defaultSelection: null,
-    support: {
-      tier: 'entry_only',
-      notes: [],
-    },
-    warnings: warning ? [warning] : [],
-  };
-}
-
-function createDefaultProviderRegistryReadModel(): ProductProviderRegistryReadModel {
-  return {
-    state: 'ready',
-    providers: [],
-  };
-}
-
-function sanitizeProviderRegistryReadModel(
-  value: ProductProviderRegistryReadModel,
-): ProductProviderRegistryReadModel {
-  return {
-    state: value.state,
-    providers: Array.isArray(value.providers) ? value.providers : [],
-    recovery: value.recovery,
-    warnings: Array.isArray(value.warnings) ? value.warnings : [],
-  };
-}
-
-export function resolveProviderRegistryPlaceholder(input: {
-  providersLoaded: boolean;
-  registryState: ProductProviderRegistryState;
-}): string {
-  if (!input.providersLoaded) {
-    return 'Loading available providers...';
-  }
-
-  return input.registryState === 'runtime_unreachable'
-    ? 'Could not load runtime-backed providers'
-    : 'No runtime-backed providers available';
-}
-
-export function resolveProviderRegistryHint(input: {
-  providersLoaded: boolean;
-  registry: ProductProviderRegistryReadModel;
-}): string {
-  if (!input.providersLoaded) {
-    return 'Checking cats-runtime for usable provider targets.';
-  }
-
-  if (input.registry.state === 'runtime_unreachable') {
-    return input.registry.warnings?.[0]
-      ?? 'Could not load currently usable provider targets from cats-runtime.';
-  }
-
-  return 'cats-runtime is connected, but it did not report any currently usable provider targets.';
-}
-
-export function resolveProviderRegistrySetupHref(
-  registry: ProductProviderRegistryReadModel,
-): string | null {
-  const href = registry.recovery?.openRuntimeSetupPath?.trim();
-  return href ? href : null;
-}
-
-export function shouldAutoRecheckProviderRegistry(input: {
-  providersLoaded: boolean;
-  providerCount: number;
-  registryState: ProductProviderRegistryState;
-  retryable: boolean;
-  hasSetupHref: boolean;
-  documentVisible: boolean;
-  lastAutoRecheckAt: number;
-  now: number;
-}): boolean {
-  if (!input.providersLoaded) {
-    return false;
-  }
-
-  if (input.providerCount > 0 || input.registryState === 'ready') {
-    return false;
-  }
-
-  if (!input.retryable || !input.documentVisible) {
-    return false;
-  }
-
-  if (input.registryState !== 'runtime_unreachable' && !input.hasSetupHref) {
-    return false;
-  }
-
-  return input.now - input.lastAutoRecheckAt >= PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS;
-}
-
-function presetAppliesToEntry(
-  preset: ProviderAdvancedCatalogPreset,
-  entryId: string,
-): boolean {
-  return !preset.applicableEntryIds
-    || preset.applicableEntryIds.length === 0
-    || preset.applicableEntryIds.includes(entryId);
-}
-
-function controlAppliesToEntry(
-  control: ProviderAdvancedCatalogControl,
-  entryId: string,
-): boolean {
-  return !control.applicableEntryIds
-    || control.applicableEntryIds.length === 0
-    || control.applicableEntryIds.includes(entryId);
-}
-
-function controlValueOptionAppliesToEntry(
-  option: NonNullable<ProviderAdvancedCatalogControl['values']>[number],
-  entryId: string,
-): boolean {
-  return !option.applicableEntryIds
-    || option.applicableEntryIds.length === 0
-    || option.applicableEntryIds.includes(entryId);
-}
-
-function listApplicableControlValueOptions(
-  control: ProviderAdvancedCatalogControl,
-  entryId: string,
-): NonNullable<ProviderAdvancedCatalogControl['values']> {
-  return (control.values ?? []).filter((option) => controlValueOptionAppliesToEntry(option, entryId));
-}
-
-export function hasExplicitDefaultEnumOption(
-  control: ProviderAdvancedCatalogControl,
-  entryId: string,
-): boolean {
-  return listApplicableControlValueOptions(control, entryId)
-    .some((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
-}
-
-export function resolveDisplayedEnumControlValue(
-  control: ProviderAdvancedCatalogControl,
-  entryId: string,
-  value: ProviderAdvancedControlValue | undefined,
-): string {
-  const serialized = serializeControlInputValue(value);
-  if (serialized) {
-    return serialized;
-  }
-
-  const explicitDefault = listApplicableControlValueOptions(control, entryId)
-    .find((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
-  return explicitDefault ? String(explicitDefault.value) : '';
-}
-
-function parseControlInputValue(
-  control: ProviderAdvancedCatalogControl,
-  rawValue: string,
-): ProviderAdvancedControlValue {
-  if (control.kind === 'number') {
-    const numeric = Number(rawValue);
-    return Number.isFinite(numeric) ? numeric : 0;
-  }
-
-  if (control.kind === 'boolean') {
-    return rawValue === 'true';
-  }
-
-  return rawValue;
-}
-
-function serializeControlInputValue(
-  value: ProviderAdvancedControlValue | undefined,
-): string {
-  if (typeof value === 'boolean') {
-    return value ? 'true' : 'false';
-  }
-  if (typeof value === 'number') {
-    return String(value);
-  }
-  return typeof value === 'string' ? value : '';
-}
-
-function buildSelectionForEntry(
-  model: string,
-  presetId: string | null,
-  controls: Record<string, ProviderAdvancedControlValue> | undefined,
-): ProviderModelSelection | null {
-  return createExplicitProviderModelSelection(model, {
-    presetId,
-    controls,
-  });
-}
-
-export const CUSTOM_LEGACY_MODEL_VALUE = '__custom_legacy_model__';
-
-export function resolveProviderSupportBadge(
-  supportTier: ProviderAdvancedModelCatalog['support']['tier'] | null | undefined,
-): {
-  label: string;
-  tone: 'advanced' | 'catalog' | 'readOnly';
-} {
-  if (supportTier === 'full') {
-    return { label: 'Advanced', tone: 'advanced' };
-  }
-  if (supportTier === 'read_only') {
-    return { label: 'Read-only', tone: 'readOnly' };
-  }
-  return { label: 'Catalog', tone: 'catalog' };
-}
-
-export function listPersistentControlOptions(
-  controls: ProviderAdvancedCatalogControl[],
-  entryId: string,
-): ProviderAdvancedCatalogControl[] {
-  return controls
-    .filter((control) =>
-      control.scope !== 'request'
-      && controlAppliesToEntry(control, entryId))
-    .map((control) => ({
-      ...control,
-      ...(control.kind === 'enum' && control.values
-        ? { values: listApplicableControlValueOptions(control, entryId) }
-        : {}),
-    }));
-}
-
-export function countRequestScopedControls(
-  controls: ProviderAdvancedCatalogControl[],
-  entryId: string,
-): number {
-  return controls.filter((control) =>
-    control.scope === 'request'
-    && controlAppliesToEntry(control, entryId)).length;
-}
-
-export function filterPersistentControlValues(
-  controls: ProviderAdvancedCatalogControl[],
-  entryId: string,
-  values: Record<string, ProviderAdvancedControlValue> | undefined,
-): Record<string, ProviderAdvancedControlValue> | undefined {
-  if (!values) {
-    return undefined;
-  }
-
-  const allowedControls = listPersistentControlOptions(controls, entryId);
-  const allowedControlMap = new Map(allowedControls.map((control) => [control.key, control]));
-  const entries = Object.entries(values).filter(([key, value]) => {
-    const control = allowedControlMap.get(key);
-    if (!control) {
-      return false;
-    }
-    if (control.kind !== 'enum' || typeof value !== 'string' || !control.values?.length) {
-      return true;
-    }
-    return listApplicableControlValueOptions(control, entryId)
-      .some((option) => option.value === value);
-  });
-  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
-}
-
-export function shouldTreatPersistedTargetAsLegacyModel(input: {
-  catalog: ProviderModelCatalog;
-  model: string | null | undefined;
-  modelSelection?: ProviderModelSelection | null;
-}): boolean {
-  if (input.catalog.source === 'static') {
-    return false;
-  }
-
-  return isLegacyProviderModelTarget(input);
-}
-
-export function sanitizePersistentTargetSelection(input: {
-  target: ProviderTargetSelection;
-  controls: ProviderAdvancedCatalogControl[];
-}): ProviderTargetSelection {
-  const clonedSelection = cloneProviderModelSelection(input.target.modelSelection);
-  if (!clonedSelection) {
-    return input.target;
-  }
-
-  const sanitizedControls = filterPersistentControlValues(
-    input.controls,
-    clonedSelection.entryId ?? input.target.model,
-    clonedSelection.controls,
-  );
-  if (sanitizedControls) {
-    clonedSelection.controls = sanitizedControls;
-  } else {
-    delete clonedSelection.controls;
-  }
-
-  return {
-    ...input.target,
-    modelSelection: clonedSelection,
-    modelResolution: cloneProviderModelResolution(input.target.modelResolution),
-  };
-}
-
-export function shouldDeferCatalogTargetReconciliation(input: {
-  catalogSource: ProviderModelCatalog['source'];
-  advancedCatalogSource: ProviderAdvancedModelCatalog['source'];
-  model: string;
-  modelSelection?: ProviderModelSelection | null;
-}): boolean {
-  return (
-    input.catalogSource === 'static'
-    && input.advancedCatalogSource === 'static'
-    && (Boolean(input.model) || Boolean(input.modelSelection))
-  );
-}
-
-export function shouldAllowLegacyManualModelEntry(input: {
-  entryCount: number;
-  isLegacyModelTarget: boolean;
-}): boolean {
-  return input.entryCount > 0 || input.isLegacyModelTarget;
-}
-
-function instanceKey(value: string | null | undefined): string {
-  return value?.trim() || '';
-}
-
-export function shouldShowInstanceField(input: {
-  resolvedInstance: string;
-  instanceOptions: ProductProviderInstanceDescriptor[];
-}): boolean {
-  return input.instanceOptions.length > 1;
-}
-
-export function resolveSelectedInstanceEventCapabilities(input: {
-  resolvedInstance: string;
-  instanceOptions: ProductProviderInstanceDescriptor[];
-}): ProductProviderEventCapabilities | null {
-  return input.instanceOptions.find((option) => option.id === input.resolvedInstance)?.eventCapabilities ?? null;
-}
-
-export function catalogMatchesTarget(input: {
-  catalogProvider: string;
-  catalogInstance: string | null | undefined;
-  provider: string;
-  instance: string;
-}): boolean {
-  return input.catalogProvider === input.provider
-    && instanceKey(input.catalogInstance) === instanceKey(input.instance);
 }
 
 export function ProviderModelFields({
@@ -618,28 +287,13 @@ export function ProviderModelFields({
           );
       setCatalog(nextCatalog);
 
-      if (advancedResult.status === 'fulfilled') {
-        setAdvancedCatalog(advancedResult.value);
-      } else if (modelsResult.status === 'fulfilled') {
-        const advancedFallbackCatalog = createProviderAdvancedCatalogFromModelCatalog(nextCatalog);
-        setAdvancedCatalog({
-          ...advancedFallbackCatalog,
-          warnings: [
-            ...advancedFallbackCatalog.warnings,
-            advancedResult.reason instanceof Error
-              ? advancedResult.reason.message
-              : 'Runtime advanced model catalog unavailable.',
-          ],
-        });
-      } else {
-        setAdvancedCatalog(createEmptyProviderAdvancedModelCatalog(
-          provider,
-          resolvedInstance || null,
-          advancedResult.reason instanceof Error
-            ? advancedResult.reason.message
-            : 'Runtime advanced model catalog unavailable.',
-        ));
-      }
+      setAdvancedCatalog(resolveAdvancedCatalogFallback({
+        provider,
+        instance: resolvedInstance || null,
+        catalog: nextCatalog,
+        advancedCatalogResult: advancedResult,
+        modelsResult,
+      }));
 
       setCatalogLoading(false);
     });
@@ -738,10 +392,11 @@ export function ProviderModelFields({
   const selectedEntryId = isLegacyModelTarget ? CUSTOM_LEGACY_MODEL_VALUE : (
     selectedCatalogEntryId || ''
   );
-  const presetOptions = !isLegacyModelTarget
-    ? effectiveAdvancedCatalog.presets.filter((preset) =>
-      presetAppliesToEntry(preset, selectedCatalogEntryId))
-    : [];
+  const presetOptions = listPresetOptionsForEntry(
+    effectiveAdvancedCatalog,
+    selectedCatalogEntryId,
+    isLegacyModelTarget,
+  );
   const selectedPresetId = !isLegacyModelTarget
     && presetOptions.some((preset) => preset.id === modelSelection?.presetId)
     ? modelSelection?.presetId ?? ''
