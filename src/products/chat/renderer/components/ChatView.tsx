@@ -85,6 +85,7 @@ import {
   isSoloThreadConversationMode,
   resolveConversationMode,
 } from '../conversationMode';
+import { ChatViewFrame } from '../../../shared/renderer/components/chat-view/ChatViewFrame';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
 
@@ -756,15 +757,14 @@ export function ChatView({
   }
 
   return (
-    <>
-      <div
-        className="viewShell viewShellChannel"
-        data-conversation-mode={conversationMode}
-        data-layout-mode={layoutMode}
-        data-composer-variant={layoutMetrics.composerVariant}
-        data-secondary-surface-position={layoutMetrics.secondarySurfacePosition}
-        style={layoutStyle}
-      >
+    <ChatViewFrame
+      conversationMode={conversationMode}
+      layoutMode={layoutMode}
+      composerVariant={layoutMetrics.composerVariant}
+      secondarySurfacePosition={layoutMetrics.secondarySurfacePosition}
+      layoutStyle={layoutStyle}
+      hasConversationStarted={hasConversationStarted}
+      topBar={(
         <header className="channelTopBar">
           <div className="channelTopBarStart">
             {showRosterAvatars ? (
@@ -797,15 +797,15 @@ export function ChatView({
                 })}
               </div>
             ) : null}
-            </div>
-            <div className="channelTopBarCenter">
-              <span className={isDirectLane
-                ? 'channelTopBarTitle channelTopBarTitleDirectLane'
-                : 'channelTopBarTitle'}
-              >
-                {topBarTitle}
-              </span>
-            </div>
+          </div>
+          <div className="channelTopBarCenter">
+            <span className={isDirectLane
+              ? 'channelTopBarTitle channelTopBarTitleDirectLane'
+              : 'channelTopBarTitle'}
+            >
+              {topBarTitle}
+            </span>
+          </div>
           <div className="channelTopBarEnd">
             {isDirectLane && onToggleCompanionMode ? (
               <button
@@ -862,28 +862,39 @@ export function ChatView({
             </button>
           </div>
         </header>
-        {layoutMetrics.catStatusRowVisible ? (() => {
-          const catStatusIndicators = activeAssignedCats
-            .map((assignment) => {
-              const cat = payload.chat.cats.find((c) => c.id === assignment.catId);
-              if (!cat) return null;
-              return resolveCatStatusIndicator(
-                cat,
-                selectedChannel as unknown as ChatChannelView,
-                operatorView,
-              );
-            })
-            .filter((indicator): indicator is NonNullable<typeof indicator> => indicator !== null);
-          return catStatusIndicators.length > 0 ? (
-            <CatStatusRow
-              indicators={catStatusIndicators}
-              onInspect={(catId) => openSidePanelTo(`cat:${catId}`)}
-            />
-          ) : null;
-        })() : null}
-        <div className="channelWorkspace">
-          <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
-            {/* Feedback is now shown via NotificationContainer */}
+      )}
+      statusRow={layoutMetrics.catStatusRowVisible ? (() => {
+        const catStatusIndicators = activeAssignedCats
+          .map((assignment) => {
+            const cat = payload.chat.cats.find((c) => c.id === assignment.catId);
+            if (!cat) return null;
+            return resolveCatStatusIndicator(
+              cat,
+              selectedChannel as unknown as ChatChannelView,
+              operatorView,
+            );
+          })
+          .filter((indicator): indicator is NonNullable<typeof indicator> => indicator !== null);
+        return catStatusIndicators.length > 0 ? (
+          <CatStatusRow
+            indicators={catStatusIndicators}
+            onInspect={(catId) => openSidePanelTo(`cat:${catId}`)}
+          />
+        ) : null;
+      })() : null}
+      bottomSentinelRef={bottomSentinelRef}
+      sidePanel={sidePanelOpen ? (
+        <SidePanel
+          title="Chat Setup"
+          activeSection={sidePanelSection}
+          onSectionToggle={setSidePanelSection}
+          onClose={() => setSidePanelOpen(false)}
+          position={layoutMetrics.secondarySurfacePosition === 'bottom' ? 'bottom' : 'side'}
+          className="chatPaneSidePanel chatPaneSidePanelBelowBar"
+          sections={buildSidePanelSections()}
+        />
+      ) : null}
+    >
 
             {hasConversationStarted ? (
               <section className="transcriptPanel">
@@ -1494,23 +1505,7 @@ export function ChatView({
                 </button>
               </nav>
             ) : null}
-            <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
-          </section>
-
-        </div>
-      </div>
-      {sidePanelOpen ? (
-        <SidePanel
-          title="Chat Setup"
-          activeSection={sidePanelSection}
-          onSectionToggle={setSidePanelSection}
-          onClose={() => setSidePanelOpen(false)}
-          position={layoutMetrics.secondarySurfacePosition === 'bottom' ? 'bottom' : 'side'}
-          className="chatPaneSidePanel chatPaneSidePanelBelowBar"
-          sections={buildSidePanelSections()}
-        />
-      ) : null}
-    </>
+    </ChatViewFrame>
   );
 
   function buildSidePanelSections(): SidePanelSection[] {

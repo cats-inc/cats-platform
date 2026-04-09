@@ -35,6 +35,7 @@ import {
 import { useTranscriptAutoScroll } from '../../hooks/useTranscriptAutoScroll.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { ChatComposerSurface } from './ChatComposerSurface.js';
+import { ChatViewFrame } from './ChatViewFrame.js';
 import { ChatViewTopBar } from './ChatViewTopBar.js';
 import { ChatViewSidePanel } from './ChatViewSidePanel.js';
 import { ChatTranscriptSurface } from './ChatTranscriptSurface.js';
@@ -286,15 +287,14 @@ export function ChatView({
   });
 
   return (
-    <>
-      <div
-        className="viewShell viewShellChannel"
-        data-conversation-mode={conversationMode}
-        data-layout-mode={layoutMode}
-        data-composer-variant={layoutMetrics.composerVariant}
-        data-secondary-surface-position={layoutMetrics.secondarySurfacePosition}
-        style={layoutStyle}
-      >
+    <ChatViewFrame
+      conversationMode={conversationMode}
+      layoutMode={layoutMode}
+      composerVariant={layoutMetrics.composerVariant}
+      secondarySurfacePosition={layoutMetrics.secondarySurfacePosition}
+      layoutStyle={layoutStyle}
+      hasConversationStarted={hasConversationStarted}
+      topBar={(
         <ChatViewTopBar
           topBarCats={topBarCats}
           bossCatId={payload.chat.bossCatId}
@@ -310,84 +310,80 @@ export function ChatView({
           onResumeChannel={onResumeChannel}
           onToggleSidePanel={() => setSidePanelOpen(!sidePanelOpen)}
         />
-        <div className="channelWorkspace">
-          <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
-            {/* Feedback is now shown via NotificationContainer */}
-
-            <ChatTranscriptSurface
-              hasConversationStarted={hasConversationStarted}
-              payload={payload}
-              selectedChannel={selectedChannel}
-              busy={busy}
-              greeting={greeting}
-              liveIndicator={liveIndicator}
-              directLaneExcludedMentionNames={directLaneExcludedMentionNames}
-              transcriptListRef={transcriptListRef}
-              onChoiceSubmit={onChoiceSubmit}
-            />
-
-            <ChatComposerSurface
-              hasConversationStarted={hasConversationStarted}
-              payload={payload}
-              selectedChannel={selectedChannel}
-              composerDraft={composerDraft}
-              channelFiles={channelFiles}
-              channelPlusMenuOpen={channelPlusMenuOpen}
-              channelPlusMenuRef={channelPlusMenuRef}
-              channelFileInputRef={channelFileInputRef}
-              composerBusy={composerBusy}
-              composerWorkspacePath={composerWorkspacePath}
-              directLaneExcludedMentionNames={directLaneExcludedMentionNames}
-              selectedModel={selectedModel}
-              directLaneCat={directLaneCat}
-              directLaneModelValue={directLaneModelValue}
-              defaultRecipientCat={defaultRecipientCat ?? null}
-              assignedCatRecords={assignedCatRecords}
-              leadCatRecord={leadCatRecord}
-              isDirectLane={isDirectLane}
-              isSoloComposer={isSoloComposer}
-              composerCardRef={composerCardRef}
-              onOpenSection={openSidePanelTo}
-              onComposerChange={onComposerChange}
-              onComposerKeyDown={onComposerKeyDown}
-              onSendMessage={onSendMessage}
-              onToggleChannelPlusMenu={onToggleChannelPlusMenu}
-              onChannelFileSelect={onChannelFileSelect}
-              onChannelFilesChange={onChannelFilesChange}
-              autoResize={autoResize}
-            />
-            <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
-          </section>
-        </div>
-      </div>
-      <ChatViewSidePanel
-        sidePanelOpen={sidePanelOpen}
-        sidePanelSection={sidePanelSection}
-        sidePanelPosition={layoutMetrics.secondarySurfacePosition === 'bottom' ? 'bottom' : 'side'}
+      )}
+      bottomSentinelRef={bottomSentinelRef}
+      sidePanel={(
+        <ChatViewSidePanel
+          sidePanelOpen={sidePanelOpen}
+          sidePanelSection={sidePanelSection}
+          sidePanelPosition={layoutMetrics.secondarySurfacePosition === 'bottom' ? 'bottom' : 'side'}
+          payload={payload}
+          selectedChannel={selectedChannel}
+          busy={busy}
+          operatorView={operatorView}
+          operatorLoading={operatorLoading}
+          operatorError={operatorError}
+          assignedCatRecords={assignedCatRecords}
+          defaultRecipientCat={defaultRecipientCat ?? null}
+          directLaneCat={directLaneCat}
+          directLaneModelValue={directLaneModelValue}
+          isDirectLane={isDirectLane}
+          isSoloComposer={isSoloComposer}
+          selectedModel={selectedModel}
+          inspectedRun={inspectedRun}
+          showAddCatButton={showAddCatButton}
+          onSectionToggle={setSidePanelSection}
+          onClose={() => setSidePanelOpen(false)}
+          onInspectRun={setInspectedRunId}
+          onApprovalDecision={onApprovalDecision}
+          onOperatorAction={onOperatorAction}
+          onModelChange={onModelChange}
+          onDirectLaneModelChange={onDirectLaneModelChange}
+          onOpenAddCat={onOpenAddCat}
+        />
+      )}
+    >
+      <ChatTranscriptSurface
+        hasConversationStarted={hasConversationStarted}
         payload={payload}
         selectedChannel={selectedChannel}
         busy={busy}
-        operatorView={operatorView}
-        operatorLoading={operatorLoading}
-        operatorError={operatorError}
-        assignedCatRecords={assignedCatRecords}
-        defaultRecipientCat={defaultRecipientCat ?? null}
+        greeting={greeting}
+        liveIndicator={liveIndicator}
+        directLaneExcludedMentionNames={directLaneExcludedMentionNames}
+        transcriptListRef={transcriptListRef}
+        onChoiceSubmit={onChoiceSubmit}
+      />
+      <ChatComposerSurface
+        hasConversationStarted={hasConversationStarted}
+        payload={payload}
+        selectedChannel={selectedChannel}
+        composerDraft={composerDraft}
+        channelFiles={channelFiles}
+        channelPlusMenuOpen={channelPlusMenuOpen}
+        channelPlusMenuRef={channelPlusMenuRef}
+        channelFileInputRef={channelFileInputRef}
+        composerBusy={composerBusy}
+        composerWorkspacePath={composerWorkspacePath}
+        directLaneExcludedMentionNames={directLaneExcludedMentionNames}
+        selectedModel={selectedModel}
         directLaneCat={directLaneCat}
         directLaneModelValue={directLaneModelValue}
+        defaultRecipientCat={defaultRecipientCat ?? null}
+        assignedCatRecords={assignedCatRecords}
+        leadCatRecord={leadCatRecord}
         isDirectLane={isDirectLane}
         isSoloComposer={isSoloComposer}
-        selectedModel={selectedModel}
-        inspectedRun={inspectedRun}
-        showAddCatButton={showAddCatButton}
-        onSectionToggle={setSidePanelSection}
-        onClose={() => setSidePanelOpen(false)}
-        onInspectRun={setInspectedRunId}
-        onApprovalDecision={onApprovalDecision}
-        onOperatorAction={onOperatorAction}
-        onModelChange={onModelChange}
-        onDirectLaneModelChange={onDirectLaneModelChange}
-        onOpenAddCat={onOpenAddCat}
+        composerCardRef={composerCardRef}
+        onOpenSection={openSidePanelTo}
+        onComposerChange={onComposerChange}
+        onComposerKeyDown={onComposerKeyDown}
+        onSendMessage={onSendMessage}
+        onToggleChannelPlusMenu={onToggleChannelPlusMenu}
+        onChannelFileSelect={onChannelFileSelect}
+        onChannelFilesChange={onChannelFilesChange}
+        autoResize={autoResize}
       />
-    </>
+    </ChatViewFrame>
   );
 }

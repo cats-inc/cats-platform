@@ -61,7 +61,7 @@ for (const product of PRODUCT_SURFACES) {
     assert.match(source, /resolveComposerWorkspacePath/u);
     assert.match(source, /ref=\{transcriptListRef\}/u);
     assert.match(source, /ref=\{composerCardRef\}/u);
-    assert.match(source, /ref=\{bottomSentinelRef\}/u);
+    assert.match(source, /(?:ref|bottomSentinelRef)=\{bottomSentinelRef\}/u);
     assert.match(source, /if \(!composerWorkspacePath\) return null;/u);
     assert.match(source, /liveIndicator\.previewText \?\? ''/u);
     assert.doesNotMatch(source, /const cwd = selectedChannel\.repoPath \?\? selectedChannel\.chatCwd;\s*if \(!cwd\) return null;/u);
