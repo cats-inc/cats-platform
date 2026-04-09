@@ -6,7 +6,15 @@ import type { ProviderTargetSelection } from '../../../../shared/providerSelecti
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
-import { buildModelSelectorLabel, type ModelSelectorValue } from './ModelSelector.js';
+import {
+  buildModelSelectorLabel,
+  ModelSelectorChip,
+  type ModelSelectorValue,
+} from './ModelSelector.js';
+import { CatAvatarRow } from './CatAvatarRow.js';
+import { ComposerCatStack } from './ComposerCatStack.js';
+import { FolderBrowserContent } from './FolderBrowser.js';
+import { ProviderModelFields } from './ProviderModelFields.js';
 
 interface ComposerCatStackProps {
   cats: AppShellPayload['chat']['cats'];
@@ -515,4 +523,26 @@ export function WorkspaceNewChatDraft({
 
     return sections;
   }
+}
+
+export interface NewChatDraftProps extends Omit<
+  WorkspaceNewChatDraftProps,
+  | 'ComposerCatStackComponent'
+  | 'ModelSelectorChipComponent'
+  | 'ProviderModelFieldsComponent'
+  | 'CatAvatarRowComponent'
+  | 'FolderBrowserContentComponent'
+> {}
+
+export function NewChatDraft(props: NewChatDraftProps) {
+  return (
+    <WorkspaceNewChatDraft
+      {...props}
+      ComposerCatStackComponent={ComposerCatStack}
+      ModelSelectorChipComponent={ModelSelectorChip}
+      ProviderModelFieldsComponent={ProviderModelFields}
+      CatAvatarRowComponent={CatAvatarRow}
+      FolderBrowserContentComponent={FolderBrowserContent}
+    />
+  );
 }
