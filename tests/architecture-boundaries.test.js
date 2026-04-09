@@ -1410,6 +1410,14 @@ test('renderer api facade composes dedicated client modules instead of defining 
     new URL('../src/products/chat/renderer/api/chat.ts', import.meta.url),
     'utf8',
   );
+  const sharedChatSource = await readFile(
+    new URL('../src/products/shared/renderer/api/chat.ts', import.meta.url),
+    'utf8',
+  );
+  const chatImplementationSource =
+    /shared\/renderer\/api\/chat\.js/u.test(chatSource)
+      ? sharedChatSource
+      : chatSource;
 
   assert.match(apiSource, /from '\.\/normalization\.js'/u);
   assert.match(apiSource, /from '\.\/operator\.js'/u);
@@ -1419,7 +1427,7 @@ test('renderer api facade composes dedicated client modules instead of defining 
   assert.doesNotMatch(apiSource, /export async function sendChatMessage\(/u);
   assert.match(normalizationSource, /export function normalizeAppShellPayload/u);
   assert.match(operatorSource, /export async function fetchOperatorLoopSnapshot/u);
-  assert.match(chatSource, /export async function sendChatMessage/u);
+  assert.match(chatImplementationSource, /export async function sendChatMessage/u);
 });
 
 test('chat snapshot consumes dedicated room-routing snapshot normalization instead of defining it inline', async () => {
