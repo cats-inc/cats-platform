@@ -1422,6 +1422,14 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     new URL('../src/products/chat/renderer/styles/chat-composer.css', import.meta.url),
     'utf8',
   );
+  const sharedChatComposerStylesSource = await readFile(
+    new URL('../src/products/shared/renderer/styles/chat-composer.css', import.meta.url),
+    'utf8',
+  );
+  const sharedChatComposerBaseStylesSource = await readFile(
+    new URL('../src/products/shared/renderer/styles/chat-composer-base.css', import.meta.url),
+    'utf8',
+  );
   const chatSetupStylesSource = await readFile(
     new URL('../src/products/chat/renderer/styles/chat-setup.css', import.meta.url),
     'utf8',
@@ -1524,8 +1532,14 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat-thread-base\.css';/u,
   );
   assert.match(chatThreadStylesSource, /\.parallelFooterBar/u);
-  assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
-  assert.match(chatComposerStylesSource, /\.composerPlusButton/u);
+  assert.match(
+    chatComposerStylesSource,
+    /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat-composer-base\.css';/u,
+  );
+  assert.match(sharedChatComposerStylesSource, /@import '\.\/chat-composer-base\.css';/u);
+  assert.match(sharedChatComposerBaseStylesSource, /\.composerPlusMenu/u);
+  assert.match(sharedChatComposerBaseStylesSource, /\.composerPlusButton/u);
+  assert.doesNotMatch(sharedChatComposerStylesSource, /\.composerRecipientChip/u);
   assert.match(
     chatSetupStylesSource,
     /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat-setup\.css';/u,
