@@ -73,7 +73,6 @@ import {
   getProviderDisplayName,
   getProviderModels,
 } from '../../../../shared/providerCatalog';
-import { buildParallelChatMemberLabel } from '../../shared/parallelChats';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
@@ -89,6 +88,7 @@ import { ChatViewFrame } from '../../../shared/renderer/components/chat-view/Cha
 import { ChatViewTopBar } from '../../../shared/renderer/components/chat-view/ChatViewTopBar';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
+import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 
 type TopBarParticipant = {
   key: string;
@@ -1399,49 +1399,15 @@ export function ChatView({
               />
             </form>
             {isCompareGroup ? (
-              <nav className="parallelFooterBar" aria-label="Parallel chat navigation">
-                <button
-                  className="parallelFooterNavButton"
-                  type="button"
-                  disabled={!comparePrevChannelId}
-                  onClick={() => navigateCompareMember('prev')}
-                  aria-label="Previous parallel chat"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                </button>
-                <div className="parallelFooterTabs" role="tablist" aria-label="Parallel chats">
-                  {compareMembers.map((member) => {
-                    const active = member.channelId === selectedChannel.id;
-                    const label = buildParallelChatMemberLabel(member);
-                    return (
-                      <button
-                        key={member.channelId}
-                        className={active ? 'parallelFooterTab parallelFooterTabActive' : 'parallelFooterTab'}
-                        type="button"
-                        role="tab"
-                        aria-selected={active}
-                        title={`${label} · ${presentChannelTitle(member.title)}`}
-                        onClick={() => onSelect(member.channelId)}
-                      >
-                        <span className="parallelFooterTabLabel">{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  className="parallelFooterNavButton"
-                  type="button"
-                  disabled={!compareNextChannelId}
-                  onClick={() => navigateCompareMember('next')}
-                  aria-label="Next parallel chat"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
-              </nav>
+              <ParallelFooterBar
+                compareMembers={compareMembers}
+                selectedChannelId={selectedChannel.id}
+                comparePrevChannelId={comparePrevChannelId}
+                compareNextChannelId={compareNextChannelId}
+                onSelect={onSelect}
+                onNavigatePrev={() => navigateCompareMember('prev')}
+                onNavigateNext={() => navigateCompareMember('next')}
+              />
             ) : null}
     </ChatViewFrame>
   );
