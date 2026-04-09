@@ -1098,6 +1098,30 @@ test('chat and workspace apps consume a shared ready-payload publisher', async (
   assert.match(hookSource, /startTransition/u);
 });
 
+test('chat and workspace apps consume shared app-shell presentation helpers', async () => {
+  const chatAppSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const workspaceAppSource = await readFile(
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
+    'utf8',
+  );
+  const helperSource = await readFile(
+    new URL('../src/products/shared/renderer/appShellPresentation.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(chatAppSource, /buildFolderBrowserContentProps/u);
+  assert.match(chatAppSource, /resolveVisibleChatChannelId/u);
+  assert.match(workspaceAppSource, /buildFolderBrowserContentProps/u);
+  assert.match(workspaceAppSource, /resolveVisibleChatChannelId/u);
+  assert.doesNotMatch(chatAppSource, /selectedChannel\?\.id \?\? directLaneChannel\?\.id \?\? null/u);
+  assert.doesNotMatch(workspaceAppSource, /selectedChannel\?\.id \?\? directLaneChannel\?\.id \?\? null/u);
+  assert.match(helperSource, /export function resolveVisibleChatChannelId/u);
+  assert.match(helperSource, /export function buildFolderBrowserContentProps/u);
+});
+
 test('renderer app consumes dedicated cat-assignment actions instead of defining cat create/assign flows inline', async () => {
   const appSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),

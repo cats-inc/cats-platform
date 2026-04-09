@@ -74,6 +74,10 @@ import {
 } from '../../shared/renderer/ProductRendererFrame.js';
 import { ProductReadyShell } from '../../shared/renderer/ProductReadyShell.js';
 import {
+  buildFolderBrowserContentProps,
+  resolveVisibleChatChannelId,
+} from '../../shared/renderer/appShellPresentation.js';
+import {
   activateChatChannel,
   fetchAppShell,
   updateCatProfile,
@@ -511,7 +515,10 @@ export default function App() {
           addCatOpen,
           draftCatIds,
         });
-        const visibleChatChannelId = selectedChannel?.id ?? directLaneChannel?.id ?? null;
+        const visibleChatChannelId = resolveVisibleChatChannelId(
+          selectedChannel,
+          directLaneChannel,
+        );
 
         function onSwitchProduct(nextSurface: PlatformSurfaceId): void {
           navigate(platformSurfaceRoutePrefix(nextSurface));
@@ -678,19 +685,17 @@ export default function App() {
                     void onCreateAndAssignCat(event);
                   },
                 }}
-                folderBrowserProps={{
+                folderBrowserProps={buildFolderBrowserContentProps({
                   folderBrowsePath,
-                  folderBrowseCurrentPath: folderBrowseCurrentPath ?? '',
-                  folderBrowseParentPath: folderBrowseParentPath ?? '',
+                  folderBrowseCurrentPath,
+                  folderBrowseParentPath,
                   folderBrowseEntries,
                   folderBrowseLoading,
                   folderBrowseError,
                   onPathChange: setFolderBrowsePath,
-                  onBrowse: (path) => {
-                    void browseFolder(path);
-                  },
-                  onSelect: selectCurrentFolder,
-                }}
+                  browseFolder,
+                  selectCurrentFolder,
+                })}
                 onOpenDraftAddCat={openDraftAddCatPanel}
                 onChangeDraftDefaultRecipient={changeDraftDefaultRecipient}
                 companionMode={companionMode}

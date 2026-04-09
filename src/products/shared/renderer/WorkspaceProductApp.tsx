@@ -67,6 +67,10 @@ import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting
 import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignmentActions.js";
 import { createUseComposerSubmit } from "./hooks/useWorkspaceComposerSubmit.js";
 import { useWorkspaceGovernanceActions } from "./hooks/useWorkspaceGovernanceActions.js";
+import {
+  buildFolderBrowserContentProps,
+  resolveVisibleChatChannelId,
+} from "./appShellPresentation.js";
 
 type ChatSurfaceProps = Omit<ChatViewProps, "payload" | "selectedChannel">;
 
@@ -515,8 +519,10 @@ export function createWorkspaceProductApp({
             showingNewChatDraft,
             draftCatIds,
           });
-          const visibleChatChannelId =
-            selectedChannel?.id ?? directLaneChannel?.id ?? null;
+          const visibleChatChannelId = resolveVisibleChatChannelId(
+            selectedChannel,
+            directLaneChannel,
+          );
 
           function onSwitchProduct(nextSurface: PlatformSurfaceId): void {
             navigate(platformSurfaceRoutePrefix(nextSurface));
@@ -663,19 +669,17 @@ export function createWorkspaceProductApp({
                       void onCreateAndAssignCat(event);
                     },
                   }}
-                  folderBrowserProps={{
+                  folderBrowserProps={buildFolderBrowserContentProps({
                     folderBrowsePath,
-                    folderBrowseCurrentPath: folderBrowseCurrentPath ?? "",
-                    folderBrowseParentPath: folderBrowseParentPath ?? "",
+                    folderBrowseCurrentPath,
+                    folderBrowseParentPath,
                     folderBrowseEntries,
                     folderBrowseLoading,
                     folderBrowseError,
                     onPathChange: setFolderBrowsePath,
-                    onBrowse: (path) => {
-                      void browseFolder(path);
-                    },
-                    onSelect: selectCurrentFolder,
-                  }}
+                    browseFolder,
+                    selectCurrentFolder,
+                  })}
                   onOpenDraftAddCat={openDraftAddCatPanel}
                   onChangeDraftDefaultRecipient={changeDraftDefaultRecipient}
                 />
