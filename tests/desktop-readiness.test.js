@@ -46,7 +46,7 @@ function readyService(name, healthUrl) {
     name,
     status: 'ready',
     ready: true,
-    pid: name === 'cats' ? 222 : 111,
+    pid: name === 'cats-platform' ? 222 : 111,
     startedAt: '2026-03-23T10:00:00.000Z',
     healthUrl,
     error: null,
@@ -59,7 +59,7 @@ test('desktop bootstrap stays in ready_for_setup until setup is completed', () =
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -119,7 +119,7 @@ test('desktop bootstrap opens chat when setup and provider readiness are complet
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -177,7 +177,7 @@ test('desktop bootstrap opens chat after setup without requiring startup provide
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -216,7 +216,7 @@ test('desktop bootstrap surfaces packaged setup restart recovery as an install i
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -306,7 +306,7 @@ test('desktop bootstrap surfaces packaged setup auth recovery as an install issu
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -394,7 +394,7 @@ test('desktop bootstrap surfaces packaged setup docker warm-up as an install iss
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -483,7 +483,7 @@ test('desktop bootstrap surfaces Docker Desktop elevation recovery as an install
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -570,7 +570,7 @@ test('desktop bootstrap surfaces provider remediation after setup if no provider
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -646,7 +646,7 @@ test('desktop bootstrap keeps completed setup out of onboarding when runtime hea
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -677,7 +677,7 @@ test('desktop bootstrap keeps optional local-model audit follow-through non-bloc
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',
@@ -761,7 +761,7 @@ test('desktop bootstrap keeps optional local-model follow-through reachable afte
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats', 'http://127.0.0.1:8181/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
     appHealth: {
       status: 'ok',

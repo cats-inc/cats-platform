@@ -516,7 +516,7 @@ test('GET /health reports runtime reachability', async () => {
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.service, 'cats');
+    assert.equal(payload.service, 'cats-platform');
     assert.equal(payload.status, 'ok');
     assert.equal(payload.readiness.ready, true);
     assert.equal(payload.readiness.endpoint, '/health');
@@ -815,7 +815,7 @@ test('GET /api/app-shell exposes detailed chat state with global cats', async ()
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.app.name, 'cats');
+    assert.equal(payload.app.name, 'cats-platform');
     assert.equal(payload.chat.name, 'Chat');
     assert.equal(payload.chat.selectedChannelId, '');
     assert.equal(payload.chat.channels.length, 0);

@@ -133,7 +133,7 @@ function getManagedServiceStartupTimeoutMs(
   readinessTimeoutMs: number,
   platform: NodeJS.Platform,
 ): number {
-  if (serviceName === 'cats') {
+  if (serviceName === 'cats-platform') {
     return Math.max(readinessTimeoutMs, DEFAULT_APP_STARTUP_TIMEOUT_MS);
   }
   if (serviceName === 'cats-runtime' && platform === 'win32') {
@@ -377,7 +377,7 @@ export function buildManagedServiceSpecs(
       logPath: join(config.paths.hostLogsDir, 'cats-runtime.log'),
     },
     {
-      name: 'cats',
+      name: 'cats-platform',
       command: process.execPath,
       args: [
         config.paths.appEntryScript,
@@ -621,7 +621,7 @@ export class ManagedServiceSupervisor {
       child.once('exit', exitBeforeReadyListener);
     });
 
-    const readinessPromise = spec.name === 'cats'
+    const readinessPromise = spec.name === 'cats-platform'
       ? this.waitForReadiness<AppHealthPayload>(spec.healthUrl, {
         timeoutMs: this.config.readinessTimeoutMs,
         pollIntervalMs: this.config.readinessPollIntervalMs,

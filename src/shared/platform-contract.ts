@@ -13,7 +13,7 @@ export type PlatformLobbyAnimationMode = 'off' | 'reduced' | 'full';
 export type GuideCatSidecarMode = 'auto' | 'drawer' | 'bubble';
 
 export interface PlatformAppDescriptor {
-  name: 'cats';
+  name: 'cats-platform';
   stage: 'phase-2-shell';
   runtimeBoundary: 'cats-runtime';
 }

@@ -6,7 +6,7 @@ import { syncDesktopHostPlatformShell } from '../src/app/renderer/setup/desktopH
 function createEnvelope() {
   return {
     app: {
-      name: 'cats',
+      name: 'cats-platform',
       stage: 'phase-2-shell',
       runtimeBoundary: 'cats-runtime',
     },

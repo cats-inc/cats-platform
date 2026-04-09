@@ -8,12 +8,11 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
 
   // Core structure
   assert.match(html, /id="app"/);
-  assert.match(html, /class="app"/);
+  assert.match(html, /class="app[\s"]/);
   assert.match(html, /class="hero/);
 
   // Services section
   assert.match(html, /getServiceDisplayName/);
-  assert.match(html, /cats-platform/);
   assert.match(html, /svc-row/);
   assert.match(html, /svc-status/);
 

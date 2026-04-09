@@ -396,7 +396,7 @@ function buildBootstrapProgress(
   lastError: string | null | undefined,
 ): DesktopBootstrapProgress {
   const runtimeService = services.find((service) => service.name === 'cats-runtime');
-  const appService = services.find((service) => service.name === 'cats');
+  const appService = services.find((service) => service.name === 'cats-platform');
   const runtimeReady = runtimeService?.ready === true;
   const appReady = appService?.ready === true;
   const setupReady = phase === 'ready_for_setup' || phase === 'ready_for_chat' || phase === 'needs_prerequisites';
@@ -628,7 +628,7 @@ export function buildDesktopBootstrapSnapshot(
 ): DesktopBootstrapSnapshot {
   const now = input.now?.() ?? new Date();
   const runtimeService = input.services.find((service) => service.name === 'cats-runtime');
-  const appService = input.services.find((service) => service.name === 'cats');
+  const appService = input.services.find((service) => service.name === 'cats-platform');
   const allServicesReady = input.services.every((service) => service.ready);
   const providerSummary = input.providerDiagnostics?.summary ?? input.runtimeHealth?.providers?.summary ?? null;
   const providerIssues = toProviderIssues(input.providerDiagnostics);

@@ -80,7 +80,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(runtimeSpec.env.CATS_RUNTIME_NATIVE_DISCOVERY_INTERVAL_MS, undefined);
   assert.equal(runtimeSpec.cwd, 'C:\\repo\\cats-runtime');
 
-  assert.equal(appSpec.name, 'cats');
+  assert.equal(appSpec.name, 'cats-platform');
   assert.deepEqual(appSpec.args.slice(1), [
     '--startup-mode=app-managed',
     '--managed-by=cats-electron',
@@ -247,7 +247,7 @@ test('stopAll preserves the app-before-runtime shutdown order', async () => {
   };
 
   await supervisor.stopAll();
-  assert.deepEqual(shutdownOrder, ['cats', 'cats-runtime']);
+  assert.deepEqual(shutdownOrder, ['cats-platform', 'cats-runtime']);
 });
 
 test('stopService gives SIGTERM its own grace window before SIGKILL', async () => {
@@ -260,7 +260,7 @@ test('stopService gives SIGTERM its own grace window before SIGKILL', async () =
   });
   const supervisor = new ManagedServiceSupervisor(config);
   const child = new FakeChildProcess();
-  const handle = supervisor.handles.get('cats');
+  const handle = supervisor.handles.get('cats-platform');
 
   assert.ok(handle);
   handle.child = child;
@@ -268,7 +268,7 @@ test('stopService gives SIGTERM its own grace window before SIGKILL', async () =
   handle.snapshot.ready = true;
   handle.snapshot.pid = 4321;
 
-  await supervisor.stopService('cats');
+  await supervisor.stopService('cats-platform');
 
   assert.equal(child.stdinEnded, true);
   assert.deepEqual(child.killCalls, ['SIGTERM']);
@@ -344,7 +344,7 @@ test('startService accepts app-managed ready lifecycle events before health poll
       child.stdout.write(
         `${JSON.stringify({
           event: 'app.ready',
-          service: 'cats',
+          service: 'cats-platform',
           phase: 'ready',
           ready: true,
           host: '127.0.0.1',
@@ -356,7 +356,7 @@ test('startService accepts app-managed ready lifecycle events before health poll
 
     await startPromise;
 
-    const appSnapshot = supervisor.getSnapshots().find((snapshot) => snapshot.name === 'cats');
+    const appSnapshot = supervisor.getSnapshots().find((snapshot) => snapshot.name === 'cats-platform');
     assert.ok(appSnapshot);
     assert.equal(appSnapshot.status, 'ready');
     assert.equal(appSnapshot.ready, true);

@@ -851,7 +851,7 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
 
     const attemptTimestamp = new Date();
     diagnosticsState = {
-      ...(diagnosticsState ?? createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats'])),
+      ...(diagnosticsState ?? createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats-platform'])),
       activeAttemptId: createBootstrapAttemptId(attemptTimestamp),
       updatedAt: attemptTimestamp.toISOString(),
     };
@@ -1126,7 +1126,7 @@ async function main(): Promise<void> {
     setupState = restoredState?.setup ?? defaultSetup;
     diagnosticsState = restoredState?.diagnostics ?? createEmptyDesktopDiagnosticsState([
       'cats-runtime',
-      'cats',
+      'cats-platform',
     ]);
   }
   supervisor = new ManagedServiceSupervisor(hostConfig, {

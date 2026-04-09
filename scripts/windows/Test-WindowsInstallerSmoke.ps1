@@ -209,7 +209,7 @@ try {
   Assert-True (($persisted.snapshot.services | Measure-Object).Count -ge 2) 'host snapshot includes managed service entries'
 
   $runtimeService = $persisted.snapshot.services | Where-Object { $_.name -eq 'cats-runtime' } | Select-Object -First 1
-  $appService = $persisted.snapshot.services | Where-Object { $_.name -eq 'cats' } | Select-Object -First 1
+  $appService = $persisted.snapshot.services | Where-Object { $_.name -eq 'cats-platform' } | Select-Object -First 1
   Assert-True ($null -ne $runtimeService -and $runtimeService.ready -eq $true) 'cats-runtime sidecar reached ready status'
   Assert-True ($null -ne $appService -and $appService.ready -eq $true) 'cats app sidecar reached ready status'
   Assert-True (($persisted.snapshot.progress.steps | Measure-Object).Count -ge 3) 'host snapshot includes bootstrap progress steps'

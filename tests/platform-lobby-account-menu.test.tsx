@@ -9,7 +9,7 @@ import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
 function createEnvelope(): PlatformHostEnvelope {
   return {
     app: {
-      name: 'cats',
+      name: 'cats-platform',
       stage: 'phase-2-shell',
       runtimeBoundary: 'cats-runtime',
     },

@@ -69,7 +69,7 @@ export function createAppShell(
 
   return {
     app: {
-      name: 'cats',
+      name: 'cats-platform',
       stage: 'phase-2-shell',
       runtimeBoundary: 'cats-runtime',
     },

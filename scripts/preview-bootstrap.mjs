@@ -32,7 +32,7 @@ window.catsDesktopHost = {
       summary: 'Waiting for cats-runtime to become healthy.',
       services: [
         { name: 'cats-runtime', status: 'starting', ready: false, pid: 1234, startedAt: null, healthUrl: 'http://127.0.0.1:8150/health', error: null, exitCode: null, logPath: '/tmp/cats-runtime.log', lastOutput: null, lastOutputAt: null },
-        { name: 'cats', status: 'ready', ready: true, pid: 5678, startedAt: new Date().toISOString(), healthUrl: 'http://127.0.0.1:8181/health', error: null, exitCode: null, logPath: '/tmp/cats.log', lastOutput: null, lastOutputAt: null }
+        { name: 'cats-platform', status: 'ready', ready: true, pid: 5678, startedAt: new Date().toISOString(), healthUrl: 'http://127.0.0.1:8181/health', error: null, exitCode: null, logPath: '/tmp/cats.log', lastOutput: null, lastOutputAt: null }
       ],
       runtime: {
         baseUrl: 'http://127.0.0.1:8150',
@@ -77,7 +77,7 @@ window.catsDesktopHost = {
       summary: 'cats-runtime failed to start. Check prerequisites and retry.',
       services: [
         { name: 'cats-runtime', status: 'failed', ready: false, pid: null, startedAt: null, healthUrl: 'http://127.0.0.1:8150/health', error: 'ECONNREFUSED: Connection refused at 127.0.0.1:8150', exitCode: 1, logPath: '/Users/you/.cats/logs/cats-runtime.log', lastOutput: 'RuntimeError: Failed to bind port 8150', lastOutputAt: new Date().toISOString() },
-        { name: 'cats', status: 'ready', ready: true, pid: 5678, startedAt: new Date().toISOString(), healthUrl: 'http://127.0.0.1:8181/health', error: null, exitCode: null, logPath: '/Users/you/.cats/logs/cats.log', lastOutput: null, lastOutputAt: null }
+        { name: 'cats-platform', status: 'ready', ready: true, pid: 5678, startedAt: new Date().toISOString(), healthUrl: 'http://127.0.0.1:8181/health', error: null, exitCode: null, logPath: '/Users/you/.cats/logs/cats.log', lastOutput: null, lastOutputAt: null }
       ],
       runtime: {
         baseUrl: 'http://127.0.0.1:8150',
@@ -182,7 +182,7 @@ window.catsDesktopHost = {
         },
         serviceLogs: [
           { service: 'cats-runtime', logPath: '/Users/you/.cats/logs/cats-runtime.log', lastOutput: 'RuntimeError: Failed to bind port 8150', lastOutputAt: new Date().toISOString() },
-          { service: 'cats', logPath: '/Users/you/.cats/logs/cats.log', lastOutput: null, lastOutputAt: null }
+          { service: 'cats-platform', logPath: '/Users/you/.cats/logs/cats.log', lastOutput: null, lastOutputAt: null }
         ],
         updatedAt: new Date().toISOString()
       },

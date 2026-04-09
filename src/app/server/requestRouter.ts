@@ -64,7 +64,7 @@ async function handleHealth(
     : appStatus.summary;
 
   sendJson(response, readiness.ready ? 200 : 503, {
-    service: 'cats',
+    service: 'cats-platform',
     status,
     summary,
     timestamp: now.toISOString(),

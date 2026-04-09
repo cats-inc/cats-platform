@@ -255,7 +255,7 @@ async function handlePlatformSetupComplete(
         () => undefined,
       );
       payload = {
-        app: { name: 'cats', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
+        app: { name: 'cats-platform', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
         products: listPlatformProductDescriptors(),
         runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
         runtimeSetup: runtimeSetup ?? null,

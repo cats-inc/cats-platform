@@ -8,84 +8,113 @@ export function buildDesktopBootstrapPage(): string {
   <style>
     :root {
       color-scheme: light;
-      --bg: #F8F7F4;
-      --surface: #fff;
-      --surface-hover: #F3F0EB;
-      --ink: #1A1917;
-      --ink-2: #6E6A62;
-      --ink-3: #A19D96;
-      --border: #E6E2DB;
-      --border-subtle: #EEEAE4;
+      --bg: #FAFAF7;
+      --panel: #ffffff;
+      --panel-hover: #E8E4DC;
+      --text: #1A1A1A;
+      --muted: #6B6560;
+      --muted-soft: #8C857D;
+      --border: #E4DFD7;
       --accent: #C4653A;
-      --accent-hover: #B35A31;
-      --accent-soft: rgba(196,101,58,0.07);
-      --ok: #1A8754;
-      --ok-soft: rgba(26,135,84,0.09);
-      --warn: #9A7B2E;
-      --warn-soft: rgba(154,123,46,0.09);
-      --err: #C23B2E;
-      --err-soft: rgba(194,59,46,0.09);
-      --radius: 12px;
-      --shadow: 0 1px 3px rgba(26,25,23,0.04);
+      --accent-soft: rgba(196,101,58,0.1);
+      --focus-ring: rgba(196,101,58,0.08);
+      --ok: #207A53;
+      --ok-bg: rgba(61,167,121,0.11);
+      --warn: #8D6830;
+      --warn-bg: rgba(191,146,73,0.12);
+      --err: #C0392B;
+      --err-bg: rgba(192,57,43,0.1);
+      --shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { max-width: 100%; overflow-x: hidden; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-      color: var(--ink);
+      font-family: "Aptos", system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text);
       background: var(--bg);
-      background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(196,101,58,0.035), transparent);
       min-height: 100vh;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
     /* Layout */
     .app { max-width: 620px; margin: 0 auto; padding: 56px 24px 72px; }
+    .app-centered {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding-top: 38vh;
+      text-align: center;
+    }
     .section { margin-bottom: 28px; }
     .section-head {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 11px;
-      font-weight: 650;
-      letter-spacing: 0.09em;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--accent);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
     .section-head::after {
       content: '';
       flex: 1;
       height: 1px;
-      background: var(--border-subtle);
+      background: var(--border);
     }
 
-    /* Hero */
+    /* Hero — loading */
     .hero { margin-bottom: 36px; }
+    .hero-title {
+      font-size: clamp(1.4rem, 3vw, 1.8rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .hero-summary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
     .hero-phase {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      font-size: 12px;
+      gap: 6px;
+      font-size: 0.72rem;
       font-weight: 600;
-      letter-spacing: 0.02em;
-      margin-bottom: 14px;
+      letter-spacing: 0.01em;
+      margin-bottom: 12px;
     }
-    .hero-title {
-      font-size: 30px;
-      font-weight: 750;
-      letter-spacing: -0.04em;
-      line-height: 1.15;
-      margin-bottom: 6px;
+
+    /* Error intermediate state */
+    .error-area {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
     }
-    .hero-summary {
-      font-size: 15px;
-      color: var(--ink-2);
-      line-height: 1.55;
+    .error-area.visible {
+      display: flex;
+      animation: fadeSlideIn 0.4s ease both;
     }
+    .error-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .hidden { display: none; }
 
     /* Dot */
     .dot {
@@ -94,17 +123,17 @@ export function buildDesktopBootstrapPage(): string {
       display: inline-block;
       flex-shrink: 0;
     }
-    .dot-ok { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
-    .dot-warn { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
-    .dot-err { background: var(--err); box-shadow: 0 0 0 3px var(--err-soft); }
+    .dot-ok { background: var(--ok); }
+    .dot-warn { background: var(--warn); }
+    .dot-err { background: var(--err); }
     .dot-pulse { animation: pulse 1.6s ease-in-out infinite; }
 
     /* Card */
     .card {
-      background: var(--surface);
+      background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
+      border-radius: 16px;
+      padding: 16px;
       box-shadow: var(--shadow);
     }
     .card + .card { margin-top: 8px; }
@@ -117,18 +146,18 @@ export function buildDesktopBootstrapPage(): string {
       gap: 10px;
       padding: 9px 0;
     }
-    .svc-row + .svc-row { border-top: 1px solid var(--border-subtle); }
-    .svc-name { font-weight: 600; font-size: 13px; }
-    .svc-status { font-size: 12px; font-weight: 500; text-align: right; }
+    .svc-row + .svc-row { border-top: 1px solid var(--border); }
+    .svc-name { font-weight: 600; font-size: 0.85rem; }
+    .svc-status { font-size: 0.78rem; font-weight: 500; text-align: right; }
     .svc-url {
-      font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
-      font-size: 11px;
-      color: var(--ink-3);
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.72rem;
+      color: var(--muted-soft);
       grid-column: 2 / -1;
     }
     .svc-detail {
       grid-column: 1 / -1;
-      font-size: 12px;
+      font-size: 0.78rem;
       padding: 2px 0 0 18px;
     }
 
@@ -140,29 +169,29 @@ export function buildDesktopBootstrapPage(): string {
       padding: 3px 0;
     }
     .rt-label {
-      font-size: 11px;
+      font-size: 0.72rem;
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--ink-3);
+      color: var(--muted-soft);
       min-width: 54px;
     }
     .rt-value {
-      font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
-      font-size: 12px;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.75rem;
       word-break: break-all;
     }
     .rt-divider {
       margin: 10px 0;
       border: 0;
-      border-top: 1px solid var(--border-subtle);
+      border-top: 1px solid var(--border);
     }
-    .rt-provider { font-size: 13px; color: var(--ink-2); }
+    .rt-provider { font-size: 0.85rem; color: var(--muted); }
     .rt-counts {
       display: flex;
       gap: 14px;
       margin-top: 6px;
-      font-size: 12px;
+      font-size: 0.78rem;
     }
     .rt-count {
       display: inline-flex;
@@ -170,38 +199,35 @@ export function buildDesktopBootstrapPage(): string {
       gap: 5px;
     }
 
-    /* Buttons */
+    /* Buttons — matches main app primaryButton / secondaryButton */
     .actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 9px 18px;
-      border-radius: var(--radius);
+      padding: 10px 14px;
+      border-radius: 12px;
       font: inherit;
-      font-size: 13px;
+      font-size: 0.85rem;
       font-weight: 600;
       border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--ink);
+      background: var(--panel);
+      color: var(--text);
       cursor: pointer;
-      transition: background 0.14s, box-shadow 0.14s, transform 0.1s;
+      transition: background 0.15s;
       user-select: none;
     }
     .btn:hover:not(:disabled) {
-      background: var(--surface-hover);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      background: var(--panel-hover);
     }
-    .btn:active:not(:disabled) { transform: scale(0.98); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border-color: transparent;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
     .btn-primary:hover:not(:disabled) {
-      background: var(--accent-hover);
-      box-shadow: 0 2px 8px rgba(196,101,58,0.25);
+      background: var(--panel-hover);
     }
 
     /* Issue row */
@@ -211,15 +237,15 @@ export function buildDesktopBootstrapPage(): string {
       align-items: center;
       gap: 8px;
     }
-    .issue-title { font-size: 13px; font-weight: 600; }
-    .issue-sev { font-size: 11px; font-weight: 600; }
+    .issue-title { font-size: 0.85rem; font-weight: 600; }
+    .issue-sev { font-size: 0.72rem; font-weight: 600; }
 
     /* Setup & detail cards */
-    .detail-meta { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+    .detail-meta { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
     .detail-code {
-      font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
-      font-size: 11px;
-      color: var(--ink-2);
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
       word-break: break-all;
       white-space: pre-wrap;
     }
@@ -230,32 +256,32 @@ export function buildDesktopBootstrapPage(): string {
       gap: 8px;
       margin-bottom: 6px;
     }
-    .card-label { font-size: 13px; font-weight: 600; }
-    .card-badge { font-size: 11px; font-weight: 600; }
+    .card-label { font-size: 0.85rem; font-weight: 600; }
+    .card-badge { font-size: 0.72rem; font-weight: 600; }
 
     /* Chip */
     .chip {
       display: inline-flex;
-      padding: 2px 8px;
+      padding: 3px 8px;
       border-radius: 999px;
-      font-size: 11px;
+      font-size: 0.69rem;
       font-weight: 600;
+      letter-spacing: 0.01em;
       background: var(--accent-soft);
       color: var(--accent);
-      border: 1px solid var(--border-subtle);
     }
     .chip-list { display: flex; flex-wrap: wrap; gap: 5px; }
 
     /* Chronology */
     .chrono-item { padding: 8px 0; }
-    .chrono-item + .chrono-item { border-top: 1px solid var(--border-subtle); }
-    .chrono-summary { font-size: 13px; font-weight: 500; }
+    .chrono-item + .chrono-item { border-top: 1px solid var(--border); }
+    .chrono-summary { font-size: 0.85rem; font-weight: 500; }
     .chrono-meta {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      font-size: 11px;
-      color: var(--ink-3);
+      font-size: 0.72rem;
+      color: var(--muted-soft);
       margin-top: 3px;
     }
 
@@ -273,6 +299,9 @@ export function buildDesktopBootstrapPage(): string {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes bootSpin {
+      to { transform: rotate(360deg); }
+    }
     .anim { animation: fadeSlideIn 0.35s ease both; }
     .anim-d1 { animation-delay: 0.06s; }
     .anim-d2 { animation-delay: 0.12s; }
@@ -284,26 +313,34 @@ export function buildDesktopBootstrapPage(): string {
     /* Responsive */
     @media (max-width: 520px) {
       .app { padding: 32px 16px 56px; }
-      .hero-title { font-size: 24px; }
+      .hero-title { font-size: 1.25rem; }
       .svc-row { grid-template-columns: auto 1fr auto; }
       .svc-url { display: none; }
       .actions { flex-direction: column; }
       .btn { width: 100%; }
+      .error-actions { flex-direction: column; }
     }
   </style>
 </head>
 <body>
   <div id="app">
-    <div class="app">
-      <section class="hero anim">
-        <div class="hero-phase">
-          <span class="dot dot-warn dot-pulse"></span>
-          <span class="c-warn">starting desktop host</span>
-        </div>
+    <div id="splash" class="app app-centered">
+      <section class="hero">
         <h1 class="hero-title">Cats</h1>
-        <p class="hero-summary">Waiting for local services.</p>
+        <p id="splash-summary" class="hero-summary">
+          <span id="splash-dot" class="dot dot-warn dot-pulse"></span>
+          <span id="splash-text">Starting up\u2026</span>
+        </p>
       </section>
+      <div id="error-area" class="error-area">
+        <p class="hero-summary">Something went wrong during startup.</p>
+        <div class="error-actions">
+          <button id="btn-retry" class="btn" type="button">Retry</button>
+          <button id="btn-details" class="btn" type="button">Show details</button>
+        </div>
+      </div>
     </div>
+    <div id="recovery" class="app hidden"></div>
   </div>
   <script>
     'use strict';
@@ -335,7 +372,7 @@ export function buildDesktopBootstrapPage(): string {
     }
 
     function getServiceDisplayName(name) {
-      return name === 'cats' ? 'cats-platform' : name;
+      return name;
     }
 
     function sc(status) {
@@ -411,14 +448,46 @@ export function buildDesktopBootstrapPage(): string {
     }
 
     /* ================================================================
-     *  Hero
+     *  Splash (loading / error) — fixed DOM, no recreation
      * ================================================================ */
 
-    function HeroSection(snap) {
+    var splashEl = document.getElementById('splash');
+    var splashDot = document.getElementById('splash-dot');
+    var splashText = document.getElementById('splash-text');
+    var errorArea = document.getElementById('error-area');
+    var recoveryEl = document.getElementById('recovery');
+    var btnRetry = document.getElementById('btn-retry');
+    var btnDetails = document.getElementById('btn-details');
+
+    function friendlyLoadingSummary(phase) {
+      if (phase === 'checking_prerequisites') return 'Almost ready\u2026';
+      if (phase === 'ready_for_setup' || phase === 'ready_for_chat') return 'Ready.';
+      return 'Starting up\u2026';
+    }
+
+    function updateSplash(snap) {
+      var isError = resolvePageMode(snap) === 'recovery';
       var isPending = snap.phase === 'starting_services' || snap.phase === 'checking_prerequisites';
+
+      /* Update dot */
+      splashDot.className = 'dot dot-' + sc(snap.status) + (isPending && !isError ? ' dot-pulse' : '');
+      splashDot.style.display = isError ? 'none' : '';
+
+      /* Update text */
+      splashText.textContent = isError ? '' : friendlyLoadingSummary(snap.phase);
+
+      /* Show/hide error area */
+      if (isError) {
+        errorArea.classList.add('visible');
+      } else {
+        errorArea.classList.remove('visible');
+      }
+    }
+
+    function RecoveryHero(snap) {
       return el('section', { class: 'hero anim' },
         el('div', { class: 'hero-phase' },
-          Dot(snap.status === 'ok' ? 'ready' : snap.status, isPending),
+          Dot(snap.status === 'ok' ? 'ready' : snap.status, false),
           el('span', { class: 'c-' + sc(snap.status) }, snap.phase.replace(/_/g, ' '))
         ),
         el('h1', { class: 'hero-title' }, 'Cats'),
@@ -815,24 +884,36 @@ export function buildDesktopBootstrapPage(): string {
     var currentSetupSnapshot = null;
     var snapshotListenerBound = false;
     var retryHandle = null;
+    var showRecoveryDetails = false;
+
+    function showRecovery(snap) {
+      splashEl.classList.add('hidden');
+      recoveryEl.classList.remove('hidden');
+      recoveryEl.innerHTML = '';
+      recoveryEl.append(
+        RecoveryHero(snap),
+        ServicesSection(snap),
+        RuntimeSection(snap),
+        PrereqSection(snap),
+        SetupSection(snap, currentSetupSnapshot, bridge),
+        ActionsSection(snap, bridge),
+        DiagSection(snap)
+      );
+    }
 
     function doRender() {
       var snap = currentSnapshot;
       if (!snap) return;
-      var root = document.getElementById('app');
-      root.innerHTML = '';
 
-      var isRecovery = resolvePageMode(snap) === 'recovery';
-      var app = el('div', { class: 'app' },
-        HeroSection(snap),
-        ServicesSection(snap),
-        RuntimeSection(snap),
-        isRecovery ? PrereqSection(snap) : false,
-        isRecovery ? SetupSection(snap, currentSetupSnapshot, bridge) : false,
-        ActionsSection(snap, bridge),
-        isRecovery ? DiagSection(snap) : false
-      );
-      root.appendChild(app);
+      if (showRecoveryDetails) {
+        showRecovery(snap);
+        return;
+      }
+
+      /* Splash is always in the DOM — just update it */
+      splashEl.classList.remove('hidden');
+      recoveryEl.classList.add('hidden');
+      updateSplash(snap);
     }
 
     function refreshSetup() {
@@ -844,6 +925,7 @@ export function buildDesktopBootstrapPage(): string {
 
     function applySnapshot(snapshot) {
       currentSnapshot = snapshot;
+      /* If user was on recovery details and snapshot improved, stay there */
       doRender();
     }
 
@@ -879,16 +961,23 @@ export function buildDesktopBootstrapPage(): string {
 
     function main() {
       if (!bridge) {
-        var root = document.getElementById('app');
-        root.innerHTML = '';
-        root.appendChild(el('div', { class: 'app' },
-          el('section', { class: 'hero anim' },
-            el('h1', { class: 'hero-title' }, 'Cats'),
-            el('p', { class: 'hero-summary' }, 'Desktop bridge is unavailable.')
-          )
-        ));
+        splashDot.style.display = 'none';
+        splashText.textContent = '';
+        errorArea.classList.add('visible');
+        btnRetry.style.display = 'none';
+        btnDetails.style.display = 'none';
         return;
       }
+
+      btnRetry.addEventListener('click', function () {
+        btnRetry.disabled = true;
+        bridge.runAction('retry').finally(function () { btnRetry.disabled = false; });
+      });
+      btnDetails.addEventListener('click', function () {
+        showRecoveryDetails = true;
+        doRender();
+      });
+
       loadInitialSnapshot();
     }
 

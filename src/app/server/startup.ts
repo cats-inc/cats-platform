@@ -42,7 +42,7 @@ function readAppPackageVersion(moduleUrl: string = import.meta.url): string {
   return packageJson.version;
 }
 
-export const APP_SERVICE_NAME = 'cats';
+export const APP_SERVICE_NAME = 'cats-platform';
 export const APP_VERSION = readAppPackageVersion();
 export const APP_STARTUP_CONTRACT_VERSION = 1;
 export const APP_READINESS_PATH = '/health';

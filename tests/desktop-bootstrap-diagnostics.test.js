@@ -10,7 +10,7 @@ import {
 } from '../build/desktop/bootstrapDiagnostics.js';
 
 test('desktop aggregation bundle prefers the active bootstrap attempt and keeps layer representation', () => {
-  let diagnostics = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats']);
+  let diagnostics = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats-platform']);
   diagnostics = {
     ...diagnostics,
     activeAttemptId: 'attempt-current',

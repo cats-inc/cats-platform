@@ -22,7 +22,7 @@ function readyService(name, healthUrl) {
     name,
     status: 'ready',
     ready: true,
-    pid: name === 'cats' ? 222 : 111,
+    pid: name === 'cats-platform' ? 222 : 111,
     startedAt: '2026-03-24T10:00:00.000Z',
     healthUrl,
     error: null,
@@ -89,7 +89,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
     config,
     services: [
       readyService('cats-runtime', `${config.runtimeBaseUrl}/health`),
-      readyService('cats', `${config.appBaseUrl}/health`),
+      readyService('cats-platform', `${config.appBaseUrl}/health`),
     ],
     appHealth: {
       status: 'ok',
@@ -142,7 +142,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
   const store = new DesktopHostStateStore(config.paths.hostStatePath, {
     now: () => new Date('2026-03-24T10:04:00.000Z'),
   });
-  let diagnostics = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats']);
+  let diagnostics = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats-platform']);
   diagnostics = appendHostEvent(diagnostics, createDesktopBootstrapEvent({
     layer: 'host',
     kind: 'host_phase_changed',
@@ -168,8 +168,8 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
         lastOutputAt: '2026-03-24T10:03:00.000Z',
       },
       {
-        service: 'cats',
-        logPath: `${config.paths.hostLogsDir}\\cats.log`,
+        service: 'cats-platform',
+        logPath: `${config.paths.hostLogsDir}\\cats-platform.log`,
         lastOutput: 'app ready',
         lastOutputAt: '2026-03-24T10:03:00.000Z',
       },

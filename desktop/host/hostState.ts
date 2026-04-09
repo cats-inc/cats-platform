@@ -263,7 +263,7 @@ function normalizeManagedServiceLog(
     };
   }
 
-  const service = value.service === 'cats-runtime' || value.service === 'cats'
+  const service = value.service === 'cats-runtime' || value.service === 'cats-platform'
     ? value.service
     : fallbackService;
   return {
@@ -316,7 +316,7 @@ function normalizeDiagnosticsState(
   const logs = Array.isArray(value.serviceLogs)
     ? value.serviceLogs.map((entry) => {
       const service = isObjectRecord(entry)
-        && (entry.service === 'cats-runtime' || entry.service === 'cats')
+        && (entry.service === 'cats-runtime' || entry.service === 'cats-platform')
         ? entry.service
         : 'cats-runtime';
       return normalizeManagedServiceLog(entry, service);
@@ -324,7 +324,7 @@ function normalizeDiagnosticsState(
     : fallback.serviceLogs;
 
   const mergedLogs: DesktopManagedServiceLog[] = [];
-  for (const service of ['cats-runtime', 'cats'] as const) {
+  for (const service of ['cats-runtime', 'cats-platform'] as const) {
     const normalized = logs.find((entry) => entry.service === service);
     mergedLogs.push(normalized ?? defaultLogs.get(service) ?? {
       service,
@@ -421,7 +421,7 @@ export class DesktopHostStateStore {
       }
 
       const snapshot = parsed.snapshot as unknown as DesktopBootstrapSnapshot;
-      const diagnosticsFallback = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats']);
+      const diagnosticsFallback = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats-platform']);
       return {
         snapshot: {
           ...snapshot,
