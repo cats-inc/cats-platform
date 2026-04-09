@@ -1,16 +1,6 @@
-import {
-  WorkspaceSettingsCatsRegistry,
-  type SharedSettingsCatsRegistryProps,
+export {
+  SettingsCatsRegistry,
 } from '../../../../shared/renderer/components/settings-cats/SettingsCatsRegistry.js';
-import { SettingsCatsDetailPanel } from './SettingsCatsDetailPanel';
-
-export type SettingsCatsRegistryProps = SharedSettingsCatsRegistryProps;
-
-export function SettingsCatsRegistry(props: SettingsCatsRegistryProps) {
-  return (
-    <WorkspaceSettingsCatsRegistry
-      {...props}
-      SettingsCatsDetailPanelComponent={SettingsCatsDetailPanel}
-    />
-  );
-}
+export type {
+  SettingsCatsRegistryProps,
+} from '../../../../shared/renderer/components/settings-cats/SettingsCatsRegistry.js';

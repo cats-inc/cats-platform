@@ -6,6 +6,7 @@ import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMe
 import type { BotFormState } from '../../hooks/settingsCatsRegistryActions.js';
 import { executionLabel, sortChatCatsForDisplay } from '../../workspaceChatUtils.js';
 import type { SettingsCatsRegistryController } from './SettingsCats.js';
+import { SettingsCatsDetailPanel } from './SettingsCatsDetailPanel.js';
 
 export interface SharedSettingsCatsRegistryDetailPanelProps {
   busy: string;
@@ -208,5 +209,16 @@ export function WorkspaceSettingsCatsRegistry({
         )}
       </div>
     </>
+  );
+}
+
+export type SettingsCatsRegistryProps = SharedSettingsCatsRegistryProps;
+
+export function SettingsCatsRegistry(props: SettingsCatsRegistryProps) {
+  return (
+    <WorkspaceSettingsCatsRegistry
+      {...props}
+      SettingsCatsDetailPanelComponent={SettingsCatsDetailPanel}
+    />
   );
 }
