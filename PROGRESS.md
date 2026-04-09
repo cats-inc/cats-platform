@@ -279,8 +279,8 @@ Known follow-ups:
 - `src/products/chat/*` now owns the current Chat implementation
 - `src/products/work/*` and `src/products/code/*` now own dedicated placeholder
   API and renderer surfaces
-- `src/shared/app-shell.ts` is now a compatibility shim over shared platform
-  envelope types and Chat-specific contracts
+- top-level compatibility shims have been removed; platform entry and shared
+  contracts now resolve directly from their owned modules
 
 ### WP-4: Cats Chat Launch Track
 
@@ -553,8 +553,7 @@ Known follow-ups:
 #### Remaining Items
 
 - [x] Remove runtime-dead compatibility shims in `src/renderer/*` and `src/chat/*`
-- [ ] Decide when the remaining `src/server.ts` compatibility shim can be removed after downstream imports migrate
-- [ ] Decide when the `src/shared/app-shell.ts` compatibility shim can be removed after downstream imports migrate
+- [x] Remove the remaining top-level compatibility shims in `src/server.ts` and `src/shared/app-shell.ts`
 
 ---
 

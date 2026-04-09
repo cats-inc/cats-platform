@@ -83,10 +83,10 @@ Current ownership:
 - `src/platform/*` owns runtime, orchestration contracts, persistence, and
   transport infrastructure
 
-The product is still in a transitional state, but the runtime-dead
-`src/renderer/*` and `src/chat/*` shims have been removed. The remaining
-top-level compatibility shims are now limited to `src/server.ts` and
-`src/shared/app-shell.ts`.
+The product is still in a transitional state, but the temporary top-level
+compatibility shims have now been removed. Host bootstrap resolves from
+`src/app/server/index.ts`, renderer bootstrap resolves from `src/app/renderer/*`,
+and shared contracts resolve from their owned modules directly.
 
 Packaging and repo naming now follow this split:
 
@@ -492,13 +492,12 @@ enabling deep links in built mode.
 The platform-host refactor is intentionally incremental. These seams are still
 temporary and should not be treated as final ownership boundaries:
 
-- `src/server.ts` is a shim that re-exports the real app-level assembler from
-  `src/app/server/index.ts`
-- `src/shared/app-shell.ts` is now a compatibility shim that re-exports
-  `src/shared/platform-contract.ts` and `src/products/chat/api/contracts.ts`
-- `src/products/chat/api/*` now owns Chat setup, legacy compatibility, and
-  canonical/public Chat HTTP contracts, while `src/app/server/index.ts` stays
-  assembly-only
+- `src/products/chat/api/*` still owns Chat setup, legacy compatibility, and
+  canonical/public Chat HTTP contracts
+- `src/app/server/index.ts` stays assembly-only for host startup and route
+  composition
+- product and platform contracts are still mid-migration toward cleaner
+  platform-owned read models and narrower product adapters
 
 ## Current Chat Navigation Direction
 

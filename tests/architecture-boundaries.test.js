@@ -435,8 +435,8 @@ test('shared room-routing contracts are extracted from chat api contracts', asyn
     new URL('../src/products/chat/api/contracts.ts', import.meta.url),
     'utf8',
   );
-  const appShell = await readFile(
-    new URL('../src/shared/app-shell.ts', import.meta.url),
+  const roomRoutingContracts = await readFile(
+    new URL('../src/shared/roomRouting.ts', import.meta.url),
     'utf8',
   );
 
@@ -445,7 +445,7 @@ test('shared room-routing contracts are extracted from chat api contracts', asyn
     chatContracts,
     /export interface RoomRoutingState/u,
   );
-  assert.match(appShell, /from '\.\/roomRouting\.js'/u);
+  assert.match(roomRoutingContracts, /export interface RoomRoutingState/u);
 });
 
 test('chat and server internals do not import the app-shell compatibility barrel', async () => {
