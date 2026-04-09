@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 test('conversation sidebar overflow menus position before first paint', async () => {
   const source = await readFile(
-    new URL('../src/app/renderer/productShell/ConversationSidebar.tsx', import.meta.url),
+    new URL('../src/app/renderer/productShell/useFloatingSidebarMenu.tsx', import.meta.url),
     'utf8',
   );
 
