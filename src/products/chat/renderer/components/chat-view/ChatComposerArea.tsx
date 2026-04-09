@@ -12,6 +12,10 @@ import {
   ComposerRecipientChip,
   type RecipientChipTarget,
 } from '../ComposerRecipientChip.js';
+import {
+  buildModelSelectorLabel,
+  ModelSelectorChip,
+} from '../ModelSelector.js';
 
 export interface ChatComposerAreaProps {
   hasConversationStarted: boolean;
@@ -84,6 +88,19 @@ export function ChatComposerArea({
   onStopMessage,
   autoResize,
 }: ChatComposerAreaProps) {
+  const implicitRecipient =
+    composerRecipients.length === 1 && composerRecipients[0]?.kind === 'implicit'
+      ? composerRecipients[0]
+      : null;
+  const implicitRecipientLabel = implicitRecipient
+    ? buildModelSelectorLabel({
+        provider: implicitRecipient.provider ?? '',
+        instance: implicitRecipient.instance ?? null,
+        model: implicitRecipient.model ?? null,
+        modelSelection: null,
+      })
+    : null;
+
   return (
     <form
       ref={composerCardRef}
@@ -215,7 +232,14 @@ export function ChatComposerArea({
             );
           })()}
         </div>
-        {composerRecipients.length > 0 ? (
+        {implicitRecipient && implicitRecipientLabel ? (
+          <div style={{ marginRight: 8 }}>
+            <ModelSelectorChip
+              label={implicitRecipientLabel}
+              onClick={composerBusy ? undefined : () => onOpenSection('execution')}
+            />
+          </div>
+        ) : composerRecipients.length > 0 ? (
           <ComposerRecipientChip
             recipients={composerRecipients}
             disabled={composerBusy}
