@@ -33,9 +33,11 @@ import {
   insertCreatedChannelIntoPayload,
 } from '../workspaceChatUtils.js';
 import {
-  readCurrentComposerLocation,
-  shouldAutoNavigateComposerLocation,
+  captureManagedComposerLocation,
+  clearManagedComposerLocation,
+  navigateWithinManagedComposerFlow,
 } from '../composerNavigation.js';
+import { resetComposerDraftState } from '../composerDraftState.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -145,23 +147,16 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         setChannelFiles(originalChannelFiles);
       }
     };
-    const navigateWithinManagedFlow = (nextPath: string): boolean => {
-      const currentLocation = readCurrentComposerLocation();
-      if (!shouldAutoNavigateComposerLocation(
-        managedNavigationLocationRef.current,
-        currentLocation,
-      )) {
-        return false;
-      }
-
-      navigate(nextPath, { replace: true });
-      managedNavigationLocationRef.current = nextPath;
-      return true;
-    };
+    const navigateWithinManagedFlow = (nextPath: string): boolean =>
+      navigateWithinManagedComposerFlow(
+        managedNavigationLocationRef,
+        navigate,
+        nextPath,
+      );
 
     setBusy('message:prepare');
     setFeedback('');
-    managedNavigationLocationRef.current = readCurrentComposerLocation();
+    captureManagedComposerLocation(managedNavigationLocationRef);
     try {
       const preparedSendContext = await prepareWorkspaceSendContext({
         initialPayload,
@@ -220,18 +215,22 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       navigateWithinManagedFlow(rollbackPath);
 
       if (isCatScopedLaneRoute) {
-        setDraftCwd(null);
-        setDraftCatIds([]);
-        setDraftHighlightedCatId(null);
-        setDraftCatModelOverrides(new Map<string, ModelValue>());
-        setDraftFiles([]);
-        setChannelFiles([]);
+        resetComposerDraftState({
+          setDraftCwd,
+          setDraftCatIds,
+          setDraftHighlightedCatId,
+          setDraftCatModelOverrides,
+          setDraftFiles,
+          setChannelFiles,
+        });
       } else if (wasDraftingNewChat) {
-        setDraftCwd(null);
-        setDraftCatIds([]);
-        setDraftHighlightedCatId(null);
-        setDraftCatModelOverrides(new Map<string, ModelValue>());
-        setDraftFiles([]);
+        resetComposerDraftState({
+          setDraftCwd,
+          setDraftCatIds,
+          setDraftHighlightedCatId,
+          setDraftCatModelOverrides,
+          setDraftFiles,
+        });
       } else {
         setChannelFiles([]);
       }
@@ -243,7 +242,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       navigateWithinManagedFlow(rollbackPath);
     } finally {
       setBusy('');
-      managedNavigationLocationRef.current = null;
+      clearManagedComposerLocation(managedNavigationLocationRef);
     }
   }, [
     channelFiles,

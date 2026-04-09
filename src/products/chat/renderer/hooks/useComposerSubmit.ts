@@ -34,9 +34,11 @@ import {
   uploadChannelAttachments,
 } from '../api';
 import {
-  readCurrentComposerLocation,
-  shouldAutoNavigateComposerLocation,
+  captureManagedComposerLocation,
+  clearManagedComposerLocation,
+  navigateWithinManagedComposerFlow,
 } from '../../../shared/renderer/composerNavigation.js';
+import { resetComposerDraftState } from '../../../shared/renderer/composerDraftState.js';
 import {
   submitNewParallelChatDraft,
   submitParallelCompareMessage,
@@ -47,7 +49,6 @@ import {
   type DraftTemporaryParticipant,
   type SelectedChannelView,
 } from '../chatUtils';
-import { resetComposerDraftState } from '../composerDraftState.js';
 import {
   resolveDraftRouteContext,
   resolveDraftRoutePath,
@@ -208,24 +209,17 @@ export function useComposerSubmit(options: {
         setChannelFiles(originalChannelFiles);
       }
     };
-    const navigateWithinManagedFlow = (nextPath: string): boolean => {
-      const currentLocation = readCurrentComposerLocation();
-      if (!shouldAutoNavigateComposerLocation(
-        managedNavigationLocationRef.current,
-        currentLocation,
-      )) {
-        return false;
-      }
-
-      navigate(nextPath, { replace: true });
-      managedNavigationLocationRef.current = nextPath;
-      return true;
-    };
+    const navigateWithinManagedFlow = (nextPath: string): boolean =>
+      navigateWithinManagedComposerFlow(
+        managedNavigationLocationRef,
+        navigate,
+        nextPath,
+      );
 
     setFeedback('');
     const { id: submitId, controller: ackController } = beginAckRequest();
     let keepBusyAfterReturn = false;
-    managedNavigationLocationRef.current = readCurrentComposerLocation();
+    captureManagedComposerLocation(managedNavigationLocationRef);
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
         setBusy('parallelChat:ack');
@@ -423,7 +417,7 @@ export function useComposerSubmit(options: {
       if (!keepBusyAfterReturn) {
         setBusy('');
       }
-      managedNavigationLocationRef.current = null;
+      clearManagedComposerLocation(managedNavigationLocationRef);
     }
   }, [
     channelFiles,

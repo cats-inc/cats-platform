@@ -6,27 +6,27 @@ import type {
 export interface ResetComposerDraftStateOptions<ModelValue, ParticipantValue> {
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
-  setDraftTemporaryParticipants: Dispatch<SetStateAction<ParticipantValue[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
+  setDraftTemporaryParticipants?: Dispatch<SetStateAction<ParticipantValue[]>>;
   setChannelFiles?: Dispatch<SetStateAction<File[]>>;
   resetDraftParallelChatTargets?: () => void;
 }
 
-export function resetComposerDraftState<ModelValue, ParticipantValue>({
+export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftCwd,
   setDraftCatIds,
-  setDraftTemporaryParticipants,
   setDraftHighlightedCatId,
   setDraftCatModelOverrides,
   setDraftFiles,
+  setDraftTemporaryParticipants,
   setChannelFiles,
   resetDraftParallelChatTargets,
 }: ResetComposerDraftStateOptions<ModelValue, ParticipantValue>): void {
   setDraftCwd(null);
   setDraftCatIds([]);
-  setDraftTemporaryParticipants([]);
+  setDraftTemporaryParticipants?.([]);
   setDraftHighlightedCatId(null);
   setDraftCatModelOverrides(new Map<string, ModelValue>());
   setDraftFiles([]);

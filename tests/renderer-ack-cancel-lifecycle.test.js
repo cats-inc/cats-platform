@@ -22,6 +22,18 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
     path.join(process.cwd(), 'src/products/shared/renderer/hooks/useComposerRequestControls.ts'),
     'utf8',
   );
+  const sharedNavigationSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/composerNavigation.ts'),
+    'utf8',
+  );
+  const sharedDraftStateSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/composerDraftState.ts'),
+    'utf8',
+  );
+  const workspaceSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts'),
+    'utf8',
+  );
   const parallelDispatchSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/composerParallelDispatch.ts'),
     'utf8',
@@ -39,11 +51,19 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
   assert.match(source, /submitNewParallelChatDraft\(/u);
   assert.match(source, /submitParallelCompareMessage\(/u);
   assert.match(source, /useComposerRequestControls\(/u);
+  assert.match(source, /navigateWithinManagedComposerFlow/u);
+  assert.match(workspaceSource, /navigateWithinManagedComposerFlow/u);
+  assert.match(source, /resetComposerDraftState/u);
+  assert.match(workspaceSource, /resetComposerDraftState/u);
   assert.match(parallelDispatchSource, /export async function submitNewParallelChatDraft/u);
   assert.match(parallelDispatchSource, /createParallelChatGroup\(/u);
   assert.match(parallelDispatchSource, /sendParallelChatMessage\(/u);
   assert.match(sharedRequestControlsSource, /export function useComposerRequestControls/u);
   assert.match(sharedRequestControlsSource, /cancelPendingAckRequest\(\)/u);
+  assert.match(sharedNavigationSource, /export function navigateWithinManagedComposerFlow/u);
+  assert.match(sharedNavigationSource, /export function captureManagedComposerLocation/u);
+  assert.match(sharedNavigationSource, /export function clearManagedComposerLocation/u);
+  assert.match(sharedDraftStateSource, /export function resetComposerDraftState/u);
   assert.match(sharedLifecycleSource, /request\.controller\.abort\(\);/u);
   assert.match(sharedRequestControlsSource, /cancelConcurrentGroup/u);
   assert.match(sharedRequestControlsSource, /cancelChannel/u);

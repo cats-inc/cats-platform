@@ -944,6 +944,36 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.match(sharedRequestControlsSource, /cancelChannel/u);
 });
 
+test('chat and workspace composer hooks consume shared navigation and draft-reset helpers', async () => {
+  const chatHookSource = await readFile(
+    new URL('../src/products/chat/renderer/hooks/useComposerSubmit.ts', import.meta.url),
+    'utf8',
+  );
+  const workspaceHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts', import.meta.url),
+    'utf8',
+  );
+  const navigationHelperSource = await readFile(
+    new URL('../src/products/shared/renderer/composerNavigation.ts', import.meta.url),
+    'utf8',
+  );
+  const draftStateHelperSource = await readFile(
+    new URL('../src/products/shared/renderer/composerDraftState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(chatHookSource, /composerNavigation\.js/u);
+  assert.match(chatHookSource, /composerDraftState\.js/u);
+  assert.match(workspaceHookSource, /composerNavigation\.js/u);
+  assert.match(workspaceHookSource, /composerDraftState\.js/u);
+  assert.match(chatHookSource, /navigateWithinManagedComposerFlow/u);
+  assert.match(workspaceHookSource, /navigateWithinManagedComposerFlow/u);
+  assert.match(chatHookSource, /resetComposerDraftState/u);
+  assert.match(workspaceHookSource, /resetComposerDraftState/u);
+  assert.match(navigationHelperSource, /export function navigateWithinManagedComposerFlow/u);
+  assert.match(draftStateHelperSource, /export function resetComposerDraftState/u);
+});
+
 test('renderer app consumes dedicated cat-assignment actions instead of defining cat create/assign flows inline', async () => {
   const appSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
