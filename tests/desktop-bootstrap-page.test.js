@@ -6,42 +6,61 @@ import { buildDesktopBootstrapPage } from '../build/desktop/bootstrapPage.js';
 test('desktop bootstrap page surfaces setup recovery details from the host bridge', () => {
   const html = buildDesktopBootstrapPage();
 
+  // Core structure
+  assert.match(html, /id="app"/);
+  assert.match(html, /class="app"/);
+  assert.match(html, /class="hero/);
+
+  // Services section
+  assert.match(html, /getServiceDisplayName/);
+  assert.match(html, /cats-platform/);
+  assert.match(html, /svc-row/);
+  assert.match(html, /svc-status/);
+
+  // Runtime section
+  assert.match(html, /providerSummary/);
+
+  // Setup Recovery section
   assert.match(html, /Setup Recovery/);
-  assert.match(html, /Diagnostics/);
-  assert.match(html, /snapshot\.diagnostics/);
-  assert.match(html, /Recent chronology/);
-  assert.match(html, /renderDiagnostics/);
   assert.match(html, /setup-summary/);
   assert.match(html, /getSetupSnapshot/);
   assert.match(html, /resumeSetup/);
-  assert.match(html, /snapshot\.setup/);
+  assert.match(html, /snap\.setup/);
   assert.match(html, /providerSetup\.localProviders/);
   assert.match(html, /bundledInCurrentInstaller/);
-  assert.match(html, /getServiceDisplayName/);
-  assert.match(html, /cats-platform/);
   assert.match(html, /Recommended resume step/);
   assert.match(html, /Capability pack coverage/);
   assert.match(html, /providerSetup\.capabilityPacks/);
   assert.match(html, /Local provider rollout/);
   assert.match(html, /Not bundled in this desktop build/);
-  assert.match(html, /optionalPackLabel/);
-  assert.match(html, /interruption-chip/);
+  assert.match(html, /isOptionalCapabilityPackSetupAction/);
+  assert.match(html, /describeSetupPack/);
   assert.match(html, /renderInterruptions/);
   assert.match(html, /repo-owned packaged assets/);
+
+  // Diagnostics section
+  assert.match(html, /Diagnostics/);
+  assert.match(html, /snap\.diagnostics/);
+  assert.match(html, /Recent chronology/);
+  assert.match(html, /DiagSection/);
+  assert.match(html, /hostStatePath/);
+
+  // Bridge integration & lifecycle
   assert.match(html, /snapshotListenerBound/);
   assert.match(html, /scheduleInitialSnapshotRetry/);
   assert.match(html, /bridge\.getSnapshot\(\)/);
   assert.match(html, /window\.setTimeout/);
-  assert.match(html, /id="host-shell"/);
-  assert.match(html, /data-page-mode="loading"/);
-  assert.match(html, /data-recovery-only="true"/);
+
+  // Page mode handling
   assert.match(html, /resolvePageMode/);
-  assert.match(html, /hostShell\.dataset\.pageMode/);
+
+  // CSS overflow / layout safety
   assert.match(html, /overflow-x: hidden/);
-  assert.match(html, /align-items: start/);
-  assert.match(html, /flex-wrap: wrap/);
+  assert.match(html, /word-break: break-all/);
   assert.match(html, /white-space: pre-wrap/);
-  assert.match(html, /overflow-wrap: anywhere/);
-  assert.match(html, /min-width: 0/);
-  assert.match(html, /main\[data-page-mode="loading"\] \[data-recovery-only="true"\]/);
+
+  // Animations
+  assert.match(html, /fadeSlideIn/);
+  assert.match(html, /dot-pulse/);
+  assert.match(html, /@keyframes pulse/);
 });
