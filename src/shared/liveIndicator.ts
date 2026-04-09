@@ -35,6 +35,11 @@ export interface LiveIndicatorState {
   events: LiveIndicatorEventEntry[];
 }
 
+export interface LiveIndicatorTranscriptMessageLike {
+  senderKind: string;
+  createdAt: string;
+}
+
 const MAX_LIVE_INDICATOR_BLOCKS = 12;
 const MAX_LIVE_INDICATOR_EVENTS = 8;
 const MAX_EVENT_TEXT = 220;
@@ -145,6 +150,40 @@ export function buildLiveIndicatorScrollKey(
       ].join(':'))
       .join('|'),
   ].join('::');
+}
+
+export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTranscriptMessageLike>(
+  liveIndicator: LiveIndicatorState | null | undefined,
+  messages: ReadonlyArray<TMessage>,
+  activeTurnUpdatedAt: string | null | undefined,
+): LiveIndicatorState | null {
+  if (!liveIndicator?.active) {
+    return liveIndicator ?? null;
+  }
+
+  if (!activeTurnUpdatedAt) {
+    return liveIndicator;
+  }
+
+  const activeTurnTimestamp = Date.parse(activeTurnUpdatedAt);
+  if (Number.isNaN(activeTurnTimestamp)) {
+    return liveIndicator;
+  }
+
+  const latestVisibleReplyTimestamp = messages.reduce((latestTimestamp, message) => {
+    if (message.senderKind === 'user' || message.senderKind === 'system') {
+      return latestTimestamp;
+    }
+
+    const messageTimestamp = Date.parse(message.createdAt);
+    if (Number.isNaN(messageTimestamp)) {
+      return latestTimestamp;
+    }
+
+    return Math.max(latestTimestamp, messageTimestamp);
+  }, Number.NEGATIVE_INFINITY);
+
+  return latestVisibleReplyTimestamp >= activeTurnTimestamp ? null : liveIndicator;
 }
 
 function applyProgressEvent(

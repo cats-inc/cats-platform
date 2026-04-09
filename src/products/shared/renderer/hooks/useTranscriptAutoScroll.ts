@@ -132,15 +132,23 @@ export function useTranscriptAutoScroll(options: {
   }, [bottomSentinelElement, composerCardElement]);
 
   const scrollToBottom = useCallback(() => {
+    syncComposerDocking();
+    syncTranscriptBottomInset();
+    shouldAutoScrollRef.current = true;
+    setIsNearBottom(true);
+
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: scrollContainer.scrollHeight });
+      return;
+    }
+
     if (!bottomSentinelElement) {
       return;
     }
 
-    syncComposerDocking();
-    syncTranscriptBottomInset();
     bottomSentinelElement.scrollIntoView({ block: 'end' });
-    syncScrollState();
-  }, [bottomSentinelElement, syncComposerDocking, syncScrollState, syncTranscriptBottomInset]);
+  }, [bottomSentinelElement, syncComposerDocking, syncTranscriptBottomInset]);
 
   const scheduleScrollToBottom = useCallback(() => {
     if (pendingScrollFrameRef.current !== null) {

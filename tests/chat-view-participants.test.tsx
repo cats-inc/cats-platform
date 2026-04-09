@@ -531,6 +531,81 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   assert.match(markup, /catAvatarPulsing/u);
 });
 
+test('ChatView drops stale live progress once the routed reply is already visible', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-agent',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Inline Reviewer',
+              body: 'Done.',
+              mentions: [],
+              metadata: {
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:04.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-user',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 1,
+                targetStatuses: [],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:02.000Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'waiting',
+          speakerLabel: 'Gemini',
+        },
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /typingIndicator/u);
+  assert.doesNotMatch(markup, /catAvatarPulsing/u);
+});
+
 test('ChatView keeps transcript stack layout and hover-only user copy actions', () => {
   const markup = renderToStaticMarkup(
     <ChatView

@@ -10,6 +10,7 @@ import {
 } from '../../products/chat/state/room-routing/index.js';
 import { createRoomRoutingSnapshot } from '../../products/chat/state/room-routing/wake.js';
 import { setChannelRoomRouting } from '../../products/chat/state/model/index.js';
+import { repairOrphanedCompletedDispatchTurn } from '../../products/chat/state/runtime-dispatch/repair.js';
 import { syncCoreStateWithChatState } from '../../products/chat/state/core-projection/index.js';
 import {
   appendOrchestratorReplayActivity,
@@ -103,6 +104,11 @@ function recoverChannelWorkflowTurn(
   channel: ChatChannelState,
   now: Date,
 ): ChatState {
+  const repaired = repairOrphanedCompletedDispatchTurn(state, channel.id, now);
+  if (repaired.repaired) {
+    return repaired.state;
+  }
+
   const nowIso = now.toISOString();
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   const workflow = resolveRoomWorkflowState(roomRouting.workflow);

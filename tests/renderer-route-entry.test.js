@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -52,6 +54,20 @@ test('renderer route entry only reselects when the route is not the hydrated sel
     }),
     false,
   );
+});
+
+test('workspace route hook uses the shared channel entry helper without sleeping reselect logic', async () => {
+  const channelEntrySource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/channelEntry.ts'),
+    'utf8',
+  );
+  const routingHookSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts'),
+    'utf8',
+  );
+
+  assert.match(routingHookSource, /shouldWakeRouteChannelOnEntry/u);
+  assert.doesNotMatch(channelEntrySource, /entryLifecycleState === 'sleeping'/u);
 });
 
 test('renderer route entry does not wake when the route channel is missing', () => {
@@ -128,4 +144,3 @@ test('direct chat entry lifecycle stays null when the lead cat is missing instea
 
   assert.equal(lifecycle, null);
 });
-

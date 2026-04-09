@@ -9,12 +9,14 @@ import { createServer } from '../build/server/server.js';
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
 import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 import {
+  appendMessage,
   assignCatToChannel,
   createCat,
   createChannel,
   setChannelCatLease,
   setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
+import { beginChannelMessageDispatch } from '../build/server/products/chat/state/runtimeActions.js';
 import {
   createCatsMemoryService,
   MemoryCanonicalMemoryStore,
@@ -824,6 +826,84 @@ test('GET /api/app-shell exposes detailed chat state with global cats', async ()
     assert.equal(payload.chat.capabilities.mentions, 'basic');
     assert.equal(payload.chat.capabilities.transcriptExport, true);
   });
+});
+
+test('GET /api/app-shell repairs an orphaned completed room turn before rendering the selected channel', async () => {
+  const runtime = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+  const responseAt = new Date('2026-03-11T00:00:06.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Corrupted room route',
+      topic: 'Repair orphaned active turn',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Please repair me' },
+    runtime,
+    seededAt,
+  );
+  const activeTurnId = begun.state.channels.find((channel) => channel.id === channelId)
+    ?.roomRouting.workflow.activeTurn?.id;
+  assert.ok(activeTurnId);
+  state = appendMessage(
+    begun.state,
+    channelId,
+    {
+      senderKind: 'orchestrator',
+      senderName: 'Chat',
+      body: 'Recovered response body',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'runtime_response',
+        turnId: activeTurnId,
+        targetKind: 'orchestrator',
+        targetId: 'orchestrator',
+        routingTrigger: 'room_default',
+        dispatchDepth: 0,
+      },
+    },
+  ).state;
+  const corruptedChannel = state.channels.find((channel) => channel.id === channelId);
+  assert.ok(corruptedChannel?.roomRouting.workflow.activeTurn);
+  corruptedChannel.roomRouting.workflow.activeTurn.targetStatuses = [];
+  corruptedChannel.roomRouting.workflow.activeTurn.events =
+    corruptedChannel.roomRouting.workflow.activeTurn.events.filter((event) =>
+      event.kind === 'turn_started' || event.kind === 'checkpoint');
+  corruptedChannel.orchestratorLease = {
+    sessionId: null,
+    status: 'not_started',
+    cwd: null,
+    lastError: null,
+    provider: 'claude',
+    model: null,
+    startedAt: null,
+    lastUsedAt: null,
+  };
+  await withServer(runtime, async (baseUrl) => {
+    await chatStore.write(state);
+    const response = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.chat.selectedChannel.id, channelId);
+    assert.equal(payload.chat.selectedChannel.roomRouting.workflow.activeTurn, null);
+    assert.equal(payload.chat.selectedChannel.roomRouting.lastOutcome?.status, 'completed');
+  }, chatStore);
+
+  const repairedState = await chatStore.read();
+  const repairedChannel = repairedState.channels.find((channel) => channel.id === channelId);
+  assert.equal(repairedChannel?.roomRouting.workflow.activeTurn, null);
+  assert.equal(repairedChannel?.roomRouting.lastOutcome?.status, 'completed');
 });
 
 test('GET /api/core endpoints expose the shared Cats Core contract', async () => {

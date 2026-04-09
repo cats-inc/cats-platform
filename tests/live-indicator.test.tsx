@@ -12,6 +12,7 @@ import {
 import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
+  resolveVisibleLiveIndicator,
 } from '../src/shared/liveIndicator.ts';
 
 test('EMPTY_LIVE_INDICATOR starts with no active cat ids', () => {
@@ -94,6 +95,52 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for cat-led chats', () => {
       defaultRecipientId: 'cat-1',
     },
   } as never), null);
+});
+
+test('resolveVisibleLiveIndicator hides stale progress once a reply newer than the active turn is visible', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        senderKind: 'user',
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        senderKind: 'agent',
+        createdAt: '2026-04-09T12:00:03.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, null);
+});
+
+test('resolveVisibleLiveIndicator keeps active progress while only the user turn is visible', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        senderKind: 'user',
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
 });
 
 test('shared live indicator effect depends on stable derived fields instead of selected channel identity', async () => {

@@ -62,6 +62,9 @@ for (const product of PRODUCT_SURFACES) {
     assert.match(source, /ref=\{transcriptListRef\}/u);
     assert.match(source, /ref=\{composerCardRef\}/u);
     assert.match(source, /(?:ref|bottomSentinelRef)=\{bottomSentinelRef\}/u);
+    assert.match(source, /const transcriptScrollKey = useMemo/u);
+    assert.match(source, /(?:visibleMessages|selectedChannel\.messages)\.at\(-1\)\?\.createdAt/u);
+    assert.doesNotMatch(source, /scrollKey:\s*\[\s*selectedChannel\.updatedAt/u);
     assert.match(source, /if \(!composerWorkspacePath\) return null;/u);
     assert.match(source, /liveIndicator\.previewText \?\? ''/u);
     assert.doesNotMatch(source, /const cwd = selectedChannel\.repoPath \?\? selectedChannel\.chatCwd;\s*if \(!cwd\) return null;/u);
@@ -82,6 +85,8 @@ for (const product of PRODUCT_SURFACES) {
     assert.match(source, /observer\.observe\(composerCardElement\)/u);
     assert.match(source, /shouldAutoScrollRef/u);
     assert.match(source, /isScrollNearBottom/u);
+    assert.match(source, /setIsNearBottom\(true\)/u);
+    assert.match(source, /scrollContainer\.scrollTo\(\{ top: scrollContainer\.scrollHeight \}\)/u);
     assert.match(source, /scrollIntoView\(\{ block: 'end' \}\)/u);
     assert.match(source, /pendingScrollFrameRef/u);
   });

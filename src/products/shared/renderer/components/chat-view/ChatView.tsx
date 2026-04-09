@@ -14,7 +14,10 @@ import {
   resolveLayoutMetrics,
   type ChatLayoutMode,
 } from '../../../../../design/chatLayout.js';
-import { buildLiveIndicatorScrollKey } from '../../../../../shared/liveIndicator.js';
+import {
+  buildLiveIndicatorScrollKey,
+  resolveVisibleLiveIndicator,
+} from '../../../../../shared/liveIndicator.js';
 import {
   presentChannelTitle,
   type SelectedChannelView,
@@ -121,6 +124,14 @@ export function ChatView({
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
+  const visibleLiveIndicator = useMemo(
+    () => resolveVisibleLiveIndicator(
+      liveIndicator,
+      selectedChannel.messages,
+      selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null,
+    ),
+    [liveIndicator, selectedChannel.messages, selectedChannel.roomRouting.workflow.activeTurn?.updatedAt],
+  );
 
   const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
   const defaultRecipientCat = defaultRecipientId
@@ -214,19 +225,28 @@ export function ChatView({
     [operatorView],
   );
   const liveIndicatorScrollKey = useMemo(
-    () => buildLiveIndicatorScrollKey(liveIndicator),
-    [liveIndicator],
+    () => buildLiveIndicatorScrollKey(visibleLiveIndicator),
+    [visibleLiveIndicator],
+  );
+  const transcriptScrollKey = useMemo(
+    () => [
+      selectedChannel.messages.length,
+      selectedChannel.messages.at(-1)?.id ?? '',
+      selectedChannel.messages.at(-1)?.createdAt ?? '',
+      liveIndicatorScrollKey,
+    ].join('::'),
+    [liveIndicatorScrollKey, selectedChannel.messages],
   );
   const activeTopBarCatIds = useMemo(() => {
-    const ids = liveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
+    const ids = visibleLiveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
     if (ids.length > 0) {
       return [...new Set(ids)];
     }
-    if (liveIndicator?.active && liveIndicator.catId) {
-      return [liveIndicator.catId];
+    if (visibleLiveIndicator?.active && visibleLiveIndicator.catId) {
+      return [visibleLiveIndicator.catId];
     }
     return [];
-  }, [liveIndicator]);
+  }, [visibleLiveIndicator]);
   const activeTopBarCatIdSet = useMemo(
     () => new Set(activeTopBarCatIds),
     [activeTopBarCatIds],
@@ -279,11 +299,7 @@ export function ChatView({
   );
   const { transcriptListRef, composerCardRef, bottomSentinelRef } = useTranscriptAutoScroll({
     channelId: selectedChannel.id,
-    scrollKey: [
-      selectedChannel.updatedAt ?? '',
-      selectedChannel.messages.length,
-      liveIndicatorScrollKey,
-    ].join('::'),
+    scrollKey: transcriptScrollKey,
   });
 
   return (
@@ -353,7 +369,7 @@ export function ChatView({
         selectedChannel={selectedChannel}
         busy={busy}
         greeting={greeting}
-        liveIndicator={liveIndicator}
+        liveIndicator={visibleLiveIndicator ?? undefined}
         directLaneExcludedMentionNames={directLaneExcludedMentionNames}
         transcriptListRef={transcriptListRef}
         bottomSentinelRef={bottomSentinelRef}

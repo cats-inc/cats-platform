@@ -56,6 +56,7 @@ import {
 import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorAdapter.js';
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
 import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
+import { repairOrphanedCompletedDispatchTurn } from '../state/runtime-dispatch/repair.js';
 import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
@@ -318,7 +319,30 @@ export async function buildAppShellPayload(
   state?: Awaited<ReturnType<ChatStore['read']>>,
 ): Promise<AppShellPayload> {
   const core = await dependencies.chatStore.readCore();
-  const resolvedState = state ?? await dependencies.chatStore.read();
+  let resolvedState = state ?? await dependencies.chatStore.read();
+  const selectedChannelId = resolvedState.selectedChannelId?.trim();
+  if (selectedChannelId) {
+    const repaired = repairOrphanedCompletedDispatchTurn(
+      resolvedState,
+      selectedChannelId,
+      nowFrom(dependencies),
+    );
+    if (repaired.repaired) {
+      resolvedState = repaired.state;
+      resolvedState = await dependencies.mutationGate.run(selectedChannelId, async () => {
+        const latestState = await dependencies.chatStore.read();
+        const latestRepair = repairOrphanedCompletedDispatchTurn(
+          latestState,
+          selectedChannelId,
+          nowFrom(dependencies),
+        );
+        if (!latestRepair.repaired) {
+          return latestState;
+        }
+        return dependencies.chatStore.write(latestRepair.state);
+      });
+    }
+  }
   const runtime = await dependencies.runtimeClient.getHealth();
   const runtimeSetup = await readRuntimeSetupSummary(dependencies.runtimeClient);
   const botBindings = core.botBindings.map((binding) => {

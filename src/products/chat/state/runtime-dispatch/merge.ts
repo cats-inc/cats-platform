@@ -10,6 +10,8 @@ interface MutationGateLike {
   run<T>(key: string, operation: () => Promise<T>): Promise<T>;
 }
 
+const MERGED_DISPATCH_WRITE_GATE_KEY = '__chat:merged-dispatch-write__';
+
 function sameSnapshot(left: unknown, right: unknown): boolean {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
@@ -263,22 +265,24 @@ export function createMergedDispatchChatStore(options: {
     writeCore: options.chatStore.writeCore.bind(options.chatStore),
     async write(dispatchState: ChatState): Promise<ChatState> {
       return options.mutationGate.run(options.channelId, async () => {
-        const latestState = await options.chatStore.read();
-        if (!latestState.channels.some((channel) => channel.id === options.channelId)) {
-          previousState = dispatchState;
-          return latestState;
-        }
+        return options.mutationGate.run(MERGED_DISPATCH_WRITE_GATE_KEY, async () => {
+          const latestState = await options.chatStore.read();
+          if (!latestState.channels.some((channel) => channel.id === options.channelId)) {
+            previousState = dispatchState;
+            return latestState;
+          }
 
-        const mergedState = mergeCompletedDispatchState(
-          latestState,
-          previousState,
-          dispatchState,
-          options.channelId,
-          options.now(),
-        );
-        const persisted = await options.chatStore.write(mergedState);
-        previousState = dispatchState;
-        return persisted;
+          const mergedState = mergeCompletedDispatchState(
+            latestState,
+            previousState,
+            dispatchState,
+            options.channelId,
+            options.now(),
+          );
+          const persisted = await options.chatStore.write(mergedState);
+          previousState = dispatchState;
+          return persisted;
+        });
       });
     },
   };

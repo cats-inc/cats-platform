@@ -17,7 +17,10 @@ import type {
 import { resolveCatStatusIndicator } from '../../shared/catStatusResolution';
 import { CatStatusRow } from './CatStatusRow';
 import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
-import { buildLiveIndicatorScrollKey } from '../../../../shared/liveIndicator.js';
+import {
+  buildLiveIndicatorScrollKey,
+  resolveVisibleLiveIndicator,
+} from '../../../../shared/liveIndicator.js';
 import { SidePanel } from '../../../../design/components/SidePanel';
 import {
   resolveLayoutMetrics,
@@ -190,6 +193,14 @@ export function ChatView({
     (message) => payload.chat.showVerboseMessages || message.metadata?.verbosity !== 'verbose',
   );
   const hasConversationStarted = visibleMessages.length > 0;
+  const visibleLiveIndicator = useMemo(
+    () => resolveVisibleLiveIndicator(
+      liveIndicator,
+      visibleMessages,
+      selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null,
+    ),
+    [liveIndicator, selectedChannel.roomRouting.workflow.activeTurn?.updatedAt, visibleMessages],
+  );
 
   const conversationMode = resolveConversationMode(selectedChannel);
   const compareMembers = compareGroup?.members ?? [];
@@ -307,19 +318,28 @@ export function ChatView({
     [operatorView],
   );
   const liveIndicatorScrollKey = useMemo(
-    () => buildLiveIndicatorScrollKey(liveIndicator),
-    [liveIndicator],
+    () => buildLiveIndicatorScrollKey(visibleLiveIndicator),
+    [visibleLiveIndicator],
+  );
+  const transcriptScrollKey = useMemo(
+    () => [
+      visibleMessages.length,
+      visibleMessages.at(-1)?.id ?? '',
+      visibleMessages.at(-1)?.createdAt ?? '',
+      liveIndicatorScrollKey,
+    ].join('::'),
+    [liveIndicatorScrollKey, visibleMessages],
   );
   const activeTopBarCatIds = useMemo(() => {
-    const ids = liveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
+    const ids = visibleLiveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
     if (ids.length > 0) {
       return [...new Set(ids)];
     }
-    if (liveIndicator?.active && liveIndicator.catId) {
-      return [liveIndicator.catId];
+    if (visibleLiveIndicator?.active && visibleLiveIndicator.catId) {
+      return [visibleLiveIndicator.catId];
     }
     return [];
-  }, [liveIndicator]);
+  }, [visibleLiveIndicator]);
   const activeTopBarCatIdSet = useMemo(
     () => new Set(activeTopBarCatIds),
     [activeTopBarCatIds],
@@ -333,12 +353,12 @@ export function ChatView({
     if (runningParticipantIds.length > 0) {
       return [...new Set(runningParticipantIds)];
     }
-    if (liveIndicator?.active && selectedChannel.roomRouting?.defaultRecipientId) {
+    if (visibleLiveIndicator?.active && selectedChannel.roomRouting?.defaultRecipientId) {
       return [selectedChannel.roomRouting.defaultRecipientId];
     }
     return [];
   }, [
-    liveIndicator?.active,
+    visibleLiveIndicator?.active,
     selectedChannel.roomRouting?.defaultRecipientId,
     selectedChannel.roomRouting?.workflow?.activeTurn,
   ]);
@@ -351,13 +371,13 @@ export function ChatView({
     if (activeWorkflowParticipantId) {
       return activeWorkflowParticipantId;
     }
-    if (liveIndicator?.active) {
+    if (visibleLiveIndicator?.active) {
       return selectedChannel.roomRouting?.defaultRecipientId ?? null;
     }
     return null;
   }, [
     activeTopBarParticipantIds,
-    liveIndicator?.active,
+    visibleLiveIndicator?.active,
     selectedChannel.roomRouting?.defaultRecipientId,
   ]);
   const liveSpeakerParticipant = useMemo(
@@ -365,14 +385,14 @@ export function ChatView({
       ? activeRoomParticipants.find(
           (participant) => participant.participantId === liveSpeakerParticipantId,
         ) ?? null
-      : liveIndicator?.catId
+      : visibleLiveIndicator?.catId
         ? activeRoomParticipants.find((participant) =>
-          resolveParticipantCatId(participant) === liveIndicator.catId)
+          resolveParticipantCatId(participant) === visibleLiveIndicator.catId)
           ?? null
         : null,
     [
       activeRoomParticipants,
-      liveIndicator?.catId,
+      visibleLiveIndicator?.catId,
       liveSpeakerParticipantId,
     ],
   );
@@ -479,11 +499,7 @@ export function ChatView({
   );
   const { transcriptListRef, composerCardRef, bottomSentinelRef, isNearBottom, scrollToBottom } = useTranscriptAutoScroll({
     channelId: selectedChannel.id,
-    scrollKey: [
-      selectedChannel.updatedAt ?? '',
-      selectedChannel.messages.length,
-      liveIndicatorScrollKey,
-    ].join('::'),
+    scrollKey: transcriptScrollKey,
     scrollOnChannelChange: true,
   });
 
@@ -642,7 +658,7 @@ export function ChatView({
               choiceResponsesBySource={choiceResponsesBySource}
               onChoiceSubmit={onChoiceSubmit}
               onRelayMessage={onRelayMessage}
-              liveIndicator={liveIndicator}
+              liveIndicator={visibleLiveIndicator ?? undefined}
               liveSpeakerParticipant={liveSpeakerParticipant}
               liveSpeakerParticipantCat={resolveParticipantCatRecord(liveSpeakerParticipant)}
               messageStackTone={messageStackTone}
