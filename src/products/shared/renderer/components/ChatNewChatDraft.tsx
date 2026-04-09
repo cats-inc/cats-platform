@@ -20,7 +20,7 @@ import {
   pickDraftGreeting,
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
-import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
+import { catInitials, isChatCat, truncatePath } from '../workspaceChatUtils.js';
 import { CatAvatarRow } from './CatAvatarRow.js';
 import {
   ComposerRecipientChip,
@@ -286,6 +286,29 @@ export function NewChatDraft({
     effectiveDefaultRecipientTemporaryParticipant,
     payload.chat.bossCatId,
   ]);
+  const groupComposerParticipants = useMemo(() => [
+    ...visibleDraftCatIds.map((catId) => {
+      const cat = chatCats.find((candidate) => candidate.id === catId);
+      return {
+        key: `cat:${catId}`,
+        name: cat?.name ?? '',
+        avatarColor: cat?.avatarColor ?? null,
+        avatarUrl: cat?.avatarUrl ?? null,
+        isCat: true,
+        catId,
+        participantId: null as string | null,
+      };
+    }).filter((participant) => participant.name),
+    ...draftTemporaryParticipants.map((participant) => ({
+      key: `temp:${participant.participantId}`,
+      name: participant.name,
+      avatarColor: null,
+      avatarUrl: null,
+      isCat: false,
+      catId: null as string | null,
+      participantId: participant.participantId,
+    })),
+  ], [chatCats, draftTemporaryParticipants, visibleDraftCatIds]);
 
   function submitTemporaryParticipant(): void {
     if (hasReachedGroupParticipantLimit) {
@@ -512,6 +535,68 @@ export function NewChatDraft({
                   onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
                 />
               </div>
+            ) : isGroupDraft ? (
+              groupComposerParticipants.length > 0 ? (
+                <div
+                  className="composerCatStack"
+                  style={{ marginRight: 8 }}
+                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cats')}
+                  role={isSubmittingFirstTurn ? undefined : 'button'}
+                  tabIndex={isSubmittingFirstTurn ? undefined : 0}
+                >
+                  {[...groupComposerParticipants].reverse().map((participant, index, rendered) => {
+                    const isBoss = participant.isCat && participant.catId === payload.chat.bossCatId;
+                    const canRemove = groupComposerParticipants.length > 2;
+
+                    return (
+                      <div
+                        key={participant.key}
+                        className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
+                        data-tooltip={participant.name}
+                        style={{
+                          ...(participant.avatarUrl
+                            ? {
+                                backgroundImage: `url(${participant.avatarUrl})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }
+                            : participant.isCat
+                              ? {
+                                  background: participant.avatarColor ?? '#8B7E74',
+                                }
+                              : {
+                                  background: '#fff',
+                                  color: '#222',
+                                  border: '1px solid rgba(0, 0, 0, 0.15)',
+                                }),
+                          zIndex: rendered.length - index,
+                        }}
+                      >
+                        {participant.avatarUrl ? null : catInitials(participant.name)}
+                        {!isSubmittingFirstTurn && canRemove ? (
+                          <button
+                            type="button"
+                            className="composerStackRemove"
+                            aria-label={`Remove ${participant.name}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (participant.isCat && participant.catId) {
+                                onToggleDraftCat(participant.catId);
+                                return;
+                              }
+                              if (participant.participantId) {
+                                onRemoveDraftTemporaryParticipant(participant.participantId);
+                              }
+                            }}
+                          >
+                            &times;
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null
             ) : draftComposerRecipients.length > 0 ? (
               <ComposerRecipientChip
                 recipients={draftComposerRecipients}

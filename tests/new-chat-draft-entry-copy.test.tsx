@@ -205,7 +205,7 @@ test('group route hides add-participant hint and button when max participants is
   assert.match(markup, /tabindex="-1"/u);
 });
 
-test('group route keeps the composer recipient chip focused on the current recipient', () => {
+test('group route keeps the original composer avatar stack for participants', () => {
   const payload = createPayload();
   payload.chat.bossCatId = 'cat-lead';
 
@@ -230,12 +230,81 @@ test('group route keeps the composer recipient chip focused on the current recip
     />,
   );
 
-  assert.match(
-    markup,
-    /recipientChipAvatarBoss/u,
+  assert.match(markup, /class="composerCatStack"/u);
+  assert.match(markup, /class="catAvatar composerStackAvatar catAvatarBoss"/u);
+  assert.match(markup, /data-tooltip="Inline Reviewer"/u);
+  assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
+  assert.doesNotMatch(markup, /aria-label="Remove Inline Reviewer"/u);
+});
+
+test('group route keeps remove controls hidden when only two participants remain', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryMode: 'group',
+        draftCatIds: ['cat-lead'],
+        draftTemporaryParticipants: [
+          {
+            participantId: 'participant-inline',
+            name: 'Inline Reviewer',
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+            modelSelection: null,
+            roleHint: 'Counterpoint',
+          },
+        ],
+      })}
+    />,
   );
-  assert.match(markup, /class="composerRecipientChipLabel">Milo/u);
-  assert.doesNotMatch(markup, /composerStackAvatar/u);
+
+  assert.doesNotMatch(markup, /aria-label="Remove Inline Reviewer"/u);
+});
+
+test('group route restores remove controls once the draft has three participants', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryMode: 'group',
+        draftCatIds: ['cat-lead', 'cat-reviewer'],
+        payload: {
+          chat: {
+            ...createPayload().chat,
+            cats: [
+              ...createPayload().chat.cats,
+              {
+                id: 'cat-reviewer',
+                name: 'Pico',
+                status: 'active',
+                products: ['chat'],
+                defaultExecutionTarget: {
+                  provider: 'claude',
+                  instance: 'native',
+                  model: 'claude-sonnet',
+                },
+                defaultModelSelection: null,
+              },
+            ],
+          },
+        } as unknown as AppShellPayload,
+        draftTemporaryParticipants: [
+          {
+            participantId: 'participant-inline',
+            name: 'Inline Reviewer',
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+            modelSelection: null,
+            roleHint: 'Counterpoint',
+          },
+        ],
+      })}
+    />,
+  );
+
+  assert.match(markup, /aria-label="Remove Milo"/u);
+  assert.match(markup, /aria-label="Remove Pico"/u);
+  assert.match(markup, /aria-label="Remove Inline Reviewer"/u);
 });
 
 test('solo draft without a recipient keeps the provider-model control as a model chip', () => {
