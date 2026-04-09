@@ -17,11 +17,8 @@ import {
 } from '../../channelPaths.js';
 import { normalizeSelectedChannelView, type SelectedChannelView } from '../../channelEntry.js';
 import {
-  buildSoloDispatchTarget,
   isDirectLaneSelectedForCat,
-  prepareComposerChannelDispatch,
-  prepareComposerMessageBody,
-  resolveComposerFilesToUpload,
+  prepareWorkspaceSendContext,
 } from '../composerDispatch.js';
 import {
   createChatChannel,
@@ -146,7 +143,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     setBusy('message:prepare');
     setFeedback('');
     try {
-      const preparedChannel = await prepareComposerChannelDispatch({
+      const preparedSendContext = await prepareWorkspaceSendContext({
         initialPayload,
         wasDraftingNewChat,
         isCatScopedLaneRoute,
@@ -159,6 +156,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         draftDefaultRecipientCatId,
         participantCatIds: draftCatIds,
         draftModel,
+        selectedChannel,
+        soloChannelModel,
+        draftFiles,
+        channelFiles,
         createChatChannel,
         insertCreatedChannelIntoPayload,
         setState,
@@ -168,42 +169,15 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         originalChannelFiles,
         buildChannelPath: (createdChannelId) =>
           buildWorkspaceChannelPath(chatPrefix, createdChannelId),
-      });
-      payload = preparedChannel.payload;
-      rollbackPayload = preparedChannel.rollbackPayload;
-      channelId = preparedChannel.channelId;
-      rollbackPath = preparedChannel.rollbackPath;
-      restoreFiles = preparedChannel.restoreFiles;
-
-      const soloDispatchTarget = buildSoloDispatchTarget({
-        wasDraftingNewChat,
-        isCatScopedLaneRoute,
-        channelId,
-        selectedChannel,
-        soloChannelModel,
-      });
-
-      const filesToUpload = resolveComposerFilesToUpload({
-        isCatScopedLaneRoute,
-        hydratedDirectLane,
-        wasDraftingNewChat,
-        draftFiles,
-        channelFiles,
-      });
-      const preparedMessage = await prepareComposerMessageBody({
-        payload,
-        channelId,
-        body,
-        filesToUpload,
         updateSelectedChannel,
         uploadChannelAttachments,
       });
-      if (preparedMessage.payload !== payload) {
-        payload = preparedMessage.payload;
-        rollbackPayload = payload;
-        setState({ status: 'ready', payload });
-      }
-      const messageBody = preparedMessage.messageBody;
+      payload = preparedSendContext.payload;
+      rollbackPayload = preparedSendContext.rollbackPayload;
+      channelId = preparedSendContext.channelId;
+      rollbackPath = preparedSendContext.rollbackPath;
+      restoreFiles = preparedSendContext.restoreFiles;
+      const { messageBody, soloDispatchTarget } = preparedSendContext;
 
       if (soloDispatchTarget) {
         payload = applyOptimisticPendingExecutionTarget(payload, channelId, soloDispatchTarget);

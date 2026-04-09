@@ -59,6 +59,12 @@ export interface PrepareComposerChannelDispatchResult<TPayload> {
   restoreFiles: () => void;
 }
 
+export interface PrepareWorkspaceSendContextResult<TPayload>
+  extends PrepareComposerChannelDispatchResult<TPayload> {
+  messageBody: string;
+  soloDispatchTarget: PendingExecutionTargetInput | null;
+}
+
 export function isDirectLaneSelectedForCat<
   TSelectedChannel extends ComposerSelectedChannelLike,
 >(
@@ -337,5 +343,154 @@ export async function prepareComposerChannelDispatch<
     channelId,
     rollbackPath,
     restoreFiles,
+  };
+}
+
+export async function prepareWorkspaceSendContext<
+  TPayload extends ComposerPayloadLike,
+  THydratedChannel extends ComposerSelectedChannelLike,
+  ModelValue extends ComposerModelValue,
+  TCreatedChannel extends ComposerCreatedChannelLike,
+>(options: {
+  initialPayload: TPayload;
+  wasDraftingNewChat: boolean;
+  isCatScopedLaneRoute: boolean;
+  hydratedDirectLane: THydratedChannel | null;
+  currentChannelId: string;
+  currentRollbackPath: string;
+  body: string;
+  existingCount: number;
+  draftCwd: string | null;
+  draftDefaultRecipientCatId: string | null;
+  participantCatIds: string[];
+  temporaryParticipants?: ComposerTemporaryParticipantLike[];
+  draftEntryKind?: 'solo' | 'group' | 'direct';
+  draftModel?: ModelValue;
+  selectedChannel: Pick<ComposerSelectedChannelLike, 'id' | 'composerMode'> | null;
+  soloChannelModel: ModelValue;
+  draftFiles: File[];
+  channelFiles: File[];
+  createChatChannel: (
+    input: ReturnType<typeof buildNewChatChannelInput>,
+    signal?: AbortSignal,
+  ) => Promise<TCreatedChannel>;
+  insertCreatedChannelIntoPayload: (
+    payload: TPayload,
+    createdChannel: TCreatedChannel,
+  ) => TPayload;
+  setState: (state: { status: 'ready'; payload: TPayload }) => void;
+  navigate: (path: string, options: { replace: boolean }) => void;
+  setChannelFiles: (files: File[]) => void;
+  originalDraftFiles: File[];
+  originalChannelFiles: File[];
+  buildChannelPath: (channelId: string) => string;
+  updateSelectedChannel: (
+    channelId: string,
+    signal?: AbortSignal,
+  ) => Promise<TPayload>;
+  uploadChannelAttachments: (
+    channelId: string,
+    files: File[],
+    signal?: AbortSignal,
+  ) => Promise<Array<{ relativePath: string }>>;
+  signal?: AbortSignal;
+}): Promise<PrepareWorkspaceSendContextResult<TPayload>> {
+  const {
+    initialPayload,
+    wasDraftingNewChat,
+    isCatScopedLaneRoute,
+    hydratedDirectLane,
+    currentChannelId,
+    currentRollbackPath,
+    body,
+    existingCount,
+    draftCwd,
+    draftDefaultRecipientCatId,
+    participantCatIds,
+    temporaryParticipants,
+    draftEntryKind,
+    draftModel,
+    selectedChannel,
+    soloChannelModel,
+    draftFiles,
+    channelFiles,
+    createChatChannel,
+    insertCreatedChannelIntoPayload,
+    setState,
+    navigate,
+    setChannelFiles,
+    originalDraftFiles,
+    originalChannelFiles,
+    buildChannelPath,
+    updateSelectedChannel,
+    uploadChannelAttachments,
+    signal,
+  } = options;
+
+  let payload = initialPayload;
+  const preparedChannel = await prepareComposerChannelDispatch({
+    initialPayload,
+    wasDraftingNewChat,
+    isCatScopedLaneRoute,
+    hydratedDirectLane,
+    currentChannelId,
+    currentRollbackPath,
+    body,
+    existingCount,
+    draftCwd,
+    draftDefaultRecipientCatId,
+    participantCatIds,
+    temporaryParticipants,
+    draftEntryKind,
+    draftModel,
+    createChatChannel,
+    insertCreatedChannelIntoPayload,
+    setState,
+    navigate,
+    setChannelFiles,
+    originalDraftFiles,
+    originalChannelFiles,
+    buildChannelPath,
+    signal,
+  });
+  payload = preparedChannel.payload;
+
+  const soloDispatchTarget = buildSoloDispatchTarget({
+    wasDraftingNewChat,
+    isCatScopedLaneRoute,
+    channelId: preparedChannel.channelId,
+    selectedChannel,
+    soloChannelModel,
+  });
+  const filesToUpload = resolveComposerFilesToUpload({
+    isCatScopedLaneRoute,
+    hydratedDirectLane,
+    wasDraftingNewChat,
+    draftFiles,
+    channelFiles,
+  });
+  const preparedMessage = await prepareComposerMessageBody({
+    payload,
+    channelId: preparedChannel.channelId,
+    body,
+    filesToUpload,
+    updateSelectedChannel,
+    uploadChannelAttachments,
+    signal,
+  });
+  payload = preparedMessage.payload;
+  if (preparedMessage.payload !== preparedChannel.payload) {
+    setState({ status: 'ready', payload });
+  }
+
+  return {
+    ...preparedChannel,
+    payload,
+    rollbackPayload:
+      preparedMessage.payload !== preparedChannel.payload
+        ? payload
+        : preparedChannel.rollbackPayload,
+    messageBody: preparedMessage.messageBody,
+    soloDispatchTarget,
   };
 }
