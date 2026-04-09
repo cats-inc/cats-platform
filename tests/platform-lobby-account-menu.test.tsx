@@ -30,6 +30,7 @@ function createEnvelope(): PlatformHostEnvelope {
     desktop: {
       startAtLogin: false,
       openWindowOnStartup: true,
+      systemTrayEnabled: true,
     },
     lobby: {
       animationMode: 'reduced',

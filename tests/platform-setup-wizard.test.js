@@ -132,6 +132,7 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
     assert.deepEqual(payload.desktop, {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     });
     assert.deepEqual(
       payload.products.map((product) => ({
@@ -481,6 +482,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
         lastProductSurface: 'work',
         startAtLogin: true,
         openWindowOnStartup: false,
+        systemTrayEnabled: true,
         guideCatSidecarSeen: true,
         guideCatSidecarMode: 'bubble',
       }),
@@ -500,6 +502,7 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
     assert.deepEqual(payload.desktop, {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     });
 
     const diagnosticsAfterReset = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
@@ -531,6 +534,7 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       lastProductSurface: 'work',
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: false,
       guideCatSidecarMode: 'auto',
@@ -551,6 +555,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
         lastProductSurface: 'code',
         startAtLogin: true,
         openWindowOnStartup: false,
+        systemTrayEnabled: true,
       }),
     });
     assert.equal(firstResponse.status, 200);
@@ -558,6 +563,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       lastProductSurface: 'code',
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: false,
       guideCatSidecarMode: 'auto',
@@ -568,6 +574,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         startAtLogin: false,
+        systemTrayEnabled: true,
       }),
     });
     assert.equal(secondResponse.status, 200);
@@ -575,6 +582,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       lastProductSurface: 'code',
       startAtLogin: false,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: false,
       guideCatSidecarMode: 'auto',
@@ -586,6 +594,7 @@ test('POST /api/platform/preferences updates desktop startup preferences without
     assert.deepEqual(shell.desktop, {
       startAtLogin: false,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     });
   });
 });
@@ -622,6 +631,7 @@ test('POST /api/platform/preferences persists guideCatSidecarSeen into the app s
       lastProductSurface: null,
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: true,
       guideCatSidecarMode: 'auto',
@@ -655,6 +665,7 @@ test('POST /api/platform/preferences persists guideCatSidecarMode into the app s
       lastProductSurface: null,
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
       lobbyAnimationMode: 'reduced',
       guideCatSidecarSeen: false,
       guideCatSidecarMode: 'bubble',

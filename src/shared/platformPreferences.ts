@@ -12,6 +12,7 @@ export interface PlatformPreferences {
   lastProductSurface: PlatformSurfaceId | null;
   startAtLogin: boolean;
   openWindowOnStartup: boolean;
+  systemTrayEnabled: boolean;
   lobbyAnimationMode: PlatformLobbyAnimationMode;
   guideCatSidecarSeen: boolean;
   guideCatSidecarMode: GuideCatSidecarMode;
@@ -21,6 +22,7 @@ const DEFAULTS: PlatformPreferences = {
   lastProductSurface: null,
   startAtLogin: true,
   openWindowOnStartup: false,
+  systemTrayEnabled: true,
   lobbyAnimationMode: 'reduced',
   guideCatSidecarSeen: false,
   guideCatSidecarMode: 'auto',
@@ -45,6 +47,7 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
         : null,
     startAtLogin: record.startAtLogin !== false,
     openWindowOnStartup: record.openWindowOnStartup === true,
+    systemTrayEnabled: record.systemTrayEnabled !== false,
     lobbyAnimationMode:
       lobbyAnimationMode === 'off'
       || lobbyAnimationMode === 'reduced'

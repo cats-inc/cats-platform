@@ -36,6 +36,7 @@ function createPayload(): WorkAppShellPayload {
     desktop: {
       startAtLogin: false,
       openWindowOnStartup: true,
+      systemTrayEnabled: true,
     },
     lobby: {
       animationMode: 'reduced',

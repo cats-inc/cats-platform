@@ -2,9 +2,11 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { WorkspaceSettingsCats } from '../../../products/shared/renderer/components/settings-cats/SettingsCats.js';
+import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
 import { PlatformSettingsChat } from './PlatformSettingsChat.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
+import { PlatformSettingsDesktopStartup } from './PlatformSettingsDesktopStartup.js';
 import { PlatformSettingsGeneral } from './PlatformSettingsGeneral.js';
 import { PlatformSettingsProductPlaceholder } from './PlatformSettingsProductPlaceholder.js';
 import { PlatformSettingsRuntime } from './PlatformSettingsRuntime.js';
@@ -34,6 +36,7 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
 }: PlatformSettingsRoutesProps<TPayload>) {
   const workProduct = payload.products.find((product) => product.id === 'work');
   const codeProduct = payload.products.find((product) => product.id === 'code');
+  const showDesktopStartup = isDesktopEnvironment();
   const onWorkspacePayloadUpdate = (nextPayload: WorkspaceAppShellPayload) => {
     onPayloadUpdate(nextPayload as TPayload);
   };
@@ -113,6 +116,19 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
               products={payload.products}
               title="Code"
               subtitle={`${codeProduct.productName} settings will land here as product-owned sections.`}
+            />
+          )}
+        />
+      ) : null}
+      {showDesktopStartup ? (
+        <Route
+          path="desktop-startup"
+          element={(
+            <PlatformSettingsDesktopStartup
+              payload={payload}
+              feedback={feedback}
+              onPayloadUpdate={onWorkspacePayloadUpdate}
+              onFeedback={onFeedback}
             />
           )}
         />

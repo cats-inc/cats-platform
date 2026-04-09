@@ -137,6 +137,7 @@ function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: stri
     desktop: {
       startAtLogin: false,
       openWindowOnStartup: true,
+      systemTrayEnabled: true,
     },
     lobby: {
       animationMode: 'full',

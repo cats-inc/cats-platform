@@ -55,9 +55,6 @@ test('desktop host config and managed service specs preserve the app/runtime pro
       CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/build/server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/build/runtime/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
-      CATS_DESKTOP_TRAY_ENABLED: 'true',
-      CATS_DESKTOP_KEEP_SERVICES_RUNNING: 'true',
-      CATS_DESKTOP_CLOSE_BEHAVIOR: 'minimize_to_tray',
       CATS_DESKTOP_UPDATE_CHANNEL: 'beta',
       CATS_DESKTOP_UPDATE_MANIFEST_URL: 'https://updates.example.com/cats/beta.json',
     },
@@ -93,6 +90,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(appSpec.env.CATS_RUNTIME_DIR, 'C:\\Users\\test\\.cats\\runtime');
   assert.equal(appSpec.cwd, config.packageRoot);
   assert.equal(config.background.trayEnabled, true);
+  assert.equal(config.background.keepServicesRunning, true);
   assert.equal(config.background.closeBehavior, 'minimize_to_tray');
   assert.equal(config.update.channel, 'beta');
   assert.equal(config.update.manifestUrl, 'https://updates.example.com/cats/beta.json');

@@ -20,7 +20,6 @@ export function PlatformSettingsGeneral({
   onFeedback,
 }: PlatformSettingsGeneralProps) {
   const [cropOpen, setCropOpen] = useState(false);
-  const [savingDesktopPrefs, setSavingDesktopPrefs] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
   const [savingSidecarMode, setSavingSidecarMode] = useState(false);
 
@@ -45,63 +44,6 @@ export function PlatformSettingsGeneral({
       onFeedback('');
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : errorMessage);
-    }
-  }
-
-  async function updateDesktopPreferences(
-    nextDesktopPrefs: AppShellPayload['desktop'],
-    errorMessage: string,
-  ): Promise<void> {
-    const previousDesktopPrefs = payload.desktop;
-    onPayloadUpdate({
-      ...payload,
-      desktop: nextDesktopPrefs,
-    });
-    setSavingDesktopPrefs(true);
-    try {
-      const desktopHost = (
-        window as Window & {
-          catsDesktopHost?: {
-            updateDesktopPreferences?: (
-              prefs: AppShellPayload['desktop'],
-            ) => Promise<AppShellPayload['desktop']>;
-          };
-        }
-      ).catsDesktopHost;
-
-      let persistedPrefs = nextDesktopPrefs;
-      if (desktopHost?.updateDesktopPreferences) {
-        persistedPrefs = await desktopHost.updateDesktopPreferences(nextDesktopPrefs);
-      } else {
-        const response = await fetch('/api/platform/preferences', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(nextDesktopPrefs),
-        });
-        if (!response.ok) {
-          throw new Error(errorMessage);
-        }
-        const body = await response.json() as Partial<AppShellPayload['desktop']>;
-        persistedPrefs = {
-          startAtLogin: body.startAtLogin !== false,
-          openWindowOnStartup: body.openWindowOnStartup === true,
-        };
-      }
-
-      onPayloadUpdate({
-        ...payload,
-        desktop: persistedPrefs,
-      });
-      dispatchPlatformEnvelopeRefresh();
-      onFeedback('');
-    } catch (error) {
-      onPayloadUpdate({
-        ...payload,
-        desktop: previousDesktopPrefs,
-      });
-      onFeedback(error instanceof Error ? error.message : errorMessage);
-    } finally {
-      setSavingDesktopPrefs(false);
     }
   }
 
@@ -182,10 +124,6 @@ export function PlatformSettingsGeneral({
 
   const avatarUrl = payload.ownerAvatarUrl;
   const initials = nameInitials(payload.ownerDisplayName);
-  const desktopPrefs = payload.desktop ?? {
-    startAtLogin: true,
-    openWindowOnStartup: false,
-  };
   const lobbyPrefs = payload.lobby ?? {
     animationMode: 'reduced',
   };
@@ -386,62 +324,6 @@ export function PlatformSettingsGeneral({
             )}
           </div>
         ) : null}
-
-        <div className="contentCard">
-          <h2>Desktop startup</h2>
-          <p className="heroNote">
-            Control whether Cats Desktop launches in the background when your computer
-            signs you in, and whether it opens the main window automatically.
-          </p>
-          <label className="settingsCheckboxRow">
-            <input
-              type="checkbox"
-              checked={desktopPrefs.startAtLogin}
-              disabled={savingDesktopPrefs}
-              onChange={() => {
-                void updateDesktopPreferences(
-                  {
-                    ...desktopPrefs,
-                    startAtLogin: !desktopPrefs.startAtLogin,
-                  },
-                  'Failed to update desktop startup preference',
-                );
-              }}
-            />
-            <span className="settingsCheckboxMeta">
-              <span className="settingsCheckboxLabel">
-                Start Cats Desktop when you sign in to your computer
-              </span>
-              <span className="heroNote">
-                Keep Cats Desktop running in the tray/background after you log in.
-              </span>
-            </span>
-          </label>
-          <label className="settingsCheckboxRow">
-            <input
-              type="checkbox"
-              checked={desktopPrefs.openWindowOnStartup}
-              disabled={savingDesktopPrefs}
-              onChange={() => {
-                void updateDesktopPreferences(
-                  {
-                    ...desktopPrefs,
-                    openWindowOnStartup: !desktopPrefs.openWindowOnStartup,
-                  },
-                  'Failed to update startup window preference',
-                );
-              }}
-            />
-            <span className="settingsCheckboxMeta">
-              <span className="settingsCheckboxLabel">
-                Open Cats when Cats Desktop starts
-              </span>
-              <span className="heroNote">
-                When disabled, a sign-in launch keeps Cats in the tray until you open it.
-              </span>
-            </span>
-          </label>
-        </div>
 
         {feedback ? <p className="feedbackText">{feedback}</p> : null}
       </PlatformSettingsShell>

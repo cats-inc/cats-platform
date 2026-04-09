@@ -57,14 +57,12 @@ function normalizeBackgroundState(
   }
 
   const mode = value.mode === 'background' ? 'background' : 'foreground';
-  const closeBehavior = value.closeBehavior === 'quit' ? 'quit' : fallback.closeBehavior;
 
   return {
-    trayEnabled: value.trayEnabled === true || (value.trayEnabled !== false && fallback.trayEnabled),
-    keepServicesRunning: value.keepServicesRunning === true
-      || (value.keepServicesRunning !== false && fallback.keepServicesRunning),
+    trayEnabled: fallback.trayEnabled,
+    keepServicesRunning: fallback.keepServicesRunning,
     mode,
-    closeBehavior,
+    closeBehavior: fallback.closeBehavior,
     windowVisible: value.windowVisible !== false,
     lastHiddenAt: readString(value.lastHiddenAt),
   };

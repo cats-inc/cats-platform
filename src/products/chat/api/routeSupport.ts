@@ -430,6 +430,7 @@ export async function buildAppShellPayload(
       desktop: {
         startAtLogin: platformPrefs.startAtLogin,
         openWindowOnStartup: platformPrefs.openWindowOnStartup,
+        systemTrayEnabled: platformPrefs.systemTrayEnabled,
       },
       lobby: {
         animationMode: platformPrefs.lobbyAnimationMode,

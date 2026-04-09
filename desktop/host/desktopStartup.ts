@@ -6,6 +6,7 @@ import { resolvePlatformPreferencesPathFromChatState } from './platformPaths.js'
 export interface DesktopStartupPreferences {
   startAtLogin: boolean;
   openWindowOnStartup: boolean;
+  systemTrayEnabled: boolean;
 }
 
 export interface DesktopStartupLaunchContext {
@@ -32,6 +33,7 @@ export interface DesktopStartupAppLike {
 const DEFAULT_DESKTOP_STARTUP_PREFERENCES: DesktopStartupPreferences = {
   startAtLogin: true,
   openWindowOnStartup: false,
+  systemTrayEnabled: true,
 };
 
 export const DESKTOP_LAUNCH_AT_LOGIN_ARG = '--launch-at-login';
@@ -48,6 +50,7 @@ function normalizeDesktopStartupPreferences(value: unknown): DesktopStartupPrefe
   return {
     startAtLogin: value.startAtLogin !== false,
     openWindowOnStartup: value.openWindowOnStartup === true,
+    systemTrayEnabled: value.systemTrayEnabled !== false,
   };
 }
 
@@ -86,6 +89,7 @@ export async function updateDesktopStartupPreferences(
   const nextPrefs: DesktopStartupPreferences = {
     startAtLogin: updates.startAtLogin ?? currentPrefs.startAtLogin,
     openWindowOnStartup: updates.openWindowOnStartup ?? currentPrefs.openWindowOnStartup,
+    systemTrayEnabled: updates.systemTrayEnabled ?? currentPrefs.systemTrayEnabled,
   };
 
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -93,6 +97,7 @@ export async function updateDesktopStartupPreferences(
     ...currentRecord,
     startAtLogin: nextPrefs.startAtLogin,
     openWindowOnStartup: nextPrefs.openWindowOnStartup,
+    systemTrayEnabled: nextPrefs.systemTrayEnabled,
   }, null, 2) + '\n', 'utf8');
 
   return nextPrefs;
@@ -131,17 +136,21 @@ export function resolveDesktopStartupLaunchContext(options: {
   background: {
     trayEnabled: boolean;
     keepServicesRunning: boolean;
+    closeBehavior: 'quit' | 'minimize_to_tray';
   };
 }): DesktopStartupLaunchContext {
   const platform = options.platform ?? process.platform;
   const argv = options.argv ?? process.argv;
   const launchedAtLogin = argv.includes(DESKTOP_LAUNCH_AT_LOGIN_ARG)
     || (platform === 'darwin' && options.wasOpenedAtLogin === true);
+  const backgroundLaunchAvailable = options.preferences.systemTrayEnabled
+    && options.background.trayEnabled
+    && options.background.keepServicesRunning
+    && options.background.closeBehavior === 'minimize_to_tray';
 
   const showWindowOnStartup = !launchedAtLogin
     || options.preferences.openWindowOnStartup
-    || !options.background.trayEnabled
-    || !options.background.keepServicesRunning;
+    || !backgroundLaunchAvailable;
 
   return {
     launchedAtLogin,

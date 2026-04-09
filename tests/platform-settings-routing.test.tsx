@@ -102,6 +102,15 @@ function createPayload(): AppShellPayload {
         ],
       },
     ],
+    desktop: {
+      startAtLogin: true,
+      openWindowOnStartup: false,
+      systemTrayEnabled: true,
+    },
+    lobby: {
+      animationMode: 'reduced',
+      cats: [],
+    },
     chat: {
       showVerboseMessages: false,
     },
@@ -155,6 +164,13 @@ function assertConcreteRoute(routes: RouteDescriptor[], path: string): void {
 }
 
 test('PlatformSettingsRoutes owns canonical platform settings routes', () => {
+  const previousBridge = (globalThis as typeof globalThis & {
+    catsDesktopHost?: object;
+  }).catsDesktopHost;
+  (globalThis as typeof globalThis & {
+    catsDesktopHost?: object;
+  }).catsDesktopHost = {};
+
   const routes = collectRoutes(
     PlatformSettingsRoutes({
       payload: createPayload(),
@@ -167,12 +183,21 @@ test('PlatformSettingsRoutes owns canonical platform settings routes', () => {
     }),
   );
 
-  assertConcreteRoute(routes, 'general');
-  assertConcreteRoute(routes, 'cats');
-  assertConcreteRoute(routes, 'chat');
-  assertConcreteRoute(routes, 'work');
-  assertConcreteRoute(routes, 'code');
-  assertConcreteRoute(routes, 'runtime');
-  assertConcreteRoute(routes, 'data');
-  assertNavigateRoute(routes, '*', '/settings/general');
+  try {
+    assertConcreteRoute(routes, 'general');
+    assertConcreteRoute(routes, 'cats');
+    assertConcreteRoute(routes, 'chat');
+    assertConcreteRoute(routes, 'work');
+    assertConcreteRoute(routes, 'code');
+    assertConcreteRoute(routes, 'desktop-startup');
+    assertConcreteRoute(routes, 'runtime');
+    assertConcreteRoute(routes, 'data');
+    assertNavigateRoute(routes, '*', '/settings/general');
+  } finally {
+    if (previousBridge === undefined) {
+      delete (globalThis as typeof globalThis & { catsDesktopHost?: object }).catsDesktopHost;
+    } else {
+      (globalThis as typeof globalThis & { catsDesktopHost?: object }).catsDesktopHost = previousBridge;
+    }
+  }
 });

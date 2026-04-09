@@ -325,6 +325,7 @@ async function handlePlatformPreferencesUpdate(
       lastProductSurface?: string;
       startAtLogin?: boolean;
       openWindowOnStartup?: boolean;
+      systemTrayEnabled?: boolean;
       lobbyAnimationMode?: string;
       guideCatSidecarSeen?: boolean;
       guideCatSidecarMode?: string;
@@ -354,6 +355,15 @@ async function handlePlatformPreferencesUpdate(
     ) {
       sendJson(context.response, 400, {
         error: { code: 'bad_request', message: 'openWindowOnStartup must be a boolean' },
+      });
+      return;
+    }
+    if (
+      body.systemTrayEnabled !== undefined
+      && typeof body.systemTrayEnabled !== 'boolean'
+    ) {
+      sendJson(context.response, 400, {
+        error: { code: 'bad_request', message: 'systemTrayEnabled must be a boolean' },
       });
       return;
     }
@@ -392,6 +402,7 @@ async function handlePlatformPreferencesUpdate(
       lastProductSurface: surface ?? currentPrefs.lastProductSurface,
       startAtLogin: body.startAtLogin ?? currentPrefs.startAtLogin,
       openWindowOnStartup: body.openWindowOnStartup ?? currentPrefs.openWindowOnStartup,
+      systemTrayEnabled: body.systemTrayEnabled ?? currentPrefs.systemTrayEnabled,
       lobbyAnimationMode: body.lobbyAnimationMode ?? currentPrefs.lobbyAnimationMode,
       guideCatSidecarSeen: body.guideCatSidecarSeen ?? currentPrefs.guideCatSidecarSeen,
       guideCatSidecarMode: body.guideCatSidecarMode ?? currentPrefs.guideCatSidecarMode,

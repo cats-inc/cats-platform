@@ -37,6 +37,7 @@ interface DesktopBootstrapSnapshot {
 interface DesktopStartupPreferences {
   startAtLogin: boolean;
   openWindowOnStartup: boolean;
+  systemTrayEnabled: boolean;
 }
 
 interface DesktopHostPlatformShellUpdate {
@@ -127,6 +128,7 @@ const bridge = {
       || prefs === null
       || typeof prefs.startAtLogin !== 'boolean'
       || typeof prefs.openWindowOnStartup !== 'boolean'
+      || typeof prefs.systemTrayEnabled !== 'boolean'
     ) {
       throw new Error('Invalid desktop startup preferences payload.');
     }

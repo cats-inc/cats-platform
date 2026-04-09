@@ -52,6 +52,7 @@ export interface PlatformResponseMetadata {
 export interface PlatformDesktopPreferences {
   startAtLogin: boolean;
   openWindowOnStartup: boolean;
+  systemTrayEnabled: boolean;
 }
 
 export interface PlatformLobbyCatSummary {

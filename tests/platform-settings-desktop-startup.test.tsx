@@ -3,7 +3,7 @@ import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
 
-import { PlatformSettingsGeneral } from '../src/app/renderer/settings/PlatformSettingsGeneral.tsx';
+import { PlatformSettingsDesktopStartup } from '../src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 
 function createPayload(): AppShellPayload {
@@ -34,6 +34,20 @@ function createPayload(): AppShellPayload {
         installPolicy: 'required',
         installState: 'installed',
         maturity: 'active',
+        setup: {
+          selectable: true,
+        },
+      },
+      {
+        id: 'code',
+        surface: 'code',
+        routePrefix: '/code',
+        productName: 'Cats Code',
+        subtitle: 'Repos, runs, and coding workspace',
+        group: 'office',
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
         setup: {
           selectable: true,
         },
@@ -75,10 +89,17 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('PlatformSettingsGeneral renders lobby motion controls without desktop startup settings', () => {
+test('PlatformSettingsDesktopStartup renders startup and system tray controls', () => {
+  const previousBridge = (globalThis as typeof globalThis & {
+    catsDesktopHost?: object;
+  }).catsDesktopHost;
+  (globalThis as typeof globalThis & {
+    catsDesktopHost?: object;
+  }).catsDesktopHost = {};
+
   const markup = renderToStaticMarkup(
-    <StaticRouter location="/settings/general">
-      <PlatformSettingsGeneral
+    <StaticRouter location="/settings/desktop-startup">
+      <PlatformSettingsDesktopStartup
         payload={createPayload()}
         feedback=""
         onPayloadUpdate={() => {}}
@@ -87,8 +108,16 @@ test('PlatformSettingsGeneral renders lobby motion controls without desktop star
     </StaticRouter>,
   );
 
-  assert.match(markup, /Choose how lively the Lobby background should feel/u);
-  assert.match(markup, /Reduced is the default/u);
-  assert.doesNotMatch(markup, /Desktop startup/u);
-  assert.match(markup, /checked/u);
+  try {
+    assert.match(markup, /Start Cats Desktop when you sign in to your computer/u);
+    assert.match(markup, /Open Cats when Cats Desktop starts/u);
+    assert.match(markup, /Keep Cats in the system tray when you close the window/u);
+    assert.match(markup, /When enabled, closing the window hides Cats and keeps it running\./u);
+  } finally {
+    if (previousBridge === undefined) {
+      delete (globalThis as typeof globalThis & { catsDesktopHost?: object }).catsDesktopHost;
+    } else {
+      (globalThis as typeof globalThis & { catsDesktopHost?: object }).catsDesktopHost = previousBridge;
+    }
+  }
 });

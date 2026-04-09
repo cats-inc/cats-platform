@@ -30,6 +30,7 @@ function createEnvelope() {
     desktop: {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     },
     lobby: {
       animationMode: 'reduced',

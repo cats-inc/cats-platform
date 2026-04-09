@@ -602,10 +602,11 @@ If you changed any desktop-host paths, re-check the corresponding
 ### Issue 8: Closing the desktop window does not stop local services
 
 **Solution**: This is now controlled by the host lifecycle contract. By
-default the host minimizes to tray and keeps `cats-runtime` + `cats` alive in
-the background. Set `CATS_DESKTOP_CLOSE_BEHAVIOR=quit` or
-`CATS_DESKTOP_KEEP_SERVICES_RUNNING=false` if you need the older quit-on-close
-behavior while testing.
+default Cats Desktop keeps tray mode enabled, so closing the window hides the
+app and keeps `cats-runtime` + `cats` alive in the background. You can change
+this in `Settings -> Desktop Startup` by turning off the system tray option; in
+that mode closing the window quits the app. The tray menu and recovery surface
+still expose an explicit `Quit Cats` action when tray mode is enabled.
 
 ---
 

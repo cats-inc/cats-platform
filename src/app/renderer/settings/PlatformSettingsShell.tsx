@@ -5,8 +5,17 @@ import type {
   PlatformProductDescriptor,
   PlatformProductSettingsDescriptor,
 } from '../../../shared/platform-contract.js';
+import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 
-type PlatformSettingsSection = 'general' | 'cats' | 'cats:my-cats' | 'cats:assistants' | 'runtime' | 'data' | string;
+type PlatformSettingsSection =
+  | 'general'
+  | 'cats'
+  | 'cats:my-cats'
+  | 'cats:assistants'
+  | 'desktop-startup'
+  | 'runtime'
+  | 'data'
+  | string;
 
 interface PlatformSettingsProductEntry extends PlatformProductSettingsDescriptor {
   productId: PlatformProductDescriptor['id'];
@@ -40,6 +49,7 @@ export function PlatformSettingsShell({
 }: PlatformSettingsShellProps) {
   const navigate = useNavigate();
   const productEntries = buildPlatformSettingsProductEntries(products);
+  const showDesktopStartup = isDesktopEnvironment();
 
   return (
     <div className="settingsShell">
@@ -79,6 +89,15 @@ export function PlatformSettingsShell({
             {entry.label}
           </button>
         ))}
+        {showDesktopStartup ? (
+          <button
+            className={section === 'desktop-startup' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+            type="button"
+            onClick={() => navigate('/settings/desktop-startup')}
+          >
+            Desktop Startup
+          </button>
+        ) : null}
         <button
           className={section === 'runtime' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"

@@ -220,6 +220,57 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
   assert.equal(persisted.snapshot.diagnostics.aggregation.layers.host.summary, 'Desktop host phase is ready_for_chat.');
 });
 
+test('DesktopHostStateStore normalizes legacy quit-on-close background flags back to tray defaults', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-host-state-'));
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_APP_ENTRY: join(workingDir, 'build', 'server', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'build', 'runtime', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
+    },
+    userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
+  });
+  const store = new DesktopHostStateStore(config.paths.hostStatePath);
+
+  await mkdir(join(workingDir, '.cats', 'desktop'), { recursive: true });
+  await writeFile(config.paths.hostStatePath, JSON.stringify({
+    version: 1,
+    updatedAt: '2026-04-10T00:00:00.000Z',
+    snapshot: {
+      background: {
+        trayEnabled: false,
+        keepServicesRunning: false,
+        mode: 'background',
+        closeBehavior: 'quit',
+        windowVisible: false,
+        lastHiddenAt: '2026-04-10T00:00:00.000Z',
+      },
+    },
+    background: {
+      trayEnabled: false,
+      keepServicesRunning: false,
+      mode: 'background',
+      closeBehavior: 'quit',
+      windowVisible: false,
+      lastHiddenAt: '2026-04-10T00:00:00.000Z',
+    },
+  }, null, 2) + '\n', 'utf8');
+
+  const loaded = await store.load(config, {
+    background: createDesktopBackgroundState(config),
+    updates: createDefaultDesktopUpdateState(config.update),
+    packaging: createDesktopPackagingPlan(config),
+    setup: createEmptyDesktopSetupState(),
+  });
+
+  assert.equal(loaded?.background.trayEnabled, true);
+  assert.equal(loaded?.background.keepServicesRunning, true);
+  assert.equal(loaded?.background.closeBehavior, 'minimize_to_tray');
+  assert.equal(loaded?.background.mode, 'background');
+  assert.equal(loaded?.background.windowVisible, false);
+});
+
 test('DesktopHostStateStore loads legacy setup state without optional follow-through fields', async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-host-state-legacy-'));
   const config = resolveDesktopHostConfig({

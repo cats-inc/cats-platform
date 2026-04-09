@@ -21,6 +21,7 @@ test('desktop startup preferences default to sign-in launch enabled and window o
     assert.deepEqual(prefs, {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     });
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -38,6 +39,7 @@ test('desktop startup preferences preserve unrelated fields when updated', async
       lastProductSurface: 'work',
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     }, null, 2) + '\n', 'utf8');
 
     await updateDesktopStartupPreferences(appStatePath, {
@@ -48,11 +50,13 @@ test('desktop startup preferences preserve unrelated fields when updated', async
     assert.equal(saved.lastProductSurface, 'work');
     assert.equal(saved.startAtLogin, false);
     assert.equal(saved.openWindowOnStartup, false);
+    assert.equal(saved.systemTrayEnabled, true);
 
     const updated = await readDesktopStartupPreferences(appStatePath);
     assert.deepEqual(updated, {
       startAtLogin: false,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     });
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -65,10 +69,12 @@ test('desktop startup launch context starts hidden only for sign-in launches whe
     preferences: {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     },
     background: {
       trayEnabled: true,
       keepServicesRunning: true,
+      closeBehavior: 'minimize_to_tray',
     },
   }), {
     launchedAtLogin: false,
@@ -81,10 +87,12 @@ test('desktop startup launch context starts hidden only for sign-in launches whe
     preferences: {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     },
     background: {
       trayEnabled: true,
       keepServicesRunning: true,
+      closeBehavior: 'minimize_to_tray',
     },
   }), {
     launchedAtLogin: true,
@@ -99,10 +107,32 @@ test('desktop startup still shows the main window if the tray background path is
     preferences: {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     },
     background: {
       trayEnabled: false,
       keepServicesRunning: true,
+      closeBehavior: 'minimize_to_tray',
+    },
+  }), {
+    launchedAtLogin: true,
+    showWindowOnStartup: true,
+  });
+});
+
+test('desktop startup still shows the main window if the system tray preference is disabled', () => {
+  assert.deepEqual(resolveDesktopStartupLaunchContext({
+    platform: 'win32',
+    argv: ['Cats.exe', '--launch-at-login'],
+    preferences: {
+      startAtLogin: true,
+      openWindowOnStartup: false,
+      systemTrayEnabled: false,
+    },
+    background: {
+      trayEnabled: true,
+      keepServicesRunning: true,
+      closeBehavior: 'minimize_to_tray',
     },
   }), {
     launchedAtLogin: true,
@@ -126,6 +156,7 @@ test('desktop startup sync uses login item settings on Windows and writes autost
   }, {
     startAtLogin: true,
     openWindowOnStartup: false,
+    systemTrayEnabled: true,
   }, {
     platform: 'win32',
     executablePath: 'C:/Program Files/Cats/Cats.exe',
@@ -150,6 +181,7 @@ test('desktop startup sync uses login item settings on Windows and writes autost
     }, {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     }, {
       platform: 'linux',
       executablePath: '/opt/Cats/cats',
@@ -171,4 +203,3 @@ test('buildLinuxAutostartEntry quotes the executable path', () => {
     /Exec="\/opt\/Cats Desktop\/cats" --launch-at-login/u,
   );
 });
-

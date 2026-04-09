@@ -108,6 +108,7 @@ let startupLaunchContext: DesktopStartupLaunchContext | null = null;
 let latestDesktopStartupPreferences: DesktopStartupPreferences = {
   startAtLogin: true,
   openWindowOnStartup: false,
+  systemTrayEnabled: true,
 };
 
 interface ProductBootstrapDiagnosticsPayload {
@@ -557,16 +558,63 @@ function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
   });
 }
 
+function isSystemTrayEnabled(): boolean {
+  if (!hostConfig) {
+    return false;
+  }
+  return hostConfig.background.trayEnabled
+    && hostConfig.background.keepServicesRunning
+    && hostConfig.background.closeBehavior === 'minimize_to_tray'
+    && latestDesktopStartupPreferences.systemTrayEnabled;
+}
+
+function resolveEffectiveBackgroundPreferences(): Pick<
+  DesktopBackgroundState,
+  'trayEnabled' | 'keepServicesRunning' | 'closeBehavior'
+> {
+  const trayEnabled = isSystemTrayEnabled();
+  return {
+    trayEnabled,
+    keepServicesRunning: trayEnabled,
+    closeBehavior: trayEnabled ? 'minimize_to_tray' : 'quit',
+  };
+}
+
+function applyEffectiveBackgroundPreferences(
+  state: DesktopBackgroundState,
+): DesktopBackgroundState {
+  return {
+    ...state,
+    ...resolveEffectiveBackgroundPreferences(),
+  };
+}
+
 function updateBackgroundState(
   update: Partial<DesktopBackgroundState>,
 ): void {
   if (!backgroundState || !hostConfig) {
     return;
   }
-  backgroundState = {
+  backgroundState = applyEffectiveBackgroundPreferences({
     ...backgroundState,
     ...update,
-  };
+  });
+}
+
+function syncBackgroundPreferencesState(): void {
+  if (!backgroundState) {
+    return;
+  }
+  backgroundState = applyEffectiveBackgroundPreferences({
+    ...backgroundState,
+    ...(!isSystemTrayEnabled() && backgroundState.mode === 'background'
+      ? {
+          mode: 'foreground',
+          windowVisible: mainWindow?.isVisible() ?? true,
+          lastHiddenAt: null,
+        }
+      : {}),
+  });
 }
 
 async function showMainWindow(url?: string): Promise<void> {
@@ -600,7 +648,7 @@ async function showMainWindow(url?: string): Promise<void> {
 }
 
 function hideMainWindowToTray(): void {
-  if (!mainWindow || !hostConfig || !trayController) {
+  if (!mainWindow || !trayController) {
     return;
   }
   trayController.hideWindowToTray();
@@ -611,6 +659,39 @@ function hideMainWindowToTray(): void {
   });
   if (latestSnapshot) {
     publishSnapshot(latestSnapshot);
+  }
+}
+
+function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayController>[0] {
+  return {
+    getWindow: () => mainWindow,
+    onNavigate: async (path) => {
+      if (hostConfig) {
+        await showMainWindow(`${hostConfig.appBaseUrl}${path}`);
+      }
+    },
+    onRunAction: async (actionId) => {
+      await runHostAction(actionId);
+    },
+    onQuit: () => {
+      void shutdownHost();
+    },
+  };
+}
+
+async function syncTrayController(): Promise<void> {
+  if (!isSystemTrayEnabled()) {
+    const activeTrayController = trayController;
+    trayController = null;
+    activeTrayController?.dispose();
+    return;
+  }
+
+  if (!trayController) {
+    trayController = await createDesktopTrayController(buildTrayControllerOptions());
+  }
+  if (latestSnapshot) {
+    trayController.updateMenu(resolveDesktopTrayMenuState(latestSnapshot));
   }
 }
 
@@ -1107,7 +1188,9 @@ async function main(): Promise<void> {
   latestPersistedSetupState = await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
   stateStore = new DesktopHostStateStore(hostConfig.paths.hostStatePath);
   {
-    const defaultBackground = createDesktopBackgroundState(hostConfig);
+    const defaultBackground = applyEffectiveBackgroundPreferences(
+      createDesktopBackgroundState(hostConfig),
+    );
     const defaultUpdates = createDefaultDesktopUpdateState(hostConfig.update);
     const defaultPackaging = buildHostPackagingPlan(hostConfig);
     const defaultSetup = createEmptyDesktopSetupState();
@@ -1117,7 +1200,9 @@ async function main(): Promise<void> {
       packaging: defaultPackaging,
       setup: defaultSetup,
     });
-    backgroundState = restoredState?.background ?? defaultBackground;
+    backgroundState = applyEffectiveBackgroundPreferences(
+      restoredState?.background ?? defaultBackground,
+    );
     if (startupLaunchContext && !startupLaunchContext.showWindowOnStartup) {
       backgroundState = {
         ...backgroundState,
@@ -1178,6 +1263,7 @@ async function main(): Promise<void> {
       || payload === null
       || typeof (payload as { startAtLogin?: unknown }).startAtLogin !== 'boolean'
       || typeof (payload as { openWindowOnStartup?: unknown }).openWindowOnStartup !== 'boolean'
+      || typeof (payload as { systemTrayEnabled?: unknown }).systemTrayEnabled !== 'boolean'
     ) {
       throw new Error('Invalid desktop startup preferences payload.');
     }
@@ -1190,6 +1276,7 @@ async function main(): Promise<void> {
       {
         startAtLogin: (payload as { startAtLogin: boolean }).startAtLogin,
         openWindowOnStartup: (payload as { openWindowOnStartup: boolean }).openWindowOnStartup,
+        systemTrayEnabled: (payload as { systemTrayEnabled: boolean }).systemTrayEnabled,
       },
     );
     await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
@@ -1201,6 +1288,11 @@ async function main(): Promise<void> {
       preferences: latestDesktopStartupPreferences,
       background: hostConfig.background,
     });
+    syncBackgroundPreferencesState();
+    await syncTrayController();
+    if (latestSnapshot) {
+      publishSnapshot(buildSnapshot(null));
+    }
     return latestDesktopStartupPreferences;
   });
   ipcMain.handle('cats-host:update-platform-shell', async (_event, payload: unknown) => {
@@ -1220,25 +1312,7 @@ async function main(): Promise<void> {
   mainWindow = await createMainWindow(hostConfig, {
     showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
   });
-  if (hostConfig.background.trayEnabled) {
-    trayController = await createDesktopTrayController({
-      getWindow: () => mainWindow,
-      onNavigate: async (path) => {
-        if (hostConfig) {
-          await showMainWindow(`${hostConfig.appBaseUrl}${path}`);
-        }
-      },
-      onRunAction: async (actionId) => {
-        await runHostAction(actionId);
-      },
-      onQuit: () => {
-        void shutdownHost();
-      },
-    });
-    if (latestSnapshot) {
-      trayController.updateMenu(resolveDesktopTrayMenuState(latestSnapshot));
-    }
-  }
+  await syncTrayController();
 
   app.on('before-quit', (event) => {
     if (!shuttingDown) {
@@ -1247,18 +1321,13 @@ async function main(): Promise<void> {
     }
   });
   mainWindow.on('close', (event) => {
-    if (
-      !shuttingDown
-      && hostConfig?.background.trayEnabled
-      && hostConfig.background.keepServicesRunning
-      && hostConfig.background.closeBehavior === 'minimize_to_tray'
-    ) {
+    if (!shuttingDown && isSystemTrayEnabled() && trayController) {
       event.preventDefault();
       hideMainWindowToTray();
     }
   });
   app.on('window-all-closed', () => {
-    if (!hostConfig?.background.trayEnabled || !hostConfig.background.keepServicesRunning) {
+    if (!trayController) {
       app.quit();
     }
   });

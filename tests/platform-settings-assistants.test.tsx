@@ -42,6 +42,7 @@ function createPayload(): AppShellPayload {
     desktop: {
       startAtLogin: true,
       openWindowOnStartup: false,
+      systemTrayEnabled: true,
     },
     lobby: {
       animationMode: 'reduced',

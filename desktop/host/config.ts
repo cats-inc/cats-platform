@@ -6,7 +6,6 @@ import {
   resolveDesktopUpdateConfig,
   type DesktopUpdateConfig,
 } from './update.js';
-import { parseDesktopBoolean } from './env.js';
 import { normalizeDesktopHost } from './security.js';
 import {
   resolvePlatformStatePath,
@@ -155,16 +154,6 @@ function parsePositiveInt(rawValue: string | undefined, fallback: number): numbe
   return parsed;
 }
 
-function normalizeCloseBehavior(
-  rawValue: string | undefined,
-): DesktopHostBackgroundConfig['closeBehavior'] {
-  const trimmed = rawValue?.trim();
-  if (trimmed === 'quit') {
-    return 'quit';
-  }
-  return DEFAULT_CLOSE_BEHAVIOR;
-}
-
 export function resolveDesktopHostConfig(
   options: ResolveDesktopHostConfigOptions,
 ): DesktopHostConfig {
@@ -237,15 +226,9 @@ export function resolveDesktopHostConfig(
       || joinDesktopPath(catsHomeDir, 'desktop'),
   );
   const background: DesktopHostBackgroundConfig = {
-    trayEnabled: parseDesktopBoolean(
-      env.CATS_DESKTOP_TRAY_ENABLED,
-      DEFAULT_DESKTOP_TRAY_ENABLED,
-    ),
-    keepServicesRunning: parseDesktopBoolean(
-      env.CATS_DESKTOP_KEEP_SERVICES_RUNNING,
-      DEFAULT_KEEP_SERVICES_RUNNING,
-    ),
-    closeBehavior: normalizeCloseBehavior(env.CATS_DESKTOP_CLOSE_BEHAVIOR),
+    trayEnabled: DEFAULT_DESKTOP_TRAY_ENABLED,
+    keepServicesRunning: DEFAULT_KEEP_SERVICES_RUNNING,
+    closeBehavior: DEFAULT_CLOSE_BEHAVIOR,
   };
   const update = resolveDesktopUpdateConfig(env);
 

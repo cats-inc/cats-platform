@@ -77,6 +77,7 @@ export function createAppShell(
     desktop: {
       startAtLogin: setup?.desktop?.startAtLogin ?? true,
       openWindowOnStartup: setup?.desktop?.openWindowOnStartup ?? false,
+      systemTrayEnabled: setup?.desktop?.systemTrayEnabled !== false,
     },
     lobby: {
       animationMode: setup?.lobby?.animationMode ?? 'reduced',
