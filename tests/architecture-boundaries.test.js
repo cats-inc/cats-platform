@@ -811,12 +811,17 @@ test('renderer app consumes a dedicated operator-loop hook instead of defining p
     new URL('../src/products/chat/renderer/hooks/useOperatorLoop.ts', import.meta.url),
     'utf8',
   );
+  const sharedHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useOperatorLoop.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(appSource, /useOperatorLoop/u);
   assert.doesNotMatch(appSource, /const refreshOperatorSnapshot = useCallback/u);
   assert.doesNotMatch(appSource, /const operatorRequestIdRef = useRef/u);
   assert.match(hookSource, /export function useOperatorLoop/u);
-  assert.match(hookSource, /fetchOperatorLoopSnapshot/u);
+  assert.match(hookSource, /useWorkspaceOperatorLoop/u);
+  assert.match(sharedHookSource, /fetchOperatorLoopSnapshot/u);
 });
 
 test('renderer app consumes a dedicated app-shell routing hook instead of defining route sync inline', async () => {
@@ -1066,6 +1071,14 @@ test('settings cats consumes dedicated telegram and memory hooks instead of defi
     new URL('../src/products/chat/renderer/hooks/useSettingsCatsMemory.ts', import.meta.url),
     'utf8',
   );
+  const sharedTelegramHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useSettingsCatsTelegram.ts', import.meta.url),
+    'utf8',
+  );
+  const sharedMemoryHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useSettingsCatsMemory.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(
     settingsCatsSource,
@@ -1078,6 +1091,10 @@ test('settings cats consumes dedicated telegram and memory hooks instead of defi
   assert.doesNotMatch(settingsCatsSource, /listCatMemory\(/u);
   assert.match(telegramHookSource, /export function useSettingsCatsTelegram/u);
   assert.match(memoryHookSource, /export function useSettingsCatsMemory/u);
+  assert.match(telegramHookSource, /useWorkspaceSettingsCatsTelegram/u);
+  assert.match(memoryHookSource, /useWorkspaceSettingsCatsMemory/u);
+  assert.match(sharedTelegramHookSource, /createSettingsCatsTelegramAutoLoader/u);
+  assert.match(sharedMemoryHookSource, /listCatMemory\(/u);
 });
 
 test('settings cats consumes dedicated registry actions instead of defining cat and binding mutations inline', async () => {

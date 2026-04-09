@@ -12,12 +12,17 @@ test('App refreshes the operator loop in the background while the chat view stay
     path.join(process.cwd(), 'src/products/chat/renderer/hooks/useOperatorLoop.ts'),
     'utf8',
   );
+  const sharedHookSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/hooks/useOperatorLoop.ts'),
+    'utf8',
+  );
 
   assert.match(appSource, /useOperatorLoop/u);
   assert.match(appSource, /operatorRefreshKey/u);
   assert.match(appSource, /useOperatorLoop\(readyPayload,\s*operatorRefreshKey\)/u);
-  assert.match(hookSource, /setInterval\(refreshInBackground,\s*OPERATOR_BACKGROUND_REFRESH_MS\)/u);
-  assert.match(hookSource, /addEventListener\('focus', handleFocus\)/u);
-  assert.match(hookSource, /addEventListener\('visibilitychange', handleVisibilityChange\)/u);
-  assert.match(hookSource, /refreshOperatorSnapshot\(\{\s*background:\s*true\s*\}\)/u);
+  assert.match(hookSource, /useWorkspaceOperatorLoop/u);
+  assert.match(sharedHookSource, /setInterval\(refreshInBackground,\s*OPERATOR_BACKGROUND_REFRESH_MS\)/u);
+  assert.match(sharedHookSource, /addEventListener\('focus', handleFocus\)/u);
+  assert.match(sharedHookSource, /addEventListener\('visibilitychange', handleVisibilityChange\)/u);
+  assert.match(sharedHookSource, /refreshOperatorSnapshot\(\{\s*background:\s*true\s*\}\)/u);
 });
