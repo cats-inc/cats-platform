@@ -1,7 +1,5 @@
 import {
-  useEffect,
   useCallback,
-  useRef,
   type Dispatch,
   type FormEvent,
   type KeyboardEvent,
@@ -10,8 +8,6 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import {
-  isComposerStopBusy,
-  normalizeComposerBusy,
   shouldSubmitComposerOnKeyDown,
 } from '../../../../shared/composer';
 import type { AppShellPayload } from '../../api/contracts';
@@ -25,6 +21,7 @@ import {
   isDirectLaneSelectedForCat,
   prepareWorkspaceSendContext,
 } from '../../../shared/renderer/composerDispatch.js';
+import { useComposerRequestLifecycle } from '../../../shared/renderer/hooks/useComposerRequestLifecycle.js';
 import {
   cancelChatChannel,
   cancelParallelChatGroup,
@@ -68,19 +65,6 @@ function isAnyParallelChatDispatchRunning(
   channelIds: string[],
 ): boolean {
   return channelIds.some((channelId) => isChannelDispatchRunning(payload, channelId));
-}
-
-interface ActiveSubmitRequest {
-  id: number;
-  kind: 'channel' | 'concurrent';
-  channelId: string;
-  groupId?: string;
-  channelIds?: string[];
-}
-
-interface ActiveAckRequest {
-  id: number;
-  controller: AbortController;
 }
 
 function isAbortError(error: unknown): boolean {
@@ -157,106 +141,21 @@ export function useComposerSubmit(options: {
     setBusy,
     setFeedback,
   } = options;
-  const activeAckRequestRef = useRef<ActiveAckRequest | null>(null);
-  const activeDispatchRequestRef = useRef<ActiveSubmitRequest | null>(null);
-  const nextSubmitIdRef = useRef(1);
-
-  useEffect(() => () => {
-    activeAckRequestRef.current?.controller.abort();
-    activeAckRequestRef.current = null;
-    activeDispatchRequestRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    if (state.status !== 'ready') {
-      return;
-    }
-
-    const normalizedBusy = normalizeComposerBusy(busy);
-    const activeRequest = activeDispatchRequestRef.current;
-    if (!activeRequest) {
-      return;
-    }
-
-    if (isComposerStopBusy(normalizedBusy)) {
-      return;
-    }
-
-    const stillRunning = activeRequest.kind === 'concurrent'
-      ? isAnyParallelChatDispatchRunning(
-          state.payload,
-          activeRequest.channelIds ?? [activeRequest.channelId],
-        )
-      : isChannelDispatchRunning(state.payload, activeRequest.channelId);
-    if (stillRunning) {
-      return;
-    }
-
-    const expectedBusy = activeRequest.kind === 'concurrent'
-      ? 'parallelChat:dispatch'
-      : `message:send:${activeRequest.channelId}`;
-    if (normalizedBusy === expectedBusy) {
-      activeDispatchRequestRef.current = null;
-      setBusy('');
-    }
-  }, [busy, setBusy, state]);
-
-  useEffect(() => {
-    const normalizedBusy = normalizeComposerBusy(busy);
-    const activeRequest = activeDispatchRequestRef.current;
-    if (!activeRequest) {
-      return;
-    }
-
-    const expectedBusy = activeRequest.kind === 'concurrent'
-      ? 'parallelChat:dispatch'
-      : `message:send:${activeRequest.channelId}`;
-    if (normalizedBusy !== expectedBusy) {
-      return;
-    }
-
-    let cancelled = false;
-    let refetchInFlight = false;
-    const interval = window.setInterval(async () => {
-      if (cancelled || refetchInFlight) {
-        return;
-      }
-
-      refetchInFlight = true;
-      try {
-        const payload = await fetchAppShell();
-        if (cancelled) {
-          return;
-        }
-        setState({ status: 'ready', payload });
-
-        const currentRequest = activeDispatchRequestRef.current;
-        if (!currentRequest || currentRequest.id !== activeRequest.id) {
-          return;
-        }
-
-        const stillRunning = currentRequest.kind === 'concurrent'
-          ? isAnyParallelChatDispatchRunning(
-              payload,
-              currentRequest.channelIds ?? [currentRequest.channelId],
-            )
-          : isChannelDispatchRunning(payload, currentRequest.channelId);
-        if (!stillRunning) {
-          activeDispatchRequestRef.current = null;
-          setBusy('');
-        }
-      } catch {
-        // Keep the existing SSE-driven path as primary; this only prevents indefinite busy lockups.
-      } finally {
-        refetchInFlight = false;
-      }
-    }, 4_000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [busy, setBusy, setState]);
+  const {
+    activeDispatchRequestRef,
+    beginAckRequest,
+    cancelPendingAckRequest,
+    clearAckRequestIfCurrent,
+    clearDispatchRequestIfCurrent,
+    setActiveDispatchRequest,
+  } = useComposerRequestLifecycle({
+    state,
+    busy,
+    setBusy,
+    setState,
+    fetchPayload: fetchAppShell,
+    isChannelDispatchRunning,
+  });
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
     if (state.status !== 'ready') {
@@ -298,13 +197,7 @@ export function useComposerSubmit(options: {
     };
 
     setFeedback('');
-    const submitId = nextSubmitIdRef.current;
-    nextSubmitIdRef.current += 1;
-    const ackController = new AbortController();
-    activeAckRequestRef.current = {
-      id: submitId,
-      controller: ackController,
-    };
+    const { id: submitId, controller: ackController } = beginAckRequest();
     let keepBusyAfterReturn = false;
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
@@ -348,23 +241,21 @@ export function useComposerSubmit(options: {
           body,
           attachments: encodedAttachments,
         }, ackController.signal);
-        if (activeAckRequestRef.current?.id === submitId) {
-          activeAckRequestRef.current = null;
-        }
+        clearAckRequestIfCurrent(submitId);
         rollbackPayload = dispatch.appShell;
         setState({ status: 'ready', payload: dispatch.appShell });
         if (isAnyParallelChatDispatchRunning(dispatch.appShell, created.group.memberChannelIds)) {
-          activeDispatchRequestRef.current = {
+          setActiveDispatchRequest({
             id: submitId,
             kind: 'concurrent',
             channelId: activeChannelId,
             groupId: created.group.id,
             channelIds: created.group.memberChannelIds,
-          };
+          });
           setBusy('parallelChat:dispatch');
           keepBusyAfterReturn = true;
         } else {
-          activeDispatchRequestRef.current = null;
+          setActiveDispatchRequest(null);
         }
         setFeedback('');
 
@@ -399,23 +290,21 @@ export function useComposerSubmit(options: {
           body,
           attachments: encodedAttachments,
         }, ackController.signal);
-        if (activeAckRequestRef.current?.id === submitId) {
-          activeAckRequestRef.current = null;
-        }
+        clearAckRequestIfCurrent(submitId);
         rollbackPayload = dispatch.appShell;
         setState({ status: 'ready', payload: dispatch.appShell });
         if (isAnyParallelChatDispatchRunning(dispatch.appShell, activeGroupChannelIds)) {
-          activeDispatchRequestRef.current = {
+          setActiveDispatchRequest({
             id: submitId,
             kind: 'concurrent',
             channelId,
             groupId: compareGroupId,
             channelIds: activeGroupChannelIds,
-          };
+          });
           setBusy('parallelChat:dispatch');
           keepBusyAfterReturn = true;
         } else {
-          activeDispatchRequestRef.current = null;
+          setActiveDispatchRequest(null);
         }
         setFeedback('');
         return;
@@ -475,21 +364,19 @@ export function useComposerSubmit(options: {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
       }, ackController.signal);
-      if (activeAckRequestRef.current?.id === submitId) {
-        activeAckRequestRef.current = null;
-      }
+      clearAckRequestIfCurrent(submitId);
       rollbackPayload = dispatch.appShell;
       setState({ status: 'ready', payload: dispatch.appShell });
       if (isChannelDispatchRunning(dispatch.appShell, channelId)) {
-        activeDispatchRequestRef.current = {
+        setActiveDispatchRequest({
           id: submitId,
           kind: 'channel',
           channelId,
-        };
+        });
         setBusy(`message:send:${channelId}`);
         keepBusyAfterReturn = true;
       } else {
-        activeDispatchRequestRef.current = null;
+        setActiveDispatchRequest(null);
       }
       setComposerDraft('');
       setFeedback('');
@@ -514,11 +401,9 @@ export function useComposerSubmit(options: {
         setChannelFiles([]);
       }
     } catch (error) {
-      if (activeAckRequestRef.current?.id === submitId) {
-        activeAckRequestRef.current = null;
-      }
+      clearAckRequestIfCurrent(submitId);
       if (activeDispatchRequestRef.current?.id === submitId) {
-        activeDispatchRequestRef.current = null;
+        setActiveDispatchRequest(null);
       }
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);
@@ -530,11 +415,9 @@ export function useComposerSubmit(options: {
       }
       navigate(rollbackPath, { replace: true });
     } finally {
-      if (!keepBusyAfterReturn && activeAckRequestRef.current?.id === submitId) {
-        activeAckRequestRef.current = null;
-      }
-      if (!keepBusyAfterReturn && activeDispatchRequestRef.current?.id === submitId) {
-        activeDispatchRequestRef.current = null;
+      if (!keepBusyAfterReturn) {
+        clearAckRequestIfCurrent(submitId);
+        clearDispatchRequestIfCurrent(submitId);
       }
       if (!keepBusyAfterReturn) {
         setBusy('');
@@ -614,15 +497,13 @@ export function useComposerSubmit(options: {
   ]);
 
   const onCancelPendingSend = useCallback((): void => {
-    const activeRequest = activeAckRequestRef.current;
+    const activeRequest = cancelPendingAckRequest();
     if (!activeRequest) {
       return;
     }
 
-    activeAckRequestRef.current = null;
     setFeedback('');
-    activeRequest.controller.abort();
-  }, [setFeedback]);
+  }, [cancelPendingAckRequest, setFeedback]);
 
   const onSendMessage = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();

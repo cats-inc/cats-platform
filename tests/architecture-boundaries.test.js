@@ -883,14 +883,14 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
     new URL('../src/products/shared/renderer/composerDispatch.ts', import.meta.url),
     'utf8',
   );
-  const hookImplementationSource = hookSource.includes('prepareComposerChannelDispatch')
+  const hookImplementationSource = hookSource.includes('prepareWorkspaceSendContext')
     ? sharedDispatchSource
     : hookSource;
 
   assert.match(appSource, /useComposerSubmit/u);
   assert.doesNotMatch(appSource, /async function submitComposerMessage\(/u);
   assert.match(hookSource, /export function useComposerSubmit/u);
-  assert.match(hookSource, /prepareComposerChannelDispatch/u);
+  assert.match(hookSource, /prepareWorkspaceSendContext/u);
   assert.match(hookImplementationSource, /buildNewChatChannelInput/u);
   assert.match(hookImplementationSource, /insertCreatedChannelIntoPayload/u);
   assert.match(hookSource, /sendChatMessage/u);
