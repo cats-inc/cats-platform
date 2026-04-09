@@ -21,7 +21,8 @@ import { join, resolve } from 'node:path';
 /*  Mock snapshots                                                     */
 /* ------------------------------------------------------------------ */
 
-const UNIFIED_BRIDGE = `
+export function buildUnifiedPreviewBridge(transitionDelayMs = 80000) {
+  return `
 (function () {
   var listeners = [];
   var transitioned = false;
@@ -207,7 +208,7 @@ const UNIFIED_BRIDGE = `
     transitioned = true;
     recoverySnapshot.timestamp = new Date().toISOString();
     for (var i = 0; i < listeners.length; i++) { listeners[i](recoverySnapshot); }
-  }, 80000);
+  }, ${transitionDelayMs});
 
   window.catsDesktopHost = {
     getSnapshot: function () { return Promise.resolve(transitioned ? recoverySnapshot : loadingSnapshot); },
@@ -217,6 +218,9 @@ const UNIFIED_BRIDGE = `
     onSnapshot: function (fn) { listeners.push(fn); return function () {}; }
   };
 })();`;
+}
+
+const UNIFIED_BRIDGE = buildUnifiedPreviewBridge();
 
 /* ------------------------------------------------------------------ */
 /*  Generate & open                                                    */

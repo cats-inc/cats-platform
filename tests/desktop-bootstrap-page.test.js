@@ -57,6 +57,9 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /snapshotListenerBound/);
   assert.match(html, /scheduleInitialSnapshotRetry/);
   assert.match(html, /bridge\.getSnapshot\(\)/);
+  assert.match(html, /function applySnapshot\(snapshot\)/);
+  assert.match(html, /currentSnapshot = snapshot;/);
+  assert.match(html, /getSetupSnapshotOrNull\(\)\s*\n\s*\.then/);
   assert.match(html, /window\.setTimeout/);
 
   // Page mode handling

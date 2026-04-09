@@ -1012,17 +1012,25 @@ export function buildDesktopBootstrapPage(): string {
       updateSplash(snap);
     }
 
+    function getSetupSnapshotOrNull() {
+      if (!bridge) return Promise.resolve(null);
+      return bridge.getSetupSnapshot().catch(function () { return null; });
+    }
+
     function refreshSetup() {
-      if (!bridge) return;
-      bridge.getSetupSnapshot()
+      getSetupSnapshotOrNull()
         .then(function (s) { currentSetupSnapshot = s; doRender(); })
         .catch(function () {});
     }
 
     function applySnapshot(snapshot) {
       currentSnapshot = snapshot;
-      /* If user was on recovery details and snapshot improved, stay there */
-      doRender();
+      getSetupSnapshotOrNull()
+        .then(function (setupSnap) {
+          currentSetupSnapshot = setupSnap;
+          /* If user was on recovery details and snapshot improved, stay there */
+          doRender();
+        });
     }
 
     function ensureSnapshotListener() {
@@ -1042,7 +1050,7 @@ export function buildDesktopBootstrapPage(): string {
     function loadInitialSnapshot() {
       bridge.getSnapshot()
         .then(function (snapshot) {
-          return bridge.getSetupSnapshot().catch(function () { return null; })
+          return getSetupSnapshotOrNull()
             .then(function (setupSnap) {
               ensureSnapshotListener();
               currentSnapshot = snapshot;
