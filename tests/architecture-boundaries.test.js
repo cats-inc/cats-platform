@@ -538,7 +538,9 @@ test('runtime dispatch turn and loop consume dedicated room-routing workflow hel
     'utf8',
   );
 
-  assert.doesNotMatch(dispatchRouting, /room-routing\/workflow\.js/u);
+  assert.match(dispatchRouting, /room-routing\/workflow\.js/u);
+  assert.doesNotMatch(dispatchRouting, /function createWorkflowTurn\(/u);
+  assert.doesNotMatch(dispatchRouting, /function addWorkflowCheckpoint\(/u);
   assert.match(dispatchTurn, /room-routing\/workflow\.js/u);
   assert.match(dispatchLoop, /room-routing\/workflow\.js/u);
   assert.doesNotMatch(dispatchTurn, /function createWorkflowTurn\(/u);
@@ -611,8 +613,8 @@ test('runtime dispatch routing consumes dedicated turn finalization helpers inst
 
   assert.match(dispatchRouting, /finalize\.js/u);
   assert.doesNotMatch(dispatchRouting, /const terminalStatuses = deriveTerminalTurnStatuses/u);
-  assert.doesNotMatch(dispatchRouting, /finalizeWorkflowTurn\(/u);
   assert.match(dispatchFinalizeModule, /export function finalizeDispatchTurn/u);
+  assert.match(dispatchFinalizeModule, /finalizeWorkflowTurn\(/u);
 });
 
 test('runtime dispatch loop consumes dedicated wake/readiness helpers instead of defining target wake flows inline', async () => {
@@ -948,11 +950,12 @@ test('renderer app consumes a dedicated routes module instead of defining the ro
   );
 
   assert.match(appSource, /AppRoutes/u);
+  assert.match(appSource, /PlatformSettingsRoutes/u);
   assert.doesNotMatch(appSource, /<Routes>/u);
-  assert.doesNotMatch(appSource, /settings\/general/u);
+  assert.doesNotMatch(appSource, /path="chats\/:channelId"/u);
   assert.match(routesSource, /export function AppRoutes/u);
-  assert.match(routesSource, /settings\/general/u);
   assert.match(routesSource, /chats\/:channelId/u);
+  assert.match(routesSource, /path="new"/u);
 });
 
 test('renderer app consumes dedicated derived-state helpers instead of defining route and view-model derivations inline', async () => {

@@ -126,7 +126,22 @@ test('dependency graph keeps core, platform, and product ownership boundaries in
       if (relativePath.startsWith('products/')) {
         const sourceProduct = productNameFor(relativePath);
         const targetProduct = productNameFor(importedRelativePath);
-        if (sourceProduct && targetProduct && sourceProduct !== targetProduct) {
+        if (
+          sourceProduct === 'shared'
+          && targetProduct
+          && targetProduct !== 'shared'
+        ) {
+          violations.push(`${relativePath} -> ${importedRelativePath}`);
+          continue;
+        }
+
+        if (
+          sourceProduct
+          && targetProduct
+          && sourceProduct !== 'shared'
+          && targetProduct !== 'shared'
+          && sourceProduct !== targetProduct
+        ) {
           violations.push(`${relativePath} -> ${importedRelativePath}`);
         }
       }
