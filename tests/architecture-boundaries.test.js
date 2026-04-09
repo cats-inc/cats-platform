@@ -1412,16 +1412,25 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.doesNotMatch(stylesIndexSource, /\.tooltipPortal/u);
   assert.doesNotMatch(stylesIndexSource, /\.settingsShell/u);
   assert.doesNotMatch(stylesIndexSource, /\.myCatsSection/u);
-  assert.match(chatStylesSource, /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat\.css';/u);
+  assert.match(chatStylesSource, /@import '\.\/chat-workspace\.css';/u);
+  assert.match(chatStylesSource, /@import '\.\/chat-composer\.css';/u);
+  assert.match(chatStylesSource, /@import '\.\/chat-setup\.css';/u);
+  assert.doesNotMatch(
+    chatStylesSource,
+    /shared\/renderer\/styles\/chat\.css/u,
+  );
   assert.match(sharedChatStylesSource, /@import '\.\/chat-workspace\.css';/u);
   assert.match(sharedChatStylesSource, /@import '\.\/chat-composer\.css';/u);
   assert.match(sharedChatStylesSource, /@import '\.\/chat-setup\.css';/u);
   assert.doesNotMatch(sharedChatStylesSource, /\.channelWorkspace/u);
   assert.doesNotMatch(sharedChatStylesSource, /\.composerPlusMenu/u);
   assert.doesNotMatch(sharedChatStylesSource, /\.setupWizard/u);
-  assert.match(
+  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-shell\.css';/u);
+  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-operator\.css';/u);
+  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-thread\.css';/u);
+  assert.doesNotMatch(
     chatWorkspaceStylesSource,
-    /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat-workspace\.css';/u,
+    /shared\/renderer\/styles\/chat-workspace\.css/u,
   );
   assert.match(sharedChatWorkspaceStylesSource, /@import '\.\/chat-shell\.css';/u);
   assert.match(sharedChatWorkspaceStylesSource, /@import '\.\/chat-operator\.css';/u);

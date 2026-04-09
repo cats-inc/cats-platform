@@ -530,3 +530,46 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   assert.match(markup, /Inline Reviewer/u);
   assert.match(markup, /catAvatarPulsing/u);
 });
+
+test('ChatView keeps transcript stack layout and hover-only user copy actions', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Ken',
+              body: 'hi',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-agent',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Inline Reviewer',
+              body: 'Hi! How can I help you today?',
+              mentions: [],
+              metadata: {
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:01.000Z',
+            },
+          ],
+        }),
+      })}
+    />,
+  );
+
+  assert.match(markup, /transcriptMessageStack transcriptMessageStackUser/u);
+  assert.match(markup, /transcriptMessageStack transcriptMessageStackAgent/u);
+  assert.match(markup, /messageActions messageActionsHoverOnly/u);
+  assert.match(markup, /messageActions messageActionsPersistent/u);
+});
