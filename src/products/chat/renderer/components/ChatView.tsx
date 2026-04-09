@@ -89,6 +89,7 @@ import { ChatViewTopBar } from '../../../shared/renderer/components/chat-view/Ch
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
+import { TranscriptMessageActions } from './chat-view/TranscriptMessageActions';
 
 type TopBarParticipant = {
   key: string;
@@ -904,114 +905,21 @@ export function ChatView({
                           />
                         ) : null}
                       </div>
-                      {message.senderKind !== 'system' ? (
-                        <div
-                          className={[
-                            'messageActions',
-                            message.senderKind === 'user'
-                              ? 'messageActionsHoverOnly'
-                              : 'messageActionsPersistent',
-                          ].join(' ')}
-                        >
-                          <button
-                            className="messageActionIcon"
-                            type="button"
-                            onClick={() => { void copyMessageBody(message.body); }}
-                            title="Copy message"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" />
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                            </svg>
-                          </button>
-                          {isCompareGroup && message.senderKind !== 'user' && onRelayMessage ? (
-                            <div className="messageActionMenu">
-                              <button
-                                className="messageActionIcon"
-                                type="button"
-                                disabled={compareBusy}
-                                title="Relay to others"
-                                onClick={() =>
-                                  setOpenRelayMenuId((current) =>
-                                    current === message.id ? null : message.id,
-                                  )}
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                                  <polyline points="16 6 12 2 8 6" />
-                                  <line x1="12" y1="2" x2="12" y2="15" />
-                                </svg>
-                              </button>
-                              {openRelayMenuId === message.id ? (
-                                <div className="messageActionPopover">
-                                  <button
-                                    type="button"
-                                    disabled={compareBusy}
-                                    onClick={() => {
-                                      setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'check_this');
-                                    }}
-                                  >
-                                    Check with others
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={compareBusy}
-                                    onClick={() => {
-                                      setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'synthesize_this');
-                                    }}
-                                  >
-                                    Synthesize with others
-                                  </button>
-                                  <div className="messageActionPopoverDivider" />
-                                  <button
-                                    type="button"
-                                    disabled={compareBusy}
-                                    onClick={() => {
-                                      setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'improve_this');
-                                    }}
-                                  >
-                                    Improve in others
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={compareBusy}
-                                    onClick={() => {
-                                      setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'adopt_this');
-                                    }}
-                                  >
-                                    Adopt in others
-                                  </button>
-                                  <div className="messageActionPopoverDivider" />
-                                  <button
-                                    type="button"
-                                    disabled={compareBusy}
-                                    onClick={() => {
-                                      setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'counter_this');
-                                    }}
-                                  >
-                                    Counter with others
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={compareBusy}
-                                    onClick={() => {
-                                      setOpenRelayMenuId(null);
-                                      void onRelayMessage(message.id, 'debate_this');
-                                    }}
-                                  >
-                                    Debate with others
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
+                      <TranscriptMessageActions
+                        messageId={message.id}
+                        messageBody={message.body}
+                        senderKind={message.senderKind}
+                        compareBusy={compareBusy}
+                        isCompareGroup={isCompareGroup}
+                        relayMenuOpen={openRelayMenuId === message.id}
+                        onCopyMessage={copyMessageBody}
+                        onToggleRelayMenu={() =>
+                          setOpenRelayMenuId((current) =>
+                            current === message.id ? null : message.id,
+                          )}
+                        onCloseRelayMenu={() => setOpenRelayMenuId(null)}
+                        onRelayMessage={onRelayMessage}
+                      />
 
                       {message.choices && message.choices.length > 0 ? (
                         <MessageChoices
