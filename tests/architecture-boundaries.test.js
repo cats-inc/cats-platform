@@ -1005,6 +1005,10 @@ test('settings cats consumes dedicated telegram and memory hooks instead of defi
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
+  const sharedSettingsCatsSource = await readFile(
+    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
+    'utf8',
+  );
   const telegramHookSource = await readFile(
     new URL('../src/products/chat/renderer/hooks/useSettingsCatsTelegram.ts', import.meta.url),
     'utf8',
@@ -1014,8 +1018,12 @@ test('settings cats consumes dedicated telegram and memory hooks instead of defi
     'utf8',
   );
 
-  assert.match(settingsCatsSource, /useSettingsCatsTelegram/u);
-  assert.match(settingsCatsSource, /useSettingsCatsMemory/u);
+  assert.match(
+    settingsCatsSource,
+    /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
+  );
+  assert.match(sharedSettingsCatsSource, /useSettingsCatsTelegram/u);
+  assert.match(sharedSettingsCatsSource, /useSettingsCatsMemory/u);
   assert.doesNotMatch(settingsCatsSource, /beginSettingsCatsTelegramScopeLoad/u);
   assert.doesNotMatch(settingsCatsSource, /createSettingsCatsTelegramAutoLoader/u);
   assert.doesNotMatch(settingsCatsSource, /listCatMemory\(/u);
@@ -1028,12 +1036,21 @@ test('settings cats consumes dedicated registry actions instead of defining cat 
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
+  const sharedSettingsCatsSource = await readFile(
+    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
+    'utf8',
+  );
   const registryHookSource = await readFile(
     new URL('../src/products/chat/renderer/hooks/useSettingsCatsRegistryActions.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(settingsCatsSource, /useSettingsCatsRegistryActions/u);
+  assert.match(
+    settingsCatsSource,
+    /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
+  );
+  assert.match(settingsCatsSource, /useSettingsCatsRegistryActionsHook/u);
+  assert.match(sharedSettingsCatsSource, /useSettingsCatsRegistryActionsHook/u);
   assert.doesNotMatch(settingsCatsSource, /async function onCreateCat\(/u);
   assert.doesNotMatch(settingsCatsSource, /async function onRenameCat\(/u);
   assert.doesNotMatch(settingsCatsSource, /async function onMakeBossCat\(/u);
@@ -1051,6 +1068,10 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
+  const sharedSettingsCatsSource = await readFile(
+    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
+    'utf8',
+  );
   const transportPanelSource = await readFile(
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsTransportPanel.tsx', import.meta.url),
     'utf8',
@@ -1060,7 +1081,11 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
     'utf8',
   );
 
-  assert.match(settingsCatsSource, /SettingsCatsTransportPanel/u);
+  assert.match(
+    settingsCatsSource,
+    /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
+  );
+  assert.match(sharedSettingsCatsSource, /SettingsCatsTransportPanel/u);
   assert.doesNotMatch(settingsCatsSource, /Last inbound: \{formatTransportTimestamp/u);
   assert.doesNotMatch(settingsCatsSource, /Tracked inboxes \{telegramDiagnostics\.bindings\.length\}/u);
   assert.match(transportPanelSource, /shared\/renderer\/components\/settings-cats\/SettingsCatsTransportPanel\.js/u);
@@ -1072,6 +1097,10 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
 test('settings cats composes dedicated registry and create-form components instead of rendering all cat detail UI inline', async () => {
   const settingsCatsSource = await readFile(
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
+    'utf8',
+  );
+  const sharedSettingsCatsSource = await readFile(
+    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
   const registrySource = await readFile(
@@ -1099,8 +1128,12 @@ test('settings cats composes dedicated registry and create-form components inste
     'utf8',
   );
 
-  assert.match(settingsCatsSource, /SettingsCatsRegistry/u);
-  assert.match(settingsCatsSource, /SettingsCatsCreateForm/u);
+  assert.match(
+    settingsCatsSource,
+    /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
+  );
+  assert.match(sharedSettingsCatsSource, /SettingsCatsRegistryComponent/u);
+  assert.match(sharedSettingsCatsSource, /SettingsCatsCreateForm/u);
   assert.doesNotMatch(settingsCatsSource, /className="catDetailSection"/u);
   assert.doesNotMatch(settingsCatsSource, /ProviderModelFields/u);
   assert.match(
