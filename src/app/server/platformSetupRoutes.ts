@@ -2,10 +2,7 @@ import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.
 import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
-import {
-  appendPlatformOnboardingEvent,
-  readPlatformOnboardingHistory,
-} from '../../shared/platformOnboardingHistory.js';
+import { appendPlatformOnboardingEvent } from '../../shared/platformOnboardingHistory.js';
 import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
 import { readPlatformPreferences, writePlatformPreferences } from '../../shared/platformPreferences.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
@@ -19,9 +16,9 @@ import {
 import type { RouteContext } from '../../shared/http.js';
 import {
   buildSetupDebugContext,
-  normalizeAttemptId,
 } from './platformSetupRouteSupport.js';
 import { routePlatformAssistantPresetApi } from './platformSetupAssistantRoutes.js';
+import { routePlatformSetupDiagnosticsApi } from './platformSetupDiagnosticsRoutes.js';
 import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
 import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
 
@@ -282,58 +279,10 @@ async function handlePlatformSetupComplete(
   }
 }
 
-async function handleBootstrapDiagnosticsState(
-  context: PlatformSetupContext,
-): Promise<void> {
-  const payload = await readPlatformOnboardingHistory(context.dependencies.config.chatStatePath);
-  sendJson(context.response, 200, payload);
-}
-
-async function handleBootstrapDiagnosticsOpened(
-  context: PlatformSetupContext,
-): Promise<void> {
-  let attemptId: string | null = null;
-  try {
-    const body = await readJsonBody<{ attemptId?: string | null }>(context.request);
-    attemptId = normalizeAttemptId(body.attemptId);
-  } catch {
-    attemptId = null;
-  }
-
-  const payload = await appendPlatformOnboardingEvent(
-    context.dependencies.config.chatStatePath,
-    {
-      now: context.dependencies.now?.() ?? new Date(),
-      attemptId,
-      kind: 'setup_opened',
-      status: 'info',
-      summary: 'Packaged platform setup was opened.',
-      context: {
-        route: '/setup',
-      },
-    },
-  );
-  sendJson(context.response, 200, payload);
-}
-
 export async function routePlatformSetupApi(
   context: PlatformSetupContext,
 ): Promise<boolean> {
-  if (context.url.pathname === '/api/platform/bootstrap-diagnostics') {
-    if (context.method !== 'GET') {
-      sendMethodNotAllowed(context.response, ['GET']);
-      return true;
-    }
-    await handleBootstrapDiagnosticsState(context);
-    return true;
-  }
-
-  if (context.url.pathname === '/api/platform/bootstrap-diagnostics/opened') {
-    if (context.method !== 'POST') {
-      sendMethodNotAllowed(context.response, ['POST']);
-      return true;
-    }
-    await handleBootstrapDiagnosticsOpened(context);
+  if (await routePlatformSetupDiagnosticsApi(context)) {
     return true;
   }
 

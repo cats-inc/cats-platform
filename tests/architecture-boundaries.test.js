@@ -1803,6 +1803,10 @@ test('platform setup routes consume dedicated parser helpers instead of keeping 
     new URL('../src/app/server/platformSetupAssistantRoutes.ts', import.meta.url),
     'utf8',
   );
+  const diagnosticsRouteSource = await readFile(
+    new URL('../src/app/server/platformSetupDiagnosticsRoutes.ts', import.meta.url),
+    'utf8',
+  );
   const guideCatRouteSource = await readFile(
     new URL('../src/app/server/platformSetupGuideCatRoutes.ts', import.meta.url),
     'utf8',
@@ -1822,10 +1826,12 @@ test('platform setup routes consume dedicated parser helpers instead of keeping 
 
   assert.match(routeSource, /platformSetupRouteSupport\.js/u);
   assert.match(routeSource, /platformSetupAssistantRoutes\.js/u);
+  assert.match(routeSource, /platformSetupDiagnosticsRoutes\.js/u);
   assert.match(routeSource, /platformSetupGuideCatRoutes\.js/u);
   assert.match(routeSource, /platformSetupPreferenceRoutes\.js/u);
   assert.doesNotMatch(routeSource, /guideCatSidecarMode must be auto, drawer, or bubble/u);
   assert.doesNotMatch(routeSource, /Assistant provider is required/u);
+  assert.doesNotMatch(routeSource, /async function handleBootstrapDiagnosticsOpened\(/u);
   assert.doesNotMatch(routeSource, /async function handlePlatformPreferencesUpdate\(/u);
   assert.doesNotMatch(routeSource, /assistantPresets:\s*\[\.\.\.core\.assistantPresets/u);
   assert.doesNotMatch(routeSource, /async function handleAssistantPresetCreate\(/u);
@@ -1837,6 +1843,8 @@ test('platform setup routes consume dedicated parser helpers instead of keeping 
   assert.match(mutationSource, /export function upsertGuideCat/u);
   assert.match(assistantRouteSource, /export async function routePlatformAssistantPresetApi/u);
   assert.match(assistantRouteSource, /async function handleAssistantPresetCreate\(/u);
+  assert.match(diagnosticsRouteSource, /export async function routePlatformSetupDiagnosticsApi/u);
+  assert.match(diagnosticsRouteSource, /async function handleBootstrapDiagnosticsOpened\(/u);
   assert.match(guideCatRouteSource, /export async function routePlatformGuideCatApi/u);
   assert.match(guideCatRouteSource, /async function handleGuideCatUpdate\(/u);
   assert.match(preferenceRouteSource, /export async function routePlatformPreferenceApi/u);
