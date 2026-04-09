@@ -44,6 +44,11 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /DiagSection/);
   assert.match(html, /hostStatePath/);
 
+  // Slow-launch hint (progressive 20/40/60 s)
+  assert.match(html, /slow-hint/);
+  assert.match(html, /slowHintMessages/);
+  assert.match(html, /scheduleSlowHint/);
+
   // Bridge integration & lifecycle
   assert.match(html, /snapshotListenerBound/);
   assert.match(html, /scheduleInitialSnapshotRetry/);

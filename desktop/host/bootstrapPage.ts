@@ -114,6 +114,13 @@ export function buildDesktopBootstrapPage(): string {
       gap: 8px;
       justify-content: center;
     }
+    .slow-hint {
+      display: none;
+    }
+    .slow-hint.visible {
+      display: flex;
+      animation: fadeSlideIn 0.4s ease both;
+    }
     .hidden { display: none; }
 
     /* Dot */
@@ -332,8 +339,9 @@ export function buildDesktopBootstrapPage(): string {
           <span id="splash-text">Starting up\u2026</span>
         </p>
       </section>
+      <p id="slow-hint" class="slow-hint hero-summary"></p>
       <div id="error-area" class="error-area">
-        <p class="hero-summary">Something went wrong during startup.</p>
+        <p class="hero-summary">Mew\u2026 something tripped me up during startup.</p>
         <div class="error-actions">
           <button id="btn-retry" class="btn" type="button">Retry</button>
           <button id="btn-details" class="btn" type="button">Show details</button>
@@ -458,6 +466,7 @@ export function buildDesktopBootstrapPage(): string {
     var recoveryEl = document.getElementById('recovery');
     var btnRetry = document.getElementById('btn-retry');
     var btnDetails = document.getElementById('btn-details');
+    var slowHint = document.getElementById('slow-hint');
 
     function friendlyLoadingSummary(phase) {
       if (phase === 'checking_prerequisites') return 'Almost ready\u2026';
@@ -468,6 +477,7 @@ export function buildDesktopBootstrapPage(): string {
     function updateSplash(snap) {
       var isError = resolvePageMode(snap) === 'recovery';
       var isPending = snap.phase === 'starting_services' || snap.phase === 'checking_prerequisites';
+      var isReady = snap.phase === 'ready_for_setup' || snap.phase === 'ready_for_chat';
 
       /* Update dot */
       splashDot.className = 'dot dot-' + sc(snap.status) + (isPending && !isError ? ' dot-pulse' : '');
@@ -475,6 +485,13 @@ export function buildDesktopBootstrapPage(): string {
 
       /* Update text */
       splashText.textContent = isError ? '' : friendlyLoadingSummary(snap.phase);
+
+      /* Dismiss slow-launch hint on error or ready */
+      if (isError || isReady) {
+        slowHint.classList.remove('visible');
+        if (slowHintHandle) { clearTimeout(slowHintHandle); slowHintHandle = null; }
+        slowHintStep = slowHintMessages.length;
+      }
 
       /* Show/hide error area */
       if (isError) {
@@ -885,6 +902,28 @@ export function buildDesktopBootstrapPage(): string {
     var snapshotListenerBound = false;
     var retryHandle = null;
     var showRecoveryDetails = false;
+    var slowHintHandle = null;
+    var slowHintStep = 0;
+    var slowHintMessages = [
+      'First launch takes a moment. Still stretching\u2026',
+      'Want to play? Hang in there, almost ready~',
+      'Almost done, really! Just a whisker away~'
+    ];
+
+    function scheduleSlowHint() {
+      if (slowHintStep >= slowHintMessages.length) return;
+      slowHintHandle = window.setTimeout(function () {
+        slowHintHandle = null;
+        if (showRecoveryDetails) return;
+        if (currentSnapshot && resolvePageMode(currentSnapshot) === 'recovery') return;
+        var phase = currentSnapshot && currentSnapshot.phase;
+        if (phase === 'ready_for_setup' || phase === 'ready_for_chat') return;
+        slowHint.textContent = slowHintMessages[slowHintStep];
+        slowHint.classList.add('visible');
+        slowHintStep += 1;
+        scheduleSlowHint();
+      }, 20000);
+    }
 
     function showRecovery(snap) {
       splashEl.classList.add('hidden');
@@ -979,6 +1018,8 @@ export function buildDesktopBootstrapPage(): string {
       });
 
       loadInitialSnapshot();
+
+      scheduleSlowHint();
     }
 
     main();
