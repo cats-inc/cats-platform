@@ -12,7 +12,6 @@ import {
 } from 'react-router-dom';
 
 import type { AppShellPayload } from '../api/contracts';
-import type { AppShellPayload as ChatSettingsPayload } from '../../chat/api/contracts.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog';
 import {
   CHAT_PREFIX,
@@ -660,8 +659,8 @@ export default function App() {
     startTransition(() => setState({ status: 'ready', payload }));
   }
 
-  function updateSettingsPayload(payload: ChatSettingsPayload): void {
-    updatePayload(payload as unknown as AppShellPayload);
+  function updateSettingsPayload(payload: AppShellPayload): void {
+    updatePayload(payload);
   }
 
   if (state.status === 'loading') {
@@ -752,7 +751,7 @@ export default function App() {
       <main className="canvas">
         {settingsMode ? (
           <PlatformSettingsRoutes
-            payload={payload as unknown as ChatSettingsPayload}
+            payload={payload}
             onPayloadUpdate={updateSettingsPayload}
             feedback={feedback}
             busy={busy}

@@ -475,6 +475,24 @@ test('chat and server internals do not import the app-shell compatibility barrel
   }
 });
 
+test('work and code renderer apps do not import chat product contracts for settings routing', async () => {
+  const workAppSource = await readFile(
+    new URL('../src/products/work/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const codeAppSource = await readFile(
+    new URL('../src/products/code/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+
+  for (const source of [workAppSource, codeAppSource]) {
+    assert.match(source, /PlatformSettingsRoutes/u);
+    assert.doesNotMatch(source, /products\/chat\/api\/contracts\.js/u);
+    assert.doesNotMatch(source, /\bChatSettingsPayload\b/u);
+    assert.doesNotMatch(source, /as unknown as/u);
+  }
+});
+
 test('chat internals use the product channel-paths module instead of the shared compatibility shim', async () => {
   const productChatPath = fileURLToPath(new URL('../src/products/chat', import.meta.url));
 
