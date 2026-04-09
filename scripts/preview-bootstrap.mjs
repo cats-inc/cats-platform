@@ -3,9 +3,10 @@
  * Preview the desktop bootstrap page in the default browser.
  *
  * Usage:
- *   node scripts/preview-bootstrap.mjs            # opens both modes
- *   node scripts/preview-bootstrap.mjs loading     # loading mode only
- *   node scripts/preview-bootstrap.mjs recovery    # recovery mode only
+ *   node scripts/preview-bootstrap.mjs
+ *
+ * Opens a single page that starts in loading mode, shows slow-launch hints
+ * at 20 / 40 / 60 s, then transitions to recovery mode at 80 s.
  *
  * The script always reads the latest build output, so run `npm run build:host`
  * first if you've changed bootstrapPage.ts.
@@ -20,10 +21,12 @@ import { join, resolve } from 'node:path';
 /*  Mock snapshots                                                     */
 /* ------------------------------------------------------------------ */
 
-const LOADING_BRIDGE = `
-window.catsDesktopHost = {
-  getSnapshot() {
-    return Promise.resolve({
+const UNIFIED_BRIDGE = `
+(function () {
+  var listeners = [];
+  var transitioned = false;
+
+  var loadingSnapshot = {
       service: 'cats-electron-host',
       version: '0.1.0',
       timestamp: new Date().toISOString(),
@@ -57,18 +60,9 @@ window.catsDesktopHost = {
       setup: { lastAction: null, updatedAt: null },
       diagnostics: null,
       hostStatePath: '/tmp/cats-host-state.json'
-    });
-  },
-  getSetupSnapshot() { return Promise.resolve(null); },
-  runAction(id) { console.log('runAction:', id); return Promise.resolve({}); },
-  resumeSetup() { return Promise.resolve(null); },
-  onSnapshot(fn) { return function() {}; }
-};`;
+  };
 
-const RECOVERY_BRIDGE = `
-window.catsDesktopHost = {
-  getSnapshot() {
-    return Promise.resolve({
+  var recoverySnapshot = {
       service: 'cats-electron-host',
       version: '0.1.0',
       timestamp: new Date().toISOString(),
@@ -187,10 +181,9 @@ window.catsDesktopHost = {
         updatedAt: new Date().toISOString()
       },
       hostStatePath: '/Users/you/.cats/state/host-state.json'
-    });
-  },
-  getSetupSnapshot() {
-    return Promise.resolve({
+  };
+
+  var recoverySetupSnapshot = {
       helpers: [
         { id: 'env-bootstrap', assetId: 'env-bootstrap', label: 'Environment Bootstrap', kind: 'prerequisite_helper', pack: 'api_baseline', platform: 'cross_platform', packagedRelativePath: 'setup-assets/env-bootstrap.ps1', supportsCheckOnly: true, supportsApply: true, supportsUpgrade: false, supportsForce: false, requiresElevation: false, resumable: true, notes: [], available: true, supported: true, unsupportedReason: null },
         { id: 'ollama-installer', assetId: 'ollama-install', label: 'Ollama Installer', kind: 'provider_installer', pack: 'local_model_pack', platform: 'cross_platform', packagedRelativePath: 'setup-assets/ollama-install.ps1', supportsCheckOnly: true, supportsApply: true, supportsUpgrade: true, supportsForce: false, requiresElevation: false, resumable: true, notes: [], available: true, supported: true, unsupportedReason: null },
@@ -208,12 +201,22 @@ window.catsDesktopHost = {
         requiresElevation: false,
         restartRequired: true
       }
-    });
-  },
-  runAction(id) { console.log('runAction:', id); return Promise.resolve({}); },
-  resumeSetup() { console.log('resumeSetup'); return Promise.resolve(null); },
-  onSnapshot(fn) { return function() {}; }
-};`;
+  };
+
+  window.setTimeout(function () {
+    transitioned = true;
+    recoverySnapshot.timestamp = new Date().toISOString();
+    for (var i = 0; i < listeners.length; i++) { listeners[i](recoverySnapshot); }
+  }, 80000);
+
+  window.catsDesktopHost = {
+    getSnapshot: function () { return Promise.resolve(transitioned ? recoverySnapshot : loadingSnapshot); },
+    getSetupSnapshot: function () { return Promise.resolve(transitioned ? recoverySetupSnapshot : null); },
+    runAction: function (id) { console.log('runAction:', id); return Promise.resolve({}); },
+    resumeSetup: function () { console.log('resumeSetup'); return Promise.resolve(null); },
+    onSnapshot: function (fn) { listeners.push(fn); return function () {}; }
+  };
+})();`;
 
 /* ------------------------------------------------------------------ */
 /*  Generate & open                                                    */
@@ -222,17 +225,6 @@ window.catsDesktopHost = {
 async function loadBootstrapPageHtml() {
   const { buildDesktopBootstrapPage } = await import('../build/desktop/bootstrapPage.js');
   return buildDesktopBootstrapPage();
-}
-
-export function resolvePreviewMode(rawMode) {
-  const mode = (rawMode || '').trim().toLowerCase();
-  if (!mode) {
-    return 'all';
-  }
-  if (mode === 'loading' || mode === 'recovery') {
-    return mode;
-  }
-  throw new Error(`Invalid mode "${rawMode}". Expected "loading", "recovery", or no argument.`);
 }
 
 export function injectPreviewBridge(html, bridgeScript) {
@@ -270,34 +262,19 @@ export function tryOpenPreviewFile(filePath, options = {}) {
   };
 }
 
-export async function runPreviewBootstrap(argv = process.argv.slice(2)) {
-  const mode = resolvePreviewMode(argv[0]);
+export async function runPreviewBootstrap() {
   const html = await loadBootstrapPageHtml();
-  const outDir = tmpdir();
-  const opened = [];
+  const outPath = join(tmpdir(), 'cats-bootstrap-preview.html');
+  writeFileSync(outPath, injectPreviewBridge(html, UNIFIED_BRIDGE));
 
-  if (mode === 'all' || mode === 'loading') {
-    const path = join(outDir, 'cats-bootstrap-loading.html');
-    writeFileSync(path, injectPreviewBridge(html, LOADING_BRIDGE));
-    opened.push(path);
+  try {
+    tryOpenPreviewFile(outPath);
+  } catch {
+    // fall through — print path instead
   }
+  console.log(outPath);
 
-  if (mode === 'all' || mode === 'recovery') {
-    const path = join(outDir, 'cats-bootstrap-recovery.html');
-    writeFileSync(path, injectPreviewBridge(html, RECOVERY_BRIDGE));
-    opened.push(path);
-  }
-
-  for (const path of opened) {
-    try {
-      tryOpenPreviewFile(path);
-    } catch {
-      // fall through — print path instead
-    }
-    console.log(path);
-  }
-
-  return opened;
+  return [outPath];
 }
 
 function isDirectExecution(metaUrl) {

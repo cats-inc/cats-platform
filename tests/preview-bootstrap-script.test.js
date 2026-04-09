@@ -3,38 +3,23 @@ import test from 'node:test';
 
 import {
   injectPreviewBridge,
-  resolvePreviewMode,
   resolvePreviewOpenCommand,
   tryOpenPreviewFile,
 } from '../scripts/preview-bootstrap.mjs';
 
-test('resolvePreviewMode accepts loading, recovery, and empty input', () => {
-  assert.equal(resolvePreviewMode(undefined), 'all');
-  assert.equal(resolvePreviewMode('loading'), 'loading');
-  assert.equal(resolvePreviewMode('recovery'), 'recovery');
-  assert.equal(resolvePreviewMode('  LoAdInG  '), 'loading');
-});
-
-test('resolvePreviewMode rejects unknown values with a clear error', () => {
-  assert.throws(
-    () => resolvePreviewMode('broken'),
-    /Invalid mode "broken"\. Expected "loading", "recovery", or no argument\./,
-  );
-});
-
 test('resolvePreviewOpenCommand uses cmd start with a title placeholder on Windows', () => {
   assert.deepEqual(
-    resolvePreviewOpenCommand('win32', 'C:/Temp/cats-bootstrap-loading.html'),
+    resolvePreviewOpenCommand('win32', 'C:/Temp/cats-bootstrap-preview.html'),
     {
       command: 'cmd',
-      args: ['/c', 'start', '', 'C:/Temp/cats-bootstrap-loading.html'],
+      args: ['/c', 'start', '', 'C:/Temp/cats-bootstrap-preview.html'],
     },
   );
 });
 
 test('tryOpenPreviewFile invokes the resolved command without shell quoting hacks', () => {
   const calls = [];
-  const result = tryOpenPreviewFile('/tmp/cats-bootstrap-loading.html', {
+  const result = tryOpenPreviewFile('/tmp/cats-bootstrap-preview.html', {
     platform: 'linux',
     spawnSync(command, args, options) {
       calls.push({ command, args, options });
@@ -44,7 +29,7 @@ test('tryOpenPreviewFile invokes the resolved command without shell quoting hack
 
   assert.deepEqual(calls, [{
     command: 'xdg-open',
-    args: ['/tmp/cats-bootstrap-loading.html'],
+    args: ['/tmp/cats-bootstrap-preview.html'],
     options: {
       stdio: 'ignore',
       windowsHide: true,

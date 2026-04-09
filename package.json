@@ -42,8 +42,6 @@
     "dev:server": "tsx watch src/index.ts",
     "dev:web": "vite",
     "preview:bootstrap": "npm run build:host && node scripts/preview-bootstrap.mjs",
-    "preview:bootstrap:loading": "npm run build:host && node scripts/preview-bootstrap.mjs loading",
-    "preview:bootstrap:recovery": "npm run build:host && node scripts/preview-bootstrap.mjs recovery",
     "preview:web": "vite preview",
     "prepack": "npm run build",
     "start": "npm run start:server",
