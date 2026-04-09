@@ -30,6 +30,14 @@ import {
   type GuideCatUpdateBody,
   type PlatformPreferencesUpdateBody,
 } from './platformSetupRouteSupport.js';
+import {
+  clearGuideCat,
+  createAssistantPreset,
+  deleteAssistantPreset,
+  updateAssistantPreset,
+  updateGuideCatStatus,
+  upsertGuideCat,
+} from './platformSetupStateMutations.js';
 
 export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
@@ -400,25 +408,7 @@ async function handleGuideCatUpdate(
   const nowIso = now.toISOString();
   let core = await context.dependencies.chatStore.readCore();
   const chatState = await context.dependencies.chatStore.read();
-
-  const existingId = core.guideCat?.id ?? GUIDE_CAT_PRIMARY_ID;
-  core = {
-    ...core,
-    updatedAt: nowIso,
-    guideCat: {
-      id: existingId,
-      name: guideCatUpdate.name,
-      status: core.guideCat?.status ?? 'active',
-      executionTarget: {
-        provider: guideCatUpdate.provider,
-        instance: guideCatUpdate.instance,
-        model: guideCatUpdate.model,
-      },
-      modelSelection: guideCatUpdate.modelSelection,
-      createdAt: core.guideCat?.createdAt ?? nowIso,
-      updatedAt: nowIso,
-    },
-  };
+  core = upsertGuideCat(core, guideCatUpdate, nowIso);
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
   sendJson(context.response, 200, { guideCat: core.guideCat });
@@ -449,22 +439,14 @@ async function handleGuideCatStatusUpdate(
   let core = await context.dependencies.chatStore.readCore();
   const chatState = await context.dependencies.chatStore.read();
 
-  if (!core.guideCat) {
+  const nextCore = updateGuideCatStatus(core, parsedBody.value, nowIso);
+  if (!nextCore) {
     sendJson(context.response, 404, {
       error: { code: 'not_found', message: 'No Guide Cat exists' },
     });
     return;
   }
-
-  core = {
-    ...core,
-    updatedAt: nowIso,
-    guideCat: {
-      ...core.guideCat,
-      status: parsedBody.value,
-      updatedAt: nowIso,
-    },
-  };
+  core = nextCore;
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
   sendJson(context.response, 200, { guideCat: core.guideCat });
@@ -476,12 +458,7 @@ async function handleGuideCatDelete(
   const now = context.dependencies.now?.() ?? new Date();
   let core = await context.dependencies.chatStore.readCore();
   const chatState = await context.dependencies.chatStore.read();
-
-  core = {
-    ...core,
-    updatedAt: now.toISOString(),
-    guideCat: null,
-  };
+  core = clearGuideCat(core, now.toISOString());
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
   sendJson(context.response, 200, { guideCat: null });
@@ -505,29 +482,12 @@ async function handleAssistantPresetCreate(
   const nowIso = (context.dependencies.now?.() ?? new Date()).toISOString();
   let core = await context.dependencies.chatStore.readCore();
   const chatState = await context.dependencies.chatStore.read();
-  const assistant = {
-    id: randomUUID(),
-    name: body.name,
-    executionTarget: {
-      provider: body.provider,
-      instance: body.instance,
-      model: body.model,
-    },
-    modelSelection: body.modelSelection,
-    roleHint: body.roleHint,
-    createdAt: nowIso,
-    updatedAt: nowIso,
-  };
-
-  core = {
-    ...core,
-    updatedAt: nowIso,
-    assistantPresets: [...core.assistantPresets, assistant],
-  };
+  const creation = createAssistantPreset(core, randomUUID(), body, nowIso);
+  core = creation.core;
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
   sendJson(context.response, 201, {
-    assistant,
+    assistant: creation.assistant,
     assistants: core.assistantPresets,
   });
 }
@@ -544,39 +504,18 @@ async function handleAssistantPresetUpdate(
   const nowIso = (context.dependencies.now?.() ?? new Date()).toISOString();
   let core = await context.dependencies.chatStore.readCore();
   const chatState = await context.dependencies.chatStore.read();
-  const existingAssistant = core.assistantPresets.find((assistant) => assistant.id === assistantId);
-
-  if (!existingAssistant) {
+  const update = updateAssistantPreset(core, assistantId, body, nowIso);
+  if (!update) {
     sendJson(context.response, 404, {
       error: { code: 'not_found', message: 'Assistant not found' },
     });
     return;
   }
-
-  const assistant = {
-    ...existingAssistant,
-    name: body.name,
-    executionTarget: {
-      provider: body.provider,
-      instance: body.instance,
-      model: body.model,
-    },
-    modelSelection: body.modelSelection,
-    roleHint: body.roleHint,
-    updatedAt: nowIso,
-  };
-
-  core = {
-    ...core,
-    updatedAt: nowIso,
-    assistantPresets: core.assistantPresets.map((candidate) =>
-      candidate.id === assistantId ? assistant : candidate
-    ),
-  };
+  core = update.core;
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
   sendJson(context.response, 200, {
-    assistant,
+    assistant: update.assistant,
     assistants: core.assistantPresets,
   });
 }
@@ -588,24 +527,18 @@ async function handleAssistantPresetDelete(
   const nowIso = (context.dependencies.now?.() ?? new Date()).toISOString();
   let core = await context.dependencies.chatStore.readCore();
   const chatState = await context.dependencies.chatStore.read();
-  const nextAssistants = core.assistantPresets.filter((assistant) => assistant.id !== assistantId);
-
-  if (nextAssistants.length === core.assistantPresets.length) {
+  const deletion = deleteAssistantPreset(core, assistantId, nowIso);
+  if (!deletion) {
     sendJson(context.response, 404, {
       error: { code: 'not_found', message: 'Assistant not found' },
     });
     return;
   }
-
-  core = {
-    ...core,
-    updatedAt: nowIso,
-    assistantPresets: nextAssistants,
-  };
+  core = deletion.core;
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
   sendJson(context.response, 200, {
-    deletedId: assistantId,
+    deletedId: deletion.deletedId,
     assistants: core.assistantPresets,
   });
 }

@@ -1752,13 +1752,21 @@ test('platform setup routes consume dedicated parser helpers instead of keeping 
     new URL('../src/app/server/platformSetupRouteSupport.ts', import.meta.url),
     'utf8',
   );
+  const mutationSource = await readFile(
+    new URL('../src/app/server/platformSetupStateMutations.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(routeSource, /platformSetupRouteSupport\.js/u);
+  assert.match(routeSource, /platformSetupStateMutations\.js/u);
   assert.doesNotMatch(routeSource, /guideCatSidecarMode must be auto, drawer, or bubble/u);
   assert.doesNotMatch(routeSource, /Assistant provider is required/u);
+  assert.doesNotMatch(routeSource, /assistantPresets:\s*\[\.\.\.core\.assistantPresets/u);
   assert.match(supportSource, /export function parsePlatformPreferencesUpdate/u);
   assert.match(supportSource, /export function parseAssistantPresetBody/u);
   assert.match(supportSource, /export function parseGuideCatUpdateBody/u);
+  assert.match(mutationSource, /export function createAssistantPreset/u);
+  assert.match(mutationSource, /export function upsertGuideCat/u);
 });
 
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
