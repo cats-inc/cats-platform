@@ -66,8 +66,7 @@ import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
 import { buildChatSidePanelSections } from './chat-view/ChatSidePanelSections';
 import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
-import { LiveTranscriptIndicator } from './chat-view/LiveTranscriptIndicator';
-import { TranscriptMessageItem } from './chat-view/TranscriptMessageItem';
+import { ChatTranscriptPanel } from './chat-view/ChatTranscriptPanel';
 
 type TopBarParticipant = {
   key: string;
@@ -275,19 +274,8 @@ export function ChatView({
       : 'solo';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
-  const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [editingParticipantName, setEditingParticipantName] = useState('');
-  useEffect(() => {
-    if (!openRelayMenuId) return;
-    function onClickOutside(event: MouseEvent): void {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('.messageActionMenu')) return;
-      setOpenRelayMenuId(null);
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [openRelayMenuId]);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
@@ -653,10 +641,6 @@ export function ChatView({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    setOpenRelayMenuId(null);
-  }, [selectedChannel.id, compareBusy]);
-
   const inspectedRun = useMemo(
     () => buildRunInspectorView(operatorView, inspectedRunId),
     [operatorView, inspectedRunId],
@@ -707,14 +691,6 @@ export function ChatView({
     }
 
     onSelect(channelId);
-  }
-
-  async function copyMessageBody(body: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(body);
-    } catch {
-      // Ignore clipboard failures; the message stays available in the transcript.
-    }
   }
 
   function beginParticipantRename(participant: ResolvedChannelParticipant): void {
@@ -848,63 +824,34 @@ export function ChatView({
       ) : null}
     >
 
-            {hasConversationStarted ? (
-              <section className="transcriptPanel">
-                <div ref={transcriptListRef} className="transcriptList">
-                  {visibleMessages.map((message) => (
-                    <TranscriptMessageItem
-                      key={message.id}
-                      message={message}
-                      stackClassName={messageStackTone(message.senderKind)}
-                      cats={payload.chat.cats}
-                      bossCatId={payload.chat.bossCatId}
-                      selectedChannelId={selectedChannel.id}
-                      disabledMentionNames={directLaneExcludedMentionNames}
-                      compareBusy={compareBusy}
-                      choiceBusy={busy.startsWith(`choice:${message.id}:`)}
-                      isCompareGroup={isCompareGroup}
-                      relayMenuOpen={openRelayMenuId === message.id}
-                      existingChoiceResponse={choiceResponsesBySource.get(message.id) ?? null}
-                      onChoiceSubmit={onChoiceSubmit}
-                      onCopyMessage={copyMessageBody}
-                      onToggleRelayMenu={() =>
-                        setOpenRelayMenuId((current) =>
-                          current === message.id ? null : message.id,
-                        )}
-                      onCloseRelayMenu={() => setOpenRelayMenuId(null)}
-                      onRelayMessage={onRelayMessage}
-                      resolveMessageParticipant={resolveMessageParticipant}
-                      resolveParticipantCatRecord={resolveParticipantCatRecord}
-                      buildParticipantAvatarClassName={buildParticipantAvatarClassName}
-                      buildParticipantAvatarStyle={buildParticipantAvatarStyle}
-                      resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
-                      resolveParticipantDisplayName={resolveParticipantDisplayName}
-                    />
-                  ))}
-                  {liveIndicator?.active ? (
-                    <LiveTranscriptIndicator
-                      cats={payload.chat.cats}
-                      bossCatId={payload.chat.bossCatId}
-                      selectedChannelId={selectedChannel.id}
-                      disabledMentionNames={directLaneExcludedMentionNames}
-                      liveIndicator={liveIndicator}
-                      liveSpeakerParticipant={liveSpeakerParticipant}
-                      liveSpeakerParticipantCat={liveSpeakerParticipant
-                        ? catsById.get(resolveParticipantCatId(liveSpeakerParticipant) ?? '') ?? null
-                        : null}
-                      buildParticipantAvatarClassName={buildParticipantAvatarClassName}
-                      buildParticipantAvatarStyle={buildParticipantAvatarStyle}
-                      resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
-                      resolveParticipantDisplayName={resolveParticipantDisplayName}
-                    />
-                  ) : null}
-                </div>
-              </section>
-            ) : (
-              <section className="freshChatIntro">
-                <div className="draftGreeting"><h1>{greeting}</h1></div>
-              </section>
-            )}
+            <ChatTranscriptPanel
+              hasConversationStarted={hasConversationStarted}
+              greeting={greeting}
+              transcriptListRef={transcriptListRef}
+              visibleMessages={visibleMessages}
+              cats={payload.chat.cats}
+              bossCatId={payload.chat.bossCatId}
+              selectedChannelId={selectedChannel.id}
+              disabledMentionNames={directLaneExcludedMentionNames}
+              busy={busy}
+              compareBusy={compareBusy}
+              isCompareGroup={isCompareGroup}
+              choiceResponsesBySource={choiceResponsesBySource}
+              onChoiceSubmit={onChoiceSubmit}
+              onRelayMessage={onRelayMessage}
+              liveIndicator={liveIndicator}
+              liveSpeakerParticipant={liveSpeakerParticipant}
+              liveSpeakerParticipantCat={liveSpeakerParticipant
+                ? catsById.get(resolveParticipantCatId(liveSpeakerParticipant) ?? '') ?? null
+                : null}
+              messageStackTone={messageStackTone}
+              resolveMessageParticipant={resolveMessageParticipant}
+              resolveParticipantCatRecord={resolveParticipantCatRecord}
+              buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+              buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+              resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+              resolveParticipantDisplayName={resolveParticipantDisplayName}
+            />
 
             <ChatComposerArea
               hasConversationStarted={hasConversationStarted}
