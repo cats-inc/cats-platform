@@ -9,7 +9,6 @@ export interface AccountIdentityMenuProps {
   onOpenChange: (nextOpen: boolean) => void;
   onNavigateSettings: () => void;
   onNavigateEnvironment?: () => void;
-  runtimeBaseUrl: string;
   containerClassName?: string;
   triggerClassName: string;
   triggerAriaLabel?: string;
@@ -38,7 +37,6 @@ export function AccountIdentityMenu({
   onOpenChange,
   onNavigateSettings,
   onNavigateEnvironment,
-  runtimeBaseUrl: _runtimeBaseUrl,
   containerClassName,
   triggerClassName,
   triggerAriaLabel = 'Account menu',

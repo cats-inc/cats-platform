@@ -95,7 +95,6 @@ export function PlatformLobby({
                   runtimeSetupStatus: envelope.runtimeSetup.status,
                 });
               }}
-              runtimeBaseUrl={envelope.runtime.baseUrl}
               triggerClassName="lobbyIdentity"
               menuPlacement="below"
               menuAlignment="end"

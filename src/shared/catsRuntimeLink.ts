@@ -13,10 +13,6 @@ interface BrowserLinkContext {
   };
 }
 
-export function resolveCatsRuntimeRootUrl(runtimeBaseUrl: string): string {
-  return new URL('/', runtimeBaseUrl).toString();
-}
-
 export function openBrowserUrl(
   url: string,
   openWindow: OpenBrowserContext | null = null,
@@ -37,11 +33,4 @@ export function openBrowserUrl(
   }
 
   throw new Error('External link requires a browser navigation context.');
-}
-
-export function openCatsRuntimeRoot(
-  runtimeBaseUrl: string,
-  openWindow: OpenBrowserContext | null = null,
-): void {
-  openBrowserUrl(resolveCatsRuntimeRootUrl(runtimeBaseUrl), openWindow);
 }

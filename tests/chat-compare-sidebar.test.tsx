@@ -127,7 +127,7 @@ function findButtonByLabel(
 
 function findAccountIdentityMenu(
   node: ReactNode,
-): { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } } {
+): { props: { open?: boolean; menuWidth?: string } } {
   if (Array.isArray(node)) {
     for (const child of node) {
       try {
@@ -144,7 +144,7 @@ function findAccountIdentityMenu(
   }
 
   if (node.type === AccountIdentityMenu) {
-    return node as { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } };
+    return node as { props: { open?: boolean; menuWidth?: string } };
   }
 
   const children = node.props.children;
@@ -424,7 +424,6 @@ test('Sidebar wires the shared account identity menu to the runtime root', () =>
 
   const accountMenu = findAccountIdentityMenu(tree);
   assert.equal(accountMenu.props.open, true);
-  assert.equal(accountMenu.props.runtimeBaseUrl, 'http://localhost:8484');
   assert.equal(accountMenu.props.menuWidth, 'trigger');
 });
 

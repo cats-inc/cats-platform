@@ -13,7 +13,6 @@ test('AccountIdentityMenu renders shared account actions with configurable place
       open
       onOpenChange={() => {}}
       onNavigateSettings={() => {}}
-      runtimeBaseUrl="http://localhost:8484"
       triggerClassName="lobbyIdentity"
       menuPlacement="below"
       menuAlignment="end"

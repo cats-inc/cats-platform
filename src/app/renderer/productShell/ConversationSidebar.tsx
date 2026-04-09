@@ -995,7 +995,6 @@ export function ConversationSidebar<
             runtimeSetupStatus: payload.runtimeSetup?.status,
           });
         }}
-        runtimeBaseUrl={resolvedRuntime.baseUrl}
         containerClassName="sidebarFooter"
         triggerClassName="sidebarFooterButton"
         menuWidth="trigger"

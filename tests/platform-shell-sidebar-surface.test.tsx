@@ -161,7 +161,7 @@ function findSurfaceSwitcherActiveSurface(node: ReactNode): PlatformSurfaceId {
 
 function findAccountIdentityMenu(
   node: ReactNode,
-): { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } } {
+): { props: { open?: boolean; menuWidth?: string } } {
   if (Array.isArray(node)) {
     for (const child of node) {
       try {
@@ -178,7 +178,7 @@ function findAccountIdentityMenu(
   }
 
   if (matchesComponent(node, AccountIdentityMenu)) {
-    return node as { props: { open?: boolean; runtimeBaseUrl?: string; menuWidth?: string } };
+    return node as { props: { open?: boolean; menuWidth?: string } };
   }
 
   return findAccountIdentityMenu(node.props.children);
@@ -328,10 +328,8 @@ test('Work and Code sidebars keep the shared environment account menu wiring', (
   const codeAccountMenu = findAccountIdentityMenu(codeTree);
 
   assert.equal(workAccountMenu.props.open, true);
-  assert.equal(workAccountMenu.props.runtimeBaseUrl, 'http://localhost:8484');
   assert.equal(workAccountMenu.props.menuWidth, 'trigger');
 
   assert.equal(codeAccountMenu.props.open, true);
-  assert.equal(codeAccountMenu.props.runtimeBaseUrl, 'http://localhost:8484');
   assert.equal(codeAccountMenu.props.menuWidth, 'trigger');
 });
