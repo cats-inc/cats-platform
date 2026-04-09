@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
+import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+
 test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async () => {
   const source = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/hooks/useComposerSubmit.ts'),
@@ -48,10 +50,7 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
 });
 
 test('chat composer surfaces cancel-send during ACK and stop during dispatch', async () => {
-  const chatViewSource = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/components/ChatView.tsx'),
-    'utf8',
-  );
+  const chatViewSource = await readProductChatViewSource('chat');
 
   assert.match(chatViewSource, /isComposerAckBusy/u);
   assert.match(chatViewSource, /onCancelPendingSend\?: \(\) => void;/u);

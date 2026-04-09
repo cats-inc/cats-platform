@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
+import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+
 test('persisted chat view wires the solo model selector and suppresses visible boss chrome', async () => {
   const appSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/App.tsx'),
@@ -12,10 +14,7 @@ test('persisted chat view wires the solo model selector and suppresses visible b
     path.join(process.cwd(), 'src/products/chat/renderer/appViewState.ts'),
     'utf8',
   );
-  const chatViewSource = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/components/ChatView.tsx'),
-    'utf8',
-  );
+  const chatViewSource = await readProductChatViewSource('chat');
 
   assert.match(
     viewStateSource,
