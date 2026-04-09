@@ -1278,10 +1278,6 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
     'utf8',
   );
-  const rendererStylesCompatSource = await readFile(
-    new URL('../src/renderer/styles.css', import.meta.url),
-    'utf8',
-  );
   const designIndexSource = await readFile(
     new URL('../src/design/index.css', import.meta.url),
     'utf8',
@@ -1386,8 +1382,6 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(appRendererMainSource, /import '\.\.\/\.\.\/design\/index\.css';/u);
   assert.match(chatRendererMainSource, /import '\.\.\/\.\.\/\.\.\/design\/index\.css';/u);
   assert.match(appSource, /import '\.\/styles\.css';/u);
-  assert.match(rendererStylesCompatSource, /@import '\.\.\/design\/index\.css';/u);
-  assert.match(rendererStylesCompatSource, /@import '\.\.\/products\/chat\/renderer\/styles\.css';/u);
   assert.match(designIndexSource, /@import '\.\/tokens\.css';/u);
   assert.match(designIndexSource, /@import '\.\/layout\.css';/u);
   assert.match(designIndexSource, /@import '\.\/components\/choices\.css';/u);

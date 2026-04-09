@@ -552,9 +552,10 @@ Known follow-ups:
 
 #### Remaining Items
 
-- [ ] Remove temporary shims in `src/server.ts`, `src/renderer/*`, and `src/chat/*` when ownership boundaries stabilize
+- [x] Remove runtime-dead compatibility shims in `src/renderer/*` and `src/chat/*`
+- [ ] Decide when the remaining `src/server.ts` compatibility shim can be removed after downstream imports migrate
 - [ ] Decide when the `src/shared/app-shell.ts` compatibility shim can be removed after downstream imports migrate
 
 ---
 
-*Last updated: 2026-04-08*
+*Last updated: 2026-04-09*

@@ -83,9 +83,10 @@ Current ownership:
 - `src/platform/*` owns runtime, orchestration contracts, persistence, and
   transport infrastructure
 
-The product is still in a transitional state: top-level compatibility shims
-remain at `src/server.ts`, `src/renderer/*`, and `src/chat/*` so existing
-tests and imports do not have to move all at once.
+The product is still in a transitional state, but the runtime-dead
+`src/renderer/*` and `src/chat/*` shims have been removed. The remaining
+top-level compatibility shims are now limited to `src/server.ts` and
+`src/shared/app-shell.ts`.
 
 Packaging and repo naming now follow this split:
 
@@ -493,10 +494,6 @@ temporary and should not be treated as final ownership boundaries:
 
 - `src/server.ts` is a shim that re-exports the real app-level assembler from
   `src/app/server/index.ts`
-- `src/renderer/App.tsx` and `src/renderer/main.tsx` are shims that re-export
-  the real platform renderer entry from `src/app/renderer/*`
-- `src/chat/*` is still a compatibility shim over
-  `src/products/chat/state/*`
 - `src/shared/app-shell.ts` is now a compatibility shim that re-exports
   `src/shared/platform-contract.ts` and `src/products/chat/api/contracts.ts`
 - `src/products/chat/api/*` now owns Chat setup, legacy compatibility, and

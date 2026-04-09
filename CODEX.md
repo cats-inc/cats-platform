@@ -102,8 +102,9 @@ To sync skills after changes:
 - Main app port: `CATS_INC_PORT` (default `8181`)
 - Renderer dev port: `5173`
 - Runtime dependency: `CATS_RUNTIME_BASE_URL` (default `http://127.0.0.1:3110`)
-- Core modules: `src/config.ts`, `src/runtime/client.ts`, `src/chat/shell.ts`,
-  `src/server.ts`, `src/renderer/App.tsx`
+- Core modules: `src/config.ts`, `src/runtime/client.ts`,
+  `src/products/chat/state/shell.ts`, `src/app/server/index.ts`,
+  `src/app/renderer/App.tsx`
 - Test command: `npm test`
 - Product direction: build the Node/TS platform product directly around
   `cats-runtime` as the only runtime boundary
