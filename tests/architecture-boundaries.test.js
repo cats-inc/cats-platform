@@ -1464,6 +1464,10 @@ test('renderer api facade composes dedicated client modules instead of defining 
     new URL('../src/products/chat/renderer/api/operator.ts', import.meta.url),
     'utf8',
   );
+  const sharedOperatorSource = await readFile(
+    new URL('../src/products/shared/renderer/api/operator.ts', import.meta.url),
+    'utf8',
+  );
   const chatSource = await readFile(
     new URL('../src/products/chat/renderer/api/chat.ts', import.meta.url),
     'utf8',
@@ -1484,7 +1488,8 @@ test('renderer api facade composes dedicated client modules instead of defining 
   assert.doesNotMatch(apiSource, /export async function fetchAppShell\(/u);
   assert.doesNotMatch(apiSource, /export async function sendChatMessage\(/u);
   assert.match(normalizationSource, /export function normalizeAppShellPayload/u);
-  assert.match(operatorSource, /export async function fetchOperatorLoopSnapshot/u);
+  assert.match(operatorSource, /shared\/renderer\/api\/operator\.js/u);
+  assert.match(sharedOperatorSource, /export async function fetchOperatorLoopSnapshot/u);
   assert.match(chatImplementationSource, /export async function sendChatMessage/u);
 });
 
