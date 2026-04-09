@@ -67,6 +67,9 @@ import {
   useWorkspaceModelSelectionState,
 } from '../../shared/renderer/hooks/useWorkspaceModelSelectionState.js';
 import {
+  usePublishReadyPayload,
+} from '../../shared/renderer/hooks/usePublishReadyPayload.js';
+import {
   ProductAppStateBoundary,
 } from '../../shared/renderer/ProductRendererFrame.js';
 import { ProductReadyShell } from '../../shared/renderer/ProductReadyShell.js';
@@ -116,9 +119,7 @@ export default function App() {
     : Number.POSITIVE_INFINITY;
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
-  const publishReadyPayload = useCallback((payload: AppShellPayload) => {
-    setState({ status: 'ready', payload });
-  }, []);
+  const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
 
   const onDirectLaneModelSave = useWorkspaceDirectLaneModelSave<AppShellPayload>({
     updateCatProfile,
@@ -464,9 +465,7 @@ export default function App() {
     setFeedback,
   });
 
-  function updatePayload(payload: AppShellPayload): void {
-    startTransition(() => setState({ status: 'ready', payload }));
-  }
+  const updatePayload = usePublishReadyPayload<AppShellPayload>(setState);
 
   const {
     companionMode,

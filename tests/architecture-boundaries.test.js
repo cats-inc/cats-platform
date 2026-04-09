@@ -1077,6 +1077,27 @@ test('chat and workspace apps consume shared app-shell channel action hooks', as
   assert.match(hookSource, /updateCatProfile/u);
 });
 
+test('chat and workspace apps consume a shared ready-payload publisher', async () => {
+  const chatAppSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const workspaceAppSource = await readFile(
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/usePublishReadyPayload.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(chatAppSource, /usePublishReadyPayload/u);
+  assert.match(workspaceAppSource, /usePublishReadyPayload/u);
+  assert.doesNotMatch(chatAppSource, /function updatePayload\(payload: AppShellPayload\)/u);
+  assert.match(hookSource, /export function usePublishReadyPayload/u);
+  assert.match(hookSource, /startTransition/u);
+});
+
 test('renderer app consumes dedicated cat-assignment actions instead of defining cat create/assign flows inline', async () => {
   const appSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),

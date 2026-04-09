@@ -60,6 +60,7 @@ import {
   useWorkspaceDirectLaneModelSave,
   useWorkspaceResumeChannel,
 } from "./hooks/useWorkspaceAppShellChannelActions.js";
+import { usePublishReadyPayload } from "./hooks/usePublishReadyPayload.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
@@ -197,12 +198,7 @@ export function createWorkspaceProductApp({
       });
     }, []);
 
-    const publishReadyPayload = useCallback(
-      (payload: AppShellPayload) => {
-        setState({ status: "ready", payload });
-      },
-      [],
-    );
+    const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
 
     const onDirectLaneModelSave =
       useWorkspaceDirectLaneModelSave<AppShellPayload>({
@@ -685,11 +681,7 @@ export function createWorkspaceProductApp({
                 />
               )}
               confirmDialog={appDialog}
-              onPayloadUpdate={(nextPayload) => {
-                startTransition(() =>
-                  setState({ status: "ready", payload: nextPayload }),
-                );
-              }}
+              onPayloadUpdate={publishReadyPayload}
               onFeedback={setFeedback}
               onBusy={setBusy}
               onResetSetup={onResetSetup}
