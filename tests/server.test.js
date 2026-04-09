@@ -4451,7 +4451,7 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
     assert.equal(runtimeClient.createdSessions[0].cwd, null);
     assert.match(
       runtimeClient.createdSessions[1].cwd ?? '',
-      /\\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
+      /\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
     );
     assert.equal(activatePayload.activation.results[0].targetKind, 'orchestrator');
     assert.equal(activatePayload.activation.results[1].targetKind, 'cat');
@@ -5415,7 +5415,7 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
     assert.match(
       channelPayload.channel.chatCwd ?? '',
-      /\\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
+      /\.cats[\\/]runtime[\\/]sessions[\\/]session-1$/u,
     );
     const soloReply = channelPayload.channel.messages.findLast(
       (message) => message.metadata?.targetKind === 'orchestrator',
