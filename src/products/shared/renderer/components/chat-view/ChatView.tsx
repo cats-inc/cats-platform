@@ -296,10 +296,15 @@ export function ChatView({
       hasConversationStarted={hasConversationStarted}
       topBar={(
         <ChatViewTopBar
-          topBarCats={topBarCats}
-          bossCatId={payload.chat.bossCatId}
-          defaultRecipientId={defaultRecipientId}
-          activeTopBarCatIdSet={activeTopBarCatIdSet}
+          avatars={topBarCats.map((cat) => ({
+            key: cat.id,
+            label: cat.name,
+            avatarColor: cat.avatarColor,
+            avatarUrl: cat.avatarUrl,
+            isBoss: cat.id === payload.chat.bossCatId,
+            showLeadBadge: cat.id === defaultRecipientId,
+            pulsing: activeTopBarCatIdSet.has(cat.id),
+          }))}
           showRosterAvatars={showRosterAvatars}
           isDirectLane={isDirectLane}
           topBarTitle={topBarTitle}

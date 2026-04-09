@@ -6,7 +6,9 @@ export async function readProductChatViewSource(product) {
     'utf8',
   );
 
-  if (product === 'chat') {
+  const consumesSharedChatView = product !== 'chat'
+    || chatViewSource.includes('shared/renderer/components/chat-view/');
+  if (!consumesSharedChatView) {
     return chatViewSource;
   }
 

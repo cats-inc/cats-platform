@@ -1,11 +1,20 @@
-import type { ChatCat } from '../../../api/workspaceContracts.js';
+import type { ReactNode } from 'react';
+
 import { catInitials } from '../../workspaceChatUtils.js';
 
+export interface ChatViewTopBarAvatar {
+  key: string;
+  label: string;
+  avatarColor: string | null;
+  avatarUrl: string | null;
+  isBoss?: boolean;
+  useNeutralAvatar?: boolean;
+  showLeadBadge?: boolean;
+  pulsing?: boolean;
+}
+
 export interface ChatViewTopBarProps {
-  topBarCats: ChatCat[];
-  bossCatId: string | null;
-  defaultRecipientId: string | null;
-  activeTopBarCatIdSet: Set<string>;
+  avatars: ChatViewTopBarAvatar[];
   showRosterAvatars: boolean;
   isDirectLane: boolean;
   topBarTitle: string;
@@ -13,15 +22,13 @@ export interface ChatViewTopBarProps {
   resumeBusy: boolean;
   sidePanelOpen: boolean;
   approvalCount: number;
+  extraActions?: ReactNode;
   onResumeChannel?: () => void;
   onToggleSidePanel: () => void;
 }
 
 export function ChatViewTopBar({
-  topBarCats,
-  bossCatId,
-  defaultRecipientId,
-  activeTopBarCatIdSet,
+  avatars,
   showRosterAvatars,
   isDirectLane,
   topBarTitle,
@@ -29,6 +36,7 @@ export function ChatViewTopBar({
   resumeBusy,
   sidePanelOpen,
   approvalCount,
+  extraActions,
   onResumeChannel,
   onToggleSidePanel,
 }: ChatViewTopBarProps) {
@@ -37,23 +45,24 @@ export function ChatViewTopBar({
       <div className="channelTopBarStart">
         {showRosterAvatars ? (
           <div className="rosterAvatars rosterAvatarsExpanded">
-            {topBarCats.map((cat) => {
-              const isBoss = cat.id === bossCatId;
-              const isLead = cat.id === defaultRecipientId;
+            {avatars.map((avatar) => {
               return (
                 <div
-                  key={cat.id}
+                  key={avatar.key}
                   className={[
-                    isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
-                    activeTopBarCatIdSet.has(cat.id) ? 'catAvatarPulsing' : '',
+                    avatar.isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
+                    avatar.useNeutralAvatar ? 'channelParticipantAvatar' : '',
+                    avatar.pulsing ? 'catAvatarPulsing' : '',
                   ].filter(Boolean).join(' ')}
-                  data-tooltip={cat.name}
-                  style={cat.avatarUrl
-                    ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                    : cat.avatarColor ? { background: cat.avatarColor } : undefined}
+                  data-tooltip={avatar.label}
+                  style={avatar.avatarUrl
+                    ? { backgroundImage: `url(${avatar.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    : !avatar.useNeutralAvatar && avatar.avatarColor
+                      ? { background: avatar.avatarColor }
+                      : undefined}
                 >
-                  {cat.avatarUrl ? null : catInitials(cat.name)}
-                  {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                  {avatar.avatarUrl ? null : catInitials(avatar.label)}
+                  {avatar.showLeadBadge ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
                 </div>
               );
             })}
@@ -69,6 +78,7 @@ export function ChatViewTopBar({
         </span>
       </div>
       <div className="channelTopBarEnd">
+        {extraActions}
         {onResumeChannel ? (
           <button
             className="channelActionIconButton"

@@ -86,6 +86,7 @@ import {
   resolveConversationMode,
 } from '../conversationMode';
 import { ChatViewFrame } from '../../../shared/renderer/components/chat-view/ChatViewFrame';
+import { ChatViewTopBar } from '../../../shared/renderer/components/chat-view/ChatViewTopBar';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
 
@@ -765,103 +766,40 @@ export function ChatView({
       layoutStyle={layoutStyle}
       hasConversationStarted={hasConversationStarted}
       topBar={(
-        <header className="channelTopBar">
-          <div className="channelTopBarStart">
-            {showRosterAvatars ? (
-              <div className="rosterAvatars rosterAvatarsExpanded">
-                {topBarParticipants.map((participant) => {
-                  return (
-                    <div
-                      key={participant.key}
-                      className={[
-                        participant.isBoss ? 'catAvatar catAvatarBoss' : 'catAvatar',
-                        participant.useNeutralAvatar ? 'channelParticipantAvatar' : '',
-                        participant.pulseParticipantId
-                          && activeTopBarParticipantIdSet.has(participant.pulseParticipantId)
-                          ? 'catAvatarPulsing'
-                          : '',
-                        participant.pulseCatId && activeTopBarCatIdSet.has(participant.pulseCatId)
-                          ? 'catAvatarPulsing'
-                          : '',
-                      ].filter(Boolean).join(' ')}
-                      data-tooltip={participant.label}
-                      style={buildAvatarStyle(
-                        participant.avatarUrl,
-                        participant.avatarColor,
-                        !participant.useNeutralAvatar,
-                      )}
-                    >
-                      {participant.avatarUrl ? null : catInitials(participant.label)}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-          <div className="channelTopBarCenter">
-            <span className={isDirectLane
-              ? 'channelTopBarTitle channelTopBarTitleDirectLane'
-              : 'channelTopBarTitle'}
-            >
-              {topBarTitle}
-            </span>
-          </div>
-          <div className="channelTopBarEnd">
-            {isDirectLane && onToggleCompanionMode ? (
-              <button
-                className="companionToggleButton"
-                type="button"
-                onClick={onToggleCompanionMode}
-                title="Open companion workspace"
-              >
-                Companion
-              </button>
-            ) : null}
-            {onResumeChannel ? (
-              <button
-                className="channelActionIconButton"
-                type="button"
-                disabled={!canResumeChannel}
-                onClick={() => void onResumeChannel()}
-                aria-label={resumeBusy ? 'Resuming chat session' : 'Resume chat session'}
-                data-tooltip={resumeBusy ? 'Resuming chat session' : 'Resume chat session'}
-                aria-busy={resumeBusy}
-              >
-                <svg
-                  className={resumeBusy
-                    ? 'channelActionIconGlyph channelActionIconGlyphSpinning'
-                    : 'channelActionIconGlyph'}
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M13 4v4H9" />
-                  <path d="M12.35 8A5.35 5.35 0 1 1 10.7 4.15" />
-                </svg>
-              </button>
-            ) : null}
+        <ChatViewTopBar
+          avatars={topBarParticipants.map((participant) => ({
+            key: participant.key,
+            label: participant.label,
+            avatarColor: participant.avatarColor,
+            avatarUrl: participant.avatarUrl,
+            isBoss: participant.isBoss,
+            useNeutralAvatar: participant.useNeutralAvatar,
+            pulsing: Boolean(
+              (participant.pulseParticipantId
+                && activeTopBarParticipantIdSet.has(participant.pulseParticipantId))
+              || (participant.pulseCatId && activeTopBarCatIdSet.has(participant.pulseCatId)),
+            ),
+          }))}
+          showRosterAvatars={showRosterAvatars}
+          isDirectLane={isDirectLane}
+          topBarTitle={topBarTitle}
+          canResumeChannel={canResumeChannel}
+          resumeBusy={resumeBusy}
+          sidePanelOpen={sidePanelOpen}
+          approvalCount={operatorView?.approvals.length ?? 0}
+          extraActions={isDirectLane && onToggleCompanionMode ? (
             <button
-              className="sidePanelToggle"
+              className="companionToggleButton"
               type="button"
-              onClick={() => setSidePanelOpen(!sidePanelOpen)}
-              aria-label="Toggle inspector panel"
+              onClick={onToggleCompanionMode}
+              title="Open companion workspace"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 2v12" />
-                <rect x="2" y="2" width="12" height="12" rx="2" />
-              </svg>
-              {(operatorView?.approvals.length ?? 0) > 0 ? (
-                <span className="sidePanelBadge">{operatorView?.approvals.length}</span>
-              ) : null}
+              Companion
             </button>
-          </div>
-        </header>
+          ) : null}
+          onResumeChannel={onResumeChannel}
+          onToggleSidePanel={() => setSidePanelOpen(!sidePanelOpen)}
+        />
       )}
       statusRow={layoutMetrics.catStatusRowVisible ? (() => {
         const catStatusIndicators = activeAssignedCats

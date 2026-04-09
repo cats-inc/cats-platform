@@ -21,7 +21,7 @@ for (const product of PRODUCT_SURFACES) {
       return;
     }
 
-    assert.match(source, /activeTopBarCatIdSet\.has\(cat\.id\) \? 'catAvatarPulsing'/u);
+    assert.match(source, /pulsing:\s*activeTopBarCatIdSet\.has\(cat\.id\)/u);
     assert.doesNotMatch(source, /liveIndicator\?\.active && liveIndicator\.catId === cat\.id/u);
   });
 
