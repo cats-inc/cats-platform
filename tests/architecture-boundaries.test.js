@@ -1044,6 +1044,10 @@ test('settings cats consumes dedicated registry actions instead of defining cat 
     new URL('../src/products/chat/renderer/hooks/useSettingsCatsRegistryActions.ts', import.meta.url),
     'utf8',
   );
+  const sharedRegistryHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useSettingsCatsRegistryActions.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(
     settingsCatsSource,
@@ -1056,11 +1060,13 @@ test('settings cats consumes dedicated registry actions instead of defining cat 
   assert.doesNotMatch(settingsCatsSource, /async function onMakeBossCat\(/u);
   assert.doesNotMatch(settingsCatsSource, /async function onCreateBinding\(/u);
   assert.doesNotMatch(settingsCatsSource, /async function onDeleteBinding\(/u);
-  assert.match(registryHookSource, /export function useSettingsCatsRegistryActions/u);
-  assert.match(registryHookSource, /createGlobalCat/u);
-  assert.match(registryHookSource, /updateCatProfile/u);
-  assert.match(registryHookSource, /createBotBindingApi/u);
-  assert.match(registryHookSource, /deleteBotBindingApi/u);
+  assert.match(
+    registryHookSource,
+    /shared\/renderer\/hooks\/useSettingsCatsRegistryActions\.js/u,
+  );
+  assert.match(sharedRegistryHookSource, /export function useSettingsCatsRegistryActions/u);
+  assert.match(sharedRegistryHookSource, /createSettingsCatsRegistryActions/u);
+  assert.match(sharedRegistryHookSource, /updateCatProfile/u);
 });
 
 test('settings cats consumes a dedicated transport panel instead of rendering telegram diagnostics inline', async () => {
