@@ -1042,6 +1042,13 @@ test('renderer app consumes dedicated draft-ui actions instead of defining menu 
     new URL('../src/products/chat/renderer/hooks/useAppDraftUiActions.ts', import.meta.url),
     'utf8',
   );
+  const sharedHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceAppDraftUiActions.ts', import.meta.url),
+    'utf8',
+  );
+  const hookImplementationSource = hookSource.includes('useWorkspaceAppDraftUiActions')
+    ? sharedHookSource
+    : hookSource;
 
   assert.match(appSource, /useAppDraftUiActions/u);
   assert.doesNotMatch(appSource, /setAddCatOpen\(!addCatOpen\)/u);
@@ -1049,9 +1056,9 @@ test('renderer app consumes dedicated draft-ui actions instead of defining menu 
   assert.doesNotMatch(appSource, /fileInputRef\.current\?\.click\(\)/u);
   assert.doesNotMatch(appSource, /navigate\(buildNewChatPath\(catId\), \{ replace: true \}\)/u);
   assert.match(hookSource, /export function useAppDraftUiActions/u);
-  assert.match(hookSource, /openDraftFilePicker/u);
-  assert.match(hookSource, /openDraftAddCatPanel/u);
-  assert.match(hookSource, /changeDraftDefaultRecipient/u);
+  assert.match(hookImplementationSource, /openDraftFilePicker/u);
+  assert.match(hookImplementationSource, /openDraftAddCatPanel/u);
+  assert.match(hookImplementationSource, /changeDraftDefaultRecipient/u);
 });
 
 test('settings cats consumes dedicated telegram and memory hooks instead of defining side effects inline', async () => {
