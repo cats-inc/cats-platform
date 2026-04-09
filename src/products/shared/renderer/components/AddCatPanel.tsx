@@ -13,6 +13,7 @@ import {
   executionLabel,
   type CatFormState,
 } from '../workspaceChatUtils.js';
+import { ProviderModelFields } from './ProviderModelFields.js';
 
 interface ProviderModelFieldsProps {
   provider: string;
@@ -189,4 +190,20 @@ export function WorkspaceAddCatPanel({
       )}
     </div>
   );
+}
+
+export interface AddCatPanelProps extends Omit<
+  WorkspaceAddCatPanelProps,
+  'ProviderModelFieldsComponent'
+> {
+  panelRef?: RefObject<HTMLDivElement>;
+  selectableCats: ChatCat[];
+  catForm: CatFormState;
+  onCreateCat: (event: FormEvent<HTMLFormElement>) => void;
+}
+
+export function AddCatPanel({
+  ...props
+}: AddCatPanelProps) {
+  return <WorkspaceAddCatPanel {...props} ProviderModelFieldsComponent={ProviderModelFields} />;
 }
