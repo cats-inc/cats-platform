@@ -96,7 +96,7 @@ test('buildPlatformSettingsProductEntries flattens visible product settings entr
   ]);
 });
 
-test('PlatformSettingsShell places Desktop Startup between Code and Runtime in desktop mode', () => {
+test('PlatformSettingsShell places Desktop between Code and Runtime in desktop mode', () => {
   const previousBridge = (globalThis as typeof globalThis & {
     catsDesktopHost?: object;
   }).catsDesktopHost;
@@ -105,10 +105,10 @@ test('PlatformSettingsShell places Desktop Startup between Code and Runtime in d
   }).catsDesktopHost = {};
 
   const markup = renderToStaticMarkup(
-    <StaticRouter location="/settings/desktop-startup">
+    <StaticRouter location="/settings/desktop">
       <PlatformSettingsShell
-        section="desktop-startup"
-        title="Desktop Startup"
+        section="desktop"
+        title="Desktop"
         products={[
           createProduct({
             id: 'chat',
@@ -137,20 +137,20 @@ test('PlatformSettingsShell places Desktop Startup between Code and Runtime in d
           }),
         ]}
       >
-        <div>Desktop startup body</div>
+        <div>Desktop body</div>
       </PlatformSettingsShell>
     </StaticRouter>,
   );
 
   try {
     const codeIndex = markup.indexOf('>Code<');
-    const desktopStartupIndex = markup.indexOf('>Desktop Startup<');
+    const desktopIndex = markup.indexOf('>Desktop<');
     const runtimeIndex = markup.indexOf('>Runtime<');
     assert.ok(codeIndex >= 0, 'expected Code nav entry');
-    assert.ok(desktopStartupIndex >= 0, 'expected Desktop Startup nav entry');
+    assert.ok(desktopIndex >= 0, 'expected Desktop nav entry');
     assert.ok(runtimeIndex >= 0, 'expected Runtime nav entry');
-    assert.ok(codeIndex < desktopStartupIndex, 'expected Desktop Startup after Code');
-    assert.ok(desktopStartupIndex < runtimeIndex, 'expected Desktop Startup before Runtime');
+    assert.ok(codeIndex < desktopIndex, 'expected Desktop after Code');
+    assert.ok(desktopIndex < runtimeIndex, 'expected Desktop before Runtime');
   } finally {
     if (previousBridge === undefined) {
       delete (globalThis as typeof globalThis & { catsDesktopHost?: object }).catsDesktopHost;

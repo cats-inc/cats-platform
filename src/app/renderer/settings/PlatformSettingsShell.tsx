@@ -12,7 +12,7 @@ type PlatformSettingsSection =
   | 'cats'
   | 'cats:my-cats'
   | 'cats:assistants'
-  | 'desktop-startup'
+  | 'desktop'
   | 'runtime'
   | 'data'
   | string;
@@ -49,7 +49,7 @@ export function PlatformSettingsShell({
 }: PlatformSettingsShellProps) {
   const navigate = useNavigate();
   const productEntries = buildPlatformSettingsProductEntries(products);
-  const showDesktopStartup = isDesktopEnvironment();
+  const showDesktop = isDesktopEnvironment();
 
   return (
     <div className="settingsShell">
@@ -89,13 +89,13 @@ export function PlatformSettingsShell({
             {entry.label}
           </button>
         ))}
-        {showDesktopStartup ? (
+        {showDesktop ? (
           <button
-            className={section === 'desktop-startup' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+            className={section === 'desktop' ? 'settingsTab settingsTabActive' : 'settingsTab'}
             type="button"
-            onClick={() => navigate('/settings/desktop-startup')}
+            onClick={() => navigate('/settings/desktop')}
           >
-            Desktop Startup
+            Desktop
           </button>
         ) : null}
         <button

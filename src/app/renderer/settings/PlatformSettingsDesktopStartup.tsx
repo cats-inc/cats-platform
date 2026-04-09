@@ -88,8 +88,8 @@ export function PlatformSettingsDesktopStartup({
 
   return (
     <PlatformSettingsShell
-      section="desktop-startup"
-      title="Desktop Startup"
+      section="desktop"
+      title="Desktop"
       products={payload.products}
     >
       <div className="contentCard">
@@ -126,30 +126,6 @@ export function PlatformSettingsDesktopStartup({
         <label className="settingsCheckboxRow">
           <input
             type="checkbox"
-            checked={desktopPrefs.openWindowOnStartup}
-            disabled={savingDesktopPrefs}
-            onChange={() => {
-              void updateDesktopPreferences(
-                {
-                  ...desktopPrefs,
-                  openWindowOnStartup: !desktopPrefs.openWindowOnStartup,
-                },
-                'Failed to update startup window preference',
-              );
-            }}
-          />
-          <span className="settingsCheckboxMeta">
-            <span className="settingsCheckboxLabel">
-              Open Cats when Cats Desktop starts
-            </span>
-            <span className="heroNote">
-              When disabled, Cats Desktop can start without opening the main window automatically.
-            </span>
-          </span>
-        </label>
-        <label className="settingsCheckboxRow">
-          <input
-            type="checkbox"
             checked={desktopPrefs.systemTrayEnabled}
             disabled={savingDesktopPrefs}
             onChange={() => {
@@ -168,6 +144,30 @@ export function PlatformSettingsDesktopStartup({
             </span>
             <span className="heroNote">
               When enabled, closing the window hides Cats and keeps it running. When disabled, closing the window quits Cats.
+            </span>
+          </span>
+        </label>
+        <label className="settingsCheckboxRow">
+          <input
+            type="checkbox"
+            checked={desktopPrefs.openWindowOnStartup}
+            disabled={savingDesktopPrefs}
+            onChange={() => {
+              void updateDesktopPreferences(
+                {
+                  ...desktopPrefs,
+                  openWindowOnStartup: !desktopPrefs.openWindowOnStartup,
+                },
+                'Failed to update startup window preference',
+              );
+            }}
+          />
+          <span className="settingsCheckboxMeta">
+            <span className="settingsCheckboxLabel">
+              Open Cats when Cats Desktop starts
+            </span>
+            <span className="heroNote">
+              When disabled, Cats Desktop can start without opening the main window automatically.
             </span>
           </span>
         </label>

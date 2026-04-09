@@ -36,7 +36,7 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
 }: PlatformSettingsRoutesProps<TPayload>) {
   const workProduct = payload.products.find((product) => product.id === 'work');
   const codeProduct = payload.products.find((product) => product.id === 'code');
-  const showDesktopStartup = isDesktopEnvironment();
+  const showDesktop = isDesktopEnvironment();
   const onWorkspacePayloadUpdate = (nextPayload: WorkspaceAppShellPayload) => {
     onPayloadUpdate(nextPayload as TPayload);
   };
@@ -120,9 +120,9 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
           )}
         />
       ) : null}
-      {showDesktopStartup ? (
+      {showDesktop ? (
         <Route
-          path="desktop-startup"
+          path="desktop"
           element={(
             <PlatformSettingsDesktopStartup
               payload={payload}
@@ -132,6 +132,9 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
             />
           )}
         />
+      ) : null}
+      {showDesktop ? (
+        <Route path="desktop-startup" element={<Navigate to="/settings/desktop" replace />} />
       ) : null}
       <Route
         path="runtime"

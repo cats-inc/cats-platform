@@ -89,7 +89,7 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('PlatformSettingsDesktopStartup renders startup and system tray controls', () => {
+test('PlatformSettingsDesktopStartup renders desktop controls with system tray before window opening', () => {
   const previousBridge = (globalThis as typeof globalThis & {
     catsDesktopHost?: object;
   }).catsDesktopHost;
@@ -98,7 +98,7 @@ test('PlatformSettingsDesktopStartup renders startup and system tray controls', 
   }).catsDesktopHost = {};
 
   const markup = renderToStaticMarkup(
-    <StaticRouter location="/settings/desktop-startup">
+    <StaticRouter location="/settings/desktop">
       <PlatformSettingsDesktopStartup
         payload={createPayload()}
         feedback=""
@@ -109,10 +109,16 @@ test('PlatformSettingsDesktopStartup renders startup and system tray controls', 
   );
 
   try {
+    assert.match(markup, />Desktop</u);
     assert.match(markup, /Start Cats Desktop when you sign in to your computer/u);
-    assert.match(markup, /Open Cats when Cats Desktop starts/u);
     assert.match(markup, /Keep Cats in the system tray when you close the window/u);
+    assert.match(markup, /Open Cats when Cats Desktop starts/u);
     assert.match(markup, /When enabled, closing the window hides Cats and keeps it running\./u);
+    assert.ok(
+      markup.indexOf('Keep Cats in the system tray when you close the window')
+        < markup.indexOf('Open Cats when Cats Desktop starts'),
+      'expected system tray option before window opening option',
+    );
   } finally {
     if (previousBridge === undefined) {
       delete (globalThis as typeof globalThis & { catsDesktopHost?: object }).catsDesktopHost;
