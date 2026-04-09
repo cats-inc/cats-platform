@@ -966,6 +966,14 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
     new URL('../src/products/chat/renderer/hooks/useAppNavigationActions.ts', import.meta.url),
     'utf8',
   );
+  const sharedHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceAppNavigationActions.ts', import.meta.url),
+    'utf8',
+  );
+  const hookImplementationSource =
+    /shared\/renderer\/hooks\/useWorkspaceAppNavigationActions\.js/u.test(hookSource)
+      ? sharedHookSource
+      : hookSource;
 
   assert.match(appSource, /useAppNavigationActions/u);
   assert.doesNotMatch(appSource, /async function onDeleteChannel\(/u);
@@ -974,9 +982,9 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
   assert.doesNotMatch(appSource, /function onOpenChatsOverview\(/u);
   assert.doesNotMatch(appSource, /function onSelect\(/u);
   assert.match(hookSource, /export function useAppNavigationActions/u);
-  assert.match(hookSource, /deleteChatChannel/u);
-  assert.match(hookSource, /deleteGlobalCat/u);
-  assert.match(hookSource, /resolveMyCatNavigationTarget/u);
+  assert.match(hookImplementationSource, /deleteChatChannel/u);
+  assert.match(hookImplementationSource, /deleteGlobalCat/u);
+  assert.match(hookImplementationSource, /resolveMyCatNavigationTarget(?:ForPrefix)?/u);
 });
 
 test('renderer app consumes dedicated draft-ui actions instead of defining menu toggles inline', async () => {

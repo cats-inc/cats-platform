@@ -6,30 +6,77 @@ import {
 } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 
-import type { AppShellPayload } from '../../api/workspaceContracts.js';
+import type { AppShellPayload as WorkspaceAppShellPayload } from '../../api/workspaceContracts.js';
 import {
   buildWorkspaceChannelPath,
   buildWorkspaceNewChatPath,
   resolveWorkspaceVisibleChatPath,
 } from '../../channelPaths.js';
 import { resolveMyCatNavigationTargetForPrefix } from '../../../../app/renderer/productShell/myCatNavigation.js';
+import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 import {
-  deleteChatChannel,
-  deleteGlobalCat,
-  renameChatChannel,
-  resetSetup,
+  deleteChatChannel as deleteWorkspaceChatChannel,
+  deleteGlobalCat as deleteWorkspaceGlobalCat,
+  renameChatChannel as renameWorkspaceChatChannel,
+  resetSetup as resetWorkspaceSetup,
 } from '../api/index.js';
 
-export type WorkspaceNavigationLoadState =
+export interface WorkspaceNavigationChannelRef {
+  id: string;
+  channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
+  defaultRecipientCatId?: string | null;
+  roomMode?: RoomRoutingMode | null;
+}
+
+export interface WorkspaceNavigationPayloadLike {
+  chat: {
+    channels: ReadonlyArray<WorkspaceNavigationChannelRef>;
+    selectedChannelId: string | null;
+  };
+}
+
+export interface WorkspaceAppNavigationApi<TPayload extends WorkspaceNavigationPayloadLike> {
+  deleteChatChannel: (channelId: string) => Promise<TPayload>;
+  deleteGlobalCat: (catId: string) => Promise<TPayload>;
+  renameChatChannel: (channelId: string, title: string) => Promise<TPayload>;
+  resetSetup: () => Promise<unknown>;
+}
+
+const defaultNavigationApi: WorkspaceAppNavigationApi<WorkspaceAppShellPayload> = {
+  deleteChatChannel: deleteWorkspaceChatChannel,
+  deleteGlobalCat: deleteWorkspaceGlobalCat,
+  renameChatChannel: renameWorkspaceChatChannel,
+  resetSetup: resetWorkspaceSetup,
+};
+
+function resolveWorkspaceChatPrefix(
+  platformShellSurface: 'chat' | 'work' | 'code',
+): string {
+  switch (platformShellSurface) {
+    case 'chat':
+      return '/chat';
+    case 'work':
+      return '/work';
+    default:
+      return '/code';
+  }
+}
+
+export type WorkspaceNavigationLoadState<
+  TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
+> =
   | { status: 'loading' }
-  | { status: 'ready'; payload: AppShellPayload }
+  | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
 
-export interface UseWorkspaceAppNavigationActionsOptions<TModelSelectorValue> {
-  state: WorkspaceNavigationLoadState;
-  setState: Dispatch<SetStateAction<WorkspaceNavigationLoadState>>;
+export interface UseWorkspaceAppNavigationActionsOptions<
+  TModelSelectorValue,
+  TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
+> {
+  state: WorkspaceNavigationLoadState<TPayload>;
+  setState: Dispatch<SetStateAction<WorkspaceNavigationLoadState<TPayload>>>;
   navigate: NavigateFunction;
-  platformShellSurface: 'work' | 'code';
+  platformShellSurface: 'chat' | 'work' | 'code';
   setBusy: Dispatch<SetStateAction<string>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   setComposerDraft: Dispatch<SetStateAction<string>>;
@@ -43,11 +90,15 @@ export interface UseWorkspaceAppNavigationActionsOptions<TModelSelectorValue> {
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, TModelSelectorValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
+  navigationApi?: WorkspaceAppNavigationApi<TPayload>;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
 
-export function useWorkspaceAppNavigationActions<TModelSelectorValue>(
-  options: UseWorkspaceAppNavigationActionsOptions<TModelSelectorValue>,
+export function useWorkspaceAppNavigationActions<
+  TModelSelectorValue,
+  TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
+>(
+  options: UseWorkspaceAppNavigationActionsOptions<TModelSelectorValue, TPayload>,
 ) {
   const {
     state,
@@ -67,9 +118,13 @@ export function useWorkspaceAppNavigationActions<TModelSelectorValue>(
     setDraftCatModelOverrides,
     setDraftFiles,
     setChannelFiles,
+    navigationApi: providedNavigationApi,
     confirm: confirmDialog,
   } = options;
-  const chatPrefix = platformShellSurface === 'work' ? '/work' : '/code';
+  const chatPrefix = resolveWorkspaceChatPrefix(platformShellSurface);
+  const navigationApi = (
+    providedNavigationApi ?? defaultNavigationApi
+  ) as WorkspaceAppNavigationApi<TPayload>;
 
   const clearDraftRouteState = useCallback(() => {
     setAddCatOpen(false);
@@ -121,7 +176,7 @@ export function useWorkspaceAppNavigationActions<TModelSelectorValue>(
   const onRenameChannel = useCallback(async (channelId: string, title: string): Promise<void> => {
     setBusy(`channel:rename:${channelId}`);
     try {
-      const payload = await renameChatChannel(channelId, title);
+      const payload = await navigationApi.renameChatChannel(channelId, title);
       startTransition(() => {
         setState({ status: 'ready', payload });
         setFeedback('');
@@ -131,12 +186,12 @@ export function useWorkspaceAppNavigationActions<TModelSelectorValue>(
     } finally {
       setBusy('');
     }
-  }, [setBusy, setFeedback, setState]);
+  }, [navigationApi, setBusy, setFeedback, setState]);
 
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
     setBusy(`channel:delete:${channelId}`);
     try {
-      const payload = await deleteChatChannel(channelId);
+      const payload = await navigationApi.deleteChatChannel(channelId);
       startTransition(() => {
         setState({ status: 'ready', payload });
         setAddCatOpen(false);
@@ -148,7 +203,7 @@ export function useWorkspaceAppNavigationActions<TModelSelectorValue>(
     } finally {
       setBusy('');
     }
-  }, [chatPrefix, navigate, setAddCatOpen, setBusy, setFeedback, setState]);
+  }, [chatPrefix, navigate, navigationApi, setAddCatOpen, setBusy, setFeedback, setState]);
 
   const onDeleteCat = useCallback(async (catId: string): Promise<void> => {
     const confirmed = confirmDialog
@@ -157,14 +212,14 @@ export function useWorkspaceAppNavigationActions<TModelSelectorValue>(
     if (!confirmed) return;
     setBusy(`cat:delete:${catId}`);
     try {
-      const payload = await deleteGlobalCat(catId);
+      const payload = await navigationApi.deleteGlobalCat(catId);
       startTransition(() => setState({ status: 'ready', payload }));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete cat.');
     } finally {
       setBusy('');
     }
-  }, [confirmDialog, setBusy, setFeedback, setState]);
+  }, [confirmDialog, navigationApi, setBusy, setFeedback, setState]);
 
   const onNavigateSettings = useCallback((): void => {
     navigate('/settings/general', {
@@ -180,7 +235,11 @@ export function useWorkspaceAppNavigationActions<TModelSelectorValue>(
       return;
     }
 
-    const target = resolveMyCatNavigationTargetForPrefix(chatPrefix, state.payload.chat.channels, catId);
+    const target = resolveMyCatNavigationTargetForPrefix(
+      chatPrefix,
+      state.payload.chat.channels.slice(),
+      catId,
+    );
     setFeedback('');
     clearDraftRouteState();
     navigate(target.path);
@@ -194,13 +253,13 @@ export function useWorkspaceAppNavigationActions<TModelSelectorValue>(
 
     setBusy('setup:reset');
     try {
-      await resetSetup();
+      await navigationApi.resetSetup();
       window.location.href = '/';
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');
       setBusy('');
     }
-  }, [confirmDialog, setBusy, setFeedback]);
+  }, [confirmDialog, navigationApi, setBusy, setFeedback]);
 
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildWorkspaceNewChatPath(chatPrefix, null));

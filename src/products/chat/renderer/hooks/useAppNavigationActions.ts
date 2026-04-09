@@ -10,7 +10,6 @@ import type { AppShellPayload } from '../../api/contracts.js';
 import type { ModelSelectorValue } from '../components/ModelSelector.js';
 import type { DraftTemporaryParticipant } from '../chatUtils.js';
 import {
-  buildChannelPath,
   buildNewGroupChatPath,
   buildNewParallelChatPath,
   buildNewChatPath,
@@ -27,11 +26,12 @@ import {
   ungroupParallelChatGroup,
   updateCatProfile,
 } from '../api/index.js';
+import {
+  useWorkspaceAppNavigationActions,
+  type WorkspaceNavigationLoadState,
+} from '../../../shared/renderer/hooks/useWorkspaceAppNavigationActions.js';
 
-type LoadStateLike =
-  | { status: 'loading' }
-  | { status: 'ready'; payload: AppShellPayload }
-  | { status: 'error'; message: string };
+type LoadStateLike = WorkspaceNavigationLoadState<AppShellPayload>;
 
 export function useAppNavigationActions(options: {
   state: LoadStateLike;
@@ -63,7 +63,6 @@ export function useAppNavigationActions(options: {
     setBusy,
     setFeedback,
     setComposerDraft,
-    setAccountMenuOpen,
     setAddCatOpen,
     setAddCatTab,
     setPlusMenuOpen,
@@ -79,6 +78,16 @@ export function useAppNavigationActions(options: {
     setChannelFiles,
     confirm: confirmDialog,
   } = options;
+  const sharedActions = useWorkspaceAppNavigationActions<ModelSelectorValue, AppShellPayload>({
+    ...options,
+    platformShellSurface: 'chat',
+    navigationApi: {
+      deleteChatChannel,
+      deleteGlobalCat,
+      renameChatChannel,
+      resetSetup,
+    },
+  });
 
   const resetFreshDraftState = useCallback((options?: { openAddCatPanel?: boolean }) => {
     setComposerDraft('');
@@ -111,62 +120,6 @@ export function useAppNavigationActions(options: {
     setChannelPlusMenuOpen,
     setChannelFiles,
   ]);
-
-  const onOpenChatsOverview = useCallback((): void => {
-    if (state.status !== 'ready') {
-      return;
-    }
-
-    navigate(resolveVisibleChatPath(state.payload.chat.channels, state.payload.chat.selectedChannelId));
-    setFeedback('');
-    setAddCatOpen(false);
-  }, [navigate, setAddCatOpen, setFeedback, state]);
-
-  const onSelect = useCallback((channelId: string): void => {
-    navigate(buildChannelPath(channelId));
-    setFeedback('');
-    setAddCatOpen(false);
-    setChannelFiles([]);
-    setChannelPlusMenuOpen(false);
-  }, [
-    navigate,
-    setAddCatOpen,
-    setChannelFiles,
-    setChannelPlusMenuOpen,
-    setFeedback,
-  ]);
-
-  const onRenameChannel = useCallback(async (channelId: string, title: string): Promise<void> => {
-    setBusy(`channel:rename:${channelId}`);
-    try {
-      const payload = await renameChatChannel(channelId, title);
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setFeedback('');
-      });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to rename chat.');
-    } finally {
-      setBusy('');
-    }
-  }, [setBusy, setFeedback, setState]);
-
-  const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
-    setBusy(`channel:delete:${channelId}`);
-    try {
-      const payload = await deleteChatChannel(channelId);
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setAddCatOpen(false);
-        setFeedback('');
-      });
-      navigate(resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId));
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
-    } finally {
-      setBusy('');
-    }
-  }, [navigate, setAddCatOpen, setBusy, setFeedback, setState]);
 
   const onRenameParallelChatGroup = useCallback(async (
     groupId: string,
@@ -253,31 +206,6 @@ export function useAppNavigationActions(options: {
     }
   }, [confirmDialog, setBusy, setFeedback, setState, state]);
 
-  const onDeleteCat = useCallback(async (catId: string): Promise<void> => {
-    const confirmed = confirmDialog
-      ? await confirmDialog({ title: 'Delete cat', message: 'Delete this cat? This cannot be undone.' })
-      : true;
-    if (!confirmed) return;
-    setBusy(`cat:delete:${catId}`);
-    try {
-      const payload = await deleteGlobalCat(catId);
-      startTransition(() => setState({ status: 'ready', payload }));
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to delete cat.');
-    } finally {
-      setBusy('');
-    }
-  }, [confirmDialog, setBusy, setFeedback, setState]);
-
-  const onNavigateSettings = useCallback((): void => {
-    navigate('/settings/general', {
-      state: { platformShellSurface: 'chat' },
-    });
-    setAccountMenuOpen(false);
-    setAddCatOpen(false);
-    setFeedback('');
-  }, [navigate, setAccountMenuOpen, setAddCatOpen, setFeedback]);
-
   const onDirectChatCat = useCallback(async (catId: string): Promise<void> => {
     if (state.status !== 'ready') {
       return;
@@ -288,22 +216,6 @@ export function useAppNavigationActions(options: {
     resetFreshDraftState();
     navigate(target.path);
   }, [navigate, resetFreshDraftState, setFeedback, state]);
-
-  const onResetSetup = useCallback(async (): Promise<void> => {
-    const confirmed = confirmDialog
-      ? await confirmDialog({ title: 'Reset all data', message: 'This will erase all chats, cats, and settings. Continue?', confirmLabel: 'Reset' })
-      : true;
-    if (!confirmed) return;
-
-    setBusy('setup:reset');
-    try {
-      await resetSetup();
-      window.location.href = '/';
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');
-      setBusy('');
-    }
-  }, [setBusy, setFeedback]);
 
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildNewChatPath(null));
@@ -328,18 +240,12 @@ export function useAppNavigationActions(options: {
   ]);
 
   return {
-    onOpenChatsOverview,
-    onSelect,
-    onRenameChannel,
-    onDeleteChannel,
+    ...sharedActions,
     onRenameParallelChatGroup,
     onUngroupParallelChatGroup,
     onDeleteParallelChatGroup,
     onArchiveCat,
-    onDeleteCat,
-    onNavigateSettings,
     onDirectChatCat,
-    onResetSetup,
     onStartNewChat,
     onStartNewGroupChat,
     onStartNewParallelChat,
