@@ -1050,13 +1050,18 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsTransportPanel.tsx', import.meta.url),
     'utf8',
   );
+  const sharedTransportPanelSource = await readFile(
+    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsTransportPanel.tsx', import.meta.url),
+    'utf8',
+  );
 
   assert.match(settingsCatsSource, /SettingsCatsTransportPanel/u);
   assert.doesNotMatch(settingsCatsSource, /Last inbound: \{formatTransportTimestamp/u);
   assert.doesNotMatch(settingsCatsSource, /Tracked inboxes \{telegramDiagnostics\.bindings\.length\}/u);
-  assert.match(transportPanelSource, /export function SettingsCatsTransportPanel/u);
-  assert.match(transportPanelSource, /formatTransportTimestamp/u);
-  assert.match(transportPanelSource, /No Telegram inbox bindings have received traffic yet\./u);
+  assert.match(transportPanelSource, /shared\/renderer\/components\/settings-cats\/SettingsCatsTransportPanel\.js/u);
+  assert.match(sharedTransportPanelSource, /export function SettingsCatsTransportPanel/u);
+  assert.match(sharedTransportPanelSource, /formatTransportTimestamp/u);
+  assert.match(sharedTransportPanelSource, /No Telegram inbox bindings have received traffic yet\./u);
 });
 
 test('settings cats composes dedicated registry and create-form components instead of rendering all cat detail UI inline', async () => {
