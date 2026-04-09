@@ -3,37 +3,80 @@ import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { refetchAfterMutation } from './appShell.js';
 import { expectJson } from './http.js';
 
-export async function createBotBindingApi(
-  input: {
-    botName: string;
-    catId: string;
-    inboundMode?: 'polling' | 'webhook';
-    botToken?: string;
-    webhookSecret?: string;
-  },
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch('/api/bot-bindings', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ platform: 'telegram', ...input }),
-    signal,
-  });
+export function createTelegramApi<TPayload>(options: {
+  refetchAfterMutation: (
+    mutationResponse: Response,
+    errorFallback: string,
+    signal?: AbortSignal,
+  ) => Promise<TPayload>;
+}) {
+  async function createBotBindingApi(
+    input: {
+      botName: string;
+      catId: string;
+      inboundMode?: 'polling' | 'webhook';
+      botToken?: string;
+      webhookSecret?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<TPayload> {
+    const response = await fetch('/api/bot-bindings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ platform: 'telegram', ...input }),
+      signal,
+    });
 
-  return refetchAfterMutation(response, `bot binding create returned ${response.status}`, signal);
-}
+    return options.refetchAfterMutation(
+      response,
+      `bot binding create returned ${response.status}`,
+      signal,
+    );
+  }
 
-export async function deleteBotBindingApi(
-  bindingId: string,
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch(`/api/bot-bindings/${encodeURIComponent(bindingId)}`, {
-    method: 'DELETE',
-    headers: { Accept: 'application/json' },
-    signal,
-  });
+  async function deleteBotBindingApi(
+    bindingId: string,
+    signal?: AbortSignal,
+  ): Promise<TPayload> {
+    const response = await fetch(`/api/bot-bindings/${encodeURIComponent(bindingId)}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+      signal,
+    });
 
-  return refetchAfterMutation(response, `bot binding delete returned ${response.status}`, signal);
+    return options.refetchAfterMutation(
+      response,
+      `bot binding delete returned ${response.status}`,
+      signal,
+    );
+  }
+
+  async function updateBotBindingApi(
+    bindingId: string,
+    input: {
+      botName?: string;
+      catId?: string;
+      inboundMode?: 'polling' | 'webhook';
+      status?: 'active' | 'disabled';
+      botToken?: string | null;
+      webhookSecret?: string | null;
+    },
+    signal?: AbortSignal,
+  ): Promise<TPayload> {
+    const response = await fetch(`/api/bot-bindings/${bindingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+      signal,
+    });
+    return expectJson(response, `update bot binding returned ${response.status}`);
+  }
+
+  return {
+    createBotBindingApi,
+    deleteBotBindingApi,
+    updateBotBindingApi,
+  };
 }
 
 export interface TelegramTransportRoomRouting {
@@ -156,23 +199,10 @@ export async function reconnectTelegramPolling(
   return expectJson(response, `polling reconnect returned ${response.status}`);
 }
 
-export async function updateBotBindingApi(
-  bindingId: string,
-  input: {
-    botName?: string;
-    catId?: string;
-    inboundMode?: 'polling' | 'webhook';
-    status?: 'active' | 'disabled';
-    botToken?: string | null;
-    webhookSecret?: string | null;
-  },
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch(`/api/bot-bindings/${bindingId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-    signal,
-  });
-  return expectJson(response, `update bot binding returned ${response.status}`);
-}
+const workspaceTelegramApi = createTelegramApi<AppShellPayload>({
+  refetchAfterMutation,
+});
+
+export const createBotBindingApi = workspaceTelegramApi.createBotBindingApi;
+export const deleteBotBindingApi = workspaceTelegramApi.deleteBotBindingApi;
+export const updateBotBindingApi = workspaceTelegramApi.updateBotBindingApi;

@@ -26,10 +26,18 @@ test('renderer bot binding client uses the catId contract instead of the removed
     path.join(process.cwd(), 'src/products/chat/renderer/api/telegram.ts'),
     'utf8',
   );
+  const sharedSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/api/telegram.ts'),
+    'utf8',
+  );
+  const implementationSource =
+    /shared\/renderer\/api\/telegram\.js/u.test(source)
+      ? sharedSource
+      : source;
 
-  assert.match(source, /catId:\s*string/u);
+  assert.match(implementationSource, /catId:\s*string/u);
   assert.equal(
-    source.includes('boundCatId'),
+    implementationSource.includes('boundCatId'),
     false,
     'renderer bot binding client should not send the removed boundCatId field',
   );
