@@ -16,7 +16,12 @@ import {
   buildWorkspaceNewChatPath,
 } from '../../channelPaths.js';
 import { normalizeSelectedChannelView, type SelectedChannelView } from '../../channelEntry.js';
-import { isDirectLaneChannel } from '../../channelTopology.js';
+import {
+  buildSoloDispatchTarget,
+  isDirectLaneSelectedForCat,
+  prepareComposerMessageBody,
+  resolveComposerFilesToUpload,
+} from '../composerDispatch.js';
 import {
   createChatChannel,
   sendChatMessage,
@@ -26,7 +31,6 @@ import {
 import {
   applyOptimisticPendingExecutionTarget,
   appendOptimisticUserMessage,
-  buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
   createDraftChannelTitle,
   createDraftChannelTopic,
@@ -71,18 +75,6 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceMode
   selectedChannel: SelectedChannelView | null;
   setBusy: Dispatch<SetStateAction<string>>;
   setFeedback: Dispatch<SetStateAction<string>>;
-}
-
-function isDirectLaneSelectedForCat(
-  channel: SelectedChannelView | null,
-  catId: string | null,
-): channel is SelectedChannelView {
-  if (!channel || !catId) {
-    return false;
-  }
-
-  return isDirectLaneChannel(channel)
-    && channel.roomRouting.defaultRecipientId === catId;
 }
 
 export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSelectorValue>(
@@ -218,40 +210,35 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         throw new Error('No chat is available for sending messages.');
       }
 
-      const soloDispatchTarget =
-        !wasDraftingNewChat
-        && !isCatScopedLaneRoute
-        && selectedChannel?.id === channelId
-        && selectedChannel.composerMode === 'solo'
-          ? {
-              pendingProvider: soloChannelModel.provider,
-              pendingModel: soloChannelModel.model,
-              pendingInstance: soloChannelModel.instance,
-              pendingModelSelection: soloChannelModel.modelSelection,
-            }
-          : null;
+      const soloDispatchTarget = buildSoloDispatchTarget({
+        wasDraftingNewChat,
+        isCatScopedLaneRoute,
+        channelId,
+        selectedChannel,
+        soloChannelModel,
+      });
 
-      let messageBody = body;
-      const filesToUpload = isCatScopedLaneRoute && !hydratedDirectLane
-        ? draftFiles
-        : hydratedDirectLane
-          ? channelFiles
-          : wasDraftingNewChat
-            ? draftFiles
-            : channelFiles;
-      if (filesToUpload.length > 0) {
-        const selectedForFiles =
-          payload.chat.selectedChannel?.id === channelId
-            ? payload.chat.selectedChannel
-            : null;
-        if (!selectedForFiles?.repoPath && !selectedForFiles?.chatCwd) {
-          payload = await updateSelectedChannel(channelId);
-          rollbackPayload = payload;
-          setState({ status: 'ready', payload });
-        }
-        const attachments = await uploadChannelAttachments(channelId, filesToUpload);
-        messageBody = buildAttachedFilesMessageBody(body, attachments);
+      const filesToUpload = resolveComposerFilesToUpload({
+        isCatScopedLaneRoute,
+        hydratedDirectLane,
+        wasDraftingNewChat,
+        draftFiles,
+        channelFiles,
+      });
+      const preparedMessage = await prepareComposerMessageBody({
+        payload,
+        channelId,
+        body,
+        filesToUpload,
+        updateSelectedChannel,
+        uploadChannelAttachments,
+      });
+      if (preparedMessage.payload !== payload) {
+        payload = preparedMessage.payload;
+        rollbackPayload = payload;
+        setState({ status: 'ready', payload });
       }
+      const messageBody = preparedMessage.messageBody;
 
       if (soloDispatchTarget) {
         payload = applyOptimisticPendingExecutionTarget(payload, channelId, soloDispatchTarget);

@@ -21,7 +21,12 @@ import {
 import {
   normalizeSelectedChannelView,
 } from '../../shared/channelEntry';
-import { isDirectLaneChannel } from '../../shared/channelTopology';
+import {
+  buildSoloDispatchTarget,
+  isDirectLaneSelectedForCat,
+  prepareComposerMessageBody,
+  resolveComposerFilesToUpload,
+} from '../../../shared/renderer/composerDispatch.js';
 import {
   cancelChatChannel,
   cancelParallelChatGroup,
@@ -36,7 +41,6 @@ import {
 } from '../api';
 import {
   applyPendingExecutionTargetPreview,
-  buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
   createDraftChannelTitle,
   insertCreatedChannelIntoPayload,
@@ -53,18 +57,6 @@ type LoadStateLike =
   | { status: 'loading' }
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
-
-function isDirectLaneSelectedForCat(
-  channel: SelectedChannelView | null,
-  catId: string | null,
-): channel is SelectedChannelView {
-  if (!channel || !catId) {
-    return false;
-  }
-
-  return isDirectLaneChannel(channel)
-    && channel.roomRouting.defaultRecipientId === catId;
-}
 
 function isChannelDispatchRunning(
   payload: AppShellPayload,
@@ -498,44 +490,36 @@ export function useComposerSubmit(options: {
         throw new Error('No chat is available for sending messages.');
       }
 
-      const soloDispatchTarget =
-        !wasDraftingNewChat
-        && !isCatScopedLaneRoute
-        && selectedChannel?.id === channelId
-        && selectedChannel.composerMode === 'solo'
-          ? {
-              pendingProvider: soloChannelModel.provider,
-              pendingModel: soloChannelModel.model,
-              pendingInstance: soloChannelModel.instance,
-              pendingModelSelection: soloChannelModel.modelSelection,
-            }
-          : null;
+      const soloDispatchTarget = buildSoloDispatchTarget({
+        wasDraftingNewChat,
+        isCatScopedLaneRoute,
+        channelId,
+        selectedChannel,
+        soloChannelModel,
+      });
 
-      let messageBody = body;
-      const filesToUpload = isCatScopedLaneRoute && !hydratedDirectLane
-        ? draftFiles
-        : hydratedDirectLane
-          ? channelFiles
-          : wasDraftingNewChat
-            ? draftFiles
-            : channelFiles;
-      if (filesToUpload.length > 0) {
-        const selectedForFiles =
-          payload.chat.selectedChannel?.id === channelId
-            ? payload.chat.selectedChannel
-            : null;
-        if (!selectedForFiles?.repoPath && !selectedForFiles?.chatCwd) {
-          payload = await updateSelectedChannel(channelId, ackController.signal);
-          rollbackPayload = payload;
-          setState({ status: 'ready', payload });
-        }
-        const attachments = await uploadChannelAttachments(
-          channelId,
-          filesToUpload,
-          ackController.signal,
-        );
-        messageBody = buildAttachedFilesMessageBody(body, attachments);
+      const filesToUpload = resolveComposerFilesToUpload({
+        isCatScopedLaneRoute,
+        hydratedDirectLane,
+        wasDraftingNewChat,
+        draftFiles,
+        channelFiles,
+      });
+      const preparedMessage = await prepareComposerMessageBody({
+        payload,
+        channelId,
+        body,
+        filesToUpload,
+        updateSelectedChannel,
+        uploadChannelAttachments,
+        signal: ackController.signal,
+      });
+      if (preparedMessage.payload !== payload) {
+        payload = preparedMessage.payload;
+        rollbackPayload = payload;
+        setState({ status: 'ready', payload });
       }
+      const messageBody = preparedMessage.messageBody;
 
       if (soloDispatchTarget) {
         payload = applyPendingExecutionTargetPreview(payload, channelId, soloDispatchTarget);
