@@ -8,7 +8,7 @@ import { readProductTranscriptAutoScrollSource } from './helpers/readProductTran
 
 const PRODUCT_SURFACES = ['chat', 'work', 'code'];
 
-test('resolveComposerWorkspacePath hides runtime session folders but keeps explicit repo paths', () => {
+test('resolveComposerWorkspacePath keeps assigned chat folders visible in the composer chip', () => {
   assert.equal(
     resolveComposerWorkspacePath(
       'C:\\Users\\kenne\\Source\\cats',
@@ -21,7 +21,7 @@ test('resolveComposerWorkspacePath hides runtime session folders but keeps expli
       null,
       'C:\\Users\\kenne\\.cats\\runtime\\sessions\\abc123',
     ),
-    null,
+    'C:\\Users\\kenne\\.cats\\runtime\\sessions\\abc123',
   );
   assert.equal(
     resolveComposerWorkspacePath(
@@ -54,7 +54,7 @@ test('isScrollNearBottom treats near-bottom positions as auto-follow eligible', 
 });
 
 for (const product of PRODUCT_SURFACES) {
-  test(`${product} ChatView uses transcript auto-follow and hides runtime-only workspace chips`, async () => {
+  test(`${product} ChatView uses transcript auto-follow and keeps assigned workspace chips visible`, async () => {
     const source = await readProductChatViewSource(product);
 
     assert.match(source, /useTranscriptAutoScroll/u);

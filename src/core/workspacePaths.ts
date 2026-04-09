@@ -26,7 +26,7 @@ export function resolveComposerWorkspacePath(
   }
 
   const normalizedChatCwd = normalizeWorkspacePath(chatCwd);
-  if (!normalizedChatCwd || isRuntimeSessionWorkspacePath(normalizedChatCwd)) {
+  if (!normalizedChatCwd) {
     return null;
   }
 
