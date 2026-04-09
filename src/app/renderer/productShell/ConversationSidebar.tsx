@@ -12,15 +12,13 @@ import type {
   RoomRoutingMode,
 } from '../../../shared/roomRouting.js';
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
-import { resolvePlatformSurfaceFromPath } from '../../../core/platformSurface.js';
 import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
 import { PlatformSurfaceSwitcher } from '../../../design/components/PlatformSurfaceSwitcher.js';
 import { executeEnvironmentRecovery } from '../../../shared/environmentRecoveryAction.js';
 import {
   resolveRuntimeDotClassName,
-  resolveRuntimePresentationStatus,
-  resolveRuntimeTooltip,
 } from '../../../shared/runtimeStatusPresentation.js';
+import { buildConversationSidebarViewModel } from './conversationSidebarViewModel.js';
 import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
 import { useSidebarInlineRename } from './useSidebarInlineRename.js';
 
@@ -69,7 +67,7 @@ export interface ConversationSidebarPayload<
   };
 }
 
-interface ConversationSidebarLegacyRuntimeFields {
+export interface ConversationSidebarLegacyRuntimeFields {
   runtimeBaseUrl?: string | null;
   runtimeReachable?: boolean;
 }
@@ -655,29 +653,22 @@ export function ConversationSidebar<
   onDirectChatCat,
 }: ConversationSidebarProps<TCat, TChannel, TPayload, TDot>) {
   const currentPath = globalThis.location?.pathname ?? '/';
-  const activeSurface = shellSurface ?? resolvePlatformSurfaceFromPath(currentPath);
-  const visibleCats = payload.chat.cats.filter((cat) => helpers.isVisibleCat(cat));
-  const showMyCats = visibleCats.length > 0;
-  const resolvedRuntime = payload.runtime ?? {
-    baseUrl: (payload as ConversationSidebarLegacyRuntimeFields).runtimeBaseUrl ?? '',
-    reachable: (payload as ConversationSidebarLegacyRuntimeFields).runtimeReachable,
-    status: null,
-  };
-  const telegramBoundCatIds = new Set(
-    (payload.chat.botBindings ?? [])
-      .filter((binding) => binding.platform === 'telegram' && binding.status === 'active')
-      .map((binding) => binding.catId)
-      .filter((catId): catId is string => Boolean(catId)),
-  );
-
-  const recentsChannels = payload.chat.channels.filter(
-    (channel) => !helpers.isDirectLaneSummary(channel),
-  );
-  const resolvedRecentEntries = recentEntries
-    ?? recentsChannels.map((channel) => ({ kind: 'channel', channel } as const));
-
-  const runtimeFooterStatus = resolveRuntimePresentationStatus(resolvedRuntime);
-  const runtimeFooterLabel = resolveRuntimeTooltip(runtimeFooterStatus);
+  const {
+    activeSurface,
+    showMyCats,
+    visibleCats,
+    resolvedRuntime,
+    telegramBoundCatIds,
+    resolvedRecentEntries,
+    runtimeFooterStatus,
+    runtimeFooterLabel,
+  } = buildConversationSidebarViewModel({
+    payload,
+    helpers,
+    recentEntries,
+    shellSurface,
+    currentPath,
+  });
 
   function handleAccountMenuOpenChange(nextOpen: boolean): void {
     if (nextOpen !== accountMenuOpen) {
