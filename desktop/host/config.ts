@@ -6,6 +6,7 @@ import {
   resolveDesktopUpdateConfig,
   type DesktopUpdateConfig,
 } from './update.js';
+import { parseDesktopBoolean } from './env.js';
 import { normalizeDesktopHost } from './security.js';
 import {
   resolvePlatformStatePath,
@@ -71,6 +72,7 @@ const DEFAULT_GRACEFUL_SHUTDOWN_MS = 3000;
 const DEFAULT_DESKTOP_TRAY_ENABLED = true;
 const DEFAULT_KEEP_SERVICES_RUNNING = true;
 const DEFAULT_CLOSE_BEHAVIOR = 'minimize_to_tray';
+const DEFAULT_FORCE_QUIT_ON_CLOSE = false;
 export const DESKTOP_USER_DATA_DIR_NAME = 'Cats';
 
 function isWindowsAbsolutePath(value: string | undefined): boolean {
@@ -225,10 +227,14 @@ export function resolveDesktopHostConfig(
     env.CATS_DESKTOP_DIR?.trim()
       || joinDesktopPath(catsHomeDir, 'desktop'),
   );
+  const forceQuitOnClose = parseDesktopBoolean(
+    env.CATS_DESKTOP_FORCE_QUIT_ON_CLOSE,
+    DEFAULT_FORCE_QUIT_ON_CLOSE,
+  );
   const background: DesktopHostBackgroundConfig = {
-    trayEnabled: DEFAULT_DESKTOP_TRAY_ENABLED,
-    keepServicesRunning: DEFAULT_KEEP_SERVICES_RUNNING,
-    closeBehavior: DEFAULT_CLOSE_BEHAVIOR,
+    trayEnabled: forceQuitOnClose ? false : DEFAULT_DESKTOP_TRAY_ENABLED,
+    keepServicesRunning: forceQuitOnClose ? false : DEFAULT_KEEP_SERVICES_RUNNING,
+    closeBehavior: forceQuitOnClose ? 'quit' : DEFAULT_CLOSE_BEHAVIOR,
   };
   const update = resolveDesktopUpdateConfig(env);
 

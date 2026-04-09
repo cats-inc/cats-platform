@@ -276,6 +276,7 @@ Desktop-host specific overrides:
 | `CATS_DESKTOP_APP_PORT` | No | Override host-managed `cats` port |
 | `CATS_DESKTOP_RUNTIME_PORT` | No | Override host-managed `cats-runtime` port |
 | `CATS_DESKTOP_PACKAGING_OUTPUT_ROOT` | No | Override staged packaging output root |
+| `CATS_DESKTOP_FORCE_QUIT_ON_CLOSE` | No | Escape hatch that forces quit-on-close and disables tray/background hiding |
 | `CATS_DESKTOP_UPDATE_CHANNEL` | No | `stable`, `beta`, or `alpha` |
 | `CATS_DESKTOP_UPDATE_MANIFEST_URL` | No | Optional HTTPS update-manifest URL for manual checks |
 | `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS` | No | Optional comma-separated host allow-list for update download URLs beyond the manifest host |

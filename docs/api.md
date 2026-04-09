@@ -875,12 +875,14 @@ includes:
     handoff, and chat entry
 - `background`:
   - `trayEnabled`
-    - effective runtime state after applying desktop startup preferences
+    - effective runtime state after applying desktop startup preferences and
+      optional deployment overrides
   - `keepServicesRunning`
   - `mode`
   - `closeBehavior`
     - `minimize_to_tray` when the system tray preference is enabled
     - `quit` when the system tray preference is disabled
+    - `quit` can also be forced globally with `CATS_DESKTOP_FORCE_QUIT_ON_CLOSE=true`
   - `windowVisible`
 - `updates`:
   - `channel`

@@ -606,7 +606,9 @@ default Cats Desktop keeps tray mode enabled, so closing the window hides the
 app and keeps `cats-runtime` + `cats` alive in the background. You can change
 this in `Settings -> Desktop Startup` by turning off the system tray option; in
 that mode closing the window quits the app. The tray menu and recovery surface
-still expose an explicit `Quit Cats` action when tray mode is enabled.
+still expose an explicit `Quit Cats` action when tray mode is enabled. For CI
+or managed deployments that must always quit on close, set
+`CATS_DESKTOP_FORCE_QUIT_ON_CLOSE=true`.
 
 ---
 

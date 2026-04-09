@@ -159,6 +159,20 @@ test('desktop host config keeps Electron userData separate from cats home', () =
   assert.equal(config.paths.hostLogsDir, 'C:\\Users\\test\\.cats\\desktop\\logs');
 });
 
+test('desktop host config supports force quit-on-close deployment override', () => {
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_FORCE_QUIT_ON_CLOSE: 'true',
+    },
+    userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
+  });
+
+  assert.equal(config.background.trayEnabled, false);
+  assert.equal(config.background.keepServicesRunning, false);
+  assert.equal(config.background.closeBehavior, 'quit');
+});
+
 test('desktop host config resolves bundled sidecar paths in packaged mode', () => {
   const config = resolveDesktopHostConfig({
     env: {},

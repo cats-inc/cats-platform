@@ -605,12 +605,17 @@ function syncBackgroundPreferencesState(): void {
   if (!backgroundState) {
     return;
   }
+  const shouldRevealWindow = !isSystemTrayEnabled() && backgroundState.mode === 'background';
+  if (shouldRevealWindow) {
+    mainWindow?.show();
+    mainWindow?.focus();
+  }
   backgroundState = applyEffectiveBackgroundPreferences({
     ...backgroundState,
-    ...(!isSystemTrayEnabled() && backgroundState.mode === 'background'
+    ...(shouldRevealWindow
       ? {
           mode: 'foreground',
-          windowVisible: mainWindow?.isVisible() ?? true,
+          windowVisible: mainWindow?.isVisible() ?? backgroundState.windowVisible,
           lastHiddenAt: null,
         }
       : {}),
