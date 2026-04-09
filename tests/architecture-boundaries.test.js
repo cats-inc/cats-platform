@@ -1836,6 +1836,23 @@ test('conversation sidebar consumes a dedicated view-model helper instead of def
   assert.match(viewModelSource, /export function buildConversationSidebarViewModel/u);
 });
 
+test('conversation sidebar delegates recents rendering to a dedicated section module', async () => {
+  const sidebarSource = await readFile(
+    new URL('../src/app/renderer/productShell/ConversationSidebar.tsx', import.meta.url),
+    'utf8',
+  );
+  const recentsSource = await readFile(
+    new URL('../src/app/renderer/productShell/ConversationSidebarRecents.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(sidebarSource, /ConversationSidebarRecents\.js/u);
+  assert.doesNotMatch(sidebarSource, /function ChannelItem</u);
+  assert.doesNotMatch(sidebarSource, /function GroupHeaderItem\(/u);
+  assert.match(recentsSource, /function ChannelItem</u);
+  assert.match(recentsSource, /function GroupHeaderItem\(/u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api/index.ts', import.meta.url),
