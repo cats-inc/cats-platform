@@ -45,6 +45,34 @@ export interface WorkspaceModelSelectorValue {
   modelSelection: ProviderModelSelection | null;
 }
 
+export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceModelSelectorValue> {
+  state: LoadStateLike;
+  setState: Dispatch<SetStateAction<LoadStateLike>>;
+  navigate: NavigateFunction;
+  chatPrefix: string;
+  currentPathname: string;
+  composerDraft: string;
+  setComposerDraft: Dispatch<SetStateAction<string>>;
+  showingNewChatDraft: boolean;
+  showingMyCatDirectLane: boolean;
+  draftDefaultRecipientCatId: string | null;
+  draftCatIds: string[];
+  draftCwd: string | null;
+  draftFiles: File[];
+  channelFiles: File[];
+  setDraftCwd: Dispatch<SetStateAction<string | null>>;
+  setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+  setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
+  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
+  setDraftFiles: Dispatch<SetStateAction<File[]>>;
+  setChannelFiles: Dispatch<SetStateAction<File[]>>;
+  draftModel: ModelValue;
+  soloChannelModel: ModelValue;
+  selectedChannel: SelectedChannelView | null;
+  setBusy: Dispatch<SetStateAction<string>>;
+  setFeedback: Dispatch<SetStateAction<string>>;
+}
+
 function isDirectLaneSelectedForCat(
   channel: SelectedChannelView | null,
   catId: string | null,
@@ -58,33 +86,7 @@ function isDirectLaneSelectedForCat(
 }
 
 export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSelectorValue>(
-  options: {
-    state: LoadStateLike;
-    setState: Dispatch<SetStateAction<LoadStateLike>>;
-    navigate: NavigateFunction;
-    chatPrefix: string;
-    currentPathname: string;
-    composerDraft: string;
-    setComposerDraft: Dispatch<SetStateAction<string>>;
-    showingNewChatDraft: boolean;
-    showingMyCatDirectLane: boolean;
-    draftDefaultRecipientCatId: string | null;
-    draftCatIds: string[];
-    draftCwd: string | null;
-    draftFiles: File[];
-    channelFiles: File[];
-    setDraftCwd: Dispatch<SetStateAction<string | null>>;
-    setDraftCatIds: Dispatch<SetStateAction<string[]>>;
-    setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-    setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
-    setDraftFiles: Dispatch<SetStateAction<File[]>>;
-    setChannelFiles: Dispatch<SetStateAction<File[]>>;
-    draftModel: ModelValue;
-    soloChannelModel: ModelValue;
-    selectedChannel: SelectedChannelView | null;
-    setBusy: Dispatch<SetStateAction<string>>;
-    setFeedback: Dispatch<SetStateAction<string>>;
-  },
+  options: WorkspaceComposerSubmitOptions<ModelValue>,
 ) {
   const {
     state,
@@ -357,5 +359,18 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     onComposerKeyDown,
     onSendMessage,
     submitComposerMessage,
+  };
+}
+
+export function createUseComposerSubmit<ModelValue extends WorkspaceModelSelectorValue>(
+  chatPrefix: string,
+) {
+  return function useComposerSubmit(
+    options: Omit<WorkspaceComposerSubmitOptions<ModelValue>, 'chatPrefix'>,
+  ) {
+    return useWorkspaceComposerSubmit<ModelValue>({
+      ...options,
+      chatPrefix,
+    });
   };
 }

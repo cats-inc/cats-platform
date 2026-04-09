@@ -107,3 +107,18 @@ export function useWorkspaceAppDraftUiActions<CatFormState>(
     changeDraftDefaultRecipient,
   };
 }
+
+export function createUseAppDraftUiActions<CatFormState>(
+  chatPrefix: string,
+  emptyCatForm: () => CatFormState,
+) {
+  return function useAppDraftUiActions(
+    options: Omit<WorkspaceAppDraftUiActionsOptions<CatFormState>, 'chatPrefix' | 'emptyCatForm'>,
+  ) {
+    return useWorkspaceAppDraftUiActions({
+      ...options,
+      chatPrefix,
+      emptyCatForm,
+    });
+  };
+}

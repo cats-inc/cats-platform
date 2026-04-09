@@ -27,7 +27,7 @@ type LoadStateLike =
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
 
-export function useWorkspaceAppShellRouting(options: {
+export interface WorkspaceAppShellRoutingOptions {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
@@ -42,7 +42,9 @@ export function useWorkspaceAppShellRouting(options: {
   showingMyCatDirectLane: boolean;
   routeDirectLaneSummary: { id: string } | null;
   readySelectedChannel: SelectedChannelView | null;
-}) {
+}
+
+export function useWorkspaceAppShellRouting(options: WorkspaceAppShellRoutingOptions) {
   const {
     state,
     setState,
@@ -207,4 +209,15 @@ export function useWorkspaceAppShellRouting(options: {
     showingMyCatDirectLane,
     state.status,
   ]);
+}
+
+export function createUseAppShellRouting(chatPrefix: string) {
+  return function useAppShellRouting(
+    options: Omit<WorkspaceAppShellRoutingOptions, 'chatPrefix'>,
+  ) {
+    return useWorkspaceAppShellRouting({
+      ...options,
+      chatPrefix,
+    });
+  };
 }
