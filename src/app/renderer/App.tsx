@@ -26,6 +26,8 @@ type PlatformLoadState =
   | { status: 'ready'; envelope: PlatformHostEnvelope }
   | { status: 'error'; message: string };
 
+const PLATFORM_ENVELOPE_BACKGROUND_REFRESH_MS = 5_000;
+
 function resolveProductEntryPath(surface: string): string {
   const route = PLATFORM_SURFACE_ROUTES[surface as keyof typeof PLATFORM_SURFACE_ROUTES];
   return route ? route.routePrefix : '/';
@@ -68,6 +70,20 @@ export function resolvePlatformDocumentTitle(input: {
   }
 
   return null;
+}
+
+function shouldApplyPlatformEnvelopeRefresh(
+  currentEnvelope: PlatformHostEnvelope,
+  nextEnvelope: PlatformHostEnvelope,
+): boolean {
+  const currentGeneratedAt = Date.parse(currentEnvelope.metadata.generatedAt);
+  const nextGeneratedAt = Date.parse(nextEnvelope.metadata.generatedAt);
+
+  if (Number.isNaN(currentGeneratedAt) || Number.isNaN(nextGeneratedAt)) {
+    return true;
+  }
+
+  return nextGeneratedAt >= currentGeneratedAt;
 }
 
 export default function PlatformApp() {
@@ -115,6 +131,90 @@ export default function PlatformApp() {
       window.removeEventListener(PLATFORM_ENVELOPE_REFRESH_EVENT, handleEnvelopeRefresh);
     };
   }, [refreshEnvelope]);
+
+  const isLobbyRoute =
+    location.pathname === '/lobby' || location.pathname.startsWith('/lobby/');
+
+  useEffect(() => {
+    if (
+      state.status !== 'ready'
+      || !isLobbyRoute
+      || typeof window === 'undefined'
+      || typeof document === 'undefined'
+    ) {
+      return;
+    }
+
+    let refreshController: AbortController | null = null;
+
+    const refreshEnvelopeInBackground = () => {
+      if (document.visibilityState === 'hidden' || refreshController) {
+        return;
+      }
+
+      const controller = new AbortController();
+      refreshController = controller;
+
+      void fetchPlatformEnvelope(controller.signal)
+        .then((envelope) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          startTransition(() => {
+            setState((current) => {
+              if (
+                current.status !== 'ready'
+                || !shouldApplyPlatformEnvelopeRefresh(current.envelope, envelope)
+              ) {
+                return current;
+              }
+
+              return {
+                status: 'ready',
+                envelope: {
+                  ...current.envelope,
+                  runtime: envelope.runtime,
+                  runtimeSetup: envelope.runtimeSetup,
+                  metadata: envelope.metadata,
+                  bootstrapAttemptId: envelope.bootstrapAttemptId,
+                },
+              };
+            });
+          });
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (refreshController === controller) {
+            refreshController = null;
+          }
+        });
+    };
+
+    const intervalId = window.setInterval(
+      refreshEnvelopeInBackground,
+      PLATFORM_ENVELOPE_BACKGROUND_REFRESH_MS,
+    );
+    const handleFocus = () => {
+      refreshEnvelopeInBackground();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshEnvelopeInBackground();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      if (refreshController) {
+        refreshController.abort();
+      }
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isLobbyRoute, state.status]);
 
   const envelope = state.status === 'ready' ? state.envelope : null;
   const setupComplete = Boolean(envelope?.setupCompleteAt);

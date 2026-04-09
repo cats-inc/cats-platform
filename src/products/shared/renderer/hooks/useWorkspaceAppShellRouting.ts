@@ -24,6 +24,8 @@ import { shouldWakeRouteChannelOnEntry, type SelectedChannelView } from '../../c
 import { isDirectLaneChannel } from '../../channelTopology.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
 
+const APP_SHELL_BACKGROUND_REFRESH_MS = 5_000;
+
 type RoutingChannelLike = Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>;
 type RoutingCatLike = { id: string; status: string };
 
@@ -35,13 +37,20 @@ export interface WorkspaceRoutingPayloadLike {
   };
 }
 
+interface BackgroundRefreshPayloadLike extends WorkspaceRoutingPayloadLike {
+  runtime: AppShellPayload['runtime'];
+  runtimeSetup: AppShellPayload['runtimeSetup'];
+  metadata: AppShellPayload['metadata'];
+  bootstrapAttemptId: AppShellPayload['bootstrapAttemptId'];
+}
+
 type LoadStateLike<TPayload extends WorkspaceRoutingPayloadLike> =
   | { status: 'loading' }
   | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
 
 export interface WorkspaceAppShellRoutingOptions<
-  TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+  TPayload extends BackgroundRefreshPayloadLike = AppShellPayload,
 > {
   state: LoadStateLike<TPayload>;
   setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
@@ -69,7 +78,7 @@ export interface WorkspaceAppShellRoutingOptions<
 }
 
 export function useWorkspaceAppShellRouting<
-  TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+  TPayload extends BackgroundRefreshPayloadLike = AppShellPayload,
 >(options: WorkspaceAppShellRoutingOptions<TPayload>) {
   const {
     state,
@@ -86,7 +95,8 @@ export function useWorkspaceAppShellRouting<
     showingMyCatDirectLane,
     routeDirectLaneSummary,
     readySelectedChannel,
-    fetchAppShell = fetchWorkspaceAppShell as unknown as (signal: AbortSignal) => Promise<TPayload>,
+    fetchAppShell =
+      fetchWorkspaceAppShell as unknown as (signal: AbortSignal) => Promise<TPayload>,
     updateSelectedChannel = updateWorkspaceSelectedChannel as unknown as (
       channelId: string,
       signal: AbortSignal,
@@ -94,6 +104,20 @@ export function useWorkspaceAppShellRouting<
     isRouteSelectionBlocked = isComposerBusy,
     resolveMissingDraftDefaultRecipientPath,
   } = options;
+
+  function shouldApplyBackgroundRefresh(
+    currentPayload: TPayload,
+    nextPayload: TPayload,
+  ): boolean {
+    const currentGeneratedAt = Date.parse(currentPayload.metadata.generatedAt);
+    const nextGeneratedAt = Date.parse(nextPayload.metadata.generatedAt);
+
+    if (Number.isNaN(currentGeneratedAt) || Number.isNaN(nextGeneratedAt)) {
+      return true;
+    }
+
+    return nextGeneratedAt >= currentGeneratedAt;
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -115,6 +139,86 @@ export function useWorkspaceAppShellRouting<
 
     return () => controller.abort();
   }, [setState]);
+
+  useEffect(() => {
+    if (
+      state.status !== 'ready'
+      || typeof window === 'undefined'
+      || typeof document === 'undefined'
+    ) {
+      return;
+    }
+
+    let refreshController: AbortController | null = null;
+
+    const refreshRuntimeStatusInBackground = () => {
+      if (document.visibilityState === 'hidden' || refreshController) {
+        return;
+      }
+
+      const controller = new AbortController();
+      refreshController = controller;
+
+      void fetchAppShell(controller.signal)
+        .then((nextPayload) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          startTransition(() => {
+            setState((current) => {
+              if (
+                current.status !== 'ready'
+                || !shouldApplyBackgroundRefresh(current.payload, nextPayload)
+              ) {
+                return current;
+              }
+
+              return {
+                status: 'ready',
+                payload: {
+                  ...current.payload,
+                  runtime: nextPayload.runtime,
+                  runtimeSetup: nextPayload.runtimeSetup,
+                  metadata: nextPayload.metadata,
+                  bootstrapAttemptId: nextPayload.bootstrapAttemptId,
+                },
+              };
+            });
+          });
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (refreshController === controller) {
+            refreshController = null;
+          }
+        });
+    };
+
+    const intervalId = window.setInterval(
+      refreshRuntimeStatusInBackground,
+      APP_SHELL_BACKGROUND_REFRESH_MS,
+    );
+    const handleFocus = () => {
+      refreshRuntimeStatusInBackground();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshRuntimeStatusInBackground();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      if (refreshController) {
+        refreshController.abort();
+      }
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchAppShell, setState, state.status]);
 
   useEffect(() => {
     if (state.status !== 'ready' || !routeChannelId) {
@@ -261,7 +365,7 @@ export function useWorkspaceAppShellRouting<
 
 export function createUseAppShellRouting(chatPrefix: string) {
   return function useAppShellRouting<
-    TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+    TPayload extends BackgroundRefreshPayloadLike = AppShellPayload,
   >(
     options: Omit<WorkspaceAppShellRoutingOptions<TPayload>, 'chatPrefix'>,
   ) {
