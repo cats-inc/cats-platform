@@ -475,7 +475,7 @@ test('chat and server internals do not import the app-shell compatibility barrel
   }
 });
 
-test('work and code renderer apps do not import chat product contracts for settings routing', async () => {
+test('workspace renderer apps delegate settings routing through the shared app frame without chat product contracts', async () => {
   const workAppSource = await readFile(
     new URL('../src/products/work/renderer/App.tsx', import.meta.url),
     'utf8',
@@ -484,9 +484,15 @@ test('work and code renderer apps do not import chat product contracts for setti
     new URL('../src/products/code/renderer/App.tsx', import.meta.url),
     'utf8',
   );
+  const sharedWorkspaceAppSource = await readFile(
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(sharedWorkspaceAppSource, /PlatformSettingsRoutes/u);
 
   for (const source of [workAppSource, codeAppSource]) {
-    assert.match(source, /PlatformSettingsRoutes/u);
+    assert.match(source, /createWorkspaceProductApp/u);
     assert.doesNotMatch(source, /products\/chat\/api\/contracts\.js/u);
     assert.doesNotMatch(source, /\bChatSettingsPayload\b/u);
     assert.doesNotMatch(source, /as unknown as/u);
