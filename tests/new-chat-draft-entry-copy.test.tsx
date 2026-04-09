@@ -238,6 +238,24 @@ test('group route keeps the composer recipient chip focused on the current recip
   assert.doesNotMatch(markup, /composerStackAvatar/u);
 });
 
+test('solo draft without a recipient keeps the provider-model control as a model chip', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedModel: {
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-sonnet',
+          modelSelection: null,
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="modelSelectorChip"/u);
+  assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
+});
+
 test('direct-lane draft keeps private chat copy', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft

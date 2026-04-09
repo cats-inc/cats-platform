@@ -26,7 +26,6 @@ import {
   ComposerRecipientChip,
   buildNamedRecipient,
   buildRecipientFromCat,
-  buildImplicitRecipient,
 } from './ComposerRecipientChip.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import {
@@ -281,13 +280,8 @@ export function NewChatDraft({
         }),
       ];
     }
-    if (activePanelModel && chipLabel) {
-      return [buildImplicitRecipient(activePanelModel)];
-    }
     return [];
   }, [
-    activePanelModel,
-    chipLabel,
     effectiveDefaultRecipientCat,
     effectiveDefaultRecipientTemporaryParticipant,
     payload.chat.bossCatId,
@@ -528,6 +522,13 @@ export function NewChatDraft({
                     : 'execution',
                 )}
               />
+            ) : activePanelModel && chipLabel ? (
+              <div style={{ marginRight: 8 }}>
+                <ModelSelectorChip
+                  label={chipLabel}
+                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
+                />
+              </div>
             ) : null}
             {showCancelPendingSend ? (
               <button
