@@ -4,7 +4,7 @@ export function buildDesktopBootstrapPage(): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cats Desktop Host</title>
+  <title>Cats</title>
   <style>
     :root {
       color-scheme: light;
