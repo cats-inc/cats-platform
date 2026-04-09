@@ -488,8 +488,13 @@ test('workspace renderer apps delegate settings routing through the shared app f
     new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
+  const sharedReadyShellSource = await readFile(
+    new URL('../src/products/shared/renderer/ProductReadyShell.tsx', import.meta.url),
+    'utf8',
+  );
 
-  assert.match(sharedWorkspaceAppSource, /PlatformSettingsRoutes/u);
+  assert.match(sharedWorkspaceAppSource, /ProductReadyShell/u);
+  assert.match(sharedReadyShellSource, /PlatformSettingsRoutes/u);
 
   for (const source of [workAppSource, codeAppSource]) {
     assert.match(source, /createWorkspaceProductApp/u);
@@ -983,7 +988,7 @@ test('renderer app consumes a dedicated routes module instead of defining the ro
   );
 
   assert.match(appSource, /AppRoutes/u);
-  assert.match(appSource, /PlatformSettingsRoutes/u);
+  assert.match(appSource, /ProductReadyShell/u);
   assert.doesNotMatch(appSource, /<Routes>/u);
   assert.doesNotMatch(appSource, /path="chats\/:channelId"/u);
   assert.match(routesSource, /export function AppRoutes/u);

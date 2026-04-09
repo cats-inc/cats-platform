@@ -45,7 +45,6 @@ import {
   type SelectedChannelView,
   type Surface,
 } from "./workspaceChatUtils.js";
-import { PlatformSettingsRoutes } from "../../../app/renderer/settings/PlatformSettingsRoutes.js";
 import {
   deriveAppRouteState,
   deriveAppViewState,
@@ -53,8 +52,8 @@ import {
 } from "./workspaceAppViewState.js";
 import {
   ProductAppStateBoundary,
-  ProductRendererShell,
 } from "./ProductRendererFrame.js";
+import { ProductReadyShell } from "./ProductReadyShell.js";
 import { useAppChrome } from "./hooks/useAppChrome.js";
 import { useFolderBrowser } from "./hooks/useFolderBrowser.js";
 import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
@@ -574,7 +573,8 @@ export function createWorkspaceProductApp({
           }
 
           return (
-            <ProductRendererShell
+            <ProductReadyShell
+              payload={payload}
               sidebarOpen={sidebarOpen}
               sidebar={renderSidebar({
                 payload,
@@ -602,21 +602,10 @@ export function createWorkspaceProductApp({
                 onDirectChatCat,
                 navigate,
               })}
-              mainContent={settingsMode ? (
-                <PlatformSettingsRoutes
-                  payload={payload}
-                  onPayloadUpdate={(nextPayload) => {
-                    startTransition(() =>
-                      setState({ status: "ready", payload: nextPayload }),
-                    );
-                  }}
-                  feedback={feedback}
-                  busy={busy}
-                  onFeedback={setFeedback}
-                  onBusy={setBusy}
-                  onResetSetup={onResetSetup}
-                />
-              ) : (
+              settingsMode={settingsMode}
+              feedback={feedback}
+              busy={busy}
+              appContent={(
                 <AppRoutesComponent
                   payload={payload}
                   selectedChannel={selectedChannel}
@@ -742,6 +731,14 @@ export function createWorkspaceProductApp({
                 />
               )}
               confirmDialog={appDialog}
+              onPayloadUpdate={(nextPayload) => {
+                startTransition(() =>
+                  setState({ status: "ready", payload: nextPayload }),
+                );
+              }}
+              onFeedback={setFeedback}
+              onBusy={setBusy}
+              onResetSetup={onResetSetup}
               onConfirmClose={appHandleClose}
             />
           );

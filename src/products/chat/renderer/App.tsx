@@ -40,7 +40,6 @@ import {
   type CatFormState,
 } from './chatUtils';
 import { AppRoutes } from './AppRoutes';
-import { PlatformSettingsRoutes } from '../../../app/renderer/settings/PlatformSettingsRoutes.js';
 import { deriveAppRouteState, deriveAppViewState, type AppLoadState } from './appViewState';
 import {
   resolveDraftParticipantSelection,
@@ -64,8 +63,8 @@ import {
 } from '../../shared/renderer/hooks/useWorkspaceModelSelectionState.js';
 import {
   ProductAppStateBoundary,
-  ProductRendererShell,
 } from '../../shared/renderer/ProductRendererFrame.js';
+import { ProductReadyShell } from '../../shared/renderer/ProductReadyShell.js';
 import {
   activateChatChannel,
   fetchAppShell,
@@ -762,7 +761,8 @@ export default function App() {
         }
 
         return (
-          <ProductRendererShell
+          <ProductReadyShell
+            payload={payload}
             sidebarOpen={sidebarOpen}
             sidebar={(
               <Sidebar
@@ -796,17 +796,10 @@ export default function App() {
                 onDirectChatCat={onDirectChatCat}
               />
             )}
-            mainContent={settingsMode ? (
-              <PlatformSettingsRoutes
-                payload={payload}
-                onPayloadUpdate={updatePayload}
-                feedback={feedback}
-                busy={busy}
-                onFeedback={setFeedback}
-                onBusy={setBusy}
-                onResetSetup={onResetSetup}
-              />
-            ) : (
+            settingsMode={settingsMode}
+            feedback={feedback}
+            busy={busy}
+            appContent={(
               <AppRoutes
                 payload={payload}
                 selectedChannel={selectedChannel}
@@ -950,6 +943,10 @@ export default function App() {
               />
             )}
             confirmDialog={appDialog}
+            onPayloadUpdate={updatePayload}
+            onFeedback={setFeedback}
+            onBusy={setBusy}
+            onResetSetup={onResetSetup}
             onConfirmClose={appHandleClose}
           />
         );
