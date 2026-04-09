@@ -152,44 +152,12 @@ export function renameParallelChatGroup(
 export function ungroupParallelChatGroup(
   state: ChatState,
   groupId: string,
-  now: Date = new Date(),
+  _now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
   const groupIndex = nextState.parallelChatGroups.findIndex((group) => group.id === groupId);
   if (groupIndex === -1) {
     throw new Error(`Parallel chat group not found: ${groupId}`);
-  }
-
-  const group = nextState.parallelChatGroups[groupIndex]!;
-  const updatedAt = isoAt(now);
-  const normalizedGroupTitle = group.title.trim();
-
-  for (const memberChannelId of group.memberChannelIds) {
-    const channel = nextState.channels.find((candidate) => candidate.id === memberChannelId);
-    if (!channel) {
-      continue;
-    }
-
-    if (channel.title.trim() && channel.title.trim() !== normalizedGroupTitle) {
-      continue;
-    }
-
-    channel.title = buildParallelChatMemberLabel({
-      provider: channel.pendingProvider ?? nextState.globalOrchestrator.executionTarget.provider,
-      instance:
-        channel.pendingInstance
-        ?? nextState.globalOrchestrator.executionTarget.instance
-        ?? null,
-      model:
-        channel.pendingModel
-        ?? nextState.globalOrchestrator.executionTarget.model
-        ?? null,
-      modelSelection:
-        structuredClone(channel.pendingModelSelection)
-        ?? structuredClone(nextState.globalOrchestrator.executionModelSelection)
-        ?? null,
-    });
-    channel.updatedAt = updatedAt;
   }
 
   nextState.parallelChatGroups.splice(groupIndex, 1);

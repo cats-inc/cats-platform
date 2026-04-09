@@ -10,6 +10,10 @@ import { truncatePath } from '../../chatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
 import { ComposerCatStack } from '../ComposerCatStack.js';
 import {
+  ComposerParticipantStack,
+  type ComposerStackParticipant,
+} from '../ComposerParticipantStack.js';
+import {
   ComposerRecipientChip,
   type RecipientChipTarget,
 } from '../ComposerRecipientChip.js';
@@ -34,6 +38,8 @@ export interface ChatComposerAreaProps {
   composerWorkspacePath: string | null;
   directLaneExcludedMentionNames: string[];
   composerRecipients: RecipientChipTarget[];
+  defaultRecipientParticipantId: string | null;
+  composerStackParticipants: ComposerStackParticipant[];
   isDirectLane: boolean;
   isSoloComposer: boolean;
   compareSendScope: 'all_members' | 'active_only';
@@ -70,6 +76,8 @@ export function ChatComposerArea({
   composerWorkspacePath,
   directLaneExcludedMentionNames,
   composerRecipients,
+  defaultRecipientParticipantId,
+  composerStackParticipants,
   isDirectLane,
   isSoloComposer,
   compareSendScope,
@@ -246,6 +254,12 @@ export function ChatComposerArea({
             cats={[directLaneCat]}
             bossCatId={payload.chat.bossCatId}
             defaultRecipientCatId={directLaneCat.id}
+            onClick={composerBusy ? undefined : () => onOpenSection('execution')}
+          />
+        ) : !isSoloComposer && composerStackParticipants.length > 0 ? (
+          <ComposerParticipantStack
+            participants={composerStackParticipants}
+            defaultParticipantId={defaultRecipientParticipantId}
             onClick={composerBusy ? undefined : () => onOpenSection('execution')}
           />
         ) : implicitRecipient && implicitRecipientLabel ? (

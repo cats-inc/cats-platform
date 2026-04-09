@@ -5644,8 +5644,7 @@ test('ungrouping a parallel chat materializes member chats as standalone recents
       .filter((channel) => memberChannelIds.includes(channel.id))
       .map((channel) => channel.title);
     assert.equal(memberTitles.length, 2);
-    assert.equal(new Set(memberTitles).size, 2);
-    assert.ok(memberTitles.every((title) => title !== 'Parallel Race'));
+    assert.deepEqual(memberTitles, ['Parallel Race', 'Parallel Race']);
   });
 });
 

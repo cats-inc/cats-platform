@@ -297,6 +297,25 @@ export function ChatView({
     () => (isDirectLane && directLaneCat?.name ? [directLaneCat.name] : []),
     [directLaneCat?.name, isDirectLane],
   );
+  const composerStackParticipants = useMemo(
+    () => activeRoomParticipants.map((participant) => {
+      const catRecord = resolveParticipantCatRecord(participant);
+      return {
+        participantId: participant.participantId,
+        label: resolveParticipantDisplayName(participant, catRecord),
+        avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
+        avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
+        isBoss: catRecord?.id === payload.chat.bossCatId,
+        useNeutralAvatar: catRecord == null,
+      };
+    }),
+    [
+      activeRoomParticipants,
+      payload.chat.bossCatId,
+      resolveParticipantCatRecord,
+      resolveParticipantDisplayName,
+    ],
+  );
   const operatorView = useMemo(
     () => buildChatOperatorView(operatorSnapshot, selectedChannel.id),
     [operatorSnapshot, selectedChannel.id],
@@ -686,6 +705,8 @@ export function ChatView({
               composerWorkspacePath={composerWorkspacePath}
               directLaneExcludedMentionNames={directLaneExcludedMentionNames}
               composerRecipients={composerRecipients}
+              defaultRecipientParticipantId={defaultRecipientParticipant?.participantId ?? null}
+              composerStackParticipants={composerStackParticipants}
               isDirectLane={isDirectLane}
               isSoloComposer={isSoloComposer}
               compareSendScope={compareSendScope}
