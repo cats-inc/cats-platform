@@ -11,7 +11,7 @@ for (const product of PRODUCT_SURFACES) {
 
     assert.match(source, /className="rosterAvatars rosterAvatarsExpanded"/u);
     assert.match(source, /const activeTopBarCatIds = useMemo/u);
-    assert.match(source, /liveIndicator\?\.activeCatIds/u);
+    assert.match(source, /visibleLiveIndicator\?\.activeCatIds/u);
     assert.match(source, /new Set\(activeTopBarCatIds\)/u);
     if (product === 'chat') {
       assert.match(source, /const activeTopBarParticipantIds = useMemo/u);

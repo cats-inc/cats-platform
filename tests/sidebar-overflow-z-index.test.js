@@ -1,15 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
+import { readStylesheetSync } from './helpers/readStylesheet.js';
 
 test('sidebar overflow menus stay above the footer chrome', async () => {
-  const chatShellStyles = await readFile(
+  const chatShellStyles = readStylesheetSync(
     new URL('../src/products/chat/renderer/styles/chat-shell.css', import.meta.url),
-    'utf8',
   );
-  const chatThreadStyles = await readFile(
+  const chatThreadStyles = readStylesheetSync(
     new URL('../src/products/chat/renderer/styles/chat-thread.css', import.meta.url),
-    'utf8',
   );
   const extrasStyles = await readFile(
     new URL('../src/products/chat/renderer/styles/extras.css', import.meta.url),

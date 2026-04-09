@@ -1,15 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
+import { readStylesheetSync } from './helpers/readStylesheet.js';
 
 test('chat footer sentinel does not add a stray pixel at scroll end', async () => {
-  const chatThreadStyles = await readFile(
+  const chatThreadStyles = readStylesheetSync(
     new URL('../src/products/chat/renderer/styles/chat-thread.css', import.meta.url),
-    'utf8',
   );
-  const sharedThreadStyles = await readFile(
+  const sharedThreadStyles = readStylesheetSync(
     new URL('../src/products/shared/renderer/styles/chat-thread.css', import.meta.url),
-    'utf8',
   );
   const autoScrollHook = await readFile(
     new URL('../src/products/shared/renderer/hooks/useTranscriptAutoScroll.ts', import.meta.url),
@@ -30,13 +29,11 @@ test('chat footer sentinel does not add a stray pixel at scroll end', async () =
 });
 
 test('parallel composer offset matches the footer stack height', async () => {
-  const chatThreadStyles = await readFile(
+  const chatThreadStyles = readStylesheetSync(
     new URL('../src/products/chat/renderer/styles/chat-thread.css', import.meta.url),
-    'utf8',
   );
-  const chatShellStyles = await readFile(
+  const chatShellStyles = readStylesheetSync(
     new URL('../src/products/chat/renderer/styles/chat-shell.css', import.meta.url),
-    'utf8',
   );
   const sidebarChromeStyles = await readFile(
     new URL('../src/design/components/sidebar-chrome.css', import.meta.url),

@@ -1455,11 +1455,19 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     platformSettingsStylesSource,
     /products\/chat\/renderer\/styles\/settings\.css/u,
   );
-  assert.match(chatShellStylesSource, /\.sidebarCollapsed \.brandCopy/u);
+  assert.match(
+    chatShellStylesSource,
+    /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat-shell-base\.css';/u,
+  );
+  assert.match(chatShellStylesSource, /\.recentGroupCard/u);
   assert.match(chatOperatorStylesSource, /\.channelWorkspace/u);
   assert.doesNotMatch(chatOperatorStylesSource, /\.operatorPanel/u);
   assert.doesNotMatch(chatOperatorStylesSource, /\.operatorActionButton/u);
-  assert.match(chatThreadStylesSource, /\.recentOverflowMenu/u);
+  assert.match(
+    chatThreadStylesSource,
+    /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat-thread-base\.css';/u,
+  );
+  assert.match(chatThreadStylesSource, /\.parallelFooterBar/u);
   assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusButton/u);
   assert.match(
