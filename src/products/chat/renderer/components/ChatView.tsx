@@ -72,6 +72,7 @@ import { buildChatSidePanelSections } from './chat-view/ChatSidePanelSections';
 import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 import { TranscriptMessageActions } from './chat-view/TranscriptMessageActions';
+import { LiveTranscriptIndicator } from './chat-view/LiveTranscriptIndicator';
 
 type TopBarParticipant = {
   key: string;
@@ -950,147 +951,23 @@ export function ChatView({
                       ) : null}
                     </article>
                   ))}
-                  {liveIndicator?.active ? (() => {
-                    const speakerCat = liveIndicator.catId
-                      ? payload.chat.cats.find((c) => c.id === liveIndicator.catId) ?? null
-                      : null;
-                    const liveSpeakerParticipantCatId = liveSpeakerParticipant
-                      ? resolveParticipantCatId(liveSpeakerParticipant)
-                      : null;
-                    const liveSpeakerParticipantCat = liveSpeakerParticipantCatId
-                      ? catsById.get(liveSpeakerParticipantCatId) ?? null
-                      : null;
-                    const speakerLabel = liveSpeakerParticipant?.name
-                      ?? liveSpeakerParticipantCat?.name
-                      ?? speakerCat?.name
-                      ?? liveIndicator.speakerLabel;
-                    const livePreviewText = liveIndicator.previewText ?? '';
-                    const hasContentBlocks = liveIndicator.contentBlocks.length > 0;
-                    const showPreviewText = !hasContentBlocks && livePreviewText.trim().length > 0;
-                    const activeTools = liveIndicator.tools.filter((t) => !t.done);
-                    return (
-                      <article className="transcriptMessageStack transcriptMessageStackAgent typingIndicator">
-                        <div className="transcriptMessage transcriptMessageAgent">
-                          {liveSpeakerParticipant ? (
-                            <div className="transcriptMessageTop">
-                              <div
-                                className={buildParticipantAvatarClassName(
-                                  liveSpeakerParticipant,
-                                  {
-                                    transcript: true,
-                                    catRecord: liveSpeakerParticipantCat,
-                                  },
-                                )}
-                                style={buildParticipantAvatarStyle(
-                                  liveSpeakerParticipant,
-                                  liveSpeakerParticipantCat,
-                                )}
-                              >
-                                {resolveParticipantAvatarUrl(
-                                  liveSpeakerParticipant,
-                                  liveSpeakerParticipantCat,
-                                ) ? null : catInitials(resolveParticipantDisplayName(
-                                  liveSpeakerParticipant,
-                                  liveSpeakerParticipantCat,
-                                ))}
-                              </div>
-                              <strong>{resolveParticipantDisplayName(
-                                liveSpeakerParticipant,
-                                liveSpeakerParticipantCat,
-                              )}</strong>
-                            </div>
-                          ) : speakerCat ? (
-                            <div className="transcriptMessageTop">
-                              <div
-                                className={speakerCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                                style={speakerCat.avatarUrl
-                                  ? { backgroundImage: `url(${speakerCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                  : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
-                              >
-                                {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
-                              </div>
-                              <strong>{speakerCat.name}</strong>
-                            </div>
-                          ) : speakerLabel ? (
-                            <div className="transcriptMessageTop">
-                              <strong>{speakerLabel}</strong>
-                            </div>
-                          ) : null}
-                          {liveIndicator.phase === 'waiting' ? (
-                            <span className="typingDots"><span /><span /><span /></span>
-                          ) : (
-                            <>
-                              {showPreviewText ? (
-                                <MessageBody
-                                  body={liveIndicator.previewText}
-                                  cats={payload.chat.cats}
-                                  channelId={selectedChannel.id}
-                                  disabledMentionNames={directLaneExcludedMentionNames}
-                                />
-                              ) : liveIndicator.progressText ? (
-                                <p className="typingStatusText">{liveIndicator.progressText}</p>
-                              ) : (
-                                <span className="typingDots"><span /><span /><span /></span>
-                              )}
-                              {!showPreviewText && !hasContentBlocks && activeTools.map((tool) => (
-                                <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
-                              ))}
-                              {hasContentBlocks ? (
-                                <div className="typingContentBlocks">
-                                  {liveIndicator.contentBlocks.map((block) => (
-                                    <div
-                                      key={block.id}
-                                      className={[
-                                        'typingContentBlock',
-                                        block.kind === 'text'
-                                          ? 'typingContentBlockText'
-                                          : block.kind === 'tool'
-                                            ? 'typingContentBlockTool'
-                                            : 'typingContentBlockStatus',
-                                        block.status === 'streaming'
-                                          ? 'typingContentBlockStreaming'
-                                          : block.status === 'error'
-                                            ? 'typingContentBlockError'
-                                            : '',
-                                      ].filter(Boolean).join(' ')}
-                                    >
-                                      {block.kind !== 'text' && block.title ? (
-                                        <span className="typingContentBlockTitle">{block.title}</span>
-                                      ) : null}
-                                      {block.text ? (
-                                        <span className="typingContentBlockBody">{block.text}</span>
-                                      ) : null}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : liveIndicator.events.length > 0 ? (
-                                <div className="typingEventTape">
-                                  {liveIndicator.events.map((event, index) => (
-                                    <div
-                                      key={`${event.eventType}:${event.toolId ?? ''}:${index}`}
-                                      className={[
-                                        'typingEventRow',
-                                        event.tone === 'active'
-                                          ? 'typingEventRowActive'
-                                          : event.tone === 'success'
-                                            ? 'typingEventRowSuccess'
-                                            : event.tone === 'error'
-                                              ? 'typingEventRowError'
-                                              : '',
-                                      ].filter(Boolean).join(' ')}
-                                    >
-                                      <span className="typingEventLabel">{event.label}</span>
-                                      <span className="typingEventText">{event.text}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })() : null}
+                  {liveIndicator?.active ? (
+                    <LiveTranscriptIndicator
+                      cats={payload.chat.cats}
+                      bossCatId={payload.chat.bossCatId}
+                      selectedChannelId={selectedChannel.id}
+                      disabledMentionNames={directLaneExcludedMentionNames}
+                      liveIndicator={liveIndicator}
+                      liveSpeakerParticipant={liveSpeakerParticipant}
+                      liveSpeakerParticipantCat={liveSpeakerParticipant
+                        ? catsById.get(resolveParticipantCatId(liveSpeakerParticipant) ?? '') ?? null
+                        : null}
+                      buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+                      buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+                      resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+                      resolveParticipantDisplayName={resolveParticipantDisplayName}
+                    />
+                  ) : null}
                 </div>
               </section>
             ) : (
