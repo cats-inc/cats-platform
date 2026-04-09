@@ -16,6 +16,10 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
     path.join(process.cwd(), 'src/products/shared/renderer/hooks/useComposerRequestLifecycle.ts'),
     'utf8',
   );
+  const sharedRequestControlsSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/hooks/useComposerRequestControls.ts'),
+    'utf8',
+  );
   const parallelDispatchSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/composerParallelDispatch.ts'),
     'utf8',
@@ -32,14 +36,15 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
   assert.match(source, /sendChatMessage\([\s\S]+ackController\.signal\)/u);
   assert.match(source, /submitNewParallelChatDraft\(/u);
   assert.match(source, /submitParallelCompareMessage\(/u);
+  assert.match(source, /useComposerRequestControls\(/u);
   assert.match(parallelDispatchSource, /export async function submitNewParallelChatDraft/u);
   assert.match(parallelDispatchSource, /createParallelChatGroup\(/u);
   assert.match(parallelDispatchSource, /sendParallelChatMessage\(/u);
-  assert.match(source, /const onCancelPendingSend = useCallback/u);
+  assert.match(sharedRequestControlsSource, /export function useComposerRequestControls/u);
+  assert.match(sharedRequestControlsSource, /cancelPendingAckRequest\(\)/u);
   assert.match(sharedLifecycleSource, /request\.controller\.abort\(\);/u);
-  assert.match(source, /const onStopMessage = useCallback\(async/u);
-  assert.match(source, /cancelParallelChatGroup/u);
-  assert.match(source, /cancelChatChannel/u);
+  assert.match(sharedRequestControlsSource, /cancelConcurrentGroup/u);
+  assert.match(sharedRequestControlsSource, /cancelChannel/u);
 });
 
 test('chat composer surfaces cancel-send during ACK and stop during dispatch', async () => {

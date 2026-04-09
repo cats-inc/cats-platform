@@ -21,6 +21,7 @@ import {
   isDirectLaneSelectedForCat,
   prepareWorkspaceSendContext,
 } from '../../../shared/renderer/composerDispatch.js';
+import { useComposerRequestControls } from '../../../shared/renderer/hooks/useComposerRequestControls.js';
 import { useComposerRequestLifecycle } from '../../../shared/renderer/hooks/useComposerRequestLifecycle.js';
 import {
   cancelChatChannel,
@@ -148,6 +149,18 @@ export function useComposerSubmit(options: {
     setState,
     fetchPayload: fetchAppShell,
     isChannelDispatchRunning,
+  });
+  const {
+    onCancelPendingSend,
+    onStopMessage,
+  } = useComposerRequestControls({
+    activeDispatchRequestRef,
+    cancelPendingAckRequest,
+    cancelChannel: cancelChatChannel,
+    cancelConcurrentGroup: cancelParallelChatGroup,
+    setBusy,
+    setFeedback,
+    setState,
   });
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
@@ -424,47 +437,6 @@ export function useComposerSubmit(options: {
     soloChannelModel.provider,
     state,
   ]);
-
-  const onStopMessage = useCallback(async (): Promise<void> => {
-    const activeRequest = activeDispatchRequestRef.current;
-    if (!activeRequest) {
-      return;
-    }
-
-    activeDispatchRequestRef.current = null;
-    setFeedback('');
-    setBusy(
-      activeRequest.kind === 'concurrent'
-        ? 'parallelChat:stop'
-        : `message:stop:${activeRequest.channelId}`,
-    );
-
-    try {
-      const cancellation = activeRequest.kind === 'concurrent'
-        ? await cancelParallelChatGroup(activeRequest.groupId ?? '', {
-            activeChannelId: activeRequest.channelId,
-          })
-        : await cancelChatChannel(activeRequest.channelId);
-      setState({ status: 'ready', payload: cancellation.appShell });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to stop response.');
-    } finally {
-      setBusy('');
-    }
-  }, [
-    setBusy,
-    setFeedback,
-    setState,
-  ]);
-
-  const onCancelPendingSend = useCallback((): void => {
-    const activeRequest = cancelPendingAckRequest();
-    if (!activeRequest) {
-      return;
-    }
-
-    setFeedback('');
-  }, [cancelPendingAckRequest, setFeedback]);
 
   const onSendMessage = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
