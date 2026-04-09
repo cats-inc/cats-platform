@@ -898,14 +898,20 @@ test('renderer app consumes a dedicated chrome hook instead of defining shell me
     new URL('../src/products/chat/renderer/hooks/useAppChrome.ts', import.meta.url),
     'utf8',
   );
+  const sharedHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useAppChrome.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(appSource, /useAppChrome/u);
   assert.doesNotMatch(appSource, /document\.addEventListener\('mousedown'/u);
   assert.doesNotMatch(appSource, /writeSidebarOpenPreference/u);
   assert.doesNotMatch(appSource, /const autoResize = useCallback/u);
-  assert.match(hookSource, /export function useAppChrome/u);
-  assert.match(hookSource, /writeSidebarOpenPreference/u);
-  assert.match(hookSource, /document\.addEventListener\('mousedown'/u);
+  assert.match(hookSource, /export\s*\{\s*useAppChrome/u);
+  assert.match(hookSource, /shared\/renderer\/hooks\/useAppChrome\.js/u);
+  assert.match(sharedHookSource, /export function useAppChrome/u);
+  assert.match(sharedHookSource, /writeSidebarOpenPreference/u);
+  assert.match(sharedHookSource, /document\.addEventListener\('mousedown'/u);
 });
 
 test('renderer app consumes a dedicated routes module instead of defining the route tree inline', async () => {
