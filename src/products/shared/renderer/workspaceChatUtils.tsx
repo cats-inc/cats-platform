@@ -5,6 +5,8 @@ import type {
   ChatChannelSummary,
   ChatMessage,
   CreateChatChannelInput,
+  CreateTemporaryParticipantInput,
+  NewChatEntryKind,
 } from '../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
@@ -210,9 +212,11 @@ export function buildAttachedFilesMessageBody(
 export function buildNewChatChannelInput(options: {
   body: string;
   existingCount: number;
+  entryKind?: NewChatEntryKind;
   repoPath?: string | null;
   defaultRecipientCatId?: string | null;
   participantCatIds?: string[];
+  temporaryParticipants?: CreateTemporaryParticipantInput[];
   draftModel?: {
     provider: string;
     model: string | null;
@@ -223,19 +227,45 @@ export function buildNewChatChannelInput(options: {
   const {
     body,
     existingCount,
+    entryKind,
     repoPath,
     defaultRecipientCatId,
     participantCatIds = [],
+    temporaryParticipants = [],
     draftModel,
   } = options;
   const normalizedLeadCatId = defaultRecipientCatId?.trim() || null;
   const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
+  const resolvedEntryKind = entryKind
+    ?? (normalizedLeadCatId || normalizedParticipantCatIds.length > 0 ? 'group' : 'solo');
+  const directLeadCatId = normalizedLeadCatId ?? normalizedParticipantCatIds[0] ?? null;
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount),
     topic: createDraftChannelTopic(body),
+    entryKind: resolvedEntryKind,
     skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
+    temporaryParticipants: temporaryParticipants.length > 0
+      ? temporaryParticipants.map((participant) => ({
+          participantId: participant.participantId,
+          name: participant.name,
+          provider: participant.provider,
+          instance: participant.instance ?? undefined,
+          model: participant.model ?? undefined,
+          modelSelection: participant.modelSelection ?? null,
+          roleHint: participant.roleHint ?? undefined,
+        }))
+      : undefined,
   };
+
+  if (resolvedEntryKind === 'direct' && directLeadCatId) {
+    return {
+      ...baseInput,
+      roomMode: 'direct_cat_chat',
+      defaultRecipientId: directLeadCatId,
+      participantCatIds: [directLeadCatId, ...normalizedParticipantCatIds.filter((id) => id !== directLeadCatId)],
+    };
+  }
 
   if (normalizedLeadCatId) {
     return {

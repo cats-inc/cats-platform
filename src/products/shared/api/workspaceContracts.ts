@@ -412,9 +412,22 @@ export interface UpdateSelectedChannelInput {
   selectedChannelId: string;
 }
 
+export type NewChatEntryKind = 'solo' | 'group' | 'direct';
+
+export interface CreateTemporaryParticipantInput {
+  participantId?: string;
+  name: string;
+  provider: string;
+  instance?: string;
+  model?: string;
+  modelSelection?: ProviderModelSelection | null;
+  roleHint?: string;
+}
+
 export interface CreateChatChannelInput {
   title: string;
   topic: string;
+  entryKind?: NewChatEntryKind;
   repoPath?: string;
   language?: string;
   responseLanguage?: string;
@@ -432,6 +445,8 @@ export interface CreateChatChannelInput {
   cats?: CatDraftInput[];
   /** Existing cat IDs to assign at creation time. */
   participantCatIds?: string[];
+  /** Channel-only non-Cat members created inline for this room. */
+  temporaryParticipants?: CreateTemporaryParticipantInput[];
   /** Internal UI affordance for the first user-sent turn in a newly created chat. */
   skipBossCatGreeting?: boolean;
 }

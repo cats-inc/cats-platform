@@ -31,6 +31,7 @@ import {
   createDraftChannelTitle as createWorkspaceDraftChannelTitle,
   createDraftChannelTopic as createWorkspaceDraftChannelTopic,
   buildAttachedFilesMessageBody as buildWorkspaceAttachedFilesMessageBody,
+  buildNewChatChannelInput as buildWorkspaceNewChatChannelInput,
   messageTone as resolveWorkspaceMessageTone,
   presentChannelTitle as presentWorkspaceChannelTitle,
   truncatePath as truncateWorkspacePath,
@@ -183,72 +184,7 @@ export function buildNewChatChannelInput(options: {
     modelSelection?: ProviderModelSelection | null;
   };
 }): CreateChatChannelInput {
-  const {
-    body,
-    existingCount,
-    entryKind,
-    repoPath,
-    defaultRecipientCatId,
-    participantCatIds = [],
-    temporaryParticipants = [],
-    draftModel,
-  } = options;
-  const normalizedLeadCatId = defaultRecipientCatId?.trim() || null;
-  const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
-  const resolvedEntryKind = entryKind
-    ?? (normalizedLeadCatId || normalizedParticipantCatIds.length > 0 ? 'group' : 'solo');
-  const directLeadCatId = normalizedLeadCatId ?? normalizedParticipantCatIds[0] ?? null;
-  const baseInput: CreateChatChannelInput = {
-    title: createDraftChannelTitle(body, existingCount),
-    topic: createDraftChannelTopic(body),
-    entryKind: resolvedEntryKind,
-    skipBossCatGreeting: true,
-    repoPath: repoPath ?? undefined,
-    temporaryParticipants: temporaryParticipants.length > 0
-      ? temporaryParticipants.map((participant) => ({
-          participantId: participant.participantId,
-          name: participant.name,
-          provider: participant.provider,
-          instance: participant.instance ?? undefined,
-          model: participant.model ?? undefined,
-          modelSelection: participant.modelSelection ?? null,
-          roleHint: participant.roleHint ?? undefined,
-        }))
-      : undefined,
-  };
-
-  if (resolvedEntryKind === 'direct' && directLeadCatId) {
-    return {
-      ...baseInput,
-      roomMode: 'direct_cat_chat',
-      defaultRecipientId: directLeadCatId,
-      participantCatIds: [directLeadCatId, ...normalizedParticipantCatIds.filter((id) => id !== directLeadCatId)],
-    };
-  }
-
-  if (normalizedLeadCatId) {
-    return {
-      ...baseInput,
-      defaultRecipientId: normalizedLeadCatId,
-      participantCatIds: [normalizedLeadCatId, ...normalizedParticipantCatIds],
-    };
-  }
-
-  if (normalizedParticipantCatIds.length > 0) {
-    return {
-      ...baseInput,
-      participantCatIds: normalizedParticipantCatIds,
-    };
-  }
-
-  return {
-    ...baseInput,
-    composerMode: 'solo',
-    pendingProvider: draftModel?.provider,
-    pendingModel: draftModel?.model ?? undefined,
-    pendingInstance: draftModel?.instance ?? undefined,
-    pendingModelSelection: draftModel?.modelSelection ?? undefined,
-  };
+  return buildWorkspaceNewChatChannelInput(options);
 }
 
 export function messageEntryTone(senderKind: string): string {
