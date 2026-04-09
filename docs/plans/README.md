@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-044](./PLAN-044-bootstrap-recovery-summary-and-bounded-detail-actions.md) | Bootstrap Recovery Summary and Bounded Detail Actions | Draft | [SPEC-054](../specs/SPEC-054-bootstrap-recovery-summary-and-bounded-detail-actions.md) |
 | [PLAN-042](./PLAN-042-recipient-centric-composer-and-parallel-chat-terminology-rename.md) | Recipient-Centric Composer and Parallel Chat Terminology Rename | Draft | [SPEC-052](../specs/SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md), [ADR-055](../decisions/055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md) |
 | [PLAN-043](./PLAN-043-post-setup-environment-status-and-recovery-entry.md) | Post-Setup Environment Status and Recovery Entry | Draft | [SPEC-053](../specs/SPEC-053-post-setup-environment-status-and-recovery-entry.md) |
 | [PLAN-041](./PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md) | Guide Cat Sidecar and Day-0 Assist Rollout | Draft | [SPEC-051](../specs/SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md), [ADR-054](../decisions/054-use-a-platform-level-guide-sidecar-for-day-0-assist.md) |
@@ -97,6 +98,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-08*
+*Last updated: 2026-04-09*
 
 *See also: [specs/](../specs/) for feature specifications*

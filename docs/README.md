@@ -55,6 +55,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-054](./specs/SPEC-054-bootstrap-recovery-summary-and-bounded-detail-actions.md)
+- [PLAN-044](./plans/PLAN-044-bootstrap-recovery-summary-and-bounded-detail-actions.md)
 - [SPEC-053](./specs/SPEC-053-post-setup-environment-status-and-recovery-entry.md)
 - [PLAN-043](./plans/PLAN-043-post-setup-environment-status-and-recovery-entry.md)
 
@@ -105,4 +107,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-08*
+*Last updated: 2026-04-09*
