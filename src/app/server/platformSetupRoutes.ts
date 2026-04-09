@@ -19,6 +19,17 @@ import {
   type ChatApiDependencies,
 } from '../../products/chat/api/routeSupport.js';
 import type { RouteContext } from '../../shared/http.js';
+import {
+  buildSetupDebugContext,
+  normalizeAttemptId,
+  parseAssistantPresetBody,
+  parseGuideCatStatusUpdateBody,
+  parseGuideCatUpdateBody,
+  parsePlatformPreferencesUpdate,
+  type AssistantPresetBody,
+  type GuideCatUpdateBody,
+  type PlatformPreferencesUpdateBody,
+} from './platformSetupRouteSupport.js';
 
 export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
@@ -35,49 +46,9 @@ interface LegacyPlatformSetupCompleteInput extends PlatformSetupCompleteInput {
   selectedProduct?: string;
 }
 
-interface AssistantPresetBody {
-  name?: string;
-  provider?: string;
-  instance?: string | null;
-  model?: string | null;
-  modelSelection?: ProviderModelSelection | null;
-  roleHint?: string | null;
-}
-
 function reportSyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
   process.stderr.write(`[cats-platform-setup] ${scope}: ${message}\n`);
-}
-
-function buildSetupDebugContext(input: {
-  ownerDisplayName: string;
-  createGuideCat: boolean;
-  guideCatName?: string | null;
-  guideCatProvider?: string | null;
-  guideCatInstance?: string | null;
-  guideCatModel?: string | null;
-  guideCatModelSelection?: ProviderModelSelection | null;
-  guideCatId?: string | null;
-  setupCompleteAt?: string | null;
-  attemptId?: string | null;
-}): Record<string, unknown> {
-  const createGuideCat = input.createGuideCat;
-  return {
-    ownerDisplayName: input.ownerDisplayName,
-    createGuideCat,
-    guideCatId: input.guideCatId ?? null,
-    guideCatName: createGuideCat ? input.guideCatName?.trim() || 'Guide Cat' : null,
-    guideCatProvider: createGuideCat ? input.guideCatProvider?.trim() || 'claude' : null,
-    guideCatInstance: createGuideCat ? input.guideCatInstance?.trim() || null : null,
-    guideCatModel: createGuideCat ? input.guideCatModel ?? null : null,
-    hasGuideCatModelSelection: createGuideCat ? Boolean(input.guideCatModelSelection) : false,
-    setupCompleteAt: input.setupCompleteAt ?? null,
-    attemptId: input.attemptId ?? null,
-  };
-}
-
-function normalizeAttemptId(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
 async function recordProductEvent(
@@ -321,92 +292,16 @@ async function handlePlatformPreferencesUpdate(
   context: PlatformSetupContext,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<{
-      lastProductSurface?: string;
-      startAtLogin?: boolean;
-      openWindowOnStartup?: boolean;
-      systemTrayEnabled?: boolean;
-      lobbyAnimationMode?: string;
-      guideCatSidecarSeen?: boolean;
-      guideCatSidecarMode?: string;
-    }>(context.request);
+    const body = await readJsonBody<PlatformPreferencesUpdateBody>(context.request);
     const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
-    const surface = body.lastProductSurface;
-    if (
-      surface !== undefined
-      && surface !== 'chat'
-      && surface !== 'work'
-      && surface !== 'code'
-    ) {
+    const nextPrefsResult = parsePlatformPreferencesUpdate(body, currentPrefs);
+    if (!nextPrefsResult.ok) {
       sendJson(context.response, 400, {
-        error: { code: 'bad_request', message: 'Invalid product surface' },
+        error: { code: 'bad_request', message: nextPrefsResult.message },
       });
       return;
     }
-    if (body.startAtLogin !== undefined && typeof body.startAtLogin !== 'boolean') {
-      sendJson(context.response, 400, {
-        error: { code: 'bad_request', message: 'startAtLogin must be a boolean' },
-      });
-      return;
-    }
-    if (
-      body.openWindowOnStartup !== undefined
-      && typeof body.openWindowOnStartup !== 'boolean'
-    ) {
-      sendJson(context.response, 400, {
-        error: { code: 'bad_request', message: 'openWindowOnStartup must be a boolean' },
-      });
-      return;
-    }
-    if (
-      body.systemTrayEnabled !== undefined
-      && typeof body.systemTrayEnabled !== 'boolean'
-    ) {
-      sendJson(context.response, 400, {
-        error: { code: 'bad_request', message: 'systemTrayEnabled must be a boolean' },
-      });
-      return;
-    }
-    if (
-      body.lobbyAnimationMode !== undefined
-      && body.lobbyAnimationMode !== 'off'
-      && body.lobbyAnimationMode !== 'reduced'
-      && body.lobbyAnimationMode !== 'full'
-    ) {
-      sendJson(context.response, 400, {
-        error: { code: 'bad_request', message: 'lobbyAnimationMode must be off, reduced, or full' },
-      });
-      return;
-    }
-
-    if (body.guideCatSidecarSeen !== undefined && typeof body.guideCatSidecarSeen !== 'boolean') {
-      sendJson(context.response, 400, {
-        error: { code: 'bad_request', message: 'guideCatSidecarSeen must be a boolean' },
-      });
-      return;
-    }
-
-    if (
-      body.guideCatSidecarMode !== undefined
-      && body.guideCatSidecarMode !== 'auto'
-      && body.guideCatSidecarMode !== 'drawer'
-      && body.guideCatSidecarMode !== 'bubble'
-    ) {
-      sendJson(context.response, 400, {
-        error: { code: 'bad_request', message: 'guideCatSidecarMode must be auto, drawer, or bubble' },
-      });
-      return;
-    }
-
-    const nextPrefs = {
-      lastProductSurface: surface ?? currentPrefs.lastProductSurface,
-      startAtLogin: body.startAtLogin ?? currentPrefs.startAtLogin,
-      openWindowOnStartup: body.openWindowOnStartup ?? currentPrefs.openWindowOnStartup,
-      systemTrayEnabled: body.systemTrayEnabled ?? currentPrefs.systemTrayEnabled,
-      lobbyAnimationMode: body.lobbyAnimationMode ?? currentPrefs.lobbyAnimationMode,
-      guideCatSidecarSeen: body.guideCatSidecarSeen ?? currentPrefs.guideCatSidecarSeen,
-      guideCatSidecarMode: body.guideCatSidecarMode ?? currentPrefs.guideCatSidecarMode,
-    };
+    const nextPrefs = nextPrefsResult.value;
 
     await writePlatformPreferences(context.dependencies.config.chatStatePath, nextPrefs);
 
@@ -437,39 +332,14 @@ async function readAssistantPresetBody(
     sendJson(context.response, 400, { error: { code: 'bad_request', message } });
     return null;
   }
-
-  const name = body.name?.trim();
-  if (!name) {
+  const parsedBody = parseAssistantPresetBody(body);
+  if (!parsedBody.ok) {
     sendJson(context.response, 400, {
-      error: { code: 'bad_request', message: 'Assistant name is required' },
+      error: { code: 'bad_request', message: parsedBody.message },
     });
     return null;
   }
-
-  const provider = body.provider?.trim();
-  if (!provider) {
-    sendJson(context.response, 400, {
-      error: { code: 'bad_request', message: 'Assistant provider is required' },
-    });
-    return null;
-  }
-
-  const model = body.model?.trim();
-  if (!model) {
-    sendJson(context.response, 400, {
-      error: { code: 'bad_request', message: 'Assistant model is required' },
-    });
-    return null;
-  }
-
-  return {
-    name,
-    provider,
-    instance: body.instance?.trim() || null,
-    model,
-    modelSelection: cloneProviderModelSelection(body.modelSelection ?? null),
-    roleHint: body.roleHint?.trim() || null,
-  };
+  return parsedBody.value;
 }
 
 async function handleBootstrapDiagnosticsState(
@@ -509,13 +379,7 @@ async function handleBootstrapDiagnosticsOpened(
 async function handleGuideCatUpdate(
   context: PlatformSetupContext,
 ): Promise<void> {
-  let body: {
-    name?: string;
-    provider?: string;
-    instance?: string | null;
-    model?: string | null;
-    modelSelection?: ProviderModelSelection | null;
-  };
+  let body: GuideCatUpdateBody;
   try {
     body = await readJsonBody<typeof body>(context.request);
   } catch (error) {
@@ -523,14 +387,14 @@ async function handleGuideCatUpdate(
     sendJson(context.response, 400, { error: { code: 'bad_request', message } });
     return;
   }
-
-  const name = body.name?.trim();
-  if (!name) {
+  const parsedBody = parseGuideCatUpdateBody(body);
+  if (!parsedBody.ok) {
     sendJson(context.response, 400, {
-      error: { code: 'bad_request', message: 'Guide Cat name is required' },
+      error: { code: 'bad_request', message: parsedBody.message },
     });
     return;
   }
+  const guideCatUpdate = parsedBody.value;
 
   const now = context.dependencies.now?.() ?? new Date();
   const nowIso = now.toISOString();
@@ -543,14 +407,14 @@ async function handleGuideCatUpdate(
     updatedAt: nowIso,
     guideCat: {
       id: existingId,
-      name,
+      name: guideCatUpdate.name,
       status: core.guideCat?.status ?? 'active',
       executionTarget: {
-        provider: body.provider?.trim() || 'claude',
-        instance: body.instance?.trim() || null,
-        model: body.model ?? null,
+        provider: guideCatUpdate.provider,
+        instance: guideCatUpdate.instance,
+        model: guideCatUpdate.model,
       },
-      modelSelection: cloneProviderModelSelection(body.modelSelection ?? null),
+      modelSelection: guideCatUpdate.modelSelection,
       createdAt: core.guideCat?.createdAt ?? nowIso,
       updatedAt: nowIso,
     },
@@ -572,9 +436,10 @@ async function handleGuideCatStatusUpdate(
     return;
   }
 
-  if (body.status !== 'active' && body.status !== 'dismissed') {
+  const parsedBody = parseGuideCatStatusUpdateBody(body);
+  if (!parsedBody.ok) {
     sendJson(context.response, 400, {
-      error: { code: 'bad_request', message: 'status must be active or dismissed' },
+      error: { code: 'bad_request', message: parsedBody.message },
     });
     return;
   }
@@ -596,7 +461,7 @@ async function handleGuideCatStatusUpdate(
     updatedAt: nowIso,
     guideCat: {
       ...core.guideCat,
-      status: body.status,
+      status: parsedBody.value,
       updatedAt: nowIso,
     },
   };

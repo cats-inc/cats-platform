@@ -1743,6 +1743,24 @@ test('ProviderModelFields composes dedicated support helpers instead of defining
   assert.match(supportSource, /export function shouldAutoRecheckProviderRegistry/u);
 });
 
+test('platform setup routes consume dedicated parser helpers instead of keeping validation inline', async () => {
+  const routeSource = await readFile(
+    new URL('../src/app/server/platformSetupRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const supportSource = await readFile(
+    new URL('../src/app/server/platformSetupRouteSupport.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(routeSource, /platformSetupRouteSupport\.js/u);
+  assert.doesNotMatch(routeSource, /guideCatSidecarMode must be auto, drawer, or bubble/u);
+  assert.doesNotMatch(routeSource, /Assistant provider is required/u);
+  assert.match(supportSource, /export function parsePlatformPreferencesUpdate/u);
+  assert.match(supportSource, /export function parseAssistantPresetBody/u);
+  assert.match(supportSource, /export function parseGuideCatUpdateBody/u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api/index.ts', import.meta.url),
