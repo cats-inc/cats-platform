@@ -36,12 +36,21 @@ test('renderer bot binding client uses the catId contract instead of the removed
 });
 
 test('renderer cat memory client reads the single-record create response shape', async () => {
-  const source = await readFile(
+  const chatSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/api/memory.ts'),
     'utf8',
   );
+  const sharedSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/api/memory.ts'),
+    'utf8',
+  );
 
-  assert.match(source, /expectJson<\{\s*memory:\s*DurableMemoryItem\s*\}>/u);
+  assert.match(
+    chatSource,
+    /export \* from '\.\.\/\.\.\/\.\.\/shared\/renderer\/api\/memory\.js';/u,
+    'chat memory client should reuse the shared renderer substrate',
+  );
+  assert.match(sharedSource, /expectJson<\{\s*memory:\s*DurableMemoryItem\s*\}>/u);
 });
 
 test('ChatView reads roomRouting from the normalized selected-channel view without casts', async () => {
