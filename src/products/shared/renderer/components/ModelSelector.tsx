@@ -78,6 +78,7 @@ export interface WorkspaceModelSelectorPanelProps {
   selectedCatIds: string[];
   highlightedCatId: string | null;
   defaultRecipientCatId?: string | null;
+  showLeadBadge?: boolean;
   onToggleCat?: (catId: string) => void;
   onHighlightCat?: (catId: string) => void;
   modelValue: ModelSelectorValue;
@@ -97,6 +98,7 @@ export function WorkspaceModelSelectorPanel({
   onToggleCat,
   onHighlightCat,
   defaultRecipientCatId,
+  showLeadBadge = true,
   modelValue,
   onModelChange,
   fieldsDisabled,
@@ -147,7 +149,7 @@ export function WorkspaceModelSelectorPanel({
         highlightedId={highlightedCatId}
         defaultRecipientCatId={defaultRecipientCatId}
         toggleable={mode === 'draft'}
-        showLeadBadge
+        showLeadBadge={showLeadBadge}
         onToggle={onToggleCat ?? (() => {})}
         onHighlight={onHighlightCat ?? (() => {})}
       />
@@ -187,6 +189,7 @@ export function ModelSelectorPanel(props: ModelSelectorPanelProps) {
 export interface WorkspaceModelSelectorProps {
   value: ModelSelectorValue;
   onChange: (value: ModelSelectorValue) => void;
+  showLeadBadge?: boolean;
   ProviderModelFieldsComponent: ComponentType<ProviderModelFieldsProps>;
   CatAvatarRowComponent: ComponentType<CatAvatarRowProps>;
 }
@@ -194,6 +197,7 @@ export interface WorkspaceModelSelectorProps {
 export function WorkspaceModelSelector({
   value,
   onChange,
+  showLeadBadge = true,
   ProviderModelFieldsComponent,
   CatAvatarRowComponent,
 }: WorkspaceModelSelectorProps) {
@@ -215,6 +219,7 @@ export function WorkspaceModelSelector({
           modelValue={value}
           onModelChange={onChange}
           onClose={() => setPanelOpen(false)}
+          showLeadBadge={showLeadBadge}
           ProviderModelFieldsComponent={ProviderModelFieldsComponent}
           CatAvatarRowComponent={CatAvatarRowComponent}
         />
