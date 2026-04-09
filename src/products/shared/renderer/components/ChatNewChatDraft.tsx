@@ -27,6 +27,7 @@ import {
   buildNamedRecipient,
   buildRecipientFromCat,
 } from './ComposerRecipientChip.js';
+import { ComposerCatStack } from './ComposerCatStack.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import {
   buildModelSelectorLabel,
@@ -597,6 +598,13 @@ export function NewChatDraft({
                   })}
                 </div>
               ) : null
+            ) : isDirectLaneContext && effectiveDefaultRecipientCat ? (
+              <ComposerCatStack
+                cats={[effectiveDefaultRecipientCat]}
+                bossCatId={payload.chat.bossCatId}
+                defaultRecipientCatId={effectiveDefaultRecipientCat.id}
+                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
+              />
             ) : draftComposerRecipients.length > 0 ? (
               <ComposerRecipientChip
                 recipients={draftComposerRecipients}

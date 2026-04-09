@@ -8,6 +8,7 @@ import {
 import type { AppShellPayload } from '../../../api/contracts.js';
 import { truncatePath } from '../../chatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
+import { ComposerCatStack } from '../ComposerCatStack.js';
 import {
   ComposerRecipientChip,
   type RecipientChipTarget,
@@ -91,6 +92,14 @@ export function ChatComposerArea({
   const implicitRecipient =
     composerRecipients.length === 1 && composerRecipients[0]?.kind === 'implicit'
       ? composerRecipients[0]
+      : null;
+  const directLaneRecipient =
+    isDirectLane && composerRecipients.length === 1 && composerRecipients[0]?.kind === 'named'
+      ? composerRecipients[0]
+      : null;
+  const directLaneCat =
+    directLaneRecipient?.catId
+      ? payload.chat.cats.find((cat) => cat.id === directLaneRecipient.catId) ?? null
       : null;
   const implicitRecipientLabel = implicitRecipient
     ? buildModelSelectorLabel({
@@ -232,7 +241,14 @@ export function ChatComposerArea({
             );
           })()}
         </div>
-        {implicitRecipient && implicitRecipientLabel ? (
+        {directLaneCat ? (
+          <ComposerCatStack
+            cats={[directLaneCat]}
+            bossCatId={payload.chat.bossCatId}
+            defaultRecipientCatId={directLaneCat.id}
+            onClick={composerBusy ? undefined : () => onOpenSection('execution')}
+          />
+        ) : implicitRecipient && implicitRecipientLabel ? (
           <div style={{ marginRight: 8 }}>
             <ModelSelectorChip
               label={implicitRecipientLabel}

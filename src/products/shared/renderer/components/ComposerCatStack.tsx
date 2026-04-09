@@ -43,7 +43,10 @@ export function ComposerCatStack({
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                   }
-                : cat.avatarColor ? { background: cat.avatarColor } : {}),
+                : {
+                    background: cat.avatarColor ?? '#8B7E74',
+                    color: '#fff',
+                  }),
               zIndex: ordered.length - index,
             }}
           >
