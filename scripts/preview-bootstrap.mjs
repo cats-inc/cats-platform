@@ -10,20 +10,15 @@
  * The script always reads the latest build output, so run `npm run build:host`
  * first if you've changed bootstrapPage.ts.
  */
+import { spawnSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { execSync } from 'node:child_process';
-
-const { buildDesktopBootstrapPage } = await import('../build/desktop/bootstrapPage.js');
+import { pathToFileURL } from 'node:url';
+import { join, resolve } from 'node:path';
 
 /* ------------------------------------------------------------------ */
 /*  Mock snapshots                                                     */
 /* ------------------------------------------------------------------ */
-
-function now(offsetMs = 0) {
-  return `new Date(Date.now() - ${-offsetMs}).toISOString()`;
-}
 
 const LOADING_BRIDGE = `
 window.catsDesktopHost = {
@@ -224,35 +219,102 @@ window.catsDesktopHost = {
 /*  Generate & open                                                    */
 /* ------------------------------------------------------------------ */
 
-function inject(bridgeScript) {
-  const html = buildDesktopBootstrapPage();
-  return html.replace('<script>', `<script>${bridgeScript}</script><script>`);
+async function loadBootstrapPageHtml() {
+  const { buildDesktopBootstrapPage } = await import('../build/desktop/bootstrapPage.js');
+  return buildDesktopBootstrapPage();
 }
 
-const mode = (process.argv[2] || '').toLowerCase();
-const outDir = tmpdir();
-const opened = [];
-
-if (!mode || mode === 'loading') {
-  const path = join(outDir, 'cats-bootstrap-loading.html');
-  writeFileSync(path, inject(LOADING_BRIDGE));
-  opened.push(path);
-}
-
-if (!mode || mode === 'recovery') {
-  const path = join(outDir, 'cats-bootstrap-recovery.html');
-  writeFileSync(path, inject(RECOVERY_BRIDGE));
-  opened.push(path);
-}
-
-for (const path of opened) {
-  const cmd = process.platform === 'darwin' ? 'open'
-    : process.platform === 'win32' ? 'start'
-    : 'xdg-open';
-  try {
-    execSync(`${cmd} "${path}"`);
-  } catch {
-    // fall through — print path instead
+export function resolvePreviewMode(rawMode) {
+  const mode = (rawMode || '').trim().toLowerCase();
+  if (!mode) {
+    return 'all';
   }
-  console.log(path);
+  if (mode === 'loading' || mode === 'recovery') {
+    return mode;
+  }
+  throw new Error(`Invalid mode "${rawMode}". Expected "loading", "recovery", or no argument.`);
+}
+
+export function injectPreviewBridge(html, bridgeScript) {
+  const marker = '<script>';
+  if (!html.includes(marker)) {
+    throw new Error('Bootstrap page script tag not found.');
+  }
+  return html.replace(marker, `<script>${bridgeScript}</script><script>`);
+}
+
+export function resolvePreviewOpenCommand(platform, filePath) {
+  if (platform === 'darwin') {
+    return { command: 'open', args: [filePath] };
+  }
+  if (platform === 'win32') {
+    // `start` is a cmd builtin; the empty string is the required window title placeholder.
+    return { command: 'cmd', args: ['/c', 'start', '', filePath] };
+  }
+  return { command: 'xdg-open', args: [filePath] };
+}
+
+export function tryOpenPreviewFile(filePath, options = {}) {
+  const platform = options.platform ?? process.platform;
+  const spawn = options.spawnSync ?? spawnSync;
+  const descriptor = resolvePreviewOpenCommand(platform, filePath);
+  const result = spawn(descriptor.command, descriptor.args, {
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  return {
+    ...descriptor,
+    status: result.status ?? null,
+    error: result.error ?? null,
+    opened: !result.error && (result.status === 0 || result.status === null),
+  };
+}
+
+export async function runPreviewBootstrap(argv = process.argv.slice(2)) {
+  const mode = resolvePreviewMode(argv[0]);
+  const html = await loadBootstrapPageHtml();
+  const outDir = tmpdir();
+  const opened = [];
+
+  if (mode === 'all' || mode === 'loading') {
+    const path = join(outDir, 'cats-bootstrap-loading.html');
+    writeFileSync(path, injectPreviewBridge(html, LOADING_BRIDGE));
+    opened.push(path);
+  }
+
+  if (mode === 'all' || mode === 'recovery') {
+    const path = join(outDir, 'cats-bootstrap-recovery.html');
+    writeFileSync(path, injectPreviewBridge(html, RECOVERY_BRIDGE));
+    opened.push(path);
+  }
+
+  for (const path of opened) {
+    try {
+      tryOpenPreviewFile(path);
+    } catch {
+      // fall through — print path instead
+    }
+    console.log(path);
+  }
+
+  return opened;
+}
+
+function isDirectExecution(metaUrl) {
+  const entry = process.argv[1];
+  if (!entry) {
+    return false;
+  }
+  return pathToFileURL(resolve(entry)).href === metaUrl;
+}
+
+if (isDirectExecution(import.meta.url)) {
+  try {
+    await runPreviewBootstrap();
+  } catch (error) {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 1;
+  }
 }
