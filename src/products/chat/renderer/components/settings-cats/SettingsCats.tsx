@@ -3,9 +3,9 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { AppShellPayload } from '../../../api/contracts.js';
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../../shared/api/workspaceContracts.js';
 import {
-  SettingsCats as SharedSettingsCats,
-  type SettingsCatsProps,
-  type SharedSettingsCatsProps,
+  SettingsCatsCanvas as SharedSettingsCatsCanvas,
+  type SettingsCatsCanvasProps,
+  type SharedSettingsCatsCanvasProps,
 } from '../../../../shared/renderer/components/settings-cats/SettingsCats.js';
 import {
   useSettingsCatsRegistryActions,
@@ -14,14 +14,14 @@ import {
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 
 export interface ChatSettingsCatsProps extends Omit<
-  SharedSettingsCatsProps<BotFormState>,
+  SharedSettingsCatsCanvasProps<BotFormState>,
   'onPayloadUpdate' | 'useSettingsCatsRegistryActionsHook' | 'SettingsCatsRegistryComponent'
 > {
   payload: AppShellPayload;
   onPayloadUpdate: (payload: AppShellPayload) => void;
 }
 
-export { type SettingsCatsProps };
+export { type SettingsCatsCanvasProps };
 
 function useChatSettingsCatsRegistryActions(options: {
   expandedCatId: string | null;
@@ -45,7 +45,7 @@ export function SettingsCats(props: ChatSettingsCatsProps) {
   };
 
   return (
-    <SharedSettingsCats
+    <SharedSettingsCatsCanvas
       {...rest}
       onPayloadUpdate={sharedOnPayloadUpdate}
       useSettingsCatsRegistryActionsHook={useChatSettingsCatsRegistryActions}

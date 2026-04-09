@@ -53,7 +53,7 @@ export interface SettingsCatsRegistryComponentProps<TBotForm> {
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
 
-export interface SettingsCatsProps {
+export interface SettingsCatsCanvasProps {
   payload: AppShellPayload;
   feedback: string;
   busy: string;
@@ -62,7 +62,7 @@ export interface SettingsCatsProps {
   onBusy: (key: string) => void;
 }
 
-export interface SharedSettingsCatsProps<TBotForm> extends SettingsCatsProps {
+export interface SharedSettingsCatsCanvasProps<TBotForm> extends SettingsCatsCanvasProps {
   useSettingsCatsRegistryActionsHook: (options: {
     expandedCatId: string | null;
     setExpandedCatId: Dispatch<SetStateAction<string | null>>;
@@ -74,7 +74,7 @@ export interface SharedSettingsCatsProps<TBotForm> extends SettingsCatsProps {
   SettingsCatsRegistryComponent: ComponentType<SettingsCatsRegistryComponentProps<TBotForm>>;
 }
 
-export function SettingsCats<TBotForm>({
+export function SettingsCatsCanvas<TBotForm>({
   payload,
   feedback,
   busy,
@@ -83,7 +83,7 @@ export function SettingsCats<TBotForm>({
   onBusy,
   useSettingsCatsRegistryActionsHook,
   SettingsCatsRegistryComponent,
-}: SharedSettingsCatsProps<TBotForm>) {
+}: SharedSettingsCatsCanvasProps<TBotForm>) {
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
   const { toasts, showToast } = useToast();
   const { dialog, confirm, handleClose } = useConfirmDialog();
@@ -196,14 +196,14 @@ export function SettingsCats<TBotForm>({
   );
 }
 
-export interface WorkspaceSettingsCatsProps extends Omit<
-  SharedSettingsCatsProps<BotFormState>,
+export interface WorkspaceSettingsCatsCanvasProps extends Omit<
+  SharedSettingsCatsCanvasProps<BotFormState>,
   'useSettingsCatsRegistryActionsHook' | 'SettingsCatsRegistryComponent'
 > {}
 
-export function WorkspaceSettingsCats(props: WorkspaceSettingsCatsProps) {
+export function WorkspaceSettingsCatsCanvas(props: WorkspaceSettingsCatsCanvasProps) {
   return (
-    <SettingsCats
+    <SettingsCatsCanvas
       {...props}
       useSettingsCatsRegistryActionsHook={useSettingsCatsRegistryActions}
       SettingsCatsRegistryComponent={SettingsCatsRegistry}

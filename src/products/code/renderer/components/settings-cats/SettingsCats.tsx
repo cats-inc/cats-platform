@@ -1,18 +1,22 @@
-import { SettingsCats as SharedSettingsCats, type SettingsCatsProps, type SharedSettingsCatsProps } from '../../../../shared/renderer/components/settings-cats/SettingsCats.js';
+import {
+  SettingsCatsCanvas as SharedSettingsCatsCanvas,
+  type SettingsCatsCanvasProps,
+  type SharedSettingsCatsCanvasProps,
+} from '../../../../shared/renderer/components/settings-cats/SettingsCats.js';
 import { useSettingsCatsRegistryActions } from '../../hooks/useSettingsCatsRegistryActions.js';
 import type { BotFormState } from '../../hooks/useSettingsCatsRegistryActions.js';
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 
 export interface CodeSettingsCatsProps extends Omit<
-  SharedSettingsCatsProps<BotFormState>,
+  SharedSettingsCatsCanvasProps<BotFormState>,
   'useSettingsCatsRegistryActionsHook' | 'SettingsCatsRegistryComponent'
 > {}
 
-export { type SettingsCatsProps };
+export { type SettingsCatsCanvasProps };
 
 export function SettingsCats(props: CodeSettingsCatsProps) {
   return (
-    <SharedSettingsCats
+    <SharedSettingsCatsCanvas
       {...props}
       useSettingsCatsRegistryActionsHook={useSettingsCatsRegistryActions}
       SettingsCatsRegistryComponent={SettingsCatsRegistry}

@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
-import { WorkspaceSettingsCats } from '../../../products/shared/renderer/components/settings-cats/SettingsCats.js';
+import { WorkspaceSettingsCatsCanvas } from '../../../products/shared/renderer/components/settings-cats/SettingsCats.js';
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
 import { PlatformSettingsChat } from './PlatformSettingsChat.js';
@@ -41,8 +41,8 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
     onPayloadUpdate(nextPayload as TPayload);
   };
   const catsElement = (
-    <PlatformSettingsShell section="cats:my-cats" title="My Cats" products={payload.products}>
-      <WorkspaceSettingsCats
+      <PlatformSettingsShell section="cats:my-cats" title="My Cats" products={payload.products}>
+      <WorkspaceSettingsCatsCanvas
         payload={payload}
         feedback={feedback}
         busy={busy}
