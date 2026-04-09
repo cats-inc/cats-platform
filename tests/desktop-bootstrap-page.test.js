@@ -41,8 +41,14 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /svc-row/);
   assert.match(html, /svc-status/);
 
-  // Runtime diagnostics link moved into service status section
-  assert.match(html, /open_runtime_diagnostics/);
+  // Summary actions use explicit action-model primary state, not position
+  assert.match(html, /primary:\s*action\.primary === true/);
+  assert.doesNotMatch(html, /var isFirst = snap\.actions\.indexOf\(action\) === 0;/);
+
+  // Runtime diagnostics lives in Diagnostics, not Service status, and is not runtimeReady-gated
+  assert.match(html, /function DiagnosticsSection\(snap\)[\s\S]*open_runtime_diagnostics/);
+  assert.match(html, /return ExpandableSection\('Service status', \[el\('div', \{ class: 'card' \}, rows\.flat\(\)\)\]\);/);
+  assert.doesNotMatch(html, /var runtimeReady = snap\.services\.some/);
 
   // Setup recovery section
   assert.match(html, /SetupRecoverySection/);

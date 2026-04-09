@@ -672,9 +672,8 @@ export function buildDesktopBootstrapPage(): string {
 
     function RecoverySummaryCard(snap, bridge) {
       var actionButtons = (snap.actions || []).map(function (action) {
-        var isFirst = snap.actions.indexOf(action) === 0;
         return Btn(action.label, {
-          primary: isFirst && action.id !== 'quit',
+          primary: action.primary === true,
           disabled: action.disabled,
           onclick: function () {
             var self = this;
@@ -761,33 +760,23 @@ export function buildDesktopBootstrapPage(): string {
         return parts;
       });
 
-      var content = [el('div', { class: 'card' }, rows.flat())];
-
-      /* Runtime diagnostics link (moved out of main action row) */
-      var runtimeReady = snap.services.some(function (s) {
-        return s.name === 'cats-runtime' && s.ready;
-      });
-      if (runtimeReady && snap.runtime) {
-        content.push(el('div', { class: 'detail-meta', style: 'margin-top:8px' },
-          el('a', {
-            href: '#',
-            style: 'color:var(--accent);font-size:0.82rem',
-            onclick: function (e) {
-              e.preventDefault();
-              bridge.runAction('open_runtime_diagnostics');
-            }
-          }, 'Open runtime diagnostics \u2192')
-        ));
-      }
-
-      return ExpandableSection('Service status', content);
+      return ExpandableSection('Service status', [el('div', { class: 'card' }, rows.flat())]);
     }
 
     function DiagnosticsSection(snap) {
       var diagnostics = snap.diagnostics;
+      var actionRow = el('div', { class: 'actions', style: 'margin-top:12px' },
+        Btn('Open runtime diagnostics', {
+          onclick: function () {
+            bridge.runAction('open_runtime_diagnostics');
+          }
+        })
+      );
+
       if (!diagnostics || !diagnostics.aggregation) {
         return ExpandableSection('Diagnostics', [
-          el('div', { class: 'detail-meta' }, 'Diagnostics are still loading.')
+          el('div', { class: 'detail-meta' }, 'Diagnostics are still loading.'),
+          actionRow,
         ]);
       }
 
@@ -825,6 +814,8 @@ export function buildDesktopBootstrapPage(): string {
           chronoItems
         ));
       }
+
+      content.push(actionRow);
 
       return ExpandableSection('Diagnostics', content);
     }

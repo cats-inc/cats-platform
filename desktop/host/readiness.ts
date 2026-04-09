@@ -536,7 +536,6 @@ function buildActions(
   phase: DesktopBootstrapSnapshot['phase'],
   options: {
     appReady: boolean;
-    runtimeReady: boolean;
     setupComplete: boolean;
     setup: DesktopSetupState | null | undefined;
   },
@@ -544,36 +543,42 @@ function buildActions(
   const actions: DesktopHostAction[] = [];
   const resumable = canResumePackagedSetup(options.setup);
 
+  function pushAction(
+    id: DesktopHostAction['id'],
+    label: string,
+    primary = false,
+  ): void {
+    actions.push(primary ? { id, label, primary: true } : { id, label });
+  }
+
   // ── Continue slot ──────────────────────────────────────────────────
   if (phase === 'ready_for_setup') {
-    actions.push({ id: 'open_setup', label: 'Continue to Setup' });
+    pushAction('open_setup', 'Continue to Setup', true);
   } else if (phase === 'ready_for_chat') {
-    actions.push({ id: 'open_chat', label: 'Open Cats' });
+    pushAction('open_chat', 'Open Cats', true);
   } else if (phase === 'needs_prerequisites' && options.setupComplete) {
-    actions.push({ id: 'open_chat', label: 'Open Cats' });
+    pushAction('open_chat', 'Open Cats', true);
   } else if ((phase === 'failed' || phase === 'needs_prerequisites') && options.appReady) {
     if (options.setupComplete) {
-      actions.push({ id: 'open_chat', label: 'Open Cats' });
+      pushAction('open_chat', 'Open Cats', true);
     } else {
-      actions.push({ id: 'open_setup', label: 'Open Setup' });
+      pushAction('open_setup', 'Open Setup', true);
     }
   }
 
   // ── Repair slot ────────────────────────────────────────────────────
-  if (phase === 'ready_for_setup' && resumable) {
-    actions.push({ id: 'resume_setup', label: 'Resume Setup' });
+  if (phase === 'ready_for_setup') {
+    pushAction('retry', 'Retry Check');
   } else if (phase === 'needs_prerequisites' && resumable) {
-    actions.push({ id: 'resume_setup', label: 'Resume Setup' });
+    pushAction('resume_setup', 'Resume Setup');
   } else if (phase === 'failed') {
-    actions.push({ id: 'retry', label: 'Retry Startup' });
+    pushAction('retry', 'Retry Startup');
   } else if (phase === 'needs_prerequisites') {
-    actions.push({ id: 'retry', label: 'Retry Check' });
-  } else if (phase === 'ready_for_setup') {
-    actions.push({ id: 'retry', label: 'Retry Check' });
+    pushAction('retry', 'Retry Check');
   }
 
   // ── Quit slot ──────────────────────────────────────────────────────
-  actions.push({ id: 'quit', label: 'Quit Cats' });
+  pushAction('quit', 'Quit Cats');
 
   return actions;
 }
@@ -732,7 +737,6 @@ export function buildDesktopBootstrapSnapshot(
     issues,
     actions: buildActions(phase, {
       appReady: Boolean(appService?.ready),
-      runtimeReady: Boolean(runtimeService?.ready),
       setupComplete: setupCompleted,
       setup,
     }),

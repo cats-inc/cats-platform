@@ -298,7 +298,11 @@ test('desktop bootstrap surfaces packaged setup restart recovery as an install i
   assert.equal(installIssue?.remediation?.kind, 'resume_setup');
   assert.equal(installIssue?.remediation?.requiresRestart, true);
   assert.match(installIssue?.detail ?? '', /Restart Windows/i);
-  assert.ok(snapshot.actions.some((action) => action.id === 'resume_setup'));
+  assert.equal(snapshot.actions.some((action) => action.id === 'resume_setup'), false);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), true);
+  assert.equal(snapshot.actions.some((action) => action.id === 'retry'), true);
+  assert.equal(snapshot.actions.find((action) => action.id === 'open_setup')?.primary, true);
+  assert.equal(snapshot.actions.find((action) => action.id === 'retry')?.primary, undefined);
 });
 
 test('desktop bootstrap surfaces packaged setup auth recovery as an install issue', () => {
@@ -672,6 +676,43 @@ test('desktop bootstrap keeps completed setup out of onboarding when runtime hea
     'open_runtime_diagnostics',
   );
   assert.match(snapshot.summary, /recover in-app/i);
+});
+
+test('desktop bootstrap keeps retry non-primary when no continue slot is available', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      {
+        name: 'cats-runtime',
+        status: 'failed',
+        ready: false,
+        pid: null,
+        startedAt: null,
+        healthUrl: 'http://127.0.0.1:3110/health',
+        error: 'spawn EACCES',
+        exitCode: 1,
+      },
+      {
+        name: 'cats-platform',
+        status: 'failed',
+        ready: false,
+        pid: null,
+        startedAt: null,
+        healthUrl: 'http://127.0.0.1:8181/health',
+        error: 'connection refused',
+        exitCode: 1,
+      },
+    ],
+    appHealth: null,
+    appShell: null,
+    runtimeHealth: null,
+    providerDiagnostics: null,
+    lastError: 'Cats sidecars failed during startup.',
+  });
+
+  assert.equal(snapshot.phase, 'failed');
+  assert.deepEqual(snapshot.actions.map((action) => action.id), ['retry', 'quit']);
+  assert.equal(snapshot.actions.find((action) => action.id === 'retry')?.primary, undefined);
 });
 
 test('desktop bootstrap keeps optional local-model audit follow-through non-blocking', () => {
