@@ -1,6 +1,9 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
 import {
   resolveDraftParticipantSelection as resolveWorkspaceDraftParticipantSelection,
+  resolveDraftRouteContext as resolveWorkspaceDraftRouteContext,
+  resolveDraftRoutePath as resolveWorkspaceDraftRoutePath,
+  resolveMissingDraftDefaultRecipientPath as resolveWorkspaceMissingDraftDefaultRecipientPath,
 } from '../../shared/renderer/draftParticipants.js';
 import {
   NEW_CHAT_PATH,
@@ -61,30 +64,19 @@ export function resolveDraftRouteContext(input: {
   draftDefaultRecipientCatId: string | null;
   showingMyCatDirectLane: boolean;
 }): DraftRouteContext {
-  const routeDefaultRecipientCatId = normalizeCatId(input.draftDefaultRecipientCatId);
-  const isDirectLaneRoute = Boolean(input.showingMyCatDirectLane && routeDefaultRecipientCatId);
-  const isRecipientScopedNewChatRoute = Boolean(routeDefaultRecipientCatId) && !isDirectLaneRoute;
-
-  return {
-    routeDefaultRecipientCatId,
-    isDirectLaneRoute,
-    isRecipientScopedNewChatRoute,
-    isGenericNewChatRoute: !routeDefaultRecipientCatId && !input.showingMyCatDirectLane,
-  };
+  return resolveWorkspaceDraftRouteContext(input);
 }
 
 export function resolveDraftRoutePath(input: {
   route: DraftRouteContext;
   nextDefaultRecipientCatId?: string | null;
 }): string {
-  const nextDefaultRecipientCatId = normalizeCatId(input.nextDefaultRecipientCatId);
-  const defaultRecipientCatId = nextDefaultRecipientCatId ?? input.route.routeDefaultRecipientCatId;
-
-  if (input.route.isDirectLaneRoute) {
-    return defaultRecipientCatId ? buildMyCatPath(defaultRecipientCatId) : NEW_CHAT_PATH;
-  }
-
-  return buildNewChatPath(defaultRecipientCatId);
+  return resolveWorkspaceDraftRoutePath({
+    ...input,
+    newChatPath: NEW_CHAT_PATH,
+    buildMyCatPath,
+    buildNewChatPath,
+  });
 }
 
 export function resolveMissingDraftDefaultRecipientPath(input: {
@@ -92,7 +84,9 @@ export function resolveMissingDraftDefaultRecipientPath(input: {
   channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>>;
   selectedChannelId: string | null | undefined;
 }): string {
-  return input.route.isDirectLaneRoute
-    ? resolveVisibleChatPath(input.channels, input.selectedChannelId)
-    : NEW_CHAT_PATH;
+  return resolveWorkspaceMissingDraftDefaultRecipientPath({
+    route: input.route,
+    newChatPath: NEW_CHAT_PATH,
+    resolveVisibleChatPath: () => resolveVisibleChatPath(input.channels, input.selectedChannelId),
+  });
 }
