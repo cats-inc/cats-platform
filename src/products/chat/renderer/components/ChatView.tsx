@@ -26,10 +26,7 @@ import {
 } from '../../../../design/chatLayout';
 import {
   buildDraftParticipantExecutionLabel,
-  catInitials,
-  messageTone,
   presentChannelTitle,
-  resolveTranscriptMessageSpeaker,
   type SelectedChannelView,
 } from '../chatUtils';
 import type { ChatOperatorSnapshot } from '../../shared/operator-loop/index';
@@ -43,9 +40,7 @@ import {
   buildImplicitRecipient,
 } from './ComposerRecipientChip';
 import { type ModelSelectorValue } from './ModelSelector';
-import { MessageBody } from './MessageBody';
 import {
-  MessageChoices,
   type MessageChoicesSubmitInput,
 } from './MessageChoices';
 import {
@@ -71,8 +66,8 @@ import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
 import { buildChatSidePanelSections } from './chat-view/ChatSidePanelSections';
 import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
-import { TranscriptMessageActions } from './chat-view/TranscriptMessageActions';
 import { LiveTranscriptIndicator } from './chat-view/LiveTranscriptIndicator';
+import { TranscriptMessageItem } from './chat-view/TranscriptMessageItem';
 
 type TopBarParticipant = {
   key: string;
@@ -857,99 +852,34 @@ export function ChatView({
               <section className="transcriptPanel">
                 <div ref={transcriptListRef} className="transcriptList">
                   {visibleMessages.map((message) => (
-                    <article key={message.id} className={messageStackTone(message.senderKind)}>
-                      <div className={messageTone(message.senderKind)}>
-                        {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
-                          const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
-                          const transcriptParticipant = resolveMessageParticipant(message);
-                          const transcriptParticipantCat = resolveParticipantCatRecord(
-                            transcriptParticipant,
-                          );
-                          return transcriptParticipant ? (
-                            <div className="transcriptMessageTop">
-                              <div
-                                className={buildParticipantAvatarClassName(
-                                  transcriptParticipant,
-                                  {
-                                    transcript: true,
-                                    catRecord: transcriptParticipantCat,
-                                  },
-                                )}
-                                style={buildParticipantAvatarStyle(
-                                  transcriptParticipant,
-                                  transcriptParticipantCat,
-                                )}
-                              >
-                                {resolveParticipantAvatarUrl(
-                                  transcriptParticipant,
-                                  transcriptParticipantCat,
-                                ) ? null : catInitials(resolveParticipantDisplayName(
-                                  transcriptParticipant,
-                                  transcriptParticipantCat,
-                                ))}
-                              </div>
-                              <strong>{resolveParticipantDisplayName(
-                                transcriptParticipant,
-                                transcriptParticipantCat,
-                              )}</strong>
-                            </div>
-                          ) : speaker.kind === 'cat' && speaker.cat ? (() => {
-                            const isBoss = speaker.cat.id === payload.chat.bossCatId;
-                            return (
-                              <div className="transcriptMessageTop">
-                                <div
-                                  className={isBoss ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                                  style={speaker.cat.avatarUrl
-                                    ? { backgroundImage: `url(${speaker.cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                    : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
-                                >
-                                  {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
-                                </div>
-                                <strong>{speaker.label}</strong>
-                              </div>
-                            );
-                          })() : speaker.label ? (
-                            <div className="transcriptMessageTop">
-                              <strong>{speaker.label}</strong>
-                            </div>
-                          ) : null;
-                        })() : null}
-                        {message.body ? (
-                          <MessageBody
-                            body={message.body}
-                            cats={payload.chat.cats}
-                            channelId={selectedChannel.id}
-                            disabledMentionNames={directLaneExcludedMentionNames}
-                          />
-                        ) : null}
-                      </div>
-                      <TranscriptMessageActions
-                        messageId={message.id}
-                        messageBody={message.body}
-                        senderKind={message.senderKind}
-                        compareBusy={compareBusy}
-                        isCompareGroup={isCompareGroup}
-                        relayMenuOpen={openRelayMenuId === message.id}
-                        onCopyMessage={copyMessageBody}
-                        onToggleRelayMenu={() =>
-                          setOpenRelayMenuId((current) =>
-                            current === message.id ? null : message.id,
-                          )}
-                        onCloseRelayMenu={() => setOpenRelayMenuId(null)}
-                        onRelayMessage={onRelayMessage}
-                      />
-
-                      {message.choices && message.choices.length > 0 ? (
-                        <MessageChoices
-                          channelId={selectedChannel.id}
-                          messageId={message.id}
-                          choices={message.choices}
-                          existingResponse={choiceResponsesBySource.get(message.id) ?? null}
-                          busy={busy.startsWith(`choice:${message.id}:`)}
-                          onSubmit={onChoiceSubmit}
-                        />
-                      ) : null}
-                    </article>
+                    <TranscriptMessageItem
+                      key={message.id}
+                      message={message}
+                      stackClassName={messageStackTone(message.senderKind)}
+                      cats={payload.chat.cats}
+                      bossCatId={payload.chat.bossCatId}
+                      selectedChannelId={selectedChannel.id}
+                      disabledMentionNames={directLaneExcludedMentionNames}
+                      compareBusy={compareBusy}
+                      choiceBusy={busy.startsWith(`choice:${message.id}:`)}
+                      isCompareGroup={isCompareGroup}
+                      relayMenuOpen={openRelayMenuId === message.id}
+                      existingChoiceResponse={choiceResponsesBySource.get(message.id) ?? null}
+                      onChoiceSubmit={onChoiceSubmit}
+                      onCopyMessage={copyMessageBody}
+                      onToggleRelayMenu={() =>
+                        setOpenRelayMenuId((current) =>
+                          current === message.id ? null : message.id,
+                        )}
+                      onCloseRelayMenu={() => setOpenRelayMenuId(null)}
+                      onRelayMessage={onRelayMessage}
+                      resolveMessageParticipant={resolveMessageParticipant}
+                      resolveParticipantCatRecord={resolveParticipantCatRecord}
+                      buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+                      buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+                      resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+                      resolveParticipantDisplayName={resolveParticipantDisplayName}
+                    />
                   ))}
                   {liveIndicator?.active ? (
                     <LiveTranscriptIndicator
