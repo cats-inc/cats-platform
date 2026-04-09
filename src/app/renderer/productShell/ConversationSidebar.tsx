@@ -22,6 +22,7 @@ import {
   resolveRuntimeTooltip,
 } from '../../../shared/runtimeStatusPresentation.js';
 import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
+import { useSidebarInlineRename } from './useSidebarInlineRename.js';
 
 export interface ConversationSidebarCat {
   id: string;
@@ -232,9 +233,6 @@ function ChannelItem<
   disableRename?: boolean;
 }) {
   const cat = resolveCatForChannel(channel, payload);
-  const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const overflowMenuStyle = useFloatingSidebarMenu(
@@ -242,25 +240,19 @@ function ChannelItem<
     overflowMenuRef,
     overflowOpen,
   );
-
-  function startRename(): void {
-    onOverflowToggle();
-    setRenameValue(channel.title);
-    setRenaming(true);
-    requestAnimationFrame(() => inputRef.current?.select());
-  }
-
-  function commitRename(): void {
-    const trimmed = renameValue.trim();
-    setRenaming(false);
-    if (trimmed && trimmed !== channel.title) {
-      onRename(trimmed);
-    }
-  }
-
-  function cancelRename(): void {
-    setRenaming(false);
-  }
+  const {
+    renaming,
+    renameValue,
+    inputRef,
+    setRenameValue,
+    startRename,
+    commitRename,
+    cancelRename,
+  } = useSidebarInlineRename({
+    title: channel.title,
+    onRename: disableRename ? undefined : onRename,
+    onBeforeStart: onOverflowToggle,
+  });
 
   return (
     <article
@@ -389,9 +381,6 @@ function GroupHeaderItem({
   ungroupBusyKey?: string;
   deleteBusyKey?: string;
 }) {
-  const [renaming, setRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const overflowMenuStyle = useFloatingSidebarMenu(
@@ -402,32 +391,19 @@ function GroupHeaderItem({
   const renameBusy = renameBusyKey ? busy === renameBusyKey : false;
   const ungroupBusy = ungroupBusyKey ? busy === ungroupBusyKey : false;
   const deleteBusy = deleteBusyKey ? busy === deleteBusyKey : false;
-
-  function startRename(): void {
-    if (!onRename) {
-      return;
-    }
-    onOverflowToggle();
-    setRenameValue(title);
-    setRenaming(true);
-    requestAnimationFrame(() => inputRef.current?.select());
-  }
-
-  function commitRename(): void {
-    if (!onRename) {
-      setRenaming(false);
-      return;
-    }
-    const trimmed = renameValue.trim();
-    setRenaming(false);
-    if (trimmed && trimmed !== title) {
-      onRename(trimmed);
-    }
-  }
-
-  function cancelRename(): void {
-    setRenaming(false);
-  }
+  const {
+    renaming,
+    renameValue,
+    inputRef,
+    setRenameValue,
+    startRename,
+    commitRename,
+    cancelRename,
+  } = useSidebarInlineRename({
+    title,
+    onRename,
+    onBeforeStart: onOverflowToggle,
+  });
 
   return (
     <article
