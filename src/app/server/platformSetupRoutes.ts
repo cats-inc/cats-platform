@@ -1,4 +1,4 @@
-import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
+import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
@@ -20,18 +20,11 @@ import type { RouteContext } from '../../shared/http.js';
 import {
   buildSetupDebugContext,
   normalizeAttemptId,
-  parseGuideCatStatusUpdateBody,
-  parseGuideCatUpdateBody,
   parsePlatformPreferencesUpdate,
-  type GuideCatUpdateBody,
   type PlatformPreferencesUpdateBody,
 } from './platformSetupRouteSupport.js';
 import { routePlatformAssistantPresetApi } from './platformSetupAssistantRoutes.js';
-import {
-  clearGuideCat,
-  updateGuideCatStatus,
-  upsertGuideCat,
-} from './platformSetupStateMutations.js';
+import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
 
 export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
@@ -350,86 +343,6 @@ async function handleBootstrapDiagnosticsOpened(
   sendJson(context.response, 200, payload);
 }
 
-async function handleGuideCatUpdate(
-  context: PlatformSetupContext,
-): Promise<void> {
-  let body: GuideCatUpdateBody;
-  try {
-    body = await readJsonBody<typeof body>(context.request);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid request body';
-    sendJson(context.response, 400, { error: { code: 'bad_request', message } });
-    return;
-  }
-  const parsedBody = parseGuideCatUpdateBody(body);
-  if (!parsedBody.ok) {
-    sendJson(context.response, 400, {
-      error: { code: 'bad_request', message: parsedBody.message },
-    });
-    return;
-  }
-  const guideCatUpdate = parsedBody.value;
-
-  const now = context.dependencies.now?.() ?? new Date();
-  const nowIso = now.toISOString();
-  let core = await context.dependencies.chatStore.readCore();
-  const chatState = await context.dependencies.chatStore.read();
-  core = upsertGuideCat(core, guideCatUpdate, nowIso);
-
-  await context.dependencies.chatStore.writeSnapshot(chatState, core);
-  sendJson(context.response, 200, { guideCat: core.guideCat });
-}
-
-async function handleGuideCatStatusUpdate(
-  context: PlatformSetupContext,
-): Promise<void> {
-  let body: { status?: string };
-  try {
-    body = await readJsonBody<typeof body>(context.request);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid request body';
-    sendJson(context.response, 400, { error: { code: 'bad_request', message } });
-    return;
-  }
-
-  const parsedBody = parseGuideCatStatusUpdateBody(body);
-  if (!parsedBody.ok) {
-    sendJson(context.response, 400, {
-      error: { code: 'bad_request', message: parsedBody.message },
-    });
-    return;
-  }
-
-  const now = context.dependencies.now?.() ?? new Date();
-  const nowIso = now.toISOString();
-  let core = await context.dependencies.chatStore.readCore();
-  const chatState = await context.dependencies.chatStore.read();
-
-  const nextCore = updateGuideCatStatus(core, parsedBody.value, nowIso);
-  if (!nextCore) {
-    sendJson(context.response, 404, {
-      error: { code: 'not_found', message: 'No Guide Cat exists' },
-    });
-    return;
-  }
-  core = nextCore;
-
-  await context.dependencies.chatStore.writeSnapshot(chatState, core);
-  sendJson(context.response, 200, { guideCat: core.guideCat });
-}
-
-async function handleGuideCatDelete(
-  context: PlatformSetupContext,
-): Promise<void> {
-  const now = context.dependencies.now?.() ?? new Date();
-  let core = await context.dependencies.chatStore.readCore();
-  const chatState = await context.dependencies.chatStore.read();
-  core = clearGuideCat(core, now.toISOString());
-
-  await context.dependencies.chatStore.writeSnapshot(chatState, core);
-  sendJson(context.response, 200, { guideCat: null });
-}
-
 export async function routePlatformSetupApi(
   context: PlatformSetupContext,
 ): Promise<boolean> {
@@ -469,20 +382,7 @@ export async function routePlatformSetupApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/platform/guide-cat') {
-    if (context.method === 'PUT') {
-      await handleGuideCatUpdate(context);
-      return true;
-    }
-    if (context.method === 'PATCH') {
-      await handleGuideCatStatusUpdate(context);
-      return true;
-    }
-    if (context.method === 'DELETE') {
-      await handleGuideCatDelete(context);
-      return true;
-    }
-    sendMethodNotAllowed(context.response, ['PUT', 'PATCH', 'DELETE']);
+  if (await routePlatformGuideCatApi(context)) {
     return true;
   }
 
