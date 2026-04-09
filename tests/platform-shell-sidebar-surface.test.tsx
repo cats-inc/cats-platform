@@ -267,7 +267,7 @@ test('Code sidebar keeps the Code product selected on platform settings routes',
   });
 });
 
-test('Work and Code sidebars expose Cats Runtime in the account menu', () => {
+test('Work and Code sidebars keep the shared environment account menu wiring', () => {
   const workTree = WorkSidebar({
     payload: createPayload(),
     sidebarOpen: true,

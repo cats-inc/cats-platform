@@ -1,7 +1,5 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 
-import { openCatsRuntimeRoot } from '../../shared/catsRuntimeLink.js';
-
 export type AccountIdentityMenuPlacement = 'above' | 'below';
 export type AccountIdentityMenuAlignment = 'start' | 'end';
 export type AccountIdentityMenuWidth = 'content' | 'trigger';
@@ -40,7 +38,7 @@ export function AccountIdentityMenu({
   onOpenChange,
   onNavigateSettings,
   onNavigateEnvironment,
-  runtimeBaseUrl,
+  runtimeBaseUrl: _runtimeBaseUrl,
   containerClassName,
   triggerClassName,
   triggerAriaLabel = 'Account menu',
@@ -84,11 +82,6 @@ export function AccountIdentityMenu({
   function handleEnvironmentClick(): void {
     onOpenChange(false);
     onNavigateEnvironment?.();
-  }
-
-  function handleCatsRuntimeClick(): void {
-    onOpenChange(false);
-    openCatsRuntimeRoot(runtimeBaseUrl);
   }
 
   return (
@@ -135,14 +128,6 @@ export function AccountIdentityMenu({
             onClick={handleEnvironmentClick}
           >
             Environment
-          </button>
-          <button
-            className="accountMenuItem"
-            type="button"
-            role="menuitem"
-            onClick={handleCatsRuntimeClick}
-          >
-            Cats Runtime
           </button>
         </div>
       ) : null}
