@@ -10,11 +10,6 @@ import {
   settleBegunChannelMessageDispatchFailure,
 } from '../../state/runtimeActions.js';
 import {
-  repairMissingSessionStartedMessages,
-  repairMissingStartupRecoveryNotice,
-  repairOrphanedCompletedDispatchTurn,
-} from '../../state/runtime-dispatch/repair.js';
-import {
   buildChannelView,
   requireChannel,
   setChannelParticipantLease,
@@ -28,6 +23,7 @@ import {
   resolveParticipantExecutionLease,
   resolveParticipantSessionId,
 } from '../../shared/channelParticipants.js';
+import { repairChannelReadState } from '../channelRepair.js';
 import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
 import {
   ensureChannelAttachmentWorkspace,
@@ -233,59 +229,16 @@ async function handleRestGetChannel(
   try {
     requireValidChatScopeId(chatScopeId);
     let state = await context.dependencies.chatStore.read();
-    const repairedTurn = repairOrphanedCompletedDispatchTurn(
-      state,
-      channelId,
-      nowFrom(context.dependencies),
-    );
-    const repairedSessionMetadata = repairMissingSessionStartedMessages(
-      repairedTurn.state,
-      channelId,
+    state = await repairChannelReadState(
       {
+        chatStore: context.dependencies.chatStore,
+        mutationGate: context.dependencies.mutationGate,
         runtimeDataDir: context.dependencies.config.runtimeDataDir,
-        now: nowFrom(context.dependencies),
+        now: context.dependencies.now,
       },
-    );
-    const repairedStartupNotice = repairMissingStartupRecoveryNotice(
-      repairedSessionMetadata.state,
       channelId,
-      {
-        now: nowFrom(context.dependencies),
-      },
+      state,
     );
-    if (repairedTurn.repaired || repairedSessionMetadata.repaired || repairedStartupNotice.repaired) {
-      state = await context.dependencies.mutationGate.run(channelId, async () => {
-        const latestState = await context.dependencies.chatStore.read();
-        const latestTurnRepair = repairOrphanedCompletedDispatchTurn(
-          latestState,
-          channelId,
-          nowFrom(context.dependencies),
-        );
-        const latestSessionRepair = repairMissingSessionStartedMessages(
-          latestTurnRepair.state,
-          channelId,
-          {
-            runtimeDataDir: context.dependencies.config.runtimeDataDir,
-            now: nowFrom(context.dependencies),
-          },
-        );
-        const latestStartupRepair = repairMissingStartupRecoveryNotice(
-          latestSessionRepair.state,
-          channelId,
-          {
-            now: nowFrom(context.dependencies),
-          },
-        );
-        if (
-          !latestTurnRepair.repaired
-          && !latestSessionRepair.repaired
-          && !latestStartupRepair.repaired
-        ) {
-          return latestState;
-        }
-        return context.dependencies.chatStore.write(latestStartupRepair.state);
-      });
-    }
     sendJson(context.response, 200, {
       channel: buildChannelView(state, channelId),
     });

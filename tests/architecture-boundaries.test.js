@@ -395,6 +395,32 @@ test('chat resource routes compose dedicated preference, orchestrator, and chann
   assert.doesNotMatch(channelModule, /handleRestGetChat/u);
 });
 
+test('chat read routes consume a dedicated channel repair helper instead of composing repair passes inline', async () => {
+  const routeSupportModule = await readFile(
+    new URL('../src/products/chat/api/routeSupport.ts', import.meta.url),
+    'utf8',
+  );
+  const channelModule = await readFile(
+    new URL('../src/products/chat/api/resources/channelRoutes.ts', import.meta.url),
+    'utf8',
+  );
+  const repairHelperModule = await readFile(
+    new URL('../src/products/chat/api/channelRepair.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(routeSupportModule, /\.\/channelRepair\.js/u);
+  assert.match(channelModule, /\.\.\/channelRepair\.js/u);
+  assert.match(repairHelperModule, /export function applyChannelReadRepairs/u);
+  assert.match(repairHelperModule, /export async function repairChannelReadState/u);
+  assert.doesNotMatch(routeSupportModule, /repairMissingSessionStartedMessages/u);
+  assert.doesNotMatch(routeSupportModule, /repairMissingStartupRecoveryNotice/u);
+  assert.doesNotMatch(routeSupportModule, /repairOrphanedCompletedDispatchTurn/u);
+  assert.doesNotMatch(channelModule, /repairMissingSessionStartedMessages/u);
+  assert.doesNotMatch(channelModule, /repairMissingStartupRecoveryNotice/u);
+  assert.doesNotMatch(channelModule, /repairOrphanedCompletedDispatchTurn/u);
+});
+
 test('chat memory routes compose dedicated owner, channel, cat, and shared memory modules', async () => {
   const memoryRoutesModule = await readFile(
     new URL('../src/products/chat/api/memory/index.ts', import.meta.url),
