@@ -38,6 +38,7 @@ import {
   navigateWithinManagedComposerFlow,
 } from '../composerNavigation.js';
 import { resetComposerDraftState } from '../composerDraftState.js';
+import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -278,28 +279,8 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     state,
   ]);
 
-  const onSendMessage = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault();
-    await submitComposerMessage();
-  }, [submitComposerMessage]);
-
-  const onComposerKeyDown = useCallback(async (event: KeyboardEvent<HTMLTextAreaElement>): Promise<void> => {
-    if (
-      !shouldSubmitComposerOnKeyDown({
-        key: event.key,
-        shiftKey: event.shiftKey,
-        ctrlKey: event.ctrlKey,
-        metaKey: event.metaKey,
-        altKey: event.altKey,
-        isComposing: event.nativeEvent.isComposing,
-      })
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-    await submitComposerMessage();
-  }, [submitComposerMessage]);
+  const { onSendMessage, onComposerKeyDown } =
+    useComposerSubmitBindings(submitComposerMessage);
 
   return {
     onComposerKeyDown,

@@ -1038,17 +1038,24 @@ test('chat and workspace composer hooks consume shared navigation and draft-rese
     new URL('../src/products/shared/renderer/composerDraftState.ts', import.meta.url),
     'utf8',
   );
+  const submitBindingsSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useComposerSubmitBindings.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(chatHookSource, /composerNavigation\.js/u);
   assert.match(chatHookSource, /composerDraftState\.js/u);
+  assert.match(chatHookSource, /useComposerSubmitBindings/u);
   assert.match(workspaceHookSource, /composerNavigation\.js/u);
   assert.match(workspaceHookSource, /composerDraftState\.js/u);
+  assert.match(workspaceHookSource, /useComposerSubmitBindings/u);
   assert.match(chatHookSource, /navigateWithinManagedComposerFlow/u);
   assert.match(workspaceHookSource, /navigateWithinManagedComposerFlow/u);
   assert.match(chatHookSource, /resetComposerDraftState/u);
   assert.match(workspaceHookSource, /resetComposerDraftState/u);
   assert.match(navigationHelperSource, /export function navigateWithinManagedComposerFlow/u);
   assert.match(draftStateHelperSource, /export function resetComposerDraftState/u);
+  assert.match(submitBindingsSource, /export function useComposerSubmitBindings/u);
 });
 
 test('chat and workspace apps consume shared app-shell channel action hooks', async () => {

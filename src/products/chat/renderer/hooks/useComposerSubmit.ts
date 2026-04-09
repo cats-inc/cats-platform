@@ -54,6 +54,7 @@ import {
   resolveDraftRoutePath,
 } from '../draftParticipants';
 import type { ModelSelectorValue } from '../components/ModelSelector';
+import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -460,28 +461,8 @@ export function useComposerSubmit(options: {
     state,
   ]);
 
-  const onSendMessage = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault();
-    await submitComposerMessage();
-  }, [submitComposerMessage]);
-
-  const onComposerKeyDown = useCallback(async (event: KeyboardEvent<HTMLTextAreaElement>): Promise<void> => {
-    if (
-      !shouldSubmitComposerOnKeyDown({
-        key: event.key,
-        shiftKey: event.shiftKey,
-        ctrlKey: event.ctrlKey,
-        metaKey: event.metaKey,
-        altKey: event.altKey,
-        isComposing: event.nativeEvent.isComposing,
-      })
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-    await submitComposerMessage();
-  }, [submitComposerMessage]);
+  const { onSendMessage, onComposerKeyDown } =
+    useComposerSubmitBindings(submitComposerMessage);
 
   return {
     onComposerKeyDown,
