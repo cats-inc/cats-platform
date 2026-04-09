@@ -892,6 +892,10 @@ test('renderer app consumes dedicated cat-assignment actions instead of defining
     new URL('../src/products/chat/renderer/hooks/useCatAssignmentActions.ts', import.meta.url),
     'utf8',
   );
+  const sharedHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceCatAssignmentActions.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(appSource, /useCatAssignmentActions/u);
   assert.doesNotMatch(appSource, /async function onCreateAndAssignCat\(/u);
@@ -899,9 +903,10 @@ test('renderer app consumes dedicated cat-assignment actions instead of defining
   assert.doesNotMatch(appSource, /async function onAssignExistingCat\(/u);
   assert.doesNotMatch(appSource, /async function onRemoveAssignedCat\(/u);
   assert.match(hookSource, /export function useCatAssignmentActions/u);
-  assert.match(hookSource, /createGlobalCat/u);
-  assert.match(hookSource, /assignCatToChannelApi/u);
-  assert.match(hookSource, /removeCatFromChannelApi/u);
+  assert.match(hookSource, /useWorkspaceCatAssignmentActions/u);
+  assert.match(sharedHookSource, /createGlobalCat/u);
+  assert.match(sharedHookSource, /assignCatToChannelApi/u);
+  assert.match(sharedHookSource, /removeCatFromChannelApi/u);
 });
 
 test('renderer app consumes dedicated governance actions instead of defining approval and choice flows inline', async () => {
@@ -913,15 +918,20 @@ test('renderer app consumes dedicated governance actions instead of defining app
     new URL('../src/products/chat/renderer/hooks/useGovernanceActions.ts', import.meta.url),
     'utf8',
   );
+  const sharedHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceGovernanceActions.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(appSource, /useGovernanceActions/u);
   assert.doesNotMatch(appSource, /async function onApprovalDecision\(/u);
   assert.doesNotMatch(appSource, /async function onChoiceSubmit\(/u);
   assert.doesNotMatch(appSource, /async function onOperatorAction\(/u);
   assert.match(hookSource, /export function useGovernanceActions/u);
-  assert.match(hookSource, /writeCoreApprovalDecision/u);
-  assert.match(hookSource, /writeCoreOperatorAction/u);
-  assert.match(hookSource, /sendChatMessage/u);
+  assert.match(hookSource, /useWorkspaceGovernanceActions/u);
+  assert.match(sharedHookSource, /writeCoreApprovalDecision/u);
+  assert.match(sharedHookSource, /writeCoreOperatorAction/u);
+  assert.match(sharedHookSource, /sendChatMessage/u);
 });
 
 test('renderer app consumes a dedicated chrome hook instead of defining shell menu state inline', async () => {

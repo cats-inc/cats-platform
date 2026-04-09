@@ -9,15 +9,30 @@ import {
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
-  assignCatToChannelApi,
-  createGlobalCat,
-  removeCatFromChannelApi,
+  assignCatToChannelApi as assignWorkspaceCatToChannelApi,
+  createGlobalCat as createWorkspaceGlobalCat,
+  removeCatFromChannelApi as removeWorkspaceCatFromChannelApi,
 } from '../api/index.js';
 import { emptyCatForm, type CatFormState } from '../workspaceChatUtils.js';
 
-type LoadStateLike =
+export interface WorkspaceCatAssignmentPayloadLike {
+  chat: {
+    selectedChannelId: string | null;
+    cats: ReadonlyArray<{
+      id: string;
+      defaultExecutionTarget: {
+        provider: string;
+        instance: string | null;
+        model: string | null;
+      };
+      defaultModelSelection?: ProviderModelSelection | null;
+    }>;
+  };
+}
+
+type LoadStateLike<TPayload extends WorkspaceCatAssignmentPayloadLike> =
   | { status: 'loading' }
-  | { status: 'ready'; payload: AppShellPayload }
+  | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
 
 type AssignableCat = {
@@ -38,10 +53,13 @@ export interface WorkspaceCatFormState {
   modelSelection: ProviderModelSelection | null;
 }
 
-export function useWorkspaceCatAssignmentActions<CatFormState extends WorkspaceCatFormState>(
+export function useWorkspaceCatAssignmentActions<
+  CatFormState extends WorkspaceCatFormState,
+  TPayload extends WorkspaceCatAssignmentPayloadLike = AppShellPayload,
+>(
   options: {
-    state: LoadStateLike;
-    setState: Dispatch<SetStateAction<LoadStateLike>>;
+    state: LoadStateLike<TPayload>;
+    setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
     catForm: CatFormState;
     emptyCatForm: () => CatFormState;
     setCatForm: Dispatch<SetStateAction<CatFormState>>;
@@ -49,6 +67,21 @@ export function useWorkspaceCatAssignmentActions<CatFormState extends WorkspaceC
     setFeedback: Dispatch<SetStateAction<string>>;
     setAddCatOpen: Dispatch<SetStateAction<boolean>>;
     setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+    createGlobalCat?: (input: {
+      name: string;
+      provider: string;
+      instance?: string;
+      model?: string;
+      modelSelection?: ProviderModelSelection | null;
+    }) => Promise<TPayload>;
+    assignCatToChannelApi?: (channelId: string, input: {
+      catId: string;
+      provider: string;
+      instance?: string;
+      model?: string;
+      modelSelection?: ProviderModelSelection | null;
+    }) => Promise<TPayload>;
+    removeCatFromChannelApi?: (channelId: string, catId: string) => Promise<TPayload>;
   },
 ) {
   const {
@@ -61,6 +94,27 @@ export function useWorkspaceCatAssignmentActions<CatFormState extends WorkspaceC
     setFeedback,
     setAddCatOpen,
     setDraftCatIds,
+    createGlobalCat = createWorkspaceGlobalCat as unknown as (input: {
+      name: string;
+      provider: string;
+      instance?: string;
+      model?: string;
+      modelSelection?: ProviderModelSelection | null;
+    }) => Promise<TPayload>,
+    assignCatToChannelApi = assignWorkspaceCatToChannelApi as unknown as (
+      channelId: string,
+      input: {
+        catId: string;
+        provider: string;
+        instance?: string;
+        model?: string;
+        modelSelection?: ProviderModelSelection | null;
+      },
+    ) => Promise<TPayload>,
+    removeCatFromChannelApi = removeWorkspaceCatFromChannelApi as unknown as (
+      channelId: string,
+      catId: string,
+    ) => Promise<TPayload>,
   } = options;
 
   const onCreateAndAssignCat = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -243,8 +297,8 @@ export function useWorkspaceCatAssignmentActions<CatFormState extends WorkspaceC
 }
 
 export function useCatAssignmentActions(options: {
-  state: LoadStateLike;
-  setState: Dispatch<SetStateAction<LoadStateLike>>;
+  state: LoadStateLike<AppShellPayload>;
+  setState: Dispatch<SetStateAction<LoadStateLike<AppShellPayload>>>;
   catForm: CatFormState;
   setCatForm: Dispatch<SetStateAction<CatFormState>>;
   setBusy: Dispatch<SetStateAction<string>>;

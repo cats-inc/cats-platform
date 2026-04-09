@@ -11,14 +11,18 @@ import type {
 } from '../../api/workspaceContracts.js';
 import type { ChatOperatorSnapshot } from '../../operator-loop/index.js';
 import {
-  sendChatMessage,
+  sendChatMessage as sendWorkspaceChatMessage,
   writeCoreApprovalDecision,
   writeCoreOperatorAction,
 } from '../api/index.js';
 
-type LoadStateLike =
+export interface WorkspaceGovernancePayloadLike {
+  ownerDisplayName: string;
+}
+
+type LoadStateLike<TPayload extends WorkspaceGovernancePayloadLike> =
   | { status: 'loading' }
-  | { status: 'ready'; payload: AppShellPayload }
+  | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
 
 type OperatorStateLike =
@@ -33,13 +37,24 @@ interface MessageChoicesSubmitInput {
   choiceResponse: ChatMessageChoiceResponse;
 }
 
-export function useWorkspaceGovernanceActions(options: {
-  state: LoadStateLike;
-  setState: Dispatch<SetStateAction<LoadStateLike>>;
+export function useWorkspaceGovernanceActions<
+  TPayload extends WorkspaceGovernancePayloadLike = AppShellPayload,
+  TChoiceResponse extends {
+    sourceMessageId: string;
+    status: string;
+  } = ChatMessageChoiceResponse,
+>(options: {
+  state: LoadStateLike<TPayload>;
+  setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
   operatorState: OperatorStateLike;
   setOperatorState: Dispatch<SetStateAction<OperatorStateLike>>;
   setBusy: Dispatch<SetStateAction<string>>;
   setFeedback: Dispatch<SetStateAction<string>>;
+  sendChatMessage?: (channelId: string, input: {
+    body: string;
+    senderName: string;
+    choiceResponse: TChoiceResponse;
+  }) => Promise<{ appShell: TPayload }>;
 }) {
   const {
     state,
@@ -48,6 +63,11 @@ export function useWorkspaceGovernanceActions(options: {
     setOperatorState,
     setBusy,
     setFeedback,
+    sendChatMessage = sendWorkspaceChatMessage as unknown as (channelId: string, input: {
+      body: string;
+      senderName: string;
+      choiceResponse: TChoiceResponse;
+    }) => Promise<{ appShell: TPayload }>,
   } = options;
 
   const onApprovalDecision = useCallback(async (
@@ -81,7 +101,9 @@ export function useWorkspaceGovernanceActions(options: {
     }
   }, [operatorState.snapshot, setBusy, setFeedback, setOperatorState]);
 
-  const onChoiceSubmit = useCallback(async (input: MessageChoicesSubmitInput): Promise<void> => {
+  const onChoiceSubmit = useCallback(async (
+    input: Omit<MessageChoicesSubmitInput, 'choiceResponse'> & { choiceResponse: TChoiceResponse },
+  ): Promise<void> => {
     if (state.status !== 'ready') {
       return;
     }
