@@ -1,16 +1,15 @@
-import { startTransition, useEffect, useRef, useState } from 'react';
-
-import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
-import {
-  applyLiveIndicatorEvent,
-  createWaitingLiveIndicatorState,
-  EMPTY_LIVE_INDICATOR,
-  type LiveIndicatorState,
-} from '../../../../shared/liveIndicator.js';
 import {
   getComposerDispatchChannelId,
   isComposerDispatchBusy,
 } from '../../../../shared/composer.js';
+import {
+  EMPTY_LIVE_INDICATOR,
+  resolveLiveIndicatorSpeakerLabel,
+  type LiveIndicatorSelectedChannelLike,
+  type LiveIndicatorState,
+  type LiveIndicatorStreamDecisionInput,
+  useLiveIndicator as useWorkspaceLiveIndicator,
+} from '../../../shared/renderer/hooks/useLiveIndicator.js';
 import type { SelectedChannelView } from '../chatUtils.js';
 import { isOptimisticDraftChannelId } from '../../shared/channelPaths.js';
 
@@ -20,10 +19,7 @@ export type {
   LiveIndicatorState,
   LiveToolEntry,
 } from '../../../../shared/liveIndicator.js';
-export { EMPTY_LIVE_INDICATOR } from '../../../../shared/liveIndicator.js';
-
-const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
-const LIVE_INDICATOR_RETRY_LIMIT = 8;
+export { EMPTY_LIVE_INDICATOR } from '../../../shared/renderer/hooks/useLiveIndicator.js';
 
 function isDispatchBusyForCurrentChannel(
   channelId: string | null,
@@ -64,21 +60,36 @@ export function shouldConnectLiveIndicatorStream(
   return !isOptimisticDraftChannelId(channelId);
 }
 
-export function resolveLiveIndicatorSpeakerLabel(
-  selectedChannel: SelectedChannelView | null,
+function resolveRoutingStatus(
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): string | null {
-  if (!selectedChannel || selectedChannel.roomRouting.defaultRecipientId) {
-    return null;
-  }
+  const workflowStatus = selectedChannel?.roomRouting.workflow.activeTurn?.status ?? null;
+  return workflowStatus === 'pending'
+    ? 'running'
+    : workflowStatus === 'failed'
+      ? 'error'
+      : workflowStatus;
+}
 
-  if (selectedChannel.composerMode !== 'solo' || !selectedChannel.pendingProvider) {
-    return null;
-  }
+function shouldShowWaitingIndicator(
+  input: LiveIndicatorStreamDecisionInput,
+): boolean {
+  return (
+    (
+      isComposerDispatchBusy(input.busy)
+      && isDispatchBusyForCurrentChannel(input.channelId, input.busy, input.routingStatus)
+    )
+    || input.routingStatus === 'running'
+  ) && Boolean(input.channelId);
+}
 
-  return buildExecutionLabel(
-    selectedChannel.pendingProvider,
-    selectedChannel.pendingInstance,
-    null,
+function shouldConnectChatLiveIndicatorStream(
+  input: LiveIndicatorStreamDecisionInput,
+): boolean {
+  return shouldConnectLiveIndicatorStream(
+    input.channelId,
+    input.busy,
+    input.routingStatus,
   );
 }
 
@@ -87,166 +98,12 @@ export function useLiveIndicator(options: {
   busy: string;
   selectedChannel: SelectedChannelView | null;
 }): LiveIndicatorState {
-  const { channelId, busy, selectedChannel } = options;
-  const [state, setState] = useState<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
-  const sourceRef = useRef<EventSource | null>(null);
-  const stateRef = useRef<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
-
-  // Extract stable primitive from selectedChannel to avoid object reference in deps
-  const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
-  const workflowStatus = selectedChannel?.roomRouting.workflow.activeTurn?.status ?? null;
-  const routingStatus = workflowStatus === 'pending'
-    ? 'running'
-    : workflowStatus === 'failed'
-      ? 'error'
-      : workflowStatus;
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
-
-  useEffect(() => {
-    const channelRouting = routingStatus === 'running';
-    const dispatchBusyForCurrentChannel = isDispatchBusyForCurrentChannel(
-      channelId,
-      busy,
-      routingStatus,
-    );
-    const shouldShowWaitingIndicator =
-      ((isComposerDispatchBusy(busy) && dispatchBusyForCurrentChannel) || channelRouting)
-      && Boolean(channelId);
-    let disposed = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let reconnectAttempts = 0;
-
-    function updateIndicatorState(
-      updater: (previous: LiveIndicatorState) => LiveIndicatorState,
-    ): void {
-      startTransition(() => {
-        setState((previous) => {
-          const next = updater(previous);
-          stateRef.current = next;
-          return next;
-        });
-      });
-    }
-
-    function clearReconnectTimer(): void {
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
-    }
-
-    function closeSource(): void {
-      if (sourceRef.current) {
-        sourceRef.current.close();
-        sourceRef.current = null;
-      }
-    }
-
-    function scheduleReconnect(): void {
-      if (
-        disposed
-        || reconnectAttempts >= LIVE_INDICATOR_RETRY_LIMIT
-        || !shouldConnectLiveIndicatorStream(channelId, busy, routingStatus)
-      ) {
-        return;
-      }
-
-      reconnectAttempts += 1;
-      closeSource();
-      clearReconnectTimer();
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        if (!disposed) {
-          openSource();
-        }
-      }, LIVE_INDICATOR_RETRY_DELAY_MS);
-    }
-
-    function handleEvent(e: MessageEvent): void {
-      let data: Record<string, unknown>;
-      try {
-        data = JSON.parse(e.data as string) as Record<string, unknown>;
-      } catch {
-        return;
-      }
-
-      const eventType = (data.type as string) ?? e.type;
-      const shouldRetrySessionClose = eventType === 'session_closed'
-        && stateRef.current.phase === 'waiting';
-
-      updateIndicatorState((previous) => {
-        if (!previous.active) {
-          return previous;
-        }
-        return applyLiveIndicatorEvent(previous, eventType, data);
-      });
-
-      if (shouldRetrySessionClose) {
-        scheduleReconnect();
-      }
-    }
-
-    function openSource(): void {
-      if (disposed || !shouldConnectLiveIndicatorStream(channelId, busy, routingStatus)) {
-        return;
-      }
-
-      closeSource();
-      const source = new EventSource(`/api/channels/${channelId}/stream`);
-      sourceRef.current = source;
-
-      source.addEventListener('progress', handleEvent);
-      source.addEventListener('text', handleEvent);
-      source.addEventListener('tool_use', handleEvent);
-      source.addEventListener('tool_result', handleEvent);
-      source.addEventListener('content_block', handleEvent);
-      source.addEventListener('result', handleEvent);
-      source.addEventListener('error', handleEvent);
-      source.addEventListener('session_closed', handleEvent);
-      source.onerror = () => {
-        if (stateRef.current.phase === 'waiting') {
-          scheduleReconnect();
-        }
-      };
-    }
-
-    if (!shouldShowWaitingIndicator) {
-      clearReconnectTimer();
-      closeSource();
-      stateRef.current = EMPTY_LIVE_INDICATOR;
-      setState(EMPTY_LIVE_INDICATOR);
-      return undefined;
-    }
-
-    const workingCatId = defaultRecipientCatId;
-    const speakerLabel = workingCatId
-      ? null
-      : resolveLiveIndicatorSpeakerLabel(selectedChannel);
-
-    const waitingState = createWaitingLiveIndicatorState({
-      catId: workingCatId,
-      speakerLabel,
-    });
-    stateRef.current = waitingState;
-    setState(waitingState);
-
-    if (!shouldConnectLiveIndicatorStream(channelId, busy, routingStatus)) {
-      clearReconnectTimer();
-      closeSource();
-      return undefined;
-    }
-
-    openSource();
-
-    return () => {
-      disposed = true;
-      clearReconnectTimer();
-      closeSource();
-    };
-  }, [channelId, busy, defaultRecipientCatId, routingStatus]);
-
-  return state;
+  return useWorkspaceLiveIndicator({
+    ...options,
+    resolveRoutingStatus,
+    shouldShowWaitingIndicator,
+    shouldConnectStream: shouldConnectChatLiveIndicatorStream,
+  });
 }
+
+export { resolveLiveIndicatorSpeakerLabel };

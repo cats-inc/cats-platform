@@ -8,7 +8,6 @@ import {
   type LiveIndicatorState,
 } from '../../../../shared/liveIndicator.js';
 import { isComposerDispatchBusy } from '../../../../shared/composer.js';
-import type { SelectedChannelView } from '../workspaceChatUtils.js';
 import { isOptimisticDraftChannelId } from '../../channelPaths.js';
 
 export type {
@@ -22,9 +21,28 @@ export { EMPTY_LIVE_INDICATOR } from '../../../../shared/liveIndicator.js';
 const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
 const LIVE_INDICATOR_RETRY_LIMIT = 8;
 
+export interface LiveIndicatorSelectedChannelLike {
+  roomRouting: {
+    defaultRecipientId: string | null;
+    workflow: {
+      activeTurn?: { status: string | null } | null;
+    };
+  };
+  composerMode: string;
+  pendingProvider: string | null;
+  pendingInstance: string | null;
+}
+
+export interface LiveIndicatorStreamDecisionInput {
+  channelId: string | null;
+  busy: string;
+  routingStatus?: string | null;
+}
+
 export function shouldConnectLiveIndicatorStream(
   channelId: string | null,
   busy: string,
+  _routingStatus?: string | null,
 ): boolean {
   if (!isComposerDispatchBusy(busy) || !channelId) {
     return false;
@@ -34,7 +52,7 @@ export function shouldConnectLiveIndicatorStream(
 }
 
 export function resolveLiveIndicatorSpeakerLabel(
-  selectedChannel: SelectedChannelView | null,
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): string | null {
   if (!selectedChannel || selectedChannel.roomRouting.defaultRecipientId) {
     return null;
@@ -51,24 +69,57 @@ export function resolveLiveIndicatorSpeakerLabel(
   );
 }
 
-export function useLiveIndicator(options: {
+function defaultShouldShowWaitingIndicator(
+  input: LiveIndicatorStreamDecisionInput,
+): boolean {
+  return isComposerDispatchBusy(input.busy) && Boolean(input.channelId);
+}
+
+function defaultShouldConnectStream(
+  input: LiveIndicatorStreamDecisionInput,
+): boolean {
+  return shouldConnectLiveIndicatorStream(
+    input.channelId,
+    input.busy,
+    input.routingStatus,
+  );
+}
+
+export function useLiveIndicator<
+  TSelectedChannel extends LiveIndicatorSelectedChannelLike = LiveIndicatorSelectedChannelLike,
+>(options: {
   channelId: string | null;
   busy: string;
-  selectedChannel: SelectedChannelView | null;
+  selectedChannel: TSelectedChannel | null;
+  resolveRoutingStatus?: (selectedChannel: TSelectedChannel | null) => string | null;
+  shouldShowWaitingIndicator?: (input: LiveIndicatorStreamDecisionInput) => boolean;
+  shouldConnectStream?: (input: LiveIndicatorStreamDecisionInput) => boolean;
 }): LiveIndicatorState {
-  const { channelId, busy, selectedChannel } = options;
+  const {
+    channelId,
+    busy,
+    selectedChannel,
+    resolveRoutingStatus,
+    shouldShowWaitingIndicator = defaultShouldShowWaitingIndicator,
+    shouldConnectStream = defaultShouldConnectStream,
+  } = options;
   const [state, setState] = useState<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
   const sourceRef = useRef<EventSource | null>(null);
   const stateRef = useRef<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
 
   const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
+  const routingStatus = resolveRoutingStatus?.(selectedChannel) ?? null;
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   useEffect(() => {
-    const shouldShowWaitingIndicator = isComposerDispatchBusy(busy) && Boolean(channelId);
+    const shouldShowWaiting = shouldShowWaitingIndicator({
+      channelId,
+      busy,
+      routingStatus,
+    });
     let disposed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectAttempts = 0;
@@ -103,7 +154,7 @@ export function useLiveIndicator(options: {
       if (
         disposed
         || reconnectAttempts >= LIVE_INDICATOR_RETRY_LIMIT
-        || !shouldConnectLiveIndicatorStream(channelId, busy)
+        || !shouldConnectStream({ channelId, busy, routingStatus })
       ) {
         return;
       }
@@ -144,7 +195,7 @@ export function useLiveIndicator(options: {
     }
 
     function openSource(): void {
-      if (disposed || !shouldConnectLiveIndicatorStream(channelId, busy)) {
+      if (disposed || !shouldConnectStream({ channelId, busy, routingStatus })) {
         return;
       }
 
@@ -167,7 +218,7 @@ export function useLiveIndicator(options: {
       };
     }
 
-    if (!shouldShowWaitingIndicator) {
+    if (!shouldShowWaiting) {
       clearReconnectTimer();
       closeSource();
       stateRef.current = EMPTY_LIVE_INDICATOR;
@@ -187,7 +238,7 @@ export function useLiveIndicator(options: {
     stateRef.current = waitingState;
     setState(waitingState);
 
-    if (!shouldConnectLiveIndicatorStream(channelId, busy)) {
+    if (!shouldConnectStream({ channelId, busy, routingStatus })) {
       clearReconnectTimer();
       closeSource();
       return undefined;
@@ -200,7 +251,16 @@ export function useLiveIndicator(options: {
       clearReconnectTimer();
       closeSource();
     };
-  }, [channelId, busy, defaultRecipientCatId]);
+  }, [
+    busy,
+    channelId,
+    defaultRecipientCatId,
+    resolveRoutingStatus,
+    routingStatus,
+    selectedChannel,
+    shouldConnectStream,
+    shouldShowWaitingIndicator,
+  ]);
 
   return state;
 }
