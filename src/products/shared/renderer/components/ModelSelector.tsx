@@ -12,6 +12,8 @@ import type {
 } from '../../../../shared/providerSelection.js';
 import type { ChatCat } from '../../api/workspaceContracts.js';
 import { isChatCat } from '../workspaceChatUtils.js';
+import { CatAvatarRow } from './CatAvatarRow.js';
+import { ProviderModelFields } from './ProviderModelFields.js';
 
 export interface ModelSelectorValue {
   provider: string;
@@ -165,6 +167,23 @@ export function WorkspaceModelSelectorPanel({
   );
 }
 
+export interface ModelSelectorPanelProps extends Omit<
+  WorkspaceModelSelectorPanelProps,
+  'ProviderModelFieldsComponent' | 'CatAvatarRowComponent' | 'cats'
+> {
+  cats: ChatCat[];
+}
+
+export function ModelSelectorPanel(props: ModelSelectorPanelProps) {
+  return (
+    <WorkspaceModelSelectorPanel
+      {...props}
+      ProviderModelFieldsComponent={ProviderModelFields}
+      CatAvatarRowComponent={CatAvatarRow}
+    />
+  );
+}
+
 export interface WorkspaceModelSelectorProps {
   value: ModelSelectorValue;
   onChange: (value: ModelSelectorValue) => void;
@@ -201,5 +220,20 @@ export function WorkspaceModelSelector({
         />
       ) : null}
     </>
+  );
+}
+
+export interface ModelSelectorProps {
+  value: ModelSelectorValue;
+  onChange: (value: ModelSelectorValue) => void;
+}
+
+export function ModelSelector(props: ModelSelectorProps) {
+  return (
+    <WorkspaceModelSelector
+      {...props}
+      ProviderModelFieldsComponent={ProviderModelFields}
+      CatAvatarRowComponent={CatAvatarRow}
+    />
   );
 }
