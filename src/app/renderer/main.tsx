@@ -10,7 +10,7 @@ initTooltipPortal();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter unstable_useTransitions={false}>
       <App />
     </BrowserRouter>
   </React.StrictMode>,

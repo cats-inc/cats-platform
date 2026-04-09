@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useRef,
   type Dispatch,
   type FormEvent,
   type KeyboardEvent,
@@ -32,6 +33,10 @@ import {
   updateSelectedChannel,
   uploadChannelAttachments,
 } from '../api';
+import {
+  readCurrentComposerLocation,
+  shouldAutoNavigateComposerLocation,
+} from '../../../shared/renderer/composerNavigation.js';
 import {
   submitNewParallelChatDraft,
   submitParallelCompareMessage,
@@ -163,6 +168,7 @@ export function useComposerSubmit(options: {
     setFeedback,
     setState,
   });
+  const managedNavigationLocationRef = useRef<string | null>(null);
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
     if (state.status !== 'ready') {
@@ -202,10 +208,24 @@ export function useComposerSubmit(options: {
         setChannelFiles(originalChannelFiles);
       }
     };
+    const navigateWithinManagedFlow = (nextPath: string): boolean => {
+      const currentLocation = readCurrentComposerLocation();
+      if (!shouldAutoNavigateComposerLocation(
+        managedNavigationLocationRef.current,
+        currentLocation,
+      )) {
+        return false;
+      }
+
+      navigate(nextPath, { replace: true });
+      managedNavigationLocationRef.current = nextPath;
+      return true;
+    };
 
     setFeedback('');
     const { id: submitId, controller: ackController } = beginAckRequest();
     let keepBusyAfterReturn = false;
+    managedNavigationLocationRef.current = readCurrentComposerLocation();
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
         setBusy('parallelChat:ack');
@@ -221,7 +241,7 @@ export function useComposerSubmit(options: {
         rollbackPayload = dispatch.createdAppShell;
         rollbackPath = dispatch.rollbackPath;
         setComposerDraft('');
-        navigate(rollbackPath, { replace: true });
+        navigateWithinManagedFlow(rollbackPath);
         setState({ status: 'ready', payload: dispatch.createdAppShell });
         restoreFiles = () => {
           setChannelFiles(originalDraftFiles);
@@ -334,7 +354,7 @@ export function useComposerSubmit(options: {
       setComposerDraft('');
       setDraftFiles([]);
       setChannelFiles([]);
-      navigate(rollbackPath, { replace: true });
+      navigateWithinManagedFlow(rollbackPath);
       setBusy(`message:ack:${channelId}`);
 
       const dispatch = await sendChatMessage(channelId, {
@@ -357,7 +377,7 @@ export function useComposerSubmit(options: {
       }
       setComposerDraft('');
       setFeedback('');
-      navigate(rollbackPath, { replace: true });
+      navigateWithinManagedFlow(rollbackPath);
 
       if (isCatScopedLaneRoute) {
         resetComposerDraftState({
@@ -394,7 +414,7 @@ export function useComposerSubmit(options: {
       } else {
         setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
       }
-      navigate(rollbackPath, { replace: true });
+      navigateWithinManagedFlow(rollbackPath);
     } finally {
       if (!keepBusyAfterReturn) {
         clearAckRequestIfCurrent(submitId);
@@ -403,6 +423,7 @@ export function useComposerSubmit(options: {
       if (!keepBusyAfterReturn) {
         setBusy('');
       }
+      managedNavigationLocationRef.current = null;
     }
   }, [
     channelFiles,

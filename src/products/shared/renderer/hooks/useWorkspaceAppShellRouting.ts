@@ -104,6 +104,43 @@ export function useWorkspaceAppShellRouting<
     isRouteSelectionBlocked = isComposerBusy,
     resolveMissingDraftDefaultRecipientPath,
   } = options;
+  const readyPayload = state.status === 'ready' ? state.payload : null;
+  const routeSelectionVisibleChatPath = readyPayload
+    ? resolveWorkspaceVisibleChatPath(
+        chatPrefix,
+        readyPayload.chat.channels,
+        selectedChannelId,
+      )
+    : resolveWorkspaceNewChatPath(chatPrefix);
+  const draftRecipientFallbackPath =
+    readyPayload && draftDefaultRecipientCatId
+      ? (
+          resolveMissingDraftDefaultRecipientPath?.({
+            channels: readyPayload.chat.channels,
+            selectedChannelId: readyPayload.chat.selectedChannelId,
+            draftDefaultRecipientCatId,
+            showingMyCatDirectLane,
+          })
+            ?? (
+              showingMyCatDirectLane
+                ? resolveWorkspaceVisibleChatPath(
+                    chatPrefix,
+                    readyPayload.chat.channels,
+                    readyPayload.chat.selectedChannelId,
+                  )
+                : resolveWorkspaceNewChatPath(chatPrefix)
+            )
+        )
+      : null;
+  const draftRecipientAvailable = draftDefaultRecipientCatId
+    ? readyPayload?.chat.cats.some((cat) =>
+      cat.id === draftDefaultRecipientCatId && cat.status === 'active')
+    : false;
+  const routeDirectLaneSummaryId = routeDirectLaneSummary?.id ?? null;
+  const readySelectedDirectLaneRecipientId =
+    readySelectedChannel && isDirectLaneChannel(readySelectedChannel)
+      ? readySelectedChannel.roomRouting.defaultRecipientId ?? null
+      : null;
 
   function shouldApplyBackgroundRefresh(
     currentPayload: TPayload,
@@ -221,7 +258,7 @@ export function useWorkspaceAppShellRouting<
   }, [fetchAppShell, setState, state.status]);
 
   useEffect(() => {
-    if (state.status !== 'ready' || !routeChannelId) {
+    if (!readyPayload || !routeChannelId) {
       return;
     }
 
@@ -234,14 +271,7 @@ export function useWorkspaceAppShellRouting<
     }
 
     if (!routeChannelExists) {
-      navigate(
-        resolveWorkspaceVisibleChatPath(
-          chatPrefix,
-          state.payload.chat.channels,
-          selectedChannelId,
-        ),
-        { replace: true },
-      );
+      navigate(routeSelectionVisibleChatPath, { replace: true });
       return;
     }
 
@@ -264,14 +294,7 @@ export function useWorkspaceAppShellRouting<
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          navigate(
-            resolveWorkspaceVisibleChatPath(
-              chatPrefix,
-              state.payload.chat.channels,
-              selectedChannelId,
-            ),
-            { replace: true },
-          );
+          navigate(routeSelectionVisibleChatPath, { replace: true });
         }
       });
 
@@ -282,66 +305,46 @@ export function useWorkspaceAppShellRouting<
     navigate,
     routeChannelExists,
     routeChannelId,
+    routeSelectionVisibleChatPath,
     selectedChannelEntryLifecycle,
     selectedChannelId,
     selectedChannelViewId,
     setState,
-    state,
+    readyPayload,
   ]);
 
   useEffect(() => {
-    if (state.status !== 'ready' || !draftDefaultRecipientCatId) {
+    if (!readyPayload || !draftDefaultRecipientCatId) {
       return;
     }
 
-    const catExists = state.payload.chat.cats.some((cat) =>
-      cat.id === draftDefaultRecipientCatId && cat.status === 'active');
-    if (!catExists) {
-      navigate(
-        resolveMissingDraftDefaultRecipientPath?.({
-          channels: state.payload.chat.channels,
-          selectedChannelId: state.payload.chat.selectedChannelId,
-          draftDefaultRecipientCatId,
-          showingMyCatDirectLane,
-        })
-          ?? (
-            showingMyCatDirectLane
-              ? resolveWorkspaceVisibleChatPath(
-                  chatPrefix,
-                  state.payload.chat.channels,
-                  state.payload.chat.selectedChannelId,
-                )
-              : resolveWorkspaceNewChatPath(chatPrefix)
-          ),
-        { replace: true },
-      );
+    if (!draftRecipientAvailable && draftRecipientFallbackPath) {
+      navigate(draftRecipientFallbackPath, { replace: true });
     }
   }, [
-    chatPrefix,
     draftDefaultRecipientCatId,
+    draftRecipientAvailable,
+    draftRecipientFallbackPath,
     navigate,
-    resolveMissingDraftDefaultRecipientPath,
-    showingMyCatDirectLane,
-    state,
+    readyPayload,
   ]);
 
   useEffect(() => {
     if (
-      state.status !== 'ready'
+      !readyPayload
       || !showingMyCatDirectLane
       || !draftDefaultRecipientCatId
-      || !routeDirectLaneSummary
+      || !routeDirectLaneSummaryId
       || (
-        readySelectedChannel
-        && isDirectLaneChannel(readySelectedChannel)
-        && readySelectedChannel.roomRouting.defaultRecipientId === draftDefaultRecipientCatId
+        readySelectedDirectLaneRecipientId
+        && readySelectedDirectLaneRecipientId === draftDefaultRecipientCatId
       )
     ) {
       return;
     }
 
     const controller = new AbortController();
-    updateSelectedChannel(routeDirectLaneSummary.id, controller.signal)
+    updateSelectedChannel(routeDirectLaneSummaryId, controller.signal)
       .then((payload) => {
         if (!controller.signal.aborted) {
           startTransition(() => setState({ status: 'ready', payload }));
@@ -355,11 +358,11 @@ export function useWorkspaceAppShellRouting<
     return () => controller.abort();
   }, [
     draftDefaultRecipientCatId,
-    readySelectedChannel,
-    routeDirectLaneSummary,
+    readyPayload,
+    readySelectedDirectLaneRecipientId,
+    routeDirectLaneSummaryId,
     setState,
     showingMyCatDirectLane,
-    state.status,
   ]);
 }
 

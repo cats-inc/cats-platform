@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useRef,
   type Dispatch,
   type FormEvent,
   type KeyboardEvent,
@@ -31,6 +32,10 @@ import {
   appendOptimisticUserMessage,
   insertCreatedChannelIntoPayload,
 } from '../workspaceChatUtils.js';
+import {
+  readCurrentComposerLocation,
+  shouldAutoNavigateComposerLocation,
+} from '../composerNavigation.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -102,6 +107,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     setBusy,
     setFeedback,
   } = options;
+  const managedNavigationLocationRef = useRef<string | null>(null);
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
     if (state.status !== 'ready') {
@@ -139,9 +145,23 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         setChannelFiles(originalChannelFiles);
       }
     };
+    const navigateWithinManagedFlow = (nextPath: string): boolean => {
+      const currentLocation = readCurrentComposerLocation();
+      if (!shouldAutoNavigateComposerLocation(
+        managedNavigationLocationRef.current,
+        currentLocation,
+      )) {
+        return false;
+      }
+
+      navigate(nextPath, { replace: true });
+      managedNavigationLocationRef.current = nextPath;
+      return true;
+    };
 
     setBusy('message:prepare');
     setFeedback('');
+    managedNavigationLocationRef.current = readCurrentComposerLocation();
     try {
       const preparedSendContext = await prepareWorkspaceSendContext({
         initialPayload,
@@ -187,7 +207,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       setComposerDraft('');
       setDraftFiles([]);
       setChannelFiles([]);
-      navigate(rollbackPath, { replace: true });
+      navigateWithinManagedFlow(rollbackPath);
       setBusy('message:send');
 
       const dispatch = await sendChatMessage(channelId, {
@@ -197,7 +217,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       setState({ status: 'ready', payload: dispatch.appShell });
       setComposerDraft('');
       setFeedback('');
-      navigate(rollbackPath, { replace: true });
+      navigateWithinManagedFlow(rollbackPath);
 
       if (isCatScopedLaneRoute) {
         setDraftCwd(null);
@@ -220,9 +240,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       setComposerDraft(body);
       restoreFiles();
       setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
-      navigate(rollbackPath, { replace: true });
+      navigateWithinManagedFlow(rollbackPath);
     } finally {
       setBusy('');
+      managedNavigationLocationRef.current = null;
     }
   }, [
     channelFiles,
