@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import test from 'node:test';
 
 import { isScrollNearBottom } from '../src/core/scrolling.ts';
 import { resolveComposerWorkspacePath } from '../src/core/workspacePaths.ts';
+import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
+import { readProductTranscriptAutoScrollSource } from './helpers/readProductTranscriptAutoScrollSource.js';
 
 const PRODUCT_SURFACES = ['chat', 'work', 'code'];
 
@@ -55,18 +55,7 @@ test('isScrollNearBottom treats near-bottom positions as auto-follow eligible', 
 
 for (const product of PRODUCT_SURFACES) {
   test(`${product} ChatView uses transcript auto-follow and hides runtime-only workspace chips`, async () => {
-    const source = await readFile(
-      path.join(
-        process.cwd(),
-        'src',
-        'products',
-        product,
-        'renderer',
-        'components',
-        'ChatView.tsx',
-      ),
-      'utf8',
-    );
+    const source = await readProductChatViewSource(product);
 
     assert.match(source, /useTranscriptAutoScroll/u);
     assert.match(source, /resolveComposerWorkspacePath/u);
@@ -79,18 +68,7 @@ for (const product of PRODUCT_SURFACES) {
   });
 
   test(`${product} transcript auto-scroll hook follows the canvas only while near the bottom`, async () => {
-    const source = await readFile(
-      path.join(
-        process.cwd(),
-        'src',
-        'products',
-        product,
-        'renderer',
-        'hooks',
-        'useTranscriptAutoScroll.ts',
-      ),
-      'utf8',
-    );
+    const source = await readProductTranscriptAutoScrollSource(product);
 
     assert.match(source, /addEventListener\('scroll'/u);
     assert.match(source, /ResizeObserver/u);
