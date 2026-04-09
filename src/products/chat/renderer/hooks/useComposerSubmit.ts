@@ -42,6 +42,7 @@ import {
   type DraftTemporaryParticipant,
   type SelectedChannelView,
 } from '../chatUtils';
+import { resetComposerDraftState } from '../composerDraftState.js';
 import {
   resolveDraftRouteContext,
   resolveDraftRoutePath,
@@ -240,13 +241,15 @@ export function useComposerSubmit(options: {
         }
         setFeedback('');
 
-        setDraftCwd(null);
-        setDraftCatIds([]);
-        setDraftTemporaryParticipants([]);
-        setDraftHighlightedCatId(null);
-        setDraftCatModelOverrides(new Map());
-        setDraftFiles([]);
-        resetDraftParallelChatTargets();
+        resetComposerDraftState({
+          setDraftCwd,
+          setDraftCatIds,
+          setDraftTemporaryParticipants,
+          setDraftHighlightedCatId,
+          setDraftCatModelOverrides,
+          setDraftFiles,
+          resetDraftParallelChatTargets,
+        });
         return;
       }
 
@@ -357,20 +360,24 @@ export function useComposerSubmit(options: {
       navigate(rollbackPath, { replace: true });
 
       if (isCatScopedLaneRoute) {
-        setDraftCwd(null);
-        setDraftCatIds([]);
-        setDraftTemporaryParticipants([]);
-        setDraftHighlightedCatId(null);
-        setDraftCatModelOverrides(new Map());
-        setDraftFiles([]);
-        setChannelFiles([]);
+        resetComposerDraftState({
+          setDraftCwd,
+          setDraftCatIds,
+          setDraftTemporaryParticipants,
+          setDraftHighlightedCatId,
+          setDraftCatModelOverrides,
+          setDraftFiles,
+          setChannelFiles,
+        });
       } else if (wasDraftingNewChat) {
-        setDraftCwd(null);
-        setDraftCatIds([]);
-        setDraftTemporaryParticipants([]);
-        setDraftHighlightedCatId(null);
-        setDraftCatModelOverrides(new Map());
-        setDraftFiles([]);
+        resetComposerDraftState({
+          setDraftCwd,
+          setDraftCatIds,
+          setDraftTemporaryParticipants,
+          setDraftHighlightedCatId,
+          setDraftCatModelOverrides,
+          setDraftFiles,
+        });
       } else {
         setChannelFiles([]);
       }
