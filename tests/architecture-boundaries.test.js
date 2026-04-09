@@ -540,6 +540,29 @@ test('workspace renderer apps delegate settings routing through the shared app f
   }
 });
 
+test('chat and workspace apps consume a dedicated generic-draft route entry hook', async () => {
+  const chatAppSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const workspaceAppSource = await readFile(
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useOnGenericDraftRouteEntry.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(chatAppSource, /useOnGenericDraftRouteEntry/u);
+  assert.match(workspaceAppSource, /useOnGenericDraftRouteEntry/u);
+  assert.doesNotMatch(chatAppSource, /wasGenericNewChatRoute/u);
+  assert.doesNotMatch(workspaceAppSource, /wasGenericNewChatRoute/u);
+  assert.match(hookSource, /export function useOnGenericDraftRouteEntry/u);
+  assert.match(hookSource, /useRef/u);
+  assert.match(hookSource, /justEnteredGenericDraftRoute/u);
+});
+
 test('chat internals use the product channel-paths module instead of the shared compatibility shim', async () => {
   const productChatPath = fileURLToPath(new URL('../src/products/chat', import.meta.url));
 

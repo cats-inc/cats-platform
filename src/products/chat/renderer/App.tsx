@@ -2,7 +2,6 @@ import {
   startTransition,
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -54,6 +53,9 @@ import { useCompanionMode } from './hooks/useCompanionMode';
 import { useDraftParticipantState } from './hooks/useDraftParticipantState';
 import { useParallelChatDraft } from './hooks/useParallelChatDraft';
 import {
+  useOnGenericDraftRouteEntry,
+} from '../../shared/renderer/hooks/useOnGenericDraftRouteEntry.js';
+import {
   useWorkspaceModelSelectionState,
 } from '../../shared/renderer/hooks/useWorkspaceModelSelectionState.js';
 import {
@@ -104,8 +106,6 @@ export default function App() {
   const maxDraftGroupParticipants = state.status === 'ready'
     ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
-  const wasGenericNewChatRoute = useRef(false);
-
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const onDirectLaneModelSave = useCallback(async (catId: string, value: ModelSelectorValue) => {
@@ -416,31 +416,27 @@ export default function App() {
       : 'Cats Chat';
   }, [routeChannelTitle]);
 
-  useEffect(() => {
-    const isGenericNewChatRoute = showingNewChatDraft && draftRoute.isGenericNewChatRoute;
-    const justEnteredGenericNewChatRoute = isGenericNewChatRoute && !wasGenericNewChatRoute.current;
-    wasGenericNewChatRoute.current = isGenericNewChatRoute;
-    if (!justEnteredGenericNewChatRoute) {
-      return;
-    }
-
-    setDraftCatIds([]);
-    setDraftTemporaryParticipants((current) =>
-      resolveGenericDraftTemporaryParticipants(
-        newChatMode,
-        current,
-        seedDraftGroupParticipants,
-      ));
-    setDraftHighlightedCatId(null);
-    setDraftCatModelOverrides(new Map());
-  }, [
-    draftRoute.isGenericNewChatRoute,
-    newChatMode,
-    seedDraftGroupParticipants,
-    setDraftCatIds,
-    setDraftTemporaryParticipants,
-    showingNewChatDraft,
-  ]);
+  useOnGenericDraftRouteEntry(
+    showingNewChatDraft && draftRoute.isGenericNewChatRoute,
+    useCallback(() => {
+      setDraftCatIds([]);
+      setDraftTemporaryParticipants((current) =>
+        resolveGenericDraftTemporaryParticipants(
+          newChatMode,
+          current,
+          seedDraftGroupParticipants,
+        ));
+      setDraftHighlightedCatId(null);
+      setDraftCatModelOverrides(new Map());
+    }, [
+      newChatMode,
+      seedDraftGroupParticipants,
+      setDraftCatIds,
+      setDraftTemporaryParticipants,
+      setDraftHighlightedCatId,
+      setDraftCatModelOverrides,
+    ]),
+  );
 
   useAppShellRouting({
     state,

@@ -2,7 +2,6 @@ import {
   startTransition,
   useCallback,
   useEffect,
-  useRef,
   useState,
   type ComponentType,
   type MouseEvent as ReactMouseEvent,
@@ -53,6 +52,7 @@ import { useFolderBrowser } from "./hooks/useFolderBrowser.js";
 import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
 import { useWorkspaceLocationState } from "./hooks/useWorkspaceLocationState.js";
 import { useWorkspaceModelSelectionState } from "./hooks/useWorkspaceModelSelectionState.js";
+import { useOnGenericDraftRouteEntry } from "./hooks/useOnGenericDraftRouteEntry.js";
 import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
@@ -163,7 +163,6 @@ export function createWorkspaceProductApp({
     const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<
       Map<string, ModelSelectorValue>
     >(new Map());
-    const wasGenericNewChatRoute = useRef(false);
     const {
       dialog: appDialog,
       confirm: appConfirm,
@@ -448,20 +447,14 @@ export function createWorkspaceProductApp({
         : appTitle;
     }, [productName, routeChannelTitle]);
 
-    useEffect(() => {
-      const isGenericNewChatRoute =
-        showingNewChatDraft && !draftDefaultRecipientCatId;
-      const justEnteredGenericNewChatRoute =
-        isGenericNewChatRoute && !wasGenericNewChatRoute.current;
-      wasGenericNewChatRoute.current = isGenericNewChatRoute;
-      if (!justEnteredGenericNewChatRoute) {
-        return;
-      }
-
-      setDraftCatIds([]);
-      setDraftHighlightedCatId(null);
-      setDraftCatModelOverrides(new Map());
-    }, [draftDefaultRecipientCatId, setDraftCatIds, showingNewChatDraft]);
+    useOnGenericDraftRouteEntry(
+      showingNewChatDraft && !draftDefaultRecipientCatId,
+      () => {
+        setDraftCatIds([]);
+        setDraftHighlightedCatId(null);
+        setDraftCatModelOverrides(new Map());
+      },
+    );
 
     useWorkspaceAppShellRouting({
       state,
