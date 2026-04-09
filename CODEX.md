@@ -97,6 +97,133 @@ To sync skills after changes:
 - **Configuration compliance**: Always respect `.editorconfig`
 - **Documentation**: Keep docs synchronized with code
 
+### Refactor Retrospective Guardrails
+
+The unpushed/local fix stack after the April 9, 2026 refactor pass showed a
+clear pattern: most regressions were not "logic bugs" in isolation; they came
+from flattening product-specific UI semantics into over-generic shared
+components, over-sharing CSS without preserving Chat's DOM/class contracts, and
+using overly broad state signals for routing/scroll/live behavior.
+
+Codex MUST treat the following as hard guardrails when refactoring `cats`.
+
+#### 1. Do not unify distinct chat modes into one generic chip/stack abstraction
+
+- **MUST** preserve mode-specific composer semantics. These are not cosmetic;
+  they encode product behavior.
+- `New chat` solo draft: provider/model chip, no recipient-plus icon.
+- `Group chat` draft: avatar stack, collapsed by default, hover-expand,
+  delete gating remains product-specific.
+- `Parallel chat` draft: every branch keeps model-aware chips/stubs; do not
+  degrade secondary branches to implicit-recipient plus chips.
+- Ongoing direct/private lane: single avatar, not a provider/model pill.
+- Ongoing group room: avatar stack, not a single implicit provider/model pill.
+- **MUST NOT** replace these mode-specific presentations with
+  `ComposerRecipientChip` or other generic shared UI unless the old mode's DOM,
+  interaction rules, and visual semantics are preserved exactly.
+- Before extracting a shared renderer primitive, **MUST** write down which of
+  the above mode contracts it is allowed to serve and which it is not.
+
+#### 2. Chat styling is contract-sensitive; do not swap stylesheet chains casually
+
+- **MUST NOT** replace Chat-local stylesheet entry chains with shared bundles
+  unless the resulting DOM/class structure is proven equivalent for Chat.
+- Chat's visual behavior depends on exact class names, stacking contexts,
+  sticky offsets, hover-only controls, and negative margins. Treat those as
+  behavioral contracts, not implementation details.
+- **MUST** preserve:
+  - transcript bubble spacing and content-based widths
+  - hover-only copy/action controls
+  - composer chip/stack appearance by mode
+  - footer/header fixed heights when they are intentionally aligned
+  - overflow menu layering above sidebar/footer/canvas chrome
+  - sentinel offsets used by Chat transcript scrolling
+- **MUST NOT** "simplify" z-index or sticky positioning globally when a local
+  class-level adjustment will solve the problem.
+- If changing shared/chat CSS used by sticky composer/footer/sidebar chrome,
+  **MUST** manually check for scrollbar-dependent 1px drift.
+
+#### 3. Routing, scroll, and live state must use narrow truth sources
+
+- **MUST NOT** use `selectedChannel.updatedAt` as a transcript auto-scroll
+  trigger. It is too broad and causes scroll bounce/regressions.
+- Transcript follow state **MUST** be keyed from actual transcript signals:
+  message count, last visible message identity/timestamp, and live-indicator
+  visibility state.
+- Routing effects **MUST NOT** depend on whole `state` objects when a smaller
+  route key / fallback key will do.
+- Navigation surfaces in compare/group contexts **MUST** prefer route state as
+  the immediate source of truth; do not wait for lagging `selectedChannel`
+  mirrors when computing prev/next/member selection.
+- **MUST NOT** stack custom EventSource retry loops on top of native
+  EventSource reconnection unless there is a documented reason. Duplicated retry
+  policies caused noisy stream storms.
+
+#### 4. Shared refactors must preserve runtime/session metadata, not just transcript text
+
+- `session_started`, `cwd`, lease/session metadata, and startup recovery notes
+  are part of the user-visible chat contract.
+- **MUST NOT** treat runtime metadata as optional just because assistant/user
+  bubbles still render.
+- When touching runtime-dispatch merge/recovery/wake paths, **MUST** verify:
+  - recovered stale-session retries keep `session_started` messages
+  - composer cwd chips still appear for draft/direct/group flows
+  - startup-recovery interruptions remain visible and truthful
+  - parallel member finalization cannot clobber sibling channel state
+- Read-time repair is acceptable as a safety net, but **MUST** still chase the
+  write-path/root-cause when metadata is dropped.
+
+#### 5. Shared settings shells must not wrap platform shells twice
+
+- **MUST NOT** embed a second settings shell/menu inside a page that already
+  lives under `PlatformSettingsShell`.
+- `Settings > My Cats` should render the Cats canvas directly, not a nested
+  shell with another General/Cats/Data rail.
+- When upstreaming settings components into shared renderer space, **MUST**
+  explicitly identify which layer owns navigation chrome and ensure it exists
+  exactly once.
+
+#### 6. Preserve title semantics and user-facing labels during structure changes
+
+- **MUST NOT** rewrite channel titles during structural actions like ungroup
+  unless the product explicitly wants a retitle.
+- Group rename propagation and ungroup title preservation are separate
+  contracts; keep both.
+- For room/thread titles, labels shown in recents, footer tabs, and grouped
+  states are user-facing data contracts, not disposable derived strings.
+
+#### 7. Refactor validation must include chat-mode smoke checks, not only unit tests
+
+- For any refactor touching shared/chat renderer components, styles, routing,
+  or room state, Codex **MUST** run targeted tests **and** perform a manual dev
+  smoke check of the affected Chat surfaces before calling the refactor safe.
+- Minimum smoke checklist when touching shared Chat UI:
+  - `+New chat` provider/model chip
+  - `+Group chat` draft avatar stack and delete rules
+  - `+Parallel chat` secondary branch chips/stacks
+  - direct/private lane composer avatar
+  - ongoing group room composer avatar stack
+  - sidebar overflow menu placement
+  - transcript bubble spacing/actions
+  - post-send route switching
+  - compare footer left/right switching
+  - transcript scroll to bottom on thread switch
+  - session connection metadata and cwd chip visibility
+  - `Settings > My Cats` without nested shell duplication
+- If manual verification is not possible in the current session, Codex **MUST**
+  state that explicitly and reduce refactor scope instead of assuming visual
+  parity.
+
+#### 8. "Shared" is not a success metric by itself
+
+- **MUST NOT** optimize for fewer files/imports at the expense of product truth.
+- A refactor is only acceptable when behavior, DOM contract, and runtime state
+  semantics remain intact.
+- When a shared extraction forces repeated mode-specific exceptions to restore
+  behavior, treat that as evidence the abstraction boundary is wrong.
+- In Chat-heavy surfaces, prefer a thin shared substrate plus product-owned
+  rendering branches over one universal renderer component.
+
 ### Project-Specific Context
 
 - Main app port: `CATS_INC_PORT` (default `8181`)
@@ -188,4 +315,4 @@ working memory for Codex, not yet a ratified product spec or ADR.
 
 This file is maintained by Codex only. Other agents should not modify this file.
 
-Last updated: 2026-04-06
+Last updated: 2026-04-09
