@@ -26,11 +26,8 @@ import {
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
   PRODUCT_PROVIDER_ORDER,
-  getDefaultModel,
-  getDefaultProviderInstance,
   getProviderDisplayName,
 } from '../../../shared/providerCatalog';
-import { sameProviderModelSelection } from '../../../shared/providerSelection';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import {
   BootShell,
@@ -61,6 +58,11 @@ import { useOperatorLoop } from './hooks/useOperatorLoop';
 import { useLiveIndicator } from './hooks/useLiveIndicator';
 import { useChatEvents } from './hooks/useChatEvents';
 import {
+  createDefaultModelSelectorValue,
+  createModelSelectorValueForProvider,
+  useWorkspaceModelSelectionState,
+} from '../../shared/renderer/hooks/useWorkspaceModelSelectionState.js';
+import {
   activateChatChannel,
   fetchAppShell,
   relayParallelChatMessage,
@@ -74,40 +76,6 @@ import {
   Sidebar,
 } from './components/Sidebar';
 import './styles.css';
-
-function createDefaultModelSelectorValue(): ModelSelectorValue {
-  return {
-    provider: 'claude',
-    model: getDefaultModel('claude') || null,
-    instance: getDefaultProviderInstance('claude'),
-    modelSelection: null,
-  };
-}
-
-function toModelSelectorValue(
-  defaults: AppShellPayload['chat']['newChatDefaults'] | null | undefined,
-): ModelSelectorValue {
-  if (!defaults) {
-    return createDefaultModelSelectorValue();
-  }
-
-  const provider = defaults.provider?.trim() || 'claude';
-  return {
-    provider,
-    model: defaults.model ?? (getDefaultModel(provider) || null),
-    instance: defaults.instance ?? getDefaultProviderInstance(provider),
-    modelSelection: defaults.modelSelection ?? null,
-  };
-}
-
-function createModelSelectorValueForProvider(provider: string): ModelSelectorValue {
-  return {
-    provider,
-    model: getDefaultModel(provider) || null,
-    instance: getDefaultProviderInstance(provider),
-    modelSelection: null,
-  };
-}
 
 function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelectorValue[] {
   const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
@@ -129,16 +97,6 @@ function createNextCompareTarget(
     ?? fallbackTarget.provider;
 
   return createModelSelectorValueForProvider(nextProvider);
-}
-
-function sameModelSelectorValue(
-  left: ModelSelectorValue,
-  right: ModelSelectorValue,
-): boolean {
-  return left.provider === right.provider
-    && (left.instance ?? null) === (right.instance ?? null)
-    && (left.model ?? null) === (right.model ?? null)
-    && sameProviderModelSelection(left.modelSelection, right.modelSelection);
 }
 
 export default function App() {
@@ -182,11 +140,9 @@ export default function App() {
       || draftTemporaryParticipants.length > 0
       ? 'group'
       : 'solo';
-  const [draftModel, setDraftModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
   const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<ModelSelectorValue[]>(
     () => createInitialCompareTargets(createDefaultModelSelectorValue()),
   );
-  const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(createDefaultModelSelectorValue);
   const [compareSendScope, setCompareSendScope] = useState<'all_members' | 'active_only'>(
     'all_members',
   );
@@ -196,12 +152,6 @@ export default function App() {
     ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
   const wasGenericNewChatRoute = useRef(false);
-  const latestNewChatDefaultsSaveId = useRef(0);
-  const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
-  const latestSoloChannelModelSaveId = useRef(0);
-  const pendingSoloChannelModelSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSoloChannelModelSaveAbort = useRef<AbortController | null>(null);
   const [companionMode, setCompanionMode] = useState(false);
   const previousMyCatIdRef = useRef(routeMyCatId);
   useEffect(() => {
@@ -382,18 +332,6 @@ export default function App() {
       return copy;
     });
   }, []);
-  const resetDraftParallelChatTargets = useCallback(() => {
-    setDraftParallelChatTargets(createInitialCompareTargets(draftModel));
-  }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
-  ]);
-  const seedDraftGroupParticipants = useCallback(
-    () => createInitialGroupParticipants(draftModel.provider, maxDraftGroupParticipants),
-    [draftModel.provider, maxDraftGroupParticipants],
-  );
 
   const {
     accountMenuOpen,
@@ -459,6 +397,55 @@ export default function App() {
     openFolderBrowser,
   });
   const {
+    readyPayload,
+    readyChat,
+    readySelectedChannel,
+    selectedChannelId,
+    selectedChannelViewId,
+    selectedChannelEntryLifecycle,
+    routeChannelExists,
+    routeChannelTitle,
+    routeDirectLaneSummary,
+    selectedChannel,
+    selectedDirectLane,
+    operatorRefreshKey,
+  } = deriveAppRouteState({
+    state,
+    routeChannelId,
+    draftDefaultRecipientCatId: draftRoute.routeDefaultRecipientCatId,
+    showingMyCatDirectLane: draftRoute.isDirectLaneRoute,
+  });
+  const {
+    operatorState,
+    setOperatorState,
+  } = useOperatorLoop(readyPayload, operatorRefreshKey);
+  const {
+    draftModel,
+    setDraftModel,
+    soloChannelModel,
+    setSoloChannelModel,
+  } = useWorkspaceModelSelectionState({
+    state,
+    readyChat,
+    readySelectedChannel,
+    setState,
+    setFeedback,
+    updateNewChatDefaultsPreference,
+    updateChannelPendingExecutionTarget,
+  });
+  const resetDraftParallelChatTargets = useCallback(() => {
+    setDraftParallelChatTargets(createInitialCompareTargets(draftModel));
+  }, [
+    draftModel.instance,
+    draftModel.model,
+    draftModel.modelSelection,
+    draftModel.provider,
+  ]);
+  const seedDraftGroupParticipants = useCallback(
+    () => createInitialGroupParticipants(draftModel.provider, maxDraftGroupParticipants),
+    [draftModel.provider, maxDraftGroupParticipants],
+  );
+  const {
     onOpenChatsOverview,
     onSelect,
     onRenameChannel,
@@ -497,30 +484,6 @@ export default function App() {
     setChannelFiles,
     confirm: appConfirm,
   });
-
-  const {
-    readyPayload,
-    readyChat,
-    readySelectedChannel,
-    selectedChannelId,
-    selectedChannelViewId,
-    selectedChannelEntryLifecycle,
-    routeChannelExists,
-    routeChannelTitle,
-    routeDirectLaneSummary,
-    selectedChannel,
-    selectedDirectLane,
-    operatorRefreshKey,
-  } = deriveAppRouteState({
-    state,
-    routeChannelId,
-    draftDefaultRecipientCatId: draftRoute.routeDefaultRecipientCatId,
-    showingMyCatDirectLane: draftRoute.isDirectLaneRoute,
-  });
-  const {
-    operatorState,
-    setOperatorState,
-  } = useOperatorLoop(readyPayload, operatorRefreshKey);
   const liveIndicatorChannel = selectedChannel ?? selectedDirectLane ?? null;
   const liveIndicator = useLiveIndicator({
     channelId: liveIndicatorChannel?.id ?? null,
@@ -632,75 +595,6 @@ export default function App() {
     showingNewChatDraft,
   ]);
 
-  useEffect(() => {
-    if (!readyChat) {
-      return;
-    }
-
-    const nextDraftModel = toModelSelectorValue(readyChat.newChatDefaults);
-    setDraftModel((currentDraftModel) =>
-      sameModelSelectorValue(currentDraftModel, nextDraftModel)
-        ? currentDraftModel
-        : nextDraftModel);
-  }, [
-    readyChat?.newChatDefaults.instance,
-    readyChat?.newChatDefaults.model,
-    readyChat?.newChatDefaults.modelSelection,
-    readyChat?.newChatDefaults.provider,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      if (pendingNewChatDefaultsSaveTimeout.current) {
-        clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
-        pendingNewChatDefaultsSaveTimeout.current = null;
-      }
-      pendingNewChatDefaultsSaveAbort.current?.abort();
-      pendingNewChatDefaultsSaveAbort.current = null;
-      if (pendingSoloChannelModelSaveTimeout.current) {
-        clearTimeout(pendingSoloChannelModelSaveTimeout.current);
-        pendingSoloChannelModelSaveTimeout.current = null;
-      }
-      pendingSoloChannelModelSaveAbort.current?.abort();
-      pendingSoloChannelModelSaveAbort.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
-      return;
-    }
-
-    setSoloChannelModel({
-      provider:
-        readySelectedChannel.pendingProvider
-        ?? readyChat.globalOrchestrator.executionTarget.provider,
-      model:
-        readySelectedChannel.pendingModel
-        ?? readyChat.globalOrchestrator.executionTarget.model
-        ?? null,
-      instance:
-        readySelectedChannel.pendingInstance
-        ?? readyChat.globalOrchestrator.executionTarget.instance
-        ?? null,
-      modelSelection:
-        readySelectedChannel.pendingModelSelection
-        ?? readyChat.globalOrchestrator.executionModelSelection
-        ?? null,
-    });
-  }, [
-    readySelectedChannel?.id,
-    readySelectedChannel?.composerMode,
-    readySelectedChannel?.pendingProvider,
-    readySelectedChannel?.pendingModel,
-    readySelectedChannel?.pendingInstance,
-    readySelectedChannel?.pendingModelSelection,
-    readyChat?.globalOrchestrator.executionTarget.provider,
-    readyChat?.globalOrchestrator.executionTarget.model,
-    readyChat?.globalOrchestrator.executionTarget.instance,
-    readyChat?.globalOrchestrator.executionModelSelection,
-  ]);
-
   useAppShellRouting({
     state,
     setState,
@@ -716,26 +610,6 @@ export default function App() {
     routeDirectLaneSummary,
     readySelectedChannel,
   });
-
-  useEffect(() => {
-    if (!readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
-      return;
-    }
-
-    const pending = readySelectedChannel as {
-      pendingProvider?: string | null;
-      pendingModel?: string | null;
-      pendingInstance?: string | null;
-    };
-    if (pending.pendingProvider) {
-      setSoloChannelModel({
-        provider: pending.pendingProvider,
-        model: pending.pendingModel ?? null,
-        instance: pending.pendingInstance ?? null,
-        modelSelection: readySelectedChannel.pendingModelSelection ?? null,
-      });
-    }
-  }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onDraftModelChange = useCallback((nextDraftModel: ModelSelectorValue): void => {
     setDraftModel(nextDraftModel);
@@ -761,164 +635,6 @@ export default function App() {
       setBusy('');
     }
   }, []);
-
-  useEffect(() => {
-    if (state.status !== 'ready') {
-      return;
-    }
-
-    const persistedDraftModel = toModelSelectorValue(state.payload.chat.newChatDefaults);
-    if (sameModelSelectorValue(draftModel, persistedDraftModel)) {
-      return;
-    }
-
-    if (pendingNewChatDefaultsSaveTimeout.current) {
-      clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
-      pendingNewChatDefaultsSaveTimeout.current = null;
-    }
-    pendingNewChatDefaultsSaveAbort.current?.abort();
-
-    const saveId = latestNewChatDefaultsSaveId.current + 1;
-    latestNewChatDefaultsSaveId.current = saveId;
-    const controller = new AbortController();
-    pendingNewChatDefaultsSaveAbort.current = controller;
-    const nextDraftModel = {
-      provider: draftModel.provider,
-      instance: draftModel.instance,
-      model: draftModel.model,
-      modelSelection: draftModel.modelSelection,
-    };
-
-    pendingNewChatDefaultsSaveTimeout.current = setTimeout(() => {
-      pendingNewChatDefaultsSaveTimeout.current = null;
-
-      void updateNewChatDefaultsPreference(nextDraftModel, controller.signal)
-        .then((payload) => {
-          if (controller.signal.aborted || latestNewChatDefaultsSaveId.current !== saveId) {
-            return;
-          }
-          pendingNewChatDefaultsSaveAbort.current = null;
-          startTransition(() => setState({ status: 'ready', payload }));
-        })
-        .catch((error) => {
-          if (controller.signal.aborted || latestNewChatDefaultsSaveId.current !== saveId) {
-            return;
-          }
-          pendingNewChatDefaultsSaveAbort.current = null;
-          setFeedback(
-            error instanceof Error
-              ? error.message
-              : 'Failed to save new chat model defaults.',
-          );
-        });
-    }, 150);
-
-    return () => {
-      if (pendingNewChatDefaultsSaveTimeout.current) {
-        clearTimeout(pendingNewChatDefaultsSaveTimeout.current);
-        pendingNewChatDefaultsSaveTimeout.current = null;
-      }
-      controller.abort();
-    };
-  }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
-    setFeedback,
-    state.status,
-    state.status === 'ready' ? state.payload.chat.newChatDefaults.instance : null,
-    state.status === 'ready' ? state.payload.chat.newChatDefaults.model : null,
-    state.status === 'ready' ? state.payload.chat.newChatDefaults.modelSelection : null,
-    state.status === 'ready' ? state.payload.chat.newChatDefaults.provider : null,
-  ]);
-
-  useEffect(() => {
-    if (state.status !== 'ready' || !readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
-      return;
-    }
-
-    const persistedSoloModel: ModelSelectorValue = {
-      provider:
-        readySelectedChannel.pendingProvider
-        ?? readyChat.globalOrchestrator.executionTarget.provider,
-      model:
-        readySelectedChannel.pendingModel
-        ?? readyChat.globalOrchestrator.executionTarget.model
-        ?? null,
-      instance:
-        readySelectedChannel.pendingInstance
-        ?? readyChat.globalOrchestrator.executionTarget.instance
-        ?? null,
-      modelSelection:
-        readySelectedChannel.pendingModelSelection
-        ?? readyChat.globalOrchestrator.executionModelSelection
-        ?? null,
-    };
-
-    if (sameModelSelectorValue(soloChannelModel, persistedSoloModel)) {
-      return;
-    }
-
-    if (pendingSoloChannelModelSaveTimeout.current) {
-      clearTimeout(pendingSoloChannelModelSaveTimeout.current);
-      pendingSoloChannelModelSaveTimeout.current = null;
-    }
-    pendingSoloChannelModelSaveAbort.current?.abort();
-
-    const channelId = readySelectedChannel.id;
-    const saveId = latestSoloChannelModelSaveId.current + 1;
-    latestSoloChannelModelSaveId.current = saveId;
-    const controller = new AbortController();
-    pendingSoloChannelModelSaveAbort.current = controller;
-    const nextSoloModel = {
-      pendingProvider: soloChannelModel.provider,
-      pendingModel: soloChannelModel.model,
-      pendingInstance: soloChannelModel.instance,
-      pendingModelSelection: soloChannelModel.modelSelection,
-    };
-
-    pendingSoloChannelModelSaveTimeout.current = setTimeout(() => {
-      pendingSoloChannelModelSaveTimeout.current = null;
-
-      void updateChannelPendingExecutionTarget(channelId, nextSoloModel, controller.signal)
-        .then((payload) => {
-          if (controller.signal.aborted || latestSoloChannelModelSaveId.current !== saveId) {
-            return;
-          }
-          pendingSoloChannelModelSaveAbort.current = null;
-          startTransition(() => setState({ status: 'ready', payload }));
-        })
-        .catch((error) => {
-          if (controller.signal.aborted || latestSoloChannelModelSaveId.current !== saveId) {
-            return;
-          }
-          pendingSoloChannelModelSaveAbort.current = null;
-          setFeedback(
-            error instanceof Error
-              ? error.message
-              : 'Failed to save this chat AI reply settings.',
-          );
-        });
-    }, 150);
-
-    return () => {
-      if (pendingSoloChannelModelSaveTimeout.current) {
-        clearTimeout(pendingSoloChannelModelSaveTimeout.current);
-        pendingSoloChannelModelSaveTimeout.current = null;
-      }
-      controller.abort();
-    };
-  }, [
-    readyChat,
-    readySelectedChannel,
-    setFeedback,
-    soloChannelModel.instance,
-    soloChannelModel.model,
-    soloChannelModel.modelSelection,
-    soloChannelModel.provider,
-    state.status,
-  ]);
 
   const selectedParallelChatGroup = readyPayload && selectedChannel
     ? readyPayload.chat.parallelChatGroups.find((group) =>
