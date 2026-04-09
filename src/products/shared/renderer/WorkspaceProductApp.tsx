@@ -10,8 +10,6 @@ import {
   type RefObject,
 } from "react";
 import {
-  useLocation,
-  useMatch,
   useNavigate,
   type NavigateFunction,
 } from "react-router-dom";
@@ -23,10 +21,6 @@ import {
 import type { PlatformSurfaceId } from "../../../shared/platform-contract.js";
 import { platformSurfaceRoutePrefix } from "../../../core/platformSurface.js";
 import type { AppShellPayload } from "../api/workspaceContracts.js";
-import {
-  isWorkspaceNewChatPath,
-  readWorkspaceNewChatLeadCatId,
-} from "../channelPaths.js";
 import type { AddCatPanelProps } from "./components/AddCatPanel.js";
 import type { FolderBrowserContentProps } from "./components/FolderBrowser.js";
 import type { ModelSelectorValue } from "./components/ModelSelector.js";
@@ -57,6 +51,7 @@ import { ProductReadyShell } from "./ProductReadyShell.js";
 import { useAppChrome } from "./hooks/useAppChrome.js";
 import { useFolderBrowser } from "./hooks/useFolderBrowser.js";
 import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
+import { useWorkspaceLocationState } from "./hooks/useWorkspaceLocationState.js";
 import { useWorkspaceModelSelectionState } from "./hooks/useWorkspaceModelSelectionState.js";
 import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
@@ -141,21 +136,15 @@ export function createWorkspaceProductApp({
 
   return function WorkspaceProductApp() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const settingsMode =
-      location.pathname === "/settings" ||
-      location.pathname.startsWith("/settings/");
-    const channelMatch = useMatch(`${chatPrefix}/chats/:channelId`);
-    const myCatMatch = useMatch(`${chatPrefix}/my-cats/:catId`);
-    const routeChannelId = channelMatch?.params.channelId ?? null;
-    const routeMyCatId = myCatMatch?.params.catId ?? null;
-    const showingNewChatDraft = isWorkspaceNewChatPath(
-      chatPrefix,
-      location.pathname,
-    );
-    const draftDefaultRecipientCatId =
-      routeMyCatId ?? readWorkspaceNewChatLeadCatId(location.search);
-    const showingMyCatDirectLane = Boolean(routeMyCatId);
+    const {
+      location,
+      settingsMode,
+      routeChannelId,
+      routeMyCatId,
+      showingNewChatDraft,
+      draftDefaultRecipientCatId,
+      showingMyCatDirectLane,
+    } = useWorkspaceLocationState(chatPrefix);
 
     const [state, setState] = useState<AppLoadState>({ status: "loading" });
     const [composerDraft, setComposerDraft] = useState("");

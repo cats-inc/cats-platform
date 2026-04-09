@@ -514,12 +514,22 @@ test('workspace renderer apps delegate settings routing through the shared app f
     new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
+  const sharedLocationHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceLocationState.ts', import.meta.url),
+    'utf8',
+  );
   const sharedReadyShellSource = await readFile(
     new URL('../src/products/shared/renderer/ProductReadyShell.tsx', import.meta.url),
     'utf8',
   );
 
   assert.match(sharedWorkspaceAppSource, /ProductReadyShell/u);
+  assert.match(sharedWorkspaceAppSource, /useWorkspaceLocationState/u);
+  assert.doesNotMatch(sharedWorkspaceAppSource, /readWorkspaceNewChatLeadCatId/u);
+  assert.doesNotMatch(sharedWorkspaceAppSource, /isWorkspaceNewChatPath/u);
+  assert.match(sharedLocationHookSource, /export function useWorkspaceLocationState/u);
+  assert.match(sharedLocationHookSource, /useLocation/u);
+  assert.match(sharedLocationHookSource, /useMatch/u);
   assert.match(sharedReadyShellSource, /PlatformSettingsRoutes/u);
 
   for (const source of [workAppSource, codeAppSource]) {
