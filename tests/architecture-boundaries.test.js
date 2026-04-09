@@ -358,6 +358,23 @@ test('chat model re-exports dedicated channel-group mutation helpers instead of 
   assert.match(channelGroupsModule, /export function deleteChannel/u);
 });
 
+test('chat model re-exports dedicated channel-state mutation helpers instead of defining them inline', async () => {
+  const modelModule = await readFile(
+    new URL('../src/products/chat/state/model/index.ts', import.meta.url),
+    'utf8',
+  );
+  const channelStateModule = await readFile(
+    new URL('../src/products/chat/state/model/channelState.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(modelModule, /from '\.\/channelState\.js'/u);
+  assert.doesNotMatch(modelModule, /export function setChannelRoomRouting\(/u);
+  assert.doesNotMatch(modelModule, /export function replaceState\(/u);
+  assert.match(channelStateModule, /export function setChannelRoomRouting/u);
+  assert.match(channelStateModule, /export function replaceState/u);
+});
+
 test('chat snapshot composes dedicated shared and entity helper modules', async () => {
   const snapshotModule = await readFile(
     new URL('../src/products/chat/state/chat-snapshot/index.ts', import.meta.url),
