@@ -1853,6 +1853,22 @@ test('conversation sidebar delegates recents rendering to a dedicated section mo
   assert.match(recentsSource, /function GroupHeaderItem\(/u);
 });
 
+test('conversation sidebar delegates My Cats rendering to a dedicated section module', async () => {
+  const sidebarSource = await readFile(
+    new URL('../src/app/renderer/productShell/ConversationSidebar.tsx', import.meta.url),
+    'utf8',
+  );
+  const myCatsSource = await readFile(
+    new URL('../src/app/renderer/productShell/ConversationSidebarMyCats.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(sidebarSource, /ConversationSidebarMyCats\.js/u);
+  assert.doesNotMatch(sidebarSource, /function MyCatRowItem</u);
+  assert.match(myCatsSource, /function MyCatRowItem</u);
+  assert.match(myCatsSource, /export function ConversationSidebarMyCatsSection</u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api/index.ts', import.meta.url),
