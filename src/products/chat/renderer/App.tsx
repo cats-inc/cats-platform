@@ -13,7 +13,6 @@ import {
 
 import type {
   AppShellPayload,
-  ParallelChatRelayCommandKind,
   NewChatEntryKind,
 } from '../api/contracts';
 import { useConfirmDialog } from '../../../design/components/ConfirmDialog';
@@ -25,7 +24,6 @@ import {
 } from '../shared/channelPaths';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
-  PRODUCT_PROVIDER_ORDER,
   getProviderDisplayName,
 } from '../../../shared/providerCatalog';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
@@ -54,9 +52,8 @@ import { useOperatorLoop } from './hooks/useOperatorLoop';
 import { useLiveIndicator } from './hooks/useLiveIndicator';
 import { useCompanionMode } from './hooks/useCompanionMode';
 import { useDraftParticipantState } from './hooks/useDraftParticipantState';
+import { useParallelChatDraft } from './hooks/useParallelChatDraft';
 import {
-  createDefaultModelSelectorValue,
-  createModelSelectorValueForProvider,
   useWorkspaceModelSelectionState,
 } from '../../shared/renderer/hooks/useWorkspaceModelSelectionState.js';
 import {
@@ -66,7 +63,6 @@ import { ProductReadyShell } from '../../shared/renderer/ProductReadyShell.js';
 import {
   activateChatChannel,
   fetchAppShell,
-  relayParallelChatMessage,
   updateCatProfile,
   updateChannelParticipantApi,
   updateChannelPendingExecutionTarget,
@@ -77,28 +73,6 @@ import {
   Sidebar,
 } from './components/Sidebar';
 import './styles.css';
-
-function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelectorValue[] {
-  const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
-    ?? 'codex';
-
-  return [
-    baseTarget,
-    createModelSelectorValueForProvider(fallbackProvider),
-  ];
-}
-
-function createNextCompareTarget(
-  currentTargets: ModelSelectorValue[],
-  fallbackTarget: ModelSelectorValue,
-): ModelSelectorValue {
-  const nextProvider = PRODUCT_PROVIDER_ORDER.find((provider) =>
-    !currentTargets.some((target) => target.provider === provider),
-  ) ?? PRODUCT_PROVIDER_ORDER.find((provider) => provider !== fallbackTarget.provider)
-    ?? fallbackTarget.provider;
-
-  return createModelSelectorValueForProvider(nextProvider);
-}
 
 export default function App() {
   const navigate = useNavigate();
@@ -127,12 +101,6 @@ export default function App() {
   const [draftCwd, setDraftCwd] = useState<string | null>(null);
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [channelFiles, setChannelFiles] = useState<File[]>([]);
-  const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<ModelSelectorValue[]>(
-    () => createInitialCompareTargets(createDefaultModelSelectorValue()),
-  );
-  const [compareSendScope, setCompareSendScope] = useState<'all_members' | 'active_only'>(
-    'all_members',
-  );
   const maxDraftGroupParticipants = state.status === 'ready'
     ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
@@ -302,14 +270,24 @@ export default function App() {
     updateNewChatDefaultsPreference,
     updateChannelPendingExecutionTarget,
   });
-  const resetDraftParallelChatTargets = useCallback(() => {
-    setDraftParallelChatTargets(createInitialCompareTargets(draftModel));
-  }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
-  ]);
+  const {
+    draftParallelChatTargets,
+    compareSendScope,
+    setCompareSendScope,
+    selectedParallelChatGroup,
+    resetDraftParallelChatTargets,
+    onDraftParallelChatTargetChange,
+    onAddDraftParallelChatTarget,
+    onRemoveDraftParallelChatTarget,
+    onRelayCompareMessage,
+  } = useParallelChatDraft({
+    readyPayload,
+    selectedChannel,
+    draftModel,
+    setState,
+    setBusy,
+    setFeedback,
+  });
   const seedDraftGroupParticipants = useCallback(
     () => createInitialGroupParticipants(draftModel.provider, maxDraftGroupParticipants),
     [draftModel.provider, maxDraftGroupParticipants],
@@ -504,85 +482,6 @@ export default function App() {
       setBusy('');
     }
   }, []);
-
-  const selectedParallelChatGroup = readyPayload && selectedChannel
-    ? readyPayload.chat.parallelChatGroups.find((group) =>
-        group.memberChannelIds.includes(selectedChannel.id),
-      ) ?? null
-    : null;
-
-  useEffect(() => {
-    setCompareSendScope('all_members');
-  }, [selectedParallelChatGroup?.id]);
-
-  const onDraftParallelChatTargetChange = useCallback((index: number, value: ModelSelectorValue) => {
-    setDraftParallelChatTargets((prev) =>
-      prev.map((target, currentIndex) => (currentIndex === index ? value : target)),
-    );
-  }, []);
-
-  const onAddDraftParallelChatTarget = useCallback(() => {
-    setDraftParallelChatTargets((prev) => [
-      ...prev,
-      createNextCompareTarget(prev, draftModel),
-    ]);
-  }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
-  ]);
-
-  const onRemoveDraftParallelChatTarget = useCallback((index: number) => {
-    setDraftParallelChatTargets((prev) => {
-      if (prev.length <= 2) {
-        return prev;
-      }
-
-      return prev.filter((_, currentIndex) => currentIndex !== index);
-    });
-  }, []);
-
-  const onRelayCompareMessage = useCallback(async (
-    messageId: string,
-    command: ParallelChatRelayCommandKind,
-  ): Promise<void> => {
-    if (!selectedChannel || !selectedParallelChatGroup) {
-      return;
-    }
-
-    setBusy('parallelChat:relay');
-    setFeedback('');
-    try {
-      const dispatch = await relayParallelChatMessage(selectedParallelChatGroup.id, {
-        activeChannelId: selectedChannel.id,
-        sourceChannelId: selectedChannel.id,
-        sourceMessageId: messageId,
-        command,
-        targetPolicy: 'all_others',
-      });
-      startTransition(() => setState({ status: 'ready', payload: dispatch.appShell }));
-
-      const failures = dispatch.results.filter((result) => result.status === 'error');
-      if (failures.length > 0) {
-        setFeedback(
-          failures
-            .map((result) => result.error || `Relay failed for ${result.channelId}.`)
-            .join(' '),
-        );
-      }
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to relay compare message.');
-    } finally {
-      setBusy('');
-    }
-  }, [
-    selectedChannel,
-    selectedParallelChatGroup,
-    setBusy,
-    setFeedback,
-    setState,
-  ]);
 
   function updatePayload(payload: AppShellPayload): void {
     startTransition(() => setState({ status: 'ready', payload }));
