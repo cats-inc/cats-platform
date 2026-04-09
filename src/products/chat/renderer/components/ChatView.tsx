@@ -19,7 +19,7 @@ import { resolveCatStatusIndicator } from '../../shared/catStatusResolution';
 import { CatStatusRow } from './CatStatusRow';
 import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
 import { buildLiveIndicatorScrollKey } from '../../../../shared/liveIndicator.js';
-import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
+import { SidePanel } from '../../../../design/components/SidePanel';
 import {
   resolveLayoutMetrics,
   type ChatLayoutMode,
@@ -33,14 +33,11 @@ import {
   truncatePath,
   type SelectedChannelView,
 } from '../chatUtils';
-import { openFolderInExplorer } from '../api';
 import type { ChatOperatorSnapshot } from '../../shared/operator-loop/index';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../shared/operator-loop/index';
-import { ActivityFeed } from './ActivityFeed';
-import { CatAvatarRow } from './CatAvatarRow';
 import { ComposerCatStack } from './ComposerCatStack';
 import {
   ComposerRecipientChip,
@@ -53,26 +50,17 @@ import {
   ModelSelectorChip,
   type ModelSelectorValue,
 } from './ModelSelector';
-import { ApprovalQueuePanel } from './ApprovalQueuePanel';
 import { ComposerHighlight } from './ComposerHighlight';
 import { MessageBody } from './MessageBody';
 import {
   MessageChoices,
   type MessageChoicesSubmitInput,
 } from './MessageChoices';
-import { ProgressSummaryPanel } from './ProgressSummaryPanel';
-import { ProviderModelFields } from './ProviderModelFields';
-import { RunInspector } from './RunInspector';
-import type { ProviderTargetSelection } from '../../../../shared/providerSelection';
 import {
   isComposerAckBusy,
   getComposerDispatchChannelId,
   isComposerBusy,
 } from '../../../../shared/composer';
-import {
-  getProviderDisplayName,
-  getProviderModels,
-} from '../../../../shared/providerCatalog';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
@@ -88,7 +76,7 @@ import { ChatViewFrame } from '../../../shared/renderer/components/chat-view/Cha
 import { ChatViewTopBar } from '../../../shared/renderer/components/chat-view/ChatViewTopBar';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
-import { ChatParticipantsSection } from './chat-view/ChatParticipantsSection';
+import { buildChatSidePanelSections } from './chat-view/ChatSidePanelSections';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 import { TranscriptMessageActions } from './chat-view/TranscriptMessageActions';
 
@@ -831,7 +819,42 @@ export function ChatView({
           onClose={() => setSidePanelOpen(false)}
           position={layoutMetrics.secondarySurfacePosition === 'bottom' ? 'bottom' : 'side'}
           className="chatPaneSidePanel chatPaneSidePanelBelowBar"
-          sections={buildSidePanelSections()}
+          sections={buildChatSidePanelSections({
+            payload,
+            selectedChannel,
+            busy,
+            operatorView,
+            operatorLoading,
+            operatorError,
+            assignedCatRecords,
+            assignedAdhocParticipants,
+            defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
+            defaultRecipientParticipant,
+            directLaneCat,
+            directLaneModelValue,
+            isDirectLane,
+            isSoloComposer,
+            selectedModel,
+            inspectedRun,
+            showAddCatButton,
+            editingParticipantId,
+            editingParticipantName,
+            canRenameParticipants: onUpdateChannelParticipant != null,
+            onEditingParticipantNameChange: setEditingParticipantName,
+            onBeginParticipantRename: beginParticipantRename,
+            onCancelParticipantRename: cancelParticipantRename,
+            onSubmitParticipantRename: (participantId) => {
+              void submitParticipantRename(participantId);
+            },
+            onOpenAddCat,
+            onCloseSidePanel: () => setSidePanelOpen(false),
+            onInspectRun: setInspectedRunId,
+            onApprovalDecision,
+            onOperatorAction,
+            onModelChange,
+            onDirectLaneModelChange,
+            buildParticipantAvatarStyle,
+          })}
         />
       ) : null}
     >
@@ -1320,250 +1343,4 @@ export function ChatView({
             ) : null}
     </ChatViewFrame>
   );
-
-  function buildSidePanelSections(): SidePanelSection[] {
-    const sections: SidePanelSection[] = [];
-
-    if (showAddCatButton || activeRoomParticipants.length > 0) {
-      sections.push({
-        id: 'cats',
-        title: assignedAdhocParticipants.length > 0 ? 'Participants' : 'Cats',
-        children: (
-          <ChatParticipantsSection
-            assignedCatRecords={assignedCatRecords}
-            assignedAdhocParticipants={assignedAdhocParticipants}
-            bossCatId={payload.chat.bossCatId}
-            defaultRecipientCatId={defaultRecipientCat?.catId ?? null}
-            editingParticipantId={editingParticipantId}
-            editingParticipantName={editingParticipantName}
-            busy={busy}
-            canRenameParticipants={onUpdateChannelParticipant != null}
-            showAddCatButton={showAddCatButton}
-            onEditingParticipantNameChange={setEditingParticipantName}
-            onBeginParticipantRename={beginParticipantRename}
-            onCancelParticipantRename={cancelParticipantRename}
-            onSubmitParticipantRename={(participantId) => {
-              void submitParticipantRename(participantId);
-            }}
-            onOpenAddCat={onOpenAddCat}
-            onCloseSidePanel={() => setSidePanelOpen(false)}
-          />
-        ),
-      });
-    }
-
-    const executionChildren = (() => {
-      if (isDirectLane && directLaneCat && directLaneModelValue) {
-        return (
-          <>
-            <CatAvatarRow
-              cats={[directLaneCat]}
-              bossCatId={payload.chat.bossCatId}
-              selectedIds={[directLaneCat.id]}
-              highlightedId={directLaneCat.id}
-              defaultRecipientCatId={directLaneCat.id}
-              toggleable={false}
-              onToggle={() => {}}
-              onHighlight={() => {}}
-            />
-            <ProviderModelFields
-              provider={directLaneModelValue.provider}
-              instance={directLaneModelValue.instance ?? ''}
-              model={directLaneModelValue.model ?? ''}
-              modelSelection={directLaneModelValue.modelSelection}
-              onTargetChange={(target: ProviderTargetSelection) => {
-                onDirectLaneModelChange?.(directLaneCat.id, {
-                  provider: target.provider,
-                  model: target.model || null,
-                  instance: target.instance || null,
-                  modelSelection: target.modelSelection ?? null,
-                });
-              }}
-            />
-          </>
-        );
-      }
-      if (isSoloComposer && selectedModel && onModelChange) {
-        return (
-          <ProviderModelFields
-            provider={selectedModel.provider}
-            instance={selectedModel.instance ?? ''}
-            model={selectedModel.model ?? ''}
-            modelSelection={selectedModel.modelSelection}
-            onTargetChange={(target: ProviderTargetSelection) => {
-              onModelChange({
-                provider: target.provider,
-                model: target.model || null,
-                instance: target.instance || null,
-                modelSelection: target.modelSelection ?? null,
-              });
-            }}
-          />
-        );
-      }
-      if (!isSoloComposer && defaultRecipientParticipant) {
-        const providerName = getProviderDisplayName(defaultRecipientParticipant.execution.target.provider);
-        const modelLabel = defaultRecipientParticipant.execution.target.model
-          ? (getProviderModels(defaultRecipientParticipant.execution.target.provider)
-              .find((m) => m.value === defaultRecipientParticipant.execution.target.model)?.label
-                ?? defaultRecipientParticipant.execution.target.model)
-              .replace(/\s*\(default\)\s*/iu, '')
-          : null;
-        if (defaultRecipientParticipant.sourceKind !== 'cat') {
-          return (
-            <div className="catInspectPanelBody">
-              <div className="catInspectIdentity">
-                <div
-                  className="catAvatar catInspectAvatar channelParticipantAvatar"
-                  style={buildParticipantAvatarStyle(defaultRecipientParticipant)}
-                >
-                  {defaultRecipientParticipant.avatarUrl ? null : catInitials(defaultRecipientParticipant.name)}
-                </div>
-                <div>
-                  <strong>{defaultRecipientParticipant.name}</strong>
-                  <span className="catInspectBadge">Temporary</span>
-                </div>
-              </div>
-              {defaultRecipientParticipant.roleHint ? (
-                <div className="catInspectField">
-                  <span className="catInspectFieldLabel">Role</span>
-                  <span>{defaultRecipientParticipant.roleHint}</span>
-                </div>
-              ) : null}
-              <div className="catInspectField">
-                <span className="catInspectFieldLabel">AI Service</span>
-                <span>{providerName}</span>
-              </div>
-              {defaultRecipientParticipant.execution.target.instance ? (
-                <div className="catInspectField">
-                  <span className="catInspectFieldLabel">Connection</span>
-                  <span>{defaultRecipientParticipant.execution.target.instance}</span>
-                </div>
-              ) : null}
-              <div className="catInspectField">
-                <span className="catInspectFieldLabel">Model</span>
-                <span>{modelLabel ?? 'default'}</span>
-              </div>
-            </div>
-          );
-        }
-
-        const defaultRecipientCatRef = resolveParticipantCatId(defaultRecipientParticipant);
-        const catRecord = defaultRecipientCatRef
-          ? payload.chat.cats.find((c) => c.id === defaultRecipientCatRef) ?? null
-          : null;
-        return (
-          <div className="catInspectPanelBody">
-            <div className="catInspectIdentity">
-              <div
-                className={defaultRecipientCatRef === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
-                style={catRecord?.avatarUrl
-                  ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : defaultRecipientParticipant.avatarColor ? { background: defaultRecipientParticipant.avatarColor } : undefined}
-              >
-                {catRecord?.avatarUrl ? null : catInitials(defaultRecipientParticipant.name)}
-              </div>
-              <div>
-                <strong>{defaultRecipientParticipant.name}</strong>
-                {defaultRecipientCatRef === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
-              </div>
-            </div>
-            <div className="catInspectField">
-              <span className="catInspectFieldLabel">AI Service</span>
-              <span>{providerName}</span>
-            </div>
-            {defaultRecipientParticipant.execution.target.instance ? (
-              <div className="catInspectField">
-                <span className="catInspectFieldLabel">Connection</span>
-                <span>{defaultRecipientParticipant.execution.target.instance}</span>
-              </div>
-            ) : null}
-            <div className="catInspectField">
-              <span className="catInspectFieldLabel">Model</span>
-              <span>{modelLabel ?? 'default'}</span>
-            </div>
-          </div>
-        );
-      }
-      return <p className="operatorEmptyState">No AI reply setup yet.</p>;
-    })();
-    sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
-
-    const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
-    sections.push({
-      id: 'cwd',
-      title: 'Folder',
-      children: cwd ? (
-        <div style={{ display: 'grid', gap: 8 }}>
-          <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{cwd}</p>
-          <button
-            type="button"
-            className="operatorActionButton"
-            onClick={() => void openFolderInExplorer(cwd)}
-          >
-            Open folder
-          </button>
-        </div>
-      ) : (
-        <p className="operatorEmptyState">No folder selected yet.</p>
-      ),
-    });
-
-    sections.push({
-      id: 'operator',
-      title: 'Run Status',
-      badge: operatorView?.approvals.length ?? 0,
-      children: (
-        <>
-          {operatorError ? (
-            <section className="operatorPanel operatorPanelError">
-              <div className="operatorPanelHeader">
-                <div>
-                  <p className="operatorEyebrow">Run Status</p>
-                  <h2>Status unavailable</h2>
-                </div>
-              </div>
-              <p className="operatorEmptyState">{operatorError}</p>
-            </section>
-          ) : null}
-          {operatorLoading && !operatorView ? (
-            <section className="operatorPanel">
-              <div className="operatorPanelHeader">
-                <div>
-                  <p className="operatorEyebrow">Run Status</p>
-                  <h2>Loading</h2>
-                </div>
-              </div>
-              <p className="operatorEmptyState">Loading approvals, activity, and run details.</p>
-            </section>
-          ) : null}
-          <ApprovalQueuePanel
-            approvals={operatorView?.approvals ?? []}
-            actorNameById={operatorView?.actorNameById ?? {}}
-            busy={busy}
-            onDecision={onApprovalDecision}
-          />
-          <ProgressSummaryPanel
-            inspector={inspectedRun}
-            effectivePolicy={operatorView?.effectivePolicy ?? null}
-            incidentActions={inspectedRun?.incidentActions ?? operatorView?.incidentActions ?? []}
-            pendingApprovalCount={operatorView?.approvals.length ?? 0}
-            guardReason={inspectedRun?.guardReason ?? operatorView?.guardReason ?? null}
-            cooldownLabel={inspectedRun?.cooldownLabel ?? operatorView?.cooldownLabel ?? null}
-            onInspectRun={setInspectedRunId}
-            onOperatorAction={onOperatorAction}
-          />
-          <ActivityFeed items={operatorView?.activityFeed ?? []} />
-          <RunInspector
-            runs={operatorView?.runs ?? []}
-            actorNameById={operatorView?.actorNameById ?? {}}
-            inspector={inspectedRun}
-            onSelectRun={setInspectedRunId}
-          />
-        </>
-      ),
-    });
-
-    return sections;
-  }
 }
