@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   EMPTY_LIVE_INDICATOR,
@@ -91,6 +94,25 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for cat-led chats', () => {
       defaultRecipientId: 'cat-1',
     },
   } as never), null);
+});
+
+test('shared live indicator effect depends on stable derived fields instead of selected channel identity', async () => {
+  const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+  const source = await readFile(
+    path.join(
+      testDirectory,
+      '..',
+      '..',
+      'src/products/shared/renderer/hooks/useLiveIndicator.ts',
+    ),
+    'utf8',
+  );
+
+  assert.match(source, /const speakerLabel = defaultRecipientCatId/u);
+  assert.match(source, /\[\s*busy,\s*channelId,\s*defaultRecipientCatId,\s*routingStatus,\s*speakerLabel,/u);
+  assert.doesNotMatch(source, /\[\s*busy,\s*channelId,\s*defaultRecipientCatId,\s*resolveRoutingStatus,/u);
+  assert.doesNotMatch(source, /\[\s*busy,\s*channelId,\s*defaultRecipientCatId,\s*routingStatus,\s*selectedChannel,/u);
+  assert.doesNotMatch(source, /source\.onerror = \(\) =>/u);
 });
 
 test('live indicator accumulates streamed preview text and keeps active cat ids', () => {

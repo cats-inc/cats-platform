@@ -579,6 +579,7 @@ export default function App() {
             appContent={(
               <AppRoutes
                 payload={payload}
+                routeChannelId={routeChannelId}
                 selectedChannel={selectedChannel}
                 directLaneChannel={directLaneChannel}
                 showDirectLaneBoot={showDirectLaneBoot}

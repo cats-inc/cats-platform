@@ -36,6 +36,7 @@ type DraftSurfaceProps = Omit<
 
 export interface AppRoutesProps {
   payload: AppShellPayload;
+  routeChannelId: string | null;
   selectedChannel: SelectedChannelView | null;
   directLaneChannel: SelectedChannelView | null;
   showDirectLaneBoot: boolean;
@@ -58,6 +59,7 @@ export interface AppRoutesProps {
 
 export function AppRoutes({
   payload,
+  routeChannelId,
   selectedChannel,
   directLaneChannel,
   showDirectLaneBoot,
@@ -94,6 +96,7 @@ export function AppRoutes({
                 {...chatSurfaceProps}
                 payload={payload}
                 selectedChannel={selectedChannel}
+                routeChannelId={routeChannelId}
                 onOpenAddCat={onToggleAddCat}
               />
             ) : (

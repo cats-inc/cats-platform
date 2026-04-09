@@ -66,10 +66,15 @@ import { buildChatSidePanelSections } from './chat-view/ChatSidePanelSections';
 import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 import { ChatTranscriptPanel } from './chat-view/ChatTranscriptPanel';
+import {
+  resolveActiveCompareChannelId,
+  resolveCompareNeighborChannelId,
+} from './chat-view/compareNavigation';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
+  routeChannelId?: string | null;
   operatorSnapshot: ChatOperatorSnapshot | null;
   operatorLoading: boolean;
   operatorError: string;
@@ -125,6 +130,7 @@ export interface ChatViewProps {
 export function ChatView({
   payload,
   selectedChannel,
+  routeChannelId = null,
   operatorSnapshot,
   operatorLoading,
   operatorError,
@@ -187,11 +193,15 @@ export function ChatView({
 
   const conversationMode = resolveConversationMode(selectedChannel);
   const compareMembers = compareGroup?.members ?? [];
-  const compareMemberIndex = compareMembers.findIndex((member) => member.channelId === selectedChannel.id);
-  const activeCompareMember = compareMemberIndex >= 0
-    ? compareMembers[compareMemberIndex]
-    : null;
   const isCompareGroup = compareMembers.length > 1;
+  const activeCompareChannelId = resolveActiveCompareChannelId(
+    compareMembers,
+    routeChannelId,
+    selectedChannel.id,
+  );
+  const compareMemberIndex = compareMembers.findIndex(
+    (member) => member.channelId === activeCompareChannelId,
+  );
   const compareGroupChannels = useMemo(
     () => compareMembers
       .map((member) =>
@@ -458,10 +468,10 @@ export function ChatView({
     );
   const showStopComposerAction = !showCancelComposerAction && (canStopSingleChat || canStopParallelChat);
   const comparePrevChannelId = isCompareGroup && compareMemberIndex >= 0
-    ? compareMembers[(compareMemberIndex - 1 + compareMembers.length) % compareMembers.length]?.channelId ?? null
+    ? resolveCompareNeighborChannelId(compareMembers, activeCompareChannelId, 'prev')
     : null;
   const compareNextChannelId = isCompareGroup && compareMemberIndex >= 0
-    ? compareMembers[(compareMemberIndex + 1) % compareMembers.length]?.channelId ?? null
+    ? resolveCompareNeighborChannelId(compareMembers, activeCompareChannelId, 'next')
     : null;
   const composerWorkspacePath = resolveComposerWorkspacePath(
     selectedChannel.repoPath,
@@ -682,7 +692,7 @@ export function ChatView({
             {isCompareGroup ? (
               <ParallelFooterBar
                 compareMembers={compareMembers}
-                selectedChannelId={selectedChannel.id}
+                selectedChannelId={activeCompareChannelId}
                 comparePrevChannelId={comparePrevChannelId}
                 compareNextChannelId={compareNextChannelId}
                 onSelect={onSelect}

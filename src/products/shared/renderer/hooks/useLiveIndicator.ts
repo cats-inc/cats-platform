@@ -109,6 +109,9 @@ export function useLiveIndicator<
 
   const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
   const routingStatus = resolveRoutingStatus?.(selectedChannel) ?? null;
+  const speakerLabel = defaultRecipientCatId
+    ? null
+    : resolveLiveIndicatorSpeakerLabel(selectedChannel);
 
   useEffect(() => {
     stateRef.current = state;
@@ -211,11 +214,6 @@ export function useLiveIndicator<
       source.addEventListener('result', handleEvent);
       source.addEventListener('error', handleEvent);
       source.addEventListener('session_closed', handleEvent);
-      source.onerror = () => {
-        if (stateRef.current.phase === 'waiting') {
-          scheduleReconnect();
-        }
-      };
     }
 
     if (!shouldShowWaiting) {
@@ -226,13 +224,8 @@ export function useLiveIndicator<
       return undefined;
     }
 
-    const workingCatId = defaultRecipientCatId;
-    const speakerLabel = workingCatId
-      ? null
-      : resolveLiveIndicatorSpeakerLabel(selectedChannel);
-
     const waitingState = createWaitingLiveIndicatorState({
-      catId: workingCatId,
+      catId: defaultRecipientCatId,
       speakerLabel,
     });
     stateRef.current = waitingState;
@@ -255,9 +248,8 @@ export function useLiveIndicator<
     busy,
     channelId,
     defaultRecipientCatId,
-    resolveRoutingStatus,
     routingStatus,
-    selectedChannel,
+    speakerLabel,
     shouldConnectStream,
     shouldShowWaitingIndicator,
   ]);
