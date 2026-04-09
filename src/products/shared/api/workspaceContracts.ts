@@ -267,6 +267,10 @@ export interface ChatChannelSummary {
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;
+  /** Optional when a product distinguishes temporary and Cat-backed participants separately. */
+  participantCount?: number;
+  /** Optional when a product distinguishes temporary and Cat-backed participants separately. */
+  activeParticipantCount?: number;
   catCount: number;
   activeCatCount: number;
   repoPath: string | null;

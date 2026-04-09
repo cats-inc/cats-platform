@@ -32,6 +32,8 @@ import {
   createDraftChannelTopic as createWorkspaceDraftChannelTopic,
   buildAttachedFilesMessageBody as buildWorkspaceAttachedFilesMessageBody,
   buildNewChatChannelInput as buildWorkspaceNewChatChannelInput,
+  applyOptimisticPendingExecutionTarget as applyWorkspaceOptimisticPendingExecutionTarget,
+  insertCreatedChannelIntoPayload as insertWorkspaceCreatedChannelIntoPayload,
   messageTone as resolveWorkspaceMessageTone,
   presentChannelTitle as presentWorkspaceChannelTitle,
   truncatePath as truncateWorkspacePath,
@@ -347,86 +349,14 @@ export function applyPendingExecutionTargetPreview(
     pendingModelSelection: ProviderModelSelection | null;
   },
 ): AppShellPayload {
-  const next = structuredClone(payload);
-  const selectedChannel = next.chat.selectedChannel;
-  const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
-
-  if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
-    throw new Error('No chat is available for local execution target updates.');
-  }
-
-  selectedChannel.pendingProvider = target.pendingProvider;
-  selectedChannel.pendingModel = target.pendingModel;
-  selectedChannel.pendingInstance = target.pendingInstance;
-  selectedChannel.pendingModelSelection = target.pendingModelSelection;
-
-  channelSummary.pendingProvider = target.pendingProvider;
-  channelSummary.pendingModel = target.pendingModel;
-  channelSummary.pendingModelSelection = target.pendingModelSelection;
-
-  return next;
+  return applyWorkspaceOptimisticPendingExecutionTarget(payload, channelId, target);
 }
 
 export function insertCreatedChannelIntoPayload(
   payload: AppShellPayload,
   createdChannel: ChatChannelView,
 ): AppShellPayload {
-  const normalizedChannel = normalizeSelectedChannelView(createdChannel);
-  if (!normalizedChannel) {
-    throw new Error('Created channel payload was invalid.');
-  }
-
-  const next = structuredClone(payload);
-  const defaultRecipientCatId = normalizedChannel.roomRouting.defaultRecipientId ?? null;
-  const workflowStatus = normalizedChannel.roomRouting.workflow.activeTurn?.status
-    ?? normalizedChannel.roomRouting.workflow.lastOutcomeEvent?.status
-    ?? null;
-  const routingStatus = workflowStatus === 'pending'
-    ? 'running'
-    : workflowStatus === 'failed'
-      ? 'error'
-      : workflowStatus;
-  const lastRoutingAt = normalizedChannel.roomRouting.workflow.activeTurn?.updatedAt
-    ?? normalizedChannel.roomRouting.workflow.lastOutcomeEvent?.createdAt
-    ?? normalizedChannel.roomRouting.lastOutcome?.completedAt
-    ?? normalizedChannel.roomRouting.lastCheckpoint?.createdAt
-    ?? null;
-  const assignedParticipants = resolveAssignedParticipants(normalizedChannel);
-  const activeParticipants = activeAssignedParticipants(normalizedChannel);
-  const summary: ChatChannelSummary = {
-    id: normalizedChannel.id,
-    title: normalizedChannel.title,
-    topic: normalizedChannel.topic,
-    channelKind: normalizedChannel.channelKind,
-    status: normalizedChannel.status,
-    unreadCount: normalizedChannel.unreadCount,
-    catCount: assignedParticipants.length,
-    activeCatCount: activeParticipants.length,
-    participantCount: assignedParticipants.length,
-    activeParticipantCount: activeParticipants.length,
-    repoPath: normalizedChannel.repoPath,
-    chatCwd: normalizedChannel.chatCwd,
-    lastMessageAt: normalizedChannel.lastMessageAt,
-    lastActivatedAt: normalizedChannel.lastActivatedAt,
-    composerMode: normalizedChannel.composerMode,
-    pendingProvider: normalizedChannel.pendingProvider,
-    pendingModel: normalizedChannel.pendingModel,
-    pendingModelSelection: normalizedChannel.pendingModelSelection ?? null,
-    defaultRecipientCatId,
-    roomMode: normalizedChannel.roomRouting.mode,
-    routingStatus: routingStatus ?? undefined,
-    lastRoutingAt,
-  };
-
-  next.chat.channels = [
-    summary,
-    ...next.chat.channels.filter((channel) => channel.id !== normalizedChannel.id),
-  ];
-  next.chat.selectedChannelId = normalizedChannel.id;
-  next.chat.selectedChannel = normalizedChannel;
-  next.metadata.generatedAt = normalizedChannel.updatedAt;
-
-  return next;
+  return insertWorkspaceCreatedChannelIntoPayload(payload, createdChannel);
 }
 
 export function BootShell() {

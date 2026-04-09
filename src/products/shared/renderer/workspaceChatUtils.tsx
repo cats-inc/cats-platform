@@ -491,8 +491,8 @@ export function appendOptimisticUserMessage(
   return next;
 }
 
-export function applyOptimisticPendingExecutionTarget(
-  payload: AppShellPayload,
+export function applyOptimisticPendingExecutionTarget<TPayload extends AppShellPayload>(
+  payload: TPayload,
   channelId: string,
   target: {
     pendingProvider: string | null;
@@ -500,8 +500,8 @@ export function applyOptimisticPendingExecutionTarget(
     pendingInstance: string | null;
     pendingModelSelection: ProviderModelSelection | null;
   },
-): AppShellPayload {
-  const next = structuredClone(payload);
+) : TPayload {
+  const next = structuredClone(payload) as TPayload;
   const selectedChannel = next.chat.selectedChannel;
   const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
 
@@ -521,16 +521,16 @@ export function applyOptimisticPendingExecutionTarget(
   return next;
 }
 
-export function insertCreatedChannelIntoPayload(
-  payload: AppShellPayload,
+export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload>(
+  payload: TPayload,
   createdChannel: ChatChannelView,
-): AppShellPayload {
+) : TPayload {
   const normalizedChannel = normalizeSelectedChannelView(createdChannel);
   if (!normalizedChannel) {
     throw new Error('Created channel payload was invalid.');
   }
 
-  const next = structuredClone(payload);
+  const next = structuredClone(payload) as TPayload;
   const defaultRecipientCatId = normalizedChannel.roomRouting.defaultRecipientId ?? null;
   const workflowStatus = normalizedChannel.roomRouting.workflow.activeTurn?.status
     ?? normalizedChannel.roomRouting.workflow.lastOutcomeEvent?.status
@@ -545,6 +545,19 @@ export function insertCreatedChannelIntoPayload(
     ?? normalizedChannel.roomRouting.lastOutcome?.completedAt
     ?? normalizedChannel.roomRouting.lastCheckpoint?.createdAt
     ?? null;
+  const participantEntries = Array.isArray(
+    (normalizedChannel as typeof normalizedChannel & {
+      assignedParticipants?: Array<{ status: string }>;
+    }).assignedParticipants,
+  )
+    ? (normalizedChannel as typeof normalizedChannel & {
+        assignedParticipants: Array<{ status: string }>;
+      }).assignedParticipants
+    : normalizedChannel.assignedCats;
+  const participantCount = participantEntries.length;
+  const activeParticipantCount = participantEntries.filter(
+    (participant) => participant.status === 'active',
+  ).length;
   const summary: ChatChannelSummary = {
     id: normalizedChannel.id,
     title: normalizedChannel.title,
@@ -552,6 +565,8 @@ export function insertCreatedChannelIntoPayload(
     channelKind: normalizedChannel.channelKind,
     status: normalizedChannel.status,
     unreadCount: normalizedChannel.unreadCount,
+    participantCount,
+    activeParticipantCount,
     catCount: normalizedChannel.assignedCats.length,
     activeCatCount: normalizedChannel.assignedCats.filter((cat) => cat.status === 'active').length,
     repoPath: normalizedChannel.repoPath,
