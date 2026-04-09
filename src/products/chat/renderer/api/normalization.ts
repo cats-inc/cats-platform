@@ -1,4 +1,6 @@
-import type { AppShellPayload } from '../../api/contracts';
+import type { AppShellPayload } from '../../api/contracts.js';
+import type { AppShellPayload as BaseAppShellPayload } from '../../../shared/api/workspaceContracts.js';
+import { normalizeAppShellPayload as normalizeBaseAppShellPayload } from '../../../shared/renderer/api/normalization.js';
 import { resolveChannelKind } from '../../shared/channelTopology.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -69,284 +71,218 @@ function normalizeChannelKind(
   });
 }
 
-export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
-  const nextPayload = structuredClone(payload) as AppShellPayload & Record<string, unknown>;
-  const chatState = asRecord(nextPayload.chat) ?? {};
-  nextPayload.chat = chatState as unknown as AppShellPayload['chat'];
-  const globalOrchestrator = asRecord(chatState.globalOrchestrator);
+function normalizeGuideCat(nextPayload: AppShellPayload & Record<string, unknown>): void {
+  if (nextPayload.guideCat === undefined) {
+    nextPayload.guideCat = null;
+    return;
+  }
 
-  if (globalOrchestrator && !asRecord(globalOrchestrator.executionTarget)) {
-    globalOrchestrator.executionTarget = {
-      provider: readString(globalOrchestrator.provider, 'claude'),
-      instance: readNullableString(globalOrchestrator.instance),
-      model: readNullableString(globalOrchestrator.model),
+  const guideCat = asRecord(nextPayload.guideCat);
+  if (!guideCat) {
+    nextPayload.guideCat = null;
+    return;
+  }
+
+  if (!asRecord(guideCat.executionTarget)) {
+    guideCat.executionTarget = {
+      provider: readString(guideCat.provider, 'claude'),
+      instance: readNullableString(guideCat.instance),
+      model: readNullableString(guideCat.model),
     };
   }
-  const orchestratorExecutionTarget = asRecord(globalOrchestrator?.executionTarget);
-  if (orchestratorExecutionTarget && orchestratorExecutionTarget.instance === undefined) {
-    orchestratorExecutionTarget.instance = readNullableString(globalOrchestrator?.instance);
+  const executionTarget = asRecord(guideCat.executionTarget);
+  if (executionTarget && executionTarget.instance === undefined) {
+    executionTarget.instance = readNullableString(guideCat.instance);
+  }
+  if (guideCat.modelSelection === undefined) {
+    guideCat.modelSelection = null;
+  }
+}
+
+function normalizeAssistantPresets(nextPayload: AppShellPayload & Record<string, unknown>): void {
+  if (!Array.isArray(nextPayload.assistantPresets)) {
+    nextPayload.assistantPresets = [];
+    return;
   }
 
-  if (globalOrchestrator && !asRecord(globalOrchestrator.memory)) {
-    globalOrchestrator.memory = {
-      summary: null,
-      facts: [],
-      openLoops: [],
-      updatedAt: null,
-    };
-  }
+  nextPayload.assistantPresets = nextPayload.assistantPresets.map((assistantValue) => {
+    const assistant = asRecord(assistantValue) ?? {};
+    if (!asRecord(assistant.executionTarget)) {
+      assistant.executionTarget = {
+        provider: readString(assistant.provider, 'claude'),
+        instance: readNullableString(assistant.instance),
+        model: readNullableString(assistant.model),
+      };
+    }
+    const executionTarget = asRecord(assistant.executionTarget);
+    if (executionTarget && executionTarget.instance === undefined) {
+      executionTarget.instance = readNullableString(assistant.instance);
+    }
+    if (assistant.modelSelection === undefined) {
+      assistant.modelSelection = null;
+    }
+    if (assistant.roleHint === undefined) {
+      assistant.roleHint = null;
+    }
+    return assistant;
+  }) as unknown as AppShellPayload['assistantPresets'];
+}
 
+function normalizeSelectedChannel(
+  chatState: Record<string, unknown>,
+  catsById: Map<string, Record<string, unknown>>,
+): void {
   const selectedChannel = asRecord(chatState.selectedChannel);
-  if (selectedChannel && !asRecord(selectedChannel.orchestratorLease)) {
-    const executionTarget = asRecord(globalOrchestrator?.executionTarget);
-    selectedChannel.orchestratorLease = {
-      sessionId: null,
-      status: 'not_started',
-      cwd: null,
-      lastError: null,
-      provider: readNullableString(executionTarget?.provider) ?? 'claude',
-      instance: readNullableString(executionTarget?.instance),
-      model: readNullableString(executionTarget?.model),
-      startedAt: null,
-      lastUsedAt: null,
-    };
+  if (!selectedChannel) {
+    return;
   }
 
-  if (!Array.isArray(chatState.cats)) {
-    chatState.cats = [];
+  const roomRouting = asRecord(selectedChannel.roomRouting);
+  const roomMode = readString(roomRouting?.mode, 'boss_chat') === 'direct_cat_chat'
+    ? 'direct_cat_chat'
+    : 'boss_chat';
+  normalizeChannelKind(selectedChannel, roomMode);
+
+  const catAssignments = Array.isArray(selectedChannel.catAssignments)
+    ? selectedChannel.catAssignments
+    : [];
+  if (!Array.isArray(selectedChannel.participantAssignments)) {
+    selectedChannel.participantAssignments = catAssignments.map((assignmentValue) => {
+      const assignment = asRecord(assignmentValue) ?? {};
+      return {
+        participantId: readString(assignment.participantId, readString(assignment.catId)),
+        sourceKind: readString(assignment.sourceKind, 'cat') === 'cat' ? 'cat' : 'adhoc',
+        sourceRefId:
+          readNullableString(assignment.sourceRefId) ?? readNullableString(assignment.catId),
+        name: readString(assignment.name, 'Participant'),
+        status: readString(assignment.status, 'active'),
+        roles: Array.isArray(assignment.roles) ? assignment.roles : [],
+        roleHint: readNullableString(assignment.roleHint),
+        joinedAt: readString(assignment.joinedAt),
+        leftAt: readNullableString(assignment.leftAt),
+        execution: assignment.execution,
+      };
+    });
   }
 
-  const cats = (chatState.cats as Array<Record<string, unknown>>).map((catValue) => {
-    const cat = asRecord(catValue) ?? {};
-    if (!asRecord(cat.defaultExecutionTarget)) {
-      cat.defaultExecutionTarget = {
-        provider: readString(cat.provider, 'claude'),
-        instance: readNullableString(cat.instance),
-        model: readNullableString(cat.model),
+  if (catAssignments.length > 0 || !Array.isArray(selectedChannel.assignedCats)) {
+    selectedChannel.assignedCats = catAssignments.map((assignmentValue) => {
+      const assignment = asRecord(assignmentValue) ?? {};
+      const cat = catsById.get(readString(assignment.catId)) ?? {};
+      return {
+        participantId: readString(assignment.participantId, readString(assignment.catId)),
+        sourceKind: 'cat',
+        sourceRefId: readString(assignment.sourceRefId, readString(assignment.catId)),
+        catId: readString(assignment.catId),
+        name: readString(cat.name, 'Cat'),
+        roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat.roles),
+        roleHint: readNullableString(assignment.roleHint),
+        skillProfile: readNullableString(cat.skillProfile),
+        mcpProfile: readNullableString(cat.mcpProfile),
+        status: readString(assignment.status, 'active'),
+        joinedAt: readString(assignment.joinedAt),
+        leftAt: readNullableString(assignment.leftAt),
+        avatarColor: readNullableString(cat.avatarColor),
+        avatarUrl: readNullableString(cat.avatarUrl),
+        execution: assignment.execution,
+        memory: asRecord(cat.memory) ?? {
+          summary: null,
+          facts: [],
+          openLoops: [],
+          updatedAt: null,
+        },
       };
-    }
-    const defaultExecutionTarget = asRecord(cat.defaultExecutionTarget);
-    if (defaultExecutionTarget && defaultExecutionTarget.instance === undefined) {
-      defaultExecutionTarget.instance = readNullableString(cat.instance);
-    }
-    if (!asRecord(cat.memory)) {
-      cat.memory = {
-        summary: null,
-        facts: [],
-        openLoops: [],
-        updatedAt: null,
-      };
-    }
-    if (!Array.isArray(cat.roles)) {
-      cat.roles = readStringArray(cat.roles);
-    }
-    return cat;
-  });
-  const catsById = new Map(cats.map((cat) => [readString(cat.id), cat]));
+    });
+  }
 
-  if (selectedChannel) {
-    const roomRouting = asRecord(selectedChannel.roomRouting);
+  const participantAssignments = Array.isArray(selectedChannel.participantAssignments)
+    ? selectedChannel.participantAssignments
+    : [];
+  if (participantAssignments.length > 0 || !Array.isArray(selectedChannel.assignedParticipants)) {
+    selectedChannel.assignedParticipants = participantAssignments.map((assignmentValue) => {
+      const assignment = asRecord(assignmentValue) ?? {};
+      const sourceRefId = readNullableString(assignment.sourceRefId);
+      const cat = sourceRefId ? (catsById.get(sourceRefId) ?? null) : null;
+      return {
+        participantId: readString(assignment.participantId),
+        sourceKind: readString(assignment.sourceKind, 'adhoc') === 'cat' ? 'cat' : 'adhoc',
+        sourceRefId,
+        name: readString(assignment.name, readString(cat?.name, 'Participant')),
+        roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat?.roles),
+        roleHint: readNullableString(assignment.roleHint),
+        skillProfile: readNullableString(cat?.skillProfile),
+        mcpProfile: readNullableString(cat?.mcpProfile),
+        status: readString(assignment.status, 'active'),
+        joinedAt: readString(assignment.joinedAt),
+        leftAt: readNullableString(assignment.leftAt),
+        avatarColor: readNullableString(cat?.avatarColor),
+        avatarUrl: readNullableString(cat?.avatarUrl),
+        execution: assignment.execution,
+        memory: asRecord(cat?.memory) ?? {
+          summary: null,
+          facts: [],
+          openLoops: [],
+          updatedAt: null,
+        },
+      };
+    });
+  }
+}
+
+function normalizeChannelSummaries(chatState: Record<string, unknown>): void {
+  if (!Array.isArray(chatState.channels)) {
+    return;
+  }
+
+  chatState.channels = chatState.channels.map((channelValue) => {
+    const channel = asRecord(channelValue) ?? {};
     normalizeChannelKind(
-      selectedChannel,
-      readString(roomRouting?.mode, 'boss_chat') === 'direct_cat_chat'
+      channel,
+      readString(channel.roomMode, 'boss_chat') === 'direct_cat_chat'
         ? 'direct_cat_chat'
         : 'boss_chat',
     );
-    if (!Array.isArray(selectedChannel.catAssignments)) {
-      selectedChannel.catAssignments = [];
+    const participantCount = typeof channel.participantCount === 'number'
+      ? channel.participantCount
+      : typeof channel.catCount === 'number'
+        ? channel.catCount
+        : 0;
+    const activeParticipantCount = typeof channel.activeParticipantCount === 'number'
+      ? channel.activeParticipantCount
+      : typeof channel.activeCatCount === 'number'
+        ? channel.activeCatCount
+        : participantCount;
+    if (channel.participantCount === undefined) {
+      channel.participantCount = participantCount;
     }
-    if (!Array.isArray(selectedChannel.participantAssignments)) {
-      selectedChannel.participantAssignments = Array.isArray(selectedChannel.catAssignments)
-        ? selectedChannel.catAssignments.map((assignmentValue) => {
-            const assignment = asRecord(assignmentValue) ?? {};
-            return {
-              participantId: readString(assignment.participantId, readString(assignment.catId)),
-              sourceKind: readString(assignment.sourceKind, 'cat') === 'cat' ? 'cat' : 'adhoc',
-              sourceRefId: readNullableString(assignment.sourceRefId) ?? readNullableString(assignment.catId),
-              name: readString(assignment.name, 'Participant'),
-              status: readString(assignment.status, 'active'),
-              roles: Array.isArray(assignment.roles) ? assignment.roles : [],
-              roleHint: readNullableString(assignment.roleHint),
-              joinedAt: readString(assignment.joinedAt),
-              leftAt: readNullableString(assignment.leftAt),
-              execution: assignment.execution,
-            };
-          })
-        : [];
+    if (channel.activeParticipantCount === undefined) {
+      channel.activeParticipantCount = activeParticipantCount;
     }
+    if (channel.catCount === undefined) {
+      channel.catCount = participantCount;
+    }
+    if (channel.activeCatCount === undefined) {
+      channel.activeCatCount = activeParticipantCount;
+    }
+    return channel;
+  });
+}
 
-    if (!Array.isArray(selectedChannel.assignedCats)) {
-      if (Array.isArray(selectedChannel.catAssignments)) {
-        selectedChannel.assignedCats = selectedChannel.catAssignments.map((assignmentValue) => {
-          const assignment = asRecord(assignmentValue) ?? {};
-          const cat = catsById.get(readString(assignment.catId)) ?? {};
-          return {
-            participantId: readString(assignment.participantId, readString(assignment.catId)),
-            sourceKind: 'cat',
-            sourceRefId: readString(assignment.sourceRefId, readString(assignment.catId)),
-            catId: readString(assignment.catId),
-            name: readString(cat.name, 'Cat'),
-            roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat.roles),
-            roleHint: readNullableString(assignment.roleHint),
-            skillProfile: readNullableString(cat.skillProfile),
-            mcpProfile: readNullableString(cat.mcpProfile),
-            status: readString(assignment.status, 'active'),
-            joinedAt: readString(assignment.joinedAt),
-            leftAt: readNullableString(assignment.leftAt),
-            avatarColor: readNullableString(cat.avatarColor),
-            avatarUrl: readNullableString(cat.avatarUrl),
-            execution: assignment.execution,
-            memory: asRecord(cat.memory) ?? {
-              summary: null,
-              facts: [],
-              openLoops: [],
-              updatedAt: null,
-            },
-          };
-        });
-      }
-    }
-    if (!Array.isArray(selectedChannel.assignedParticipants)) {
-      if (Array.isArray(selectedChannel.participantAssignments)) {
-        selectedChannel.assignedParticipants = selectedChannel.participantAssignments.map((assignmentValue) => {
-          const assignment = asRecord(assignmentValue) ?? {};
-          const sourceRefId = readNullableString(assignment.sourceRefId);
-          const cat = sourceRefId ? (catsById.get(sourceRefId) ?? null) : null;
-          return {
-            participantId: readString(assignment.participantId),
-            sourceKind: readString(assignment.sourceKind, 'adhoc') === 'cat' ? 'cat' : 'adhoc',
-            sourceRefId,
-            name: readString(assignment.name, readString(cat?.name, 'Participant')),
-            roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat?.roles),
-            roleHint: readNullableString(assignment.roleHint),
-            skillProfile: readNullableString(cat?.skillProfile),
-            mcpProfile: readNullableString(cat?.mcpProfile),
-            status: readString(assignment.status, 'active'),
-            joinedAt: readString(assignment.joinedAt),
-            leftAt: readNullableString(assignment.leftAt),
-            avatarColor: readNullableString(cat?.avatarColor),
-            avatarUrl: readNullableString(cat?.avatarUrl),
-            execution: assignment.execution,
-            memory: asRecord(cat?.memory) ?? {
-              summary: null,
-              facts: [],
-              openLoops: [],
-              updatedAt: null,
-            },
-          };
-        });
-      }
-    }
-  }
+export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
+  const nextPayload = normalizeBaseAppShellPayload(
+    payload as unknown as BaseAppShellPayload,
+  ) as unknown as AppShellPayload & Record<string, unknown>;
+  const chatState = asRecord(nextPayload.chat) ?? {};
+  nextPayload.chat = chatState as unknown as AppShellPayload['chat'];
+  const cats = Array.isArray(chatState.cats)
+    ? (chatState.cats as Array<Record<string, unknown>>)
+    : [];
+  const catsById = new Map(cats.map((cat) => [readString(cat.id), cat]));
 
-  chatState.cats = Array.from(catsById.values());
-
-  if (nextPayload.setupCompleteAt === undefined) {
-    (nextPayload as Record<string, unknown>).setupCompleteAt = null;
-  }
-  if (!nextPayload.ownerDisplayName) {
-    (nextPayload as Record<string, unknown>).ownerDisplayName = 'Owner';
-  }
-  if (nextPayload.ownerAvatarColor === undefined) {
-    (nextPayload as Record<string, unknown>).ownerAvatarColor = null;
-  }
-  if (nextPayload.guideCat === undefined) {
-    (nextPayload as Record<string, unknown>).guideCat = null;
-  } else {
-    const guideCat = asRecord(nextPayload.guideCat);
-    if (!guideCat) {
-      (nextPayload as Record<string, unknown>).guideCat = null;
-    } else {
-      if (!asRecord(guideCat.executionTarget)) {
-        guideCat.executionTarget = {
-          provider: readString(guideCat.provider, 'claude'),
-          instance: readNullableString(guideCat.instance),
-          model: readNullableString(guideCat.model),
-        };
-      }
-      const executionTarget = asRecord(guideCat.executionTarget);
-      if (executionTarget && executionTarget.instance === undefined) {
-        executionTarget.instance = readNullableString(guideCat.instance);
-      }
-      if (guideCat.modelSelection === undefined) {
-        guideCat.modelSelection = null;
-      }
-    }
-  }
-  if (!Array.isArray(nextPayload.assistantPresets)) {
-    (nextPayload as Record<string, unknown>).assistantPresets = [];
-  } else {
-    (nextPayload as Record<string, unknown>).assistantPresets = nextPayload.assistantPresets.map((assistantValue) => {
-      const assistant = asRecord(assistantValue) ?? {};
-      if (!asRecord(assistant.executionTarget)) {
-        assistant.executionTarget = {
-          provider: readString(assistant.provider, 'claude'),
-          instance: readNullableString(assistant.instance),
-          model: readNullableString(assistant.model),
-        };
-      }
-      const executionTarget = asRecord(assistant.executionTarget);
-      if (executionTarget && executionTarget.instance === undefined) {
-        executionTarget.instance = readNullableString(assistant.instance);
-      }
-      if (assistant.modelSelection === undefined) {
-        assistant.modelSelection = null;
-      }
-      if (assistant.roleHint === undefined) {
-        assistant.roleHint = null;
-      }
-      return assistant;
-    });
-  }
-  if (chatState.bossCatId === undefined) {
-    chatState.bossCatId = null;
-  }
-  if (chatState.showVerboseMessages === undefined) {
-    chatState.showVerboseMessages = false;
-  }
-  if (!asRecord(chatState.newChatDefaults)) {
-    chatState.newChatDefaults = {
-      provider: readString(orchestratorExecutionTarget?.provider, 'claude'),
-      instance: readNullableString(orchestratorExecutionTarget?.instance),
-      model: readNullableString(orchestratorExecutionTarget?.model),
-      modelSelection: null,
-    };
-  }
-
-  if (Array.isArray(chatState.channels)) {
-    chatState.channels = chatState.channels.map((channelValue) => {
-      const channel = asRecord(channelValue) ?? {};
-      normalizeChannelKind(
-        channel,
-        readString(channel.roomMode, 'boss_chat') === 'direct_cat_chat'
-          ? 'direct_cat_chat'
-          : 'boss_chat',
-      );
-      const participantCount = typeof channel.participantCount === 'number'
-        ? channel.participantCount
-        : typeof channel.catCount === 'number'
-          ? channel.catCount
-          : 0;
-      const activeParticipantCount = typeof channel.activeParticipantCount === 'number'
-        ? channel.activeParticipantCount
-        : typeof channel.activeCatCount === 'number'
-          ? channel.activeCatCount
-          : participantCount;
-      if (channel.participantCount === undefined) {
-        channel.participantCount = participantCount;
-      }
-      if (channel.activeParticipantCount === undefined) {
-        channel.activeParticipantCount = activeParticipantCount;
-      }
-      if (channel.catCount === undefined) {
-        channel.catCount = participantCount;
-      }
-      if (channel.activeCatCount === undefined) {
-        channel.activeCatCount = activeParticipantCount;
-      }
-      return channel;
-    });
-  }
+  normalizeSelectedChannel(chatState, catsById);
+  normalizeGuideCat(nextPayload);
+  normalizeAssistantPresets(nextPayload);
+  normalizeChannelSummaries(chatState);
 
   if (!Array.isArray(chatState.parallelChatGroups)) {
     chatState.parallelChatGroups = [];
