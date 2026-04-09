@@ -27,8 +27,8 @@ test('trace list implementation lives in design and product wrappers point at it
   );
 
   assert.match(readFileSync(sharedPath, 'utf8'), /operatorEmptyState/u);
-  assert.match(chatWrapper, /design\/components\/operator\/TraceList/u);
   assert.match(workspaceWrapper, /design\/components\/operator\/TraceList/u);
+  assert.match(chatWrapper, /shared\/renderer\/components\/TraceList/u);
   assert.match(workWrapper, /shared\/renderer\/components\/TraceList/u);
   assert.match(codeWrapper, /shared\/renderer\/components\/TraceList/u);
 });
