@@ -13,6 +13,7 @@ import type {
   ParticipantSessionStatus,
   RoomRoutingMode,
 } from '../../../shared/roomRouting.js';
+import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
 import { resolvePlatformSurfaceFromPath } from '../../../core/platformSurface.js';
 import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
 import { PlatformSurfaceSwitcher } from '../../../design/components/PlatformSurfaceSwitcher.js';
@@ -57,6 +58,9 @@ export interface ConversationSidebarPayload<
     reachable?: boolean;
     status?: string | null;
   };
+  runtimeSetup?: {
+    status?: RuntimeSetupStatus | null;
+  } | null;
   chat: {
     bossCatId: string | null;
     cats: TCat[];
@@ -988,6 +992,7 @@ export function ConversationSidebar<
           void executeEnvironmentRecovery({
             runtimeStatus: runtimeFooterStatus,
             runtimeBaseUrl: resolvedRuntime.baseUrl,
+            runtimeSetupStatus: payload.runtimeSetup?.status,
           });
         }}
         runtimeBaseUrl={resolvedRuntime.baseUrl}
