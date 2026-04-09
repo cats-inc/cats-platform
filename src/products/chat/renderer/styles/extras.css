@@ -153,7 +153,7 @@
   border-radius: 10px;
   background: var(--panel);
   box-shadow: var(--shadow);
-  z-index: 30;
+  z-index: 90;
   padding: 4px;
 }
 
@@ -716,5 +716,4 @@
   display: inline-block;
   flex-shrink: 0;
 }
-
 

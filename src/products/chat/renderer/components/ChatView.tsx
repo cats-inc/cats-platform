@@ -568,7 +568,6 @@ export function ChatView({
           />
         ) : null;
       })() : null}
-      bottomSentinelRef={bottomSentinelRef}
       sidePanel={sidePanelOpen ? (
         <SidePanel
           title="Chat Setup"
@@ -621,6 +620,7 @@ export function ChatView({
               hasConversationStarted={hasConversationStarted}
               greeting={greeting}
               transcriptListRef={transcriptListRef}
+              bottomSentinelRef={bottomSentinelRef}
               visibleMessages={visibleMessages}
               cats={payload.chat.cats}
               bossCatId={payload.chat.bossCatId}

@@ -118,11 +118,11 @@ export function useTranscriptAutoScroll(options: {
     }
 
     if (!bottomSentinelElement) {
-      bottomSentinelHeightRef.current = Math.max(1, nextComposerFlowOffset + 1);
+      bottomSentinelHeightRef.current = Math.max(0, nextComposerFlowOffset);
       return;
     }
 
-    const nextBottomSentinelHeight = Math.max(1, nextComposerFlowOffset + 1);
+    const nextBottomSentinelHeight = Math.max(0, nextComposerFlowOffset);
     if (bottomSentinelHeightRef.current === nextBottomSentinelHeight) {
       return;
     }

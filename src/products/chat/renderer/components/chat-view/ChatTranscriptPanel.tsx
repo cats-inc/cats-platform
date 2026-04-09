@@ -3,6 +3,7 @@ import {
   useState,
   type CSSProperties,
   type Ref,
+  type RefCallback,
 } from 'react';
 
 import type {
@@ -25,6 +26,7 @@ export interface ChatTranscriptPanelProps {
   hasConversationStarted: boolean;
   greeting: string;
   transcriptListRef: Ref<HTMLDivElement>;
+  bottomSentinelRef: RefCallback<HTMLDivElement>;
   visibleMessages: SelectedChannelView['messages'];
   cats: ChatCat[];
   bossCatId: string | null;
@@ -68,6 +70,7 @@ export function ChatTranscriptPanel({
   hasConversationStarted,
   greeting,
   transcriptListRef,
+  bottomSentinelRef,
   visibleMessages,
   cats,
   bossCatId,
@@ -173,6 +176,7 @@ export function ChatTranscriptPanel({
             resolveParticipantDisplayName={resolveParticipantDisplayName}
           />
         ) : null}
+        <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
       </div>
     </section>
   );

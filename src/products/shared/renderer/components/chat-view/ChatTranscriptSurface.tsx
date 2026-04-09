@@ -23,6 +23,7 @@ export interface ChatTranscriptSurfaceProps {
   liveIndicator?: LiveIndicatorState;
   directLaneExcludedMentionNames: string[];
   transcriptListRef: RefCallback<HTMLDivElement>;
+  bottomSentinelRef: RefCallback<HTMLDivElement>;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
 }
 
@@ -35,6 +36,7 @@ export function ChatTranscriptSurface({
   liveIndicator,
   directLaneExcludedMentionNames,
   transcriptListRef,
+  bottomSentinelRef,
   onChoiceSubmit,
 }: ChatTranscriptSurfaceProps) {
   const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
@@ -213,6 +215,7 @@ export function ChatTranscriptSurface({
             </article>
           );
         })() : null}
+        <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
       </div>
     </section>
   );

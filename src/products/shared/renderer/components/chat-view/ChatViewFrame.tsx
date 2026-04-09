@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode, RefCallback } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 export interface ChatViewFrameProps {
   conversationMode: string;
@@ -10,7 +10,6 @@ export interface ChatViewFrameProps {
   topBar: ReactNode;
   statusRow?: ReactNode;
   children: ReactNode;
-  bottomSentinelRef: RefCallback<HTMLDivElement>;
   sidePanel: ReactNode;
 }
 
@@ -24,7 +23,6 @@ export function ChatViewFrame({
   topBar,
   statusRow = null,
   children,
-  bottomSentinelRef,
   sidePanel,
 }: ChatViewFrameProps) {
   return (
@@ -43,7 +41,6 @@ export function ChatViewFrame({
           <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
             {/* Feedback is now shown via NotificationContainer */}
             {children}
-            <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
           </section>
         </div>
       </div>

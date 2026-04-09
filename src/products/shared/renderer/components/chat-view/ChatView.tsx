@@ -316,7 +316,6 @@ export function ChatView({
           onToggleSidePanel={() => setSidePanelOpen(!sidePanelOpen)}
         />
       )}
-      bottomSentinelRef={bottomSentinelRef}
       sidePanel={(
         <ChatViewSidePanel
           sidePanelOpen={sidePanelOpen}
@@ -357,6 +356,7 @@ export function ChatView({
         liveIndicator={liveIndicator}
         directLaneExcludedMentionNames={directLaneExcludedMentionNames}
         transcriptListRef={transcriptListRef}
+        bottomSentinelRef={bottomSentinelRef}
         onChoiceSubmit={onChoiceSubmit}
       />
       <ChatComposerSurface
