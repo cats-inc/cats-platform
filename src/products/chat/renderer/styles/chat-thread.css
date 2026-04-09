@@ -429,7 +429,7 @@
 }
 
 .composerCardDocked.composerCardDockedParallel {
-  bottom: 79px;
+  bottom: 78px;
 }
 
 .composerCardFresh {
@@ -684,9 +684,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 60px;
   width: calc(100% + 56px);
   margin: 0 -28px;
-  padding: 15px 28px;
+  padding: 0 28px;
   background: color-mix(in srgb, var(--canvas-bg) 90%, white 10%);
   border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
   backdrop-filter: blur(10px);
@@ -768,13 +769,13 @@
 
 @media (max-width: 720px) {
   .composerCardDocked.composerCardDockedParallel {
-    bottom: 79px;
+    bottom: 78px;
   }
 
   .parallelFooterBar {
     width: calc(100% + 16px);
     margin: 0 -8px;
-    padding: 4px 8px 6px;
+    padding: 0 8px;
     gap: 6px;
   }
 

@@ -25,10 +25,29 @@ test('parallel composer offset matches the footer stack height', async () => {
     new URL('../src/products/chat/renderer/styles/chat-thread.css', import.meta.url),
     'utf8',
   );
+  const chatShellStyles = await readFile(
+    new URL('../src/products/chat/renderer/styles/chat-shell.css', import.meta.url),
+    'utf8',
+  );
+  const sidebarChromeStyles = await readFile(
+    new URL('../src/design/components/sidebar-chrome.css', import.meta.url),
+    'utf8',
+  );
 
   const parallelComposerRule = chatThreadStyles.match(
     /\.composerCardDocked\.composerCardDockedParallel\s*\{[^}]+\}/u,
   )?.[0] ?? '';
+  const parallelFooterRule = chatThreadStyles.match(/\.parallelFooterBar\s*\{[^}]+\}/u)?.[0] ?? '';
+  const sidebarFooterRule = chatShellStyles.match(
+    /\.sidebarFooter\s*\{\s*position:\s*relative;[^}]+\}/u,
+  )?.[0] ?? '';
+  const sidebarFooterButtonRule = sidebarChromeStyles.match(
+    /\.sidebarFooterButton\s*\{[^}]+\}/u,
+  )?.[0] ?? '';
 
-  assert.match(parallelComposerRule, /bottom:\s*79px/u);
+  assert.match(parallelComposerRule, /bottom:\s*78px/u);
+  assert.match(parallelFooterRule, /height:\s*60px/u);
+  assert.match(parallelFooterRule, /padding:\s*0 28px/u);
+  assert.match(sidebarFooterRule, /height:\s*60px/u);
+  assert.match(sidebarFooterButtonRule, /height:\s*100%/u);
 });
