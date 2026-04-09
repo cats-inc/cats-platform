@@ -1,4 +1,4 @@
-import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
+import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsDataProps {

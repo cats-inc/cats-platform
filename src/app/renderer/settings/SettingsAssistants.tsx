@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
+import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { CatCreationFields } from '../setup/CatCreationFields.js';

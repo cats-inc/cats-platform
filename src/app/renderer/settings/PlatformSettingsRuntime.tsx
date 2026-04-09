@@ -1,5 +1,5 @@
 import { resolveRuntimeConnectionChip } from '../../../design/components/runtimeChips.js';
-import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
+import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 

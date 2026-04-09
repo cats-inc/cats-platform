@@ -1,7 +1,7 @@
 import { startTransition } from 'react';
 
-import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
-import { updateVerbosePreference } from '../../../products/chat/renderer/api/index.js';
+import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import { updateVerbosePreference } from '../../../products/shared/renderer/api/index.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsChatProps {

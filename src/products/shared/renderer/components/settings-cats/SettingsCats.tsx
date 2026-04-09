@@ -7,8 +7,13 @@ import { ALL_PLATFORM_SURFACES } from '../../../../../shared/platformSurfaces.js
 import { SettingsShell } from '../SettingsShell.js';
 import type { CatFormState } from '../../workspaceChatUtils.js';
 import { useSettingsCatsMemory } from '../../hooks/useSettingsCatsMemory.js';
+import {
+  useSettingsCatsRegistryActions,
+  type BotFormState,
+} from '../../hooks/useSettingsCatsRegistryActions.js';
 import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram.js';
 import { SettingsCatsCreateForm } from './SettingsCatsCreateForm.js';
+import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 import { SettingsCatsTransportPanel } from './SettingsCatsTransportPanel.js';
 
 export interface SettingsCatsRegistryController<TBotForm> {
@@ -191,5 +196,20 @@ export function SettingsCats<TBotForm>({
       <ConfirmDialog dialog={dialog} onClose={handleClose} />
       <ToastContainer toasts={toasts} />
     </>
+  );
+}
+
+export interface WorkspaceSettingsCatsProps extends Omit<
+  SharedSettingsCatsProps<BotFormState>,
+  'useSettingsCatsRegistryActionsHook' | 'SettingsCatsRegistryComponent'
+> {}
+
+export function WorkspaceSettingsCats(props: WorkspaceSettingsCatsProps) {
+  return (
+    <SettingsCats
+      {...props}
+      useSettingsCatsRegistryActionsHook={useSettingsCatsRegistryActions}
+      SettingsCatsRegistryComponent={SettingsCatsRegistry}
+    />
   );
 }

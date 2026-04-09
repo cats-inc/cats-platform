@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
+import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';

@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import type { AppShellPayload } from '../../../products/chat/api/contracts.js';
-import { SettingsCats } from '../../../products/chat/renderer/components/settings-cats/SettingsCats.js';
+import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import { WorkspaceSettingsCats } from '../../../products/shared/renderer/components/settings-cats/SettingsCats.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
 import { PlatformSettingsChat } from './PlatformSettingsChat.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
@@ -11,9 +11,11 @@ import { PlatformSettingsRuntime } from './PlatformSettingsRuntime.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 import './platform-settings.css';
 
-export interface PlatformSettingsRoutesProps {
-  payload: AppShellPayload;
-  onPayloadUpdate: (payload: AppShellPayload) => void;
+export interface PlatformSettingsRoutesProps<
+  TPayload extends WorkspaceAppShellPayload = WorkspaceAppShellPayload,
+> {
+  payload: TPayload;
+  onPayloadUpdate: (payload: TPayload) => void;
   feedback: string;
   busy: string;
   onFeedback: (message: string) => void;
@@ -21,7 +23,7 @@ export interface PlatformSettingsRoutesProps {
   onResetSetup: () => void;
 }
 
-export function PlatformSettingsRoutes({
+export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload>({
   payload,
   onPayloadUpdate,
   feedback,
@@ -29,9 +31,24 @@ export function PlatformSettingsRoutes({
   onFeedback,
   onBusy,
   onResetSetup,
-}: PlatformSettingsRoutesProps) {
+}: PlatformSettingsRoutesProps<TPayload>) {
   const workProduct = payload.products.find((product) => product.id === 'work');
   const codeProduct = payload.products.find((product) => product.id === 'code');
+  const onWorkspacePayloadUpdate = (nextPayload: WorkspaceAppShellPayload) => {
+    onPayloadUpdate(nextPayload as TPayload);
+  };
+  const catsElement = (
+    <PlatformSettingsShell section="cats:my-cats" title="My Cats" products={payload.products}>
+      <WorkspaceSettingsCats
+        payload={payload}
+        feedback={feedback}
+        busy={busy}
+        onPayloadUpdate={onWorkspacePayloadUpdate}
+        onFeedback={onFeedback}
+        onBusy={onBusy}
+      />
+    </PlatformSettingsShell>
+  );
 
   return (
     <Routes>
@@ -42,26 +59,15 @@ export function PlatformSettingsRoutes({
           <PlatformSettingsGeneral
             payload={payload}
             feedback={feedback}
-            onPayloadUpdate={onPayloadUpdate}
+            onPayloadUpdate={onWorkspacePayloadUpdate}
             onFeedback={onFeedback}
           />
         )}
       />
-      <Route path="cats" element={<Navigate to="/settings/cats/my-cats" replace />} />
+      <Route path="cats" element={catsElement} />
       <Route
         path="cats/my-cats"
-        element={(
-          <PlatformSettingsShell section="cats:my-cats" title="My Cats" products={payload.products}>
-            <SettingsCats
-              payload={payload}
-              feedback={feedback}
-              busy={busy}
-              onPayloadUpdate={onPayloadUpdate}
-              onFeedback={onFeedback}
-              onBusy={onBusy}
-            />
-          </PlatformSettingsShell>
-        )}
+        element={<Navigate to="/settings/cats" replace />}
       />
       <Route
         path="cats/assistants"
@@ -69,7 +75,7 @@ export function PlatformSettingsRoutes({
           <PlatformSettingsShell section="cats:assistants" title="Assistants" products={payload.products}>
             <SettingsAssistants
               payload={payload}
-              onPayloadUpdate={onPayloadUpdate}
+              onPayloadUpdate={onWorkspacePayloadUpdate}
             />
           </PlatformSettingsShell>
         )}
@@ -80,7 +86,7 @@ export function PlatformSettingsRoutes({
           <PlatformSettingsChat
             payload={payload}
             feedback={feedback}
-            onPayloadUpdate={onPayloadUpdate}
+            onPayloadUpdate={onWorkspacePayloadUpdate}
             onFeedback={onFeedback}
           />
         )}
