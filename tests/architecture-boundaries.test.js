@@ -341,6 +341,23 @@ test('chat model re-exports dedicated cat mutation helpers instead of defining t
   assert.match(catsModule, /export function setBossCat/u);
 });
 
+test('chat model re-exports dedicated channel-group mutation helpers instead of defining them inline', async () => {
+  const modelModule = await readFile(
+    new URL('../src/products/chat/state/model/index.ts', import.meta.url),
+    'utf8',
+  );
+  const channelGroupsModule = await readFile(
+    new URL('../src/products/chat/state/model/channelGroups.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(modelModule, /from '\.\/channelGroups\.js'/u);
+  assert.doesNotMatch(modelModule, /export function renameParallelChatGroup\(/u);
+  assert.doesNotMatch(modelModule, /export function deleteChannel\(/u);
+  assert.match(channelGroupsModule, /export function renameParallelChatGroup/u);
+  assert.match(channelGroupsModule, /export function deleteChannel/u);
+});
+
 test('chat snapshot composes dedicated shared and entity helper modules', async () => {
   const snapshotModule = await readFile(
     new URL('../src/products/chat/state/chat-snapshot/index.ts', import.meta.url),
