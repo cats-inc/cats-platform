@@ -99,7 +99,7 @@ function createDefaultSetupState(): DesktopSetupState {
   };
 }
 
-function isSetupAuditHelperId(helperId: string | null | undefined): boolean {
+export function isSetupAuditHelperId(helperId: string | null | undefined): boolean {
   if (!helperId) {
     return false;
   }

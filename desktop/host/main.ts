@@ -64,6 +64,7 @@ import {
 import { buildDesktopTrayMenuState as buildElectronTrayMenuState } from './trayMenu.js';
 import {
   applyDesktopHostPlatformShellUpdate,
+  normalizePlatformShellSetupState,
   parseDesktopHostPlatformShellUpdate,
 } from './platformShellUpdate.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
@@ -1218,7 +1219,13 @@ async function main(): Promise<void> {
     }
     updateState = restoredState?.updates ?? defaultUpdates;
     packagingState = defaultPackaging;
-    setupState = restoredState?.setup ?? defaultSetup;
+    setupState = normalizePlatformShellSetupState(
+      restoredState?.setup ?? defaultSetup,
+      Boolean(
+        latestPersistedSetupState.setupCompleteAt
+        || latestPersistedSetupState.productSetupCompleted
+      ),
+    );
     diagnosticsState = restoredState?.diagnostics ?? createEmptyDesktopDiagnosticsState([
       'cats-runtime',
       'cats-platform',
@@ -1305,11 +1312,13 @@ async function main(): Promise<void> {
       appShell: latestAppShellPayload,
       persistedSetup: latestPersistedSetupState,
       providerDiagnostics: latestProviderDiagnosticsPayload,
+      setup: setupState ?? createEmptyDesktopSetupState(),
     }, parseDesktopHostPlatformShellUpdate(payload));
 
     latestAppShellPayload = nextState.appShell;
     latestPersistedSetupState = nextState.persistedSetup;
     latestProviderDiagnosticsPayload = nextState.providerDiagnostics;
+    setupState = nextState.setup;
 
     publishSnapshot(buildSnapshot(null));
   });

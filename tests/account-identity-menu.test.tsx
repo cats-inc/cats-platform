@@ -30,7 +30,7 @@ test('AccountIdentityMenu renders shared account actions with configurable place
   assert.match(markup, /accountMenu--alignEnd/u);
   assert.match(markup, />Settings</u);
   assert.match(markup, />Environment</u);
-  assert.match(markup, />Open Cats Runtime</u);
+  assert.doesNotMatch(markup, />Open Cats Runtime</u);
 });
 
 test('shouldDismissAccountIdentityMenu only dismisses pointer targets outside the menu root', () => {
