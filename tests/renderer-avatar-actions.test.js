@@ -17,12 +17,30 @@ for (const product of ['chat', 'work', 'code']) {
       ),
       'utf8',
     );
+    const implementationSource = source.includes("shared/renderer/components/SettingsGeneral.js")
+      ? await readFile(
+        path.join(
+          process.cwd(),
+          'src',
+          'products',
+          'shared',
+          'renderer',
+          'components',
+          'SettingsGeneral.tsx',
+        ),
+        'utf8',
+      )
+      : source;
 
-    assert.match(source, /async function handleAvatarRemove\(\): Promise<void> \{/u);
-    assert.match(source, /avatarUrl: nextAvatarUrl/u);
-    assert.match(source, /await updateOwnerAvatar\(null, 'Failed to remove avatar'\)/u);
-    assert.match(source, /className="secondaryButton"/u);
-    assert.match(source, />\s*Remove avatar\s*</u);
+    if (implementationSource !== source) {
+      assert.match(source, /shared\/renderer\/components\/SettingsGeneral\.js/u);
+    }
+
+    assert.match(implementationSource, /async function handleAvatarRemove\(\): Promise<void> \{/u);
+    assert.match(implementationSource, /avatarUrl: nextAvatarUrl/u);
+    assert.match(implementationSource, /await updateOwnerAvatar\(null, 'Failed to remove avatar'\)/u);
+    assert.match(implementationSource, /className="secondaryButton"/u);
+    assert.match(implementationSource, />\s*Remove avatar\s*</u);
   });
 
   test(`${product} cat settings can remove uploaded cat avatars`, async () => {
@@ -39,10 +57,34 @@ for (const product of ['chat', 'work', 'code']) {
       ),
       'utf8',
     );
+    const implementationSource = source.includes(
+      "shared/renderer/components/settings-cats/SettingsCatsDetailPanel.js",
+    )
+      ? await readFile(
+        path.join(
+          process.cwd(),
+          'src',
+          'products',
+          'shared',
+          'renderer',
+          'components',
+          'settings-cats',
+          'SettingsCatsDetailPanel.tsx',
+        ),
+        'utf8',
+      )
+      : source;
 
-    assert.match(source, /async function handleCatAvatarRemove\(\): Promise<void> \{/u);
-    assert.match(source, /updateCatProfile\(cat\.id, \{ avatarUrl: null \}\)/u);
-    assert.match(source, /className="secondaryButton"/u);
-    assert.match(source, />\s*Remove avatar\s*</u);
+    if (implementationSource !== source) {
+      assert.match(
+        source,
+        /shared\/renderer\/components\/settings-cats\/SettingsCatsDetailPanel\.js/u,
+      );
+    }
+
+    assert.match(implementationSource, /async function handleCatAvatarRemove\(\): Promise<void> \{/u);
+    assert.match(implementationSource, /updateCatProfile\(cat\.id, \{ avatarUrl: null \}\)/u);
+    assert.match(implementationSource, /className="secondaryButton"/u);
+    assert.match(implementationSource, />\s*Remove avatar\s*</u);
   });
 }
