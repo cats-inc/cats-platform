@@ -494,6 +494,44 @@ function buildBootstrapProgress(
   };
 }
 
+/**
+ * Determine whether the last packaged-setup action left the host in a
+ * state that warrants a "Resume Setup" repair action.
+ */
+function canResumePackagedSetup(
+  setup: DesktopSetupState | null | undefined,
+): boolean {
+  const lastAction = setup?.lastAction ?? null;
+  return Boolean(
+    lastAction
+    && !isOptionalCapabilityPackSetupAction(lastAction)
+    && lastAction.resumable
+    && (
+      lastAction.interruptions.length > 0
+      || lastAction.runState === 'failed'
+      || lastAction.manualSteps.length > 0
+      || lastAction.restartRequired
+      || lastAction.status === 'changes_required'
+      || lastAction.status === 'not_installed'
+      || lastAction.status === 'auth_required'
+    ),
+  );
+}
+
+/**
+ * Build a stable three-slot action row for the recovery/details surface.
+ *
+ * Slots:
+ *   [Continue]  – safest forward path (open_setup / open_chat)
+ *   [Repair]    – single best repair action (retry / resume_setup)
+ *   [Quit Cats] – explicit exit (always present)
+ *
+ * Rules:
+ *   - At most three buttons.
+ *   - Retry* and Resume Setup never appear in the same row.
+ *   - Open Runtime Diagnostics is NOT in this row (lives in an
+ *     expandable detail section instead).
+ */
 function buildActions(
   phase: DesktopBootstrapSnapshot['phase'],
   options: {
@@ -504,87 +542,39 @@ function buildActions(
   },
 ): DesktopHostAction[] {
   const actions: DesktopHostAction[] = [];
-  const push = (id: DesktopHostActionId, label: string, primary = false) => {
-    actions.push({ id, label, primary });
-  };
-  const lastSetupAction = options.setup?.lastAction ?? null;
-  const optionalSetupPackLabel = lastSetupAction && isOptionalCapabilityPackSetupAction(lastSetupAction)
-    ? describeSetupPack(lastSetupAction.optionalFollowThroughPack)
-    : null;
-  const optionalSetupPackActionLabel = optionalSetupPackLabel
-    ? `Open Setup for ${optionalSetupPackLabel.replace(/\b\w/g, (value) => value.toUpperCase())}`
-    : 'Open Setup';
-  const canResumeSetup = Boolean(
-    lastSetupAction
-    && !isOptionalCapabilityPackSetupAction(lastSetupAction)
-    && lastSetupAction.resumable
-    && (
-      lastSetupAction.interruptions.length > 0
-      || lastSetupAction.runState === 'failed'
-      || lastSetupAction.manualSteps.length > 0
-      || lastSetupAction.restartRequired
-      || lastSetupAction.status === 'changes_required'
-      || lastSetupAction.status === 'not_installed'
-      || lastSetupAction.status === 'auth_required'
-    ),
-  );
+  const resumable = canResumePackagedSetup(options.setup);
 
+  // ── Continue slot ──────────────────────────────────────────────────
   if (phase === 'ready_for_setup') {
-    if (canResumeSetup) {
-      push('resume_setup', 'Resume Packaged Setup', true);
-      push('open_setup', 'Open Setup');
+    actions.push({ id: 'open_setup', label: 'Continue to Setup' });
+  } else if (phase === 'ready_for_chat') {
+    actions.push({ id: 'open_chat', label: 'Open Cats' });
+  } else if (phase === 'needs_prerequisites' && options.setupComplete) {
+    actions.push({ id: 'open_chat', label: 'Open Cats' });
+  } else if ((phase === 'failed' || phase === 'needs_prerequisites') && options.appReady) {
+    if (options.setupComplete) {
+      actions.push({ id: 'open_chat', label: 'Open Cats' });
     } else {
-      push('open_setup', 'Continue to Setup', true);
+      actions.push({ id: 'open_setup', label: 'Open Setup' });
     }
-    if (options.runtimeReady) {
-      push('open_runtime_diagnostics', 'Open Runtime Diagnostics');
-    }
-    push('quit', 'Quit');
-    return actions;
   }
 
-  if (phase === 'ready_for_chat') {
-    push('open_chat', 'Open Cats', true);
-    if (optionalSetupPackLabel) {
-      push('open_setup', optionalSetupPackActionLabel);
-    }
-    if (options.runtimeReady) {
-      push('open_runtime_diagnostics', 'Open Runtime Diagnostics');
-    }
-    push('quit', 'Quit');
-    return actions;
+  // ── Repair slot ────────────────────────────────────────────────────
+  if (phase === 'ready_for_setup' && resumable) {
+    actions.push({ id: 'resume_setup', label: 'Resume Setup' });
+  } else if (phase === 'needs_prerequisites' && resumable) {
+    actions.push({ id: 'resume_setup', label: 'Resume Setup' });
+  } else if (phase === 'failed') {
+    actions.push({ id: 'retry', label: 'Retry Startup' });
+  } else if (phase === 'needs_prerequisites') {
+    actions.push({ id: 'retry', label: 'Retry Check' });
+  } else if (phase === 'ready_for_setup') {
+    actions.push({ id: 'retry', label: 'Retry Check' });
   }
 
-  if (phase === 'needs_prerequisites' || phase === 'failed') {
-    if (phase === 'needs_prerequisites' && options.setupComplete) {
-      push('open_chat', 'Open Cats', true);
-      if (canResumeSetup) {
-        push('resume_setup', 'Resume Packaged Setup');
-      }
-      push('retry', 'Retry Scan');
-      if (options.runtimeReady) {
-        push('open_runtime_diagnostics', 'Open Runtime Diagnostics');
-      }
-      push('quit', 'Quit');
-      return actions;
-    }
-    if (canResumeSetup) {
-      push('resume_setup', 'Resume Packaged Setup', true);
-      push('retry', phase === 'failed' ? 'Retry Startup' : 'Retry Scan');
-    } else {
-      push('retry', phase === 'failed' ? 'Retry Startup' : 'Retry Scan', true);
-    }
-    if (options.runtimeReady) {
-      push('open_runtime_diagnostics', 'Open Runtime Diagnostics');
-    }
-    if (options.appReady) {
-      push('open_setup', 'Open Setup');
-    }
-    push('quit', 'Quit');
-    return actions;
-  }
+  // ── Quit slot ──────────────────────────────────────────────────────
+  actions.push({ id: 'quit', label: 'Quit Cats' });
 
-  push('quit', 'Quit');
   return actions;
 }
 

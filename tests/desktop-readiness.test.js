@@ -630,9 +630,10 @@ test('desktop bootstrap surfaces provider remediation after setup if no provider
 
   assert.equal(snapshot.phase, 'needs_prerequisites');
   assert.ok(snapshot.issues.some((issue) => /provider target/i.test(issue.title)));
-  assert.ok(snapshot.actions.some((action) => action.id === 'open_chat' && action.primary));
+  assert.ok(snapshot.actions.some((action) => action.id === 'open_chat'));
   assert.ok(snapshot.actions.some((action) => action.id === 'retry'));
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_runtime_diagnostics'), false);
   assert.equal(snapshot.issues[0]?.remediation?.kind, 'open_runtime_diagnostics');
   assert.equal(
     snapshot.progress.steps.find((step) => step.id === 'enter-chat')?.status,
@@ -663,8 +664,9 @@ test('desktop bootstrap keeps completed setup out of onboarding when runtime hea
 
   assert.equal(snapshot.phase, 'needs_prerequisites');
   assert.equal(snapshot.app.entryPath, '/');
-  assert.ok(snapshot.actions.some((action) => action.id === 'open_chat' && action.primary));
+  assert.ok(snapshot.actions.some((action) => action.id === 'open_chat'));
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_runtime_diagnostics'), false);
   assert.equal(
     snapshot.issues.find((issue) => issue.id === 'cats-runtime-unreachable')?.remediation?.kind,
     'open_runtime_diagnostics',
@@ -751,7 +753,7 @@ test('desktop bootstrap keeps optional local-model audit follow-through non-bloc
 
   assert.equal(snapshot.phase, 'ready_for_setup');
   assert.equal(snapshot.actions.some((action) => action.id === 'resume_setup'), false);
-  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup' && action.primary), true);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), true);
   assert.equal(snapshot.issues.some((issue) => issue.id === 'setup-optional-capability-pack'), true);
   assert.equal(snapshot.issues.some((issue) => issue.title === 'Optional local model pack is available for follow-through'), true);
 });
@@ -834,7 +836,8 @@ test('desktop bootstrap keeps optional local-model follow-through reachable afte
   });
 
   assert.equal(snapshot.phase, 'ready_for_chat');
-  assert.equal(snapshot.actions.some((action) => action.id === 'open_chat' && action.primary), true);
-  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup' && action.label === 'Open Setup for Local Model Pack'), true);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), true);
+  // Optional pack follow-through no longer promoted to the main 3-slot action row
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_runtime_diagnostics'), false);
   assert.equal(snapshot.issues.some((issue) => issue.title === 'Optional local model pack is available for follow-through'), true);
 });

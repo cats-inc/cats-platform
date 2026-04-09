@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { buildDesktopBootstrapPage } from '../build/desktop/bootstrapPage.js';
 
-test('desktop bootstrap page surfaces setup recovery details from the host bridge', () => {
+test('desktop bootstrap page renders summary-first recovery with collapsed details', () => {
   const html = buildDesktopBootstrapPage();
 
   // Core structure
@@ -11,37 +11,50 @@ test('desktop bootstrap page surfaces setup recovery details from the host bridg
   assert.match(html, /class="app[\s"]/);
   assert.match(html, /class="hero/);
 
-  // Services section
+  // Recovery summary card with 3-slot action row
+  assert.match(html, /recovery-summary/);
+  assert.match(html, /recovery-title/);
+  assert.match(html, /recovery-desc/);
+  assert.match(html, /recovery-actions/);
+  assert.match(html, /RecoverySummaryCard/);
+
+  // Human-friendly copy per state
+  assert.match(html, /couldn\u2019t start/);
+  assert.match(html, /Something needs attention/);
+  assert.match(html, /Ready for setup/);
+
+  // Back button to leave detail mode
+  assert.match(html, /recovery-back/);
+
+  // Expandable detail sections (collapsed by default)
+  assert.match(html, /expand-trigger/);
+  assert.match(html, /expand-body/);
+  assert.match(html, /ExpandableSection/);
+  assert.match(html, /Why am I seeing this\?/);
+  assert.match(html, /Service status/);
+  assert.match(html, /Diagnostics/);
+  assert.match(html, /Logs and paths/);
+  assert.match(html, /Setup recovery/);
+
+  // Service status section preserved
   assert.match(html, /getServiceDisplayName/);
   assert.match(html, /svc-row/);
   assert.match(html, /svc-status/);
 
-  // Runtime section
-  assert.match(html, /providerSummary/);
+  // Runtime diagnostics link moved into service status section
+  assert.match(html, /open_runtime_diagnostics/);
 
-  // Setup Recovery section
-  assert.match(html, /Setup Recovery/);
-  assert.match(html, /setup-summary/);
+  // Setup recovery section
+  assert.match(html, /SetupRecoverySection/);
   assert.match(html, /getSetupSnapshot/);
   assert.match(html, /resumeSetup/);
   assert.match(html, /snap\.setup/);
-  assert.match(html, /providerSetup\.localProviders/);
-  assert.match(html, /bundledInCurrentInstaller/);
-  assert.match(html, /Recommended resume step/);
-  assert.match(html, /Capability pack coverage/);
-  assert.match(html, /providerSetup\.capabilityPacks/);
-  assert.match(html, /Local provider rollout/);
-  assert.match(html, /Not bundled in this desktop build/);
-  assert.match(html, /isOptionalCapabilityPackSetupAction/);
-  assert.match(html, /describeSetupPack/);
+  assert.match(html, /Recommended next step/);
   assert.match(html, /renderInterruptions/);
-  assert.match(html, /repo-owned packaged assets/);
 
-  // Diagnostics section
-  assert.match(html, /Diagnostics/);
+  // Diagnostics section preserved
   assert.match(html, /snap\.diagnostics/);
-  assert.match(html, /Recent chronology/);
-  assert.match(html, /DiagSection/);
+  assert.match(html, /Recent events/);
   assert.match(html, /hostStatePath/);
 
   // Slow-launch hint (progressive 20/40/60 s)

@@ -317,6 +317,83 @@ export function buildDesktopBootstrapPage(): string {
     .anim-d5 { animation-delay: 0.30s; }
     .anim-d6 { animation-delay: 0.36s; }
 
+    /* Recovery summary card */
+    .recovery-summary {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    .recovery-title {
+      font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+    .recovery-desc {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .recovery-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .recovery-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px 0;
+      margin-bottom: 20px;
+    }
+    .recovery-back:hover { color: var(--text); }
+
+    /* Expandable detail sections */
+    .expand-trigger {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 10px 0;
+      text-align: left;
+      border-top: 1px solid var(--border);
+    }
+    .expand-trigger:first-child { border-top: none; }
+    .expand-trigger:hover { color: var(--text); }
+    .expand-trigger::before {
+      content: '\u25B8';
+      display: inline-block;
+      transition: transform 0.15s;
+      font-size: 0.7rem;
+    }
+    .expand-trigger.open::before { transform: rotate(90deg); }
+    .expand-body {
+      display: none;
+      padding: 0 0 12px 18px;
+    }
+    .expand-body.open { display: block; animation: fadeSlideIn 0.25s ease both; }
+
     /* Responsive */
     @media (max-width: 520px) {
       .app { padding: 32px 16px 56px; }
@@ -540,22 +617,129 @@ export function buildDesktopBootstrapPage(): string {
       }
     }
 
-    function RecoveryHero(snap) {
-      return el('section', { class: 'hero anim' },
-        el('div', { class: 'hero-phase' },
-          Dot(snap.status === 'ok' ? 'ready' : snap.status, false),
-          el('span', { class: 'c-' + sc(snap.status) }, snap.phase.replace(/_/g, ' '))
-        ),
+    /* ================================================================
+     *  Recovery — copy per state
+     * ================================================================ */
+
+    function recoveryTitle(snap) {
+      if (snap.phase === 'failed') return 'Cats couldn\u2019t start';
+      if (snap.phase === 'needs_prerequisites') return 'Something needs attention';
+      if (snap.phase === 'ready_for_setup') return 'Ready for setup';
+      return 'Recovery';
+    }
+
+    function recoverySummary(snap) {
+      if (snap.phase === 'failed') {
+        var failedSvc = snap.services.find(function (s) { return s.status === 'failed'; });
+        if (failedSvc) {
+          return getServiceDisplayName(failedSvc.name)
+            + ' didn\u2019t start up. You can retry, or check the details below.';
+        }
+        return 'One of the local services failed to start. You can retry or look at the details below.';
+      }
+      if (snap.phase === 'needs_prerequisites') {
+        if (snap.app && snap.app.setupCompleteAt) {
+          return 'Cats is still usable, but a background service needs repair. You can open Cats now or check below.';
+        }
+        return 'A prerequisite check found something that needs fixing before you can continue.';
+      }
+      if (snap.phase === 'ready_for_setup') {
+        return 'Local services are running. Continue into setup to get started.';
+      }
+      return snap.summary || 'See details below.';
+    }
+
+    /* ================================================================
+     *  Recovery — expandable section helper
+     * ================================================================ */
+
+    function ExpandableSection(label, children) {
+      var body = el('div', { class: 'expand-body' }, children);
+      var trigger = el('button', {
+        class: 'expand-trigger',
+        onclick: function () {
+          var open = trigger.classList.toggle('open');
+          if (open) { body.classList.add('open'); }
+          else { body.classList.remove('open'); }
+        }
+      }, label);
+      return el('div', null, trigger, body);
+    }
+
+    /* ================================================================
+     *  Recovery — summary card + 3-slot actions
+     * ================================================================ */
+
+    function RecoverySummaryCard(snap, bridge) {
+      var actionButtons = (snap.actions || []).map(function (action) {
+        var isFirst = snap.actions.indexOf(action) === 0;
+        return Btn(action.label, {
+          primary: isFirst && action.id !== 'quit',
+          disabled: action.disabled,
+          onclick: function () {
+            var self = this;
+            self.disabled = true;
+            if (action.id === 'retry') {
+              runRetryAction(self, Boolean(action.disabled));
+              return;
+            }
+            bridge.runAction(action.id)
+              .then(function () {
+                if (action.id === 'resume_setup') refreshSetup();
+              })
+              .finally(function () { self.disabled = Boolean(action.disabled); });
+          }
+        });
+      });
+
+      return el('div', { class: 'recovery-summary anim' },
         el('h1', { class: 'hero-title' }, 'Cats'),
-        el('p', { class: 'hero-summary' }, snap.summary)
+        el('h2', { class: 'recovery-title' }, recoveryTitle(snap)),
+        el('p', { class: 'recovery-desc' }, recoverySummary(snap)),
+        el('div', { class: 'recovery-actions' }, actionButtons)
       );
     }
 
     /* ================================================================
-     *  Services
+     *  Recovery — expandable detail sections
      * ================================================================ */
 
-    function ServicesSection(snap) {
+    function WhySection(snap) {
+      var items = [];
+      if (snap.issues && snap.issues.length > 0) {
+        snap.issues.forEach(function (issue) {
+          var s = issue.severity === 'error' ? 'err' : issue.severity === 'warning' ? 'warn' : 'ok';
+          items.push(el('div', { class: 'card' },
+            el('div', { class: 'issue-head' },
+              el('span', { class: 'issue-title' }, issue.title),
+              el('span', { class: 'issue-sev c-' + s }, issue.severity)
+            ),
+            el('div', { class: 'detail-meta' }, issue.detail)
+          ));
+        });
+      }
+      var failedServices = snap.services.filter(function (s) { return s.status === 'failed'; });
+      failedServices.forEach(function (svc) {
+        if (svc.error) {
+          items.push(el('div', { class: 'card' },
+            el('div', { class: 'issue-head' },
+              el('span', { class: 'issue-title' }, getServiceDisplayName(svc.name) + ' error'),
+              el('span', { class: 'issue-sev c-err' }, 'error')
+            ),
+            el('div', { class: 'detail-meta' }, svc.error),
+            svc.lastOutput
+              ? el('code', { class: 'detail-code' }, svc.lastOutput)
+              : false
+          ));
+        }
+      });
+      if (items.length === 0) {
+        items.push(el('div', { class: 'detail-meta' }, 'No specific issues were reported.'));
+      }
+      return ExpandableSection('Why am I seeing this?', items);
+    }
+
+    function ServiceStatusSection(snap) {
       var rows = snap.services.map(function (svc) {
         var isPending = svc.status !== 'ready' && svc.status !== 'failed';
         var parts = [
@@ -576,227 +760,131 @@ export function buildDesktopBootstrapPage(): string {
         }
         return parts;
       });
-      return el('section', { class: 'section anim anim-d1' },
-        SectionHead('Services'),
-        el('div', { class: 'card' }, rows.flat())
-      );
-    }
 
-    /* ================================================================
-     *  Runtime
-     * ================================================================ */
+      var content = [el('div', { class: 'card' }, rows.flat())];
 
-    function RuntimeSection(snap) {
-      var kids = [
-        el('div', { class: 'rt-row' },
-          el('span', { class: 'rt-label' }, 'App'),
-          el('code', { class: 'rt-value' }, snap.app.baseUrl)
-        ),
-        el('div', { class: 'rt-row' },
-          el('span', { class: 'rt-label' }, 'Runtime'),
-          el('code', { class: 'rt-value' }, snap.runtime.baseUrl)
-        )
-      ];
-      if (snap.runtime.providerSummary) {
-        var ps = snap.runtime.providerSummary;
-        kids.push(
-          el('hr', { class: 'rt-divider' }),
-          el('div', { class: 'rt-provider' }, ps.summary),
-          el('div', { class: 'rt-counts' },
-            el('span', { class: 'rt-count' }, Dot('ready', false), ' ok ' + ps.ok),
-            el('span', { class: 'rt-count' }, Dot('degraded', false),
-              ' attention ' + (ps.degraded + ps.unavailable))
-          )
-        );
-      } else {
-        kids.push(
-          el('hr', { class: 'rt-divider' }),
-          el('div', { class: 'detail-meta' }, 'Provider diagnostics are still loading.')
-        );
-      }
-      return el('section', { class: 'section anim anim-d2' },
-        SectionHead('Runtime'),
-        el('div', { class: 'card' }, kids)
-      );
-    }
-
-    /* ================================================================
-     *  Actions
-     * ================================================================ */
-
-    function ActionsSection(snap, bridge) {
-      if (!snap.actions || snap.actions.length === 0) {
-        return el('section', { class: 'section' });
-      }
-      var sorted = snap.actions.slice().sort(function (a, b) {
-        return (b.primary ? 1 : 0) - (a.primary ? 1 : 0);
+      /* Runtime diagnostics link (moved out of main action row) */
+      var runtimeReady = snap.services.some(function (s) {
+        return s.name === 'cats-runtime' && s.ready;
       });
-      var buttons = sorted.map(function (action) {
-        return Btn(action.label, {
-          primary: action.primary,
-          disabled: action.disabled,
-          onclick: function () {
-            var self = this;
-            self.disabled = true;
-            if (action.id === 'retry') {
-              runRetryAction(self, Boolean(action.disabled));
-              return;
+      if (runtimeReady && snap.runtime) {
+        content.push(el('div', { class: 'detail-meta', style: 'margin-top:8px' },
+          el('a', {
+            href: '#',
+            style: 'color:var(--accent);font-size:0.82rem',
+            onclick: function (e) {
+              e.preventDefault();
+              bridge.runAction('open_runtime_diagnostics');
             }
-            bridge.runAction(action.id)
-              .then(function () {
-                if (action.id === 'resume_setup') refreshSetup();
-              })
-              .finally(function () { self.disabled = Boolean(action.disabled); });
-          }
-        });
-      });
-      return el('section', { class: 'section anim anim-d3' },
-        SectionHead('Actions'),
-        el('div', { class: 'actions' }, buttons)
-      );
-    }
-
-    /* ================================================================
-     *  Prerequisites
-     * ================================================================ */
-
-    function PrereqSection(snap) {
-      if (!snap.issues || snap.issues.length === 0) {
-        return el('section', { class: 'section anim anim-d4' },
-          SectionHead('Prerequisites'),
-          el('div', { class: 'card' },
-            el('div', { class: 'detail-meta' }, 'No blocking prerequisites are currently reported.')
-          )
-        );
+          }, 'Open runtime diagnostics \u2192')
+        ));
       }
-      var cards = snap.issues.map(function (issue) {
-        var s = issue.severity === 'error' ? 'err' : issue.severity === 'warning' ? 'warn' : 'ok';
-        return el('div', { class: 'card' },
-          el('div', { class: 'issue-head' },
-            el('span', { class: 'issue-title' }, issue.title),
-            el('span', { class: 'issue-sev c-' + s }, issue.severity)
-          ),
-          el('div', { class: 'detail-meta' }, issue.detail),
-          issue.target ? el('code', { class: 'detail-code' }, issue.target) : false
-        );
-      });
-      return el('section', { class: 'section anim anim-d4' },
-        SectionHead('Prerequisites'),
-        cards
-      );
+
+      return ExpandableSection('Service status', content);
     }
 
-    /* ================================================================
-     *  Setup Recovery
-     * ================================================================ */
+    function DiagnosticsSection(snap) {
+      var diagnostics = snap.diagnostics;
+      if (!diagnostics || !diagnostics.aggregation) {
+        return ExpandableSection('Diagnostics', [
+          el('div', { class: 'detail-meta' }, 'Diagnostics are still loading.')
+        ]);
+      }
 
-    function SetupSection(snap, setupSnap, bridge) {
+      var agg = diagnostics.aggregation;
+      var content = [];
+
+      content.push(el('div', { class: 'card' },
+        CardHead('Layer summary', agg.attemptId || 'current', 'c-ok'),
+        el('div', { class: 'detail-meta' },
+          el('strong', null, 'runtime: '), agg.layers.runtime.summary),
+        el('div', { class: 'detail-meta' },
+          el('strong', null, 'product: '), agg.layers.product.summary),
+        el('div', { class: 'detail-meta' },
+          el('strong', null, 'host: '), agg.layers.host.summary)
+      ));
+
+      var chronology = Array.isArray(agg.chronology) ? agg.chronology.slice(0, 8) : [];
+      if (chronology.length) {
+        var chronoItems = chronology.map(function (evt) {
+          return el('div', { class: 'chrono-item' },
+            el('div', { class: 'chrono-summary' }, evt.summary),
+            el('div', { class: 'chrono-meta' },
+              el('span', null, evt.layer),
+              el('span', null, evt.kind),
+              el('span', null, evt.status),
+              el('span', null, evt.timestamp)
+            ),
+            evt.error && evt.error.message
+              ? el('div', { class: 'detail-meta c-err' }, evt.error.message)
+              : false
+          );
+        });
+        content.push(el('div', { class: 'card' },
+          CardHead('Recent events', String(chronology.length) + ' entries', 'c-warn'),
+          chronoItems
+        ));
+      }
+
+      return ExpandableSection('Diagnostics', content);
+    }
+
+    function LogsAndPathsSection(snap) {
+      var diagnostics = snap.diagnostics;
+      var items = [];
+
+      if (snap.hostStatePath) {
+        items.push(el('div', { class: 'detail-meta' },
+          el('strong', null, 'Host state: '),
+          el('code', { class: 'detail-code' }, snap.hostStatePath)));
+      }
+      if (diagnostics) {
+        if (diagnostics.activeAttemptId) {
+          items.push(el('div', { class: 'detail-meta' },
+            el('strong', null, 'Attempt: '),
+            el('code', { class: 'detail-code' }, diagnostics.activeAttemptId)));
+        }
+        if (diagnostics.product && diagnostics.product.historyPath) {
+          items.push(el('div', { class: 'detail-meta' },
+            el('strong', null, 'History: '),
+            el('code', { class: 'detail-code' }, diagnostics.product.historyPath)));
+        }
+        if (Array.isArray(diagnostics.serviceLogs)) {
+          diagnostics.serviceLogs
+            .filter(function (e) { return e && e.logPath; })
+            .forEach(function (e) {
+              items.push(el('div', { class: 'detail-meta' },
+                el('strong', null, getServiceDisplayName(e.service) + ' log: '),
+                el('code', { class: 'detail-code' }, e.logPath)));
+            });
+        }
+      }
+      if (items.length === 0) {
+        items.push(el('div', { class: 'detail-meta' }, 'No log paths available yet.'));
+      }
+
+      return ExpandableSection('Logs and paths', [el('div', { class: 'card' }, items)]);
+    }
+
+    function SetupRecoverySection(snap, setupSnap, bridge) {
       var lastAction = (setupSnap && setupSnap.state && setupSnap.state.lastAction)
         || (snap.setup && snap.setup.lastAction);
-      var helperSummary = setupSnap
-        ? {
-            total: setupSnap.helpers.length,
-            available: setupSnap.helpers.filter(function (h) { return h.available && h.supported; }).length,
-            blocked: setupSnap.helpers.filter(function (h) { return !h.available || !h.supported; }).length
-          }
-        : null;
-
-      var capabilityPackCatalog = (snap.packaging && snap.packaging.installer
-        && snap.packaging.installer.providerSetup
-        && Array.isArray(snap.packaging.installer.providerSetup.capabilityPacks))
-        ? snap.packaging.installer.providerSetup.capabilityPacks : [];
-
-      var capabilityPackCoverage = setupSnap
-        ? Object.values(setupSnap.helpers.reduce(function (acc, helper) {
-            var packId = helper.pack || 'shared';
-            if (!acc[packId]) {
-              var pack = capabilityPackCatalog.find(function (c) { return c.id === helper.pack; });
-              acc[packId] = {
-                label: pack ? pack.label : helper.pack ? helper.pack.replace(/_/g, ' ') : 'Shared host helpers',
-                available: 0, total: 0
-              };
-            }
-            acc[packId].total += 1;
-            if (helper.available && helper.supported) acc[packId].available += 1;
-            return acc;
-          }, {}))
-        : [];
-
-      var localProviders = (snap.packaging && snap.packaging.installer
-        && snap.packaging.installer.providerSetup
-        && Array.isArray(snap.packaging.installer.providerSetup.localProviders))
-        ? snap.packaging.installer.providerSetup.localProviders : [];
-
-      var providerRollout = localProviders.length > 0
-        ? {
-            bundled: localProviders.filter(function (p) { return p.bundledInCurrentInstaller; }),
-            additional: localProviders.filter(function (p) { return !p.bundledInCurrentInstaller; })
-          }
-        : null;
+      if (!lastAction && (!setupSnap || !setupSnap.resumeAction)) return null;
 
       var cards = [];
 
-      /* Helper catalog */
-      if (helperSummary) {
-        var hc = [
-          CardHead('Bundled helper catalog', helperSummary.available + '/' + helperSummary.total, 'c-ok'),
-          el('div', { class: 'detail-meta' },
-            helperSummary.available + ' helper(s) are ready from repo-owned packaged assets.')
-        ];
-        if (helperSummary.blocked > 0) {
-          hc.push(el('div', { class: 'detail-meta c-warn' },
-            helperSummary.blocked + ' helper(s) are unavailable on this host or build.'));
-        }
-        cards.push(el('div', { class: 'card' }, hc));
-      }
-
-      /* Capability pack coverage */
-      if (capabilityPackCoverage.length > 0) {
-        var cpc = [
-          CardHead('Capability pack coverage', capabilityPackCoverage.length + ' pack(s)', 'c-ok')
-        ];
-        capabilityPackCoverage.forEach(function (pack) {
-          cpc.push(el('div', { class: 'detail-meta' },
-            pack.label + ': ' + pack.available + '/' + pack.total
-              + ' helper(s) ready from repo-owned packaged assets.'));
-        });
-        cards.push(el('div', { class: 'card' }, cpc));
-      }
-
-      /* Local provider rollout */
-      if (providerRollout) {
-        var lpr = [
-          CardHead('Local provider rollout', providerRollout.bundled.length + ' bundled', 'c-ok'),
-          el('div', { class: 'detail-meta' },
-            'Bundled in this desktop build: '
-              + (providerRollout.bundled.length
-                ? providerRollout.bundled.map(function (p) { return p.label; }).join(', ')
-                : 'none')
-              + '.')
-        ];
-        if (providerRollout.additional.length) {
-          lpr.push(el('div', { class: 'detail-meta c-warn' },
-            'Not bundled in this desktop build: '
-              + providerRollout.additional.map(function (p) { return p.label; }).join(', ')
-              + '.'));
-        }
-        cards.push(el('div', { class: 'card' }, lpr));
-      }
-
-      /* Recommended resume step */
       if (setupSnap && setupSnap.resumeAction) {
         var ra = setupSnap.resumeAction;
         var rac = [
-          CardHead('Recommended resume step',
+          CardHead('Recommended next step',
             ra.reason.replace(/_/g, ' '), 'c-warn'),
           el('div', { class: 'detail-meta' }, ra.summary),
-          renderInterruptions(ra.interruptions),
-          el('code', { class: 'detail-code' }, ra.mode)
+          renderInterruptions(ra.interruptions)
         ];
         if (Array.isArray(ra.manualSteps) && ra.manualSteps.length) {
           rac.push(el('div', { class: 'detail-meta' }, ra.manualSteps[0]));
         }
-        rac.push(Btn('Resume packaged setup', {
+        rac.push(Btn('Resume setup', {
           onclick: function () {
             var self = this;
             self.disabled = true;
@@ -808,32 +896,18 @@ export function buildDesktopBootstrapPage(): string {
         cards.push(el('div', { class: 'card' }, rac));
       }
 
-      /* Last action */
       if (lastAction) {
-        var optCap = isOptionalCapabilityPackSetupAction(lastAction);
-        var optionalPackLabel = describeSetupPack(lastAction.optionalFollowThroughPack)
-          || 'capability-pack';
         var las = lastAction.runState === 'failed' ? 'err'
           : lastAction.status === 'ready' ? 'ok' : 'warn';
         var lac = [
           CardHead(lastAction.label || lastAction.helperId,
             lastAction.status || lastAction.runState, 'c-' + las),
           el('div', { class: 'detail-meta' },
-            lastAction.summary || 'No setup action summary recorded.'),
-          renderInterruptions(lastAction.interruptions),
-          el('code', { class: 'detail-code' }, lastAction.mode)
+            lastAction.summary || 'No summary recorded.')
         ];
-        if (optCap) {
-          lac.push(el('div', { class: 'detail-meta c-ok' },
-            'Optional ' + optionalPackLabel
-              + ' follow-through. This does not block the API baseline or first chat.'));
-        }
         if (lastAction.restartRequired) {
           lac.push(el('div', { class: 'detail-meta c-warn' },
-            'Restart is required before the next packaged setup step.'));
-        }
-        if (Array.isArray(lastAction.manualSteps) && lastAction.manualSteps.length) {
-          lac.push(el('div', { class: 'detail-meta' }, lastAction.manualSteps[0]));
+            'A restart is needed before the next step.'));
         }
         if (lastAction.error) {
           lac.push(el('div', { class: 'detail-meta c-err' }, lastAction.error));
@@ -841,98 +915,7 @@ export function buildDesktopBootstrapPage(): string {
         cards.push(el('div', { class: 'card' }, lac));
       }
 
-      if (cards.length === 0) {
-        cards.push(el('div', { class: 'card' },
-          el('div', { class: 'detail-meta' }, 'Setup helper status is still loading.')
-        ));
-      }
-
-      return el('section', { class: 'section anim anim-d5', id: 'setup-summary' },
-        SectionHead('Setup Recovery'),
-        cards
-      );
-    }
-
-    /* ================================================================
-     *  Diagnostics
-     * ================================================================ */
-
-    function DiagSection(snap) {
-      var diagnostics = snap.diagnostics;
-      if (!diagnostics || !diagnostics.aggregation) {
-        return el('section', { class: 'section anim anim-d6' },
-          SectionHead('Diagnostics'),
-          el('div', { class: 'card' },
-            el('div', { class: 'detail-meta' }, 'Diagnostics bundle is still loading.'))
-        );
-      }
-
-      /* Artifacts */
-      var logRows = Array.isArray(diagnostics.serviceLogs)
-        ? diagnostics.serviceLogs.filter(function (e) { return e && e.logPath; })
-            .map(function (e) {
-              return el('div', { class: 'detail-meta' },
-                el('strong', null, getServiceDisplayName(e.service) + ': '),
-                el('code', { class: 'detail-code' }, e.logPath));
-            })
-        : [];
-      var historyRow = diagnostics.product && diagnostics.product.historyPath
-        ? el('div', { class: 'detail-meta' },
-            el('strong', null, 'product: '),
-            el('code', { class: 'detail-code' }, diagnostics.product.historyPath))
-        : false;
-
-      var artifactCard = el('div', { class: 'card' },
-        CardHead('Artifacts', diagnostics.activeAttemptId || 'no-attempt', 'c-ok'),
-        el('div', { class: 'detail-meta' },
-          el('strong', null, 'host: '),
-          el('code', { class: 'detail-code' }, snap.hostStatePath || 'unknown')),
-        historyRow,
-        logRows
-      );
-
-      /* Layer summary */
-      var agg = diagnostics.aggregation;
-      var layerCard = el('div', { class: 'card' },
-        CardHead('Layer summary', agg.attemptId || 'current', 'c-ok'),
-        el('div', { class: 'detail-meta' },
-          el('strong', null, 'runtime: '), agg.layers.runtime.summary),
-        el('div', { class: 'detail-meta' },
-          el('strong', null, 'product: '), agg.layers.product.summary),
-        el('div', { class: 'detail-meta' },
-          el('strong', null, 'host: '), agg.layers.host.summary)
-      );
-
-      /* Recent chronology */
-      var chronology = Array.isArray(agg.chronology) ? agg.chronology.slice(0, 8) : [];
-      var chronoItems = chronology.length
-        ? chronology.map(function (evt) {
-            return el('div', { class: 'chrono-item' },
-              el('div', { class: 'chrono-summary' }, evt.summary),
-              el('div', { class: 'chrono-meta' },
-                el('span', null, evt.layer),
-                el('span', null, evt.kind),
-                el('span', null, evt.status),
-                el('span', null, evt.timestamp)
-              ),
-              evt.error && evt.error.message
-                ? el('div', { class: 'detail-meta c-err' }, evt.error.message)
-                : false
-            );
-          })
-        : [el('div', { class: 'detail-meta' }, 'No chronology entries have been captured yet.')];
-
-      var chronoCard = el('div', { class: 'card' },
-        CardHead('Recent chronology', String(chronology.length) + ' entries', 'c-warn'),
-        chronoItems
-      );
-
-      return el('section', { class: 'section anim anim-d6' },
-        SectionHead('Diagnostics'),
-        artifactCard,
-        layerCard,
-        chronoCard
-      );
+      return ExpandableSection('Setup recovery', cards);
     }
 
     /* ================================================================
@@ -986,15 +969,34 @@ export function buildDesktopBootstrapPage(): string {
       splashEl.classList.add('hidden');
       recoveryEl.classList.remove('hidden');
       recoveryEl.innerHTML = '';
-      recoveryEl.append(
-        RecoveryHero(snap),
-        ServicesSection(snap),
-        RuntimeSection(snap),
-        PrereqSection(snap),
-        SetupSection(snap, currentSetupSnapshot, bridge),
-        ActionsSection(snap, bridge),
-        DiagSection(snap)
+
+      /* Back button */
+      var backBtn = el('button', {
+        class: 'recovery-back',
+        onclick: function () {
+          showRecoveryDetails = false;
+          doRender();
+        }
+      }, '\u2190 Back');
+
+      /* Summary card with 3-slot action row */
+      var summary = RecoverySummaryCard(snap, bridge);
+
+      /* Expandable detail sections */
+      var details = el('div', { class: 'anim anim-d1' },
+        WhySection(snap),
+        ServiceStatusSection(snap),
+        DiagnosticsSection(snap),
+        LogsAndPathsSection(snap)
       );
+
+      /* Conditional setup recovery section */
+      var setupSection = SetupRecoverySection(snap, currentSetupSnapshot, bridge);
+      if (setupSection) {
+        details.append(setupSection);
+      }
+
+      recoveryEl.append(backBtn, summary, details);
     }
 
     function doRender() {
