@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -9,6 +12,7 @@ import {
 import { createAsyncKeyedGate } from '../build/server/products/chat/shared/asyncControl.js';
 import {
   beginChannelMessageDispatch,
+  continueBegunChannelMessageDispatch,
   settleBegunChannelMessageDispatchFailure,
 } from '../build/server/products/chat/state/runtimeActions.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
@@ -16,7 +20,11 @@ import {
   createMergedDispatchChatStore,
   mergeCompletedDispatchState,
 } from '../build/server/products/chat/state/runtime-dispatch/merge.js';
-import { repairOrphanedCompletedDispatchTurn } from '../build/server/products/chat/state/runtime-dispatch/repair.js';
+import {
+  repairMissingSessionStartedMessages,
+  repairMissingStartupRecoveryNotice,
+  repairOrphanedCompletedDispatchTurn,
+} from '../build/server/products/chat/state/runtime-dispatch/repair.js';
 
 function createNoopRuntimeClient() {
   return {
@@ -350,6 +358,114 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
   );
 });
 
+test('continueBegunChannelMessageDispatch preserves recovered session_started metadata after stale-session retry', async () => {
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-04-09T12:30:00.000Z');
+  const dispatchAt = new Date('2026-04-09T12:30:05.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Recovered stale participant session',
+      topic: 'Retry a room dispatch after a stale participant session.',
+      entryKind: 'group',
+      skipBossCatGreeting: true,
+      defaultRecipientId: 'participant-inline',
+      temporaryParticipants: [
+        {
+          participantId: 'participant-inline',
+          name: 'Inline Reviewer',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-opus-4-6',
+          modelSelection: null,
+          roleHint: 'Primary review pass.',
+        },
+      ],
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const channel = requireChannel(state, channelId);
+  const participantAssignment = channel.participantAssignments.find(
+    (assignment) => assignment.participantId === 'participant-inline',
+  );
+  assert.ok(participantAssignment);
+  participantAssignment.execution.lease = {
+    sessionId: 'session-stale',
+    status: 'ready',
+    cwd: 'C:/Users/middl/.cats/runtime/sessions/session-stale',
+    lastError: null,
+    provider: 'claude',
+    model: 'claude-opus-4-6',
+    startedAt: seededAt.toISOString(),
+    lastUsedAt: seededAt.toISOString(),
+  };
+
+  const sentSessionIds = [];
+  const closedSessionIds = [];
+  const runtimeClient = {
+    async sendMessage(sessionId) {
+      sentSessionIds.push(sessionId);
+      if (sessionId === 'session-stale') {
+        throw new Error('Session is closed');
+      }
+      return {
+        content: 'Recovered reply',
+        inputTokens: 10,
+        outputTokens: 20,
+        tokensUsed: 30,
+      };
+    },
+    async createSession(input) {
+      return {
+        id: 'session-recovered',
+        provider: input.provider,
+        model: input.model,
+        cwd: 'C:/Users/middl/.cats/runtime/sessions/session-recovered',
+        status: 'ready',
+        instance: input.instance,
+        modelSelection: input.modelSelection,
+      };
+    },
+    async closeSession(sessionId) {
+      closedSessionIds.push(sessionId);
+    },
+  };
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Please recover this routed turn.' },
+    runtimeClient,
+    dispatchAt,
+  );
+  const settled = await continueBegunChannelMessageDispatch(
+    begun,
+    channelId,
+    runtimeClient,
+    dispatchAt,
+    {
+      runtimeRecovery: {
+        staleSessionRetryLimit: 1,
+      },
+    },
+  );
+  const settledChannel = requireChannel(settled.state, channelId);
+  const recoveredSessionStartedIndex = settledChannel.messages.findIndex((message) =>
+    message.metadata?.event === 'session_started'
+    && message.metadata?.sessionId === 'session-recovered');
+  const recoveredResponseIndex = settledChannel.messages.findIndex((message) =>
+    message.metadata?.event === 'runtime_response'
+    && message.metadata?.sessionId === 'session-recovered');
+
+  assert.equal(settledChannel.chatCwd, 'C:/Users/middl/.cats/runtime/sessions/session-recovered');
+  assert.ok(recoveredSessionStartedIndex >= 0);
+  assert.ok(recoveredResponseIndex > recoveredSessionStartedIndex);
+  assert.deepEqual(sentSessionIds, ['session-stale', 'session-recovered']);
+  assert.deepEqual(closedSessionIds, ['session-stale']);
+});
+
 test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when the reply already exists', async () => {
   const runtimeClient = createNoopRuntimeClient();
   const seededAt = new Date('2026-04-09T12:00:00.000Z');
@@ -503,4 +619,227 @@ test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when t
   assert.equal(repairedChannel.roomRouting.workflow.activeTurn, null);
   assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'completed');
   assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'completed');
+});
+
+test('repairMissingSessionStartedMessages restores missing runtime metadata before the response', async () => {
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-04-09T12:00:00.000Z');
+  const runtimeDataDir = await mkdtemp(path.join(os.tmpdir(), 'cats-runtime-repair-'));
+
+  try {
+    let state = await chatStore.read();
+    state = createChannel(
+      state,
+      {
+        title: 'Missing session metadata',
+        topic: 'Restore missing session_started from runtime responses.',
+        skipBossCatGreeting: true,
+      },
+      seededAt,
+    );
+    const channelId = state.selectedChannelId;
+    state = appendMessage(
+      state,
+      channelId,
+      {
+        senderKind: 'user',
+        senderName: 'User',
+        body: 'First question',
+      },
+      new Date('2026-04-09T12:00:01.000Z'),
+    ).state;
+    state = appendMessage(
+      state,
+      channelId,
+      {
+        senderKind: 'agent',
+        senderName: 'Chat',
+        body: 'First answer',
+      },
+      new Date('2026-04-09T12:00:02.000Z'),
+      {
+        metadata: {
+          event: 'runtime_response',
+          targetKind: 'orchestrator',
+          targetId: 'orchestrator',
+          sessionId: 'session-orphan',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+
+    await mkdir(path.join(runtimeDataDir, 'sessions', 'session-orphan'), { recursive: true });
+
+    const repaired = repairMissingSessionStartedMessages(state, channelId, {
+      runtimeDataDir,
+      now: new Date('2026-04-09T12:05:00.000Z'),
+    });
+
+    assert.equal(repaired.repaired, true);
+    const repairedChannel = requireChannel(repaired.state, channelId);
+    const sessionStartedIndex = repairedChannel.messages.findIndex((message) =>
+      message.metadata?.event === 'session_started'
+      && message.metadata?.sessionId === 'session-orphan');
+    const responseIndex = repairedChannel.messages.findIndex((message) =>
+      message.metadata?.event === 'runtime_response'
+      && message.metadata?.sessionId === 'session-orphan');
+
+    assert.equal(sessionStartedIndex >= 0, true);
+    assert.equal(responseIndex >= 0, true);
+    assert.equal(sessionStartedIndex < responseIndex, true);
+    assert.equal(
+      repairedChannel.chatCwd,
+      path.join(runtimeDataDir, 'sessions', 'session-orphan'),
+    );
+  } finally {
+    await rm(runtimeDataDir, { recursive: true, force: true });
+  }
+});
+
+test('repairMissingStartupRecoveryNotice inserts an interrupted-turn note before the next user message', async () => {
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-04-09T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Interrupted startup recovery',
+      topic: 'Show a visible note when startup recovery blocked the prior turn.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: 'First question',
+    },
+    new Date('2026-04-09T12:00:01.000Z'),
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: 'Chat connected to cats-runtime session session-interrupted.\n(cwd: C:/runtime/session-interrupted)',
+    },
+    new Date('2026-04-09T12:00:01.000Z'),
+    {
+      metadata: {
+        event: 'session_started',
+        targetKind: 'orchestrator',
+        sessionId: 'session-interrupted',
+      },
+      incrementUnread: false,
+    },
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: 'Second question',
+    },
+    new Date('2026-04-09T12:10:00.000Z'),
+  ).state;
+
+  const channel = requireChannel(state, channelId);
+  channel.roomRouting.workflow.turnHistory.unshift({
+    id: 'turn-startup-recovery',
+    status: 'blocked',
+    sourceMessageId: channel.messages[1].id,
+    sourceSenderKind: 'user',
+    sourceSenderName: 'User',
+    guard: null,
+    stageId: 'startup_recovery',
+    workflowShape: 'sequential',
+    reviewRequired: false,
+    lastCheckpointId: 'checkpoint-startup-recovery',
+    convergeTargetId: null,
+    continuationCount: 0,
+    dispatchCount: 0,
+    targetStatuses: [
+      {
+        id: 'target-startup-recovery',
+        dispatchId: 'dispatch-startup-recovery',
+        participant: {
+          participantKind: 'orchestrator',
+          participantId: 'orchestrator',
+          participantName: 'Chat',
+        },
+        source: null,
+        sourceMessageId: channel.messages[1].id,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: 'checkpoint-startup-recovery',
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: 'wake-startup-recovery',
+        status: 'blocked',
+        queuedAt: '2026-04-09T12:00:01.000Z',
+        startedAt: '2026-04-09T12:00:01.000Z',
+        completedAt: '2026-04-09T12:05:00.000Z',
+        responseMessageId: null,
+        error: 'Cats server restarted before room workflow cleanup completed.',
+      },
+    ],
+    events: [
+      {
+        id: 'event-startup-recovery',
+        turnId: 'turn-startup-recovery',
+        kind: 'outcome',
+        status: 'blocked',
+        message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+        actor: null,
+        sourceMessageId: channel.messages[1].id,
+        targets: [
+          {
+            participantKind: 'orchestrator',
+            participantId: 'orchestrator',
+            participantName: 'Chat',
+          },
+        ],
+        dispatchId: null,
+        checkpointId: null,
+        outcomeId: null,
+        createdAt: '2026-04-09T12:05:00.000Z',
+        metadata: {
+          recoverySource: 'server_restart',
+          interruptedError: 'Cats server restarted before room workflow cleanup completed.',
+        },
+      },
+    ],
+    startedAt: '2026-04-09T12:00:01.000Z',
+    updatedAt: '2026-04-09T12:05:00.000Z',
+    completedAt: '2026-04-09T12:05:00.000Z',
+  });
+
+  const repaired = repairMissingStartupRecoveryNotice(
+    state,
+    channelId,
+    { now: new Date('2026-04-09T12:15:00.000Z') },
+  );
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const sourceIndex = repairedChannel.messages.findIndex((message) => message.body === 'First question');
+  const noticeIndex = repairedChannel.messages.findIndex((message) =>
+    message.metadata?.event === 'workflow_interrupted'
+    && message.metadata?.turnId === 'turn-startup-recovery');
+  const nextUserIndex = repairedChannel.messages.findIndex((message) => message.body === 'Second question');
+
+  assert.ok(sourceIndex >= 0);
+  assert.ok(noticeIndex > sourceIndex);
+  assert.ok(nextUserIndex > noticeIndex);
+  assert.match(
+    repairedChannel.messages[noticeIndex].body,
+    /Cats server restarted before room workflow cleanup completed/i,
+  );
 });

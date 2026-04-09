@@ -13,6 +13,7 @@ import {
   assignCatToChannel,
   createCat,
   createChannel,
+  requireChannel,
   setChannelCatLease,
   setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
@@ -4853,6 +4854,223 @@ test('parallel chat first send accepts the user turn before starting member sess
     assert.equal(selectPassiveResponse.status, 200);
     assert.equal(runtimeClient.createdSessions.length, 2);
   });
+});
+
+test('GET /api/app-shell repairs missing session_started metadata from runtime responses', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+
+  await withServer(runtimeClient, async (baseUrl, paths) => {
+    let state = await chatStore.read();
+    state = createChannel(
+      state,
+      {
+        title: 'Repaired session metadata',
+        topic: 'Restore missing runtime session metadata in app-shell payloads.',
+        skipBossCatGreeting: true,
+      },
+      new Date('2026-04-09T12:35:29.017Z'),
+    );
+    const channelId = state.selectedChannelId;
+    state = appendMessage(
+      state,
+      channelId,
+      {
+        senderKind: 'user',
+        senderName: 'User',
+        body: '今天AI界有什麼新聞嗎?',
+      },
+      new Date('2026-04-09T12:35:29.111Z'),
+    ).state;
+    state = appendMessage(
+      state,
+      channelId,
+      {
+        senderKind: 'agent',
+        senderName: 'Chat',
+        body: '先給你一個整理版回覆。',
+      },
+      new Date('2026-04-09T12:35:29.111Z'),
+      {
+        metadata: {
+          event: 'runtime_response',
+          targetKind: 'orchestrator',
+          targetId: 'orchestrator',
+          sessionId: 'session-orphan',
+          turnId: 'turn-orphan',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    await mkdir(path.join(paths.runtimeDataDir, 'sessions', 'session-orphan'), { recursive: true });
+    await chatStore.write(state);
+
+    const response = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const selectedChannel = payload.chat.selectedChannel;
+    assert.equal(selectedChannel.id, channelId);
+    const sessionStartedIndex = selectedChannel.messages.findIndex((message) =>
+      message.metadata?.event === 'session_started'
+      && message.metadata?.sessionId === 'session-orphan');
+    const responseIndex = selectedChannel.messages.findIndex((message) =>
+      message.metadata?.event === 'runtime_response'
+      && message.metadata?.sessionId === 'session-orphan');
+
+    assert.equal(sessionStartedIndex >= 0, true);
+    assert.equal(responseIndex >= 0, true);
+    assert.equal(sessionStartedIndex < responseIndex, true);
+    assert.equal(
+      selectedChannel.chatCwd,
+      path.join(paths.runtimeDataDir, 'sessions', 'session-orphan'),
+    );
+  }, chatStore);
+});
+
+test('GET /api/app-shell inserts a startup recovery interruption note before the next user turn', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    let state = await chatStore.read();
+    state = createChannel(
+      state,
+      {
+        title: 'Interrupted room workflow',
+        topic: 'Show an interruption note for startup recovery turns.',
+        skipBossCatGreeting: true,
+      },
+      new Date('2026-04-09T12:35:29.017Z'),
+    );
+    const channelId = state.selectedChannelId;
+    state = appendMessage(
+      state,
+      channelId,
+      {
+        senderKind: 'user',
+        senderName: 'User',
+        body: '今天AI界有什麼新聞嗎?',
+      },
+      new Date('2026-04-09T12:35:29.111Z'),
+    ).state;
+    state = appendMessage(
+      state,
+      channelId,
+      {
+        senderKind: 'system',
+        senderName: 'Runtime',
+        body: 'Chat connected to cats-runtime session session-interrupted.\n(cwd: C:/runtime/session-interrupted)',
+      },
+      new Date('2026-04-09T12:35:29.111Z'),
+      {
+        metadata: {
+          event: 'session_started',
+          targetKind: 'orchestrator',
+          sessionId: 'session-interrupted',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    state = appendMessage(
+      state,
+      channelId,
+      {
+        senderKind: 'user',
+        senderName: 'User',
+        body: '你的model是什麼?',
+      },
+      new Date('2026-04-09T14:09:37.663Z'),
+    ).state;
+    const channel = requireChannel(state, channelId);
+    channel.roomRouting.workflow.turnHistory.unshift({
+      id: 'turn-startup-recovery',
+      status: 'blocked',
+      sourceMessageId: channel.messages[1].id,
+      sourceSenderKind: 'user',
+      sourceSenderName: 'User',
+      guard: null,
+      stageId: 'startup_recovery',
+      workflowShape: 'sequential',
+      reviewRequired: false,
+      lastCheckpointId: 'checkpoint-startup-recovery',
+      convergeTargetId: null,
+      continuationCount: 0,
+      dispatchCount: 0,
+      targetStatuses: [
+        {
+          id: 'target-startup-recovery',
+          dispatchId: 'dispatch-startup-recovery',
+          participant: {
+            participantKind: 'orchestrator',
+            participantId: 'orchestrator',
+            participantName: 'Chat',
+          },
+          source: null,
+          sourceMessageId: channel.messages[1].id,
+          trigger: 'room_default',
+          mentionNames: [],
+          depth: 0,
+          parentCheckpointId: 'checkpoint-startup-recovery',
+          branchStrategy: 'fresh_no_parent',
+          handoffReason: 'room_default',
+          wakeRequestId: 'wake-startup-recovery',
+          status: 'blocked',
+          queuedAt: '2026-04-09T12:35:29.111Z',
+          startedAt: '2026-04-09T12:35:29.111Z',
+          completedAt: '2026-04-09T13:15:24.461Z',
+          responseMessageId: null,
+          error: 'Cats server restarted before room workflow cleanup completed.',
+        },
+      ],
+      events: [
+        {
+          id: 'event-startup-recovery',
+          turnId: 'turn-startup-recovery',
+          kind: 'outcome',
+          status: 'blocked',
+          message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+          actor: null,
+          sourceMessageId: channel.messages[1].id,
+          targets: [
+            {
+              participantKind: 'orchestrator',
+              participantId: 'orchestrator',
+              participantName: 'Chat',
+            },
+          ],
+          dispatchId: null,
+          checkpointId: null,
+          outcomeId: null,
+          createdAt: '2026-04-09T13:15:24.461Z',
+          metadata: {
+            recoverySource: 'server_restart',
+            interruptedError: 'Cats server restarted before room workflow cleanup completed.',
+          },
+        },
+      ],
+      startedAt: '2026-04-09T12:35:29.111Z',
+      updatedAt: '2026-04-09T13:15:24.461Z',
+      completedAt: '2026-04-09T13:15:24.461Z',
+    });
+    await chatStore.write(state);
+
+    const response = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const selectedChannel = payload.chat.selectedChannel;
+    const noticeIndex = selectedChannel.messages.findIndex((message) =>
+      message.metadata?.event === 'workflow_interrupted'
+      && message.metadata?.turnId === 'turn-startup-recovery');
+    const nextUserIndex = selectedChannel.messages.findIndex((message) =>
+      message.body === '你的model是什麼?');
+
+    assert.ok(noticeIndex >= 0);
+    assert.ok(nextUserIndex > noticeIndex);
+    assert.match(
+      selectedChannel.messages[noticeIndex].body,
+      /Cats server restarted before room workflow cleanup completed/i,
+    );
+  }, chatStore);
 });
 
 test('parallel chat first send fans out the selected folder and attachments to every member chat', async () => {

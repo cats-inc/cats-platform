@@ -1,5 +1,6 @@
 import type {
   ChannelDispatchResult,
+  ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
 import type {
@@ -45,6 +46,20 @@ import {
   extractTargetLeasePatchFromState,
 } from './recovery.js';
 import { requireChannel } from '../model/index.js';
+
+function collectRecoveredDispatchMessages(
+  baselineState: ChatState,
+  recoveredState: ChatState,
+  channelId: string,
+): ChatMessage[] {
+  const baselineMessageIds = new Set(
+    requireChannel(baselineState, channelId).messages.map((message) => message.id),
+  );
+
+  return requireChannel(recoveredState, channelId).messages
+    .filter((message) => !baselineMessageIds.has(message.id))
+    .map((message) => structuredClone(message));
+}
 
 export async function prepareReadyRequests(
   state: ChatState,
@@ -242,6 +257,7 @@ export async function executeDispatchWithRecovery(input: {
   let request = input.request;
   let recoveredLeasePatch: DispatchExecution['leasePatch'];
   let recoveredChannelChatCwd: string | undefined;
+  let recoveredMessages: DispatchExecution['recoveredMessages'];
   let staleRecoveryCount = 0;
 
   while (true) {
@@ -260,6 +276,7 @@ export async function executeDispatchWithRecovery(input: {
         ...execution,
         ...(recoveredLeasePatch ? { leasePatch: recoveredLeasePatch } : {}),
         ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+        ...(recoveredMessages ? { recoveredMessages } : {}),
       };
     }
 
@@ -269,6 +286,7 @@ export async function executeDispatchWithRecovery(input: {
         ...execution,
         ...(recoveredLeasePatch ? { leasePatch: recoveredLeasePatch } : {}),
         ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+        ...(recoveredMessages ? { recoveredMessages } : {}),
       };
     }
 
@@ -284,6 +302,7 @@ export async function executeDispatchWithRecovery(input: {
           { clearSession: true },
         ),
         ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+        ...(recoveredMessages ? { recoveredMessages } : {}),
       };
     }
 
@@ -323,6 +342,7 @@ export async function executeDispatchWithRecovery(input: {
           { clearSession: true },
         ),
         ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+        ...(recoveredMessages ? { recoveredMessages } : {}),
       };
     }
 
@@ -342,6 +362,14 @@ export async function executeDispatchWithRecovery(input: {
       input.channelId,
       ensured.target,
     );
+    const nextRecoveredMessages = collectRecoveredDispatchMessages(
+      dispatchState,
+      ensured.state,
+      input.channelId,
+    );
+    if (nextRecoveredMessages.length > 0) {
+      recoveredMessages = nextRecoveredMessages;
+    }
     dispatchState = applyDispatchLeasePatch(
       dispatchState,
       input.channelId,

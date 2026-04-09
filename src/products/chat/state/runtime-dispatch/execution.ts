@@ -1,5 +1,6 @@
 import type {
   MessageUsageSummary,
+  ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
 import type {
@@ -27,6 +28,7 @@ export interface DispatchExecution extends DispatchRequest {
   error: string | null;
   leasePatch?: DispatchLeasePatch;
   channelChatCwd?: string;
+  recoveredMessages?: ChatMessage[];
 }
 
 export async function executeDispatch(

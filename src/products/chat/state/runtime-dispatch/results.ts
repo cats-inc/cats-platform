@@ -1,5 +1,6 @@
 import type {
   ChannelDispatchResult,
+  ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
 import type {
@@ -57,6 +58,29 @@ type ContinuationSource = 'explicit_mentions' | 'workflow_recommendation';
 interface BlockedDispatchResolution {
   blockedReason: RoomRouteBlockedReason;
   note: string;
+}
+
+function appendRecoveredDispatchMessages(
+  state: ChatState,
+  channelId: string,
+  recoveredMessages: ChatMessage[],
+): ChatState {
+  if (recoveredMessages.length === 0) {
+    return state;
+  }
+
+  const nextState = structuredClone(state);
+  const channel = requireChannel(nextState, channelId);
+  const existingMessageIds = new Set(channel.messages.map((message) => message.id));
+  const newMessages = recoveredMessages.filter((message) => !existingMessageIds.has(message.id));
+
+  if (newMessages.length === 0) {
+    return state;
+  }
+
+  channel.messages.push(...structuredClone(newMessages));
+  channel.lastMessageAt = newMessages[newMessages.length - 1]?.createdAt ?? channel.lastMessageAt;
+  return nextState;
 }
 
 function buildRecommendationContinuationResolution(
@@ -178,6 +202,14 @@ export function applyDispatchExecutions(
     activeTurn.dispatchCount = outcome.totalDispatchCount;
     const targetKey = participantKey(execution.target);
     targetVisitCounts.set(targetKey, (targetVisitCounts.get(targetKey) ?? 0) + 1);
+
+    if (execution.recoveredMessages?.length) {
+      nextState = appendRecoveredDispatchMessages(
+        nextState,
+        channelId,
+        execution.recoveredMessages,
+      );
+    }
 
     if (execution.channelChatCwd) {
       nextState = applyDispatchChannelChatCwd(

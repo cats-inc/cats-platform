@@ -56,7 +56,11 @@ import {
 import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorAdapter.js';
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
 import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
-import { repairOrphanedCompletedDispatchTurn } from '../state/runtime-dispatch/repair.js';
+import {
+  repairMissingSessionStartedMessages,
+  repairMissingStartupRecoveryNotice,
+  repairOrphanedCompletedDispatchTurn,
+} from '../state/runtime-dispatch/repair.js';
 import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
@@ -322,13 +326,28 @@ export async function buildAppShellPayload(
   let resolvedState = state ?? await dependencies.chatStore.read();
   const selectedChannelId = resolvedState.selectedChannelId?.trim();
   if (selectedChannelId) {
-    const repaired = repairOrphanedCompletedDispatchTurn(
+    const repairedTurn = repairOrphanedCompletedDispatchTurn(
       resolvedState,
       selectedChannelId,
       nowFrom(dependencies),
     );
-    if (repaired.repaired) {
-      resolvedState = repaired.state;
+    const repairedSessionMetadata = repairMissingSessionStartedMessages(
+      repairedTurn.state,
+      selectedChannelId,
+      {
+        runtimeDataDir: dependencies.config.runtimeDataDir,
+        now: nowFrom(dependencies),
+      },
+    );
+    const repairedStartupNotice = repairMissingStartupRecoveryNotice(
+      repairedSessionMetadata.state,
+      selectedChannelId,
+      {
+        now: nowFrom(dependencies),
+      },
+    );
+    if (repairedTurn.repaired || repairedSessionMetadata.repaired || repairedStartupNotice.repaired) {
+      resolvedState = repairedStartupNotice.state;
       resolvedState = await dependencies.mutationGate.run(selectedChannelId, async () => {
         const latestState = await dependencies.chatStore.read();
         const latestRepair = repairOrphanedCompletedDispatchTurn(
@@ -336,10 +355,25 @@ export async function buildAppShellPayload(
           selectedChannelId,
           nowFrom(dependencies),
         );
-        if (!latestRepair.repaired) {
+        const latestSessionRepair = repairMissingSessionStartedMessages(
+          latestRepair.state,
+          selectedChannelId,
+          {
+            runtimeDataDir: dependencies.config.runtimeDataDir,
+            now: nowFrom(dependencies),
+          },
+        );
+        const latestStartupRepair = repairMissingStartupRecoveryNotice(
+          latestSessionRepair.state,
+          selectedChannelId,
+          {
+            now: nowFrom(dependencies),
+          },
+        );
+        if (!latestRepair.repaired && !latestSessionRepair.repaired && !latestStartupRepair.repaired) {
           return latestState;
         }
-        return dependencies.chatStore.write(latestRepair.state);
+        return dependencies.chatStore.write(latestStartupRepair.state);
       });
     }
   }

@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 import type {
   ChatChannelState,
@@ -23,6 +25,7 @@ import {
   resolveRoomWorkflowState,
 } from '../room-routing/index.js';
 import { finalizeDispatchTurn } from './finalize.js';
+import { formatSessionStartedMessage } from '../runtimeMessages.js';
 
 function describeGuardReason(): string {
   return 'a routing guard';
@@ -308,6 +311,265 @@ function isStartupRecoveredBlockedTurn(turn: RoomWorkflowTurn): boolean {
   return turn.status === 'blocked'
     && turn.stageId === 'startup_recovery'
     && turn.events.some((event) => event.metadata?.recoverySource === 'server_restart');
+}
+
+function readStartupRecoveryInterruptMessage(turn: RoomWorkflowTurn): string {
+  const targetError = turn.targetStatuses.find((target) =>
+    typeof target.error === 'string' && target.error.trim().length > 0)?.error?.trim();
+  if (targetError) {
+    return `Previous room turn was interrupted because ${targetError.replace(/\.$/u, '')}.`;
+  }
+
+  const eventError = turn.events.find((event) =>
+    typeof event.metadata?.interruptedError === 'string'
+    && event.metadata.interruptedError.trim().length > 0)?.metadata?.interruptedError;
+  if (typeof eventError === 'string' && eventError.trim().length > 0) {
+    return `Previous room turn was interrupted because ${eventError.trim().replace(/\.$/u, '')}.`;
+  }
+
+  return 'Previous room turn was interrupted because Cats server restarted before room workflow cleanup completed.';
+}
+
+function readMessageSessionId(message: ChatMessage): string | null {
+  return typeof message.metadata?.sessionId === 'string' && message.metadata.sessionId.trim().length > 0
+    ? message.metadata.sessionId.trim()
+    : null;
+}
+
+function resolveMissingSessionParticipantName(
+  channel: ChatChannelState,
+  responseMessage: ChatMessage,
+): string {
+  const targetKind = responseMessage.metadata?.targetKind;
+  const targetId = typeof responseMessage.metadata?.targetId === 'string'
+    ? responseMessage.metadata.targetId.trim()
+    : '';
+
+  if (targetKind === 'orchestrator') {
+    return 'Chat';
+  }
+
+  if (targetId) {
+    const assignment = (channel.participantAssignments ?? []).find((candidate) =>
+      candidate.participantId === targetId)
+      ?? channel.catAssignments.find((candidate) =>
+        candidate.participantId === targetId || candidate.catId === targetId);
+    if (assignment?.name?.trim()) {
+      return assignment.name;
+    }
+  }
+
+  return responseMessage.senderName;
+}
+
+function resolveMissingSessionCwd(
+  channel: ChatChannelState,
+  responseMessage: ChatMessage,
+  runtimeDataDir?: string | null,
+): string | null {
+  const sessionId = readMessageSessionId(responseMessage);
+  if (!sessionId) {
+    return null;
+  }
+
+  const targetId = typeof responseMessage.metadata?.targetId === 'string'
+    ? responseMessage.metadata.targetId.trim()
+    : '';
+
+  if (runtimeDataDir?.trim()) {
+    const sessionPath = path.join(path.resolve(runtimeDataDir), 'sessions', sessionId);
+    if (existsSync(sessionPath)) {
+      return sessionPath;
+    }
+  }
+
+  if (channel.orchestratorLease.sessionId === sessionId && channel.orchestratorLease.cwd) {
+    return channel.orchestratorLease.cwd;
+  }
+
+  if (targetId) {
+    const assignment = (channel.participantAssignments ?? []).find((candidate) =>
+      candidate.participantId === targetId)
+      ?? channel.catAssignments.find((candidate) =>
+        candidate.participantId === targetId || candidate.catId === targetId);
+    if (assignment?.execution.lease.sessionId === sessionId && assignment.execution.lease.cwd) {
+      return assignment.execution.lease.cwd;
+    }
+  }
+
+  return channel.chatCwd;
+}
+
+export function repairMissingSessionStartedMessages(
+  state: ChatState,
+  channelId: string,
+  options: {
+    runtimeDataDir?: string | null;
+    now?: Date;
+  } = {},
+): {
+  repaired: boolean;
+  state: ChatState;
+} {
+  const channel = state.channels.find((candidate) => candidate.id === channelId);
+  if (!channel) {
+    return { repaired: false, state };
+  }
+
+  const existingSessionStartedIds = new Set(
+    channel.messages
+      .filter((message) => message.metadata?.event === 'session_started')
+      .map((message) => readMessageSessionId(message))
+      .filter((sessionId): sessionId is string => Boolean(sessionId)),
+  );
+  const missingResponses = channel.messages.filter((message) => {
+    const sessionId = readMessageSessionId(message);
+    return message.metadata?.event === 'runtime_response'
+      && Boolean(sessionId)
+      && !existingSessionStartedIds.has(sessionId!);
+  });
+
+  if (missingResponses.length === 0) {
+    return { repaired: false, state };
+  }
+
+  const nextState = structuredClone(state);
+  const nextChannel = requireChannel(nextState, channelId);
+  const nowIso = (options.now ?? new Date()).toISOString();
+  let repaired = false;
+
+  for (const responseMessage of missingResponses) {
+    const sessionId = readMessageSessionId(responseMessage);
+    if (!sessionId || existingSessionStartedIds.has(sessionId)) {
+      continue;
+    }
+
+    const responseIndex = nextChannel.messages.findIndex((candidate) =>
+      candidate.id === responseMessage.id);
+    if (responseIndex < 0) {
+      continue;
+    }
+
+    const cwd = resolveMissingSessionCwd(nextChannel, responseMessage, options.runtimeDataDir);
+    const participantName = resolveMissingSessionParticipantName(nextChannel, responseMessage);
+    const targetKind = responseMessage.metadata?.targetKind === 'cat' ? 'cat' : 'orchestrator';
+    const targetId = typeof responseMessage.metadata?.targetId === 'string'
+      && responseMessage.metadata.targetId.trim().length > 0
+      ? responseMessage.metadata.targetId.trim()
+      : undefined;
+
+    nextChannel.messages.splice(responseIndex, 0, {
+      id: randomUUID(),
+      channelId,
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: formatSessionStartedMessage(participantName, { id: sessionId, cwd }),
+      mentions: [],
+      metadata: {
+        event: 'session_started',
+        targetKind,
+        ...(targetId ? { targetId } : {}),
+        sessionId,
+        verbosity: 'verbose',
+        repairSource: 'missing_session_started_message',
+      },
+      usage: null,
+      executionProvider: null,
+      executionModel: null,
+      executionInstance: null,
+      createdAt: responseMessage.createdAt,
+    });
+    existingSessionStartedIds.add(sessionId);
+    if (!nextChannel.chatCwd && cwd) {
+      nextChannel.chatCwd = cwd;
+    }
+    repaired = true;
+  }
+
+  if (repaired) {
+    nextChannel.updatedAt = nowIso;
+  }
+
+  return repaired ? { repaired: true, state: nextState } : { repaired: false, state };
+}
+
+export function repairMissingStartupRecoveryNotice(
+  state: ChatState,
+  channelId: string,
+  options: {
+    now?: Date;
+  } = {},
+): {
+  repaired: boolean;
+  state: ChatState;
+} {
+  const channel = state.channels.find((candidate) => candidate.id === channelId);
+  if (!channel?.roomRouting?.workflow?.turnHistory?.length) {
+    return { repaired: false, state };
+  }
+
+  const blockedTurns = channel.roomRouting.workflow.turnHistory.filter(isStartupRecoveredBlockedTurn);
+  if (blockedTurns.length === 0) {
+    return { repaired: false, state };
+  }
+
+  const nextState = structuredClone(state);
+  const nextChannel = requireChannel(nextState, channelId);
+  const nowIso = (options.now ?? new Date()).toISOString();
+  let repaired = false;
+
+  for (const turn of nextChannel.roomRouting?.workflow?.turnHistory ?? []) {
+    if (!isStartupRecoveredBlockedTurn(turn)) {
+      continue;
+    }
+
+    const sourceMessageIndex = nextChannel.messages.findIndex((message) =>
+      message.id === turn.sourceMessageId);
+    if (sourceMessageIndex < 0) {
+      continue;
+    }
+
+    const nextUserMessageIndex = nextChannel.messages.findIndex((message, index) =>
+      index > sourceMessageIndex && message.senderKind === 'user');
+    const noticeAlreadyExists = nextChannel.messages.some((message, index) =>
+      index > sourceMessageIndex
+      && (nextUserMessageIndex < 0 || index < nextUserMessageIndex)
+      && message.metadata?.event === 'workflow_interrupted'
+      && message.metadata?.turnId === turn.id);
+    if (noticeAlreadyExists) {
+      continue;
+    }
+
+    const createdAt = turn.completedAt ?? turn.updatedAt ?? turn.startedAt;
+    const insertIndex = nextUserMessageIndex >= 0 ? nextUserMessageIndex : nextChannel.messages.length;
+    nextChannel.messages.splice(insertIndex, 0, {
+      id: randomUUID(),
+      channelId,
+      senderKind: 'system',
+      senderName: 'Chat',
+      body: readStartupRecoveryInterruptMessage(turn),
+      mentions: [],
+      metadata: {
+        event: 'workflow_interrupted',
+        blockedReason: 'startup_recovery',
+        turnId: turn.id,
+        repairSource: 'missing_startup_recovery_notice',
+        recoverySource: 'server_restart',
+      },
+      usage: null,
+      executionProvider: null,
+      executionModel: null,
+      executionInstance: null,
+      createdAt,
+    });
+    repaired = true;
+  }
+
+  if (repaired) {
+    nextChannel.updatedAt = nowIso;
+  }
+
+  return repaired ? { repaired: true, state: nextState } : { repaired: false, state };
 }
 
 export function repairOrphanedCompletedDispatchTurn(
