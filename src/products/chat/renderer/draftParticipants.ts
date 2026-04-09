@@ -1,5 +1,8 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
 import {
+  resolveDraftParticipantSelection as resolveWorkspaceDraftParticipantSelection,
+} from '../../shared/renderer/draftParticipants.js';
+import {
   NEW_CHAT_PATH,
   buildMyCatPath,
   buildNewChatPath,
@@ -34,7 +37,6 @@ export function resolveDraftParticipantSelection(input: {
   const routeDefaultRecipientCatId = normalizeCatId(input.draftDefaultRecipientCatId);
   const toggleCatIds: string[] = [];
   const seen = new Set<string>();
-
   for (const candidate of input.draftCatIds) {
     const catId = normalizeCatId(candidate);
     if (!catId || seen.has(catId)) {
@@ -43,18 +45,15 @@ export function resolveDraftParticipantSelection(input: {
     seen.add(catId);
     toggleCatIds.push(catId);
   }
-
-  const participantCatIds = routeDefaultRecipientCatId
-    ? [routeDefaultRecipientCatId, ...toggleCatIds.filter((catId) => catId !== routeDefaultRecipientCatId)]
-    : toggleCatIds;
+  const selection = resolveWorkspaceDraftParticipantSelection(input);
 
   return {
     routeDefaultRecipientCatId,
     toggleCatIds,
-    participantCatIds,
-    effectiveDefaultRecipientCatId: participantCatIds[0] ?? null,
+    participantCatIds: selection.participantCatIds,
+    effectiveDefaultRecipientCatId: selection.effectiveDefaultRecipientCatId,
     hasRouteDefaultRecipient: Boolean(routeDefaultRecipientCatId),
-    hasParticipants: participantCatIds.length > 0,
+    hasParticipants: selection.participantCatIds.length > 0,
   };
 }
 
