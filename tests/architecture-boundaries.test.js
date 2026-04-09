@@ -820,14 +820,19 @@ test('renderer app consumes a dedicated folder-browser hook instead of defining 
     new URL('../src/products/chat/renderer/hooks/useFolderBrowser.ts', import.meta.url),
     'utf8',
   );
+  const sharedHookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useFolderBrowser.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(appSource, /useFolderBrowser/u);
   assert.doesNotMatch(appSource, /const loadFolderBrowse = useCallback/u);
   assert.doesNotMatch(appSource, /async function handlePickFolder\(/u);
   assert.doesNotMatch(appSource, /browseDirectories/u);
-  assert.match(hookSource, /export function useFolderBrowser/u);
-  assert.match(hookSource, /browseDirectories/u);
-  assert.match(hookSource, /openFolderBrowser/u);
+  assert.match(hookSource, /shared\/renderer\/hooks\/useFolderBrowser\.js/u);
+  assert.match(sharedHookSource, /export function useFolderBrowser/u);
+  assert.match(sharedHookSource, /browseDirectories/u);
+  assert.match(sharedHookSource, /openFolderBrowser/u);
 });
 
 test('renderer app consumes a dedicated composer-submit hook instead of defining send flows inline', async () => {
