@@ -41,7 +41,6 @@ const TRAY_PRIMARY_ACTION_IDS = new Set<DesktopHostActionId>([
   'open_setup',
   'resume_setup',
   'retry',
-  'open_runtime_diagnostics',
 ]);
 
 function isVisibleTrayProduct(product: DesktopTrayProductDescriptor): boolean {

@@ -97,9 +97,7 @@ function buildDesktopTrayMenuTemplate(
       click: () => {
         runTrayAction(async () => {
           await options.onRunAction(action.id);
-          if (action.id !== 'open_runtime_diagnostics') {
-            showWindow();
-          }
+          showWindow();
         });
       },
     });
