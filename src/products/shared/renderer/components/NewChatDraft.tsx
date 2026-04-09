@@ -13,6 +13,7 @@ import {
 } from './ModelSelector.js';
 import { CatAvatarRow } from './CatAvatarRow.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
+import { WorkspaceNewChatDraftTargetSlot } from './WorkspaceNewChatDraftTargetSlot.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
 
@@ -58,6 +59,15 @@ interface FolderBrowserContentProps {
   onPathChange: (path: string) => void;
   onBrowse: (path: string) => void;
   onSelect: () => void;
+}
+
+interface DraftTargetSlotProps {
+  payload: AppShellPayload;
+  effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
+  nonLeadDraftCats: AppShellPayload['chat']['cats'];
+  activePanelModel: ModelSelectorValue | null;
+  isSubmittingFirstTurn: boolean;
+  onOpenExecution: () => void;
 }
 
 export interface WorkspaceNewChatDraftProps {
@@ -108,6 +118,7 @@ export interface WorkspaceNewChatDraftProps {
   ProviderModelFieldsComponent: ComponentType<ProviderModelFieldsProps>;
   CatAvatarRowComponent: ComponentType<CatAvatarRowProps>;
   FolderBrowserContentComponent: ComponentType<FolderBrowserContentProps>;
+  DraftTargetSlotComponent: ComponentType<DraftTargetSlotProps>;
 }
 
 export function WorkspaceNewChatDraft({
@@ -158,6 +169,7 @@ export function WorkspaceNewChatDraft({
   ProviderModelFieldsComponent,
   CatAvatarRowComponent,
   FolderBrowserContentComponent,
+  DraftTargetSlotComponent,
 }: WorkspaceNewChatDraftProps) {
   void bossCatName;
   void bossCatAvatarColor;
@@ -357,23 +369,16 @@ export function WorkspaceNewChatDraft({
                 </span>
               ) : null}
             </div>
-            {effectiveDefaultRecipientCat ? (
-              <ComposerCatStackComponent
-                cats={[effectiveDefaultRecipientCat, ...nonLeadDraftCatIds
-                  .map((id) => chatCats.find((cat) => cat.id === id))
-                  .filter((cat): cat is NonNullable<typeof cat> => cat != null)]}
-                bossCatId={payload.chat.bossCatId}
-                defaultRecipientCatId={effectiveDefaultRecipientCat.id}
-                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
-              />
-            ) : activePanelModel && chipLabel ? (
-              <div style={{ marginRight: 8 }}>
-                <ModelSelectorChipComponent
-                  label={chipLabel}
-                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
-                />
-              </div>
-            ) : null}
+            <DraftTargetSlotComponent
+              payload={payload}
+              effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
+              nonLeadDraftCats={nonLeadDraftCatIds
+                .map((id) => chatCats.find((cat) => cat.id === id))
+                .filter((cat): cat is NonNullable<typeof cat> => cat != null)}
+              activePanelModel={activePanelModel}
+              isSubmittingFirstTurn={isSubmittingFirstTurn}
+              onOpenExecution={() => openSidePanelTo('execution')}
+            />
             <button
               className="composerSendButton"
               disabled={!composerDraft.trim() || isSubmittingFirstTurn}
@@ -531,6 +536,7 @@ export function WorkspaceNewChatDraft({
 export interface NewChatDraftProps extends Omit<
   WorkspaceNewChatDraftProps,
   | 'ComposerCatStackComponent'
+  | 'DraftTargetSlotComponent'
   | 'ModelSelectorChipComponent'
   | 'ProviderModelFieldsComponent'
   | 'CatAvatarRowComponent'
@@ -542,6 +548,7 @@ export function NewChatDraft(props: NewChatDraftProps) {
     <WorkspaceNewChatDraft
       {...props}
       ComposerCatStackComponent={ComposerCatStack}
+      DraftTargetSlotComponent={WorkspaceNewChatDraftTargetSlot}
       ModelSelectorChipComponent={ModelSelectorChip}
       ProviderModelFieldsComponent={ProviderModelFields}
       CatAvatarRowComponent={CatAvatarRow}

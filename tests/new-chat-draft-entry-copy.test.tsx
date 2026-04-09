@@ -377,7 +377,7 @@ test('direct-lane draft keeps private chat copy', () => {
   assert.match(markup, /Private lane for this Cat\./u);
   assert.match(markup, /Ask Milo for a focused update or recommendation/u);
   assert.match(markup, /class="composerCatStack"/u);
-  assert.match(markup, /class="catAvatar composerStackAvatar catAvatarBoss"/u);
+  assert.match(markup, /class="catAvatar composerStackAvatar"/u);
   assert.match(markup, /background:#7A5B3A/u);
   assert.match(markup, /color:#fff/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);

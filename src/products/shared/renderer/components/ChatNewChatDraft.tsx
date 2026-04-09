@@ -28,6 +28,7 @@ import {
   buildRecipientFromCat,
 } from './ComposerRecipientChip.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
+import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import {
   buildModelSelectorLabel,
@@ -539,93 +540,23 @@ export function NewChatDraft({
                   onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
                 />
               </div>
-            ) : isGroupDraft ? (
-              groupComposerParticipants.length > 0 ? (
-                <div
-                  className="composerCatStack"
-                  style={{ marginRight: 8 }}
-                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cats')}
-                  role={isSubmittingFirstTurn ? undefined : 'button'}
-                  tabIndex={isSubmittingFirstTurn ? undefined : 0}
-                >
-                  {[...groupComposerParticipants].reverse().map((participant, index, rendered) => {
-                    const isBoss = participant.isCat && participant.catId === payload.chat.bossCatId;
-                    const canRemove = groupComposerParticipants.length > 2;
-
-                    return (
-                      <div
-                        key={participant.key}
-                        className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
-                        data-tooltip={participant.name}
-                        style={{
-                          ...(participant.avatarUrl
-                            ? {
-                                backgroundImage: `url(${participant.avatarUrl})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                              }
-                            : participant.isCat
-                              ? {
-                                  background: participant.avatarColor ?? '#8B7E74',
-                                }
-                              : {
-                                  background: '#fff',
-                                  color: '#222',
-                                  border: '1px solid rgba(0, 0, 0, 0.15)',
-                                }),
-                          zIndex: rendered.length - index,
-                        }}
-                      >
-                        {participant.avatarUrl ? null : catInitials(participant.name)}
-                        {!isSubmittingFirstTurn && canRemove ? (
-                          <button
-                            type="button"
-                            className="composerStackRemove"
-                            aria-label={`Remove ${participant.name}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              if (participant.isCat && participant.catId) {
-                                onToggleDraftCat(participant.catId);
-                                return;
-                              }
-                              if (participant.participantId) {
-                                onRemoveDraftTemporaryParticipant(participant.participantId);
-                              }
-                            }}
-                          >
-                            &times;
-                          </button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null
-            ) : isDirectLaneContext && effectiveDefaultRecipientCat ? (
-              <ComposerCatStack
-                cats={[effectiveDefaultRecipientCat]}
-                bossCatId={payload.chat.bossCatId}
-                defaultRecipientCatId={effectiveDefaultRecipientCat.id}
-                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
+            ) : (
+              <ChatNewChatDraftTargetSlot
+                payload={payload}
+                isGroupDraft={isGroupDraft}
+                isDirectLaneContext={isDirectLaneContext}
+                effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
+                effectiveDefaultRecipientTemporaryParticipant={effectiveDefaultRecipientTemporaryParticipant}
+                draftComposerRecipients={draftComposerRecipients}
+                groupComposerParticipants={groupComposerParticipants}
+                activePanelModel={activePanelModel}
+                isSubmittingFirstTurn={isSubmittingFirstTurn}
+                onOpenCats={() => openSidePanelTo('cats')}
+                onOpenExecution={() => openSidePanelTo('execution')}
+                onToggleDraftCat={onToggleDraftCat}
+                onRemoveDraftTemporaryParticipant={onRemoveDraftTemporaryParticipant}
               />
-            ) : draftComposerRecipients.length > 0 ? (
-              <ComposerRecipientChip
-                recipients={draftComposerRecipients}
-                disabled={isSubmittingFirstTurn}
-                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo(
-                  effectiveDefaultRecipientCat || effectiveDefaultRecipientTemporaryParticipant
-                    ? 'cats'
-                    : 'execution',
-                )}
-              />
-            ) : activePanelModel && chipLabel ? (
-              <div style={{ marginRight: 8 }}>
-                <ModelSelectorChip
-                  label={chipLabel}
-                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('execution')}
-                />
-              </div>
-            ) : null}
+            )}
             {showCancelPendingSend ? (
               <button
                 className="composerSendButton composerCancelButton"
