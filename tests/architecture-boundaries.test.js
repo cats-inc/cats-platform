@@ -1078,6 +1078,10 @@ test('settings cats composes dedicated registry and create-form components inste
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsRegistry.tsx', import.meta.url),
     'utf8',
   );
+  const sharedRegistrySource = await readFile(
+    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsRegistry.tsx', import.meta.url),
+    'utf8',
+  );
   const detailPanelSource = await readFile(
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsDetailPanel.tsx', import.meta.url),
     'utf8',
@@ -1095,8 +1099,12 @@ test('settings cats composes dedicated registry and create-form components inste
   assert.match(settingsCatsSource, /SettingsCatsCreateForm/u);
   assert.doesNotMatch(settingsCatsSource, /className="catDetailSection"/u);
   assert.doesNotMatch(settingsCatsSource, /ProviderModelFields/u);
-  assert.match(registrySource, /SettingsCatsDetailPanel/u);
-  assert.doesNotMatch(registrySource, /className="memoryForm"/u);
+  assert.match(
+    registrySource,
+    /shared\/renderer\/components\/settings-cats\/SettingsCatsRegistry\.js/u,
+  );
+  assert.match(sharedRegistrySource, /SettingsCatsDetailPanel/u);
+  assert.doesNotMatch(sharedRegistrySource, /className="memoryForm"/u);
   assert.match(detailPanelSource, /formatTransportTimestamp/u);
   assert.match(detailPanelSource, /export function SettingsCatsDetailPanel/u);
   assert.match(
