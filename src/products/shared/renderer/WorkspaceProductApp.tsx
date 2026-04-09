@@ -56,6 +56,10 @@ import { useWorkspaceModelSelectionState } from "./hooks/useWorkspaceModelSelect
 import { useOnGenericDraftRouteEntry } from "./hooks/useOnGenericDraftRouteEntry.js";
 import { useProductChannelDocumentTitle } from "./hooks/useProductChannelDocumentTitle.js";
 import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
+import {
+  useWorkspaceDirectLaneModelSave,
+  useWorkspaceResumeChannel,
+} from "./hooks/useWorkspaceAppShellChannelActions.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
@@ -193,22 +197,18 @@ export function createWorkspaceProductApp({
       });
     }, []);
 
-    const onDirectLaneModelSave = useCallback(
-      async (catId: string, value: ModelSelectorValue) => {
-        try {
-          const result = await updateCatProfile(catId, {
-            provider: value.provider,
-            instance: value.instance,
-            model: value.model,
-            modelSelection: value.modelSelection,
-          });
-          startTransition(() => setState({ status: "ready", payload: result }));
-        } catch {
-          // Silent fail; the panel continues showing payload-backed state.
-        }
+    const publishReadyPayload = useCallback(
+      (payload: AppShellPayload) => {
+        setState({ status: "ready", payload });
       },
       [],
     );
+
+    const onDirectLaneModelSave =
+      useWorkspaceDirectLaneModelSave<AppShellPayload>({
+        updateCatProfile,
+        publishReadyPayload,
+      });
 
     const onDraftCatModelOverride = useCallback(
       (catId: string, value: ModelSelectorValue) => {
@@ -480,40 +480,12 @@ export function createWorkspaceProductApp({
       [],
     );
 
-    const onResumeChannel = useCallback(
-      async (channelId: string): Promise<void> => {
-        setBusy("channel:resume");
-        setFeedback("");
-        try {
-          const activation = await activateChatChannel(channelId);
-          startTransition(() =>
-            setState({ status: "ready", payload: activation.appShell }),
-          );
-          const errors = activation.results.filter(
-            (result) => result.status === "error",
-          );
-          if (errors.length > 0) {
-            setFeedback(
-              errors
-                .map(
-                  (result) =>
-                    result.error || `Failed to resume ${result.targetName}.`,
-                )
-                .join(" "),
-            );
-          }
-        } catch (error) {
-          setFeedback(
-            error instanceof Error
-              ? error.message
-              : "Failed to resume chat session.",
-          );
-        } finally {
-          setBusy("");
-        }
-      },
-      [],
-    );
+    const onResumeChannel = useWorkspaceResumeChannel<AppShellPayload>({
+      activateChatChannel,
+      publishReadyPayload,
+      setBusy,
+      setFeedback,
+    });
 
     return (
       <ProductAppStateBoundary

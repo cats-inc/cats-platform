@@ -1051,6 +1051,32 @@ test('chat and workspace composer hooks consume shared navigation and draft-rese
   assert.match(draftStateHelperSource, /export function resetComposerDraftState/u);
 });
 
+test('chat and workspace apps consume shared app-shell channel action hooks', async () => {
+  const chatAppSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const workspaceAppSource = await readFile(
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
+    'utf8',
+  );
+  const hookSource = await readFile(
+    new URL('../src/products/shared/renderer/hooks/useWorkspaceAppShellChannelActions.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(chatAppSource, /useWorkspaceDirectLaneModelSave/u);
+  assert.match(chatAppSource, /useWorkspaceResumeChannel/u);
+  assert.match(workspaceAppSource, /useWorkspaceDirectLaneModelSave/u);
+  assert.match(workspaceAppSource, /useWorkspaceResumeChannel/u);
+  assert.doesNotMatch(chatAppSource, /const onResumeChannel = useCallback/u);
+  assert.doesNotMatch(workspaceAppSource, /const onResumeChannel = useCallback/u);
+  assert.match(hookSource, /export function useWorkspaceDirectLaneModelSave/u);
+  assert.match(hookSource, /export function useWorkspaceResumeChannel/u);
+  assert.match(hookSource, /activateChatChannel/u);
+  assert.match(hookSource, /updateCatProfile/u);
+});
+
 test('renderer app consumes dedicated cat-assignment actions instead of defining cat create/assign flows inline', async () => {
   const appSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
