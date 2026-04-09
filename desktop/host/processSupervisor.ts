@@ -220,6 +220,10 @@ function readFirstNonEmptyLine(filePath: string): string | null {
   }
 }
 
+function normalizeUnixPath(value: string): string {
+  return value.replace(/\\/gu, '/');
+}
+
 function normalizeNvmVersion(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -257,12 +261,15 @@ function resolveUnixNvmPathEntries(
   home: string,
 ): string[] {
   const entries: string[] = [];
-  const nvmBin = env.NVM_BIN?.trim();
+  const nvmBin = env.NVM_BIN?.trim() ? normalizeUnixPath(env.NVM_BIN.trim()) : '';
   if (nvmBin && existsSync(nvmBin)) {
     entries.push(nvmBin);
   }
 
-  const nvmDir = env.NVM_DIR?.trim() || posix.join(home, '.nvm');
+  const normalizedHome = normalizeUnixPath(home);
+  const nvmDir = env.NVM_DIR?.trim()
+    ? normalizeUnixPath(env.NVM_DIR.trim())
+    : posix.join(normalizedHome, '.nvm');
   const defaultVersion = resolveUnixNvmDefaultVersion(nvmDir);
   if (!defaultVersion) {
     return entries;
@@ -285,15 +292,16 @@ function resolveManagedServicePathEntries(
   const pathModule = platform === 'win32' ? win32 : posix;
   const existing = (env[pathKey] ?? '').split(pathDelimiter);
   const home = env.HOME?.trim() || env.USERPROFILE?.trim() || '';
+  const normalizedHome = platform === 'win32' ? home : normalizeUnixPath(home);
   const homeScopedEntries = home
     ? [
-        pathModule.join(home, '.local', 'bin'),
-        pathModule.join(home, '.npm-global', 'bin'),
-        pathModule.join(home, 'bin'),
+        pathModule.join(normalizedHome, '.local', 'bin'),
+        pathModule.join(normalizedHome, '.npm-global', 'bin'),
+        pathModule.join(normalizedHome, 'bin'),
       ]
     : [];
   const nvmPathEntries = home && (platform === 'darwin' || platform === 'linux')
-    ? resolveUnixNvmPathEntries(env, home)
+    ? resolveUnixNvmPathEntries(env, normalizedHome)
     : [];
 
   if (platform === 'darwin') {

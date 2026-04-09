@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
@@ -45,6 +45,35 @@ class FakeChildProcess extends EventEmitter {
     }
     return true;
   }
+}
+
+function splitManagedPathEntries(pathValue, platform) {
+  const delimiter = platform === 'win32' ? ';' : ':';
+  const segments = pathValue.split(delimiter);
+  if (platform === 'win32') {
+    return segments;
+  }
+
+  const entries = [];
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    const next = segments[index + 1];
+    if (
+      /^[A-Za-z]$/u.test(segment)
+      && typeof next === 'string'
+      && /^[\\/]/u.test(next)
+    ) {
+      entries.push(`${segment}:${next}`);
+      index += 1;
+      continue;
+    }
+    entries.push(segment);
+  }
+  return entries;
+}
+
+function normalizeUnixPath(value) {
+  return value.replace(/\\/gu, '/');
 }
 
 test('desktop host config and managed service specs preserve the app/runtime process split', () => {
@@ -169,8 +198,8 @@ test('managed desktop services augment PATH for macOS packaged CLI discovery', (
   });
 
   const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, env, 'darwin');
-  const runtimePathEntries = runtimeSpec.env.PATH.split(':');
-  const appPathEntries = appSpec.env.PATH.split(':');
+  const runtimePathEntries = splitManagedPathEntries(runtimeSpec.env.PATH, 'darwin');
+  const appPathEntries = splitManagedPathEntries(appSpec.env.PATH, 'darwin');
 
   assert.deepEqual(
     runtimePathEntries.slice(0, 4),
@@ -192,7 +221,13 @@ test('managed desktop services augment PATH for macOS packaged CLI discovery', (
 test('managed desktop services resolve the default nvm bin for macOS packaged CLI discovery', async () => {
   const homeDir = await mkdtemp(join(tmpdir(), 'cats-desktop-nvm-home-'));
   const nvmDir = join(homeDir, '.nvm');
-  const expectedNvmBin = join(nvmDir, 'versions', 'node', 'v24.14.1', 'bin');
+  const expectedNvmBin = posix.join(
+    normalizeUnixPath(nvmDir),
+    'versions',
+    'node',
+    'v24.14.1',
+    'bin',
+  );
 
   try {
     await mkdir(join(nvmDir, 'alias'), { recursive: true });
@@ -211,8 +246,8 @@ test('managed desktop services resolve the default nvm bin for macOS packaged CL
     });
 
     const [runtimeSpec, appSpec] = buildManagedServiceSpecs(config, env, 'darwin');
-    const runtimePathEntries = runtimeSpec.env.PATH.split(':');
-    const appPathEntries = appSpec.env.PATH.split(':');
+    const runtimePathEntries = splitManagedPathEntries(runtimeSpec.env.PATH, 'darwin');
+    const appPathEntries = splitManagedPathEntries(appSpec.env.PATH, 'darwin');
 
     assert.ok(runtimePathEntries.includes(expectedNvmBin));
     assert.deepEqual(appPathEntries, runtimePathEntries);
