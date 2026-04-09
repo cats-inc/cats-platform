@@ -10,12 +10,8 @@ import type {
   RoomRoutingMode,
 } from '../../../shared/roomRouting.js';
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
-import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
 import { PlatformSurfaceSwitcher } from '../../../design/components/PlatformSurfaceSwitcher.js';
-import { executeEnvironmentRecovery } from '../../../shared/environmentRecoveryAction.js';
-import {
-  resolveRuntimeDotClassName,
-} from '../../../shared/runtimeStatusPresentation.js';
+import { ConversationSidebarFooter } from './ConversationSidebarFooter.js';
 import { ConversationSidebarMyCatsSection } from './ConversationSidebarMyCats.js';
 import { buildConversationSidebarViewModel } from './conversationSidebarViewModel.js';
 import { ConversationSidebarRecentsSection } from './ConversationSidebarRecents.js';
@@ -223,12 +219,6 @@ export function ConversationSidebar<
     currentPath,
   });
 
-  function handleAccountMenuOpenChange(nextOpen: boolean): void {
-    if (nextOpen !== accountMenuOpen) {
-      onAccountMenuToggle();
-    }
-  }
-
   function renderActionGroup(group: ConversationSidebarActionGroup): ReactNode {
     return (
       <nav key={group.key} className="navGroup" aria-label={group.ariaLabel}>
@@ -344,47 +334,15 @@ export function ConversationSidebar<
         </div>
       </div>
 
-      <AccountIdentityMenu
-        open={accountMenuOpen}
-        onOpenChange={handleAccountMenuOpenChange}
+      <ConversationSidebarFooter
+        payload={payload}
+        accountMenuOpen={accountMenuOpen}
+        accountMenuRef={accountMenuRef}
+        runtimeFooterStatus={runtimeFooterStatus}
+        runtimeFooterLabel={runtimeFooterLabel}
+        onAccountMenuToggle={onAccountMenuToggle}
         onNavigateSettings={onNavigateSettings}
-        onNavigateEnvironment={() => {
-          void executeEnvironmentRecovery({
-            runtimeStatus: runtimeFooterStatus,
-            runtimeBaseUrl: resolvedRuntime.baseUrl,
-            runtimeSetupStatus: payload.runtimeSetup?.status,
-          });
-        }}
-        containerClassName="sidebarFooter"
-        triggerClassName="sidebarFooterButton"
-        menuWidth="trigger"
-        rootRef={accountMenuRef}
-        avatar={(
-          <div
-            className="profileBadge"
-            style={payload.ownerAvatarUrl
-              ? {
-                  backgroundImage: `url(${payload.ownerAvatarUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }
-              : undefined}
-          >
-            {payload.ownerAvatarUrl ? null : helpers.catInitials(payload.ownerDisplayName)}
-          </div>
-        )}
-        meta={(
-          <div className="sidebarFooterMeta">
-            <strong>{payload.ownerDisplayName}</strong>
-          </div>
-        )}
-        statusIndicator={(
-          <span
-            className={resolveRuntimeDotClassName(runtimeFooterStatus)}
-            data-tooltip={runtimeFooterLabel}
-            aria-label={runtimeFooterLabel}
-          />
-        )}
+        catInitials={helpers.catInitials}
       />
     </aside>
   );

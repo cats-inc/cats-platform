@@ -1869,6 +1869,22 @@ test('conversation sidebar delegates My Cats rendering to a dedicated section mo
   assert.match(myCatsSource, /export function ConversationSidebarMyCatsSection</u);
 });
 
+test('conversation sidebar delegates account footer wiring to a dedicated footer module', async () => {
+  const sidebarSource = await readFile(
+    new URL('../src/app/renderer/productShell/ConversationSidebar.tsx', import.meta.url),
+    'utf8',
+  );
+  const footerSource = await readFile(
+    new URL('../src/app/renderer/productShell/ConversationSidebarFooter.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(sidebarSource, /ConversationSidebarFooter\.js/u);
+  assert.doesNotMatch(sidebarSource, /<AccountIdentityMenu/u);
+  assert.match(footerSource, /<AccountIdentityMenu/u);
+  assert.match(footerSource, /executeEnvironmentRecovery/u);
+});
+
 test('renderer api facade composes dedicated client modules instead of defining every transport inline', async () => {
   const apiSource = await readFile(
     new URL('../src/products/chat/renderer/api/index.ts', import.meta.url),
