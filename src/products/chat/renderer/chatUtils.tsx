@@ -3,7 +3,6 @@ import type {
   ChatChannelView,
   ChatCat,
   ChatChannelSummary,
-  ChatMessage,
   CreateChatChannelInput,
   CreateTemporaryParticipantInput,
   NewChatEntryKind,
@@ -22,6 +21,21 @@ import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
 } from '../shared/channelEntry';
+import {
+  emptyCatForm as emptyWorkspaceCatForm,
+  isChatCat as isWorkspaceChatCat,
+  executionLabel as resolveWorkspaceExecutionLabel,
+  compareChatCatsForDisplay as compareWorkspaceChatCatsForDisplay,
+  sortChatCatsForDisplay as sortWorkspaceChatCatsForDisplay,
+  resolveTranscriptMessageSpeaker as resolveWorkspaceTranscriptMessageSpeaker,
+  createDraftChannelTitle as createWorkspaceDraftChannelTitle,
+  createDraftChannelTopic as createWorkspaceDraftChannelTopic,
+  buildAttachedFilesMessageBody as buildWorkspaceAttachedFilesMessageBody,
+  messageTone as resolveWorkspaceMessageTone,
+  presentChannelTitle as presentWorkspaceChannelTitle,
+  truncatePath as truncateWorkspacePath,
+  resolveBossCatName as resolveWorkspaceBossCatName,
+} from '../../shared/renderer/workspaceChatUtils.js';
 import {
   activeAssignedParticipants,
   resolveAssignedParticipants,
@@ -93,38 +107,15 @@ export function resolveGenericDraftTemporaryParticipants(
 }
 
 export function emptyCatForm(): CatFormState {
-  return {
-    name: '',
-    provider: 'claude',
-    instance: '',
-    model: '',
-    modelSelection: null,
-    makeBoss: false,
-    products: defaultCatProducts(),
-  };
+  return emptyWorkspaceCatForm();
 }
 
 export function isChatCat(cat: ChatCat): boolean {
-  return hasPlatformSurface(cat.products, 'chat', {
-    fallback: defaultCatProducts(),
-  });
+  return isWorkspaceChatCat(cat);
 }
 
 export function executionLabel(cat: ChatCat): string {
-  return buildExecutionLabel(
-    cat.defaultExecutionTarget.provider,
-    cat.defaultExecutionTarget.instance,
-    cat.defaultExecutionTarget.model,
-  );
-}
-
-function normalizePinnedCatIds(
-  bossCatIds: string | string[] | null | undefined,
-): Set<string> {
-  if (Array.isArray(bossCatIds)) {
-    return new Set(bossCatIds.filter((value): value is string => Boolean(value)));
-  }
-  return bossCatIds ? new Set([bossCatIds]) : new Set<string>();
+  return resolveWorkspaceExecutionLabel(cat);
 }
 
 export interface SortChatCatsOptions {
@@ -137,34 +128,14 @@ export function compareChatCatsForDisplay(
   right: ChatCat,
   options: SortChatCatsOptions = {},
 ): number {
-  const pinnedCatIds = normalizePinnedCatIds(options.bossCatIds);
-  if (options.archivedLast) {
-    const leftArchived = left.status === 'archived' ? 1 : 0;
-    const rightArchived = right.status === 'archived' ? 1 : 0;
-    if (leftArchived !== rightArchived) {
-      return leftArchived - rightArchived;
-    }
-  }
-
-  const leftPinned = pinnedCatIds.has(left.id) ? 0 : 1;
-  const rightPinned = pinnedCatIds.has(right.id) ? 0 : 1;
-  if (leftPinned !== rightPinned) {
-    return leftPinned - rightPinned;
-  }
-
-  const createdAtOrder = left.createdAt.localeCompare(right.createdAt);
-  if (createdAtOrder !== 0) {
-    return createdAtOrder;
-  }
-
-  return left.id.localeCompare(right.id);
+  return compareWorkspaceChatCatsForDisplay(left, right, options);
 }
 
 export function sortChatCatsForDisplay(
   cats: ChatCat[],
   options: SortChatCatsOptions = {},
 ): ChatCat[] {
-  return [...cats].sort((left, right) => compareChatCatsForDisplay(left, right, options));
+  return sortWorkspaceChatCatsForDisplay(cats, options);
 }
 
 export interface TranscriptMessageSpeaker {
@@ -173,104 +144,28 @@ export interface TranscriptMessageSpeaker {
   cat: ChatCat | null;
 }
 
-function readExecutionLabelSnapshot(message: ChatMessage): string | null {
-  const snapshot = message.metadata?.executionLabelSnapshot;
-  return typeof snapshot === 'string' && snapshot.trim() ? snapshot.trim() : null;
-}
-
 export function resolveTranscriptMessageSpeaker(
-  message: ChatMessage,
+  message: AppShellPayload['chat']['selectedChannel'] extends infer TChannel
+    ? TChannel extends { messages: ReadonlyArray<infer TMessage> } ? TMessage : never
+    : never,
   cats: ChatCat[],
 ): TranscriptMessageSpeaker {
-  if (message.senderKind === 'user' || message.senderKind === 'system') {
-    return { kind: 'none', label: null, cat: null };
-  }
-
-  const targetKind = message.metadata?.targetKind === 'cat' || message.metadata?.targetKind === 'orchestrator'
-    ? message.metadata.targetKind
-    : null;
-  const targetId = typeof message.metadata?.targetId === 'string' && message.metadata.targetId
-    ? message.metadata.targetId
-    : null;
-
-  if (targetKind === 'cat' && targetId) {
-    const liveCat = cats.find((cat) => cat.id === targetId) ?? null;
-    if (liveCat) {
-      return {
-        kind: 'cat',
-        label: liveCat.name,
-        cat: liveCat,
-      };
-    }
-    return {
-      kind: 'deleted_cat',
-      label: 'Deleted Cat',
-      cat: null,
-    };
-  }
-
-  const fallbackCat = message.senderName && message.senderName !== 'Orchestrator'
-    ? cats.find((cat) => cat.name === message.senderName) ?? null
-    : null;
-  if (fallbackCat) {
-    return {
-      kind: 'cat',
-      label: fallbackCat.name,
-      cat: fallbackCat,
-    };
-  }
-
-  if (
-    message.executionProvider
-    && (targetKind === 'orchestrator' || message.senderName === 'Orchestrator')
-  ) {
-    return {
-      kind: 'provider',
-      label: readExecutionLabelSnapshot(message)
-        ?? buildExecutionLabel(
-          message.executionProvider,
-          message.executionInstance,
-          null,
-        ),
-      cat: null,
-    };
-  }
-
-  if (message.senderName !== 'Orchestrator') {
-    return {
-      kind: 'name',
-      label: message.senderName,
-      cat: null,
-    };
-  }
-
-  return { kind: 'none', label: null, cat: null };
+  return resolveWorkspaceTranscriptMessageSpeaker(message, cats);
 }
 
 export function createDraftChannelTitle(body: string, existingCount: number): string {
-  const normalized = body.replace(/\s+/g, ' ').trim();
-  if (!normalized) {
-    return existingCount > 0 ? `New chat ${existingCount + 1}` : 'New chat';
-  }
-
-  return normalized.slice(0, 48);
+  return createWorkspaceDraftChannelTitle(body, existingCount);
 }
 
 export function createDraftChannelTopic(body: string): string {
-  const normalized = body.replace(/\s+/g, ' ').trim();
-  return normalized.slice(0, 120);
+  return createWorkspaceDraftChannelTopic(body);
 }
 
 export function buildAttachedFilesMessageBody(
   body: string,
   attachments: Array<{ relativePath: string }>,
 ): string {
-  if (attachments.length === 0) {
-    return body;
-  }
-
-  const refs = attachments.map((attachment) => `- ${attachment.relativePath}`).join('\n');
-  return `[Attached files in working directory:]\n${refs}\n\n${body}`;
+  return buildWorkspaceAttachedFilesMessageBody(body, attachments);
 }
 
 export function buildNewChatChannelInput(options: {
@@ -368,28 +263,17 @@ export function messageEntryTone(senderKind: string): string {
 }
 
 export function messageTone(senderKind: string): string {
-  switch (senderKind) {
-    case 'user':
-      return 'transcriptMessage transcriptMessageUser';
-    case 'orchestrator':
-      return 'transcriptMessage transcriptMessageOrchestrator';
-    case 'agent':
-      return 'transcriptMessage transcriptMessageAgent';
-    default:
-      return 'transcriptMessage transcriptMessageSystem';
-  }
+  return resolveWorkspaceMessageTone(senderKind);
 }
 
 export function presentChannelTitle(title: string): string {
-  return title.trim() === 'Untitled chat' ? 'New chat' : title;
+  return presentWorkspaceChannelTitle(title);
 }
 
 export { nameInitials as catInitials } from '../../../shared/nameInitials.js';
 
 export function truncatePath(fullPath: string, maxLen = 20): string {
-  const name = fullPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? fullPath;
-  if (name.length <= maxLen) return name;
-  return name.slice(0, maxLen - 3) + '...';
+  return truncateWorkspacePath(fullPath, maxLen);
 }
 
 export function buildDraftParticipantExecutionLabel(participant: {
@@ -512,11 +396,7 @@ export function pickDraftGreeting(
 }
 
 export function resolveBossCatName(payload: AppShellPayload): string | null {
-  if (!payload.chat.bossCatId) {
-    return null;
-  }
-
-  return payload.chat.cats.find((cat) => cat.id === payload.chat.bossCatId)?.name ?? null;
+  return resolveWorkspaceBossCatName(payload);
 }
 
 export type { SelectedChannelView } from '../shared/channelEntry';
