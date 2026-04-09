@@ -38,7 +38,7 @@ test('chat composer surfaces cancel-send during ACK and stop during dispatch', a
 
 test('new-chat draft keeps cancel-send available before the first ACK', async () => {
   const draftSource = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/components/NewChatDraft.tsx'),
+    path.join(process.cwd(), 'src/products/shared/renderer/components/ChatNewChatDraft.tsx'),
     'utf8',
   );
 
