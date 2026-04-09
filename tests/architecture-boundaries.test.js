@@ -1086,6 +1086,10 @@ test('settings cats composes dedicated registry and create-form components inste
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsCreateForm.tsx', import.meta.url),
     'utf8',
   );
+  const sharedCreateFormSource = await readFile(
+    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsCreateForm.tsx', import.meta.url),
+    'utf8',
+  );
 
   assert.match(settingsCatsSource, /SettingsCatsRegistry/u);
   assert.match(settingsCatsSource, /SettingsCatsCreateForm/u);
@@ -1095,8 +1099,12 @@ test('settings cats composes dedicated registry and create-form components inste
   assert.doesNotMatch(registrySource, /className="memoryForm"/u);
   assert.match(detailPanelSource, /formatTransportTimestamp/u);
   assert.match(detailPanelSource, /export function SettingsCatsDetailPanel/u);
-  assert.match(createFormSource, /CatCreationFields/u);
-  assert.match(createFormSource, /export function SettingsCatsCreateForm/u);
+  assert.match(
+    createFormSource,
+    /shared\/renderer\/components\/settings-cats\/SettingsCatsCreateForm\.js/u,
+  );
+  assert.match(sharedCreateFormSource, /CatCreationFields/u);
+  assert.match(sharedCreateFormSource, /export function SettingsCatsCreateForm/u);
 });
 
 test('renderer styles compose a shared design layer and product-owned chat partials', async () => {
