@@ -563,6 +563,32 @@ test('chat and workspace apps consume a dedicated generic-draft route entry hook
   assert.match(hookSource, /justEnteredGenericDraftRoute/u);
 });
 
+test('chat and workspace apps consume shared channel-title presentation helpers', async () => {
+  const chatAppSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const workspaceAppSource = await readFile(
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
+    'utf8',
+  );
+  const workspaceUtilsSource = await readFile(
+    new URL('../src/products/shared/renderer/workspaceChatUtils.tsx', import.meta.url),
+    'utf8',
+  );
+  const chatUtilsSource = await readFile(
+    new URL('../src/products/chat/renderer/chatUtils.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(workspaceUtilsSource, /export function presentChannelTitle/u);
+  assert.match(chatUtilsSource, /presentWorkspaceChannelTitle/u);
+  assert.match(chatAppSource, /presentChannelTitle\(routeChannelTitle\)/u);
+  assert.match(workspaceAppSource, /presentChannelTitle\(routeChannelTitle\)/u);
+  assert.doesNotMatch(chatAppSource, /routeChannelTitle\.trim\(\) === 'Untitled chat'/u);
+  assert.doesNotMatch(workspaceAppSource, /routeChannelTitle\.trim\(\) === "Untitled chat"/u);
+});
+
 test('chat internals use the product channel-paths module instead of the shared compatibility shim', async () => {
   const productChatPath = fileURLToPath(new URL('../src/products/chat', import.meta.url));
 

@@ -29,6 +29,7 @@ import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import {
   BootShell,
   pickGreeting,
+  presentChannelTitle,
   createInitialGroupParticipants,
   emptyCatForm,
   resolveGenericDraftTemporaryParticipants,
@@ -412,7 +413,7 @@ export default function App() {
 
   useEffect(() => {
     document.title = routeChannelTitle
-      ? `${routeChannelTitle.trim() === 'Untitled chat' ? 'New chat' : routeChannelTitle} - Cats Chat`
+      ? `${presentChannelTitle(routeChannelTitle)} - Cats Chat`
       : 'Cats Chat';
   }, [routeChannelTitle]);
 

@@ -34,6 +34,7 @@ import {
 import {
   emptyCatForm,
   pickGreeting,
+  presentChannelTitle,
   type CatFormState,
   type SelectedChannelView,
   type Surface,
@@ -443,7 +444,7 @@ export function createWorkspaceProductApp({
     useEffect(() => {
       const appTitle = `Cats ${productName}`;
       document.title = routeChannelTitle
-        ? `${routeChannelTitle.trim() === "Untitled chat" ? "New chat" : routeChannelTitle} - ${appTitle}`
+        ? `${presentChannelTitle(routeChannelTitle)} - ${appTitle}`
         : appTitle;
     }, [productName, routeChannelTitle]);
 
