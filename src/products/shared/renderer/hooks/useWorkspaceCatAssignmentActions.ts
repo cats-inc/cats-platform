@@ -13,6 +13,7 @@ import {
   createGlobalCat,
   removeCatFromChannelApi,
 } from '../api/index.js';
+import { emptyCatForm, type CatFormState } from '../workspaceChatUtils.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -239,4 +240,20 @@ export function useWorkspaceCatAssignmentActions<CatFormState extends WorkspaceC
     onRemoveAssignedCat,
     toggleDraftCat,
   };
+}
+
+export function useCatAssignmentActions(options: {
+  state: LoadStateLike;
+  setState: Dispatch<SetStateAction<LoadStateLike>>;
+  catForm: CatFormState;
+  setCatForm: Dispatch<SetStateAction<CatFormState>>;
+  setBusy: Dispatch<SetStateAction<string>>;
+  setFeedback: Dispatch<SetStateAction<string>>;
+  setAddCatOpen: Dispatch<SetStateAction<boolean>>;
+  setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+}) {
+  return useWorkspaceCatAssignmentActions<CatFormState>({
+    ...options,
+    emptyCatForm,
+  });
 }
