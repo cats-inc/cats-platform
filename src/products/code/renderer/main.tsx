@@ -1,14 +1,5 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-
 import '../../../design/index.css';
-import App from './App';
+import { mountWorkspaceApp } from '../../shared/renderer/mountWorkspaceApp.js';
+import App from './App.js';
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>,
-);
+mountWorkspaceApp(App);
