@@ -1,11 +1,4 @@
 import {
-  CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
-  CORE_TASK_CONTROL_PLANE_DELIVERY_MODES,
-  CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
-  CORE_TASK_CONTROL_PLANE_REASONS,
-  CORE_TASK_CONTROL_PLANE_SEVERITIES,
-  CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
-  CORE_TASK_WORKFLOW_SHAPES,
   listCoreTaskControlPlaneViews,
   type CoreTaskControlPlaneListOptions,
   type CoreTaskControlPlaneAttention,
@@ -16,208 +9,48 @@ import {
   type CoreTaskControlPlaneWorkflowRecommendationView,
 } from './taskControlPlane.js';
 import type {
-  CoreTaskInspectionFamilyView,
   CoreTaskInspectionPlanningView,
   CoreTaskInspectionRuntimeBridgeView,
 } from './taskInspection.js';
 import type {
   CatsCoreState,
-  CoreDeliveryMode,
-  CoreRuntimeDeliveryAction,
-  CoreTaskRecord,
   CoreWorkflowSummary,
 } from './types.js';
 import {
-  CORE_TASK_TIMELINE_CATEGORIES,
-  CORE_TASK_TIMELINE_ITEM_KINDS,
-  type CoreTaskTimelineCategory,
   type CoreTaskTimelineItem,
-  type CoreTaskTimelineItemKind,
 } from './taskTimeline.js';
 import {
-  CORE_TASK_RECOVERY_REPLAY_PHASES,
-  CORE_TASK_RECOVERY_REPLAY_SOURCES,
-  CORE_TASK_RECOVERY_REPLAY_TRIGGERS,
-  CORE_TASK_RECOVERY_RESUME_REASONS,
-  type CoreTaskRecoveryReplayPhase,
-  type CoreTaskRecoveryReplaySource,
-  type CoreTaskRecoveryReplayTrigger,
-  type CoreTaskRecoveryResumeReason,
   type CoreTaskRecoveryView,
 } from './recovery.js';
 import {
   applyCoreTaskViewLimit,
-  buildCoreTaskStatusCounts,
-  countCoreTaskViewConversations,
   matchesCoreTaskViewCommonQuery,
 } from './taskViewQuery.js';
-
-export interface CoreOperatorInboxItem {
-  taskId: string;
-  conversationId: string | null;
-  taskTitle: string;
-  taskStatus: CoreTaskRecord['status'];
-  summary: string | null;
-  attention: CoreTaskControlPlaneAttention;
-  nextActions: CoreTaskControlPlaneNextAction[];
-  latestRunId: string | null;
-  latestCheckpointId: string | null;
-  latestOutcomeId: string | null;
-  planning: CoreTaskInspectionPlanningView;
-  runtimeBridge: CoreTaskInspectionRuntimeBridgeView;
-  workflowSummary: CoreWorkflowSummary | null;
-  latestWorkflowRecommendation: CoreTaskControlPlaneWorkflowRecommendationView | null;
-  workflowContinuation: CoreTaskControlPlaneWorkflowContinuationView | null;
-  runtimeDeliveryIntent: CoreTaskControlPlaneRuntimeDeliveryIntentView | null;
-  recovery: CoreTaskRecoveryView;
-  family: CoreTaskInspectionFamilyView;
-  latestTimelineItem: CoreTaskTimelineItem | null;
-}
-
-export type CoreOperatorInboxQuery = CoreTaskControlPlaneListOptions;
-
-export interface CoreOperatorInboxSummary {
-  totalAvailable: number;
-  matching: number;
-  returned: number;
-  conversationCount: number;
-  needsOperatorAttentionCount: number;
-  taskStatusCounts: Record<CoreTaskRecord['status'], number>;
-  executionProductCounts: Record<'chat' | 'work' | 'code', number>;
-  requestedStrategyCounts: Record<string, number>;
-  attentionSeverityCounts: Record<CoreTaskControlPlaneAttention['severity'], number>;
-  reasonCounts: Record<NonNullable<CoreTaskControlPlaneAttention['reasons'][number]>, number>;
-  nextActionCounts: Record<CoreTaskControlPlaneNextAction['kind'], number>;
-  deliveryModeCounts: Record<CoreDeliveryMode, number>;
-  deliveryActionCounts: Record<CoreRuntimeDeliveryAction, number>;
-  workflowStageCounts: Record<string, number>;
-  workflowShapeCounts: Record<CoreTaskWorkflowShape, number>;
-  workflowReviewRequiredCount: number;
-  workflowConvergeTargetCount: number;
-  workflowContinuationSourceCounts: Record<
-    NonNullable<CoreTaskControlPlaneWorkflowContinuationView['continuationSource']>,
-    number
-  >;
-  withUnresolvedWorkflowTargetsCount: number;
-  latestReplaySourceCounts: Record<CoreTaskRecoveryReplaySource, number>;
-  latestReplayTriggerCounts: Record<CoreTaskRecoveryReplayTrigger, number>;
-  latestReplayPhaseCounts: Record<CoreTaskRecoveryReplayPhase, number>;
-  latestReplayResumeReasonCounts: Record<CoreTaskRecoveryResumeReason, number>;
-  latestTimelineCategoryCounts: Record<CoreTaskTimelineCategory, number>;
-  latestTimelineKindCounts: Record<CoreTaskTimelineItemKind, number>;
-  workflowContinuationBlockedReasonCounts: Record<
-    NonNullable<CoreTaskControlPlaneWorkflowContinuationView['blockedReason']>,
-    number
-  >;
-  withChildrenCount: number;
-  withActiveChildrenCount: number;
-}
-
-function readWorkflowShape(value: unknown): CoreTaskWorkflowShape | null {
-  return value === 'sequential' || value === 'concurrent' || value === 'converge'
-    ? (value as CoreTaskWorkflowShape)
-    : value === 'parallel'
-      ? ('concurrent' as CoreTaskWorkflowShape)
-      : null;
-}
-
-function readEffectiveWorkflowShape(item: Pick<
+import type {
   CoreOperatorInboxItem,
-  'workflowContinuation' | 'runtimeDeliveryIntent' | 'workflowSummary'
->): CoreTaskWorkflowShape | null {
-  return item.workflowContinuation?.workflowShape
-    ?? readWorkflowShape(item.runtimeDeliveryIntent?.workflowShape)
-    ?? readWorkflowShape(item.workflowSummary?.shape)
-    ?? null;
-}
+  CoreOperatorInboxQuery,
+  CoreOperatorInboxSummary,
+} from './operatorInboxContracts.js';
+import {
+  readEffectiveWorkflowContinuationSource,
+  readEffectiveWorkflowConvergeTargetId,
+  readEffectiveWorkflowReviewRequired,
+  readEffectiveWorkflowShape,
+  readEffectiveWorkflowUnresolvedTargets,
+  readExecutionProduct,
+  readLatestReplayPhase,
+  readLatestReplayResumeReason,
+  readLatestReplaySource,
+  readLatestReplayTrigger,
+  readRequestedStrategy,
+  summarizeCoreOperatorInboxItems,
+} from './operatorInboxSummary.js';
 
-function readEffectiveWorkflowReviewRequired(
-  item: Pick<CoreOperatorInboxItem, 'workflowContinuation' | 'workflowSummary'>,
-): boolean {
-  return item.workflowContinuation?.reviewRequired
-    ?? item.workflowSummary?.reviewRequired
-    ?? false;
-}
-
-function readEffectiveWorkflowConvergeTargetId(
-  item: Pick<CoreOperatorInboxItem, 'workflowContinuation' | 'workflowSummary'>,
-): string | null {
-  return item.workflowContinuation?.convergeTargetId
-    ?? item.workflowSummary?.convergeTargetId
-    ?? null;
-}
-
-function readEffectiveWorkflowUnresolvedTargets(
-  item: Pick<CoreOperatorInboxItem, 'workflowContinuation'>,
-): string[] {
-  return item.workflowContinuation?.unresolvedTargets.length
-    ? [...item.workflowContinuation.unresolvedTargets]
-    : [];
-}
-
-function readEffectiveWorkflowContinuationSource(
-  item: Pick<CoreOperatorInboxItem, 'workflowContinuation'>,
-): NonNullable<CoreTaskControlPlaneWorkflowContinuationView['continuationSource']> | null {
-  return item.workflowContinuation?.continuationSource === 'explicit_mentions'
-    || item.workflowContinuation?.continuationSource === 'workflow_recommendation'
-    ? item.workflowContinuation.continuationSource
-    : null;
-}
-
-function readExecutionProduct(
-  item: Pick<CoreOperatorInboxItem, 'runtimeBridge'>,
-): 'chat' | 'work' | 'code' | null {
-  return item.runtimeBridge.product ?? null;
-}
-
-function readRequestedStrategy(
-  item: Pick<CoreOperatorInboxItem, 'runtimeBridge'>,
-): string | null {
-  const requestedStrategy = item.runtimeBridge.request.requestedStrategy;
-  return typeof requestedStrategy === 'string' && requestedStrategy.trim().length > 0
-    ? requestedStrategy
-    : null;
-}
-
-function readLatestReplayPhase(
-  item: Pick<CoreOperatorInboxItem, 'recovery'>,
-): CoreTaskRecoveryReplayPhase | null {
-  const phase = item.recovery.latestActivity?.phase;
-  return typeof phase === 'string'
-    && CORE_TASK_RECOVERY_REPLAY_PHASES.includes(phase as CoreTaskRecoveryReplayPhase)
-    ? phase as CoreTaskRecoveryReplayPhase
-    : null;
-}
-
-function readLatestReplaySource(
-  item: Pick<CoreOperatorInboxItem, 'recovery'>,
-): CoreTaskRecoveryReplaySource | null {
-  const source = item.recovery.latestActivity?.source;
-  return typeof source === 'string'
-    && CORE_TASK_RECOVERY_REPLAY_SOURCES.includes(source as CoreTaskRecoveryReplaySource)
-    ? source as CoreTaskRecoveryReplaySource
-    : null;
-}
-
-function readLatestReplayTrigger(
-  item: Pick<CoreOperatorInboxItem, 'recovery'>,
-): CoreTaskRecoveryReplayTrigger | null {
-  const trigger = item.recovery.latestActivity?.trigger;
-  return typeof trigger === 'string'
-    && CORE_TASK_RECOVERY_REPLAY_TRIGGERS.includes(trigger as CoreTaskRecoveryReplayTrigger)
-    ? trigger as CoreTaskRecoveryReplayTrigger
-    : null;
-}
-
-function readLatestReplayResumeReason(
-  item: Pick<CoreOperatorInboxItem, 'recovery'>,
-): CoreTaskRecoveryResumeReason | null {
-  const reason = item.recovery.latestActivity?.resumeReason;
-  return typeof reason === 'string'
-    && CORE_TASK_RECOVERY_RESUME_REASONS.includes(reason as CoreTaskRecoveryResumeReason)
-    ? reason as CoreTaskRecoveryResumeReason
-    : null;
-}
+export type {
+  CoreOperatorInboxItem,
+  CoreOperatorInboxQuery,
+  CoreOperatorInboxSummary,
+} from './operatorInboxContracts.js';
 
 function compareInboxItems(left: CoreOperatorInboxItem, right: CoreOperatorInboxItem): number {
   const severityRank = (value: CoreTaskControlPlaneAttention['severity']): number => {
@@ -479,342 +312,7 @@ function matchesOperatorInboxQuery(
   return true;
 }
 
-function buildAttentionSeverityCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskControlPlaneAttention['severity'], number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_SEVERITIES.map((severity) => [severity, 0]),
-  ) as Record<CoreTaskControlPlaneAttention['severity'], number>;
-
-  for (const item of items) {
-    counts[item.attention.severity] += 1;
-  }
-
-  return counts;
-}
-
-function buildExecutionProductCounts(
-  items: CoreOperatorInboxItem[],
-): Record<'chat' | 'work' | 'code', number> {
-  const counts = {
-    chat: 0,
-    work: 0,
-    code: 0,
-  };
-
-  for (const item of items) {
-    const executionProduct = readExecutionProduct(item);
-    if (!executionProduct) {
-      continue;
-    }
-    counts[executionProduct] += 1;
-  }
-
-  return counts;
-}
-
-function buildRequestedStrategyCounts(
-  items: CoreOperatorInboxItem[],
-): Record<string, number> {
-  const counts: Record<string, number> = {};
-
-  for (const item of items) {
-    const requestedStrategy = readRequestedStrategy(item);
-    if (!requestedStrategy) {
-      continue;
-    }
-    counts[requestedStrategy] = (counts[requestedStrategy] ?? 0) + 1;
-  }
-
-  return counts;
-}
-
-function buildReasonCounts(
-  items: CoreOperatorInboxItem[],
-): Record<NonNullable<CoreTaskControlPlaneAttention['reasons'][number]>, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_REASONS.map((reason) => [reason, 0]),
-  ) as Record<NonNullable<CoreTaskControlPlaneAttention['reasons'][number]>, number>;
-
-  for (const item of items) {
-    for (const reason of item.attention.reasons) {
-      counts[reason] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildNextActionCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskControlPlaneNextAction['kind'], number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS.map((kind) => [kind, 0]),
-  ) as Record<CoreTaskControlPlaneNextAction['kind'], number>;
-
-  for (const item of items) {
-    for (const action of item.nextActions) {
-      counts[action.kind] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildDeliveryModeCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreDeliveryMode, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_DELIVERY_MODES.map((mode) => [mode, 0]),
-  ) as Record<CoreDeliveryMode, number>;
-
-  for (const item of items) {
-    if (item.runtimeDeliveryIntent?.mode) {
-      counts[item.runtimeDeliveryIntent.mode] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildDeliveryActionCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreRuntimeDeliveryAction, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS.map((action) => [action, 0]),
-  ) as Record<CoreRuntimeDeliveryAction, number>;
-
-  for (const item of items) {
-    for (const action of item.runtimeDeliveryIntent?.requestedActions ?? []) {
-      counts[action] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildWorkflowStageCounts(
-  items: CoreOperatorInboxItem[],
-): Record<string, number> {
-  const counts: Record<string, number> = {};
-
-  for (const item of items) {
-    const stageId = item.workflowContinuation?.stageId
-      ?? item.runtimeDeliveryIntent?.workflowStageId
-      ?? item.workflowSummary?.stageId
-      ?? null;
-    if (!stageId) {
-      continue;
-    }
-    counts[stageId] = (counts[stageId] ?? 0) + 1;
-  }
-
-  return counts;
-}
-
-function buildWorkflowShapeCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskWorkflowShape, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_WORKFLOW_SHAPES.map((shape) => [shape, 0]),
-  ) as Record<CoreTaskWorkflowShape, number>;
-
-  for (const item of items) {
-    const shape = readEffectiveWorkflowShape(item);
-    if (!shape) {
-      continue;
-    }
-    counts[shape] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestTimelineCategoryCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskTimelineCategory, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_TIMELINE_CATEGORIES.map((category) => [category, 0]),
-  ) as Record<CoreTaskTimelineCategory, number>;
-
-  for (const item of items) {
-    if (!item.latestTimelineItem?.category) {
-      continue;
-    }
-    counts[item.latestTimelineItem.category] += 1;
-  }
-
-  return counts;
-}
-
-function buildWorkflowContinuationBlockedReasonCounts(
-  items: CoreOperatorInboxItem[],
-): Record<NonNullable<CoreTaskControlPlaneWorkflowContinuationView['blockedReason']>, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS.map((reason) => [reason, 0]),
-  ) as Record<NonNullable<CoreTaskControlPlaneWorkflowContinuationView['blockedReason']>, number>;
-
-  for (const item of items) {
-    const blockedReason = item.workflowContinuation?.blockedReason;
-    if (!blockedReason) {
-      continue;
-    }
-    counts[blockedReason] += 1;
-  }
-
-  return counts;
-}
-
-function buildWorkflowContinuationSourceCounts(
-  items: CoreOperatorInboxItem[],
-): Record<NonNullable<CoreTaskControlPlaneWorkflowContinuationView['continuationSource']>, number> {
-  const counts = {
-    explicit_mentions: 0,
-    workflow_recommendation: 0,
-  };
-
-  for (const item of items) {
-    const source = readEffectiveWorkflowContinuationSource(item);
-    if (!source) {
-      continue;
-    }
-    counts[source] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestReplayPhaseCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskRecoveryReplayPhase, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_PHASES.map((phase) => [phase, 0]),
-  ) as Record<CoreTaskRecoveryReplayPhase, number>;
-
-  for (const item of items) {
-    const phase = readLatestReplayPhase(item);
-    if (!phase) {
-      continue;
-    }
-    counts[phase] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestReplayTriggerCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskRecoveryReplayTrigger, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_TRIGGERS.map((trigger) => [trigger, 0]),
-  ) as Record<CoreTaskRecoveryReplayTrigger, number>;
-
-  for (const item of items) {
-    const trigger = readLatestReplayTrigger(item);
-    if (!trigger) {
-      continue;
-    }
-    counts[trigger] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestReplaySourceCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskRecoveryReplaySource, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_SOURCES.map((source) => [source, 0]),
-  ) as Record<CoreTaskRecoveryReplaySource, number>;
-
-  for (const item of items) {
-    const source = readLatestReplaySource(item);
-    if (!source) {
-      continue;
-    }
-    counts[source] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestReplayResumeReasonCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskRecoveryResumeReason, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_RESUME_REASONS.map((reason) => [reason, 0]),
-  ) as Record<CoreTaskRecoveryResumeReason, number>;
-
-  for (const item of items) {
-    const reason = readLatestReplayResumeReason(item);
-    if (!reason) {
-      continue;
-    }
-    counts[reason] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestTimelineKindCounts(
-  items: CoreOperatorInboxItem[],
-): Record<CoreTaskTimelineItemKind, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_TIMELINE_ITEM_KINDS.map((kind) => [kind, 0]),
-  ) as Record<CoreTaskTimelineItemKind, number>;
-
-  for (const item of items) {
-    if (!item.latestTimelineItem?.kind) {
-      continue;
-    }
-    counts[item.latestTimelineItem.kind] += 1;
-  }
-
-  return counts;
-}
-
-export function summarizeCoreOperatorInboxItems(input: {
-  totalAvailable: number;
-  matching: number;
-  items: CoreOperatorInboxItem[];
-}): CoreOperatorInboxSummary {
-  return {
-    totalAvailable: input.totalAvailable,
-    matching: input.matching,
-    returned: input.items.length,
-    conversationCount: countCoreTaskViewConversations(input.items),
-    needsOperatorAttentionCount: input.items.filter((item) => item.attention.needsOperatorAttention)
-      .length,
-    taskStatusCounts: buildCoreTaskStatusCounts(input.items),
-    executionProductCounts: buildExecutionProductCounts(input.items),
-    requestedStrategyCounts: buildRequestedStrategyCounts(input.items),
-    attentionSeverityCounts: buildAttentionSeverityCounts(input.items),
-    reasonCounts: buildReasonCounts(input.items),
-    nextActionCounts: buildNextActionCounts(input.items),
-    deliveryModeCounts: buildDeliveryModeCounts(input.items),
-    deliveryActionCounts: buildDeliveryActionCounts(input.items),
-    workflowStageCounts: buildWorkflowStageCounts(input.items),
-    workflowShapeCounts: buildWorkflowShapeCounts(input.items),
-    workflowReviewRequiredCount: input.items.filter((item) => readEffectiveWorkflowReviewRequired(item))
-      .length,
-    workflowConvergeTargetCount: input.items.filter((item) =>
-      Boolean(readEffectiveWorkflowConvergeTargetId(item))).length,
-    workflowContinuationSourceCounts: buildWorkflowContinuationSourceCounts(input.items),
-    withUnresolvedWorkflowTargetsCount: input.items.filter((item) =>
-      readEffectiveWorkflowUnresolvedTargets(item).length > 0).length,
-    latestReplaySourceCounts: buildLatestReplaySourceCounts(input.items),
-    latestReplayTriggerCounts: buildLatestReplayTriggerCounts(input.items),
-    latestReplayPhaseCounts: buildLatestReplayPhaseCounts(input.items),
-    latestReplayResumeReasonCounts: buildLatestReplayResumeReasonCounts(input.items),
-    latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.items),
-    latestTimelineKindCounts: buildLatestTimelineKindCounts(input.items),
-    workflowContinuationBlockedReasonCounts:
-      buildWorkflowContinuationBlockedReasonCounts(input.items),
-    withChildrenCount: input.items.filter((item) => item.family.childCount > 0).length,
-    withActiveChildrenCount: input.items.filter((item) =>
-      item.family.childCount > 0 && !item.family.allChildrenTerminal).length,
-  };
-}
+export { summarizeCoreOperatorInboxItems } from './operatorInboxSummary.js';
 
 export function listCoreOperatorInboxItems(
   core: CatsCoreState,
