@@ -1,5 +1,8 @@
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import { buildAttachedFilesMessageBody } from './workspaceChatUtils.js';
+import {
+  buildAttachedFilesMessageBody,
+  buildNewChatChannelInput,
+} from './workspaceChatUtils.js';
 
 export interface ComposerModelValue {
   provider: string;
@@ -32,6 +35,28 @@ export interface PendingExecutionTargetInput {
   pendingModel: string | null;
   pendingInstance: string | null;
   pendingModelSelection: ProviderModelSelection | null;
+}
+
+export interface ComposerTemporaryParticipantLike {
+  participantId: string;
+  name: string;
+  provider: string;
+  instance?: string | null;
+  model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
+  roleHint?: string | null;
+}
+
+export interface ComposerCreatedChannelLike {
+  id: string;
+}
+
+export interface PrepareComposerChannelDispatchResult<TPayload> {
+  payload: TPayload;
+  rollbackPayload: TPayload;
+  channelId: string;
+  rollbackPath: string;
+  restoreFiles: () => void;
 }
 
 export function isDirectLaneSelectedForCat<
@@ -152,4 +177,165 @@ export async function prepareComposerMessageBody<
   const attachments = await uploadChannelAttachments(channelId, filesToUpload, signal);
   messageBody = buildAttachedFilesMessageBody(body, attachments);
   return { payload, messageBody };
+}
+
+export async function prepareComposerChannelDispatch<
+  TPayload,
+  TCreatedChannel extends ComposerCreatedChannelLike,
+>(options: {
+  initialPayload: TPayload;
+  wasDraftingNewChat: boolean;
+  isCatScopedLaneRoute: boolean;
+  hydratedDirectLane: ComposerSelectedChannelLike | null;
+  currentChannelId: string;
+  currentRollbackPath: string;
+  body: string;
+  existingCount: number;
+  draftCwd: string | null;
+  draftDefaultRecipientCatId: string | null;
+  participantCatIds: string[];
+  temporaryParticipants?: ComposerTemporaryParticipantLike[];
+  draftEntryKind?: 'solo' | 'group' | 'direct';
+  draftModel?: ComposerModelValue;
+  createChatChannel: (
+    input: ReturnType<typeof buildNewChatChannelInput>,
+    signal?: AbortSignal,
+  ) => Promise<TCreatedChannel>;
+  insertCreatedChannelIntoPayload: (
+    payload: TPayload,
+    createdChannel: TCreatedChannel,
+  ) => TPayload;
+  setState: (state: { status: 'ready'; payload: TPayload }) => void;
+  navigate: (path: string, options: { replace: boolean }) => void;
+  setChannelFiles: (files: File[]) => void;
+  originalDraftFiles: File[];
+  originalChannelFiles: File[];
+  buildChannelPath: (channelId: string) => string;
+  signal?: AbortSignal;
+}): Promise<PrepareComposerChannelDispatchResult<TPayload>> {
+  const {
+    initialPayload,
+    wasDraftingNewChat,
+    isCatScopedLaneRoute,
+    hydratedDirectLane,
+    currentChannelId,
+    currentRollbackPath,
+    body,
+    existingCount,
+    draftCwd,
+    draftDefaultRecipientCatId,
+    participantCatIds,
+    temporaryParticipants = [],
+    draftEntryKind,
+    draftModel,
+    createChatChannel,
+    insertCreatedChannelIntoPayload,
+    setState,
+    navigate,
+    setChannelFiles,
+    originalDraftFiles,
+    originalChannelFiles,
+    buildChannelPath,
+    signal,
+  } = options;
+
+  let payload = initialPayload;
+  let rollbackPayload = initialPayload;
+  let channelId = currentChannelId;
+  let rollbackPath = currentRollbackPath;
+  let restoreFiles = (): void => {
+    if (wasDraftingNewChat || (isCatScopedLaneRoute && !hydratedDirectLane)) {
+      setChannelFiles(originalDraftFiles);
+    } else {
+      setChannelFiles(originalChannelFiles);
+    }
+  };
+
+  if (isCatScopedLaneRoute) {
+    if (!hydratedDirectLane) {
+      const createdChannel = await createChatChannel(buildNewChatChannelInput({
+        body,
+        existingCount,
+        entryKind: 'direct',
+        repoPath: draftCwd,
+        defaultRecipientCatId: draftDefaultRecipientCatId,
+        participantCatIds,
+        temporaryParticipants: temporaryParticipants.map((participant) => ({
+          participantId: participant.participantId,
+          name: participant.name,
+          provider: participant.provider,
+          instance: participant.instance ?? undefined,
+          model: participant.model ?? undefined,
+          modelSelection: participant.modelSelection ?? null,
+          roleHint: participant.roleHint ?? undefined,
+        })),
+      }), signal);
+      channelId = createdChannel.id;
+      if (!channelId) {
+        throw new Error('No chat is available for sending messages.');
+      }
+      payload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
+      rollbackPayload = payload;
+      setState({ status: 'ready', payload });
+      navigate(rollbackPath, { replace: true });
+      restoreFiles = () => {
+        setChannelFiles(originalDraftFiles);
+      };
+    } else {
+      channelId = hydratedDirectLane.id;
+      restoreFiles = () => {
+        setChannelFiles(originalChannelFiles);
+      };
+    }
+  } else if (wasDraftingNewChat) {
+    const createdChannel = await createChatChannel(buildNewChatChannelInput({
+      body,
+      existingCount,
+      entryKind: draftEntryKind,
+      repoPath: draftCwd,
+      defaultRecipientCatId: draftDefaultRecipientCatId,
+      participantCatIds,
+      temporaryParticipants: temporaryParticipants.map((participant) => ({
+        participantId: participant.participantId,
+        name: participant.name,
+        provider: participant.provider,
+        instance: participant.instance ?? undefined,
+        model: participant.model ?? undefined,
+        modelSelection: participant.modelSelection ?? null,
+        roleHint: participant.roleHint ?? undefined,
+      })),
+      draftModel,
+    }), signal);
+    channelId = createdChannel.id;
+    if (!channelId) {
+      throw new Error('No chat is available for sending messages.');
+    }
+    rollbackPath = buildChannelPath(channelId);
+    payload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
+    rollbackPayload = payload;
+    setState({ status: 'ready', payload });
+    navigate(rollbackPath, { replace: true });
+    restoreFiles = () => {
+      setChannelFiles(originalDraftFiles);
+    };
+  } else {
+    if (!channelId) {
+      throw new Error('No chat is available for sending messages.');
+    }
+    restoreFiles = () => {
+      setChannelFiles(originalChannelFiles);
+    };
+  }
+
+  if (!channelId) {
+    throw new Error('No chat is available for sending messages.');
+  }
+
+  return {
+    payload,
+    rollbackPayload,
+    channelId,
+    rollbackPath,
+    restoreFiles,
+  };
 }

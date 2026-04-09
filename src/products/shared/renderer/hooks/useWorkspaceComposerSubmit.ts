@@ -19,6 +19,7 @@ import { normalizeSelectedChannelView, type SelectedChannelView } from '../../ch
 import {
   buildSoloDispatchTarget,
   isDirectLaneSelectedForCat,
+  prepareComposerChannelDispatch,
   prepareComposerMessageBody,
   resolveComposerFilesToUpload,
 } from '../composerDispatch.js';
@@ -31,9 +32,6 @@ import {
 import {
   applyOptimisticPendingExecutionTarget,
   appendOptimisticUserMessage,
-  buildNewChatChannelInput,
-  createDraftChannelTitle,
-  createDraftChannelTopic,
   insertCreatedChannelIntoPayload,
 } from '../workspaceChatUtils.js';
 
@@ -148,67 +146,34 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     setBusy('message:prepare');
     setFeedback('');
     try {
-      if (isCatScopedLaneRoute) {
-        if (!hydratedDirectLane) {
-          const createdChannel = await createChatChannel({
-            title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
-            topic: createDraftChannelTopic(body),
-            skipBossCatGreeting: true,
-            repoPath: draftCwd ?? undefined,
-            roomMode: 'direct_cat_chat' as const,
-            defaultRecipientId: draftDefaultRecipientCatId ?? undefined,
-            participantCatIds: draftDefaultRecipientCatId ? [draftDefaultRecipientCatId] : draftCatIds,
-          });
-          channelId = createdChannel.id;
-          if (!channelId) {
-            throw new Error('No chat is available for sending messages.');
-          }
-          payload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
-          rollbackPayload = payload;
-          setState({ status: 'ready', payload });
-          navigate(rollbackPath, { replace: true });
-          restoreFiles = () => {
-            setChannelFiles(originalDraftFiles);
-          };
-        } else {
-          channelId = hydratedDirectLane.id;
-          restoreFiles = () => {
-            setChannelFiles(originalChannelFiles);
-          };
-        }
-      } else if (wasDraftingNewChat) {
-        const createdChannel = await createChatChannel(buildNewChatChannelInput({
-          body,
-          existingCount: initialPayload.chat.channels.length,
-          repoPath: draftCwd,
-          defaultRecipientCatId: draftDefaultRecipientCatId,
-          participantCatIds: draftCatIds,
-          draftModel,
-        }));
-        channelId = createdChannel.id;
-        if (!channelId) {
-          throw new Error('No chat is available for sending messages.');
-        }
-        rollbackPath = buildWorkspaceChannelPath(chatPrefix, channelId);
-        payload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
-        rollbackPayload = payload;
-        setState({ status: 'ready', payload });
-        navigate(rollbackPath, { replace: true });
-        restoreFiles = () => {
-          setChannelFiles(originalDraftFiles);
-        };
-      } else {
-        if (!channelId) {
-          throw new Error('No chat is available for sending messages.');
-        }
-        restoreFiles = () => {
-          setChannelFiles(originalChannelFiles);
-        };
-      }
-
-      if (!channelId) {
-        throw new Error('No chat is available for sending messages.');
-      }
+      const preparedChannel = await prepareComposerChannelDispatch({
+        initialPayload,
+        wasDraftingNewChat,
+        isCatScopedLaneRoute,
+        hydratedDirectLane,
+        currentChannelId: channelId,
+        currentRollbackPath: rollbackPath,
+        body,
+        existingCount: initialPayload.chat.channels.length,
+        draftCwd,
+        draftDefaultRecipientCatId,
+        participantCatIds: draftCatIds,
+        draftModel,
+        createChatChannel,
+        insertCreatedChannelIntoPayload,
+        setState,
+        navigate,
+        setChannelFiles,
+        originalDraftFiles,
+        originalChannelFiles,
+        buildChannelPath: (createdChannelId) =>
+          buildWorkspaceChannelPath(chatPrefix, createdChannelId),
+      });
+      payload = preparedChannel.payload;
+      rollbackPayload = preparedChannel.rollbackPayload;
+      channelId = preparedChannel.channelId;
+      rollbackPath = preparedChannel.rollbackPath;
+      restoreFiles = preparedChannel.restoreFiles;
 
       const soloDispatchTarget = buildSoloDispatchTarget({
         wasDraftingNewChat,

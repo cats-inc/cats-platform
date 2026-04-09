@@ -8,11 +8,16 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
     path.join(process.cwd(), 'src/products/chat/renderer/hooks/useComposerSubmit.ts'),
     'utf8',
   );
+  const sharedDispatchSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/composerDispatch.ts'),
+    'utf8',
+  );
 
   assert.match(source, /interface ActiveAckRequest/u);
   assert.match(source, /activeAckRequestRef = useRef<ActiveAckRequest \| null>\(null\)/u);
   assert.match(source, /const ackController = new AbortController\(\);/u);
-  assert.match(source, /createChatChannel\([\s\S]+ackController\.signal\)/u);
+  assert.match(source, /prepareComposerChannelDispatch\(\{[\s\S]+signal: ackController\.signal/u);
+  assert.match(sharedDispatchSource, /createChatChannel\(buildNewChatChannelInput\([\s\S]+\), signal\)/u);
   assert.match(source, /sendChatMessage\([\s\S]+ackController\.signal\)/u);
   assert.match(source, /sendParallelChatMessage\([\s\S]+ackController\.signal\)/u);
   assert.match(source, /const onCancelPendingSend = useCallback/u);
