@@ -375,6 +375,23 @@ test('chat model re-exports dedicated channel-state mutation helpers instead of 
   assert.match(channelStateModule, /export function replaceState/u);
 });
 
+test('chat model re-exports dedicated channel-lease mutation helpers instead of defining them inline', async () => {
+  const modelModule = await readFile(
+    new URL('../src/products/chat/state/model/index.ts', import.meta.url),
+    'utf8',
+  );
+  const channelLeaseModule = await readFile(
+    new URL('../src/products/chat/state/model/channelLeases.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(modelModule, /from '\.\/channelLeases\.js'/u);
+  assert.doesNotMatch(modelModule, /export function setChannelCatLease\(/u);
+  assert.doesNotMatch(modelModule, /export function setChannelParticipantLease\(/u);
+  assert.match(channelLeaseModule, /export function setChannelCatLease/u);
+  assert.match(channelLeaseModule, /export function setChannelParticipantLease/u);
+});
+
 test('chat snapshot composes dedicated shared and entity helper modules', async () => {
   const snapshotModule = await readFile(
     new URL('../src/products/chat/state/chat-snapshot/index.ts', import.meta.url),
