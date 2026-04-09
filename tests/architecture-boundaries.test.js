@@ -1807,6 +1807,10 @@ test('platform setup routes consume dedicated parser helpers instead of keeping 
     new URL('../src/app/server/platformSetupGuideCatRoutes.ts', import.meta.url),
     'utf8',
   );
+  const preferenceRouteSource = await readFile(
+    new URL('../src/app/server/platformSetupPreferenceRoutes.ts', import.meta.url),
+    'utf8',
+  );
   const supportSource = await readFile(
     new URL('../src/app/server/platformSetupRouteSupport.ts', import.meta.url),
     'utf8',
@@ -1819,8 +1823,10 @@ test('platform setup routes consume dedicated parser helpers instead of keeping 
   assert.match(routeSource, /platformSetupRouteSupport\.js/u);
   assert.match(routeSource, /platformSetupAssistantRoutes\.js/u);
   assert.match(routeSource, /platformSetupGuideCatRoutes\.js/u);
+  assert.match(routeSource, /platformSetupPreferenceRoutes\.js/u);
   assert.doesNotMatch(routeSource, /guideCatSidecarMode must be auto, drawer, or bubble/u);
   assert.doesNotMatch(routeSource, /Assistant provider is required/u);
+  assert.doesNotMatch(routeSource, /async function handlePlatformPreferencesUpdate\(/u);
   assert.doesNotMatch(routeSource, /assistantPresets:\s*\[\.\.\.core\.assistantPresets/u);
   assert.doesNotMatch(routeSource, /async function handleAssistantPresetCreate\(/u);
   assert.doesNotMatch(routeSource, /async function handleGuideCatUpdate\(/u);
@@ -1833,6 +1839,8 @@ test('platform setup routes consume dedicated parser helpers instead of keeping 
   assert.match(assistantRouteSource, /async function handleAssistantPresetCreate\(/u);
   assert.match(guideCatRouteSource, /export async function routePlatformGuideCatApi/u);
   assert.match(guideCatRouteSource, /async function handleGuideCatUpdate\(/u);
+  assert.match(preferenceRouteSource, /export async function routePlatformPreferenceApi/u);
+  assert.match(preferenceRouteSource, /async function handlePlatformPreferencesUpdate\(/u);
 });
 
 test('conversation sidebar consumes a dedicated view-model helper instead of defining all derived state inline', async () => {

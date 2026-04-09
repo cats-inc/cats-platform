@@ -7,8 +7,8 @@ import {
   readPlatformOnboardingHistory,
 } from '../../shared/platformOnboardingHistory.js';
 import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
-import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import { readPlatformPreferences, writePlatformPreferences } from '../../shared/platformPreferences.js';
+import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import {
   readRuntimeSetupSummary,
 } from '../../runtime/setup.js';
@@ -20,11 +20,10 @@ import type { RouteContext } from '../../shared/http.js';
 import {
   buildSetupDebugContext,
   normalizeAttemptId,
-  parsePlatformPreferencesUpdate,
-  type PlatformPreferencesUpdateBody,
 } from './platformSetupRouteSupport.js';
 import { routePlatformAssistantPresetApi } from './platformSetupAssistantRoutes.js';
 import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
+import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
 
 export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
@@ -283,32 +282,6 @@ async function handlePlatformSetupComplete(
   }
 }
 
-async function handlePlatformPreferencesUpdate(
-  context: PlatformSetupContext,
-): Promise<void> {
-  try {
-    const body = await readJsonBody<PlatformPreferencesUpdateBody>(context.request);
-    const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
-    const nextPrefsResult = parsePlatformPreferencesUpdate(body, currentPrefs);
-    if (!nextPrefsResult.ok) {
-      sendJson(context.response, 400, {
-        error: { code: 'bad_request', message: nextPrefsResult.message },
-      });
-      return;
-    }
-    const nextPrefs = nextPrefsResult.value;
-
-    await writePlatformPreferences(context.dependencies.config.chatStatePath, nextPrefs);
-
-    sendJson(context.response, 200, nextPrefs);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    sendJson(context.response, 400, {
-      error: { code: 'bad_request', message },
-    });
-  }
-}
-
 async function handleBootstrapDiagnosticsState(
   context: PlatformSetupContext,
 ): Promise<void> {
@@ -373,12 +346,7 @@ export async function routePlatformSetupApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/platform/preferences') {
-    if (context.method !== 'POST') {
-      sendMethodNotAllowed(context.response, ['POST']);
-      return true;
-    }
-    await handlePlatformPreferencesUpdate(context);
+  if (await routePlatformPreferenceApi(context)) {
     return true;
   }
 
