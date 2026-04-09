@@ -1047,13 +1047,18 @@ async function createMainWindow(
 
   applyDesktopWindowChrome(window);
 
-  await window.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
-  bootstrapPageVisible = true;
-  window.once('ready-to-show', () => {
-    if (options.showWindowOnStartup) {
-      window.show();
+  const showBootstrapWindow = () => {
+    if (!options.showWindowOnStartup || window.isDestroyed() || window.isVisible()) {
+      return;
     }
-  });
+    window.show();
+  };
+
+  window.webContents.once('did-finish-load', showBootstrapWindow);
+  window.once('ready-to-show', showBootstrapWindow);
+
+  bootstrapPageVisible = true;
+  await window.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
   return window;
 }
 
