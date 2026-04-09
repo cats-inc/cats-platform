@@ -57,6 +57,9 @@ import {
   useOnGenericDraftRouteEntry,
 } from '../../shared/renderer/hooks/useOnGenericDraftRouteEntry.js';
 import {
+  useProductChannelDocumentTitle,
+} from '../../shared/renderer/hooks/useProductChannelDocumentTitle.js';
+import {
   useWorkspaceModelSelectionState,
 } from '../../shared/renderer/hooks/useWorkspaceModelSelectionState.js';
 import {
@@ -411,11 +414,7 @@ export default function App() {
     setFeedback,
   });
 
-  useEffect(() => {
-    document.title = routeChannelTitle
-      ? `${presentChannelTitle(routeChannelTitle)} - Cats Chat`
-      : 'Cats Chat';
-  }, [routeChannelTitle]);
+  useProductChannelDocumentTitle('Cats Chat', routeChannelTitle);
 
   useOnGenericDraftRouteEntry(
     showingNewChatDraft && draftRoute.isGenericNewChatRoute,

@@ -54,6 +54,7 @@ import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
 import { useWorkspaceLocationState } from "./hooks/useWorkspaceLocationState.js";
 import { useWorkspaceModelSelectionState } from "./hooks/useWorkspaceModelSelectionState.js";
 import { useOnGenericDraftRouteEntry } from "./hooks/useOnGenericDraftRouteEntry.js";
+import { useProductChannelDocumentTitle } from "./hooks/useProductChannelDocumentTitle.js";
 import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
@@ -441,12 +442,10 @@ export function createWorkspaceProductApp({
         setFeedback,
       });
 
-    useEffect(() => {
-      const appTitle = `Cats ${productName}`;
-      document.title = routeChannelTitle
-        ? `${presentChannelTitle(routeChannelTitle)} - ${appTitle}`
-        : appTitle;
-    }, [productName, routeChannelTitle]);
+    useProductChannelDocumentTitle(
+      `Cats ${productName}`,
+      routeChannelTitle,
+    );
 
     useOnGenericDraftRouteEntry(
       showingNewChatDraft && !draftDefaultRecipientCatId,
