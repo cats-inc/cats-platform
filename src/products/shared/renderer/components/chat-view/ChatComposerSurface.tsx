@@ -1,27 +1,18 @@
 import {
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
   type RefCallback,
   type RefObject,
 } from 'react';
 
-import type {
-  AppShellPayload,
-  ChatCat,
-} from '../../../api/workspaceContracts.js';
-import { truncatePath, type SelectedChannelView } from '../../workspaceChatUtils.js';
-import { ComposerCatStack } from '../ComposerCatStack.js';
+import type { AppShellPayload } from '../../../api/workspaceContracts.js';
+import { truncatePath } from '../../workspaceChatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
-import {
-  buildModelSelectorLabel,
-  ModelSelectorChip,
-  type ModelSelectorValue,
-} from '../ModelSelector.js';
 
 export interface ChatComposerSurfaceProps {
   hasConversationStarted: boolean;
   payload: AppShellPayload;
-  selectedChannel: SelectedChannelView;
   composerDraft: string;
   channelFiles: File[];
   channelPlusMenuOpen: boolean;
@@ -30,14 +21,7 @@ export interface ChatComposerSurfaceProps {
   composerBusy: boolean;
   composerWorkspacePath: string | null;
   directLaneExcludedMentionNames: string[];
-  selectedModel?: ModelSelectorValue;
-  directLaneCat: ChatCat | null;
-  directLaneModelValue: ModelSelectorValue | null;
-  defaultRecipientCat: SelectedChannelView['assignedCats'][number] | null;
-  assignedCatRecords: ChatCat[];
-  leadCatRecord: ChatCat | null;
-  isDirectLane: boolean;
-  isSoloComposer: boolean;
+  composerTargetSlot?: ReactNode;
   composerCardRef: RefCallback<HTMLElement>;
   onOpenSection: (section: string) => void;
   onComposerChange: (value: string) => void;
@@ -52,7 +36,6 @@ export interface ChatComposerSurfaceProps {
 export function ChatComposerSurface({
   hasConversationStarted,
   payload,
-  selectedChannel,
   composerDraft,
   channelFiles,
   channelPlusMenuOpen,
@@ -61,14 +44,7 @@ export function ChatComposerSurface({
   composerBusy,
   composerWorkspacePath,
   directLaneExcludedMentionNames,
-  selectedModel,
-  directLaneCat,
-  directLaneModelValue,
-  defaultRecipientCat,
-  assignedCatRecords,
-  leadCatRecord,
-  isDirectLane,
-  isSoloComposer,
+  composerTargetSlot,
   composerCardRef,
   onOpenSection,
   onComposerChange,
@@ -195,30 +171,7 @@ export function ChatComposerSurface({
             );
           })()}
         </div>
-        {isDirectLane && directLaneCat && directLaneModelValue ? (
-          <ComposerCatStack
-            cats={[directLaneCat]}
-            bossCatId={payload.chat.bossCatId}
-            defaultRecipientCatId={directLaneCat.id}
-            onClick={composerBusy ? undefined : () => onOpenSection('execution')}
-          />
-        ) : isSoloComposer && selectedModel ? (
-          <div style={{ marginRight: 8 }}>
-            <ModelSelectorChip
-              label={buildModelSelectorLabel(selectedModel)}
-              onClick={composerBusy ? undefined : () => onOpenSection('execution')}
-            />
-          </div>
-        ) : !isSoloComposer && defaultRecipientCat ? (
-          <ComposerCatStack
-            cats={assignedCatRecords.length > 0
-              ? assignedCatRecords
-              : leadCatRecord ? [leadCatRecord] : []}
-            bossCatId={payload.chat.bossCatId}
-            defaultRecipientCatId={defaultRecipientCat.catId}
-            onClick={composerBusy ? undefined : () => onOpenSection('execution')}
-          />
-        ) : null}
+        {composerTargetSlot ?? null}
         <button
           className="composerSendButton"
           disabled={!composerDraft.trim() || composerBusy}

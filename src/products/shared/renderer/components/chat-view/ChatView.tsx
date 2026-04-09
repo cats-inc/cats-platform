@@ -38,6 +38,7 @@ import {
 import { useTranscriptAutoScroll } from '../../hooks/useTranscriptAutoScroll.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { ChatComposerSurface } from './ChatComposerSurface.js';
+import { WorkspaceComposerTargetSlot } from './WorkspaceComposerTargetSlot.js';
 import { ChatViewFrame } from './ChatViewFrame.js';
 import { ChatViewTopBar } from './ChatViewTopBar.js';
 import { ChatViewSidePanel } from './ChatViewSidePanel.js';
@@ -378,7 +379,6 @@ export function ChatView({
       <ChatComposerSurface
         hasConversationStarted={hasConversationStarted}
         payload={payload}
-        selectedChannel={selectedChannel}
         composerDraft={composerDraft}
         channelFiles={channelFiles}
         channelPlusMenuOpen={channelPlusMenuOpen}
@@ -387,14 +387,20 @@ export function ChatView({
         composerBusy={composerBusy}
         composerWorkspacePath={composerWorkspacePath}
         directLaneExcludedMentionNames={directLaneExcludedMentionNames}
-        selectedModel={selectedModel}
-        directLaneCat={directLaneCat}
-        directLaneModelValue={directLaneModelValue}
-        defaultRecipientCat={defaultRecipientCat ?? null}
-        assignedCatRecords={assignedCatRecords}
-        leadCatRecord={leadCatRecord}
-        isDirectLane={isDirectLane}
-        isSoloComposer={isSoloComposer}
+        composerTargetSlot={(
+          <WorkspaceComposerTargetSlot
+            payload={payload}
+            composerBusy={composerBusy}
+            selectedModel={selectedModel}
+            directLaneCat={directLaneCat}
+            defaultRecipientCat={defaultRecipientCat ?? null}
+            assignedCatRecords={assignedCatRecords}
+            leadCatRecord={leadCatRecord}
+            isDirectLane={isDirectLane}
+            isSoloComposer={isSoloComposer}
+            onOpenSection={openSidePanelTo}
+          />
+        )}
         composerCardRef={composerCardRef}
         onOpenSection={openSidePanelTo}
         onComposerChange={onComposerChange}

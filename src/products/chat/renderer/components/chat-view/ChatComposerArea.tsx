@@ -8,19 +8,9 @@ import {
 import type { AppShellPayload } from '../../../api/contracts.js';
 import { truncatePath } from '../../chatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
-import { ComposerCatStack } from '../ComposerCatStack.js';
-import {
-  ComposerParticipantStack,
-  type ComposerStackParticipant,
-} from '../ComposerParticipantStack.js';
-import {
-  ComposerRecipientChip,
-  type RecipientChipTarget,
-} from '../ComposerRecipientChip.js';
-import {
-  buildModelSelectorLabel,
-  ModelSelectorChip,
-} from '../ModelSelector.js';
+import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
+import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
+import { ChatComposerTargetSlot } from './ChatComposerTargetSlot.js';
 
 export interface ChatComposerAreaProps {
   hasConversationStarted: boolean;
@@ -97,10 +87,6 @@ export function ChatComposerArea({
   onStopMessage,
   autoResize,
 }: ChatComposerAreaProps) {
-  const implicitRecipient =
-    composerRecipients.length === 1 && composerRecipients[0]?.kind === 'implicit'
-      ? composerRecipients[0]
-      : null;
   const directLaneRecipient =
     isDirectLane && composerRecipients.length === 1 && composerRecipients[0]?.kind === 'named'
       ? composerRecipients[0]
@@ -109,14 +95,6 @@ export function ChatComposerArea({
     directLaneRecipient?.catId
       ? payload.chat.cats.find((cat) => cat.id === directLaneRecipient.catId) ?? null
       : null;
-  const implicitRecipientLabel = implicitRecipient
-    ? buildModelSelectorLabel({
-        provider: implicitRecipient.provider ?? '',
-        instance: implicitRecipient.instance ?? null,
-        model: implicitRecipient.model ?? null,
-        modelSelection: null,
-      })
-    : null;
 
   return (
     <form
@@ -249,35 +227,17 @@ export function ChatComposerArea({
             );
           })()}
         </div>
-        {directLaneCat ? (
-          <ComposerCatStack
-            cats={[directLaneCat]}
-            bossCatId={payload.chat.bossCatId}
-            defaultRecipientCatId={directLaneCat.id}
-            onClick={composerBusy ? undefined : () => onOpenSection('execution')}
-          />
-        ) : !isSoloComposer && composerStackParticipants.length > 0 ? (
-          <ComposerParticipantStack
-            participants={composerStackParticipants}
-            defaultParticipantId={defaultRecipientParticipantId}
-            onClick={composerBusy ? undefined : () => onOpenSection('execution')}
-          />
-        ) : implicitRecipient && implicitRecipientLabel ? (
-          <div style={{ marginRight: 8 }}>
-            <ModelSelectorChip
-              label={implicitRecipientLabel}
-              onClick={composerBusy ? undefined : () => onOpenSection('execution')}
-            />
-          </div>
-        ) : composerRecipients.length > 0 ? (
-          <ComposerRecipientChip
-            recipients={composerRecipients}
-            disabled={composerBusy}
-            onClick={composerBusy ? undefined : () => onOpenSection(
-              isDirectLane || isSoloComposer ? 'execution' : 'cats',
-            )}
-          />
-        ) : null}
+        <ChatComposerTargetSlot
+          payload={payload}
+          composerBusy={composerBusy}
+          composerRecipients={composerRecipients}
+          defaultRecipientParticipantId={defaultRecipientParticipantId}
+          composerStackParticipants={composerStackParticipants}
+          directLaneCat={directLaneCat}
+          isDirectLane={isDirectLane}
+          isSoloComposer={isSoloComposer}
+          onOpenSection={onOpenSection}
+        />
         {showCancelComposerAction ? (
           <button
             className="composerSendButton composerCancelButton"
