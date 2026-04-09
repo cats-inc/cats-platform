@@ -113,6 +113,36 @@ test('executeEnvironmentRecovery does not navigate when desktop packaged setup s
   assert.equal(openedUrl, null);
 });
 
+test('executeEnvironmentRecovery ignores verification-only desktop setup recommendations', async () => {
+  let openedUrl = null;
+  let triggered = false;
+
+  await executeEnvironmentRecovery(
+    {
+      runtimeStatus: 'ready',
+      runtimeBaseUrl: 'http://localhost:8484',
+      runtimeSetupStatus: 'ready',
+    },
+    {
+      getDesktopSetupRecommendation: async () => ({
+        available: true,
+        reason: 'verification_recommended',
+        summary: 'Rerun a verification step.',
+      }),
+      triggerDesktopPackagedSetup: async () => {
+        triggered = true;
+        return true;
+      },
+      openBrowserUrl: (url) => {
+        openedUrl = url;
+      },
+    },
+  );
+
+  assert.equal(triggered, false);
+  assert.equal(openedUrl, 'http://localhost:8484/');
+});
+
 test('openBrowserUrl falls back to location.assign when window.open is unavailable', () => {
   let assignedUrl = null;
 

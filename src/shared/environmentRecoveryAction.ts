@@ -37,12 +37,14 @@ export async function executeEnvironmentRecovery(input: {
     ?? openBrowserUrl;
 
   const desktopRecommendation = await readDesktopSetupRecommendation();
+  const desktopSetupRelevant = desktopRecommendation.available
+    && desktopRecommendation.reason !== 'verification_recommended';
   const runtimeFallbackTarget = resolveRuntimeRecoveryTarget(input.runtimeStatus, {
     runtimeSetupStatus: input.runtimeSetupStatus,
   });
 
   let target = resolveRuntimeRecoveryTarget(input.runtimeStatus, {
-    desktopSetupRelevant: desktopRecommendation.available,
+    desktopSetupRelevant,
     runtimeSetupStatus: input.runtimeSetupStatus,
   });
 
