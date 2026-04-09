@@ -1,16 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
 import { readStylesheet } from './helpers/readStylesheet.js';
 
 const PRODUCT_SURFACES = ['chat', 'work', 'code'];
 
 for (const product of PRODUCT_SURFACES) {
   test(`${product} ChatView keeps the top-bar roster expanded and actor-aware`, async () => {
-    const source = await readFile(
-      new URL(`../src/products/${product}/renderer/components/ChatView.tsx`, import.meta.url),
-      'utf8',
-    );
+    const source = await readProductChatViewSource(product);
 
     assert.match(source, /className="rosterAvatars rosterAvatarsExpanded"/u);
     assert.match(source, /const activeTopBarCatIds = useMemo/u);
