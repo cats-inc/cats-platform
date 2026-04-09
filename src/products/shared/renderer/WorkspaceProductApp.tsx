@@ -51,6 +51,10 @@ import {
   deriveAppViewState,
   type AppLoadState,
 } from "./workspaceAppViewState.js";
+import {
+  ProductAppStateBoundary,
+  ProductRendererShell,
+} from "./ProductRendererFrame.js";
 import { useAppChrome } from "./hooks/useAppChrome.js";
 import { useFolderBrowser } from "./hooks/useFolderBrowser.js";
 import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
@@ -530,234 +534,219 @@ export function createWorkspaceProductApp({
       [],
     );
 
-    if (state.status === "loading") {
-      return <BootShell />;
-    }
-
-    if (state.status === "error") {
-      return (
-        <div className="screen screenCentered">
-          <div className="errorPanel">
-            <p className="eyebrow">Renderer Error</p>
-            <h1>Chat unavailable</h1>
-            <p>{state.message}</p>
-          </div>
-        </div>
-      );
-    }
-
-    const { payload } = state;
-    const {
-      surface,
-      directLaneChannel,
-      activeMyCatId,
-      activeAssignedCats,
-      assignedCatIds,
-      bossCatName,
-      bossCatAvatarColor,
-      showBossCatAvatar,
-      selectableCats,
-      assignableCatCount,
-      draftCatIdSet,
-      showDirectLaneBoot,
-      showAddCatPanel,
-    } = deriveAppViewState({
-      pathname: location.pathname,
-      payload,
-      draftDefaultRecipientCatId,
-      selectedChannel,
-      selectedDirectLane,
-      routeDirectLaneSummary,
-      showingMyCatDirectLane,
-      addCatOpen,
-      showingNewChatDraft,
-      draftCatIds,
-    });
-    const visibleChatChannelId =
-      selectedChannel?.id ?? directLaneChannel?.id ?? null;
-
-    function onSwitchProduct(nextSurface: PlatformSurfaceId): void {
-      navigate(platformSurfaceRoutePrefix(nextSurface));
-    }
-
     return (
-      <div
-        className={
-          sidebarOpen
-            ? "screen claudeShell"
-            : "screen claudeShell claudeShellSidebarCollapsed"
-        }
-      >
-        {renderSidebar({
-          payload,
-          sidebarOpen,
-          accountMenuOpen,
-          overflowMenuOpenId,
-          busy,
-          surface,
-          shellSurface,
-          routeChannelId,
-          accountMenuRef,
-          onToggleSidebar,
-          onCollapsedSidebarClick,
-          onOpenChatsOverview,
-          onStartNewChat,
-          onSelect,
-          onDeleteChannel,
-          onRenameChannel,
-          onArchiveCat,
-          onAccountMenuToggle: () => setAccountMenuOpen(!accountMenuOpen),
-          onOverflowMenuToggle: setOverflowMenuOpenId,
-          onNavigateSettings,
-          onSwitchProduct,
-          activeMyCatId,
-          onDirectChatCat,
-          navigate,
-        })}
+      <ProductAppStateBoundary
+        state={state}
+        BootShell={BootShell}
+        unavailableTitle="Chat unavailable"
+        renderReady={(payload) => {
+          const {
+            surface,
+            directLaneChannel,
+            activeMyCatId,
+            activeAssignedCats,
+            assignedCatIds,
+            bossCatName,
+            bossCatAvatarColor,
+            showBossCatAvatar,
+            selectableCats,
+            assignableCatCount,
+            draftCatIdSet,
+            showDirectLaneBoot,
+            showAddCatPanel,
+          } = deriveAppViewState({
+            pathname: location.pathname,
+            payload,
+            draftDefaultRecipientCatId,
+            selectedChannel,
+            selectedDirectLane,
+            routeDirectLaneSummary,
+            showingMyCatDirectLane,
+            addCatOpen,
+            showingNewChatDraft,
+            draftCatIds,
+          });
+          const visibleChatChannelId =
+            selectedChannel?.id ?? directLaneChannel?.id ?? null;
 
-        <main className="canvas">
-          {settingsMode ? (
-            <PlatformSettingsRoutes
-              payload={payload}
-              onPayloadUpdate={(nextPayload) => {
-                startTransition(() =>
-                  setState({ status: "ready", payload: nextPayload }),
-                );
-              }}
-              feedback={feedback}
-              busy={busy}
-              onFeedback={setFeedback}
-              onBusy={setBusy}
-              onResetSetup={onResetSetup}
-            />
-          ) : (
-            <AppRoutesComponent
-              payload={payload}
-              selectedChannel={selectedChannel}
-              directLaneChannel={directLaneChannel}
-              showDirectLaneBoot={showDirectLaneBoot}
-              feedback={feedback}
-              busy={busy}
-              chatSurfaceProps={{
-                operatorSnapshot: operatorState.snapshot,
-                operatorLoading:
-                  operatorState.status === "loading" &&
-                  operatorState.snapshot === null,
-                operatorError:
-                  operatorState.status === "error" ? operatorState.message : "",
-                composerDraft,
+          function onSwitchProduct(nextSurface: PlatformSurfaceId): void {
+            navigate(platformSurfaceRoutePrefix(nextSurface));
+          }
+
+          return (
+            <ProductRendererShell
+              sidebarOpen={sidebarOpen}
+              sidebar={renderSidebar({
+                payload,
+                sidebarOpen,
+                accountMenuOpen,
+                overflowMenuOpenId,
                 busy,
-                feedback,
-                greeting,
-                channelFiles,
-                channelPlusMenuOpen,
-                channelPlusMenuRef,
-                channelFileInputRef,
-                activeAssignedCats,
-                bossCatName,
-                bossCatAvatarColor,
-                showBossCatAvatar,
-                onComposerChange: setComposerDraft,
-                onComposerKeyDown,
-                onSendMessage,
-                onToggleChannelPlusMenu: toggleChannelPlusMenu,
-                onChannelFileSelect: openChannelFilePicker,
-                onChannelFilesChange: setChannelFiles,
-                onApprovalDecision,
-                onChoiceSubmit,
-                onResumeChannel: visibleChatChannelId
-                  ? () => onResumeChannel(visibleChatChannelId)
-                  : undefined,
-                onOperatorAction,
-                autoResize,
-                selectedModel:
-                  selectedChannel?.composerMode === "solo"
-                    ? soloChannelModel
-                    : undefined,
-                onModelChange:
-                  selectedChannel?.composerMode === "solo"
-                    ? setSoloChannelModel
-                    : undefined,
-                onDirectLaneModelChange: onDirectLaneModelSave,
-                liveIndicator,
-              }}
-              draftSurfaceProps={{
-                composerDraft,
-                busy,
-                greeting,
-                draftFiles,
-                draftCwd,
-                draftCatIds,
-                plusMenuOpen,
-                plusMenuRef,
-                fileInputRef,
-                bossCatName,
-                bossCatAvatarColor,
-                onComposerChange: setComposerDraft,
-                onComposerKeyDown,
-                onSendMessage,
-                onTogglePlusMenu: toggleDraftPlusMenu,
-                onFileSelect: openDraftFilePicker,
-                onPickFolder: openDraftFolderPicker,
-                onDraftFilesChange: setDraftFiles,
-                onDraftCwdClear: () => setDraftCwd(null),
-                onToggleDraftCat,
-                autoResize,
-                draftDefaultRecipientCatId,
-                selectedModel: draftModel,
-                onModelChange: onDraftModelChange,
-                draftHighlightedCatId,
-                onHighlightDraftCat: setDraftHighlightedCatId,
-                draftCatModelOverrides,
-                onDraftCatModelOverride,
-                onDirectLaneModelChange: onDirectLaneModelSave,
-              }}
-              addCatOpen={showAddCatPanel}
-              onToggleAddCat={toggleAddCatPanel}
-              addCatPanelProps={{
-                panelRef: addCatPanelRef,
-                selectableCats,
-                assignableCatCount,
-                addCatTab,
-                showingNewChatDraft:
-                  showingNewChatDraft && !draftDefaultRecipientCatId,
-                draftCatIdSet,
-                assignedCatIds,
-                catForm,
-                onClose: () => setAddCatOpen(false),
-                onTabChange: setAddCatTab,
-                onAssignExistingCat,
-                onRemoveAssignedCat,
-                onToggleDraftCat: toggleDraftCat,
-                onCatFormChange: setCatForm,
-                onCreateCat: (event) => {
-                  if (showingNewChatDraft && !draftDefaultRecipientCatId) {
-                    void onCreateAndDraftCat(event);
-                    return;
-                  }
-                  void onCreateAndAssignCat(event);
-                },
-              }}
-              folderBrowserProps={{
-                folderBrowsePath,
-                folderBrowseCurrentPath: folderBrowseCurrentPath ?? "",
-                folderBrowseParentPath: folderBrowseParentPath ?? "",
-                folderBrowseEntries,
-                folderBrowseLoading,
-                folderBrowseError,
-                onPathChange: setFolderBrowsePath,
-                onBrowse: (path) => {
-                  void browseFolder(path);
-                },
-                onSelect: selectCurrentFolder,
-              }}
-              onOpenDraftAddCat={openDraftAddCatPanel}
-              onChangeDraftDefaultRecipient={changeDraftDefaultRecipient}
+                surface,
+                shellSurface,
+                routeChannelId,
+                accountMenuRef,
+                onToggleSidebar,
+                onCollapsedSidebarClick,
+                onOpenChatsOverview,
+                onStartNewChat,
+                onSelect,
+                onDeleteChannel,
+                onRenameChannel,
+                onArchiveCat,
+                onAccountMenuToggle: () => setAccountMenuOpen(!accountMenuOpen),
+                onOverflowMenuToggle: setOverflowMenuOpenId,
+                onNavigateSettings,
+                onSwitchProduct,
+                activeMyCatId,
+                onDirectChatCat,
+                navigate,
+              })}
+              mainContent={settingsMode ? (
+                <PlatformSettingsRoutes
+                  payload={payload}
+                  onPayloadUpdate={(nextPayload) => {
+                    startTransition(() =>
+                      setState({ status: "ready", payload: nextPayload }),
+                    );
+                  }}
+                  feedback={feedback}
+                  busy={busy}
+                  onFeedback={setFeedback}
+                  onBusy={setBusy}
+                  onResetSetup={onResetSetup}
+                />
+              ) : (
+                <AppRoutesComponent
+                  payload={payload}
+                  selectedChannel={selectedChannel}
+                  directLaneChannel={directLaneChannel}
+                  showDirectLaneBoot={showDirectLaneBoot}
+                  feedback={feedback}
+                  busy={busy}
+                  chatSurfaceProps={{
+                    operatorSnapshot: operatorState.snapshot,
+                    operatorLoading:
+                      operatorState.status === "loading" &&
+                      operatorState.snapshot === null,
+                    operatorError:
+                      operatorState.status === "error" ? operatorState.message : "",
+                    composerDraft,
+                    busy,
+                    feedback,
+                    greeting,
+                    channelFiles,
+                    channelPlusMenuOpen,
+                    channelPlusMenuRef,
+                    channelFileInputRef,
+                    activeAssignedCats,
+                    bossCatName,
+                    bossCatAvatarColor,
+                    showBossCatAvatar,
+                    onComposerChange: setComposerDraft,
+                    onComposerKeyDown,
+                    onSendMessage,
+                    onToggleChannelPlusMenu: toggleChannelPlusMenu,
+                    onChannelFileSelect: openChannelFilePicker,
+                    onChannelFilesChange: setChannelFiles,
+                    onApprovalDecision,
+                    onChoiceSubmit,
+                    onResumeChannel: visibleChatChannelId
+                      ? () => onResumeChannel(visibleChatChannelId)
+                      : undefined,
+                    onOperatorAction,
+                    autoResize,
+                    selectedModel:
+                      selectedChannel?.composerMode === "solo"
+                        ? soloChannelModel
+                        : undefined,
+                    onModelChange:
+                      selectedChannel?.composerMode === "solo"
+                        ? setSoloChannelModel
+                        : undefined,
+                    onDirectLaneModelChange: onDirectLaneModelSave,
+                    liveIndicator,
+                  }}
+                  draftSurfaceProps={{
+                    composerDraft,
+                    busy,
+                    greeting,
+                    draftFiles,
+                    draftCwd,
+                    draftCatIds,
+                    plusMenuOpen,
+                    plusMenuRef,
+                    fileInputRef,
+                    bossCatName,
+                    bossCatAvatarColor,
+                    onComposerChange: setComposerDraft,
+                    onComposerKeyDown,
+                    onSendMessage,
+                    onTogglePlusMenu: toggleDraftPlusMenu,
+                    onFileSelect: openDraftFilePicker,
+                    onPickFolder: openDraftFolderPicker,
+                    onDraftFilesChange: setDraftFiles,
+                    onDraftCwdClear: () => setDraftCwd(null),
+                    onToggleDraftCat,
+                    autoResize,
+                    draftDefaultRecipientCatId,
+                    selectedModel: draftModel,
+                    onModelChange: onDraftModelChange,
+                    draftHighlightedCatId,
+                    onHighlightDraftCat: setDraftHighlightedCatId,
+                    draftCatModelOverrides,
+                    onDraftCatModelOverride,
+                    onDirectLaneModelChange: onDirectLaneModelSave,
+                  }}
+                  addCatOpen={showAddCatPanel}
+                  onToggleAddCat={toggleAddCatPanel}
+                  addCatPanelProps={{
+                    panelRef: addCatPanelRef,
+                    selectableCats,
+                    assignableCatCount,
+                    addCatTab,
+                    showingNewChatDraft:
+                      showingNewChatDraft && !draftDefaultRecipientCatId,
+                    draftCatIdSet,
+                    assignedCatIds,
+                    catForm,
+                    onClose: () => setAddCatOpen(false),
+                    onTabChange: setAddCatTab,
+                    onAssignExistingCat,
+                    onRemoveAssignedCat,
+                    onToggleDraftCat: toggleDraftCat,
+                    onCatFormChange: setCatForm,
+                    onCreateCat: (event) => {
+                      if (showingNewChatDraft && !draftDefaultRecipientCatId) {
+                        void onCreateAndDraftCat(event);
+                        return;
+                      }
+                      void onCreateAndAssignCat(event);
+                    },
+                  }}
+                  folderBrowserProps={{
+                    folderBrowsePath,
+                    folderBrowseCurrentPath: folderBrowseCurrentPath ?? "",
+                    folderBrowseParentPath: folderBrowseParentPath ?? "",
+                    folderBrowseEntries,
+                    folderBrowseLoading,
+                    folderBrowseError,
+                    onPathChange: setFolderBrowsePath,
+                    onBrowse: (path) => {
+                      void browseFolder(path);
+                    },
+                    onSelect: selectCurrentFolder,
+                  }}
+                  onOpenDraftAddCat={openDraftAddCatPanel}
+                  onChangeDraftDefaultRecipient={changeDraftDefaultRecipient}
+                />
+              )}
+              confirmDialog={appDialog}
+              onConfirmClose={appHandleClose}
             />
-          )}
-        </main>
-        <ConfirmDialog dialog={appDialog} onClose={appHandleClose} />
-      </div>
+          );
+        }}
+      />
     );
   };
 }
