@@ -7,15 +7,24 @@ test('chat footer sentinel does not add a stray pixel at scroll end', async () =
     new URL('../src/products/chat/renderer/styles/chat-thread.css', import.meta.url),
     'utf8',
   );
+  const sharedThreadStyles = await readFile(
+    new URL('../src/products/shared/renderer/styles/chat-thread.css', import.meta.url),
+    'utf8',
+  );
   const autoScrollHook = await readFile(
     new URL('../src/products/shared/renderer/hooks/useTranscriptAutoScroll.ts', import.meta.url),
     'utf8',
   );
 
   const sentinelRule = chatThreadStyles.match(/\.transcriptBottomSentinel\s*\{[^}]+\}/u)?.[0] ?? '';
+  const sharedSentinelRule = sharedThreadStyles.match(
+    /\.transcriptBottomSentinel\s*\{[^}]+\}/u,
+  )?.[0] ?? '';
 
   assert.match(sentinelRule, /height:\s*0/u);
   assert.match(sentinelRule, /margin-top:\s*-18px/u);
+  assert.match(sharedSentinelRule, /height:\s*0/u);
+  assert.match(sharedSentinelRule, /margin-top:\s*-18px/u);
   assert.match(autoScrollHook, /Math\.max\(0,\s*nextComposerFlowOffset\)/u);
   assert.doesNotMatch(autoScrollHook, /Math\.max\(1,\s*nextComposerFlowOffset \+ 1\)/u);
 });

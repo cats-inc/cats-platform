@@ -293,6 +293,7 @@
 .transcriptBottomSentinel {
   width: 100%;
   height: 0;
+  margin-top: -18px;
 }
 
 .transcriptMessage {
@@ -379,9 +380,18 @@
   z-index: 5;
 }
 
+.composerCardDocked.composerCardMenuOpen {
+  z-index: 12;
+}
+
 .composerCardFresh {
   max-width: 680px;
   margin: 0 auto;
+}
+
+.composerCardFresh.composerCardMenuOpen {
+  position: relative;
+  z-index: 12;
 }
 
 .composerInput {

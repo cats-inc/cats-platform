@@ -82,11 +82,11 @@ export function ChatComposerSurface({
   return (
     <form
       ref={composerCardRef}
-      className={
+      className={`${
         hasConversationStarted
           ? 'composerCard composerCardDocked'
           : 'composerCard composerCardFresh'
-      }
+      }${channelPlusMenuOpen ? ' composerCardMenuOpen' : ''}`}
       onSubmit={(event) => void onSendMessage(event)}
     >
       {channelFiles.length > 0 ? (

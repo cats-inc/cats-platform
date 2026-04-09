@@ -398,7 +398,10 @@ export function NewChatDraft({
             </div>
           ) : null}
         </div>
-        <form className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}`} onSubmit={(event) => void onSendMessage(event)}>
+        <form
+          className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
+          onSubmit={(event) => void onSendMessage(event)}
+        >
           {draftFiles.length > 0 ? (
             <div className="composerAttachments">
               {draftFiles.map((file, index) => {

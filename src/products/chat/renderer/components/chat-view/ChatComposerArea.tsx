@@ -113,13 +113,13 @@ export function ChatComposerArea({
   return (
     <form
       ref={composerCardRef}
-      className={
+      className={`${
         hasConversationStarted
           ? isCompareGroup
             ? 'composerCard composerCardDocked composerCardDockedParallel'
             : 'composerCard composerCardDocked'
           : 'composerCard composerCardFresh'
-      }
+      }${channelPlusMenuOpen ? ' composerCardMenuOpen' : ''}`}
       onSubmit={(event) => void onSendMessage(event)}
     >
       {hasConversationStarted && !isNearBottom ? (

@@ -238,7 +238,10 @@ export function WorkspaceNewChatDraft({
             <h1>{greeting}</h1>
           )}
         </div>
-        <form className="composerCard composerCardFresh" onSubmit={(event) => void onSendMessage(event)}>
+        <form
+          className={`composerCard composerCardFresh${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
+          onSubmit={(event) => void onSendMessage(event)}
+        >
           {draftFiles.length > 0 ? (
             <div className="composerAttachments">
               {draftFiles.map((file, index) => {

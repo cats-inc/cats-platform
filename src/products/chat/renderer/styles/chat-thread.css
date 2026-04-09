@@ -428,6 +428,10 @@
   z-index: 5;
 }
 
+.composerCardDocked.composerCardMenuOpen {
+  z-index: 12;
+}
+
 .composerCardDocked.composerCardDockedParallel {
   bottom: 78px;
 }
@@ -435,6 +439,11 @@
 .composerCardFresh {
   max-width: var(--chat-transcript-max-width, 680px);
   margin: 0 auto;
+}
+
+.composerCardFresh.composerCardMenuOpen {
+  position: relative;
+  z-index: 12;
 }
 
 .composerInput {
