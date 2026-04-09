@@ -1159,6 +1159,10 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     new URL('../src/products/chat/renderer/styles/settings.css', import.meta.url),
     'utf8',
   );
+  const sharedSettingsStylesSource = await readFile(
+    new URL('../src/products/shared/renderer/styles/settings.css', import.meta.url),
+    'utf8',
+  );
   const platformSettingsStylesSource = await readFile(
     new URL('../src/app/renderer/settings/platform-settings.css', import.meta.url),
     'utf8',
@@ -1167,8 +1171,16 @@ test('renderer styles compose a shared design layer and product-owned chat parti
     new URL('../src/products/chat/renderer/styles/chat.css', import.meta.url),
     'utf8',
   );
+  const sharedChatStylesSource = await readFile(
+    new URL('../src/products/shared/renderer/styles/chat.css', import.meta.url),
+    'utf8',
+  );
   const chatWorkspaceStylesSource = await readFile(
     new URL('../src/products/chat/renderer/styles/chat-workspace.css', import.meta.url),
+    'utf8',
+  );
+  const sharedChatWorkspaceStylesSource = await readFile(
+    new URL('../src/products/shared/renderer/styles/chat-workspace.css', import.meta.url),
     'utf8',
   );
   const chatShellStylesSource = await readFile(
@@ -1189,6 +1201,10 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   );
   const chatSetupStylesSource = await readFile(
     new URL('../src/products/chat/renderer/styles/chat-setup.css', import.meta.url),
+    'utf8',
+  );
+  const sharedChatSetupStylesSource = await readFile(
+    new URL('../src/products/shared/renderer/styles/chat-setup.css', import.meta.url),
     'utf8',
   );
   const extraStylesSource = await readFile(
@@ -1231,23 +1247,32 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.doesNotMatch(stylesIndexSource, /\.tooltipPortal/u);
   assert.doesNotMatch(stylesIndexSource, /\.settingsShell/u);
   assert.doesNotMatch(stylesIndexSource, /\.myCatsSection/u);
-  assert.match(chatStylesSource, /@import '\.\/chat-workspace\.css';/u);
-  assert.match(chatStylesSource, /@import '\.\/chat-composer\.css';/u);
-  assert.match(chatStylesSource, /@import '\.\/chat-setup\.css';/u);
-  assert.doesNotMatch(chatStylesSource, /\.channelWorkspace/u);
-  assert.doesNotMatch(chatStylesSource, /\.composerPlusMenu/u);
-  assert.doesNotMatch(chatStylesSource, /\.setupWizard/u);
-  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-shell\.css';/u);
-  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-operator\.css';/u);
-  assert.match(chatWorkspaceStylesSource, /@import '\.\/chat-thread\.css';/u);
-  assert.doesNotMatch(chatWorkspaceStylesSource, /\.channelWorkspace/u);
-  assert.doesNotMatch(chatWorkspaceStylesSource, /\.recentOverflowMenu/u);
+  assert.match(chatStylesSource, /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat\.css';/u);
+  assert.match(sharedChatStylesSource, /@import '\.\/chat-workspace\.css';/u);
+  assert.match(sharedChatStylesSource, /@import '\.\/chat-composer\.css';/u);
+  assert.match(sharedChatStylesSource, /@import '\.\/chat-setup\.css';/u);
+  assert.doesNotMatch(sharedChatStylesSource, /\.channelWorkspace/u);
+  assert.doesNotMatch(sharedChatStylesSource, /\.composerPlusMenu/u);
+  assert.doesNotMatch(sharedChatStylesSource, /\.setupWizard/u);
+  assert.match(
+    chatWorkspaceStylesSource,
+    /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat-workspace\.css';/u,
+  );
+  assert.match(sharedChatWorkspaceStylesSource, /@import '\.\/chat-shell\.css';/u);
+  assert.match(sharedChatWorkspaceStylesSource, /@import '\.\/chat-operator\.css';/u);
+  assert.match(sharedChatWorkspaceStylesSource, /@import '\.\/chat-thread\.css';/u);
+  assert.doesNotMatch(sharedChatWorkspaceStylesSource, /\.channelWorkspace/u);
+  assert.doesNotMatch(sharedChatWorkspaceStylesSource, /\.recentOverflowMenu/u);
   assert.match(
     settingsStylesSource,
-    /@import '\.\.\/\.\.\/\.\.\/\.\.\/design\/components\/settings-shell\.css';/u,
+    /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/settings\.css';/u,
   );
   assert.doesNotMatch(settingsStylesSource, /\.settingsShell/u);
-  assert.match(settingsStylesSource, /\.catsLayout/u);
+  assert.match(
+    sharedSettingsStylesSource,
+    /@import '\.\.\/\.\.\/\.\.\/\.\.\/design\/components\/settings-shell\.css';/u,
+  );
+  assert.match(sharedSettingsStylesSource, /\.catsLayout/u);
   assert.match(
     platformSettingsStylesSource,
     /@import '\.\.\/\.\.\/\.\.\/design\/components\/settings-shell\.css';/u,
@@ -1263,7 +1288,11 @@ test('renderer styles compose a shared design layer and product-owned chat parti
   assert.match(chatThreadStylesSource, /\.recentOverflowMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusMenu/u);
   assert.match(chatComposerStylesSource, /\.composerPlusButton/u);
-  assert.match(chatSetupStylesSource, /platform-setup\.css/u);
+  assert.match(
+    chatSetupStylesSource,
+    /@import '\.\.\/\.\.\/\.\.\/shared\/renderer\/styles\/chat-setup\.css';/u,
+  );
+  assert.match(sharedChatSetupStylesSource, /platform-setup\.css/u);
   assert.match(extraStylesSource, /\.myCatsSection/u);
   await assert.rejects(
     readFile(new URL('../src/products/chat/renderer/styles/base.css', import.meta.url), 'utf8'),
