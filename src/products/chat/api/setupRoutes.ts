@@ -1,5 +1,6 @@
 import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
+import { resetPlatformOnboardingHistory } from '../../../shared/platformOnboardingHistory.js';
 import {
   readPlatformPreferences,
   writePlatformPreferences,
@@ -132,6 +133,11 @@ async function handleSetupReset(
       });
     } catch (error) {
       reportOwnerMemorySyncFailure('setup_reset', error);
+    }
+    try {
+      await resetPlatformOnboardingHistory(context.dependencies.config.chatStatePath);
+    } catch (error) {
+      reportOwnerMemorySyncFailure('setup_reset_history', error);
     }
     sendJson(
       context.response,

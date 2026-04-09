@@ -20,6 +20,7 @@ import {
   renameChatChannel as renameWorkspaceChatChannel,
   resetSetup as resetWorkspaceSetup,
 } from '../api/index.js';
+import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
 
 export interface WorkspaceNavigationChannelRef {
   id: string;
@@ -29,6 +30,18 @@ export interface WorkspaceNavigationChannelRef {
 }
 
 export interface WorkspaceNavigationPayloadLike {
+  bootstrapAttemptId?: string | null;
+  setupCompleteAt?: string | null;
+  products?: ReadonlyArray<{
+    id?: string;
+    productName?: string;
+    routePrefix?: string;
+    installState?: string;
+    setup?: {
+      selectable?: boolean;
+      disabledReason?: string;
+    } | null;
+  }>;
   chat: {
     channels: ReadonlyArray<WorkspaceNavigationChannelRef>;
     selectedChannelId: string | null;
@@ -39,7 +52,7 @@ export interface WorkspaceAppNavigationApi<TPayload extends WorkspaceNavigationP
   deleteChatChannel: (channelId: string) => Promise<TPayload>;
   deleteGlobalCat: (catId: string) => Promise<TPayload>;
   renameChatChannel: (channelId: string, title: string) => Promise<TPayload>;
-  resetSetup: () => Promise<unknown>;
+  resetSetup: () => Promise<TPayload>;
 }
 
 const defaultNavigationApi: WorkspaceAppNavigationApi<WorkspaceAppShellPayload> = {
@@ -253,7 +266,12 @@ export function useWorkspaceAppNavigationActions<
 
     setBusy('setup:reset');
     try {
-      await navigationApi.resetSetup();
+      const payload = await navigationApi.resetSetup();
+      await syncDesktopHostPlatformShellState({
+        bootstrapAttemptId: payload.bootstrapAttemptId ?? null,
+        setupCompleteAt: payload.setupCompleteAt ?? null,
+        products: Array.isArray(payload.products) ? [...payload.products] : [],
+      });
       window.location.href = '/';
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');

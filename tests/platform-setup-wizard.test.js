@@ -457,6 +457,23 @@ test('old POST /api/setup/complete still works alongside new endpoint', async ()
 
 test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: false,
+      }),
+    });
+
+    const diagnosticsBeforeReset = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
+    assert.equal(diagnosticsBeforeReset.status, 200);
+    const diagnosticsBeforeResetPayload = await diagnosticsBeforeReset.json();
+    assert.ok(
+      diagnosticsBeforeResetPayload.events.some((event) => event.kind === 'setup_completed'),
+      'setup_completed should be present before reset',
+    );
+
     await fetch(`${baseUrl}/api/platform/preferences`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -466,15 +483,6 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
         openWindowOnStartup: false,
         guideCatSidecarSeen: true,
         guideCatSidecarMode: 'bubble',
-      }),
-    });
-
-    await fetch(`${baseUrl}/api/platform/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        createGuideCat: false,
       }),
     });
 
@@ -493,6 +501,12 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
       startAtLogin: true,
       openWindowOnStartup: false,
     });
+
+    const diagnosticsAfterReset = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
+    assert.equal(diagnosticsAfterReset.status, 200);
+    const diagnosticsAfterResetPayload = await diagnosticsAfterReset.json();
+    assert.equal(diagnosticsAfterResetPayload.attemptId, null);
+    assert.deepEqual(diagnosticsAfterResetPayload.events, []);
   });
 });
 

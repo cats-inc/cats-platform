@@ -7,6 +7,7 @@ import test from 'node:test';
 import {
   appendPlatformOnboardingEvent,
   readPlatformOnboardingHistory,
+  resetPlatformOnboardingHistory,
   resolvePlatformOnboardingHistoryPath,
 } from '../build/server/shared/platformOnboardingHistory.js';
 
@@ -46,3 +47,23 @@ test('platform onboarding history persists bounded product-owned events beside c
   assert.equal(persisted.events.length, 2);
 });
 
+test('platform onboarding history reset clears persisted completion events and active attempt state', async () => {
+  const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-onboarding-history-reset-'));
+  const chatStatePath = path.join(workingDir, 'platform', 'state', 'chat-state.local.json');
+
+  await appendPlatformOnboardingEvent(chatStatePath, {
+    now: new Date('2026-03-31T01:00:00.000Z'),
+    attemptId: 'attempt-beta',
+    kind: 'setup_completed',
+    status: 'ok',
+    summary: 'Packaged platform setup completed.',
+  });
+
+  const payload = await resetPlatformOnboardingHistory(chatStatePath);
+  assert.equal(payload.attemptId, null);
+  assert.equal(payload.events.length, 0);
+
+  const persisted = JSON.parse(await readFile(payload.historyPath, 'utf8'));
+  assert.equal(persisted.activeAttemptId, null);
+  assert.deepEqual(persisted.events, []);
+});

@@ -219,6 +219,17 @@ export async function readPlatformOnboardingHistory(
   return summarizePlatformOnboardingHistory(file, historyPath);
 }
 
+export async function resetPlatformOnboardingHistory(
+  chatStatePath: string,
+): Promise<ProductBootstrapDiagnosticsReadModel> {
+  const historyPath = resolvePlatformOnboardingHistoryPath(chatStatePath);
+  const nextFile: PlatformOnboardingHistoryFile = {
+    ...EMPTY_HISTORY,
+  };
+  await writeAtomicJson(historyPath, nextFile);
+  return summarizePlatformOnboardingHistory(nextFile, historyPath);
+}
+
 export function summarizePlatformOnboardingHistory(
   file: PlatformOnboardingHistoryFile,
   historyPath: string,

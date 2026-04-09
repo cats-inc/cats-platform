@@ -77,18 +77,20 @@ export function applyDesktopHostPlatformShellUpdate(
   state: DesktopHostPlatformShellState,
   update: DesktopHostPlatformShellUpdate,
 ): DesktopHostPlatformShellState {
+  const setupCompleteAt = update.setupCompleteAt;
+
   return {
     appShell: {
       ...(state.appShell ?? {}),
       bootstrapAttemptId: update.bootstrapAttemptId,
-      setupCompleteAt: update.setupCompleteAt,
+      setupCompleteAt,
       products: update.products,
     },
     persistedSetup: {
-      setupCompleteAt: update.setupCompleteAt,
-      productSetupCompleted: state.persistedSetup.productSetupCompleted || Boolean(update.setupCompleteAt),
+      setupCompleteAt,
+      productSetupCompleted: Boolean(setupCompleteAt),
     },
-    providerDiagnostics: update.setupCompleteAt
+    providerDiagnostics: setupCompleteAt
       ? null
       : state.providerDiagnostics,
   };

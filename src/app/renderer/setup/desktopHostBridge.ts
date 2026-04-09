@@ -19,15 +19,21 @@ function resolveDesktopHostBridge(): DesktopHostBridge | null {
   return candidate ?? null;
 }
 
-export async function syncDesktopHostPlatformShell(
-  envelope: PlatformHostEnvelope,
+export async function syncDesktopHostPlatformShellState(
+  payload: DesktopHostPlatformShellUpdate,
 ): Promise<void> {
   const desktopHost = resolveDesktopHostBridge();
   if (!desktopHost?.updatePlatformShell) {
     return;
   }
 
-  await desktopHost.updatePlatformShell({
+  await desktopHost.updatePlatformShell(payload);
+}
+
+export async function syncDesktopHostPlatformShell(
+  envelope: PlatformHostEnvelope,
+): Promise<void> {
+  await syncDesktopHostPlatformShellState({
     bootstrapAttemptId: envelope.bootstrapAttemptId ?? null,
     setupCompleteAt: envelope.setupCompleteAt ?? null,
     products: envelope.products,

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { syncDesktopHostPlatformShell } from '../src/app/renderer/setup/desktopHostBridge.ts';
+import {
+  syncDesktopHostPlatformShell,
+  syncDesktopHostPlatformShellState,
+} from '../src/app/renderer/setup/desktopHostBridge.ts';
 
 function createEnvelope() {
   return {
@@ -125,6 +128,56 @@ test('platform setup bridge forwards committed shell state to desktop host', asy
         installPolicy: 'required',
         installState: 'installed',
         maturity: 'active',
+        setup: { selectable: true },
+      },
+    ],
+  });
+});
+
+test('platform setup bridge can forward reset shell state to desktop host', async () => {
+  let received = null;
+  const previousWindow = globalThis.window;
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      catsDesktopHost: {
+        async updatePlatformShell(payload) {
+          received = payload;
+        },
+      },
+    },
+  });
+
+  try {
+    await syncDesktopHostPlatformShellState({
+      bootstrapAttemptId: 'attempt-999',
+      setupCompleteAt: null,
+      products: [
+        {
+          id: 'chat',
+          productName: 'Cats Chat',
+          routePrefix: '/chat',
+          installState: 'installed',
+          setup: { selectable: true },
+        },
+      ],
+    });
+  } finally {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: previousWindow,
+    });
+  }
+
+  assert.deepEqual(received, {
+    bootstrapAttemptId: 'attempt-999',
+    setupCompleteAt: null,
+    products: [
+      {
+        id: 'chat',
+        productName: 'Cats Chat',
+        routePrefix: '/chat',
+        installState: 'installed',
         setup: { selectable: true },
       },
     ],
