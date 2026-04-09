@@ -25,18 +25,18 @@ import { useComposerRequestLifecycle } from '../../../shared/renderer/hooks/useC
 import {
   cancelChatChannel,
   cancelParallelChatGroup,
-  encodeAttachmentFiles,
-  createParallelChatGroup,
   createChatChannel,
   fetchAppShell,
-  sendParallelChatMessage,
   sendChatMessage,
   updateSelectedChannel,
   uploadChannelAttachments,
 } from '../api';
 import {
+  submitNewParallelChatDraft,
+  submitParallelCompareMessage,
+} from '../composerParallelDispatch.js';
+import {
   applyPendingExecutionTargetPreview,
-  createDraftChannelTitle,
   insertCreatedChannelIntoPayload,
   type DraftTemporaryParticipant,
   type SelectedChannelView,
@@ -58,13 +58,6 @@ function isChannelDispatchRunning(
 ): boolean {
   return payload.chat.channels.some((channel) =>
     channel.id === channelId && channel.routingStatus === 'running');
-}
-
-function isAnyParallelChatDispatchRunning(
-  payload: AppShellPayload,
-  channelIds: string[],
-): boolean {
-  return channelIds.some((channelId) => isChannelDispatchRunning(payload, channelId));
 }
 
 function isAbortError(error: unknown): boolean {
@@ -201,56 +194,31 @@ export function useComposerSubmit(options: {
     let keepBusyAfterReturn = false;
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
-        if (draftParallelChatTargets.length < 2) {
-          throw new Error('Choose at least two parallel chats before sending.');
-        }
-
         setBusy('parallelChat:ack');
-        const created = await createParallelChatGroup({
-          title: createDraftChannelTitle(body, initialPayload.chat.channels.length),
-          repoPath: draftCwd ?? undefined,
-          targets: draftParallelChatTargets.map((target) => ({
-            provider: target.provider,
-            instance: target.instance ?? null,
-            model: target.model ?? null,
-            modelSelection: target.modelSelection ?? null,
-          })),
-        }, ackController.signal);
-        const activeChannelId =
-          created.appShell.chat.selectedChannelId
-          && created.group.memberChannelIds.includes(created.appShell.chat.selectedChannelId)
-            ? created.appShell.chat.selectedChannelId
-            : created.group.members[0]?.channelId ?? null;
-        if (!activeChannelId) {
-          throw new Error('Parallel chat was created without an active thread.');
-        }
+        const dispatch = await submitNewParallelChatDraft({
+          body,
+          payload: initialPayload,
+          draftCwd,
+          draftFiles,
+          draftParallelChatTargets,
+          signal: ackController.signal,
+        });
 
-        rollbackPayload = created.appShell;
-        rollbackPath = buildChannelPath(activeChannelId);
+        rollbackPayload = dispatch.createdAppShell;
+        rollbackPath = dispatch.rollbackPath;
         setComposerDraft('');
         navigate(rollbackPath, { replace: true });
-        setState({ status: 'ready', payload: created.appShell });
+        setState({ status: 'ready', payload: dispatch.createdAppShell });
         restoreFiles = () => {
           setChannelFiles(originalDraftFiles);
         };
-        const encodedAttachments = draftFiles.length > 0
-          ? await encodeAttachmentFiles(draftFiles)
-          : undefined;
-        const dispatch = await sendParallelChatMessage(created.group.id, {
-          activeChannelId,
-          body,
-          attachments: encodedAttachments,
-        }, ackController.signal);
         clearAckRequestIfCurrent(submitId);
-        rollbackPayload = dispatch.appShell;
-        setState({ status: 'ready', payload: dispatch.appShell });
-        if (isAnyParallelChatDispatchRunning(dispatch.appShell, created.group.memberChannelIds)) {
+        rollbackPayload = dispatch.dispatchAppShell;
+        setState({ status: 'ready', payload: dispatch.dispatchAppShell });
+        if (dispatch.dispatchRequest) {
           setActiveDispatchRequest({
             id: submitId,
-            kind: 'concurrent',
-            channelId: activeChannelId,
-            groupId: created.group.id,
-            channelIds: created.group.memberChannelIds,
+            ...dispatch.dispatchRequest,
           });
           setBusy('parallelChat:dispatch');
           keepBusyAfterReturn = true;
@@ -278,28 +246,21 @@ export function useComposerSubmit(options: {
         setComposerDraft('');
         setChannelFiles([]);
         setBusy('parallelChat:ack');
-        const activeGroupChannelIds = initialPayload.chat.parallelChatGroups.find((group) =>
-          group.id === compareGroupId,
-        )?.memberChannelIds ?? [channelId];
-
-        const encodedAttachments = channelFiles.length > 0
-          ? await encodeAttachmentFiles(channelFiles)
-          : undefined;
-        const dispatch = await sendParallelChatMessage(compareGroupId, {
-          activeChannelId: channelId,
+        const dispatch = await submitParallelCompareMessage({
           body,
-          attachments: encodedAttachments,
-        }, ackController.signal);
+          payload: initialPayload,
+          compareGroupId,
+          channelId,
+          channelFiles,
+          signal: ackController.signal,
+        });
         clearAckRequestIfCurrent(submitId);
-        rollbackPayload = dispatch.appShell;
-        setState({ status: 'ready', payload: dispatch.appShell });
-        if (isAnyParallelChatDispatchRunning(dispatch.appShell, activeGroupChannelIds)) {
+        rollbackPayload = dispatch.dispatchAppShell;
+        setState({ status: 'ready', payload: dispatch.dispatchAppShell });
+        if (dispatch.dispatchRequest) {
           setActiveDispatchRequest({
             id: submitId,
-            kind: 'concurrent',
-            channelId,
-            groupId: compareGroupId,
-            channelIds: activeGroupChannelIds,
+            ...dispatch.dispatchRequest,
           });
           setBusy('parallelChat:dispatch');
           keepBusyAfterReturn = true;

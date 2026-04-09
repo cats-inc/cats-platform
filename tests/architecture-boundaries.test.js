@@ -888,6 +888,10 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
     new URL('../src/products/shared/renderer/composerDispatch.ts', import.meta.url),
     'utf8',
   );
+  const parallelDispatchSource = await readFile(
+    new URL('../src/products/chat/renderer/composerParallelDispatch.ts', import.meta.url),
+    'utf8',
+  );
   const hookImplementationSource = hookSource.includes('prepareWorkspaceSendContext')
     ? sharedDispatchSource
     : hookSource;
@@ -896,9 +900,13 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.doesNotMatch(appSource, /async function submitComposerMessage\(/u);
   assert.match(hookSource, /export function useComposerSubmit/u);
   assert.match(hookSource, /prepareWorkspaceSendContext/u);
+  assert.match(hookSource, /submitNewParallelChatDraft/u);
+  assert.match(hookSource, /submitParallelCompareMessage/u);
   assert.match(hookImplementationSource, /buildNewChatChannelInput/u);
   assert.match(hookImplementationSource, /insertCreatedChannelIntoPayload/u);
   assert.match(hookSource, /sendChatMessage/u);
+  assert.match(parallelDispatchSource, /createParallelChatGroup/u);
+  assert.match(parallelDispatchSource, /sendParallelChatMessage/u);
 });
 
 test('renderer app consumes dedicated cat-assignment actions instead of defining cat create/assign flows inline', async () => {
