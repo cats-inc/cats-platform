@@ -304,24 +304,6 @@ export function NewChatDraft({
             onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
             onKeyDown={(event) => void onComposerKeyDown(event)}
           />
-          {isGroupDraft ? (
-            <div className="composerGroupAddRow" style={hasReachedGroupParticipantLimit ? { visibility: 'hidden' } : undefined}>
-              <span className="parallelAddHint">Add another model to collaborate</span>
-              <button
-                type="button"
-                className="parallelAddButton"
-                disabled={isSubmittingFirstTurn}
-                onClick={() => openSidePanelTo('cats')}
-                aria-label="Add another model to collaborate"
-                tabIndex={hasReachedGroupParticipantLimit ? -1 : 0}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 3v10" />
-                  <path d="M3 8h10" />
-                </svg>
-              </button>
-            </div>
-          ) : null}
           <div className="composerBottomRow">
             <div className="composerLeftGroup">
               <div className="composerPlusWrapper" ref={plusMenuRef}>
@@ -368,6 +350,23 @@ export function NewChatDraft({
                   </div>
                 ) : null}
               </div>
+              {isGroupDraft && !hasReachedGroupParticipantLimit ? (
+                <div className="composerGroupAddRow">
+                  <button
+                    type="button"
+                    className="parallelAddButton"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={() => openSidePanelTo('cats')}
+                    aria-label="Add another model to collaborate"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3v10" />
+                      <path d="M3 8h10" />
+                    </svg>
+                  </button>
+                  <span className="parallelAddHint">Add another model to collaborate</span>
+                </div>
+              ) : null}
               {draftCwd ? (
                 <span
                   className="composerCwdChip"
