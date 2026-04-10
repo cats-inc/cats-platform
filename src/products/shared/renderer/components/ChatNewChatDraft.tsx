@@ -192,7 +192,9 @@ export function NewChatDraft({
   const audienceParticipants = (() => {
     if (!draftAudienceKeys) return groupComposerParticipants;
     const byKey = new Map(groupComposerParticipants.map((p) => [p.key, p]));
-    return draftAudienceKeys.map((key) => byKey.get(key)).filter(Boolean) as typeof groupComposerParticipants;
+    const resolved = draftAudienceKeys.map((key) => byKey.get(key)).filter(Boolean) as typeof groupComposerParticipants;
+    if (resolved.length > 0) return resolved;
+    return groupComposerParticipants.length > 0 ? [groupComposerParticipants[0]] : [];
   })();
   const {
     createTemporaryParticipantFormValue,
