@@ -1275,6 +1275,18 @@ test('renderer app consumes a dedicated routes module instead of defining the ro
   assert.match(routesSource, /path="new"/u);
 });
 
+test('renderer app keeps the new-chat greeting stable by threading the greeting seam into draft routes', async () => {
+  const appSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(
+    appSource,
+    /draftSurfaceProps=\{\{[\s\S]*?\bgreeting\b[\s\S]*?draftFiles/u,
+  );
+});
+
 test('renderer app consumes dedicated derived-state helpers instead of defining route and view-model derivations inline', async () => {
   const appSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
