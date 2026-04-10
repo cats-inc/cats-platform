@@ -468,6 +468,11 @@ export interface UpdateGlobalOrchestratorInput {
   telegramBotName?: string;
 }
 
+export interface ChannelMessageMetadata extends Record<string, unknown> {
+  recipientParticipantIds?: string[];
+  workflowShape?: RoomWorkflowShape | 'parallel' | null;
+}
+
 export interface SendChannelMessageInput {
   body: string;
   senderName?: string;
@@ -475,7 +480,7 @@ export interface SendChannelMessageInput {
   pendingModel?: string | null;
   pendingInstance?: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
-  messageMetadata?: Record<string, unknown>;
+  messageMetadata?: ChannelMessageMetadata;
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
 

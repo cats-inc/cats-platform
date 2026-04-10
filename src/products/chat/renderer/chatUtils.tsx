@@ -257,10 +257,17 @@ export function resolveDraftAudienceParticipantIds(options: {
   const participantIdsByKey = new Map(
     allParticipants.map((participant) => [participant.key, participant.participantId]),
   );
+  const seenParticipantIds = new Set<string>();
   const resolvedAudience = options.draftAudienceKeys
     .map((key) => participantIdsByKey.get(key))
     .filter((participantId): participantId is string => Boolean(participantId))
-    .filter((participantId, index, list) => list.indexOf(participantId) === index);
+    .filter((participantId) => {
+      if (seenParticipantIds.has(participantId)) {
+        return false;
+      }
+      seenParticipantIds.add(participantId);
+      return true;
+    });
 
   if (resolvedAudience.length > 0) {
     return resolvedAudience;

@@ -52,6 +52,7 @@ function readRequestedWorkflowShape(
   payload: SendChannelMessageInput,
 ): RoomWorkflowShape | null {
   const value = payload.messageMetadata?.workflowShape;
+  // Keep accepting the legacy "parallel" alias from older API/replay payloads.
   if (value === 'parallel') {
     return 'concurrent';
   }

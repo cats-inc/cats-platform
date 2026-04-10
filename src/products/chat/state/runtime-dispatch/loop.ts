@@ -202,7 +202,8 @@ export async function processDispatchQueue(
       activeTurn.reviewRequired = frame.reviewRequired;
     }
 
-    const shouldProcessSequentially = frame.targets.length > 1 && activeTurn.workflowShape !== 'concurrent';
+    const shouldProcessSequentially =
+      frame.targets.length > 1 && activeTurn.workflowShape === 'sequential';
     const targetsForThisPass = shouldProcessSequentially
       ? [frame.targets[0]!]
       : frame.targets;

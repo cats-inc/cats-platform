@@ -351,6 +351,65 @@ test('explicit mentions stay authoritative over current-turn draft audience meta
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
 });
 
+test('multi-target converge metadata does not force the turn down the sequential path', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createChannelState();
+  const agent1Reply = createDeferred();
+  const agent2Reply = createDeferred();
+  const bothRequested = createDeferred();
+  let agent1Requested = false;
+  let agent2Requested = false;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      agent1Requested = true;
+      if (agent2Requested) {
+        bothRequested.resolve();
+      }
+      return agent1Reply.promise;
+    }
+    if (content.includes('You are Agent-2')) {
+      agent2Requested = true;
+      if (agent1Requested) {
+        bothRequested.resolve();
+      }
+      return agent2Reply.promise;
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatchedPromise = routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Kick off the shared room.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id, agent2Id],
+        workflowShape: 'converge',
+      },
+    },
+    runtimeClient,
+    new Date('2026-03-21T00:00:00.000Z'),
+  );
+
+  await bothRequested.promise;
+  agent2Reply.resolve(usage('Agent-2 handled the second branch.'));
+  await Promise.resolve();
+  agent1Reply.resolve(usage('Agent-1 handled the first branch.'));
+
+  const dispatched = await dispatchedPromise;
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.workflowShape,
+    'concurrent',
+  );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.events.some(
+      (event) => event.kind === 'fan_out',
+    ),
+    true,
+  );
+});
+
 test('routeChannelMessage persists in-flight workflow snapshots before the full route completes', async () => {
   const { state, channelId } = await createChannelState();
   const store = new TrackingChatStore(state);
