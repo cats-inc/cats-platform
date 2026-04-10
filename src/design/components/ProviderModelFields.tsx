@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-
 import {
   type ProductProviderRegistryReadModel,
   type ProviderAdvancedControlValue,
@@ -26,6 +24,7 @@ import {
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 import { useProviderCatalogState } from './useProviderCatalogState.js';
+import { useProviderRegistryAutoRecheck } from './useProviderRegistryAutoRecheck.js';
 import { useProviderRegistryState } from './useProviderRegistryState.js';
 import { useProviderTargetReconciliation } from './useProviderTargetReconciliation.js';
 
@@ -164,43 +163,15 @@ export function ProviderModelFields({
     isLegacyModelTarget,
   });
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return;
-    }
-
-    function maybeAutoRecheck(): void {
-      const now = Date.now();
-      const shouldRecheck = shouldAutoRecheckProviderRegistry({
-        providersLoaded,
-        providerCount: providerOptions.length,
-        registryState: providerRegistry.state,
-        retryable: providerRegistry.recovery?.retryable !== false,
-        hasSetupHref: Boolean(providerRegistrySetupHref),
-        documentVisible: document.visibilityState !== 'hidden',
-        lastAutoRecheckAt: lastAutoProviderRegistryRecheckAt,
-        now,
-      });
-      if (!shouldRecheck) {
-        return;
-      }
-      reloadProviderRegistry({ markAutoRecheckAt: now });
-    }
-
-    window.addEventListener('focus', maybeAutoRecheck);
-    document.addEventListener('visibilitychange', maybeAutoRecheck);
-    return () => {
-      window.removeEventListener('focus', maybeAutoRecheck);
-      document.removeEventListener('visibilitychange', maybeAutoRecheck);
-    };
-  }, [
-    lastAutoProviderRegistryRecheckAt,
-    providerOptions.length,
-    providerRegistry.recovery?.retryable,
-    providerRegistry.state,
-    providerRegistrySetupHref,
+  useProviderRegistryAutoRecheck({
     providersLoaded,
-  ]);
+    providerCount: providerOptions.length,
+    registryState: providerRegistry.state,
+    retryable: providerRegistry.recovery?.retryable !== false,
+    providerRegistrySetupHref,
+    lastAutoProviderRegistryRecheckAt,
+    reloadProviderRegistry,
+  });
 
   function emitSelection(next: {
     model?: string;
