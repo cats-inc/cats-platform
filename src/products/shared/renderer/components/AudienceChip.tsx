@@ -195,6 +195,7 @@ export function AudienceChip({
               <div
                 key={participant.key}
                 className={`audiencePopoverItem${isDragging ? ' isDragging' : ''}${isDragOver ? ' isDragOver' : ''}`}
+                data-tooltip={participant.executionLabel || undefined}
                 draggable={isInAudience}
                 onDragStart={isInAudience ? (e) => onDragStart(e, audienceIndex) : undefined}
                 onDragOver={isInAudience ? (e) => onDragOver(e, audienceIndex) : undefined}
