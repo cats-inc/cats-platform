@@ -149,6 +149,14 @@ function resolveContinuationStage(
     };
   }
 
+  if (recommendation?.workflowShape === 'sequential' && targetCount > 1) {
+    return {
+      stageId: 'continuation_handoff',
+      workflowShape: 'sequential',
+      reviewRequired: false,
+    };
+  }
+
   return {
     stageId: targetCount > 1 ? 'concurrent_fan_out' : 'continuation_handoff',
     workflowShape: workflowShapeForTargets(targetCount),

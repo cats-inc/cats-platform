@@ -341,6 +341,8 @@ export default function App() {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    setDraftWorkflowShape,
+    setDraftAudienceKeys,
     resetDraftParallelChatTargets,
     createInitialGroupParticipants: seedDraftGroupParticipants,
     setDraftFiles,
@@ -381,10 +383,14 @@ export default function App() {
     setDraftCatModelOverrides,
     setDraftFiles,
     setChannelFiles,
+    setDraftWorkflowShape,
+    setDraftAudienceKeys,
     draftModel,
     soloChannelModel,
     showingParallelChatDraft,
     draftParallelChatTargets,
+    draftWorkflowShape,
+    draftAudienceKeys,
     resetDraftParallelChatTargets,
     compareGroupId: state.status === 'ready' && selectedChannel
       ? state.payload.chat.parallelChatGroups.find((group) =>
@@ -440,6 +446,8 @@ export default function App() {
         ));
       setDraftHighlightedCatId(null);
       setDraftCatModelOverrides(new Map());
+      setDraftWorkflowShape('sequential');
+      setDraftAudienceKeys(null);
     }, [
       newChatMode,
       seedDraftGroupParticipants,
@@ -447,6 +455,8 @@ export default function App() {
       setDraftTemporaryParticipants,
       setDraftHighlightedCatId,
       setDraftCatModelOverrides,
+      setDraftWorkflowShape,
+      setDraftAudienceKeys,
     ]),
   );
 

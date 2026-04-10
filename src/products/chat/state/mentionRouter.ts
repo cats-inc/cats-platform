@@ -86,6 +86,36 @@ function buildCatTarget(cat: AssignedParticipant): RoutingTarget {
   };
 }
 
+export function resolveCurrentTurnRecipientTargets(
+  state: ChatState,
+  channelId: string,
+  participantIds: readonly string[],
+): RoutingTarget[] {
+  const channel = buildChannelView(state, channelId);
+  const participantsById = new Map(
+    activeAssignedParticipants(channel).map((participant) => [participant.participantId, participant]),
+  );
+  const targets: RoutingTarget[] = [];
+
+  for (const participantId of participantIds) {
+    const normalizedParticipantId = participantId.trim();
+    if (!normalizedParticipantId) {
+      continue;
+    }
+
+    const participant = participantsById.get(normalizedParticipantId);
+    if (!participant) {
+      continue;
+    }
+
+    if (!targets.some((target) => target.participantId === participant.participantId)) {
+      targets.push(buildCatTarget(participant));
+    }
+  }
+
+  return targets;
+}
+
 function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
   return {
     participantKind: target.participantKind,

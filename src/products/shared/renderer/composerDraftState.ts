@@ -12,6 +12,8 @@ export interface ResetComposerDraftStateOptions<ModelValue, ParticipantValue> {
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<ParticipantValue[]>>;
   setChannelFiles?: Dispatch<SetStateAction<File[]>>;
   resetDraftParallelChatTargets?: () => void;
+  setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
+  setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
 }
 
 export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
@@ -23,6 +25,8 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftTemporaryParticipants,
   setChannelFiles,
   resetDraftParallelChatTargets,
+  setDraftWorkflowShape,
+  setDraftAudienceKeys,
 }: ResetComposerDraftStateOptions<ModelValue, ParticipantValue>): void {
   setDraftCwd(null);
   setDraftCatIds([]);
@@ -32,4 +36,6 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftFiles([]);
   setChannelFiles?.([]);
   resetDraftParallelChatTargets?.();
+  setDraftWorkflowShape?.('sequential');
+  setDraftAudienceKeys?.(null);
 }

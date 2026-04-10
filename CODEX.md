@@ -224,6 +224,21 @@ Codex MUST treat the following as hard guardrails when refactoring `cats`.
 - In Chat-heavy surfaces, prefer a thin shared substrate plus product-owned
   rendering branches over one universal renderer component.
 
+#### 9. When reviewing recent product work, do not "repair" intentional new UI back to an older contract
+
+- The latest explicit user intent for the current surface beats older local
+  assumptions about what the UI "used to be."
+- **MUST NOT** revert a recently introduced UI direction during review/fix work
+  unless the user explicitly asks for that rollback.
+- If current tests, notes in this file, or older DOM assumptions conflict with
+  the user's intended current UI, update the tests/docs/guardrails instead of
+  forcing the UI back to the older shape.
+- For Chat draft surfaces specifically, treat workflow/routing fixes and UI
+  contract changes as separate concerns. Preserve the current UI unless the
+  task is explicitly about changing it.
+- April 10, 2026 regression lesson: when a bug-fix request is about behavior
+  behind a new UI, keep the new UI and repair the behavior underneath it.
+
 ### Project-Specific Context
 
 - Main app port: `CATS_INC_PORT` (default `8181`)
@@ -315,4 +330,4 @@ working memory for Codex, not yet a ratified product spec or ADR.
 
 This file is maintained by Codex only. Other agents should not modify this file.
 
-Last updated: 2026-04-09
+Last updated: 2026-04-10

@@ -50,6 +50,8 @@ export function useAppNavigationActions(options: {
   setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
+  setDraftWorkflowShape: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
+  setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
   resetDraftParallelChatTargets: () => void;
   createInitialGroupParticipants: () => DraftTemporaryParticipant[];
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
@@ -72,6 +74,8 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    setDraftWorkflowShape,
+    setDraftAudienceKeys,
     resetDraftParallelChatTargets,
     createInitialGroupParticipants,
     setDraftFiles,
@@ -100,6 +104,8 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
+    setDraftWorkflowShape('sequential');
+    setDraftAudienceKeys(null);
     resetDraftParallelChatTargets();
     setDraftFiles([]);
     setChannelPlusMenuOpen(false);
@@ -115,6 +121,8 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    setDraftWorkflowShape,
+    setDraftAudienceKeys,
     resetDraftParallelChatTargets,
     setDraftFiles,
     setChannelPlusMenuOpen,

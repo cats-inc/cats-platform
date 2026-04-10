@@ -46,6 +46,7 @@ import {
 import {
   applyPendingExecutionTargetPreview,
   insertCreatedChannelIntoPayload,
+  resolveDraftAudienceParticipantIds,
   type DraftTemporaryParticipant,
   type SelectedChannelView,
 } from '../chatUtils';
@@ -96,10 +97,14 @@ export function useComposerSubmit(options: {
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
+  setDraftWorkflowShape: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
+  setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
   draftModel: ModelSelectorValue;
   soloChannelModel: ModelSelectorValue;
   showingParallelChatDraft: boolean;
   draftParallelChatTargets: ModelSelectorValue[];
+  draftWorkflowShape: 'sequential' | 'concurrent';
+  draftAudienceKeys: string[] | null;
   resetDraftParallelChatTargets: () => void;
   compareGroupId: string | null;
   compareSendScope: 'all_members' | 'active_only';
@@ -131,10 +136,14 @@ export function useComposerSubmit(options: {
     setDraftCatModelOverrides,
     setDraftFiles,
     setChannelFiles,
+    setDraftWorkflowShape,
+    setDraftAudienceKeys,
     draftModel,
     soloChannelModel,
     showingParallelChatDraft,
     draftParallelChatTargets,
+    draftWorkflowShape,
+    draftAudienceKeys,
     resetDraftParallelChatTargets,
     compareGroupId,
     compareSendScope,
@@ -264,6 +273,8 @@ export function useComposerSubmit(options: {
           setDraftCatModelOverrides,
           setDraftFiles,
           resetDraftParallelChatTargets,
+          setDraftWorkflowShape,
+          setDraftAudienceKeys,
         });
         return;
       }
@@ -341,6 +352,21 @@ export function useComposerSubmit(options: {
       rollbackPath = preparedSendContext.rollbackPath;
       restoreFiles = preparedSendContext.restoreFiles;
       const { messageBody, soloDispatchTarget } = preparedSendContext;
+      const draftAudienceParticipantIds = wasDraftingNewChat
+        && draftEntryKind === 'group'
+        && !showingParallelChatDraft
+        ? resolveDraftAudienceParticipantIds({
+            draftParticipantCatIds,
+            draftTemporaryParticipants,
+            draftAudienceKeys,
+          })
+        : [];
+      const draftMessageMetadata = draftAudienceParticipantIds.length > 0
+        ? {
+            recipientParticipantIds: draftAudienceParticipantIds,
+            workflowShape: draftWorkflowShape,
+          }
+        : null;
 
       if (soloDispatchTarget) {
         payload = applyPendingExecutionTargetPreview(payload, channelId, soloDispatchTarget);
@@ -355,6 +381,11 @@ export function useComposerSubmit(options: {
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
+        ...(draftMessageMetadata
+          ? {
+              messageMetadata: draftMessageMetadata,
+            }
+          : {}),
       }, ackController.signal);
       clearAckRequestIfCurrent(submitId);
       rollbackPayload = dispatch.appShell;
@@ -383,6 +414,8 @@ export function useComposerSubmit(options: {
           setDraftCatModelOverrides,
           setDraftFiles,
           setChannelFiles,
+          setDraftWorkflowShape,
+          setDraftAudienceKeys,
         });
       } else if (wasDraftingNewChat) {
         resetComposerDraftState({
@@ -392,6 +425,8 @@ export function useComposerSubmit(options: {
           setDraftHighlightedCatId,
           setDraftCatModelOverrides,
           setDraftFiles,
+          setDraftWorkflowShape,
+          setDraftAudienceKeys,
         });
       } else {
         setChannelFiles([]);
@@ -450,8 +485,12 @@ export function useComposerSubmit(options: {
     setDraftCatModelOverrides,
     setDraftCwd,
     setDraftFiles,
+    setDraftAudienceKeys,
+    setDraftWorkflowShape,
     setFeedback,
     setState,
+    draftAudienceKeys,
+    draftWorkflowShape,
     showingMyCatDirectLane,
     showingNewChatDraft,
     soloChannelModel.instance,

@@ -200,12 +200,12 @@ test('group route hides add-participant hint and button when max participants is
     />,
   );
 
-  assert.match(markup, /class="composerGroupAddRow" style="visibility:hidden"/u);
-  assert.match(markup, /aria-label="Add another model to collaborate"/u);
-  assert.match(markup, /tabindex="-1"/u);
+  assert.match(markup, /class="composerGroupAddRow"/u);
+  assert.doesNotMatch(markup, /aria-label="Add another model to collaborate"/u);
+  assert.doesNotMatch(markup, /parallelAddHint/u);
 });
 
-test('group route keeps the original composer avatar stack for participants', () => {
+test('group route keeps the current audience chip and inline avatar row for participants', () => {
   const payload = createPayload();
   payload.chat.bossCatId = 'cat-lead';
 
@@ -230,9 +230,13 @@ test('group route keeps the original composer avatar stack for participants', ()
     />,
   );
 
-  assert.match(markup, /class="composerCatStack"/u);
-  assert.match(markup, /class="catAvatar composerStackAvatar catAvatarBoss"/u);
-  assert.match(markup, /data-tooltip="Inline Reviewer"/u);
+  const avatarSlotMatches = markup.match(/class="composerGroupAvatarSlot"/gu) ?? [];
+
+  assert.match(markup, /class="composerGroupAddRow"/u);
+  assert.equal(avatarSlotMatches.length, 2);
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /Milo \+1/u);
+  assert.match(markup, /data-tooltip="Gemini-CLI · gemini-3.1-pro"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /aria-label="Remove Inline Reviewer"/u);
 });
@@ -307,7 +311,7 @@ test('group route restores remove controls once the draft has three participants
   assert.match(markup, /aria-label="Remove Inline Reviewer"/u);
 });
 
-test('solo draft without a recipient keeps the provider-model control as a model chip', () => {
+test('solo draft without a recipient keeps the provider-model control on the audience chip', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -321,7 +325,9 @@ test('solo draft without a recipient keeps the provider-model control as a model
     />,
   );
 
-  assert.match(markup, /class="modelSelectorChip"/u);
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /Claude-CLI · claude-sonnet/u);
+  assert.doesNotMatch(markup, /class="modelSelectorChip"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
 });
 
@@ -376,10 +382,11 @@ test('direct-lane draft keeps private chat copy', () => {
   assert.match(markup, /Private Chat/u);
   assert.match(markup, /Private lane for this Cat\./u);
   assert.match(markup, /Ask Milo for a focused update or recommendation/u);
-  assert.match(markup, /class="composerCatStack"/u);
-  assert.match(markup, /class="catAvatar composerStackAvatar"/u);
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /class="audienceChipAvatar"/u);
+  assert.match(markup, />Milo<\/span>/u);
   assert.match(markup, /background:#7A5B3A/u);
-  assert.match(markup, /color:#fff/u);
+  assert.doesNotMatch(markup, /class="composerCatStack"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /Cat-led Chat/u);
 });

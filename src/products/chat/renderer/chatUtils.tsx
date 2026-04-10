@@ -235,6 +235,40 @@ export function buildDraftParticipantExecutionLabel(participant: {
   );
 }
 
+export function resolveDraftAudienceParticipantIds(options: {
+  draftParticipantCatIds: readonly string[];
+  draftTemporaryParticipants: ReadonlyArray<Pick<DraftTemporaryParticipant, 'participantId'>>;
+  draftAudienceKeys?: readonly string[] | null;
+}): string[] {
+  const allParticipants = [
+    ...options.draftParticipantCatIds.map((catId) => ({
+      key: `cat:${catId}`,
+      participantId: catId,
+    })),
+    ...options.draftTemporaryParticipants.map((participant) => ({
+      key: `temp:${participant.participantId}`,
+      participantId: participant.participantId,
+    })),
+  ];
+  if (!options.draftAudienceKeys) {
+    return allParticipants.map((participant) => participant.participantId);
+  }
+
+  const participantIdsByKey = new Map(
+    allParticipants.map((participant) => [participant.key, participant.participantId]),
+  );
+  const resolvedAudience = options.draftAudienceKeys
+    .map((key) => participantIdsByKey.get(key))
+    .filter((participantId): participantId is string => Boolean(participantId))
+    .filter((participantId, index, list) => list.indexOf(participantId) === index);
+
+  if (resolvedAudience.length > 0) {
+    return resolvedAudience;
+  }
+
+  return allParticipants[0]?.participantId ? [allParticipants[0].participantId] : [];
+}
+
 export function createDraftTemporaryParticipantFromAssistantPreset(
   assistantPreset: AssistantPresetRecord,
   options: {

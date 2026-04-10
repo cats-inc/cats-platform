@@ -190,7 +190,7 @@ async function createChannelState() {
     now,
   );
 
-  return { state, channelId };
+  return { state, channelId, agent1Id, agent2Id };
 }
 
 test('explicit multi-target mentions fan out in parallel and persist replies in completion order', async () => {
@@ -262,6 +262,93 @@ test('explicit multi-target mentions fan out in parallel and persist replies in 
   assert.ok(
     channel.roomRouting?.workflow.eventHistory.some((event) => event.kind === 'outcome'),
   );
+});
+
+test('current-turn draft audience metadata routes multi-target turns sequentially in audience order', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createChannelState();
+  const firstReply = createDeferred();
+  const secondRequested = createDeferred();
+  let secondHasStarted = false;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      return firstReply.promise;
+    }
+    if (content.includes('You are Agent-1')) {
+      secondHasStarted = true;
+      secondRequested.resolve();
+      return usage('Agent-1 handled the second step.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatchedPromise = routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Kick off the shared room.',
+      messageMetadata: {
+        recipientParticipantIds: [agent2Id, agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    new Date('2026-03-21T00:00:00.000Z'),
+  );
+
+  await Promise.resolve();
+  assert.equal(secondHasStarted, false);
+  firstReply.resolve(usage('Agent-2 handled the first step.'));
+  await secondRequested.promise;
+
+  const dispatched = await dispatchedPromise;
+  const channel = buildChannelView(dispatched.state, channelId);
+  const replies = channel.messages.filter((message) => message.senderKind === 'agent');
+
+  assert.deepEqual(
+    runtimeClient.sentMessages.map((message) =>
+      message.content.includes('You are Agent-2') ? 'Agent-2' : 'Agent-1'),
+    ['Agent-2', 'Agent-1'],
+  );
+  assert.deepEqual(
+    replies.map((message) => message.senderName),
+    ['Agent-2', 'Agent-1'],
+  );
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
+  assert.equal(
+    channel.roomRouting?.workflow.eventHistory.some((event) => event.kind === 'fan_out'),
+    false,
+  );
+});
+
+test('explicit mentions stay authoritative over current-turn draft audience metadata', async () => {
+  const { state, channelId, agent2Id } = await createChannelState();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('Agent-1 handled the explicit mention.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: '@Agent-1 take the first pass.',
+      messageMetadata: {
+        recipientParticipantIds: [agent2Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    new Date('2026-03-21T00:00:00.000Z'),
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(runtimeClient.sentMessages[0]?.content.includes('You are Agent-1'), true);
+  assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Agent-2')), false);
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
 });
 
 test('routeChannelMessage persists in-flight workflow snapshots before the full route completes', async () => {
@@ -1660,4 +1747,3 @@ test('anti-ping-pong blocks repeated back-and-forth and prompts only include per
     ),
   );
 });
-

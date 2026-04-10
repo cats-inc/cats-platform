@@ -12,6 +12,7 @@ import type {
   RoomRoutingState,
   RoomWorkflowState,
   RoomWorkflowTurn,
+  RoomWorkflowShape,
 } from '../../../../shared/roomRouting.js';
 import {
   appendMessage,
@@ -45,6 +46,26 @@ import {
   applyRoomRoutingSnapshot,
   toParticipantRef,
 } from '../runtime-session/state.js';
+import { resolveCurrentTurnRecipientTargets } from '../mentionRouter.js';
+
+function readRequestedWorkflowShape(
+  payload: SendChannelMessageInput,
+): RoomWorkflowShape | null {
+  const value = payload.messageMetadata?.workflowShape;
+  if (value === 'parallel') {
+    return 'concurrent';
+  }
+  return value === 'sequential' || value === 'concurrent' || value === 'converge'
+    ? value
+    : null;
+}
+
+function readRecipientParticipantIds(payload: SendChannelMessageInput): string[] {
+  const candidateIds = payload.messageMetadata?.recipientParticipantIds;
+  return Array.isArray(candidateIds)
+    ? candidateIds.filter((candidateId): candidateId is string => typeof candidateId === 'string')
+    : [];
+}
 
 export interface PreparedDispatchTurn {
   state: ChatState;
@@ -79,7 +100,7 @@ export function prepareDispatchTurn(
         payload.choiceResponse.sourceMessageId,
       )
     : null;
-  const initialResolution = choiceResponseTarget
+  let initialResolution = choiceResponseTarget
     ? {
         targets: [choiceResponseTarget],
         unresolved: [],
@@ -99,6 +120,24 @@ export function prepareDispatchTurn(
         allowDefaultTarget: true,
         explicitTrigger: 'explicit_mention',
       });
+  const currentTurnRecipientIds = choiceResponseTarget ? [] : readRecipientParticipantIds(payload);
+  if (
+    !choiceResponseTarget
+    && initialResolution.trigger === 'room_default'
+    && currentTurnRecipientIds.length > 0
+  ) {
+    const currentTurnTargets = resolveCurrentTurnRecipientTargets(
+      nextState,
+      channelId,
+      currentTurnRecipientIds,
+    );
+    if (currentTurnTargets.length > 0) {
+      initialResolution = {
+        ...initialResolution,
+        targets: currentTurnTargets,
+      };
+    }
+  }
   const results: ChannelDispatchResult[] = [];
   const nowIso = now.toISOString();
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
@@ -115,7 +154,8 @@ export function prepareDispatchTurn(
     userMessage,
     nowIso,
     workflowStageIdForTrigger(initialResolution.trigger),
-    workflowShapeForTargets(initialResolution.targets.length),
+    readRequestedWorkflowShape(payload)
+      ?? workflowShapeForTargets(initialResolution.targets.length),
   );
   activeTurn.id = outcome.turnId;
   workflow.activeTurn = activeTurn;

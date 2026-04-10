@@ -202,8 +202,19 @@ export async function processDispatchQueue(
       activeTurn.reviewRequired = frame.reviewRequired;
     }
 
+    const shouldProcessSequentially = frame.targets.length > 1 && activeTurn.workflowShape !== 'concurrent';
+    const targetsForThisPass = shouldProcessSequentially
+      ? [frame.targets[0]!]
+      : frame.targets;
+    if (shouldProcessSequentially) {
+      queue.unshift({
+        ...frame,
+        targets: frame.targets.slice(1),
+      });
+    }
+
     const allowedRequests: DispatchRequest[] = [];
-    for (const target of frame.targets) {
+    for (const target of targetsForThisPass) {
       const branchStrategy = frame.branchStrategyOverride
         ?? resolveWorkflowBranchStrategy(
           frame.sourceParticipant,
@@ -348,7 +359,7 @@ export async function processDispatchQueue(
             }),
           },
         );
-        if (frame.targets.length === 1 && queue.length === 0) {
+        if (targetsForThisPass.length === 1 && queue.length === 0) {
           guardReason = 'max_target_visits';
         }
         results.push({
@@ -435,7 +446,7 @@ export async function processDispatchQueue(
             }),
           },
         );
-        if (frame.targets.length === 1 && queue.length === 0) {
+        if (targetsForThisPass.length === 1 && queue.length === 0) {
           guardReason = 'anti_ping_pong';
         }
         results.push({

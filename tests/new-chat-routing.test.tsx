@@ -14,6 +14,7 @@ import {
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
   insertCreatedChannelIntoPayload,
+  resolveDraftAudienceParticipantIds,
   resolveGenericDraftTemporaryParticipants,
 } from '../src/products/chat/renderer/chatUtils.tsx';
 import {
@@ -315,6 +316,30 @@ test('generic group draft route preserves existing temporary participants during
 
   assert.equal(participants.length, 1);
   assert.equal(participants[0]?.provider, 'gemini');
+});
+
+test('resolveDraftAudienceParticipantIds preserves chip order and falls back to the first participant when keys go stale', () => {
+  assert.deepEqual(
+    resolveDraftAudienceParticipantIds({
+      draftParticipantCatIds: ['cat-lead', 'cat-helper'],
+      draftTemporaryParticipants: [
+        {
+          participantId: 'participant-reviewer',
+        },
+      ],
+      draftAudienceKeys: ['temp:participant-reviewer', 'cat:cat-lead'],
+    }),
+    ['participant-reviewer', 'cat-lead'],
+  );
+
+  assert.deepEqual(
+    resolveDraftAudienceParticipantIds({
+      draftParticipantCatIds: ['cat-lead', 'cat-helper'],
+      draftTemporaryParticipants: [],
+      draftAudienceKeys: ['cat:missing'],
+    }),
+    ['cat-lead'],
+  );
 });
 
 test('resolveDraftParticipantSelection dedupes toggled cats and keeps the route default recipient first', () => {
