@@ -34,11 +34,6 @@ import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../shared/operator-loop/index';
-import {
-  buildNamedRecipient,
-  buildRecipientFromCat,
-  buildImplicitRecipient,
-} from './ComposerRecipientChip';
 import { type ModelSelectorValue } from './ModelSelector';
 import {
   type MessageChoicesSubmitInput,
@@ -49,7 +44,6 @@ import {
   isComposerBusy,
 } from '../../../../shared/composer';
 import {
-  resolveParticipantCatId,
   type ResolvedChannelParticipant,
 } from '../../shared/channelParticipants';
 import {
@@ -69,9 +63,15 @@ import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 import { ChatTranscriptPanel } from './chat-view/ChatTranscriptPanel';
 import {
-  resolveActiveCompareChannelId,
-  resolveCompareNeighborChannelId,
-} from './chat-view/compareNavigation';
+  buildChatComposerRecipients,
+  buildChatComposerStackParticipants,
+  buildChoiceResponsesBySource,
+  messageStackTone,
+  resolveChatViewCompareState,
+  resolveChatViewTopBarPresenceState,
+  resolveChatViewTopBarTitle,
+  resolveShowRosterAvatars,
+} from './chat-view/chatViewSupport';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -175,19 +175,6 @@ export function ChatView({
   onRelayMessage,
   onUpdateChannelParticipant,
 }: ChatViewProps) {
-  function messageStackTone(senderKind: string): string {
-    switch (senderKind) {
-      case 'user':
-        return 'transcriptMessageStack transcriptMessageStackUser';
-      case 'orchestrator':
-        return 'transcriptMessageStack transcriptMessageStackOrchestrator';
-      case 'agent':
-        return 'transcriptMessageStack transcriptMessageStackAgent';
-      default:
-        return 'transcriptMessageStack transcriptMessageStackSystem';
-    }
-  }
-
   const visibleMessages = selectedChannel.messages.filter(
     (message) => payload.chat.showVerboseMessages || message.metadata?.verbosity !== 'verbose',
   );
@@ -203,33 +190,25 @@ export function ChatView({
   const { visibleLiveIndicator, transcriptScrollKey } = transcriptFollowState;
 
   const conversationMode = resolveConversationMode(selectedChannel);
-  const compareMembers = compareGroup?.members ?? [];
-  const isCompareGroup = compareMembers.length > 1;
-  const activeCompareChannelId = resolveActiveCompareChannelId(
+  const compareState = useMemo(
+    () => resolveChatViewCompareState({
+      compareGroup,
+      channels: payload.chat.channels,
+      routeChannelId,
+      selectedChannelId: selectedChannel.id,
+      busy,
+    }),
+    [busy, compareGroup, payload.chat.channels, routeChannelId, selectedChannel.id],
+  );
+  const {
     compareMembers,
-    routeChannelId,
-    selectedChannel.id,
-  );
-  const compareMemberIndex = compareMembers.findIndex(
-    (member) => member.channelId === activeCompareChannelId,
-  );
-  const compareGroupChannels = useMemo(
-    () => compareMembers
-      .map((member) =>
-        payload.chat.channels.find((channel) => channel.id === member.channelId) ?? null,
-      )
-      .filter((channel): channel is AppShellPayload['chat']['channels'][number] => channel != null),
-    [compareMembers, payload.chat.channels],
-  );
-  const compareDispatchBusy =
-    busy === 'parallelChat:ack'
-    || busy === 'parallelChat:dispatch'
-    || busy === 'parallelChat:relay'
-    || busy === 'parallelChat:stop';
-  const compareRoutingBusy = compareGroupChannels.some((channel) =>
-    channel.routingStatus === 'running',
-  );
-  const compareBusy = compareDispatchBusy || compareRoutingBusy;
+    isCompareGroup,
+    activeCompareChannelId,
+    compareMemberIndex,
+    compareBusy,
+    comparePrevChannelId,
+    compareNextChannelId,
+  } = compareState;
 
   const isSoloComposer = isSoloThreadConversationMode(conversationMode);
   const isDirectLane = isDirectConversationMode(conversationMode);
@@ -274,14 +253,21 @@ export function ChatView({
     setSidePanelSection(section);
   }
 
-  const topBarTitle = isDirectLane
-    ? (directLaneCat?.name ?? defaultRecipientCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
-    : isCompareGroup && compareGroup
-      ? presentChannelTitle(compareGroup.title)
-      : presentChannelTitle(selectedChannel.title);
-  const showRosterAvatars = isDirectLane
-    ? Boolean(defaultRecipientCat)
-    : Boolean((showBossCatAvatar && !isSoloComposer) || activeRoomParticipants.length > 0);
+  const topBarTitle = resolveChatViewTopBarTitle({
+    isDirectLane,
+    directLaneCat,
+    defaultRecipientCatRecord,
+    selectedChannelTitle: selectedChannel.title,
+    isCompareGroup,
+    compareGroup,
+  });
+  const showRosterAvatars = resolveShowRosterAvatars({
+    isDirectLane,
+    defaultRecipientCat,
+    showBossCatAvatar,
+    isSoloComposer,
+    activeRoomParticipants,
+  });
   const participantChipLabel = activeRoomParticipants.length > 0
     ? `${activeRoomParticipants.length} participant${activeRoomParticipants.length === 1 ? '' : 's'}`
     : 'Participants';
@@ -298,16 +284,11 @@ export function ChatView({
     [directLaneCat?.name, isDirectLane],
   );
   const composerStackParticipants = useMemo(
-    () => activeRoomParticipants.map((participant) => {
-      const catRecord = resolveParticipantCatRecord(participant);
-      return {
-        participantId: participant.participantId,
-        label: resolveParticipantDisplayName(participant, catRecord),
-        avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
-        avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
-        isBoss: catRecord?.id === payload.chat.bossCatId,
-        useNeutralAvatar: catRecord == null,
-      };
+    () => buildChatComposerStackParticipants({
+      activeRoomParticipants,
+      bossCatId: payload.chat.bossCatId,
+      resolveParticipantCatRecord,
+      resolveParticipantDisplayName,
     }),
     [
       activeRoomParticipants,
@@ -320,113 +301,43 @@ export function ChatView({
     () => buildChatOperatorView(operatorSnapshot, selectedChannel.id),
     [operatorSnapshot, selectedChannel.id],
   );
-  const choiceResponsesBySource = useMemo(() => {
-    const responses = new Map<
-      string,
-      NonNullable<(typeof selectedChannel.messages)[number]['choiceResponse']>
-    >();
-    for (const message of selectedChannel.messages) {
-      if (message.choiceResponse?.sourceMessageId) {
-        responses.set(message.choiceResponse.sourceMessageId, message.choiceResponse);
-      }
-    }
-    return responses;
-  }, [selectedChannel.messages]);
+  const choiceResponsesBySource = useMemo(
+    () => buildChoiceResponsesBySource(selectedChannel.messages),
+    [selectedChannel.messages],
+  );
   const runIdsKey = useMemo(
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
     [operatorView],
   );
-  const activeTopBarCatIds = useMemo(() => {
-    const ids = visibleLiveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
-    if (ids.length > 0) {
-      return [...new Set(ids)];
-    }
-    if (visibleLiveIndicator?.active && visibleLiveIndicator.catId) {
-      return [visibleLiveIndicator.catId];
-    }
-    return [];
-  }, [visibleLiveIndicator]);
+  const topBarPresenceState = useMemo(
+    () => resolveChatViewTopBarPresenceState({
+      visibleLiveIndicator,
+      selectedChannel,
+      activeRoomParticipants,
+    }),
+    [activeRoomParticipants, selectedChannel, visibleLiveIndicator],
+  );
+  const { activeTopBarCatIds, activeTopBarParticipantIds, liveSpeakerParticipant } =
+    topBarPresenceState;
   const activeTopBarCatIdSet = useMemo(
     () => new Set(activeTopBarCatIds),
     [activeTopBarCatIds],
   );
-  const activeTopBarParticipantIds = useMemo(() => {
-    const workflowTargets = selectedChannel.roomRouting?.workflow?.activeTurn?.targetStatuses ?? [];
-    const runningParticipantIds = workflowTargets
-      .filter((target) => target.status === 'running')
-      .map((target) => target.participant.participantId)
-      .filter((participantId) => participantId.trim().length > 0);
-    if (runningParticipantIds.length > 0) {
-      return [...new Set(runningParticipantIds)];
-    }
-    if (visibleLiveIndicator?.active && selectedChannel.roomRouting?.defaultRecipientId) {
-      return [selectedChannel.roomRouting.defaultRecipientId];
-    }
-    return [];
-  }, [
-    visibleLiveIndicator?.active,
-    selectedChannel.roomRouting?.defaultRecipientId,
-    selectedChannel.roomRouting?.workflow?.activeTurn,
-  ]);
   const activeTopBarParticipantIdSet = useMemo(
     () => new Set(activeTopBarParticipantIds),
     [activeTopBarParticipantIds],
   );
-  const liveSpeakerParticipantId = useMemo(() => {
-    const activeWorkflowParticipantId = activeTopBarParticipantIds[0] ?? null;
-    if (activeWorkflowParticipantId) {
-      return activeWorkflowParticipantId;
-    }
-    if (visibleLiveIndicator?.active) {
-      return selectedChannel.roomRouting?.defaultRecipientId ?? null;
-    }
-    return null;
-  }, [
-    activeTopBarParticipantIds,
-    visibleLiveIndicator?.active,
-    selectedChannel.roomRouting?.defaultRecipientId,
-  ]);
-  const liveSpeakerParticipant = useMemo(
-    () => liveSpeakerParticipantId
-      ? activeRoomParticipants.find(
-          (participant) => participant.participantId === liveSpeakerParticipantId,
-        ) ?? null
-      : visibleLiveIndicator?.catId
-        ? activeRoomParticipants.find((participant) =>
-          resolveParticipantCatId(participant) === visibleLiveIndicator.catId)
-          ?? null
-        : null,
-    [
-      activeRoomParticipants,
-      visibleLiveIndicator?.catId,
-      liveSpeakerParticipantId,
-    ],
-  );
   const composerRecipients = useMemo(() => {
-    if (isDirectLane && directLaneCat) {
-      return [buildRecipientFromCat(directLaneCat, payload.chat.bossCatId)];
-    }
-    if (isSoloComposer && selectedModel) {
-      return [buildImplicitRecipient(selectedModel)];
-    }
-    if (!defaultRecipientParticipant) {
-      return [];
-    }
-
-    const participantCat = resolveParticipantCatRecord(defaultRecipientParticipant);
-    if (participantCat) {
-      return [buildRecipientFromCat(participantCat, payload.chat.bossCatId)];
-    }
-
-    return [
-      buildNamedRecipient({
-        participantId: defaultRecipientParticipant.participantId,
-        name: resolveParticipantDisplayName(defaultRecipientParticipant, null),
-        provider: defaultRecipientParticipant.execution.target.provider,
-        instance: defaultRecipientParticipant.execution.target.instance ?? null,
-        model: defaultRecipientParticipant.execution.target.model ?? null,
-      }),
-    ];
+    return buildChatComposerRecipients({
+      isDirectLane,
+      directLaneCat,
+      isSoloComposer,
+      selectedModel,
+      defaultRecipientParticipant,
+      bossCatId: payload.chat.bossCatId,
+      resolveParticipantCatRecord,
+      resolveParticipantDisplayName,
+    });
   }, [
     defaultRecipientParticipant,
     directLaneCat,
@@ -493,12 +404,6 @@ export function ChatView({
       || busy === 'parallelChat:stop'
     );
   const showStopComposerAction = !showCancelComposerAction && (canStopSingleChat || canStopParallelChat);
-  const comparePrevChannelId = isCompareGroup && compareMemberIndex >= 0
-    ? resolveCompareNeighborChannelId(compareMembers, activeCompareChannelId, 'prev')
-    : null;
-  const compareNextChannelId = isCompareGroup && compareMemberIndex >= 0
-    ? resolveCompareNeighborChannelId(compareMembers, activeCompareChannelId, 'next')
-    : null;
   const composerWorkspacePath = resolveComposerWorkspacePath(
     selectedChannel.repoPath,
     selectedChannel.chatCwd,
