@@ -350,21 +350,49 @@ export function NewChatDraft({
                   </div>
                 ) : null}
               </div>
-              {isGroupDraft && !hasReachedGroupParticipantLimit ? (
+              {isGroupDraft ? (
                 <div className="composerGroupAddRow">
-                  <button
-                    type="button"
-                    className="parallelAddButton"
-                    disabled={isSubmittingFirstTurn}
-                    onClick={() => openSidePanelTo('cats')}
-                    aria-label="Add another model to collaborate"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 3v10" />
-                      <path d="M3 8h10" />
-                    </svg>
-                  </button>
-                  <span className="parallelAddHint">Add another model to collaborate</span>
+                  {groupComposerParticipants.map((participant) => (
+                    <div
+                      key={participant.key}
+                      className="catAvatar"
+                      data-tooltip={participant.name}
+                      style={
+                        participant.avatarUrl
+                          ? {
+                              backgroundImage: `url(${participant.avatarUrl})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                            }
+                          : participant.isCat
+                            ? { background: participant.avatarColor ?? '#8B7E74' }
+                            : {
+                                background: '#fff',
+                                color: '#222',
+                                border: '1px solid rgba(0, 0, 0, 0.15)',
+                              }
+                      }
+                    >
+                      {participant.avatarUrl ? null : catInitials(participant.name)}
+                    </div>
+                  ))}
+                  {!hasReachedGroupParticipantLimit ? (
+                    <>
+                      <button
+                        type="button"
+                        className="parallelAddButton"
+                        disabled={isSubmittingFirstTurn}
+                        onClick={() => openSidePanelTo('cats')}
+                        aria-label="Add another model to collaborate"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8 3v10" />
+                          <path d="M3 8h10" />
+                        </svg>
+                      </button>
+                      <span className="parallelAddHint">Add another model to collaborate</span>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
               {draftCwd ? (
