@@ -21,6 +21,7 @@ import {
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import { AudienceChip } from './AudienceChip.js';
 
 export interface NewChatDraftProps {
@@ -189,12 +190,72 @@ export function NewChatDraft({
     busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
-  const audienceParticipants = (() => {
-    if (!draftAudienceKeys) return groupComposerParticipants;
-    const byKey = new Map(groupComposerParticipants.map((p) => [p.key, p]));
-    const resolved = draftAudienceKeys.map((key) => byKey.get(key)).filter(Boolean) as typeof groupComposerParticipants;
-    if (resolved.length > 0) return resolved;
-    return groupComposerParticipants.length > 0 ? [groupComposerParticipants[0]] : [];
+
+  // Build unified audience participants for all modes
+  const audienceParticipants: typeof groupComposerParticipants = (() => {
+    if (isGroupDraft) {
+      // Group mode: use explicit audience keys or all participants
+      if (!draftAudienceKeys) return groupComposerParticipants;
+      const byKey = new Map(groupComposerParticipants.map((p) => [p.key, p]));
+      const resolved = draftAudienceKeys.map((key) => byKey.get(key)).filter(Boolean) as typeof groupComposerParticipants;
+      if (resolved.length > 0) return resolved;
+      return groupComposerParticipants.length > 0 ? [groupComposerParticipants[0]] : [];
+    }
+
+    // Single participant modes: cat or temporary participant
+    if (effectiveDefaultRecipientCat) {
+      return [{
+        key: `cat:${effectiveDefaultRecipientCat.id}`,
+        name: effectiveDefaultRecipientCat.name,
+        executionLabel: null,
+        avatarColor: effectiveDefaultRecipientCat.avatarColor ?? null,
+        avatarUrl: effectiveDefaultRecipientCat.avatarUrl ?? null,
+        isCat: true,
+        catId: effectiveDefaultRecipientCat.id,
+        participantId: null,
+      }];
+    }
+    if (effectiveDefaultRecipientTemporaryParticipant) {
+      const tp = effectiveDefaultRecipientTemporaryParticipant;
+      return [{
+        key: `temp:${tp.participantId}`,
+        name: tp.name,
+        executionLabel: tp.provider
+          ? buildExecutionLabel(tp.provider, tp.instance ?? null, tp.model ?? null)
+          : null,
+        avatarColor: null,
+        avatarUrl: null,
+        isCat: false,
+        catId: null,
+        participantId: tp.participantId,
+      }];
+    }
+
+    // Solo implicit: use model selector value
+    if (activePanelModel) {
+      return [{
+        key: 'implicit:model',
+        name: buildModelSelectorLabel(activePanelModel),
+        executionLabel: buildModelSelectorLabel(activePanelModel),
+        avatarColor: null,
+        avatarUrl: null,
+        isCat: false,
+        catId: null,
+        participantId: null,
+      }];
+    }
+
+    return [];
+  })();
+
+  // Determine click action for single-participant chip
+  const audienceSingleClick = (() => {
+    if (isGroupDraft) return undefined;
+    if (isDirectLaneContext) return () => openSidePanelTo('execution');
+    if (effectiveDefaultRecipientCat || effectiveDefaultRecipientTemporaryParticipant) {
+      return () => openSidePanelTo('cats');
+    }
+    return () => openSidePanelTo('execution');
   })();
   const {
     createTemporaryParticipantFormValue,
@@ -462,32 +523,17 @@ export function NewChatDraft({
                   label={buildModelSelectorLabel(parallelTargets[0])}
                   onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
                 />
-              ) : isGroupDraft && onSetAudienceKeys ? (
+              ) : audienceParticipants.length > 0 ? (
                 <AudienceChip
                   audienceParticipants={audienceParticipants}
-                  allParticipants={groupComposerParticipants}
-                  onSetAudienceKeys={onSetAudienceKeys}
+                  allParticipants={isGroupDraft ? groupComposerParticipants : undefined}
+                  onSetAudienceKeys={isGroupDraft ? onSetAudienceKeys : undefined}
+                  onSingleClick={audienceSingleClick}
                   disabled={isSubmittingFirstTurn}
                   workflowShape={draftWorkflowShape}
-                  onToggleWorkflowShape={onToggleDraftWorkflowShape}
+                  onToggleWorkflowShape={isGroupDraft ? onToggleDraftWorkflowShape : undefined}
                 />
-              ) : (
-                <ChatNewChatDraftTargetSlot
-                  payload={payload}
-                  isGroupDraft={false}
-                  isDirectLaneContext={isDirectLaneContext}
-                  effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
-                  effectiveDefaultRecipientTemporaryParticipant={effectiveDefaultRecipientTemporaryParticipant}
-                  draftComposerRecipients={draftComposerRecipients}
-                  groupComposerParticipants={[]}
-                  activePanelModel={activePanelModel}
-                  isSubmittingFirstTurn={isSubmittingFirstTurn}
-                  onOpenCats={() => openSidePanelTo('cats')}
-                  onOpenExecution={() => openSidePanelTo('execution')}
-                  onToggleDraftCat={onToggleDraftCat}
-                  onRemoveDraftTemporaryParticipant={onRemoveDraftTemporaryParticipant}
-                />
-              )}
+              ) : null}
               {showCancelPendingSend ? (
                 <button
                   className="composerSendButton composerCancelButton"

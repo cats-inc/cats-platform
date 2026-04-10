@@ -303,6 +303,10 @@
   text-overflow: ellipsis;
 }
 
+.audienceChip > .audienceChipLabel:first-child {
+  padding-left: 6px;
+}
+
 .audienceChipChevron {
   flex-shrink: 0;
   color: var(--muted);

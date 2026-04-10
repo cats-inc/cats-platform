@@ -6,21 +6,29 @@ import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js
 
 export interface AudienceChipProps {
   audienceParticipants: DraftComposerStackParticipant[];
-  allParticipants: DraftComposerStackParticipant[];
-  onSetAudienceKeys: (keys: string[]) => void;
+  allParticipants?: DraftComposerStackParticipant[];
+  onSetAudienceKeys?: (keys: string[]) => void;
+  onSingleClick?: () => void;
   disabled?: boolean;
   workflowShape?: RoomWorkflowShape;
   onToggleWorkflowShape?: () => void;
 }
 
+function hasAvatar(participant: DraftComposerStackParticipant): boolean {
+  return Boolean(participant.avatarUrl || participant.avatarColor || participant.isCat);
+}
+
 export function AudienceChip({
   audienceParticipants,
-  allParticipants,
+  allParticipants = [],
   onSetAudienceKeys,
+  onSingleClick,
   disabled,
   workflowShape = 'sequential',
   onToggleWorkflowShape,
 }: AudienceChipProps) {
+  const isMulti = audienceParticipants.length > 1;
+  const canPopover = isMulti && onSetAudienceKeys && allParticipants.length > 0;
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -28,13 +36,13 @@ export function AudienceChip({
 
   const audienceKeySet = new Set(audienceParticipants.map((p) => p.key));
 
-  // Build the ordered list for popover: audience first (in order), then excluded
-  const orderedForPopover = [
-    ...audienceParticipants,
-    ...allParticipants.filter((p) => !audienceKeySet.has(p.key)),
-  ];
+  const orderedForPopover = canPopover
+    ? [
+        ...audienceParticipants,
+        ...allParticipants.filter((p) => !audienceKeySet.has(p.key)),
+      ]
+    : [];
 
-  // Close on click outside
   useEffect(() => {
     if (!open) return;
     function handleClick(event: MouseEvent) {
@@ -50,6 +58,7 @@ export function AudienceChip({
   const extraCount = audienceParticipants.length - 1;
 
   const toggleMember = useCallback((key: string) => {
+    if (!onSetAudienceKeys) return;
     if (audienceKeySet.has(key)) {
       if (audienceParticipants.length <= 1) return;
       onSetAudienceKeys(audienceParticipants.filter((p) => p.key !== key).map((p) => p.key));
@@ -75,9 +84,8 @@ export function AudienceChip({
     const fromIndex = dragIndex;
     setDragIndex(null);
     setDragOverIndex(null);
-    if (fromIndex === null || fromIndex === dropIndex) return;
+    if (!onSetAudienceKeys || fromIndex === null || fromIndex === dropIndex) return;
 
-    // Only reorder within the audience list
     const sourceKey = audienceParticipants[fromIndex]?.key;
     if (!sourceKey) return;
 
@@ -94,55 +102,65 @@ export function AudienceChip({
 
   if (!first) return null;
 
+  const showAvatar = hasAvatar(first);
+  const chipLabel = isMulti
+    ? `${first.name} +${extraCount}`
+    : (first.executionLabel || first.name);
+  const chipTooltip = isMulti ? 'Select audience' : (first.executionLabel || first.name);
+
+  const handleChipClick = () => {
+    if (canPopover) {
+      setOpen(!open);
+    } else if (onSingleClick) {
+      onSingleClick();
+    }
+  };
+
   return (
     <div className="audienceChipWrapper" ref={wrapperRef}>
       <button
         type="button"
         className="audienceChip"
         disabled={disabled}
-        onClick={() => setOpen(!open)}
-        data-tooltip="Select audience"
+        onClick={handleChipClick}
+        data-tooltip={chipTooltip}
       >
-        <div
-          className="audienceChipAvatar"
-          style={
-            first.avatarUrl
-              ? {
-                  backgroundImage: `url(${first.avatarUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }
-              : first.isCat
-                ? { background: first.avatarColor ?? '#8B7E74' }
-                : {
-                    background: '#fff',
-                    color: '#222',
-                    border: '1px solid rgba(0, 0, 0, 0.15)',
+        {showAvatar ? (
+          <div
+            className="audienceChipAvatar"
+            style={
+              first.avatarUrl
+                ? {
+                    backgroundImage: `url(${first.avatarUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
                   }
-          }
-        >
-          {first.avatarUrl ? null : nameInitials(first.name)}
-        </div>
-        <span className="audienceChipLabel">
-          {audienceParticipants.length === 1
-            ? first.name
-            : `${first.name} +${extraCount}`}
-        </span>
+                : first.isCat
+                  ? { background: first.avatarColor ?? '#8B7E74' }
+                  : {
+                      background: '#fff',
+                      color: '#222',
+                      border: '1px solid rgba(0, 0, 0, 0.15)',
+                    }
+            }
+          >
+            {first.avatarUrl ? null : nameInitials(first.name)}
+          </div>
+        ) : null}
+        <span className="audienceChipLabel">{chipLabel}</span>
         <svg className="audienceChipChevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>
-        {onToggleWorkflowShape ? (
+        {isMulti && onToggleWorkflowShape ? (
           <span
-            className={`audienceChipWorkflow${audienceParticipants.length <= 1 ? ' isDisabled' : ''}`}
+            className="audienceChipWorkflow"
             role="button"
-            tabIndex={disabled || audienceParticipants.length <= 1 ? -1 : 0}
+            tabIndex={disabled ? -1 : 0}
             data-tooltip={workflowShape === 'sequential' ? 'Sequential' : 'Concurrent'}
             aria-label={`Switch to ${workflowShape === 'sequential' ? 'concurrent' : 'sequential'} mode`}
             onClick={(event) => {
               event.stopPropagation();
-              if (audienceParticipants.length > 1) {
-                onToggleWorkflowShape();
-              }
+              onToggleWorkflowShape();
             }}
           >
             {workflowShape === 'sequential' ? (
@@ -162,10 +180,10 @@ export function AudienceChip({
         ) : null}
       </button>
 
-      {open ? (
+      {open && canPopover ? (
         <div className="audiencePopover">
           <div className="audiencePopoverHeader">Audience</div>
-          {orderedForPopover.map((participant, index) => {
+          {orderedForPopover.map((participant) => {
             const isInAudience = audienceKeySet.has(participant.key);
             const audienceIndex = isInAudience
               ? audienceParticipants.findIndex((p) => p.key === participant.key)
