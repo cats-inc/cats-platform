@@ -20,6 +20,7 @@ function createPayload(): AppShellPayload {
       botBindings: [],
       capabilities: {
         maxChatParticipants: 5,
+        maxAudienceParticipants: 3,
         maxParallelChats: 5,
       },
       cats: [],

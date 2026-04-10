@@ -10,6 +10,7 @@ export interface AudienceChipProps {
   onSetAudienceKeys?: (keys: string[]) => void;
   onSingleClick?: () => void;
   disabled?: boolean;
+  maxSelectedParticipants?: number;
   workflowShape?: RoomWorkflowShape;
   onToggleWorkflowShape?: () => void;
 }
@@ -24,17 +25,21 @@ export function AudienceChip({
   onSetAudienceKeys,
   onSingleClick,
   disabled,
+  maxSelectedParticipants,
   workflowShape = 'sequential',
   onToggleWorkflowShape,
 }: AudienceChipProps) {
   const isMulti = audienceParticipants.length > 1;
-  const canPopover = isMulti && onSetAudienceKeys && allParticipants.length > 0;
+  const canPopover = Boolean(onSetAudienceKeys) && allParticipants.length > 1;
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const audienceKeySet = new Set(audienceParticipants.map((p) => p.key));
+  const effectiveMaxSelectedParticipants = Number.isFinite(maxSelectedParticipants)
+    ? Math.max(1, Math.trunc(maxSelectedParticipants ?? Number.POSITIVE_INFINITY))
+    : Number.POSITIVE_INFINITY;
 
   const orderedForPopover = canPopover
     ? [
@@ -63,9 +68,15 @@ export function AudienceChip({
       if (audienceParticipants.length <= 1) return;
       onSetAudienceKeys(audienceParticipants.filter((p) => p.key !== key).map((p) => p.key));
     } else {
+      if (audienceParticipants.length >= effectiveMaxSelectedParticipants) return;
       onSetAudienceKeys([...audienceParticipants.map((p) => p.key), key]);
     }
-  }, [audienceParticipants, audienceKeySet, onSetAudienceKeys]);
+  }, [
+    audienceParticipants,
+    audienceKeySet,
+    effectiveMaxSelectedParticipants,
+    onSetAudienceKeys,
+  ]);
 
   const onDragStart = useCallback((event: DragEvent<HTMLDivElement>, index: number) => {
     setDragIndex(index);
@@ -232,7 +243,10 @@ export function AudienceChip({
                   <input
                     type="checkbox"
                     checked={isInAudience}
-                    disabled={isInAudience && audienceParticipants.length <= 1}
+                    disabled={
+                      (isInAudience && audienceParticipants.length <= 1)
+                      || (!isInAudience && audienceParticipants.length >= effectiveMaxSelectedParticipants)
+                    }
                     onChange={() => toggleMember(participant.key)}
                   />
                 </label>

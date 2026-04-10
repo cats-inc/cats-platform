@@ -14,6 +14,7 @@ function createPayload(): AppShellPayload {
       capabilities: {
         maxCats: 5,
         maxChatParticipants: 5,
+        maxAudienceParticipants: 3,
         maxParallelChats: 5,
       },
       cats: [
@@ -240,6 +241,48 @@ test('group route keeps the current audience chip and inline avatar row for part
   assert.match(markup, /data-tooltip="Gemini-CLI · gemini-3.1-pro"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /aria-label="Remove Inline Reviewer"/u);
+});
+
+test('group route caps the audience chip selection to the configured max audience count', () => {
+  const payload = createPayload();
+  payload.chat.capabilities.maxAudienceParticipants = 2;
+  payload.chat.bossCatId = 'cat-lead';
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryMode: 'group',
+        payload,
+        draftCatIds: ['cat-lead'],
+        draftTemporaryParticipants: [
+          {
+            participantId: 'participant-inline',
+            name: 'Inline Reviewer',
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+            modelSelection: null,
+            roleHint: 'Counterpoint',
+          },
+          {
+            participantId: 'participant-analyst',
+            name: 'Second Analyst',
+            provider: 'codex',
+            instance: 'native',
+            model: 'gpt-5.3-codex',
+            modelSelection: null,
+            roleHint: 'Backup',
+          },
+        ],
+      })}
+    />,
+  );
+
+  const avatarSlotMatches = markup.match(/class="composerGroupAvatarSlot"/gu) ?? [];
+
+  assert.equal(avatarSlotMatches.length, 3);
+  assert.match(markup, /Milo \+1/u);
+  assert.doesNotMatch(markup, /Milo \+2/u);
 });
 
 test('group route keeps remove controls hidden when only two participants remain', () => {

@@ -90,6 +90,7 @@ function createPayload(): AppShellPayload {
         maxBossCats: 1,
         maxCats: 16,
         maxChatParticipants: 5,
+        maxAudienceParticipants: 3,
         maxParallelChats: 5,
         availableSurfaces: ['chat'],
       },
@@ -357,6 +358,7 @@ test('resolveDraftAudienceParticipantIds preserves chip order and falls back to 
         },
       ],
       draftAudienceKeys: ['temp:participant-reviewer', 'cat:cat-lead'],
+      maxAudienceParticipants: 2,
     }),
     ['participant-reviewer', 'cat-lead'],
   );
@@ -366,8 +368,42 @@ test('resolveDraftAudienceParticipantIds preserves chip order and falls back to 
       draftParticipantCatIds: ['cat-lead', 'cat-helper'],
       draftTemporaryParticipants: [],
       draftAudienceKeys: ['cat:missing'],
+      maxAudienceParticipants: 2,
     }),
     ['cat-lead'],
+  );
+
+  assert.deepEqual(
+    resolveDraftAudienceParticipantIds({
+      draftParticipantCatIds: ['cat-lead', 'cat-helper', 'cat-third'],
+      draftTemporaryParticipants: [
+        {
+          participantId: 'participant-reviewer',
+        },
+      ],
+      draftAudienceKeys: null,
+      maxAudienceParticipants: 3,
+    }),
+    ['cat-lead', 'cat-helper', 'cat-third'],
+  );
+
+  assert.deepEqual(
+    resolveDraftAudienceParticipantIds({
+      draftParticipantCatIds: ['cat-lead', 'cat-helper', 'cat-third'],
+      draftTemporaryParticipants: [
+        {
+          participantId: 'participant-reviewer',
+        },
+      ],
+      draftAudienceKeys: [
+        'cat:cat-third',
+        'temp:participant-reviewer',
+        'cat:cat-helper',
+        'cat:cat-lead',
+      ],
+      maxAudienceParticipants: 2,
+    }),
+    ['cat-third', 'participant-reviewer'],
   );
 });
 

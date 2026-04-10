@@ -12,6 +12,7 @@ function createPayload(): AppShellPayload {
       capabilities: {
         maxCats: 5,
         maxChatParticipants: 5,
+        maxAudienceParticipants: 3,
         maxParallelChats: 5,
       },
       cats: [

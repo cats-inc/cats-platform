@@ -65,6 +65,7 @@ function createCapabilities(limits?: {
   maxBossCats?: number;
   maxCats?: number;
   maxChatParticipants?: number;
+  maxAudienceParticipants?: number;
   maxParallelChats?: number;
   availableSurfaces?: string[];
 }): ChatCapabilities {
@@ -79,6 +80,7 @@ function createCapabilities(limits?: {
     maxBossCats: limits?.maxBossCats ?? 1,
     maxCats: limits?.maxCats ?? 5,
     maxChatParticipants: limits?.maxChatParticipants ?? 5,
+    maxAudienceParticipants: limits?.maxAudienceParticipants ?? 3,
     maxParallelChats: limits?.maxParallelChats ?? 3,
     availableSurfaces: limits?.availableSurfaces ?? listEnabledPlatformSurfaces(),
   };

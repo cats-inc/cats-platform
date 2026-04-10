@@ -223,6 +223,7 @@ function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: stri
         maxBossCats: 1,
         maxCats: 8,
         maxChatParticipants: 5,
+        maxAudienceParticipants: 3,
         maxParallelChats: 5,
         availableSurfaces: ['chat'],
       },

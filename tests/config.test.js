@@ -17,6 +17,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
     CATS_RUNTIME_API_KEY: 'token',
     CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT: '3',
     CATS_MAX_CHAT_PARTICIPANTS: '7',
+    CATS_MAX_AUDIENCE_PARTICIPANTS: '2',
   });
 
   assert.equal(config.host, '0.0.0.0');
@@ -38,6 +39,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
   assert.equal(config.maxChatParticipants, 7);
+  assert.equal(config.maxAudienceParticipants, 2);
   assert.equal(config.maxParallelChats, 3);
 });
 
@@ -56,6 +58,7 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases for host and por
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 1);
   assert.equal(config.maxChatParticipants, 5);
+  assert.equal(config.maxAudienceParticipants, 3);
   assert.equal(config.maxParallelChats, 3);
 });
 
@@ -80,6 +83,7 @@ test('loadConfig defaults chat-state path under ~/.cats/platform', () => {
       config.chatStatePath,
       'C:\\Users\\tester\\.cats\\platform\\state\\chat-state.local.json',
     );
+    assert.equal(config.maxAudienceParticipants, 3);
     assert.equal(config.maxParallelChats, 3);
   } finally {
     process.env.USERPROFILE = originalHome;

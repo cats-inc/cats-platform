@@ -61,11 +61,16 @@ function readRequestedWorkflowShape(
     : null;
 }
 
-function readRecipientParticipantIds(payload: SendChannelMessageInput): string[] {
+function readRecipientParticipantIds(
+  state: ChatState,
+  payload: SendChannelMessageInput,
+): string[] {
   const candidateIds = payload.messageMetadata?.recipientParticipantIds;
-  return Array.isArray(candidateIds)
+  const recipientIds = Array.isArray(candidateIds)
     ? candidateIds.filter((candidateId): candidateId is string => typeof candidateId === 'string')
     : [];
+  const maxAudienceParticipants = state.capabilities.maxAudienceParticipants ?? Number.POSITIVE_INFINITY;
+  return recipientIds.slice(0, maxAudienceParticipants);
 }
 
 export interface PreparedDispatchTurn {
@@ -121,7 +126,7 @@ export function prepareDispatchTurn(
         allowDefaultTarget: true,
         explicitTrigger: 'explicit_mention',
       });
-  const currentTurnRecipientIds = choiceResponseTarget ? [] : readRecipientParticipantIds(payload);
+  const currentTurnRecipientIds = choiceResponseTarget ? [] : readRecipientParticipantIds(nextState, payload);
   if (
     !choiceResponseTarget
     && initialResolution.trigger === 'room_default'

@@ -140,6 +140,9 @@ export default function App() {
   const maxDraftGroupParticipants = state.status === 'ready'
     ? state.payload.chat.capabilities.maxChatParticipants ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
+  const maxDraftAudienceParticipants = state.status === 'ready'
+    ? state.payload.chat.capabilities.maxAudienceParticipants ?? Number.POSITIVE_INFINITY
+    : Number.POSITIVE_INFINITY;
   const [draftWorkflowShape, setDraftWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
   const [draftAudienceKeys, setDraftAudienceKeys] = useState<string[] | null>(null);
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
@@ -339,13 +342,36 @@ export default function App() {
       return;
     }
 
-    setDraftAudienceKeys((current) =>
-      current
-        ? [...current, `temp:${addedParticipantId}`]
-        : current);
+    setDraftAudienceKeys((current) => {
+      const visibleCatKeys = draftParticipants.participantCatIds.map((catId) => `cat:${catId}`);
+      const currentParticipantKeys = [
+        ...visibleCatKeys,
+        ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
+      ];
+      const nextParticipantKey = `temp:${addedParticipantId}`;
+      const baseAudienceKeys = current ?? currentParticipantKeys;
+      const normalizedAudienceKeys = baseAudienceKeys.filter((key, index, source) =>
+        source.indexOf(key) === index && currentParticipantKeys.includes(key));
+      const nextAudienceKeys = [
+        ...normalizedAudienceKeys.filter((key) => key !== nextParticipantKey),
+        nextParticipantKey,
+      ];
+      if (!Number.isFinite(maxDraftAudienceParticipants)) {
+        return nextAudienceKeys;
+      }
+      if (nextAudienceKeys.length <= maxDraftAudienceParticipants) {
+        return nextAudienceKeys;
+      }
+      return [
+        ...nextAudienceKeys.slice(0, Math.max(0, maxDraftAudienceParticipants - 1)),
+        nextParticipantKey,
+      ];
+    });
   }, [
+    draftTemporaryParticipants,
     draftModel.provider,
     draftParticipants.participantCatIds,
+    maxDraftAudienceParticipants,
     maxDraftGroupParticipants,
     setDraftAudienceKeys,
     setDraftTemporaryParticipants,

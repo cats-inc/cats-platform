@@ -273,10 +273,23 @@ export function buildDraftParticipantExecutionLabel(participant: {
   );
 }
 
+function applyDraftAudienceLimit(
+  participantIds: readonly string[],
+  maxAudienceParticipants?: number | null,
+): string[] {
+  if (!Number.isFinite(maxAudienceParticipants)) {
+    return [...participantIds];
+  }
+
+  const limit = Math.max(1, Math.trunc(maxAudienceParticipants ?? Number.POSITIVE_INFINITY));
+  return participantIds.slice(0, limit);
+}
+
 export function resolveDraftAudienceParticipantIds(options: {
   draftParticipantCatIds: readonly string[];
   draftTemporaryParticipants: ReadonlyArray<Pick<DraftTemporaryParticipant, 'participantId'>>;
   draftAudienceKeys?: readonly string[] | null;
+  maxAudienceParticipants?: number | null;
 }): string[] {
   const allParticipants = [
     ...options.draftParticipantCatIds.map((catId) => ({
@@ -289,7 +302,10 @@ export function resolveDraftAudienceParticipantIds(options: {
     })),
   ];
   if (!options.draftAudienceKeys) {
-    return allParticipants.map((participant) => participant.participantId);
+    return applyDraftAudienceLimit(
+      allParticipants.map((participant) => participant.participantId),
+      options.maxAudienceParticipants,
+    );
   }
 
   const participantIdsByKey = new Map(
@@ -308,7 +324,7 @@ export function resolveDraftAudienceParticipantIds(options: {
     });
 
   if (resolvedAudience.length > 0) {
-    return resolvedAudience;
+    return applyDraftAudienceLimit(resolvedAudience, options.maxAudienceParticipants);
   }
 
   return allParticipants[0]?.participantId ? [allParticipants[0].participantId] : [];

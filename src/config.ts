@@ -25,6 +25,7 @@ export interface AppConfig {
   maxBossCats: number;
   maxCats: number;
   maxChatParticipants: number;
+  maxAudienceParticipants: number;
   maxParallelChats: number;
 }
 
@@ -34,6 +35,7 @@ const DEFAULT_RUNTIME_BASE_URL = 'http://127.0.0.1:3110';
 const DEFAULT_MAX_BOSS_CATS = 1;
 const DEFAULT_MAX_CATS = 5;
 const DEFAULT_MAX_CHAT_PARTICIPANTS = 5;
+const DEFAULT_MAX_AUDIENCE_PARTICIPANTS = 3;
 const DEFAULT_MAX_PARALLEL_CHATS = 3;
 
 function readFirstDefined(env: NodeJS.ProcessEnv, keys: string[]): string | undefined {
@@ -125,6 +127,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     maxChatParticipants: parsePositiveInt(
       env.CATS_MAX_CHAT_PARTICIPANTS,
       DEFAULT_MAX_CHAT_PARTICIPANTS,
+    ),
+    maxAudienceParticipants: parsePositiveInt(
+      env.CATS_MAX_AUDIENCE_PARTICIPANTS,
+      DEFAULT_MAX_AUDIENCE_PARTICIPANTS,
     ),
     maxParallelChats: parsePositiveInt(env.CATS_MAX_PARALLEL_CHATS, DEFAULT_MAX_PARALLEL_CHATS),
   };

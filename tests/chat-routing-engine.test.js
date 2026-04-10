@@ -320,6 +320,38 @@ test('current-turn draft audience metadata routes multi-target turns sequentiall
   );
 });
 
+test('current-turn draft audience metadata respects the configured audience cap', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createChannelState();
+  state.capabilities.maxAudienceParticipants = 1;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      return usage('Agent-2 handled the capped audience turn.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Kick off the capped shared room.',
+      messageMetadata: {
+        recipientParticipantIds: [agent2Id, agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    new Date('2026-03-21T00:00:00.000Z'),
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+  const replies = channel.messages.filter((message) => message.senderKind === 'agent');
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(runtimeClient.sentMessages[0]?.content.includes('You are Agent-2'), true);
+  assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Agent-1')), false);
+  assert.deepEqual(replies.map((message) => message.senderName), ['Agent-2']);
+});
+
 test('explicit mentions stay authoritative over current-turn draft audience metadata', async () => {
   const { state, channelId, agent2Id } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {

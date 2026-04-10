@@ -359,6 +359,10 @@ export function useComposerSubmit(options: {
             draftParticipantCatIds,
             draftTemporaryParticipants,
             draftAudienceKeys,
+            maxAudienceParticipants:
+              state.status === 'ready'
+                ? state.payload.chat.capabilities.maxAudienceParticipants
+                : undefined,
           })
         : [];
       const draftMessageMetadata = draftAudienceParticipantIds.length > 0

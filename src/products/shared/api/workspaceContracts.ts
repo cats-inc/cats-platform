@@ -323,6 +323,7 @@ export interface ChatCapabilities {
   maxBossCats: number;
   maxCats: number;
   maxChatParticipants: number;
+  maxAudienceParticipants: number;
   maxParallelChats: number;
   availableSurfaces: string[];
 }

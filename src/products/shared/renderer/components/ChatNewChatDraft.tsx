@@ -155,6 +155,7 @@ export function NewChatDraft({
   onSetAudienceKeys,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
+  const maxAudienceParticipants = payload.chat.capabilities.maxAudienceParticipants ?? 3;
   const {
     chatCats,
     assistantPresets,
@@ -193,6 +194,15 @@ export function NewChatDraft({
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
 
+  function capAudienceParticipants(
+    participants: typeof groupComposerParticipants,
+  ): typeof groupComposerParticipants {
+    if (participants.length <= maxAudienceParticipants) {
+      return participants;
+    }
+    return participants.slice(0, maxAudienceParticipants);
+  }
+
   // Build unified audience participants for all modes
   const audienceParticipants: typeof groupComposerParticipants = (() => {
     // Parallel mode: first target as implicit participant
@@ -211,10 +221,10 @@ export function NewChatDraft({
 
     if (isGroupDraft) {
       // Group mode: use explicit audience keys or all participants
-      if (!draftAudienceKeys) return groupComposerParticipants;
+      if (!draftAudienceKeys) return capAudienceParticipants(groupComposerParticipants);
       const byKey = new Map(groupComposerParticipants.map((p) => [p.key, p]));
       const resolved = draftAudienceKeys.map((key) => byKey.get(key)).filter(Boolean) as typeof groupComposerParticipants;
-      if (resolved.length > 0) return resolved;
+      if (resolved.length > 0) return capAudienceParticipants(resolved);
       return groupComposerParticipants.length > 0 ? [groupComposerParticipants[0]] : [];
     }
 
@@ -548,6 +558,7 @@ export function NewChatDraft({
                   onSetAudienceKeys={isGroupDraft ? onSetAudienceKeys : undefined}
                   onSingleClick={audienceSingleClick}
                   disabled={isSubmittingFirstTurn}
+                  maxSelectedParticipants={isGroupDraft ? maxAudienceParticipants : undefined}
                   workflowShape={draftWorkflowShape}
                   onToggleWorkflowShape={isGroupDraft ? onToggleDraftWorkflowShape : undefined}
                 />
