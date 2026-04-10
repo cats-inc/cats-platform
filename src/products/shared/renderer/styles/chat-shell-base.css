@@ -93,6 +93,33 @@
   background-repeat: no-repeat;
   background-size: 100% 12px, 100% 1px;
   background-attachment: local, scroll;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.sidebarScrollable:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.sidebarScrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebarScrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebarScrollable::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.sidebarScrollable:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.sidebarScrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .chromeButton {
