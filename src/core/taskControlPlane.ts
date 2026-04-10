@@ -36,6 +36,7 @@ import {
   matchesCoreTaskViewCommonQuery,
   type CoreTaskViewCommonQuery,
 } from './taskViewQuery.js';
+import { summarizeCoreTaskControlPlaneViewsWithSupport } from './taskControlPlaneSummary.js';
 import {
   WORKFLOW_CONTINUATION_REPLAY_SOURCES,
   WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS,
@@ -127,6 +128,12 @@ export const CORE_TASK_WORKFLOW_SHAPES = [
   'concurrent',
   'converge',
 ] as const satisfies readonly CoreTaskWorkflowShape[];
+
+const TASK_EXECUTION_PRODUCTS = [
+  'chat',
+  'work',
+  'code',
+] as const satisfies readonly TaskExecutionProduct[];
 
 export const CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS =
   WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS;
@@ -1156,340 +1163,40 @@ function matchesControlPlaneListOptions(
   return true;
 }
 
-function buildAttentionSeverityCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskControlPlaneSeverity, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_SEVERITIES.map((severity) => [severity, 0]),
-  ) as Record<CoreTaskControlPlaneSeverity, number>;
-
-  for (const view of views) {
-    counts[view.attention.severity] += 1;
-  }
-
-  return counts;
-}
-
-function buildExecutionProductCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<TaskExecutionProduct, number> {
-  const counts: Record<TaskExecutionProduct, number> = {
-    chat: 0,
-    work: 0,
-    code: 0,
-  };
-
-  for (const view of views) {
-    const executionProduct = readExecutionProduct(view);
-    if (!executionProduct) {
-      continue;
-    }
-    counts[executionProduct] += 1;
-  }
-
-  return counts;
-}
-
-function buildRequestedStrategyCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<string, number> {
-  const counts: Record<string, number> = {};
-
-  for (const view of views) {
-    const requestedStrategy = readRequestedStrategy(view);
-    if (!requestedStrategy) {
-      continue;
-    }
-    counts[requestedStrategy] = (counts[requestedStrategy] ?? 0) + 1;
-  }
-
-  return counts;
-}
-
-function buildReasonCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskControlPlaneReason, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_REASONS.map((reason) => [reason, 0]),
-  ) as Record<CoreTaskControlPlaneReason, number>;
-
-  for (const view of views) {
-    for (const reason of view.attention.reasons) {
-      counts[reason] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildNextActionCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskControlPlaneNextAction['kind'], number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS.map((kind) => [kind, 0]),
-  ) as Record<CoreTaskControlPlaneNextAction['kind'], number>;
-
-  for (const view of views) {
-    for (const action of view.nextActions) {
-      counts[action.kind] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildDeliveryModeCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreDeliveryMode, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_DELIVERY_MODES.map((mode) => [mode, 0]),
-  ) as Record<CoreDeliveryMode, number>;
-
-  for (const view of views) {
-    if (view.runtimeDeliveryIntent?.mode) {
-      counts[view.runtimeDeliveryIntent.mode] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildDeliveryActionCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreRuntimeDeliveryAction, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS.map((action) => [action, 0]),
-  ) as Record<CoreRuntimeDeliveryAction, number>;
-
-  for (const view of views) {
-    for (const action of view.runtimeDeliveryIntent?.requestedActions ?? []) {
-      counts[action] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildWorkflowStageCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<string, number> {
-  const counts: Record<string, number> = {};
-
-  for (const view of views) {
-    const stageId = view.workflowContinuation?.stageId
-      ?? view.runtimeDeliveryIntent?.workflowStageId
-      ?? view.workflowSummary?.stageId
-      ?? null;
-    if (!stageId) {
-      continue;
-    }
-    counts[stageId] = (counts[stageId] ?? 0) + 1;
-  }
-
-  return counts;
-}
-
-function buildWorkflowShapeCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskWorkflowShape, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_WORKFLOW_SHAPES.map((shape) => [shape, 0]),
-  ) as Record<CoreTaskWorkflowShape, number>;
-
-  for (const view of views) {
-    const shape = readEffectiveWorkflowShape(view);
-    if (!shape) {
-      continue;
-    }
-    counts[shape] += 1;
-  }
-
-  return counts;
-}
-
-function buildWorkflowContinuationBlockedReasonCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<WorkflowContinuationReplayBlockedReason, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS.map((reason) => [reason, 0]),
-  ) as Record<WorkflowContinuationReplayBlockedReason, number>;
-
-  for (const view of views) {
-    const blockedReason = view.workflowContinuation?.blockedReason;
-    if (!blockedReason) {
-      continue;
-    }
-    counts[blockedReason] += 1;
-  }
-
-  return counts;
-}
-
-function buildWorkflowContinuationSourceCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<WorkflowContinuationReplaySource, number> {
-  const counts = Object.fromEntries(
-    WORKFLOW_CONTINUATION_REPLAY_SOURCES.map((source) => [source, 0]),
-  ) as Record<WorkflowContinuationReplaySource, number>;
-
-  for (const view of views) {
-    const source = readContinuationSource(view.workflowContinuation?.continuationSource);
-    if (!source) {
-      continue;
-    }
-    counts[source] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestReplayPhaseCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskRecoveryReplayPhase, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_PHASES.map((phase) => [phase, 0]),
-  ) as Record<CoreTaskRecoveryReplayPhase, number>;
-
-  for (const view of views) {
-    const phase = readLatestReplayPhase(view);
-    if (!phase) {
-      continue;
-    }
-    counts[phase] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestReplayTriggerCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskRecoveryReplayTrigger, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_TRIGGERS.map((trigger) => [trigger, 0]),
-  ) as Record<CoreTaskRecoveryReplayTrigger, number>;
-
-  for (const view of views) {
-    const trigger = readLatestReplayTrigger(view);
-    if (!trigger) {
-      continue;
-    }
-    counts[trigger] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestReplaySourceCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskRecoveryReplaySource, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_SOURCES.map((source) => [source, 0]),
-  ) as Record<CoreTaskRecoveryReplaySource, number>;
-
-  for (const view of views) {
-    const source = readLatestReplaySource(view);
-    if (!source) {
-      continue;
-    }
-    counts[source] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestReplayResumeReasonCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskRecoveryResumeReason, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_RESUME_REASONS.map((reason) => [reason, 0]),
-  ) as Record<CoreTaskRecoveryResumeReason, number>;
-
-  for (const view of views) {
-    const reason = readLatestReplayResumeReason(view);
-    if (!reason) {
-      continue;
-    }
-    counts[reason] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestTimelineCategoryCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskTimelineCategory, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_TIMELINE_CATEGORIES.map((category) => [category, 0]),
-  ) as Record<CoreTaskTimelineCategory, number>;
-
-  for (const view of views) {
-    if (!view.latestTimelineItem?.category) {
-      continue;
-    }
-    counts[view.latestTimelineItem.category] += 1;
-  }
-
-  return counts;
-}
-
-function buildLatestTimelineKindCounts(
-  views: CoreTaskControlPlaneView[],
-): Record<CoreTaskTimelineItemKind, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_TIMELINE_ITEM_KINDS.map((kind) => [kind, 0]),
-  ) as Record<CoreTaskTimelineItemKind, number>;
-
-  for (const view of views) {
-    if (!view.latestTimelineItem?.kind) {
-      continue;
-    }
-    counts[view.latestTimelineItem.kind] += 1;
-  }
-
-  return counts;
-}
-
 export function summarizeCoreTaskControlPlaneViews(input: {
   totalAvailable: number;
   matching: number;
   views: CoreTaskControlPlaneView[];
 }): CoreTaskControlPlaneListSummary {
-  return {
-    totalAvailable: input.totalAvailable,
-    matching: input.matching,
-    returned: input.views.length,
-    conversationCount: countCoreTaskViewConversations(input.views),
-    needsOperatorAttentionCount: input.views.filter((view) => view.attention.needsOperatorAttention)
-      .length,
-    taskStatusCounts: buildCoreTaskStatusCounts(input.views),
-    executionProductCounts: buildExecutionProductCounts(input.views),
-    requestedStrategyCounts: buildRequestedStrategyCounts(input.views),
-    attentionSeverityCounts: buildAttentionSeverityCounts(input.views),
-    reasonCounts: buildReasonCounts(input.views),
-    nextActionCounts: buildNextActionCounts(input.views),
-    deliveryModeCounts: buildDeliveryModeCounts(input.views),
-    deliveryActionCounts: buildDeliveryActionCounts(input.views),
-    workflowStageCounts: buildWorkflowStageCounts(input.views),
-    workflowShapeCounts: buildWorkflowShapeCounts(input.views),
-    workflowReviewRequiredCount: input.views.filter((view) => readEffectiveWorkflowReviewRequired(view))
-      .length,
-    workflowConvergeTargetCount: input.views.filter((view) =>
-      Boolean(readEffectiveWorkflowConvergeTargetId(view))).length,
-    workflowContinuationSourceCounts: buildWorkflowContinuationSourceCounts(input.views),
-    workflowContinuationBlockedReasonCounts:
-      buildWorkflowContinuationBlockedReasonCounts(input.views),
-    withUnresolvedWorkflowTargetsCount: input.views.filter((view) =>
-      readEffectiveWorkflowUnresolvedTargets(view).length > 0).length,
-    latestReplaySourceCounts: buildLatestReplaySourceCounts(input.views),
-    latestReplayTriggerCounts: buildLatestReplayTriggerCounts(input.views),
-    latestReplayPhaseCounts: buildLatestReplayPhaseCounts(input.views),
-    latestReplayResumeReasonCounts: buildLatestReplayResumeReasonCounts(input.views),
-    latestTimelineCategoryCounts: buildLatestTimelineCategoryCounts(input.views),
-    latestTimelineKindCounts: buildLatestTimelineKindCounts(input.views),
-    withChildrenCount: input.views.filter((view) => view.family.childCount > 0).length,
-    withActiveChildrenCount: input.views.filter((view) =>
-      view.family.childCount > 0 && !view.family.allChildrenTerminal).length,
-  };
+  return summarizeCoreTaskControlPlaneViewsWithSupport({
+    ...input,
+    attentionSeverities: CORE_TASK_CONTROL_PLANE_SEVERITIES,
+    executionProducts: TASK_EXECUTION_PRODUCTS,
+    reasons: CORE_TASK_CONTROL_PLANE_REASONS,
+    nextActionKinds: CORE_TASK_CONTROL_PLANE_NEXT_ACTION_KINDS,
+    deliveryModes: CORE_TASK_CONTROL_PLANE_DELIVERY_MODES,
+    deliveryActions: CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
+    workflowShapes: CORE_TASK_WORKFLOW_SHAPES,
+    workflowContinuationBlockedReasons: CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
+    workflowContinuationSources: WORKFLOW_CONTINUATION_REPLAY_SOURCES,
+    latestReplayPhases: CORE_TASK_RECOVERY_REPLAY_PHASES,
+    latestReplayTriggers: CORE_TASK_RECOVERY_REPLAY_TRIGGERS,
+    latestReplaySources: CORE_TASK_RECOVERY_REPLAY_SOURCES,
+    latestReplayResumeReasons: CORE_TASK_RECOVERY_RESUME_REASONS,
+    latestTimelineCategories: CORE_TASK_TIMELINE_CATEGORIES,
+    latestTimelineKinds: CORE_TASK_TIMELINE_ITEM_KINDS,
+    readExecutionProduct,
+    readRequestedStrategy,
+    readEffectiveWorkflowShape,
+    readEffectiveWorkflowReviewRequired,
+    readEffectiveWorkflowConvergeTargetId,
+    readEffectiveWorkflowUnresolvedTargets,
+    readContinuationSource,
+    readLatestReplayPhase,
+    readLatestReplayTrigger,
+    readLatestReplaySource,
+    readLatestReplayResumeReason,
+  });
 }
 
 export function buildCoreTaskControlPlaneView(
