@@ -1,6 +1,5 @@
 import {
   type ProductProviderRegistryReadModel,
-  type ProviderAdvancedControlValue,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
@@ -10,9 +9,7 @@ import {
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
 import {
-  CUSTOM_LEGACY_MODEL_VALUE,
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
-  buildSelectionForEntry,
   catalogMatchesTarget,
   filterPersistentControlValues,
   hasExplicitDefaultEnumOption,
@@ -21,9 +18,12 @@ import {
   resolveDisplayedEnumControlValue,
   serializeControlInputValue,
   shouldAutoRecheckProviderRegistry,
-  updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 import { useProviderCatalogState } from './useProviderCatalogState.js';
+import {
+  CUSTOM_LEGACY_MODEL_VALUE,
+  useProviderModelFieldActions,
+} from './useProviderModelFieldActions.js';
 import { useProviderRegistryAutoRecheck } from './useProviderRegistryAutoRecheck.js';
 import { useProviderRegistryState } from './useProviderRegistryState.js';
 import { useProviderTargetReconciliation } from './useProviderTargetReconciliation.js';
@@ -173,37 +173,29 @@ export function ProviderModelFields({
     reloadProviderRegistry,
   });
 
-  function emitSelection(next: {
-    model?: string;
-    instance?: string;
-    presetId?: string | null;
-    controls?: Record<string, ProviderAdvancedControlValue> | undefined;
-  }): void {
-    const nextModel = next.model ?? selectedCatalogEntryId;
-    const nextControls = filterPersistentControlValues(
-      effectiveAdvancedCatalog.controls,
-      nextModel,
-      next.controls,
-    );
-    const nextPresetId = next.presetId ?? null;
-    markManualSelection();
-    onTargetChange({
-      provider,
-      instance: next.instance ?? resolvedInstance,
-      model: nextModel,
-      modelSelection: buildSelectionForEntry(nextModel, nextPresetId, nextControls),
-    });
-  }
-
-  function emitLegacyModel(nextModel: string, nextInstance?: string): void {
-    markLegacyManualSelection();
-    onTargetChange({
-      provider,
-      instance: nextInstance ?? resolvedInstance,
-      model: nextModel,
-      modelSelection: null,
-    });
-  }
+  const {
+    onProviderChange,
+    onInstanceChange,
+    onModelEntryChange,
+    onLegacyModelChange,
+    onPresetChange,
+    onControlChange,
+  } = useProviderModelFieldActions({
+    providerOptions,
+    provider,
+    resolvedInstance,
+    model,
+    persistedLegacyModelTarget,
+    selectedCatalogEntryId,
+    selectedPresetId,
+    presetOptions,
+    controlValues,
+    effectiveControls: effectiveAdvancedCatalog.controls,
+    markManualSelection,
+    markLegacyManualSelection,
+    clearManualSelection,
+    onTargetChange,
+  });
 
   return (
     <>
@@ -213,21 +205,7 @@ export function ProviderModelFields({
           className="textInput"
           value={selectedProvider?.id ?? ''}
           disabled={providerOptions.length === 0}
-          onChange={(event) => {
-            const nextProvider = providerOptions.find((option) => option.id === event.target.value)
-              ?? null;
-            if (!nextProvider) {
-              return;
-            }
-            const nextInstance = resolveSelectedProviderInstance(nextProvider, '');
-            clearManualSelection();
-            onTargetChange({
-              provider: nextProvider.id,
-              instance: nextInstance,
-              model: '',
-              modelSelection: null,
-            });
-          }}
+          onChange={(event) => onProviderChange(event.target.value)}
         >
           {providerOptions.length === 0 ? (
             <option value="">{providerPlaceholder}</option>
@@ -292,15 +270,7 @@ export function ProviderModelFields({
           <select
             className="textInput"
             value={resolvedInstance}
-            onChange={(event) => {
-              clearManualSelection();
-              onTargetChange({
-                provider,
-                instance: event.target.value,
-                model: '',
-                modelSelection: null,
-              });
-            }}
+            onChange={(event) => onInstanceChange(event.target.value)}
           >
             {instanceOptions.map((option) => (
               <option key={option.id} value={option.id}>
@@ -326,17 +296,7 @@ export function ProviderModelFields({
           className="textInput"
           value={selectedEntryId}
           disabled={!isLegacyModelTarget && entryOptions.length === 0}
-          onChange={(event) => {
-            if (event.target.value === CUSTOM_LEGACY_MODEL_VALUE) {
-              emitLegacyModel(persistedLegacyModelTarget ? model : '');
-              return;
-            }
-            emitSelection({
-              model: event.target.value,
-              presetId: null,
-              controls: undefined,
-            });
-          }}
+          onChange={(event) => onModelEntryChange(event.target.value)}
         >
           {!isLegacyModelTarget ? (
             <option value="" disabled={entryOptions.length > 0}>
@@ -371,9 +331,7 @@ export function ProviderModelFields({
             type="text"
             value={model}
             placeholder="e.g. claude-sonnet-4-6"
-            onChange={(event) => {
-              emitLegacyModel(event.target.value);
-            }}
+            onChange={(event) => onLegacyModelChange(event.target.value)}
           />
           <span className="fieldHint">
             Manual model id passthrough. Runtime resolves this as the legacy `model` field, not a structured entry/preset selection.
@@ -386,15 +344,7 @@ export function ProviderModelFields({
             className="textInput"
             value={selectedPresetId}
             disabled={presetOptions.length === 0}
-            onChange={(event) => {
-              const preset = presetOptions.find((option) => option.id === event.target.value) ?? null;
-              emitSelection({
-                presetId: preset?.id ?? null,
-                controls: preset?.controlDefaults
-                  ? { ...preset.controlDefaults }
-                  : undefined,
-              });
-            }}
+            onChange={(event) => onPresetChange(event.target.value)}
           >
             <option value="">{presetOptions.length > 0 ? 'Standard' : 'Standard only'}</option>
             {presetOptions.map((preset) => (
@@ -430,16 +380,7 @@ export function ProviderModelFields({
               <select
                 className="textInput"
                 value={serializeControlInputValue(value)}
-                onChange={(event) => {
-                  emitSelection({
-                    presetId: selectedPresetId || null,
-                    controls: updatePersistentControlValues({
-                      control,
-                      currentValues: controlValues,
-                      rawValue: event.target.value,
-                    }),
-                  });
-                }}
+                onChange={(event) => onControlChange(control, event.target.value)}
               >
                 <option value="">Default</option>
                 <option value="true">Enabled</option>
@@ -472,16 +413,7 @@ export function ProviderModelFields({
               <select
                 className="textInput"
                 value={displayedValue}
-                onChange={(event) => {
-                  emitSelection({
-                    presetId: selectedPresetId || null,
-                    controls: updatePersistentControlValues({
-                      control,
-                      currentValues: controlValues,
-                      rawValue: event.target.value,
-                    }),
-                  });
-                }}
+                onChange={(event) => onControlChange(control, event.target.value)}
               >
                 {showSyntheticDefaultOption ? <option value="">Default</option> : null}
                   {controlValueOptions.map((option, index) => (
@@ -511,16 +443,7 @@ export function ProviderModelFields({
               max={control.kind === 'number' ? control.maximum : undefined}
               step={control.kind === 'number' ? control.step ?? 1 : undefined}
               placeholder="Optional"
-              onChange={(event) => {
-                emitSelection({
-                  presetId: selectedPresetId || null,
-                  controls: updatePersistentControlValues({
-                    control,
-                    currentValues: controlValues,
-                    rawValue: event.target.value,
-                  }),
-                });
-              }}
+              onChange={(event) => onControlChange(control, event.target.value)}
             />
             {control.description ? (
               <span className="fieldHint">{control.description}</span>
