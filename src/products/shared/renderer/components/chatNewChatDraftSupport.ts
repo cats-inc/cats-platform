@@ -17,7 +17,7 @@ import {
 } from './ComposerRecipientChip.js';
 import type { ModelSelectorValue } from './ModelSelector.js';
 import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer.js';
-import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
 
 export interface DraftComposerStackParticipant {
   key: string;
@@ -165,6 +165,8 @@ export function resolveChatNewChatDraftViewState(input: {
         participant.provider,
         participant.instance ?? null,
         participant.model ?? null,
+        null,
+        resolveControlDisplayLabels(participant.modelSelection?.controls),
       ),
       avatarColor: null,
       avatarUrl: null,

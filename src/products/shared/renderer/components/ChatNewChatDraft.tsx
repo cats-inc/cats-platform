@@ -21,7 +21,7 @@ import {
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
-import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
 import { AudienceChip } from './AudienceChip.js';
 
 export interface NewChatDraftProps {
@@ -246,7 +246,7 @@ export function NewChatDraft({
         key: `temp:${tp.participantId}`,
         name: tp.name,
         executionLabel: tp.provider
-          ? buildExecutionLabel(tp.provider, tp.instance ?? null, tp.model ?? null)
+          ? buildExecutionLabel(tp.provider, tp.instance ?? null, tp.model ?? null, null, resolveControlDisplayLabels(tp.modelSelection?.controls))
           : null,
         avatarColor: null,
         avatarUrl: null,

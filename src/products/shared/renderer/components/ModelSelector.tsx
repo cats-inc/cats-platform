@@ -5,7 +5,7 @@ import {
   type ComponentType,
 } from 'react';
 
-import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
 import type {
   ProviderModelSelection,
   ProviderTargetSelection,
@@ -44,8 +44,13 @@ export function ModelSelectorChip({ label, onClick }: ModelSelectorChipProps) {
   );
 }
 
-export function buildModelSelectorLabel(value: ModelSelectorValue, catName?: string | null): string {
-  const base = buildExecutionLabel(value.provider, value.instance, value.model);
+export function buildModelSelectorLabel(
+  value: ModelSelectorValue,
+  catName?: string | null,
+  catalogControls?: ReadonlyArray<{ key: string; values?: ReadonlyArray<{ value: string | number | boolean; label: string }> }> | null,
+): string {
+  const controlLabels = resolveControlDisplayLabels(value.modelSelection?.controls, catalogControls);
+  const base = buildExecutionLabel(value.provider, value.instance, value.model, null, controlLabels);
   return catName ? `${catName} \u00b7 ${base}` : base;
 }
 

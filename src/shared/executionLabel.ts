@@ -45,15 +45,53 @@ function resolveModelLabel(provider: string, model: string | null | undefined): 
     .trim();
 }
 
+const KNOWN_CONTROL_VALUE_LABELS: Record<string, string> = {
+  max: 'Max',
+  xhigh: 'Extra High',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  none: 'None',
+};
+
+function formatFallbackControlValue(value: string | number | boolean): string {
+  if (typeof value === 'boolean') return value ? 'On' : 'Off';
+  if (typeof value === 'number') return String(value);
+  return KNOWN_CONTROL_VALUE_LABELS[value]
+    ?? value.replace(/[_-]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function resolveControlDisplayLabels(
+  controls: Record<string, string | number | boolean> | null | undefined,
+  catalogControls?: ReadonlyArray<{ key: string; values?: ReadonlyArray<{ value: string | number | boolean; label: string }> }> | null,
+): string[] {
+  if (!controls) return [];
+  const catalogMap = new Map(
+    (catalogControls ?? []).map((c) => [c.key, c]),
+  );
+  return Object.entries(controls)
+    .filter(([, value]) => value !== '' && value !== false)
+    .map(([key, value]) => {
+      const catalog = catalogMap.get(key);
+      const match = catalog?.values?.find((v) => v.value === value);
+      return match?.label ?? formatFallbackControlValue(value);
+    })
+    .filter((label) => label.length > 0);
+}
+
 export function buildExecutionLabel(
   provider: string,
   instance: string | null | undefined,
   model: string | null | undefined,
   providerLabel?: string | null,
+  controlLabels?: readonly string[] | null,
 ): string {
   const providerName = providerLabel?.trim() || getProviderDisplayName(provider);
   const effectiveInstance = instance?.trim() || getDefaultProviderInstance(provider);
   const suffix = resolveBackendSuffix(provider, effectiveInstance);
   const modelLabel = resolveModelLabel(provider, model);
-  return providerName + suffix + (modelLabel ? ` \u00b7 ${modelLabel}` : '');
+  const controlsSuffix = controlLabels && controlLabels.length > 0
+    ? ` \u00b7 ${controlLabels.join(' \u00b7 ')}`
+    : '';
+  return providerName + suffix + (modelLabel ? ` \u00b7 ${modelLabel}` : '') + controlsSuffix;
 }
