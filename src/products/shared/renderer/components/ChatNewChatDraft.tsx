@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
-import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel.js';
+import { SidePanel } from '../../../../design/components/SidePanel.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { resolveDraftParticipantSelection } from '../draftParticipants.js';
 import {
@@ -13,15 +13,11 @@ import {
   type DraftStarterSuggestion,
 } from '../draftStarterSuggestions.js';
 import {
-  buildDraftParticipantExecutionLabel,
   createDraftTemporaryParticipant,
-  createDraftTemporaryParticipantFromAssistantPreset,
-  draftHasAssistantPresetParticipant,
   pickDraftGreeting,
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
 import { catInitials, isChatCat, truncatePath } from '../workspaceChatUtils.js';
-import { CatAvatarRow } from './CatAvatarRow.js';
 import {
   ComposerRecipientChip,
   buildNamedRecipient,
@@ -29,15 +25,16 @@ import {
 } from './ComposerRecipientChip.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
 import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
-import { FolderBrowserContent } from './FolderBrowser.js';
 import {
   buildModelSelectorLabel,
   ModelSelectorChip,
   type ModelSelectorValue,
 } from './ModelSelector.js';
-import { ProviderModelFields } from './ProviderModelFields.js';
+import {
+  buildChatNewChatDraftSidePanelSections,
+  type ChatNewChatTemporaryParticipantFormState,
+} from './chatNewChatDraftSidePanel.js';
 import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer.js';
-import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -160,7 +157,7 @@ export function NewChatDraft({
   onFolderBrowseSelect,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
-  function createTemporaryParticipantFormValue() {
+  function createTemporaryParticipantFormValue(): ChatNewChatTemporaryParticipantFormState {
     return {
       roleHint: '',
       provider: payload.chat.newChatDefaults?.provider ?? 'claude',
@@ -209,7 +206,7 @@ export function NewChatDraft({
   const [temporaryParticipantFormOpen, setTemporaryParticipantFormOpen] = useState(false);
   const [editingTemporaryParticipantId, setEditingTemporaryParticipantId] = useState<string | null>(null);
   const [editingTemporaryParticipantName, setEditingTemporaryParticipantName] = useState('');
-  const [temporaryParticipantForm, setTemporaryParticipantForm] = useState(
+  const [temporaryParticipantForm, setTemporaryParticipantForm] = useState<ChatNewChatTemporaryParticipantFormState>(
     createTemporaryParticipantFormValue,
   );
   function openSidePanelTo(section: string): void {
@@ -654,335 +651,58 @@ export function NewChatDraft({
           onSectionToggle={isSubmittingFirstTurn ? () => {} : switchSection}
           onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
           className="chatPaneSidePanel"
-          sections={buildDraftSidePanelSections()}
+          sections={buildChatNewChatDraftSidePanelSections({
+            payload,
+            chatCats,
+            draftCatIds,
+            draftHighlightedCatId,
+            effectiveDefaultRecipientCat,
+            isGroupDraft,
+            isDirectLaneContext,
+            isParallelMode,
+            groupDraftSelectionLabel,
+            assistantPresets,
+            draftTemporaryParticipants,
+            editingTemporaryParticipantId,
+            editingTemporaryParticipantName,
+            temporaryParticipantFormOpen,
+            temporaryParticipantForm,
+            hasReachedGroupParticipantLimit,
+            isSubmittingFirstTurn,
+            defaultRecipientCat,
+            activePanelModel,
+            onToggleDraftCat,
+            onHighlightDraftCat,
+            onAddDraftTemporaryParticipant,
+            onRemoveDraftTemporaryParticipant,
+            onBeginTemporaryParticipantRename: beginTemporaryParticipantRename,
+            onCancelTemporaryParticipantRename: cancelTemporaryParticipantRename,
+            onSubmitTemporaryParticipantRename: submitTemporaryParticipantRename,
+            onEditingTemporaryParticipantNameChange: setEditingTemporaryParticipantName,
+            onTemporaryParticipantFormChange: (updater) =>
+              setTemporaryParticipantForm((current) => updater(current)),
+            createTemporaryParticipantFormValue,
+            onTemporaryParticipantFormOpenChange: setTemporaryParticipantFormOpen,
+            onSubmitTemporaryParticipant: submitTemporaryParticipant,
+            selectedModel,
+            onModelChange,
+            onDirectLaneModelChange,
+            parallelTargets,
+            onParallelTargetChange,
+            folderBrowsePath,
+            folderBrowseCurrentPath,
+            folderBrowseParentPath,
+            folderBrowseEntries,
+            folderBrowseLoading,
+            folderBrowseError,
+            draftCwd,
+            onFolderBrowsePathChange,
+            onFolderBrowse,
+            onFolderBrowseSelect,
+            onCloseSidePanel: () => setSidePanelOpen(false),
+          })}
         />
       ) : null}
     </div>
   );
-
-  function buildDraftSidePanelSections(): SidePanelSection[] {
-    const sections: SidePanelSection[] = [];
-
-    sections.push({
-      id: 'cats',
-      title: isGroupDraft ? 'Participants' : 'Cats',
-      children: (
-        <div className="sidePanelSectionStack">
-          {isGroupDraft ? (
-            <p className="operatorEmptyState" style={{ margin: 0 }}>
-              {groupDraftSelectionLabel}
-            </p>
-          ) : null}
-          {chatCats.filter((c) => c.status === 'active').length > 0 ? (
-            <CatAvatarRow
-              cats={chatCats}
-              bossCatId={payload.chat.bossCatId}
-              selectedIds={draftCatIds}
-              highlightedId={draftHighlightedCatId}
-              defaultRecipientCatId={effectiveDefaultRecipientCat?.id ?? null}
-              toggleable
-              onToggle={onToggleDraftCat}
-              onHighlight={(id) => onHighlightDraftCat(id)}
-            />
-          ) : (
-            <p className="operatorEmptyState">No cats are available yet.</p>
-          )}
-          {isGroupDraft ? (
-            <>
-              {assistantPresets.length > 0 ? (
-                <div className="addCatList">
-                  {assistantPresets.map((assistantPreset) => {
-                    const alreadyAdded = draftHasAssistantPresetParticipant(
-                      draftTemporaryParticipants,
-                      assistantPreset.id,
-                    );
-                    return (
-                      <div key={assistantPreset.id} className="addCatItem">
-                        <div>
-                          <strong>{assistantPreset.name}</strong>
-                          <p>{buildDraftParticipantExecutionLabel({
-                            provider: assistantPreset.executionTarget.provider,
-                            instance: assistantPreset.executionTarget.instance,
-                            model: assistantPreset.executionTarget.model,
-                          })}</p>
-                          {assistantPreset.roleHint ? <p>{assistantPreset.roleHint}</p> : null}
-                        </div>
-                        <button
-                          className="addCatAssignButton"
-                          type="button"
-                          disabled={isSubmittingFirstTurn || alreadyAdded || hasReachedGroupParticipantLimit}
-                          onClick={() =>
-                            onAddDraftTemporaryParticipant(
-                              createDraftTemporaryParticipantFromAssistantPreset(assistantPreset),
-                            )}
-                        >
-                          {alreadyAdded ? 'Added' : 'Add'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-              {draftTemporaryParticipants.length > 0 ? (
-                <div className="addCatList">
-                  {draftTemporaryParticipants.map((participant) => (
-                    <div key={participant.participantId} className="addCatItem">
-                      <div>
-                        <strong>{participant.name}</strong>
-                        <p>{buildDraftParticipantExecutionLabel(participant)}</p>
-                        {participant.roleHint ? <p>{participant.roleHint}</p> : null}
-                        {editingTemporaryParticipantId === participant.participantId ? (
-                          <form
-                            className="stackForm"
-                            onSubmit={(event) => {
-                              event.preventDefault();
-                              submitTemporaryParticipantRename(participant.participantId);
-                            }}
-                          >
-                            <label className="fieldLabel">
-                              <span>Name</span>
-                              <input
-                                className="textInput"
-                                value={editingTemporaryParticipantName}
-                                onChange={(event) => setEditingTemporaryParticipantName(event.target.value)}
-                                placeholder="Participant name"
-                              />
-                            </label>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <button
-                                type="button"
-                                className="operatorActionButton"
-                                onClick={cancelTemporaryParticipantRename}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="submit"
-                                className="primaryButton"
-                                disabled={!editingTemporaryParticipantName.trim()}
-                              >
-                                Save name
-                              </button>
-                            </div>
-                          </form>
-                        ) : null}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          className="addCatAssignButton"
-                          type="button"
-                          disabled={isSubmittingFirstTurn}
-                          onClick={() => beginTemporaryParticipantRename(participant)}
-                        >
-                          Rename
-                        </button>
-                        <button
-                          className="addCatAssignButton addCatRemoveButton"
-                          type="button"
-                          disabled={isSubmittingFirstTurn}
-                          onClick={() => {
-                            if (editingTemporaryParticipantId === participant.participantId) {
-                              cancelTemporaryParticipantRename();
-                            }
-                            onRemoveDraftTemporaryParticipant(participant.participantId);
-                          }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              {temporaryParticipantFormOpen && !hasReachedGroupParticipantLimit ? (
-                <form
-                  className="stackForm"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    submitTemporaryParticipant();
-                  }}
-                >
-                  <p className="operatorEmptyState" style={{ margin: 0 }}>
-                    Name will be assigned automatically from the provider. You can rename it after adding.
-                  </p>
-                  <label className="fieldLabel">
-                    <span>Role Hint</span>
-                    <input
-                      className="textInput"
-                      value={temporaryParticipantForm.roleHint}
-                      onChange={(event) =>
-                        setTemporaryParticipantForm((current) => ({
-                          ...current,
-                          roleHint: event.target.value,
-                        }))}
-                      placeholder="Optional one-line role"
-                    />
-                  </label>
-                  <ProviderModelFields
-                    provider={temporaryParticipantForm.provider}
-                    instance={temporaryParticipantForm.instance}
-                    model={temporaryParticipantForm.model}
-                    modelSelection={temporaryParticipantForm.modelSelection}
-                    onTargetChange={(target: ProviderTargetSelection) => {
-                      setTemporaryParticipantForm((current) => ({
-                        ...current,
-                        provider: target.provider,
-                        instance: target.instance,
-                        model: target.model,
-                        modelSelection: target.modelSelection ?? null,
-                      }));
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      type="button"
-                      className="operatorActionButton"
-                      onClick={() => {
-                        setTemporaryParticipantForm(createTemporaryParticipantFormValue());
-                        setTemporaryParticipantFormOpen(false);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="primaryButton"
-                      disabled={
-                        hasReachedGroupParticipantLimit
-                        || !temporaryParticipantForm.provider.trim()
-                      }
-                    >
-                      Add participant
-                    </button>
-                  </div>
-                </form>
-              ) : !hasReachedGroupParticipantLimit ? (
-                <button
-                  type="button"
-                  className="operatorActionButton"
-                  disabled={isSubmittingFirstTurn}
-                  onClick={() => setTemporaryParticipantFormOpen(true)}
-                >
-                  Add temporary participant
-                </button>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      ),
-    });
-
-    const executionChildren = (() => {
-      if (isDirectLaneContext && defaultRecipientCat && activePanelModel) {
-        return (
-          <>
-            <CatAvatarRow
-              cats={[defaultRecipientCat]}
-              bossCatId={payload.chat.bossCatId}
-              selectedIds={[defaultRecipientCat.id]}
-              highlightedId={defaultRecipientCat.id}
-              defaultRecipientCatId={defaultRecipientCat.id}
-              toggleable={false}
-              onToggle={() => {}}
-              onHighlight={() => {}}
-            />
-            <ProviderModelFields
-              provider={activePanelModel.provider}
-              instance={activePanelModel.instance ?? ''}
-              model={activePanelModel.model ?? ''}
-              modelSelection={activePanelModel.modelSelection}
-              onTargetChange={(target: ProviderTargetSelection) => {
-                onDirectLaneModelChange?.(defaultRecipientCat.id, {
-                  provider: target.provider,
-                  model: target.model || null,
-                  instance: target.instance || null,
-                  modelSelection: target.modelSelection ?? null,
-                });
-              }}
-            />
-          </>
-        );
-      }
-      if (activePanelModel) {
-        return (
-          <>
-            <div style={effectiveDefaultRecipientCat && !isDirectLaneContext ? { pointerEvents: 'none', opacity: 0.45 } : undefined}>
-              <ProviderModelFields
-                provider={activePanelModel.provider}
-                instance={activePanelModel.instance ?? ''}
-                model={activePanelModel.model ?? ''}
-                modelSelection={activePanelModel.modelSelection}
-                onTargetChange={(target: ProviderTargetSelection) => {
-                  if (!effectiveDefaultRecipientCat && onModelChange) {
-                    onModelChange({
-                      provider: target.provider,
-                      model: target.model || null,
-                      instance: target.instance || null,
-                      modelSelection: target.modelSelection ?? null,
-                    });
-                  }
-                }}
-              />
-            </div>
-          </>
-        );
-      }
-      return <p className="operatorEmptyState">No AI reply setup yet.</p>;
-    })();
-    sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
-
-    if (isParallelMode && parallelTargets) {
-      parallelTargets.forEach((target, index) => {
-        sections.push({
-          id: `parallel:${index}`,
-          title: buildModelSelectorLabel(target),
-          children: (
-            <ProviderModelFields
-              provider={target.provider}
-              instance={target.instance ?? ''}
-              model={target.model ?? ''}
-              modelSelection={target.modelSelection}
-              onTargetChange={(next: ProviderTargetSelection) => {
-                onParallelTargetChange?.(index, {
-                  provider: next.provider,
-                  model: next.model || null,
-                  instance: next.instance || null,
-                  modelSelection: next.modelSelection ?? null,
-                });
-              }}
-            />
-          ),
-        });
-      });
-    }
-
-    sections.push({
-      id: 'cwd',
-      title: 'Folder',
-      children: onFolderBrowsePathChange && onFolderBrowse && onFolderBrowseSelect ? (
-        <FolderBrowserContent
-          folderBrowsePath={folderBrowsePath}
-          folderBrowseCurrentPath={folderBrowseCurrentPath}
-          folderBrowseParentPath={folderBrowseParentPath}
-          folderBrowseEntries={folderBrowseEntries}
-          folderBrowseLoading={folderBrowseLoading}
-          folderBrowseError={folderBrowseError}
-          onPathChange={onFolderBrowsePathChange}
-          onBrowse={onFolderBrowse}
-          onSelect={() => {
-            onFolderBrowseSelect();
-            setSidePanelOpen(false);
-          }}
-        />
-      ) : (
-        draftCwd ? (
-          <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{draftCwd}</p>
-        ) : (
-          <p className="operatorEmptyState">No folder selected yet.</p>
-        )
-      ),
-    });
-
-    return sections;
-  }
 }
