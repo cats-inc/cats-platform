@@ -352,30 +352,50 @@ export function NewChatDraft({
               </div>
               {isGroupDraft ? (
                 <div className="composerGroupAddRow">
-                  {groupComposerParticipants.map((participant) => (
-                    <div
-                      key={participant.key}
-                      className="catAvatar"
-                      data-tooltip={participant.name}
-                      style={
-                        participant.avatarUrl
-                          ? {
-                              backgroundImage: `url(${participant.avatarUrl})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                            }
-                          : participant.isCat
-                            ? { background: participant.avatarColor ?? '#8B7E74' }
-                            : {
-                                background: '#fff',
-                                color: '#222',
-                                border: '1px solid rgba(0, 0, 0, 0.15)',
+                  {groupComposerParticipants.map((participant) => {
+                    const canRemove = !isSubmittingFirstTurn && groupComposerParticipants.length > 2;
+                    return (
+                      <div key={participant.key} className="composerGroupAvatarSlot">
+                        <div
+                          className="catAvatar"
+                          data-tooltip={participant.name}
+                          style={
+                            participant.avatarUrl
+                              ? {
+                                  backgroundImage: `url(${participant.avatarUrl})`,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center',
+                                }
+                              : participant.isCat
+                                ? { background: participant.avatarColor ?? '#8B7E74' }
+                                : {
+                                    background: '#fff',
+                                    color: '#222',
+                                    border: '1px solid rgba(0, 0, 0, 0.15)',
+                                  }
+                          }
+                        >
+                          {participant.avatarUrl ? null : catInitials(participant.name)}
+                        </div>
+                        {canRemove ? (
+                          <button
+                            type="button"
+                            className="composerGroupAvatarRemove"
+                            aria-label={`Remove ${participant.name}`}
+                            onClick={() => {
+                              if (participant.isCat && participant.catId) {
+                                onToggleDraftCat(participant.catId);
+                              } else if (participant.participantId) {
+                                onRemoveDraftTemporaryParticipant(participant.participantId);
                               }
-                      }
-                    >
-                      {participant.avatarUrl ? null : catInitials(participant.name)}
-                    </div>
-                  ))}
+                            }}
+                          >
+                            &times;
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                   {!hasReachedGroupParticipantLimit ? (
                     <>
                       <button
