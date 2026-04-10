@@ -25,11 +25,10 @@ import {
 } from './taskInspection.js';
 import {
   applyCoreTaskViewLimit,
-  buildCoreTaskStatusCounts,
-  countCoreTaskViewConversations,
   matchesCoreTaskViewCommonQuery,
   type CoreTaskViewCommonQuery,
 } from './taskViewQuery.js';
+import { summarizeCoreTaskRecoveryViewsWithSupport } from './taskRecoverySummary.js';
 import {
   type OrchestratorDispatchReplayTrigger,
   type OrchestratorDispatchReplayState,
@@ -929,294 +928,32 @@ function matchesRecoveryListOptions(
   return true;
 }
 
-function buildPendingDispatchReplayStateCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<PendingOrchestratorDispatchReplayState, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_PENDING_DISPATCH_REPLAY_STATES.map((state) => [state, 0]),
-  ) as Record<PendingOrchestratorDispatchReplayState, number>;
-
-  for (const recovery of recoveries) {
-    if (recovery.pendingDispatch) {
-      counts[recovery.pendingDispatch.replayState as PendingOrchestratorDispatchReplayState] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildDispatchReplayStateCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<OrchestratorDispatchReplayState, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_DISPATCH_REPLAY_STATES.map((state) => [state, 0]),
-  ) as Record<OrchestratorDispatchReplayState, number>;
-
-  for (const recovery of recoveries) {
-    if (recovery.dispatchReplay) {
-      counts[recovery.dispatchReplay.replayState as OrchestratorDispatchReplayState] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildWorkflowContinuationReplayStateCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<WorkflowContinuationReplayState, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES.map((state) => [state, 0]),
-  ) as Record<WorkflowContinuationReplayState, number>;
-
-  for (const recovery of recoveries) {
-    if (recovery.workflowContinuationReplay) {
-      counts[recovery.workflowContinuationReplay.replayState as WorkflowContinuationReplayState] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildWorkflowContinuationBlockedReasonCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<WorkflowContinuationReplayBlockedReason, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS.map((reason) => [reason, 0]),
-  ) as Record<WorkflowContinuationReplayBlockedReason, number>;
-
-  for (const recovery of recoveries) {
-    const blockedReason = recovery.workflowContinuationReplay?.blockedReason;
-    if (!blockedReason) {
-      continue;
-    }
-    counts[blockedReason as WorkflowContinuationReplayBlockedReason] += 1;
-  }
-
-  return counts;
-}
-
-function buildRecoveryActionKindCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<CoreTaskRecoveryActionKind, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_ACTION_KINDS.map((kind) => [kind, 0]),
-  ) as Record<CoreTaskRecoveryActionKind, number>;
-
-  for (const recovery of recoveries) {
-    for (const action of recovery.approvalActions) {
-      counts[action.kind] += 1;
-    }
-    for (const action of recovery.incidentActions) {
-      counts[action.kind] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildRecoveryDeliveryModeCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<CoreDeliveryMode, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_DELIVERY_MODES.map((mode) => [mode, 0]),
-  ) as Record<CoreDeliveryMode, number>;
-
-  for (const recovery of recoveries) {
-    if (recovery.context?.deliveryMode) {
-      counts[recovery.context.deliveryMode] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildRecoveryDeliveryActionCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<CoreRuntimeDeliveryAction, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_DELIVERY_ACTIONS.map((action) => [action, 0]),
-  ) as Record<CoreRuntimeDeliveryAction, number>;
-
-  for (const recovery of recoveries) {
-    for (const action of recovery.context?.deliveryActions ?? []) {
-      counts[action] += 1;
-    }
-  }
-
-  return counts;
-}
-
-function buildRecoveryWorkflowStageCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<string, number> {
-  const counts: Record<string, number> = {};
-
-  for (const recovery of recoveries) {
-    const stageId = recovery.context?.workflowStageId;
-    if (!stageId) {
-      continue;
-    }
-    counts[stageId] = (counts[stageId] ?? 0) + 1;
-  }
-
-  return counts;
-}
-
-function buildRecoveryWorkflowShapeCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<CoreTaskRecoveryWorkflowShape, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_WORKFLOW_SHAPES.map((shape) => [shape, 0]),
-  ) as Record<CoreTaskRecoveryWorkflowShape, number>;
-
-  for (const recovery of recoveries) {
-    const shape = readWorkflowShape(recovery.context?.workflowShape);
-    if (!shape) {
-      continue;
-    }
-    counts[shape] += 1;
-  }
-
-  return counts;
-}
-
-function buildRecoveryResumeReasonCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<CoreTaskRecoveryResumeReason, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_RESUME_REASONS.map((reason) => [reason, 0]),
-  ) as Record<CoreTaskRecoveryResumeReason, number>;
-
-  for (const recovery of recoveries) {
-    const reason = recovery.latestActivity?.resumeReason;
-    if (!reason) {
-      continue;
-    }
-    counts[reason] += 1;
-  }
-
-  return counts;
-}
-
-function buildRecoveryReplayPhaseCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<CoreTaskRecoveryReplayPhase, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_PHASES.map((phase) => [phase, 0]),
-  ) as Record<CoreTaskRecoveryReplayPhase, number>;
-
-  for (const recovery of recoveries) {
-    const phase = readReplayPhase(recovery.latestActivity?.phase);
-    if (!phase) {
-      continue;
-    }
-    counts[phase] += 1;
-  }
-
-  return counts;
-}
-
-function buildRecoveryReplayTriggerCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<CoreTaskRecoveryReplayTrigger, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_TRIGGERS.map((trigger) => [trigger, 0]),
-  ) as Record<CoreTaskRecoveryReplayTrigger, number>;
-
-  for (const recovery of recoveries) {
-    const trigger = readReplayTrigger(recovery.latestActivity?.trigger);
-    if (!trigger) {
-      continue;
-    }
-    counts[trigger] += 1;
-  }
-
-  return counts;
-}
-
-function buildRecoveryReplaySourceCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<CoreTaskRecoveryReplaySource, number> {
-  const counts = Object.fromEntries(
-    CORE_TASK_RECOVERY_REPLAY_SOURCES.map((source) => [source, 0]),
-  ) as Record<CoreTaskRecoveryReplaySource, number>;
-
-  for (const recovery of recoveries) {
-    const source = readReplaySource(recovery.latestActivity?.source);
-    if (!source) {
-      continue;
-    }
-    counts[source] += 1;
-  }
-
-  return counts;
-}
-
-function buildRecoveryContinuationSourceCounts(
-  recoveries: CoreTaskRecoveryView[],
-): Record<WorkflowContinuationReplaySource, number> {
-  const counts = Object.fromEntries(
-    WORKFLOW_CONTINUATION_REPLAY_SOURCES.map((source) => [source, 0]),
-  ) as Record<WorkflowContinuationReplaySource, number>;
-
-  for (const recovery of recoveries) {
-    const source = recovery.workflowContinuationReplay?.continuationSource;
-    if (
-      source !== 'explicit_mentions'
-      && source !== 'workflow_recommendation'
-    ) {
-      continue;
-    }
-    counts[source] += 1;
-  }
-
-  return counts;
-}
-
 export function summarizeCoreTaskRecoveryViews(input: {
   totalAvailable: number;
   matching: number;
   recoveries: CoreTaskRecoveryView[];
 }): CoreTaskRecoveryListSummary {
-  return {
-    totalAvailable: input.totalAvailable,
-    matching: input.matching,
-    returned: input.recoveries.length,
-    conversationCount: countCoreTaskViewConversations(input.recoveries),
-    taskStatusCounts: buildCoreTaskStatusCounts(input.recoveries),
-    canRetryCount: input.recoveries.filter((recovery) => recovery.canRetry).length,
-    canResumeViaApprovalCount: input.recoveries.filter((recovery) => recovery.canResumeViaApproval)
-      .length,
-    withPendingDispatchCount: input.recoveries.filter((recovery) => recovery.pendingDispatch).length,
-    withDispatchReplayCount: input.recoveries.filter((recovery) => recovery.dispatchReplay).length,
-    withWorkflowContinuationReplayCount: input.recoveries.filter((recovery) =>
-      recovery.workflowContinuationReplay).length,
-    pendingDispatchReplayStateCounts: buildPendingDispatchReplayStateCounts(input.recoveries),
-    dispatchReplayStateCounts: buildDispatchReplayStateCounts(input.recoveries),
-    workflowContinuationReplayStateCounts:
-      buildWorkflowContinuationReplayStateCounts(input.recoveries),
-    workflowContinuationBlockedReasonCounts:
-      buildWorkflowContinuationBlockedReasonCounts(input.recoveries),
-    actionKindCounts: buildRecoveryActionKindCounts(input.recoveries),
-    deliveryModeCounts: buildRecoveryDeliveryModeCounts(input.recoveries),
-    deliveryActionCounts: buildRecoveryDeliveryActionCounts(input.recoveries),
-    workflowStageCounts: buildRecoveryWorkflowStageCounts(input.recoveries),
-    workflowShapeCounts: buildRecoveryWorkflowShapeCounts(input.recoveries),
-    latestReplaySourceCounts: buildRecoveryReplaySourceCounts(input.recoveries),
-    latestReplayTriggerCounts: buildRecoveryReplayTriggerCounts(input.recoveries),
-    latestReplayPhaseCounts: buildRecoveryReplayPhaseCounts(input.recoveries),
-    latestReplayResumeReasonCounts: buildRecoveryResumeReasonCounts(input.recoveries),
-    workflowReviewRequiredCount: input.recoveries.filter((recovery) =>
-      recovery.context?.workflowReviewRequired === true).length,
-    workflowConvergeTargetCount: input.recoveries.filter((recovery) =>
-      Boolean(recovery.context?.workflowConvergeTargetId)).length,
-    workflowContinuationSourceCounts: buildRecoveryContinuationSourceCounts(input.recoveries),
-    withUnresolvedWorkflowTargetsCount: input.recoveries.filter((recovery) =>
-      (recovery.workflowContinuationReplay?.unresolvedTargets.length ?? 0) > 0).length,
-    withChildrenCount: input.recoveries.filter((recovery) => recovery.family.childCount > 0).length,
-    withActiveChildrenCount: input.recoveries.filter((recovery) =>
-      recovery.family.childCount > 0 && !recovery.family.allChildrenTerminal).length,
-  };
+  return summarizeCoreTaskRecoveryViewsWithSupport({
+    ...input,
+    pendingDispatchReplayStates: CORE_TASK_PENDING_DISPATCH_REPLAY_STATES,
+    dispatchReplayStates: CORE_TASK_DISPATCH_REPLAY_STATES,
+    workflowContinuationReplayStates: CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES,
+    workflowContinuationBlockedReasons: CORE_TASK_WORKFLOW_CONTINUATION_BLOCKED_REASONS,
+    actionKinds: CORE_TASK_RECOVERY_ACTION_KINDS,
+    deliveryModes: CORE_TASK_RECOVERY_DELIVERY_MODES,
+    deliveryActions: CORE_TASK_RECOVERY_DELIVERY_ACTIONS,
+    workflowShapes: CORE_TASK_RECOVERY_WORKFLOW_SHAPES,
+    replayResumeReasons: CORE_TASK_RECOVERY_RESUME_REASONS,
+    replayPhases: CORE_TASK_RECOVERY_REPLAY_PHASES,
+    replayTriggers: CORE_TASK_RECOVERY_REPLAY_TRIGGERS,
+    replaySources: CORE_TASK_RECOVERY_REPLAY_SOURCES,
+    continuationSources: WORKFLOW_CONTINUATION_REPLAY_SOURCES,
+    readWorkflowShape,
+    readResumeReason,
+    readReplayPhase,
+    readReplayTrigger,
+    readReplaySource,
+  });
 }
 
 export function listCoreTaskRecoveryViews(
