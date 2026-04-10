@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 
 import {
   type ProductProviderRegistryReadModel,
@@ -7,9 +7,7 @@ import {
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import {
-  resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
-  sameProviderModelSelection,
   type ProviderModelSelection,
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
@@ -23,15 +21,13 @@ import {
   listApplicableControlValueOptions,
   resolveProviderModelFieldsViewState,
   resolveDisplayedEnumControlValue,
-  sanitizePersistentTargetSelection,
   serializeControlInputValue,
   shouldAutoRecheckProviderRegistry,
-  shouldDeferCatalogTargetReconciliation,
-  shouldTreatPersistedTargetAsLegacyModel,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 import { useProviderCatalogState } from './useProviderCatalogState.js';
 import { useProviderRegistryState } from './useProviderRegistryState.js';
+import { useProviderTargetReconciliation } from './useProviderTargetReconciliation.js';
 
 export {
   CUSTOM_LEGACY_MODEL_VALUE,
@@ -83,10 +79,6 @@ export function ProviderModelFields({
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
 }: SharedProviderModelFieldsProps) {
-  const [legacyManualTargetKey, setLegacyManualTargetKey] = useState<string | null>(null);
-  const manualSelectionTargetKey = useRef<string | null>(null);
-  const previousTargetKey = useRef<string>('');
-  const onTargetChangeRef = useRef(onTargetChange);
   const {
     providers,
     providerRegistry,
@@ -98,10 +90,6 @@ export function ProviderModelFields({
     fetchProviderRegistry,
     onProviderRegistryChange,
   });
-
-  useEffect(() => {
-    onTargetChangeRef.current = onTargetChange;
-  }, [onTargetChange]);
 
   const providerOptions = providers;
   const selectedProvider = providerOptions.find((option) => option.id === provider) ?? null;
@@ -119,93 +107,24 @@ export function ProviderModelFields({
     fetchProviderModels,
     fetchAdvancedProviderModels,
   })
-  const targetKey = `${provider}::${resolvedInstance}`;
-  const persistedLegacyModelTarget = !catalogLoading && shouldTreatPersistedTargetAsLegacyModel({
-    catalog: effectiveCatalog,
-    model,
-    modelSelection,
-  });
-  const isLegacyModelTarget =
-    legacyManualTargetKey === targetKey
-    || persistedLegacyModelTarget;
-  const hasBlankLegacyDraft =
-    legacyManualTargetKey === targetKey
-    && (model?.trim() || '').length === 0
-    && !modelSelection;
-  const preserveExistingSelection = manualSelectionTargetKey.current === targetKey
-    || Boolean(modelSelection)
-    || isLegacyModelTarget;
-
-  useEffect(() => {
-    if (!selectedProvider) {
-      return;
-    }
-    if (previousTargetKey.current !== targetKey) {
-      previousTargetKey.current = targetKey;
-      manualSelectionTargetKey.current = null;
-      setLegacyManualTargetKey(null);
-    }
-    if (resolvedInstance && resolvedInstance !== instance) {
-      onTargetChangeRef.current({
-        provider,
-        instance: resolvedInstance,
-        model,
-        modelSelection,
-      });
-    }
-  }, [instance, model, modelSelection, provider, resolvedInstance, selectedProvider, targetKey]);
-
-  useEffect(() => {
-    if (effectiveCatalog.models.length === 0 || hasBlankLegacyDraft) {
-      return;
-    }
-
-    const deferStaticCatalogReconciliation = shouldDeferCatalogTargetReconciliation({
-      catalogSource: effectiveCatalog.source,
-      advancedCatalogSource: effectiveAdvancedCatalog.source,
-      model,
-      modelSelection,
-    });
-    if (deferStaticCatalogReconciliation) {
-      return;
-    }
-
-    const nextTarget = resolveCatalogTargetSelection({
-      target: {
-        provider,
-        instance: resolvedInstance,
-        model,
-        modelSelection,
-      },
-      catalog: effectiveCatalog,
-      advancedCatalog: effectiveAdvancedCatalog,
-      preserveCurrentModel: preserveExistingSelection,
-      preserveCurrentSelection: preserveExistingSelection,
-    });
-    const sanitizedTarget = sanitizePersistentTargetSelection({
-      target: nextTarget,
-      controls: effectiveAdvancedCatalog.controls,
-    });
-
-    if (
-      sanitizedTarget.instance !== instance
-      || sanitizedTarget.model !== model
-      || !sameProviderModelSelection(sanitizedTarget.modelSelection, modelSelection)
-    ) {
-      onTargetChangeRef.current(sanitizedTarget);
-    }
-  }, [
-    effectiveAdvancedCatalog,
-    effectiveCatalog,
+  const {
+    persistedLegacyModelTarget,
+    isLegacyModelTarget,
+    clearManualSelection,
+    markManualSelection,
+    markLegacyManualSelection,
+  } = useProviderTargetReconciliation({
+    provider,
     instance,
     model,
     modelSelection,
-    provider,
     resolvedInstance,
-    preserveExistingSelection,
-    targetKey,
-    hasBlankLegacyDraft,
-  ]);
+    hasSelectedProvider: Boolean(selectedProvider),
+    catalogLoading,
+    effectiveCatalog,
+    effectiveAdvancedCatalog,
+    onTargetChange,
+  });
 
   const {
     entryOptions,
@@ -296,8 +215,7 @@ export function ProviderModelFields({
       next.controls,
     );
     const nextPresetId = next.presetId ?? null;
-    manualSelectionTargetKey.current = targetKey;
-    setLegacyManualTargetKey(null);
+    markManualSelection();
     onTargetChange({
       provider,
       instance: next.instance ?? resolvedInstance,
@@ -307,8 +225,7 @@ export function ProviderModelFields({
   }
 
   function emitLegacyModel(nextModel: string, nextInstance?: string): void {
-    manualSelectionTargetKey.current = targetKey;
-    setLegacyManualTargetKey(targetKey);
+    markLegacyManualSelection();
     onTargetChange({
       provider,
       instance: nextInstance ?? resolvedInstance,
@@ -332,8 +249,7 @@ export function ProviderModelFields({
               return;
             }
             const nextInstance = resolveSelectedProviderInstance(nextProvider, '');
-            manualSelectionTargetKey.current = null;
-            setLegacyManualTargetKey(null);
+            clearManualSelection();
             onTargetChange({
               provider: nextProvider.id,
               instance: nextInstance,
@@ -406,8 +322,7 @@ export function ProviderModelFields({
             className="textInput"
             value={resolvedInstance}
             onChange={(event) => {
-              manualSelectionTargetKey.current = null;
-              setLegacyManualTargetKey(null);
+              clearManualSelection();
               onTargetChange({
                 provider,
                 instance: event.target.value,
