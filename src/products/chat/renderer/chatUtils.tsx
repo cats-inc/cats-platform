@@ -16,6 +16,7 @@ import {
   PRODUCT_PROVIDER_ORDER,
   getDefaultModel,
   getDefaultProviderInstance,
+  getDefaultProviderBackend,
 } from '../../../shared/providerCatalog.js';
 import {
   normalizeSelectedChannelView,
@@ -82,7 +83,8 @@ export function createInitialGroupParticipants(
 
   const takenNames: string[] = [];
   return providerSequence.map((provider) => {
-    const name = buildAutoTemporaryParticipantName(provider, takenNames);
+    const backend = getDefaultProviderBackend(provider);
+    const name = buildAutoTemporaryParticipantName(provider, takenNames, backend);
     takenNames.push(name);
     return {
       participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,

@@ -8,25 +8,35 @@ function normalizeTakenNames(names: ReadonlyArray<string>): Set<string> {
   );
 }
 
+const BACKEND_SUFFIX: Record<string, string> = {
+  cli: '-CLI',
+  api: '-API',
+  agent: '-Agent',
+  local: '-Local',
+};
+
 export function buildAutoTemporaryParticipantName(
   provider: string | null | undefined,
   takenNames: ReadonlyArray<string> = [],
+  backend?: string | null,
 ): string {
   const normalizedProvider = provider?.trim();
-  const baseName = normalizedProvider
+  const providerLabel = normalizedProvider
     ? getProviderDisplayName(normalizedProvider)
     : 'Participant';
+  const backendSuffix = backend ? (BACKEND_SUFFIX[backend] ?? '') : '';
+  const baseName = `${providerLabel}${backendSuffix}`;
   const occupiedNames = normalizeTakenNames(takenNames);
 
   if (!occupiedNames.has(baseName.toLocaleLowerCase())) {
     return baseName;
   }
 
-  let suffix = 2;
-  while (occupiedNames.has(`${baseName} ${suffix}`.toLocaleLowerCase())) {
-    suffix += 1;
+  let counter = 2;
+  while (occupiedNames.has(`${baseName} ${counter}`.toLocaleLowerCase())) {
+    counter += 1;
   }
-  return `${baseName} ${suffix}`;
+  return `${baseName} ${counter}`;
 }
 
 export function resolveTemporaryParticipantName(
