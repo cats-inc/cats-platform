@@ -1,11 +1,11 @@
 import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
 import type { SelectedChannelView } from '../../workspaceChatUtils.js';
-import { ComposerCatStack } from '../ComposerCatStack.js';
 import {
   buildModelSelectorLabel,
-  ModelSelectorChip,
   type ModelSelectorValue,
 } from '../ModelSelector.js';
+import { AudienceChip } from '../AudienceChip.js';
+import type { DraftComposerStackParticipant } from '../chatNewChatDraftSupport.js';
 
 export interface WorkspaceComposerTargetSlotProps {
   payload: AppShellPayload;
@@ -18,6 +18,19 @@ export interface WorkspaceComposerTargetSlotProps {
   isDirectLane: boolean;
   isSoloComposer: boolean;
   onOpenSection: (section: string) => void;
+}
+
+function catToAudienceParticipant(cat: ChatCat): DraftComposerStackParticipant {
+  return {
+    key: `cat:${cat.id}`,
+    name: cat.name,
+    executionLabel: null,
+    avatarColor: cat.avatarColor ?? null,
+    avatarUrl: cat.avatarUrl ?? null,
+    isCat: true,
+    catId: cat.id,
+    participantId: null,
+  };
 }
 
 export function WorkspaceComposerTargetSlot({
@@ -34,35 +47,46 @@ export function WorkspaceComposerTargetSlot({
 }: WorkspaceComposerTargetSlotProps) {
   if (isDirectLane && directLaneCat) {
     return (
-      <ComposerCatStack
-        cats={[directLaneCat]}
-        bossCatId={payload.chat.bossCatId}
-        defaultRecipientCatId={directLaneCat.id}
-        onClick={composerBusy ? undefined : () => onOpenSection('execution')}
+      <AudienceChip
+        audienceParticipants={[catToAudienceParticipant(directLaneCat)]}
+        onSingleClick={composerBusy ? undefined : () => onOpenSection('execution')}
+        disabled={composerBusy}
       />
     );
   }
 
   if (isSoloComposer && selectedModel) {
+    const label = buildModelSelectorLabel(selectedModel);
+    const participant: DraftComposerStackParticipant = {
+      key: 'implicit:model',
+      name: label,
+      executionLabel: label,
+      avatarColor: null,
+      avatarUrl: null,
+      isCat: false,
+      catId: null,
+      participantId: null,
+    };
     return (
-      <div style={{ marginRight: 8 }}>
-        <ModelSelectorChip
-          label={buildModelSelectorLabel(selectedModel)}
-          onClick={composerBusy ? undefined : () => onOpenSection('execution')}
-        />
-      </div>
+      <AudienceChip
+        audienceParticipants={[participant]}
+        onSingleClick={composerBusy ? undefined : () => onOpenSection('execution')}
+        disabled={composerBusy}
+      />
     );
   }
 
   if (!isSoloComposer && defaultRecipientCat) {
+    const cats = assignedCatRecords.length > 0
+      ? assignedCatRecords
+      : leadCatRecord ? [leadCatRecord] : [];
+    const participants = cats.map(catToAudienceParticipant);
+    if (participants.length === 0) return null;
     return (
-      <ComposerCatStack
-        cats={assignedCatRecords.length > 0
-          ? assignedCatRecords
-          : leadCatRecord ? [leadCatRecord] : []}
-        bossCatId={payload.chat.bossCatId}
-        defaultRecipientCatId={defaultRecipientCat.catId}
-        onClick={composerBusy ? undefined : () => onOpenSection('execution')}
+      <AudienceChip
+        audienceParticipants={participants}
+        onSingleClick={composerBusy ? undefined : () => onOpenSection('execution')}
+        disabled={composerBusy}
       />
     );
   }

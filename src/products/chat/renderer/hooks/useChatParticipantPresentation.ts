@@ -11,6 +11,7 @@ import {
   buildDraftParticipantExecutionLabel,
   type SelectedChannelView,
 } from '../chatUtils.js';
+import { resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
@@ -21,6 +22,7 @@ import {
 export interface TopBarParticipant {
   key: string;
   label: string;
+  executionLabel: string | null;
   avatarColor: string | null;
   avatarUrl: string | null;
   isBoss: boolean;
@@ -205,11 +207,22 @@ export function useChatParticipantPresentation(options: {
   );
   const topBarParticipants = useMemo<TopBarParticipant[]>(() => {
     const ordered: TopBarParticipant[] = [];
+    function buildParticipantExecutionLabel(participant: ResolvedChannelParticipant): string | null {
+      if (!participant.execution?.target) return null;
+      const base = buildDraftParticipantExecutionLabel(participant.execution.target);
+      const controlLabels = resolveControlDisplayLabels(participant.execution.modelSelection?.controls);
+      return controlLabels.length > 0 ? `${base} \u00b7 ${controlLabels.join(' \u00b7 ')}` : base;
+    }
+
     if (isDirectLane) {
       if (defaultRecipientCatRecord) {
+        const executionLabel = defaultRecipientParticipant
+          ? buildParticipantExecutionLabel(defaultRecipientParticipant)
+          : null;
         ordered.push({
           key: `participant:${defaultRecipientCatRecord.id}`,
           label: defaultRecipientCatRecord.name,
+          executionLabel,
           avatarColor: defaultRecipientCatRecord.avatarColor ?? null,
           avatarUrl: defaultRecipientCatRecord.avatarUrl ?? null,
           isBoss: defaultRecipientCatRecord.id === payload.chat.bossCatId,
@@ -223,6 +236,7 @@ export function useChatParticipantPresentation(options: {
         ordered.push({
           key: `participant:${bossCatRecord.id}`,
           label: bossCatRecord.name,
+          executionLabel: null,
           avatarColor: bossCatRecord.avatarColor ?? null,
           avatarUrl: bossCatRecord.avatarUrl ?? null,
           isBoss: true,
@@ -236,6 +250,7 @@ export function useChatParticipantPresentation(options: {
         ordered.push({
           key: `participant:${participant.participantId}`,
           label: resolveParticipantDisplayName(participant, catRecord),
+          executionLabel: buildParticipantExecutionLabel(participant),
           avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
           avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
           isBoss: catRecord?.id === payload.chat.bossCatId,

@@ -5,6 +5,7 @@ import { catInitials } from '../../workspaceChatUtils.js';
 export interface ChatViewTopBarAvatar {
   key: string;
   label: string;
+  executionLabel?: string | null;
   avatarColor: string | null;
   avatarUrl: string | null;
   isBoss?: boolean;
@@ -54,7 +55,7 @@ export function ChatViewTopBar({
                     avatar.useNeutralAvatar ? 'channelParticipantAvatar' : '',
                     avatar.pulsing ? 'catAvatarPulsing' : '',
                   ].filter(Boolean).join(' ')}
-                  data-tooltip={avatar.label}
+                  data-tooltip={avatar.executionLabel || avatar.label}
                   style={avatar.avatarUrl
                     ? { backgroundImage: `url(${avatar.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : !avatar.useNeutralAvatar && avatar.avatarColor

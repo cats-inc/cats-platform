@@ -449,6 +449,7 @@ export function ChatView({
           avatars={topBarParticipants.map((participant) => ({
             key: participant.key,
             label: participant.label,
+            executionLabel: participant.executionLabel,
             avatarColor: participant.avatarColor,
             avatarUrl: participant.avatarUrl,
             isBoss: participant.isBoss,
