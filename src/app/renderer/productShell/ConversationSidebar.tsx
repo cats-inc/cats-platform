@@ -10,9 +10,9 @@ import type {
   RoomRoutingMode,
 } from '../../../shared/roomRouting.js';
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
-import { PlatformSurfaceSwitcher } from '../../../design/components/PlatformSurfaceSwitcher.js';
 import { ConversationSidebarFooter } from './ConversationSidebarFooter.js';
 import { ConversationSidebarMyCatsSection } from './ConversationSidebarMyCats.js';
+import { ConversationSidebarNavigation } from './ConversationSidebarNavigation.js';
 import { buildConversationSidebarViewModel } from './conversationSidebarViewModel.js';
 import { ConversationSidebarRecentsSection } from './ConversationSidebarRecents.js';
 
@@ -219,76 +219,19 @@ export function ConversationSidebar<
     currentPath,
   });
 
-  function renderActionGroup(group: ConversationSidebarActionGroup): ReactNode {
-    return (
-      <nav key={group.key} className="navGroup" aria-label={group.ariaLabel}>
-        {group.items.map((item) => (
-          <button
-            key={item.key}
-            className={item.active ? 'navItem navItemActive' : 'navItem'}
-            onClick={item.onClick}
-            type="button"
-          >
-            <span className="navGlyph" aria-hidden="true">
-              {item.icon}
-            </span>
-            <span className="navLabel">{item.label}</span>
-          </button>
-        ))}
-      </nav>
-    );
-  }
-
   return (
     <aside
       className={sidebarOpen ? 'sidebar' : 'sidebar sidebarCollapsed'}
       onClick={(event) => onCollapsedSidebarClick(event)}
     >
       <div className="sidebarInner">
-        <div className="brandRow">
-          <div className="brandCopy">
-            <PlatformSurfaceSwitcher
-              activeSurface={activeSurface}
-              onSelectSurface={onSwitchProduct}
-            />
-          </div>
-          <button
-            className="chromeButton"
-            type="button"
-            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-            onClick={onToggleSidebar}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="1" y="2" width="14" height="12" rx="2" />
-              <path d="M6 2v12" />
-            </svg>
-          </button>
-        </div>
-
-        <nav className="navGroup" aria-label="Primary">
-          {primaryActions.map((item) => (
-            <button
-              key={item.key}
-              className={item.active ? 'navItem navItemActive' : 'navItem'}
-              onClick={item.onClick}
-              type="button"
-            >
-              <span className="navGlyph" aria-hidden="true">
-                {item.icon}
-              </span>
-              <span className="navLabel">{item.label}</span>
-            </button>
-          ))}
-        </nav>
+        <ConversationSidebarNavigation
+          activeSurface={activeSurface}
+          sidebarOpen={sidebarOpen}
+          primaryActions={primaryActions}
+          onToggleSidebar={onToggleSidebar}
+          onSwitchProduct={onSwitchProduct}
+        />
 
         <div className="sidebarScrollable">
           <nav className="navGroup navGroupChat" aria-label="Chat">
@@ -302,7 +245,23 @@ export function ConversationSidebar<
             </button>
           </nav>
 
-          {extraActionGroups.map((group) => renderActionGroup(group))}
+          {extraActionGroups.map((group) => (
+            <nav key={group.key} className="navGroup" aria-label={group.ariaLabel}>
+              {group.items.map((item) => (
+                <button
+                  key={item.key}
+                  className={item.active ? 'navItem navItemActive' : 'navItem'}
+                  onClick={item.onClick}
+                  type="button"
+                >
+                  <span className="navGlyph" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  <span className="navLabel">{item.label}</span>
+                </button>
+              ))}
+            </nav>
+          ))}
 
           {showMyCats ? (
             <ConversationSidebarMyCatsSection
