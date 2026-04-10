@@ -1,5 +1,4 @@
 import {
-  startTransition,
   useCallback,
   useEffect,
 } from 'react';
@@ -49,6 +48,7 @@ import { useFolderBrowser } from './hooks/useFolderBrowser';
 import { useGovernanceActions } from './hooks/useGovernanceActions';
 import { useOperatorLoop } from './hooks/useOperatorLoop';
 import { useLiveIndicator } from './hooks/useLiveIndicator';
+import { useChannelParticipantUpdate } from './hooks/useChannelParticipantUpdate';
 import { useCompanionMode } from './hooks/useCompanionMode';
 import { useDraftParticipantState } from './hooks/useDraftParticipantState';
 import { useParallelChatDraft } from './hooks/useParallelChatDraft';
@@ -147,24 +147,12 @@ export default function App() {
     publishReadyPayload,
   });
 
-  const onUpdateChannelParticipant = useCallback(async (
-    channelId: string,
-    participantId: string,
-    input: { name?: string; roleHint?: string | null },
-  ) => {
-    setBusy(`channel:participant:update:${participantId}`);
-    try {
-      const payload = await updateChannelParticipantApi(channelId, participantId, input);
-      startTransition(() => {
-        setState({ status: 'ready', payload });
-        setFeedback('');
-      });
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to update participant.');
-    } finally {
-      setBusy('');
-    }
-  }, [setBusy, setFeedback, setState]);
+  const onUpdateChannelParticipant = useChannelParticipantUpdate({
+    updateChannelParticipantApi,
+    setBusy,
+    setFeedback,
+    setState,
+  });
 
   const {
     draftCatIds,
