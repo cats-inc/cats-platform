@@ -65,9 +65,8 @@
 }
 
 .composerCatStack .composerStackAvatar {
-  width: 24px;
-  height: 24px;
-  font-size: 0.6rem;
+  width: 28px;
+  height: 28px;
   border: 1px solid rgba(0, 0, 0, 0.15);
 }
 

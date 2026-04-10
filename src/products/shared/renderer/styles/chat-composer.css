@@ -1,8 +1,7 @@
 @import './chat-composer-base.css';
 
 .composerStackAvatar {
-  width: 24px;
-  height: 24px;
-  font-size: 0.6rem;
+  width: 28px;
+  height: 28px;
   border: 0;
 }
