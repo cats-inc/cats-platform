@@ -308,6 +308,28 @@
   color: var(--muted);
 }
 
+.audienceChipWorkflow {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  border-left: 1px solid var(--border);
+  padding-left: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.audienceChipWorkflow:hover:not(.isDisabled) {
+  color: var(--text);
+}
+
+.audienceChipWorkflow.isDisabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* Audience popover */
 
 .audiencePopover {

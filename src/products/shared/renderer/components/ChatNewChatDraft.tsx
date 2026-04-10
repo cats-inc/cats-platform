@@ -468,6 +468,8 @@ export function NewChatDraft({
                   allParticipants={groupComposerParticipants}
                   onSetAudienceKeys={onSetAudienceKeys}
                   disabled={isSubmittingFirstTurn}
+                  workflowShape={draftWorkflowShape}
+                  onToggleWorkflowShape={onToggleDraftWorkflowShape}
                 />
               ) : (
                 <ChatNewChatDraftTargetSlot
@@ -486,30 +488,6 @@ export function NewChatDraft({
                   onRemoveDraftTemporaryParticipant={onRemoveDraftTemporaryParticipant}
                 />
               )}
-              {isGroupDraft && onToggleDraftWorkflowShape ? (
-                <button
-                  type="button"
-                  className="composerWorkflowToggle"
-                  disabled={isSubmittingFirstTurn || audienceParticipants.length <= 1}
-                  onClick={onToggleDraftWorkflowShape}
-                  data-tooltip={draftWorkflowShape === 'sequential' ? 'Sequential' : 'Concurrent'}
-                  aria-label={`Switch to ${draftWorkflowShape === 'sequential' ? 'concurrent' : 'sequential'} mode`}
-                >
-                  {draftWorkflowShape === 'sequential' ? (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 4h8L3 12h9" />
-                      <path d="M10.5 10.5L12 12l-1.5 1.5" />
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 5h8" />
-                      <path d="M9 3.5L11 5 9 6.5" />
-                      <path d="M3 11h8" />
-                      <path d="M9 9.5L11 11 9 12.5" />
-                    </svg>
-                  )}
-                </button>
-              ) : null}
               {showCancelPendingSend ? (
                 <button
                   className="composerSendButton composerCancelButton"

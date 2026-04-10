@@ -1,6 +1,7 @@
 import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import { nameInitials } from '../../../../shared/nameInitials.js';
+import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
 
 export interface AudienceChipProps {
@@ -8,6 +9,8 @@ export interface AudienceChipProps {
   allParticipants: DraftComposerStackParticipant[];
   onSetAudienceKeys: (keys: string[]) => void;
   disabled?: boolean;
+  workflowShape?: RoomWorkflowShape;
+  onToggleWorkflowShape?: () => void;
 }
 
 export function AudienceChip({
@@ -15,6 +18,8 @@ export function AudienceChip({
   allParticipants,
   onSetAudienceKeys,
   disabled,
+  workflowShape = 'sequential',
+  onToggleWorkflowShape,
 }: AudienceChipProps) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -126,6 +131,35 @@ export function AudienceChip({
         <svg className="audienceChipChevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>
+        {onToggleWorkflowShape ? (
+          <span
+            className={`audienceChipWorkflow${audienceParticipants.length <= 1 ? ' isDisabled' : ''}`}
+            role="button"
+            tabIndex={disabled || audienceParticipants.length <= 1 ? -1 : 0}
+            data-tooltip={workflowShape === 'sequential' ? 'Sequential' : 'Concurrent'}
+            aria-label={`Switch to ${workflowShape === 'sequential' ? 'concurrent' : 'sequential'} mode`}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (audienceParticipants.length > 1) {
+                onToggleWorkflowShape();
+              }
+            }}
+          >
+            {workflowShape === 'sequential' ? (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 4h8L3 12h9" />
+                <path d="M10.5 10.5L12 12l-1.5 1.5" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 5h8" />
+                <path d="M9 3.5L11 5 9 6.5" />
+                <path d="M3 11h8" />
+                <path d="M9 9.5L11 11 9 12.5" />
+              </svg>
+            )}
+          </span>
+        ) : null}
       </button>
 
       {open ? (
