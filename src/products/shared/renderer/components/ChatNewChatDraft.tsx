@@ -1,28 +1,14 @@
-import { useMemo, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
+import { type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { SidePanel } from '../../../../design/components/SidePanel.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
-import { resolveDraftParticipantSelection } from '../draftParticipants.js';
+import { type NewChatMode } from '../draftStarterSuggestionContext.js';
+import { type DraftStarterSuggestion } from '../draftStarterSuggestions.js';
 import {
-  resolveDraftStarterSuggestionContext,
-  type NewChatMode,
-} from '../draftStarterSuggestionContext.js';
-import {
-  resolveVisibleDraftStarterSuggestions,
-  type DraftStarterSuggestion,
-} from '../draftStarterSuggestions.js';
-import {
-  pickDraftGreeting,
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
 import { catInitials, isChatCat, truncatePath } from '../workspaceChatUtils.js';
-import {
-  ComposerRecipientChip,
-  buildNamedRecipient,
-  buildRecipientFromCat,
-} from './ComposerRecipientChip.js';
-import { ComposerCatStack } from './ComposerCatStack.js';
 import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
 import {
   buildModelSelectorLabel,
@@ -32,8 +18,8 @@ import {
 import {
   buildChatNewChatDraftSidePanelSections,
 } from './chatNewChatDraftSidePanel.js';
+import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
-import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer.js';
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -156,41 +142,43 @@ export function NewChatDraft({
   onFolderBrowseSelect,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
-  const chatCats = payload.chat.cats.filter(isChatCat);
-  const assistantPresets = payload.assistantPresets ?? [];
-  const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
-  const draftParticipants = resolveDraftParticipantSelection({ draftDefaultRecipientCatId, draftCatIds });
-  const defaultRecipientCat = draftDefaultRecipientCatId
-    ? chatCats.find((cat) => cat.id === draftDefaultRecipientCatId && cat.status === 'active') ?? null
-    : null;
-  const hasTelegramBinding = Boolean(
-    defaultRecipientCat && payload.chat.botBindings.some((binding) =>
-      binding.platform === 'telegram'
-      && binding.status === 'active'
-      && binding.catId === defaultRecipientCat.id),
-  );
-  const draftDefaultRecipientCat = !defaultRecipientCat && draftCatIds.length > 0
-    ? chatCats.find((c) =>
-      c.id === draftParticipants.effectiveDefaultRecipientCatId && c.status === 'active')
-      ?? null
-    : null;
-  const effectiveDefaultRecipientCat = defaultRecipientCat ?? draftDefaultRecipientCat;
-  const effectiveDefaultRecipientTemporaryParticipant = effectiveDefaultRecipientCat
-    ? null
-    : draftTemporaryParticipants[0] ?? null;
-  const draftParticipantCount = draftParticipants.participantCatIds.length + draftTemporaryParticipants.length;
-  const maxGroupParticipants = payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY;
-  const hasReachedGroupParticipantLimit = draftParticipantCount >= maxGroupParticipants;
-  const draftSuggestionContext = resolveDraftStarterSuggestionContext({
-    allowAddCat,
+  const {
+    chatCats,
+    assistantPresets,
+    draftParticipants,
+    defaultRecipientCat,
+    hasTelegramBinding,
+    effectiveDefaultRecipientCat,
+    effectiveDefaultRecipientTemporaryParticipant,
+    draftParticipantCount,
+    hasReachedGroupParticipantLimit,
+    draftSuggestionContext,
+    visibleDraftCatIds,
+    visibleStarterSuggestions,
+    resolvedGreeting,
+    groupDraftSelectionLabel,
+    activePanelModel,
+    isAckPending,
+    isSubmittingFirstTurn,
+    draftComposerRecipients,
+    groupComposerParticipants,
+  } = resolveChatNewChatDraftViewState({
+    payload,
     draftDefaultRecipientCatId,
-    hasDefaultRecipientCat: Boolean(effectiveDefaultRecipientCat),
+    draftCatIds,
+    draftTemporaryParticipants,
+    allowAddCat,
     entryMode,
-    participantCount: draftParticipantCount,
-    parallelTargetCount: parallelTargets?.length ?? 0,
+    parallelTargets,
+    starterSuggestions,
+    greeting,
+    greetingPool,
+    draftHighlightedCatId,
+    draftCatModelOverrides,
+    selectedModel,
+    busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
-  const visibleDraftCatIds = draftParticipants.participantCatIds;
   const {
     createTemporaryParticipantFormValue,
     sidePanelOpen,
@@ -221,95 +209,8 @@ export function NewChatDraft({
     onAddDraftTemporaryParticipant,
     onUpdateDraftTemporaryParticipant,
   });
-  const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
-    mode: draftSuggestionContext.mode,
-    defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
-    suggestions: starterSuggestions,
-  });
-  const greetingPoolKey = Array.isArray(greetingPool)
-    ? greetingPool.map((line) => line.trim()).filter((line) => line.length > 0).join('\u0000')
-    : '';
-  const resolvedGreeting = useMemo(() => {
-    const explicitGreeting = greeting?.trim();
-    if (explicitGreeting) {
-      return explicitGreeting;
-    }
-
-    return pickDraftGreeting({ pool: greetingPool });
-  }, [greeting, greetingPoolKey]);
-  const groupDraftSelectionLabel = draftParticipantCount === 1
-    ? '1 participant selected so far. Add more or send when ready.'
-    : draftParticipantCount > 1
-      ? `${draftParticipantCount} participants selected for this shared chat.`
-      : activeChatCats.length > 0 || assistantPresets.length > 0
-        ? 'Choose Cats, reuse saved Assistants, or add temporary participants for this shared chat.'
-        : 'Add temporary participants here, or create Cats and Assistants in Settings before starting a shared chat.';
-  const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
-    ? chatCats.find((c) => c.id === draftHighlightedCatId) ?? null
-    : null;
-  const activePanelModel: ModelSelectorValue | null = isDirectLaneContext && defaultRecipientCat
-    ? {
-        provider: defaultRecipientCat.defaultExecutionTarget.provider,
-        model: defaultRecipientCat.defaultExecutionTarget.model,
-        instance: defaultRecipientCat.defaultExecutionTarget.instance,
-        modelSelection: defaultRecipientCat.defaultModelSelection ?? null,
-      }
-    : highlightedCat
-      ? (draftCatModelOverrides.get(highlightedCat.id) ?? {
-          provider: highlightedCat.defaultExecutionTarget.provider,
-          model: highlightedCat.defaultExecutionTarget.model,
-          instance: highlightedCat.defaultExecutionTarget.instance,
-          modelSelection: highlightedCat.defaultModelSelection ?? null,
-        })
-      : selectedModel ?? null;
   const chipLabel = selectedModel ? buildModelSelectorLabel(selectedModel) : '';
-  const isAckPending = isComposerAckBusy(busy);
-  const isSubmittingFirstTurn = isComposerBusy(busy) || isAckPending;
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
-  const draftComposerRecipients = useMemo(() => {
-    if (effectiveDefaultRecipientCat) {
-      return [buildRecipientFromCat(effectiveDefaultRecipientCat, payload.chat.bossCatId)];
-    }
-    if (effectiveDefaultRecipientTemporaryParticipant) {
-      return [
-        buildNamedRecipient({
-          participantId: effectiveDefaultRecipientTemporaryParticipant.participantId,
-          name: effectiveDefaultRecipientTemporaryParticipant.name,
-          provider: effectiveDefaultRecipientTemporaryParticipant.provider,
-          instance: effectiveDefaultRecipientTemporaryParticipant.instance ?? null,
-          model: effectiveDefaultRecipientTemporaryParticipant.model ?? null,
-        }),
-      ];
-    }
-    return [];
-  }, [
-    effectiveDefaultRecipientCat,
-    effectiveDefaultRecipientTemporaryParticipant,
-    payload.chat.bossCatId,
-  ]);
-  const groupComposerParticipants = useMemo(() => [
-    ...visibleDraftCatIds.map((catId) => {
-      const cat = chatCats.find((candidate) => candidate.id === catId);
-      return {
-        key: `cat:${catId}`,
-        name: cat?.name ?? '',
-        avatarColor: cat?.avatarColor ?? null,
-        avatarUrl: cat?.avatarUrl ?? null,
-        isCat: true,
-        catId,
-        participantId: null as string | null,
-      };
-    }).filter((participant) => participant.name),
-    ...draftTemporaryParticipants.map((participant) => ({
-      key: `temp:${participant.participantId}`,
-      name: participant.name,
-      avatarColor: null,
-      avatarUrl: null,
-      isCat: false,
-      catId: null as string | null,
-      participantId: participant.participantId,
-    })),
-  ], [chatCats, draftTemporaryParticipants, visibleDraftCatIds]);
 
   return (
     <div className="viewShell viewShellDraft">
