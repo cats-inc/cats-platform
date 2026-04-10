@@ -2,7 +2,6 @@ import {
   startTransition,
   useCallback,
   useEffect,
-  useState,
   type ComponentType,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
@@ -52,6 +51,7 @@ import { useAppChrome } from "./hooks/useAppChrome.js";
 import { useFolderBrowser } from "./hooks/useFolderBrowser.js";
 import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
 import { useWorkspaceDraftCatState } from "./hooks/useWorkspaceDraftCatState.js";
+import { useWorkspaceAppTransientState } from "./hooks/useWorkspaceAppTransientState.js";
 import { useWorkspaceLocationState } from "./hooks/useWorkspaceLocationState.js";
 import { useWorkspaceModelSelectionState } from "./hooks/useWorkspaceModelSelectionState.js";
 import { useOnGenericDraftRouteEntry } from "./hooks/useOnGenericDraftRouteEntry.js";
@@ -158,16 +158,31 @@ export function createWorkspaceProductApp({
       showingMyCatDirectLane,
     } = useWorkspaceLocationState(chatPrefix);
 
-    const [state, setState] = useState<AppLoadState>({ status: "loading" });
-    const [composerDraft, setComposerDraft] = useState("");
-    const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
-    const [busy, setBusy] = useState("");
-    const [feedback, setFeedback] = useState("");
-    const [addCatTab, setAddCatTab] = useState<"existing" | "new">("existing");
-    const [greeting] = useState(pickGreeting);
-    const [draftCwd, setDraftCwd] = useState<string | null>(null);
-    const [draftFiles, setDraftFiles] = useState<File[]>([]);
-    const [channelFiles, setChannelFiles] = useState<File[]>([]);
+    const {
+      state,
+      setState,
+      composerDraft,
+      setComposerDraft,
+      catForm,
+      setCatForm,
+      busy,
+      setBusy,
+      feedback,
+      setFeedback,
+      addCatTab,
+      setAddCatTab,
+      greeting,
+      draftCwd,
+      setDraftCwd,
+      draftFiles,
+      setDraftFiles,
+      channelFiles,
+      setChannelFiles,
+    } = useWorkspaceAppTransientState<AppLoadState, CatFormState>({
+      initialState: { status: "loading" },
+      createEmptyCatForm: emptyCatForm,
+      pickGreeting,
+    });
     const {
       draftCatIds,
       setDraftCatIds,
