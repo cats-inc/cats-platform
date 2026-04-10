@@ -358,7 +358,7 @@ export function NewChatDraft({
                       <div key={participant.key} className="composerGroupAvatarSlot">
                         <div
                           className="catAvatar"
-                          data-tooltip={participant.name}
+                          data-tooltip={participant.executionLabel || participant.name}
                           style={
                             participant.avatarUrl
                               ? {

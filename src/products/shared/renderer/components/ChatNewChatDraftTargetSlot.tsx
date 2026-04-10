@@ -15,6 +15,7 @@ import {
 interface GroupComposerParticipant {
   key: string;
   name: string;
+  executionLabel: string | null;
   avatarColor: string | null;
   avatarUrl: string | null;
   isCat: boolean;
@@ -74,7 +75,7 @@ export function ChatNewChatDraftTargetSlot({
             <div
               key={participant.key}
               className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
-              data-tooltip={participant.name}
+              data-tooltip={participant.executionLabel || participant.name}
               style={{
                 ...(participant.avatarUrl
                   ? {

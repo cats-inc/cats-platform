@@ -17,10 +17,12 @@ import {
 } from './ComposerRecipientChip.js';
 import type { ModelSelectorValue } from './ModelSelector.js';
 import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer.js';
+import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 
 export interface DraftComposerStackParticipant {
   key: string;
   name: string;
+  executionLabel: string | null;
   avatarColor: string | null;
   avatarUrl: string | null;
   isCat: boolean;
@@ -148,6 +150,7 @@ export function resolveChatNewChatDraftViewState(input: {
       return {
         key: `cat:${catId}`,
         name: cat?.name ?? '',
+        executionLabel: null as string | null,
         avatarColor: cat?.avatarColor ?? null,
         avatarUrl: cat?.avatarUrl ?? null,
         isCat: true,
@@ -158,6 +161,11 @@ export function resolveChatNewChatDraftViewState(input: {
     ...input.draftTemporaryParticipants.map((participant) => ({
       key: `temp:${participant.participantId}`,
       name: participant.name,
+      executionLabel: buildExecutionLabel(
+        participant.provider,
+        participant.instance ?? null,
+        participant.model ?? null,
+      ),
       avatarColor: null,
       avatarUrl: null,
       isCat: false,
