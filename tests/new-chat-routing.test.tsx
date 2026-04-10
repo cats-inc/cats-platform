@@ -15,6 +15,7 @@ import {
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
   insertCreatedChannelIntoPayload,
+  reconcileDraftAudienceKeysAfterParticipantRemoval,
   resolveDraftAudienceParticipantIds,
   resolveGenericDraftTemporaryParticipants,
 } from '../src/products/chat/renderer/chatUtils.tsx';
@@ -404,6 +405,67 @@ test('resolveDraftAudienceParticipantIds preserves chip order and falls back to 
       maxAudienceParticipants: 2,
     }),
     ['cat-third', 'participant-reviewer'],
+  );
+});
+
+test('reconcileDraftAudienceKeysAfterParticipantRemoval shrinks the audience instead of backfilling another room member', () => {
+  assert.deepEqual(
+    reconcileDraftAudienceKeysAfterParticipantRemoval({
+      draftAudienceKeys: ['cat:cat-lead', 'cat:cat-helper', 'temp:participant-reviewer'],
+      previousParticipantKeys: [
+        'cat:cat-lead',
+        'cat:cat-helper',
+        'temp:participant-analyst',
+        'temp:participant-reviewer',
+      ],
+      nextParticipantKeys: [
+        'cat:cat-helper',
+        'temp:participant-analyst',
+        'temp:participant-reviewer',
+      ],
+      removedParticipantKey: 'cat:cat-lead',
+    }),
+    ['cat:cat-helper', 'temp:participant-reviewer'],
+  );
+});
+
+test('reconcileDraftAudienceKeysAfterParticipantRemoval does not force a backfill when the audience was manually below the cap', () => {
+  assert.deepEqual(
+    reconcileDraftAudienceKeysAfterParticipantRemoval({
+      draftAudienceKeys: ['cat:cat-lead', 'temp:participant-reviewer'],
+      previousParticipantKeys: [
+        'cat:cat-lead',
+        'cat:cat-helper',
+        'temp:participant-analyst',
+        'temp:participant-reviewer',
+      ],
+      nextParticipantKeys: [
+        'cat:cat-helper',
+        'temp:participant-analyst',
+        'temp:participant-reviewer',
+      ],
+      removedParticipantKey: 'cat:cat-lead',
+    }),
+    ['temp:participant-reviewer'],
+  );
+});
+
+test('reconcileDraftAudienceKeysAfterParticipantRemoval falls back to the first remaining member when the audience becomes empty', () => {
+  assert.deepEqual(
+    reconcileDraftAudienceKeysAfterParticipantRemoval({
+      draftAudienceKeys: ['temp:participant-reviewer'],
+      previousParticipantKeys: [
+        'cat:cat-lead',
+        'temp:participant-reviewer',
+        'temp:participant-analyst',
+      ],
+      nextParticipantKeys: [
+        'cat:cat-lead',
+        'temp:participant-analyst',
+      ],
+      removedParticipantKey: 'temp:participant-reviewer',
+    }),
+    ['cat:cat-lead'],
   );
 });
 

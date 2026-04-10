@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { loadConfig } from './config.js';
+import { loadProjectEnvFile } from './shared/loadProjectEnvFile.js';
 import { createServer } from './app/server/index.js';
 import {
   createAppStartupState,
@@ -24,6 +25,7 @@ import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
 let startup = createAppStartupState();
 
 async function main(): Promise<void> {
+  loadProjectEnvFile();
   const cliOptions = parseAppCliOptions(process.argv.slice(2));
   if (cliOptions.help) {
     process.stdout.write(`${getAppHelpText()}\n`);
