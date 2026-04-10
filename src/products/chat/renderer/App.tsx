@@ -2,7 +2,6 @@ import {
   startTransition,
   useCallback,
   useEffect,
-  useState,
 } from 'react';
 import {
   useLocation,
@@ -67,6 +66,9 @@ import {
   useWorkspaceModelSelectionState,
 } from '../../shared/renderer/hooks/useWorkspaceModelSelectionState.js';
 import {
+  useWorkspaceAppTransientState,
+} from '../../shared/renderer/hooks/useWorkspaceAppTransientState.js';
+import {
   usePublishReadyPayload,
 } from '../../shared/renderer/hooks/usePublishReadyPayload.js';
 import {
@@ -108,16 +110,31 @@ export default function App() {
     showingMyCatDirectLane: Boolean(routeMyCatId),
   });
 
-  const [state, setState] = useState<AppLoadState>({ status: 'loading' });
-  const [composerDraft, setComposerDraft] = useState('');
-  const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
-  const [busy, setBusy] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const [addCatTab, setAddCatTab] = useState<'existing' | 'new'>('existing');
-  const [greeting] = useState(pickGreeting);
-  const [draftCwd, setDraftCwd] = useState<string | null>(null);
-  const [draftFiles, setDraftFiles] = useState<File[]>([]);
-  const [channelFiles, setChannelFiles] = useState<File[]>([]);
+  const {
+    state,
+    setState,
+    composerDraft,
+    setComposerDraft,
+    catForm,
+    setCatForm,
+    busy,
+    setBusy,
+    feedback,
+    setFeedback,
+    addCatTab,
+    setAddCatTab,
+    greeting,
+    draftCwd,
+    setDraftCwd,
+    draftFiles,
+    setDraftFiles,
+    channelFiles,
+    setChannelFiles,
+  } = useWorkspaceAppTransientState<AppLoadState, CatFormState>({
+    initialState: { status: 'loading' },
+    createEmptyCatForm: emptyCatForm,
+    pickGreeting,
+  });
   const maxDraftGroupParticipants = state.status === 'ready'
     ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
