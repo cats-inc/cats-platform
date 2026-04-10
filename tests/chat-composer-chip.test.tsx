@@ -145,6 +145,7 @@ test('chat composer restores single-avatar stack for direct lanes', () => {
   assert.match(markup, /class="composerCatStack"/u);
   assert.match(markup, /class="catAvatar composerStackAvatar catAvatarBoss"/u);
   assert.match(markup, /data-tooltip="將將"/u);
+  assert.match(markup, /style="background:#7A5B3A;color:#fff;z-index:1"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /class="modelSelectorChip"/u);
 });

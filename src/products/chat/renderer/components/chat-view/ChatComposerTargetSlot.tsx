@@ -11,7 +11,7 @@ import {
   buildModelSelectorLabel,
   ModelSelectorChip,
 } from '../ModelSelector.js';
-import { ComposerCatStack } from '../ComposerCatStack.js';
+import { ComposerCatStack } from '../../../../shared/renderer/components/ComposerCatStack.js';
 
 export interface ChatComposerTargetSlotProps {
   payload: AppShellPayload;
