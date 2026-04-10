@@ -195,6 +195,7 @@
 .composerGroupAvatarSlot {
   position: relative;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .composerGroupAvatarRemove {

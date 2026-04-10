@@ -358,6 +358,9 @@ export function NewChatDraft({
                       <div key={participant.key} className="composerGroupAvatarSlot">
                         <div
                           className="catAvatar"
+                          role={isSubmittingFirstTurn ? undefined : 'button'}
+                          tabIndex={isSubmittingFirstTurn ? undefined : 0}
+                          onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cats')}
                           data-tooltip={participant.executionLabel || participant.name}
                           style={
                             participant.avatarUrl
