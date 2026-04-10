@@ -331,7 +331,7 @@ test('solo draft without a recipient keeps the provider-model control on the aud
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
 });
 
-test('parallel draft keeps follower targets on the same model-chip treatment as the lead target', () => {
+test('parallel draft keeps follower targets on the same audience-chip treatment as the lead target', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -359,12 +359,19 @@ test('parallel draft keeps follower targets on the same model-chip treatment as 
     />,
   );
 
+  const audienceChipMatches = markup.match(/class="audienceChip"/gu) ?? [];
+  const audienceAvatarMatches = markup.match(/class="audienceChipAvatar"/gu) ?? [];
   const modelChipMatches = markup.match(/class="modelSelectorChip"/gu) ?? [];
   const recipientChipMatches = markup.match(/class="composerRecipientChip"/gu) ?? [];
   const implicitIconMatches = markup.match(/recipientChipIcon/gu) ?? [];
 
   assert.match(markup, /class="parallelStubStack"/u);
-  assert.equal(modelChipMatches.length, 3);
+  assert.match(markup, /data-tooltip="[^"]*opus-4\.6-1m"/u);
+  assert.match(markup, /data-tooltip="[^"]*codex-max"/u);
+  assert.match(markup, /data-tooltip="[^"]*gemini-2\.5-pro"/u);
+  assert.equal(audienceChipMatches.length, 3);
+  assert.equal(audienceAvatarMatches.length, 0);
+  assert.equal(modelChipMatches.length, 0);
   assert.equal(recipientChipMatches.length, 0);
   assert.equal(implicitIconMatches.length, 0);
 });
