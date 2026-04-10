@@ -76,10 +76,17 @@ export function createInitialGroupParticipants(
     ? Math.max(0, maxParticipants)
     : DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT;
   const targetCount = Math.min(DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT, cappedMaxParticipants);
-  const providerSequence = [
+  const providerSet = new Set([
     baseProvider,
     ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== baseProvider),
-  ].slice(0, targetCount);
+  ]);
+  const providerSequence = [...providerSet]
+    .sort((a, b) => {
+      const ai = (PRODUCT_PROVIDER_ORDER as readonly string[]).indexOf(a);
+      const bi = (PRODUCT_PROVIDER_ORDER as readonly string[]).indexOf(b);
+      return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi);
+    })
+    .slice(0, targetCount);
 
   const takenNames: string[] = [];
   return providerSequence.map((provider) => {

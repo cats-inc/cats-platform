@@ -91,7 +91,7 @@ export function ChatNewChatDraftTargetSlot({
                         color: '#222',
                         border: '1px solid rgba(0, 0, 0, 0.15)',
                       }),
-                zIndex: rendered.length - index,
+                zIndex: index + 1,
               }}
             >
               {participant.avatarUrl ? null : catInitials(participant.name)}
