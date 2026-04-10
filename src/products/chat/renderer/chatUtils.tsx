@@ -285,6 +285,14 @@ function applyDraftAudienceLimit(
   return participantIds.slice(0, limit);
 }
 
+function resolveDraftAudienceLimitValue(maxAudienceParticipants?: number | null): number {
+  if (!Number.isFinite(maxAudienceParticipants)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return Math.max(1, Math.trunc(maxAudienceParticipants ?? Number.POSITIVE_INFINITY));
+}
+
 export function resolveDraftAudienceParticipantIds(options: {
   draftParticipantCatIds: readonly string[];
   draftTemporaryParticipants: ReadonlyArray<Pick<DraftTemporaryParticipant, 'participantId'>>;
@@ -328,6 +336,32 @@ export function resolveDraftAudienceParticipantIds(options: {
   }
 
   return allParticipants[0]?.participantId ? [allParticipants[0].participantId] : [];
+}
+
+export function reconcileDraftAudienceKeysAfterParticipantRemoval(options: {
+  draftAudienceKeys: readonly string[] | null;
+  previousParticipantKeys: readonly string[];
+  nextParticipantKeys: readonly string[];
+  removedParticipantKey: string;
+  maxAudienceParticipants?: number;
+}): string[] | null {
+  // When null, materialize as previous keys capped by the audience limit
+  const effectiveAudienceKeys = options.draftAudienceKeys
+    ?? (Number.isFinite(options.maxAudienceParticipants)
+      ? options.previousParticipantKeys.slice(0, options.maxAudienceParticipants)
+      : options.previousParticipantKeys);
+
+  const previousParticipantKeySet = new Set(options.previousParticipantKeys);
+  const nextParticipantKeySet = new Set(options.nextParticipantKeys);
+  const normalizedAudienceKeys = effectiveAudienceKeys.filter((key, index, source) =>
+    source.indexOf(key) === index && previousParticipantKeySet.has(key));
+  const remainingAudienceKeys = normalizedAudienceKeys.filter((key) =>
+    key !== options.removedParticipantKey && nextParticipantKeySet.has(key));
+
+  if (remainingAudienceKeys.length === 0) {
+    return options.nextParticipantKeys[0] ? [options.nextParticipantKeys[0]] : [];
+  }
+  return remainingAudienceKeys;
 }
 
 export function createDraftTemporaryParticipantFromAssistantPreset(

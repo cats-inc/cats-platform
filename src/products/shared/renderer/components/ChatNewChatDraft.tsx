@@ -220,7 +220,6 @@ export function NewChatDraft({
     }
 
     if (isGroupDraft) {
-      // Group mode: use explicit audience keys or all participants
       if (!draftAudienceKeys) return capAudienceParticipants(groupComposerParticipants);
       const byKey = new Map(groupComposerParticipants.map((p) => [p.key, p]));
       const resolved = draftAudienceKeys.map((key) => byKey.get(key)).filter(Boolean) as typeof groupComposerParticipants;

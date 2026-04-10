@@ -32,6 +32,7 @@ import {
   presentChannelTitle,
   createInitialGroupParticipants,
   emptyCatForm,
+  reconcileDraftAudienceKeysAfterParticipantRemoval,
   resolveGenericDraftTemporaryParticipants,
   type CatFormState,
 } from './chatUtils';
@@ -342,6 +343,7 @@ export default function App() {
       return;
     }
 
+    // Auto-add new member to audience if under the limit; otherwise leave unchecked.
     setDraftAudienceKeys((current) => {
       const visibleCatKeys = draftParticipants.participantCatIds.map((catId) => `cat:${catId}`);
       const currentParticipantKeys = [
@@ -352,20 +354,14 @@ export default function App() {
       const baseAudienceKeys = current ?? currentParticipantKeys;
       const normalizedAudienceKeys = baseAudienceKeys.filter((key, index, source) =>
         source.indexOf(key) === index && currentParticipantKeys.includes(key));
-      const nextAudienceKeys = [
-        ...normalizedAudienceKeys.filter((key) => key !== nextParticipantKey),
-        nextParticipantKey,
-      ];
-      if (!Number.isFinite(maxDraftAudienceParticipants)) {
-        return nextAudienceKeys;
+
+      // If audience is at or over the limit, don't add — just materialize and return
+      if (Number.isFinite(maxDraftAudienceParticipants)
+        && normalizedAudienceKeys.length >= maxDraftAudienceParticipants) {
+        return normalizedAudienceKeys;
       }
-      if (nextAudienceKeys.length <= maxDraftAudienceParticipants) {
-        return nextAudienceKeys;
-      }
-      return [
-        ...nextAudienceKeys.slice(0, Math.max(0, maxDraftAudienceParticipants - 1)),
-        nextParticipantKey,
-      ];
+
+      return [...normalizedAudienceKeys, nextParticipantKey];
     });
   }, [
     draftTemporaryParticipants,
@@ -376,6 +372,85 @@ export default function App() {
     setDraftAudienceKeys,
     setDraftTemporaryParticipants,
     state,
+  ]);
+  const draftParticipantKeys = [
+    ...draftParticipants.participantCatIds.map((catId) => `cat:${catId}`),
+    ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
+  ];
+  const onToggleDraftCatWithAudienceSync = useCallback((catId: string) => {
+    const isRemoving = draftParticipants.participantCatIds.includes(catId);
+    onToggleDraftCat(catId);
+
+    if (!isRemoving) {
+      // Adding: auto-add to audience if under limit
+      const addedKey = `cat:${catId}`;
+      setDraftAudienceKeys((current) => {
+        const baseKeys = current ?? draftParticipantKeys;
+        const normalized = baseKeys.filter((key, i, src) => src.indexOf(key) === i);
+        if (Number.isFinite(maxDraftAudienceParticipants)
+          && normalized.length >= maxDraftAudienceParticipants) {
+          return normalized;
+        }
+        return [...normalized, addedKey];
+      });
+      return;
+    }
+
+    const removedParticipantKey = `cat:${catId}`;
+    const nextParticipantKeys = draftParticipantKeys.filter((key) => key !== removedParticipantKey);
+    setDraftAudienceKeys((current) =>
+      reconcileDraftAudienceKeysAfterParticipantRemoval({
+        draftAudienceKeys: current,
+        previousParticipantKeys: draftParticipantKeys,
+        nextParticipantKeys,
+        removedParticipantKey,
+        maxAudienceParticipants: maxDraftAudienceParticipants,
+      }));
+  }, [
+    draftParticipantKeys,
+    draftParticipants.participantCatIds,
+    maxDraftAudienceParticipants,
+    onToggleDraftCat,
+    setDraftAudienceKeys,
+  ]);
+  const onRemoveDraftTemporaryParticipantWithAudienceSync = useCallback((participantId: string) => {
+    const removedParticipantKey = `temp:${participantId}`;
+    const nextParticipantKeys = draftParticipantKeys.filter((key) => key !== removedParticipantKey);
+    onRemoveDraftTemporaryParticipant(participantId);
+    setDraftAudienceKeys((current) =>
+      reconcileDraftAudienceKeysAfterParticipantRemoval({
+        draftAudienceKeys: current,
+        previousParticipantKeys: draftParticipantKeys,
+        nextParticipantKeys,
+        removedParticipantKey,
+        maxAudienceParticipants: maxDraftAudienceParticipants,
+      }));
+  }, [
+    draftParticipantKeys,
+    maxDraftAudienceParticipants,
+    onRemoveDraftTemporaryParticipant,
+    setDraftAudienceKeys,
+  ]);
+  const onAddDraftTemporaryParticipantWithAudienceSync = useCallback((
+    participant: Parameters<typeof onAddDraftTemporaryParticipant>[0],
+  ) => {
+    onAddDraftTemporaryParticipant(participant);
+    const addedKey = `temp:${participant.participantId ?? ''}`;
+    if (!addedKey || addedKey === 'temp:') return;
+    setDraftAudienceKeys((current) => {
+      const baseKeys = current ?? draftParticipantKeys;
+      const normalized = baseKeys.filter((key, i, src) => src.indexOf(key) === i);
+      if (Number.isFinite(maxDraftAudienceParticipants)
+        && normalized.length >= maxDraftAudienceParticipants) {
+        return normalized;
+      }
+      return [...normalized, addedKey];
+    });
+  }, [
+    draftParticipantKeys,
+    maxDraftAudienceParticipants,
+    onAddDraftTemporaryParticipant,
+    setDraftAudienceKeys,
   ]);
   const {
     onOpenChatsOverview,
@@ -729,10 +804,10 @@ export default function App() {
                   onPickFolder: openDraftFolderPicker,
                   onDraftFilesChange: setDraftFiles,
                   onDraftCwdClear: () => setDraftCwd(null),
-                  onToggleDraftCat: onToggleDraftCat,
-                  onAddDraftTemporaryParticipant: onAddDraftTemporaryParticipant,
+                  onToggleDraftCat: onToggleDraftCatWithAudienceSync,
+                  onAddDraftTemporaryParticipant: onAddDraftTemporaryParticipantWithAudienceSync,
                   onQuickAddDraftTemporaryParticipant,
-                  onRemoveDraftTemporaryParticipant: onRemoveDraftTemporaryParticipant,
+                  onRemoveDraftTemporaryParticipant: onRemoveDraftTemporaryParticipantWithAudienceSync,
                   onUpdateDraftTemporaryParticipant: onUpdateDraftTemporaryParticipant,
                   autoResize,
                   draftDefaultRecipientCatId,
@@ -768,7 +843,7 @@ export default function App() {
                   onTabChange: setAddCatTab,
                   onAssignExistingCat,
                   onRemoveAssignedCat,
-                  onToggleDraftCat: onToggleDraftCat,
+                  onToggleDraftCat: onToggleDraftCatWithAudienceSync,
                   onCatFormChange: setCatForm,
                   onCreateCat: (event) => {
                     if (showingNewChatDraft && draftRoute.isGenericNewChatRoute) {
