@@ -86,6 +86,8 @@ export interface NewChatDraftProps {
   onFolderBrowseSelect?: () => void;
   draftWorkflowShape?: RoomWorkflowShape;
   onToggleDraftWorkflowShape?: () => void;
+  draftAudienceExclusions?: Set<string>;
+  onRemoveFromAudience?: (key: string) => void;
 }
 
 export function NewChatDraft({
@@ -145,6 +147,8 @@ export function NewChatDraft({
   onFolderBrowseSelect,
   draftWorkflowShape = 'sequential',
   onToggleDraftWorkflowShape,
+  draftAudienceExclusions,
+  onRemoveFromAudience,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const {
@@ -184,6 +188,9 @@ export function NewChatDraft({
     busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
+  const audienceParticipants = draftAudienceExclusions
+    ? groupComposerParticipants.filter((p) => !draftAudienceExclusions.has(p.key))
+    : groupComposerParticipants;
   const {
     createTemporaryParticipantFormValue,
     sidePanelOpen,
@@ -458,20 +465,21 @@ export function NewChatDraft({
                   effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
                   effectiveDefaultRecipientTemporaryParticipant={effectiveDefaultRecipientTemporaryParticipant}
                   draftComposerRecipients={draftComposerRecipients}
-                  groupComposerParticipants={groupComposerParticipants}
+                  groupComposerParticipants={audienceParticipants}
                   activePanelModel={activePanelModel}
                   isSubmittingFirstTurn={isSubmittingFirstTurn}
                   onOpenCats={() => openSidePanelTo('cats')}
                   onOpenExecution={() => openSidePanelTo('execution')}
                   onToggleDraftCat={onToggleDraftCat}
                   onRemoveDraftTemporaryParticipant={onRemoveDraftTemporaryParticipant}
+                  onRemoveFromAudience={onRemoveFromAudience}
                 />
               )}
               {isGroupDraft && onToggleDraftWorkflowShape ? (
                 <button
                   type="button"
                   className="composerWorkflowToggle"
-                  disabled={isSubmittingFirstTurn}
+                  disabled={isSubmittingFirstTurn || audienceParticipants.length <= 1}
                   onClick={onToggleDraftWorkflowShape}
                   data-tooltip={draftWorkflowShape === 'sequential' ? 'Sequential' : 'Concurrent'}
                   aria-label={`Switch to ${draftWorkflowShape === 'sequential' ? 'concurrent' : 'sequential'} mode`}

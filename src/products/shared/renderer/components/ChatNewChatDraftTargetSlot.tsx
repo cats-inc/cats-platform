@@ -37,6 +37,7 @@ export interface ChatNewChatDraftTargetSlotProps {
   onOpenExecution: () => void;
   onToggleDraftCat: (catId: string) => void;
   onRemoveDraftTemporaryParticipant: (participantId: string) => void;
+  onRemoveFromAudience?: (key: string) => void;
 }
 
 export function ChatNewChatDraftTargetSlot({
@@ -53,6 +54,7 @@ export function ChatNewChatDraftTargetSlot({
   onOpenExecution,
   onToggleDraftCat,
   onRemoveDraftTemporaryParticipant,
+  onRemoveFromAudience,
 }: ChatNewChatDraftTargetSlotProps) {
   if (isGroupDraft) {
     if (groupComposerParticipants.length === 0) {
@@ -95,20 +97,14 @@ export function ChatNewChatDraftTargetSlot({
               }}
             >
               {participant.avatarUrl ? null : catInitials(participant.name)}
-              {!isSubmittingFirstTurn && canRemove ? (
+              {!isSubmittingFirstTurn && canRemove && onRemoveFromAudience ? (
                 <button
                   type="button"
                   className="composerStackRemove"
-                  aria-label={`Remove ${participant.name}`}
+                  aria-label={`Remove ${participant.name} from audience`}
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (participant.isCat && participant.catId) {
-                      onToggleDraftCat(participant.catId);
-                      return;
-                    }
-                    if (participant.participantId) {
-                      onRemoveDraftTemporaryParticipant(participant.participantId);
-                    }
+                    onRemoveFromAudience(participant.key);
                   }}
                 >
                   &times;
