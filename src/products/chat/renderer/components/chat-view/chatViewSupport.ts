@@ -3,6 +3,7 @@ import type {
   ParallelChatGroupSummary,
 } from '../../../api/contracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
+import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { buildImplicitRecipient, buildNamedRecipient, buildRecipientFromCat, type RecipientChipTarget } from '../ComposerRecipientChip.js';
 import type { ModelSelectorValue } from '../ModelSelector.js';
 import { presentChannelTitle, type SelectedChannelView } from '../../chatUtils.js';
@@ -266,4 +267,82 @@ export function buildChatComposerRecipients(input: {
       model: input.defaultRecipientParticipant.execution.target.model ?? null,
     }),
   ];
+}
+
+export interface ChatComposerViewState {
+  participantChipLabel: string;
+  directLaneModelValue: ModelSelectorValue | null;
+  directLaneExcludedMentionNames: string[];
+  composerBusy: boolean;
+  composerAckBusy: boolean;
+  resumeBusy: boolean;
+  showCancelComposerAction: boolean;
+  showStopComposerAction: boolean;
+  composerWorkspacePath: string | null;
+}
+
+export function resolveChatComposerViewState(input: {
+  activeRoomParticipants: ResolvedChannelParticipant[];
+  directLaneCat: AppShellPayload['chat']['cats'][number] | null;
+  busy: string;
+  isCompareGroup: boolean;
+  selectedChannelId: string;
+  onCancelPendingSend?: (() => void) | null;
+  onStopMessage?: (() => void) | null;
+  repoPath?: string | null;
+  chatCwd?: string | null;
+}): ChatComposerViewState {
+  const composerAckBusy = input.busy === 'message:ack';
+  const composerDispatchChannelId = input.busy.startsWith('message:send:')
+    ? input.busy.slice('message:send:'.length)
+    : input.busy.startsWith('message:prepare:')
+      ? input.busy.slice('message:prepare:'.length)
+      : input.busy.startsWith('message:ack:')
+        ? input.busy.slice('message:ack:'.length)
+        : null;
+  const compareBusy =
+    input.busy === 'parallelChat:ack'
+    || input.busy === 'parallelChat:dispatch'
+    || input.busy === 'parallelChat:relay'
+    || input.busy === 'parallelChat:stop';
+  const composerBusy =
+    composerAckBusy
+    || composerDispatchChannelId != null
+    || input.busy === 'channel:resume'
+    || compareBusy;
+  const showCancelComposerAction = composerAckBusy && input.onCancelPendingSend != null;
+  const canStopSingleChat =
+    !input.isCompareGroup
+    && composerDispatchChannelId === input.selectedChannelId
+    && input.onStopMessage != null;
+  const canStopParallelChat =
+    input.isCompareGroup
+    && input.onStopMessage != null
+    && (
+      input.busy === 'parallelChat:dispatch'
+      || input.busy === 'parallelChat:stop'
+    );
+
+  return {
+    participantChipLabel: input.activeRoomParticipants.length > 0
+      ? `${input.activeRoomParticipants.length} participant${input.activeRoomParticipants.length === 1 ? '' : 's'}`
+      : 'Participants',
+    directLaneModelValue: input.directLaneCat
+      ? {
+          provider: input.directLaneCat.defaultExecutionTarget.provider,
+          model: input.directLaneCat.defaultExecutionTarget.model,
+          instance: input.directLaneCat.defaultExecutionTarget.instance,
+          modelSelection: input.directLaneCat.defaultModelSelection ?? null,
+        }
+      : null,
+    directLaneExcludedMentionNames:
+      input.directLaneCat?.name ? [input.directLaneCat.name] : [],
+    composerBusy,
+    composerAckBusy,
+    resumeBusy: input.busy === 'channel:resume',
+    showCancelComposerAction,
+    showStopComposerAction:
+      !showCancelComposerAction && (canStopSingleChat || canStopParallelChat),
+    composerWorkspacePath: resolveComposerWorkspacePath(input.repoPath, input.chatCwd),
+  };
 }

@@ -39,11 +39,6 @@ import {
   type MessageChoicesSubmitInput,
 } from './MessageChoices';
 import {
-  isComposerAckBusy,
-  getComposerDispatchChannelId,
-  isComposerBusy,
-} from '../../../../shared/composer';
-import {
   type ResolvedChannelParticipant,
 } from '../../shared/channelParticipants';
 import {
@@ -57,7 +52,6 @@ import {
   useChatParticipantPresentation,
 } from '../hooks/useChatParticipantPresentation';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
-import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths';
 import { buildChatSidePanelSections } from './chat-view/ChatSidePanelSections';
 import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
@@ -67,6 +61,7 @@ import {
   buildChatComposerStackParticipants,
   buildChoiceResponsesBySource,
   messageStackTone,
+  resolveChatComposerViewState,
   resolveChatViewCompareState,
   resolveChatViewTopBarPresenceState,
   resolveChatViewTopBarTitle,
@@ -268,21 +263,6 @@ export function ChatView({
     isSoloComposer,
     activeRoomParticipants,
   });
-  const participantChipLabel = activeRoomParticipants.length > 0
-    ? `${activeRoomParticipants.length} participant${activeRoomParticipants.length === 1 ? '' : 's'}`
-    : 'Participants';
-  const directLaneModelValue: ModelSelectorValue | null = directLaneCat
-    ? {
-        provider: directLaneCat.defaultExecutionTarget.provider,
-        model: directLaneCat.defaultExecutionTarget.model,
-        instance: directLaneCat.defaultExecutionTarget.instance,
-        modelSelection: directLaneCat.defaultModelSelection ?? null,
-      }
-    : null;
-  const directLaneExcludedMentionNames = useMemo(
-    () => (isDirectLane && directLaneCat?.name ? [directLaneCat.name] : []),
-    [directLaneCat?.name, isDirectLane],
-  );
   const composerStackParticipants = useMemo(
     () => buildChatComposerStackParticipants({
       activeRoomParticipants,
@@ -385,29 +365,43 @@ export function ChatView({
     () => buildRunInspectorView(operatorView, inspectedRunId),
     [operatorView, inspectedRunId],
   );
-  const composerBusy = isComposerBusy(busy) || compareBusy;
-  const composerAckBusy = isComposerAckBusy(busy);
-  const composerDispatchChannelId = getComposerDispatchChannelId(busy);
-  const stopBusy = busy.startsWith('message:stop:') || busy === 'parallelChat:stop';
-  const resumeBusy = busy === 'channel:resume';
-  const canResumeChannel = !composerBusy && !resumeBusy;
-  const showCancelComposerAction = composerAckBusy && onCancelPendingSend != null;
-  const canStopSingleChat =
-    !isCompareGroup
-    && composerDispatchChannelId === selectedChannel.id
-    && onStopMessage != null;
-  const canStopParallelChat =
-    isCompareGroup
-    && onStopMessage != null
-    && (
-      busy === 'parallelChat:dispatch'
-      || busy === 'parallelChat:stop'
-    );
-  const showStopComposerAction = !showCancelComposerAction && (canStopSingleChat || canStopParallelChat);
-  const composerWorkspacePath = resolveComposerWorkspacePath(
-    selectedChannel.repoPath,
-    selectedChannel.chatCwd,
+  const {
+    participantChipLabel,
+    directLaneModelValue,
+    directLaneExcludedMentionNames,
+    composerBusy,
+    composerAckBusy,
+    resumeBusy,
+    showCancelComposerAction,
+    showStopComposerAction,
+    composerWorkspacePath,
+  } = useMemo(
+    () => resolveChatComposerViewState({
+      activeRoomParticipants,
+      directLaneCat: isDirectLane ? directLaneCat : null,
+      busy,
+      isCompareGroup,
+      selectedChannelId: selectedChannel.id,
+      onCancelPendingSend,
+      onStopMessage,
+      repoPath: selectedChannel.repoPath,
+      chatCwd: selectedChannel.chatCwd,
+    }),
+    [
+      activeRoomParticipants,
+      busy,
+      directLaneCat,
+      isCompareGroup,
+      isDirectLane,
+      onCancelPendingSend,
+      onStopMessage,
+      selectedChannel.chatCwd,
+      selectedChannel.id,
+      selectedChannel.repoPath,
+    ],
   );
+  const canResumeChannel = !composerBusy && !resumeBusy;
+  const stopBusy = busy.startsWith('message:stop:') || busy === 'parallelChat:stop';
   const { transcriptListRef, composerCardRef, bottomSentinelRef, isNearBottom, scrollToBottom } = useTranscriptAutoScroll({
     channelId: selectedChannel.id,
     scrollKey: transcriptScrollKey,
