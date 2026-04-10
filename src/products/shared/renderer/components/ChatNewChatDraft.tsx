@@ -55,6 +55,7 @@ export interface NewChatDraftProps {
       participantId?: string | null;
     },
   ) => void;
+  onQuickAddDraftTemporaryParticipant?: () => void;
   onRemoveDraftTemporaryParticipant: (participantId: string) => void;
   onUpdateDraftTemporaryParticipant: (
     participantId: string,
@@ -119,6 +120,7 @@ export function NewChatDraft({
   onDraftCwdClear,
   onToggleDraftCat,
   onAddDraftTemporaryParticipant,
+  onQuickAddDraftTemporaryParticipant,
   onRemoveDraftTemporaryParticipant,
   onUpdateDraftTemporaryParticipant,
   autoResize,
@@ -498,7 +500,13 @@ export function NewChatDraft({
                         type="button"
                         className="parallelAddButton"
                         disabled={isSubmittingFirstTurn}
-                        onClick={() => openSidePanelTo('cats')}
+                        onClick={() => {
+                          if (onQuickAddDraftTemporaryParticipant) {
+                            onQuickAddDraftTemporaryParticipant();
+                            return;
+                          }
+                          openSidePanelTo('cats');
+                        }}
                         aria-label="Add another model to collaborate"
                       >
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

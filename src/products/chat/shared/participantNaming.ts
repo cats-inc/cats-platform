@@ -1,4 +1,8 @@
-import { getProviderDisplayName } from '../../../shared/providerCatalog.js';
+import {
+  getDefaultProviderBackend,
+  getProviderDisplayName,
+  getProviderInstances,
+} from '../../../shared/providerCatalog.js';
 
 function normalizeTakenNames(names: ReadonlyArray<string>): Set<string> {
   return new Set(
@@ -43,6 +47,7 @@ export function resolveTemporaryParticipantName(
   input: {
     name?: string | null;
     provider?: string | null;
+    instance?: string | null;
   },
   takenNames: ReadonlyArray<string> = [],
 ): string {
@@ -51,5 +56,17 @@ export function resolveTemporaryParticipantName(
     return explicitName;
   }
 
-  return buildAutoTemporaryParticipantName(input.provider, takenNames);
+  const normalizedProvider = input.provider?.trim();
+  const normalizedInstance = input.instance?.trim();
+  const backend = normalizedProvider
+    ? (
+        normalizedInstance
+          ? getProviderInstances(normalizedProvider)
+            .find((candidate) => candidate.id === normalizedInstance)?.backend
+            ?? getDefaultProviderBackend(normalizedProvider)
+          : getDefaultProviderBackend(normalizedProvider)
+      )
+    : null;
+
+  return buildAutoTemporaryParticipantName(input.provider, takenNames, backend);
 }

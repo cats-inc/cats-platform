@@ -124,6 +124,6 @@ test('createChannel auto-names temporary participants when the draft omits names
   );
 
   const channelView = buildChannelView(state, state.selectedChannelId);
-  assert.equal(channelView.assignedParticipants?.[0]?.name, 'Claude');
-  assert.equal(channelView.assignedParticipants?.[1]?.name, 'Claude 2');
+  assert.equal(channelView.assignedParticipants?.[0]?.name, 'Claude-CLI');
+  assert.equal(channelView.assignedParticipants?.[1]?.name, 'Claude-CLI 2');
 });

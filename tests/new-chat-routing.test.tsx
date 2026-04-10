@@ -11,6 +11,7 @@ import {
   buildNewChatChannelInput,
   createDraftTemporaryParticipant,
   createInitialGroupParticipants,
+  createNextGroupTemporaryParticipant,
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
   insertCreatedChannelIntoPayload,
@@ -258,19 +259,46 @@ test('assistant presets can be instantiated as draft temporary participants with
 test('draft temporary participants auto-name from provider and avoid collisions', () => {
   const first = createDraftTemporaryParticipant({
     provider: 'claude',
+    instance: 'native',
     takenNames: ['Milo'],
     randomUUID: () => 'participant-1',
   });
   const second = createDraftTemporaryParticipant({
     provider: 'claude',
+    instance: 'native',
     takenNames: ['Milo', first.name],
     randomUUID: () => 'participant-2',
   });
 
-  assert.equal(first.name, 'Claude');
-  assert.equal(second.name, 'Claude 2');
+  assert.equal(first.name, 'Claude-CLI');
+  assert.equal(second.name, 'Claude-CLI 2');
   assert.equal(first.participantId, 'participant-1');
   assert.equal(second.participantId, 'participant-2');
+});
+
+test('group draft quick-add picks the next provider and keeps CLI naming aligned', () => {
+  const first = createNextGroupTemporaryParticipant({
+    baseProvider: 'claude',
+    existingParticipants: [],
+    randomUUID: () => 'participant-1',
+  });
+  const second = createNextGroupTemporaryParticipant({
+    baseProvider: 'claude',
+    existingParticipants: [first],
+    randomUUID: () => 'participant-2',
+  });
+  const third = createNextGroupTemporaryParticipant({
+    baseProvider: 'claude',
+    existingParticipants: [first, second],
+    randomUUID: () => 'participant-3',
+  });
+
+  assert.equal(first.provider, 'claude');
+  assert.equal(first.name, 'Claude-CLI');
+  assert.equal(second.provider, 'codex');
+  assert.equal(second.name, 'Codex-CLI');
+  assert.equal(third.provider, 'gemini');
+  assert.equal(third.name, 'Gemini-CLI');
 });
 
 test('generic group draft route seeds default temporary participants when none exist yet', () => {

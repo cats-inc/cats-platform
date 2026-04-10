@@ -104,6 +104,44 @@ export function createInitialGroupParticipants(
   });
 }
 
+export function createNextGroupTemporaryParticipant(options: {
+  baseProvider: string;
+  existingParticipants: ReadonlyArray<Pick<DraftTemporaryParticipant, 'provider' | 'name'>>;
+  takenNames?: ReadonlyArray<string>;
+  randomUUID?: () => string;
+}): DraftTemporaryParticipant {
+  const normalizedBaseProvider =
+    options.baseProvider.trim() || PRODUCT_PROVIDER_ORDER[0] || 'claude';
+  const providerPriority = [
+    normalizedBaseProvider,
+    ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== normalizedBaseProvider),
+  ];
+  const providerCounts = new Map(providerPriority.map((provider) => [provider, 0]));
+
+  options.existingParticipants.forEach((participant) => {
+    const provider = participant.provider.trim();
+    providerCounts.set(provider, (providerCounts.get(provider) ?? 0) + 1);
+  });
+
+  const nextProvider = providerPriority.reduce((selected, provider) => {
+    if (!selected) {
+      return provider;
+    }
+    return (providerCounts.get(provider) ?? 0) < (providerCounts.get(selected) ?? 0)
+      ? provider
+      : selected;
+  }, providerPriority[0] ?? PRODUCT_PROVIDER_ORDER[0] ?? normalizedBaseProvider);
+
+  return createDraftTemporaryParticipant({
+    provider: nextProvider,
+    instance: getDefaultProviderInstance(nextProvider),
+    model: getDefaultModel(nextProvider) || undefined,
+    modelSelection: null,
+    takenNames: options.takenNames ?? options.existingParticipants.map((participant) => participant.name),
+    randomUUID: options.randomUUID,
+  });
+}
+
 export function resolveGenericDraftTemporaryParticipants(
   mode: NewChatMode,
   existingParticipants: DraftTemporaryParticipant[],

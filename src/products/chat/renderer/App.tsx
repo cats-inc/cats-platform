@@ -27,6 +27,7 @@ import {
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import {
   BootShell,
+  createNextGroupTemporaryParticipant,
   pickGreeting,
   presentChannelTitle,
   createInitialGroupParticipants,
@@ -308,6 +309,48 @@ export default function App() {
     () => createInitialGroupParticipants(draftModel.provider, maxDraftGroupParticipants),
     [draftModel.provider, maxDraftGroupParticipants],
   );
+  const onQuickAddDraftTemporaryParticipant = useCallback(() => {
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    const visibleCatNames = draftParticipants.participantCatIds
+      .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? '')
+      .filter((name) => name.trim().length > 0);
+    let addedParticipantId: string | null = null;
+
+    setDraftTemporaryParticipants((current) => {
+      if (draftParticipants.participantCatIds.length + current.length >= maxDraftGroupParticipants) {
+        return current;
+      }
+
+      const nextParticipant = createNextGroupTemporaryParticipant({
+        baseProvider: draftModel.provider,
+        existingParticipants: current,
+        takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
+        randomUUID: () =>
+          globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+      });
+      addedParticipantId = nextParticipant.participantId;
+      return [...current, nextParticipant];
+    });
+
+    if (!addedParticipantId) {
+      return;
+    }
+
+    setDraftAudienceKeys((current) =>
+      current
+        ? [...current, `temp:${addedParticipantId}`]
+        : current);
+  }, [
+    draftModel.provider,
+    draftParticipants.participantCatIds,
+    maxDraftGroupParticipants,
+    setDraftAudienceKeys,
+    setDraftTemporaryParticipants,
+    state,
+  ]);
   const {
     onOpenChatsOverview,
     onSelect,
@@ -662,6 +705,7 @@ export default function App() {
                   onDraftCwdClear: () => setDraftCwd(null),
                   onToggleDraftCat: onToggleDraftCat,
                   onAddDraftTemporaryParticipant: onAddDraftTemporaryParticipant,
+                  onQuickAddDraftTemporaryParticipant,
                   onRemoveDraftTemporaryParticipant: onRemoveDraftTemporaryParticipant,
                   onUpdateDraftTemporaryParticipant: onUpdateDraftTemporaryParticipant,
                   autoResize,

@@ -53,6 +53,7 @@ function resolveTemporaryParticipantName(
   input: {
     name?: string | null;
     provider: string;
+    instance?: string | null;
   },
   takenNames?: ReadonlyArray<string>,
 ): string {
@@ -61,7 +62,11 @@ function resolveTemporaryParticipantName(
     return explicitName;
   }
 
-  const baseName = buildExecutionLabel(input.provider, null, null).replace(/\s+\u00b7.*$/u, '').trim();
+  const baseName = buildExecutionLabel(
+    input.provider,
+    input.instance ?? null,
+    null,
+  ).replace(/\s+\u00b7.*$/u, '').trim();
   const normalizedTakenNames = new Set(
     (takenNames ?? []).map((value) => value.trim().toLowerCase()).filter((value) => value.length > 0),
   );
@@ -102,6 +107,7 @@ export function createDraftTemporaryParticipant(options: {
       {
         name: options.name,
         provider: options.provider,
+        instance: options.instance,
       },
       options.takenNames,
     ),
