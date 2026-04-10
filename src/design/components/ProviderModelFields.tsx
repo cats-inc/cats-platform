@@ -18,7 +18,6 @@ import {
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   buildSelectionForEntry,
   catalogMatchesTarget,
-  createDefaultProviderRegistryReadModel,
   createEmptyProviderAdvancedModelCatalog,
   createEmptyProviderModelCatalog,
   filterPersistentControlValues,
@@ -28,13 +27,13 @@ import {
   resolveAdvancedCatalogFallback,
   resolveDisplayedEnumControlValue,
   sanitizePersistentTargetSelection,
-  sanitizeProviderRegistryReadModel,
   serializeControlInputValue,
   shouldAutoRecheckProviderRegistry,
   shouldDeferCatalogTargetReconciliation,
   shouldTreatPersistedTargetAsLegacyModel,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
+import { useProviderRegistryState } from './useProviderRegistryState.js';
 
 export {
   CUSTOM_LEGACY_MODEL_VALUE,
@@ -86,13 +85,6 @@ export function ProviderModelFields({
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
 }: SharedProviderModelFieldsProps) {
-  const [providers, setProviders] = useState<ProductProviderRegistryReadModel['providers']>([]);
-  const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>(() =>
-    createDefaultProviderRegistryReadModel(),
-  );
-  const [providersLoaded, setProvidersLoaded] = useState(false);
-  const [providerRegistryReloadToken, setProviderRegistryReloadToken] = useState(0);
-  const [lastAutoProviderRegistryRecheckAt, setLastAutoProviderRegistryRecheckAt] = useState(0);
   const [catalogLoading, setCatalogLoading] = useState(Boolean(provider));
   const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
     createEmptyProviderModelCatalog(provider),
@@ -104,72 +96,21 @@ export function ProviderModelFields({
   const manualSelectionTargetKey = useRef<string | null>(null);
   const previousTargetKey = useRef<string>('');
   const onTargetChangeRef = useRef(onTargetChange);
-  const onProviderRegistryChangeRef = useRef(onProviderRegistryChange);
-  const providerRegistryRequestIdRef = useRef(0);
+  const {
+    providers,
+    providerRegistry,
+    providersLoaded,
+    lastAutoProviderRegistryRecheckAt,
+    reloadProviderRegistry,
+    forceReloadProviderRegistry,
+  } = useProviderRegistryState({
+    fetchProviderRegistry,
+    onProviderRegistryChange,
+  });
 
   useEffect(() => {
     onTargetChangeRef.current = onTargetChange;
   }, [onTargetChange]);
-
-  useEffect(() => {
-    onProviderRegistryChangeRef.current = onProviderRegistryChange;
-  }, [onProviderRegistryChange]);
-
-  function commitProviderRegistry(
-    requestId: number,
-    nextRegistryResult: ProductProviderRegistryReadModel,
-  ): void {
-    if (requestId !== providerRegistryRequestIdRef.current) {
-      return;
-    }
-    const nextRegistry = sanitizeProviderRegistryReadModel(nextRegistryResult);
-    setProviders(nextRegistry.providers);
-    setProviderRegistry(nextRegistry);
-    setProvidersLoaded(true);
-    onProviderRegistryChangeRef.current?.(nextRegistry);
-  }
-
-  function commitProviderRegistryError(
-    requestId: number,
-    error: unknown,
-  ): void {
-    if (requestId !== providerRegistryRequestIdRef.current) {
-      return;
-    }
-    const nextRegistry: ProductProviderRegistryReadModel = {
-      state: 'runtime_unreachable',
-      providers: [],
-      recovery: {
-        retryable: true,
-      },
-      warnings: [error instanceof Error ? error.message : 'Failed to load providers.'],
-    };
-    setProviders([]);
-    setProviderRegistry(nextRegistry);
-    setProvidersLoaded(true);
-    onProviderRegistryChangeRef.current?.(nextRegistry);
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-    const requestId = ++providerRegistryRequestIdRef.current;
-
-    void fetchProviderRegistry()
-      .then((nextRegistryResult) => {
-        if (!cancelled) {
-          commitProviderRegistry(requestId, nextRegistryResult);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          commitProviderRegistryError(requestId, error);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchProviderRegistry, providerRegistryReloadToken]);
 
   const providerOptions = providers;
   const selectedProvider = providerOptions.find((option) => option.id === provider) ?? null;
@@ -381,29 +322,6 @@ export function ProviderModelFields({
     effectiveAdvancedCatalog,
     isLegacyModelTarget,
   });
-
-  function reloadProviderRegistry(options?: { markAutoRecheckAt?: number }): void {
-    if (options?.markAutoRecheckAt !== undefined) {
-      setLastAutoProviderRegistryRecheckAt(options.markAutoRecheckAt);
-    }
-    setProvidersLoaded(false);
-    setProviderRegistryReloadToken((current) => current + 1);
-  }
-
-  function forceReloadProviderRegistry(options?: { markAutoRecheckAt?: number }): void {
-    if (options?.markAutoRecheckAt !== undefined) {
-      setLastAutoProviderRegistryRecheckAt(options.markAutoRecheckAt);
-    }
-    setProvidersLoaded(false);
-    const requestId = ++providerRegistryRequestIdRef.current;
-    void fetchProviderRegistry({ force: true })
-      .then((nextRegistryResult) => {
-        commitProviderRegistry(requestId, nextRegistryResult);
-      })
-      .catch((error) => {
-        commitProviderRegistryError(requestId, error);
-      });
-  }
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
