@@ -276,18 +276,18 @@
 
 .composerStackRemove {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -3px;
+  right: -3px;
   display: none;
   align-items: center;
   justify-content: center;
   width: 14px;
   height: 14px;
   padding: 0;
-  border: none;
+  border: 1px solid var(--border);
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  background: #fff;
+  color: var(--muted);
   font-size: 10px;
   line-height: 1;
   cursor: pointer;
@@ -299,7 +299,8 @@
 }
 
 .composerStackRemove:hover {
-  background: rgba(200, 50, 50, 0.85);
+  background: var(--panel-hover);
+  color: var(--text);
 }
 
 .catAvatarLeadBadge {

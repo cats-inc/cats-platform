@@ -68,7 +68,7 @@ export function ChatNewChatDraftTargetSlot({
       >
         {[...groupComposerParticipants].reverse().map((participant, index, rendered) => {
           const isBoss = participant.isCat && participant.catId === payload.chat.bossCatId;
-          const canRemove = groupComposerParticipants.length > 2;
+          const canRemove = groupComposerParticipants.length >= 2;
 
           return (
             <div
