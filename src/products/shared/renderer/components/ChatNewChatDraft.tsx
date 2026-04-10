@@ -143,7 +143,7 @@ export function NewChatDraft({
   onFolderBrowsePathChange,
   onFolderBrowse,
   onFolderBrowseSelect,
-  draftWorkflowShape = 'concurrent',
+  draftWorkflowShape = 'sequential',
   onToggleDraftWorkflowShape,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
@@ -477,16 +477,20 @@ export function NewChatDraft({
                   aria-label={`Switch to ${draftWorkflowShape === 'sequential' ? 'concurrent' : 'sequential'} mode`}
                 >
                   {draftWorkflowShape === 'sequential' ? (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                      <path d="M4 4h8" />
-                      <path d="M5 8h8" />
-                      <path d="M6 12h8" />
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 3h6" />
+                      <path d="M9 3l3 4" />
+                      <path d="M12 7H6" />
+                      <path d="M6 7l3 4" />
+                      <path d="M9 11h3" />
+                      <path d="M10.5 9.5L12 11l-1.5 1.5" />
                     </svg>
                   ) : (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                      <path d="M4 4h8" />
-                      <path d="M4 8h8" />
-                      <path d="M4 12h8" />
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 5h8" />
+                      <path d="M9 3.5L11 5 9 6.5" />
+                      <path d="M3 11h8" />
+                      <path d="M9 9.5L11 11 9 12.5" />
                     </svg>
                   )}
                 </button>

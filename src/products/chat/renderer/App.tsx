@@ -139,7 +139,7 @@ export default function App() {
   const maxDraftGroupParticipants = state.status === 'ready'
     ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
-  const [draftWorkflowShape, setDraftWorkflowShape] = useState<'sequential' | 'concurrent'>('concurrent');
+  const [draftWorkflowShape, setDraftWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
