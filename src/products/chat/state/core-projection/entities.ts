@@ -44,10 +44,16 @@ import {
   isReplayableContinuationGuardReason,
 } from '../room-routing/continuationReplay.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
-
-function uniqueStrings(values: string[]): string[] {
-  return values.filter((value, index) => value.length > 0 && values.indexOf(value) === index);
-}
+import {
+  readMetadataBoolean,
+  readMetadataRecord,
+  readMetadataString,
+  readMetadataStringArray,
+  readParticipantRef,
+  readParticipantRefs,
+  sameParticipantRef,
+  uniqueStrings,
+} from './entityMetadata.js';
 
 function mapChannelStatusToConversationStatus(channel: ChatChannelState): CoreConversationStatus {
   if (channel.status === 'planned') {
@@ -76,92 +82,6 @@ function shouldPreserveActiveChannelTaskStatus(status: CoreTaskStatus | null | u
 function latestWorkflowTurn(channel: ChatChannelState): RoomWorkflowTurn | null {
   const workflow = channel.roomRouting?.workflow;
   return workflow?.activeTurn ?? workflow?.turnHistory[0] ?? null;
-}
-
-function readMetadataRecord(value: unknown): CoreRecordMetadata | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-
-  return value as CoreRecordMetadata;
-}
-
-function readMetadataString(
-  metadata: CoreRecordMetadata | null | undefined,
-  key: string,
-): string | null {
-  if (!metadata) {
-    return null;
-  }
-
-  const value = metadata[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
-}
-
-function readMetadataBoolean(
-  metadata: CoreRecordMetadata | null | undefined,
-  key: string,
-): boolean {
-  if (!metadata) {
-    return false;
-  }
-
-  return metadata[key] === true;
-}
-
-function readMetadataStringArray(
-  metadata: CoreRecordMetadata | null | undefined,
-  key: string,
-): string[] {
-  if (!metadata) {
-    return [];
-  }
-
-  const value = metadata[key];
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : [];
-}
-
-function readParticipantRef(value: unknown): RoomRoutingParticipantRef | null {
-  const record = readMetadataRecord(value);
-  if (!record) {
-    return null;
-  }
-
-  const participantKind = record.participantKind === 'orchestrator' || record.participantKind === 'cat'
-    ? record.participantKind
-    : null;
-  const participantId = readMetadataString(record, 'participantId');
-  const participantName = readMetadataString(record, 'participantName');
-  if (!participantKind || !participantId || !participantName) {
-    return null;
-  }
-
-  return {
-    participantKind,
-    participantId,
-    participantName,
-  };
-}
-
-function readParticipantRefs(values: unknown[]): RoomRoutingParticipantRef[] {
-  return values
-    .map((value) => readParticipantRef(value))
-    .filter((value): value is RoomRoutingParticipantRef => value !== null);
-}
-
-function sameParticipantRef(
-  left: RoomRoutingParticipantRef | null | undefined,
-  right: RoomRoutingParticipantRef | null | undefined,
-): boolean {
-  return Boolean(
-    left
-    && right
-    && left.participantKind === right.participantKind
-    && left.participantId === right.participantId
-    && left.participantName === right.participantName,
-  );
 }
 
 function readLatestContinuationMetadata(
