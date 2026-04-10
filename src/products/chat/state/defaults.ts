@@ -101,5 +101,6 @@ export function createDefaultChatState(): ChatState {
     newChatDefaults: createDefaultNewChatDefaults(),
     capabilities: createCapabilities(),
     showVerboseMessages: false,
+    showLiveProgressDetails: false,
   };
 }

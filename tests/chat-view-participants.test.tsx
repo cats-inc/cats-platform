@@ -534,6 +534,131 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   assert.match(markup, /catAvatarPulsing/u);
 });
 
+test('ChatView keeps live assistant progress collapsed when progress details are off', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        payload: {
+          ...createPayload(),
+          chat: {
+            ...createPayload().chat,
+            showLiveProgressDetails: false,
+          },
+        } as unknown as AppShellPayload,
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          speakerLabel: 'Inline Reviewer',
+          progressText: 'Calling search',
+          tools: [
+            {
+              toolId: 'tool-search',
+              toolName: 'search',
+              done: false,
+            },
+          ],
+          events: [
+            {
+              eventType: 'tool_use',
+              label: 'Tool',
+              text: 'Started search',
+              tone: 'active',
+              kind: 'tool',
+              toolName: 'search',
+              toolId: 'tool-search',
+            },
+          ],
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /typingIndicator/u);
+  assert.match(markup, /typingDots/u);
+  assert.doesNotMatch(markup, /Calling search/u);
+  assert.doesNotMatch(markup, /Started search/u);
+  assert.doesNotMatch(markup, /typingToolChip/u);
+  assert.doesNotMatch(markup, /typingEventTape/u);
+});
+
+test('ChatView shows provider-specific live assistant progress when progress details are on', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        payload: {
+          ...createPayload(),
+          chat: {
+            ...createPayload().chat,
+            showLiveProgressDetails: true,
+          },
+        } as unknown as AppShellPayload,
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          speakerLabel: 'Inline Reviewer',
+          progressText: 'Calling search',
+          tools: [
+            {
+              toolId: 'tool-search',
+              toolName: 'search',
+              done: false,
+            },
+          ],
+          events: [
+            {
+              eventType: 'tool_use',
+              label: 'Tool',
+              text: 'Started search',
+              tone: 'active',
+              kind: 'tool',
+              toolName: 'search',
+              toolId: 'tool-search',
+            },
+          ],
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /typingStatusText/u);
+  assert.match(markup, /Calling search/u);
+  assert.match(markup, /typingToolChip/u);
+  assert.match(markup, /Started search/u);
+  assert.match(markup, /typingEventTape/u);
+});
+
 test('ChatView drops stale live progress once the routed reply is already visible', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(

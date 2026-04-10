@@ -118,6 +118,7 @@ export function normalizeChatState(rawState: unknown): ChatState {
     newChatDefaults: normalizeNewChatDefaults(stateRecord.newChatDefaults),
     capabilities: normalizeCapabilities(stateRecord.capabilities),
     showVerboseMessages: readBoolean(stateRecord.showVerboseMessages, false),
+    showLiveProgressDetails: readBoolean(stateRecord.showLiveProgressDetails, false),
   };
 }
 

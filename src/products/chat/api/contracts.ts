@@ -422,6 +422,7 @@ export interface ChatState {
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
+  showLiveProgressDetails?: boolean;
 }
 
 export interface BotBindingSummary {
@@ -466,6 +467,7 @@ export interface ChatShellState {
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
+  showLiveProgressDetails?: boolean;
   botBindings: ChatBotBindingSummary[];
 }
 

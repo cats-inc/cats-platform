@@ -514,6 +514,7 @@ test('GET /api/preferences includes showVerboseMessages defaulting to false', as
 
     const payload = await response.json();
     assert.equal(payload.preferences.showVerboseMessages, false);
+    assert.equal(payload.preferences.showLiveProgressDetails, false);
   });
 });
 
@@ -534,6 +535,24 @@ test('PATCH /api/preferences accepts showVerboseMessages and persists it', async
     assert.equal(getResponse.status, 200);
     const getPayload = await getResponse.json();
     assert.equal(getPayload.preferences.showVerboseMessages, true);
+  });
+});
+
+test('PATCH /api/preferences accepts showLiveProgressDetails and persists it', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const patchResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ showLiveProgressDetails: true }),
+    });
+    assert.equal(patchResponse.status, 200);
+    const patchPayload = await patchResponse.json();
+    assert.equal(patchPayload.preferences.showLiveProgressDetails, true);
+
+    const getResponse = await fetch(`${baseUrl}/api/preferences`);
+    assert.equal(getResponse.status, 200);
+    const getPayload = await getResponse.json();
+    assert.equal(getPayload.preferences.showLiveProgressDetails, true);
   });
 });
 

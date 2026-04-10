@@ -430,7 +430,11 @@ PATCH /api/preferences
 ```
 
 - `GET` returns `{ preferences: { selectedChannelId } }`.
-- `PATCH` accepts `{ selectedChannelId }` and returns the updated preferences.
+- `GET` also returns `showVerboseMessages`, `showLiveProgressDetails`, and
+  `newChatDefaults`.
+- `PATCH` accepts `selectedChannelId`, `showVerboseMessages`,
+  `showLiveProgressDetails`, and `newChatDefaults`, then returns the updated
+  preferences payload.
 - Updating `selectedChannelId` also wakes the selected room's visible entry
   participant when that room is currently sleeping:
   - `boss_chat` wakes `Boss Cat`
@@ -2506,7 +2510,9 @@ Request body:
 
 ```json
 {
-  "selectedChannelId": "550e8400-e29b-41d4-a716-446655440000"
+  "selectedChannelId": "550e8400-e29b-41d4-a716-446655440000",
+  "showVerboseMessages": false,
+  "showLiveProgressDetails": false
 }
 ```
 

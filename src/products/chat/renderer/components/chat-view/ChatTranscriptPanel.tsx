@@ -64,6 +64,7 @@ export interface ChatTranscriptPanelProps {
     participant: ResolvedChannelParticipant,
     catRecord?: ChatCat | null,
   ) => string;
+  showLiveProgressDetails?: boolean;
 }
 
 export function ChatTranscriptPanel({
@@ -92,6 +93,7 @@ export function ChatTranscriptPanel({
   buildParticipantAvatarStyle,
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
+  showLiveProgressDetails = false,
 }: ChatTranscriptPanelProps) {
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
 
@@ -174,6 +176,7 @@ export function ChatTranscriptPanel({
             buildParticipantAvatarStyle={buildParticipantAvatarStyle}
             resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
             resolveParticipantDisplayName={resolveParticipantDisplayName}
+            showProgressDetails={showLiveProgressDetails}
           />
         ) : null}
         <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />

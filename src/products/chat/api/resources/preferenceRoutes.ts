@@ -23,6 +23,7 @@ async function handleRestGetPreferences(
       preferences: {
         selectedChannelId: state.selectedChannelId,
         showVerboseMessages: state.showVerboseMessages,
+        showLiveProgressDetails: state.showLiveProgressDetails ?? false,
         newChatDefaults: state.newChatDefaults,
       },
     });
@@ -40,6 +41,7 @@ async function handleRestUpdatePreferences(
     const body = await readJsonBody<{
       selectedChannelId?: string;
       showVerboseMessages?: boolean;
+      showLiveProgressDetails?: boolean;
       newChatDefaults?: {
         provider?: string;
         instance?: string | null;
@@ -65,6 +67,13 @@ async function handleRestUpdatePreferences(
             };
           }
 
+          if (typeof body.showLiveProgressDetails === 'boolean') {
+            nextState = {
+              ...nextState,
+              showLiveProgressDetails: body.showLiveProgressDetails,
+            };
+          }
+
           if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
             nextState = updateNewChatDefaults(nextState, {
               provider: body.newChatDefaults.provider,
@@ -86,6 +95,13 @@ async function handleRestUpdatePreferences(
             };
           }
 
+          if (typeof body.showLiveProgressDetails === 'boolean') {
+            nextState = {
+              ...nextState,
+              showLiveProgressDetails: body.showLiveProgressDetails,
+            };
+          }
+
           if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
             nextState = updateNewChatDefaults(nextState, {
               provider: body.newChatDefaults.provider,
@@ -103,6 +119,7 @@ async function handleRestUpdatePreferences(
       preferences: {
         selectedChannelId: persisted.selectedChannelId,
         showVerboseMessages: persisted.showVerboseMessages,
+        showLiveProgressDetails: persisted.showLiveProgressDetails ?? false,
         newChatDefaults: persisted.newChatDefaults,
       },
     });

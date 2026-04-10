@@ -573,6 +573,7 @@ export function ChatView({
               buildParticipantAvatarStyle={buildParticipantAvatarStyle}
               resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
               resolveParticipantDisplayName={resolveParticipantDisplayName}
+              showLiveProgressDetails={payload.chat.showLiveProgressDetails === true}
             />
 
             <ChatComposerArea

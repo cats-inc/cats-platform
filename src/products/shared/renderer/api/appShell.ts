@@ -78,6 +78,27 @@ export async function updateVerbosePreference(
   );
 }
 
+export async function updateLiveProgressDetailsPreference(
+  show: boolean,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/preferences', {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ showLiveProgressDetails: show }),
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats live progress preference update returned ${response.status}`,
+    signal,
+  );
+}
+
 export async function updateNewChatDefaultsPreference(
   input: NewChatDefaults,
   signal?: AbortSignal,

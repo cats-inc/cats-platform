@@ -190,6 +190,9 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   if (chatState.showVerboseMessages === undefined) {
     chatState.showVerboseMessages = false;
   }
+  if (chatState.showLiveProgressDetails === undefined) {
+    chatState.showLiveProgressDetails = false;
+  }
   if (!asRecord(chatState.newChatDefaults)) {
     chatState.newChatDefaults = {
       provider: readString(orchestratorExecutionTarget?.provider, 'claude'),

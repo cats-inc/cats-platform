@@ -7,6 +7,9 @@ import { MessageBody } from '../MessageBody.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../shared/channelParticipants.js';
+import {
+  resolveLiveIndicatorPreviewBody,
+} from '../../../../shared/renderer/components/chat-view/liveTranscriptIndicatorSupport.js';
 
 export interface LiveTranscriptIndicatorProps {
   cats: ChatCat[];
@@ -32,6 +35,7 @@ export interface LiveTranscriptIndicatorProps {
     participant: ResolvedChannelParticipant,
     catRecord?: ChatCat | null,
   ) => string;
+  showProgressDetails?: boolean;
 }
 
 export function LiveTranscriptIndicator({
@@ -46,6 +50,7 @@ export function LiveTranscriptIndicator({
   buildParticipantAvatarStyle,
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
+  showProgressDetails = false,
 }: LiveTranscriptIndicatorProps) {
   const speakerCat = liveIndicator.catId
     ? cats.find((cat) => cat.id === liveIndicator.catId) ?? null
@@ -58,6 +63,8 @@ export function LiveTranscriptIndicator({
   const hasContentBlocks = liveIndicator.contentBlocks.length > 0;
   const showPreviewText = !hasContentBlocks && livePreviewText.trim().length > 0;
   const activeTools = liveIndicator.tools.filter((tool) => !tool.done);
+  const simplifiedPreviewText = resolveLiveIndicatorPreviewBody(liveIndicator);
+  const showSimplifiedPreviewText = simplifiedPreviewText.trim().length > 0;
 
   return (
     <article className="transcriptMessageStack transcriptMessageStackAgent typingIndicator">
@@ -115,6 +122,17 @@ export function LiveTranscriptIndicator({
         ) : null}
         {liveIndicator.phase === 'waiting' ? (
           <span className="typingDots"><span /><span /><span /></span>
+        ) : !showProgressDetails ? (
+          showSimplifiedPreviewText ? (
+            <MessageBody
+              body={simplifiedPreviewText}
+              cats={cats}
+              channelId={selectedChannelId}
+              disabledMentionNames={disabledMentionNames}
+            />
+          ) : (
+            <span className="typingDots"><span /><span /><span /></span>
+          )
         ) : (
           <>
             {showPreviewText ? (

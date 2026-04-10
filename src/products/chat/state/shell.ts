@@ -105,6 +105,7 @@ export function createAppShell(
         availableSurfaces: listEnabledPlatformSurfaces(),
       },
       showVerboseMessages: chat.showVerboseMessages,
+      showLiveProgressDetails: chat.showLiveProgressDetails ?? false,
       botBindings,
     },
     runtime,

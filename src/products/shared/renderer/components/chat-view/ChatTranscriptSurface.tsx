@@ -13,6 +13,9 @@ import {
   MessageChoices,
   type MessageChoicesSubmitInput,
 } from '../MessageChoices.js';
+import {
+  resolveLiveIndicatorPreviewBody,
+} from './liveTranscriptIndicatorSupport.js';
 
 export interface ChatTranscriptSurfaceProps {
   hasConversationStarted: boolean;
@@ -122,6 +125,9 @@ export function ChatTranscriptSurface({
           const hasContentBlocks = liveIndicator.contentBlocks.length > 0;
           const showPreviewText = !hasContentBlocks && livePreviewText.trim().length > 0;
           const activeTools = liveIndicator.tools.filter((tool) => !tool.done);
+          const showProgressDetails = payload.chat.showLiveProgressDetails === true;
+          const simplifiedPreviewText = resolveLiveIndicatorPreviewBody(liveIndicator);
+          const showSimplifiedPreviewText = simplifiedPreviewText.trim().length > 0;
           return (
             <article className="transcriptMessage transcriptMessageAgent typingIndicator">
               {speakerCat ? (
@@ -143,6 +149,17 @@ export function ChatTranscriptSurface({
               ) : null}
               {liveIndicator.phase === 'waiting' ? (
                 <span className="typingDots"><span /><span /><span /></span>
+              ) : !showProgressDetails ? (
+                showSimplifiedPreviewText ? (
+                  <MessageBody
+                    body={simplifiedPreviewText}
+                    cats={payload.chat.cats}
+                    channelId={selectedChannel.id}
+                    disabledMentionNames={directLaneExcludedMentionNames}
+                  />
+                ) : (
+                  <span className="typingDots"><span /><span /><span /></span>
+                )
               ) : (
                 <>
                   {showPreviewText ? (

@@ -2,7 +2,10 @@ import { startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts.js';
-import { updateVerbosePreference } from '../api/index.js';
+import {
+  updateLiveProgressDetailsPreference,
+  updateVerbosePreference,
+} from '../api/index.js';
 import { SettingsShell } from './SettingsShell.js';
 
 export interface ChatSettingsGeneralProps {
@@ -20,6 +23,44 @@ export function ChatSettingsGeneral({
 }: ChatSettingsGeneralProps) {
   const navigate = useNavigate();
 
+  async function toggleVerboseMessages(): Promise<void> {
+    const show = !payload.chat.showVerboseMessages;
+    onPayloadUpdate({
+      ...payload,
+      chat: { ...payload.chat, showVerboseMessages: show },
+    });
+    try {
+      const next = await updateVerbosePreference(show);
+      startTransition(() => onPayloadUpdate(next));
+      onFeedback('');
+    } catch (error) {
+      onPayloadUpdate({
+        ...payload,
+        chat: { ...payload.chat, showVerboseMessages: !show },
+      });
+      onFeedback(error instanceof Error ? error.message : 'Failed to update preference');
+    }
+  }
+
+  async function toggleLiveProgressDetails(): Promise<void> {
+    const show = payload.chat.showLiveProgressDetails !== true;
+    onPayloadUpdate({
+      ...payload,
+      chat: { ...payload.chat, showLiveProgressDetails: show },
+    });
+    try {
+      const next = await updateLiveProgressDetailsPreference(show);
+      startTransition(() => onPayloadUpdate(next));
+      onFeedback('');
+    } catch (error) {
+      onPayloadUpdate({
+        ...payload,
+        chat: { ...payload.chat, showLiveProgressDetails: !show },
+      });
+      onFeedback(error instanceof Error ? error.message : 'Failed to update preference');
+    }
+  }
+
   return (
     <SettingsShell section="chat" title="Chat">
       <div className="contentCard">
@@ -30,27 +71,18 @@ export function ChatSettingsGeneral({
         <button
           type="button"
           className="toggleRow"
-          onClick={async () => {
-            const show = !payload.chat.showVerboseMessages;
-            onPayloadUpdate({
-              ...payload,
-              chat: { ...payload.chat, showVerboseMessages: show },
-            });
-            try {
-              const next = await updateVerbosePreference(show);
-              startTransition(() => onPayloadUpdate(next));
-              onFeedback('');
-            } catch (error) {
-              onPayloadUpdate({
-                ...payload,
-                chat: { ...payload.chat, showVerboseMessages: !show },
-              });
-              onFeedback(error instanceof Error ? error.message : 'Failed to update preference');
-            }
-          }}
+          onClick={() => void toggleVerboseMessages()}
         >
           <span className={payload.chat.showVerboseMessages ? 'toggleDot toggleDotOn' : 'toggleDot'} />
           <span>Show verbose messages</span>
+        </button>
+        <button
+          type="button"
+          className="toggleRow"
+          onClick={() => void toggleLiveProgressDetails()}
+        >
+          <span className={payload.chat.showLiveProgressDetails === true ? 'toggleDot toggleDotOn' : 'toggleDot'} />
+          <span>Show live progress details</span>
         </button>
       </div>
 
