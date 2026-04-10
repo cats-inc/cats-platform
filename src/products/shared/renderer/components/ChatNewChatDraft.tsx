@@ -193,6 +193,20 @@ export function NewChatDraft({
 
   // Build unified audience participants for all modes
   const audienceParticipants: typeof groupComposerParticipants = (() => {
+    // Parallel mode: first target as implicit participant
+    if (isParallelMode && parallelTargets?.[0]) {
+      return [{
+        key: 'parallel:0',
+        name: buildModelSelectorLabel(parallelTargets[0]),
+        executionLabel: buildModelSelectorLabel(parallelTargets[0]),
+        avatarColor: null,
+        avatarUrl: null,
+        isCat: false,
+        catId: null,
+        participantId: null,
+      }];
+    }
+
     if (isGroupDraft) {
       // Group mode: use explicit audience keys or all participants
       if (!draftAudienceKeys) return groupComposerParticipants;
@@ -251,6 +265,7 @@ export function NewChatDraft({
   // Determine click action for single-participant chip
   const audienceSingleClick = (() => {
     if (isGroupDraft) return undefined;
+    if (isParallelMode) return () => openSidePanelTo('parallel:0');
     if (isDirectLaneContext) return () => openSidePanelTo('execution');
     if (effectiveDefaultRecipientCat || effectiveDefaultRecipientTemporaryParticipant) {
       return () => openSidePanelTo('cats');
@@ -518,12 +533,7 @@ export function NewChatDraft({
               ) : null}
             </div>
             <div className="composerRightGroup">
-              {isParallelMode && parallelTargets?.[0] ? (
-                <ModelSelectorChip
-                  label={buildModelSelectorLabel(parallelTargets[0])}
-                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
-                />
-              ) : audienceParticipants.length > 0 ? (
+              {audienceParticipants.length > 0 ? (
                 <AudienceChip
                   audienceParticipants={audienceParticipants}
                   allParticipants={isGroupDraft ? groupComposerParticipants : undefined}
@@ -588,9 +598,19 @@ export function NewChatDraft({
           <div className="parallelStubStack">
             {parallelTargets.slice(1).map((target, i, arr) => (
               <div key={i + 1} className="parallelStubCard" style={{ zIndex: arr.length - i }}>
-                <ModelSelectorChip
-                  label={buildModelSelectorLabel(target)}
-                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo(`parallel:${i + 1}`)}
+                <AudienceChip
+                  audienceParticipants={[{
+                    key: `parallel:${i + 1}`,
+                    name: buildModelSelectorLabel(target),
+                    executionLabel: buildModelSelectorLabel(target),
+                    avatarColor: null,
+                    avatarUrl: null,
+                    isCat: false,
+                    catId: null,
+                    participantId: null,
+                  }]}
+                  onSingleClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo(`parallel:${i + 1}`)}
+                  disabled={isSubmittingFirstTurn}
                 />
                 <button
                   type="button"
