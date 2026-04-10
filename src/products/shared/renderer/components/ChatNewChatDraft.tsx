@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
+import { useMemo, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { SidePanel } from '../../../../design/components/SidePanel.js';
@@ -13,7 +13,6 @@ import {
   type DraftStarterSuggestion,
 } from '../draftStarterSuggestions.js';
 import {
-  createDraftTemporaryParticipant,
   pickDraftGreeting,
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
@@ -32,8 +31,8 @@ import {
 } from './ModelSelector.js';
 import {
   buildChatNewChatDraftSidePanelSections,
-  type ChatNewChatTemporaryParticipantFormState,
 } from './chatNewChatDraftSidePanel.js';
+import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer.js';
 
 export interface NewChatDraftProps {
@@ -157,15 +156,6 @@ export function NewChatDraft({
   onFolderBrowseSelect,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
-  function createTemporaryParticipantFormValue(): ChatNewChatTemporaryParticipantFormState {
-    return {
-      roleHint: '',
-      provider: payload.chat.newChatDefaults?.provider ?? 'claude',
-      instance: payload.chat.newChatDefaults?.instance ?? '',
-      model: payload.chat.newChatDefaults?.model ?? '',
-      modelSelection: payload.chat.newChatDefaults?.modelSelection ?? null,
-    };
-  }
   const chatCats = payload.chat.cats.filter(isChatCat);
   const assistantPresets = payload.assistantPresets ?? [];
   const activeChatCats = chatCats.filter((cat) => cat.status === 'active');
@@ -201,24 +191,36 @@ export function NewChatDraft({
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
   const visibleDraftCatIds = draftParticipants.participantCatIds;
-  const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
-  const [temporaryParticipantFormOpen, setTemporaryParticipantFormOpen] = useState(false);
-  const [editingTemporaryParticipantId, setEditingTemporaryParticipantId] = useState<string | null>(null);
-  const [editingTemporaryParticipantName, setEditingTemporaryParticipantName] = useState('');
-  const [temporaryParticipantForm, setTemporaryParticipantForm] = useState<ChatNewChatTemporaryParticipantFormState>(
+  const {
     createTemporaryParticipantFormValue,
-  );
-  function openSidePanelTo(section: string): void {
-    setSidePanelOpen(true);
-    switchSection(section);
-  }
-  function switchSection(section: string): void {
-    setSidePanelSection(section);
-    if (section === 'cwd' && !folderBrowseCurrentPath && !folderBrowseLoading) {
-      onPickFolder();
-    }
-  }
+    sidePanelOpen,
+    setSidePanelOpen,
+    sidePanelSection,
+    switchSection,
+    openSidePanelTo,
+    temporaryParticipantFormOpen,
+    setTemporaryParticipantFormOpen,
+    editingTemporaryParticipantId,
+    editingTemporaryParticipantName,
+    setEditingTemporaryParticipantName,
+    temporaryParticipantForm,
+    setTemporaryParticipantForm,
+    submitTemporaryParticipant,
+    beginTemporaryParticipantRename,
+    cancelTemporaryParticipantRename,
+    submitTemporaryParticipantRename,
+  } = useChatNewChatDraftPanelState({
+    payload,
+    folderBrowseCurrentPath,
+    folderBrowseLoading,
+    onPickFolder,
+    hasReachedGroupParticipantLimit,
+    visibleDraftCatIds,
+    chatCats,
+    draftTemporaryParticipants,
+    onAddDraftTemporaryParticipant,
+    onUpdateDraftTemporaryParticipant,
+  });
   const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
     mode: draftSuggestionContext.mode,
     defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
@@ -308,50 +310,6 @@ export function NewChatDraft({
       participantId: participant.participantId,
     })),
   ], [chatCats, draftTemporaryParticipants, visibleDraftCatIds]);
-
-  function submitTemporaryParticipant(): void {
-    if (hasReachedGroupParticipantLimit) {
-      return;
-    }
-    if (!temporaryParticipantForm.provider.trim()) {
-      return;
-    }
-
-    const takenNames = [
-      ...visibleDraftCatIds.map((catId) => chatCats.find((cat) => cat.id === catId)?.name ?? ''),
-      ...draftTemporaryParticipants.map((participant) => participant.name),
-    ].filter((name) => name.trim().length > 0);
-
-    onAddDraftTemporaryParticipant(createDraftTemporaryParticipant({
-      provider: temporaryParticipantForm.provider.trim(),
-      instance: temporaryParticipantForm.instance.trim() || undefined,
-      model: temporaryParticipantForm.model.trim() || undefined,
-      modelSelection: temporaryParticipantForm.modelSelection,
-      roleHint: temporaryParticipantForm.roleHint.trim() || undefined,
-      takenNames,
-    }));
-    setTemporaryParticipantForm(createTemporaryParticipantFormValue());
-    setTemporaryParticipantFormOpen(false);
-  }
-
-  function beginTemporaryParticipantRename(participant: DraftTemporaryParticipant): void {
-    setEditingTemporaryParticipantId(participant.participantId);
-    setEditingTemporaryParticipantName(participant.name);
-  }
-
-  function cancelTemporaryParticipantRename(): void {
-    setEditingTemporaryParticipantId(null);
-    setEditingTemporaryParticipantName('');
-  }
-
-  function submitTemporaryParticipantRename(participantId: string): void {
-    const nextName = editingTemporaryParticipantName.trim();
-    if (!nextName) {
-      return;
-    }
-    onUpdateDraftTemporaryParticipant(participantId, { name: nextName });
-    cancelTemporaryParticipantRename();
-  }
 
   return (
     <div className="viewShell viewShellDraft">
