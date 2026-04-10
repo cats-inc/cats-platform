@@ -138,7 +138,7 @@ export default function App() {
     pickGreeting,
   });
   const maxDraftGroupParticipants = state.status === 'ready'
-    ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
+    ? state.payload.chat.capabilities.maxChatParticipants ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
   const [draftWorkflowShape, setDraftWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
   const [draftAudienceKeys, setDraftAudienceKeys] = useState<string[] | null>(null);

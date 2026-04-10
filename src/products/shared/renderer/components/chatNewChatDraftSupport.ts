@@ -76,7 +76,7 @@ export function resolveChatNewChatDraftViewState(input: {
   const draftParticipantCount =
     draftParticipants.participantCatIds.length + input.draftTemporaryParticipants.length;
   const maxGroupParticipants =
-    input.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY;
+    input.payload.chat.capabilities.maxChatParticipants ?? Number.POSITIVE_INFINITY;
   const hasReachedGroupParticipantLimit = draftParticipantCount >= maxGroupParticipants;
   const draftSuggestionContext = resolveDraftStarterSuggestionContext({
     allowAddCat: input.allowAddCat,

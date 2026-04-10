@@ -203,6 +203,14 @@ function resolveRequestedRoomMode(
   return input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat';
 }
 
+function resolveRequestedParticipantCount(input: CreateChatChannelInput): number {
+  const explicitParticipantCount =
+    (input.cats?.length ?? 0)
+    + (input.participantCatIds?.length ?? 0)
+    + (input.temporaryParticipants?.length ?? 0);
+  return Math.max(1, explicitParticipantCount);
+}
+
 export function createChannel(
   state: ChatState,
   input: CreateChatChannelInput,
@@ -216,6 +224,13 @@ export function createChannel(
   const createdCats = catDrafts.map((palInput) => createCatRecord(palInput, nowIso));
   const participantCatIds = input.participantCatIds ?? [];
   const temporaryParticipants = input.temporaryParticipants ?? [];
+  const maxChatParticipants = state.capabilities.maxChatParticipants ?? Infinity;
+  const requestedParticipantCount = resolveRequestedParticipantCount(input);
+
+  if (requestedParticipantCount > maxChatParticipants) {
+    throw new Error(`Chat participant limit reached (max ${maxChatParticipants})`);
+  }
+
   const takenParticipantNames = [
     ...createdCats.map((cat) => cat.name),
     ...participantCatIds.map((catId) => {

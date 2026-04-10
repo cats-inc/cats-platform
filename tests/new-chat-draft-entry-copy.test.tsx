@@ -13,6 +13,7 @@ function createPayload(): AppShellPayload {
       botBindings: [],
       capabilities: {
         maxCats: 5,
+        maxChatParticipants: 5,
         maxParallelChats: 5,
       },
       cats: [
@@ -177,7 +178,7 @@ test('group route shows add-participant hint inside the composer', () => {
 
 test('group route hides add-participant hint and button when max participants is reached', () => {
   const payload = createPayload();
-  payload.chat.capabilities.maxCats = 2;
+  payload.chat.capabilities.maxChatParticipants = 2;
 
   const markup = renderToStaticMarkup(
     <NewChatDraft

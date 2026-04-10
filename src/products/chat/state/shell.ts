@@ -101,6 +101,7 @@ export function createAppShell(
         ...chat.capabilities,
         maxBossCats: config.maxBossCats,
         maxCats: config.maxCats,
+        maxChatParticipants: config.maxChatParticipants,
         maxParallelChats: config.maxParallelChats,
         availableSurfaces: listEnabledPlatformSurfaces(),
       },

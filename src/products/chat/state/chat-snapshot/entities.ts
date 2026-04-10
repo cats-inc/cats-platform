@@ -371,6 +371,11 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
     maxCats: typeof capabilitiesRecord?.maxCats === 'number' && capabilitiesRecord.maxCats > 0
       ? capabilitiesRecord.maxCats
       : fallback.maxCats,
+    maxChatParticipants:
+      typeof capabilitiesRecord?.maxChatParticipants === 'number'
+      && capabilitiesRecord.maxChatParticipants > 0
+        ? capabilitiesRecord.maxChatParticipants
+        : fallback.maxChatParticipants,
     maxParallelChats: typeof capabilitiesRecord?.maxParallelChats === 'number' && capabilitiesRecord.maxParallelChats > 0
       ? capabilitiesRecord.maxParallelChats
       : fallback.maxParallelChats,

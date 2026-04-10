@@ -127,3 +127,28 @@ test('createChannel auto-names temporary participants when the draft omits names
   assert.equal(channelView.assignedParticipants?.[0]?.name, 'Claude-CLI');
   assert.equal(channelView.assignedParticipants?.[1]?.name, 'Claude-CLI 2');
 });
+
+test('createChannel enforces max chat participants independently from cat count', () => {
+  const state = createDefaultChatState();
+  state.capabilities.maxCats = 16;
+  state.capabilities.maxChatParticipants = 2;
+
+  assert.throws(
+    () => createChannel(
+      state,
+      {
+        title: 'Crowded room',
+        topic: 'Too many participants for this chat.',
+        participantCatIds: ['cat-a', 'cat-b'],
+        temporaryParticipants: [
+          {
+            participantId: 'participant-inline',
+            provider: 'claude',
+          },
+        ],
+      },
+      new Date('2026-04-08T00:00:00.000Z'),
+    ),
+    /Chat participant limit reached \(max 2\)/u,
+  );
+});

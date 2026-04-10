@@ -406,6 +406,7 @@ export interface ChatCapabilities {
   runtimeSessions: true;
   maxBossCats: number;
   maxCats: number;
+  maxChatParticipants: number;
   maxParallelChats: number;
   availableSurfaces: string[];
 }

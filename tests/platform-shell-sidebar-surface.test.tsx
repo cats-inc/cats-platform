@@ -127,6 +127,7 @@ function createPayload(): WorkAppShellPayload {
         runtimeSessions: true,
         maxBossCats: 1,
         maxCats: 8,
+        maxChatParticipants: 5,
         maxParallelChats: 5,
         availableSurfaces: ['chat', 'work', 'code'],
       },

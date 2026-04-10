@@ -61,7 +61,13 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
   };
 }
 
-function createCapabilities(limits?: { maxBossCats?: number; maxCats?: number; maxParallelChats?: number; availableSurfaces?: string[] }): ChatCapabilities {
+function createCapabilities(limits?: {
+  maxBossCats?: number;
+  maxCats?: number;
+  maxChatParticipants?: number;
+  maxParallelChats?: number;
+  availableSurfaces?: string[];
+}): ChatCapabilities {
   return {
     multiChannel: true,
     persistence: 'file-backed',
@@ -72,7 +78,8 @@ function createCapabilities(limits?: { maxBossCats?: number; maxCats?: number; m
     runtimeSessions: true,
     maxBossCats: limits?.maxBossCats ?? 1,
     maxCats: limits?.maxCats ?? 5,
-    maxParallelChats: limits?.maxParallelChats ?? 5,
+    maxChatParticipants: limits?.maxChatParticipants ?? 5,
+    maxParallelChats: limits?.maxParallelChats ?? 3,
     availableSurfaces: limits?.availableSurfaces ?? listEnabledPlatformSurfaces(),
   };
 }

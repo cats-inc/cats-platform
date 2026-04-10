@@ -89,6 +89,7 @@ function createPayload(): AppShellPayload {
         runtimeSessions: true,
         maxBossCats: 1,
         maxCats: 16,
+        maxChatParticipants: 5,
         maxParallelChats: 5,
         availableSurfaces: ['chat'],
       },

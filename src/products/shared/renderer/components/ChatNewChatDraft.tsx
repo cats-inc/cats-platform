@@ -635,7 +635,7 @@ export function NewChatDraft({
             ))}
           </div>
         ) : null}
-        {parallelTargets && parallelTargets.length < (payload.chat.capabilities.maxParallelChats ?? 5) ? (
+        {parallelTargets && parallelTargets.length < (payload.chat.capabilities.maxParallelChats ?? 3) ? (
           <div className="parallelAddRow">
             <span className="parallelAddHint">Add another model to compare</span>
             <button

@@ -19,6 +19,7 @@ function createPayload(): AppShellPayload {
       bossCatId: null,
       botBindings: [],
       capabilities: {
+        maxChatParticipants: 5,
         maxParallelChats: 5,
       },
       cats: [],
