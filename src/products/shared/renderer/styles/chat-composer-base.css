@@ -198,6 +198,15 @@
   cursor: pointer;
 }
 
+.composerGroupAvatarSlot .catAvatar {
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+.composerGroupAvatarSlot:hover .catAvatar {
+  filter: brightness(0.88);
+  transform: scale(1.08);
+}
+
 .composerGroupAvatarRemove {
   position: absolute;
   top: -3px;
