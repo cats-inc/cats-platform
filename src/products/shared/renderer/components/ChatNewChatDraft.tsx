@@ -20,6 +20,7 @@ import {
 } from './chatNewChatDraftSidePanel.js';
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
+import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -83,6 +84,8 @@ export interface NewChatDraftProps {
   onFolderBrowsePathChange?: (path: string) => void;
   onFolderBrowse?: (path: string) => void;
   onFolderBrowseSelect?: () => void;
+  draftWorkflowShape?: RoomWorkflowShape;
+  onToggleDraftWorkflowShape?: () => void;
 }
 
 export function NewChatDraft({
@@ -140,6 +143,8 @@ export function NewChatDraft({
   onFolderBrowsePathChange,
   onFolderBrowse,
   onFolderBrowseSelect,
+  draftWorkflowShape = 'concurrent',
+  onToggleDraftWorkflowShape,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const {
@@ -439,62 +444,86 @@ export function NewChatDraft({
                 </span>
               ) : null}
             </div>
-            {isParallelMode && parallelTargets?.[0] ? (
-              <div style={{ marginRight: 8 }}>
+            <div className="composerRightGroup">
+              {isParallelMode && parallelTargets?.[0] ? (
                 <ModelSelectorChip
                   label={buildModelSelectorLabel(parallelTargets[0])}
                   onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
                 />
-              </div>
-            ) : (
-              <ChatNewChatDraftTargetSlot
-                payload={payload}
-                isGroupDraft={isGroupDraft}
-                isDirectLaneContext={isDirectLaneContext}
-                effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
-                effectiveDefaultRecipientTemporaryParticipant={effectiveDefaultRecipientTemporaryParticipant}
-                draftComposerRecipients={draftComposerRecipients}
-                groupComposerParticipants={groupComposerParticipants}
-                activePanelModel={activePanelModel}
-                isSubmittingFirstTurn={isSubmittingFirstTurn}
-                onOpenCats={() => openSidePanelTo('cats')}
-                onOpenExecution={() => openSidePanelTo('execution')}
-                onToggleDraftCat={onToggleDraftCat}
-                onRemoveDraftTemporaryParticipant={onRemoveDraftTemporaryParticipant}
-              />
-            )}
-            {showCancelPendingSend ? (
-              <button
-                className="composerSendButton composerCancelButton"
-                type="button"
-                aria-label="Cancel send"
-                onClick={() => onCancelPendingSend?.()}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-                  <path d="M4 4l6 6" />
-                  <path d="M10 4l-6 6" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                className="composerSendButton"
-                disabled={!composerDraft.trim() || isSubmittingFirstTurn || (isGroupDraft && draftParticipantCount < 2)}
-                type="submit"
-                aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
-              >
-                {isParallelMode ? (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
-                    <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+              ) : (
+                <ChatNewChatDraftTargetSlot
+                  payload={payload}
+                  isGroupDraft={isGroupDraft}
+                  isDirectLaneContext={isDirectLaneContext}
+                  effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
+                  effectiveDefaultRecipientTemporaryParticipant={effectiveDefaultRecipientTemporaryParticipant}
+                  draftComposerRecipients={draftComposerRecipients}
+                  groupComposerParticipants={groupComposerParticipants}
+                  activePanelModel={activePanelModel}
+                  isSubmittingFirstTurn={isSubmittingFirstTurn}
+                  onOpenCats={() => openSidePanelTo('cats')}
+                  onOpenExecution={() => openSidePanelTo('execution')}
+                  onToggleDraftCat={onToggleDraftCat}
+                  onRemoveDraftTemporaryParticipant={onRemoveDraftTemporaryParticipant}
+                />
+              )}
+              {isGroupDraft && onToggleDraftWorkflowShape ? (
+                <button
+                  type="button"
+                  className="composerWorkflowToggle"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={onToggleDraftWorkflowShape}
+                  data-tooltip={draftWorkflowShape === 'sequential' ? 'Sequential' : 'Concurrent'}
+                  aria-label={`Switch to ${draftWorkflowShape === 'sequential' ? 'concurrent' : 'sequential'} mode`}
+                >
+                  {draftWorkflowShape === 'sequential' ? (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M4 4h8" />
+                      <path d="M5 8h8" />
+                      <path d="M6 12h8" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M4 4h8" />
+                      <path d="M4 8h8" />
+                      <path d="M4 12h8" />
+                    </svg>
+                  )}
+                </button>
+              ) : null}
+              {showCancelPendingSend ? (
+                <button
+                  className="composerSendButton composerCancelButton"
+                  type="button"
+                  aria-label="Cancel send"
+                  onClick={() => onCancelPendingSend?.()}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                    <path d="M4 4l6 6" />
+                    <path d="M10 4l-6 6" />
                   </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 13V3" />
-                    <path d="M3 7l5-5 5 5" />
-                  </svg>
-                )}
-              </button>
-            )}
+                </button>
+              ) : (
+                <button
+                  className="composerSendButton"
+                  disabled={!composerDraft.trim() || isSubmittingFirstTurn || (isGroupDraft && draftParticipantCount < 2)}
+                  type="submit"
+                  aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
+                >
+                  {isParallelMode ? (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
+                      <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13V3" />
+                      <path d="M3 7l5-5 5 5" />
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
           <input
             ref={fileInputRef}

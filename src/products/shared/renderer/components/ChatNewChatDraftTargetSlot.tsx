@@ -62,7 +62,6 @@ export function ChatNewChatDraftTargetSlot({
     return (
       <div
         className="composerCatStack"
-        style={{ marginRight: 8 }}
         onClick={isSubmittingFirstTurn ? undefined : onOpenCats}
         role={isSubmittingFirstTurn ? undefined : 'button'}
         tabIndex={isSubmittingFirstTurn ? undefined : 0}

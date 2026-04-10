@@ -222,6 +222,37 @@
   color: var(--text);
 }
 
+.composerRightGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.composerWorkflowToggle {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.composerWorkflowToggle:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerWorkflowToggle:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .folderBrowserOverlay {
   position: fixed;
   inset: 0;

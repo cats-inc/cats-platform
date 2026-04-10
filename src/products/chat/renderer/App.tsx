@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useState,
 } from 'react';
 import {
   useLocation,
@@ -138,6 +139,7 @@ export default function App() {
   const maxDraftGroupParticipants = state.status === 'ready'
     ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
+  const [draftWorkflowShape, setDraftWorkflowShape] = useState<'sequential' | 'concurrent'>('concurrent');
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
@@ -665,6 +667,8 @@ export default function App() {
                   onParallelTargetChange: showingParallelChatDraft ? onDraftParallelChatTargetChange : undefined,
                   onAddParallelTarget: showingParallelChatDraft ? onAddDraftParallelChatTarget : undefined,
                   onRemoveParallelTarget: showingParallelChatDraft ? onRemoveDraftParallelChatTarget : undefined,
+                  draftWorkflowShape,
+                  onToggleDraftWorkflowShape: () => setDraftWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent'),
                 }}
                 addCatOpen={showAddCatPanel}
                 onToggleAddCat={toggleAddCatPanel}
