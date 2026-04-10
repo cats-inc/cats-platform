@@ -18,13 +18,10 @@ import {
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   buildSelectionForEntry,
   catalogMatchesTarget,
-  createEmptyProviderAdvancedModelCatalog,
-  createEmptyProviderModelCatalog,
   filterPersistentControlValues,
   hasExplicitDefaultEnumOption,
   listApplicableControlValueOptions,
   resolveProviderModelFieldsViewState,
-  resolveAdvancedCatalogFallback,
   resolveDisplayedEnumControlValue,
   sanitizePersistentTargetSelection,
   serializeControlInputValue,
@@ -33,6 +30,7 @@ import {
   shouldTreatPersistedTargetAsLegacyModel,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
+import { useProviderCatalogState } from './useProviderCatalogState.js';
 import { useProviderRegistryState } from './useProviderRegistryState.js';
 
 export {
@@ -85,13 +83,6 @@ export function ProviderModelFields({
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
 }: SharedProviderModelFieldsProps) {
-  const [catalogLoading, setCatalogLoading] = useState(Boolean(provider));
-  const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
-    createEmptyProviderModelCatalog(provider),
-  );
-  const [advancedCatalog, setAdvancedCatalog] = useState<ProviderAdvancedModelCatalog>(() =>
-    createEmptyProviderAdvancedModelCatalog(provider),
-  );
   const [legacyManualTargetKey, setLegacyManualTargetKey] = useState<string | null>(null);
   const manualSelectionTargetKey = useRef<string | null>(null);
   const previousTargetKey = useRef<string>('');
@@ -117,27 +108,17 @@ export function ProviderModelFields({
   const resolvedInstance = selectedProvider
     ? resolveSelectedProviderInstance(selectedProvider, instance)
     : '';
-  const fallbackCatalog = createEmptyProviderModelCatalog(provider, resolvedInstance || null);
-  const fallbackAdvancedCatalog = createEmptyProviderAdvancedModelCatalog(
+  const {
+    catalogLoading,
+    effectiveCatalog,
+    effectiveAdvancedCatalog,
+  } = useProviderCatalogState({
     provider,
-    resolvedInstance || null,
-  );
-  const effectiveCatalog = catalogMatchesTarget({
-    catalogProvider: catalog.provider,
-    catalogInstance: catalog.instance,
-    provider,
-    instance: resolvedInstance,
+    resolvedInstance,
+    hasSelectedProvider: Boolean(selectedProvider),
+    fetchProviderModels,
+    fetchAdvancedProviderModels,
   })
-    ? catalog
-    : fallbackCatalog;
-  const effectiveAdvancedCatalog = catalogMatchesTarget({
-    catalogProvider: advancedCatalog.provider,
-    catalogInstance: advancedCatalog.instance,
-    provider,
-    instance: resolvedInstance,
-  })
-    ? advancedCatalog
-    : fallbackAdvancedCatalog;
   const targetKey = `${provider}::${resolvedInstance}`;
   const persistedLegacyModelTarget = !catalogLoading && shouldTreatPersistedTargetAsLegacyModel({
     catalog: effectiveCatalog,
@@ -173,65 +154,6 @@ export function ProviderModelFields({
       });
     }
   }, [instance, model, modelSelection, provider, resolvedInstance, selectedProvider, targetKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const nextFallbackCatalog = createEmptyProviderModelCatalog(provider, resolvedInstance || null);
-    const nextFallbackAdvancedCatalog = createEmptyProviderAdvancedModelCatalog(
-      provider,
-      resolvedInstance || null,
-    );
-
-    setCatalog(nextFallbackCatalog);
-    setAdvancedCatalog(nextFallbackAdvancedCatalog);
-    setCatalogLoading(Boolean(selectedProvider && provider));
-
-    if (!selectedProvider || !provider) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void Promise.allSettled([
-      fetchProviderModels(provider, resolvedInstance || null),
-      fetchAdvancedProviderModels(provider, resolvedInstance || null),
-    ]).then(([modelsResult, advancedResult]) => {
-      if (cancelled) {
-        return;
-      }
-
-      const nextCatalog = modelsResult.status === 'fulfilled'
-        ? modelsResult.value
-        : createEmptyProviderModelCatalog(
-            provider,
-            resolvedInstance || null,
-            modelsResult.reason instanceof Error
-              ? modelsResult.reason.message
-              : 'Runtime model catalog unavailable.',
-          );
-      setCatalog(nextCatalog);
-
-      setAdvancedCatalog(resolveAdvancedCatalogFallback({
-        provider,
-        instance: resolvedInstance || null,
-        catalog: nextCatalog,
-        advancedCatalogResult: advancedResult,
-        modelsResult,
-      }));
-
-      setCatalogLoading(false);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    fetchAdvancedProviderModels,
-    fetchProviderModels,
-    provider,
-    resolvedInstance,
-    selectedProvider,
-  ]);
 
   useEffect(() => {
     if (effectiveCatalog.models.length === 0 || hasBlankLegacyDraft) {
