@@ -140,7 +140,7 @@ export default function App() {
     ? state.payload.chat.capabilities.maxCats ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
   const [draftWorkflowShape, setDraftWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
-  const [draftAudienceExclusions, setDraftAudienceExclusions] = useState<Set<string>>(new Set());
+  const [draftAudienceKeys, setDraftAudienceKeys] = useState<string[] | null>(null);
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
@@ -670,8 +670,8 @@ export default function App() {
                   onRemoveParallelTarget: showingParallelChatDraft ? onRemoveDraftParallelChatTarget : undefined,
                   draftWorkflowShape,
                   onToggleDraftWorkflowShape: () => setDraftWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent'),
-                  draftAudienceExclusions,
-                  onRemoveFromAudience: (key: string) => setDraftAudienceExclusions((prev) => new Set([...prev, key])),
+                  draftAudienceKeys,
+                  onSetAudienceKeys: setDraftAudienceKeys,
                 }}
                 addCatOpen={showAddCatPanel}
                 onToggleAddCat={toggleAddCatPanel}

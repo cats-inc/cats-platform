@@ -21,6 +21,7 @@ import {
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import { AudienceChip } from './AudienceChip.js';
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -86,8 +87,8 @@ export interface NewChatDraftProps {
   onFolderBrowseSelect?: () => void;
   draftWorkflowShape?: RoomWorkflowShape;
   onToggleDraftWorkflowShape?: () => void;
-  draftAudienceExclusions?: Set<string>;
-  onRemoveFromAudience?: (key: string) => void;
+  draftAudienceKeys?: string[] | null;
+  onSetAudienceKeys?: (keys: string[]) => void;
 }
 
 export function NewChatDraft({
@@ -147,8 +148,8 @@ export function NewChatDraft({
   onFolderBrowseSelect,
   draftWorkflowShape = 'sequential',
   onToggleDraftWorkflowShape,
-  draftAudienceExclusions,
-  onRemoveFromAudience,
+  draftAudienceKeys,
+  onSetAudienceKeys,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const {
@@ -188,9 +189,11 @@ export function NewChatDraft({
     busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
-  const audienceParticipants = draftAudienceExclusions
-    ? groupComposerParticipants.filter((p) => !draftAudienceExclusions.has(p.key))
-    : groupComposerParticipants;
+  const audienceParticipants = (() => {
+    if (!draftAudienceKeys) return groupComposerParticipants;
+    const byKey = new Map(groupComposerParticipants.map((p) => [p.key, p]));
+    return draftAudienceKeys.map((key) => byKey.get(key)).filter(Boolean) as typeof groupComposerParticipants;
+  })();
   const {
     createTemporaryParticipantFormValue,
     sidePanelOpen,
@@ -457,22 +460,28 @@ export function NewChatDraft({
                   label={buildModelSelectorLabel(parallelTargets[0])}
                   onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('parallel:0')}
                 />
+              ) : isGroupDraft && onSetAudienceKeys ? (
+                <AudienceChip
+                  audienceParticipants={audienceParticipants}
+                  allParticipants={groupComposerParticipants}
+                  onSetAudienceKeys={onSetAudienceKeys}
+                  disabled={isSubmittingFirstTurn}
+                />
               ) : (
                 <ChatNewChatDraftTargetSlot
                   payload={payload}
-                  isGroupDraft={isGroupDraft}
+                  isGroupDraft={false}
                   isDirectLaneContext={isDirectLaneContext}
                   effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
                   effectiveDefaultRecipientTemporaryParticipant={effectiveDefaultRecipientTemporaryParticipant}
                   draftComposerRecipients={draftComposerRecipients}
-                  groupComposerParticipants={audienceParticipants}
+                  groupComposerParticipants={[]}
                   activePanelModel={activePanelModel}
                   isSubmittingFirstTurn={isSubmittingFirstTurn}
                   onOpenCats={() => openSidePanelTo('cats')}
                   onOpenExecution={() => openSidePanelTo('execution')}
                   onToggleDraftCat={onToggleDraftCat}
                   onRemoveDraftTemporaryParticipant={onRemoveDraftTemporaryParticipant}
-                  onRemoveFromAudience={onRemoveFromAudience}
                 />
               )}
               {isGroupDraft && onToggleDraftWorkflowShape ? (
