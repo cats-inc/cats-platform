@@ -14,8 +14,8 @@ export interface AudienceChipProps {
   onToggleWorkflowShape?: () => void;
 }
 
-function hasAvatar(participant: DraftComposerStackParticipant): boolean {
-  return Boolean(participant.avatarUrl || participant.avatarColor || participant.isCat);
+function shouldShowAvatar(participant: DraftComposerStackParticipant): boolean {
+  return Boolean(participant.avatarUrl || participant.avatarColor || participant.isCat || participant.participantId);
 }
 
 export function AudienceChip({
@@ -102,7 +102,7 @@ export function AudienceChip({
 
   if (!first) return null;
 
-  const showAvatar = hasAvatar(first);
+  const showAvatar = shouldShowAvatar(first);
   const chipLabel = isMulti
     ? `${first.name} +${extraCount}`
     : (first.executionLabel || first.name);
