@@ -478,12 +478,8 @@ export function NewChatDraft({
                 >
                   {draftWorkflowShape === 'sequential' ? (
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 3h6" />
-                      <path d="M9 3l3 4" />
-                      <path d="M12 7H6" />
-                      <path d="M6 7l3 4" />
-                      <path d="M9 11h3" />
-                      <path d="M10.5 9.5L12 11l-1.5 1.5" />
+                      <path d="M3 4h8L3 12h9" />
+                      <path d="M10.5 10.5L12 12l-1.5 1.5" />
                     </svg>
                   ) : (
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
