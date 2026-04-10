@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react';
+
 import type { AppShellPayload } from '../../../api/contracts.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
@@ -50,6 +52,38 @@ function stackParticipantToAudienceParticipant(participant: ComposerStackPartici
   };
 }
 
+function ChatComposerAudienceChip({
+  composerStackParticipants,
+  composerBusy,
+  onOpenSection,
+}: {
+  composerStackParticipants: ComposerStackParticipant[];
+  composerBusy: boolean;
+  onOpenSection: (section: string) => void;
+}) {
+  const allParticipants = useMemo(
+    () => composerStackParticipants.map(stackParticipantToAudienceParticipant),
+    [composerStackParticipants],
+  );
+  const [audienceKeys, setAudienceKeys] = useState<string[] | null>(null);
+  const audienceParticipants = useMemo(() => {
+    if (!audienceKeys) return allParticipants;
+    const byKey = new Map(allParticipants.map((p) => [p.key, p]));
+    const resolved = audienceKeys.map((k) => byKey.get(k)).filter(Boolean) as typeof allParticipants;
+    return resolved.length > 0 ? resolved : allParticipants.length > 0 ? [allParticipants[0]] : [];
+  }, [audienceKeys, allParticipants]);
+
+  return (
+    <AudienceChip
+      audienceParticipants={audienceParticipants}
+      allParticipants={allParticipants}
+      onSetAudienceKeys={setAudienceKeys}
+      onSingleClick={() => onOpenSection('execution')}
+      disabled={composerBusy}
+    />
+  );
+}
+
 export function ChatComposerTargetSlot({
   payload,
   composerBusy,
@@ -81,14 +115,13 @@ export function ChatComposerTargetSlot({
     );
   }
 
-  // Group chat: multiple participants
+  // Group chat: multiple participants with audience selection
   if (!isSoloComposer && composerStackParticipants.length > 0) {
-    const participants = composerStackParticipants.map(stackParticipantToAudienceParticipant);
     return (
-      <AudienceChip
-        audienceParticipants={participants}
-        onSingleClick={() => onOpenSection('execution')}
-        disabled={composerBusy}
+      <ChatComposerAudienceChip
+        composerStackParticipants={composerStackParticipants}
+        composerBusy={composerBusy}
+        onOpenSection={onOpenSection}
       />
     );
   }
