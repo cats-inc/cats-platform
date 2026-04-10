@@ -51,6 +51,7 @@ import { ProductReadyShell } from "./ProductReadyShell.js";
 import { useAppChrome } from "./hooks/useAppChrome.js";
 import { useFolderBrowser } from "./hooks/useFolderBrowser.js";
 import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
+import { useWorkspaceDraftCatState } from "./hooks/useWorkspaceDraftCatState.js";
 import { useWorkspaceLocationState } from "./hooks/useWorkspaceLocationState.js";
 import { useWorkspaceModelSelectionState } from "./hooks/useWorkspaceModelSelectionState.js";
 import { useOnGenericDraftRouteEntry } from "./hooks/useOnGenericDraftRouteEntry.js";
@@ -165,42 +166,24 @@ export function createWorkspaceProductApp({
     const [addCatTab, setAddCatTab] = useState<"existing" | "new">("existing");
     const [greeting] = useState(pickGreeting);
     const [draftCwd, setDraftCwd] = useState<string | null>(null);
-    const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
     const [draftFiles, setDraftFiles] = useState<File[]>([]);
     const [channelFiles, setChannelFiles] = useState<File[]>([]);
-    const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<
-      string | null
-    >(null);
-    const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<
-      Map<string, ModelSelectorValue>
-    >(new Map());
+    const {
+      draftCatIds,
+      setDraftCatIds,
+      draftHighlightedCatId,
+      setDraftHighlightedCatId,
+      draftCatModelOverrides,
+      setDraftCatModelOverrides,
+      onToggleDraftCat,
+      onDraftCatModelOverride,
+      resetDraftCats,
+    } = useWorkspaceDraftCatState();
     const {
       dialog: appDialog,
       confirm: appConfirm,
       handleClose: appHandleClose,
     } = useConfirmDialog();
-
-    const onToggleDraftCat = useCallback((catId: string) => {
-      setDraftCatIds((prev) => {
-        const isRemoving = prev.includes(catId);
-        const next = isRemoving
-          ? prev.filter((id) => id !== catId)
-          : [...prev, catId];
-        if (isRemoving) {
-          setDraftHighlightedCatId((current) =>
-            current === catId ? (next.length > 0 ? next[0] : null) : current,
-          );
-          setDraftCatModelOverrides((overrides) => {
-            const copy = new Map(overrides);
-            copy.delete(catId);
-            return copy;
-          });
-        } else {
-          setDraftHighlightedCatId(catId);
-        }
-        return next;
-      });
-    }, []);
 
     const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
 
@@ -209,17 +192,6 @@ export function createWorkspaceProductApp({
         updateCatProfile,
         publishReadyPayload,
       });
-
-    const onDraftCatModelOverride = useCallback(
-      (catId: string, value: ModelSelectorValue) => {
-        setDraftCatModelOverrides((prev) => {
-          const copy = new Map(prev);
-          copy.set(catId, value);
-          return copy;
-        });
-      },
-      [],
-    );
 
     const {
       accountMenuOpen,
@@ -449,11 +421,7 @@ export function createWorkspaceProductApp({
 
     useOnGenericDraftRouteEntry(
       showingNewChatDraft && !draftDefaultRecipientCatId,
-      () => {
-        setDraftCatIds([]);
-        setDraftHighlightedCatId(null);
-        setDraftCatModelOverrides(new Map());
-      },
+      resetDraftCats,
     );
 
     useWorkspaceAppShellRouting({
