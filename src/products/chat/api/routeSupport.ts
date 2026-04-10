@@ -16,7 +16,6 @@ import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
 import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
-import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import {
   appendMessage,
@@ -52,7 +51,6 @@ import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
 import type { ChatStore } from '../state/store.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
-import { collectParticipantSessionIds } from '../shared/channelParticipants.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
 import { isRuntimeSessionWorkspacePath } from '../../../core/workspacePaths.js';
 import {
@@ -64,6 +62,13 @@ import {
   resolveChannelSpawnCwd,
   syncChannelAttachmentsToWorkspace,
 } from '../state/workspace.js';
+import {
+  catParticipatesInChat,
+  collectCatSessionIds,
+  collectLinkedChannelSessionIds,
+  seedBossCatGreeting,
+} from './routeStateSupport.js';
+export { mapChannelCat } from './routeStateSupport.js';
 import { readRuntimeSetupSummary } from '../../../runtime/setup.js';
 export {
   ChatApiError,
@@ -176,36 +181,6 @@ export function requireValidChatScopeId(chatScopeId: string): void {
   }
 }
 
-function seedBossCatGreeting(
-  state: ChatState,
-  channelId: string,
-  now: Date,
-): ChatState {
-  if (!state.bossCatId) {
-    return state;
-  }
-
-  const channel = requireChannel(state, channelId);
-  if (
-    (channel.participantAssignments?.length ?? channel.catAssignments.length) > 0
-    || channel.messages.length > 0
-  ) {
-    return state;
-  }
-
-  const bossCatName = resolveOrchestratorDisplayName(state);
-  return appendMessage(
-    state,
-    channelId,
-    {
-      senderKind: 'orchestrator',
-      senderName: bossCatName,
-      body: `Meow! I'm ${bossCatName}, your Boss Cat. What should we chat about?`,
-    },
-    now,
-  ).state;
-}
-
 export async function buildAppShellPayload(
   dependencies: ChatApiDependencies,
   state?: Awaited<ReturnType<ChatStore['read']>>,
@@ -310,35 +285,6 @@ export async function persistCreatedChannel(
   }
 
   return context.dependencies.chatStore.write(nextState);
-}
-
-function collectLinkedChannelSessionIds(
-  channel: ReturnType<typeof requireChannel>,
-): string[] {
-  const sessionIds = new Set(collectParticipantSessionIds(channel));
-  const orchestratorSessionId = channel.orchestratorLease.sessionId?.trim();
-  if (orchestratorSessionId) {
-    sessionIds.add(orchestratorSessionId);
-  }
-  return [...sessionIds];
-}
-
-function collectCatSessionIds(
-  state: ChatState,
-  catId: string,
-): string[] {
-  return state.channels.flatMap((channel) =>
-    channel.catAssignments
-      .filter((assignment) => assignment.catId === catId)
-      .map((assignment) => assignment.execution.lease.sessionId)
-      .filter((sessionId): sessionId is string => Boolean(sessionId)),
-  );
-}
-
-function catParticipatesInChat(products: readonly string[] | null | undefined): boolean {
-  return hasPlatformSurface(products, 'chat', {
-    fallback: defaultCatProducts(),
-  });
 }
 
 async function writeCoreWithUpdatedBindings(
@@ -799,22 +745,6 @@ export async function persistCatAssignmentRemoval(
   }
 
   await context.dependencies.chatStore.write(nextState);
-}
-
-export function mapChannelCat(assignment: ChatChannelCat) {
-  return {
-    catId: assignment.catId,
-    name: assignment.name,
-    roles: structuredClone(assignment.roles),
-    skillProfile: assignment.skillProfile,
-    mcpProfile: assignment.mcpProfile,
-    status: assignment.status,
-    joinedAt: assignment.joinedAt,
-    leftAt: assignment.leftAt,
-    avatarColor: assignment.avatarColor,
-    execution: structuredClone(assignment.execution),
-    memory: structuredClone(assignment.memory),
-  };
 }
 
 export function sendChannelExport(
