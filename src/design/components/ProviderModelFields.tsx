@@ -16,6 +16,7 @@ import {
   shouldAutoRecheckProviderRegistry,
 } from './providerModelFieldsSupport.js';
 import { ProviderModelFieldControls } from './ProviderModelFieldControls.js';
+import { ProviderRegistryRecovery } from './ProviderRegistryRecovery.js';
 import { useProviderCatalogState } from './useProviderCatalogState.js';
 import {
   CUSTOM_LEGACY_MODEL_VALUE,
@@ -222,43 +223,12 @@ export function ProviderModelFields({
           )}
         </select>
         {providerOptions.length === 0 ? (
-          <>
-            <span className="fieldHint">
-              {providerRegistryHint}
-            </span>
-            {canRetryProviderRegistry ? (
-              <div className="providerCatalogRecoveryActions">
-                <button
-                  className="secondaryButton"
-                  type="button"
-                  onClick={() => forceReloadProviderRegistry()}
-                >
-                  Retry
-                </button>
-                {providerRegistrySetupHref ? (
-                  <a
-                    className="secondaryButton"
-                    href={providerRegistrySetupHref}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open Cats Runtime setup
-                  </a>
-                ) : null}
-              </div>
-            ) : providerRegistrySetupHref ? (
-              <div className="providerCatalogRecoveryActions">
-                <a
-                  className="secondaryButton"
-                  href={providerRegistrySetupHref}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open Cats Runtime setup
-                </a>
-              </div>
-            ) : null}
-          </>
+          <ProviderRegistryRecovery
+            providerRegistryHint={providerRegistryHint}
+            canRetryProviderRegistry={canRetryProviderRegistry}
+            providerRegistrySetupHref={providerRegistrySetupHref}
+            forceReloadProviderRegistry={forceReloadProviderRegistry}
+          />
         ) : null}
       </label>
       {showInstanceField ? (
