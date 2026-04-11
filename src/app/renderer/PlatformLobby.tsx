@@ -39,7 +39,7 @@ function LobbyCatRoster({
             type="button"
             className={cat.isBoss ? 'lobbyCatAvatar lobbyCatAvatarBoss' : 'lobbyCatAvatar'}
             style={style}
-            data-tooltip={cat.name}
+            data-tooltip={cat.executionLabel ? `${cat.name} \u00b7 ${cat.executionLabel}` : cat.name}
             aria-label={cat.name}
             onClick={() => onSelect(cat.id)}
           >

@@ -17,7 +17,7 @@ import {
 } from './ComposerRecipientChip.js';
 import type { ModelSelectorValue } from './ModelSelector.js';
 import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer.js';
-import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import { buildCatExecutionLabel, buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
 
 export interface DraftComposerStackParticipant {
   key: string;
@@ -150,7 +150,7 @@ export function resolveChatNewChatDraftViewState(input: {
       return {
         key: `cat:${catId}`,
         name: cat?.name ?? '',
-        executionLabel: null as string | null,
+        executionLabel: (cat?.defaultExecutionTarget ? buildCatExecutionLabel(cat as Parameters<typeof buildCatExecutionLabel>[0]) : null) as string | null,
         avatarColor: cat?.avatarColor ?? null,
         avatarUrl: cat?.avatarUrl ?? null,
         isCat: true,

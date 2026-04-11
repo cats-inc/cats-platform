@@ -21,7 +21,7 @@ import {
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
-import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import { buildCatExecutionLabel, buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
 import { AudienceChip } from './AudienceChip.js';
 
 export interface NewChatDraftProps {
@@ -232,7 +232,9 @@ export function NewChatDraft({
       return [{
         key: `cat:${effectiveDefaultRecipientCat.id}`,
         name: effectiveDefaultRecipientCat.name,
-        executionLabel: null,
+        executionLabel: effectiveDefaultRecipientCat.defaultExecutionTarget
+          ? buildCatExecutionLabel(effectiveDefaultRecipientCat as Parameters<typeof buildCatExecutionLabel>[0])
+          : null,
         avatarColor: effectiveDefaultRecipientCat.avatarColor ?? null,
         avatarUrl: effectiveDefaultRecipientCat.avatarUrl ?? null,
         isCat: true,
@@ -465,7 +467,9 @@ export function NewChatDraft({
                           role={isSubmittingFirstTurn ? undefined : 'button'}
                           tabIndex={isSubmittingFirstTurn ? undefined : 0}
                           onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cats')}
-                          data-tooltip={participant.executionLabel || participant.name}
+                          data-tooltip={participant.isCat && participant.executionLabel
+                            ? `${participant.name} \u00b7 ${participant.executionLabel}`
+                            : (participant.executionLabel || participant.name)}
                           style={
                             participant.avatarUrl
                               ? {

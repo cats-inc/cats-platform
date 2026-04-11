@@ -6,7 +6,7 @@ import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import {
   buildModelSelectorLabel,
 } from '../ModelSelector.js';
-import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../../shared/executionLabel.js';
+import { buildCatExecutionLabel, buildExecutionLabel, resolveControlDisplayLabels } from '../../../../../shared/executionLabel.js';
 import { AudienceChip } from '../../../../shared/renderer/components/AudienceChip.js';
 import type { DraftComposerStackParticipant } from '../../../../shared/renderer/components/chatNewChatDraftSupport.js';
 
@@ -39,31 +39,42 @@ function recipientToAudienceParticipant(recipient: RecipientChipTarget): DraftCo
   };
 }
 
-function stackParticipantToAudienceParticipant(participant: ComposerStackParticipant): DraftComposerStackParticipant {
+function stackParticipantToAudienceParticipant(
+  participant: ComposerStackParticipant,
+  cats: AppShellPayload['chat']['cats'],
+): DraftComposerStackParticipant {
+  const isCat = !participant.useNeutralAvatar;
+  const catRecord = isCat
+    ? cats.find((cat) => cat.name === participant.label) ?? null
+    : null;
   return {
     key: `participant:${participant.participantId}`,
     name: participant.label,
-    executionLabel: null,
+    executionLabel: catRecord?.defaultExecutionTarget
+      ? buildCatExecutionLabel(catRecord as Parameters<typeof buildCatExecutionLabel>[0])
+      : null,
     avatarColor: participant.avatarColor ?? null,
     avatarUrl: participant.avatarUrl ?? null,
-    isCat: !participant.useNeutralAvatar,
-    catId: null,
+    isCat,
+    catId: catRecord?.id ?? null,
     participantId: participant.participantId,
   };
 }
 
 function ChatComposerAudienceChip({
   composerStackParticipants,
+  cats,
   composerBusy,
   onOpenSection,
 }: {
   composerStackParticipants: ComposerStackParticipant[];
+  cats: AppShellPayload['chat']['cats'];
   composerBusy: boolean;
   onOpenSection: (section: string) => void;
 }) {
   const allParticipants = useMemo(
-    () => composerStackParticipants.map(stackParticipantToAudienceParticipant),
-    [composerStackParticipants],
+    () => composerStackParticipants.map((p) => stackParticipantToAudienceParticipant(p, cats)),
+    [composerStackParticipants, cats],
   );
   const [audienceKeys, setAudienceKeys] = useState<string[] | null>(null);
   const [workflowShape, setWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
@@ -102,7 +113,9 @@ export function ChatComposerTargetSlot({
     const participant: DraftComposerStackParticipant = {
       key: `cat:${directLaneCat.id}`,
       name: directLaneCat.name,
-      executionLabel: null,
+      executionLabel: directLaneCat.defaultExecutionTarget
+        ? buildCatExecutionLabel(directLaneCat as Parameters<typeof buildCatExecutionLabel>[0])
+        : null,
       avatarColor: directLaneCat.avatarColor ?? null,
       avatarUrl: directLaneCat.avatarUrl ?? null,
       isCat: true,
@@ -123,6 +136,7 @@ export function ChatComposerTargetSlot({
     return (
       <ChatComposerAudienceChip
         composerStackParticipants={composerStackParticipants}
+        cats={payload.chat.cats}
         composerBusy={composerBusy}
         onOpenSection={onOpenSection}
       />

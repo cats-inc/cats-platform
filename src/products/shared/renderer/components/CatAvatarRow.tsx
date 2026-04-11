@@ -1,4 +1,5 @@
 import type { ChatCat } from '../../api/workspaceContracts.js';
+import { buildCatExecutionLabel, buildCatTooltip } from '../../../../shared/executionLabel.js';
 import { catInitials, sortChatCatsForDisplay } from '../workspaceChatUtils.js';
 
 export interface CatAvatarRowProps {
@@ -54,7 +55,7 @@ export function CatAvatarRow({
             style={cat.avatarUrl
               ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
               : cat.avatarColor ? { background: cat.avatarColor } : undefined}
-            data-tooltip={cat.name}
+            data-tooltip={buildCatTooltip(cat.name, buildCatExecutionLabel(cat))}
             onClick={() => {
               if (toggleable) {
                 onToggle(cat.id);

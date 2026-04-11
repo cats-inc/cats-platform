@@ -1,4 +1,5 @@
 import type { ChatCat } from '../../api/workspaceContracts.js';
+import { buildCatExecutionLabel, buildCatTooltip } from '../../../../shared/executionLabel.js';
 import { catInitials } from '../workspaceChatUtils.js';
 
 export interface ComposerCatStackProps {
@@ -35,7 +36,7 @@ export function ComposerCatStack({
           <div
             key={cat.id}
             className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
-            data-tooltip={cat.name}
+            data-tooltip={buildCatTooltip(cat.name, buildCatExecutionLabel(cat))}
             style={{
               ...(cat.avatarUrl
                 ? {

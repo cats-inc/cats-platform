@@ -76,7 +76,9 @@ export function ChatNewChatDraftTargetSlot({
             <div
               key={participant.key}
               className={`catAvatar composerStackAvatar${isBoss ? ' catAvatarBoss' : ''}`}
-              data-tooltip={participant.executionLabel || participant.name}
+              data-tooltip={participant.isCat && participant.executionLabel
+                ? `${participant.name} \u00b7 ${participant.executionLabel}`
+                : (participant.executionLabel || participant.name)}
               style={{
                 ...(participant.avatarUrl
                   ? {

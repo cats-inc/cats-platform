@@ -116,8 +116,11 @@ export function AudienceChip({
   const showAvatar = shouldShowAvatar(first);
   const chipLabel = isMulti
     ? `${first.name} +${extraCount}`
+    : (first.isCat ? first.name : (first.executionLabel || first.name));
+  const firstTooltip = first.isCat && first.executionLabel
+    ? `${first.name} \u00b7 ${first.executionLabel}`
     : (first.executionLabel || first.name);
-  const chipTooltip = isMulti ? 'Select audience' : (first.executionLabel || first.name);
+  const chipTooltip = isMulti ? 'Select audience' : firstTooltip;
 
   const handleChipClick = () => {
     if (canPopover) {
@@ -206,7 +209,9 @@ export function AudienceChip({
               <div
                 key={participant.key}
                 className={`audiencePopoverItem${isDragging ? ' isDragging' : ''}${isDragOver ? ' isDragOver' : ''}`}
-                data-tooltip={participant.executionLabel || undefined}
+                data-tooltip={participant.isCat && participant.executionLabel
+                  ? `${participant.name} \u00b7 ${participant.executionLabel}`
+                  : (participant.executionLabel || undefined)}
                 draggable={isInAudience}
                 onDragStart={isInAudience ? (e) => onDragStart(e, audienceIndex) : undefined}
                 onDragOver={isInAudience ? (e) => onDragOver(e, audienceIndex) : undefined}

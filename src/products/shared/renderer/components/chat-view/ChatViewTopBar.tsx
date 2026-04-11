@@ -55,7 +55,9 @@ export function ChatViewTopBar({
                     avatar.useNeutralAvatar ? 'channelParticipantAvatar' : '',
                     avatar.pulsing ? 'catAvatarPulsing' : '',
                   ].filter(Boolean).join(' ')}
-                  data-tooltip={avatar.executionLabel || avatar.label}
+                  data-tooltip={avatar.useNeutralAvatar
+                    ? (avatar.executionLabel || avatar.label)
+                    : (avatar.executionLabel ? `${avatar.label} \u00b7 ${avatar.executionLabel}` : avatar.label)}
                   style={avatar.avatarUrl
                     ? { backgroundImage: `url(${avatar.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : !avatar.useNeutralAvatar && avatar.avatarColor

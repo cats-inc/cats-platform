@@ -11,7 +11,7 @@ import {
   buildDraftParticipantExecutionLabel,
   type SelectedChannelView,
 } from '../chatUtils.js';
-import { resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import { buildCatExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
@@ -236,7 +236,7 @@ export function useChatParticipantPresentation(options: {
         ordered.push({
           key: `participant:${bossCatRecord.id}`,
           label: bossCatRecord.name,
-          executionLabel: null,
+          executionLabel: buildCatExecutionLabel(bossCatRecord),
           avatarColor: bossCatRecord.avatarColor ?? null,
           avatarUrl: bossCatRecord.avatarUrl ?? null,
           isBoss: true,

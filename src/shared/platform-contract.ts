@@ -61,6 +61,7 @@ export interface PlatformLobbyCatSummary {
   avatarColor: string | null;
   avatarUrl: string | null;
   isBoss: boolean;
+  executionLabel: string | null;
 }
 
 export interface PlatformLobbyPreferences {

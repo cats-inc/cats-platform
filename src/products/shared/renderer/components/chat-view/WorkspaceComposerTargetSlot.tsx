@@ -4,6 +4,7 @@ import {
   buildModelSelectorLabel,
   type ModelSelectorValue,
 } from '../ModelSelector.js';
+import { buildCatExecutionLabel } from '../../../../../shared/executionLabel.js';
 import { AudienceChip } from '../AudienceChip.js';
 import type { DraftComposerStackParticipant } from '../chatNewChatDraftSupport.js';
 
@@ -24,7 +25,9 @@ function catToAudienceParticipant(cat: ChatCat): DraftComposerStackParticipant {
   return {
     key: `cat:${cat.id}`,
     name: cat.name,
-    executionLabel: null,
+    executionLabel: cat.defaultExecutionTarget
+      ? buildCatExecutionLabel(cat as Parameters<typeof buildCatExecutionLabel>[0])
+      : null,
     avatarColor: cat.avatarColor ?? null,
     avatarUrl: cat.avatarUrl ?? null,
     isCat: true,

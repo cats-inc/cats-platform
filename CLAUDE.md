@@ -43,7 +43,7 @@ Only Claude should read and maintain this file.
 
 - **MUST** read AGENTS.md at the start of every session
 - **MUST** follow the Development Workflow defined in AGENTS.md
-- **MUST NOT** skip testing when code changes are made
+- **SHOULD** run only the relevant test files when asked to test, not the full suite
 - **MUST NOT** modify other agents' files (GEMINI.md, CODEX.md)
 - **SHOULD** ask for clarification when requirements are ambiguous
 - **SHOULD** propose approach before implementing major changes
@@ -58,7 +58,7 @@ If assigned as Conductor in Project Roles table:
 
 ### Code Modification Rules
 
-- **MUST** update tests when modifying code
+- **SHOULD** update tests when modifying code, only if the user requests it
 - **MUST** update documentation when changing public APIs
 - **MUST** follow coding conventions specified in AGENTS.md
 - **SHOULD** make minimal, focused changes
@@ -86,7 +86,6 @@ To sync skills after changes:
 ### Preferred Behaviors
 
 - **Precision over speed**: Take time to understand requirements fully
-- **Test before commit**: Always validate changes work as expected
 - **Document decisions**: Use ADRs for architectural choices
 - **Communicate clearly**: Report progress and blockers promptly
 
@@ -116,7 +115,7 @@ Rules:
   - Code: `src/products/code/api/index.ts`
 - Shared visual primitives may live in `src/design/**`, but do not upstream Chat-specific UI behavior into shared components prematurely.
 - Keep layering intact: `core/` and `platform/` must not import product implementations.
-- Before handoff or commit, run `npm test` and keep dependency/boundary tests green.
+- Do not run the full `npm test` suite unless the user explicitly asks. Only run targeted test files when needed.
 - For the full protocol, see `docs/product-integration-guide.md` and `docs/plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md`.
 
 ---

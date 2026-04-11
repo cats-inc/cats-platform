@@ -8,6 +8,7 @@ import type {
   PlatformLobbyPreferences,
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
+import { buildCatExecutionLabel } from '../../../shared/executionLabel.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
@@ -134,7 +135,15 @@ export function createAppShell(
 }
 
 function buildLobbyCats(
-  cats: readonly { id: string; name: string; avatarColor: string | null; avatarUrl: string | null; status: string }[],
+  cats: readonly {
+    id: string;
+    name: string;
+    avatarColor: string | null;
+    avatarUrl: string | null;
+    status: string;
+    defaultExecutionTarget?: { provider: string; instance?: string | null; model?: string | null } | null;
+    defaultModelSelection?: { controls?: Record<string, string | number | boolean> | null } | null;
+  }[],
   bossCatId: string | null,
 ): PlatformLobbyCatSummary[] {
   return cats
@@ -145,5 +154,8 @@ function buildLobbyCats(
       avatarColor: cat.avatarColor,
       avatarUrl: cat.avatarUrl,
       isBoss: cat.id === bossCatId,
+      executionLabel: cat.defaultExecutionTarget
+        ? buildCatExecutionLabel(cat as { defaultExecutionTarget: { provider: string; instance?: string | null; model?: string | null }; defaultModelSelection?: { controls?: Record<string, string | number | boolean> | null } | null })
+        : null,
     }));
 }

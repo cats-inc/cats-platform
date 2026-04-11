@@ -95,3 +95,19 @@ export function buildExecutionLabel(
     : '';
   return providerName + suffix + (modelLabel ? ` \u00b7 ${modelLabel}` : '') + controlsSuffix;
 }
+
+export function buildCatExecutionLabel(cat: {
+  defaultExecutionTarget: { provider: string; instance?: string | null; model?: string | null };
+  defaultModelSelection?: { controls?: Record<string, string | number | boolean> | null } | null;
+}): string {
+  const target = cat.defaultExecutionTarget;
+  const controlLabels = resolveControlDisplayLabels(cat.defaultModelSelection?.controls);
+  return buildExecutionLabel(target.provider, target.instance ?? null, target.model ?? null, null, controlLabels);
+}
+
+export function buildCatTooltip(
+  catName: string,
+  executionLabel: string | null | undefined,
+): string {
+  return executionLabel ? `${catName} \u00b7 ${executionLabel}` : catName;
+}
