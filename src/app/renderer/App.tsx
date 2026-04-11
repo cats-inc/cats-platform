@@ -28,6 +28,10 @@ type PlatformLoadState =
 
 const PLATFORM_ENVELOPE_BACKGROUND_REFRESH_MS = 5_000;
 
+function isLobbyPath(pathname: string): boolean {
+  return pathname === '/lobby' || pathname.startsWith('/lobby/');
+}
+
 function resolveProductEntryPath(surface: string): string {
   const route = PLATFORM_SURFACE_ROUTES[surface as keyof typeof PLATFORM_SURFACE_ROUTES];
   return route ? route.routePrefix : '/';
@@ -91,6 +95,7 @@ export default function PlatformApp() {
   const navigate = useNavigate();
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   const lastSyncedSurface = useRef<string | null>(null);
+  const previousPathnameRef = useRef(location.pathname);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
 
   const refreshEnvelope = useCallback(
@@ -132,8 +137,17 @@ export default function PlatformApp() {
     };
   }, [refreshEnvelope]);
 
-  const isLobbyRoute =
-    location.pathname === '/lobby' || location.pathname.startsWith('/lobby/');
+  const isLobbyRoute = isLobbyPath(location.pathname);
+
+  useEffect(() => {
+    const previousPathname = previousPathnameRef.current;
+    previousPathnameRef.current = location.pathname;
+    const enteredLobby = isLobbyRoute && !isLobbyPath(previousPathname);
+    if (!enteredLobby || state.status !== 'ready') {
+      return;
+    }
+    void refreshEnvelope(undefined, { suppressErrors: true });
+  }, [isLobbyRoute, location.pathname, refreshEnvelope, state.status]);
 
   useEffect(() => {
     if (

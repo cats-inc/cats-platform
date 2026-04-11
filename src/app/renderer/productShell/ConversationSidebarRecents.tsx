@@ -8,6 +8,7 @@ import {
   type ConversationSidebarRecentChannelEntry,
   type ConversationSidebarRecentEntry,
 } from './ConversationSidebar.js';
+import { SidebarFloatingMenuPortal } from './SidebarFloatingMenuPortal.js';
 import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
 import { useSidebarInlineRename } from './useSidebarInlineRename.js';
 
@@ -162,8 +163,8 @@ function ChannelItem<
         </span>
       ) : null}
       {overflowOpen ? (
-        <div
-          ref={overflowMenuRef}
+        <SidebarFloatingMenuPortal
+          menuRef={overflowMenuRef}
           className="recentOverflowMenu"
           style={overflowMenuStyle}
           onClick={(event) => event.stopPropagation()}
@@ -183,7 +184,7 @@ function ChannelItem<
           >
             {busy === `channel:delete:${channel.id}` ? 'Deleting...' : 'Delete'}
           </button>
-        </div>
+        </SidebarFloatingMenuPortal>
       ) : null}
     </article>
   );
@@ -314,8 +315,8 @@ function GroupHeaderItem({
         </span>
       ) : null}
       {overflowOpen ? (
-        <div
-          ref={overflowMenuRef}
+        <SidebarFloatingMenuPortal
+          menuRef={overflowMenuRef}
           className="recentOverflowMenu"
           style={overflowMenuStyle}
           onClick={(event) => event.stopPropagation()}
@@ -345,7 +346,7 @@ function GroupHeaderItem({
               </button>
             </>
           ) : null}
-        </div>
+        </SidebarFloatingMenuPortal>
       ) : null}
     </article>
   );

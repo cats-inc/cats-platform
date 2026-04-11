@@ -5,6 +5,7 @@ import type {
   ConversationSidebarChannel,
   ConversationSidebarHelpers,
 } from './ConversationSidebar.js';
+import { SidebarFloatingMenuPortal } from './SidebarFloatingMenuPortal.js';
 import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
 
 function MyCatRowItem<TCat extends ConversationSidebarCat>({
@@ -97,8 +98,8 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
         </button>
       </span>
       {overflowOpen ? (
-        <div
-          ref={overflowMenuRef}
+        <SidebarFloatingMenuPortal
+          menuRef={overflowMenuRef}
           className="myCatOverflowMenu"
           style={overflowMenuStyle}
           onClick={(event) => event.stopPropagation()}
@@ -106,7 +107,7 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
           <button type="button" disabled={false} onClick={onArchive}>
             Archive
           </button>
-        </div>
+        </SidebarFloatingMenuPortal>
       ) : null}
     </div>
   );

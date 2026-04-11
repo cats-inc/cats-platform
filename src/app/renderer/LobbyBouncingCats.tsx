@@ -7,6 +7,7 @@ import type {
 } from '../../shared/platform-contract.js';
 
 interface BouncingCat {
+  id: string;
   x: number;
   y: number;
   vx: number;
@@ -14,6 +15,7 @@ interface BouncingCat {
   color: string;
   initials: string;
   isBoss: boolean;
+  avatarUrl: string | null;
   image: HTMLImageElement | null;
 }
 
@@ -44,6 +46,7 @@ function initCats(
     const angle = Math.random() * Math.PI * 2;
     const speed = BASE_SPEED + Math.random() * 0.3;
     return {
+      id: cat.id,
       x: RADIUS + Math.random() * (width - RADIUS * 2),
       y: RADIUS + Math.random() * (height - RADIUS * 2),
       vx: Math.cos(angle) * speed,
@@ -51,8 +54,29 @@ function initCats(
       color: cat.avatarColor ?? FALLBACK_COLOR,
       initials: nameInitials(cat.name),
       isBoss: cat.isBoss,
+      avatarUrl: cat.avatarUrl ?? null,
       image: null,
     };
+  });
+}
+
+export function shouldRebuildBouncingCats(
+  currentCats: readonly Pick<BouncingCat, 'id' | 'color' | 'isBoss' | 'avatarUrl'>[] | null,
+  nextCats: readonly PlatformLobbyCatSummary[],
+): boolean {
+  if (!currentCats || currentCats.length !== nextCats.length) {
+    return true;
+  }
+
+  return currentCats.some((cat, index) => {
+    const nextCat = nextCats[index];
+    if (!nextCat) {
+      return true;
+    }
+    return cat.id !== nextCat.id
+      || cat.color !== (nextCat.avatarColor ?? FALLBACK_COLOR)
+      || cat.isBoss !== nextCat.isBoss
+      || cat.avatarUrl !== (nextCat.avatarUrl ?? null);
   });
 }
 
@@ -162,11 +186,15 @@ export function LobbyBouncingCats({
     function resizeCanvas() {
       canvasElement.width = window.innerWidth;
       canvasElement.height = window.innerHeight;
-      if (!catsRef.current) {
+      if (shouldRebuildBouncingCats(catsRef.current, catSummaries)) {
         catsRef.current = initCats([...catSummaries], canvasElement.width, canvasElement.height);
         return;
       }
-      clampCats(catsRef.current, canvasElement.width, canvasElement.height);
+      const activeCats = catsRef.current;
+      if (!activeCats) {
+        return;
+      }
+      clampCats(activeCats, canvasElement.width, canvasElement.height);
     }
 
     function cancelFrame() {
