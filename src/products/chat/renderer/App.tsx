@@ -55,7 +55,8 @@ import { useOperatorLoop } from './hooks/useOperatorLoop';
 import { useLiveIndicator } from './hooks/useLiveIndicator';
 import { setBrowserLiveTraceEnabled } from '../../../shared/liveTrace.js';
 import { useChannelParticipantUpdate } from './hooks/useChannelParticipantUpdate';
-import { useCompanionMode } from './hooks/useCompanionMode';
+import { useDirectLaneCompanionMode } from './hooks/useDirectLaneCompanionMode';
+import { useChatAppShellRefresh } from './hooks/useChatAppShellRefresh';
 import { useDraftParticipantState } from './hooks/useDraftParticipantState';
 import { useParallelChatDraft } from './hooks/useParallelChatDraft';
 import {
@@ -712,6 +713,14 @@ export default function App() {
   });
 
   const updatePayload = usePublishReadyPayload<AppShellPayload>(setState);
+  const setPayloadImmediate = useCallback((payload: AppShellPayload): void => {
+    setState({ status: 'ready', payload });
+  }, [setState]);
+  const { refreshAppShell } = useChatAppShellRefresh({
+    state,
+    updatePayload,
+    setPayloadImmediate,
+  });
 
   const {
     companionMode,
@@ -719,10 +728,10 @@ export default function App() {
     onToggleCompanionMode,
     onCompanionWake,
     onCompanionSleep,
-  } = useCompanionMode({
+  } = useDirectLaneCompanionMode({
     routeMyCatId,
     state,
-    updatePayload,
+    refreshAppShell,
   });
 
   return (

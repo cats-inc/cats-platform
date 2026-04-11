@@ -52,6 +52,15 @@ function publishChannelMutationEvents(
   });
 }
 
+function resolvePersistedChannelMutationKind(
+  previousState: ReturnType<typeof requireChannel>,
+  persistedState: ReturnType<typeof requireChannel>,
+): 'updated' | 'message_added' {
+  return persistedState.messages.length > previousState.messages.length
+    ? 'message_added'
+    : 'updated';
+}
+
 function logBackgroundDispatchPersistenceError(
   channelId: string,
   error: unknown,
@@ -106,6 +115,22 @@ async function continueAcknowledgedChannelDispatchInBackground(
     channelId,
     baselineState: acknowledgedDispatch.state,
     now: () => nowFrom(context.dependencies),
+    onPersistMergedState: ({ previousState, persistedState }) => {
+      if (!previousState.channels.some((channel) => channel.id === channelId)) {
+        return;
+      }
+      if (!persistedState.channels.some((channel) => channel.id === channelId)) {
+        return;
+      }
+      publishChannelMutationEvents(
+        context,
+        channelId,
+        resolvePersistedChannelMutationKind(
+          requireChannel(previousState, channelId),
+          requireChannel(persistedState, channelId),
+        ),
+      );
+    },
   });
   try {
     await continueBegunChannelMessageDispatch(

@@ -26,7 +26,20 @@ import {
 import {
   channelDispatchCancellationRegistry,
 } from '../../state/runtime-dispatch/cancellation.js';
-import { withLockedParallelChatGroup, runLockedChannels } from './parallelChatGroupSupport.js';
+import {
+  publishParallelChatMutationEvents,
+  withLockedParallelChatGroup,
+  runLockedChannels,
+} from './parallelChatGroupSupport.js';
+
+function resolveParallelDispatchMutationKind(
+  previousChannel: ReturnType<typeof requireChannel>,
+  persistedChannel: ReturnType<typeof requireChannel>,
+): 'updated' | 'message_added' {
+  return persistedChannel.messages.length > previousChannel.messages.length
+    ? 'message_added'
+    : 'updated';
+}
 
 function buildAttachedFilesMessageBody(
   body: string,
@@ -296,6 +309,22 @@ export async function finalizeParallelChatBodies(
           channelId: dispatch.channelId,
           baselineState: dispatch.begun.state,
           now: () => nowFrom(context.dependencies),
+          onPersistMergedState: ({ previousState, persistedState, channelId }) => {
+            if (!previousState.channels.some((channel) => channel.id === channelId)) {
+              return;
+            }
+            if (!persistedState.channels.some((channel) => channel.id === channelId)) {
+              return;
+            }
+            publishParallelChatMutationEvents(
+              context,
+              [channelId],
+              resolveParallelDispatchMutationKind(
+                requireChannel(previousState, channelId),
+                requireChannel(persistedState, channelId),
+              ),
+            );
+          },
         });
         const completed = await continueBegunChannelMessageDispatch(
           dispatch.begun,

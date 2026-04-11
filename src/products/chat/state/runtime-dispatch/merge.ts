@@ -257,6 +257,12 @@ export function createMergedDispatchChatStore(options: {
   channelId: string;
   baselineState: ChatState;
   now: () => Date;
+  onPersistMergedState?: (input: {
+    previousState: ChatState;
+    persistedState: ChatState;
+    dispatchState: ChatState;
+    channelId: string;
+  }) => void;
 }): Pick<ChatStore, 'write' | 'readCore' | 'writeCore'> {
   let previousState = options.baselineState;
 
@@ -281,6 +287,12 @@ export function createMergedDispatchChatStore(options: {
           );
           const persisted = await options.chatStore.write(mergedState);
           previousState = dispatchState;
+          options.onPersistMergedState?.({
+            previousState: latestState,
+            persistedState: persisted,
+            dispatchState,
+            channelId: options.channelId,
+          });
           return persisted;
         });
       });

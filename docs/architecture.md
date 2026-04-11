@@ -377,6 +377,19 @@ product/runtime boundary.
   `My Cats` opens Cat-scoped in-place direct lanes and does not materialize
   normal `Recents` threads as a side effect.
 
+For Chat, event-driven app-shell refresh and direct-lane companion UI are now
+treated as separate renderer responsibilities:
+
+- chat-wide `/api/events/chat` refresh owns transcript/app-shell catch-up for
+  solo, direct, and group rooms
+- background runtime dispatch persistence must also publish `/api/events/chat`
+  room updates for intermediate `session_started` / `runtime_response` states,
+  not only the initial user-send acknowledgement
+- direct-lane companion mode only owns `My Cats` companion UI state plus
+  wake/sleep actions for `direct_lane` channels
+
+Group chat and sequential-room rendering must not depend on the companion hook.
+
 ## Memory Layering Direction
 
 `Cats` should treat memory as four product-facing layers above provider
@@ -701,4 +714,4 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-12*

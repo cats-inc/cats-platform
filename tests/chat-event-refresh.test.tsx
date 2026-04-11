@@ -5,7 +5,7 @@ import {
   createEventDrivenAppShellRefresher,
   shouldApplyRefreshedAppShell,
   type EventDrivenAppShellRefresherState,
-} from '../src/products/chat/renderer/hooks/useCompanionMode.js';
+} from '../src/products/chat/renderer/hooks/useChatAppShellRefresh.js';
 
 async function waitForCondition(
   predicate: () => boolean,

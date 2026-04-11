@@ -738,6 +738,85 @@ test('GET /api/channels/:id/stream publishes another room update when a streamed
   }, chatStore);
 });
 
+test('POST /api/channels/:id/messages publishes room updates while background sequential dispatch persists intermediate speakers', async () => {
+  const runtime = createRuntimeStub();
+
+  await withServer(runtime, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Sequential background refresh',
+        topic: 'Broadcast intermediate sequential dispatch persistence.',
+        entryKind: 'group',
+        skipBossCatGreeting: true,
+        temporaryParticipants: [
+          {
+            participantId: 'participant-claude',
+            name: 'Claude-CLI',
+            provider: 'claude',
+            instance: 'native',
+            model: 'claude-opus-4-6',
+            roleHint: 'Lead',
+          },
+          {
+            participantId: 'participant-codex',
+            name: 'Codex-CLI',
+            provider: 'codex',
+            instance: 'native',
+            model: 'gpt-5.4',
+            roleHint: 'Reviewer',
+          },
+        ],
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const chatEventsResponse = await fetch(`${baseUrl}/api/events/chat`);
+    assert.equal(chatEventsResponse.status, 200);
+    const chatEvents = createSseCapture(chatEventsResponse);
+    await readSseUntil(chatEvents, (text) => /event: connected/u.test(text));
+
+    try {
+      const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          body: 'Please answer in order with one short greeting each.',
+          messageMetadata: {
+            recipientParticipantIds: ['participant-claude', 'participant-codex'],
+            workflowShape: 'sequential',
+          },
+        }),
+      });
+      assert.equal(sendResponse.status, 200);
+
+      const roomUpdateEvents = await readSseUntil(
+        chatEvents,
+        (text) =>
+          (text.match(/event: room_updated/gu) ?? []).length >= 2
+          && new RegExp(`"channelId":"${channelId}"`, 'u').test(text),
+        2_000,
+      );
+      assert.match(roomUpdateEvents, /event: room_updated/u);
+
+      const messagesResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`);
+      assert.equal(messagesResponse.status, 200);
+      const messagesPayload = await messagesResponse.json();
+      const sessionStartedCount = messagesPayload.messages.filter((message) =>
+        message.metadata?.event === 'session_started').length;
+      assert.ok(
+        sessionStartedCount >= 1,
+        'expected intermediate runtime session metadata to persist before the turn fully settles',
+      );
+    } finally {
+      await chatEvents.reader.cancel();
+    }
+  });
+});
+
 test('GET /api/channels/:id/stream hands off to the next sequential speaker after a result event even when the prior session stream stays open', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();
