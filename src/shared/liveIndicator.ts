@@ -2,7 +2,7 @@ import {
   normalizeRuntimeContentBlock,
   type LiveIndicatorContentBlock,
 } from './runtimeContentBlocks.js';
-import { pushBrowserLiveTrace } from './liveTrace.js';
+import { isBrowserLiveTraceEnabled, pushBrowserLiveTrace } from './liveTrace.js';
 export type { LiveIndicatorContentBlock } from './runtimeContentBlocks.js';
 
 export interface LiveToolEntry {
@@ -622,6 +622,10 @@ function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMe
   reason: string;
   latestReplyTimestamp: number;
 }): void {
+  if (!isBrowserLiveTraceEnabled()) {
+    return;
+  }
+
   const lastMessage = input.messages.at(-1);
   pushBrowserLiveTrace({
     event: 'visibility_decision',

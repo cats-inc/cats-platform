@@ -40,6 +40,8 @@ const BROWSER_TRACE_STORE_KEY = '__catsLiveTraceStore';
 const BROWSER_TRACE_ENTRIES_KEY = '__catsLiveTrace';
 const BROWSER_TRACE_ENABLED_KEY = '__catsLiveTraceEnabled';
 
+// Process-local by design. The current Cats app server runs as one local process,
+// so a module-scoped ring buffer is enough for developer debugging.
 let serverTraceSeq = 0;
 let serverTraceLastSignature: string | null = null;
 const serverTraceEntries: LiveTraceEntry[] = [];
@@ -57,6 +59,10 @@ export function setBrowserLiveTraceEnabled(enabled: boolean): void {
 
 export function readBrowserLiveTrace(): LiveTraceEntry[] {
   return [...resolveBrowserLiveTraceStore().entries];
+}
+
+export function isBrowserLiveTraceEnabled(): boolean {
+  return resolveBrowserLiveTraceStore().enabled;
 }
 
 export function pushBrowserLiveTrace(input: PushLiveTraceInput): void {

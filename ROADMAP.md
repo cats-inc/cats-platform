@@ -74,6 +74,20 @@ contracts.
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
+- [ ] Carry stable `participantId` speaker identity end to end through channel
+      stream target selection, SSE payloads, live-indicator state, and
+      transcript/live-bubble visibility gating so sequential handoff and stale
+      progress suppression stop relying on `senderName` /
+      `executionLabelSnapshot` fallbacks when different participants can share
+      the same visible label
+- [ ] Promote the current env-gated live trace seam into a developer-facing
+      inspector above `window.__catsLiveTrace` and `GET /api/debug/live-trace`
+      so transient stream attach, session-close reconnect, and bubble-visibility
+      decisions can be debugged without raw devtools or ad-hoc state dumps
+- [ ] Replace the current process-local server live-trace buffer before any
+      multi-worker or clustered app-server deployment so
+      `GET /api/debug/live-trace` can aggregate stream-target and attach events
+      across workers instead of reporting only the handling process
 - [ ] Freeze a shared composer busy-state contract across solo, parallel, and relay flows,
       then centralize the current ad-hoc `message:*` / `concurrent:*` strings so
       `isComposerBusy`, `isComposerDispatchBusy`, `isComposerSelectionBlocked`,

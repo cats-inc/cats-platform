@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   clearServerLiveTrace,
+  isBrowserLiveTraceEnabled,
   pushServerLiveTrace,
   readServerLiveTrace,
   setBrowserLiveTraceEnabled,
@@ -43,6 +44,7 @@ test('server live trace keeps a bounded deduplicated buffer', () => {
 
 test('browser live trace respects the enabled flag and records entries once enabled', () => {
   setBrowserLiveTraceEnabled(false);
+  assert.equal(isBrowserLiveTraceEnabled(), false);
   const before = readBrowserLiveTrace().length;
 
   pushBrowserLiveTrace({
@@ -54,6 +56,7 @@ test('browser live trace respects the enabled flag and records entries once enab
   assert.equal(readBrowserLiveTrace().length, before);
 
   setBrowserLiveTraceEnabled(true);
+  assert.equal(isBrowserLiveTraceEnabled(), true);
   pushBrowserLiveTrace({
     event: 'stream_connect',
     channelId: 'channel-enabled',
