@@ -66,6 +66,7 @@ function ChatComposerAudienceChip({
     [composerStackParticipants],
   );
   const [audienceKeys, setAudienceKeys] = useState<string[] | null>(null);
+  const [workflowShape, setWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
   const audienceParticipants = useMemo(() => {
     if (!audienceKeys) return allParticipants;
     const byKey = new Map(allParticipants.map((p) => [p.key, p]));
@@ -80,6 +81,8 @@ function ChatComposerAudienceChip({
       onSetAudienceKeys={setAudienceKeys}
       onSingleClick={() => onOpenSection('execution')}
       disabled={composerBusy}
+      workflowShape={workflowShape}
+      onToggleWorkflowShape={() => setWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent')}
     />
   );
 }
