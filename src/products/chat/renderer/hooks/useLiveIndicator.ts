@@ -5,6 +5,7 @@ import {
 import {
   EMPTY_LIVE_INDICATOR,
   resolveLiveIndicatorSpeakerLabel,
+  shouldRetryLiveIndicatorSessionClose,
   type LiveIndicatorSelectedChannelLike,
   type LiveIndicatorState,
   type LiveIndicatorStreamDecisionInput,
@@ -106,4 +107,4 @@ export function useLiveIndicator(options: {
   });
 }
 
-export { resolveLiveIndicatorSpeakerLabel };
+export { resolveLiveIndicatorSpeakerLabel, shouldRetryLiveIndicatorSessionClose };

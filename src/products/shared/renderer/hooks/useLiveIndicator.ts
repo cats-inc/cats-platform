@@ -69,6 +69,15 @@ export function resolveLiveIndicatorSpeakerLabel(
   );
 }
 
+export function shouldRetryLiveIndicatorSessionClose(
+  input: LiveIndicatorStreamDecisionInput & {
+    eventType: string;
+  },
+): boolean {
+  return input.eventType === 'session_closed'
+    && defaultShouldConnectStream(input);
+}
+
 function defaultShouldShowWaitingIndicator(
   input: LiveIndicatorStreamDecisionInput,
 ): boolean {
@@ -182,12 +191,22 @@ export function useLiveIndicator<
       }
 
       const eventType = (data.type as string) ?? e.type;
-      const shouldRetrySessionClose = eventType === 'session_closed'
-        && stateRef.current.phase === 'waiting';
+      const shouldRetrySessionClose = shouldRetryLiveIndicatorSessionClose({
+        eventType,
+        channelId,
+        busy,
+        routingStatus,
+      });
 
       updateIndicatorState((previous) => {
         if (!previous.active) {
           return previous;
+        }
+        if (shouldRetrySessionClose) {
+          return createWaitingLiveIndicatorState({
+            catId: previous.catId,
+            speakerLabel: previous.speakerLabel,
+          });
         }
         return applyLiveIndicatorEvent(previous, eventType, data);
       });

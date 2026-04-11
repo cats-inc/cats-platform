@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   EMPTY_LIVE_INDICATOR,
   resolveLiveIndicatorSpeakerLabel,
+  shouldRetryLiveIndicatorSessionClose,
   shouldConnectLiveIndicatorStream,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {
@@ -59,6 +60,30 @@ test('shouldConnectLiveIndicatorStream only follows concurrent dispatch for runn
   assert.equal(
     shouldConnectLiveIndicatorStream(channelId, 'parallelChat:dispatch', 'running'),
     true,
+  );
+});
+
+test('shouldRetryLiveIndicatorSessionClose reconnects when a streamed session closes during an active send', () => {
+  assert.equal(
+    shouldRetryLiveIndicatorSessionClose({
+      eventType: 'session_closed',
+      channelId: '12345678-1234-4234-8234-123456789abc',
+      busy: 'message:send:12345678-1234-4234-8234-123456789abc',
+      routingStatus: 'running',
+    }),
+    true,
+  );
+});
+
+test('shouldRetryLiveIndicatorSessionClose stays off once the channel is no longer dispatching', () => {
+  assert.equal(
+    shouldRetryLiveIndicatorSessionClose({
+      eventType: 'session_closed',
+      channelId: '12345678-1234-4234-8234-123456789abc',
+      busy: '',
+      routingStatus: null,
+    }),
+    false,
   );
 });
 

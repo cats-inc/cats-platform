@@ -9,6 +9,29 @@ const CHANNEL_STREAM_SESSION_POLL_MS = 75;
 export function resolveChannelStreamSessionId(
   channel: ReturnType<typeof requireChannel>,
 ): string | null {
+  const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
+  if (activeTurn?.status === 'running') {
+    const prioritizedTargetStatuses = [
+      ...activeTurn.targetStatuses.filter((target) => target.status === 'running'),
+      ...activeTurn.targetStatuses.filter((target) => target.status === 'pending'),
+    ];
+
+    for (const targetStatus of prioritizedTargetStatuses) {
+      const sessionId = resolveParticipantSessionId(
+        channel,
+        targetStatus.participant.participantId,
+        { statuses: ['ready', 'initializing'] },
+      );
+      if (sessionId) {
+        return sessionId;
+      }
+    }
+
+    if (prioritizedTargetStatuses.length > 0) {
+      return null;
+    }
+  }
+
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
   if (isDirectLaneChannel(channel)) {
     if (!defaultRecipientId) {
