@@ -15,6 +15,27 @@ import {
   resolveGuideCatSidecarSurfaceMode,
 } from '../src/design/components/GuideCatSidecar.tsx';
 
+function createGuideCat() {
+  return {
+    id: 'guide-cat-primary',
+    name: 'Guide Cat',
+    status: 'active' as const,
+    executionTarget: {
+      provider: 'claude',
+      instance: 'native',
+      model: 'opus',
+    },
+    modelSelection: {
+      entryMode: 'explicit' as const,
+      controls: {
+        'claude.reasoning_effort': 'max',
+      },
+    },
+    createdAt: '2026-04-08T00:00:00.000Z',
+    updatedAt: '2026-04-08T00:00:00.000Z',
+  };
+}
+
 test('Guide Cat sidecar collapse persists seen state only when dismissing welcome-peek', () => {
   assert.deepEqual(collapseGuideCatSidecarState('welcome-peek'), {
     nextState: 'collapsed',
@@ -86,7 +107,7 @@ test('Guide Cat sidecar uses different offsets for Lobby and product surfaces', 
   });
   assert.deepEqual(resolveGuideCatSidecarOffsets('/chat', 260), {
     pillLeft: 276,
-    peekLeft: 304,
+    peekLeft: 316,
     panelLeft: 262,
   });
 });
@@ -95,23 +116,54 @@ test('Guide Cat sidecar avatar resolves from the shared guide cat asset', () => 
   assert.match(GUIDE_CAT_AVATAR_URL, /guide-cat-avatar.*\.svg|guide-cat-avatar/u);
 });
 
+test('Guide Cat sidecar collapsed pill shows the same execution tooltip metadata on lobby and product surfaces', () => {
+  const markup = renderToStaticMarkup(
+    <GuideCatSidecarView
+      viewState="collapsed"
+      guideCat={createGuideCat()}
+      ownerDisplayName="Kenny"
+      unreadCount={2}
+      onToggle={() => {}}
+      onAction={() => {}}
+      onCollapse={() => {}}
+      onDismissClick={() => {}}
+      anchorStyle={{}}
+      surfaceMode="lobby"
+      dialog={null}
+      onDialogClose={() => {}}
+    />,
+  );
+
+  assert.match(markup, /class="guideCatPill"/u);
+  assert.match(markup, /data-tooltip="Guide Cat · Claude-CLI · [^"]* · Max"/u);
+});
+
+test('Guide Cat sidecar open panel header keeps the execution tooltip metadata on product pages', () => {
+  const markup = renderToStaticMarkup(
+    <GuideCatSidecarView
+      viewState="open"
+      guideCat={createGuideCat()}
+      ownerDisplayName="Kenny"
+      unreadCount={0}
+      onToggle={() => {}}
+      onAction={() => {}}
+      onCollapse={() => {}}
+      onDismissClick={() => {}}
+      anchorStyle={{}}
+      surfaceMode="product"
+      dialog={null}
+      onDialogClose={() => {}}
+    />,
+  );
+
+  assert.match(markup, /class="guideCatPanelHeader" data-tooltip="Guide Cat · Claude-CLI · [^"]* · Max"/u);
+});
+
 test('Guide Cat sidecar welcome-peek renders the dismiss confirmation dialog when present', () => {
   const markup = renderToStaticMarkup(
     <GuideCatSidecarView
       viewState="welcome-peek"
-      guideCat={{
-        id: 'guide-cat-primary',
-        name: 'Guide Cat',
-        status: 'active',
-        executionTarget: {
-          provider: 'claude',
-          instance: null,
-          model: 'claude-sonnet',
-        },
-        modelSelection: null,
-        createdAt: '2026-04-08T00:00:00.000Z',
-        updatedAt: '2026-04-08T00:00:00.000Z',
-      }}
+      guideCat={createGuideCat()}
       ownerDisplayName="Kenny"
       unreadCount={0}
       onToggle={() => {}}

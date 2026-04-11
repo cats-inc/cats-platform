@@ -18,6 +18,11 @@ import {
   type GuideCatSidecarViewState,
 } from '../../app/renderer/useGuideCatSidecarState.js';
 
+import {
+  buildCatTooltip,
+  buildExecutionLabel,
+  resolveControlDisplayLabels,
+} from '../../shared/executionLabel.js';
 import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
 
 interface GuideCatSidecarProps {
@@ -164,12 +169,14 @@ function useGuideCatSidecarPlacement(): {
 
 function CollapsedPill({
   name,
+  tooltip,
   unreadCount,
   onClick,
   onDismissClick,
   style,
 }: {
   name: string;
+  tooltip: string;
   unreadCount: number;
   onClick: () => void;
   onDismissClick?: () => void;
@@ -182,6 +189,7 @@ function CollapsedPill({
         className="guideCatPill"
         onClick={onClick}
         aria-label={`Open guide: ${name}`}
+        data-tooltip={tooltip}
       >
         <GuideCatAvatar className="guideCatPillAvatar" />
         {unreadCount > 0 ? (
@@ -244,6 +252,7 @@ function WelcomePeek({
 
 function OpenPanel({
   name,
+  tooltip,
   ownerDisplayName,
   onAction,
   onClose,
@@ -251,6 +260,7 @@ function OpenPanel({
   surfaceMode,
 }: {
   name: string;
+  tooltip: string;
   ownerDisplayName: string;
   onAction: (route: string) => void;
   onClose: () => void;
@@ -266,7 +276,7 @@ function OpenPanel({
       }
       style={style}
     >
-      <div className="guideCatPanelHeader">
+      <div className="guideCatPanelHeader" data-tooltip={tooltip}>
         <GuideCatAvatar className="guideCatPanelAvatar" />
         <span className="guideCatPanelName">{name}</span>
         <button type="button" className="guideCatPanelClose" onClick={onClose} aria-label="Close">
@@ -342,11 +352,13 @@ export function GuideCatSidecarView({
     return null;
   }
 
+  const tooltip = buildGuideCatTooltip(guideCat);
   let content: JSX.Element;
   if (viewState === 'collapsed') {
     content = (
       <CollapsedPill
         name={guideCat.name}
+        tooltip={tooltip}
         unreadCount={unreadCount}
         onClick={onToggle}
         onDismissClick={onDismissClick}
@@ -358,6 +370,7 @@ export function GuideCatSidecarView({
       <div ref={rootRef}>
         <CollapsedPill
           name={guideCat.name}
+          tooltip={tooltip}
           unreadCount={0}
           onClick={onToggle}
           onDismissClick={onDismissClick}
@@ -376,6 +389,7 @@ export function GuideCatSidecarView({
       <div ref={rootRef}>
         <OpenPanel
           name={guideCat.name}
+          tooltip={tooltip}
           ownerDisplayName={ownerDisplayName}
           onAction={onAction}
           onClose={onCollapse}
@@ -392,6 +406,18 @@ export function GuideCatSidecarView({
       <ConfirmDialog dialog={dialog} onClose={onDialogClose} />
     </>
   );
+}
+
+function buildGuideCatTooltip(guideCat: GuideCatRecord): string {
+  const controlLabels = resolveControlDisplayLabels(guideCat.modelSelection?.controls);
+  const executionLabel = buildExecutionLabel(
+    guideCat.executionTarget.provider,
+    guideCat.executionTarget.instance,
+    guideCat.executionTarget.model,
+    null,
+    controlLabels,
+  );
+  return buildCatTooltip(guideCat.name, executionLabel);
 }
 
 function SidecarContent({
