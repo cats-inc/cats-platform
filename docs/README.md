@@ -55,6 +55,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-046](./plans/PLAN-046-shared-audience-participant-builder.md)
+- [SPEC-055](./specs/SPEC-055-shared-audience-participant-builder.md)
+- [ADR-056](./decisions/056-use-a-shared-audience-participant-builder-for-all-composer-surfaces.md)
 - [PLAN-045](./plans/PLAN-045-acknowledged-user-turn-status-and-last-message-retry.md)
 - [SPEC-054](./specs/SPEC-054-bootstrap-recovery-summary-and-bounded-detail-actions.md)
 - [PLAN-044](./plans/PLAN-044-bootstrap-recovery-summary-and-bounded-detail-actions.md)
