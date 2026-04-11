@@ -22,6 +22,7 @@ import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
 } from '../shared/channelEntry';
+import type { ModelSelectorValue } from './components/ModelSelector.js';
 import {
   emptyCatForm as emptyWorkspaceCatForm,
   isChatCat as isWorkspaceChatCat,
@@ -68,40 +69,133 @@ export interface DraftTemporaryParticipant extends CreateTemporaryParticipantInp
 
 export const DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT = 2;
 
+function toDraftTemporaryParticipantTarget(input: {
+  provider: string;
+  model?: string | null;
+  instance?: string | null;
+  modelSelection?: ProviderModelSelection | null;
+}): {
+  provider: string;
+  model: string | undefined;
+  instance: string | undefined;
+  modelSelection: ProviderModelSelection | null;
+} {
+  const provider = input.provider.trim();
+  return {
+    provider,
+    model: input.model === undefined
+      ? (getDefaultModel(provider) || undefined)
+      : (input.model?.trim() || undefined),
+    instance: input.instance === undefined
+      ? (getDefaultProviderInstance(provider) || undefined)
+      : (input.instance?.trim() || undefined),
+    modelSelection: input.modelSelection ?? null,
+  };
+}
+
+function isAutoNamedDraftTemporaryParticipant(input: {
+  participant: Pick<DraftTemporaryParticipant, 'name' | 'provider' | 'instance'>;
+  siblingNames: ReadonlyArray<string>;
+}): boolean {
+  return input.participant.name === resolveTemporaryParticipantName(
+    {
+      provider: input.participant.provider,
+      instance: input.participant.instance ?? null,
+    },
+    input.siblingNames,
+  );
+}
+
 export function createInitialGroupParticipants(
-  baseProvider: string,
+  baseTarget: Pick<ModelSelectorValue, 'provider' | 'model' | 'instance' | 'modelSelection'>,
   maxParticipants: number = DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT,
 ): DraftTemporaryParticipant[] {
+  const normalizedBaseTarget = toDraftTemporaryParticipantTarget(baseTarget);
   const cappedMaxParticipants = Number.isFinite(maxParticipants)
     ? Math.max(0, maxParticipants)
     : DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT;
   const targetCount = Math.min(DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT, cappedMaxParticipants);
-  const providerSet = new Set([
-    baseProvider,
-    ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== baseProvider),
-  ]);
-  const providerSequence = [...providerSet]
-    .sort((a, b) => {
-      const ai = (PRODUCT_PROVIDER_ORDER as readonly string[]).indexOf(a);
-      const bi = (PRODUCT_PROVIDER_ORDER as readonly string[]).indexOf(b);
-      return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi);
-    })
-    .slice(0, targetCount);
+  const providerSequence = [
+    normalizedBaseTarget.provider,
+    ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== normalizedBaseTarget.provider),
+  ].slice(0, targetCount);
 
   const takenNames: string[] = [];
-  return providerSequence.map((provider) => {
-    const backend = getDefaultProviderBackend(provider);
-    const name = buildAutoTemporaryParticipantName(provider, takenNames, backend);
-    takenNames.push(name);
-    return {
-      participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
-      name,
-      provider,
-      instance: getDefaultProviderInstance(provider) ?? undefined,
-      model: getDefaultModel(provider) || undefined,
-      modelSelection: null,
-    };
+  return providerSequence.map((provider, index) => {
+    const participant = index === 0
+      ? createDraftTemporaryParticipant({
+          provider: normalizedBaseTarget.provider,
+          instance: normalizedBaseTarget.instance,
+          model: normalizedBaseTarget.model,
+          modelSelection: normalizedBaseTarget.modelSelection,
+          takenNames,
+          randomUUID: () => globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
+        })
+      : (() => {
+          const backend = getDefaultProviderBackend(provider);
+          const name = buildAutoTemporaryParticipantName(provider, takenNames, backend);
+          return {
+            participantId: globalThis.crypto?.randomUUID?.() ?? `temp-${provider}-${Date.now()}`,
+            name,
+            provider,
+            instance: getDefaultProviderInstance(provider) ?? undefined,
+            model: getDefaultModel(provider) || undefined,
+            modelSelection: null,
+          } satisfies DraftTemporaryParticipant;
+        })();
+    takenNames.push(participant.name);
+    return participant;
   });
+}
+
+export function syncLeadDraftTemporaryParticipantWithTarget(input: {
+  participants: DraftTemporaryParticipant[];
+  target: Pick<ModelSelectorValue, 'provider' | 'model' | 'instance' | 'modelSelection'>;
+}): DraftTemporaryParticipant[] {
+  if (input.participants.length === 0) {
+    return input.participants;
+  }
+
+  const [leadParticipant, ...restParticipants] = input.participants;
+  if (leadParticipant.presetId) {
+    return input.participants;
+  }
+
+  const normalizedTarget = toDraftTemporaryParticipantTarget(input.target);
+  const siblingNames = restParticipants.map((participant) => participant.name);
+  const nextName = isAutoNamedDraftTemporaryParticipant({
+    participant: leadParticipant,
+    siblingNames,
+  })
+    ? resolveTemporaryParticipantName(
+        {
+          provider: normalizedTarget.provider,
+          instance: normalizedTarget.instance ?? null,
+        },
+        siblingNames,
+      )
+    : leadParticipant.name;
+  const nextLeadParticipant: DraftTemporaryParticipant = {
+    ...leadParticipant,
+    name: nextName,
+    provider: normalizedTarget.provider,
+    instance: normalizedTarget.instance,
+    model: normalizedTarget.model,
+    modelSelection: normalizedTarget.modelSelection,
+  };
+
+  if (
+    nextLeadParticipant.name === leadParticipant.name
+    && nextLeadParticipant.provider === leadParticipant.provider
+    && (nextLeadParticipant.instance ?? null) === (leadParticipant.instance ?? null)
+    && (nextLeadParticipant.model ?? null) === (leadParticipant.model ?? null)
+    && JSON.stringify(nextLeadParticipant.modelSelection ?? null)
+      === JSON.stringify(leadParticipant.modelSelection ?? null)
+  ) {
+    return input.participants;
+  }
+
+  return [nextLeadParticipant, ...restParticipants];
 }
 
 export function createNextGroupTemporaryParticipant(options: {

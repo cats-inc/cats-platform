@@ -18,6 +18,7 @@ import {
   reconcileDraftAudienceKeysAfterParticipantRemoval,
   resolveDraftAudienceParticipantIds,
   resolveGenericDraftTemporaryParticipants,
+  syncLeadDraftTemporaryParticipantWithTarget,
 } from '../src/products/chat/renderer/chatUtils.tsx';
 import {
   resolveDraftParticipantSelection,
@@ -308,23 +309,132 @@ test('generic group draft route seeds default temporary participants when none e
   const participants = resolveGenericDraftTemporaryParticipants(
     'group',
     [],
-    () => createInitialGroupParticipants('claude', 8),
+    () => createInitialGroupParticipants({
+      provider: 'gemini',
+      model: 'gemini-3.1-pro',
+      instance: 'cli/native',
+      modelSelection: null,
+    }, 8),
   );
 
   assert.equal(participants.length, 2);
-  assert.equal(participants[0]?.provider, 'claude');
-  assert.notEqual(participants[1]?.provider, 'claude');
+  assert.equal(participants[0]?.provider, 'gemini');
+  assert.equal(participants[0]?.model, 'gemini-3.1-pro');
+  assert.equal(participants[0]?.instance, 'cli/native');
+  assert.notEqual(participants[1]?.provider, 'gemini');
 });
 
 test('initial group participants keep the default seed at two and still honor lower max caps', () => {
-  const defaultSeed = createInitialGroupParticipants('claude', 8);
-  const limitedSeed = createInitialGroupParticipants('claude', 1);
+  const defaultSeed = createInitialGroupParticipants({
+    provider: 'claude',
+    model: 'claude-opus-4-6',
+    instance: 'native',
+    modelSelection: {
+      mode: 'preset',
+      presetId: 'deep_reasoning',
+      controls: [],
+    },
+  }, 8);
+  const limitedSeed = createInitialGroupParticipants({
+    provider: 'claude',
+    model: 'claude-opus-4-6',
+    instance: 'native',
+    modelSelection: null,
+  }, 1);
 
   assert.equal(defaultSeed.length, 2);
   assert.equal(defaultSeed[0]?.provider, 'claude');
+  assert.equal(defaultSeed[0]?.model, 'claude-opus-4-6');
+  assert.equal(defaultSeed[0]?.instance, 'native');
+  assert.deepEqual(defaultSeed[0]?.modelSelection, {
+    mode: 'preset',
+    presetId: 'deep_reasoning',
+    controls: [],
+  });
   assert.notEqual(defaultSeed[1]?.provider, 'claude');
   assert.equal(limitedSeed.length, 1);
   assert.equal(limitedSeed[0]?.provider, 'claude');
+});
+
+test('initial group participants keep the shared lead provider first even when it is not product-order first', () => {
+  const seed = createInitialGroupParticipants({
+    provider: 'gemini',
+    model: 'gemini-3.1-pro',
+    instance: 'cli/native',
+    modelSelection: null,
+  }, 2);
+
+  assert.equal(seed[0]?.provider, 'gemini');
+  assert.equal(seed[0]?.name, 'Gemini-CLI');
+  assert.equal(seed[1]?.provider, 'claude');
+});
+
+test('syncLeadDraftTemporaryParticipantWithTarget keeps the group lead aligned with shared draft defaults', () => {
+  const syncedParticipants = syncLeadDraftTemporaryParticipantWithTarget({
+    participants: [
+      {
+        participantId: 'participant-1',
+        name: 'Claude-CLI',
+        provider: 'claude',
+        instance: 'native',
+        model: 'claude-opus-4-6',
+        modelSelection: null,
+      },
+      {
+        participantId: 'participant-2',
+        name: 'Codex-CLI',
+        provider: 'codex',
+        instance: 'cli/native',
+        model: 'gpt-5.4',
+        modelSelection: null,
+      },
+    ],
+    target: {
+      provider: 'gemini',
+      model: 'gemini-3.1-pro',
+      instance: 'cli/native',
+      modelSelection: {
+        mode: 'preset',
+        presetId: 'balanced',
+        controls: [],
+      },
+    },
+  });
+
+  assert.equal(syncedParticipants[0]?.name, 'Gemini-CLI');
+  assert.equal(syncedParticipants[0]?.provider, 'gemini');
+  assert.equal(syncedParticipants[0]?.model, 'gemini-3.1-pro');
+  assert.equal(syncedParticipants[0]?.instance, 'cli/native');
+  assert.deepEqual(syncedParticipants[0]?.modelSelection, {
+    mode: 'preset',
+    presetId: 'balanced',
+    controls: [],
+  });
+  assert.equal(syncedParticipants[1]?.provider, 'codex');
+});
+
+test('syncLeadDraftTemporaryParticipantWithTarget preserves explicit lead names', () => {
+  const syncedParticipants = syncLeadDraftTemporaryParticipantWithTarget({
+    participants: [
+      {
+        participantId: 'participant-1',
+        name: 'Research Lead',
+        provider: 'claude',
+        instance: 'native',
+        model: 'claude-opus-4-6',
+        modelSelection: null,
+      },
+    ],
+    target: {
+      provider: 'gemini',
+      model: 'gemini-3.1-pro',
+      instance: 'cli/native',
+      modelSelection: null,
+    },
+  });
+
+  assert.equal(syncedParticipants[0]?.name, 'Research Lead');
+  assert.equal(syncedParticipants[0]?.provider, 'gemini');
 });
 
 test('generic group draft route preserves existing temporary participants during route entry', () => {

@@ -27,6 +27,7 @@ import {
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import {
   BootShell,
+  createDraftTemporaryParticipant,
   createNextGroupTemporaryParticipant,
   pickGreeting,
   presentChannelTitle,
@@ -34,6 +35,7 @@ import {
   emptyCatForm,
   reconcileDraftAudienceKeysAfterParticipantRemoval,
   resolveGenericDraftTemporaryParticipants,
+  syncLeadDraftTemporaryParticipantWithTarget,
   type CatFormState,
 } from './chatUtils';
 import { AppRoutes } from './AppRoutes';
@@ -311,8 +313,14 @@ export default function App() {
     setFeedback,
   });
   const seedDraftGroupParticipants = useCallback(
-    () => createInitialGroupParticipants(draftModel.provider, maxDraftGroupParticipants),
-    [draftModel.provider, maxDraftGroupParticipants],
+    () => createInitialGroupParticipants(draftModel, maxDraftGroupParticipants),
+    [
+      draftModel.instance,
+      draftModel.model,
+      draftModel.modelSelection,
+      draftModel.provider,
+      maxDraftGroupParticipants,
+    ],
   );
   const onQuickAddDraftTemporaryParticipant = useCallback(() => {
     if (state.status !== 'ready') {
@@ -329,13 +337,23 @@ export default function App() {
         return current;
       }
 
-      const nextParticipant = createNextGroupTemporaryParticipant({
-        baseProvider: draftModel.provider,
-        existingParticipants: current,
-        takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
-        randomUUID: () =>
-          globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
-      });
+      const nextParticipant = current.length === 0 && draftParticipants.participantCatIds.length === 0
+        ? createDraftTemporaryParticipant({
+            provider: draftModel.provider,
+            instance: draftModel.instance,
+            model: draftModel.model,
+            modelSelection: draftModel.modelSelection,
+            takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
+            randomUUID: () =>
+              globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+          })
+        : createNextGroupTemporaryParticipant({
+            baseProvider: draftModel.provider,
+            existingParticipants: current,
+            takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
+            randomUUID: () =>
+              globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+          });
       addedParticipantId = nextParticipant.participantId;
       return [...current, nextParticipant];
     });
@@ -435,7 +453,20 @@ export default function App() {
   const onAddDraftTemporaryParticipantWithAudienceSync = useCallback((
     participant: Parameters<typeof onAddDraftTemporaryParticipant>[0],
   ) => {
+    const isNewLeadParticipant =
+      showingNewChatDraft
+      && newChatMode === 'group'
+      && draftParticipants.participantCatIds.length === 0
+      && draftTemporaryParticipants.length === 0;
     onAddDraftTemporaryParticipant(participant);
+    if (isNewLeadParticipant && participant.provider.trim()) {
+      setDraftModel({
+        provider: participant.provider.trim(),
+        model: participant.model?.trim() || null,
+        instance: participant.instance?.trim() || null,
+        modelSelection: participant.modelSelection ?? null,
+      });
+    }
     const addedKey = `temp:${participant.participantId ?? ''}`;
     if (!addedKey || addedKey === 'temp:') return;
     setDraftAudienceKeys((current) => {
@@ -450,8 +481,13 @@ export default function App() {
   }, [
     draftParticipantKeys,
     maxDraftAudienceParticipants,
+    newChatMode,
     onAddDraftTemporaryParticipant,
+    draftParticipants.participantCatIds.length,
+    draftTemporaryParticipants.length,
     setDraftAudienceKeys,
+    setDraftModel,
+    showingNewChatDraft,
   ]);
   const {
     onOpenChatsOverview,
@@ -611,6 +647,26 @@ export default function App() {
     ]),
   );
 
+  useEffect(() => {
+    if (!showingNewChatDraft || newChatMode !== 'group') {
+      return;
+    }
+
+    setDraftTemporaryParticipants((current) =>
+      syncLeadDraftTemporaryParticipantWithTarget({
+        participants: current,
+        target: draftModel,
+      }));
+  }, [
+    draftModel.instance,
+    draftModel.model,
+    draftModel.modelSelection,
+    draftModel.provider,
+    newChatMode,
+    setDraftTemporaryParticipants,
+    showingNewChatDraft,
+  ]);
+
   useAppShellRouting({
     state,
     setState,
@@ -629,7 +685,24 @@ export default function App() {
 
   const onDraftModelChange = useCallback((nextDraftModel: ModelSelectorValue): void => {
     setDraftModel(nextDraftModel);
-  }, []);
+    if (showingNewChatDraft && newChatMode === 'group') {
+      setDraftTemporaryParticipants((current) =>
+        syncLeadDraftTemporaryParticipantWithTarget({
+          participants: current,
+          target: nextDraftModel,
+        }));
+    }
+  }, [newChatMode, setDraftTemporaryParticipants, showingNewChatDraft]);
+
+  const onDraftParallelChatTargetChangeWithSharedDefault = useCallback((
+    index: number,
+    value: ModelSelectorValue,
+  ): void => {
+    onDraftParallelChatTargetChange(index, value);
+    if (index === 0) {
+      setDraftModel(value);
+    }
+  }, [onDraftParallelChatTargetChange, setDraftModel]);
 
   const onResumeChannel = useWorkspaceResumeChannel<AppShellPayload>({
     activateChatChannel,
@@ -828,7 +901,9 @@ export default function App() {
                   onDraftCatModelOverride,
                   onDirectLaneModelChange: onDirectLaneModelSave,
                   parallelTargets: showingParallelChatDraft ? draftParallelChatTargets : undefined,
-                  onParallelTargetChange: showingParallelChatDraft ? onDraftParallelChatTargetChange : undefined,
+                  onParallelTargetChange: showingParallelChatDraft
+                    ? onDraftParallelChatTargetChangeWithSharedDefault
+                    : undefined,
                   onAddParallelTarget: showingParallelChatDraft ? onAddDraftParallelChatTarget : undefined,
                   onRemoveParallelTarget: showingParallelChatDraft ? onRemoveDraftParallelChatTarget : undefined,
                   draftWorkflowShape,

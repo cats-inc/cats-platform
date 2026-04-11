@@ -45,6 +45,36 @@ export function createInitialCompareTargets(baseTarget: ModelSelectorValue): Mod
   ];
 }
 
+export function syncLeadCompareTarget(
+  currentTargets: ModelSelectorValue[],
+  leadTarget: ModelSelectorValue,
+): ModelSelectorValue[] {
+  if (currentTargets.length === 0) {
+    return currentTargets;
+  }
+
+  const currentLeadTarget = currentTargets[0];
+  if (
+    currentLeadTarget?.provider === leadTarget.provider
+    && (currentLeadTarget.instance ?? null) === (leadTarget.instance ?? null)
+    && (currentLeadTarget.model ?? null) === (leadTarget.model ?? null)
+    && JSON.stringify(currentLeadTarget.modelSelection ?? null)
+      === JSON.stringify(leadTarget.modelSelection ?? null)
+  ) {
+    return currentTargets;
+  }
+
+  return [
+    {
+      provider: leadTarget.provider,
+      model: leadTarget.model,
+      instance: leadTarget.instance,
+      modelSelection: leadTarget.modelSelection,
+    },
+    ...currentTargets.slice(1),
+  ];
+}
+
 export function createNextCompareTarget(
   currentTargets: ModelSelectorValue[],
   fallbackTarget: ModelSelectorValue,
@@ -115,6 +145,16 @@ export function useParallelChatDraft(options: {
   useEffect(() => {
     setCompareSendScope('all_members');
   }, [selectedParallelChatGroup?.id]);
+
+  useEffect(() => {
+    setDraftParallelChatTargets((currentTargets) =>
+      syncLeadCompareTarget(currentTargets, draftModel));
+  }, [
+    draftModel.instance,
+    draftModel.model,
+    draftModel.modelSelection,
+    draftModel.provider,
+  ]);
 
   const onDraftParallelChatTargetChange = useCallback((index: number, value: ModelSelectorValue) => {
     setDraftParallelChatTargets((prev) =>
