@@ -69,9 +69,14 @@ acknowledged user turn
       UI must stay generic until session startup is real.
 - [ ] Task 2.3: After `session_started`, hand off from the user-bubble
       indicator to the assistant live bubble.
-- [ ] Task 2.4: Keep retry hidden during normal processing and show it only on
+- [ ] Task 2.4: In sequential rooms, keep the handoff truthful:
+      when one assistant finishes, do not revive the user-bubble processing
+      indicator for the same acknowledged turn; instead wait for the next
+      participant's own `session_started` before showing the next
+      assistant-identity bubble.
+- [ ] Task 2.5: Keep retry hidden during normal processing and show it only on
       hover when the latest acknowledged user turn has failed.
-- [ ] Task 2.5: Make failure and retry affordances visually subordinate to the
+- [ ] Task 2.6: Make failure and retry affordances visually subordinate to the
       transcript, not a second system-message rail.
 
 **Deliverables**: truthful post-ACK transcript feedback with no optimistic
@@ -119,11 +124,13 @@ retry seam
 | `src/products/chat/renderer/styles/chat-thread.css` | Modify | Style the user-bubble spinner and retry affordance without mimicking an assistant bubble |
 | `src/shared/liveIndicator.ts` | Modify | Separate generic waiting from session-started assistant identity |
 | `src/products/shared/renderer/hooks/useLiveIndicator.ts` | Modify | Keep waiting state generic until session startup is confirmed |
+| `src/products/chat/api/resources/channelRuntimeRoutes.ts` | Modify (if needed) | Ensure session-started stream metadata is explicit enough to drive truthful assistant-bubble promotion |
+| `src/products/chat/api/resources/channelStreamSupport.ts` | Modify (if needed) | Preserve sequential speaker handoff metadata without reintroducing pre-session identity |
 | `src/products/chat/renderer/api/chat.ts` | Modify | Add a chat message retry API helper |
 | `src/products/chat/api/resources/channelRoutes.ts` | Modify | Add a message retry route for acknowledged user turns |
 | `src/products/chat/state/runtimeActions.ts` | Modify | Export a replay entrypoint if a dedicated last-message retry helper is added |
 | `src/products/chat/state/runtime-dispatch/routing.ts` | Modify | Re-enter dispatch from an acknowledged source message without appending a duplicate user turn |
-| `src/products/chat/state/runtime-dispatch/replay.ts` | Modify (if needed) | Reuse or extend replay primitives for message-level retry |
+| `src/products/chat/state/runtime-dispatch/replay.ts` | Modify (if needed) | Reuse or extend existing replay primitives if they fit acknowledged-message retry cleanly; otherwise keep message-level retry in a dedicated helper |
 | `tests/chat-view-support.test.tsx` | Modify | Verify last-user-turn status derivation and assistant promotion gating |
 | `tests/live-indicator.test.tsx` | Modify | Verify no assistant identity bubble appears before session startup |
 | `tests/chat-view-participants.test.tsx` | Modify | Verify transcript rendering and hover-only retry affordance |
@@ -142,6 +149,10 @@ retry seam
   resending the text as a new user message.
 - Decision 5: Retry is intentionally narrow in this slice:
   only the newest failed acknowledged user turn, and only as a hover action.
+- Decision 6: Message-level retry should reuse existing replay primitives only
+  when they match the acknowledged-message semantics cleanly; do not force this
+  slice through workflow-continuation replay abstractions if that would blur
+  the source-message contract.
 
 ## Testing Strategy
 
