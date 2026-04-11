@@ -38,6 +38,8 @@ export interface LiveIndicatorState {
 export interface LiveIndicatorTranscriptMessageLike {
   id: string;
   senderKind: string;
+  senderName?: string;
+  metadata?: Record<string, unknown> | null | undefined;
   createdAt: string;
 }
 
@@ -198,20 +200,16 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     return liveIndicator;
   }
 
-  const latestVisibleReplyTimestamp = messages.reduce((latestTimestamp, message) => {
-    if (message.senderKind === 'user' || message.senderKind === 'system') {
-      return latestTimestamp;
-    }
+  const latestVisibleReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
+  if (liveIndicator.phase !== 'streaming' || !hasExplicitLiveIndicatorSpeaker(liveIndicator)) {
+    return latestVisibleReplyTimestamp >= activeTurnTimestamp ? null : liveIndicator;
+  }
 
-    const messageTimestamp = Date.parse(message.createdAt);
-    if (Number.isNaN(messageTimestamp)) {
-      return latestTimestamp;
-    }
-
-    return Math.max(latestTimestamp, messageTimestamp);
-  }, Number.NEGATIVE_INFINITY);
-
-  return latestVisibleReplyTimestamp >= activeTurnTimestamp ? null : liveIndicator;
+  const latestSpeakerReplyTimestamp = resolveLatestVisibleReplyTimestamp(
+    messages,
+    (message) => doesMessageMatchLiveIndicatorSpeaker(message, liveIndicator),
+  );
+  return latestSpeakerReplyTimestamp >= activeTurnTimestamp ? null : liveIndicator;
 }
 
 export function resolveTranscriptFollowState<TMessage extends LiveIndicatorTranscriptMessageLike>(
@@ -541,11 +539,80 @@ function summarizeEventText(value: unknown): string {
     : singleLine;
 }
 
+function resolveLatestVisibleReplyTimestamp<TMessage extends LiveIndicatorTranscriptMessageLike>(
+  messages: ReadonlyArray<TMessage>,
+  predicate?: (message: TMessage) => boolean,
+): number {
+  return messages.reduce((latestTimestamp, message) => {
+    if (!isVisibleAssistantReply(message) || (predicate && !predicate(message))) {
+      return latestTimestamp;
+    }
+
+    const messageTimestamp = Date.parse(message.createdAt);
+    if (Number.isNaN(messageTimestamp)) {
+      return latestTimestamp;
+    }
+
+    return Math.max(latestTimestamp, messageTimestamp);
+  }, Number.NEGATIVE_INFINITY);
+}
+
+function isVisibleAssistantReply(
+  message: LiveIndicatorTranscriptMessageLike,
+): boolean {
+  return message.senderKind !== 'user' && message.senderKind !== 'system';
+}
+
+function hasExplicitLiveIndicatorSpeaker(
+  liveIndicator: LiveIndicatorState,
+): boolean {
+  return Boolean(
+    readString(liveIndicator.speakerLabel)
+    || liveIndicator.catId
+    || liveIndicator.activeCatIds.some((id) => id.trim().length > 0)
+  );
+}
+
+function doesMessageMatchLiveIndicatorSpeaker(
+  message: LiveIndicatorTranscriptMessageLike,
+  liveIndicator: LiveIndicatorState,
+): boolean {
+  const messageTargetId = readMessageTargetId(message);
+  const liveTargetId = liveIndicator.catId
+    ?? liveIndicator.activeCatIds.find((id) => id.trim().length > 0)
+    ?? null;
+  if (messageTargetId && liveTargetId && messageTargetId === liveTargetId) {
+    return true;
+  }
+
+  const liveSpeakerLabel = readString(liveIndicator.speakerLabel);
+  if (!liveSpeakerLabel) {
+    return false;
+  }
+
+  return readString(message.senderName) === liveSpeakerLabel
+    || readMessageExecutionLabelSnapshot(message) === liveSpeakerLabel;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+function readMessageTargetId(
+  message: LiveIndicatorTranscriptMessageLike,
+): string | null {
+  const metadata = asRecord(message.metadata);
+  return readString(metadata?.targetId);
+}
+
+function readMessageExecutionLabelSnapshot(
+  message: LiveIndicatorTranscriptMessageLike,
+): string | null {
+  const metadata = asRecord(message.metadata);
+  return readString(metadata?.executionLabelSnapshot);
 }
 
 function readString(value: unknown): string | null {

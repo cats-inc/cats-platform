@@ -173,6 +173,76 @@ test('resolveVisibleLiveIndicator keeps active progress while only the user turn
   assert.equal(visible, liveIndicator);
 });
 
+test('resolveVisibleLiveIndicator keeps a sequential follow-up speaker visible after an earlier reply', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    speakerLabel: 'Agent-2',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-1',
+        senderKind: 'agent',
+        senderName: 'Agent-1',
+        metadata: {
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:03.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
+});
+
+test('resolveVisibleLiveIndicator hides stale streaming progress once the same speaker reply is visible', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    speakerLabel: 'Agent-1',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-1',
+        senderKind: 'agent',
+        senderName: 'Agent-1',
+        metadata: {
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:03.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, null);
+});
+
 test('resolveTranscriptFollowState derives scroll keys from transcript content instead of channel timestamps', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
