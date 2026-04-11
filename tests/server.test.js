@@ -738,6 +738,317 @@ test('GET /api/channels/:id/stream publishes another room update when a streamed
   }, chatStore);
 });
 
+test('GET /api/channels/:id/stream hands off to the next sequential speaker after a result event even when the prior session stream stays open', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+  const firstReplyAt = new Date('2026-03-11T00:00:02.000Z');
+  const secondStartAt = new Date('2026-03-11T00:00:03.000Z');
+  const secondReplyAt = new Date('2026-03-11T00:00:04.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'First Cat',
+      provider: 'claude',
+      roles: ['researcher'],
+    },
+    seededAt,
+  );
+  const firstCatId = state.cats[0].id;
+  state = createCat(
+    state,
+    {
+      name: 'Second Cat',
+      provider: 'codex',
+      roles: ['reviewer'],
+    },
+    seededAt,
+  );
+  const secondCatId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Sequential live handoff',
+      topic: 'Move the live stream to the next room speaker.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId: firstCatId }, seededAt);
+  state = assignCatToChannel(state, channelId, { catId: secondCatId }, seededAt);
+  const seededChannel = requireChannel(state, channelId);
+  const firstParticipantId = seededChannel.catAssignments.find((assignment) => assignment.catId === firstCatId)?.participantId;
+  const secondParticipantId = seededChannel.catAssignments.find((assignment) => assignment.catId === secondCatId)?.participantId;
+  assert.ok(firstParticipantId);
+  assert.ok(secondParticipantId);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    firstCatId,
+    {
+      sessionId: 'session-live-sequential-1',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  state = setChannelCatLease(
+    state,
+    channelId,
+    secondCatId,
+    {
+      sessionId: 'session-live-sequential-2',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'codex',
+      model: 'gpt-5.4',
+      startedAt: secondStartAt.toISOString(),
+      lastUsedAt: secondStartAt.toISOString(),
+    },
+    secondStartAt,
+  );
+  await chatStore.write(state);
+  let releaseFirstResultSeen;
+  const firstResultSeen = new Promise((resolve) => {
+    releaseFirstResultSeen = resolve;
+  });
+  let releaseSecondResultSeen;
+  const secondResultSeen = new Promise((resolve) => {
+    releaseSecondResultSeen = resolve;
+  });
+  runtime.streamSession = async (sessionId, onEvent, options) => {
+    runtime.streamedSessions.push(sessionId);
+    if (sessionId === 'session-live-sequential-1') {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'First speaker is thinking',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseFirstResultSeen();
+      await new Promise((resolve) => {
+        if (options?.signal?.aborted) {
+          resolve();
+          return;
+        }
+        options?.signal?.addEventListener('abort', resolve, { once: true });
+      });
+      return;
+    }
+
+    if (sessionId === 'session-live-sequential-2') {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'Second speaker picked up the room',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseSecondResultSeen();
+      return;
+    }
+
+    throw new Error(`Unexpected streamed session ${sessionId}`);
+  };
+
+  await withServer(runtime, async (baseUrl) => {
+    const begun = await beginChannelMessageDispatch(
+      await chatStore.read(),
+      channelId,
+      {
+        body: 'Handle this in order.',
+        messageMetadata: {
+          recipientParticipantIds: [firstParticipantId, secondParticipantId],
+          workflowShape: 'sequential',
+        },
+      },
+      runtime,
+      seededAt,
+    );
+    await chatStore.write(begun.state);
+
+    const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    let nextState = await chatStore.read();
+    let nextChannel = requireChannel(nextState, channelId);
+    let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
+    nextTurn.targetStatuses = [
+      {
+        id: 'target-state-sequential-1',
+        dispatchId: 'dispatch-sequential-1',
+        participant: {
+          participantKind: 'cat',
+          participantId: firstParticipantId,
+          participantName: 'First Cat',
+        },
+        source: null,
+        sourceMessageId: nextTurn.sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: nextTurn.lastCheckpointId,
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: null,
+        status: 'running',
+        queuedAt: seededAt.toISOString(),
+        startedAt: seededAt.toISOString(),
+        completedAt: null,
+        responseMessageId: null,
+        error: null,
+      },
+    ];
+    nextTurn.updatedAt = seededAt.toISOString();
+    await chatStore.write(nextState);
+
+    const streamResponse = await streamResponsePromise;
+    assert.equal(streamResponse.status, 200);
+    const streamBodyPromise = streamResponse.text();
+
+    await firstResultSeen;
+
+    nextState = await chatStore.read();
+    nextChannel = requireChannel(nextState, channelId);
+    nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
+    nextTurn.targetStatuses = [
+      {
+        ...nextTurn.targetStatuses[0],
+        status: 'completed',
+        completedAt: firstReplyAt.toISOString(),
+      },
+      {
+        id: 'target-state-sequential-2',
+        dispatchId: 'dispatch-sequential-2',
+        participant: {
+          participantKind: 'cat',
+          participantId: secondParticipantId,
+          participantName: 'Second Cat',
+        },
+        source: null,
+        sourceMessageId: nextTurn.sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: nextTurn.lastCheckpointId,
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: null,
+        status: 'running',
+        queuedAt: secondStartAt.toISOString(),
+        startedAt: secondStartAt.toISOString(),
+        completedAt: null,
+        responseMessageId: null,
+        error: null,
+      },
+    ];
+    nextTurn.updatedAt = secondStartAt.toISOString();
+    nextState = appendMessage(
+      nextState,
+      channelId,
+      {
+        senderKind: 'agent',
+        senderName: 'First Cat',
+        body: 'First speaker reply.',
+      },
+      firstReplyAt,
+      {
+        metadata: {
+          event: 'runtime_response',
+          targetKind: 'cat',
+          targetId: firstParticipantId,
+          sessionId: 'session-live-sequential-1',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    nextState = appendMessage(
+      nextState,
+      channelId,
+      {
+        senderKind: 'system',
+        senderName: 'Runtime',
+        body: 'Second Cat connected to cats-runtime session session-live-sequential-2.\n(cwd: C:/repo/cats-platform)',
+      },
+      secondStartAt,
+      {
+        metadata: {
+          event: 'session_started',
+          targetKind: 'cat',
+          targetId: secondParticipantId,
+          sessionId: 'session-live-sequential-2',
+          verbosity: 'verbose',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    await chatStore.write(nextState);
+
+    await secondResultSeen;
+
+    let finalState = await chatStore.read();
+    finalState = appendMessage(
+      finalState,
+      channelId,
+      {
+        senderKind: 'agent',
+        senderName: 'Second Cat',
+        body: 'Second speaker reply.',
+      },
+      secondReplyAt,
+      {
+        metadata: {
+          event: 'runtime_response',
+          targetKind: 'cat',
+          targetId: secondParticipantId,
+          sessionId: 'session-live-sequential-2',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    const finalChannel = requireChannel(finalState, channelId);
+    finalChannel.roomRouting.workflow.activeTurn = null;
+    await chatStore.write(finalState);
+
+    const streamBody = await streamBodyPromise;
+    assert.match(streamBody, /"speakerLabel":"First Cat"/u);
+    assert.match(streamBody, /"targetStateId":"target-state-sequential-1"/u);
+    assert.match(streamBody, /"text":"First speaker is thinking"/u);
+    assert.match(streamBody, /"speakerLabel":"Second Cat"/u);
+    assert.match(streamBody, /"targetStateId":"target-state-sequential-2"/u);
+    assert.match(streamBody, /"text":"Second speaker picked up the room"/u);
+    assert.deepEqual(runtime.streamedSessions, [
+      'session-live-sequential-1',
+      'session-live-sequential-2',
+    ]);
+  }, chatStore);
+});
+
 test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat session', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();

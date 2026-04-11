@@ -21,6 +21,7 @@ export interface ChannelStreamTarget {
   speakerLabel: string | null;
   sessionStartedAt: string | null;
   requiresSessionStartConfirmation: boolean;
+  targetStateId: string | null;
 }
 
 interface ResolvedChannelStreamTarget {
@@ -58,6 +59,7 @@ function buildParticipantStreamTarget(
       channel,
       sessionStartedAt,
     ),
+    targetStateId: null,
   };
 }
 
@@ -80,6 +82,7 @@ function buildOrchestratorStreamTarget(
       channel,
       channel.orchestratorLease.startedAt ?? null,
     ),
+    targetStateId: null,
   };
 }
 
@@ -107,19 +110,77 @@ function shouldRequireSessionStartConfirmation(
 
 function buildWorkflowTargetStreamTarget(
   channel: ReturnType<typeof requireChannel>,
-  participant: {
-    participantKind: 'orchestrator' | 'cat';
-    participantId: string;
-    participantName: string;
+  targetStatus: {
+    id: string;
+    participant: {
+      participantKind: 'orchestrator' | 'cat';
+      participantId: string;
+      participantName: string;
+    };
   },
 ): ChannelStreamTarget {
-  return participant.participantKind === 'orchestrator'
+  const participant = targetStatus.participant;
+  const target = participant.participantKind === 'orchestrator'
     ? buildOrchestratorStreamTarget(channel, participant.participantName)
     : buildParticipantStreamTarget(
         channel,
         participant.participantId,
         participant.participantName,
       );
+  return {
+    ...target,
+    targetStateId: targetStatus.id,
+  };
+}
+
+function hasActiveWorkflowTurn(
+  channel: ReturnType<typeof requireChannel>,
+): boolean {
+  const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
+  return activeTurn?.status === 'running' || activeTurn?.status === 'pending';
+}
+
+function resolveWorkflowStreamTargetWithReason(
+  channel: ReturnType<typeof requireChannel>,
+): ResolvedChannelStreamTarget {
+  const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
+  if (!hasActiveWorkflowTurn(channel) || !activeTurn) {
+    return { target: null, reason: 'no_active_workflow_turn' };
+  }
+
+  const prioritizedTargetStatuses = [
+    ...activeTurn.targetStatuses.filter((target) => target.status === 'running'),
+    ...activeTurn.targetStatuses.filter((target) => target.status === 'pending'),
+  ];
+
+  for (const targetStatus of prioritizedTargetStatuses) {
+    const target = buildWorkflowTargetStreamTarget(channel, targetStatus);
+    if (target.sessionId) {
+      return {
+        target,
+        reason: targetStatus.status === 'running'
+          ? 'active_workflow_running_target'
+          : 'active_workflow_pending_target',
+      };
+    }
+  }
+
+  if (prioritizedTargetStatuses.length > 0) {
+    const nextTarget = prioritizedTargetStatuses[0]!;
+    return {
+      target: buildWorkflowTargetStreamTarget(channel, nextTarget),
+      reason: nextTarget.status === 'running'
+        ? 'active_workflow_running_target_waiting_for_session'
+        : 'active_workflow_pending_target_waiting_for_session',
+    };
+  }
+
+  return {
+    target: null,
+    reason: activeTurn.targetStatuses.length === 0
+      ? 'active_workflow_waiting_for_target'
+      : 'active_workflow_without_stream_target',
+  };
 }
 
 export function resolveChannelStreamTarget(
@@ -131,35 +192,11 @@ export function resolveChannelStreamTarget(
 function resolveChannelStreamTargetWithReason(
   channel: ReturnType<typeof requireChannel>,
 ): ResolvedChannelStreamTarget {
-  const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
-  if (activeTurn?.status === 'running') {
-    const prioritizedTargetStatuses = [
-      ...activeTurn.targetStatuses.filter((target) => target.status === 'running'),
-      ...activeTurn.targetStatuses.filter((target) => target.status === 'pending'),
-    ];
-
-    for (const targetStatus of prioritizedTargetStatuses) {
-      const target = buildWorkflowTargetStreamTarget(channel, targetStatus.participant);
-      if (target.sessionId) {
-        return {
-          target,
-          reason: targetStatus.status === 'running'
-            ? 'active_workflow_running_target'
-            : 'active_workflow_pending_target',
-        };
-      }
-    }
-
-    if (prioritizedTargetStatuses.length > 0) {
-      const nextTarget = prioritizedTargetStatuses[0]!;
-      return {
-        target: buildWorkflowTargetStreamTarget(channel, nextTarget.participant),
-        reason: nextTarget.status === 'running'
-          ? 'active_workflow_running_target_waiting_for_session'
-          : 'active_workflow_pending_target_waiting_for_session',
-      };
-    }
+  const workflowTarget = resolveWorkflowStreamTargetWithReason(channel);
+  if (hasActiveWorkflowTurn(channel)) {
+    return workflowTarget;
   }
+
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
   if (isDirectLaneChannel(channel)) {
     if (!defaultRecipientId) {
@@ -203,6 +240,7 @@ function resolveChannelStreamTargetWithReason(
         speakerLabel: null,
         sessionStartedAt: null,
         requiresSessionStartConfirmation: false,
+        targetStateId: null,
       },
       reason: 'participant_session_fallback_unknown_assignment',
     };
@@ -291,6 +329,73 @@ export async function waitForChannelStreamTarget(
       }
       return lastObservedTarget;
     }
+    await waitForStreamLease(CHANNEL_STREAM_SESSION_POLL_MS, signal);
+  }
+
+  return lastObservedTarget;
+}
+
+export async function waitForNextChannelStreamTarget(
+  context: ChatApiRouteContext,
+  channelId: string,
+  previousTargetStateId: string | null,
+  signal: AbortSignal,
+): Promise<ChannelStreamTarget | null> {
+  const deadline = Date.now() + CHANNEL_STREAM_SESSION_WAIT_MS;
+  let lastObservedTarget: ChannelStreamTarget | null = null;
+  let lastObservedReason: string | null = null;
+
+  while (!signal.aborted) {
+    const state = await context.dependencies.chatStore.read();
+    const channel = requireChannel(state, channelId);
+    if (!hasActiveWorkflowTurn(channel)) {
+      return null;
+    }
+
+    const resolvedStreamTarget = resolveWorkflowStreamTargetWithReason(channel);
+    const streamTarget = resolvedStreamTarget.target;
+    if (streamTarget && streamTarget.targetStateId !== previousTargetStateId) {
+      lastObservedTarget = streamTarget;
+      lastObservedReason = resolvedStreamTarget.reason;
+      if (streamTarget.sessionId) {
+        if (context.dependencies.config.debugLiveTrace) {
+          pushServerLiveTrace({
+            event: 'stream_target_ready',
+            channelId,
+            sessionId: streamTarget.sessionId,
+            participantId: streamTarget.participantId,
+            catId: streamTarget.catId,
+            speakerLabel: streamTarget.speakerLabel,
+            reason: resolvedStreamTarget.reason,
+            details: {
+              targetStateId: streamTarget.targetStateId,
+              previousTargetStateId,
+            },
+          });
+        }
+        return streamTarget;
+      }
+    }
+
+    if (Date.now() >= deadline) {
+      if (context.dependencies.config.debugLiveTrace) {
+        pushServerLiveTrace({
+          event: 'stream_target_timeout',
+          channelId,
+          sessionId: lastObservedTarget?.sessionId ?? null,
+          participantId: lastObservedTarget?.participantId ?? null,
+          catId: lastObservedTarget?.catId ?? null,
+          speakerLabel: lastObservedTarget?.speakerLabel ?? null,
+          reason: lastObservedReason ?? resolvedStreamTarget.reason,
+          details: {
+            targetStateId: lastObservedTarget?.targetStateId ?? null,
+            previousTargetStateId,
+          },
+        });
+      }
+      return lastObservedTarget;
+    }
+
     await waitForStreamLease(CHANNEL_STREAM_SESSION_POLL_MS, signal);
   }
 

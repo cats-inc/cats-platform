@@ -31,6 +31,7 @@ import {
 } from '../../state/runtime-dispatch/cancellation.js';
 import {
   waitForChannelStreamTarget,
+  waitForNextChannelStreamTarget,
   writeSseEvent,
 } from './channelStreamSupport.js';
 import { publishRoomMutation } from '../transportEventPublisher.js';
@@ -41,6 +42,7 @@ function buildStreamSpeakerPayload(input: {
   speakerLabel?: string | null;
   sessionStartedAt?: string | null;
   requiresSessionStartConfirmation?: boolean;
+  targetStateId?: string | null;
 }): Record<string, unknown> {
   return {
     participantId: input.participantId ?? null,
@@ -48,6 +50,7 @@ function buildStreamSpeakerPayload(input: {
     speakerLabel: input.speakerLabel ?? null,
     sessionStartedAt: input.sessionStartedAt ?? null,
     requiresSessionStartConfirmation: input.requiresSessionStartConfirmation === true,
+    targetStateId: input.targetStateId ?? null,
   };
 }
 
@@ -61,6 +64,10 @@ function publishStreamAttachMutationEvents(
     channelId,
     timestamp: new Date().toISOString(),
   });
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
 }
 
 async function handleRestCancelChannel(
@@ -245,67 +252,122 @@ async function handleRestStreamChannel(
       return;
     }
 
-    try {
-      if (context.dependencies.config.debugLiveTrace) {
-        pushServerLiveTrace({
-          event: 'stream_attach_open',
-          channelId,
-          sessionId: streamTarget.sessionId,
-          participantId: streamTarget.participantId,
-          catId: streamTarget.catId,
-          speakerLabel: streamTarget.speakerLabel,
-          reason: 'attach_ready_session',
-        });
-      }
-      // Surface the persisted session_started system message before transcript
-      // progress hands off from the user bubble to the assistant bubble.
-      publishStreamAttachMutationEvents(context, channelId);
-      writeSseEvent(context, 'progress', {
-        type: 'progress',
-        text: '',
-        metadata: {
-          kind: 'session',
-        },
-        ...buildStreamSpeakerPayload(streamTarget),
-      });
-      await context.dependencies.runtimeClient.streamSession(
-        streamTarget.sessionId,
-        async (event) => {
-          if (abortController.signal.aborted || context.response.writableEnded) {
-            return;
-          }
-          writeSseEvent(context, event.event, {
-            ...event.data,
-            ...buildStreamSpeakerPayload(streamTarget),
-          });
-        },
-        {
-          signal: abortController.signal,
-        }
-      );
-      if (!abortController.signal.aborted && !context.response.writableEnded) {
-        // Once one sequential speaker finishes, refresh the transcript so the
-        // persisted reply is visible before the next stream attachment begins.
-        publishStreamAttachMutationEvents(context, channelId);
-      }
-    } catch {
-      if (!abortController.signal.aborted && !context.response.writableEnded) {
+    let nextTarget = streamTarget;
+    while (nextTarget?.sessionId && !abortController.signal.aborted && !context.response.writableEnded) {
+      try {
         if (context.dependencies.config.debugLiveTrace) {
           pushServerLiveTrace({
-            event: 'stream_attach_error',
+            event: 'stream_attach_open',
             channelId,
-            sessionId: streamTarget.sessionId,
-            participantId: streamTarget.participantId,
-            catId: streamTarget.catId,
-            speakerLabel: streamTarget.speakerLabel,
-            reason: 'runtime_stream_unavailable',
+            sessionId: nextTarget.sessionId,
+            participantId: nextTarget.participantId,
+            catId: nextTarget.catId,
+            speakerLabel: nextTarget.speakerLabel,
+            reason: 'attach_ready_session',
+            details: {
+              targetStateId: nextTarget.targetStateId,
+            },
           });
         }
-        writeSseEvent(context, 'error', {
-          type: 'error',
-          text: 'Runtime stream unavailable',
+        // Surface the persisted session_started system message before transcript
+        // progress hands off from the user bubble to the assistant bubble.
+        publishStreamAttachMutationEvents(context, channelId);
+        writeSseEvent(context, 'progress', {
+          type: 'progress',
+          text: '',
+          metadata: {
+            kind: 'session',
+          },
+          ...buildStreamSpeakerPayload(nextTarget),
         });
+
+        let segmentCompleted = false;
+        const streamAbortController = new AbortController();
+        const abortCurrentSegment = (): void => {
+          if (!streamAbortController.signal.aborted) {
+            streamAbortController.abort();
+          }
+        };
+        const onRequestAbort = (): void => abortCurrentSegment();
+        abortController.signal.addEventListener('abort', onRequestAbort, { once: true });
+
+        try {
+          await context.dependencies.runtimeClient.streamSession(
+            nextTarget.sessionId,
+            async (event) => {
+              if (abortController.signal.aborted || context.response.writableEnded) {
+                return;
+              }
+              writeSseEvent(context, event.event, {
+                ...event.data,
+                ...buildStreamSpeakerPayload(nextTarget),
+              });
+              if (event.event === 'result' || event.event === 'error') {
+                segmentCompleted = true;
+                abortCurrentSegment();
+              }
+            },
+            {
+              signal: streamAbortController.signal,
+            }
+          );
+        } catch (error) {
+          const expectedBoundaryAbort =
+            streamAbortController.signal.aborted && segmentCompleted && !abortController.signal.aborted;
+          if (!expectedBoundaryAbort && !isAbortError(error)) {
+            throw error;
+          }
+        } finally {
+          abortController.signal.removeEventListener('abort', onRequestAbort);
+        }
+
+        if (!abortController.signal.aborted && !context.response.writableEnded) {
+          // Once one sequential speaker finishes, refresh the transcript so the
+          // persisted reply is visible before the next stream attachment begins.
+          publishStreamAttachMutationEvents(context, channelId);
+        }
+      } catch {
+        if (!abortController.signal.aborted && !context.response.writableEnded) {
+          if (context.dependencies.config.debugLiveTrace) {
+            pushServerLiveTrace({
+              event: 'stream_attach_error',
+              channelId,
+              sessionId: nextTarget.sessionId,
+              participantId: nextTarget.participantId,
+              catId: nextTarget.catId,
+              speakerLabel: nextTarget.speakerLabel,
+              reason: 'runtime_stream_unavailable',
+              details: {
+                targetStateId: nextTarget.targetStateId,
+              },
+            });
+          }
+          writeSseEvent(context, 'error', {
+            type: 'error',
+            text: 'Runtime stream unavailable',
+          });
+        }
+        break;
       }
+
+      if (abortController.signal.aborted || context.response.writableEnded) {
+        break;
+      }
+
+      if (!nextTarget.targetStateId) {
+        break;
+      }
+
+      const followingTarget = await waitForNextChannelStreamTarget(
+        context,
+        channelId,
+        nextTarget.targetStateId,
+        abortController.signal,
+      );
+      if (!followingTarget?.sessionId) {
+        break;
+      }
+      nextTarget = followingTarget;
     }
 
     if (!context.response.writableEnded) {

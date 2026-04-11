@@ -48,10 +48,12 @@ test('resolveChannelStreamSessionId follows the currently running workflow targe
           status: 'running',
           targetStatuses: [
             {
+              id: 'target-1',
               status: 'completed',
               participant: { participantId: 'participant-1' },
             },
             {
+              id: 'target-2',
               status: 'running',
               participant: { participantId: 'participant-2' },
             },
@@ -80,10 +82,12 @@ test('resolveChannelStreamSessionId waits for the next sequential target instead
           status: 'running',
           targetStatuses: [
             {
+              id: 'target-1',
               status: 'completed',
               participant: { participantId: 'participant-1' },
             },
             {
+              id: 'target-2',
               status: 'pending',
               participant: { participantId: 'participant-2' },
             },
@@ -112,10 +116,12 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
           status: 'running',
           targetStatuses: [
             {
+              id: 'target-1',
               status: 'completed',
               participant: { participantId: 'participant-1', participantName: 'Claude-CLI' },
             },
             {
+              id: 'target-2',
               status: 'pending',
               participant: { participantId: 'participant-2', participantName: 'Codex-CLI' },
             },
@@ -137,7 +143,31 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
     speakerLabel: 'Codex-CLI',
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
+    targetStateId: 'target-2',
   });
+});
+
+test('resolveChannelStreamTarget does not fall back to the default recipient before an active workflow target materializes', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: 'participant-1',
+      workflow: {
+        activeTurn: {
+          status: 'running',
+          targetStatuses: [],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
+    ],
+  };
+
+  assert.equal(resolveChannelStreamSessionId(channel), null);
+  assert.equal(resolveChannelStreamTarget(channel), null);
 });
 
 test('resolveChannelStreamTarget does not leak the internal Chat placeholder for solo orchestrator turns', () => {
@@ -158,6 +188,7 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
           status: 'running',
           targetStatuses: [
             {
+              id: 'target-orchestrator',
               status: 'running',
               participant: {
                 participantKind: 'orchestrator',
@@ -180,6 +211,7 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
     speakerLabel: 'Claude-CLI',
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
+    targetStateId: 'target-orchestrator',
   });
 });
 
@@ -201,6 +233,7 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
           status: 'running',
           targetStatuses: [
             {
+              id: 'target-orchestrator',
               status: 'running',
               participant: {
                 participantKind: 'orchestrator',
@@ -223,5 +256,6 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
     speakerLabel: 'Gemini-CLI',
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
+    targetStateId: 'target-orchestrator',
   });
 });
