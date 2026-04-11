@@ -173,6 +173,11 @@ export function resolveChatViewTopBarPresenceState(input: {
   selectedChannel: SelectedChannelView;
   activeRoomParticipants: ResolvedChannelParticipant[];
 }): ChatViewTopBarPresenceState {
+  const liveIndicatorHasExplicitSpeaker = Boolean(
+    input.visibleLiveIndicator?.speakerLabel
+    || input.visibleLiveIndicator?.catId
+    || (input.visibleLiveIndicator?.activeCatIds.length ?? 0) > 0,
+  );
   const activeTopBarCatIds = (() => {
     const ids = input.visibleLiveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
     if (ids.length > 0) {
@@ -193,7 +198,11 @@ export function resolveChatViewTopBarPresenceState(input: {
     if (runningParticipantIds.length > 0) {
       return [...new Set(runningParticipantIds)];
     }
-    if (input.visibleLiveIndicator?.active && input.selectedChannel.roomRouting?.defaultRecipientId) {
+    if (
+      input.visibleLiveIndicator?.active
+      && !liveIndicatorHasExplicitSpeaker
+      && input.selectedChannel.roomRouting?.defaultRecipientId
+    ) {
       return [input.selectedChannel.roomRouting.defaultRecipientId];
     }
     return [];
@@ -204,7 +213,7 @@ export function resolveChatViewTopBarPresenceState(input: {
     if (activeWorkflowParticipantId) {
       return activeWorkflowParticipantId;
     }
-    if (input.visibleLiveIndicator?.active) {
+    if (input.visibleLiveIndicator?.active && !liveIndicatorHasExplicitSpeaker) {
       return input.selectedChannel.roomRouting?.defaultRecipientId ?? null;
     }
     return null;

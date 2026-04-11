@@ -60,6 +60,48 @@ interface BlockedDispatchResolution {
   note: string;
 }
 
+function filterQueuedContinuationTargets(
+  targets: DispatchFrame['targets'],
+  activeTurn: RoomWorkflowTurn,
+  queue: DispatchFrame[],
+): DispatchFrame['targets'] {
+  const occupiedParticipantKeys = new Set<string>();
+
+  for (const targetStatus of activeTurn.targetStatuses) {
+    if (
+      targetStatus.sourceMessageId === activeTurn.sourceMessageId
+      && targetStatus.depth === 0
+      && (
+        targetStatus.status === 'pending'
+        || targetStatus.status === 'running'
+      )
+    ) {
+      occupiedParticipantKeys.add(participantKey(targetStatus.participant));
+    }
+  }
+
+  for (const frame of queue) {
+    if (frame.sourceMessage.id !== activeTurn.sourceMessageId || frame.depth !== 0) {
+      continue;
+    }
+    for (const target of frame.targets) {
+      occupiedParticipantKeys.add(participantKey(target));
+    }
+  }
+
+  const filteredTargets: DispatchFrame['targets'] = [];
+  for (const target of targets) {
+    const targetKey = participantKey(target);
+    if (occupiedParticipantKeys.has(targetKey)) {
+      continue;
+    }
+    occupiedParticipantKeys.add(targetKey);
+    filteredTargets.push(target);
+  }
+
+  return filteredTargets;
+}
+
 function appendRecoveredDispatchMessages(
   state: ChatState,
   channelId: string,
@@ -452,6 +494,20 @@ export function applyDispatchExecutions(
       mergeUnresolvedMentions(outcome, continuationResolution.unresolved);
     }
 
+    const dedupedContinuationTargets = filterQueuedContinuationTargets(
+      continuationResolution.targets,
+      activeTurn,
+      queue,
+    );
+    const continuationTargetsWereDeduped =
+      dedupedContinuationTargets.length !== continuationResolution.targets.length;
+    if (continuationTargetsWereDeduped) {
+      continuationResolution = {
+        ...continuationResolution,
+        targets: dedupedContinuationTargets,
+      };
+    }
+
     const continuationStage = resolveContinuationStage(
       extractedWorkflowRecommendation.recommendation,
       continuationResolution.targets.length,
@@ -465,6 +521,10 @@ export function applyDispatchExecutions(
       : null;
 
     if (continuationResolution.targets.length === 0) {
+      if (continuationTargetsWereDeduped) {
+        continue;
+      }
+
       if (serializedWorkflowRecommendation) {
         activeTurn.stageId = continuationStage.stageId;
         activeTurn.workflowShape = continuationStage.workflowShape;

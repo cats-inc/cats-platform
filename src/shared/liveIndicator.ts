@@ -80,6 +80,26 @@ export function createWaitingLiveIndicatorState(input: {
   };
 }
 
+export function resolveLiveIndicatorSpeakerState(
+  previous: LiveIndicatorState,
+  data: Record<string, unknown>,
+): Pick<LiveIndicatorState, 'catId' | 'activeCatIds' | 'speakerLabel'> {
+  const hasCatId = Object.prototype.hasOwnProperty.call(data, 'catId');
+  const hasSpeakerLabel = Object.prototype.hasOwnProperty.call(data, 'speakerLabel');
+  const nextCatId = hasCatId
+    ? readNullableString(data.catId)
+    : previous.catId;
+  const nextSpeakerLabel = hasSpeakerLabel
+    ? readNullableString(data.speakerLabel)
+    : previous.speakerLabel;
+
+  return {
+    catId: nextCatId,
+    activeCatIds: nextCatId ? [nextCatId] : [],
+    speakerLabel: nextSpeakerLabel,
+  };
+}
+
 export function applyLiveIndicatorEvent(
   previous: LiveIndicatorState,
   eventType: string,
@@ -89,25 +109,31 @@ export function applyLiveIndicatorEvent(
     return previous;
   }
 
+  const nextSpeakerState = resolveLiveIndicatorSpeakerState(previous, data);
+  const nextState = {
+    ...previous,
+    ...nextSpeakerState,
+  };
+
   switch (eventType) {
     case 'progress':
-      return applyProgressEvent(previous, data);
+      return applyProgressEvent(nextState, data);
     case 'text':
-      return applyTextEvent(previous, data);
+      return applyTextEvent(nextState, data);
     case 'tool_use':
-      return applyToolUseEvent(previous, data);
+      return applyToolUseEvent(nextState, data);
     case 'tool_result':
-      return applyToolResultEvent(previous, data);
+      return applyToolResultEvent(nextState, data);
     case 'content_block':
-      return applyContentBlockEvent(previous, data);
+      return applyContentBlockEvent(nextState, data);
     case 'result':
-      return applyResultEvent(previous);
+      return applyResultEvent(nextState);
     case 'session_closed':
-      return previous.phase === 'waiting' ? previous : applyResultEvent(previous);
+      return nextState.phase === 'waiting' ? nextState : applyResultEvent(nextState);
     case 'error':
-      return applyErrorEvent(previous, data);
+      return applyErrorEvent(nextState, data);
     default:
-      return previous;
+      return nextState;
   }
 }
 
@@ -527,4 +553,11 @@ function readString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed || null;
+}
+
+function readNullableString(value: unknown): string | null {
+  if (value == null) {
+    return null;
+  }
+  return readString(value);
 }

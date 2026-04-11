@@ -5,6 +5,7 @@ import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
   EMPTY_LIVE_INDICATOR,
+  resolveLiveIndicatorSpeakerState,
   type LiveIndicatorState,
 } from '../../../../shared/liveIndicator.js';
 import { isComposerDispatchBusy } from '../../../../shared/composer.js';
@@ -203,9 +204,10 @@ export function useLiveIndicator<
           return previous;
         }
         if (shouldRetrySessionClose) {
+          const nextSpeakerState = resolveLiveIndicatorSpeakerState(previous, data);
           return createWaitingLiveIndicatorState({
-            catId: previous.catId,
-            speakerLabel: previous.speakerLabel,
+            catId: nextSpeakerState.catId,
+            speakerLabel: nextSpeakerState.speakerLabel,
           });
         }
         return applyLiveIndicatorEvent(previous, eventType, data);

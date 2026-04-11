@@ -283,9 +283,9 @@ test('ChatView shows temporary participants in the top bar and composer avatar s
     <ChatView {...createProps()} />,
   );
 
-  assert.match(markup, /data-tooltip="Inline Reviewer"/u);
-  assert.match(markup, /data-tooltip="Runtime Verifier"/u);
-  assert.match(markup, /composerCatStack/u);
+  assert.match(markup, /data-tooltip="Gemini-CLI · gemini-3\.1-pro"/u);
+  assert.match(markup, /data-tooltip="Claude-CLI · claude-sonnet"/u);
+  assert.match(markup, /audienceChip/u);
   assert.doesNotMatch(markup, /data-tooltip="2 participants"/u);
   assert.match(markup, /channelParticipantAvatar/u);
   assert.doesNotMatch(markup, /#F04A70|#2B9CF0/u);
@@ -329,23 +329,19 @@ test('ChatView keeps Cat visuals in room stacks while the composer stack preserv
 
   assert.match(
     markup,
-    /class="catAvatar catAvatarBoss" data-tooltip="Milo" style="background:#7A5B3A"/u,
+    /class="catAvatar catAvatarBoss" data-tooltip="Claude-CLI · claude-sonnet" style="background:#7A5B3A"/u,
   );
   assert.match(
     markup,
-    /class="catAvatar channelParticipantAvatar" data-tooltip="Inline Reviewer"/u,
+    /class="catAvatar channelParticipantAvatar" data-tooltip="Gemini-CLI · gemini-3\.1-pro"/u,
   );
   assert.match(
     markup,
-    /class="catAvatar composerStackAvatar catAvatarBoss" data-tooltip="Milo"/u,
+    /class="audienceChipAvatar" style="background:#7A5B3A"/u,
   );
   assert.match(
     markup,
-    /class="catAvatar composerStackAvatar channelParticipantAvatar" data-tooltip="Inline Reviewer"/u,
-  );
-  assert.match(
-    markup,
-    /class="catAvatar composerStackAvatar channelParticipantAvatar" data-tooltip="Runtime Verifier"/u,
+    /audienceChipLabel">Milo \+2</u,
   );
 });
 

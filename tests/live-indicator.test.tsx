@@ -14,8 +14,12 @@ import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
   resolveTranscriptFollowState,
+  resolveLiveIndicatorSpeakerState,
   resolveVisibleLiveIndicator,
 } from '../src/shared/liveIndicator.ts';
+import {
+  resolveChatViewTopBarPresenceState,
+} from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
 
 test('EMPTY_LIVE_INDICATOR starts with no active cat ids', () => {
   assert.deepEqual(EMPTY_LIVE_INDICATOR.activeCatIds, []);
@@ -238,6 +242,76 @@ test('live indicator accumulates streamed preview text and keeps active cat ids'
   assert.equal(state.events.length, 1);
   assert.equal(state.events[0]?.eventType, 'text');
   assert.equal(state.events[0]?.text, 'Hello world');
+});
+
+test('live indicator speaker metadata can switch from a cat-backed turn to an inline participant', () => {
+  const nextSpeaker = resolveLiveIndicatorSpeakerState(
+    createWaitingLiveIndicatorState({
+      catId: 'cat-1',
+      speakerLabel: null,
+    }),
+    {
+      catId: null,
+      speakerLabel: 'Codex-CLI',
+    },
+  );
+
+  assert.equal(nextSpeaker.catId, null);
+  assert.deepEqual(nextSpeaker.activeCatIds, []);
+  assert.equal(nextSpeaker.speakerLabel, 'Codex-CLI');
+});
+
+test('live indicator event payload updates the active speaker metadata even without preview text', () => {
+  const nextState = applyLiveIndicatorEvent(
+    createWaitingLiveIndicatorState({
+      catId: 'cat-1',
+      speakerLabel: null,
+    }),
+    'progress',
+    {
+      text: '',
+      catId: null,
+      speakerLabel: 'Gemini-CLI',
+      metadata: {
+        kind: 'session',
+      },
+    },
+  );
+
+  assert.equal(nextState.phase, 'streaming');
+  assert.equal(nextState.catId, null);
+  assert.deepEqual(nextState.activeCatIds, []);
+  assert.equal(nextState.speakerLabel, 'Gemini-CLI');
+});
+
+test('chat top-bar presence does not pin live speaker to the default recipient once stream metadata names someone else', () => {
+  const presence = resolveChatViewTopBarPresenceState({
+    visibleLiveIndicator: {
+      ...EMPTY_LIVE_INDICATOR,
+      active: true,
+      phase: 'streaming',
+      speakerLabel: 'Codex-CLI',
+    },
+    selectedChannel: {
+      roomRouting: {
+        defaultRecipientId: 'participant-1',
+        workflow: {
+          activeTurn: {
+            targetStatuses: [],
+          },
+        },
+      },
+    },
+    activeRoomParticipants: [
+      {
+        participantId: 'participant-1',
+        name: 'Claude-CLI',
+      },
+    ],
+  } as never);
+
+  assert.deepEqual(presence.activeTopBarParticipantIds, []);
+  assert.equal(presence.liveSpeakerParticipant, null);
 });
 
 test('live indicator accumulates a bounded event tape and pending tools', () => {

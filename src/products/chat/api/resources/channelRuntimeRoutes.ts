@@ -29,9 +29,21 @@ import {
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../../state/runtime-dispatch/cancellation.js';
 import {
-  waitForChannelStreamSessionId,
+  waitForChannelStreamTarget,
   writeSseEvent,
 } from './channelStreamSupport.js';
+
+function buildStreamSpeakerPayload(input: {
+  participantId?: string | null;
+  catId?: string | null;
+  speakerLabel?: string | null;
+}): Record<string, unknown> {
+  return {
+    participantId: input.participantId ?? null,
+    catId: input.catId ?? null,
+    speakerLabel: input.speakerLabel ?? null,
+  };
+}
 
 async function handleRestCancelChannel(
   context: ChatApiRouteContext,
@@ -179,7 +191,7 @@ async function handleRestStreamChannel(
 
   try {
     requireValidChatScopeId(chatScopeId);
-    const sessionId = await waitForChannelStreamSessionId(
+    const streamTarget = await waitForChannelStreamTarget(
       context,
       channelId,
       abortController.signal,
@@ -196,20 +208,34 @@ async function handleRestStreamChannel(
     });
     sseHeadersSent = true;
 
-    if (!sessionId) {
-      writeSseEvent(context, 'session_closed', { type: 'session_closed' });
+    if (!streamTarget?.sessionId) {
+      writeSseEvent(context, 'session_closed', {
+        type: 'session_closed',
+        ...buildStreamSpeakerPayload(streamTarget ?? {}),
+      });
       context.response.end();
       return;
     }
 
     try {
+      writeSseEvent(context, 'progress', {
+        type: 'progress',
+        text: '',
+        metadata: {
+          kind: 'session',
+        },
+        ...buildStreamSpeakerPayload(streamTarget),
+      });
       await context.dependencies.runtimeClient.streamSession(
-        sessionId,
+        streamTarget.sessionId,
         async (event) => {
           if (abortController.signal.aborted || context.response.writableEnded) {
             return;
           }
-          writeSseEvent(context, event.event, event.data);
+          writeSseEvent(context, event.event, {
+            ...event.data,
+            ...buildStreamSpeakerPayload(streamTarget),
+          });
         },
         {
           signal: abortController.signal,

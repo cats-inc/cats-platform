@@ -1,14 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveChannelStreamSessionId } from '../build/server/products/chat/api/resources/channelStreamSupport.js';
+import {
+  resolveChannelStreamSessionId,
+  resolveChannelStreamTarget,
+} from '../build/server/products/chat/api/resources/channelStreamSupport.js';
 
-function buildParticipantAssignment(participantId, sessionId, status = 'ready') {
+function buildParticipantAssignment(
+  participantId,
+  sessionId,
+  status = 'ready',
+  name = participantId,
+) {
   return {
     participantId,
     sourceKind: 'participant',
     sourceRefId: participantId,
-    name: participantId,
+    name,
     status: 'active',
     roles: [],
     roleHint: null,
@@ -91,4 +99,41 @@ test('resolveChannelStreamSessionId waits for the next sequential target instead
   };
 
   assert.equal(resolveChannelStreamSessionId(channel), null);
+});
+
+test('resolveChannelStreamTarget keeps the next sequential speaker label available before the lease is ready', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          status: 'running',
+          targetStatuses: [
+            {
+              status: 'completed',
+              participant: { participantId: 'participant-1', participantName: 'Claude-CLI' },
+            },
+            {
+              status: 'pending',
+              participant: { participantId: 'participant-2', participantName: 'Codex-CLI' },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
+      buildParticipantAssignment('participant-2', null, 'initializing', 'Codex-CLI'),
+    ],
+  };
+
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: null,
+    participantId: 'participant-2',
+    catId: null,
+    speakerLabel: 'Codex-CLI',
+  });
 });

@@ -1,4 +1,9 @@
-import { collectParticipantSessionIds, resolveParticipantSessionId } from '../../shared/channelParticipants.js';
+import {
+  collectParticipantSessionIds,
+  resolveParticipantCatId,
+  resolveParticipantSessionId,
+  resolvePrimaryParticipantExecutionAssignment,
+} from '../../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { requireChannel } from '../../state/model/index.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
@@ -6,9 +11,45 @@ import type { ChatApiRouteContext } from '../routeSupport.js';
 const CHANNEL_STREAM_SESSION_WAIT_MS = 1500;
 const CHANNEL_STREAM_SESSION_POLL_MS = 75;
 
-export function resolveChannelStreamSessionId(
+export interface ChannelStreamTarget {
+  sessionId: string | null;
+  participantId: string | null;
+  catId: string | null;
+  speakerLabel: string | null;
+}
+
+function buildParticipantStreamTarget(
   channel: ReturnType<typeof requireChannel>,
-): string | null {
+  participantId: string,
+  fallbackSpeakerLabel: string | null = null,
+): ChannelStreamTarget {
+  const assignment = resolvePrimaryParticipantExecutionAssignment(channel, participantId);
+  return {
+    sessionId: resolveParticipantSessionId(
+      channel,
+      participantId,
+      { statuses: ['ready', 'initializing'] },
+    ),
+    participantId,
+    catId: assignment ? resolveParticipantCatId(assignment) : null,
+    speakerLabel: assignment?.name ?? fallbackSpeakerLabel,
+  };
+}
+
+function buildOrchestratorStreamTarget(
+  channel: ReturnType<typeof requireChannel>,
+): ChannelStreamTarget {
+  return {
+    sessionId: channel.orchestratorLease?.sessionId?.trim() || null,
+    participantId: 'orchestrator',
+    catId: null,
+    speakerLabel: null,
+  };
+}
+
+export function resolveChannelStreamTarget(
+  channel: ReturnType<typeof requireChannel>,
+): ChannelStreamTarget | null {
   const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
   if (activeTurn?.status === 'running') {
     const prioritizedTargetStatuses = [
@@ -17,41 +58,41 @@ export function resolveChannelStreamSessionId(
     ];
 
     for (const targetStatus of prioritizedTargetStatuses) {
-      const sessionId = resolveParticipantSessionId(
+      const target = buildParticipantStreamTarget(
         channel,
         targetStatus.participant.participantId,
-        { statuses: ['ready', 'initializing'] },
+        targetStatus.participant.participantName,
       );
-      if (sessionId) {
-        return sessionId;
+      if (target.sessionId) {
+        return target;
       }
     }
 
     if (prioritizedTargetStatuses.length > 0) {
-      return null;
+      const nextTarget = prioritizedTargetStatuses[0]!;
+      return buildParticipantStreamTarget(
+        channel,
+        nextTarget.participant.participantId,
+        nextTarget.participant.participantName,
+      );
     }
   }
-
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
   if (isDirectLaneChannel(channel)) {
     if (!defaultRecipientId) {
       return null;
     }
-    const leadSessionId = resolveParticipantSessionId(channel, defaultRecipientId, {
-      statuses: ['ready', 'initializing'],
-    });
-    if (leadSessionId) {
-      return leadSessionId;
+    const leadTarget = buildParticipantStreamTarget(channel, defaultRecipientId);
+    if (leadTarget.sessionId) {
+      return leadTarget;
     }
     return null;
   }
 
   if (defaultRecipientId) {
-    const leadSessionId = resolveParticipantSessionId(channel, defaultRecipientId, {
-      statuses: ['ready', 'initializing'],
-    });
-    if (leadSessionId) {
-      return leadSessionId;
+    const leadTarget = buildParticipantStreamTarget(channel, defaultRecipientId);
+    if (leadTarget.sessionId) {
+      return leadTarget;
     }
   }
 
@@ -59,10 +100,35 @@ export function resolveChannelStreamSessionId(
     statuses: ['ready', 'initializing'],
   })[0] ?? null;
   if (participantSessionId) {
-    return participantSessionId;
+    for (const assignment of channel.catAssignments) {
+      const target = buildParticipantStreamTarget(channel, assignment.participantId);
+      if (target.sessionId === participantSessionId) {
+        return target;
+      }
+    }
+    for (const assignment of channel.participantAssignments ?? []) {
+      const target = buildParticipantStreamTarget(channel, assignment.participantId);
+      if (target.sessionId === participantSessionId) {
+        return target;
+      }
+    }
+    return {
+      sessionId: participantSessionId,
+      participantId: null,
+      catId: null,
+      speakerLabel: null,
+    };
   }
 
-  return channel.orchestratorLease?.sessionId?.trim() || null;
+  const orchestratorTarget = buildOrchestratorStreamTarget(channel);
+  return orchestratorTarget.sessionId ? orchestratorTarget : null;
+}
+
+export function resolveChannelStreamSessionId(
+  channel: ReturnType<typeof requireChannel>,
+): string | null {
+  const streamTarget = resolveChannelStreamTarget(channel);
+  return streamTarget?.sessionId ?? null;
 }
 
 function waitForStreamLease(
@@ -89,27 +155,31 @@ function waitForStreamLease(
   });
 }
 
-export async function waitForChannelStreamSessionId(
+export async function waitForChannelStreamTarget(
   context: ChatApiRouteContext,
   channelId: string,
   signal: AbortSignal,
-): Promise<string | null> {
+): Promise<ChannelStreamTarget | null> {
   const deadline = Date.now() + CHANNEL_STREAM_SESSION_WAIT_MS;
+  let lastObservedTarget: ChannelStreamTarget | null = null;
 
   while (!signal.aborted) {
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
-    const sessionId = resolveChannelStreamSessionId(channel);
-    if (sessionId) {
-      return sessionId;
+    const streamTarget = resolveChannelStreamTarget(channel);
+    if (streamTarget) {
+      lastObservedTarget = streamTarget;
+    }
+    if (streamTarget?.sessionId) {
+      return streamTarget;
     }
     if (Date.now() >= deadline) {
-      return null;
+      return lastObservedTarget;
     }
     await waitForStreamLease(CHANNEL_STREAM_SESSION_POLL_MS, signal);
   }
 
-  return null;
+  return lastObservedTarget;
 }
 
 export function writeSseEvent(
