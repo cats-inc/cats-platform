@@ -36,6 +36,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   );
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
+  assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
   assert.equal(config.maxChatParticipants, 7);
@@ -55,6 +56,7 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases for host and por
   assert.ok(
     config.chatStatePath.endsWith(path.join('.cats', 'platform', 'state', 'chat-state.local.json')),
   );
+  assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 1);
   assert.equal(config.maxChatParticipants, 5);
@@ -91,6 +93,9 @@ test('loadConfig defaults chat-state path under ~/.cats/platform', () => {
 });
 
 test('loadConfig enables runtime session retention override only when explicitly true', () => {
+  const traced = loadConfig({
+    CATS_DEBUG_LIVE_TRACE: 'true',
+  });
   const enabled = loadConfig({
     CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE: 'true',
   });
@@ -98,6 +103,7 @@ test('loadConfig enables runtime session retention override only when explicitly
     CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE: 'false',
   });
 
+  assert.equal(traced.debugLiveTrace, true);
   assert.equal(enabled.debugKeepRuntimeSessionsOnProductDelete, true);
   assert.equal(disabled.debugKeepRuntimeSessionsOnProductDelete, false);
 });

@@ -1,4 +1,5 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import { activateChannelSessions } from '../../state/runtimeActions.js';
 import {
   requireChannel,
@@ -209,6 +210,16 @@ async function handleRestStreamChannel(
     sseHeadersSent = true;
 
     if (!streamTarget?.sessionId) {
+      if (context.dependencies.config.debugLiveTrace) {
+        pushServerLiveTrace({
+          event: 'stream_attach_closed',
+          channelId,
+          participantId: streamTarget?.participantId ?? null,
+          catId: streamTarget?.catId ?? null,
+          speakerLabel: streamTarget?.speakerLabel ?? null,
+          reason: 'no_session_after_wait',
+        });
+      }
       writeSseEvent(context, 'session_closed', {
         type: 'session_closed',
         ...buildStreamSpeakerPayload(streamTarget ?? {}),
@@ -218,6 +229,17 @@ async function handleRestStreamChannel(
     }
 
     try {
+      if (context.dependencies.config.debugLiveTrace) {
+        pushServerLiveTrace({
+          event: 'stream_attach_open',
+          channelId,
+          sessionId: streamTarget.sessionId,
+          participantId: streamTarget.participantId,
+          catId: streamTarget.catId,
+          speakerLabel: streamTarget.speakerLabel,
+          reason: 'attach_ready_session',
+        });
+      }
       writeSseEvent(context, 'progress', {
         type: 'progress',
         text: '',
@@ -243,6 +265,17 @@ async function handleRestStreamChannel(
       );
     } catch {
       if (!abortController.signal.aborted && !context.response.writableEnded) {
+        if (context.dependencies.config.debugLiveTrace) {
+          pushServerLiveTrace({
+            event: 'stream_attach_error',
+            channelId,
+            sessionId: streamTarget.sessionId,
+            participantId: streamTarget.participantId,
+            catId: streamTarget.catId,
+            speakerLabel: streamTarget.speakerLabel,
+            reason: 'runtime_stream_unavailable',
+          });
+        }
         writeSseEvent(context, 'error', {
           type: 'error',
           text: 'Runtime stream unavailable',

@@ -285,7 +285,7 @@ test('shared live indicator effect depends on stable derived fields instead of s
   );
 
   assert.match(source, /const speakerLabel = defaultRecipientCatId/u);
-  assert.match(source, /\[\s*busy,\s*channelId,\s*defaultRecipientCatId,\s*routingStatus,\s*speakerLabel,/u);
+  assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*defaultRecipientCatId,\s*routingStatus,\s*speakerLabel,/u);
   assert.doesNotMatch(source, /\[\s*busy,\s*channelId,\s*defaultRecipientCatId,\s*resolveRoutingStatus,/u);
   assert.doesNotMatch(source, /\[\s*busy,\s*channelId,\s*defaultRecipientCatId,\s*routingStatus,\s*selectedChannel,/u);
   assert.doesNotMatch(source, /source\.onerror = \(\) =>/u);

@@ -50,6 +50,7 @@ import { ProductReadyShell } from "./ProductReadyShell.js";
 import { useAppChrome } from "./hooks/useAppChrome.js";
 import { useFolderBrowser } from "./hooks/useFolderBrowser.js";
 import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
+import { setBrowserLiveTraceEnabled } from "../../../shared/liveTrace.js";
 import { useWorkspaceDraftCatState } from "./hooks/useWorkspaceDraftCatState.js";
 import { useWorkspaceAppTransientState } from "./hooks/useWorkspaceAppTransientState.js";
 import { useWorkspaceLocationState } from "./hooks/useWorkspaceLocationState.js";
@@ -375,6 +376,7 @@ export function createWorkspaceProductApp({
       channelId: liveIndicatorChannel?.id ?? null,
       busy,
       selectedChannel: liveIndicatorChannel,
+      debugTraceEnabled: readyPayload?.chat.capabilities.debugLiveTrace === true,
     });
     const { onComposerKeyDown, onSendMessage } = useComposerSubmit({
       state,
@@ -433,6 +435,10 @@ export function createWorkspaceProductApp({
       `Cats ${productName}`,
       routeChannelTitle,
     );
+
+    useEffect(() => {
+      setBrowserLiveTraceEnabled(readyPayload?.chat.capabilities.debugLiveTrace === true);
+    }, [readyPayload?.chat.capabilities.debugLiveTrace]);
 
     useOnGenericDraftRouteEntry(
       showingNewChatDraft && !draftDefaultRecipientCatId,

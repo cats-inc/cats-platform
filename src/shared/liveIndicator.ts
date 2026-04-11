@@ -2,6 +2,7 @@ import {
   normalizeRuntimeContentBlock,
   type LiveIndicatorContentBlock,
 } from './runtimeContentBlocks.js';
+import { pushBrowserLiveTrace } from './liveTrace.js';
 export type { LiveIndicatorContentBlock } from './runtimeContentBlocks.js';
 
 export interface LiveToolEntry {
@@ -37,6 +38,7 @@ export interface LiveIndicatorState {
 
 export interface LiveIndicatorTranscriptMessageLike {
   id: string;
+  channelId?: string;
   senderKind: string;
   senderName?: string;
   metadata?: Record<string, unknown> | null | undefined;
@@ -202,14 +204,32 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
 
   const latestVisibleReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
   if (liveIndicator.phase !== 'streaming' || !hasExplicitLiveIndicatorSpeaker(liveIndicator)) {
-    return latestVisibleReplyTimestamp >= activeTurnTimestamp ? null : liveIndicator;
+    const visible = latestVisibleReplyTimestamp < activeTurnTimestamp;
+    traceLiveIndicatorVisibility({
+      liveIndicator,
+      messages,
+      activeTurnUpdatedAt,
+      visible,
+      reason: visible ? 'visible_before_identity' : 'reply_after_active_turn',
+      latestReplyTimestamp: latestVisibleReplyTimestamp,
+    });
+    return visible ? liveIndicator : null;
   }
 
   const latestSpeakerReplyTimestamp = resolveLatestVisibleReplyTimestamp(
     messages,
     (message) => doesMessageMatchLiveIndicatorSpeaker(message, liveIndicator),
   );
-  return latestSpeakerReplyTimestamp >= activeTurnTimestamp ? null : liveIndicator;
+  const visible = latestSpeakerReplyTimestamp < activeTurnTimestamp;
+  traceLiveIndicatorVisibility({
+    liveIndicator,
+    messages,
+    activeTurnUpdatedAt,
+    visible,
+    reason: visible ? 'speaker_still_streaming' : 'same_speaker_reply_visible',
+    latestReplyTimestamp: latestSpeakerReplyTimestamp,
+  });
+  return visible ? liveIndicator : null;
 }
 
 export function resolveTranscriptFollowState<TMessage extends LiveIndicatorTranscriptMessageLike>(
@@ -592,6 +612,43 @@ function doesMessageMatchLiveIndicatorSpeaker(
 
   return readString(message.senderName) === liveSpeakerLabel
     || readMessageExecutionLabelSnapshot(message) === liveSpeakerLabel;
+}
+
+function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMessageLike>(input: {
+  liveIndicator: LiveIndicatorState;
+  messages: ReadonlyArray<TMessage>;
+  activeTurnUpdatedAt: string;
+  visible: boolean;
+  reason: string;
+  latestReplyTimestamp: number;
+}): void {
+  const lastMessage = input.messages.at(-1);
+  pushBrowserLiveTrace({
+    event: 'visibility_decision',
+    channelId: lastMessage?.channelId ?? null,
+    speakerLabel: input.liveIndicator.speakerLabel,
+    catId: input.liveIndicator.catId,
+    activeTurnUpdatedAt: input.activeTurnUpdatedAt,
+    visible: input.visible,
+    reason: input.reason,
+    details: {
+      phase: input.liveIndicator.phase,
+      lastMessageId: lastMessage?.id ?? null,
+      latestReplyAt:
+        Number.isFinite(input.latestReplyTimestamp) && input.latestReplyTimestamp > Number.NEGATIVE_INFINITY
+          ? new Date(input.latestReplyTimestamp).toISOString()
+          : null,
+    },
+    signature: [
+      input.liveIndicator.phase,
+      input.liveIndicator.speakerLabel ?? '',
+      input.liveIndicator.catId ?? '',
+      input.activeTurnUpdatedAt,
+      input.visible ? '1' : '0',
+      input.reason,
+      lastMessage?.id ?? '',
+    ].join('::'),
+  });
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

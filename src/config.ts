@@ -12,6 +12,7 @@ export interface AppConfig {
   port: number;
   runtimeBaseUrl: string;
   runtimeApiKey: string;
+  debugLiveTrace: boolean;
   debugKeepRuntimeSessionsOnProductDelete: boolean;
   runtimeDataDir: string;
   desktopHostStatePath: string;
@@ -106,6 +107,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
+    debugLiveTrace: parseBoolean(env.CATS_DEBUG_LIVE_TRACE, false),
     debugKeepRuntimeSessionsOnProductDelete: parseBoolean(
       env.CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE,
       false,

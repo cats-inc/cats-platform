@@ -51,6 +51,7 @@ import { useFolderBrowser } from './hooks/useFolderBrowser';
 import { useGovernanceActions } from './hooks/useGovernanceActions';
 import { useOperatorLoop } from './hooks/useOperatorLoop';
 import { useLiveIndicator } from './hooks/useLiveIndicator';
+import { setBrowserLiveTraceEnabled } from '../../../shared/liveTrace.js';
 import { useChannelParticipantUpdate } from './hooks/useChannelParticipantUpdate';
 import { useCompanionMode } from './hooks/useCompanionMode';
 import { useDraftParticipantState } from './hooks/useDraftParticipantState';
@@ -498,6 +499,7 @@ export default function App() {
     channelId: liveIndicatorChannel?.id ?? null,
     busy,
     selectedChannel: liveIndicatorChannel,
+    debugTraceEnabled: readyPayload?.chat.capabilities.debugLiveTrace === true,
   });
   const {
     onComposerKeyDown,
@@ -578,6 +580,10 @@ export default function App() {
   });
 
   useProductChannelDocumentTitle('Cats Chat', routeChannelTitle);
+
+  useEffect(() => {
+    setBrowserLiveTraceEnabled(readyPayload?.chat.capabilities.debugLiveTrace === true);
+  }, [readyPayload?.chat.capabilities.debugLiveTrace]);
 
   useOnGenericDraftRouteEntry(
     showingNewChatDraft && draftRoute.isGenericNewChatRoute,

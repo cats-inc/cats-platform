@@ -6,6 +6,7 @@ import {
 } from '../../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import { requireChannel } from '../../state/model/index.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 
@@ -17,6 +18,11 @@ export interface ChannelStreamTarget {
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
+}
+
+interface ResolvedChannelStreamTarget {
+  target: ChannelStreamTarget | null;
+  reason: string | null;
 }
 
 function normalizeVisibleSpeakerLabel(label: string | null | undefined): string | null {
@@ -93,6 +99,12 @@ function buildWorkflowTargetStreamTarget(
 export function resolveChannelStreamTarget(
   channel: ReturnType<typeof requireChannel>,
 ): ChannelStreamTarget | null {
+  return resolveChannelStreamTargetWithReason(channel).target;
+}
+
+function resolveChannelStreamTargetWithReason(
+  channel: ReturnType<typeof requireChannel>,
+): ResolvedChannelStreamTarget {
   const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
   if (activeTurn?.status === 'running') {
     const prioritizedTargetStatuses = [
@@ -103,31 +115,41 @@ export function resolveChannelStreamTarget(
     for (const targetStatus of prioritizedTargetStatuses) {
       const target = buildWorkflowTargetStreamTarget(channel, targetStatus.participant);
       if (target.sessionId) {
-        return target;
+        return {
+          target,
+          reason: targetStatus.status === 'running'
+            ? 'active_workflow_running_target'
+            : 'active_workflow_pending_target',
+        };
       }
     }
 
     if (prioritizedTargetStatuses.length > 0) {
       const nextTarget = prioritizedTargetStatuses[0]!;
-      return buildWorkflowTargetStreamTarget(channel, nextTarget.participant);
+      return {
+        target: buildWorkflowTargetStreamTarget(channel, nextTarget.participant),
+        reason: nextTarget.status === 'running'
+          ? 'active_workflow_running_target_waiting_for_session'
+          : 'active_workflow_pending_target_waiting_for_session',
+      };
     }
   }
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
   if (isDirectLaneChannel(channel)) {
     if (!defaultRecipientId) {
-      return null;
+      return { target: null, reason: 'direct_lane_without_default_recipient' };
     }
     const leadTarget = buildParticipantStreamTarget(channel, defaultRecipientId);
     if (leadTarget.sessionId) {
-      return leadTarget;
+      return { target: leadTarget, reason: 'direct_lane_default_recipient' };
     }
-    return null;
+    return { target: null, reason: 'direct_lane_default_recipient_without_session' };
   }
 
   if (defaultRecipientId) {
     const leadTarget = buildParticipantStreamTarget(channel, defaultRecipientId);
     if (leadTarget.sessionId) {
-      return leadTarget;
+      return { target: leadTarget, reason: 'room_default_recipient' };
     }
   }
 
@@ -138,25 +160,30 @@ export function resolveChannelStreamTarget(
     for (const assignment of channel.catAssignments) {
       const target = buildParticipantStreamTarget(channel, assignment.participantId);
       if (target.sessionId === participantSessionId) {
-        return target;
+        return { target, reason: 'participant_session_fallback_cat_assignment' };
       }
     }
     for (const assignment of channel.participantAssignments ?? []) {
       const target = buildParticipantStreamTarget(channel, assignment.participantId);
       if (target.sessionId === participantSessionId) {
-        return target;
+        return { target, reason: 'participant_session_fallback_assignment' };
       }
     }
     return {
-      sessionId: participantSessionId,
-      participantId: null,
-      catId: null,
-      speakerLabel: null,
+      target: {
+        sessionId: participantSessionId,
+        participantId: null,
+        catId: null,
+        speakerLabel: null,
+      },
+      reason: 'participant_session_fallback_unknown_assignment',
     };
   }
 
   const orchestratorTarget = buildOrchestratorStreamTarget(channel);
-  return orchestratorTarget.sessionId ? orchestratorTarget : null;
+  return orchestratorTarget.sessionId
+    ? { target: orchestratorTarget, reason: 'orchestrator_fallback' }
+    : { target: null, reason: 'no_stream_target' };
 }
 
 export function resolveChannelStreamSessionId(
@@ -197,18 +224,43 @@ export async function waitForChannelStreamTarget(
 ): Promise<ChannelStreamTarget | null> {
   const deadline = Date.now() + CHANNEL_STREAM_SESSION_WAIT_MS;
   let lastObservedTarget: ChannelStreamTarget | null = null;
+  let lastObservedReason: string | null = null;
 
   while (!signal.aborted) {
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
-    const streamTarget = resolveChannelStreamTarget(channel);
+    const resolvedStreamTarget = resolveChannelStreamTargetWithReason(channel);
+    const streamTarget = resolvedStreamTarget.target;
     if (streamTarget) {
       lastObservedTarget = streamTarget;
+      lastObservedReason = resolvedStreamTarget.reason;
     }
     if (streamTarget?.sessionId) {
+      if (context.dependencies.config.debugLiveTrace) {
+        pushServerLiveTrace({
+          event: 'stream_target_ready',
+          channelId,
+          sessionId: streamTarget.sessionId,
+          participantId: streamTarget.participantId,
+          catId: streamTarget.catId,
+          speakerLabel: streamTarget.speakerLabel,
+          reason: resolvedStreamTarget.reason,
+        });
+      }
       return streamTarget;
     }
     if (Date.now() >= deadline) {
+      if (context.dependencies.config.debugLiveTrace) {
+        pushServerLiveTrace({
+          event: 'stream_target_timeout',
+          channelId,
+          sessionId: lastObservedTarget?.sessionId ?? null,
+          participantId: lastObservedTarget?.participantId ?? null,
+          catId: lastObservedTarget?.catId ?? null,
+          speakerLabel: lastObservedTarget?.speakerLabel ?? null,
+          reason: lastObservedReason ?? resolvedStreamTarget.reason,
+        });
+      }
       return lastObservedTarget;
     }
     await waitForStreamLease(CHANNEL_STREAM_SESSION_POLL_MS, signal);

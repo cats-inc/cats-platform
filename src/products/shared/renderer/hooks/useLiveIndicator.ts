@@ -8,6 +8,7 @@ import {
   resolveLiveIndicatorSpeakerState,
   type LiveIndicatorState,
 } from '../../../../shared/liveIndicator.js';
+import { pushBrowserLiveTrace } from '../../../../shared/liveTrace.js';
 import { isComposerDispatchBusy } from '../../../../shared/composer.js';
 import { isOptimisticDraftChannelId } from '../../channelPaths.js';
 
@@ -101,6 +102,7 @@ export function useLiveIndicator<
   channelId: string | null;
   busy: string;
   selectedChannel: TSelectedChannel | null;
+  debugTraceEnabled?: boolean;
   resolveRoutingStatus?: (selectedChannel: TSelectedChannel | null) => string | null;
   shouldShowWaitingIndicator?: (input: LiveIndicatorStreamDecisionInput) => boolean;
   shouldConnectStream?: (input: LiveIndicatorStreamDecisionInput) => boolean;
@@ -109,6 +111,7 @@ export function useLiveIndicator<
     channelId,
     busy,
     selectedChannel,
+    debugTraceEnabled = false,
     resolveRoutingStatus,
     shouldShowWaitingIndicator = defaultShouldShowWaitingIndicator,
     shouldConnectStream = defaultShouldConnectStream,
@@ -122,6 +125,32 @@ export function useLiveIndicator<
   const speakerLabel = defaultRecipientCatId
     ? null
     : resolveLiveIndicatorSpeakerLabel(selectedChannel);
+
+  function traceBrowser(event: string, input: {
+    sessionId?: string | null;
+    participantId?: string | null;
+    catId?: string | null;
+    speakerLabel?: string | null;
+    reason?: string | null;
+    details?: Record<string, unknown> | null;
+    signature?: string | null;
+  } = {}): void {
+    if (!debugTraceEnabled) {
+      return;
+    }
+
+    pushBrowserLiveTrace({
+      event,
+      channelId,
+      sessionId: readTraceString(input.sessionId),
+      participantId: readTraceString(input.participantId),
+      catId: readTraceString(input.catId),
+      speakerLabel: readTraceString(input.speakerLabel),
+      reason: readTraceString(input.reason),
+      details: input.details ?? null,
+      signature: input.signature ?? null,
+    });
+  }
 
   useEffect(() => {
     stateRef.current = state;
@@ -199,12 +228,31 @@ export function useLiveIndicator<
         routingStatus,
       });
 
+      traceBrowser('stream_event', {
+        sessionId: readTraceString(data.sessionId),
+        participantId: readTraceString(data.participantId),
+        catId: readTraceString(data.catId),
+        speakerLabel: readTraceString(data.speakerLabel),
+        reason: shouldRetrySessionClose ? 'session_close_reconnect' : null,
+        details: {
+          eventType,
+          busy,
+          routingStatus,
+        },
+      });
+
       updateIndicatorState((previous) => {
         if (!previous.active) {
           return previous;
         }
         if (shouldRetrySessionClose) {
           const nextSpeakerState = resolveLiveIndicatorSpeakerState(previous, data);
+          traceBrowser('stream_waiting_restart', {
+            participantId: readTraceString(data.participantId),
+            catId: nextSpeakerState.catId,
+            speakerLabel: nextSpeakerState.speakerLabel,
+            reason: 'session_close_reconnect',
+          });
           return createWaitingLiveIndicatorState({
             catId: nextSpeakerState.catId,
             speakerLabel: nextSpeakerState.speakerLabel,
@@ -226,6 +274,13 @@ export function useLiveIndicator<
       closeSource();
       const source = new EventSource(`/api/channels/${channelId}/stream`);
       sourceRef.current = source;
+      traceBrowser('stream_connect', {
+        reason: 'open_source',
+        details: {
+          busy,
+          routingStatus,
+        },
+      });
 
       source.addEventListener('progress', handleEvent);
       source.addEventListener('text', handleEvent);
@@ -240,6 +295,14 @@ export function useLiveIndicator<
     if (!shouldShowWaiting) {
       clearReconnectTimer();
       closeSource();
+      traceBrowser('indicator_reset', {
+        reason: 'waiting_not_needed',
+        details: {
+          busy,
+          routingStatus,
+        },
+        signature: `indicator_reset::${channelId ?? ''}::${busy}::${routingStatus ?? ''}`,
+      });
       stateRef.current = EMPTY_LIVE_INDICATOR;
       setState(EMPTY_LIVE_INDICATOR);
       return undefined;
@@ -251,6 +314,17 @@ export function useLiveIndicator<
     });
     stateRef.current = waitingState;
     setState(waitingState);
+    traceBrowser('waiting_started', {
+      participantId: defaultRecipientCatId,
+      speakerLabel,
+      reason: shouldConnectStream({ channelId, busy, routingStatus })
+        ? 'awaiting_stream_attach'
+        : 'waiting_without_stream',
+      details: {
+        busy,
+        routingStatus,
+      },
+    });
 
     if (!shouldConnectStream({ channelId, busy, routingStatus })) {
       clearReconnectTimer();
@@ -268,6 +342,7 @@ export function useLiveIndicator<
   }, [
     busy,
     channelId,
+    debugTraceEnabled,
     defaultRecipientCatId,
     routingStatus,
     speakerLabel,
@@ -276,4 +351,8 @@ export function useLiveIndicator<
   ]);
 
   return state;
+}
+
+function readTraceString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }

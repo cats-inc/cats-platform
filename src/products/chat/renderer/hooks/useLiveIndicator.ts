@@ -98,6 +98,7 @@ export function useLiveIndicator(options: {
   channelId: string | null;
   busy: string;
   selectedChannel: SelectedChannelView | null;
+  debugTraceEnabled?: boolean;
 }): LiveIndicatorState {
   return useWorkspaceLiveIndicator({
     ...options,

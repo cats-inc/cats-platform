@@ -409,6 +409,7 @@ export interface ChatCapabilities {
   maxChatParticipants: number;
   maxAudienceParticipants: number;
   maxParallelChats: number;
+  debugLiveTrace?: boolean;
   availableSurfaces: string[];
 }
 

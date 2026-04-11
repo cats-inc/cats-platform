@@ -67,6 +67,7 @@ function createCapabilities(limits?: {
   maxChatParticipants?: number;
   maxAudienceParticipants?: number;
   maxParallelChats?: number;
+  debugLiveTrace?: boolean;
   availableSurfaces?: string[];
 }): ChatCapabilities {
   return {
@@ -82,6 +83,7 @@ function createCapabilities(limits?: {
     maxChatParticipants: limits?.maxChatParticipants ?? 5,
     maxAudienceParticipants: limits?.maxAudienceParticipants ?? 3,
     maxParallelChats: limits?.maxParallelChats ?? 3,
+    debugLiveTrace: limits?.debugLiveTrace ?? false,
     availableSurfaces: limits?.availableSurfaces ?? listEnabledPlatformSurfaces(),
   };
 }

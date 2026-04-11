@@ -384,6 +384,7 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
     maxParallelChats: typeof capabilitiesRecord?.maxParallelChats === 'number' && capabilitiesRecord.maxParallelChats > 0
       ? capabilitiesRecord.maxParallelChats
       : fallback.maxParallelChats,
+    debugLiveTrace: readBoolean(capabilitiesRecord?.debugLiveTrace, fallback.debugLiveTrace ?? false),
     availableSurfaces: normalizePlatformSurfaceList(
       Array.isArray(capabilitiesRecord?.availableSurfaces)
         ? (capabilitiesRecord.availableSurfaces as unknown[]).filter((v): v is string => typeof v === 'string')

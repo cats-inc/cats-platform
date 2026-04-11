@@ -104,6 +104,7 @@ export function createAppShell(
         maxChatParticipants: config.maxChatParticipants,
         maxAudienceParticipants: config.maxAudienceParticipants,
         maxParallelChats: config.maxParallelChats,
+        debugLiveTrace: config.debugLiveTrace,
         availableSurfaces: listEnabledPlatformSurfaces(),
       },
       showVerboseMessages: chat.showVerboseMessages,
