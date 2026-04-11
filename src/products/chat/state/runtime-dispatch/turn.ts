@@ -90,15 +90,15 @@ export interface PreparedDispatchTurn {
   terminalResult: { state: ChatState; results: ChannelDispatchResult[] } | null;
 }
 
-export function prepareDispatchTurn(
+function prepareDispatchTurnForUserMessage(
   state: ChatState,
   channelId: string,
   payload: SendChannelMessageInput,
+  userMessage: ChatMessage,
   now: Date,
 ): PreparedDispatchTurn {
   let nextState = state;
   const channelAfterUserMessage = buildChannelView(nextState, channelId);
-  const userMessage = channelAfterUserMessage.messages[channelAfterUserMessage.messages.length - 1];
   const choiceResponseTarget = payload.choiceResponse
     ? resolveChoiceResponseTarget(
         nextState,
@@ -328,6 +328,56 @@ export function prepareDispatchTurn(
     maxContinuations,
     maxDispatches,
     maxTargetVisits,
-    terminalResult: null,
+      terminalResult: null,
   };
+}
+
+function findChannelUserMessage(
+  channel: ReturnType<typeof buildChannelView>,
+  messageId: string,
+): ChatMessage {
+  const userMessage = channel.messages.find((message) => message.id === messageId);
+  if (!userMessage) {
+    throw new Error(`Channel message not found: ${messageId}`);
+  }
+  if (userMessage.senderKind !== 'user') {
+    throw new Error(`Only user messages can seed a routed turn: ${messageId}`);
+  }
+  return userMessage;
+}
+
+export function prepareDispatchTurn(
+  state: ChatState,
+  channelId: string,
+  payload: SendChannelMessageInput,
+  now: Date,
+): PreparedDispatchTurn {
+  const channelAfterUserMessage = buildChannelView(state, channelId);
+  const userMessage =
+    channelAfterUserMessage.messages[channelAfterUserMessage.messages.length - 1];
+  return prepareDispatchTurnForUserMessage(
+    state,
+    channelId,
+    payload,
+    userMessage,
+    now,
+  );
+}
+
+export function prepareDispatchTurnForExistingUserMessage(
+  state: ChatState,
+  channelId: string,
+  payload: SendChannelMessageInput,
+  messageId: string,
+  now: Date,
+): PreparedDispatchTurn {
+  const channel = buildChannelView(state, channelId);
+  const userMessage = findChannelUserMessage(channel, messageId);
+  return prepareDispatchTurnForUserMessage(
+    state,
+    channelId,
+    payload,
+    userMessage,
+    now,
+  );
 }

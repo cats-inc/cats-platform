@@ -444,7 +444,7 @@ test('ChatView prefers room participants over fallback Cat names in transcript s
   assert.doesNotMatch(markup, /#11AA55/u);
 });
 
-test('ChatView gives temporary participants a live progress avatar and top-bar pulse while they are speaking', () => {
+test('ChatView gives temporary participants a live progress avatar and top-bar pulse once session startup has promoted the assistant bubble', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
     <ChatView
@@ -519,8 +519,8 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
         liveIndicator: {
           ...EMPTY_LIVE_INDICATOR,
           active: true,
-          phase: 'waiting',
-          speakerLabel: 'Gemini',
+          phase: 'streaming',
+          speakerLabel: 'Inline Reviewer',
         },
       })}
     />,
@@ -530,6 +530,169 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   assert.match(markup, /class="catAvatar transcriptAvatar channelParticipantAvatar"/u);
   assert.match(markup, /Inline Reviewer/u);
   assert.match(markup, /catAvatarPulsing/u);
+});
+
+test('ChatView keeps the last user bubble in a generic processing state before session startup', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-1',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-1',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 1,
+                targetStatuses: [
+                  {
+                    id: 'target-1',
+                    dispatchId: 'dispatch-1',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-inline',
+                      participantName: 'Inline Reviewer',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-1',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'running',
+                    queuedAt: '2026-04-07T00:01:01.000Z',
+                    startedAt: null,
+                    completedAt: null,
+                    responseMessageId: null,
+                    error: null,
+                  },
+                ],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:02.000Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'waiting',
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /userTurnStatusProcessing/u);
+  assert.match(markup, /typingDots userTurnStatusDots/u);
+  assert.doesNotMatch(markup, /typingIndicator/u);
+  assert.doesNotMatch(markup, /catAvatarPulsing/u);
+});
+
+test('ChatView shows retry only on the latest failed acknowledged user turn', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-runtime-error',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Failed to continue the message dispatch: Runtime unavailable.',
+              mentions: [],
+              metadata: {
+                event: 'runtime_error',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:03.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            lastOutcome: {
+              turnId: 'turn-1',
+              mode: 'boss_chat',
+              sourceMessageId: 'message-user',
+              sourceSenderKind: 'user',
+              sourceSenderName: 'Kenny',
+              status: 'error',
+              resolution: {
+                routingMode: 'room_default',
+                selectionKind: 'default_target',
+                defaultTarget: null,
+                defaultTargetReason: null,
+                fallbackTarget: null,
+                blockedReason: null,
+                note: null,
+              },
+              resolvedTargets: [],
+              unresolvedMentions: [],
+              dispatches: [],
+              checkpoints: [],
+              continuationCount: 0,
+              totalDispatchCount: 0,
+              guard: null,
+              startedAt: '2026-04-07T00:01:01.000Z',
+              completedAt: '2026-04-07T00:01:03.000Z',
+            },
+            workflow: {
+              activeTurn: null,
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        onRetryMessage: async () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /Response failed/u);
+  assert.match(markup, /title="Retry response"/u);
 });
 
 test('ChatView keeps live assistant progress collapsed when progress details are off', () => {

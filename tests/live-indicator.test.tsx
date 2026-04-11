@@ -227,7 +227,9 @@ test('live indicator accumulates streamed preview text and keeps active cat ids'
     speakerLabel: null,
   });
 
-  assert.deepEqual(state.activeCatIds, ['cat-1']);
+  assert.equal(state.catId, null);
+  assert.deepEqual(state.activeCatIds, []);
+  assert.equal(state.speakerLabel, null);
 
   state = applyLiveIndicatorEvent(state, 'text', {
     text: 'Hello',
@@ -282,6 +284,43 @@ test('live indicator event payload updates the active speaker metadata even with
   assert.equal(nextState.catId, null);
   assert.deepEqual(nextState.activeCatIds, []);
   assert.equal(nextState.speakerLabel, 'Gemini-CLI');
+});
+
+test('chat top-bar presence stays anonymous while the live indicator is still waiting for session startup', () => {
+  const presence = resolveChatViewTopBarPresenceState({
+    visibleLiveIndicator: {
+      ...EMPTY_LIVE_INDICATOR,
+      active: true,
+      phase: 'waiting',
+    },
+    selectedChannel: {
+      roomRouting: {
+        defaultRecipientId: 'participant-1',
+        workflow: {
+          activeTurn: {
+            targetStatuses: [
+              {
+                participant: {
+                  participantId: 'participant-1',
+                },
+                status: 'running',
+              },
+            ],
+          },
+        },
+      },
+    },
+    activeRoomParticipants: [
+      {
+        participantId: 'participant-1',
+        name: 'Claude-CLI',
+      },
+    ],
+  } as never);
+
+  assert.deepEqual(presence.activeTopBarCatIds, []);
+  assert.deepEqual(presence.activeTopBarParticipantIds, []);
+  assert.equal(presence.liveSpeakerParticipant, null);
 });
 
 test('chat top-bar presence does not pin live speaker to the default recipient once stream metadata names someone else', () => {

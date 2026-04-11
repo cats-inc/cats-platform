@@ -1,5 +1,6 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import {
+  beginChannelMessageRetryDispatch,
   beginChannelMessageDispatch,
   continueBegunChannelMessageDispatch,
   settleBegunChannelMessageDispatchFailure,
@@ -12,6 +13,7 @@ import {
 } from '../../state/model/index.js';
 import { repairChannelReadState } from '../channelRepair.js';
 import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
+import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
 import type {
   CreateChatChannelInput,
   SendChannelMessageInput,
@@ -60,6 +62,112 @@ function logBackgroundDispatchPersistenceError(
   process.stderr.write(
     `[cats-chat-dispatch] failed to persist finalized dispatch for ${channelId}: ${detail}\n`,
   );
+}
+
+function buildRestErrorPayload(code: string, message: string): {
+  error: {
+    code: string;
+    message: string;
+  };
+} {
+  return {
+    error: {
+      code,
+      message,
+    },
+  };
+}
+
+function findLatestUserMessageId(
+  channel: ReturnType<typeof requireChannel>,
+): string | null {
+  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
+    const message = channel.messages[index];
+    if (message.senderKind === 'user') {
+      return message.id;
+    }
+  }
+  return null;
+}
+
+async function continueAcknowledgedChannelDispatchInBackground(
+  context: ChatApiRouteContext,
+  channelId: string,
+  acknowledgedDispatch: Awaited<ReturnType<typeof beginChannelMessageDispatch>>,
+): Promise<void> {
+  if (!acknowledgedDispatch.preparedTurn) {
+    return;
+  }
+
+  const dispatchNow = nowFrom(context.dependencies);
+  const dispatchChatStore = createMergedDispatchChatStore({
+    chatStore: context.dependencies.chatStore,
+    mutationGate: context.dependencies.mutationGate,
+    channelId,
+    baselineState: acknowledgedDispatch.state,
+    now: () => nowFrom(context.dependencies),
+  });
+  try {
+    await continueBegunChannelMessageDispatch(
+      acknowledgedDispatch,
+      channelId,
+      context.dependencies.runtimeClient,
+      dispatchNow,
+      {
+        companionStore: context.dependencies.companionStore,
+        memoryService: context.dependencies.memoryService,
+        chatStore: dispatchChatStore,
+        chatStatePath: context.dependencies.config.chatStatePath,
+        runtimeDataDir: context.dependencies.config.runtimeDataDir,
+        runtimeRecovery: {
+          staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
+        },
+        cancellationRegistry: channelDispatchCancellationRegistry,
+      },
+    );
+  } catch (error) {
+    try {
+      await context.dependencies.mutationGate.run(channelId, async () => {
+        const latestState = await context.dependencies.chatStore.read();
+        if (!latestState.channels.some((channel) => channel.id === channelId)) {
+          return;
+        }
+        const settled = await settleBegunChannelMessageDispatchFailure(
+          acknowledgedDispatch,
+          channelId,
+          error,
+          dispatchNow,
+          {
+            latestState,
+          },
+        );
+        if (settled.state.selectedChannelId === channelId) {
+          requireChannel(settled.state, channelId).unreadCount = 0;
+        }
+        await context.dependencies.chatStore.write(settled.state);
+      });
+    } catch (persistError) {
+      logBackgroundDispatchPersistenceError(channelId, persistError);
+    }
+    publishChannelMutationEvents(context, channelId, 'updated');
+    return;
+  }
+
+  try {
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      const latestState = await context.dependencies.chatStore.read();
+      if (!latestState.channels.some((channel) => channel.id === channelId)) {
+        return;
+      }
+      if (latestState.selectedChannelId === channelId) {
+        requireChannel(latestState, channelId).unreadCount = 0;
+        await context.dependencies.chatStore.write(latestState);
+      }
+    });
+  } catch (persistError) {
+    logBackgroundDispatchPersistenceError(channelId, persistError);
+  }
+  publishChannelMutationEvents(context, channelId, 'updated');
 }
 
 
@@ -286,79 +394,135 @@ async function handleRestSendMessage(
       begunDispatch;
 
     publishChannelMutationEvents(context, channelId, 'message_added');
-    if (!acknowledgedDispatch.preparedTurn) {
-      return;
-    }
     void (async () => {
-      const dispatchNow = nowFrom(context.dependencies);
-      const dispatchChatStore = createMergedDispatchChatStore({
-        chatStore: context.dependencies.chatStore,
-        mutationGate: context.dependencies.mutationGate,
+      await continueAcknowledgedChannelDispatchInBackground(
+        context,
         channelId,
-        baselineState: acknowledgedDispatch.state,
-        now: () => nowFrom(context.dependencies),
-      });
-      try {
-        await continueBegunChannelMessageDispatch(
-          acknowledgedDispatch,
-          channelId,
-          context.dependencies.runtimeClient,
-          dispatchNow,
-          {
-            companionStore: context.dependencies.companionStore,
-            memoryService: context.dependencies.memoryService,
-            chatStore: dispatchChatStore,
-            chatStatePath: context.dependencies.config.chatStatePath,
-            runtimeDataDir: context.dependencies.config.runtimeDataDir,
-            runtimeRecovery: {
-              staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
-            },
-            cancellationRegistry: channelDispatchCancellationRegistry,
-          },
+        acknowledgedDispatch,
+      );
+    })();
+  } catch (error) {
+    handleRestError(context, error);
+  }
+}
+
+async function handleRestRetryMessage(
+  context: ChatApiRouteContext,
+  chatScopeId: string,
+  channelId: string,
+  messageId: string,
+): Promise<void> {
+  try {
+    requireValidChatScopeId(chatScopeId);
+    let acknowledgedDispatch:
+      | Awaited<ReturnType<typeof beginChannelMessageRetryDispatch>>
+      | null = null;
+
+    await context.dependencies.mutationGate.run(channelId, async () => {
+      const state = await context.dependencies.chatStore.read();
+      const channel = requireChannel(state, channelId);
+      const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+      const retryMessage = channel.messages.find((message) => message.id === messageId);
+      if (!retryMessage) {
+        sendJson(
+          context.response,
+          404,
+          buildRestErrorPayload(
+            'message_not_found',
+            'Message not found.',
+          ),
         );
-      } catch (error) {
-        try {
-          await context.dependencies.mutationGate.run(channelId, async () => {
-            const latestState = await context.dependencies.chatStore.read();
-            if (!latestState.channels.some((channel) => channel.id === channelId)) {
-              return;
-            }
-            const settled = await settleBegunChannelMessageDispatchFailure(
-              acknowledgedDispatch,
-              channelId,
-              error,
-              dispatchNow,
-              {
-                latestState,
-              },
-            );
-            if (settled.state.selectedChannelId === channelId) {
-              requireChannel(settled.state, channelId).unreadCount = 0;
-            }
-            await context.dependencies.chatStore.write(settled.state);
-          });
-        } catch (persistError) {
-          logBackgroundDispatchPersistenceError(channelId, persistError);
-        }
-        publishChannelMutationEvents(context, channelId, 'updated');
+        return;
+      }
+      if (retryMessage.senderKind !== 'user') {
+        sendJson(
+          context.response,
+          400,
+          buildRestErrorPayload(
+            'message_retry_invalid_sender',
+            'Only user messages can be retried.',
+          ),
+        );
+        return;
+      }
+      if (roomRouting.workflow.activeTurn) {
+        sendJson(
+          context.response,
+          409,
+          buildRestErrorPayload(
+            'message_retry_in_progress',
+            'Cannot retry while this room already has an active turn.',
+          ),
+        );
+        return;
+      }
+      if (findLatestUserMessageId(channel) !== messageId) {
+        sendJson(
+          context.response,
+          409,
+          buildRestErrorPayload(
+            'message_retry_not_latest',
+            'Only the latest acknowledged user message can be retried.',
+          ),
+        );
+        return;
+      }
+      if (
+        roomRouting.lastOutcome?.sourceMessageId !== messageId
+        || roomRouting.lastOutcome.status !== 'error'
+      ) {
+        sendJson(
+          context.response,
+          409,
+          buildRestErrorPayload(
+            'message_retry_not_available',
+            'Retry is only available for the latest failed acknowledged user message.',
+          ),
+        );
         return;
       }
 
-      try {
-        await context.dependencies.mutationGate.run(channelId, async () => {
-          const latestState = await context.dependencies.chatStore.read();
-          if (!latestState.channels.some((channel) => channel.id === channelId)) {
-            return;
-          }
-          if (latestState.selectedChannelId === channelId) {
-            requireChannel(latestState, channelId).unreadCount = 0;
-            await context.dependencies.chatStore.write(latestState);
-          }
-        });
-      } catch (persistError) {
-        logBackgroundDispatchPersistenceError(channelId, persistError);
-      }
-      publishChannelMutationEvents(context, channelId, 'updated');
+      acknowledgedDispatch = await beginChannelMessageRetryDispatch(
+        state,
+        channelId,
+        messageId,
+        context.dependencies.runtimeClient,
+        nowFrom(context.dependencies),
+        {
+          companionStore: context.dependencies.companionStore,
+          memoryService: context.dependencies.memoryService,
+          chatStore: context.dependencies.chatStore,
+          chatStatePath: context.dependencies.config.chatStatePath,
+          runtimeDataDir: context.dependencies.config.runtimeDataDir,
+          runtimeRecovery: {
+            staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
+          },
+          cancellationRegistry: channelDispatchCancellationRegistry,
+        },
+      );
+      const appShell = await buildAppShellPayload(
+        context.dependencies,
+        acknowledgedDispatch.state,
+      );
+      sendJson(context.response, 200, {
+        appShell,
+        phase: 'acknowledged',
+        message: acknowledgedDispatch.userMessage,
+        results: acknowledgedDispatch.results,
+      });
+    });
+
+    if (!acknowledgedDispatch) {
+      return;
+    }
+
+    publishChannelMutationEvents(context, channelId, 'updated');
+    void (async () => {
+      await continueAcknowledgedChannelDispatchInBackground(
+        context,
+        channelId,
+        acknowledgedDispatch,
+      );
     })();
   } catch (error) {
     handleRestError(context, error);
@@ -410,6 +574,24 @@ export async function routeChatChannelResourceApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  const canonicalChannelMessageRetryMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/channels\/([^/]+)\/messages\/([^/]+)\/retry$/u,
+  );
+  if (canonicalChannelMessageRetryMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleRestRetryMessage(
+      context,
+      DEFAULT_CHAT_SCOPE_ID,
+      canonicalChannelMessageRetryMatch[0]!,
+      canonicalChannelMessageRetryMatch[1]!,
+    );
     return true;
   }
 

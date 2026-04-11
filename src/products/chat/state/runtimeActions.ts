@@ -1,4 +1,5 @@
 export {
+  beginChannelMessageRetryDispatch,
   beginChannelMessageDispatch,
   continueBegunChannelMessageDispatch,
   routeChannelMessage,

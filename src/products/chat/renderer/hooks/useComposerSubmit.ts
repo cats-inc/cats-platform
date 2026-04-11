@@ -29,6 +29,7 @@ import {
   cancelParallelChatGroup,
   createChatChannel,
   fetchAppShell,
+  retryChatMessage,
   sendChatMessage,
   updateSelectedChannel,
   uploadChannelAttachments,
@@ -507,11 +508,73 @@ export function useComposerSubmit(options: {
   const { onSendMessage, onComposerKeyDown } =
     useComposerSubmitBindings(submitComposerMessage);
 
+  const onRetryMessage = useCallback(async (messageId: string): Promise<void> => {
+    if (state.status !== 'ready' || !selectedChannel || !messageId.trim()) {
+      return;
+    }
+
+    const channelId = selectedChannel.id;
+    setFeedback('');
+    const { id: submitId, controller: ackController } = beginAckRequest();
+    let keepBusyAfterReturn = false;
+
+    try {
+      setBusy(`message:ack:${channelId}`);
+      const dispatch = await retryChatMessage(
+        channelId,
+        messageId,
+        ackController.signal,
+      );
+      clearAckRequestIfCurrent(submitId);
+      setState({ status: 'ready', payload: dispatch.appShell });
+      if (isChannelDispatchRunning(dispatch.appShell, channelId)) {
+        setActiveDispatchRequest({
+          id: submitId,
+          kind: 'channel',
+          channelId,
+        });
+        setBusy(`message:send:${channelId}`);
+        keepBusyAfterReturn = true;
+      } else {
+        setActiveDispatchRequest(null);
+      }
+      setFeedback('');
+    } catch (error) {
+      clearAckRequestIfCurrent(submitId);
+      if (activeDispatchRequestRef.current?.id === submitId) {
+        setActiveDispatchRequest(null);
+      }
+      if (isAbortError(error)) {
+        setFeedback('');
+      } else {
+        setFeedback(error instanceof Error ? error.message : 'Failed to retry response.');
+      }
+    } finally {
+      if (!keepBusyAfterReturn) {
+        clearAckRequestIfCurrent(submitId);
+        clearDispatchRequestIfCurrent(submitId);
+        setBusy('');
+      }
+    }
+  }, [
+    activeDispatchRequestRef,
+    beginAckRequest,
+    clearAckRequestIfCurrent,
+    clearDispatchRequestIfCurrent,
+    selectedChannel,
+    setActiveDispatchRequest,
+    setBusy,
+    setFeedback,
+    setState,
+    state,
+  ]);
+
   return {
     onComposerKeyDown,
     onCancelPendingSend,
     onSendMessage,
     onStopMessage,
+    onRetryMessage,
     submitComposerMessage,
   };
 }

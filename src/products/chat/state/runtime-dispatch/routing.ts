@@ -37,6 +37,7 @@ import {
 } from '../runtimeTargeting.js';
 import {
   prepareDispatchTurn,
+  prepareDispatchTurnForExistingUserMessage,
 } from './turn.js';
 import type {
   ChannelDispatchCancellationRegistry,
@@ -68,6 +69,60 @@ interface RouteChannelMessageOptions {
   chatStatePath?: string;
   runtimeDataDir?: string;
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
+}
+
+function readMessageRetryMetadata(
+  message: ChatMessage,
+): SendChannelMessageInput['messageMetadata'] | undefined {
+  const candidateMetadata = message.metadata ?? {};
+  const recipientParticipantIds = Array.isArray(candidateMetadata.recipientParticipantIds)
+    ? candidateMetadata.recipientParticipantIds.filter(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0,
+      )
+    : [];
+  const workflowShape = candidateMetadata.workflowShape;
+  const normalizedWorkflowShape =
+    workflowShape === 'sequential'
+      || workflowShape === 'concurrent'
+      || workflowShape === 'converge'
+      || workflowShape === 'parallel'
+      ? workflowShape
+      : null;
+
+  if (recipientParticipantIds.length === 0 && !normalizedWorkflowShape) {
+    return undefined;
+  }
+
+  return {
+    ...(recipientParticipantIds.length > 0
+      ? {
+          recipientParticipantIds,
+        }
+      : {}),
+    ...(normalizedWorkflowShape
+      ? {
+          workflowShape: normalizedWorkflowShape,
+        }
+      : {}),
+  };
+}
+
+function buildRetrySendPayload(message: ChatMessage): SendChannelMessageInput {
+  const messageMetadata = readMessageRetryMetadata(message);
+  return {
+    body: message.body,
+    senderName: message.senderName,
+    ...(message.choiceResponse
+      ? {
+          choiceResponse: message.choiceResponse,
+        }
+      : {}),
+    ...(messageMetadata
+      ? {
+          messageMetadata,
+        }
+      : {}),
+  };
 }
 
 function normalizePendingTargetValue(value: string | null | undefined): string | null {
@@ -214,6 +269,51 @@ export async function beginChannelMessageDispatch(
     results: preparedTurn.results,
     preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
     userMessage: preparedTurn.userMessage,
+  };
+}
+
+export async function beginChannelMessageRetryDispatch(
+  state: ChatState,
+  channelId: string,
+  sourceMessageId: string,
+  _runtimeClient: RuntimeClient,
+  now: Date = new Date(),
+  options: RouteChannelMessageOptions = {},
+): Promise<BegunChannelMessageDispatch> {
+  const channel = requireChannel(state, channelId);
+  const sourceMessage = channel.messages.find((message) => message.id === sourceMessageId);
+  if (!sourceMessage) {
+    throw new Error(`Channel message not found: ${sourceMessageId}`);
+  }
+  if (sourceMessage.senderKind !== 'user') {
+    throw new Error(`Only user messages can be retried: ${sourceMessageId}`);
+  }
+
+  const preparedTurn = prepareDispatchTurnForExistingUserMessage(
+    state,
+    channelId,
+    buildRetrySendPayload(sourceMessage),
+    sourceMessageId,
+    now,
+  );
+  const nextState = await persistInFlightDispatchState(
+    options.chatStore,
+    materializeInFlightDispatchState(
+      preparedTurn.state,
+      channelId,
+      preparedTurn.baseRoomRouting,
+      preparedTurn.workflow,
+      preparedTurn.outcome,
+      preparedTurn.latestCheckpoint,
+      now,
+    ),
+  );
+
+  return {
+    state: nextState,
+    results: preparedTurn.results,
+    preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
+    userMessage: sourceMessage,
   };
 }
 

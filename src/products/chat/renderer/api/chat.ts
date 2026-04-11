@@ -152,6 +152,28 @@ export async function sendChatMessage(
   return sendWorkspaceChatMessage(channelId, input, signal) as Promise<SendChannelMessageResponse>;
 }
 
+export async function retryChatMessage(
+  channelId: string,
+  messageId: string,
+  signal?: AbortSignal,
+): Promise<SendChannelMessageResponse> {
+  const response = await fetch(
+    `/api/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}/retry`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal,
+    },
+  );
+
+  return expectJson<SendChannelMessageResponse>(
+    response,
+    `channel message retry returned ${response.status}`,
+  );
+}
+
 export async function cancelChatChannel(
   channelId: string,
   signal?: AbortSignal,

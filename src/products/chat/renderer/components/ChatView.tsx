@@ -60,6 +60,7 @@ import {
   buildChatComposerRecipients,
   buildChatComposerStackParticipants,
   buildChoiceResponsesBySource,
+  resolveLatestUserTurnPresentationState,
   messageStackTone,
   resolveChatComposerViewState,
   resolveChatViewCompareState,
@@ -97,6 +98,7 @@ export interface ChatViewProps {
   onChannelFilesChange: (files: File[]) => void;
   onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
+  onRetryMessage?: (messageId: string) => Promise<void>;
   onResumeChannel?: () => void;
   onOperatorAction: (input: {
     action: 'retry' | 'acknowledge';
@@ -153,6 +155,7 @@ export function ChatView({
   onChannelFilesChange,
   onApprovalDecision,
   onChoiceSubmit,
+  onRetryMessage,
   onResumeChannel,
   onOperatorAction,
   autoResize,
@@ -284,6 +287,13 @@ export function ChatView({
   const choiceResponsesBySource = useMemo(
     () => buildChoiceResponsesBySource(selectedChannel.messages),
     [selectedChannel.messages],
+  );
+  const latestUserTurnPresentation = useMemo(
+    () => resolveLatestUserTurnPresentationState({
+      selectedChannel,
+      visibleLiveIndicator,
+    }),
+    [selectedChannel, visibleLiveIndicator],
   );
   const runIdsKey = useMemo(
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
@@ -563,6 +573,9 @@ export function ChatView({
               isCompareGroup={isCompareGroup}
               choiceResponsesBySource={choiceResponsesBySource}
               onChoiceSubmit={onChoiceSubmit}
+              latestUserTurnMessageId={latestUserTurnPresentation.messageId}
+              latestUserTurnStatus={latestUserTurnPresentation.status}
+              onRetryMessage={onRetryMessage}
               onRelayMessage={onRelayMessage}
               liveIndicator={visibleLiveIndicator ?? undefined}
               liveSpeakerParticipant={liveSpeakerParticipant}

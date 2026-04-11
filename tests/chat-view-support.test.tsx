@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveChatComposerViewState } from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
+import {
+  resolveChatComposerViewState,
+  resolveLatestUserTurnPresentationState,
+} from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
+import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 
 test('resolveChatComposerViewState treats pre-ACK prepare as a cancelable composer busy state', () => {
   const result = resolveChatComposerViewState({
@@ -56,4 +60,105 @@ test('resolveChatComposerViewState does not leak ACK cancel state into other cha
 
   assert.equal(result.composerAckBusy, false);
   assert.equal(result.showCancelComposerAction, false);
+});
+
+test('resolveLatestUserTurnPresentationState shows processing only before the first assistant identity bubble', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            sourceMessageId: 'message-user',
+            status: 'running',
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: {
+      ...EMPTY_LIVE_INDICATOR,
+      active: true,
+      phase: 'waiting',
+    },
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'processing',
+  });
+});
+
+test('resolveLatestUserTurnPresentationState stops user-bubble processing once an assistant bubble is identity-ready', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            sourceMessageId: 'message-user',
+            status: 'running',
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: {
+      ...EMPTY_LIVE_INDICATOR,
+      active: true,
+      phase: 'streaming',
+      speakerLabel: 'Codex-CLI',
+    },
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'idle',
+  });
+});
+
+test('resolveLatestUserTurnPresentationState marks the latest failed acknowledged user turn as retryable', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+        {
+          id: 'message-error',
+          senderKind: 'system',
+          createdAt: '2026-04-11T00:00:02.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: {
+          sourceMessageId: 'message-user',
+          status: 'error',
+        },
+        workflow: {
+          activeTurn: null,
+        },
+      },
+    } as never,
+    visibleLiveIndicator: null,
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'failed',
+  });
 });

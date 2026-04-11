@@ -67,10 +67,11 @@ export function createWaitingLiveIndicatorState(input: {
   return {
     active: true,
     phase: 'waiting',
-    catId: input.catId,
-    activeCatIds: input.catId ? [input.catId] : [],
+    // Waiting is intentionally anonymous until session startup is confirmed.
+    catId: null,
+    activeCatIds: [],
     catName: null,
-    speakerLabel: input.speakerLabel,
+    speakerLabel: null,
     progressText: '',
     previewText: '',
     progressKind: null,

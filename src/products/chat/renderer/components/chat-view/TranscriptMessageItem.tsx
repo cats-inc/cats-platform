@@ -32,8 +32,11 @@ export interface TranscriptMessageItemProps {
   choiceBusy: boolean;
   isCompareGroup: boolean;
   relayMenuOpen: boolean;
+  userTurnStatus: 'idle' | 'processing' | 'failed';
+  retryBusy: boolean;
   existingChoiceResponse?: ChatMessageChoiceResponse | null;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
+  onRetryMessage?: (messageId: string) => Promise<void>;
   onCopyMessage: (body: string) => Promise<void>;
   onToggleRelayMenu: () => void;
   onCloseRelayMenu: () => void;
@@ -73,8 +76,11 @@ export function TranscriptMessageItem({
   choiceBusy,
   isCompareGroup,
   relayMenuOpen,
+  userTurnStatus,
+  retryBusy,
   existingChoiceResponse = null,
   onChoiceSubmit,
+  onRetryMessage,
   onCopyMessage,
   onToggleRelayMenu,
   onCloseRelayMenu,
@@ -154,6 +160,14 @@ export function TranscriptMessageItem({
             disabledMentionNames={disabledMentionNames}
           />
         ) : null}
+        {message.senderKind === 'user' && userTurnStatus === 'processing' ? (
+          <div className="userTurnStatus userTurnStatusProcessing" aria-label="Preparing response">
+            <span className="typingDots userTurnStatusDots" aria-hidden="true"><span /><span /><span /></span>
+          </div>
+        ) : null}
+        {message.senderKind === 'user' && userTurnStatus === 'failed' ? (
+          <div className="userTurnStatus userTurnStatusFailed">Response failed</div>
+        ) : null}
       </div>
       <TranscriptMessageActions
         messageId={message.id}
@@ -162,6 +176,9 @@ export function TranscriptMessageItem({
         compareBusy={compareBusy}
         isCompareGroup={isCompareGroup}
         relayMenuOpen={relayMenuOpen}
+        showRetryAction={userTurnStatus === 'failed'}
+        retryBusy={retryBusy}
+        onRetryMessage={onRetryMessage}
         onCopyMessage={onCopyMessage}
         onToggleRelayMenu={onToggleRelayMenu}
         onCloseRelayMenu={onCloseRelayMenu}

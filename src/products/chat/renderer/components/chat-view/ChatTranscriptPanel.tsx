@@ -37,6 +37,9 @@ export interface ChatTranscriptPanelProps {
   isCompareGroup: boolean;
   choiceResponsesBySource: Map<string, ChatMessageChoiceResponse>;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
+  latestUserTurnMessageId: string | null;
+  latestUserTurnStatus: 'idle' | 'processing' | 'failed';
+  onRetryMessage?: (messageId: string) => Promise<void>;
   onRelayMessage?: (messageId: string, command: ParallelChatRelayCommandKind) => Promise<void>;
   liveIndicator?: LiveIndicatorState;
   liveSpeakerParticipant: ResolvedChannelParticipant | null;
@@ -82,6 +85,9 @@ export function ChatTranscriptPanel({
   isCompareGroup,
   choiceResponsesBySource,
   onChoiceSubmit,
+  latestUserTurnMessageId,
+  latestUserTurnStatus,
+  onRetryMessage,
   onRelayMessage,
   liveIndicator,
   liveSpeakerParticipant,
@@ -146,8 +152,15 @@ export function ChatTranscriptPanel({
             choiceBusy={busy.startsWith(`choice:${message.id}:`)}
             isCompareGroup={isCompareGroup}
             relayMenuOpen={openRelayMenuId === message.id}
+            userTurnStatus={
+              message.senderKind === 'user' && message.id === latestUserTurnMessageId
+                ? latestUserTurnStatus
+                : 'idle'
+            }
+            retryBusy={busy.length > 0}
             existingChoiceResponse={choiceResponsesBySource.get(message.id) ?? null}
             onChoiceSubmit={onChoiceSubmit}
+            onRetryMessage={onRetryMessage}
             onCopyMessage={copyMessageBody}
             onToggleRelayMenu={() =>
               setOpenRelayMenuId((current) =>
@@ -163,7 +176,7 @@ export function ChatTranscriptPanel({
             resolveParticipantDisplayName={resolveParticipantDisplayName}
           />
         ))}
-        {liveIndicator?.active ? (
+        {liveIndicator?.active && liveIndicator.phase === 'streaming' ? (
           <LiveTranscriptIndicator
             cats={cats}
             bossCatId={bossCatId}

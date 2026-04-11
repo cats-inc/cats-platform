@@ -504,6 +504,7 @@ export default function App() {
     onCancelPendingSend,
     onSendMessage,
     onStopMessage,
+    onRetryMessage,
   } = useComposerSubmit({
     state,
     setState,
@@ -757,6 +758,7 @@ export default function App() {
                   onSendMessage,
                   onCancelPendingSend,
                   onStopMessage,
+                  onRetryMessage,
                   onToggleChannelPlusMenu: toggleChannelPlusMenu,
                   onChannelFileSelect: openChannelFilePicker,
                   onChannelFilesChange: setChannelFiles,

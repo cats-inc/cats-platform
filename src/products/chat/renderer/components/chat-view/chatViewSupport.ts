@@ -42,6 +42,11 @@ export interface ChatViewTopBarPresenceState {
   liveSpeakerParticipant: ResolvedChannelParticipant | null;
 }
 
+export interface LatestUserTurnPresentationState {
+  messageId: string | null;
+  status: 'idle' | 'processing' | 'failed';
+}
+
 export function messageStackTone(senderKind: string): string {
   switch (senderKind) {
     case 'user':
@@ -172,17 +177,99 @@ export function buildChoiceResponsesBySource(
   return responses;
 }
 
+function findLatestUserMessage(
+  messages: SelectedChannelView['messages'],
+): SelectedChannelView['messages'][number] | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.senderKind === 'user') {
+      return message;
+    }
+  }
+  return null;
+}
+
+function hasVisibleAssistantReplyAfterMessage(
+  messages: SelectedChannelView['messages'],
+  messageId: string,
+): boolean {
+  const sourceIndex = messages.findIndex((message) => message.id === messageId);
+  if (sourceIndex === -1) {
+    return false;
+  }
+
+  return messages.slice(sourceIndex + 1).some((message) =>
+    message.senderKind !== 'user' && message.senderKind !== 'system');
+}
+
+export function resolveLatestUserTurnPresentationState(input: {
+  selectedChannel: SelectedChannelView;
+  visibleLiveIndicator: LiveIndicatorState | null | undefined;
+}): LatestUserTurnPresentationState {
+  const latestUserMessage = findLatestUserMessage(input.selectedChannel.messages);
+  if (!latestUserMessage) {
+    return {
+      messageId: null,
+      status: 'idle',
+    };
+  }
+
+  const activeTurn = input.selectedChannel.roomRouting.workflow.activeTurn ?? null;
+  const lastOutcome = input.selectedChannel.roomRouting.lastOutcome ?? null;
+  const hasAssistantIdentityBubble = Boolean(
+    input.visibleLiveIndicator?.active
+    && input.visibleLiveIndicator.phase === 'streaming'
+  );
+  const hasVisibleAssistantReply = hasVisibleAssistantReplyAfterMessage(
+    input.selectedChannel.messages,
+    latestUserMessage.id,
+  );
+
+  if (
+    activeTurn?.sourceMessageId === latestUserMessage.id
+    && (activeTurn.status === 'running' || activeTurn.status === 'pending')
+    && !hasAssistantIdentityBubble
+    && !hasVisibleAssistantReply
+  ) {
+    return {
+      messageId: latestUserMessage.id,
+      status: 'processing',
+    };
+  }
+
+  if (
+    lastOutcome?.sourceMessageId === latestUserMessage.id
+    && lastOutcome.status === 'error'
+  ) {
+    return {
+      messageId: latestUserMessage.id,
+      status: 'failed',
+    };
+  }
+
+  return {
+    messageId: latestUserMessage.id,
+    status: 'idle',
+  };
+}
+
 export function resolveChatViewTopBarPresenceState(input: {
   visibleLiveIndicator: LiveIndicatorState | null | undefined;
   selectedChannel: SelectedChannelView;
   activeRoomParticipants: ResolvedChannelParticipant[];
 }): ChatViewTopBarPresenceState {
+  const liveIndicatorStreaming = input.visibleLiveIndicator?.phase === 'streaming';
   const liveIndicatorHasExplicitSpeaker = Boolean(
-    input.visibleLiveIndicator?.speakerLabel
-    || input.visibleLiveIndicator?.catId
-    || (input.visibleLiveIndicator?.activeCatIds.length ?? 0) > 0,
+    liveIndicatorStreaming && (
+      input.visibleLiveIndicator?.speakerLabel
+      || input.visibleLiveIndicator?.catId
+      || (input.visibleLiveIndicator?.activeCatIds.length ?? 0) > 0
+    )
   );
   const activeTopBarCatIds = (() => {
+    if (!liveIndicatorStreaming) {
+      return [];
+    }
     const ids = input.visibleLiveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
     if (ids.length > 0) {
       return [...new Set(ids)];
@@ -194,6 +281,9 @@ export function resolveChatViewTopBarPresenceState(input: {
   })();
 
   const activeTopBarParticipantIds = (() => {
+    if (!liveIndicatorStreaming) {
+      return [];
+    }
     const workflowTargets = input.selectedChannel.roomRouting?.workflow?.activeTurn?.targetStatuses ?? [];
     const runningParticipantIds = workflowTargets
       .filter((target) => target.status === 'running')
@@ -217,7 +307,11 @@ export function resolveChatViewTopBarPresenceState(input: {
     if (activeWorkflowParticipantId) {
       return activeWorkflowParticipantId;
     }
-    if (input.visibleLiveIndicator?.active && !liveIndicatorHasExplicitSpeaker) {
+    if (
+      liveIndicatorStreaming
+      && input.visibleLiveIndicator?.active
+      && !liveIndicatorHasExplicitSpeaker
+    ) {
       return input.selectedChannel.roomRouting?.defaultRecipientId ?? null;
     }
     return null;

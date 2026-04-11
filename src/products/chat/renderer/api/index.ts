@@ -42,6 +42,7 @@ export {
   deleteGlobalCat,
   relayParallelChatMessage,
   removeCatFromChannelApi,
+  retryChatMessage,
   sendParallelChatMessage,
   sendChatMessage,
   ungroupParallelChatGroup,

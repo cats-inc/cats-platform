@@ -164,6 +164,31 @@
   opacity: 1;
 }
 
+.userTurnStatus {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.userTurnStatusProcessing {
+  min-height: 18px;
+}
+
+.userTurnStatusDots {
+  height: 18px;
+}
+
+.userTurnStatusDots span {
+  width: 5px;
+  height: 5px;
+}
+
+.userTurnStatusFailed {
+  color: color-mix(in srgb, #b42318 72%, var(--text) 28%);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
 .messageActionsPersistent {
   opacity: 1;
 }
