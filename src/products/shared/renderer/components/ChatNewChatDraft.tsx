@@ -21,7 +21,11 @@ import {
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
-import { buildCatExecutionLabel, buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import {
+  buildAudienceParticipantFromCat,
+  buildAudienceParticipantFromModel,
+  buildAudienceParticipantFromTemporaryParticipant,
+} from '../audienceParticipantBuilder.js';
 import { AudienceChip } from './AudienceChip.js';
 
 export interface NewChatDraftProps {
@@ -207,16 +211,7 @@ export function NewChatDraft({
   const audienceParticipants: typeof groupComposerParticipants = (() => {
     // Parallel mode: first target as implicit participant
     if (isParallelMode && parallelTargets?.[0]) {
-      return [{
-        key: 'parallel:0',
-        name: buildModelSelectorLabel(parallelTargets[0]),
-        executionLabel: buildModelSelectorLabel(parallelTargets[0]),
-        avatarColor: null,
-        avatarUrl: null,
-        isCat: false,
-        catId: null,
-        participantId: null,
-      }];
+      return [buildAudienceParticipantFromModel(parallelTargets[0], 'parallel:0')];
     }
 
     if (isGroupDraft) {
@@ -229,47 +224,15 @@ export function NewChatDraft({
 
     // Single participant modes: cat or temporary participant
     if (effectiveDefaultRecipientCat) {
-      return [{
-        key: `cat:${effectiveDefaultRecipientCat.id}`,
-        name: effectiveDefaultRecipientCat.name,
-        executionLabel: effectiveDefaultRecipientCat.defaultExecutionTarget
-          ? buildCatExecutionLabel(effectiveDefaultRecipientCat as Parameters<typeof buildCatExecutionLabel>[0])
-          : null,
-        avatarColor: effectiveDefaultRecipientCat.avatarColor ?? null,
-        avatarUrl: effectiveDefaultRecipientCat.avatarUrl ?? null,
-        isCat: true,
-        catId: effectiveDefaultRecipientCat.id,
-        participantId: null,
-      }];
+      return [buildAudienceParticipantFromCat(effectiveDefaultRecipientCat)];
     }
     if (effectiveDefaultRecipientTemporaryParticipant) {
-      const tp = effectiveDefaultRecipientTemporaryParticipant;
-      return [{
-        key: `temp:${tp.participantId}`,
-        name: tp.name,
-        executionLabel: tp.provider
-          ? buildExecutionLabel(tp.provider, tp.instance ?? null, tp.model ?? null, null, resolveControlDisplayLabels(tp.modelSelection?.controls))
-          : null,
-        avatarColor: null,
-        avatarUrl: null,
-        isCat: false,
-        catId: null,
-        participantId: tp.participantId,
-      }];
+      return [buildAudienceParticipantFromTemporaryParticipant(effectiveDefaultRecipientTemporaryParticipant)];
     }
 
     // Solo implicit: use model selector value
     if (activePanelModel) {
-      return [{
-        key: 'implicit:model',
-        name: buildModelSelectorLabel(activePanelModel),
-        executionLabel: buildModelSelectorLabel(activePanelModel),
-        avatarColor: null,
-        avatarUrl: null,
-        isCat: false,
-        catId: null,
-        participantId: null,
-      }];
+      return [buildAudienceParticipantFromModel(activePanelModel)];
     }
 
     return [];
@@ -621,16 +584,7 @@ export function NewChatDraft({
             {parallelTargets.slice(1).map((target, i, arr) => (
               <div key={i + 1} className="parallelStubCard" style={{ zIndex: arr.length - i }}>
                 <AudienceChip
-                  audienceParticipants={[{
-                    key: `parallel:${i + 1}`,
-                    name: buildModelSelectorLabel(target),
-                    executionLabel: buildModelSelectorLabel(target),
-                    avatarColor: null,
-                    avatarUrl: null,
-                    isCat: false,
-                    catId: null,
-                    participantId: null,
-                  }]}
+                  audienceParticipants={[buildAudienceParticipantFromModel(target, `parallel:${i + 1}`)]}
                   onSingleClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo(`parallel:${i + 1}`)}
                   disabled={isSubmittingFirstTurn}
                 />

@@ -1,12 +1,13 @@
 import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
 import type { SelectedChannelView } from '../../workspaceChatUtils.js';
 import {
-  buildModelSelectorLabel,
   type ModelSelectorValue,
 } from '../ModelSelector.js';
-import { buildCatExecutionLabel } from '../../../../../shared/executionLabel.js';
 import { AudienceChip } from '../AudienceChip.js';
-import type { DraftComposerStackParticipant } from '../chatNewChatDraftSupport.js';
+import {
+  buildAudienceParticipantFromCat,
+  buildAudienceParticipantFromModel,
+} from '../../audienceParticipantBuilder.js';
 
 export interface WorkspaceComposerTargetSlotProps {
   payload: AppShellPayload;
@@ -19,21 +20,6 @@ export interface WorkspaceComposerTargetSlotProps {
   isDirectLane: boolean;
   isSoloComposer: boolean;
   onOpenSection: (section: string) => void;
-}
-
-function catToAudienceParticipant(cat: ChatCat): DraftComposerStackParticipant {
-  return {
-    key: `cat:${cat.id}`,
-    name: cat.name,
-    executionLabel: cat.defaultExecutionTarget
-      ? buildCatExecutionLabel(cat as Parameters<typeof buildCatExecutionLabel>[0])
-      : null,
-    avatarColor: cat.avatarColor ?? null,
-    avatarUrl: cat.avatarUrl ?? null,
-    isCat: true,
-    catId: cat.id,
-    participantId: null,
-  };
 }
 
 export function WorkspaceComposerTargetSlot({
@@ -51,7 +37,7 @@ export function WorkspaceComposerTargetSlot({
   if (isDirectLane && directLaneCat) {
     return (
       <AudienceChip
-        audienceParticipants={[catToAudienceParticipant(directLaneCat)]}
+        audienceParticipants={[buildAudienceParticipantFromCat(directLaneCat)]}
         onSingleClick={composerBusy ? undefined : () => onOpenSection('execution')}
         disabled={composerBusy}
       />
@@ -59,20 +45,9 @@ export function WorkspaceComposerTargetSlot({
   }
 
   if (isSoloComposer && selectedModel) {
-    const label = buildModelSelectorLabel(selectedModel);
-    const participant: DraftComposerStackParticipant = {
-      key: 'implicit:model',
-      name: label,
-      executionLabel: label,
-      avatarColor: null,
-      avatarUrl: null,
-      isCat: false,
-      catId: null,
-      participantId: null,
-    };
     return (
       <AudienceChip
-        audienceParticipants={[participant]}
+        audienceParticipants={[buildAudienceParticipantFromModel(selectedModel)]}
         onSingleClick={composerBusy ? undefined : () => onOpenSection('execution')}
         disabled={composerBusy}
       />
@@ -83,7 +58,7 @@ export function WorkspaceComposerTargetSlot({
     const cats = assignedCatRecords.length > 0
       ? assignedCatRecords
       : leadCatRecord ? [leadCatRecord] : [];
-    const participants = cats.map(catToAudienceParticipant);
+    const participants = cats.map(buildAudienceParticipantFromCat);
     if (participants.length === 0) return null;
     return (
       <AudienceChip

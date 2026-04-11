@@ -17,7 +17,10 @@ import {
 } from './ComposerRecipientChip.js';
 import type { ModelSelectorValue } from './ModelSelector.js';
 import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer.js';
-import { buildCatExecutionLabel, buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import {
+  buildAudienceParticipantFromCat,
+  buildAudienceParticipantFromTemporaryParticipant,
+} from '../audienceParticipantBuilder.js';
 
 export interface DraftComposerStackParticipant {
   key: string;
@@ -145,35 +148,11 @@ export function resolveChatNewChatDraftViewState(input: {
     return [];
   })();
   const groupComposerParticipants: DraftComposerStackParticipant[] = [
-    ...visibleDraftCatIds.map((catId) => {
-      const cat = chatCats.find((candidate) => candidate.id === catId);
-      return {
-        key: `cat:${catId}`,
-        name: cat?.name ?? '',
-        executionLabel: (cat?.defaultExecutionTarget ? buildCatExecutionLabel(cat as Parameters<typeof buildCatExecutionLabel>[0]) : null) as string | null,
-        avatarColor: cat?.avatarColor ?? null,
-        avatarUrl: cat?.avatarUrl ?? null,
-        isCat: true,
-        catId,
-        participantId: null as string | null,
-      };
-    }).filter((participant) => participant.name),
-    ...input.draftTemporaryParticipants.map((participant) => ({
-      key: `temp:${participant.participantId}`,
-      name: participant.name,
-      executionLabel: buildExecutionLabel(
-        participant.provider,
-        participant.instance ?? null,
-        participant.model ?? null,
-        null,
-        resolveControlDisplayLabels(participant.modelSelection?.controls),
-      ),
-      avatarColor: null,
-      avatarUrl: null,
-      isCat: false,
-      catId: null as string | null,
-      participantId: participant.participantId,
-    })),
+    ...visibleDraftCatIds
+      .map((catId) => chatCats.find((candidate) => candidate.id === catId))
+      .filter((cat): cat is NonNullable<typeof cat> => cat != null && cat.name.length > 0)
+      .map((cat) => buildAudienceParticipantFromCat(cat)),
+    ...input.draftTemporaryParticipants.map((tp) => buildAudienceParticipantFromTemporaryParticipant(tp)),
   ];
 
   return {
