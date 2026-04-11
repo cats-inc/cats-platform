@@ -16,10 +16,12 @@ import {
   resolveActiveCompareChannelId,
 } from './compareNavigation.js';
 import { resolveParticipantCatId, type ResolvedChannelParticipant } from '../../../shared/channelParticipants.js';
+import { buildCatExecutionLabel, buildExecutionLabel, resolveControlDisplayLabels } from '../../../../../shared/executionLabel.js';
 
 export interface ChatComposerStackParticipantView {
   participantId: string;
   label: string;
+  executionLabel: string | null;
   avatarColor: string | null;
   avatarUrl: string | null;
   isBoss: boolean;
@@ -151,9 +153,25 @@ export function buildChatComposerStackParticipants(input: {
 }): ChatComposerStackParticipantView[] {
   return input.activeRoomParticipants.map((participant) => {
     const catRecord = input.resolveParticipantCatRecord(participant);
+    const executionLabel = (() => {
+      if (catRecord?.defaultExecutionTarget) {
+        return buildCatExecutionLabel(catRecord as Parameters<typeof buildCatExecutionLabel>[0]);
+      }
+      if (participant.execution?.target) {
+        const base = buildExecutionLabel(
+          participant.execution.target.provider,
+          participant.execution.target.instance ?? null,
+          participant.execution.target.model ?? null,
+        );
+        const controlLabels = resolveControlDisplayLabels(participant.execution.modelSelection?.controls);
+        return controlLabels.length > 0 ? `${base} \u00b7 ${controlLabels.join(' \u00b7 ')}` : base;
+      }
+      return null;
+    })();
     return {
       participantId: participant.participantId,
       label: input.resolveParticipantDisplayName(participant, catRecord),
+      executionLabel,
       avatarColor: catRecord?.avatarColor ?? participant.avatarColor ?? null,
       avatarUrl: catRecord?.avatarUrl ?? participant.avatarUrl ?? null,
       isBoss: catRecord?.id === input.bossCatId,

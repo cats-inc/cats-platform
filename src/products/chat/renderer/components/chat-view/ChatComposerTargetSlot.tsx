@@ -41,40 +41,31 @@ function recipientToAudienceParticipant(recipient: RecipientChipTarget): DraftCo
 
 function stackParticipantToAudienceParticipant(
   participant: ComposerStackParticipant,
-  cats: AppShellPayload['chat']['cats'],
 ): DraftComposerStackParticipant {
-  const isCat = !participant.useNeutralAvatar;
-  const catRecord = isCat
-    ? cats.find((cat) => cat.name === participant.label) ?? null
-    : null;
   return {
     key: `participant:${participant.participantId}`,
     name: participant.label,
-    executionLabel: catRecord?.defaultExecutionTarget
-      ? buildCatExecutionLabel(catRecord as Parameters<typeof buildCatExecutionLabel>[0])
-      : null,
+    executionLabel: participant.executionLabel,
     avatarColor: participant.avatarColor ?? null,
     avatarUrl: participant.avatarUrl ?? null,
-    isCat,
-    catId: catRecord?.id ?? null,
+    isCat: !participant.useNeutralAvatar,
+    catId: null,
     participantId: participant.participantId,
   };
 }
 
 function ChatComposerAudienceChip({
   composerStackParticipants,
-  cats,
   composerBusy,
   onOpenSection,
 }: {
   composerStackParticipants: ComposerStackParticipant[];
-  cats: AppShellPayload['chat']['cats'];
   composerBusy: boolean;
   onOpenSection: (section: string) => void;
 }) {
   const allParticipants = useMemo(
-    () => composerStackParticipants.map((p) => stackParticipantToAudienceParticipant(p, cats)),
-    [composerStackParticipants, cats],
+    () => composerStackParticipants.map(stackParticipantToAudienceParticipant),
+    [composerStackParticipants],
   );
   const [audienceKeys, setAudienceKeys] = useState<string[] | null>(null);
   const [workflowShape, setWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
@@ -136,7 +127,6 @@ export function ChatComposerTargetSlot({
     return (
       <ChatComposerAudienceChip
         composerStackParticipants={composerStackParticipants}
-        cats={payload.chat.cats}
         composerBusy={composerBusy}
         onOpenSection={onOpenSection}
       />

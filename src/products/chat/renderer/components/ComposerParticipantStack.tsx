@@ -5,6 +5,7 @@ import { catInitials } from '../chatUtils.js';
 export interface ComposerStackParticipant {
   participantId: string;
   label: string;
+  executionLabel: string | null;
   avatarColor: string | null;
   avatarUrl: string | null;
   isBoss: boolean;
