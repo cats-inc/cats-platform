@@ -328,7 +328,7 @@ function prepareDispatchTurnForUserMessage(
     maxContinuations,
     maxDispatches,
     maxTargetVisits,
-      terminalResult: null,
+    terminalResult: null,
   };
 }
 

@@ -199,7 +199,7 @@ function hasVisibleAssistantReplyAfterMessage(
   }
 
   return messages.slice(sourceIndex + 1).some((message) =>
-    message.senderKind !== 'user' && message.senderKind !== 'system');
+    message.senderKind === 'agent' || message.senderKind === 'orchestrator');
 }
 
 export function resolveLatestUserTurnPresentationState(input: {

@@ -129,6 +129,44 @@ test('resolveLatestUserTurnPresentationState stops user-bubble processing once a
   });
 });
 
+test('resolveLatestUserTurnPresentationState keeps the user bubble idle during sequential handoff after a visible assistant reply', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+        {
+          id: 'message-agent-1',
+          senderKind: 'agent',
+          createdAt: '2026-04-11T00:00:03.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            sourceMessageId: 'message-user',
+            status: 'running',
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: {
+      ...EMPTY_LIVE_INDICATOR,
+      active: true,
+      phase: 'waiting',
+    },
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'idle',
+  });
+});
+
 test('resolveLatestUserTurnPresentationState marks the latest failed acknowledged user turn as retryable', () => {
   const result = resolveLatestUserTurnPresentationState({
     selectedChannel: {
