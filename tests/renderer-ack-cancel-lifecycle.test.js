@@ -71,10 +71,15 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
 
 test('chat composer surfaces cancel-send during ACK and stop during dispatch', async () => {
   const chatViewSource = await readProductChatViewSource('chat');
+  const chatViewSupportSource = await readFile(
+    path.join(process.cwd(), 'src/products/chat/renderer/components/chat-view/chatViewSupport.ts'),
+    'utf8',
+  );
 
-  assert.match(chatViewSource, /isComposerAckBusy/u);
+  assert.match(chatViewSupportSource, /isComposerAckBusy/u);
+  assert.match(chatViewSupportSource, /input\.busy === 'message:prepare'/u);
   assert.match(chatViewSource, /onCancelPendingSend\?: \(\) => void;/u);
-  assert.match(chatViewSource, /showCancelComposerAction = composerAckBusy && onCancelPendingSend != null/u);
+  assert.match(chatViewSupportSource, /showCancelComposerAction = composerAckBusy && input\.onCancelPendingSend != null/u);
   assert.match(chatViewSource, /aria-label="Cancel send"/u);
   assert.match(chatViewSource, /composerCancelButton/u);
   assert.match(chatViewSource, /aria-label="Stop"/u);
@@ -85,8 +90,12 @@ test('new-chat draft keeps cancel-send available before the first ACK', async ()
     path.join(process.cwd(), 'src/products/shared/renderer/components/ChatNewChatDraft.tsx'),
     'utf8',
   );
+  const draftSupportSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/components/chatNewChatDraftSupport.ts'),
+    'utf8',
+  );
 
-  assert.match(draftSource, /isComposerAckBusy/u);
+  assert.match(draftSupportSource, /isComposerAckBusy/u);
   assert.match(draftSource, /onCancelPendingSend\?: \(\) => void;/u);
   assert.match(draftSource, /showCancelPendingSend = isAckPending && onCancelPendingSend != null/u);
   assert.match(draftSource, /aria-label="Cancel send"/u);

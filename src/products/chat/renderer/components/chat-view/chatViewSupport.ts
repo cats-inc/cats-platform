@@ -3,6 +3,10 @@ import type {
   ParallelChatGroupSummary,
 } from '../../../api/contracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
+import {
+  getComposerDispatchChannelId,
+  isComposerAckBusy,
+} from '../../../../../shared/composer.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { buildImplicitRecipient, buildNamedRecipient, buildRecipientFromCat, type RecipientChipTarget } from '../ComposerRecipientChip.js';
 import type { ModelSelectorValue } from '../ModelSelector.js';
@@ -301,14 +305,15 @@ export function resolveChatComposerViewState(input: {
   repoPath?: string | null;
   chatCwd?: string | null;
 }): ChatComposerViewState {
-  const composerAckBusy = input.busy === 'message:ack';
-  const composerDispatchChannelId = input.busy.startsWith('message:send:')
-    ? input.busy.slice('message:send:'.length)
-    : input.busy.startsWith('message:prepare:')
-      ? input.busy.slice('message:prepare:'.length)
-      : input.busy.startsWith('message:ack:')
-        ? input.busy.slice('message:ack:'.length)
-        : null;
+  const composerAckBusy =
+    input.busy === 'message:prepare'
+    || input.busy === 'parallelChat:ack'
+    || (
+      isComposerAckBusy(input.busy)
+      && input.busy.startsWith('message:ack:')
+      && input.busy.slice('message:ack:'.length) === input.selectedChannelId
+    );
+  const composerDispatchChannelId = getComposerDispatchChannelId(input.busy);
   const compareBusy =
     input.busy === 'parallelChat:ack'
     || input.busy === 'parallelChat:dispatch'
