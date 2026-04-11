@@ -178,7 +178,7 @@ export function resolveTranscriptMessageSpeaker(
       || senderUsesLegacyChatPlaceholder
     )
   ) {
-      return {
+    return {
       kind: 'provider',
       label: executionLabelSnapshot
         ?? buildExecutionLabel(
