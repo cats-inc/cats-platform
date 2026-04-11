@@ -457,7 +457,7 @@ test('resolveTranscriptFollowState derives scroll keys from transcript content i
   assert.match(followState.transcriptScrollKey, /^2::msg-2::2026-04-09T12:00:01.000Z::/u);
 });
 
-test('shared live indicator effect depends on stable derived fields instead of selected channel identity', async () => {
+test('shared live indicator effect reconnects on EventSource termination and still depends on stable derived fields', async () => {
   const testDirectory = path.dirname(fileURLToPath(import.meta.url));
   const source = await readFile(
     path.join(
@@ -471,9 +471,11 @@ test('shared live indicator effect depends on stable derived fields instead of s
 
   assert.match(source, /const speakerLabel = defaultRecipientCatId/u);
   assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*defaultRecipientCatId,\s*routingStatus,\s*speakerLabel,/u);
+  assert.match(source, /source\.onerror = \(\) =>/u);
+  assert.match(source, /traceBrowser\('stream_source_error'/u);
+  assert.match(source, /scheduleReconnect\(\);/u);
   assert.doesNotMatch(source, /\[\s*busy,\s*channelId,\s*defaultRecipientCatId,\s*resolveRoutingStatus,/u);
   assert.doesNotMatch(source, /\[\s*busy,\s*channelId,\s*defaultRecipientCatId,\s*routingStatus,\s*selectedChannel,/u);
-  assert.doesNotMatch(source, /source\.onerror = \(\) =>/u);
 });
 
 test('live indicator accumulates streamed preview text and keeps active cat ids', () => {

@@ -607,6 +607,137 @@ test('GET /api/channels/:id/stream publishes room updates once a pending session
   }, chatStore);
 });
 
+test('GET /api/channels/:id/stream publishes another room update when a streamed session finishes', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Verifier Cat',
+      provider: 'codex',
+      roles: ['reviewer'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Sequential handoff lane',
+      topic: 'Refresh persisted replies between sequential speakers.',
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  const participantId = requireChannel(state, channelId).catAssignments[0].participantId;
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-live-finish',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'codex',
+      model: 'gpt-5.4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-live-finish', {
+    session: {
+      id: 'session-live-finish',
+    },
+    observePath: '/sessions/session-live-finish/observe',
+    stream: {
+      path: '/sessions/session-live-finish/stream',
+      available: true,
+      events: [
+        {
+          event: 'progress',
+          data: {
+            type: 'progress',
+            text: 'Reviewing response',
+          },
+        },
+      ],
+    },
+  });
+  let releaseStreamCompletion;
+  const streamCompletionGate = new Promise((resolve) => {
+    releaseStreamCompletion = resolve;
+  });
+  const originalStreamSession = runtime.streamSession.bind(runtime);
+  runtime.streamSession = async (sessionId, onEvent) => {
+    await originalStreamSession(sessionId, onEvent);
+    await streamCompletionGate;
+  };
+
+  await withServer(runtime, async (baseUrl) => {
+    const chatEventsResponse = await fetch(`${baseUrl}/api/events/chat`);
+    assert.equal(chatEventsResponse.status, 200);
+    const chatEvents = createSseCapture(chatEventsResponse);
+    await readSseUntil(chatEvents, (text) => /event: connected/u.test(text));
+
+    try {
+      const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+
+      await readSseUntil(
+        chatEvents,
+        (text) =>
+          (text.match(/event: room_updated/gu) ?? []).length >= 1
+          && new RegExp(`"channelId":"${channelId}"`, 'u').test(text),
+      );
+
+      let nextState = await chatStore.read();
+      nextState = appendMessage(
+        nextState,
+        channelId,
+        {
+          senderKind: 'agent',
+          senderName: 'Verifier Cat',
+          body: 'Second speaker reply is now persisted.',
+        },
+        new Date('2026-03-11T00:00:02.000Z'),
+        {
+          metadata: {
+            event: 'runtime_response',
+            targetKind: 'cat',
+            targetId: participantId,
+            sessionId: 'session-live-finish',
+          },
+          incrementUnread: false,
+        },
+      ).state;
+      await chatStore.write(nextState);
+      releaseStreamCompletion();
+
+      const streamResponse = await streamResponsePromise;
+      assert.equal(streamResponse.status, 200);
+      await streamResponse.text();
+
+      const completionEventsBody = await readSseUntil(
+        chatEvents,
+        (text) =>
+          (text.match(/event: room_updated/gu) ?? []).length >= 2
+          && new RegExp(`"channelId":"${channelId}"`, 'u').test(text),
+      );
+      assert.match(completionEventsBody, /event: room_updated/u);
+      assert.ok(runtime.streamedSessions.includes('session-live-finish'));
+    } finally {
+      await chatEvents.reader.cancel();
+    }
+  }, chatStore);
+});
+
 test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat session', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();

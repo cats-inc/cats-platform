@@ -220,6 +220,8 @@ export function useLiveIndicator<
         return;
       }
 
+      reconnectAttempts = 0;
+
       const eventType = (data.type as string) ?? e.type;
       const shouldRetrySessionClose = shouldRetryLiveIndicatorSessionClose({
         eventType,
@@ -290,6 +292,20 @@ export function useLiveIndicator<
       source.addEventListener('result', handleEvent);
       source.addEventListener('error', handleEvent);
       source.addEventListener('session_closed', handleEvent);
+      source.onerror = () => {
+        if (disposed || source !== sourceRef.current) {
+          return;
+        }
+        traceBrowser('stream_source_error', {
+          reason: 'eventsource_terminated',
+          details: {
+            busy,
+            routingStatus,
+          },
+        });
+        closeSource();
+        scheduleReconnect();
+      };
     }
 
     if (!shouldShowWaiting) {

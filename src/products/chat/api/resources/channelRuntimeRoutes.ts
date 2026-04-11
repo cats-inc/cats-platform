@@ -283,6 +283,11 @@ async function handleRestStreamChannel(
           signal: abortController.signal,
         }
       );
+      if (!abortController.signal.aborted && !context.response.writableEnded) {
+        // Once one sequential speaker finishes, refresh the transcript so the
+        // persisted reply is visible before the next stream attachment begins.
+        publishStreamAttachMutationEvents(context, channelId);
+      }
     } catch {
       if (!abortController.signal.aborted && !context.response.writableEnded) {
         if (context.dependencies.config.debugLiveTrace) {
