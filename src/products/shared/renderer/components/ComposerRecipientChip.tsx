@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 
-import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import { cloneProviderModelSelection, type ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { catInitials } from '../workspaceChatUtils.js';
 
@@ -14,6 +15,7 @@ export interface RecipientChipTarget {
   provider?: string | null;
   instance?: string | null;
   model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
   isBoss?: boolean;
 }
 
@@ -32,6 +34,7 @@ export function buildNamedRecipient(input: {
   provider?: string | null;
   instance?: string | null;
   model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
   isBoss?: boolean;
 }): RecipientChipTarget {
   return {
@@ -44,6 +47,7 @@ export function buildNamedRecipient(input: {
     provider: input.provider ?? null,
     instance: input.instance ?? null,
     model: input.model ?? null,
+    modelSelection: cloneProviderModelSelection(input.modelSelection),
     isBoss: input.isBoss ?? false,
   };
 }
@@ -58,7 +62,9 @@ export function buildRecipientFromCat(
     avatarColor: cat.avatarColor,
     avatarUrl: cat.avatarUrl,
     provider: cat.defaultExecutionTarget?.provider ?? null,
+    instance: cat.defaultExecutionTarget?.instance ?? null,
     model: cat.defaultExecutionTarget?.model ?? null,
+    modelSelection: cat.defaultModelSelection ?? null,
     isBoss: cat.id === bossCatId,
   });
 }
@@ -67,13 +73,22 @@ export function buildImplicitRecipient(input: {
   provider: string;
   instance?: string | null;
   model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
 }): RecipientChipTarget {
+  const controlLabels = resolveControlDisplayLabels(input.modelSelection?.controls);
   return {
     kind: 'implicit',
-    name: buildExecutionLabel(input.provider, input.instance ?? null, input.model ?? null),
+    name: buildExecutionLabel(
+      input.provider,
+      input.instance ?? null,
+      input.model ?? null,
+      null,
+      controlLabels,
+    ),
     provider: input.provider,
     instance: input.instance ?? null,
     model: input.model ?? null,
+    modelSelection: cloneProviderModelSelection(input.modelSelection),
   };
 }
 

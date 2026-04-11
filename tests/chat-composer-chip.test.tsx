@@ -14,7 +14,7 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('chat composer renders implicit single-recipient audience chips without avatar affordance', () => {
+test('chat composer keeps solo implicit recipient controls on the active audience chip tooltip', () => {
   const markup = renderToStaticMarkup(
     <ChatComposerArea
       hasConversationStarted
@@ -34,10 +34,16 @@ test('chat composer renders implicit single-recipient audience chips without ava
       composerRecipients={[
         {
           kind: 'implicit',
-          name: 'Claude-CLI · Opus',
+          name: 'Claude-CLI · Opus · Max',
           provider: 'claude',
           instance: 'cli',
           model: 'opus',
+          modelSelection: {
+            entryMode: 'explicit',
+            controls: {
+              'claude.reasoning_effort': 'max',
+            },
+          },
         },
       ]}
       defaultRecipientParticipantId={null}
@@ -61,7 +67,8 @@ test('chat composer renders implicit single-recipient audience chips without ava
   );
 
   assert.match(markup, /class="audienceChip"/u);
-  assert.match(markup, /class="audienceChipLabel">Claude-CLI/u);
+  assert.match(markup, /class="audienceChipLabel">Claude-CLI[^<]*Max/u);
+  assert.match(markup, /data-tooltip="Claude-CLI[^"]*Max"/u);
   assert.match(markup, /class="audienceChipChevron"/u);
   assert.doesNotMatch(markup, /class="audienceChipAvatar"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);

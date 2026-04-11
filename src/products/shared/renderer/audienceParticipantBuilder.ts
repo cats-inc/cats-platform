@@ -83,6 +83,8 @@ export function buildAudienceParticipantFromRecipient(
         recipient.provider,
         recipient.instance ?? null,
         recipient.model ?? null,
+        null,
+        resolveControlDisplayLabels(recipient.modelSelection?.controls),
       )
     : null;
   return {

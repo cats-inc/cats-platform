@@ -390,6 +390,7 @@ export function buildChatComposerRecipients(input: {
       provider: input.defaultRecipientParticipant.execution.target.provider,
       instance: input.defaultRecipientParticipant.execution.target.instance ?? null,
       model: input.defaultRecipientParticipant.execution.target.model ?? null,
+      modelSelection: input.defaultRecipientParticipant.execution.modelSelection ?? null,
     }),
   ];
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildChatComposerRecipients,
   resolveChatComposerViewState,
   resolveLatestUserTurnPresentationState,
 } from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
@@ -60,6 +61,34 @@ test('resolveChatComposerViewState does not leak ACK cancel state into other cha
 
   assert.equal(result.composerAckBusy, false);
   assert.equal(result.showCancelComposerAction, false);
+});
+
+test('buildChatComposerRecipients preserves solo model-selection controls for active chats', () => {
+  const recipients = buildChatComposerRecipients({
+    isDirectLane: false,
+    directLaneCat: null,
+    isSoloComposer: true,
+    selectedModel: {
+      provider: 'claude',
+      instance: 'cli',
+      model: 'opus',
+      modelSelection: {
+        entryMode: 'explicit',
+        controls: {
+          'claude.reasoning_effort': 'max',
+        },
+      },
+    },
+    defaultRecipientParticipant: null,
+    bossCatId: null,
+    resolveParticipantCatRecord: () => null,
+    resolveParticipantDisplayName: () => 'Claude',
+  });
+
+  assert.equal(recipients.length, 1);
+  assert.equal(recipients[0]?.kind, 'implicit');
+  assert.equal(recipients[0]?.modelSelection?.controls?.['claude.reasoning_effort'], 'max');
+  assert.match(recipients[0]?.name ?? '', /Max/u);
 });
 
 test('resolveLatestUserTurnPresentationState shows processing only before the first assistant identity bubble', () => {
