@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-045](./PLAN-045-acknowledged-user-turn-status-and-last-message-retry.md) | ACK-First User-Turn Status and Last-Message Retry | Draft | [ADR-050](../decisions/050-use-ack-first-chat-dispatch-lifecycle.md) |
 | [PLAN-044](./PLAN-044-bootstrap-recovery-summary-and-bounded-detail-actions.md) | Bootstrap Recovery Summary and Bounded Detail Actions | Draft | [SPEC-054](../specs/SPEC-054-bootstrap-recovery-summary-and-bounded-detail-actions.md) |
 | [PLAN-042](./PLAN-042-recipient-centric-composer-and-parallel-chat-terminology-rename.md) | Recipient-Centric Composer and Parallel Chat Terminology Rename | Draft | [SPEC-052](../specs/SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md), [ADR-055](../decisions/055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md) |
 | [PLAN-043](./PLAN-043-post-setup-environment-status-and-recovery-entry.md) | Post-Setup Environment Status and Recovery Entry | Draft | [SPEC-053](../specs/SPEC-053-post-setup-environment-status-and-recovery-entry.md) |
@@ -98,6 +99,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-09*
+*Last updated: 2026-04-11*
 
 *See also: [specs/](../specs/) for feature specifications*
