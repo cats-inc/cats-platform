@@ -1,6 +1,7 @@
 import {
   collectParticipantSessionIds,
   resolveParticipantCatId,
+  resolveParticipantExecutionLease,
   resolveParticipantSessionId,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
@@ -18,6 +19,8 @@ export interface ChannelStreamTarget {
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
+  sessionStartedAt: string | null;
+  requiresSessionStartConfirmation: boolean;
 }
 
 interface ResolvedChannelStreamTarget {
@@ -39,6 +42,8 @@ function buildParticipantStreamTarget(
   fallbackSpeakerLabel: string | null = null,
 ): ChannelStreamTarget {
   const assignment = resolvePrimaryParticipantExecutionAssignment(channel, participantId);
+  const lease = resolveParticipantExecutionLease(channel, participantId);
+  const sessionStartedAt = lease?.startedAt ?? null;
   return {
     sessionId: resolveParticipantSessionId(
       channel,
@@ -48,6 +53,11 @@ function buildParticipantStreamTarget(
     participantId,
     catId: assignment ? resolveParticipantCatId(assignment) : null,
     speakerLabel: normalizeVisibleSpeakerLabel(assignment?.name ?? fallbackSpeakerLabel),
+    sessionStartedAt,
+    requiresSessionStartConfirmation: shouldRequireSessionStartConfirmation(
+      channel,
+      sessionStartedAt,
+    ),
   };
 }
 
@@ -76,7 +86,34 @@ function buildOrchestratorStreamTarget(
     participantId: 'orchestrator',
     catId: null,
     speakerLabel,
+    sessionStartedAt: channel.orchestratorLease.startedAt ?? null,
+    requiresSessionStartConfirmation: shouldRequireSessionStartConfirmation(
+      channel,
+      channel.orchestratorLease.startedAt ?? null,
+    ),
   };
+}
+
+function shouldRequireSessionStartConfirmation(
+  channel: ReturnType<typeof requireChannel>,
+  sessionStartedAt: string | null,
+): boolean {
+  if (!sessionStartedAt) {
+    return false;
+  }
+
+  const activeTurnStartedAt = channel.roomRouting?.workflow?.activeTurn?.startedAt ?? null;
+  if (!activeTurnStartedAt) {
+    return false;
+  }
+
+  const sessionTimestamp = Date.parse(sessionStartedAt);
+  const activeTurnTimestamp = Date.parse(activeTurnStartedAt);
+  if (Number.isNaN(sessionTimestamp) || Number.isNaN(activeTurnTimestamp)) {
+    return false;
+  }
+
+  return sessionTimestamp >= activeTurnTimestamp;
 }
 
 function buildWorkflowTargetStreamTarget(
@@ -175,6 +212,8 @@ function resolveChannelStreamTargetWithReason(
         participantId: null,
         catId: null,
         speakerLabel: null,
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
       },
       reason: 'participant_session_fallback_unknown_assignment',
     };

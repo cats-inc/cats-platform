@@ -274,6 +274,8 @@ test('resolveVisibleLiveIndicator keeps the assistant bubble hidden until sessio
     phase: 'streaming',
     participantId: 'participant-agent-1',
     speakerLabel: 'Agent-1',
+    sessionStartedAt: '2026-04-09T12:00:02.500Z',
+    requiresSessionStartConfirmation: true,
     progressKind: 'session',
   };
 
@@ -292,6 +294,114 @@ test('resolveVisibleLiveIndicator keeps the assistant bubble hidden until sessio
   );
 
   assert.equal(visible, null);
+});
+
+test('resolveVisibleLiveIndicator shows assistant progress once the matching session_started message is visible even if the turn timestamp moved later', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    sessionStartedAt: '2026-04-09T12:00:02.500Z',
+    requiresSessionStartConfirmation: true,
+    progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-session-agent-1',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:02.500Z',
+      },
+    ],
+    '2026-04-09T12:00:05.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
+});
+
+test('resolveVisibleLiveIndicator accepts orchestrator session_started messages that only declare targetKind', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    participantId: 'orchestrator',
+    speakerLabel: 'Orchestrator',
+    sessionStartedAt: '2026-04-09T12:00:02.500Z',
+    requiresSessionStartConfirmation: true,
+    progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-session-orchestrator',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          targetKind: 'orchestrator',
+        },
+        createdAt: '2026-04-09T12:00:02.500Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
+});
+
+test('resolveVisibleLiveIndicator does not wait for a new session_started message when the stream reuses an older session', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    sessionStartedAt: '2026-04-09T11:59:00.000Z',
+    requiresSessionStartConfirmation: false,
+    progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
 });
 
 test('resolveTranscriptFollowState derives scroll keys from transcript content instead of channel timestamps', () => {
@@ -420,6 +530,8 @@ test('live indicator event payload updates the active speaker metadata even with
       participantId: 'participant-gemini',
       catId: null,
       speakerLabel: 'Gemini-CLI',
+      sessionStartedAt: '2026-04-09T12:00:02.500Z',
+      requiresSessionStartConfirmation: true,
       metadata: {
         kind: 'session',
       },
@@ -431,6 +543,8 @@ test('live indicator event payload updates the active speaker metadata even with
   assert.equal(nextState.catId, null);
   assert.deepEqual(nextState.activeCatIds, []);
   assert.equal(nextState.speakerLabel, 'Gemini-CLI');
+  assert.equal(nextState.sessionStartedAt, '2026-04-09T12:00:02.500Z');
+  assert.equal(nextState.requiresSessionStartConfirmation, true);
 });
 
 test('chat top-bar presence stays anonymous while the live indicator is still waiting for session startup', () => {

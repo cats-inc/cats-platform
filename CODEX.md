@@ -75,6 +75,56 @@ If assigned as Conductor in Project Roles table:
 - For docs-only changes, do not run code tests unless the docs depend on a
   command or behavior you re-verified.
 
+### Runtime Smoke / Live Debug SOP
+
+When debugging Chat live typing or session-start regressions, Codex should use a
+fresh-channel probe against the already running `dev:server` and `dev:web`.
+Do not trust stale UI state or older transcripts.
+
+- Treat `direct_cat_chat` and `solo`/orchestrator as separate contracts. Probe
+  both paths; a fix in one does not prove the other.
+- For new-runtime-session flows, the expected UX handoff is
+  `user dots -> session_started system message -> assistant dots -> first
+  assistant text chunk`.
+- If the final assistant reply appears without a visible assistant typing bubble,
+  the handoff gate is still wrong even if the response content is correct.
+- Create fresh probe channels through the API instead of reusing existing rooms.
+- For direct/cat probes, `POST /api/channels` with `entryKind: 'direct'`,
+  `roomMode: 'direct_cat_chat'`, `participantCatIds`, and
+  `skipBossCatGreeting: true`.
+- For solo/orchestrator probes, `POST /api/channels` with `entryKind: 'solo'`,
+  `composerMode: 'solo'`, `pendingProvider`, `pendingModel`, and
+  `skipBossCatGreeting: true`.
+- Open the exact room URL in the renderer:
+  `http://127.0.0.1:5173/chat/chats/<channelId>`. Do not rely on
+  `/chat/new` selection sync for smoke probes.
+- Do not wait on Playwright `networkidle`; the live stream keeps connections
+  open. Use `domcontentloaded` plus explicit path and selector waits.
+- Sample the DOM over time for `.userTurnStatusProcessing`,
+  `.typingIndicator`, the `connected to cats-runtime session` system message,
+  and the first assistant reply text.
+- Inspect browser trace via `globalThis.__catsLiveTrace` and server trace via
+  `GET /api/debug/live-trace`. Check `GET /api/channels/:id/messages` when you
+  need to distinguish UI gating bugs from missing server events.
+- `GET /api/app-shell` is useful for confirming shell capabilities and whether
+  live trace is enabled in the current dev session.
+- For direct lanes, do not assert `.channelTopBarTitle` against the generated
+  debug room title. The visible title may resolve to the cat name instead.
+- Common orchestrator trap: live progress may arrive as
+  `participantId: 'orchestrator'`, while the matching `session_started` system
+  message only declares `targetKind: 'orchestrator'` with `targetId: null`.
+  Do not gate assistant dots on `targetId` existing for orchestrator flows.
+- Current dev settings matter: `CATS_RUNTIME_MAX_SESSIONS=20`,
+  `CATS_DEBUG_LIVE_TRACE=true`, and
+  `CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE=false`.
+- When session capacity is near or exhausted, aggressively clean up probe rooms.
+  `DELETE /api/channels/:id` is acceptable on this dev machine and, under the
+  current debug config, should delete linked runtime sessions as well.
+- `POST /api/channels/:id/deactivate` is the lighter-weight fallback when you
+  want to release runtime sessions without deleting the product transcript.
+- Prefer deleting and recreating probe channels over reusing polluted runtime
+  state.
+
 ### Agent Skills
 
 Codex discovers skills from `.agents/skills/<name>/SKILL.md`. The canonical source is the `skills/` directory at the project root.

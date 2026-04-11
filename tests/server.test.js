@@ -598,6 +598,8 @@ test('GET /api/channels/:id/stream publishes room updates once a pending session
       const streamBody = await streamResponse.text();
       assert.match(streamBody, /event: progress/u);
       assert.match(streamBody, /"kind":"session"/u);
+      assert.match(streamBody, /"sessionStartedAt":"2026-03-11T00:00:00.000Z"/u);
+      assert.match(streamBody, /"requiresSessionStartConfirmation":false/u);
       assert.ok(runtime.streamedSessions.includes('session-live-3'));
     } finally {
       await chatEvents.reader.cancel();

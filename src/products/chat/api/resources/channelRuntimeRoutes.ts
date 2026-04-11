@@ -39,11 +39,15 @@ function buildStreamSpeakerPayload(input: {
   participantId?: string | null;
   catId?: string | null;
   speakerLabel?: string | null;
+  sessionStartedAt?: string | null;
+  requiresSessionStartConfirmation?: boolean;
 }): Record<string, unknown> {
   return {
     participantId: input.participantId ?? null,
     catId: input.catId ?? null,
     speakerLabel: input.speakerLabel ?? null,
+    sessionStartedAt: input.sessionStartedAt ?? null,
+    requiresSessionStartConfirmation: input.requiresSessionStartConfirmation === true,
   };
 }
 

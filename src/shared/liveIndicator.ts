@@ -29,6 +29,8 @@ export interface LiveIndicatorState {
   activeCatIds: string[];
   catName: string | null;
   speakerLabel: string | null;
+  sessionStartedAt: string | null;
+  requiresSessionStartConfirmation: boolean;
   progressText: string;
   previewText: string;
   progressKind: string | null;
@@ -58,6 +60,8 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   activeCatIds: [],
   catName: null,
   speakerLabel: null,
+  sessionStartedAt: null,
+  requiresSessionStartConfirmation: false,
   progressText: '',
   previewText: '',
   progressKind: null,
@@ -79,6 +83,8 @@ export function createWaitingLiveIndicatorState(input: {
     activeCatIds: [],
     catName: null,
     speakerLabel: null,
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
     progressText: '',
     previewText: '',
     progressKind: null,
@@ -113,6 +119,26 @@ export function resolveLiveIndicatorSpeakerState(
   };
 }
 
+function resolveLiveIndicatorSessionState(
+  previous: LiveIndicatorState,
+  data: Record<string, unknown>,
+): Pick<LiveIndicatorState, 'sessionStartedAt' | 'requiresSessionStartConfirmation'> {
+  const hasSessionStartedAt = Object.prototype.hasOwnProperty.call(data, 'sessionStartedAt');
+  const hasSessionStartConfirmation = Object.prototype.hasOwnProperty.call(
+    data,
+    'requiresSessionStartConfirmation',
+  );
+
+  return {
+    sessionStartedAt: hasSessionStartedAt
+      ? readNullableString(data.sessionStartedAt)
+      : previous.sessionStartedAt,
+    requiresSessionStartConfirmation: hasSessionStartConfirmation
+      ? data.requiresSessionStartConfirmation === true
+      : previous.requiresSessionStartConfirmation,
+  };
+}
+
 export function applyLiveIndicatorEvent(
   previous: LiveIndicatorState,
   eventType: string,
@@ -123,9 +149,11 @@ export function applyLiveIndicatorEvent(
   }
 
   const nextSpeakerState = resolveLiveIndicatorSpeakerState(previous, data);
+  const nextSessionState = resolveLiveIndicatorSessionState(previous, data);
   const nextState = {
     ...previous,
     ...nextSpeakerState,
+    ...nextSessionState,
   };
 
   switch (eventType) {
@@ -164,6 +192,8 @@ export function buildLiveIndicatorScrollKey(
     liveIndicator.activeCatIds.join('|'),
     liveIndicator.catId ?? '',
     liveIndicator.speakerLabel ?? '',
+    liveIndicator.sessionStartedAt ?? '',
+    liveIndicator.requiresSessionStartConfirmation ? '1' : '0',
     liveIndicator.progressText ?? '',
     liveIndicator.previewText ?? '',
     liveIndicator.tools
@@ -214,7 +244,8 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
 
   if (
     liveIndicator.phase === 'streaming'
-    && !hasConfirmedLiveIndicatorSessionStart(sessionMessages, liveIndicator, activeTurnTimestamp)
+    && liveIndicator.requiresSessionStartConfirmation
+    && !hasConfirmedLiveIndicatorSessionStart(sessionMessages, liveIndicator, liveIndicator.sessionStartedAt)
   ) {
     traceLiveIndicatorVisibility({
       liveIndicator,
@@ -646,21 +677,45 @@ function doesMessageMatchLiveIndicatorSpeaker(
 function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTranscriptMessageLike>(
   messages: ReadonlyArray<TMessage>,
   liveIndicator: LiveIndicatorState,
-  activeTurnTimestamp: number,
+  sessionStartedAt: string | null,
 ): boolean {
+  const sessionStartFloorTimestamp = (() => {
+    if (!sessionStartedAt) {
+      return null;
+    }
+
+    const timestamp = Date.parse(sessionStartedAt);
+    return Number.isNaN(timestamp) ? null : timestamp;
+  })();
+
   return messages.some((message) => {
     if (readMessageEvent(message) !== 'session_started') {
       return false;
     }
 
     const messageTimestamp = Date.parse(message.createdAt);
-    if (Number.isNaN(messageTimestamp) || messageTimestamp < activeTurnTimestamp) {
+    if (
+      Number.isNaN(messageTimestamp)
+      || (
+        sessionStartFloorTimestamp != null
+        && messageTimestamp < sessionStartFloorTimestamp
+      )
+    ) {
       return false;
     }
 
     const liveParticipantId = readString(liveIndicator.participantId);
     if (liveParticipantId) {
-      return readMessageTargetId(message) === liveParticipantId;
+      const messageTargetId = readMessageTargetId(message);
+      if (messageTargetId) {
+        return messageTargetId === liveParticipantId;
+      }
+
+      if (liveParticipantId === 'orchestrator') {
+        return readMessageTargetKind(message) === 'orchestrator';
+      }
+
+      return false;
     }
 
     return readMessageTargetKind(message) === 'orchestrator';

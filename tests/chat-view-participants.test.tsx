@@ -549,6 +549,91 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   assert.match(markup, /catAvatarPulsing/u);
 });
 
+test('ChatView promotes solo orchestrator progress once the session_started system message is visible', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          title: 'Solo runtime chat',
+          composerMode: 'solo',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Please reply with exactly OK.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-session-started',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Orchestrator connected to cats-runtime session session-orchestrator.',
+              mentions: [],
+              metadata: {
+                event: 'session_started',
+                targetKind: 'orchestrator',
+                verbosity: 'verbose',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:01.500Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            defaultRecipientId: null,
+            workflow: {
+              activeTurn: {
+                id: 'turn-orchestrator',
+                status: 'running',
+                sourceMessageId: 'message-user',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 1,
+                targetStatuses: [],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:02.000Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          participantId: 'orchestrator',
+          speakerLabel: 'Orchestrator',
+          sessionStartedAt: '2026-04-07T00:01:01.500Z',
+          requiresSessionStartConfirmation: true,
+          progressKind: 'session',
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /typingIndicator/u);
+  assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
+});
+
 test('ChatView keeps the last user bubble in a generic processing state until session startup is persisted', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
@@ -627,6 +712,8 @@ test('ChatView keeps the last user bubble in a generic processing state until se
           phase: 'streaming',
           participantId: 'participant-inline',
           speakerLabel: 'Inline Reviewer',
+          sessionStartedAt: '2026-04-07T00:01:02.000Z',
+          requiresSessionStartConfirmation: true,
           progressKind: 'session',
         },
       })}
