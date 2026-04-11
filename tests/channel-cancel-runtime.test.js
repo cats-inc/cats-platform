@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../build/server/server.js';
+import { createServer } from '../build/server/app/server/index.js';
 import { createChannel } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { waitForCondition } from './testUtils.js';

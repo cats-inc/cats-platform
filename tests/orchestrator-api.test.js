@@ -13,7 +13,7 @@ import {
   setChannelRoomRouting,
 } from '../build/server/products/chat/state/model/index.js';
 import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
-import { createServer } from '../build/server/server.js';
+import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { resolveMentionRoute } from '../build/server/products/chat/state/mentionRouter.js';
 import {
@@ -2861,4 +2861,3 @@ test('GET /api/orchestrator/channels/:id/execution-loop accepts a projected room
     assert.equal(payload.operator.latestRunId, runId);
   });
 });
-

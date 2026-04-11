@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../build/server/server.js';
+import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { resolveOrchestratorDisplayName } from '../build/server/products/chat/state/model/index.js';
 
@@ -13,7 +14,6 @@ const baseConfig = {
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  chatStatePath: 'unused-for-tests',
 };
 
 function createRuntimeStub() {
@@ -75,9 +75,16 @@ function createRuntimeStub() {
 }
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), 'cats-platform-setup-wizard-'));
+  const chatStatePath = path.join(tempRoot, 'state', 'chat-state.local.json');
+  await mkdir(path.dirname(chatStatePath), { recursive: true });
+
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath,
+      },
       runtimeClient,
       now: () => new Date('2026-03-19T00:00:00.000Z'),
     },
@@ -99,6 +106,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   } finally {
     server.close();
     await once(server, 'close');
+    await rm(tempRoot, { recursive: true, force: true });
   }
 }
 
@@ -441,7 +449,7 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
   });
 });
 
-test('POST /api/channels seeds Boss Cat greeting without assigning Boss Cat as a worker', async () => {
+test('POST /api/channels creates a solo Boss Chat without assigning Boss Cat as a worker', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
@@ -473,16 +481,25 @@ test('POST /api/channels seeds Boss Cat greeting without assigning Boss Cat as a
       'Boss Cat should stay implicit in the new channel',
     );
 
-    // Greeting message should exist
-    const greeting = createPayload.channel.messages.find(
-      (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
+    // Solo boss threads seed only the room_created system message.
+    const roomCreated = createPayload.channel.messages.find(
+      (m) => m.metadata?.event === 'room_created',
     );
-    assert.ok(greeting, 'Boss Cat greeting message should exist');
-    assert.ok(greeting.body.includes('Smelly'));
+    assert.ok(roomCreated, 'Solo Boss Chat should seed a room_created system message');
+    assert.equal(roomCreated.body, 'Room created: Boss Chat.');
+    assert.equal(roomCreated.metadata.roomMode, 'boss_chat');
+    assert.equal(roomCreated.metadata.composerMode, 'solo');
+    assert.equal(
+      createPayload.channel.messages.some(
+        (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
+      ),
+      false,
+      'Solo Boss Chat should not inject a Boss Cat greeting bubble',
+    );
   });
 });
 
-test('POST /api/channels can skip Boss Cat greeting for the first optimistic user turn', async () => {
+test('POST /api/channels keeps the room_created system message when skipBossCatGreeting is set for solo Boss Chat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
       method: 'POST',
@@ -507,7 +524,8 @@ test('POST /api/channels can skip Boss Cat greeting for the first optimistic use
     assert.equal(createResponse.status, 201);
 
     const createPayload = await createResponse.json();
-    assert.equal(createPayload.channel.messages.length, 0);
+    assert.equal(createPayload.channel.messages.length, 1);
+    assert.equal(createPayload.channel.messages[0]?.metadata?.event, 'room_created');
     assert.equal(
       createPayload.channel.messages.some(
         (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',

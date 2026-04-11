@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
-import { createServer } from '../build/server/server.js';
+import { createServer } from '../build/server/app/server/index.js';
 import {
   FileChatStore,
   MemoryChatStore,

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../build/server/server.js';
+import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 const baseConfig = {
@@ -743,4 +743,3 @@ test('cat memory routes reject cross-subject mutations and accept empty flush bo
     assert.equal(emptyFlushPayload.flush.reason, 'manual');
   });
 });
-
