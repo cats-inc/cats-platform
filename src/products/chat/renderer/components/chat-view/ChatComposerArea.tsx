@@ -227,85 +227,87 @@ export function ChatComposerArea({
             );
           })()}
         </div>
-        <ChatComposerTargetSlot
-          payload={payload}
-          composerBusy={composerBusy}
-          composerRecipients={composerRecipients}
-          defaultRecipientParticipantId={defaultRecipientParticipantId}
-          composerStackParticipants={composerStackParticipants}
-          directLaneCat={directLaneCat}
-          isDirectLane={isDirectLane}
-          isSoloComposer={isSoloComposer}
-          onOpenSection={onOpenSection}
-        />
-        {showCancelComposerAction ? (
-          <button
-            className="composerSendButton composerCancelButton"
-            type="button"
-            aria-label="Cancel send"
-            onClick={() => onCancelPendingSend?.()}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-              <path d="M4 4l6 6" />
-              <path d="M10 4l-6 6" />
-            </svg>
-          </button>
-        ) : showStopComposerAction ? (
-          <button
-            className="composerSendButton composerStopButton"
-            disabled={stopBusy}
-            type="button"
-            aria-label="Stop"
-            onClick={() => void onStopMessage?.()}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-              <rect x="3" y="3" width="8" height="8" rx="1.6" />
-            </svg>
-          </button>
-        ) : isCompareGroup ? (
-          <div className="composerSplitSend">
+        <div className="composerRightGroup">
+          <ChatComposerTargetSlot
+            payload={payload}
+            composerBusy={composerBusy}
+            composerRecipients={composerRecipients}
+            defaultRecipientParticipantId={defaultRecipientParticipantId}
+            composerStackParticipants={composerStackParticipants}
+            directLaneCat={directLaneCat}
+            isDirectLane={isDirectLane}
+            isSoloComposer={isSoloComposer}
+            onOpenSection={onOpenSection}
+          />
+          {showCancelComposerAction ? (
             <button
-              className="composerSplitSendMain"
-              disabled={!composerDraft.trim() || composerBusy || compareBusy}
-              type="submit"
-              aria-label={compareSendScope === 'all_members' ? 'Send to all chats' : 'Send to this chat'}
-            >
-              {compareSendScope === 'all_members' ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
-                  <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 13V3" />
-                  <path d="M3 7l5-5 5 5" />
-                </svg>
-              )}
-            </button>
-            <button
-              className="composerSplitSendToggle"
+              className="composerSendButton composerCancelButton"
               type="button"
-              aria-label="Switch send mode"
-              onClick={() => onCompareSendScopeChange?.(compareSendScope === 'all_members' ? 'active_only' : 'all_members')}
+              aria-label="Cancel send"
+              onClick={() => onCancelPendingSend?.()}
             >
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 3l3 3 3-3" />
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                <path d="M4 4l6 6" />
+                <path d="M10 4l-6 6" />
               </svg>
             </button>
-          </div>
-        ) : (
-          <button
-            className="composerSendButton"
-            disabled={!composerDraft.trim() || composerBusy || compareBusy}
-            type="submit"
-            aria-label="Send"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 13V3" />
-              <path d="M3 7l5-5 5 5" />
-            </svg>
-          </button>
-        )}
+          ) : showStopComposerAction ? (
+            <button
+              className="composerSendButton composerStopButton"
+              disabled={stopBusy}
+              type="button"
+              aria-label="Stop"
+              onClick={() => void onStopMessage?.()}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+                <rect x="3" y="3" width="8" height="8" rx="1.6" />
+              </svg>
+            </button>
+          ) : isCompareGroup ? (
+            <div className="composerSplitSend">
+              <button
+                className="composerSplitSendMain"
+                disabled={!composerDraft.trim() || composerBusy || compareBusy}
+                type="submit"
+                aria-label={compareSendScope === 'all_members' ? 'Send to all chats' : 'Send to this chat'}
+              >
+                {compareSendScope === 'all_members' ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
+                    <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 13V3" />
+                    <path d="M3 7l5-5 5 5" />
+                  </svg>
+                )}
+              </button>
+              <button
+                className="composerSplitSendToggle"
+                type="button"
+                aria-label="Switch send mode"
+                onClick={() => onCompareSendScopeChange?.(compareSendScope === 'all_members' ? 'active_only' : 'all_members')}
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 3l3 3 3-3" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <button
+              className="composerSendButton"
+              disabled={!composerDraft.trim() || composerBusy || compareBusy}
+              type="submit"
+              aria-label="Send"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 13V3" />
+                <path d="M3 7l5-5 5 5" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
       <input
         ref={channelFileInputRef}
