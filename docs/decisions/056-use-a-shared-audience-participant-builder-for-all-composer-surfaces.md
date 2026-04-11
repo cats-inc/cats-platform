@@ -47,6 +47,7 @@ converts one source type:
 - `buildAudienceParticipantFromTemporaryParticipant(tp: DraftTemporaryParticipant)`
 - `buildAudienceParticipantFromModel(model: ModelSelectorValue)`
 - `buildAudienceParticipantFromRecipient(recipient: RecipientChipTarget)`
+- `buildAudienceParticipantFromStackParticipant(participant: ComposerStackParticipant)`
 
 All call sites import from this module instead of constructing objects inline.
 New fields added to `DraftComposerStackParticipant` only need to be wired in
@@ -58,9 +59,11 @@ one place per source type.
   updating at most one builder per source type, not eight scattered sites.
 - Tooltip, avatar, and identity logic stays consistent across draft,
   active-chat, and workspace surfaces by construction.
-- The intermediate `ComposerStackParticipant` interface may become
-  unnecessary if the builder produces `DraftComposerStackParticipant`
-  directly from `ResolvedChannelParticipant`.
+- The intermediate `ComposerStackParticipant` interface may still become
+  unnecessary later if `buildChatComposerStackParticipants()` is simplified to
+  produce `DraftComposerStackParticipant[]` directly, but the first refactor
+  keeps a dedicated stack-participant builder so the current active-chat
+  surface can be rewired without a larger shape-collapse in the same slice.
 - `chatNewChatDraftSupport.ts` already contains some of this logic for the
   group-draft path; the refactor extracts and generalises it rather than
   creating a new pattern.

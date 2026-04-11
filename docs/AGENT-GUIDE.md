@@ -67,6 +67,7 @@ Update indexes when adding or changing tracked artifacts:
 
 - `docs/README.md`
 - `docs/research/README.md`
+- `docs/decisions/README.md`
 - `docs/specs/README.md`
 - `docs/plans/README.md`
 
@@ -148,4 +149,4 @@ validated `cats-runtime` pilot posture.
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-11*

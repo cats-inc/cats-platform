@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [056-use-a-shared-audience-participant-builder-for-all-composer-surfaces](./056-use-a-shared-audience-participant-builder-for-all-composer-surfaces.md) | Use a shared audience-participant builder for all composer surfaces | Proposed | 2026-04-11 |
 | [055-retire-lead-and-separate-composer-recipients-from-dispatch-policy](./055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md) | Retire lead semantics and separate composer recipients from dispatch policy | Accepted | 2026-04-08 |
 | [054-use-a-platform-level-guide-sidecar-for-day-0-assist](./054-use-a-platform-level-guide-sidecar-for-day-0-assist.md) | Use a platform-level Guide sidecar for day-0 assist | Proposed | 2026-04-07 |
 | [053-use-structured-cats-home-platform-storage](./053-use-structured-cats-home-platform-storage.md) | Use structured `~/.cats` platform storage | Accepted | 2026-04-05 |
@@ -98,6 +99,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-08*
+*Last updated: 2026-04-11*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

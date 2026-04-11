@@ -73,14 +73,26 @@ buildAudienceParticipantFromRecipient(
 Builds from `recipient.name`, `recipient.provider`, etc.
 Sets `isCat: Boolean(recipient.catId)`.
 
+```ts
+buildAudienceParticipantFromStackParticipant(
+  participant: ComposerStackParticipant,
+): DraftComposerStackParticipant
+```
+
+Builds from `participant.label`, `participant.executionLabel`,
+`participant.avatarColor`, `participant.avatarUrl`. Uses
+`participant.useNeutralAvatar` to determine `isCat` and preserves
+`participant.participantId`.
+
 ### Key Rules
 
 - Every builder must populate `executionLabel` from the source data using
   `buildExecutionLabel` / `buildCatExecutionLabel` / `resolveControlDisplayLabels`
   from `shared/executionLabel.ts`.
 - `key` format: `cat:{id}` for cats, `temp:{participantId}` for temp
-  participants, `implicit:model` for model-only, `recipient:{name}` for
-  named recipients.
+  participants, `implicit:model` for model-only, `participant:{participantId}`
+  for stack participants, and for recipients preserve the current precedence of
+  `recipient.catId ?? recipient.participantId ?? recipient:{name}`.
 - No builder may leave `executionLabel` as `null` when the source data
   carries provider information.
 
@@ -100,8 +112,8 @@ builder:
 Once all active-chat paths use the builders directly, the
 `ComposerStackParticipant` interface in `ComposerParticipantStack.tsx` and
 `ChatComposerStackParticipantView` in `chatViewSupport.ts` may be removed or
-reduced to presentation-only concerns, since `DraftComposerStackParticipant`
-becomes the single canonical shape.
+reduced to presentation-only concerns in a follow-up cleanup, since
+`DraftComposerStackParticipant` becomes the canonical audience-chip shape.
 
 ## Out of Scope
 

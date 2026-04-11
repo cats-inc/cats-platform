@@ -19,7 +19,7 @@
 
 Eight call sites across three files manually construct
 `DraftComposerStackParticipant` from five source types. This plan extracts
-four typed builder functions into a shared module and rewires every site.
+five typed builder functions into a shared module and rewires every site.
 
 ## Implementation Phases
 
@@ -30,8 +30,9 @@ four typed builder functions into a shared module and rewires every site.
 - [ ] Task 1.3: Implement `buildAudienceParticipantFromTemporaryParticipant(tp)`
 - [ ] Task 1.4: Implement `buildAudienceParticipantFromModel(model)`
 - [ ] Task 1.5: Implement `buildAudienceParticipantFromRecipient(recipient)`
+- [ ] Task 1.6: Implement `buildAudienceParticipantFromStackParticipant(participant)`
 
-**Deliverable**: one module, four functions, all using
+**Deliverable**: one module, five functions, all using
 `buildExecutionLabel` / `buildCatExecutionLabel` from `shared/executionLabel.ts`
 
 ### Phase 2: Rewire Draft Surfaces
@@ -50,10 +51,12 @@ four typed builder functions into a shared module and rewires every site.
 - [ ] Task 3.1: Replace `ChatComposerTargetSlot.tsx` —
       `recipientToAudienceParticipant`, directLaneCat, implicitRecipient
       inline construction with builder calls
-- [ ] Task 3.2: Evaluate whether `stackParticipantToAudienceParticipant` can
+- [ ] Task 3.2: Replace `stackParticipantToAudienceParticipant` with
+      `buildAudienceParticipantFromStackParticipant`
+- [ ] Task 3.3: Evaluate whether `stackParticipantToAudienceParticipant` can
       be eliminated by having `buildChatComposerStackParticipants` produce
       `DraftComposerStackParticipant[]` directly
-- [ ] Task 3.3: Replace `WorkspaceComposerTargetSlot.tsx` —
+- [ ] Task 3.4: Replace `WorkspaceComposerTargetSlot.tsx` —
       `catToAudienceParticipant` and solo-model inline construction with
       builder calls
 

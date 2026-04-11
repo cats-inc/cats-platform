@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-055](./SPEC-055-shared-audience-participant-builder.md) | Shared Audience-Participant Builder | Draft | [PLAN-046](../plans/PLAN-046-shared-audience-participant-builder.md), [ADR-056](../decisions/056-use-a-shared-audience-participant-builder-for-all-composer-surfaces.md) |
 | [SPEC-054](./SPEC-054-bootstrap-recovery-summary-and-bounded-detail-actions.md) | Bootstrap Recovery Summary and Bounded Detail Actions | Draft | [PLAN-044](../plans/PLAN-044-bootstrap-recovery-summary-and-bounded-detail-actions.md) |
 | [SPEC-053](./SPEC-053-post-setup-environment-status-and-recovery-entry.md) | Post-Setup Environment Status and Recovery Entry | Draft | [PLAN-043](../plans/PLAN-043-post-setup-environment-status-and-recovery-entry.md) |
 | [SPEC-052](./SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md) | Current-Turn Recipients, Dispatch Policy, and Parallel Chat Terminology | Approved | TBD |
@@ -111,6 +112,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-09*
+*Last updated: 2026-04-11*
 
 *See also: [plans/](../plans/) for implementation plans*
