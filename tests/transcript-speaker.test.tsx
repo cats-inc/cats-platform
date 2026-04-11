@@ -32,6 +32,35 @@ test('solo orchestrator replies use the stored execution label snapshot instead 
   });
 });
 
+test('legacy solo orchestrator replies do not surface the internal Chat placeholder as the speaker name', () => {
+  const speaker = resolveTranscriptMessageSpeaker(
+    {
+      id: 'message-legacy',
+      channelId: 'channel-1',
+      senderKind: 'agent',
+      senderName: 'Chat',
+      body: 'Recovered reply.',
+      mentions: [],
+      metadata: {
+        targetKind: 'orchestrator',
+        executionLabelSnapshot: 'Claude-CLI',
+      },
+      usage: null,
+      executionProvider: null,
+      executionModel: null,
+      executionInstance: null,
+      createdAt: '2026-04-11T00:00:00.000Z',
+    },
+    [],
+  );
+
+  assert.deepEqual(speaker, {
+    kind: 'provider',
+    label: 'Claude-CLI',
+    cat: null,
+  });
+});
+
 test('cat-authored transcript messages resolve through the live cat id even after the cat is renamed or archived', () => {
   const speaker = resolveTranscriptMessageSpeaker(
     {

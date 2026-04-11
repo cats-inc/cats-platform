@@ -263,7 +263,7 @@ function buildOrchestratorTarget(state: ChatState, channelId: string): RoutingTa
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: isSoloChatChannel(channel) ? 'Chat' : resolveOrchestratorDisplayName(state),
+    participantName: isSoloChatChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
     sessionId: channel.orchestratorLease.sessionId,
   };
 }

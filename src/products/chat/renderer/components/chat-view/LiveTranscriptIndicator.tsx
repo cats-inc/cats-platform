@@ -52,13 +52,17 @@ export function LiveTranscriptIndicator({
   resolveParticipantDisplayName,
   showProgressDetails = false,
 }: LiveTranscriptIndicatorProps) {
+  const normalizedStreamSpeakerLabel = (() => {
+    const value = liveIndicator.speakerLabel?.trim();
+    return value && value !== 'Chat' ? value : null;
+  })();
   const speakerCat = liveIndicator.catId
     ? cats.find((cat) => cat.id === liveIndicator.catId) ?? null
     : null;
   const speakerLabel = liveSpeakerParticipant?.name
     ?? liveSpeakerParticipantCat?.name
     ?? speakerCat?.name
-    ?? liveIndicator.speakerLabel;
+    ?? normalizedStreamSpeakerLabel;
   const livePreviewText = liveIndicator.previewText ?? '';
   const hasContentBlocks = liveIndicator.contentBlocks.length > 0;
   const showPreviewText = !hasContentBlocks && livePreviewText.trim().length > 0;

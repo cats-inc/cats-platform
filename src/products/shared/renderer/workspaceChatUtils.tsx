@@ -114,6 +114,16 @@ function readExecutionLabelSnapshot(message: ChatMessage): string | null {
   return typeof snapshot === 'string' && snapshot.trim() ? snapshot.trim() : null;
 }
 
+function normalizeTranscriptSenderName(
+  senderName: string | null | undefined,
+): string | null {
+  const normalized = senderName?.trim();
+  if (!normalized || normalized === 'Chat') {
+    return null;
+  }
+  return normalized;
+}
+
 export function resolveTranscriptMessageSpeaker(
   message: ChatMessage,
   cats: ChatCat[],
@@ -128,6 +138,10 @@ export function resolveTranscriptMessageSpeaker(
   const targetId = typeof message.metadata?.targetId === 'string' && message.metadata.targetId
     ? message.metadata.targetId
     : null;
+  const rawSenderName = message.senderName?.trim() ?? '';
+  const senderName = normalizeTranscriptSenderName(message.senderName);
+  const executionLabelSnapshot = readExecutionLabelSnapshot(message);
+  const senderUsesLegacyChatPlaceholder = rawSenderName === 'Chat';
 
   if (targetKind === 'cat' && targetId) {
     const liveCat = cats.find((cat) => cat.id === targetId) ?? null;
@@ -145,8 +159,8 @@ export function resolveTranscriptMessageSpeaker(
     };
   }
 
-  const fallbackCat = message.senderName && message.senderName !== 'Orchestrator'
-    ? cats.find((cat) => cat.name === message.senderName) ?? null
+  const fallbackCat = senderName && senderName !== 'Orchestrator'
+    ? cats.find((cat) => cat.name === senderName) ?? null
     : null;
   if (fallbackCat) {
     return {
@@ -157,14 +171,18 @@ export function resolveTranscriptMessageSpeaker(
   }
 
   if (
-    message.executionProvider
-    && (targetKind === 'orchestrator' || message.senderName === 'Orchestrator')
+    (executionLabelSnapshot || message.executionProvider)
+    && (
+      targetKind === 'orchestrator'
+      || senderName === 'Orchestrator'
+      || senderUsesLegacyChatPlaceholder
+    )
   ) {
-    return {
+      return {
       kind: 'provider',
-      label: readExecutionLabelSnapshot(message)
+      label: executionLabelSnapshot
         ?? buildExecutionLabel(
-          message.executionProvider,
+          message.executionProvider ?? 'unknown',
           message.executionInstance,
           null,
         ),
@@ -172,10 +190,10 @@ export function resolveTranscriptMessageSpeaker(
     };
   }
 
-  if (message.senderName !== 'Orchestrator') {
+  if (senderName && senderName !== 'Orchestrator') {
     return {
       kind: 'name',
-      label: message.senderName,
+      label: senderName,
       cat: null,
     };
   }

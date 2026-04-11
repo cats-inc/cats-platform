@@ -163,7 +163,7 @@ export function useChatParticipantPresentation(options: {
 
     const candidateLabels = new Set<string>();
     const trimmedSenderName = message.senderName?.trim();
-    if (trimmedSenderName && trimmedSenderName !== 'Orchestrator') {
+    if (trimmedSenderName && trimmedSenderName !== 'Orchestrator' && trimmedSenderName !== 'Chat') {
       candidateLabels.add(trimmedSenderName);
     }
     const executionLabelSnapshot = readMessageExecutionLabelSnapshot(message);

@@ -137,3 +137,44 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
     speakerLabel: 'Codex-CLI',
   });
 });
+
+test('resolveChannelStreamTarget does not leak the internal Chat placeholder for solo orchestrator turns', () => {
+  const channel = {
+    composerMode: 'solo',
+    pendingProvider: 'claude',
+    pendingInstance: 'cli/native',
+    orchestratorLease: {
+      status: 'ready',
+      sessionId: 'session-orchestrator',
+      provider: 'claude',
+      model: 'claude-sonnet',
+    },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          status: 'running',
+          targetStatuses: [
+            {
+              status: 'running',
+              participant: {
+                participantKind: 'orchestrator',
+                participantId: 'orchestrator',
+                participantName: 'Chat',
+              },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [],
+  };
+
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: 'session-orchestrator',
+    participantId: 'orchestrator',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+  });
+});

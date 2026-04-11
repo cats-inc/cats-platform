@@ -5,6 +5,7 @@ import {
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import { requireChannel } from '../../state/model/index.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 
@@ -16,6 +17,14 @@ export interface ChannelStreamTarget {
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
+}
+
+function normalizeVisibleSpeakerLabel(label: string | null | undefined): string | null {
+  const normalized = label?.trim();
+  if (!normalized || normalized === 'Chat') {
+    return null;
+  }
+  return normalized;
 }
 
 function buildParticipantStreamTarget(
@@ -32,19 +41,53 @@ function buildParticipantStreamTarget(
     ),
     participantId,
     catId: assignment ? resolveParticipantCatId(assignment) : null,
-    speakerLabel: assignment?.name ?? fallbackSpeakerLabel,
+    speakerLabel: normalizeVisibleSpeakerLabel(assignment?.name ?? fallbackSpeakerLabel),
   };
 }
 
 function buildOrchestratorStreamTarget(
   channel: ReturnType<typeof requireChannel>,
+  fallbackSpeakerLabel: string | null = null,
 ): ChannelStreamTarget {
+  const speakerLabel = normalizeVisibleSpeakerLabel(fallbackSpeakerLabel)
+    ?? (
+      channel.pendingProvider
+        ? buildExecutionLabel(
+            channel.pendingProvider,
+            channel.pendingInstance ?? null,
+            null,
+          )
+        : channel.orchestratorLease.provider
+          ? buildExecutionLabel(
+              channel.orchestratorLease.provider,
+              null,
+              null,
+            )
+          : null
+    );
   return {
     sessionId: channel.orchestratorLease?.sessionId?.trim() || null,
     participantId: 'orchestrator',
     catId: null,
-    speakerLabel: null,
+    speakerLabel,
   };
+}
+
+function buildWorkflowTargetStreamTarget(
+  channel: ReturnType<typeof requireChannel>,
+  participant: {
+    participantKind: 'orchestrator' | 'cat';
+    participantId: string;
+    participantName: string;
+  },
+): ChannelStreamTarget {
+  return participant.participantKind === 'orchestrator'
+    ? buildOrchestratorStreamTarget(channel, participant.participantName)
+    : buildParticipantStreamTarget(
+        channel,
+        participant.participantId,
+        participant.participantName,
+      );
 }
 
 export function resolveChannelStreamTarget(
@@ -58,11 +101,7 @@ export function resolveChannelStreamTarget(
     ];
 
     for (const targetStatus of prioritizedTargetStatuses) {
-      const target = buildParticipantStreamTarget(
-        channel,
-        targetStatus.participant.participantId,
-        targetStatus.participant.participantName,
-      );
+      const target = buildWorkflowTargetStreamTarget(channel, targetStatus.participant);
       if (target.sessionId) {
         return target;
       }
@@ -70,11 +109,7 @@ export function resolveChannelStreamTarget(
 
     if (prioritizedTargetStatuses.length > 0) {
       const nextTarget = prioritizedTargetStatuses[0]!;
-      return buildParticipantStreamTarget(
-        channel,
-        nextTarget.participant.participantId,
-        nextTarget.participant.participantName,
-      );
+      return buildWorkflowTargetStreamTarget(channel, nextTarget.participant);
     }
   }
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;

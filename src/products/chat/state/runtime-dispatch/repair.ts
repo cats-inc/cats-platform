@@ -15,7 +15,7 @@ import type {
   RoomWorkflowTargetState,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
-import { requireChannel } from '../model/index.js';
+import { ORCHESTRATOR_NAME, requireChannel } from '../model/index.js';
 import {
   appendWorkflowEvent,
   createWorkflowEvent,
@@ -346,7 +346,7 @@ function resolveMissingSessionParticipantName(
     : '';
 
   if (targetKind === 'orchestrator') {
-    return 'Chat';
+    return ORCHESTRATOR_NAME;
   }
 
   if (targetId) {
