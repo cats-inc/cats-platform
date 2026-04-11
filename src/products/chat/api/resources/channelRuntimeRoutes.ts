@@ -30,6 +30,7 @@ import {
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../../state/runtime-dispatch/cancellation.js';
 import {
+  shouldWaitForNextChannelStreamTarget,
   waitForChannelStreamTarget,
   waitForNextChannelStreamTarget,
   writeSseEvent,
@@ -355,6 +356,12 @@ async function handleRestStreamChannel(
       }
 
       if (!nextTarget.targetStateId) {
+        break;
+      }
+
+      const latestState = await context.dependencies.chatStore.read();
+      const latestChannel = requireChannel(latestState, channelId);
+      if (!shouldWaitForNextChannelStreamTarget(latestChannel, nextTarget.targetStateId)) {
         break;
       }
 

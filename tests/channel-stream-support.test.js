@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   resolveChannelStreamSessionId,
   resolveChannelStreamTarget,
+  shouldWaitForNextChannelStreamTarget,
 } from '../build/server/products/chat/api/resources/channelStreamSupport.js';
 
 function buildParticipantAssignment(
@@ -147,16 +148,57 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
   });
 });
 
-test('resolveChannelStreamTarget does not fall back to the default recipient before an active workflow target materializes', () => {
+test('resolveChannelStreamTarget does not fall back to an arbitrary ready participant before a multi-target workflow target materializes', () => {
   const channel = {
     roomMode: 'group',
     orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
-      defaultRecipientId: 'participant-1',
+      defaultRecipientId: null,
+      lastOutcome: {
+        turnId: 'turn-1',
+        resolvedTargets: [
+          { participantId: 'participant-1' },
+          { participantId: 'participant-2' },
+        ],
+      },
       workflow: {
         activeTurn: {
+          id: 'turn-1',
           status: 'running',
           targetStatuses: [],
+          events: [],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
+      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'Codex-CLI'),
+    ],
+  };
+
+  assert.equal(resolveChannelStreamSessionId(channel), null);
+  assert.equal(resolveChannelStreamTarget(channel), null);
+});
+
+test('resolveChannelStreamTarget falls back to the default recipient while a single-target workflow turn is still materializing', () => {
+  const channel = {
+    roomMode: 'direct_cat_chat',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: 'participant-1',
+      lastOutcome: {
+        turnId: 'turn-1',
+        resolvedTargets: [
+          { participantId: 'participant-1' },
+        ],
+      },
+      workflow: {
+        activeTurn: {
+          id: 'turn-1',
+          status: 'running',
+          targetStatuses: [],
+          events: [],
         },
       },
     },
@@ -166,8 +208,70 @@ test('resolveChannelStreamTarget does not fall back to the default recipient bef
     ],
   };
 
-  assert.equal(resolveChannelStreamSessionId(channel), null);
-  assert.equal(resolveChannelStreamTarget(channel), null);
+  assert.equal(resolveChannelStreamSessionId(channel), 'session-1');
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: 'session-1',
+    participantId: 'participant-1',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
+    targetStateId: null,
+  });
+});
+
+test('shouldWaitForNextChannelStreamTarget only stays open for real follow-up speakers', () => {
+  const singleTargetChannel = {
+    roomMode: 'direct_cat_chat',
+    roomRouting: {
+      defaultRecipientId: 'participant-1',
+      lastOutcome: {
+        turnId: 'turn-1',
+        resolvedTargets: [{ participantId: 'participant-1' }],
+      },
+      workflow: {
+        activeTurn: {
+          id: 'turn-1',
+          status: 'running',
+          workflowShape: 'sequential',
+          targetStatuses: [
+            { id: 'target-1', status: 'completed' },
+          ],
+          events: [],
+        },
+      },
+    },
+    orchestratorLease: { status: 'idle', sessionId: null },
+    catAssignments: [],
+    participantAssignments: [],
+  };
+  assert.equal(shouldWaitForNextChannelStreamTarget(singleTargetChannel, 'target-1'), false);
+
+  const multiTargetChannel = {
+    roomMode: 'group',
+    roomRouting: {
+      defaultRecipientId: null,
+      lastOutcome: {
+        turnId: 'turn-2',
+        resolvedTargets: [{ participantId: 'participant-1' }, { participantId: 'participant-2' }],
+      },
+      workflow: {
+        activeTurn: {
+          id: 'turn-2',
+          status: 'running',
+          workflowShape: 'sequential',
+          targetStatuses: [
+            { id: 'target-1', status: 'completed' },
+          ],
+          events: [],
+        },
+      },
+    },
+    orchestratorLease: { status: 'idle', sessionId: null },
+    catAssignments: [],
+    participantAssignments: [],
+  };
+  assert.equal(shouldWaitForNextChannelStreamTarget(multiTargetChannel, 'target-1'), true);
 });
 
 test('resolveChannelStreamTarget does not leak the internal Chat placeholder for solo orchestrator turns', () => {

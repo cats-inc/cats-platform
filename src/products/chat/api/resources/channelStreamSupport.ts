@@ -29,6 +29,42 @@ interface ResolvedChannelStreamTarget {
   reason: string | null;
 }
 
+function resolveActiveTurn(
+  channel: ReturnType<typeof requireChannel>,
+) {
+  return channel.roomRouting?.workflow?.activeTurn ?? null;
+}
+
+function resolveActiveTurnInitialTargetCount(
+  channel: ReturnType<typeof requireChannel>,
+): number {
+  const activeTurn = resolveActiveTurn(channel);
+  const lastOutcome = channel.roomRouting?.lastOutcome ?? null;
+  if (activeTurn && lastOutcome?.turnId === activeTurn.id) {
+    return lastOutcome.resolvedTargets.length;
+  }
+
+  const turnStartedEvent = activeTurn?.events.find((event) => event.kind === 'turn_started') ?? null;
+  return turnStartedEvent?.targets.length ?? 0;
+}
+
+function resolveActiveParticipantCount(
+  channel: ReturnType<typeof requireChannel>,
+): number {
+  const participantIds = new Set<string>();
+  for (const assignment of channel.catAssignments) {
+    if (assignment.status === 'active') {
+      participantIds.add(assignment.participantId);
+    }
+  }
+  for (const assignment of channel.participantAssignments ?? []) {
+    if (assignment.status === 'active') {
+      participantIds.add(assignment.participantId);
+    }
+  }
+  return participantIds.size;
+}
+
 function normalizeVisibleSpeakerLabel(label: string | null | undefined): string | null {
   const normalized = label?.trim();
   if (!normalized) {
@@ -136,8 +172,27 @@ function buildWorkflowTargetStreamTarget(
 function hasActiveWorkflowTurn(
   channel: ReturnType<typeof requireChannel>,
 ): boolean {
-  const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
+  const activeTurn = resolveActiveTurn(channel);
   return activeTurn?.status === 'running' || activeTurn?.status === 'pending';
+}
+
+function shouldAllowLegacyFallbackDuringActiveWorkflowTurn(
+  channel: ReturnType<typeof requireChannel>,
+): boolean {
+  const activeTurn = resolveActiveTurn(channel);
+  if (!activeTurn || activeTurn.targetStatuses.length > 0) {
+    return false;
+  }
+
+  if (resolveActiveTurnInitialTargetCount(channel) > 1) {
+    return false;
+  }
+
+  if (channel.roomRouting?.defaultRecipientId) {
+    return true;
+  }
+
+  return resolveActiveParticipantCount(channel) <= 1;
 }
 
 function resolveWorkflowStreamTargetWithReason(
@@ -193,7 +248,7 @@ function resolveChannelStreamTargetWithReason(
   channel: ReturnType<typeof requireChannel>,
 ): ResolvedChannelStreamTarget {
   const workflowTarget = resolveWorkflowStreamTargetWithReason(channel);
-  if (hasActiveWorkflowTurn(channel)) {
+  if (hasActiveWorkflowTurn(channel) && (workflowTarget.target || !shouldAllowLegacyFallbackDuringActiveWorkflowTurn(channel))) {
     return workflowTarget;
   }
 
@@ -333,6 +388,28 @@ export async function waitForChannelStreamTarget(
   }
 
   return lastObservedTarget;
+}
+
+export function shouldWaitForNextChannelStreamTarget(
+  channel: ReturnType<typeof requireChannel>,
+  previousTargetStateId: string | null,
+): boolean {
+  if (!previousTargetStateId) {
+    return false;
+  }
+
+  const activeTurn = resolveActiveTurn(channel);
+  if (!activeTurn || !hasActiveWorkflowTurn(channel)) {
+    return false;
+  }
+
+  if (activeTurn.targetStatuses.some((target) =>
+    target.id !== previousTargetStateId
+    && (target.status === 'running' || target.status === 'pending'))) {
+    return true;
+  }
+
+  return resolveActiveTurnInitialTargetCount(channel) > 1;
 }
 
 export async function waitForNextChannelStreamTarget(
