@@ -1,15 +1,10 @@
 import type { CSSProperties } from 'react';
 
 import { catInitials } from '../chatUtils.js';
+import type { AudienceParticipantStackInput } from '../../../shared/renderer/audienceParticipantBuilder.js';
 
-export interface ComposerStackParticipant {
-  participantId: string;
-  label: string;
-  executionLabel: string | null;
-  avatarColor: string | null;
-  avatarUrl: string | null;
+export interface ComposerStackParticipant extends AudienceParticipantStackInput {
   isBoss: boolean;
-  useNeutralAvatar: boolean;
 }
 
 export interface ComposerParticipantStackProps {

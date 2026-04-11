@@ -14,7 +14,7 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('chat composer renders implicit single-recipient model chips without recipient plus icon', () => {
+test('chat composer renders implicit single-recipient audience chips without avatar affordance', () => {
   const markup = renderToStaticMarkup(
     <ChatComposerArea
       hasConversationStarted
@@ -34,10 +34,10 @@ test('chat composer renders implicit single-recipient model chips without recipi
       composerRecipients={[
         {
           kind: 'implicit',
-          name: 'Claude-CLI · Opus 4.6 with 1M context',
-          provider: 'claude-cli',
-          instance: null,
-          model: 'opus-4.6-1m',
+          name: 'Claude-CLI · Opus',
+          provider: 'claude',
+          instance: 'cli',
+          model: 'opus',
         },
       ]}
       defaultRecipientParticipantId={null}
@@ -60,12 +60,15 @@ test('chat composer renders implicit single-recipient model chips without recipi
     />,
   );
 
-  assert.match(markup, /class="modelSelectorChip"/u);
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /class="audienceChipLabel">Claude-CLI/u);
+  assert.match(markup, /class="audienceChipChevron"/u);
+  assert.doesNotMatch(markup, /class="audienceChipAvatar"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
-  assert.doesNotMatch(markup, /recipientChipIcon/u);
+  assert.doesNotMatch(markup, /class="modelSelectorChip"/u);
 });
 
-test('chat composer restores single-avatar stack for direct lanes', () => {
+test('chat composer renders a cat-backed audience chip for direct lanes', () => {
   const payload = createPayload();
   payload.chat.bossCatId = 'cat-jiang';
   payload.chat.cats = [
@@ -142,15 +145,16 @@ test('chat composer restores single-avatar stack for direct lanes', () => {
     />,
   );
 
-  assert.match(markup, /class="composerCatStack"/u);
-  assert.match(markup, /class="catAvatar composerStackAvatar catAvatarBoss"/u);
-  assert.match(markup, /data-tooltip="將將"/u);
-  assert.match(markup, /style="background:#7A5B3A;color:#fff;z-index:1"/u);
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /class="audienceChipAvatar"/u);
+  assert.match(markup, /class="audienceChipLabel">將將</u);
+  assert.match(markup, /data-tooltip="將將 · Claude-CLI/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /class="modelSelectorChip"/u);
+  assert.doesNotMatch(markup, /class="composerCatStack"/u);
 });
 
-test('chat composer restores avatar stack for group chats instead of a model chip', () => {
+test('chat composer renders a multi-audience chip for group chats', () => {
   const payload = createPayload();
   const markup = renderToStaticMarkup(
     <ChatComposerArea
@@ -171,10 +175,10 @@ test('chat composer restores avatar stack for group chats instead of a model chi
       composerRecipients={[
         {
           kind: 'implicit',
-          name: 'Claude-CLI · Opus 4.6 with 1M context',
-          provider: 'claude-cli',
-          instance: null,
-          model: 'opus-4.6-1m',
+          name: 'Claude-CLI · Opus',
+          provider: 'claude',
+          instance: 'cli',
+          model: 'opus',
         },
       ]}
       defaultRecipientParticipantId="claude"
@@ -222,11 +226,13 @@ test('chat composer restores avatar stack for group chats instead of a model chi
     />,
   );
 
-  assert.match(markup, /class="composerCatStack"/u);
-  assert.match(markup, /data-tooltip="Claude-CLI"/u);
-  assert.match(markup, /data-tooltip="Codex-CLI"/u);
-  assert.match(markup, /data-tooltip="Gemini-CLI"/u);
-  assert.match(markup, /channelParticipantAvatar/u);
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /data-tooltip="Select audience"/u);
+  assert.match(markup, /class="audienceChipAvatar"/u);
+  assert.match(markup, /class="audienceChipLabel">Claude-CLI \+2</u);
+  assert.match(markup, /class="audienceChipWorkflow"/u);
+  assert.match(markup, /data-tooltip="Sequential"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /class="modelSelectorChip"/u);
+  assert.doesNotMatch(markup, /class="composerCatStack"/u);
 });

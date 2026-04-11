@@ -2,13 +2,21 @@ import type { ChatCat } from '../api/workspaceContracts.js';
 import type { DraftTemporaryParticipant } from './draftChatUtils.js';
 import type { RecipientChipTarget } from './components/ComposerRecipientChip.js';
 import { buildModelSelectorLabel, type ModelSelectorValue } from './components/ModelSelector.js';
-import type { ComposerStackParticipant } from '../../chat/renderer/components/ComposerParticipantStack.js';
 import type { DraftComposerStackParticipant } from './components/chatNewChatDraftSupport.js';
 import {
   buildCatExecutionLabel,
   buildExecutionLabel,
   resolveControlDisplayLabels,
 } from '../../../shared/executionLabel.js';
+
+export interface AudienceParticipantStackInput {
+  participantId: string;
+  label: string;
+  executionLabel: string | null;
+  avatarColor: string | null;
+  avatarUrl: string | null;
+  useNeutralAvatar: boolean;
+}
 
 export function buildAudienceParticipantFromCat(
   cat: ChatCat,
@@ -90,7 +98,7 @@ export function buildAudienceParticipantFromRecipient(
 }
 
 export function buildAudienceParticipantFromStackParticipant(
-  participant: ComposerStackParticipant,
+  participant: AudienceParticipantStackInput,
 ): DraftComposerStackParticipant {
   return {
     key: `participant:${participant.participantId}`,

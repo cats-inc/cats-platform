@@ -591,6 +591,19 @@ test('workspace renderer apps delegate settings routing through the shared app f
   }
 });
 
+test('shared audience-participant builder stays independent from chat renderer components', async () => {
+  const builderSource = await readFile(
+    new URL('../src/products/shared/renderer/audienceParticipantBuilder.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(builderSource, /export interface AudienceParticipantStackInput/u);
+  assert.doesNotMatch(
+    builderSource,
+    /products\/chat\/renderer\/components\/ComposerParticipantStack\.js/u,
+  );
+});
+
 test('chat and workspace apps consume a dedicated generic-draft route entry hook', async () => {
   const chatAppSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
