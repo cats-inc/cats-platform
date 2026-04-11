@@ -12,6 +12,7 @@ import {
   type SelectedChannelView,
 } from '../chatUtils.js';
 import { buildCatExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import { isInternalOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
@@ -163,7 +164,7 @@ export function useChatParticipantPresentation(options: {
 
     const candidateLabels = new Set<string>();
     const trimmedSenderName = message.senderName?.trim();
-    if (trimmedSenderName && trimmedSenderName !== 'Orchestrator' && trimmedSenderName !== 'Chat') {
+    if (trimmedSenderName && !isInternalOrchestratorLabel(trimmedSenderName)) {
       candidateLabels.add(trimmedSenderName);
     }
     const executionLabelSnapshot = readMessageExecutionLabelSnapshot(message);

@@ -15,6 +15,7 @@ import type {
   RoomWorkflowTargetState,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
+import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import { ORCHESTRATOR_NAME, requireChannel } from '../model/index.js';
 import {
   appendWorkflowEvent,
@@ -344,9 +345,18 @@ function resolveMissingSessionParticipantName(
   const targetId = typeof responseMessage.metadata?.targetId === 'string'
     ? responseMessage.metadata.targetId.trim()
     : '';
+  const executionLabelSnapshot = typeof responseMessage.metadata?.executionLabelSnapshot === 'string'
+    && responseMessage.metadata.executionLabelSnapshot.trim().length > 0
+    ? responseMessage.metadata.executionLabelSnapshot.trim()
+    : null;
 
   if (targetKind === 'orchestrator') {
-    return ORCHESTRATOR_NAME;
+    return resolveVisibleOrchestratorLabel({
+      displayName: responseMessage.senderName,
+      executionLabel: executionLabelSnapshot,
+      provider: responseMessage.executionProvider,
+      instance: responseMessage.executionInstance,
+    }) ?? ORCHESTRATOR_NAME;
   }
 
   if (targetId) {

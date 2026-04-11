@@ -337,7 +337,8 @@ test('after setup + activate, system messages stay generic and keep verbosity me
       (m) => m.metadata.targetKind === 'orchestrator',
     );
     assert.ok(orchMessage, 'Orchestrator session_started message should exist');
-    assert.ok(orchMessage.body.includes('Orchestrator'), 'Should use generic orchestrator label in solo rooms');
+    assert.ok(orchMessage.body.includes('Claude-CLI'), 'Should use the execution label in solo rooms');
+    assert.ok(!orchMessage.body.includes('Orchestrator'), 'Should not expose the internal orchestrator placeholder in solo rooms');
     assert.ok(!orchMessage.body.includes('將將'), 'Should not expose boss cat name in solo session messages');
     assert.ok(
       /\n\(cwd: .*\\.cats[\\/]runtime[\\/]sessions[\\/].+\)/u.test(orchMessage.body),
@@ -600,4 +601,3 @@ test('Boss Cat cannot be assigned as a regular chat participant', async () => {
     assert.equal(assignPayload.error.message, 'Boss Cat is already the default chat entrypoint');
   });
 });
-

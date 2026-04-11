@@ -10,6 +10,10 @@ import type {
 } from '../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
+import {
+  isInternalOrchestratorLabel,
+  resolveVisibleOrchestratorLabel,
+} from '../../../shared/orchestratorLabel.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import {
   normalizeSelectedChannelView,
@@ -118,7 +122,7 @@ function normalizeTranscriptSenderName(
   senderName: string | null | undefined,
 ): string | null {
   const normalized = senderName?.trim();
-  if (!normalized || normalized === 'Chat') {
+  if (!normalized || isInternalOrchestratorLabel(normalized)) {
     return null;
   }
   return normalized;
@@ -141,7 +145,7 @@ export function resolveTranscriptMessageSpeaker(
   const rawSenderName = message.senderName?.trim() ?? '';
   const senderName = normalizeTranscriptSenderName(message.senderName);
   const executionLabelSnapshot = readExecutionLabelSnapshot(message);
-  const senderUsesLegacyChatPlaceholder = rawSenderName === 'Chat';
+  const senderUsesInternalOrchestratorLabel = isInternalOrchestratorLabel(rawSenderName);
 
   if (targetKind === 'cat' && targetId) {
     const liveCat = cats.find((cat) => cat.id === targetId) ?? null;
@@ -174,23 +178,22 @@ export function resolveTranscriptMessageSpeaker(
     (executionLabelSnapshot || message.executionProvider)
     && (
       targetKind === 'orchestrator'
-      || senderName === 'Orchestrator'
-      || senderUsesLegacyChatPlaceholder
+      || senderUsesInternalOrchestratorLabel
     )
   ) {
     return {
       kind: 'provider',
-      label: executionLabelSnapshot
-        ?? buildExecutionLabel(
-          message.executionProvider ?? 'unknown',
-          message.executionInstance,
-          null,
-        ),
+      label: resolveVisibleOrchestratorLabel({
+        displayName: message.senderName,
+        executionLabel: executionLabelSnapshot,
+        provider: message.executionProvider,
+        instance: message.executionInstance,
+      }),
       cat: null,
     };
   }
 
-  if (senderName && senderName !== 'Orchestrator') {
+  if (senderName) {
     return {
       kind: 'name',
       label: senderName,

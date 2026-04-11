@@ -19,6 +19,7 @@ import {
   checkoutTaskExecution,
   startTaskRunWatcher,
 } from '../../../../core/taskLifecycle.js';
+import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import {
   ORCHESTRATOR_NAME,
   appendMessage,
@@ -61,6 +62,21 @@ import {
   spawnCwdFor,
   toParticipantRef,
 } from './state.js';
+
+function resolveVisibleWakeTargetLabel(input: {
+  target: RoutingTarget;
+  provider?: string | null;
+  instance?: string | null;
+}): string {
+  if (input.target.participantKind !== 'orchestrator') {
+    return input.target.participantName;
+  }
+  return resolveVisibleOrchestratorLabel({
+    displayName: input.target.participantName,
+    provider: input.provider,
+    instance: input.instance,
+  }) ?? ORCHESTRATOR_NAME;
+}
 import type { RuntimeSessionRoutingOptions } from './shared.js';
 
 const MANUALLY_REVIVABLE_SESSION_STATES = new Set([
@@ -349,6 +365,8 @@ export async function ensureTargetSession(
   const channel = buildChannelView(nextState, channelId);
   const spawnCwd = spawnCwdFor(requireChannel(nextState, channelId));
   const workspaceKind = spawnCwd ? 'source' : 'sandbox';
+  let targetLabelProvider: string | null = null;
+  let targetLabelInstance: string | null = null;
 
   try {
     nextState = markTargetWaking(nextState, channelId, target, now);
@@ -365,6 +383,8 @@ export async function ensureTargetSession(
         nextState,
         requireChannel(nextState, channelId),
       );
+      targetLabelProvider = sessionTarget.provider;
+      targetLabelInstance = sessionTarget.instance ?? null;
       const session = await runtimeClient.createSession({
         provider: sessionTarget.provider,
         instance: sessionTarget.instance,
@@ -427,7 +447,14 @@ export async function ensureTargetSession(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: formatSessionStartedMessage(target.participantName, session),
+          body: formatSessionStartedMessage(
+            resolveVisibleWakeTargetLabel({
+              target,
+              provider: session.provider,
+              instance: sessionTarget.instance,
+            }),
+            session,
+          ),
         },
         now,
         {
@@ -460,6 +487,8 @@ export async function ensureTargetSession(
         taskExecutionContext,
       };
     }
+    targetLabelProvider = participant.execution.target.provider;
+    targetLabelInstance = participant.execution.target.instance ?? null;
 
     const session = await runtimeClient.createSession({
       provider: participant.execution.target.provider,
@@ -516,7 +545,14 @@ export async function ensureTargetSession(
       {
         senderKind: 'system',
         senderName: 'Runtime',
-        body: formatSessionStartedMessage(target.participantName, session),
+        body: formatSessionStartedMessage(
+          resolveVisibleWakeTargetLabel({
+            target,
+            provider: session.provider,
+            instance: participant.execution.target.instance,
+          }),
+          session,
+        ),
       },
       now,
       {
@@ -548,7 +584,11 @@ export async function ensureTargetSession(
       {
         senderKind: 'system',
         senderName: 'Runtime',
-        body: `Failed to start ${target.participantName}: ${message}`,
+        body: `Failed to start ${resolveVisibleWakeTargetLabel({
+          target,
+          provider: targetLabelProvider,
+          instance: targetLabelInstance,
+        })}: ${message}`,
       },
       now,
       {

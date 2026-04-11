@@ -61,6 +61,35 @@ test('legacy solo orchestrator replies do not surface the internal Chat placehol
   });
 });
 
+test('solo orchestrator replies do not surface the internal Orchestrator placeholder as the speaker name', () => {
+  const speaker = resolveTranscriptMessageSpeaker(
+    {
+      id: 'message-modern',
+      channelId: 'channel-1',
+      senderKind: 'agent',
+      senderName: 'Orchestrator',
+      body: 'Recovered reply.',
+      mentions: [],
+      metadata: {
+        targetKind: 'orchestrator',
+        executionLabelSnapshot: 'Gemini-CLI',
+      },
+      usage: null,
+      executionProvider: 'gemini',
+      executionModel: null,
+      executionInstance: 'native',
+      createdAt: '2026-04-11T00:00:00.000Z',
+    },
+    [],
+  );
+
+  assert.deepEqual(speaker, {
+    kind: 'provider',
+    label: 'Gemini-CLI',
+    cat: null,
+  });
+});
+
 test('cat-authored transcript messages resolve through the live cat id even after the cat is renamed or archived', () => {
   const speaker = resolveTranscriptMessageSpeaker(
     {

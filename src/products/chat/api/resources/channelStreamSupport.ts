@@ -6,7 +6,7 @@ import {
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
-import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
+import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import { requireChannel } from '../../state/model/index.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
@@ -30,7 +30,7 @@ interface ResolvedChannelStreamTarget {
 
 function normalizeVisibleSpeakerLabel(label: string | null | undefined): string | null {
   const normalized = label?.trim();
-  if (!normalized || normalized === 'Chat') {
+  if (!normalized) {
     return null;
   }
   return normalized;
@@ -65,22 +65,11 @@ function buildOrchestratorStreamTarget(
   channel: ReturnType<typeof requireChannel>,
   fallbackSpeakerLabel: string | null = null,
 ): ChannelStreamTarget {
-  const speakerLabel = normalizeVisibleSpeakerLabel(fallbackSpeakerLabel)
-    ?? (
-      channel.pendingProvider
-        ? buildExecutionLabel(
-            channel.pendingProvider,
-            channel.pendingInstance ?? null,
-            null,
-          )
-        : channel.orchestratorLease.provider
-          ? buildExecutionLabel(
-              channel.orchestratorLease.provider,
-              null,
-              null,
-            )
-          : null
-    );
+  const speakerLabel = resolveVisibleOrchestratorLabel({
+    displayName: fallbackSpeakerLabel,
+    provider: channel.pendingProvider ?? channel.orchestratorLease.provider ?? null,
+    instance: channel.pendingProvider ? (channel.pendingInstance ?? null) : null,
+  });
   return {
     sessionId: channel.orchestratorLease?.sessionId?.trim() || null,
     participantId: 'orchestrator',

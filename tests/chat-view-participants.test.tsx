@@ -576,7 +576,7 @@ test('ChatView promotes solo orchestrator progress once the session_started syst
               channelId: 'channel-1',
               senderKind: 'system',
               senderName: 'Runtime',
-              body: 'Orchestrator connected to cats-runtime session session-orchestrator.',
+              body: 'Claude-CLI connected to cats-runtime session session-orchestrator.',
               mentions: [],
               metadata: {
                 event: 'session_started',
@@ -621,7 +621,7 @@ test('ChatView promotes solo orchestrator progress once the session_started syst
           active: true,
           phase: 'streaming',
           participantId: 'orchestrator',
-          speakerLabel: 'Orchestrator',
+          speakerLabel: 'Claude-CLI',
           sessionStartedAt: '2026-04-07T00:01:01.500Z',
           requiresSessionStartConfirmation: true,
           progressKind: 'session',

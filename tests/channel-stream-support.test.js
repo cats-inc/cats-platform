@@ -135,6 +135,8 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
     participantId: 'participant-2',
     catId: null,
     speakerLabel: 'Codex-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
   });
 });
 
@@ -176,5 +178,50 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
     participantId: 'orchestrator',
     catId: null,
     speakerLabel: 'Claude-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
+  });
+});
+
+test('resolveChannelStreamTarget does not leak the internal Orchestrator placeholder for solo orchestrator turns', () => {
+  const channel = {
+    composerMode: 'solo',
+    pendingProvider: 'gemini',
+    pendingInstance: 'cli/native',
+    orchestratorLease: {
+      status: 'ready',
+      sessionId: 'session-orchestrator',
+      provider: 'gemini',
+      model: 'gemini-3.1-pro-preview',
+    },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          status: 'running',
+          targetStatuses: [
+            {
+              status: 'running',
+              participant: {
+                participantKind: 'orchestrator',
+                participantId: 'orchestrator',
+                participantName: 'Orchestrator',
+              },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [],
+  };
+
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: 'session-orchestrator',
+    participantId: 'orchestrator',
+    catId: null,
+    speakerLabel: 'Gemini-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
   });
 });

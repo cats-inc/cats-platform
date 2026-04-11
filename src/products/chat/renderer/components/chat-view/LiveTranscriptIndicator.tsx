@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import type { ChatCat } from '../../../api/contracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
 import { catInitials } from '../../chatUtils.js';
+import { normalizeVisibleOrchestratorLabel } from '../../../../../shared/orchestratorLabel.js';
 import { MessageBody } from '../MessageBody.js';
 import type {
   ResolvedChannelParticipant,
@@ -54,7 +55,10 @@ export function LiveTranscriptIndicator({
 }: LiveTranscriptIndicatorProps) {
   const normalizedStreamSpeakerLabel = (() => {
     const value = liveIndicator.speakerLabel?.trim();
-    return value && value !== 'Chat' ? value : null;
+    if (liveIndicator.participantId === 'orchestrator') {
+      return normalizeVisibleOrchestratorLabel(value);
+    }
+    return value || null;
   })();
   const speakerCat = liveIndicator.catId
     ? cats.find((cat) => cat.id === liveIndicator.catId) ?? null
