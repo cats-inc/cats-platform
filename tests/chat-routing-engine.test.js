@@ -424,6 +424,111 @@ test('sequential room audience does not redispatch queued targets when replies m
   );
 });
 
+test('concurrent room audience does not redispatch completed peer targets from a later branch handoff', async () => {
+  let { state, channelId, agent1Id, agent2Id } = await createChannelState();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+  state = createCat(
+    state,
+    {
+      name: 'Agent-3',
+      provider: 'codex',
+      roles: ['synthesizer'],
+    },
+    now,
+  );
+  const agent3Id = state.cats[0].id;
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId: agent3Id,
+      provider: 'codex',
+      roles: ['synthesizer'],
+    },
+    now,
+  );
+
+  const firstReply = createDeferred();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return firstReply.promise;
+    }
+    if (content.includes('You are Agent-2')) {
+      return usage('Agent-2 handled the concurrent branch.');
+    }
+    if (content.includes('You are Agent-3')) {
+      return usage('Agent-3 handled the concurrent branch.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatchedPromise = routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Handle this together.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id, agent2Id, agent3Id],
+        workflowShape: 'concurrent',
+      },
+    },
+    runtimeClient,
+    now,
+  );
+
+  await Promise.resolve();
+  firstReply.resolve(usage('@Agent-2 @Agent-3 summarize your branches.'));
+
+  const dispatched = await dispatchedPromise;
+  const channel = buildChannelView(dispatched.state, channelId);
+  const replies = channel.messages.filter((message) => message.senderKind === 'agent');
+  const dispatches = channel.roomRouting?.lastOutcome?.dispatches ?? [];
+  const dispatchesByTarget = new Map();
+  const repliesBySender = new Map();
+  for (const dispatch of dispatches) {
+    dispatchesByTarget.set(
+      dispatch.target.participantName,
+      (dispatchesByTarget.get(dispatch.target.participantName) ?? 0) + 1,
+    );
+  }
+  for (const reply of replies) {
+    repliesBySender.set(
+      reply.senderName,
+      (repliesBySender.get(reply.senderName) ?? 0) + 1,
+    );
+  }
+
+  assert.deepEqual(
+    runtimeClient.sentMessages.map((message) => {
+      if (message.content.includes('You are Agent-1')) {
+        return 'Agent-1';
+      }
+      if (message.content.includes('You are Agent-2')) {
+        return 'Agent-2';
+      }
+      if (message.content.includes('You are Agent-3')) {
+        return 'Agent-3';
+      }
+      return 'unknown';
+    }).sort(),
+    ['Agent-1', 'Agent-2', 'Agent-3'],
+  );
+  assert.equal(runtimeClient.createdSessions.length, 3);
+  assert.equal(replies.length, 3);
+  assert.equal(dispatches.length, 3);
+  assert.equal(dispatchesByTarget.get('Agent-1') ?? 0, 1);
+  assert.equal(dispatchesByTarget.get('Agent-2') ?? 0, 1);
+  assert.equal(dispatchesByTarget.get('Agent-3') ?? 0, 1);
+  assert.equal(repliesBySender.get('Agent-1') ?? 0, 1);
+  assert.equal(repliesBySender.get('Agent-2') ?? 0, 1);
+  assert.equal(repliesBySender.get('Agent-3') ?? 0, 1);
+  assert.equal(
+    dispatches.some((dispatch) => dispatch.trigger === 'continuation_mention'),
+    false,
+  );
+  assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'concurrent');
+});
+
 test('current-turn draft audience metadata respects the configured audience cap', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createChannelState();
   state.capabilities.maxAudienceParticipants = 1;

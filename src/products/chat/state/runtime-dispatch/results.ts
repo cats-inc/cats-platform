@@ -66,16 +66,20 @@ function filterQueuedContinuationTargets(
   queue: DispatchFrame[],
 ): DispatchFrame['targets'] {
   const occupiedParticipantKeys = new Set<string>();
+  const pinConcurrentInitialAudience = activeTurn.workflowShape === 'concurrent';
 
   for (const targetStatus of activeTurn.targetStatuses) {
+    if (targetStatus.sourceMessageId !== activeTurn.sourceMessageId || targetStatus.depth !== 0) {
+      continue;
+    }
     if (
-      targetStatus.sourceMessageId === activeTurn.sourceMessageId
-      && targetStatus.depth === 0
-      && (
-        targetStatus.status === 'pending'
-        || targetStatus.status === 'running'
-      )
+      pinConcurrentInitialAudience
+      || targetStatus.status === 'pending'
+      || targetStatus.status === 'running'
     ) {
+      // In concurrent turns, the depth-0 audience is a fixed fan-out set. A later
+      // branch can still mention those peers, but it must not enqueue them again
+      // after they already replied once.
       occupiedParticipantKeys.add(participantKey(targetStatus.participant));
     }
   }
