@@ -24,6 +24,7 @@ export interface LiveIndicatorEventEntry {
 export interface LiveIndicatorState {
   active: boolean;
   phase: 'idle' | 'waiting' | 'streaming';
+  participantId: string | null;
   catId: string | null;
   activeCatIds: string[];
   catName: string | null;
@@ -52,6 +53,7 @@ const MAX_EVENT_TEXT = 220;
 export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   active: false,
   phase: 'idle',
+  participantId: null,
   catId: null,
   activeCatIds: [],
   catName: null,
@@ -72,6 +74,7 @@ export function createWaitingLiveIndicatorState(input: {
     active: true,
     phase: 'waiting',
     // Waiting is intentionally anonymous until session startup is confirmed.
+    participantId: null,
     catId: null,
     activeCatIds: [],
     catName: null,
@@ -88,9 +91,13 @@ export function createWaitingLiveIndicatorState(input: {
 export function resolveLiveIndicatorSpeakerState(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
-): Pick<LiveIndicatorState, 'catId' | 'activeCatIds' | 'speakerLabel'> {
+): Pick<LiveIndicatorState, 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel'> {
+  const hasParticipantId = Object.prototype.hasOwnProperty.call(data, 'participantId');
   const hasCatId = Object.prototype.hasOwnProperty.call(data, 'catId');
   const hasSpeakerLabel = Object.prototype.hasOwnProperty.call(data, 'speakerLabel');
+  const nextParticipantId = hasParticipantId
+    ? readNullableString(data.participantId)
+    : previous.participantId;
   const nextCatId = hasCatId
     ? readNullableString(data.catId)
     : previous.catId;
@@ -99,6 +106,7 @@ export function resolveLiveIndicatorSpeakerState(
     : previous.speakerLabel;
 
   return {
+    participantId: nextParticipantId,
     catId: nextCatId,
     activeCatIds: nextCatId ? [nextCatId] : [],
     speakerLabel: nextSpeakerLabel,
@@ -152,6 +160,7 @@ export function buildLiveIndicatorScrollKey(
   return [
     liveIndicator.active ? '1' : '0',
     liveIndicator.phase,
+    liveIndicator.participantId ?? '',
     liveIndicator.activeCatIds.join('|'),
     liveIndicator.catId ?? '',
     liveIndicator.speakerLabel ?? '',
@@ -188,6 +197,7 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   liveIndicator: LiveIndicatorState | null | undefined,
   messages: ReadonlyArray<TMessage>,
   activeTurnUpdatedAt: string | null | undefined,
+  sessionMessages: ReadonlyArray<TMessage> = messages,
 ): LiveIndicatorState | null {
   if (!liveIndicator?.active) {
     return liveIndicator ?? null;
@@ -200,6 +210,21 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   const activeTurnTimestamp = Date.parse(activeTurnUpdatedAt);
   if (Number.isNaN(activeTurnTimestamp)) {
     return liveIndicator;
+  }
+
+  if (
+    liveIndicator.phase === 'streaming'
+    && !hasConfirmedLiveIndicatorSessionStart(sessionMessages, liveIndicator, activeTurnTimestamp)
+  ) {
+    traceLiveIndicatorVisibility({
+      liveIndicator,
+      messages,
+      activeTurnUpdatedAt,
+      visible: false,
+      reason: 'awaiting_session_started_message',
+      latestReplyTimestamp: Number.NEGATIVE_INFINITY,
+    });
+    return null;
   }
 
   const latestVisibleReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
@@ -236,6 +261,7 @@ export function resolveTranscriptFollowState<TMessage extends LiveIndicatorTrans
   liveIndicator: LiveIndicatorState | null | undefined,
   messages: ReadonlyArray<TMessage>,
   activeTurnUpdatedAt: string | null | undefined,
+  sessionMessages: ReadonlyArray<TMessage> = messages,
 ): {
   visibleLiveIndicator: LiveIndicatorState | null;
   transcriptScrollKey: string;
@@ -244,6 +270,7 @@ export function resolveTranscriptFollowState<TMessage extends LiveIndicatorTrans
     liveIndicator,
     messages,
     activeTurnUpdatedAt,
+    sessionMessages,
   );
   const lastMessage = messages.at(-1);
 
@@ -587,7 +614,8 @@ function hasExplicitLiveIndicatorSpeaker(
   liveIndicator: LiveIndicatorState,
 ): boolean {
   return Boolean(
-    readString(liveIndicator.speakerLabel)
+    readString(liveIndicator.participantId)
+    || readString(liveIndicator.speakerLabel)
     || liveIndicator.catId
     || liveIndicator.activeCatIds.some((id) => id.trim().length > 0)
   );
@@ -598,7 +626,8 @@ function doesMessageMatchLiveIndicatorSpeaker(
   liveIndicator: LiveIndicatorState,
 ): boolean {
   const messageTargetId = readMessageTargetId(message);
-  const liveTargetId = liveIndicator.catId
+  const liveTargetId = readString(liveIndicator.participantId)
+    ?? liveIndicator.catId
     ?? liveIndicator.activeCatIds.find((id) => id.trim().length > 0)
     ?? null;
   if (messageTargetId && liveTargetId && messageTargetId === liveTargetId) {
@@ -612,6 +641,30 @@ function doesMessageMatchLiveIndicatorSpeaker(
 
   return readString(message.senderName) === liveSpeakerLabel
     || readMessageExecutionLabelSnapshot(message) === liveSpeakerLabel;
+}
+
+function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTranscriptMessageLike>(
+  messages: ReadonlyArray<TMessage>,
+  liveIndicator: LiveIndicatorState,
+  activeTurnTimestamp: number,
+): boolean {
+  return messages.some((message) => {
+    if (readMessageEvent(message) !== 'session_started') {
+      return false;
+    }
+
+    const messageTimestamp = Date.parse(message.createdAt);
+    if (Number.isNaN(messageTimestamp) || messageTimestamp < activeTurnTimestamp) {
+      return false;
+    }
+
+    const liveParticipantId = readString(liveIndicator.participantId);
+    if (liveParticipantId) {
+      return readMessageTargetId(message) === liveParticipantId;
+    }
+
+    return readMessageTargetKind(message) === 'orchestrator';
+  });
 }
 
 function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMessageLike>(input: {
@@ -631,6 +684,7 @@ function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMe
     event: 'visibility_decision',
     channelId: lastMessage?.channelId ?? null,
     speakerLabel: input.liveIndicator.speakerLabel,
+    participantId: input.liveIndicator.participantId,
     catId: input.liveIndicator.catId,
     activeTurnUpdatedAt: input.activeTurnUpdatedAt,
     visible: input.visible,
@@ -645,6 +699,7 @@ function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMe
     },
     signature: [
       input.liveIndicator.phase,
+      input.liveIndicator.participantId ?? '',
       input.liveIndicator.speakerLabel ?? '',
       input.liveIndicator.catId ?? '',
       input.activeTurnUpdatedAt,
@@ -667,6 +722,20 @@ function readMessageTargetId(
 ): string | null {
   const metadata = asRecord(message.metadata);
   return readString(metadata?.targetId);
+}
+
+function readMessageTargetKind(
+  message: LiveIndicatorTranscriptMessageLike,
+): string | null {
+  const metadata = asRecord(message.metadata);
+  return readString(metadata?.targetKind);
+}
+
+function readMessageEvent(
+  message: LiveIndicatorTranscriptMessageLike,
+): string | null {
+  const metadata = asRecord(message.metadata);
+  return readString(metadata?.event);
 }
 
 function readMessageExecutionLabelSnapshot(

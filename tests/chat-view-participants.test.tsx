@@ -329,7 +329,7 @@ test('ChatView keeps Cat visuals in room stacks while the composer stack preserv
 
   assert.match(
     markup,
-    /class="catAvatar catAvatarBoss" data-tooltip="Claude-CLI · claude-sonnet" style="background:#7A5B3A"/u,
+    /class="catAvatar catAvatarBoss" data-tooltip="Milo · Claude-CLI · claude-sonnet" style="background:#7A5B3A"/u,
   );
   assert.match(
     markup,
@@ -462,6 +462,22 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
               usage: null,
               createdAt: '2026-04-07T00:01:00.000Z',
             },
+            {
+              id: 'message-session-started',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Inline Reviewer connected to cats-runtime session session-inline.',
+              mentions: [],
+              metadata: {
+                event: 'session_started',
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+                verbosity: 'verbose',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:02.500Z',
+            },
           ],
           roomRouting: {
             ...baseChannel.roomRouting!,
@@ -520,6 +536,7 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'streaming',
+          participantId: 'participant-inline',
           speakerLabel: 'Inline Reviewer',
         },
       })}
@@ -532,7 +549,7 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   assert.match(markup, /catAvatarPulsing/u);
 });
 
-test('ChatView keeps the last user bubble in a generic processing state before session startup', () => {
+test('ChatView keeps the last user bubble in a generic processing state until session startup is persisted', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
     <ChatView
@@ -607,7 +624,10 @@ test('ChatView keeps the last user bubble in a generic processing state before s
         liveIndicator: {
           ...EMPTY_LIVE_INDICATOR,
           active: true,
-          phase: 'waiting',
+          phase: 'streaming',
+          participantId: 'participant-inline',
+          speakerLabel: 'Inline Reviewer',
+          progressKind: 'session',
         },
       })}
     />,
@@ -719,12 +739,29 @@ test('ChatView keeps live assistant progress collapsed when progress details are
               usage: null,
               createdAt: '2026-04-07T00:01:00.000Z',
             },
+            {
+              id: 'message-session-started',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Inline Reviewer connected to cats-runtime session session-inline.',
+              mentions: [],
+              metadata: {
+                event: 'session_started',
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+                verbosity: 'verbose',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:01.500Z',
+            },
           ],
         }),
         liveIndicator: {
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'streaming',
+          participantId: 'participant-inline',
           speakerLabel: 'Inline Reviewer',
           progressText: 'Calling search',
           tools: [
@@ -782,12 +819,29 @@ test('ChatView shows provider-specific live assistant progress when progress det
               usage: null,
               createdAt: '2026-04-07T00:01:00.000Z',
             },
+            {
+              id: 'message-session-started',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Inline Reviewer connected to cats-runtime session session-inline.',
+              mentions: [],
+              metadata: {
+                event: 'session_started',
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+                verbosity: 'verbose',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:01.500Z',
+            },
           ],
         }),
         liveIndicator: {
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'streaming',
+          participantId: 'participant-inline',
           speakerLabel: 'Inline Reviewer',
           progressText: 'Calling search',
           tools: [
@@ -914,6 +968,22 @@ test('ChatView keeps the next sequential speaker bubble visible after the prior 
               createdAt: '2026-04-07T00:01:00.000Z',
             },
             {
+              id: 'message-session-verifier',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Runtime Verifier connected to cats-runtime session session-verifier.',
+              mentions: [],
+              metadata: {
+                event: 'session_started',
+                targetKind: 'cat',
+                targetId: 'participant-verifier',
+                verbosity: 'verbose',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:03.600Z',
+            },
+            {
               id: 'message-agent-1',
               channelId: 'channel-1',
               senderKind: 'agent',
@@ -1009,6 +1079,7 @@ test('ChatView keeps the next sequential speaker bubble visible after the prior 
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'streaming',
+          participantId: 'participant-verifier',
           speakerLabel: 'Runtime Verifier',
         },
       })}

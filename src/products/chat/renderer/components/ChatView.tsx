@@ -182,8 +182,14 @@ export function ChatView({
       liveIndicator,
       visibleMessages,
       selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null,
+      selectedChannel.messages,
     ),
-    [liveIndicator, selectedChannel.roomRouting.workflow.activeTurn?.updatedAt, visibleMessages],
+    [
+      liveIndicator,
+      selectedChannel.messages,
+      selectedChannel.roomRouting.workflow.activeTurn?.updatedAt,
+      visibleMessages,
+    ],
   );
   const { visibleLiveIndicator, transcriptScrollKey } = transcriptFollowState;
 

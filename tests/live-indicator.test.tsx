@@ -178,6 +178,7 @@ test('resolveVisibleLiveIndicator keeps a sequential follow-up speaker visible a
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
+    participantId: 'participant-agent-2',
     speakerLabel: 'Agent-2',
   };
 
@@ -190,6 +191,17 @@ test('resolveVisibleLiveIndicator keeps a sequential follow-up speaker visible a
         senderName: 'Kenny',
         metadata: {},
         createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-session-agent-2',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          targetKind: 'cat',
+          targetId: 'participant-agent-2',
+        },
+        createdAt: '2026-04-09T12:00:02.500Z',
       },
       {
         id: 'message-agent-1',
@@ -213,6 +225,7 @@ test('resolveVisibleLiveIndicator hides stale streaming progress once the same s
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
+    participantId: 'participant-agent-1',
     speakerLabel: 'Agent-1',
   };
 
@@ -225,6 +238,17 @@ test('resolveVisibleLiveIndicator hides stale streaming progress once the same s
         senderName: 'Kenny',
         metadata: {},
         createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-session-agent-1',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:02.500Z',
       },
       {
         id: 'message-agent-1',
@@ -243,11 +267,39 @@ test('resolveVisibleLiveIndicator hides stale streaming progress once the same s
   assert.equal(visible, null);
 });
 
+test('resolveVisibleLiveIndicator keeps the assistant bubble hidden until session startup is persisted', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, null);
+});
+
 test('resolveTranscriptFollowState derives scroll keys from transcript content instead of channel timestamps', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
+    participantId: 'participant-inline',
     previewText: 'Thinking',
   };
 
@@ -266,6 +318,29 @@ test('resolveTranscriptFollowState derives scroll keys from transcript content i
       },
     ],
     '2026-04-09T12:00:03.000Z',
+    [
+      {
+        id: 'msg-1',
+        senderKind: 'user',
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'msg-session',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          targetKind: 'cat',
+          targetId: 'participant-inline',
+        },
+        createdAt: '2026-04-09T12:00:03.500Z',
+      },
+      {
+        id: 'msg-2',
+        senderKind: 'agent',
+        createdAt: '2026-04-09T12:00:01.000Z',
+      },
+    ],
   );
 
   assert.equal(followState.visibleLiveIndicator, liveIndicator);
@@ -342,6 +417,7 @@ test('live indicator event payload updates the active speaker metadata even with
     'progress',
     {
       text: '',
+      participantId: 'participant-gemini',
       catId: null,
       speakerLabel: 'Gemini-CLI',
       metadata: {
@@ -351,6 +427,7 @@ test('live indicator event payload updates the active speaker metadata even with
   );
 
   assert.equal(nextState.phase, 'streaming');
+  assert.equal(nextState.participantId, 'participant-gemini');
   assert.equal(nextState.catId, null);
   assert.deepEqual(nextState.activeCatIds, []);
   assert.equal(nextState.speakerLabel, 'Gemini-CLI');
