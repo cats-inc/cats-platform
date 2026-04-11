@@ -86,19 +86,14 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  margin-top: 4px;
+  margin: 4px -12px 0;
+  padding: 0 12px;
   background:
     linear-gradient(var(--sidebar-bg) 30%, transparent) center top,
     linear-gradient(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.07)) center top;
   background-repeat: no-repeat;
   background-size: 100% 12px, 100% 1px;
   background-attachment: local, scroll;
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-
-.sidebarScrollable:hover {
-  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
 
 .sidebarScrollable::-webkit-scrollbar {
@@ -106,7 +101,7 @@
 }
 
 .sidebarScrollable::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--sidebar-bg);
 }
 
 .sidebarScrollable::-webkit-scrollbar-thumb {
