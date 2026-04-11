@@ -33,6 +33,7 @@ import {
   waitForChannelStreamTarget,
   writeSseEvent,
 } from './channelStreamSupport.js';
+import { publishRoomMutation } from '../transportEventPublisher.js';
 
 function buildStreamSpeakerPayload(input: {
   participantId?: string | null;
@@ -44,6 +45,18 @@ function buildStreamSpeakerPayload(input: {
     catId: input.catId ?? null,
     speakerLabel: input.speakerLabel ?? null,
   };
+}
+
+function publishStreamAttachMutationEvents(
+  context: ChatApiRouteContext,
+  channelId: string,
+): void {
+  publishRoomMutation(context.dependencies.eventHub, channelId, 'updated');
+  context.dependencies.eventHub?.emit({
+    kind: 'recents_changed',
+    channelId,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 async function handleRestCancelChannel(
@@ -240,6 +253,9 @@ async function handleRestStreamChannel(
           reason: 'attach_ready_session',
         });
       }
+      // Surface the persisted session_started system message before transcript
+      // progress hands off from the user bubble to the assistant bubble.
+      publishStreamAttachMutationEvents(context, channelId);
       writeSseEvent(context, 'progress', {
         type: 'progress',
         text: '',

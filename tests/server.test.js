@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createServer } from '../build/server/server.js';
+import { createServer } from '../build/server/app/server/index.js';
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
 import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 import {
@@ -268,6 +268,47 @@ async function withServer(
   }
 }
 
+function createSseCapture(response) {
+  assert.ok(response.body, 'Expected an SSE response body');
+  return {
+    reader: response.body.getReader(),
+    decoder: new TextDecoder(),
+    text: '',
+  };
+}
+
+async function readSseUntil(stream, predicate, timeoutMs = 1_000) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const remainingMs = Math.max(1, deadline - Date.now());
+    let timeoutId;
+    const result = await Promise.race([
+      stream.reader.read(),
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Timed out while waiting for an SSE frame.'));
+        }, remainingMs);
+      }),
+    ]).finally(() => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    });
+
+    if (result.done) {
+      break;
+    }
+
+    stream.text += stream.decoder.decode(result.value, { stream: true });
+    if (predicate(stream.text)) {
+      return stream.text;
+    }
+  }
+
+  throw new Error(`Timed out waiting for the expected SSE frame.\n${stream.text}`);
+}
+
 test('GET /api/channels/:id/stream relays runtime session events through the runtime client', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();
@@ -435,6 +476,132 @@ test('GET /api/channels/:id/stream waits for a pending session lease before clos
     assert.match(body, /"text":"Session became ready"/u);
     assert.doesNotMatch(body, /event: session_closed/u);
     assert.ok(runtime.streamedSessions.includes('session-live-2'));
+  }, chatStore);
+});
+
+test('GET /api/channels/:id/stream publishes room updates once a pending session is attached', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Cold start lane',
+      topic: 'Refresh the transcript once runtime session startup is persisted.',
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  const participantId = requireChannel(state, channelId).catAssignments[0].participantId;
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-live-3', {
+    session: {
+      id: 'session-live-3',
+    },
+    observePath: '/sessions/session-live-3/observe',
+    stream: {
+      path: '/sessions/session-live-3/stream',
+      available: true,
+      events: [
+        {
+          event: 'progress',
+          data: {
+            type: 'progress',
+            text: 'Session became ready',
+            metadata: {
+              kind: 'session',
+            },
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const chatEventsResponse = await fetch(`${baseUrl}/api/events/chat`);
+    assert.equal(chatEventsResponse.status, 200);
+    assert.equal(chatEventsResponse.headers.get('content-type'), 'text/event-stream');
+
+    const chatEvents = createSseCapture(chatEventsResponse);
+    await readSseUntil(chatEvents, (text) => /event: connected/u.test(text));
+
+    try {
+      const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      let nextState = await chatStore.read();
+      nextState = setChannelCatLease(
+        nextState,
+        channelId,
+        catId,
+        {
+          sessionId: 'session-live-3',
+          status: 'ready',
+          cwd: 'C:/repo/cats-platform',
+          lastError: null,
+          provider: 'claude',
+          model: 'claude-sonnet-4',
+          startedAt: seededAt.toISOString(),
+          lastUsedAt: seededAt.toISOString(),
+        },
+        seededAt,
+      );
+      nextState = appendMessage(
+        nextState,
+        channelId,
+        {
+          senderKind: 'system',
+          senderName: 'Runtime',
+          body: 'Companion Cat connected to cats-runtime session session-live-3.\n(cwd: C:/repo/cats-platform)',
+        },
+        new Date('2026-03-11T00:00:02.000Z'),
+        {
+          metadata: {
+            event: 'session_started',
+            targetKind: 'cat',
+            targetId: participantId,
+            sessionId: 'session-live-3',
+            verbosity: 'verbose',
+          },
+          incrementUnread: false,
+        },
+      ).state;
+      await chatStore.write(nextState);
+
+      const chatEventsBody = await readSseUntil(
+        chatEvents,
+        (text) =>
+          /event: room_updated/u.test(text)
+          && new RegExp(`"channelId":"${channelId}"`, 'u').test(text)
+          && /"mutation":"updated"/u.test(text),
+      );
+      assert.match(chatEventsBody, /event: room_updated/u);
+      assert.match(chatEventsBody, /"mutation":"updated"/u);
+
+      const streamResponse = await streamResponsePromise;
+      assert.equal(streamResponse.status, 200);
+      const streamBody = await streamResponse.text();
+      assert.match(streamBody, /event: progress/u);
+      assert.match(streamBody, /"kind":"session"/u);
+      assert.ok(runtime.streamedSessions.includes('session-live-3'));
+    } finally {
+      await chatEvents.reader.cancel();
+    }
   }, chatStore);
 });
 
