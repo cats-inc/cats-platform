@@ -37,6 +37,7 @@ import {
 } from './prompts.js';
 import { resolveRoomRoutingState } from './room-routing/index.js';
 import type { DispatchRequest } from './room-routing/runtime.js';
+import { isPersistedRuntimeResponseMessage } from './runtimeResponseMessages.js';
 
 export type RuntimeTransportContext = 'telegram' | 'web';
 
@@ -432,7 +433,7 @@ function hasVisibleResponseFromCurrentSession(
       return false;
     }
 
-    if (message.metadata.event !== 'runtime_response') {
+    if (!isPersistedRuntimeResponseMessage(message)) {
       return false;
     }
 

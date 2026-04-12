@@ -1283,6 +1283,86 @@ test('structured workflow recommendations drive continuation when no explicit @m
   );
 });
 
+test('segmented replies keep final-only completion semantics while workflow recommendations use the full turn', async () => {
+  const { state, channelId } = await createChannelState();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return {
+        segments: [
+          {
+            kind: 'text',
+            text: [
+              'Passing implementation to the next specialist.',
+              '```json',
+              JSON.stringify({
+                workflowRecommendation: {
+                  workflowShape: 'sequential',
+                  candidateTargetNames: ['Agent-2'],
+                  branchStrategy: 'transplant_context',
+                  rationale: 'Agent-2 should implement the change.',
+                },
+              }),
+              '```',
+            ].join('\n'),
+            toolName: null,
+            toolId: null,
+          },
+          {
+            kind: 'tool_use',
+            text: '',
+            toolName: 'search',
+            toolId: 'tool-search',
+          },
+          {
+            kind: 'text',
+            text: 'I already gathered notes for Agent-2.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 11,
+        outputTokens: 7,
+        tokensUsed: 18,
+      };
+    }
+    if (content.includes('You are Agent-2')) {
+      return usage('I implemented the change.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Kick off the work.' },
+    runtimeClient,
+    new Date('2026-03-21T00:00:00.000Z'),
+  );
+  const channel = buildChannelView(dispatched.state, channelId);
+  const agentOneReplies = channel.messages.filter((message) => message.senderName === 'Agent-1');
+
+  assert.deepEqual(
+    agentOneReplies.map((message) => message.body),
+    [
+      'Passing implementation to the next specialist.',
+      'I already gathered notes for Agent-2.',
+    ],
+  );
+  assert.equal(agentOneReplies[0]?.metadata.event, 'runtime_response_segment');
+  assert.equal(agentOneReplies[1]?.metadata.event, 'runtime_response');
+  assert.equal(
+    agentOneReplies[1]?.metadata.workflowRecommendation?.workflowShape,
+    'sequential',
+  );
+  assert.ok(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.some(
+      (target) =>
+        target.participant.participantName === 'Agent-2'
+        && target.branchStrategy === 'transplant_context',
+    ),
+  );
+});
+
 test('explicit @mentions stay authoritative over structured workflow recommendations', async () => {
   const { state, channelId } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {

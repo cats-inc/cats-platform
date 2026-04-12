@@ -20,6 +20,10 @@ import {
 import {
   resolveChatViewTopBarPresenceState,
 } from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
+import {
+  shouldRenderLiveTranscriptBlock,
+  shouldShowLiveTranscriptTrailingDots,
+} from '../src/products/shared/renderer/components/chat-view/liveTranscriptBlockSupport.ts';
 
 test('EMPTY_LIVE_INDICATOR starts with no active cat ids', () => {
   assert.deepEqual(EMPTY_LIVE_INDICATOR.activeCatIds, []);
@@ -171,6 +175,54 @@ test('resolveVisibleLiveIndicator keeps active progress while only the user turn
   );
 
   assert.equal(visible, liveIndicator);
+});
+
+test('collapsed live transcript keeps error blocks visible and only shows dots for streaming non-text blocks', () => {
+  assert.equal(
+    shouldRenderLiveTranscriptBlock(
+      {
+        id: 'status:error',
+        index: 1,
+        kind: 'status',
+        status: 'error',
+        title: null,
+        text: 'Search failed',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+      false,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldShowLiveTranscriptTrailingDots('streaming', {
+      id: 'tool:complete',
+      index: 1,
+      kind: 'tool',
+      status: 'complete',
+      title: 'search',
+      text: 'Done',
+      toolName: 'search',
+      toolId: 'tool-search',
+      metadata: null,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldShowLiveTranscriptTrailingDots('streaming', {
+      id: 'tool:streaming',
+      index: 2,
+      kind: 'tool',
+      status: 'streaming',
+      title: 'search',
+      text: '',
+      toolName: 'search',
+      toolId: 'tool-search',
+      metadata: null,
+    }),
+    true,
+  );
 });
 
 test('resolveVisibleLiveIndicator keeps a sequential follow-up speaker visible after an earlier reply', () => {

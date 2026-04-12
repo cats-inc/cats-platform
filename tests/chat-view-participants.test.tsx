@@ -969,6 +969,112 @@ test('ChatView shows provider-specific live assistant progress when progress det
   assert.match(markup, /Searching for draft reviews/u);
 });
 
+test('ChatView keeps terminal live status visible when progress details are off', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          participantId: 'participant-inline',
+          speakerLabel: 'Inline Reviewer',
+          contentBlocks: [
+            {
+              id: 'status:1',
+              index: 1,
+              kind: 'status',
+              status: 'complete',
+              title: null,
+              text: 'Search complete',
+              toolName: null,
+              toolId: null,
+              metadata: null,
+            },
+          ],
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /Search complete/u);
+  assert.doesNotMatch(markup, /typingDots/u);
+});
+
+test('ChatView does not show fake typing dots for hidden completed tool blocks when progress details are off', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          participantId: 'participant-inline',
+          speakerLabel: 'Inline Reviewer',
+          contentBlocks: [
+            {
+              id: 'text:0',
+              index: 0,
+              kind: 'text',
+              status: 'streaming',
+              title: null,
+              text: 'Looking into it...',
+              toolName: null,
+              toolId: null,
+              metadata: null,
+            },
+            {
+              id: 'tool:1',
+              index: 1,
+              kind: 'tool',
+              status: 'complete',
+              title: 'search',
+              text: 'Search complete',
+              toolName: 'search',
+              toolId: 'tool-search',
+              metadata: null,
+            },
+          ],
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /Looking into it/u);
+  assert.doesNotMatch(markup, /toolSegmentChip/u);
+  assert.doesNotMatch(markup, /typingDots/u);
+});
+
 test('ChatView streams text content directly in the assistant bubble body when progress details are on', () => {
   const markup = renderToStaticMarkup(
     <ChatView

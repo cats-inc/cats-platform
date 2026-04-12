@@ -13,6 +13,11 @@ import {
   MessageChoices,
   type MessageChoicesSubmitInput,
 } from '../MessageChoices.js';
+import {
+  shouldRenderLiveTranscriptBlock,
+  shouldShowLiveTranscriptTrailingDots,
+  stripLeadingLiveTranscriptBlankLines,
+} from './liveTranscriptBlockSupport.js';
 
 export interface ChatTranscriptSurfaceProps {
   hasConversationStarted: boolean;
@@ -123,14 +128,17 @@ export function ChatTranscriptSurface({
             (left, right) => left.index - right.index,
           );
           const lastBlock = sortedBlocks.at(-1);
-          const showTrailingDots =
-            liveIndicator.phase === 'streaming'
-            && lastBlock != null
-            && lastBlock.kind !== 'text';
+          const showTrailingDots = shouldShowLiveTranscriptTrailingDots(
+            liveIndicator.phase,
+            lastBlock,
+          );
 
           function renderBlock(block: LiveIndicatorContentBlock): JSX.Element | null {
+            if (!shouldRenderLiveTranscriptBlock(block, showProgressDetails)) {
+              return null;
+            }
             if (block.kind === 'text') {
-              const text = block.text.replace(/^(?:[ \t]*\r?\n)+/u, '');
+              const text = stripLeadingLiveTranscriptBlankLines(block.text);
               if (!text.trim()) {
                 return null;
               }
@@ -143,9 +151,6 @@ export function ChatTranscriptSurface({
                   disabledMentionNames={directLaneExcludedMentionNames}
                 />
               );
-            }
-            if (!showProgressDetails) {
-              return null;
             }
             if (block.kind === 'tool') {
               return (

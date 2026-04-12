@@ -6,15 +6,14 @@ import type { LiveIndicatorContentBlock } from '../../../../../shared/runtimeCon
 import { catInitials } from '../../chatUtils.js';
 import { normalizeVisibleOrchestratorLabel } from '../../../../../shared/orchestratorLabel.js';
 import { MessageBody } from '../MessageBody.js';
+import {
+  shouldRenderLiveTranscriptBlock,
+  shouldShowLiveTranscriptTrailingDots,
+  stripLeadingLiveTranscriptBlankLines,
+} from '../../../../shared/renderer/components/chat-view/liveTranscriptBlockSupport.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../shared/channelParticipants.js';
-
-const LEADING_BLANK_LINES_PATTERN = /^(?:[ \t]*\r?\n)+/u;
-
-function stripLeadingBlankLines(value: string): string {
-  return value.replace(LEADING_BLANK_LINES_PATTERN, '');
-}
 
 export interface LiveTranscriptIndicatorProps {
   cats: ChatCat[];
@@ -50,8 +49,12 @@ function renderContentBlockSegment(
   disabledMentionNames: string[],
   showProgressDetails: boolean,
 ): JSX.Element | null {
+  if (!shouldRenderLiveTranscriptBlock(block, showProgressDetails)) {
+    return null;
+  }
+
   if (block.kind === 'text') {
-    const text = stripLeadingBlankLines(block.text);
+    const text = stripLeadingLiveTranscriptBlankLines(block.text);
     if (!text.trim()) {
       return null;
     }
@@ -64,10 +67,6 @@ function renderContentBlockSegment(
         disabledMentionNames={disabledMentionNames}
       />
     );
-  }
-
-  if (!showProgressDetails) {
-    return null;
   }
 
   if (block.kind === 'tool') {
@@ -123,10 +122,7 @@ export function LiveTranscriptIndicator({
     (left, right) => left.index - right.index,
   );
   const lastBlock = sortedBlocks.at(-1);
-  const showTrailingDots =
-    liveIndicator.phase === 'streaming'
-    && lastBlock != null
-    && lastBlock.kind !== 'text';
+  const showTrailingDots = shouldShowLiveTranscriptTrailingDots(liveIndicator.phase, lastBlock);
 
   return (
     <article className="transcriptMessageStack transcriptMessageStackAgent typingIndicator">

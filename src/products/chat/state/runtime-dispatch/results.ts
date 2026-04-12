@@ -53,12 +53,21 @@ import {
   applyDispatchChannelChatCwd,
   applyDispatchLeasePatch,
 } from './recovery.js';
+import {
+  RUNTIME_RESPONSE_EVENT,
+  RUNTIME_RESPONSE_SEGMENT_EVENT,
+} from '../runtimeResponseMessages.js';
 
 type ContinuationSource = 'explicit_mentions' | 'workflow_recommendation';
 
 interface TextSegmentWithToolMetadata {
   text: string;
   precedingTools: Array<{ toolName: string | null; toolId: string | null }>;
+}
+
+interface PersistedTextSegment extends TextSegmentWithToolMetadata {
+  segmentIndex: number;
+  body: string;
 }
 
 function collectTextSegmentsWithToolMetadata(
@@ -77,6 +86,27 @@ function collectTextSegmentsWithToolMetadata(
   }
 
   return result;
+}
+
+function buildPersistedTextSegments(
+  textSegments: TextSegmentWithToolMetadata[],
+): PersistedTextSegment[] {
+  const persistedSegments: PersistedTextSegment[] = [];
+
+  for (let segmentIndex = 0; segmentIndex < textSegments.length; segmentIndex += 1) {
+    const segment = textSegments[segmentIndex]!;
+    const body = extractWorkflowRecommendationFromBody(segment.text).body;
+    if (!body.trim()) {
+      continue;
+    }
+    persistedSegments.push({
+      ...segment,
+      segmentIndex,
+      body,
+    });
+  }
+
+  return persistedSegments;
 }
 
 interface BlockedDispatchResolution {
@@ -408,9 +438,10 @@ export function applyDispatchExecutions(
     );
     const segments = execution.responseSegments ?? [];
     const textSegments = collectTextSegmentsWithToolMetadata(segments);
-    const lastTextSegment = textSegments.at(-1);
+    const persistedTextSegments = buildPersistedTextSegments(textSegments);
+    const fullResponseText = resolveFullResponseText(segments);
     const extractedWorkflowRecommendation = extractWorkflowRecommendationFromBody(
-      lastTextSegment?.text ?? '',
+      fullResponseText,
     );
     const channel = requireChannel(nextState, channelId);
     const hiddenSoloReply = execution.target.participantKind === 'orchestrator'
@@ -425,23 +456,19 @@ export function applyDispatchExecutions(
     const executionMeta = resolveExecutionMetadataForTarget(nextState, channelId, execution.target);
 
     let responseMessage: ChatMessage | null = null;
-    for (let segmentIndex = 0; segmentIndex < textSegments.length; segmentIndex += 1) {
-      const segment = textSegments[segmentIndex]!;
-      const isLastSegment = segmentIndex === textSegments.length - 1;
-      const segmentBody = isLastSegment
-        ? extractedWorkflowRecommendation.body
-        : segment.text;
-      if (!segmentBody.trim()) {
-        continue;
-      }
+    for (let segmentIndex = 0; segmentIndex < persistedTextSegments.length; segmentIndex += 1) {
+      const segment = persistedTextSegments[segmentIndex]!;
+      const isLastSegment = segmentIndex === persistedTextSegments.length - 1;
       const appendedResponse = appendMessage(
         nextState,
         channelId,
-        { senderKind, senderName, body: segmentBody },
+        { senderKind, senderName, body: segment.body },
         now,
         {
           metadata: {
-            event: 'runtime_response',
+            event: isLastSegment
+              ? RUNTIME_RESPONSE_EVENT
+              : RUNTIME_RESPONSE_SEGMENT_EVENT,
             targetKind: execution.target.participantKind,
             targetId: execution.target.participantId,
             sessionId: execution.target.sessionId,
@@ -449,7 +476,7 @@ export function applyDispatchExecutions(
             sourceMessageId: execution.sourceMessage.id,
             routingTrigger: execution.trigger,
             dispatchDepth: execution.depth,
-            segmentIndex,
+            segmentIndex: segment.segmentIndex,
             ...(segment.precedingTools.length > 0
               ? { precedingTools: segment.precedingTools }
               : {}),
@@ -470,11 +497,16 @@ export function applyDispatchExecutions(
       const fallback = appendMessage(
         nextState,
         channelId,
-        { senderKind, senderName, body: resolveFullResponseText(segments) || `${execution.target.participantName} completed the routed turn without text output.` },
+        {
+          senderKind,
+          senderName,
+          body: extractedWorkflowRecommendation.body
+            || `${execution.target.participantName} completed the routed turn without text output.`,
+        },
         now,
         {
           metadata: {
-            event: 'runtime_response',
+            event: RUNTIME_RESPONSE_EVENT,
             targetKind: execution.target.participantKind,
             targetId: execution.target.participantId,
             sessionId: execution.target.sessionId,
@@ -547,7 +579,6 @@ export function applyDispatchExecutions(
       dispatchDepth: execution.depth,
     });
 
-    const fullResponseText = resolveFullResponseText(segments);
     let continuationResolution = resolveTargets(nextState, channelId, fullResponseText, {
       allowDefaultTarget: false,
       explicitTrigger: 'continuation_mention',

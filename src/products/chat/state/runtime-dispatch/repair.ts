@@ -27,6 +27,10 @@ import {
 } from '../room-routing/index.js';
 import { finalizeDispatchTurn } from './finalize.js';
 import { formatSessionStartedMessage } from '../runtimeMessages.js';
+import {
+  isPersistedRuntimeResponseMessage,
+  isTerminalRuntimeResponseMessage,
+} from '../runtimeResponseMessages.js';
 
 function describeGuardReason(): string {
   return 'a routing guard';
@@ -40,7 +44,7 @@ function readRuntimeResponseForTurn(
     const message = channel.messages[index]!;
     if (
       (message.senderKind === 'agent' || message.senderKind === 'orchestrator')
-      && message.metadata?.event === 'runtime_response'
+      && isTerminalRuntimeResponseMessage(message)
       && message.metadata.turnId === turnId
     ) {
       return message;
@@ -434,7 +438,7 @@ export function repairMissingSessionStartedMessages(
   );
   const missingResponses = channel.messages.filter((message) => {
     const sessionId = readMessageSessionId(message);
-    return message.metadata?.event === 'runtime_response'
+    return isPersistedRuntimeResponseMessage(message)
       && Boolean(sessionId)
       && !existingSessionStartedIds.has(sessionId!);
   });

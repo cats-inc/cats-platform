@@ -621,6 +621,67 @@ test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when t
   assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'completed');
 });
 
+test('repairOrphanedCompletedDispatchTurn ignores non-terminal segmented replies', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-09T12:00:00.000Z');
+  const responseAt = new Date('2026-04-09T12:00:06.000Z');
+  const stateStore = new MemoryChatStore();
+  let state = await stateStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Segment fragment only',
+      topic: 'Do not repair a turn from a partial segment.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Only a partial reply exists' },
+    runtimeClient,
+    seededAt,
+  );
+  const activeTurnId = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn?.id;
+  assert.ok(activeTurnId);
+
+  const partialState = appendMessage(
+    begun.state,
+    channelId,
+    {
+      senderKind: 'orchestrator',
+      senderName: 'Chat',
+      body: 'Partial response body',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'runtime_response_segment',
+        turnId: activeTurnId,
+        targetKind: 'orchestrator',
+        targetId: 'orchestrator',
+        routingTrigger: 'room_default',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+    },
+  ).state;
+
+  const repaired = repairOrphanedCompletedDispatchTurn(
+    partialState,
+    channelId,
+    new Date('2026-04-09T12:10:00.000Z'),
+  );
+
+  assert.equal(repaired.repaired, false);
+  assert.equal(
+    requireChannel(repaired.state, channelId).roomRouting.workflow.activeTurn?.id,
+    activeTurnId,
+  );
+});
+
 test('repairMissingSessionStartedMessages restores missing runtime metadata before the response', async () => {
   const chatStore = new MemoryChatStore();
   const seededAt = new Date('2026-04-09T12:00:00.000Z');
