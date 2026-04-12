@@ -11,6 +11,9 @@ import {
   shouldConnectLiveIndicatorStream,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {
+  resolveLiveIndicatorPreviewBody,
+} from '../src/products/shared/renderer/components/chat-view/liveTranscriptIndicatorSupport.ts';
+import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
   resolveTranscriptFollowState,
@@ -464,6 +467,36 @@ test('resolveVisibleLiveIndicator does not wait for a new session_started messag
   );
 
   assert.equal(visible, liveIndicator);
+});
+
+test('resolveLiveIndicatorPreviewBody strips leading blank lines from streamed preview text', () => {
+  const body = resolveLiveIndicatorPreviewBody({
+    ...EMPTY_LIVE_INDICATOR,
+    previewText: '\n\nHello',
+  });
+
+  assert.equal(body, 'Hello');
+});
+
+test('resolveLiveIndicatorPreviewBody strips leading blank lines from streamed text content blocks', () => {
+  const body = resolveLiveIndicatorPreviewBody({
+    ...EMPTY_LIVE_INDICATOR,
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text',
+        status: 'streaming',
+        title: null,
+        text: '\n\nHello',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  });
+
+  assert.equal(body, 'Hello');
 });
 
 test('resolveTranscriptFollowState derives scroll keys from transcript content instead of channel timestamps', () => {
