@@ -136,6 +136,22 @@ export function ChatTranscriptPanel({
     );
   }
 
+  const shouldRenderLiveTranscriptIndicator = Boolean(
+    liveIndicator?.active
+    && (
+      liveIndicator.phase === 'streaming'
+      || (
+        liveIndicator.phase === 'waiting'
+        && (
+          liveIndicator.participantId
+          || liveIndicator.catId
+          || liveIndicator.speakerLabel
+          || liveIndicator.activeCatIds.some((id) => id.trim().length > 0)
+        )
+      )
+    ),
+  );
+
   return (
     <section className="transcriptPanel">
       <div ref={transcriptListRef} className="transcriptList">
@@ -176,7 +192,7 @@ export function ChatTranscriptPanel({
             resolveParticipantDisplayName={resolveParticipantDisplayName}
           />
         ))}
-        {liveIndicator?.active && liveIndicator.phase === 'streaming' ? (
+        {shouldRenderLiveTranscriptIndicator && liveIndicator ? (
           <LiveTranscriptIndicator
             cats={cats}
             bossCatId={bossCatId}

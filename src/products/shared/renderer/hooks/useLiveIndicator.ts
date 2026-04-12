@@ -24,10 +24,26 @@ const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
 const LIVE_INDICATOR_RETRY_LIMIT = 8;
 
 export interface LiveIndicatorSelectedChannelLike {
+  messages?: Array<{
+    id: string;
+    senderKind: string;
+  }>;
   roomRouting: {
     defaultRecipientId: string | null;
     workflow: {
-      activeTurn?: { status: string | null } | null;
+      activeTurn?: {
+        status: string | null;
+        sourceMessageId?: string | null;
+        workflowShape?: string | null;
+        targetStatuses?: Array<{
+          status: string | null;
+          participant: {
+            participantKind?: string | null;
+            participantId: string;
+            participantName?: string | null;
+          };
+        }>;
+      } | null;
     };
   };
   composerMode: string;
@@ -69,6 +85,56 @@ export function resolveLiveIndicatorSpeakerLabel(
     selectedChannel.pendingInstance,
     null,
   );
+}
+
+function hasVisibleAssistantReplyAfterMessage(
+  messages: ReadonlyArray<{ id: string; senderKind: string }>,
+  messageId: string,
+): boolean {
+  const sourceIndex = messages.findIndex((message) => message.id === messageId);
+  if (sourceIndex === -1) {
+    return false;
+  }
+
+  return messages.slice(sourceIndex + 1).some((message) =>
+    message.senderKind === 'agent' || message.senderKind === 'orchestrator');
+}
+
+function resolveWaitingSpeakerState(
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+): {
+  participantId: string | null;
+  catId: string | null;
+  speakerLabel: string | null;
+  revealIdentity: boolean;
+} {
+  const activeTurn = selectedChannel?.roomRouting.workflow.activeTurn ?? null;
+  const activeTargets = activeTurn?.targetStatuses?.filter((target) =>
+    target.status === 'running' || target.status === 'pending') ?? [];
+  const nextTarget = activeTargets[0];
+  if (!nextTarget) {
+    return {
+      participantId: null,
+      catId: null,
+      speakerLabel: null,
+      revealIdentity: false,
+    };
+  }
+
+  const hasVisibleAssistantReply = activeTurn?.sourceMessageId
+    ? hasVisibleAssistantReplyAfterMessage(
+      selectedChannel?.messages ?? [],
+      activeTurn.sourceMessageId,
+    )
+    : false;
+  const revealIdentity = activeTurn?.workflowShape === 'concurrent' || hasVisibleAssistantReply;
+
+  return {
+    participantId: nextTarget.participant.participantId,
+    catId: null,
+    speakerLabel: nextTarget.participant.participantName?.trim() || null,
+    revealIdentity,
+  };
 }
 
 export function shouldRetryLiveIndicatorSessionClose(
@@ -125,6 +191,7 @@ export function useLiveIndicator<
   const speakerLabel = defaultRecipientCatId
     ? null
     : resolveLiveIndicatorSpeakerLabel(selectedChannel);
+  const waitingSpeakerState = resolveWaitingSpeakerState(selectedChannel);
 
   function traceBrowser(event: string, input: {
     sessionId?: string | null;
@@ -256,8 +323,14 @@ export function useLiveIndicator<
             reason: 'session_close_reconnect',
           });
           return createWaitingLiveIndicatorState({
+            participantId: nextSpeakerState.participantId,
             catId: nextSpeakerState.catId,
             speakerLabel: nextSpeakerState.speakerLabel,
+            revealIdentity: Boolean(
+              nextSpeakerState.participantId
+              || nextSpeakerState.catId
+              || nextSpeakerState.speakerLabel
+            ),
           });
         }
         return applyLiveIndicatorEvent(previous, eventType, data);
@@ -325,17 +398,26 @@ export function useLiveIndicator<
     }
 
     const waitingState = createWaitingLiveIndicatorState({
-      catId: defaultRecipientCatId,
-      speakerLabel,
+      participantId: waitingSpeakerState.revealIdentity ? waitingSpeakerState.participantId : null,
+      catId: waitingSpeakerState.revealIdentity ? waitingSpeakerState.catId : defaultRecipientCatId,
+      speakerLabel: waitingSpeakerState.revealIdentity ? waitingSpeakerState.speakerLabel : speakerLabel,
+      revealIdentity: waitingSpeakerState.revealIdentity,
     });
     stateRef.current = waitingState;
     setState(waitingState);
     traceBrowser('waiting_started', {
-      participantId: defaultRecipientCatId,
-      speakerLabel,
-      reason: shouldConnectStream({ channelId, busy, routingStatus })
-        ? 'awaiting_stream_attach'
-        : 'waiting_without_stream',
+        participantId: waitingSpeakerState.revealIdentity
+          ? waitingSpeakerState.participantId
+          : null,
+        catId: waitingSpeakerState.revealIdentity
+          ? waitingSpeakerState.catId
+          : defaultRecipientCatId,
+        speakerLabel: waitingSpeakerState.revealIdentity
+          ? waitingSpeakerState.speakerLabel
+          : speakerLabel,
+        reason: shouldConnectStream({ channelId, busy, routingStatus })
+          ? 'awaiting_stream_attach'
+          : 'waiting_without_stream',
       details: {
         busy,
         routingStatus,
@@ -361,6 +443,10 @@ export function useLiveIndicator<
     debugTraceEnabled,
     defaultRecipientCatId,
     routingStatus,
+    waitingSpeakerState.catId,
+    waitingSpeakerState.participantId,
+    waitingSpeakerState.revealIdentity,
+    waitingSpeakerState.speakerLabel,
     speakerLabel,
     shouldConnectStream,
     shouldShowWaitingIndicator,

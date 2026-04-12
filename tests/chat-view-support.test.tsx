@@ -158,6 +158,41 @@ test('resolveLatestUserTurnPresentationState stops user-bubble processing once a
   });
 });
 
+test('resolveLatestUserTurnPresentationState stops user-bubble processing once a waiting assistant placeholder is identity-ready', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            sourceMessageId: 'message-user',
+            status: 'running',
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: {
+      ...EMPTY_LIVE_INDICATOR,
+      active: true,
+      phase: 'waiting',
+      participantId: 'participant-codex',
+      speakerLabel: 'Codex-CLI',
+    },
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'idle',
+  });
+});
+
 test('resolveLatestUserTurnPresentationState keeps the user bubble idle during sequential handoff after a visible assistant reply', () => {
   const result = resolveLatestUserTurnPresentationState({
     selectedChannel: {

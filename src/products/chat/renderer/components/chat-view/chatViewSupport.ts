@@ -220,6 +220,21 @@ function hasVisibleAssistantReplyAfterMessage(
     message.senderKind === 'agent' || message.senderKind === 'orchestrator');
 }
 
+function hasLiveIndicatorIdentity(
+  liveIndicator: LiveIndicatorState | null | undefined,
+): boolean {
+  if (!liveIndicator?.active) {
+    return false;
+  }
+
+  return Boolean(
+    liveIndicator.participantId
+    || liveIndicator.catId
+    || liveIndicator.speakerLabel
+    || liveIndicator.activeCatIds.some((id) => id.trim().length > 0)
+  );
+}
+
 export function resolveLatestUserTurnPresentationState(input: {
   selectedChannel: SelectedChannelView;
   visibleLiveIndicator: LiveIndicatorState | null | undefined;
@@ -234,10 +249,7 @@ export function resolveLatestUserTurnPresentationState(input: {
 
   const activeTurn = input.selectedChannel.roomRouting.workflow.activeTurn ?? null;
   const lastOutcome = input.selectedChannel.roomRouting.lastOutcome ?? null;
-  const hasAssistantIdentityBubble = Boolean(
-    input.visibleLiveIndicator?.active
-    && input.visibleLiveIndicator.phase === 'streaming'
-  );
+  const hasAssistantIdentityBubble = hasLiveIndicatorIdentity(input.visibleLiveIndicator);
   const hasVisibleAssistantReply = hasVisibleAssistantReplyAfterMessage(
     input.selectedChannel.messages,
     latestUserMessage.id,

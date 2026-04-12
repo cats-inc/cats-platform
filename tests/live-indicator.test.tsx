@@ -220,6 +220,68 @@ test('resolveVisibleLiveIndicator keeps a sequential follow-up speaker visible a
   assert.equal(visible, liveIndicator);
 });
 
+test('resolveVisibleLiveIndicator keeps a named waiting follow-up speaker visible after an earlier reply', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting',
+    participantId: 'participant-agent-2',
+    speakerLabel: 'Agent-2',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-1',
+        senderKind: 'agent',
+        senderName: 'Agent-1',
+        metadata: {
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:03.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
+});
+
+test('resolveVisibleLiveIndicator keeps a named concurrent waiting speaker visible before the first reply lands', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
+});
+
 test('resolveVisibleLiveIndicator hides stale streaming progress once the same speaker reply is visible', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
@@ -469,8 +531,8 @@ test('shared live indicator effect reconnects on EventSource termination and sti
     'utf8',
   );
 
-  assert.match(source, /const speakerLabel = defaultRecipientCatId/u);
-  assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*defaultRecipientCatId,\s*routingStatus,\s*speakerLabel,/u);
+  assert.match(source, /const waitingSpeakerState = resolveWaitingSpeakerState/u);
+  assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*defaultRecipientCatId,\s*routingStatus,\s*waitingSpeakerState\.catId,\s*waitingSpeakerState\.participantId,\s*waitingSpeakerState\.revealIdentity,\s*waitingSpeakerState\.speakerLabel,\s*speakerLabel,/u);
   assert.match(source, /source\.onerror = \(\) =>/u);
   assert.match(source, /traceBrowser\('stream_source_error'/u);
   assert.match(source, /scheduleReconnect\(\);/u);

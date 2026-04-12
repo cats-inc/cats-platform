@@ -1026,7 +1026,7 @@ test('ChatView drops stale live progress once the routed reply is already visibl
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'waiting',
-          speakerLabel: 'Gemini',
+          speakerLabel: null,
         },
       })}
     />,
@@ -1166,6 +1166,132 @@ test('ChatView keeps the next sequential speaker bubble visible after the prior 
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'streaming',
+          participantId: 'participant-verifier',
+          speakerLabel: 'Runtime Verifier',
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /typingIndicator/u);
+  assert.match(markup, /Runtime Verifier/u);
+  assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
+});
+
+test('ChatView promotes a waiting next sequential speaker placeholder instead of returning to the user bubble', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-agent-1',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Inline Reviewer',
+              body: 'Done.',
+              mentions: [],
+              metadata: {
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:04.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-user',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 2,
+                targetStatuses: [
+                  {
+                    id: 'target-1',
+                    dispatchId: 'dispatch-1',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-inline',
+                      participantName: 'Inline Reviewer',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'completed',
+                    queuedAt: '2026-04-07T00:01:01.000Z',
+                    startedAt: '2026-04-07T00:01:02.000Z',
+                    completedAt: '2026-04-07T00:01:04.000Z',
+                    responseMessageId: 'message-agent-1',
+                    error: null,
+                  },
+                  {
+                    id: 'target-2',
+                    dispatchId: 'dispatch-2',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-verifier',
+                      participantName: 'Runtime Verifier',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'running',
+                    queuedAt: '2026-04-07T00:01:03.000Z',
+                    startedAt: null,
+                    completedAt: null,
+                    responseMessageId: null,
+                    error: null,
+                  },
+                ],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:05.000Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'waiting',
           participantId: 'participant-verifier',
           speakerLabel: 'Runtime Verifier',
         },

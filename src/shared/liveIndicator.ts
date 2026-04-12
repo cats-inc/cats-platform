@@ -71,18 +71,20 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
 };
 
 export function createWaitingLiveIndicatorState(input: {
+  participantId?: string | null;
   catId: string | null;
   speakerLabel: string | null;
+  revealIdentity?: boolean;
 }): LiveIndicatorState {
+  const revealIdentity = input.revealIdentity === true;
   return {
     active: true,
     phase: 'waiting',
-    // Waiting is intentionally anonymous until session startup is confirmed.
-    participantId: null,
-    catId: null,
-    activeCatIds: [],
+    participantId: revealIdentity ? input.participantId ?? null : null,
+    catId: revealIdentity ? input.catId : null,
+    activeCatIds: revealIdentity && input.catId ? [input.catId] : [],
     catName: null,
-    speakerLabel: null,
+    speakerLabel: revealIdentity ? input.speakerLabel : null,
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
     progressText: '',
@@ -258,32 +260,32 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     return null;
   }
 
-  const latestVisibleReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
-  if (liveIndicator.phase !== 'streaming' || !hasExplicitLiveIndicatorSpeaker(liveIndicator)) {
-    const visible = latestVisibleReplyTimestamp < activeTurnTimestamp;
+  if (hasExplicitLiveIndicatorSpeaker(liveIndicator)) {
+    const latestSpeakerReplyTimestamp = resolveLatestVisibleReplyTimestamp(
+      messages,
+      (message) => doesMessageMatchLiveIndicatorSpeaker(message, liveIndicator),
+    );
+    const visible = latestSpeakerReplyTimestamp < activeTurnTimestamp;
     traceLiveIndicatorVisibility({
       liveIndicator,
       messages,
       activeTurnUpdatedAt,
       visible,
-      reason: visible ? 'visible_before_identity' : 'reply_after_active_turn',
-      latestReplyTimestamp: latestVisibleReplyTimestamp,
+      reason: visible ? 'speaker_still_streaming' : 'same_speaker_reply_visible',
+      latestReplyTimestamp: latestSpeakerReplyTimestamp,
     });
     return visible ? liveIndicator : null;
   }
 
-  const latestSpeakerReplyTimestamp = resolveLatestVisibleReplyTimestamp(
-    messages,
-    (message) => doesMessageMatchLiveIndicatorSpeaker(message, liveIndicator),
-  );
-  const visible = latestSpeakerReplyTimestamp < activeTurnTimestamp;
+  const latestVisibleReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
+  const visible = latestVisibleReplyTimestamp < activeTurnTimestamp;
   traceLiveIndicatorVisibility({
     liveIndicator,
     messages,
     activeTurnUpdatedAt,
     visible,
-    reason: visible ? 'speaker_still_streaming' : 'same_speaker_reply_visible',
-    latestReplyTimestamp: latestSpeakerReplyTimestamp,
+    reason: visible ? 'visible_before_identity' : 'reply_after_active_turn',
+    latestReplyTimestamp: latestVisibleReplyTimestamp,
   });
   return visible ? liveIndicator : null;
 }
