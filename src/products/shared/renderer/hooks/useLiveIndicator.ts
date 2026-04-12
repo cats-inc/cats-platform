@@ -134,6 +134,60 @@ export function shouldRetryLiveIndicatorSessionClose(
     && defaultShouldConnectStream(input);
 }
 
+function hasRenderableLiveIndicatorContent(
+  state: LiveIndicatorState,
+): boolean {
+  return state.contentBlocks.length > 0
+    || state.progressText.trim().length > 0
+    || state.events.length > 0;
+}
+
+export function shouldPinLiveIndicatorUntilPersistedReply(
+  previous: LiveIndicatorState,
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+): boolean {
+  if (!previous.active || previous.phase !== 'streaming' || !hasRenderableLiveIndicatorContent(previous)) {
+    return false;
+  }
+
+  const activeTurnSourceMessageId =
+    selectedChannel?.roomRouting.workflow.activeTurn?.sourceMessageId ?? null;
+  if (!activeTurnSourceMessageId) {
+    return false;
+  }
+
+  return !hasVisibleAssistantReplyAfterMessage(
+    selectedChannel?.messages ?? [],
+    activeTurnSourceMessageId,
+  );
+}
+
+export function resolveWaitingIndicatorStateTransition(input: {
+  previous: LiveIndicatorState;
+  waitingState: LiveIndicatorState;
+  selectedChannel: LiveIndicatorSelectedChannelLike | null;
+  previousChannelId: string | null;
+  channelId: string | null;
+}): LiveIndicatorState {
+  if (input.previousChannelId !== input.channelId || !input.previous.active) {
+    return input.waitingState;
+  }
+
+  if (shouldPinLiveIndicatorUntilPersistedReply(input.previous, input.selectedChannel)) {
+    return input.previous;
+  }
+
+  if (input.previous.phase === 'streaming') {
+    return input.waitingState;
+  }
+
+  if (input.previous.phase === 'waiting' && !hasRenderableLiveIndicatorContent(input.previous)) {
+    return input.waitingState;
+  }
+
+  return input.previous;
+}
+
 function defaultShouldShowWaitingIndicator(
   input: LiveIndicatorStreamDecisionInput,
 ): boolean {
@@ -173,6 +227,7 @@ export function useLiveIndicator<
   const [state, setState] = useState<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
   const sourceRef = useRef<EventSource | null>(null);
   const stateRef = useRef<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
+  const previousChannelIdRef = useRef<string | null>(null);
 
   const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
   const routingStatus = resolveRoutingStatus?.(selectedChannel) ?? null;
@@ -221,6 +276,8 @@ export function useLiveIndicator<
       busy,
       routingStatus,
     });
+    const previousChannelId = previousChannelIdRef.current;
+    previousChannelIdRef.current = channelId;
     let disposed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectAttempts = 0;
@@ -288,6 +345,8 @@ export function useLiveIndicator<
         busy,
         routingStatus,
       });
+      const shouldPinReplyCommit = shouldRetrySessionClose
+        && shouldPinLiveIndicatorUntilPersistedReply(stateRef.current, selectedChannel);
 
       traceBrowser('stream_event', {
         sessionId: readTraceString(data.sessionId),
@@ -307,6 +366,15 @@ export function useLiveIndicator<
           return previous;
         }
         if (shouldRetrySessionClose) {
+          if (shouldPinReplyCommit) {
+            traceBrowser('stream_reply_commit_pending', {
+              participantId: previous.participantId,
+              catId: previous.catId,
+              speakerLabel: previous.speakerLabel,
+              reason: 'pin_until_persisted_reply',
+            });
+            return previous;
+          }
           const nextSpeakerState = resolveLiveIndicatorSpeakerState(previous, data);
           traceBrowser('stream_waiting_restart', {
             participantId: readTraceString(data.participantId),
@@ -328,7 +396,7 @@ export function useLiveIndicator<
         return applyLiveIndicatorEvent(previous, eventType, data);
       });
 
-      if (shouldRetrySessionClose) {
+      if (shouldRetrySessionClose && !shouldPinReplyCommit) {
         scheduleReconnect();
       }
     }
@@ -395,8 +463,17 @@ export function useLiveIndicator<
       speakerLabel: waitingSpeakerState.revealIdentity ? waitingSpeakerState.speakerLabel : speakerLabel,
       revealIdentity: waitingSpeakerState.revealIdentity,
     });
-    stateRef.current = waitingState;
-    setState(waitingState);
+    setState((previous) => {
+      const next = resolveWaitingIndicatorStateTransition({
+        previous,
+        waitingState,
+        selectedChannel,
+        previousChannelId,
+        channelId,
+      });
+      stateRef.current = next;
+      return next;
+    });
     traceBrowser('waiting_started', {
       participantId: waitingSpeakerState.revealIdentity
         ? waitingSpeakerState.participantId

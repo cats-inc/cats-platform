@@ -4,7 +4,9 @@ import {
 } from '../../../../shared/composer.js';
 import {
   EMPTY_LIVE_INDICATOR,
+  resolveWaitingIndicatorStateTransition,
   resolveLiveIndicatorSpeakerLabel,
+  shouldPinLiveIndicatorUntilPersistedReply,
   shouldRetryLiveIndicatorSessionClose,
   type LiveIndicatorSelectedChannelLike,
   type LiveIndicatorState,
@@ -108,4 +110,9 @@ export function useLiveIndicator(options: {
   });
 }
 
-export { resolveLiveIndicatorSpeakerLabel, shouldRetryLiveIndicatorSessionClose };
+export {
+  resolveLiveIndicatorSpeakerLabel,
+  resolveWaitingIndicatorStateTransition,
+  shouldPinLiveIndicatorUntilPersistedReply,
+  shouldRetryLiveIndicatorSessionClose,
+};

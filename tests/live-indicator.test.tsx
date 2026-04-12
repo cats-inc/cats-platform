@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 import {
   EMPTY_LIVE_INDICATOR,
+  resolveWaitingIndicatorStateTransition,
   resolveLiveIndicatorSpeakerLabel,
+  shouldPinLiveIndicatorUntilPersistedReply,
   shouldRetryLiveIndicatorSessionClose,
   shouldConnectLiveIndicatorStream,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
@@ -93,6 +95,195 @@ test('shouldRetryLiveIndicatorSessionClose stays off once the channel is no long
     }),
     false,
   );
+});
+
+test('shouldPinLiveIndicatorUntilPersistedReply keeps a completed streaming bubble visible until the reply is durable', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming' as const,
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'streaming' as const,
+        title: null,
+        text: 'First answer',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  assert.equal(
+    shouldPinLiveIndicatorUntilPersistedReply(previous, {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user',
+            workflowShape: 'sequential',
+            targetStatuses: [],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    }),
+    true,
+  );
+});
+
+test('resolveWaitingIndicatorStateTransition keeps the current speaker bubble pinned until the persisted reply lands', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming' as const,
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'streaming' as const,
+        title: null,
+        text: 'First answer',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    participantId: 'participant-agent-2',
+    catId: null,
+    speakerLabel: 'Agent-2',
+    revealIdentity: true,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                status: 'running',
+                participant: {
+                  participantId: 'participant-agent-2',
+                  participantName: 'Agent-2',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next, previous);
+});
+
+test('resolveWaitingIndicatorStateTransition hands off once the persisted assistant reply is visible', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming' as const,
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'streaming' as const,
+        title: null,
+        text: 'First answer',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    participantId: 'participant-agent-2',
+    catId: null,
+    speakerLabel: 'Agent-2',
+    revealIdentity: true,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+        },
+        {
+          id: 'message-agent-1',
+          senderKind: 'agent',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                status: 'running',
+                participant: {
+                  participantId: 'participant-agent-2',
+                  participantName: 'Agent-2',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next, waitingState);
 });
 
 test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', () => {
