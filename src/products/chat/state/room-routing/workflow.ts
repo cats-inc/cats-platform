@@ -191,7 +191,7 @@ export function queueWorkflowTarget(
     queuedAt: nowIso,
     startedAt: null,
     completedAt: null,
-    responseMessageId: null,
+    response: null,
     error: null,
   };
   turn.targetStatuses.push(targetStatus);
@@ -255,8 +255,8 @@ export function updateWorkflowTarget(
   if (update.completedAt !== undefined) {
     targetStatus.completedAt = update.completedAt;
   }
-  if (update.responseMessageId !== undefined) {
-    targetStatus.responseMessageId = update.responseMessageId;
+  if (update.response !== undefined) {
+    targetStatus.response = update.response;
   }
   if (update.error !== undefined) {
     targetStatus.error = update.error;
@@ -278,7 +278,7 @@ export function createPendingDispatch(
     trigger: request.trigger,
     status: 'pending',
     mentionNames: structuredClone(request.mentionNames),
-    responseMessageId: null,
+    response: null,
     startedAt: nowIso,
     completedAt: null,
     error: null,
@@ -313,8 +313,8 @@ export function updateDispatch(
   if (update.mentionNames !== undefined) {
     dispatch.mentionNames = update.mentionNames;
   }
-  if (update.responseMessageId !== undefined) {
-    dispatch.responseMessageId = update.responseMessageId;
+  if (update.response !== undefined) {
+    dispatch.response = update.response;
   }
   if (update.startedAt !== undefined) {
     dispatch.startedAt = update.startedAt;

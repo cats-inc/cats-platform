@@ -10,6 +10,7 @@ import type {
 import {
   deriveCoreWorkflowSummary,
 } from '../../../../core/governance.js';
+import type { RoomAssistantTurnDelivery } from '../../../../shared/roomRouting.js';
 import type {
   ChatOperatorActivityItem,
   ChatOperatorSeverity,
@@ -339,6 +340,24 @@ export function metricsForRun(run: CoreRunRecord): ChatRunMetrics {
   };
 }
 
+function readAssistantTurnDelivery(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): RoomAssistantTurnDelivery | null {
+  const record = readNestedMetadataRecord(metadata, key);
+  const assistantTurnId = readMetadataString(record, 'assistantTurnId');
+  if (!assistantTurnId) {
+    return null;
+  }
+
+  return {
+    assistantTurnId,
+    messageIds: readMetadataStringArray(record, 'messageIds'),
+    fullText: readMetadataString(record, 'fullText') ?? '',
+    segmentCount: readMetadataNumber(record, 'segmentCount') ?? 0,
+  };
+}
+
 export function buildBranchStates(run: CoreRunRecord | null): ChatWorkflowBranchView[] {
   const metadata = readMetadataRecord(run?.metadata);
   return readMetadataRecordArray(metadata, 'branchStates').map((branch, index) => ({
@@ -352,7 +371,7 @@ export function buildBranchStates(run: CoreRunRecord | null): ChatWorkflowBranch
     handoffReason: readMetadataString(branch, 'handoffReason'),
     branchStrategy: readMetadataString(branch, 'branchStrategy'),
     parentCheckpointId: readMetadataString(branch, 'parentCheckpointId'),
-    responseMessageId: readMetadataString(branch, 'responseMessageId'),
+    response: readAssistantTurnDelivery(branch, 'response'),
     error: readMetadataString(branch, 'error'),
   }));
 }

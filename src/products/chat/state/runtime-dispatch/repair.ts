@@ -28,9 +28,11 @@ import {
 import { finalizeDispatchTurn } from './finalize.js';
 import { formatSessionStartedMessage } from '../runtimeMessages.js';
 import {
-  isPersistedRuntimeResponseMessage,
-  isTerminalRuntimeResponseMessage,
-} from '../runtimeResponseMessages.js';
+  buildAssistantTurnDeliveryFromChannel,
+  findTerminalAssistantTurnSegmentForTurn,
+  isAssistantTurnSegmentMessage,
+  readAssistantTurnId,
+} from '../assistantTurnSegments.js';
 
 function describeGuardReason(): string {
   return 'a routing guard';
@@ -40,18 +42,7 @@ function readRuntimeResponseForTurn(
   channel: ChatChannelState,
   turnId: string,
 ): ChatMessage | null {
-  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
-    const message = channel.messages[index]!;
-    if (
-      (message.senderKind === 'agent' || message.senderKind === 'orchestrator')
-      && isTerminalRuntimeResponseMessage(message)
-      && message.metadata.turnId === turnId
-    ) {
-      return message;
-    }
-  }
-
-  return null;
+  return findTerminalAssistantTurnSegmentForTurn(channel, turnId);
 }
 
 function buildParticipantRefFromResponse(
@@ -149,6 +140,7 @@ function ensureCompletedTargetStatus(
   turn: RoomWorkflowTurn,
   participant: RoomRoutingParticipantRef | null,
   responseMessage: ChatMessage,
+  response: NonNullable<RoomWorkflowTargetState['response']>,
 ): RoomWorkflowTargetState | null {
   if (!participant) {
     return null;
@@ -156,7 +148,7 @@ function ensureCompletedTargetStatus(
 
   const completedAt = responseMessage.createdAt;
   const existing = turn.targetStatuses.find((target) =>
-    target.responseMessageId === responseMessage.id)
+    target.response?.assistantTurnId === response.assistantTurnId)
     ?? turn.targetStatuses.find((target) =>
       target.participant.participantKind === participant.participantKind
       && target.participant.participantId === participant.participantId)
@@ -167,7 +159,7 @@ function ensureCompletedTargetStatus(
     existing.participant = structuredClone(participant);
     existing.status = 'completed';
     existing.completedAt = existing.completedAt ?? completedAt;
-    existing.responseMessageId = responseMessage.id;
+    existing.response = structuredClone(response);
     existing.error = null;
     existing.dispatchId = existing.dispatchId ?? randomUUID();
     existing.trigger = existing.trigger ?? 'room_default';
@@ -194,7 +186,7 @@ function ensureCompletedTargetStatus(
     queuedAt: turn.startedAt,
     startedAt: turn.startedAt,
     completedAt,
-    responseMessageId: responseMessage.id,
+    response: structuredClone(response),
     error: null,
   };
   turn.targetStatuses.push(targetStatus);
@@ -205,6 +197,7 @@ function ensureCompletedDispatch(
   outcome: RoomRoutingOutcome,
   participant: RoomRoutingParticipantRef | null,
   responseMessage: ChatMessage,
+  response: NonNullable<RoomRoutingDispatch['response']>,
   targetStatus: RoomWorkflowTargetState | null,
 ): RoomRoutingDispatch | null {
   if (!participant) {
@@ -213,7 +206,7 @@ function ensureCompletedDispatch(
 
   const completedAt = responseMessage.createdAt;
   const existing = outcome.dispatches.find((dispatch) =>
-    dispatch.responseMessageId === responseMessage.id)
+    dispatch.response?.assistantTurnId === response.assistantTurnId)
     ?? outcome.dispatches.find((dispatch) =>
       dispatch.target.participantKind === participant.participantKind
       && dispatch.target.participantId === participant.participantId)
@@ -224,7 +217,7 @@ function ensureCompletedDispatch(
     existing.target = structuredClone(participant);
     existing.status = 'completed';
     existing.completedAt = existing.completedAt ?? completedAt;
-    existing.responseMessageId = responseMessage.id;
+    existing.response = structuredClone(response);
     existing.error = null;
     existing.trigger = existing.trigger ?? 'room_default';
     return existing;
@@ -238,7 +231,7 @@ function ensureCompletedDispatch(
     trigger: targetStatus?.trigger ?? 'room_default',
     status: 'completed',
     mentionNames: [],
-    responseMessageId: responseMessage.id,
+    response: structuredClone(response),
     startedAt: targetStatus?.startedAt ?? outcome.startedAt,
     completedAt,
     error: null,
@@ -272,11 +265,24 @@ function ensureResolvedTarget(
   }
 }
 
+function readEventResponseAssistantTurnId(event: RoomWorkflowTurn['events'][number]): string | null {
+  const rawResponse = event.metadata?.response;
+  if (!rawResponse || typeof rawResponse !== 'object' || Array.isArray(rawResponse)) {
+    return null;
+  }
+  const response = rawResponse as Record<string, unknown>;
+
+  return typeof response.assistantTurnId === 'string' && response.assistantTurnId.trim().length > 0
+    ? response.assistantTurnId.trim()
+    : null;
+}
+
 function appendRecoveredTargetCompletedEvent(
   turn: RoomWorkflowTurn,
   dispatch: RoomRoutingDispatch | null,
   participant: RoomRoutingParticipantRef | null,
   responseMessage: ChatMessage,
+  response: NonNullable<RoomRoutingDispatch['response']>,
   workflow: ReturnType<typeof resolveRoomWorkflowState>,
 ): void {
   if (!dispatch || !participant) {
@@ -285,7 +291,7 @@ function appendRecoveredTargetCompletedEvent(
 
   if (turn.events.some((event) =>
     event.kind === 'target_completed'
-    && event.metadata?.responseMessageId === responseMessage.id)) {
+    && readEventResponseAssistantTurnId(event) === response.assistantTurnId)) {
     return;
   }
 
@@ -304,7 +310,7 @@ function appendRecoveredTargetCompletedEvent(
       {
         dispatchId: dispatch.id,
         metadata: {
-          responseMessageId: responseMessage.id,
+          response,
           recoveryPhase: 'orphaned_completed_turn_repair',
         },
       },
@@ -438,7 +444,7 @@ export function repairMissingSessionStartedMessages(
   );
   const missingResponses = channel.messages.filter((message) => {
     const sessionId = readMessageSessionId(message);
-    return isPersistedRuntimeResponseMessage(message)
+    return isAssistantTurnSegmentMessage(message)
       && Boolean(sessionId)
       && !existingSessionStartedIds.has(sessionId!);
   });
@@ -619,6 +625,14 @@ export function repairOrphanedCompletedDispatchTurn(
   if (!responseMessage) {
     return { repaired: false, state };
   }
+  const assistantTurnId = readAssistantTurnId(responseMessage);
+  if (!assistantTurnId) {
+    return { repaired: false, state };
+  }
+  const response = buildAssistantTurnDeliveryFromChannel(channel, assistantTurnId);
+  if (!response) {
+    return { repaired: false, state };
+  }
 
   const participant = buildParticipantRefFromResponse(responseMessage);
   const nextState = structuredClone(state);
@@ -645,6 +659,7 @@ export function repairOrphanedCompletedDispatchTurn(
     nextActiveTurn,
     participant,
     responseMessage,
+    response,
   );
   const outcome = nextRoomRouting.lastOutcome?.turnId === nextActiveTurn.id
     ? structuredClone(nextRoomRouting.lastOutcome)
@@ -653,6 +668,7 @@ export function repairOrphanedCompletedDispatchTurn(
     outcome,
     participant,
     responseMessage,
+    response,
     targetStatus,
   );
   ensureResolvedTarget(outcome, participant);
@@ -667,6 +683,7 @@ export function repairOrphanedCompletedDispatchTurn(
     dispatch,
     participant,
     responseMessage,
+    response,
     nextWorkflow,
   );
 

@@ -663,7 +663,7 @@ test('startup recovery skips startup-recovered parallel continuation replays unt
   const sharedCore = await sharedCoreStore.readCore();
   const sharedTask = sharedCore.tasks.find((candidate) => candidate.id === taskId);
   assert.ok(sharedTask);
-  assert.equal(sharedTask.metadata.workflowContinuationReplay?.workflowShape, 'parallel');
+  assert.equal(sharedTask.metadata.workflowContinuationReplay?.workflowShape, 'concurrent');
   assert.deepEqual(
     sharedTask.metadata.workflowContinuationReplay?.targets.map((target) => target.participantName),
     ['Followup-Agent', 'Verifier-Agent'],
@@ -744,7 +744,7 @@ test('startup recovery finalizes stranded room workflow turns into blocked histo
     queuedAt: now.toISOString(),
     startedAt: now.toISOString(),
     completedAt: null,
-    responseMessageId: null,
+    response: null,
     error: null,
   });
   appendWorkflowEvent(
@@ -796,7 +796,7 @@ test('startup recovery finalizes stranded room workflow turns into blocked histo
         trigger: 'explicit_mention',
         status: 'running',
         mentionNames: ['Inline-Agent'],
-        responseMessageId: null,
+        response: null,
         startedAt: now.toISOString(),
         completedAt: null,
         error: null,
@@ -945,7 +945,7 @@ test('startup recovery preserves retryable continuation replay metadata for inte
     queuedAt: now.toISOString(),
     startedAt: now.toISOString(),
     completedAt: null,
-    responseMessageId: null,
+    response: null,
     error: null,
   });
   appendWorkflowEvent(
@@ -1017,7 +1017,7 @@ test('startup recovery preserves retryable continuation replay metadata for inte
         trigger: 'continuation_mention',
         status: 'running',
         mentionNames: ['Reviewer-Agent'],
-        responseMessageId: null,
+        response: null,
         startedAt: now.toISOString(),
         completedAt: null,
         error: null,
@@ -1072,4 +1072,3 @@ test('startup recovery preserves retryable continuation replay metadata for inte
       && activity.metadata?.replayPhase === 'startup_recovered'),
   );
 });
-

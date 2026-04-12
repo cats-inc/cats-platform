@@ -383,7 +383,7 @@ treated as separate renderer responsibilities:
 - chat-wide `/api/events/chat` refresh owns transcript/app-shell catch-up for
   solo, direct, and group rooms
 - background runtime dispatch persistence must also publish `/api/events/chat`
-  room updates for intermediate `session_started` / `runtime_response` states,
+  room updates for intermediate `session_started` / `assistant_turn_segment` states,
   not only the initial user-send acknowledgement
 - direct-lane companion mode only owns `My Cats` companion UI state plus
   wake/sleep actions for `direct_lane` channels

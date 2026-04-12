@@ -1,4 +1,5 @@
 import type {
+  RoomAssistantTurnDelivery,
   ParticipantSessionStatus,
   RoomRoutingCheckpointKind,
   RoomRoutingMode,
@@ -142,7 +143,7 @@ export interface OrchestratorWorkflowBranchView {
   handoffReason: string | null;
   branchStrategy: string | null;
   parentCheckpointId: string | null;
-  responseMessageId: string | null;
+  response: RoomAssistantTurnDelivery | null;
   error: string | null;
 }
 
@@ -407,7 +408,7 @@ export interface OrchestratorExecutionTargetRef {
   trigger: RoomRoutingTrigger | null;
   plannedDepth: number;
   dispatchId: string | null;
-  responseMessageId: string | null;
+  response: RoomAssistantTurnDelivery | null;
   branchStrategy: RoomWorkflowBranchStrategy | null;
   handoffReason: RoomWorkflowHandoffReason | null;
   mentionNames: string[];

@@ -15,6 +15,7 @@ import type {
   CoreTraceRecord,
   CoreWorkflowSummary,
 } from '../../../../core/types.js';
+import type { RoomAssistantTurnDelivery } from '../../../../shared/roomRouting.js';
 
 export interface ChatOperatorSnapshot {
   core: CatsCoreState;
@@ -54,7 +55,7 @@ export interface ChatWorkflowBranchView {
   handoffReason: string | null;
   branchStrategy: string | null;
   parentCheckpointId: string | null;
-  responseMessageId: string | null;
+  response: RoomAssistantTurnDelivery | null;
   error: string | null;
 }
 

@@ -1314,7 +1314,9 @@ test('routeChannelMessage sends choice responses back to the originating cat ses
         },
       ],
       metadata: {
-        event: 'runtime_response',
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-designer',
+        terminal: true,
         targetKind: 'cat',
         targetId: catId,
         sessionId: 'session-designer',

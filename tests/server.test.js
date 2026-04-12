@@ -710,7 +710,9 @@ test('GET /api/channels/:id/stream publishes another room update when a streamed
         new Date('2026-03-11T00:00:02.000Z'),
         {
           metadata: {
-            event: 'runtime_response',
+            event: 'assistant_turn_segment',
+            assistantTurnId: 'assistant-turn-live-finish',
+            terminal: true,
             targetKind: 'cat',
             targetId: participantId,
             sessionId: 'session-live-finish',
@@ -999,7 +1001,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
         queuedAt: seededAt.toISOString(),
         startedAt: seededAt.toISOString(),
         completedAt: null,
-        responseMessageId: null,
+        response: null,
         error: null,
       },
     ];
@@ -1043,7 +1045,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
         queuedAt: secondStartAt.toISOString(),
         startedAt: secondStartAt.toISOString(),
         completedAt: null,
-        responseMessageId: null,
+        response: null,
         error: null,
       },
     ];
@@ -1059,7 +1061,9 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
       firstReplyAt,
       {
         metadata: {
-          event: 'runtime_response',
+          event: 'assistant_turn_segment',
+          assistantTurnId: 'assistant-turn-sequential-1',
+          terminal: true,
           targetKind: 'cat',
           targetId: firstParticipantId,
           sessionId: 'session-live-sequential-1',
@@ -1103,7 +1107,9 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
       secondReplyAt,
       {
         metadata: {
-          event: 'runtime_response',
+          event: 'assistant_turn_segment',
+          assistantTurnId: 'assistant-turn-sequential-2',
+          terminal: true,
           targetKind: 'cat',
           targetId: secondParticipantId,
           sessionId: 'session-live-sequential-2',
@@ -1557,7 +1563,9 @@ test('GET /api/app-shell repairs an orphaned completed room turn before renderin
     responseAt,
     {
       metadata: {
-        event: 'runtime_response',
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-startup-repaired',
+        terminal: true,
         turnId: activeTurnId,
         targetKind: 'orchestrator',
         targetId: 'orchestrator',
@@ -5584,7 +5592,9 @@ test('GET /api/app-shell repairs missing session_started metadata from runtime r
       new Date('2026-04-09T12:35:29.111Z'),
       {
         metadata: {
-          event: 'runtime_response',
+          event: 'assistant_turn_segment',
+          assistantTurnId: 'assistant-turn-orphan',
+          terminal: true,
           targetKind: 'orchestrator',
           targetId: 'orchestrator',
           sessionId: 'session-orphan',
@@ -5605,7 +5615,8 @@ test('GET /api/app-shell repairs missing session_started metadata from runtime r
       message.metadata?.event === 'session_started'
       && message.metadata?.sessionId === 'session-orphan');
     const responseIndex = selectedChannel.messages.findIndex((message) =>
-      message.metadata?.event === 'runtime_response'
+      message.metadata?.event === 'assistant_turn_segment'
+      && message.metadata?.terminal === true
       && message.metadata?.sessionId === 'session-orphan');
 
     assert.equal(sessionStartedIndex >= 0, true);
@@ -5709,7 +5720,7 @@ test('GET /api/app-shell inserts a startup recovery interruption note before the
           queuedAt: '2026-04-09T12:35:29.111Z',
           startedAt: '2026-04-09T12:35:29.111Z',
           completedAt: '2026-04-09T13:15:24.461Z',
-          responseMessageId: null,
+          response: null,
           error: 'Cats server restarted before room workflow cleanup completed.',
         },
       ],
@@ -6049,7 +6060,9 @@ test('single chat background finalize preserves a newer acknowledged user turn',
         .filter((message) => message.senderKind === 'user')
         .map((message) => message.body);
       const assistantBodies = payload.channel.messages
-        .filter((message) => message.metadata?.event === 'runtime_response')
+        .filter((message) =>
+          message.metadata?.event === 'assistant_turn_segment'
+          && message.metadata?.terminal === true)
         .map((message) => message.body);
       return userBodies.includes('First question')
         && userBodies.includes('Second question')
@@ -6237,7 +6250,8 @@ test('parallel chat finalize preserves member mutations acknowledged after send 
       assert.equal(channelResponse.status, 200);
       const payload = await channelResponse.json();
       const runtimeReplies = payload.channel.messages.filter((message) =>
-        message.metadata?.event === 'runtime_response');
+        message.metadata?.event === 'assistant_turn_segment'
+        && message.metadata?.terminal === true);
       return runtimeReplies.length > 0 ? payload : null;
     });
 

@@ -156,7 +156,7 @@ function buildEventStep(
     trigger: null,
     plannedDepth: 0,
     dispatchId: event.dispatchId,
-    responseMessageId: null,
+    response: null,
     branchStrategy: null,
     handoffReason: null,
     mentionNames: [],

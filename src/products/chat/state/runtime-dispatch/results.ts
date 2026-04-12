@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type {
   ChannelDispatchResult,
   ChatMessage,
@@ -45,6 +47,10 @@ import type { DispatchExecution } from './execution.js';
 import { resolveExecutionMetadataForTarget } from '../runtimeTargeting.js';
 import { isSoloChatChannel } from '../runtimeTargeting.js';
 import {
+  ASSISTANT_TURN_SEGMENT_EVENT,
+  buildAssistantTurnDelivery,
+} from '../assistantTurnSegments.js';
+import {
   participantKey,
   setReadyAfterMessage,
   toParticipantRef,
@@ -53,10 +59,6 @@ import {
   applyDispatchChannelChatCwd,
   applyDispatchLeasePatch,
 } from './recovery.js';
-import {
-  RUNTIME_RESPONSE_EVENT,
-  RUNTIME_RESPONSE_SEGMENT_EVENT,
-} from '../runtimeResponseMessages.js';
 
 type ContinuationSource = 'explicit_mentions' | 'workflow_recommendation';
 
@@ -454,8 +456,9 @@ export function applyDispatchExecutions(
       : 'agent';
     const senderName = hiddenSoloReply ? 'Orchestrator' : execution.target.participantName;
     const executionMeta = resolveExecutionMetadataForTarget(nextState, channelId, execution.target);
+    const assistantTurnId = randomUUID();
 
-    let responseMessage: ChatMessage | null = null;
+    const responseMessages: ChatMessage[] = [];
     for (let segmentIndex = 0; segmentIndex < persistedTextSegments.length; segmentIndex += 1) {
       const segment = persistedTextSegments[segmentIndex]!;
       const isLastSegment = segmentIndex === persistedTextSegments.length - 1;
@@ -466,9 +469,9 @@ export function applyDispatchExecutions(
         now,
         {
           metadata: {
-            event: isLastSegment
-              ? RUNTIME_RESPONSE_EVENT
-              : RUNTIME_RESPONSE_SEGMENT_EVENT,
+            event: ASSISTANT_TURN_SEGMENT_EVENT,
+            assistantTurnId,
+            terminal: isLastSegment,
             targetKind: execution.target.participantKind,
             targetId: execution.target.participantId,
             sessionId: execution.target.sessionId,
@@ -490,10 +493,10 @@ export function applyDispatchExecutions(
         },
       );
       nextState = appendedResponse.state;
-      responseMessage = appendedResponse.message;
+      responseMessages.push(appendedResponse.message);
     }
 
-    if (!responseMessage) {
+    if (responseMessages.length === 0) {
       const fallback = appendMessage(
         nextState,
         channelId,
@@ -506,7 +509,9 @@ export function applyDispatchExecutions(
         now,
         {
           metadata: {
-            event: RUNTIME_RESPONSE_EVENT,
+            event: ASSISTANT_TURN_SEGMENT_EVENT,
+            assistantTurnId,
+            terminal: true,
             targetKind: execution.target.participantKind,
             targetId: execution.target.participantId,
             sessionId: execution.target.sessionId,
@@ -525,20 +530,22 @@ export function applyDispatchExecutions(
         },
       );
       nextState = fallback.state;
-      responseMessage = fallback.message;
+      responseMessages.push(fallback.message);
     }
 
+    const responseMessage = responseMessages.at(-1)!;
+    const response = buildAssistantTurnDelivery(assistantTurnId, responseMessages);
     nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
     updateDispatch(outcome, execution.dispatchId, {
       status: 'completed',
-      responseMessageId: responseMessage.id,
+      response,
       completedAt: nowIso,
       error: null,
     });
     updateWorkflowTarget(activeTurn, execution.targetStateId, nowIso, {
       status: 'completed',
       completedAt: nowIso,
-      responseMessageId: responseMessage.id,
+      response,
       error: null,
     });
     appendWorkflowEvent(
@@ -556,7 +563,7 @@ export function applyDispatchExecutions(
         {
           dispatchId: execution.dispatchId,
           metadata: {
-            responseMessageId: responseMessage.id,
+            response,
             parentCheckpointId: execution.parentCheckpointId,
             branchStrategy: execution.branchStrategy,
             handoffReason: execution.handoffReason,

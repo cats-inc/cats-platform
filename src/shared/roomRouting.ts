@@ -128,6 +128,13 @@ export interface RoomRoutingParticipantRef {
   participantName: string;
 }
 
+export interface RoomAssistantTurnDelivery {
+  assistantTurnId: string;
+  messageIds: string[];
+  fullText: string;
+  segmentCount: number;
+}
+
 export interface RoomWakeRequest {
   id: string;
   participant: RoomRoutingParticipantRef;
@@ -148,7 +155,7 @@ export interface RoomRoutingDispatch {
   trigger: RoomRoutingTrigger;
   status: RoomRoutingDispatchStatus;
   mentionNames: string[];
-  responseMessageId: string | null;
+  response: RoomAssistantTurnDelivery | null;
   startedAt: string;
   completedAt: string | null;
   error: string | null;
@@ -210,7 +217,7 @@ export interface RoomWorkflowTargetState {
   queuedAt: string;
   startedAt: string | null;
   completedAt: string | null;
-  responseMessageId: string | null;
+  response: RoomAssistantTurnDelivery | null;
   error: string | null;
 }
 

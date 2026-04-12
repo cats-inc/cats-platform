@@ -86,8 +86,8 @@ live rendering and persisted transcript state.
      `runtime_response` plus `runtime_response_segment`.
    - Do not keep singular `responseMessageId` contracts where the correct model
      is plural or turn-scoped.
-   - Migration may require store repair or snapshot upgrades, but the landed
-     architecture should expose one truthful model.
+   - Because this product has not launched, stale local/dev snapshots may be
+     discarded instead of carrying migration code or compatibility shims.
 
 ## Consequences
 
@@ -108,7 +108,8 @@ live rendering and persisted transcript state.
 - Shared chat contracts and workflow persistence will need to change.
 - Existing tests and repair paths that assume one response message per dispatch
   must be rewritten.
-- Snapshot/state migration may be required for older rooms.
+- Existing local/dev room state that still uses the retired model may need to
+  be discarded.
 
 ### Neutral
 

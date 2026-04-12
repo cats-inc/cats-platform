@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   ChatMessageSenderKind,
+  RoomAssistantTurnDelivery,
   RoomRouteResolution,
   RoomRoutingCheckpoint,
   RoomRoutingDispatch,
@@ -115,6 +116,20 @@ function normalizeRoomRoutingParticipant(rawParticipant: unknown): RoomRoutingPa
   };
 }
 
+function normalizeRoomAssistantTurnDelivery(rawDelivery: unknown): RoomAssistantTurnDelivery | null {
+  const deliveryRecord = asRecord(rawDelivery);
+  if (!deliveryRecord) {
+    return null;
+  }
+
+  return {
+    assistantTurnId: readString(deliveryRecord.assistantTurnId, randomUUID()),
+    messageIds: readStringArray(deliveryRecord.messageIds),
+    fullText: readString(deliveryRecord.fullText, ''),
+    segmentCount: readNumber(deliveryRecord.segmentCount),
+  };
+}
+
 function normalizeRoomRouteResolution(rawResolution: unknown): RoomRouteResolution {
   const resolutionRecord = asRecord(rawResolution);
   return {
@@ -180,7 +195,7 @@ function normalizeRoomRoutingDispatch(rawDispatch: unknown): RoomRoutingDispatch
     trigger: normalizeRoomRoutingTrigger(dispatchRecord.trigger, 'continuation_mention'),
     status: normalizeRoomRoutingDispatchStatus(dispatchRecord.status, 'completed'),
     mentionNames: readStringArray(dispatchRecord.mentionNames),
-    responseMessageId: readNullableString(dispatchRecord.responseMessageId),
+    response: normalizeRoomAssistantTurnDelivery(dispatchRecord.response),
     startedAt: readString(dispatchRecord.startedAt, new Date().toISOString()),
     completedAt: readNullableString(dispatchRecord.completedAt),
     error: readNullableString(dispatchRecord.error),
@@ -274,7 +289,7 @@ function normalizeRoomWorkflowTarget(rawTarget: unknown): RoomWorkflowTargetStat
     queuedAt: readString(targetRecord.queuedAt, new Date().toISOString()),
     startedAt: readNullableString(targetRecord.startedAt),
     completedAt: readNullableString(targetRecord.completedAt),
-    responseMessageId: readNullableString(targetRecord.responseMessageId),
+    response: normalizeRoomAssistantTurnDelivery(targetRecord.response),
     error: readNullableString(targetRecord.error),
   };
 }

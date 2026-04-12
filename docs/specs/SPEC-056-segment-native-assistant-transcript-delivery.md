@@ -96,8 +96,9 @@ This spec defines a full architectural correction:
   must use the same assistant-turn segmentation rules
 - **Observability**: trace/debug surfaces must expose segment/turn boundaries so
   failures can be diagnosed without guesswork
-- **Migration safety**: any state migration or repair must end at the new
-  model, not leave dual semantics in place
+- **State safety**: the landed product model must expose one truthful contract;
+  stale local/dev state may be discarded instead of preserving backward
+  compatibility
 
 ## Design Overview
 
@@ -134,8 +135,6 @@ runtime stream
   observed events
 - `cats-platform` chat dispatch, workflow persistence, renderer, and repair
   layers
-- snapshot/state migration for any stored room state that currently assumes one
-  `runtime_response` per dispatch
 
 ## Open Questions
 
@@ -144,8 +143,6 @@ runtime stream
 - [ ] What is the final canonical shape for segment-aware workflow response
       references: `responseMessageIds`, `responseSegments`, or a separate turn
       aggregate record?
-- [ ] Do older snapshots get one-shot migrated on load or through an explicit
-      versioned state migration?
 
 ## References
 

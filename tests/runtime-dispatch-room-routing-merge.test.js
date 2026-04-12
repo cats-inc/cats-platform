@@ -456,7 +456,8 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
     message.metadata?.event === 'session_started'
     && message.metadata?.sessionId === 'session-recovered');
   const recoveredResponseIndex = settledChannel.messages.findIndex((message) =>
-    message.metadata?.event === 'runtime_response'
+    message.metadata?.event === 'assistant_turn_segment'
+    && message.metadata?.terminal === true
     && message.metadata?.sessionId === 'session-recovered');
 
   assert.equal(settledChannel.chatCwd, 'C:/Users/middl/.cats/runtime/sessions/session-recovered');
@@ -502,7 +503,9 @@ test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when t
     responseAt,
     {
       metadata: {
-        event: 'runtime_response',
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-recovered',
+        terminal: true,
         turnId: activeTurnId,
         targetKind: 'orchestrator',
         targetId: 'orchestrator',
@@ -658,7 +661,9 @@ test('repairOrphanedCompletedDispatchTurn ignores non-terminal segmented replies
     responseAt,
     {
       metadata: {
-        event: 'runtime_response_segment',
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-partial',
+        terminal: false,
         turnId: activeTurnId,
         targetKind: 'orchestrator',
         targetId: 'orchestrator',
@@ -720,7 +725,9 @@ test('repairMissingSessionStartedMessages restores missing runtime metadata befo
       new Date('2026-04-09T12:00:02.000Z'),
       {
         metadata: {
-          event: 'runtime_response',
+          event: 'assistant_turn_segment',
+          assistantTurnId: 'assistant-turn-orphan',
+          terminal: true,
           targetKind: 'orchestrator',
           targetId: 'orchestrator',
           sessionId: 'session-orphan',
@@ -742,7 +749,8 @@ test('repairMissingSessionStartedMessages restores missing runtime metadata befo
       message.metadata?.event === 'session_started'
       && message.metadata?.sessionId === 'session-orphan');
     const responseIndex = repairedChannel.messages.findIndex((message) =>
-      message.metadata?.event === 'runtime_response'
+      message.metadata?.event === 'assistant_turn_segment'
+      && message.metadata?.terminal === true
       && message.metadata?.sessionId === 'session-orphan');
 
     assert.equal(sessionStartedIndex >= 0, true);
@@ -847,7 +855,7 @@ test('repairMissingStartupRecoveryNotice inserts an interrupted-turn note before
         queuedAt: '2026-04-09T12:00:01.000Z',
         startedAt: '2026-04-09T12:00:01.000Z',
         completedAt: '2026-04-09T12:05:00.000Z',
-        responseMessageId: null,
+        response: null,
         error: 'Cats server restarted before room workflow cleanup completed.',
       },
     ],

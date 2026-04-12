@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -51,15 +51,15 @@ flattened-response fallback as the primary path
 
 ### Phase 2: Replace Singular Dispatch/Workflow Response Semantics
 
-- [ ] Task 2.1: Change chat dispatch execution state so one dispatch can own
+- [x] Task 2.1: Change chat dispatch execution state so one dispatch can own
       multiple persisted assistant response messages.
-- [ ] Task 2.2: Replace singular `responseMessageId` contracts in routing and
+- [x] Task 2.2: Replace singular `responseMessageId` contracts in routing and
       workflow state with segment-aware response identity.
-- [ ] Task 2.3: Introduce or derive a canonical full-turn aggregate text used
+- [x] Task 2.3: Introduce or derive a canonical full-turn aggregate text used
       by continuation routing, recommendation parsing, and mention parsing.
-- [ ] Task 2.4: Rewrite repair/recovery/startup logic to reconstruct segment
+- [x] Task 2.4: Rewrite repair/recovery/startup logic to reconstruct segment
       turns without relying on one final `runtime_response`.
-- [ ] Task 2.5: Remove obsolete compatibility helpers and type shapes tied to
+- [x] Task 2.5: Remove obsolete compatibility helpers and type shapes tied to
       the singular-response model.
 
 **Deliverables**: segment-aware dispatch/workflow state and recovery logic with
@@ -101,8 +101,8 @@ single synthetic assistant bubble
       multiple assistant messages for one turn where appropriate.
 - [ ] Task 5.3: Add routing/recovery tests proving continuation logic still
       consumes the full assistant turn correctly.
-- [ ] Task 5.4: Add migration/repair coverage for older rooms or snapshots, if
-      migration is required.
+- [ ] Task 5.4: Confirm stale local/dev snapshots may be discarded and no
+      compatibility migration path remains in the landed product code.
 - [ ] Task 5.5: Manually smoke-check solo, direct, group sequential, and group
       concurrent rooms against the new segment-native model.
 
@@ -139,13 +139,13 @@ on legacy single-response semantics
 
 - Decision 1: This work requires an ADR because it intentionally reshapes
   shared chat contracts and retires the old singular-response architecture.
-- Decision 2: The correct migration target is one truthful model; do not retain
+- Decision 2: The correct landing target is one truthful model; do not retain
   long-lived aliases for `runtime_response`, `responseMessageId`, or
   `previewText`-driven rendering.
 - Decision 3: Continuation/workflow logic must read canonical turn aggregates,
   not whichever assistant message happened to be appended last.
 - Decision 4: Live and durable transcript semantics must converge even if that
-  forces store/schema migration work.
+  requires discarding stale local/dev state.
 
 ## Testing Strategy
 
@@ -166,9 +166,9 @@ on legacy single-response semantics
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Shared contract churn breaks multiple readers at once | High | Land the redesign as one intentional contract migration, with targeted test coverage for every known `runtime_response` reader |
+| Shared contract churn breaks multiple readers at once | High | Land the redesign as one intentional contract cutover, with targeted test coverage for every known `runtime_response` reader |
 | Continuation parsing changes behavior when the last bubble no longer contains the whole answer | High | Introduce an explicit turn aggregate and point all routing/recommendation parsing at it |
-| Migration from older snapshots corrupts existing rooms | High | Add read-time migration/repair tests and make the new model the only post-migration truth |
+| Stale local/dev snapshots no longer match the landed schema | Medium | Treat the project as pre-launch and discard incompatible local state instead of preserving compatibility code |
 | Runtime/provider differences produce inconsistent segment boundaries | Medium | Tighten `cats-runtime` projection rules and verify with targeted provider-session probes |
 | Renderer and persisted transcript diverge again during rollout | High | Share one segment model and remove flattened preview helpers instead of layering new wrappers on top |
 
@@ -177,6 +177,7 @@ on legacy single-response semantics
 | Date | Update |
 |------|--------|
 | 2026-04-12 | Plan created for a full segment-native assistant transcript redesign across live and persisted paths |
+| 2026-04-12 | Phase 2 hard-cut landed in chat routing/workflow/repair state: `responseMessageId` and `runtime_response` stop being canonical chat response contracts |
 
 ---
 

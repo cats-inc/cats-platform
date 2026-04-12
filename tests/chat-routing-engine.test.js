@@ -1348,8 +1348,10 @@ test('segmented replies keep final-only completion semantics while workflow reco
       'I already gathered notes for Agent-2.',
     ],
   );
-  assert.equal(agentOneReplies[0]?.metadata.event, 'runtime_response_segment');
-  assert.equal(agentOneReplies[1]?.metadata.event, 'runtime_response');
+  assert.equal(agentOneReplies[0]?.metadata.event, 'assistant_turn_segment');
+  assert.equal(agentOneReplies[0]?.metadata.terminal, false);
+  assert.equal(agentOneReplies[1]?.metadata.event, 'assistant_turn_segment');
+  assert.equal(agentOneReplies[1]?.metadata.terminal, true);
   assert.equal(
     agentOneReplies[1]?.metadata.workflowRecommendation?.workflowShape,
     'sequential',

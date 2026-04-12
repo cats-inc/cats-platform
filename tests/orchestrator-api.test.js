@@ -1719,7 +1719,7 @@ test('recommendation-only parallel continuation replay waits for all recovered t
     const blockedTask = blockedCorePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
     assert.ok(blockedTask);
     assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowStageId, 'concurrent_fan_out');
-    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'concurrent');
 
     const firstReassignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${followupCat.id}`, {
       method: 'PUT',
@@ -1742,7 +1742,7 @@ test('recommendation-only parallel continuation replay waits for all recovered t
     assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
     assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.replayState, 'ready');
     assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.workflowStageId, 'concurrent_fan_out');
-    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
+    assert.equal(stillBlockedTask.metadata.workflowContinuationReplay.workflowShape, 'concurrent');
     assert.ok(
       stillBlockedCorePayload.activities.some((activity) =>
         activity.taskId === `task-channel-${channelId}`
@@ -1917,7 +1917,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
     queuedAt: now.toISOString(),
     startedAt: now.toISOString(),
     completedAt: null,
-    responseMessageId: null,
+    response: null,
     error: null,
   });
   appendWorkflowEvent(
@@ -1989,7 +1989,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
         trigger: 'continuation_mention',
         status: 'running',
         mentionNames: ['Reviewer-Agent'],
-        responseMessageId: null,
+        response: null,
         startedAt: now.toISOString(),
         completedAt: null,
         error: null,
@@ -2147,7 +2147,7 @@ test('startup-recovered continuation replay auto-resumes when an active target r
     queuedAt: now.toISOString(),
     startedAt: now.toISOString(),
     completedAt: null,
-    responseMessageId: null,
+    response: null,
     error: null,
   });
   appendWorkflowEvent(
@@ -2219,7 +2219,7 @@ test('startup-recovered continuation replay auto-resumes when an active target r
         trigger: 'continuation_mention',
         status: 'running',
         mentionNames: ['Reviewer-Agent'],
-        responseMessageId: null,
+        response: null,
         startedAt: now.toISOString(),
         completedAt: null,
         error: null,
@@ -2378,7 +2378,7 @@ test('startup-recovered continuation replay auto-resumes when channel activation
     queuedAt: now.toISOString(),
     startedAt: now.toISOString(),
     completedAt: null,
-    responseMessageId: null,
+    response: null,
     error: null,
   });
   appendWorkflowEvent(
@@ -2450,7 +2450,7 @@ test('startup-recovered continuation replay auto-resumes when channel activation
         trigger: 'continuation_mention',
         status: 'running',
         mentionNames: ['Orchestrator'],
-        responseMessageId: null,
+        response: null,
         startedAt: now.toISOString(),
         completedAt: null,
         error: null,
@@ -2604,7 +2604,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
     sourceMessage,
     now.toISOString(),
     'concurrent_fan_out',
-    'parallel',
+    'concurrent',
   );
   activeTurn.id = 'turn-startup-recovered-parallel';
   activeTurn.dispatchCount = 2;
@@ -2625,7 +2625,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
     queuedAt: now.toISOString(),
     startedAt: now.toISOString(),
     completedAt: null,
-    responseMessageId: null,
+    response: null,
     error: null,
   });
   activeTurn.targetStatuses.push({
@@ -2645,7 +2645,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
     queuedAt: now.toISOString(),
     startedAt: now.toISOString(),
     completedAt: null,
-    responseMessageId: null,
+    response: null,
     error: null,
   });
   appendWorkflowEvent(
@@ -2721,7 +2721,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
         trigger: 'continuation_mention',
         status: 'running',
         mentionNames: ['Followup-Agent'],
-        responseMessageId: null,
+        response: null,
         startedAt: now.toISOString(),
         completedAt: null,
         error: null,
@@ -2734,7 +2734,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
         trigger: 'continuation_mention',
         status: 'running',
         mentionNames: ['Verifier-Agent'],
-        responseMessageId: null,
+        response: null,
         startedAt: now.toISOString(),
         completedAt: null,
         error: null,
@@ -2786,7 +2786,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
     const blockedTask = blockedCorePayload.tasks.find((candidate) => candidate.id === taskId);
     assert.ok(blockedTask);
     assert.ok(blockedTask.metadata.workflowContinuationReplay);
-    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'parallel');
+    assert.equal(blockedTask.metadata.workflowContinuationReplay.workflowShape, 'concurrent');
     assert.equal(blockedTask.metadata.workflowContinuationReplay.blockedReason, 'no_valid_targets');
     assert.deepEqual(
       blockedTask.metadata.workflowContinuationReplay.unresolvedTargets,
