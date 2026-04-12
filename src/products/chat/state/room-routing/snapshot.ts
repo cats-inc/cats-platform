@@ -122,11 +122,18 @@ function normalizeRoomAssistantTurnDelivery(rawDelivery: unknown): RoomAssistant
     return null;
   }
 
+  const assistantTurnId = readNullableString(deliveryRecord.assistantTurnId);
+  const messageIds = readStringArray(deliveryRecord.messageIds);
+  if (!assistantTurnId || messageIds.length === 0) {
+    return null;
+  }
+
+  const storedSegmentCount = readNumber(deliveryRecord.segmentCount, messageIds.length);
   return {
-    assistantTurnId: readString(deliveryRecord.assistantTurnId, randomUUID()),
-    messageIds: readStringArray(deliveryRecord.messageIds),
+    assistantTurnId,
+    messageIds,
     fullText: readString(deliveryRecord.fullText, ''),
-    segmentCount: readNumber(deliveryRecord.segmentCount),
+    segmentCount: storedSegmentCount > 0 ? storedSegmentCount : messageIds.length,
   };
 }
 

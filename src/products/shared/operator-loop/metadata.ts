@@ -346,15 +346,17 @@ function readAssistantTurnDelivery(
 ): RoomAssistantTurnDelivery | null {
   const record = readNestedMetadataRecord(metadata, key);
   const assistantTurnId = readMetadataString(record, 'assistantTurnId');
-  if (!assistantTurnId) {
+  const messageIds = readMetadataStringArray(record, 'messageIds');
+  if (!assistantTurnId || messageIds.length === 0) {
     return null;
   }
 
+  const segmentCount = readMetadataNumber(record, 'segmentCount') ?? messageIds.length;
   return {
     assistantTurnId,
-    messageIds: readMetadataStringArray(record, 'messageIds'),
+    messageIds,
     fullText: readMetadataString(record, 'fullText') ?? '',
-    segmentCount: readMetadataNumber(record, 'segmentCount') ?? 0,
+    segmentCount: segmentCount > 0 ? segmentCount : messageIds.length,
   };
 }
 

@@ -1454,6 +1454,97 @@ test('FileChatStore preserves null room route targets when reloading persisted r
   assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.fallbackTarget, null);
 });
 
+test('FileChatStore drops malformed assistant turn deliveries when reloading persisted routing state', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileChatStore(statePath);
+  let state = await store.read();
+  const now = new Date('2026-04-12T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Malformed segment delivery',
+      topic: 'Reject incomplete persisted assistant turn delivery records.',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  await store.write(state);
+
+  const rawSnapshot = JSON.parse(await readFile(statePath, 'utf-8'));
+  const channelRecord = rawSnapshot.chat.channels.find(
+    (channel) => channel.id === state.selectedChannelId,
+  );
+  assert.ok(channelRecord);
+  channelRecord.roomRouting.lastOutcome = {
+    turnId: 'turn-malformed-response',
+    mode: 'boss_chat',
+    sourceMessageId: 'message-user-malformed',
+    sourceSenderKind: 'user',
+    sourceSenderName: 'User',
+    status: 'completed',
+    resolution: {
+      routingMode: 'room_default',
+      selectionKind: 'default_target',
+      defaultTarget: {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+      defaultTargetReason: 'boss_chat_default',
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    },
+    resolvedTargets: [
+      {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+    ],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-malformed-response',
+        sourceMessageId: 'message-user-malformed',
+        source: null,
+        target: {
+          participantKind: 'orchestrator',
+          participantId: 'orchestrator',
+          participantName: 'Chat',
+        },
+        trigger: 'room_default',
+        status: 'completed',
+        mentionNames: [],
+        response: {
+          messageIds: ['message-agent-malformed'],
+          fullText: 'Malformed persisted reply',
+          segmentCount: 1,
+        },
+        startedAt: now.toISOString(),
+        completedAt: now.toISOString(),
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 1,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: now.toISOString(),
+  };
+  await writeFile(statePath, JSON.stringify(rawSnapshot, null, 2));
+
+  const reloadedState = await store.read();
+  const reloadedChannel = reloadedState.channels.find(
+    (channel) => channel.id === state.selectedChannelId,
+  );
+
+  assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.dispatches[0]?.response, null);
+});
+
 test('ChatStore syncs Telegram bot bindings to the current Boss Cat actor', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
