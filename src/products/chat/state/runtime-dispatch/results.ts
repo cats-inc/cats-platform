@@ -471,6 +471,7 @@ export function applyDispatchExecutions(
           metadata: {
             event: ASSISTANT_TURN_SEGMENT_EVENT,
             assistantTurnId,
+            targetStateId: execution.targetStateId,
             terminal: isLastSegment,
             targetKind: execution.target.participantKind,
             targetId: execution.target.participantId,
@@ -511,6 +512,7 @@ export function applyDispatchExecutions(
           metadata: {
             event: ASSISTANT_TURN_SEGMENT_EVENT,
             assistantTurnId,
+            targetStateId: execution.targetStateId,
             terminal: true,
             targetKind: execution.target.participantKind,
             targetId: execution.target.participantId,

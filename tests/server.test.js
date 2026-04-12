@@ -1565,6 +1565,7 @@ test('GET /api/app-shell repairs an orphaned completed room turn before renderin
       metadata: {
         event: 'assistant_turn_segment',
         assistantTurnId: 'assistant-turn-startup-repaired',
+        targetStateId: 'target-state-startup-repaired',
         terminal: true,
         turnId: activeTurnId,
         targetKind: 'orchestrator',
@@ -1746,6 +1747,7 @@ test('GET /api/app-shell does not finalize an active sequential room turn while 
       metadata: {
         event: 'assistant_turn_segment',
         assistantTurnId: 'assistant-turn-claude',
+        targetStateId: 'target-claude',
         terminal: true,
         turnId: activeTurn.id,
         targetKind: 'cat',

@@ -32,6 +32,7 @@ import {
   findTerminalAssistantTurnSegmentForTurn,
   isAssistantTurnSegmentMessage,
   readAssistantTurnId,
+  readAssistantTurnTargetStateId,
 } from '../assistantTurnSegments.js';
 
 function describeGuardReason(): string {
@@ -86,27 +87,22 @@ function buildParticipantRefFromResponse(
     : null;
 }
 
-function doesTargetStatusMatchRecoveredParticipant(
+function doesTargetStatusMatchRecoveredResponse(
   target: RoomWorkflowTargetState,
-  participant: RoomRoutingParticipantRef | null,
   assistantTurnId: string,
+  targetStateId: string | null,
 ): boolean {
   if (target.response?.assistantTurnId === assistantTurnId) {
     return true;
   }
 
-  if (!participant) {
-    return false;
-  }
-
-  return target.participant.participantKind === participant.participantKind
-    && target.participant.participantId === participant.participantId;
+  return targetStateId !== null && target.id === targetStateId;
 }
 
 function hasOutstandingTargetsBeyondRecoveredResponse(
   turn: RoomWorkflowTurn,
-  participant: RoomRoutingParticipantRef | null,
   assistantTurnId: string,
+  targetStateId: string | null,
 ): boolean {
   return turn.targetStatuses.some((target) => {
     if (
@@ -117,7 +113,7 @@ function hasOutstandingTargetsBeyondRecoveredResponse(
       return false;
     }
 
-    return !doesTargetStatusMatchRecoveredParticipant(target, participant, assistantTurnId);
+    return !doesTargetStatusMatchRecoveredResponse(target, assistantTurnId, targetStateId);
   });
 }
 
@@ -176,17 +172,18 @@ function ensureCompletedTargetStatus(
   participant: RoomRoutingParticipantRef | null,
   responseMessage: ChatMessage,
   response: NonNullable<RoomWorkflowTargetState['response']>,
+  targetStateId: string | null,
 ): RoomWorkflowTargetState | null {
   if (!participant) {
     return null;
   }
 
   const completedAt = responseMessage.createdAt;
-  const existing = turn.targetStatuses.find((target) =>
-    target.response?.assistantTurnId === response.assistantTurnId)
+  const existing = (targetStateId
+    ? turn.targetStatuses.find((target) => target.id === targetStateId)
+    : null)
     ?? turn.targetStatuses.find((target) =>
-      target.participant.participantKind === participant.participantKind
-      && target.participant.participantId === participant.participantId)
+      target.response?.assistantTurnId === response.assistantTurnId)
     ?? turn.targetStatuses.find((target) =>
       target.status === 'running' || target.status === 'pending');
 
@@ -205,7 +202,7 @@ function ensureCompletedTargetStatus(
   }
 
   const targetStatus: RoomWorkflowTargetState = {
-    id: randomUUID(),
+    id: targetStateId ?? randomUUID(),
     dispatchId: randomUUID(),
     participant: structuredClone(participant),
     source: null,
@@ -240,7 +237,10 @@ function ensureCompletedDispatch(
   }
 
   const completedAt = responseMessage.createdAt;
-  const existing = outcome.dispatches.find((dispatch) =>
+  const existing = (targetStatus
+    ? outcome.dispatches.find((dispatch) => dispatch.id === targetStatus.dispatchId)
+    : null)
+    ?? outcome.dispatches.find((dispatch) =>
     dispatch.response?.assistantTurnId === response.assistantTurnId)
     ?? outcome.dispatches.find((dispatch) =>
       dispatch.target.participantKind === participant.participantKind
@@ -664,6 +664,7 @@ export function repairOrphanedCompletedDispatchTurn(
   if (!assistantTurnId) {
     return { repaired: false, state };
   }
+  const targetStateId = readAssistantTurnTargetStateId(responseMessage);
   const response = buildAssistantTurnDeliveryFromChannel(channel, assistantTurnId);
   if (!response) {
     return { repaired: false, state };
@@ -672,7 +673,7 @@ export function repairOrphanedCompletedDispatchTurn(
   const candidateTurn = activeTurn ?? recoveredTurn;
   if (
     candidateTurn
-    && hasOutstandingTargetsBeyondRecoveredResponse(candidateTurn, participant, assistantTurnId)
+    && hasOutstandingTargetsBeyondRecoveredResponse(candidateTurn, assistantTurnId, targetStateId)
   ) {
     return { repaired: false, state };
   }
@@ -702,6 +703,7 @@ export function repairOrphanedCompletedDispatchTurn(
     participant,
     responseMessage,
     response,
+    targetStateId,
   );
   const outcome = nextRoomRouting.lastOutcome?.turnId === nextActiveTurn.id
     ? structuredClone(nextRoomRouting.lastOutcome)

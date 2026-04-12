@@ -27,6 +27,15 @@ export function readAssistantTurnId(
     : null;
 }
 
+export function readAssistantTurnTargetStateId(
+  message: Pick<ChatMessage, 'metadata'> | null | undefined,
+): string | null {
+  return typeof message?.metadata?.targetStateId === 'string'
+    && message.metadata.targetStateId.trim().length > 0
+    ? message.metadata.targetStateId.trim()
+    : null;
+}
+
 export function readAssistantTurnMessages(
   channel: Pick<ChatChannelState, 'messages'>,
   assistantTurnId: string,
