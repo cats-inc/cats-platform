@@ -635,6 +635,28 @@ export function hasVisibleAssistantReplyAfterMessage<TMessage extends {
     message.senderKind === 'agent' || message.senderKind === 'orchestrator');
 }
 
+export function hasVisibleSessionStartAfterMessage<TMessage extends {
+  id: string;
+  senderKind: string;
+  metadata?: Record<string, unknown> | null | undefined;
+}>(
+  messages: ReadonlyArray<TMessage>,
+  messageId: string,
+): boolean {
+  const sourceIndex = messages.findIndex((message) => message.id === messageId);
+  if (sourceIndex === -1) {
+    return false;
+  }
+
+  return messages.slice(sourceIndex + 1).some((message) => {
+    if (message.senderKind !== 'system') {
+      return false;
+    }
+    const metadata = asRecord(message.metadata);
+    return readString(metadata?.event) === 'session_started';
+  });
+}
+
 function resolveLatestVisibleReplyTimestamp<TMessage extends LiveIndicatorTranscriptMessageLike>(
   messages: ReadonlyArray<TMessage>,
   predicate?: (message: TMessage) => boolean,

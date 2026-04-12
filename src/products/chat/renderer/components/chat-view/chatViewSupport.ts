@@ -10,6 +10,7 @@ import {
 import {
   hasLiveIndicatorIdentity,
   hasVisibleAssistantReplyAfterMessage,
+  hasVisibleSessionStartAfterMessage,
 } from '../../../../../shared/liveIndicator.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { buildImplicitRecipient, buildNamedRecipient, buildRecipientFromCat, type RecipientChipTarget } from '../ComposerRecipientChip.js';
@@ -247,6 +248,10 @@ export function resolveLatestUserTurnPresentationState(input: {
     input.selectedChannel.messages,
     latestUserMessage.id,
   );
+  const hasVisibleSessionStart = hasVisibleSessionStartAfterMessage(
+    input.selectedChannel.messages,
+    latestUserMessage.id,
+  );
   const hasDispatchedTarget = hasDispatchedWorkflowTarget(activeTurn);
 
   if (
@@ -254,6 +259,7 @@ export function resolveLatestUserTurnPresentationState(input: {
     && (activeTurn.status === 'running' || activeTurn.status === 'pending')
     && !hasAssistantIdentityBubble
     && !hasVisibleAssistantReply
+    && !hasVisibleSessionStart
     && !hasDispatchedTarget
   ) {
     return {

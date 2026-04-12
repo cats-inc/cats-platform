@@ -321,6 +321,52 @@ test('resolveLatestUserTurnPresentationState keeps the user bubble idle during s
   });
 });
 
+test('resolveLatestUserTurnPresentationState keeps the user bubble idle once session startup is already visible', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+        {
+          id: 'message-session',
+          senderKind: 'system',
+          metadata: {
+            event: 'session_started',
+          },
+          createdAt: '2026-04-11T00:00:01.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            sourceMessageId: 'message-user',
+            status: 'running',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                status: 'running',
+                participant: {
+                  participantId: 'participant-claude',
+                },
+              },
+            ],
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: null,
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'idle',
+  });
+});
+
 test('resolveLatestUserTurnPresentationState marks the latest failed acknowledged user turn as retryable', () => {
   const result = resolveLatestUserTurnPresentationState({
     selectedChannel: {

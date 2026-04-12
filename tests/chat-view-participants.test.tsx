@@ -961,6 +961,77 @@ test('ChatView shows provider-specific live assistant progress when progress det
   assert.match(markup, /typingEventTape/u);
 });
 
+test('ChatView streams text content directly in the assistant bubble body when progress details are on', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        payload: {
+          ...createPayload(),
+          chat: {
+            ...createPayload().chat,
+            showLiveProgressDetails: true,
+          },
+        } as unknown as AppShellPayload,
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-session-started',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Inline Reviewer connected to cats-runtime session session-inline.',
+              mentions: [],
+              metadata: {
+                event: 'session_started',
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+                verbosity: 'verbose',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:01.500Z',
+            },
+          ],
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          participantId: 'participant-inline',
+          speakerLabel: 'Inline Reviewer',
+          contentBlocks: [
+            {
+              id: 'text:0',
+              index: 0,
+              kind: 'text',
+              status: 'streaming',
+              title: null,
+              text: 'Streaming answer',
+              toolName: null,
+              toolId: null,
+              metadata: null,
+            },
+          ],
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /Streaming answer/u);
+  assert.doesNotMatch(markup, /typingDots/u);
+  assert.doesNotMatch(markup, /typingContentBlocks/u);
+});
+
 test('ChatView drops stale live progress once the routed reply is already visible', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(

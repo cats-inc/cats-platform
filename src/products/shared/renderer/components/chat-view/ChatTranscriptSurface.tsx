@@ -121,13 +121,15 @@ export function ChatTranscriptSurface({
             ? payload.chat.cats.find((cat) => cat.id === liveIndicator.catId) ?? null
             : null;
           const speakerLabel = speakerCat?.name ?? liveIndicator.speakerLabel;
-          const livePreviewText = liveIndicator.previewText ?? '';
           const hasContentBlocks = liveIndicator.contentBlocks.length > 0;
-          const showPreviewText = !hasContentBlocks && livePreviewText.trim().length > 0;
           const activeTools = liveIndicator.tools.filter((tool) => !tool.done);
           const showProgressDetails = payload.chat.showLiveProgressDetails === true;
           const simplifiedPreviewText = resolveLiveIndicatorPreviewBody(liveIndicator);
           const showSimplifiedPreviewText = simplifiedPreviewText.trim().length > 0;
+          const detailContentBlocks = showSimplifiedPreviewText
+            ? liveIndicator.contentBlocks.filter((block) => block.kind !== 'text')
+            : liveIndicator.contentBlocks;
+          const hasDetailContentBlocks = detailContentBlocks.length > 0;
           return (
             <article className="transcriptMessage transcriptMessageAgent typingIndicator">
               {speakerCat ? (
@@ -162,9 +164,9 @@ export function ChatTranscriptSurface({
                 )
               ) : (
                 <>
-                  {showPreviewText ? (
+                  {showSimplifiedPreviewText ? (
                     <MessageBody
-                      body={liveIndicator.previewText}
+                      body={simplifiedPreviewText}
                       cats={payload.chat.cats}
                       channelId={selectedChannel.id}
                       disabledMentionNames={directLaneExcludedMentionNames}
@@ -174,12 +176,12 @@ export function ChatTranscriptSurface({
                   ) : (
                     <span className="typingDots"><span /><span /><span /></span>
                   )}
-                  {!showPreviewText && !hasContentBlocks && activeTools.map((tool) => (
+                  {!showSimplifiedPreviewText && !hasContentBlocks && activeTools.map((tool) => (
                     <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
                   ))}
-                  {hasContentBlocks ? (
+                  {hasDetailContentBlocks ? (
                     <div className="typingContentBlocks">
-                      {liveIndicator.contentBlocks.map((block) => (
+                      {detailContentBlocks.map((block) => (
                         <div
                           key={block.id}
                           className={[
@@ -205,7 +207,7 @@ export function ChatTranscriptSurface({
                         </div>
                       ))}
                     </div>
-                  ) : liveIndicator.events.length > 0 ? (
+                  ) : liveIndicator.events.length > 0 && !showSimplifiedPreviewText ? (
                     <div className="typingEventTape">
                       {liveIndicator.events.map((event, index) => (
                         <div
