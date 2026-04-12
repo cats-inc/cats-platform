@@ -7,6 +7,10 @@ import {
   getComposerDispatchChannelId,
   isComposerAckBusy,
 } from '../../../../../shared/composer.js';
+import {
+  hasLiveIndicatorIdentity,
+  hasVisibleAssistantReplyAfterMessage,
+} from '../../../../../shared/liveIndicator.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { buildImplicitRecipient, buildNamedRecipient, buildRecipientFromCat, type RecipientChipTarget } from '../ComposerRecipientChip.js';
 import type { ModelSelectorValue } from '../ModelSelector.js';
@@ -207,32 +211,21 @@ function findLatestUserMessage(
   return null;
 }
 
-function hasVisibleAssistantReplyAfterMessage(
-  messages: SelectedChannelView['messages'],
-  messageId: string,
+function hasDispatchedWorkflowTarget(
+  activeTurn: SelectedChannelView['roomRouting']['workflow']['activeTurn'] | null | undefined,
 ): boolean {
-  const sourceIndex = messages.findIndex((message) => message.id === messageId);
-  if (sourceIndex === -1) {
+  const dispatchedTargets = (activeTurn?.targetStatuses ?? []).filter((target) =>
+    target.status === 'running' || target.status === 'completed');
+  if (dispatchedTargets.length === 0) {
     return false;
   }
 
-  return messages.slice(sourceIndex + 1).some((message) =>
-    message.senderKind === 'agent' || message.senderKind === 'orchestrator');
-}
-
-function hasLiveIndicatorIdentity(
-  liveIndicator: LiveIndicatorState | null | undefined,
-): boolean {
-  if (!liveIndicator?.active) {
-    return false;
+  if (activeTurn?.workflowShape === 'concurrent') {
+    return true;
   }
 
-  return Boolean(
-    liveIndicator.participantId
-    || liveIndicator.catId
-    || liveIndicator.speakerLabel
-    || liveIndicator.activeCatIds.some((id) => id.trim().length > 0)
-  );
+  return dispatchedTargets.some((target) => target.status === 'completed')
+    || dispatchedTargets.length > 1;
 }
 
 export function resolveLatestUserTurnPresentationState(input: {
@@ -254,12 +247,14 @@ export function resolveLatestUserTurnPresentationState(input: {
     input.selectedChannel.messages,
     latestUserMessage.id,
   );
+  const hasDispatchedTarget = hasDispatchedWorkflowTarget(activeTurn);
 
   if (
     activeTurn?.sourceMessageId === latestUserMessage.id
     && (activeTurn.status === 'running' || activeTurn.status === 'pending')
     && !hasAssistantIdentityBubble
     && !hasVisibleAssistantReply
+    && !hasDispatchedTarget
   ) {
     return {
       messageId: latestUserMessage.id,

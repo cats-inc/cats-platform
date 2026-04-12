@@ -531,7 +531,9 @@ test('shared live indicator effect reconnects on EventSource termination and sti
     'utf8',
   );
 
-  assert.match(source, /const waitingSpeakerState = resolveWaitingSpeakerState/u);
+  assert.match(source, /const waitingSpeakerState = useMemo\(\s*\(\) => resolveWaitingSpeakerState\(selectedChannel\)/u);
+  assert.match(source, /activeTurn/u);
+  assert.match(source, /selectedChannel\?\.messages/u);
   assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*defaultRecipientCatId,\s*routingStatus,\s*waitingSpeakerState\.catId,\s*waitingSpeakerState\.participantId,\s*waitingSpeakerState\.revealIdentity,\s*waitingSpeakerState\.speakerLabel,\s*speakerLabel,/u);
   assert.match(source, /source\.onerror = \(\) =>/u);
   assert.match(source, /traceBrowser\('stream_source_error'/u);

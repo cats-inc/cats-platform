@@ -1,10 +1,11 @@
-import { startTransition, useEffect, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
   EMPTY_LIVE_INDICATOR,
+  hasVisibleAssistantReplyAfterMessage,
   resolveLiveIndicatorSpeakerState,
   type LiveIndicatorState,
 } from '../../../../shared/liveIndicator.js';
@@ -85,19 +86,6 @@ export function resolveLiveIndicatorSpeakerLabel(
     selectedChannel.pendingInstance,
     null,
   );
-}
-
-function hasVisibleAssistantReplyAfterMessage(
-  messages: ReadonlyArray<{ id: string; senderKind: string }>,
-  messageId: string,
-): boolean {
-  const sourceIndex = messages.findIndex((message) => message.id === messageId);
-  if (sourceIndex === -1) {
-    return false;
-  }
-
-  return messages.slice(sourceIndex + 1).some((message) =>
-    message.senderKind === 'agent' || message.senderKind === 'orchestrator');
 }
 
 function resolveWaitingSpeakerState(
@@ -188,10 +176,14 @@ export function useLiveIndicator<
 
   const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
   const routingStatus = resolveRoutingStatus?.(selectedChannel) ?? null;
+  const activeTurn = selectedChannel?.roomRouting.workflow.activeTurn ?? null;
   const speakerLabel = defaultRecipientCatId
     ? null
     : resolveLiveIndicatorSpeakerLabel(selectedChannel);
-  const waitingSpeakerState = resolveWaitingSpeakerState(selectedChannel);
+  const waitingSpeakerState = useMemo(
+    () => resolveWaitingSpeakerState(selectedChannel),
+    [activeTurn, selectedChannel?.messages],
+  );
 
   function traceBrowser(event: string, input: {
     sessionId?: string | null;
@@ -406,18 +398,18 @@ export function useLiveIndicator<
     stateRef.current = waitingState;
     setState(waitingState);
     traceBrowser('waiting_started', {
-        participantId: waitingSpeakerState.revealIdentity
-          ? waitingSpeakerState.participantId
-          : null,
-        catId: waitingSpeakerState.revealIdentity
-          ? waitingSpeakerState.catId
-          : defaultRecipientCatId,
-        speakerLabel: waitingSpeakerState.revealIdentity
-          ? waitingSpeakerState.speakerLabel
-          : speakerLabel,
-        reason: shouldConnectStream({ channelId, busy, routingStatus })
-          ? 'awaiting_stream_attach'
-          : 'waiting_without_stream',
+      participantId: waitingSpeakerState.revealIdentity
+        ? waitingSpeakerState.participantId
+        : null,
+      catId: waitingSpeakerState.revealIdentity
+        ? waitingSpeakerState.catId
+        : defaultRecipientCatId,
+      speakerLabel: waitingSpeakerState.revealIdentity
+        ? waitingSpeakerState.speakerLabel
+        : speakerLabel,
+      reason: shouldConnectStream({ channelId, busy, routingStatus })
+        ? 'awaiting_stream_attach'
+        : 'waiting_without_stream',
       details: {
         busy,
         routingStatus,

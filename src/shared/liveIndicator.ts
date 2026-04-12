@@ -260,7 +260,7 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     return null;
   }
 
-  if (hasExplicitLiveIndicatorSpeaker(liveIndicator)) {
+  if (hasLiveIndicatorIdentity(liveIndicator)) {
     const latestSpeakerReplyTimestamp = resolveLatestVisibleReplyTimestamp(
       messages,
       (message) => doesMessageMatchLiveIndicatorSpeaker(message, liveIndicator),
@@ -619,6 +619,22 @@ function summarizeEventText(value: unknown): string {
     : singleLine;
 }
 
+export function hasVisibleAssistantReplyAfterMessage<TMessage extends {
+  id: string;
+  senderKind: string;
+}>(
+  messages: ReadonlyArray<TMessage>,
+  messageId: string,
+): boolean {
+  const sourceIndex = messages.findIndex((message) => message.id === messageId);
+  if (sourceIndex === -1) {
+    return false;
+  }
+
+  return messages.slice(sourceIndex + 1).some((message) =>
+    message.senderKind === 'agent' || message.senderKind === 'orchestrator');
+}
+
 function resolveLatestVisibleReplyTimestamp<TMessage extends LiveIndicatorTranscriptMessageLike>(
   messages: ReadonlyArray<TMessage>,
   predicate?: (message: TMessage) => boolean,
@@ -643,9 +659,13 @@ function isVisibleAssistantReply(
   return message.senderKind !== 'user' && message.senderKind !== 'system';
 }
 
-function hasExplicitLiveIndicatorSpeaker(
-  liveIndicator: LiveIndicatorState,
+export function hasLiveIndicatorIdentity(
+  liveIndicator: LiveIndicatorState | null | undefined,
 ): boolean {
+  if (!liveIndicator?.active) {
+    return false;
+  }
+
   return Boolean(
     readString(liveIndicator.participantId)
     || readString(liveIndicator.speakerLabel)
