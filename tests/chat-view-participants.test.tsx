@@ -881,8 +881,8 @@ test('ChatView keeps live assistant progress collapsed when progress details are
 
   assert.match(markup, /typingIndicator/u);
   assert.match(markup, /Looking into it/u);
-  assert.match(markup, /toolSegmentChip/u);
-  assert.doesNotMatch(markup, /toolSegmentChipDetail/u);
+  assert.match(markup, /typingDots/u);
+  assert.doesNotMatch(markup, /toolSegmentChip/u);
 });
 
 test('ChatView shows provider-specific live assistant progress when progress details are on', () => {

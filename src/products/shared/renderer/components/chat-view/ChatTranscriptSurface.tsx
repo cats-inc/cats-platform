@@ -118,7 +118,7 @@ export function ChatTranscriptSurface({
             ? payload.chat.cats.find((cat) => cat.id === liveIndicator.catId) ?? null
             : null;
           const speakerLabel = speakerCat?.name ?? liveIndicator.speakerLabel;
-          const showToolDetails = payload.chat.showLiveProgressDetails === true;
+          const showProgressDetails = payload.chat.showLiveProgressDetails === true;
           const sortedBlocks = [...liveIndicator.contentBlocks].sort(
             (left, right) => left.index - right.index,
           );
@@ -126,8 +126,7 @@ export function ChatTranscriptSurface({
           const showTrailingDots =
             liveIndicator.phase === 'streaming'
             && lastBlock != null
-            && lastBlock.kind !== 'text'
-            && lastBlock.status === 'streaming';
+            && lastBlock.kind !== 'text';
 
           function renderBlock(block: LiveIndicatorContentBlock): JSX.Element | null {
             if (block.kind === 'text') {
@@ -145,11 +144,14 @@ export function ChatTranscriptSurface({
                 />
               );
             }
+            if (!showProgressDetails) {
+              return null;
+            }
             if (block.kind === 'tool') {
               return (
                 <div key={block.id} className={block.status === 'streaming' ? 'toolSegmentChip' : 'toolSegmentChip toolSegmentChipDone'}>
                   <span className="toolSegmentChipName">{block.toolName ?? block.title ?? 'tool'}</span>
-                  {showToolDetails && block.text ? (
+                  {block.text ? (
                     <span className="toolSegmentChipDetail">{block.text}</span>
                   ) : null}
                 </div>
@@ -183,7 +185,7 @@ export function ChatTranscriptSurface({
               {liveIndicator.phase === 'waiting' ? (
                 <span className="typingDots"><span /><span /><span /></span>
               ) : sortedBlocks.length === 0 ? (
-                showToolDetails && liveIndicator.progressText ? (
+                showProgressDetails && liveIndicator.progressText ? (
                   <p className="typingStatusText">{liveIndicator.progressText}</p>
                 ) : (
                   <span className="typingDots"><span /><span /><span /></span>

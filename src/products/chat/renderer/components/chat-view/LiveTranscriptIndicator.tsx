@@ -48,7 +48,7 @@ function renderContentBlockSegment(
   cats: ChatCat[],
   channelId: string,
   disabledMentionNames: string[],
-  showToolDetails: boolean,
+  showProgressDetails: boolean,
 ): JSX.Element | null {
   if (block.kind === 'text') {
     const text = stripLeadingBlankLines(block.text);
@@ -66,11 +66,15 @@ function renderContentBlockSegment(
     );
   }
 
+  if (!showProgressDetails) {
+    return null;
+  }
+
   if (block.kind === 'tool') {
     return (
       <div key={block.id} className={block.status === 'streaming' ? 'toolSegmentChip' : 'toolSegmentChip toolSegmentChipDone'}>
         <span className="toolSegmentChipName">{block.toolName ?? block.title ?? 'tool'}</span>
-        {showToolDetails && block.text ? (
+        {block.text ? (
           <span className="toolSegmentChipDetail">{block.text}</span>
         ) : null}
       </div>
@@ -122,8 +126,7 @@ export function LiveTranscriptIndicator({
   const showTrailingDots =
     liveIndicator.phase === 'streaming'
     && lastBlock != null
-    && lastBlock.kind !== 'text'
-    && lastBlock.status === 'streaming';
+    && lastBlock.kind !== 'text';
 
   return (
     <article className="transcriptMessageStack transcriptMessageStackAgent typingIndicator">
