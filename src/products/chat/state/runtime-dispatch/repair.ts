@@ -86,6 +86,41 @@ function buildParticipantRefFromResponse(
     : null;
 }
 
+function doesTargetStatusMatchRecoveredParticipant(
+  target: RoomWorkflowTargetState,
+  participant: RoomRoutingParticipantRef | null,
+  assistantTurnId: string,
+): boolean {
+  if (target.response?.assistantTurnId === assistantTurnId) {
+    return true;
+  }
+
+  if (!participant) {
+    return false;
+  }
+
+  return target.participant.participantKind === participant.participantKind
+    && target.participant.participantId === participant.participantId;
+}
+
+function hasOutstandingTargetsBeyondRecoveredResponse(
+  turn: RoomWorkflowTurn,
+  participant: RoomRoutingParticipantRef | null,
+  assistantTurnId: string,
+): boolean {
+  return turn.targetStatuses.some((target) => {
+    if (
+      target.status !== 'pending'
+      && target.status !== 'running'
+      && target.status !== 'waiting_for_converge'
+    ) {
+      return false;
+    }
+
+    return !doesTargetStatusMatchRecoveredParticipant(target, participant, assistantTurnId);
+  });
+}
+
 function resolveDefaultTargetReason(
   channel: ChatChannelState,
   participant: RoomRoutingParticipantRef | null,
@@ -633,8 +668,15 @@ export function repairOrphanedCompletedDispatchTurn(
   if (!response) {
     return { repaired: false, state };
   }
-
   const participant = buildParticipantRefFromResponse(responseMessage);
+  const candidateTurn = activeTurn ?? recoveredTurn;
+  if (
+    candidateTurn
+    && hasOutstandingTargetsBeyondRecoveredResponse(candidateTurn, participant, assistantTurnId)
+  ) {
+    return { repaired: false, state };
+  }
+
   const nextState = structuredClone(state);
   const nextChannel = requireChannel(nextState, channelId);
   const nextRoomRouting = resolveRoomRoutingState(nextChannel.roomRouting);

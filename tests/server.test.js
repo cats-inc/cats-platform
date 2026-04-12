@@ -1606,6 +1606,179 @@ test('GET /api/app-shell repairs an orphaned completed room turn before renderin
   assert.equal(repairedChannel?.roomRouting.lastOutcome?.status, 'completed');
 });
 
+test('GET /api/app-shell does not finalize an active sequential room turn while follow-up speakers remain in flight', async () => {
+  const runtime = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+  const responseAt = new Date('2026-03-11T00:00:06.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Sequential turn still active',
+      topic: 'Do not clear the active turn before later speakers run.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Please hand this off in order.' },
+    runtime,
+    seededAt,
+  );
+  const inFlightState = structuredClone(begun.state);
+  const inFlightChannel = requireChannel(inFlightState, channelId);
+  const activeTurn = inFlightChannel.roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+
+  activeTurn.workflowShape = 'sequential';
+  activeTurn.targetStatuses = [
+    {
+      id: 'target-claude',
+      dispatchId: 'dispatch-claude',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-claude',
+        participantName: 'Claude-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'explicit_mention',
+      mentionNames: ['Claude-CLI', 'Codex-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'explicit_mention',
+      wakeRequestId: null,
+      status: 'completed',
+      queuedAt: seededAt.toISOString(),
+      startedAt: seededAt.toISOString(),
+      completedAt: responseAt.toISOString(),
+      response: {
+        assistantTurnId: 'assistant-turn-claude',
+        messageIds: ['message-claude'],
+        fullText: 'Hello from Claude-CLI.',
+        segmentCount: 1,
+      },
+      error: null,
+    },
+    {
+      id: 'target-codex',
+      dispatchId: 'dispatch-codex',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-codex',
+        participantName: 'Codex-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'continuation_mention',
+      mentionNames: ['Codex-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'workflow_continuation',
+      wakeRequestId: null,
+      status: 'running',
+      queuedAt: responseAt.toISOString(),
+      startedAt: responseAt.toISOString(),
+      completedAt: null,
+      response: null,
+      error: null,
+    },
+  ];
+  inFlightChannel.roomRouting.lastOutcome.dispatches = [
+    {
+      id: 'dispatch-claude',
+      sourceMessageId: activeTurn.sourceMessageId,
+      source: null,
+      target: {
+        participantKind: 'cat',
+        participantId: 'participant-claude',
+        participantName: 'Claude-CLI',
+      },
+      trigger: 'explicit_mention',
+      status: 'completed',
+      mentionNames: ['Claude-CLI', 'Codex-CLI'],
+      response: {
+        assistantTurnId: 'assistant-turn-claude',
+        messageIds: ['message-claude'],
+        fullText: 'Hello from Claude-CLI.',
+        segmentCount: 1,
+      },
+      startedAt: seededAt.toISOString(),
+      completedAt: responseAt.toISOString(),
+      error: null,
+    },
+    {
+      id: 'dispatch-codex',
+      sourceMessageId: activeTurn.sourceMessageId,
+      source: null,
+      target: {
+        participantKind: 'cat',
+        participantId: 'participant-codex',
+        participantName: 'Codex-CLI',
+      },
+      trigger: 'continuation_mention',
+      status: 'running',
+      mentionNames: ['Codex-CLI'],
+      response: null,
+      startedAt: responseAt.toISOString(),
+      completedAt: null,
+      error: null,
+    },
+  ];
+  inFlightChannel.roomRouting.lastOutcome.status = 'running';
+  inFlightChannel.roomRouting.lastOutcome.completedAt = null;
+  state = appendMessage(
+    inFlightState,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Claude-CLI',
+      body: 'Hello from Claude-CLI.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-claude',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'cat',
+        targetId: 'participant-claude',
+        routingTrigger: 'explicit_mention',
+        dispatchDepth: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  await withServer(runtime, async (baseUrl) => {
+    await chatStore.write(state);
+    const response = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const repairedChannel = payload.chat.selectedChannel;
+    assert.equal(repairedChannel.id, channelId);
+    assert.ok(repairedChannel.roomRouting.workflow.activeTurn);
+    assert.equal(
+      repairedChannel.roomRouting.workflow.activeTurn.targetStatuses.some((target) =>
+        target.participant.participantId === 'participant-codex' && target.status === 'running'),
+      true,
+    );
+    assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'running');
+  }, chatStore);
+
+  const persistedState = await chatStore.read();
+  const persistedChannel = persistedState.channels.find((channel) => channel.id === channelId);
+  assert.ok(persistedChannel?.roomRouting.workflow.activeTurn);
+  assert.equal(persistedChannel?.roomRouting.lastOutcome?.status, 'running');
+});
+
 test('GET /api/core endpoints expose the shared Cats Core contract', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const stateResponse = await fetch(`${baseUrl}/api/core`);

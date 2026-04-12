@@ -58,6 +58,15 @@ export interface LiveIndicatorStreamDecisionInput {
   routingStatus?: string | null;
 }
 
+interface WaitingIndicatorInputs {
+  participantId: string | null;
+  catId: string | null;
+  speakerLabel: string | null;
+  revealIdentity: boolean;
+  defaultRecipientCatId: string | null;
+  fallbackSpeakerLabel: string | null;
+}
+
 export function shouldConnectLiveIndicatorStream(
   channelId: string | null,
   busy: string,
@@ -227,6 +236,7 @@ export function useLiveIndicator<
   const [state, setState] = useState<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
   const sourceRef = useRef<EventSource | null>(null);
   const stateRef = useRef<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
+  const selectedChannelRef = useRef<TSelectedChannel | null>(selectedChannel);
   const previousChannelIdRef = useRef<string | null>(null);
 
   const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
@@ -239,6 +249,35 @@ export function useLiveIndicator<
     () => resolveWaitingSpeakerState(selectedChannel),
     [activeTurn, selectedChannel?.messages],
   );
+  const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>(
+    () => ({
+      participantId: waitingSpeakerState.participantId,
+      catId: waitingSpeakerState.catId,
+      speakerLabel: waitingSpeakerState.speakerLabel,
+      revealIdentity: waitingSpeakerState.revealIdentity,
+      defaultRecipientCatId,
+      fallbackSpeakerLabel: speakerLabel,
+    }),
+    [
+      defaultRecipientCatId,
+      speakerLabel,
+      waitingSpeakerState.catId,
+      waitingSpeakerState.participantId,
+      waitingSpeakerState.revealIdentity,
+      waitingSpeakerState.speakerLabel,
+    ],
+  );
+  const waitingIndicatorInputsRef = useRef<WaitingIndicatorInputs>(waitingIndicatorInputs);
+
+  function createCurrentWaitingState(): LiveIndicatorState {
+    const current = waitingIndicatorInputsRef.current;
+    return createWaitingLiveIndicatorState({
+      participantId: current.revealIdentity ? current.participantId : null,
+      catId: current.revealIdentity ? current.catId : current.defaultRecipientCatId,
+      speakerLabel: current.revealIdentity ? current.speakerLabel : current.fallbackSpeakerLabel,
+      revealIdentity: current.revealIdentity,
+    });
+  }
 
   function traceBrowser(event: string, input: {
     sessionId?: string | null;
@@ -269,6 +308,14 @@ export function useLiveIndicator<
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  useEffect(() => {
+    selectedChannelRef.current = selectedChannel;
+  }, [selectedChannel]);
+
+  useEffect(() => {
+    waitingIndicatorInputsRef.current = waitingIndicatorInputs;
+  }, [waitingIndicatorInputs]);
 
   useEffect(() => {
     const shouldShowWaiting = shouldShowWaitingIndicator({
@@ -346,7 +393,7 @@ export function useLiveIndicator<
         routingStatus,
       });
       const shouldPinReplyCommit = shouldRetrySessionClose
-        && shouldPinLiveIndicatorUntilPersistedReply(stateRef.current, selectedChannel);
+        && shouldPinLiveIndicatorUntilPersistedReply(stateRef.current, selectedChannelRef.current);
 
       traceBrowser('stream_event', {
         sessionId: readTraceString(data.sessionId),
@@ -457,17 +504,12 @@ export function useLiveIndicator<
       return undefined;
     }
 
-    const waitingState = createWaitingLiveIndicatorState({
-      participantId: waitingSpeakerState.revealIdentity ? waitingSpeakerState.participantId : null,
-      catId: waitingSpeakerState.revealIdentity ? waitingSpeakerState.catId : defaultRecipientCatId,
-      speakerLabel: waitingSpeakerState.revealIdentity ? waitingSpeakerState.speakerLabel : speakerLabel,
-      revealIdentity: waitingSpeakerState.revealIdentity,
-    });
+    const waitingState = createCurrentWaitingState();
     setState((previous) => {
       const next = resolveWaitingIndicatorStateTransition({
         previous,
         waitingState,
-        selectedChannel,
+        selectedChannel: selectedChannelRef.current,
         previousChannelId,
         channelId,
       });
@@ -475,15 +517,15 @@ export function useLiveIndicator<
       return next;
     });
     traceBrowser('waiting_started', {
-      participantId: waitingSpeakerState.revealIdentity
-        ? waitingSpeakerState.participantId
+      participantId: waitingIndicatorInputs.revealIdentity
+        ? waitingIndicatorInputs.participantId
         : null,
-      catId: waitingSpeakerState.revealIdentity
-        ? waitingSpeakerState.catId
-        : defaultRecipientCatId,
-      speakerLabel: waitingSpeakerState.revealIdentity
-        ? waitingSpeakerState.speakerLabel
-        : speakerLabel,
+      catId: waitingIndicatorInputs.revealIdentity
+        ? waitingIndicatorInputs.catId
+        : waitingIndicatorInputs.defaultRecipientCatId,
+      speakerLabel: waitingIndicatorInputs.revealIdentity
+        ? waitingIndicatorInputs.speakerLabel
+        : waitingIndicatorInputs.fallbackSpeakerLabel,
       reason: shouldConnectStream({ channelId, busy, routingStatus })
         ? 'awaiting_stream_attach'
         : 'waiting_without_stream',
@@ -510,15 +552,44 @@ export function useLiveIndicator<
     busy,
     channelId,
     debugTraceEnabled,
-    defaultRecipientCatId,
     routingStatus,
-    waitingSpeakerState.catId,
-    waitingSpeakerState.participantId,
-    waitingSpeakerState.revealIdentity,
-    waitingSpeakerState.speakerLabel,
-    speakerLabel,
     shouldConnectStream,
     shouldShowWaitingIndicator,
+  ]);
+
+  useEffect(() => {
+    const shouldShowWaiting = shouldShowWaitingIndicator({
+      channelId,
+      busy,
+      routingStatus,
+    });
+    if (!shouldShowWaiting) {
+      return;
+    }
+
+    const waitingState = createCurrentWaitingState();
+    setState((previous) => {
+      if (!previous.active || previous.phase !== 'waiting') {
+        return previous;
+      }
+
+      if (
+        previous.participantId === waitingState.participantId
+        && previous.catId === waitingState.catId
+        && previous.speakerLabel === waitingState.speakerLabel
+      ) {
+        return previous;
+      }
+
+      stateRef.current = waitingState;
+      return waitingState;
+    });
+  }, [
+    busy,
+    channelId,
+    routingStatus,
+    shouldShowWaitingIndicator,
+    waitingIndicatorInputs,
   ]);
 
   return state;

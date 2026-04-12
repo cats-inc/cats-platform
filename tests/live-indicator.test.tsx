@@ -789,7 +789,7 @@ test('resolveTranscriptFollowState derives scroll keys from transcript content i
   assert.match(followState.transcriptScrollKey, /^2::msg-2::2026-04-09T12:00:01.000Z::/u);
 });
 
-test('shared live indicator effect reconnects on EventSource termination and still depends on stable derived fields', async () => {
+test('shared live indicator effect reconnects on EventSource termination without tearing down on speaker handoff', async () => {
   const testDirectory = path.dirname(fileURLToPath(import.meta.url));
   const source = await readFile(
     path.join(
@@ -802,9 +802,12 @@ test('shared live indicator effect reconnects on EventSource termination and sti
   );
 
   assert.match(source, /const waitingSpeakerState = useMemo\(\s*\(\) => resolveWaitingSpeakerState\(selectedChannel\)/u);
+  assert.match(source, /const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>\(/u);
+  assert.match(source, /const selectedChannelRef = useRef/u);
   assert.match(source, /activeTurn/u);
   assert.match(source, /selectedChannel\?\.messages/u);
-  assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*defaultRecipientCatId,\s*routingStatus,\s*waitingSpeakerState\.catId,\s*waitingSpeakerState\.participantId,\s*waitingSpeakerState\.revealIdentity,\s*waitingSpeakerState\.speakerLabel,\s*speakerLabel,/u);
+  assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*routingStatus,\s*shouldConnectStream,\s*shouldShowWaitingIndicator,\s*\]/u);
+  assert.match(source, /\[\s*busy,\s*channelId,\s*routingStatus,\s*shouldShowWaitingIndicator,\s*waitingIndicatorInputs,\s*\]/u);
   assert.match(source, /source\.onerror = \(\) =>/u);
   assert.match(source, /traceBrowser\('stream_source_error'/u);
   assert.match(source, /scheduleReconnect\(\);/u);

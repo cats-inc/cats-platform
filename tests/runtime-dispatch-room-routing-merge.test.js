@@ -687,6 +687,126 @@ test('repairOrphanedCompletedDispatchTurn ignores non-terminal segmented replies
   );
 });
 
+test('repairOrphanedCompletedDispatchTurn keeps an active sequential turn alive while later targets remain in flight', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-09T12:00:00.000Z');
+  const responseAt = new Date('2026-04-09T12:00:06.000Z');
+  const stateStore = new MemoryChatStore();
+  let state = await stateStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Sequential handoff still active',
+      topic: 'Do not finalize the room turn while a follow-up speaker remains active.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'First speaker should hand off to a second one.' },
+    runtimeClient,
+    seededAt,
+  );
+  const inFlightState = structuredClone(begun.state);
+  const inFlightChannel = requireChannel(inFlightState, channelId);
+  const activeTurn = inFlightChannel.roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+
+  activeTurn.workflowShape = 'sequential';
+  activeTurn.targetStatuses = [
+    {
+      id: 'target-claude',
+      dispatchId: 'dispatch-claude',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-claude',
+        participantName: 'Claude-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'explicit_mention',
+      mentionNames: ['Claude-CLI', 'Codex-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'explicit_mention',
+      wakeRequestId: null,
+      status: 'running',
+      queuedAt: seededAt.toISOString(),
+      startedAt: seededAt.toISOString(),
+      completedAt: null,
+      response: null,
+      error: null,
+    },
+    {
+      id: 'target-codex',
+      dispatchId: 'dispatch-codex',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-codex',
+        participantName: 'Codex-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'continuation_mention',
+      mentionNames: ['Codex-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'workflow_continuation',
+      wakeRequestId: null,
+      status: 'running',
+      queuedAt: responseAt.toISOString(),
+      startedAt: responseAt.toISOString(),
+      completedAt: null,
+      response: null,
+      error: null,
+    },
+  ];
+
+  const firstSegmentState = appendMessage(
+    inFlightState,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Claude-CLI',
+      body: 'Hello from the first speaker.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-claude',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'cat',
+        targetId: 'participant-claude',
+        routingTrigger: 'explicit_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  const repaired = repairOrphanedCompletedDispatchTurn(
+    firstSegmentState,
+    channelId,
+    new Date('2026-04-09T12:10:00.000Z'),
+  );
+
+  assert.equal(repaired.repaired, false);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  assert.equal(repairedChannel.roomRouting.workflow.activeTurn?.id, activeTurn.id);
+  assert.deepEqual(
+    repairedChannel.roomRouting.workflow.activeTurn?.targetStatuses.map((target) => target.status),
+    ['running', 'running'],
+  );
+});
+
 test('repairMissingSessionStartedMessages restores missing runtime metadata before the response', async () => {
   const chatStore = new MemoryChatStore();
   const seededAt = new Date('2026-04-09T12:00:00.000Z');
