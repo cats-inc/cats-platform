@@ -69,7 +69,7 @@ function createRuntimeStub() {
       const provider = sessionId.replace(/^session-([^-.]+).*/u, '$1');
       await new Promise((resolve) => setTimeout(resolve, 30));
       return {
-        content: `[${provider}] ${prompt}`,
+        segments: [{ kind: 'text', text: `[${provider}] ${prompt}`, toolName: null, toolId: null }],
         inputTokens: 1,
         outputTokens: 1,
         tokensUsed: 2,

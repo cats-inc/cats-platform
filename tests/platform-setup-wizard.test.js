@@ -79,7 +79,7 @@ function createRuntimeStub() {
     async sendMessage(sessionId, content) {
       this.sentMessages.push({ sessionId, content });
       return {
-        content: 'Acknowledged.',
+        segments: [{ kind: 'text', text: 'Acknowledged.', toolName: null, toolId: null }],
         inputTokens: 11,
         outputTokens: 7,
         tokensUsed: 18,

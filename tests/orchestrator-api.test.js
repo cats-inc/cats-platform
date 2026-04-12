@@ -37,7 +37,7 @@ const baseConfig = {
 
 function usage(content) {
   return {
-    content,
+    segments: [{ kind: 'text', text: content, toolName: null, toolId: null }],
     inputTokens: 11,
     outputTokens: 7,
     tokensUsed: 18,

@@ -40,6 +40,7 @@ import {
   updateDispatch,
   updateWorkflowTarget,
 } from '../room-routing/workflow.js';
+import { resolveFullResponseText, type RuntimeMessageSegment } from '../../../../runtime/client.js';
 import type { DispatchExecution } from './execution.js';
 import { resolveExecutionMetadataForTarget } from '../runtimeTargeting.js';
 import { isSoloChatChannel } from '../runtimeTargeting.js';
@@ -54,6 +55,29 @@ import {
 } from './recovery.js';
 
 type ContinuationSource = 'explicit_mentions' | 'workflow_recommendation';
+
+interface TextSegmentWithToolMetadata {
+  text: string;
+  precedingTools: Array<{ toolName: string | null; toolId: string | null }>;
+}
+
+function collectTextSegmentsWithToolMetadata(
+  segments: RuntimeMessageSegment[],
+): TextSegmentWithToolMetadata[] {
+  const result: TextSegmentWithToolMetadata[] = [];
+  let pendingTools: TextSegmentWithToolMetadata['precedingTools'] = [];
+
+  for (const segment of segments) {
+    if (segment.kind === 'text') {
+      result.push({ text: segment.text, precedingTools: pendingTools });
+      pendingTools = [];
+    } else if (segment.kind === 'tool_use') {
+      pendingTools.push({ toolName: segment.toolName, toolId: segment.toolId });
+    }
+  }
+
+  return result;
+}
 
 interface BlockedDispatchResolution {
   blockedReason: RoomRouteBlockedReason;
@@ -382,8 +406,11 @@ export function applyDispatchExecutions(
         : 'orchestrator',
       now,
     );
+    const segments = execution.responseSegments ?? [];
+    const textSegments = collectTextSegmentsWithToolMetadata(segments);
+    const lastTextSegment = textSegments.at(-1);
     const extractedWorkflowRecommendation = extractWorkflowRecommendationFromBody(
-      execution.responseBody ?? '',
+      lastTextSegment?.text ?? '',
     );
     const channel = requireChannel(nextState, channelId);
     const hiddenSoloReply = execution.target.participantKind === 'orchestrator'
@@ -391,41 +418,85 @@ export function applyDispatchExecutions(
     const serializedWorkflowRecommendation = extractedWorkflowRecommendation.recommendation
       ? serializeWorkflowRecommendation(extractedWorkflowRecommendation.recommendation)
       : null;
-    const appendedResponse = appendMessage(
-      nextState,
-      channelId,
-      {
-        senderKind: execution.target.participantKind === 'orchestrator'
-          ? (hiddenSoloReply ? 'agent' : 'orchestrator')
-          : 'agent',
-        senderName: hiddenSoloReply ? 'Orchestrator' : execution.target.participantName,
-        body: extractedWorkflowRecommendation.body,
-      },
-      now,
-      {
-        metadata: {
-          event: 'runtime_response',
-          targetKind: execution.target.participantKind,
-          targetId: execution.target.participantId,
-          sessionId: execution.target.sessionId,
-          turnId: outcome.turnId,
-          sourceMessageId: execution.sourceMessage.id,
-          routingTrigger: execution.trigger,
-          dispatchDepth: execution.depth,
-          ...(serializedWorkflowRecommendation
-            ? {
-                workflowRecommendation: serializedWorkflowRecommendation,
-              }
-            : {}),
+    const senderKind = execution.target.participantKind === 'orchestrator'
+      ? (hiddenSoloReply ? 'agent' : 'orchestrator')
+      : 'agent';
+    const senderName = hiddenSoloReply ? 'Orchestrator' : execution.target.participantName;
+    const executionMeta = resolveExecutionMetadataForTarget(nextState, channelId, execution.target);
+
+    let responseMessage: ChatMessage | null = null;
+    for (let segmentIndex = 0; segmentIndex < textSegments.length; segmentIndex += 1) {
+      const segment = textSegments[segmentIndex]!;
+      const isLastSegment = segmentIndex === textSegments.length - 1;
+      const segmentBody = isLastSegment
+        ? extractedWorkflowRecommendation.body
+        : segment.text;
+      if (!segmentBody.trim()) {
+        continue;
+      }
+      const appendedResponse = appendMessage(
+        nextState,
+        channelId,
+        { senderKind, senderName, body: segmentBody },
+        now,
+        {
+          metadata: {
+            event: 'runtime_response',
+            targetKind: execution.target.participantKind,
+            targetId: execution.target.participantId,
+            sessionId: execution.target.sessionId,
+            turnId: outcome.turnId,
+            sourceMessageId: execution.sourceMessage.id,
+            routingTrigger: execution.trigger,
+            dispatchDepth: execution.depth,
+            segmentIndex,
+            ...(segment.precedingTools.length > 0
+              ? { precedingTools: segment.precedingTools }
+              : {}),
+            ...(isLastSegment && serializedWorkflowRecommendation
+              ? { workflowRecommendation: serializedWorkflowRecommendation }
+              : {}),
+          },
+          usage: isLastSegment ? execution.usage : null,
+          execution: executionMeta,
+          incrementUnread: false,
         },
-        usage: execution.usage,
-        execution: resolveExecutionMetadataForTarget(nextState, channelId, execution.target),
-        incrementUnread: false,
-      },
-    );
-    nextState = appendedResponse.state;
+      );
+      nextState = appendedResponse.state;
+      responseMessage = appendedResponse.message;
+    }
+
+    if (!responseMessage) {
+      const fallback = appendMessage(
+        nextState,
+        channelId,
+        { senderKind, senderName, body: resolveFullResponseText(segments) || `${execution.target.participantName} completed the routed turn without text output.` },
+        now,
+        {
+          metadata: {
+            event: 'runtime_response',
+            targetKind: execution.target.participantKind,
+            targetId: execution.target.participantId,
+            sessionId: execution.target.sessionId,
+            turnId: outcome.turnId,
+            sourceMessageId: execution.sourceMessage.id,
+            routingTrigger: execution.trigger,
+            dispatchDepth: execution.depth,
+            segmentIndex: 0,
+            ...(serializedWorkflowRecommendation
+              ? { workflowRecommendation: serializedWorkflowRecommendation }
+              : {}),
+          },
+          usage: execution.usage,
+          execution: executionMeta,
+          incrementUnread: false,
+        },
+      );
+      nextState = fallback.state;
+      responseMessage = fallback.message;
+    }
+
     nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
-    const responseMessage = appendedResponse.message;
     updateDispatch(outcome, execution.dispatchId, {
       status: 'completed',
       responseMessageId: responseMessage.id,
@@ -476,7 +547,8 @@ export function applyDispatchExecutions(
       dispatchDepth: execution.depth,
     });
 
-    let continuationResolution = resolveTargets(nextState, channelId, responseMessage.body, {
+    const fullResponseText = resolveFullResponseText(segments);
+    let continuationResolution = resolveTargets(nextState, channelId, fullResponseText, {
       allowDefaultTarget: false,
       explicitTrigger: 'continuation_mention',
     });

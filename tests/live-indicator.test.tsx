@@ -11,9 +11,6 @@ import {
   shouldConnectLiveIndicatorStream,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {
-  resolveLiveIndicatorPreviewBody,
-} from '../src/products/shared/renderer/components/chat-view/liveTranscriptIndicatorSupport.ts';
-import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
   resolveTranscriptFollowState,
@@ -26,7 +23,7 @@ import {
 
 test('EMPTY_LIVE_INDICATOR starts with no active cat ids', () => {
   assert.deepEqual(EMPTY_LIVE_INDICATOR.activeCatIds, []);
-  assert.equal(EMPTY_LIVE_INDICATOR.previewText, '');
+  assert.deepEqual(EMPTY_LIVE_INDICATOR.contentBlocks, []);
 });
 
 test('shouldConnectLiveIndicatorStream skips optimistic draft channels', () => {
@@ -469,34 +466,31 @@ test('resolveVisibleLiveIndicator does not wait for a new session_started messag
   assert.equal(visible, liveIndicator);
 });
 
-test('resolveLiveIndicatorPreviewBody strips leading blank lines from streamed preview text', () => {
-  const body = resolveLiveIndicatorPreviewBody({
-    ...EMPTY_LIVE_INDICATOR,
-    previewText: '\n\nHello',
-  });
+test('applyLiveIndicatorEvent synthesizes text content blocks from text events', () => {
+  let state = { ...EMPTY_LIVE_INDICATOR, active: true, phase: 'streaming' as const };
+  state = applyLiveIndicatorEvent(state, 'text', { text: 'Hello' });
+  assert.equal(state.contentBlocks.length, 1);
+  assert.equal(state.contentBlocks[0].kind, 'text');
+  assert.equal(state.contentBlocks[0].text, 'Hello');
 
-  assert.equal(body, 'Hello');
+  state = applyLiveIndicatorEvent(state, 'text', { text: ' world' });
+  assert.equal(state.contentBlocks.length, 1);
+  assert.equal(state.contentBlocks[0].text, 'Hello world');
 });
 
-test('resolveLiveIndicatorPreviewBody strips leading blank lines from streamed text content blocks', () => {
-  const body = resolveLiveIndicatorPreviewBody({
-    ...EMPTY_LIVE_INDICATOR,
-    contentBlocks: [
-      {
-        id: 'text:0',
-        index: 0,
-        kind: 'text',
-        status: 'streaming',
-        title: null,
-        text: '\n\nHello',
-        toolName: null,
-        toolId: null,
-        metadata: null,
-      },
-    ],
+test('applyLiveIndicatorEvent creates a new text block after tool_use via content_block', () => {
+  let state = { ...EMPTY_LIVE_INDICATOR, active: true, phase: 'streaming' as const };
+  state = applyLiveIndicatorEvent(state, 'text', { text: 'First' });
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: { id: 'tool:1', index: 1, kind: 'tool', status: 'streaming', text: '', toolName: 'search' },
   });
-
-  assert.equal(body, 'Hello');
+  state = applyLiveIndicatorEvent(state, 'text', { text: 'Second' });
+  assert.equal(state.contentBlocks.length, 3);
+  assert.equal(state.contentBlocks[0].kind, 'text');
+  assert.equal(state.contentBlocks[0].text, 'First');
+  assert.equal(state.contentBlocks[1].kind, 'tool');
+  assert.equal(state.contentBlocks[2].kind, 'text');
+  assert.equal(state.contentBlocks[2].text, 'Second');
 });
 
 test('resolveTranscriptFollowState derives scroll keys from transcript content instead of channel timestamps', () => {
@@ -505,7 +499,7 @@ test('resolveTranscriptFollowState derives scroll keys from transcript content i
     active: true,
     phase: 'streaming',
     participantId: 'participant-inline',
-    previewText: 'Thinking',
+    contentBlocks: [{ id: 'text:0', index: 0, kind: 'text', status: 'streaming', title: null, text: 'Thinking', toolName: null, toolId: null, metadata: null }],
   };
 
   const followState = resolveTranscriptFollowState(
@@ -592,7 +586,8 @@ test('live indicator accumulates streamed preview text and keeps active cat ids'
     text: ' world',
   });
 
-  assert.equal(state.previewText, 'Hello world');
+  assert.equal(state.contentBlocks.length, 1);
+  assert.equal(state.contentBlocks[0]?.text, 'Hello world');
   assert.equal(state.progressText, '');
   assert.equal(state.progressKind, null);
   assert.equal(state.events.length, 1);
@@ -765,7 +760,8 @@ test('live indicator merges consecutive text chunks into one tape entry', () => 
     text: ' Second chunk',
   });
 
-  assert.equal(state.previewText, 'First chunk Second chunk');
+  assert.equal(state.contentBlocks.length, 1);
+  assert.equal(state.contentBlocks[0]?.text, 'First chunk Second chunk');
   assert.equal(state.progressKind, null);
   assert.equal(state.events.length, 1);
   assert.equal(state.events[0]?.eventType, 'text');

@@ -6,7 +6,7 @@ import {
 } from '../../../shared/http.js';
 import { listProductProviders } from '../../../shared/providerCatalog.js';
 import { parseProviderModelSelection } from '../../../shared/providerSelection.js';
-import type { RuntimeProviderConfigRegistry } from '../../../runtime/client.js';
+import { resolveFullResponseText, type RuntimeProviderConfigRegistry } from '../../../runtime/client.js';
 import type { CodeApiRouteContext } from './index.js';
 import {
   applyCodeRelayRosterProbe,
@@ -252,7 +252,7 @@ async function completeFanOutInBackground(
       });
       return {
         entryId: entry.id,
-        content: result.content.trim(),
+        content: resolveFullResponseText(result.segments).trim(),
         stdoutExcerpt: null,
         stderrExcerpt: null,
       };

@@ -74,7 +74,7 @@ function createRetryRuntimeStub() {
         throw new Error('Runtime unavailable.');
       }
       return {
-        content: 'Recovered response from retry.',
+        segments: [{ kind: 'text', text: 'Recovered response from retry.', toolName: null, toolId: null }],
         inputTokens: 12,
         outputTokens: 8,
         tokensUsed: 20,
@@ -209,7 +209,7 @@ test('POST /api/channels/:id/messages/:messageId/retry rejects retry when the la
     async sendMessage(sessionId, content) {
       this.sentMessages.push({ sessionId, content });
       return {
-        content: 'Completed successfully.',
+        segments: [{ kind: 'text', text: 'Completed successfully.', toolName: null, toolId: null }],
         inputTokens: 10,
         outputTokens: 6,
         tokensUsed: 16,

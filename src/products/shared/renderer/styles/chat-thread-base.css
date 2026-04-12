@@ -560,6 +560,58 @@
   font-size: 0.75rem;
 }
 
+/* ── Tool segment chips (content-block-based rendering) ── */
+
+.toolSegmentChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel-hover) 80%, var(--accent) 20%);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.toolSegmentChip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: toolSegmentPulse 1.4s ease-in-out infinite;
+}
+
+.toolSegmentChipDone {
+  background: var(--panel-hover);
+  color: var(--muted);
+}
+
+.toolSegmentChipDone::before {
+  background: var(--muted);
+  animation: none;
+  opacity: 0.5;
+}
+
+.toolSegmentChipName {
+  font-weight: 500;
+}
+
+.toolSegmentChipDetail {
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+}
+
+@keyframes toolSegmentPulse {
+  0%, 60%, 100% { opacity: 0.4; }
+  30% { opacity: 1; }
+}
+
 .typingContentBlocks {
   display: flex;
   flex-direction: column;

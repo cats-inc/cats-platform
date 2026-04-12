@@ -155,10 +155,11 @@ function createRuntimeStub() {
     },
     async sendMessage(sessionId, content) {
       this.sentMessages.push({ sessionId, content });
+      const text = content.includes('Agent-1')
+        ? 'Agent-1 handled the routed turn.'
+        : 'Orchestrator acknowledged the chat request.';
       return {
-        content: content.includes('Agent-1')
-          ? 'Agent-1 handled the routed turn.'
-          : 'Orchestrator acknowledged the chat request.',
+        segments: [{ kind: 'text', text, toolName: null, toolId: null }],
         inputTokens: 11,
         outputTokens: 7,
         tokensUsed: 18,

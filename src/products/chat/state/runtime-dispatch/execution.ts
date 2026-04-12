@@ -8,7 +8,11 @@ import type {
   RoomRoutingParticipantRef,
 } from '../../../../shared/roomRouting.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
-import type { RuntimeClient } from '../../../../platform/runtime/client.js';
+import {
+  resolveFullResponseText,
+  type RuntimeClient,
+  type RuntimeMessageSegment,
+} from '../../../../platform/runtime/client.js';
 import { buildChannelView } from '../model/index.js';
 import { type RoutingTarget } from '../mentionRouter.js';
 import { buildOrchestratorRewritePrompt } from '../prompts.js';
@@ -23,7 +27,7 @@ import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
 import type { DispatchLeasePatch } from './recovery.js';
 
 export interface DispatchExecution extends DispatchRequest {
-  responseBody: string | null;
+  responseSegments: RuntimeMessageSegment[] | null;
   usage: MessageUsageSummary | null;
   error: string | null;
   leasePatch?: DispatchLeasePatch;
@@ -60,18 +64,20 @@ export async function executeDispatch(
         skills: runtimeEnvelope.skills,
       },
     );
-    let responseBody = runtimeResult.content
-      || `${request.target.participantName} completed the routed turn without text output.`;
+    let responseSegments: RuntimeMessageSegment[] = runtimeResult.segments.length > 0
+      ? runtimeResult.segments
+      : [{ kind: 'text', text: `${request.target.participantName} completed the routed turn without text output.`, toolName: null, toolId: null }];
     let usage: MessageUsageSummary | null = {
       inputTokens: runtimeResult.inputTokens,
       outputTokens: runtimeResult.outputTokens,
       tokensUsed: runtimeResult.tokensUsed,
     };
 
+    const fullResponseText = resolveFullResponseText(responseSegments);
     if (
       request.target.participantKind === 'orchestrator'
       && shouldRewriteOrchestratorReply(
-        responseBody,
+        fullResponseText,
         request.target.participantName,
         channel,
       )
@@ -83,11 +89,12 @@ export async function executeDispatch(
             channel,
             request.sourceMessage,
             request.target.participantName,
-            responseBody,
+            fullResponseText,
           ),
         );
-        if (rewrite.content) {
-          responseBody = rewrite.content;
+        const rewriteText = resolveFullResponseText(rewrite.segments);
+        if (rewriteText) {
+          responseSegments = [{ kind: 'text', text: rewriteText, toolName: null, toolId: null }];
         }
         usage = {
           inputTokens: (usage?.inputTokens ?? 0) + rewrite.inputTokens,
@@ -101,14 +108,14 @@ export async function executeDispatch(
 
     return {
       ...request,
-      responseBody,
+      responseSegments,
       usage,
       error: null,
     };
   } catch (error) {
     return {
       ...request,
-      responseBody: null,
+      responseSegments: null,
       usage: null,
       error: error instanceof Error ? error.message : 'Unknown runtime error',
     };

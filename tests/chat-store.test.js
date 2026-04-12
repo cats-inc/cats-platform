@@ -871,7 +871,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
     async sendMessage(_sessionId, content) {
       if (content.includes('You are Smelly')) {
         return {
-          content: '@Agent-1 take first pass.',
+          segments: [{ kind: 'text', text: '@Agent-1 take first pass.', toolName: null, toolId: null }],
           inputTokens: 11,
           outputTokens: 7,
           tokensUsed: 18,
@@ -879,7 +879,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
       }
       if (content.includes('You are Agent-1')) {
         return {
-          content: 'Done.',
+          segments: [{ kind: 'text', text: 'Done.', toolName: null, toolId: null }],
           inputTokens: 10,
           outputTokens: 6,
           tokensUsed: 16,
@@ -1070,7 +1070,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
     async sendMessage(_sessionId, content) {
       if (content.includes('You are Inline-Agent')) {
         return {
-          content: '@Followup-Agent please continue with the audit.',
+          segments: [{ kind: 'text', text: '@Followup-Agent please continue with the audit.', toolName: null, toolId: null }],
           inputTokens: 11,
           outputTokens: 7,
           tokensUsed: 18,
@@ -1207,7 +1207,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
     async sendMessage(_sessionId, content) {
       if (content.includes('You are Inline-Agent')) {
         return {
-          content: '@Followup-Agent please continue with the audit.',
+          segments: [{ kind: 'text', text: '@Followup-Agent please continue with the audit.', toolName: null, toolId: null }],
           inputTokens: 11,
           outputTokens: 7,
           tokensUsed: 18,
@@ -1357,7 +1357,7 @@ test('routeChannelMessage sends choice responses back to the originating cat ses
     async sendMessage(sessionId) {
       sentSessionIds.push(sessionId);
       return {
-        content: 'Thanks, proceeding with Minimal.',
+        segments: [{ kind: 'text', text: 'Thanks, proceeding with Minimal.', toolName: null, toolId: null }],
         inputTokens: 8,
         outputTokens: 5,
         tokensUsed: 13,

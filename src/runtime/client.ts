@@ -107,11 +107,27 @@ export interface RuntimeSessionInfo {
   skills?: RuntimeSessionSkillState;
 }
 
+export type RuntimeMessageSegmentKind = 'text' | 'tool_use' | 'tool_result';
+
+export interface RuntimeMessageSegment {
+  kind: RuntimeMessageSegmentKind;
+  text: string;
+  toolName: string | null;
+  toolId: string | null;
+}
+
 export interface RuntimeMessageResult {
-  content: string;
+  segments: RuntimeMessageSegment[];
   inputTokens: number;
   outputTokens: number;
   tokensUsed: number;
+}
+
+export function resolveFullResponseText(segments: RuntimeMessageSegment[]): string {
+  return segments
+    .filter((segment) => segment.kind === 'text')
+    .map((segment) => segment.text)
+    .join('');
 }
 
 export interface RuntimeSkillManifestContext {

@@ -62,7 +62,7 @@ function createRuntimeStub() {
     async sendMessage(sessionId, content) {
       this.sentMessages.push({ sessionId, content });
       return {
-        content: 'Acknowledged.',
+        segments: [{ kind: 'text', text: 'Acknowledged.', toolName: null, toolId: null }],
         inputTokens: 11,
         outputTokens: 7,
         tokensUsed: 18,
@@ -379,7 +379,7 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
 
     if (sendCount === 1) {
       return {
-        content: '@Smelly, the user is asking for a joke (in Chinese). Go ahead and tell them one!',
+        segments: [{ kind: 'text', text: '@Smelly, the user is asking for a joke (in Chinese). Go ahead and tell them one!', toolName: null, toolId: null }],
         inputTokens: 10,
         outputTokens: 12,
         tokensUsed: 22,
@@ -387,7 +387,7 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
     }
 
     return {
-      content: '有一天兩隻貓在比誰比較會寫程式，結果其中一隻說：「我不是 bug，我是 feature 喵。」',
+      segments: [{ kind: 'text', text: '有一天兩隻貓在比誰比較會寫程式，結果其中一隻說：「我不是 bug，我是 feature 喵。」', toolName: null, toolId: null }],
       inputTokens: 9,
       outputTokens: 20,
       tokensUsed: 29,

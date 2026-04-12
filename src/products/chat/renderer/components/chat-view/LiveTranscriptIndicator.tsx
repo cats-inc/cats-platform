@@ -2,15 +2,19 @@ import type { CSSProperties } from 'react';
 
 import type { ChatCat } from '../../../api/contracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
+import type { LiveIndicatorContentBlock } from '../../../../../shared/runtimeContentBlocks.js';
 import { catInitials } from '../../chatUtils.js';
 import { normalizeVisibleOrchestratorLabel } from '../../../../../shared/orchestratorLabel.js';
 import { MessageBody } from '../MessageBody.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../shared/channelParticipants.js';
-import {
-  resolveLiveIndicatorPreviewBody,
-} from '../../../../shared/renderer/components/chat-view/liveTranscriptIndicatorSupport.js';
+
+const LEADING_BLANK_LINES_PATTERN = /^(?:[ \t]*\r?\n)+/u;
+
+function stripLeadingBlankLines(value: string): string {
+  return value.replace(LEADING_BLANK_LINES_PATTERN, '');
+}
 
 export interface LiveTranscriptIndicatorProps {
   cats: ChatCat[];
@@ -37,6 +41,49 @@ export interface LiveTranscriptIndicatorProps {
     catRecord?: ChatCat | null,
   ) => string;
   showProgressDetails?: boolean;
+}
+
+function renderContentBlockSegment(
+  block: LiveIndicatorContentBlock,
+  cats: ChatCat[],
+  channelId: string,
+  disabledMentionNames: string[],
+  showToolDetails: boolean,
+): JSX.Element | null {
+  if (block.kind === 'text') {
+    const text = stripLeadingBlankLines(block.text);
+    if (!text.trim()) {
+      return null;
+    }
+    return (
+      <MessageBody
+        key={block.id}
+        body={text}
+        cats={cats}
+        channelId={channelId}
+        disabledMentionNames={disabledMentionNames}
+      />
+    );
+  }
+
+  if (block.kind === 'tool') {
+    return (
+      <div key={block.id} className={block.status === 'streaming' ? 'toolSegmentChip' : 'toolSegmentChip toolSegmentChipDone'}>
+        <span className="toolSegmentChipName">{block.toolName ?? block.title ?? 'tool'}</span>
+        {showToolDetails && block.text ? (
+          <span className="toolSegmentChipDetail">{block.text}</span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (block.kind === 'status' && block.text) {
+    return (
+      <p key={block.id} className="typingStatusText">{block.text}</p>
+    );
+  }
+
+  return null;
 }
 
 export function LiveTranscriptIndicator({
@@ -67,14 +114,16 @@ export function LiveTranscriptIndicator({
     ?? liveSpeakerParticipantCat?.name
     ?? speakerCat?.name
     ?? normalizedStreamSpeakerLabel;
-  const hasContentBlocks = liveIndicator.contentBlocks.length > 0;
-  const activeTools = liveIndicator.tools.filter((tool) => !tool.done);
-  const simplifiedPreviewText = resolveLiveIndicatorPreviewBody(liveIndicator);
-  const showSimplifiedPreviewText = simplifiedPreviewText.trim().length > 0;
-  const detailContentBlocks = showSimplifiedPreviewText
-    ? liveIndicator.contentBlocks.filter((block) => block.kind !== 'text')
-    : liveIndicator.contentBlocks;
-  const hasDetailContentBlocks = detailContentBlocks.length > 0;
+
+  const sortedBlocks = [...liveIndicator.contentBlocks].sort(
+    (left, right) => left.index - right.index,
+  );
+  const lastBlock = sortedBlocks.at(-1);
+  const showTrailingDots =
+    liveIndicator.phase === 'streaming'
+    && lastBlock != null
+    && lastBlock.kind !== 'text'
+    && lastBlock.status === 'streaming';
 
   return (
     <article className="transcriptMessageStack transcriptMessageStackAgent typingIndicator">
@@ -132,83 +181,25 @@ export function LiveTranscriptIndicator({
         ) : null}
         {liveIndicator.phase === 'waiting' ? (
           <span className="typingDots"><span /><span /><span /></span>
-        ) : !showProgressDetails ? (
-          showSimplifiedPreviewText ? (
-            <MessageBody
-              body={simplifiedPreviewText}
-              cats={cats}
-              channelId={selectedChannelId}
-              disabledMentionNames={disabledMentionNames}
-            />
+        ) : sortedBlocks.length === 0 ? (
+          showProgressDetails && liveIndicator.progressText ? (
+            <p className="typingStatusText">{liveIndicator.progressText}</p>
           ) : (
             <span className="typingDots"><span /><span /><span /></span>
           )
         ) : (
           <>
-            {showSimplifiedPreviewText ? (
-              <MessageBody
-                body={simplifiedPreviewText}
-                cats={cats}
-                channelId={selectedChannelId}
-                disabledMentionNames={disabledMentionNames}
-              />
-            ) : liveIndicator.progressText ? (
-              <p className="typingStatusText">{liveIndicator.progressText}</p>
-            ) : (
-              <span className="typingDots"><span /><span /><span /></span>
+            {sortedBlocks.map((block) =>
+              renderContentBlockSegment(
+                block,
+                cats,
+                selectedChannelId,
+                disabledMentionNames,
+                showProgressDetails,
+              ),
             )}
-            {!showSimplifiedPreviewText && !hasContentBlocks && activeTools.map((tool) => (
-              <span key={tool.toolId} className="typingToolChip">{tool.toolName}</span>
-            ))}
-            {hasDetailContentBlocks ? (
-              <div className="typingContentBlocks">
-                {detailContentBlocks.map((block) => (
-                  <div
-                    key={block.id}
-                    className={[
-                      'typingContentBlock',
-                      block.kind === 'text'
-                        ? 'typingContentBlockText'
-                        : block.kind === 'tool'
-                          ? 'typingContentBlockTool'
-                          : 'typingContentBlockStatus',
-                      block.status === 'streaming'
-                        ? 'typingContentBlockStreaming'
-                        : block.status === 'error'
-                          ? 'typingContentBlockError'
-                          : '',
-                    ].filter(Boolean).join(' ')}
-                  >
-                    {block.kind !== 'text' && block.title ? (
-                      <span className="typingContentBlockTitle">{block.title}</span>
-                    ) : null}
-                    {block.text ? (
-                      <span className="typingContentBlockBody">{block.text}</span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : liveIndicator.events.length > 0 && !showSimplifiedPreviewText ? (
-              <div className="typingEventTape">
-                {liveIndicator.events.map((event, index) => (
-                  <div
-                    key={`${event.eventType}:${event.toolId ?? ''}:${index}`}
-                    className={[
-                      'typingEventRow',
-                      event.tone === 'active'
-                        ? 'typingEventRowActive'
-                        : event.tone === 'success'
-                          ? 'typingEventRowSuccess'
-                          : event.tone === 'error'
-                            ? 'typingEventRowError'
-                            : '',
-                    ].filter(Boolean).join(' ')}
-                  >
-                    <span className="typingEventLabel">{event.label}</span>
-                    <span className="typingEventText">{event.text}</span>
-                  </div>
-                ))}
-              </div>
+            {showTrailingDots ? (
+              <span className="typingDots"><span /><span /><span /></span>
             ) : null}
           </>
         )}

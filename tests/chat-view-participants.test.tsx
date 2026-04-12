@@ -850,23 +850,28 @@ test('ChatView keeps live assistant progress collapsed when progress details are
           phase: 'streaming',
           participantId: 'participant-inline',
           speakerLabel: 'Inline Reviewer',
-          progressText: 'Calling search',
-          tools: [
+          contentBlocks: [
             {
-              toolId: 'tool-search',
-              toolName: 'search',
-              done: false,
+              id: 'text:0',
+              index: 0,
+              kind: 'text',
+              status: 'streaming',
+              title: null,
+              text: 'Looking into it...',
+              toolName: null,
+              toolId: null,
+              metadata: null,
             },
-          ],
-          events: [
             {
-              eventType: 'tool_use',
-              label: 'Tool',
-              text: 'Started search',
-              tone: 'active',
+              id: 'tool:1',
+              index: 1,
               kind: 'tool',
+              status: 'streaming',
+              title: 'search',
+              text: '',
               toolName: 'search',
               toolId: 'tool-search',
+              metadata: null,
             },
           ],
         },
@@ -875,11 +880,9 @@ test('ChatView keeps live assistant progress collapsed when progress details are
   );
 
   assert.match(markup, /typingIndicator/u);
-  assert.match(markup, /typingDots/u);
-  assert.doesNotMatch(markup, /Calling search/u);
-  assert.doesNotMatch(markup, /Started search/u);
-  assert.doesNotMatch(markup, /typingToolChip/u);
-  assert.doesNotMatch(markup, /typingEventTape/u);
+  assert.match(markup, /Looking into it/u);
+  assert.match(markup, /toolSegmentChip/u);
+  assert.doesNotMatch(markup, /toolSegmentChipDetail/u);
 });
 
 test('ChatView shows provider-specific live assistant progress when progress details are on', () => {
@@ -930,23 +933,28 @@ test('ChatView shows provider-specific live assistant progress when progress det
           phase: 'streaming',
           participantId: 'participant-inline',
           speakerLabel: 'Inline Reviewer',
-          progressText: 'Calling search',
-          tools: [
+          contentBlocks: [
             {
-              toolId: 'tool-search',
-              toolName: 'search',
-              done: false,
+              id: 'text:0',
+              index: 0,
+              kind: 'text',
+              status: 'streaming',
+              title: null,
+              text: 'Looking into it...',
+              toolName: null,
+              toolId: null,
+              metadata: null,
             },
-          ],
-          events: [
             {
-              eventType: 'tool_use',
-              label: 'Tool',
-              text: 'Started search',
-              tone: 'active',
+              id: 'tool:1',
+              index: 1,
               kind: 'tool',
+              status: 'streaming',
+              title: 'search',
+              text: 'Searching for draft reviews',
               toolName: 'search',
               toolId: 'tool-search',
+              metadata: null,
             },
           ],
         },
@@ -954,11 +962,11 @@ test('ChatView shows provider-specific live assistant progress when progress det
     />,
   );
 
-  assert.match(markup, /typingStatusText/u);
-  assert.match(markup, /Calling search/u);
-  assert.match(markup, /typingToolChip/u);
-  assert.match(markup, /Started search/u);
-  assert.match(markup, /typingEventTape/u);
+  assert.match(markup, /typingIndicator/u);
+  assert.match(markup, /Looking into it/u);
+  assert.match(markup, /toolSegmentChip/u);
+  assert.match(markup, /search/u);
+  assert.match(markup, /Searching for draft reviews/u);
 });
 
 test('ChatView streams text content directly in the assistant bubble body when progress details are on', () => {

@@ -60,7 +60,7 @@ function createRuntimeStub() {
     async sendMessage(sessionId, content, input) {
       this.sentMessages.push({ sessionId, content, input });
       return {
-        content: 'Purr. I remember the companion box context.',
+        segments: [{ kind: 'text', text: 'Purr. I remember the companion box context.', toolName: null, toolId: null }],
         inputTokens: 12,
         outputTokens: 9,
         tokensUsed: 21,

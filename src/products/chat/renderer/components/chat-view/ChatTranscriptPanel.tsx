@@ -148,43 +148,57 @@ export function ChatTranscriptPanel({
   return (
     <section className="transcriptPanel">
       <div ref={transcriptListRef} className="transcriptList">
-        {visibleMessages.map((message) => (
-          <TranscriptMessageItem
-            key={message.id}
-            message={message}
-            stackClassName={messageStackTone(message.senderKind)}
-            cats={cats}
-            bossCatId={bossCatId}
-            selectedChannelId={selectedChannelId}
-            disabledMentionNames={disabledMentionNames}
-            compareBusy={compareBusy}
-            choiceBusy={busy.startsWith(`choice:${message.id}:`)}
-            isCompareGroup={isCompareGroup}
-            relayMenuOpen={openRelayMenuId === message.id}
-            userTurnStatus={
-              message.senderKind === 'user' && message.id === latestUserTurnMessageId
-                ? latestUserTurnStatus
-                : 'idle'
-            }
-            retryBusy={busy.length > 0}
-            existingChoiceResponse={choiceResponsesBySource.get(message.id) ?? null}
-            onChoiceSubmit={onChoiceSubmit}
-            onRetryMessage={onRetryMessage}
-            onCopyMessage={copyMessageBody}
-            onToggleRelayMenu={() =>
-              setOpenRelayMenuId((current) =>
-                current === message.id ? null : message.id,
-              )}
-            onCloseRelayMenu={() => setOpenRelayMenuId(null)}
-            onRelayMessage={onRelayMessage}
-            resolveMessageParticipant={resolveMessageParticipant}
-            resolveParticipantCatRecord={resolveParticipantCatRecord}
-            buildParticipantAvatarClassName={buildParticipantAvatarClassName}
-            buildParticipantAvatarStyle={buildParticipantAvatarStyle}
-            resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
-            resolveParticipantDisplayName={resolveParticipantDisplayName}
-          />
-        ))}
+        {visibleMessages.map((message, index) => {
+          const previousMessage = index > 0 ? visibleMessages[index - 1] : null;
+          const isContinuationSegment =
+            previousMessage != null
+            && message.senderKind === previousMessage.senderKind
+            && message.senderKind !== 'user'
+            && message.senderKind !== 'system'
+            && message.metadata?.turnId != null
+            && message.metadata.turnId === previousMessage.metadata?.turnId
+            && message.metadata?.targetId != null
+            && message.metadata.targetId === previousMessage.metadata?.targetId;
+
+          return (
+            <TranscriptMessageItem
+              key={message.id}
+              message={message}
+              stackClassName={messageStackTone(message.senderKind)}
+              cats={cats}
+              bossCatId={bossCatId}
+              selectedChannelId={selectedChannelId}
+              disabledMentionNames={disabledMentionNames}
+              compareBusy={compareBusy}
+              choiceBusy={busy.startsWith(`choice:${message.id}:`)}
+              isCompareGroup={isCompareGroup}
+              relayMenuOpen={openRelayMenuId === message.id}
+              userTurnStatus={
+                message.senderKind === 'user' && message.id === latestUserTurnMessageId
+                  ? latestUserTurnStatus
+                  : 'idle'
+              }
+              retryBusy={busy.length > 0}
+              existingChoiceResponse={choiceResponsesBySource.get(message.id) ?? null}
+              onChoiceSubmit={onChoiceSubmit}
+              onRetryMessage={onRetryMessage}
+              onCopyMessage={copyMessageBody}
+              onToggleRelayMenu={() =>
+                setOpenRelayMenuId((current) =>
+                  current === message.id ? null : message.id,
+                )}
+              onCloseRelayMenu={() => setOpenRelayMenuId(null)}
+              onRelayMessage={onRelayMessage}
+              resolveMessageParticipant={resolveMessageParticipant}
+              resolveParticipantCatRecord={resolveParticipantCatRecord}
+              buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+              buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+              resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+              resolveParticipantDisplayName={resolveParticipantDisplayName}
+              showSpeakerHeader={!isContinuationSegment}
+            />
+          );
+        })}
         {shouldRenderLiveTranscriptIndicator && liveIndicator ? (
           <LiveTranscriptIndicator
             cats={cats}

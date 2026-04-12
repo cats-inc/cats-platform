@@ -70,7 +70,7 @@ function createRuntimeStub(options = {}) {
       };
     },
     async sendMessage() {
-      return { content: 'Response.', inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
+      return { segments: [{ kind: 'text', text: 'Response.', toolName: null, toolId: null }], inputTokens: 1, outputTokens: 1, tokensUsed: 2 };
     },
     async cancelSession() {},
     async closeSession(sessionId) {

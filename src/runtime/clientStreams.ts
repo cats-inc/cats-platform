@@ -1,4 +1,8 @@
-import type { RuntimeMessageResult, RuntimeSessionStreamEvent } from './client.js';
+import type {
+  RuntimeMessageResult,
+  RuntimeMessageSegment,
+  RuntimeSessionStreamEvent,
+} from './client.js';
 
 export async function readRuntimeNdjsonResponse(response: Response): Promise<RuntimeMessageResult> {
   if (!response.body) {
@@ -8,9 +12,61 @@ export async function readRuntimeNdjsonResponse(response: Response): Promise<Run
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  const textParts: string[] = [];
+  const segments: RuntimeMessageSegment[] = [];
   let inputTokens = 0;
   let outputTokens = 0;
+
+  function appendTextToSegments(text: string): void {
+    if (!text) {
+      return;
+    }
+    const lastSegment = segments.at(-1);
+    if (lastSegment?.kind === 'text') {
+      lastSegment.text += text;
+    } else {
+      segments.push({ kind: 'text', text, toolName: null, toolId: null });
+    }
+  }
+
+  function processEvent(event: Record<string, unknown>): void {
+    const type = String(event.type ?? '');
+
+    if (type === 'text') {
+      appendTextToSegments(String(event.text ?? ''));
+      return;
+    }
+
+    if (type === 'tool_use') {
+      segments.push({
+        kind: 'tool_use',
+        text: '',
+        toolName: typeof event.toolName === 'string' ? event.toolName : null,
+        toolId: typeof event.toolId === 'string' ? event.toolId : null,
+      });
+      return;
+    }
+
+    if (type === 'tool_result') {
+      segments.push({
+        kind: 'tool_result',
+        text: typeof event.text === 'string' ? event.text : '',
+        toolName: typeof event.toolName === 'string' ? event.toolName : null,
+        toolId: typeof event.toolId === 'string' ? event.toolId : null,
+      });
+      return;
+    }
+
+    if (type === 'result') {
+      const usage = (event.usage ?? {}) as Record<string, unknown>;
+      inputTokens = Number(usage.inputTokens ?? 0);
+      outputTokens = Number(usage.outputTokens ?? 0);
+      return;
+    }
+
+    if (type === 'error') {
+      throw new Error(String(event.text ?? 'Agent turn failed'));
+    }
+  }
 
   while (true) {
     const chunk = await reader.read();
@@ -35,22 +91,7 @@ export async function readRuntimeNdjsonResponse(response: Response): Promise<Run
         continue;
       }
 
-      const type = String(event.type ?? '');
-      if (type === 'text') {
-        textParts.push(String(event.text ?? ''));
-        continue;
-      }
-
-      if (type === 'result') {
-        const usage = (event.usage ?? {}) as Record<string, unknown>;
-        inputTokens = Number(usage.inputTokens ?? 0);
-        outputTokens = Number(usage.outputTokens ?? 0);
-        continue;
-      }
-
-      if (type === 'error') {
-        throw new Error(String(event.text ?? 'Agent turn failed'));
-      }
+      processEvent(event);
     }
   }
 
@@ -58,16 +99,7 @@ export async function readRuntimeNdjsonResponse(response: Response): Promise<Run
   if (trailing) {
     try {
       const event = JSON.parse(trailing) as Record<string, unknown>;
-      const type = String(event.type ?? '');
-      if (type === 'text') {
-        textParts.push(String(event.text ?? ''));
-      } else if (type === 'result') {
-        const usage = (event.usage ?? {}) as Record<string, unknown>;
-        inputTokens = Number(usage.inputTokens ?? 0);
-        outputTokens = Number(usage.outputTokens ?? 0);
-      } else if (type === 'error') {
-        throw new Error(String(event.text ?? 'Agent turn failed'));
-      }
+      processEvent(event);
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -76,7 +108,7 @@ export async function readRuntimeNdjsonResponse(response: Response): Promise<Run
   }
 
   return {
-    content: textParts.join(''),
+    segments,
     inputTokens,
     outputTokens,
     tokensUsed: inputTokens + outputTokens,

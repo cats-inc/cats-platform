@@ -56,7 +56,7 @@ function createRuntimeStub() {
     },
     async sendMessage() {
       return {
-        content: 'runtime-stub',
+        segments: [{ kind: 'text', text: 'runtime-stub', toolName: null, toolId: null }],
         inputTokens: 1,
         outputTokens: 1,
         tokensUsed: 2,

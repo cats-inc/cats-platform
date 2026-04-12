@@ -411,7 +411,7 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
         throw new Error('Session is closed');
       }
       return {
-        content: 'Recovered reply',
+        segments: [{ kind: 'text', text: 'Recovered reply', toolName: null, toolId: null }],
         inputTokens: 10,
         outputTokens: 20,
         tokensUsed: 30,

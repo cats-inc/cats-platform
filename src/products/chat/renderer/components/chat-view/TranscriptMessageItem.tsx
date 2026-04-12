@@ -63,6 +63,7 @@ export interface TranscriptMessageItemProps {
     participant: ResolvedChannelParticipant,
     catRecord?: ChatCat | null,
   ) => string;
+  showSpeakerHeader?: boolean;
 }
 
 export function TranscriptMessageItem({
@@ -91,6 +92,7 @@ export function TranscriptMessageItem({
   buildParticipantAvatarStyle,
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
+  showSpeakerHeader = true,
 }: TranscriptMessageItemProps) {
   const speaker = resolveTranscriptMessageSpeaker(message, cats);
   const transcriptParticipant = resolveMessageParticipant(message);
@@ -99,7 +101,7 @@ export function TranscriptMessageItem({
   return (
     <article className={stackClassName}>
       <div className={messageTone(message.senderKind)}>
-        {message.senderKind !== 'user' && message.senderKind !== 'system' ? (
+        {showSpeakerHeader && message.senderKind !== 'user' && message.senderKind !== 'system' ? (
           transcriptParticipant ? (
             <div className="transcriptMessageTop">
               <div

@@ -246,7 +246,7 @@ function createRuntimeStub() {
     },
     async sendMessage(_sessionId, content) {
       return {
-        content: 'Boss Cat relay reply',
+        segments: [{ kind: 'text', text: 'Boss Cat relay reply', toolName: null, toolId: null }],
         inputTokens: 42,
         outputTokens: 24,
         tokensUsed: 66,

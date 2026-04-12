@@ -51,7 +51,7 @@ function createRuntimeStub() {
       };
     },
     async sendMessage() {
-      return { content: 'Response.', inputTokens: 5, outputTokens: 3, tokensUsed: 8 };
+      return { segments: [{ kind: 'text', text: 'Response.', toolName: null, toolId: null }], inputTokens: 5, outputTokens: 3, tokensUsed: 8 };
     },
     async closeSession(sessionId) {
       this.closedSessions.push(sessionId);

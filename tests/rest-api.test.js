@@ -63,7 +63,7 @@ function createRuntimeStub() {
     async sendMessage(sessionId, content) {
       this.sentMessages.push({ sessionId, content });
       return {
-        content: 'Agent response from runtime.',
+        segments: [{ kind: 'text', text: 'Agent response from runtime.', toolName: null, toolId: null }],
         inputTokens: 11,
         outputTokens: 7,
         tokensUsed: 18,
