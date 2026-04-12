@@ -5,7 +5,9 @@ import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
   EMPTY_LIVE_INDICATOR,
+  hasLiveIndicatorIdentity,
   hasVisibleAssistantReplyAfterMessage,
+  hasVisibleLiveIndicatorSpeakerReplyAfterMessage,
   resolveLiveIndicatorSpeakerState,
   type LiveIndicatorState,
 } from '../../../../shared/liveIndicator.js';
@@ -28,6 +30,9 @@ export interface LiveIndicatorSelectedChannelLike {
   messages?: Array<{
     id: string;
     senderKind: string;
+    senderName?: string;
+    metadata?: Record<string, unknown> | null | undefined;
+    createdAt: string;
   }>;
   roomRouting: {
     defaultRecipientId: string | null;
@@ -195,6 +200,43 @@ export function resolveWaitingIndicatorStateTransition(input: {
   }
 
   return input.previous;
+}
+
+function doesLiveIndicatorIdentityMatch(
+  left: LiveIndicatorState,
+  right: LiveIndicatorState,
+): boolean {
+  return left.participantId === right.participantId
+    && left.catId === right.catId
+    && left.speakerLabel === right.speakerLabel;
+}
+
+export function shouldPromoteStreamingBubbleToWaitingSpeaker(
+  previous: LiveIndicatorState,
+  waitingState: LiveIndicatorState,
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+): boolean {
+  if (
+    !previous.active
+    || previous.phase !== 'streaming'
+    || !waitingState.active
+    || waitingState.phase !== 'waiting'
+    || !hasLiveIndicatorIdentity(waitingState)
+    || doesLiveIndicatorIdentityMatch(previous, waitingState)
+  ) {
+    return false;
+  }
+
+  const sourceMessageId = selectedChannel?.roomRouting.workflow.activeTurn?.sourceMessageId ?? null;
+  if (!sourceMessageId) {
+    return false;
+  }
+
+  return hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
+    selectedChannel?.messages ?? [],
+    sourceMessageId,
+    previous,
+  );
 }
 
 function defaultShouldShowWaitingIndicator(
@@ -569,6 +611,17 @@ export function useLiveIndicator<
 
     const waitingState = createCurrentWaitingState();
     setState((previous) => {
+      if (
+        shouldPromoteStreamingBubbleToWaitingSpeaker(
+          previous,
+          waitingState,
+          selectedChannelRef.current,
+        )
+      ) {
+        stateRef.current = waitingState;
+        return waitingState;
+      }
+
       if (!previous.active || previous.phase !== 'waiting') {
         return previous;
       }
@@ -588,6 +641,7 @@ export function useLiveIndicator<
     busy,
     channelId,
     routingStatus,
+    selectedChannel,
     shouldShowWaitingIndicator,
     waitingIndicatorInputs,
   ]);

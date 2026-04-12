@@ -8,6 +8,7 @@ import {
   EMPTY_LIVE_INDICATOR,
   resolveWaitingIndicatorStateTransition,
   resolveLiveIndicatorSpeakerLabel,
+  shouldPromoteStreamingBubbleToWaitingSpeaker,
   shouldPinLiveIndicatorUntilPersistedReply,
   shouldRetryLiveIndicatorSessionClose,
   shouldConnectLiveIndicatorStream,
@@ -15,6 +16,7 @@ import {
 import {
   applyLiveIndicatorEvent,
   createWaitingLiveIndicatorState,
+  hasVisibleLiveIndicatorSpeakerReplyAfterMessage,
   resolveTranscriptFollowState,
   resolveLiveIndicatorSpeakerState,
   resolveVisibleLiveIndicator,
@@ -284,6 +286,171 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
   });
 
   assert.equal(next, waitingState);
+});
+
+test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage only matches the current streaming speaker', () => {
+  assert.equal(
+    hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
+      [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          senderName: 'Kenny',
+          metadata: {},
+          createdAt: '2026-04-13T12:00:00.000Z',
+        },
+        {
+          id: 'message-agent-1',
+          senderKind: 'agent',
+          senderName: 'Agent-1',
+          metadata: {
+            targetKind: 'cat',
+            targetId: 'participant-agent-1',
+          },
+          createdAt: '2026-04-13T12:00:03.000Z',
+        },
+      ],
+      'message-user',
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'streaming',
+        participantId: 'participant-agent-2',
+        speakerLabel: 'Agent-2',
+      },
+    ),
+    false,
+  );
+
+  assert.equal(
+    hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
+      [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          senderName: 'Kenny',
+          metadata: {},
+          createdAt: '2026-04-13T12:00:00.000Z',
+        },
+        {
+          id: 'message-agent-1',
+          senderKind: 'agent',
+          senderName: 'Agent-1',
+          metadata: {
+            targetKind: 'cat',
+            targetId: 'participant-agent-1',
+          },
+          createdAt: '2026-04-13T12:00:03.000Z',
+        },
+      ],
+      'message-user',
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'streaming',
+        participantId: 'participant-agent-1',
+        speakerLabel: 'Agent-1',
+      },
+    ),
+    true,
+  );
+});
+
+test('shouldPromoteStreamingBubbleToWaitingSpeaker hands off to a named follow-up speaker after the prior reply persists', () => {
+  const waitingState = createWaitingLiveIndicatorState({
+    participantId: 'participant-agent-2',
+    catId: null,
+    speakerLabel: 'Agent-2',
+    revealIdentity: true,
+  });
+
+  assert.equal(
+    shouldPromoteStreamingBubbleToWaitingSpeaker(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'streaming',
+        participantId: 'participant-agent-1',
+        speakerLabel: 'Agent-1',
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text',
+            status: 'streaming',
+            title: null,
+            text: 'Done.',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+      },
+      waitingState,
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+            senderName: 'Kenny',
+            metadata: {},
+            createdAt: '2026-04-13T12:00:00.000Z',
+          },
+          {
+            id: 'message-agent-1',
+            senderKind: 'agent',
+            senderName: 'Agent-1',
+            metadata: {
+              targetKind: 'cat',
+              targetId: 'participant-agent-1',
+            },
+            createdAt: '2026-04-13T12:00:03.000Z',
+          },
+          {
+            id: 'message-session-agent-2',
+            senderKind: 'system',
+            senderName: 'Runtime',
+            metadata: {
+              event: 'session_started',
+              targetKind: 'cat',
+              targetId: 'participant-agent-2',
+            },
+            createdAt: '2026-04-13T12:00:03.500Z',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow: {
+            activeTurn: {
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [
+                {
+                  status: 'completed',
+                  participant: {
+                    participantId: 'participant-agent-1',
+                    participantName: 'Agent-1',
+                  },
+                },
+                {
+                  status: 'running',
+                  participant: {
+                    participantId: 'participant-agent-2',
+                    participantName: 'Agent-2',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    true,
+  );
 });
 
 test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', () => {
@@ -807,7 +974,10 @@ test('shared live indicator effect reconnects on EventSource termination without
   assert.match(source, /activeTurn/u);
   assert.match(source, /selectedChannel\?\.messages/u);
   assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*routingStatus,\s*shouldConnectStream,\s*shouldShowWaitingIndicator,\s*\]/u);
-  assert.match(source, /\[\s*busy,\s*channelId,\s*routingStatus,\s*shouldShowWaitingIndicator,\s*waitingIndicatorInputs,\s*\]/u);
+  assert.match(
+    source,
+    /\[\s*busy,\s*channelId,\s*routingStatus,\s*selectedChannel,\s*shouldShowWaitingIndicator,\s*waitingIndicatorInputs,\s*\]/u,
+  );
   assert.match(source, /source\.onerror = \(\) =>/u);
   assert.match(source, /traceBrowser\('stream_source_error'/u);
   assert.match(source, /scheduleReconnect\(\);/u);

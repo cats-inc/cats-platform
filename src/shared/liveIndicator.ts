@@ -673,6 +673,22 @@ export function hasVisibleAssistantReplyAfterMessage<TMessage extends {
     message.senderKind === 'agent' || message.senderKind === 'orchestrator');
 }
 
+export function hasVisibleLiveIndicatorSpeakerReplyAfterMessage<
+  TMessage extends LiveIndicatorTranscriptMessageLike,
+>(
+  messages: ReadonlyArray<TMessage>,
+  messageId: string,
+  liveIndicator: LiveIndicatorState,
+): boolean {
+  const sourceIndex = messages.findIndex((message) => message.id === messageId);
+  if (sourceIndex === -1) {
+    return false;
+  }
+
+  return messages.slice(sourceIndex + 1).some((message) =>
+    isVisibleAssistantReply(message) && doesMessageMatchLiveIndicatorSpeaker(message, liveIndicator));
+}
+
 export function hasVisibleSessionStartAfterMessage<TMessage extends {
   id: string;
   senderKind: string;

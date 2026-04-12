@@ -6,6 +6,7 @@ import {
   EMPTY_LIVE_INDICATOR,
   resolveWaitingIndicatorStateTransition,
   resolveLiveIndicatorSpeakerLabel,
+  shouldPromoteStreamingBubbleToWaitingSpeaker,
   shouldPinLiveIndicatorUntilPersistedReply,
   shouldRetryLiveIndicatorSessionClose,
   type LiveIndicatorSelectedChannelLike,
@@ -113,6 +114,7 @@ export function useLiveIndicator(options: {
 export {
   resolveLiveIndicatorSpeakerLabel,
   resolveWaitingIndicatorStateTransition,
+  shouldPromoteStreamingBubbleToWaitingSpeaker,
   shouldPinLiveIndicatorUntilPersistedReply,
   shouldRetryLiveIndicatorSessionClose,
 };
