@@ -63,7 +63,7 @@ test('desktop startup preferences preserve unrelated fields when updated', async
   }
 });
 
-test('desktop startup launch context starts hidden when openWindowOnStartup is disabled and background is available', () => {
+test('desktop startup launch context only starts hidden for sign-in launches when allowed', () => {
   assert.deepEqual(resolveDesktopStartupLaunchContext({
     argv: ['Cats.exe'],
     preferences: {
@@ -78,7 +78,7 @@ test('desktop startup launch context starts hidden when openWindowOnStartup is d
     },
   }), {
     launchedAtLogin: false,
-    showWindowOnStartup: false,
+    showWindowOnStartup: true,
   });
 
   assert.deepEqual(resolveDesktopStartupLaunchContext({

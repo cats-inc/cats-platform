@@ -96,8 +96,8 @@ export function PlatformSettingsDesktopStartup({
         <h2>Startup behavior</h2>
         <p className="heroNote">
           Control whether Cats Desktop starts when you sign in, whether it opens
-          the main window automatically, and whether closing the window keeps Cats
-          available in the system tray.
+          the main window automatically after sign-in startup, and whether
+          closing the window keeps Cats available in the system tray.
         </p>
         <label className="settingsCheckboxRow">
           <input
@@ -164,10 +164,12 @@ export function PlatformSettingsDesktopStartup({
           />
           <span className="settingsCheckboxMeta">
             <span className="settingsCheckboxLabel">
-              Open Cats when Cats Desktop starts
+              Open Cats after sign-in startup
             </span>
             <span className="heroNote">
-              When disabled, Cats Desktop can start without opening the main window automatically.
+              When disabled, Cats can start in the background after you sign in
+              without opening the main window automatically. Opening Cats
+              yourself still shows the app.
             </span>
           </span>
         </label>

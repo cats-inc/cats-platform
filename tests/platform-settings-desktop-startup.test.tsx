@@ -112,11 +112,11 @@ test('PlatformSettingsDesktopStartup renders desktop controls with system tray b
     assert.match(markup, />Desktop</u);
     assert.match(markup, /Start Cats Desktop when you sign in to your computer/u);
     assert.match(markup, /Keep Cats in the system tray when you close the window/u);
-    assert.match(markup, /Open Cats when Cats Desktop starts/u);
+    assert.match(markup, /Open Cats after sign-in startup/u);
     assert.match(markup, /When enabled, closing the window hides Cats and keeps it running\./u);
     assert.ok(
       markup.indexOf('Keep Cats in the system tray when you close the window')
-        < markup.indexOf('Open Cats when Cats Desktop starts'),
+        < markup.indexOf('Open Cats after sign-in startup'),
       'expected system tray option before window opening option',
     );
   } finally {
