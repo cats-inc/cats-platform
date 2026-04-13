@@ -98,6 +98,25 @@ test('desktop startup launch context only starts hidden for sign-in launches whe
     launchedAtLogin: true,
     showWindowOnStartup: false,
   });
+
+  assert.deepEqual(resolveDesktopStartupLaunchContext({
+    platform: 'darwin',
+    argv: ['Cats.app'],
+    wasOpenedAtLogin: true,
+    preferences: {
+      startAtLogin: true,
+      openWindowOnStartup: false,
+      systemTrayEnabled: true,
+    },
+    background: {
+      trayEnabled: true,
+      keepServicesRunning: true,
+      closeBehavior: 'minimize_to_tray',
+    },
+  }), {
+    launchedAtLogin: true,
+    showWindowOnStartup: false,
+  });
 });
 
 test('desktop startup still shows the main window if the tray background path is unavailable', () => {
@@ -195,6 +214,30 @@ test('desktop startup sync uses login item settings on Windows and writes autost
   } finally {
     await rm(linuxHome, { recursive: true, force: true });
   }
+});
+
+test('desktop startup sync uses login item settings on macOS without launch arguments', async () => {
+  const calls = [];
+  await syncDesktopStartupPreferences({
+    isPackaged: true,
+    getPath() {
+      return '';
+    },
+    setLoginItemSettings(settings) {
+      calls.push(settings);
+    },
+  }, {
+    startAtLogin: true,
+    openWindowOnStartup: false,
+    systemTrayEnabled: true,
+  }, {
+    platform: 'darwin',
+    executablePath: '/Applications/Cats.app/Contents/MacOS/Cats',
+  });
+
+  assert.deepEqual(calls, [{
+    openAtLogin: true,
+  }]);
 });
 
 test('buildLinuxAutostartEntry quotes the executable path', () => {
