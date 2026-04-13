@@ -168,6 +168,10 @@ export function ChatTranscriptSurface({
             return null;
           }
 
+          const renderedBlocks = sortedBlocks
+            .map(renderBlock)
+            .filter((block): block is JSX.Element => block != null);
+
           return (
             <article className="transcriptMessage transcriptMessageAgent typingIndicator">
               {speakerCat ? (
@@ -189,7 +193,7 @@ export function ChatTranscriptSurface({
               ) : null}
               {liveIndicator.phase === 'waiting' ? (
                 <span className="typingDots"><span /><span /><span /></span>
-              ) : sortedBlocks.length === 0 ? (
+              ) : renderedBlocks.length === 0 ? (
                 showProgressDetails && liveIndicator.progressText ? (
                   <p className="typingStatusText">{liveIndicator.progressText}</p>
                 ) : (
@@ -197,7 +201,7 @@ export function ChatTranscriptSurface({
                 )
               ) : (
                 <>
-                  {sortedBlocks.map(renderBlock)}
+                  {renderedBlocks}
                   {showTrailingDots ? (
                     <span className="typingDots"><span /><span /><span /></span>
                   ) : null}

@@ -123,6 +123,17 @@ export function LiveTranscriptIndicator({
   );
   const lastBlock = sortedBlocks.at(-1);
   const showTrailingDots = shouldShowLiveTranscriptTrailingDots(liveIndicator.phase, lastBlock);
+  const renderedSegments = sortedBlocks
+    .map((block) =>
+      renderContentBlockSegment(
+        block,
+        cats,
+        selectedChannelId,
+        disabledMentionNames,
+        showProgressDetails,
+      ),
+    )
+    .filter((segment): segment is JSX.Element => segment != null);
 
   return (
     <article className="transcriptMessageStack transcriptMessageStackAgent typingIndicator">
@@ -180,7 +191,7 @@ export function LiveTranscriptIndicator({
         ) : null}
         {liveIndicator.phase === 'waiting' ? (
           <span className="typingDots"><span /><span /><span /></span>
-        ) : sortedBlocks.length === 0 ? (
+        ) : renderedSegments.length === 0 ? (
           showProgressDetails && liveIndicator.progressText ? (
             <p className="typingStatusText">{liveIndicator.progressText}</p>
           ) : (
@@ -188,15 +199,7 @@ export function LiveTranscriptIndicator({
           )
         ) : (
           <>
-            {sortedBlocks.map((block) =>
-              renderContentBlockSegment(
-                block,
-                cats,
-                selectedChannelId,
-                disabledMentionNames,
-                showProgressDetails,
-              ),
-            )}
+            {renderedSegments}
             {showTrailingDots ? (
               <span className="typingDots"><span /><span /><span /></span>
             ) : null}

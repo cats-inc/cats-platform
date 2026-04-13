@@ -10,12 +10,10 @@ export function shouldRenderCollapsedLiveTranscriptBlock(
   block: LiveIndicatorContentBlock,
 ): boolean {
   if (block.status === 'error') {
-    return true;
+    return block.kind !== 'status' || block.text.trim().length > 0;
   }
 
-  return block.kind === 'status'
-    && block.status === 'complete'
-    && block.text.trim().length > 0;
+  return false;
 }
 
 export function shouldRenderLiveTranscriptBlock(

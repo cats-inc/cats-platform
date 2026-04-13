@@ -969,7 +969,7 @@ test('ChatView shows provider-specific live assistant progress when progress det
   assert.match(markup, /Searching for draft reviews/u);
 });
 
-test('ChatView keeps terminal live status visible when progress details are off', () => {
+test('ChatView hides terminal live status details when progress details are off', () => {
   const markup = renderToStaticMarkup(
     <ChatView
       {...createProps({
@@ -1012,8 +1012,8 @@ test('ChatView keeps terminal live status visible when progress details are off'
     />,
   );
 
-  assert.match(markup, /Search complete/u);
-  assert.doesNotMatch(markup, /typingDots/u);
+  assert.doesNotMatch(markup, /Search complete/u);
+  assert.match(markup, /typingDots/u);
 });
 
 test('ChatView does not show fake typing dots for hidden completed tool blocks when progress details are off', () => {
