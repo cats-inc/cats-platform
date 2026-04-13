@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-048](./PLAN-048-concurrent-group-lane-native-live-transcript.md) | Concurrent Group Lane-Native Live Transcript | Draft | [SPEC-057](../specs/SPEC-057-concurrent-group-lane-native-live-transcript.md), [ADR-058](../decisions/058-adopt-lane-native-concurrent-group-transcript-delivery.md) |
 | [PLAN-047](./PLAN-047-segment-native-assistant-transcript-delivery.md) | Segment-Native Assistant Transcript Delivery | Draft | [SPEC-056](../specs/SPEC-056-segment-native-assistant-transcript-delivery.md), [ADR-057](../decisions/057-adopt-segment-native-assistant-transcript-delivery.md) |
 | [PLAN-046](./PLAN-046-shared-audience-participant-builder.md) | Shared Audience-Participant Builder | Draft | [SPEC-055](../specs/SPEC-055-shared-audience-participant-builder.md), [ADR-056](../decisions/056-use-a-shared-audience-participant-builder-for-all-composer-surfaces.md) |
 | [PLAN-045](./PLAN-045-acknowledged-user-turn-status-and-last-message-retry.md) | ACK-First User-Turn Status and Last-Message Retry | Draft | [ADR-050](../decisions/050-use-ack-first-chat-dispatch-lifecycle.md) |
@@ -101,6 +102,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-12*
+*Last updated: 2026-04-14*
 
 *See also: [specs/](../specs/) for feature specifications*

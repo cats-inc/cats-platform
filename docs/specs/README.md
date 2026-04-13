@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-057](./SPEC-057-concurrent-group-lane-native-live-transcript.md) | Concurrent Group Lane-Native Live Transcript | Draft | [PLAN-048](../plans/PLAN-048-concurrent-group-lane-native-live-transcript.md), [ADR-058](../decisions/058-adopt-lane-native-concurrent-group-transcript-delivery.md) |
 | [SPEC-056](./SPEC-056-segment-native-assistant-transcript-delivery.md) | Segment-Native Assistant Transcript Delivery | Draft | [PLAN-047](../plans/PLAN-047-segment-native-assistant-transcript-delivery.md), [ADR-057](../decisions/057-adopt-segment-native-assistant-transcript-delivery.md) |
 | [SPEC-055](./SPEC-055-shared-audience-participant-builder.md) | Shared Audience-Participant Builder | Draft | [PLAN-046](../plans/PLAN-046-shared-audience-participant-builder.md), [ADR-056](../decisions/056-use-a-shared-audience-participant-builder-for-all-composer-surfaces.md) |
 | [SPEC-054](./SPEC-054-bootstrap-recovery-summary-and-bounded-detail-actions.md) | Bootstrap Recovery Summary and Bounded Detail Actions | Draft | [PLAN-044](../plans/PLAN-044-bootstrap-recovery-summary-and-bounded-detail-actions.md) |
@@ -113,6 +114,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-12*
+*Last updated: 2026-04-14*
 
 *See also: [plans/](../plans/) for implementation plans*
