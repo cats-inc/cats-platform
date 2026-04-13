@@ -1,12 +1,16 @@
-const SAFETY_TIMEOUT_MS = 60_000;
-
 type WaiterResolve = () => void;
 
-const channelWaiters = new Map<string, WaiterResolve[]>();
+const channelSignalVersions = new Map<string, number>();
+const channelWaiters = new Map<string, Set<WaiterResolve>>();
+
+export function readStreamTargetSignalVersion(channelId: string): number {
+  return channelSignalVersions.get(channelId) ?? 0;
+}
 
 export function notifyStreamTargetChanged(channelId: string): void {
+  channelSignalVersions.set(channelId, readStreamTargetSignalVersion(channelId) + 1);
   const waiters = channelWaiters.get(channelId);
-  if (!waiters || waiters.length === 0) {
+  if (!waiters || waiters.size === 0) {
     return;
   }
 
@@ -18,9 +22,14 @@ export function notifyStreamTargetChanged(channelId: string): void {
 
 export function awaitNextStreamTarget(
   channelId: string,
+  observedVersion: number,
   signal: AbortSignal,
 ): Promise<void> {
   if (signal.aborted) {
+    return Promise.resolve();
+  }
+
+  if (readStreamTargetSignalVersion(channelId) !== observedVersion) {
     return Promise.resolve();
   }
 
@@ -33,15 +42,11 @@ export function awaitNextStreamTarget(
       }
       settled = true;
       signal.removeEventListener('abort', onAbort);
-      clearTimeout(safetyTimer);
 
       const waiters = channelWaiters.get(channelId);
       if (waiters) {
-        const index = waiters.indexOf(onNotify);
-        if (index >= 0) {
-          waiters.splice(index, 1);
-        }
-        if (waiters.length === 0) {
+        waiters.delete(onNotify);
+        if (waiters.size === 0) {
           channelWaiters.delete(channelId);
         }
       }
@@ -57,12 +62,17 @@ export function awaitNextStreamTarget(
       settle();
     }
 
-    const safetyTimer = setTimeout(settle, SAFETY_TIMEOUT_MS);
-
-    if (!channelWaiters.has(channelId)) {
-      channelWaiters.set(channelId, []);
+    let waiters = channelWaiters.get(channelId);
+    if (!waiters) {
+      waiters = new Set<WaiterResolve>();
+      channelWaiters.set(channelId, waiters);
     }
-    channelWaiters.get(channelId)!.push(onNotify);
+    waiters.add(onNotify);
+
+    if (readStreamTargetSignalVersion(channelId) !== observedVersion) {
+      settle();
+      return;
+    }
 
     signal.addEventListener('abort', onAbort, { once: true });
   });

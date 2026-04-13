@@ -449,6 +449,7 @@ export async function resumeWorkflowContinuationReplay(input: {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   transport?: RuntimeTransportContext;
+  onStateWritten?: (channelId: string) => void;
 }): Promise<WorkflowContinuationReplayResult & { results: ChannelDispatchResult[] }> {
   const runtimeRecovery = normalizeRuntimeDispatchRecoveryPolicy();
   const state = await input.chatStore.read();
@@ -553,6 +554,7 @@ export async function resumeWorkflowContinuationReplay(input: {
     input.now,
   );
   nextState = await persistInFlightDispatchState(input.chatStore, nextState);
+  input.onStateWritten?.(input.request.channelId);
 
   const results: ChannelDispatchResult[] = [];
   const loopResult = await processDispatchQueue({
@@ -578,6 +580,7 @@ export async function resumeWorkflowContinuationReplay(input: {
     memoryService: input.memoryService,
     chatStore: input.chatStore,
     runtimeRecovery,
+    onStateWritten: input.onStateWritten,
   });
   nextState = loopResult.state;
   latestCheckpoint = loopResult.latestCheckpoint;
@@ -597,6 +600,7 @@ export async function resumeWorkflowContinuationReplay(input: {
     describeGuardReason,
   });
   nextState = await persistInFlightDispatchState(input.chatStore, nextState);
+  input.onStateWritten?.(input.request.channelId);
 
   const persistedChannel = buildChannelView(nextState, input.request.channelId);
   const latestTurn = persistedChannel.roomRouting?.workflow.turnHistory[0]

@@ -10,7 +10,10 @@ import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestrator
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import { requireChannel } from '../../state/model/index.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
-import { awaitNextStreamTarget } from './streamTargetSignal.js';
+import {
+  awaitNextStreamTarget,
+  readStreamTargetSignalVersion,
+} from './streamTargetSignal.js';
 
 export interface ChannelStreamTarget {
   sessionId: string | null;
@@ -318,6 +321,7 @@ export async function waitForChannelStreamTarget(
   signal: AbortSignal,
 ): Promise<ChannelStreamTarget | null> {
   while (!signal.aborted) {
+    const observedSignalVersion = readStreamTargetSignalVersion(channelId);
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
     const resolvedStreamTarget = resolveChannelStreamTargetWithReason(channel);
@@ -337,7 +341,7 @@ export async function waitForChannelStreamTarget(
       return streamTarget;
     }
 
-    await awaitNextStreamTarget(channelId, signal);
+    await awaitNextStreamTarget(channelId, observedSignalVersion, signal);
   }
 
   return null;
@@ -372,6 +376,7 @@ export async function waitForNextChannelStreamTarget(
   signal: AbortSignal,
 ): Promise<ChannelStreamTarget | null> {
   while (!signal.aborted) {
+    const observedSignalVersion = readStreamTargetSignalVersion(channelId);
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
     if (!hasActiveWorkflowTurn(channel)) {
@@ -399,7 +404,7 @@ export async function waitForNextChannelStreamTarget(
       return streamTarget;
     }
 
-    await awaitNextStreamTarget(channelId, signal);
+    await awaitNextStreamTarget(channelId, observedSignalVersion, signal);
   }
 
   return null;

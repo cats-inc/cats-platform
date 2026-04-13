@@ -8,6 +8,7 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
 import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
+import { notifyStreamTargetChanged } from '../build/server/products/chat/api/resources/streamTargetSignal.js';
 import {
   appendMessage,
   assignCatToChannel,
@@ -468,6 +469,7 @@ test('GET /api/channels/:id/stream waits for a pending session lease before clos
       seededAt,
     );
     await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
 
     const response = await responsePromise;
     assert.equal(response.status, 200);
@@ -477,6 +479,76 @@ test('GET /api/channels/:id/stream waits for a pending session lease before clos
     assert.match(body, /"text":"Session became ready"/u);
     assert.doesNotMatch(body, /event: session_closed/u);
     assert.ok(runtime.streamedSessions.includes('session-live-2'));
+  }, chatStore);
+});
+
+test('GET /api/channels/:id/stream wakes immediately when POST /api/channels/:id/activations creates the session', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Activation wake lane',
+      topic: 'Wake the stream waiter from the activation route.',
+      roomMode: 'direct_cat_chat',
+      skipBossCatGreeting: true,
+      defaultRecipientId: catId,
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-1', {
+    session: {
+      id: 'session-1',
+    },
+    observePath: '/sessions/session-1/observe',
+    stream: {
+      path: '/sessions/session-1/stream',
+      available: true,
+      events: [
+        {
+          event: 'progress',
+          data: {
+            type: 'progress',
+            text: 'Activated session became ready',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const responsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const activateResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
+      method: 'POST',
+    });
+    assert.equal(activateResponse.status, 200);
+
+    const response = await responsePromise;
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.match(body, /event: progress/u);
+    assert.match(body, /"text":"Activated session became ready"/u);
+    assert.ok(runtime.streamedSessions.includes('session-1'));
   }, chatStore);
 });
 
@@ -583,6 +655,7 @@ test('GET /api/channels/:id/stream publishes room updates once a pending session
         },
       ).state;
       await chatStore.write(nextState);
+      notifyStreamTargetChanged(channelId);
 
       const chatEventsBody = await readSseUntil(
         chatEvents,
@@ -721,6 +794,7 @@ test('GET /api/channels/:id/stream publishes another room update when a streamed
         },
       ).state;
       await chatStore.write(nextState);
+      notifyStreamTargetChanged(channelId);
       releaseStreamCompletion();
 
       const streamResponse = await streamResponsePromise;
@@ -1007,6 +1081,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
     ];
     nextTurn.updatedAt = seededAt.toISOString();
     await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
 
     const streamResponse = await streamResponsePromise;
     assert.equal(streamResponse.status, 200);
@@ -1092,6 +1167,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
       },
     ).state;
     await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
 
     await secondResultSeen;
 
@@ -1120,6 +1196,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
     const finalChannel = requireChannel(finalState, channelId);
     finalChannel.roomRouting.workflow.activeTurn = null;
     await chatStore.write(finalState);
+    notifyStreamTargetChanged(channelId);
 
     const streamBody = await streamBodyPromise;
     assert.match(streamBody, /"speakerLabel":"First Cat"/u);

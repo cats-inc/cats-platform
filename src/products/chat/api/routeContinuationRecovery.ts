@@ -9,6 +9,7 @@ import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorA
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
 import type { ChatStore } from '../state/store.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
+import { notifyStreamTargetChanged } from './resources/streamTargetSignal.js';
 
 interface RecoveredContinuationParticipant {
   participantKind: 'orchestrator' | 'cat';
@@ -123,6 +124,7 @@ async function maybeAutoResumeRecoveredContinuationForParticipant(
       now,
       companionStore: context.dependencies.companionStore,
       memoryService: context.dependencies.memoryService,
+      onStateWritten: notifyStreamTargetChanged,
     });
     try {
       const latestCore = await context.dependencies.chatStore.readCore();

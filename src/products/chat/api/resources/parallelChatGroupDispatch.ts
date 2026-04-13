@@ -249,6 +249,7 @@ async function stageParallelChatBodies(
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
+          onStateWritten: notifyStreamTargetChanged,
         },
       );
       acknowledgedState = replaceState(
@@ -395,6 +396,7 @@ export async function finalizeParallelChatBodies(
             staged.now,
             {
               latestState: mergedState,
+              onStateWritten: notifyStreamTargetChanged,
             },
           );
           mergedState = settled.state;

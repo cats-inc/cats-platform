@@ -264,6 +264,7 @@ export async function beginChannelMessageDispatch(
     now,
   );
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+  options.onStateWritten?.(channelId);
 
   return {
     state: nextState,
@@ -309,6 +310,7 @@ export async function beginChannelMessageRetryDispatch(
       now,
     ),
   );
+  options.onStateWritten?.(channelId);
 
   return {
     state: nextState,
@@ -392,6 +394,7 @@ export async function continueBegunChannelMessageDispatch(
     describeGuardReason,
   });
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+  options.onStateWritten?.(channelId);
 
   return { state: nextState, results };
 }
@@ -506,6 +509,7 @@ export async function settleBegunChannelMessageDispatchFailure(
     );
   }
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+  options.onStateWritten?.(channelId);
 
   return { state: nextState, results };
 }

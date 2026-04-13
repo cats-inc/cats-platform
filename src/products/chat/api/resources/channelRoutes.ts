@@ -166,6 +166,7 @@ async function continueAcknowledgedChannelDispatchInBackground(
           dispatchNow,
           {
             latestState,
+            onStateWritten: notifyStreamTargetChanged,
           },
         );
         if (settled.state.selectedChannelId === channelId) {
@@ -395,6 +396,7 @@ async function handleRestSendMessage(
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
+          onStateWritten: notifyStreamTargetChanged,
         },
       );
       const appShell = await buildAppShellPayload(
@@ -525,6 +527,7 @@ async function handleRestRetryMessage(
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
+          onStateWritten: notifyStreamTargetChanged,
         },
       );
       const appShell = await buildAppShellPayload(

@@ -83,6 +83,7 @@ export async function resumeStoredWorkflowContinuationDispatch(input: {
   now: Date;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
+  onStateWritten?: (channelId: string) => void;
 }) {
   return resumeWorkflowContinuationReplay(input);
 }

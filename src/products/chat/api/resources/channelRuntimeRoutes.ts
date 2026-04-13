@@ -35,6 +35,7 @@ import {
   waitForNextChannelStreamTarget,
   writeSseEvent,
 } from './channelStreamSupport.js';
+import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 import { publishRoomMutation } from '../transportEventPublisher.js';
 
 function buildStreamSpeakerPayload(input: {
@@ -154,6 +155,7 @@ async function handleRestDeactivateChannel(
       }
 
       await context.dependencies.chatStore.write(nextState);
+      notifyStreamTargetChanged(channelId);
       sendJson(context.response, 200, {
         deactivation: {
           channelId,
@@ -189,6 +191,7 @@ async function handleRestActivateChannel(
         },
       );
       await context.dependencies.chatStore.write(activation.state);
+      notifyStreamTargetChanged(channelId);
       if (activation.results.some((result) =>
         result.targetKind === 'orchestrator' && result.status === 'started')) {
         await maybeAutoResumeRecoveredOrchestratorContinuation(context, channelId, now);
