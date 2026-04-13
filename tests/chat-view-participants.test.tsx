@@ -1076,7 +1076,143 @@ test('ChatView hides terminal live status details when progress details are off'
   assert.match(markup, /typingDots/u);
 });
 
-test('ChatView does not show fake typing dots for hidden completed tool blocks when progress details are off', () => {
+test('ChatView keeps typing dots visible for an initial streaming session phase without visible blocks', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Say hi.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          participantId: 'participant-inline',
+          speakerLabel: 'Inline Reviewer',
+          progressKind: 'session',
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /Inline Reviewer/u);
+  assert.match(markup, /typingDots/u);
+});
+
+test('ChatView keeps a follow-up live bubble visible before tool blocks arrive', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          participantId: 'participant-inline',
+          speakerLabel: 'Inline Reviewer',
+          segments: [
+            {
+              id: 'segment-0',
+              phase: 'sealed',
+              targetStateId: 'target-inline',
+              segmentIndex: 0,
+              participantId: 'participant-inline',
+              catId: null,
+              activeCatIds: [],
+              catName: null,
+              speakerLabel: 'Inline Reviewer',
+              sessionStartedAt: null,
+              requiresSessionStartConfirmation: false,
+              progressText: '',
+              progressKind: null,
+              tools: [],
+              contentBlocks: [
+                {
+                  id: 'text:0',
+                  index: 0,
+                  kind: 'text',
+                  status: 'complete',
+                  title: null,
+                  text: 'Looking into it...',
+                  toolName: null,
+                  toolId: null,
+                  metadata: null,
+                },
+              ],
+              events: [],
+            },
+            {
+              id: 'segment-1',
+              phase: 'streaming',
+              targetStateId: 'target-inline',
+              segmentIndex: 1,
+              participantId: 'participant-inline',
+              catId: null,
+              activeCatIds: [],
+              catName: null,
+              speakerLabel: 'Inline Reviewer',
+              sessionStartedAt: null,
+              requiresSessionStartConfirmation: false,
+              progressText: '',
+              progressKind: null,
+              tools: [
+                {
+                  toolName: 'search',
+                  toolId: 'tool-search',
+                  done: false,
+                },
+              ],
+              contentBlocks: [],
+              events: [
+                {
+                  eventType: 'tool_use',
+                  label: 'Tool',
+                  text: 'Started search',
+                  tone: 'active',
+                  kind: 'tool',
+                  toolName: 'search',
+                  toolId: 'tool-search',
+                },
+              ],
+            },
+          ],
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /Looking into it/u);
+  assert.match(markup, /typingDots/u);
+  assert.equal((markup.match(/<strong>Inline Reviewer<\/strong>/gu) ?? []).length, 2);
+});
+
+test('ChatView opens a follow-up live bubble when a hidden completed tool phase follows visible text', () => {
   const markup = renderToStaticMarkup(
     <ChatView
       {...createProps({
@@ -1132,7 +1268,8 @@ test('ChatView does not show fake typing dots for hidden completed tool blocks w
 
   assert.match(markup, /Looking into it/u);
   assert.doesNotMatch(markup, /toolSegmentChip/u);
-  assert.doesNotMatch(markup, /typingDots/u);
+  assert.match(markup, /typingDots/u);
+  assert.equal((markup.match(/<strong>Inline Reviewer<\/strong>/gu) ?? []).length, 2);
 });
 
 test('ChatView streams text content directly in the assistant bubble body when progress details are on', () => {

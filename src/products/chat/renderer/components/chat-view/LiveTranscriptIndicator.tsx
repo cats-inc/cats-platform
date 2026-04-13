@@ -5,7 +5,10 @@ import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
 import type { LiveIndicatorContentBlock } from '../../../../../shared/runtimeContentBlocks.js';
 import { catInitials } from '../../chatUtils.js';
 import { normalizeVisibleOrchestratorLabel } from '../../../../../shared/orchestratorLabel.js';
-import { resolveLiveIndicatorSegments } from '../../../../../shared/liveIndicator.js';
+import {
+  hasVisibleLiveIndicatorSegmentActivity,
+  resolveLiveIndicatorSegments,
+} from '../../../../../shared/liveIndicator.js';
 import { MessageBody } from '../MessageBody.js';
 import {
   shouldRenderLiveTranscriptBlock,
@@ -200,9 +203,12 @@ export function LiveTranscriptIndicator({
               ) : renderedSegments.length === 0 ? (
                 showProgressDetails && segment.progressText ? (
                   <p className="typingStatusText">{segment.progressText}</p>
-                ) : (
+                ) : segment.phase === 'streaming'
+                  && hasVisibleLiveIndicatorSegmentActivity(segment) ? (
                   <span className="typingDots"><span /><span /><span /></span>
-                )
+                ) : showTrailingDots ? (
+                  <span className="typingDots"><span /><span /><span /></span>
+                ) : null
               ) : (
                 <>
                   {renderedSegments}

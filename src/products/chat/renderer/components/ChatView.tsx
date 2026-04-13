@@ -583,7 +583,30 @@ export function ChatView({
               latestUserTurnStatus={latestUserTurnPresentation.status}
               onRetryMessage={onRetryMessage}
               onRelayMessage={onRelayMessage}
-              liveIndicator={(() => { if (visibleLiveIndicator?.active) { const ss = visibleLiveIndicator.segments?.length ? visibleLiveIndicator.segments : [visibleLiveIndicator]; console.log('[CV] li ph=' + visibleLiveIndicator.phase + ' segs=' + ss.length + ' detail=' + JSON.stringify(ss.map(s => s.phase + ':si' + s.segmentIndex + ':cb' + s.contentBlocks.length))); } return visibleLiveIndicator ?? undefined; })()}
+              liveIndicator={(() => {
+                if (visibleLiveIndicator?.active) {
+                  const ss = visibleLiveIndicator.segments?.length
+                    ? visibleLiveIndicator.segments
+                    : [visibleLiveIndicator];
+                  console.log('[CV] li ph=' + visibleLiveIndicator.phase + ' segs=' + ss.length + ' detail=' + JSON.stringify(
+                    ss.map((s) => {
+                      const blockDetail = s.contentBlocks
+                        .map((b) => b.kind + '#' + b.index + ':' + b.status)
+                        .join('|');
+                      const metaDetail = [
+                        s.progressKind ? 'pk:' + s.progressKind : null,
+                        s.progressText ? 'pt:' + s.progressText : null,
+                        s.tools.length > 0 ? 'tools:' + s.tools.map((tool) => `${tool.toolName}:${tool.done ? 'done' : 'pending'}`).join(',') : null,
+                        s.events.length > 0 ? 'events:' + s.events.map((event) => event.eventType).join(',') : null,
+                      ]
+                        .filter((detail): detail is string => detail != null && detail.length > 0)
+                        .join('|');
+                      return `${s.phase}:si${s.segmentIndex}:${blockDetail || metaDetail || 'empty'}`;
+                    }),
+                  ));
+                }
+                return visibleLiveIndicator ?? undefined;
+              })()}
               liveSpeakerParticipant={liveSpeakerParticipant}
               liveSpeakerParticipantCat={resolveParticipantCatRecord(liveSpeakerParticipant)}
               messageStackTone={messageStackTone}

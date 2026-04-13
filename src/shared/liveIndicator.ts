@@ -26,6 +26,7 @@ export type LiveIndicatorSegmentPhase = 'waiting' | 'streaming' | 'sealed';
 export interface LiveIndicatorSegmentState {
   id: string;
   phase: LiveIndicatorSegmentPhase;
+  sourceMessageId: string | null;
   targetStateId: string | null;
   segmentIndex: number;
   participantId: string | null;
@@ -45,6 +46,7 @@ export interface LiveIndicatorSegmentState {
 export interface LiveIndicatorState {
   active: boolean;
   phase: 'idle' | LiveIndicatorSegmentPhase;
+  sourceMessageId: string | null;
   targetStateId: string | null;
   segmentIndex: number;
   participantId: string | null;
@@ -78,6 +80,7 @@ const MAX_EVENT_TEXT = 220;
 export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   active: false,
   phase: 'idle',
+  sourceMessageId: null,
   targetStateId: null,
   segmentIndex: 0,
   participantId: null,
@@ -112,6 +115,7 @@ function buildLiveIndicatorSegmentId(input: {
 
 export function createLiveIndicatorSegmentState(input: {
   phase: LiveIndicatorSegmentPhase;
+  sourceMessageId?: string | null;
   targetStateId?: string | null;
   segmentIndex?: number;
   participantId?: string | null;
@@ -141,6 +145,7 @@ export function createLiveIndicatorSegmentState(input: {
       segmentIndex,
     }),
     phase: input.phase,
+    sourceMessageId: input.sourceMessageId ?? null,
     targetStateId: input.targetStateId ?? null,
     segmentIndex,
     participantId: input.participantId ?? null,
@@ -188,6 +193,7 @@ export function resolveLiveIndicatorSegments(
     createLiveIndicatorSegmentState({
       phase: liveIndicator.phase,
       targetStateId: liveIndicator.targetStateId,
+      sourceMessageId: liveIndicator.sourceMessageId,
       segmentIndex: liveIndicator.segmentIndex,
       participantId: liveIndicator.participantId,
       catId: liveIndicator.catId,
@@ -218,6 +224,7 @@ export function projectLiveIndicatorStateFromSegments(
   return {
     active: true,
     phase: primary.phase,
+    sourceMessageId: primary.sourceMessageId,
     targetStateId: primary.targetStateId,
     segmentIndex: primary.segmentIndex,
     participantId: primary.participantId,
@@ -273,6 +280,71 @@ function appendLiveIndicatorSegment(
   ]);
 }
 
+function projectLogicalLiveIndicatorSegments(
+  segments: ReadonlyArray<LiveIndicatorSegmentState>,
+): LiveIndicatorSegmentState[] {
+  const projected: LiveIndicatorSegmentState[] = [];
+
+  for (const segment of segments) {
+    const sortedBlocks = [...segment.contentBlocks].sort((left, right) => left.index - right.index);
+    if (sortedBlocks.length === 0) {
+      projected.push(segment);
+      continue;
+    }
+
+    let currentBlocks: LiveIndicatorContentBlock[] = [];
+    let logicalOffset = 0;
+
+    const flushCurrentBlocks = (phase: LiveIndicatorSegmentPhase): void => {
+      if (currentBlocks.length === 0) {
+        return;
+      }
+      projected.push(createLiveIndicatorSegmentState({
+        ...segment,
+        id: buildLiveIndicatorSegmentId({
+          targetStateId: segment.targetStateId,
+          participantId: segment.participantId,
+          catId: segment.catId,
+          speakerLabel: segment.speakerLabel,
+          segmentIndex: segment.segmentIndex + logicalOffset,
+        }),
+        phase,
+        segmentIndex: segment.segmentIndex + logicalOffset,
+        contentBlocks: currentBlocks,
+      }));
+      logicalOffset += 1;
+      currentBlocks = [];
+    };
+
+    for (let blockIndex = 0; blockIndex < sortedBlocks.length; blockIndex += 1) {
+      const block = sortedBlocks[blockIndex]!;
+      const currentHasText = currentBlocks.some((candidate) => candidate.kind === 'text');
+      if (block.kind === 'text') {
+        if (currentBlocks.length === 0 || !currentHasText) {
+          currentBlocks.push(block);
+          continue;
+        }
+
+        flushCurrentBlocks('sealed');
+        currentBlocks.push(block);
+        continue;
+      }
+
+      if (currentBlocks.length === 0 || !currentHasText) {
+        currentBlocks.push(block);
+        continue;
+      }
+
+      flushCurrentBlocks('sealed');
+      currentBlocks.push(block);
+    }
+
+    flushCurrentBlocks(segment.phase);
+  }
+
+  return projected;
+}
+
 function updatePrimaryLiveIndicatorSegment(
   previous: LiveIndicatorState,
   updater: (segment: LiveIndicatorSegmentState) => LiveIndicatorSegmentState,
@@ -283,6 +355,22 @@ function updatePrimaryLiveIndicatorSegment(
   }
 
   return replacePrimaryLiveIndicatorSegment(previous, updater(primary));
+}
+
+function updateMatchingLiveIndicatorSegment(
+  previous: LiveIndicatorState,
+  matcher: (segment: LiveIndicatorSegmentState) => boolean,
+  updater: (segment: LiveIndicatorSegmentState) => LiveIndicatorSegmentState,
+): LiveIndicatorState {
+  const segments = resolveLiveIndicatorSegments(previous);
+  const matchIndex = segments.findIndex(matcher);
+  if (matchIndex < 0) {
+    return previous;
+  }
+
+  const nextSegments = segments.map((segment, index) =>
+    index === matchIndex ? updater(segment) : segment);
+  return projectLiveIndicatorStateFromSegments(nextSegments);
 }
 
 function segmentHasTextContent(
@@ -316,7 +404,22 @@ function segmentHasMaterializedContent(
     || segment.tools.length > 0;
 }
 
+export function hasVisibleLiveIndicatorSegmentActivity(
+  segment: Pick<
+    LiveIndicatorSegmentState,
+    'phase' | 'contentBlocks' | 'progressText' | 'progressKind' | 'events' | 'tools'
+  >,
+): boolean {
+  return segment.phase === 'waiting'
+    || segment.contentBlocks.length > 0
+    || segment.progressText.trim().length > 0
+    || segment.progressKind !== null
+    || segment.events.length > 0
+    || segment.tools.length > 0;
+}
+
 export function createWaitingLiveIndicatorState(input: {
+  sourceMessageId?: string | null;
   participantId?: string | null;
   catId: string | null;
   speakerLabel: string | null;
@@ -331,6 +434,7 @@ export function createWaitingLiveIndicatorState(input: {
       // Target-state identity is internal routing state, not user-facing identity.
       // Keep it even for anonymous waiting bubbles so persisted segments can retire
       // the correct live segment once the reply lands.
+      sourceMessageId: input.sourceMessageId ?? null,
       targetStateId: input.targetStateId ?? null,
       segmentIndex: input.segmentIndex ?? 0,
       participantId: revealIdentity ? input.participantId ?? null : null,
@@ -345,10 +449,12 @@ export function resolveLiveIndicatorSpeakerState(
   data: Record<string, unknown>,
 ): Pick<
   LiveIndicatorSegmentState,
-  'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel'
+  'sourceMessageId' | 'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel'
 > {
   const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
+  const previousSourceMessageId = previousSegment?.sourceMessageId ?? previous.sourceMessageId;
   const previousTargetStateId = previousSegment?.targetStateId ?? previous.targetStateId;
+  const hasSourceMessageId = Object.prototype.hasOwnProperty.call(data, 'sourceMessageId');
   const hasParticipantId = Object.prototype.hasOwnProperty.call(data, 'participantId');
   const hasCatId = Object.prototype.hasOwnProperty.call(data, 'catId');
   const hasSpeakerLabel = Object.prototype.hasOwnProperty.call(data, 'speakerLabel');
@@ -364,6 +470,9 @@ export function resolveLiveIndicatorSpeakerState(
     : previousSegment?.speakerLabel ?? previous.speakerLabel;
 
   return {
+    sourceMessageId: hasSourceMessageId
+      ? (readNullableString(data.sourceMessageId) ?? previousSourceMessageId)
+      : previousSourceMessageId,
     targetStateId: hasTargetStateId
       ? (readNullableString(data.targetStateId) ?? previousTargetStateId)
       : previousTargetStateId,
@@ -435,7 +544,7 @@ function shouldStartNewSegmentForEvent(
   previousSegment: LiveIndicatorSegmentState | null,
   nextSpeakerState: Pick<
     LiveIndicatorSegmentState,
-    'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    'targetStateId' | 'participantId' | 'catId' | 'speakerLabel' | 'sourceMessageId'
   >,
   eventType: string,
   data: Record<string, unknown>,
@@ -445,7 +554,8 @@ function shouldStartNewSegmentForEvent(
   }
 
   const identityChanged =
-    previousSegment.targetStateId !== nextSpeakerState.targetStateId
+    previousSegment.sourceMessageId !== nextSpeakerState.sourceMessageId
+    || previousSegment.targetStateId !== nextSpeakerState.targetStateId
     || previousSegment.participantId !== nextSpeakerState.participantId
     || previousSegment.catId !== nextSpeakerState.catId
     || previousSegment.speakerLabel !== nextSpeakerState.speakerLabel;
@@ -505,7 +615,7 @@ function createNextLiveIndicatorSegment(
   previousSegment: LiveIndicatorSegmentState | null,
   nextSpeakerState: Pick<
     LiveIndicatorSegmentState,
-    'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel'
+    'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel' | 'sourceMessageId'
   >,
   nextSessionState: Pick<
     LiveIndicatorSegmentState,
@@ -517,6 +627,7 @@ function createNextLiveIndicatorSegment(
     && previousSegment.targetStateId === nextSpeakerState.targetStateId;
   return createLiveIndicatorSegmentState({
     phase,
+    sourceMessageId: nextSpeakerState.sourceMessageId,
     targetStateId: nextSpeakerState.targetStateId,
     segmentIndex: sameTarget ? previousSegment.segmentIndex + 1 : 0,
     participantId: nextSpeakerState.participantId,
@@ -590,6 +701,7 @@ export function buildLiveIndicatorScrollKey(
       .map((segment) => [
         segment.id,
         segment.phase,
+        segment.sourceMessageId ?? '',
         segment.targetStateId ?? '',
         String(segment.segmentIndex),
         segment.participantId ?? '',
@@ -639,7 +751,8 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   }
 
   const sourceSegments = resolveLiveIndicatorSegments(liveIndicator);
-  const visibleSegments = sourceSegments.filter((segment, index) => {
+  const projectedSourceSegments = projectLogicalLiveIndicatorSegments(sourceSegments);
+  const visibleSegments = projectedSourceSegments.filter((segment, index) => {
     if (
       (segment.phase === 'waiting' || segment.phase === 'streaming')
       && segment.requiresSessionStartConfirmation
@@ -654,11 +767,7 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     if (hasVisiblePersistedSegment(messages, segment)) {
       return false;
     }
-    if (
-      index > 0
-      && segment.contentBlocks.length === 0
-      && sourceSegments.slice(0, index).some((s) => s.contentBlocks.length > 0)
-    ) {
+    if (index > 0 && !hasVisibleLiveIndicatorSegmentActivity(segment)) {
       return false;
     }
     return true;
@@ -669,7 +778,8 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   }
 
   const normalizedVisibleIndicator = (
-    visibleSegments.length === sourceSegments.length
+    visibleSegments.length === projectedSourceSegments.length
+    && projectedSourceSegments.length === sourceSegments.length
     && liveIndicator.segments.length === 0
   )
     ? liveIndicator
@@ -960,7 +1070,7 @@ function applyContentBlockEvent(
     return previous;
   }
 
-  return updatePrimaryLiveIndicatorSegment(previous, (segment) => {
+  const applyBlockUpdate = (segment: LiveIndicatorSegmentState): LiveIndicatorSegmentState => {
     const baseContentBlocks = block.kind === 'text' && segmentHasOnlySyntheticTextFallback(segment)
       ? []
       : segment.contentBlocks;
@@ -976,7 +1086,20 @@ function applyContentBlockEvent(
       phase: segment.phase === 'sealed' ? 'sealed' : 'streaming',
       contentBlocks: nextContentBlocks,
     };
-  });
+  };
+
+  const nextState = updateMatchingLiveIndicatorSegment(
+    previous,
+    (segment) => segment.contentBlocks.some(
+      (candidate) => isSameLogicalContentBlock(candidate, block),
+    ),
+    applyBlockUpdate,
+  );
+  if (nextState !== previous) {
+    return nextState;
+  }
+
+  return updatePrimaryLiveIndicatorSegment(previous, applyBlockUpdate);
 }
 
 function applyErrorEvent(
@@ -1362,6 +1485,13 @@ function readMessageEvent(
   return readString(metadata?.event);
 }
 
+function readMessageSourceMessageId(
+  message: LiveIndicatorTranscriptMessageLike,
+): string | null {
+  const metadata = asRecord(message.metadata);
+  return readString(metadata?.sourceMessageId);
+}
+
 function readMessageSegmentIndex(
   message: LiveIndicatorTranscriptMessageLike,
 ): number | null {
@@ -1382,29 +1512,21 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
   messages: ReadonlyArray<TMessage>,
   segment: LiveIndicatorSegmentState,
 ): boolean {
+  const sourceMessageId = readString(segment.sourceMessageId);
   if (segment.targetStateId) {
-    const exactMatch = messages.some((message) =>
-      isVisibleAssistantReply(message)
-      && readMessageEvent(message) === 'assistant_turn_segment'
-      && readMessageTargetStateId(message) === segment.targetStateId
-      && readMessageSegmentIndex(message) === segment.segmentIndex);
-    if (exactMatch) {
-      return true;
-    }
-    if (segment.segmentIndex > 0) {
-      return messages.some((message) =>
-        isVisibleAssistantReply(message)
-        && readMessageEvent(message) === 'assistant_turn_segment'
-        && readMessageTargetStateId(message) === segment.targetStateId
-        && readMessageSegmentIndex(message) === 0);
-    }
-    return false;
-  }
-
-  if (segment.phase === 'sealed' && segment.participantId) {
     return messages.some((message) =>
       isVisibleAssistantReply(message)
       && readMessageEvent(message) === 'assistant_turn_segment'
+      && (!sourceMessageId || readMessageSourceMessageId(message) === sourceMessageId)
+      && readMessageTargetStateId(message) === segment.targetStateId
+      && readMessageSegmentIndex(message) === segment.segmentIndex);
+  }
+
+  if (segment.phase === 'sealed' && segment.participantId && sourceMessageId) {
+    return messages.some((message) =>
+      isVisibleAssistantReply(message)
+      && readMessageEvent(message) === 'assistant_turn_segment'
+      && readMessageSourceMessageId(message) === sourceMessageId
       && readMessageSegmentIndex(message) === segment.segmentIndex
       && readMessageTargetId(message) === segment.participantId);
   }

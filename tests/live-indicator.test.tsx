@@ -1736,6 +1736,82 @@ test('applyLiveIndicatorEvent ignores raw text fallback once structured content 
   assert.equal(state.contentBlocks[0]?.metadata, null);
 });
 
+test('resolveVisibleLiveIndicator keeps the first assistant bubble visible after empty session progress', () => {
+  let state = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-claude',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+
+  state = applyLiveIndicatorEvent(state, 'progress', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    targetStateId: 'target-state-claude',
+    text: '',
+    metadata: {
+      kind: 'session',
+    },
+  });
+
+  const visible = resolveVisibleLiveIndicator(state, [], null);
+
+  assert.ok(visible);
+  assert.equal(visible.phase, 'streaming');
+  assert.equal(visible.segments.length, 1);
+  assert.equal(visible.segments[0]?.progressKind, 'session');
+});
+
+test('resolveVisibleLiveIndicator keeps a follow-up raw tool-use segment visible before tool blocks arrive', () => {
+  let state = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-claude',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+
+  state = applyLiveIndicatorEvent(state, 'text', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    targetStateId: 'target-state-claude',
+    text: 'First segment',
+  });
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    targetStateId: 'target-state-claude',
+    block: {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'complete',
+      text: 'First segment',
+    },
+  });
+  state = applyLiveIndicatorEvent(state, 'tool_use', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    targetStateId: 'target-state-claude',
+    toolName: 'WebSearch',
+    toolId: 'tool-1',
+  });
+
+  const visible = resolveVisibleLiveIndicator(state, [], null);
+
+  assert.ok(visible);
+  assert.equal(visible.segments.length, 2);
+  assert.equal(visible.segments[0]?.phase, 'sealed');
+  assert.equal(visible.segments[1]?.phase, 'streaming');
+  assert.equal(visible.segments[1]?.contentBlocks.length, 0);
+  assert.deepEqual(visible.segments[1]?.events.map((event) => event.eventType), ['tool_use']);
+  assert.deepEqual(
+    visible.segments[1]?.tools.map((tool) => [tool.toolName, tool.done]),
+    [['WebSearch', false]],
+  );
+});
+
 test('structured text content blocks upgrade synthetic text fallback without starting a new segment', () => {
   let state = createWaitingLiveIndicatorState({
     targetStateId: 'target-state-claude',
@@ -1822,4 +1898,394 @@ test('final text block completion after result updates the sealed segment in pla
       metadata: null,
     },
   ]);
+});
+
+test('text block completion after a follow-up tool phase updates the original text segment instead of the tool segment', () => {
+  let state = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-claude',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+
+  state = applyLiveIndicatorEvent(state, 'text', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    targetStateId: 'target-state-claude',
+    text: 'First segment',
+  });
+  state = applyLiveIndicatorEvent(state, 'tool_use', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    targetStateId: 'target-state-claude',
+    toolName: 'WebSearch',
+    toolId: 'tool-search',
+  });
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    targetStateId: 'target-state-claude',
+    block: {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'complete',
+      text: 'First segment',
+    },
+  });
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    targetStateId: 'target-state-claude',
+    block: {
+      id: 'tool:1',
+      index: 1,
+      kind: 'tool',
+      status: 'streaming',
+      title: 'WebSearch',
+      text: 'Searching',
+      toolName: 'WebSearch',
+      toolId: 'tool-search',
+    },
+  });
+
+  const visible = resolveVisibleLiveIndicator(state, [], null);
+
+  assert.ok(visible);
+  assert.equal(visible.segments.length, 2);
+  assert.deepEqual(
+    visible.segments[0]?.contentBlocks.map((block) => ({
+      id: block.id,
+      kind: block.kind,
+      status: block.status,
+      text: block.text,
+    })),
+    [
+      {
+        id: 'text:0',
+        kind: 'text',
+        status: 'complete',
+        text: 'First segment',
+      },
+    ],
+  );
+  assert.deepEqual(
+    visible.segments[1]?.contentBlocks.map((block) => ({
+      id: block.id,
+      kind: block.kind,
+      status: block.status,
+      text: block.text,
+    })),
+    [
+      {
+        id: 'tool:1',
+        kind: 'tool',
+        status: 'streaming',
+        text: 'Searching',
+      },
+    ],
+  );
+});
+
+test('resolveVisibleLiveIndicator projects a single raw segment into text-segment bubbles', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming' as const,
+    targetStateId: 'target-state-claude',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'First segment',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+      {
+        id: 'status:1',
+        index: 1,
+        kind: 'status' as const,
+        status: 'complete' as const,
+        title: 'Tool',
+        text: 'Searching...',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+      {
+        id: 'text:2',
+        index: 2,
+        kind: 'text' as const,
+        status: 'streaming' as const,
+        title: null,
+        text: 'Second segment',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [],
+    null,
+  );
+
+  assert.ok(visible);
+  assert.equal(visible.segments.length, 2);
+  assert.equal(visible.segments[0]?.segmentIndex, 0);
+  assert.equal(visible.segments[0]?.phase, 'sealed');
+  assert.deepEqual(
+    visible.segments[0]?.contentBlocks.map((block) => block.id),
+    ['text:0'],
+  );
+  assert.equal(visible.segments[1]?.segmentIndex, 1);
+  assert.equal(visible.segments[1]?.phase, 'streaming');
+  assert.deepEqual(
+    visible.segments[1]?.contentBlocks.map((block) => block.id),
+    ['status:1', 'text:2'],
+  );
+});
+
+test('resolveVisibleLiveIndicator splits a follow-up non-text phase into its own live bubble before later text arrives', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming' as const,
+    targetStateId: 'target-state-claude',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'First segment',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+      {
+        id: 'tool:1',
+        index: 1,
+        kind: 'tool' as const,
+        status: 'complete' as const,
+        title: 'WebSearch',
+        text: 'Search complete',
+        toolName: 'WebSearch',
+        toolId: 'tool-search',
+        metadata: null,
+      },
+    ],
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [],
+    null,
+  );
+
+  assert.ok(visible);
+  assert.equal(visible.segments.length, 2);
+  assert.equal(visible.segments[0]?.segmentIndex, 0);
+  assert.equal(visible.segments[0]?.phase, 'sealed');
+  assert.deepEqual(
+    visible.segments[0]?.contentBlocks.map((block) => block.id),
+    ['text:0'],
+  );
+  assert.equal(visible.segments[1]?.segmentIndex, 1);
+  assert.equal(visible.segments[1]?.phase, 'streaming');
+  assert.deepEqual(
+    visible.segments[1]?.contentBlocks.map((block) => block.id),
+    ['tool:1'],
+  );
+});
+
+test('resolveVisibleLiveIndicator keeps a later live text segment visible after the first persisted segment lands', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming' as const,
+    sourceMessageId: 'message-user-2',
+    targetStateId: 'target-state-claude',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'First segment',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+      {
+        id: 'status:1',
+        index: 1,
+        kind: 'status' as const,
+        status: 'complete' as const,
+        title: 'Tool',
+        text: 'Searching...',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+      {
+        id: 'text:2',
+        index: 2,
+        kind: 'text' as const,
+        status: 'streaming' as const,
+        title: null,
+        text: 'Second segment',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-agent-1',
+        senderKind: 'agent',
+        senderName: 'Claude-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-user-2',
+          targetStateId: 'target-state-claude',
+          segmentIndex: 0,
+          targetKind: 'participant',
+          targetId: 'participant-claude',
+        },
+        createdAt: '2026-04-13T12:00:03.000Z',
+      },
+    ],
+    null,
+  );
+
+  assert.ok(visible);
+  assert.equal(visible.segments.length, 1);
+  assert.equal(visible.segments[0]?.segmentIndex, 1);
+  assert.deepEqual(
+    visible.segments[0]?.contentBlocks.map((block) => block.id),
+    ['status:1', 'text:2'],
+  );
+});
+
+test('resolveVisibleLiveIndicator does not hide a new solo segment because an older turn by the same speaker already has segment 0', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming' as const,
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    segments: [
+      {
+        id: 'segment-current-0',
+        phase: 'sealed' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: null,
+        segmentIndex: 0,
+        participantId: 'participant-claude',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Claude-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text' as const,
+            status: 'complete' as const,
+            title: null,
+            text: 'Current first segment',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+        events: [],
+      },
+      {
+        id: 'segment-current-1',
+        phase: 'streaming' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: null,
+        segmentIndex: 1,
+        participantId: 'participant-claude',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Claude-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [
+          {
+            toolName: 'WebSearch',
+            toolId: 'tool-search',
+            done: false,
+          },
+        ],
+        contentBlocks: [],
+        events: [
+          {
+            eventType: 'tool_use',
+            label: 'Tool',
+            text: 'Started WebSearch',
+            tone: 'active',
+            kind: 'tool',
+            toolName: 'WebSearch',
+            toolId: 'tool-search',
+          },
+        ],
+      },
+    ],
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-agent-old',
+        senderKind: 'agent',
+        senderName: 'Claude-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-user-old',
+          targetId: 'participant-claude',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-13T12:00:03.000Z',
+      },
+    ],
+    null,
+  );
+
+  assert.ok(visible);
+  assert.equal(visible.segments.length, 2);
+  assert.equal(visible.segments[0]?.segmentIndex, 0);
+  assert.equal(visible.segments[1]?.segmentIndex, 1);
 });

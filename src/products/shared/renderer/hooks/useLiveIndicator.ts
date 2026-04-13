@@ -73,6 +73,7 @@ export interface SequencedLiveIndicatorStreamCursor {
 }
 
 interface WaitingIndicatorInputs {
+  sourceMessageId: string | null;
   targetStateId: string | null;
   participantId: string | null;
   catId: string | null;
@@ -115,6 +116,7 @@ export function resolveLiveIndicatorSpeakerLabel(
 function resolveWaitingSpeakerState(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): {
+  sourceMessageId: string | null;
   targetStateId: string | null;
   participantId: string | null;
   catId: string | null;
@@ -127,6 +129,7 @@ function resolveWaitingSpeakerState(
   const nextTarget = activeTargets[0];
   if (!nextTarget) {
     return {
+      sourceMessageId: activeTurn?.sourceMessageId?.trim() || null,
       targetStateId: null,
       participantId: null,
       catId: null,
@@ -144,6 +147,7 @@ function resolveWaitingSpeakerState(
   const revealIdentity = activeTurn?.workflowShape === 'concurrent' || hasVisibleAssistantReply;
 
   return {
+    sourceMessageId: activeTurn?.sourceMessageId?.trim() || null,
     targetStateId: nextTarget.id?.trim() || null,
     participantId: nextTarget.participant.participantId,
     catId: null,
@@ -227,7 +231,8 @@ function doesLiveIndicatorIdentityMatch(
   left: LiveIndicatorState,
   right: LiveIndicatorState,
 ): boolean {
-  return left.targetStateId === right.targetStateId
+  return left.sourceMessageId === right.sourceMessageId
+    && left.targetStateId === right.targetStateId
     && left.segmentIndex === right.segmentIndex
     && left.participantId === right.participantId
     && left.catId === right.catId
@@ -462,6 +467,7 @@ export function useLiveIndicator<
   );
   const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>(
     () => ({
+      sourceMessageId: waitingSpeakerState.sourceMessageId,
       targetStateId: waitingSpeakerState.targetStateId,
       participantId: waitingSpeakerState.participantId,
       catId: waitingSpeakerState.catId,
@@ -471,6 +477,7 @@ export function useLiveIndicator<
       fallbackSpeakerLabel: speakerLabel,
     }),
     [
+      waitingSpeakerState.sourceMessageId,
       defaultRecipientCatId,
       speakerLabel,
       waitingSpeakerState.catId,
@@ -485,6 +492,7 @@ export function useLiveIndicator<
   function createCurrentWaitingState(): LiveIndicatorState {
     const current = waitingIndicatorInputsRef.current;
     return createWaitingLiveIndicatorState({
+      sourceMessageId: current.sourceMessageId,
       targetStateId: current.targetStateId,
       participantId: current.revealIdentity ? current.participantId : null,
       catId: current.revealIdentity ? current.catId : current.defaultRecipientCatId,

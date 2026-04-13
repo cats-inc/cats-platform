@@ -8,7 +8,10 @@ import {
   resolveTranscriptMessageSpeaker,
   type SelectedChannelView,
 } from '../../workspaceChatUtils.js';
-import { resolveLiveIndicatorSegments } from '../../../../../shared/liveIndicator.js';
+import {
+  hasVisibleLiveIndicatorSegmentActivity,
+  resolveLiveIndicatorSegments,
+} from '../../../../../shared/liveIndicator.js';
 import { MessageBody } from '../MessageBody.js';
 import {
   MessageChoices,
@@ -200,9 +203,12 @@ export function ChatTranscriptSurface({
                     ) : renderedBlocks.length === 0 ? (
                       showProgressDetails && segment.progressText ? (
                         <p className="typingStatusText">{segment.progressText}</p>
-                      ) : (
+                      ) : segment.phase === 'streaming'
+                        && hasVisibleLiveIndicatorSegmentActivity(segment) ? (
                         <span className="typingDots"><span /><span /><span /></span>
-                      )
+                      ) : showTrailingDots ? (
+                        <span className="typingDots"><span /><span /><span /></span>
+                      ) : null
                     ) : (
                       <>
                         {renderedBlocks}
