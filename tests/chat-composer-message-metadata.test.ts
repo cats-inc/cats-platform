@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveActiveChannelMessageMetadata } from '../src/products/chat/renderer/composerMessageMetadata.ts';
+import {
+  buildActiveAudienceParticipantKey,
+  resolveActiveChannelAudienceState,
+  resolveActiveChannelMessageMetadata,
+} from '../src/products/chat/renderer/composerMessageMetadata.ts';
 
 test('resolveActiveChannelMessageMetadata reuses the latest active group audience metadata', () => {
   const metadata = resolveActiveChannelMessageMetadata({
@@ -127,4 +131,94 @@ test('resolveActiveChannelMessageMetadata stays off for solo and direct lanes', 
 
   assert.equal(soloMetadata, null);
   assert.equal(directMetadata, null);
+});
+
+test('resolveActiveChannelMessageMetadata honors the current active-room audience chip order', () => {
+  const metadata = resolveActiveChannelMessageMetadata({
+    selectedChannel: {
+      channelKind: 'multi_cat_room',
+      composerMode: 'cat_led',
+      messages: [
+        {
+          id: 'message-user-1',
+          senderKind: 'user',
+          metadata: {
+            recipientParticipantIds: ['participant-claude', 'participant-codex'],
+            workflowShape: 'sequential',
+          },
+        },
+      ],
+      assignedParticipants: [
+        {
+          participantId: 'participant-claude',
+          status: 'active',
+        },
+        {
+          participantId: 'participant-codex',
+          status: 'active',
+        },
+      ],
+      assignedCats: [],
+      roomRouting: {
+        workflow: {
+          activeTurn: null,
+          turnHistory: [],
+        },
+      },
+    } as never,
+    audienceKeys: [
+      buildActiveAudienceParticipantKey('participant-codex'),
+      buildActiveAudienceParticipantKey('participant-claude'),
+    ],
+    workflowShape: 'concurrent',
+  });
+
+  assert.deepEqual(metadata, {
+    recipientParticipantIds: ['participant-codex', 'participant-claude'],
+    workflowShape: 'concurrent',
+  });
+});
+
+test('resolveActiveChannelAudienceState restores the active-room chip order from the latest user metadata', () => {
+  const audienceState = resolveActiveChannelAudienceState({
+    selectedChannel: {
+      channelKind: 'multi_cat_room',
+      composerMode: 'cat_led',
+      messages: [
+        {
+          id: 'message-user-1',
+          senderKind: 'user',
+          metadata: {
+            recipientParticipantIds: ['participant-codex', 'participant-claude'],
+            workflowShape: 'concurrent',
+          },
+        },
+      ],
+      assignedParticipants: [
+        {
+          participantId: 'participant-claude',
+          status: 'active',
+        },
+        {
+          participantId: 'participant-codex',
+          status: 'active',
+        },
+      ],
+      assignedCats: [],
+      roomRouting: {
+        workflow: {
+          activeTurn: null,
+          turnHistory: [],
+        },
+      },
+    } as never,
+  });
+
+  assert.deepEqual(audienceState, {
+    audienceKeys: [
+      buildActiveAudienceParticipantKey('participant-codex'),
+      buildActiveAudienceParticipantKey('participant-claude'),
+    ],
+    workflowShape: 'concurrent',
+  });
 });

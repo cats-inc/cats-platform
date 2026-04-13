@@ -109,6 +109,8 @@ export function useComposerSubmit(options: {
   draftParallelChatTargets: ModelSelectorValue[];
   draftWorkflowShape: 'sequential' | 'concurrent';
   draftAudienceKeys: string[] | null;
+  activeWorkflowShape: 'sequential' | 'concurrent';
+  activeAudienceKeys: string[] | null;
   resetDraftParallelChatTargets: () => void;
   compareGroupId: string | null;
   compareSendScope: 'all_members' | 'active_only';
@@ -148,6 +150,8 @@ export function useComposerSubmit(options: {
     draftParallelChatTargets,
     draftWorkflowShape,
     draftAudienceKeys,
+    activeWorkflowShape,
+    activeAudienceKeys,
     resetDraftParallelChatTargets,
     compareGroupId,
     compareSendScope,
@@ -382,6 +386,8 @@ export function useComposerSubmit(options: {
               state.status === 'ready'
                 ? state.payload.chat.capabilities.maxAudienceParticipants
                 : undefined,
+            audienceKeys: activeAudienceKeys,
+            workflowShape: activeWorkflowShape,
           })
         : null;
       const messageMetadata = draftMessageMetadata ?? activeChannelMessageMetadata;
@@ -509,6 +515,8 @@ export function useComposerSubmit(options: {
     setState,
     draftAudienceKeys,
     draftWorkflowShape,
+    activeAudienceKeys,
+    activeWorkflowShape,
     showingMyCatDirectLane,
     showingNewChatDraft,
     soloChannelModel.instance,

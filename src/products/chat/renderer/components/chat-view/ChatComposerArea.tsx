@@ -32,6 +32,10 @@ export interface ChatComposerAreaProps {
   composerStackParticipants: ComposerStackParticipant[];
   isDirectLane: boolean;
   isSoloComposer: boolean;
+  activeWorkflowShape: 'sequential' | 'concurrent';
+  onToggleActiveWorkflowShape?: () => void;
+  activeAudienceKeys: string[] | null;
+  onSetActiveAudienceKeys?: (keys: string[]) => void;
   compareSendScope: 'all_members' | 'active_only';
   showCancelComposerAction: boolean;
   showStopComposerAction: boolean;
@@ -70,6 +74,10 @@ export function ChatComposerArea({
   composerStackParticipants,
   isDirectLane,
   isSoloComposer,
+  activeWorkflowShape,
+  onToggleActiveWorkflowShape,
+  activeAudienceKeys,
+  onSetActiveAudienceKeys,
   compareSendScope,
   showCancelComposerAction,
   showStopComposerAction,
@@ -237,6 +245,10 @@ export function ChatComposerArea({
             directLaneCat={directLaneCat}
             isDirectLane={isDirectLane}
             isSoloComposer={isSoloComposer}
+            activeWorkflowShape={activeWorkflowShape}
+            onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
+            activeAudienceKeys={activeAudienceKeys}
+            onSetActiveAudienceKeys={onSetActiveAudienceKeys}
             onOpenSection={onOpenSection}
           />
           {showCancelComposerAction ? (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import type { AppShellPayload } from '../../../api/contracts.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
@@ -20,40 +20,57 @@ export interface ChatComposerTargetSlotProps {
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
   isDirectLane: boolean;
   isSoloComposer: boolean;
+  activeWorkflowShape: 'sequential' | 'concurrent';
+  onToggleActiveWorkflowShape?: () => void;
+  activeAudienceKeys: string[] | null;
+  onSetActiveAudienceKeys?: (keys: string[]) => void;
   onOpenSection: (section: string) => void;
 }
 
 function ChatComposerAudienceChip({
   composerStackParticipants,
   composerBusy,
+  activeWorkflowShape,
+  onToggleActiveWorkflowShape,
+  activeAudienceKeys,
+  onSetActiveAudienceKeys,
+  maxAudienceParticipants,
   onOpenSection,
 }: {
   composerStackParticipants: ComposerStackParticipant[];
   composerBusy: boolean;
+  activeWorkflowShape: 'sequential' | 'concurrent';
+  onToggleActiveWorkflowShape?: () => void;
+  activeAudienceKeys: string[] | null;
+  onSetActiveAudienceKeys?: (keys: string[]) => void;
+  maxAudienceParticipants?: number;
   onOpenSection: (section: string) => void;
 }) {
   const allParticipants = useMemo(
     () => composerStackParticipants.map(buildAudienceParticipantFromStackParticipant),
     [composerStackParticipants],
   );
-  const [audienceKeys, setAudienceKeys] = useState<string[] | null>(null);
-  const [workflowShape, setWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
   const audienceParticipants = useMemo(() => {
-    if (!audienceKeys) return allParticipants;
+    if (!activeAudienceKeys || activeAudienceKeys.length === 0) {
+      return allParticipants;
+    }
     const byKey = new Map(allParticipants.map((p) => [p.key, p]));
-    const resolved = audienceKeys.map((k) => byKey.get(k)).filter(Boolean) as typeof allParticipants;
+    const resolved = activeAudienceKeys
+      .map((k) => byKey.get(k))
+      .filter(Boolean) as typeof allParticipants;
     return resolved.length > 0 ? resolved : allParticipants.length > 0 ? [allParticipants[0]] : [];
-  }, [audienceKeys, allParticipants]);
+  }, [activeAudienceKeys, allParticipants]);
 
   return (
     <AudienceChip
       audienceParticipants={audienceParticipants}
       allParticipants={allParticipants}
-      onSetAudienceKeys={setAudienceKeys}
+      onSetAudienceKeys={onSetActiveAudienceKeys}
       onSingleClick={() => onOpenSection('execution')}
       disabled={composerBusy}
-      workflowShape={workflowShape}
-      onToggleWorkflowShape={() => setWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent')}
+      maxSelectedParticipants={maxAudienceParticipants}
+      workflowShape={activeWorkflowShape}
+      onToggleWorkflowShape={onToggleActiveWorkflowShape}
     />
   );
 }
@@ -66,6 +83,10 @@ export function ChatComposerTargetSlot({
   directLaneCat,
   isDirectLane,
   isSoloComposer,
+  activeWorkflowShape,
+  onToggleActiveWorkflowShape,
+  activeAudienceKeys,
+  onSetActiveAudienceKeys,
   onOpenSection,
 }: ChatComposerTargetSlotProps) {
   // Direct lane: single cat
@@ -85,6 +106,11 @@ export function ChatComposerTargetSlot({
       <ChatComposerAudienceChip
         composerStackParticipants={composerStackParticipants}
         composerBusy={composerBusy}
+        activeWorkflowShape={activeWorkflowShape}
+        onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
+        activeAudienceKeys={activeAudienceKeys}
+        onSetActiveAudienceKeys={onSetActiveAudienceKeys}
+        maxAudienceParticipants={payload.chat.capabilities.maxAudienceParticipants}
         onOpenSection={onOpenSection}
       />
     );

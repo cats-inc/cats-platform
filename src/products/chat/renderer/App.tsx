@@ -38,6 +38,7 @@ import {
   syncLeadDraftTemporaryParticipantWithTarget,
   type CatFormState,
 } from './chatUtils';
+import { resolveActiveChannelAudienceState } from './composerMessageMetadata.js';
 import { AppRoutes } from './AppRoutes';
 import { deriveAppRouteState, deriveAppViewState, type AppLoadState } from './appViewState';
 import {
@@ -150,6 +151,8 @@ export default function App() {
     : Number.POSITIVE_INFINITY;
   const [draftWorkflowShape, setDraftWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
   const [draftAudienceKeys, setDraftAudienceKeys] = useState<string[] | null>(null);
+  const [activeWorkflowShape, setActiveWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
+  const [activeAudienceKeys, setActiveAudienceKeys] = useState<string[] | null>(null);
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
 
   const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
@@ -313,6 +316,44 @@ export default function App() {
     setBusy,
     setFeedback,
   });
+  const latestActiveUserMessage = selectedChannel?.messages
+    ? [...selectedChannel.messages].reverse().find((message) => message.senderKind === 'user') ?? null
+    : null;
+  const latestActiveUserRecipientIdsKey = Array.isArray(
+    latestActiveUserMessage?.metadata?.recipientParticipantIds,
+  )
+    ? latestActiveUserMessage.metadata.recipientParticipantIds
+      .filter((value): value is string => typeof value === 'string')
+      .join('|')
+    : '';
+  const latestActiveUserWorkflowShape = typeof latestActiveUserMessage?.metadata?.workflowShape === 'string'
+    ? latestActiveUserMessage.metadata.workflowShape
+    : '';
+  const activeAudienceParticipantIdsKey = (
+    selectedChannel?.assignedParticipants?.length
+      ? selectedChannel.assignedParticipants
+      : selectedChannel?.assignedCats ?? []
+  )
+    .filter((participant) => participant.status === 'active')
+    .map((participant) => participant.participantId)
+    .join('|');
+
+  useEffect(() => {
+    const nextAudienceState = resolveActiveChannelAudienceState({
+      selectedChannel,
+      maxAudienceParticipants: maxDraftAudienceParticipants,
+    });
+    setActiveWorkflowShape(nextAudienceState?.workflowShape ?? 'sequential');
+    setActiveAudienceKeys(nextAudienceState?.audienceKeys ?? null);
+  }, [
+    activeAudienceParticipantIdsKey,
+    latestActiveUserMessage?.id,
+    latestActiveUserRecipientIdsKey,
+    latestActiveUserWorkflowShape,
+    maxDraftAudienceParticipants,
+    selectedChannel?.id,
+  ]);
+
   const seedDraftGroupParticipants = useCallback(
     () => createInitialGroupParticipants(draftModel, maxDraftGroupParticipants),
     [
@@ -575,6 +616,8 @@ export default function App() {
     draftParallelChatTargets,
     draftWorkflowShape,
     draftAudienceKeys,
+    activeWorkflowShape,
+    activeAudienceKeys,
     resetDraftParallelChatTargets,
     compareGroupId: state.status === 'ready' && selectedChannel
       ? state.payload.chat.parallelChatGroups.find((group) =>
@@ -862,6 +905,12 @@ export default function App() {
                   onModelChange:
                     selectedChannel?.composerMode === 'solo' ? setSoloChannelModel : undefined,
                   onDirectLaneModelChange: onDirectLaneModelSave,
+                  activeWorkflowShape,
+                  onToggleActiveWorkflowShape: () =>
+                    setActiveWorkflowShape((prev) =>
+                      prev === 'concurrent' ? 'sequential' : 'concurrent'),
+                  activeAudienceKeys,
+                  onSetActiveAudienceKeys: setActiveAudienceKeys,
                   compareGroup: selectedParallelChatGroup,
                   compareSendScope,
                   onCompareSendScopeChange: setCompareSendScope,

@@ -116,6 +116,10 @@ export interface ChatViewProps {
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  activeWorkflowShape?: 'sequential' | 'concurrent';
+  onToggleActiveWorkflowShape?: () => void;
+  activeAudienceKeys?: string[] | null;
+  onSetActiveAudienceKeys?: (keys: string[]) => void;
   onSelect: (channelId: string) => void;
   onOpenAddCat?: () => void;
   showAddCatButton?: boolean;
@@ -167,6 +171,10 @@ export function ChatView({
   selectedModel,
   onModelChange,
   onDirectLaneModelChange,
+  activeWorkflowShape = 'sequential',
+  onToggleActiveWorkflowShape,
+  activeAudienceKeys = null,
+  onSetActiveAudienceKeys,
   onSelect,
   onOpenAddCat,
   showAddCatButton = true,
@@ -692,6 +700,10 @@ export function ChatView({
               composerStackParticipants={composerStackParticipants}
               isDirectLane={isDirectLane}
               isSoloComposer={isSoloComposer}
+              activeWorkflowShape={activeWorkflowShape}
+              onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
+              activeAudienceKeys={activeAudienceKeys}
+              onSetActiveAudienceKeys={onSetActiveAudienceKeys}
               compareSendScope={compareSendScope}
               showCancelComposerAction={showCancelComposerAction}
               showStopComposerAction={showStopComposerAction}

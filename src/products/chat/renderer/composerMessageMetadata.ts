@@ -6,6 +6,11 @@ import { activeAssignedParticipants } from '../shared/channelParticipants.js';
 import type { SelectedChannelView } from '../shared/channelEntry.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
 
+export interface ActiveChannelAudienceState {
+  audienceKeys: string[];
+  workflowShape: 'sequential' | 'concurrent';
+}
+
 function normalizeWorkflowShape(
   value: unknown,
 ): ChannelMessageMetadata['workflowShape'] | null {
@@ -20,6 +25,12 @@ function normalizeWorkflowShape(
   return null;
 }
 
+function normalizeAudienceChipWorkflowShape(
+  value: unknown,
+): ActiveChannelAudienceState['workflowShape'] {
+  return value === 'concurrent' ? 'concurrent' : 'sequential';
+}
+
 function findLatestUserMessage(messages: readonly ChatMessage[]): ChatMessage | null {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
@@ -28,6 +39,10 @@ function findLatestUserMessage(messages: readonly ChatMessage[]): ChatMessage | 
     }
   }
   return null;
+}
+
+export function buildActiveAudienceParticipantKey(participantId: string): string {
+  return `participant:${participantId}`;
 }
 
 function clampAudienceParticipantIds(
@@ -56,9 +71,65 @@ function uniqueNonEmptyStrings(values: readonly string[]): string[] {
   return normalized;
 }
 
+function resolveActiveParticipantIds(
+  selectedChannel: SelectedChannelView,
+  maxAudienceParticipants?: number | null,
+): string[] {
+  return clampAudienceParticipantIds(
+    uniqueNonEmptyStrings(
+      activeAssignedParticipants(selectedChannel).map((participant) => participant.participantId),
+    ),
+    maxAudienceParticipants,
+  );
+}
+
+function resolveRecipientParticipantIdsFromAudienceKeys(input: {
+  activeParticipantIds: readonly string[];
+  audienceKeys?: readonly string[] | null;
+  maxAudienceParticipants?: number | null;
+}): string[] {
+  const { audienceKeys } = input;
+  if (!audienceKeys || audienceKeys.length === 0) {
+    return [];
+  }
+
+  const participantIdsByKey = new Map(
+    input.activeParticipantIds.map((participantId) => [
+      buildActiveAudienceParticipantKey(participantId),
+      participantId,
+    ]),
+  );
+
+  return clampAudienceParticipantIds(
+    uniqueNonEmptyStrings(
+      audienceKeys.map((key) => participantIdsByKey.get(key) ?? ''),
+    ),
+    input.maxAudienceParticipants,
+  );
+}
+
+export function resolveActiveChannelAudienceState(options: {
+  selectedChannel: SelectedChannelView | null;
+  maxAudienceParticipants?: number | null;
+}): ActiveChannelAudienceState | null {
+  const metadata = resolveActiveChannelMessageMetadata(options);
+  const { selectedChannel } = options;
+  if (!selectedChannel || !metadata?.recipientParticipantIds?.length) {
+    return null;
+  }
+
+  return {
+    audienceKeys: metadata.recipientParticipantIds.map((participantId) =>
+      buildActiveAudienceParticipantKey(participantId)),
+    workflowShape: normalizeAudienceChipWorkflowShape(metadata.workflowShape),
+  };
+}
+
 export function resolveActiveChannelMessageMetadata(options: {
   selectedChannel: SelectedChannelView | null;
   maxAudienceParticipants?: number | null;
+  audienceKeys?: readonly string[] | null;
+  workflowShape?: 'sequential' | 'concurrent' | null;
 }): ChannelMessageMetadata | null {
   const { selectedChannel } = options;
   if (!selectedChannel) {
@@ -69,10 +140,8 @@ export function resolveActiveChannelMessageMetadata(options: {
     return null;
   }
 
-  const activeParticipantIds = clampAudienceParticipantIds(
-    uniqueNonEmptyStrings(
-      activeAssignedParticipants(selectedChannel).map((participant) => participant.participantId),
-    ),
+  const activeParticipantIds = resolveActiveParticipantIds(
+    selectedChannel,
     options.maxAudienceParticipants,
   );
   if (activeParticipantIds.length === 0) {
@@ -81,6 +150,11 @@ export function resolveActiveChannelMessageMetadata(options: {
 
   const latestUserMessage = findLatestUserMessage(selectedChannel.messages);
   const latestUserMetadata = latestUserMessage?.metadata ?? {};
+  const selectedRecipientIds = resolveRecipientParticipantIdsFromAudienceKeys({
+    activeParticipantIds,
+    audienceKeys: options.audienceKeys,
+    maxAudienceParticipants: options.maxAudienceParticipants,
+  });
   const preferredRecipientIds = clampAudienceParticipantIds(
     uniqueNonEmptyStrings(
       Array.isArray(latestUserMetadata.recipientParticipantIds)
@@ -95,10 +169,15 @@ export function resolveActiveChannelMessageMetadata(options: {
     return null;
   }
   const recipientParticipantIds =
-    preferredRecipientIds.length > 0 ? preferredRecipientIds : activeParticipantIds;
+    selectedRecipientIds.length > 0
+      ? selectedRecipientIds
+      : preferredRecipientIds.length > 0
+        ? preferredRecipientIds
+        : activeParticipantIds;
   const latestCompletedTurn = selectedChannel.roomRouting.workflow.turnHistory[0] ?? null;
   const workflowShape = normalizeWorkflowShape(
-    latestUserMetadata.workflowShape
+    options.workflowShape
+      ?? latestUserMetadata.workflowShape
       ?? selectedChannel.roomRouting.workflow.activeTurn?.workflowShape
       ?? latestCompletedTurn?.workflowShape
       ?? (recipientParticipantIds.length > 1 ? 'sequential' : null),
