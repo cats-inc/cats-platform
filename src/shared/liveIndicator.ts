@@ -293,6 +293,29 @@ function segmentHasTextContent(
   );
 }
 
+function segmentHasOnlySyntheticTextFallback(
+  segment: LiveIndicatorSegmentState,
+): boolean {
+  return segment.contentBlocks.length > 0
+    && segment.contentBlocks.every((block) => isSyntheticFallbackTextBlock(block));
+}
+
+function isSameLogicalContentBlock(
+  left: Pick<LiveIndicatorContentBlock, 'id' | 'index' | 'kind'>,
+  right: Pick<LiveIndicatorContentBlock, 'id' | 'index' | 'kind'>,
+): boolean {
+  return left.id === right.id || (left.index === right.index && left.kind === right.kind);
+}
+
+function segmentHasMaterializedContent(
+  segment: LiveIndicatorSegmentState,
+): boolean {
+  return segment.contentBlocks.length > 0
+    || segment.progressText.trim().length > 0
+    || segment.events.length > 0
+    || segment.tools.length > 0;
+}
+
 export function createWaitingLiveIndicatorState(input: {
   participantId?: string | null;
   catId: string | null;
@@ -305,7 +328,10 @@ export function createWaitingLiveIndicatorState(input: {
   return projectLiveIndicatorStateFromSegments([
     createLiveIndicatorSegmentState({
       phase: 'waiting',
-      targetStateId: revealIdentity ? input.targetStateId ?? null : null,
+      // Target-state identity is internal routing state, not user-facing identity.
+      // Keep it even for anonymous waiting bubbles so persisted segments can retire
+      // the correct live segment once the reply lands.
+      targetStateId: input.targetStateId ?? null,
       segmentIndex: input.segmentIndex ?? 0,
       participantId: revealIdentity ? input.participantId ?? null : null,
       catId: revealIdentity ? input.catId : null,
@@ -339,7 +365,7 @@ export function resolveLiveIndicatorSpeakerState(
 
   return {
     targetStateId: hasTargetStateId
-      ? readNullableString(data.targetStateId)
+      ? (readNullableString(data.targetStateId) ?? previousTargetStateId)
       : previousTargetStateId,
     participantId: nextParticipantId,
     catId: nextCatId,
@@ -423,8 +449,29 @@ function shouldStartNewSegmentForEvent(
     || previousSegment.participantId !== nextSpeakerState.participantId
     || previousSegment.catId !== nextSpeakerState.catId
     || previousSegment.speakerLabel !== nextSpeakerState.speakerLabel;
-  if (identityChanged || previousSegment.phase === 'sealed') {
+  if (previousSegment.phase === 'sealed') {
+    if (eventType === 'content_block') {
+      const block = normalizeRuntimeContentBlock(data);
+      if (
+        block
+        && previousSegment.contentBlocks.some((candidate) => isSameLogicalContentBlock(candidate, block))
+      ) {
+        return false;
+      }
+    }
     return true;
+  }
+
+  if (identityChanged) {
+    return segmentHasMaterializedContent(previousSegment);
+  }
+
+  if (previousSegment.phase === 'waiting' && !segmentHasMaterializedContent(previousSegment)) {
+    return false;
+  }
+
+  if (previousSegment.phase === 'streaming' && !segmentHasMaterializedContent(previousSegment)) {
+    return false;
   }
 
   switch (eventType) {
@@ -439,6 +486,9 @@ function shouldStartNewSegmentForEvent(
         return false;
       }
       if (block.kind === 'text') {
+        if (segmentHasOnlySyntheticTextFallback(previousSegment)) {
+          return false;
+        }
         const hasSameBlock = previousSegment.contentBlocks.some(
           (candidate) => candidate.id === block.id,
         );
@@ -589,7 +639,7 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   }
 
   const sourceSegments = resolveLiveIndicatorSegments(liveIndicator);
-  const visibleSegments = sourceSegments.filter((segment) => {
+  const visibleSegments = sourceSegments.filter((segment, index) => {
     if (
       (segment.phase === 'waiting' || segment.phase === 'streaming')
       && segment.requiresSessionStartConfirmation
@@ -602,6 +652,13 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
       return false;
     }
     if (hasVisiblePersistedSegment(messages, segment)) {
+      return false;
+    }
+    if (
+      index > 0
+      && segment.contentBlocks.length === 0
+      && sourceSegments.slice(0, index).some((s) => s.contentBlocks.length > 0)
+    ) {
       return false;
     }
     return true;
@@ -627,7 +684,7 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   }
 
   const primarySegment = resolvePrimaryLiveIndicatorSegment(normalizedVisibleIndicator);
-  if (primarySegment?.targetStateId) {
+  if (primarySegment?.targetStateId && primarySegment.phase !== 'sealed') {
     traceLiveIndicatorVisibility({
       liveIndicator: normalizedVisibleIndicator,
       messages,
@@ -904,8 +961,11 @@ function applyContentBlockEvent(
   }
 
   return updatePrimaryLiveIndicatorSegment(previous, (segment) => {
+    const baseContentBlocks = block.kind === 'text' && segmentHasOnlySyntheticTextFallback(segment)
+      ? []
+      : segment.contentBlocks;
     const nextContentBlocks = [
-      ...segment.contentBlocks.filter((candidate) => candidate.id !== block.id),
+      ...baseContentBlocks.filter((candidate) => !isSameLogicalContentBlock(candidate, block)),
       block,
     ]
       .sort((left, right) => left.index - right.index)
@@ -913,7 +973,7 @@ function applyContentBlockEvent(
 
     return {
       ...segment,
-      phase: 'streaming',
+      phase: segment.phase === 'sealed' ? 'sealed' : 'streaming',
       contentBlocks: nextContentBlocks,
     };
   });
@@ -1322,14 +1382,41 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
   messages: ReadonlyArray<TMessage>,
   segment: LiveIndicatorSegmentState,
 ): boolean {
-  if (!segment.targetStateId) {
+  if (segment.targetStateId) {
+    const exactMatch = messages.some((message) =>
+      isVisibleAssistantReply(message)
+      && readMessageEvent(message) === 'assistant_turn_segment'
+      && readMessageTargetStateId(message) === segment.targetStateId
+      && readMessageSegmentIndex(message) === segment.segmentIndex);
+    if (exactMatch) {
+      return true;
+    }
+    if (segment.segmentIndex > 0) {
+      return messages.some((message) =>
+        isVisibleAssistantReply(message)
+        && readMessageEvent(message) === 'assistant_turn_segment'
+        && readMessageTargetStateId(message) === segment.targetStateId
+        && readMessageSegmentIndex(message) === 0);
+    }
     return false;
   }
 
-  return messages.some((message) =>
-    isVisibleAssistantReply(message)
+  if (segment.phase === 'sealed' && segment.participantId) {
+    return messages.some((message) =>
+      isVisibleAssistantReply(message)
+      && readMessageEvent(message) === 'assistant_turn_segment'
+      && readMessageSegmentIndex(message) === segment.segmentIndex
+      && readMessageTargetId(message) === segment.participantId);
+  }
+
+  let lastUserIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i]!.senderKind === 'user') { lastUserIndex = i; break; }
+  }
+  return messages.some((message, index) =>
+    index > lastUserIndex
+    && isVisibleAssistantReply(message)
     && readMessageEvent(message) === 'assistant_turn_segment'
-    && readMessageTargetStateId(message) === segment.targetStateId
     && readMessageSegmentIndex(message) === segment.segmentIndex);
 }
 

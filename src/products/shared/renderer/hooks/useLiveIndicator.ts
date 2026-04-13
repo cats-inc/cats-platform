@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import {
@@ -173,7 +173,11 @@ export function shouldPinLiveIndicatorUntilPersistedReply(
   previous: LiveIndicatorState,
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): boolean {
-  if (!previous.active || previous.phase !== 'streaming' || !hasRenderableLiveIndicatorContent(previous)) {
+  if (
+    !previous.active
+    || previous.phase === 'waiting'
+    || !hasRenderableLiveIndicatorContent(previous)
+  ) {
     return false;
   }
 
@@ -321,6 +325,40 @@ export function shouldPromoteStreamingBubbleToWaitingSpeaker(
     sourceMessageId,
     previous,
   );
+}
+
+export function shouldReconnectLiveIndicatorAfterSourceError(
+  current: LiveIndicatorState,
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+): boolean {
+  const primarySegment = resolvePrimaryLiveIndicatorSegment(current);
+  if (primarySegment?.phase === 'sealed') {
+    return false;
+  }
+
+  if (shouldPinLiveIndicatorUntilPersistedReply(current, selectedChannel)) {
+    return false;
+  }
+
+  return true;
+}
+
+export function shouldReconnectLiveIndicatorAfterSessionClose(
+  current: LiveIndicatorState,
+  waitingState: LiveIndicatorState,
+): boolean {
+  const currentSegment = resolvePrimaryLiveIndicatorSegment(current);
+  const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
+  if (!waitingSegment?.targetStateId) {
+    return false;
+  }
+
+  if (!currentSegment) {
+    return true;
+  }
+
+  return waitingSegment.targetStateId !== currentSegment.targetStateId
+    || waitingSegment.segmentIndex !== currentSegment.segmentIndex;
 }
 
 function defaultShouldShowWaitingIndicator(
@@ -508,12 +546,10 @@ export function useLiveIndicator<
     function updateIndicatorState(
       updater: (previous: LiveIndicatorState) => LiveIndicatorState,
     ): void {
-      startTransition(() => {
-        setState((previous) => {
-          const next = updater(previous);
-          stateRef.current = next;
-          return next;
-        });
+      setState((previous) => {
+        const next = updater(previous);
+        stateRef.current = next;
+        return next;
       });
     }
 
@@ -589,8 +625,11 @@ export function useLiveIndicator<
         busy,
         routingStatus,
       });
+      const primarySegment = resolvePrimaryLiveIndicatorSegment(stateRef.current);
       const shouldPinReplyCommit = shouldRetrySessionClose
         && shouldPinLiveIndicatorUntilPersistedReply(stateRef.current, selectedChannelRef.current);
+      const shouldIgnoreSealedSessionClose = shouldRetrySessionClose
+        && primarySegment?.phase === 'sealed';
 
       traceBrowser('stream_event', {
         sessionId: readTraceString(data.sessionId),
@@ -610,6 +649,15 @@ export function useLiveIndicator<
           return previous;
         }
         if (shouldRetrySessionClose) {
+          if (shouldIgnoreSealedSessionClose) {
+            traceBrowser('stream_session_close_ignored', {
+              participantId: previous.participantId,
+              catId: previous.catId,
+              speakerLabel: previous.speakerLabel,
+              reason: 'sealed_segment_already_completed',
+            });
+            return previous;
+          }
           if (shouldPinReplyCommit) {
             traceBrowser('stream_reply_commit_pending', {
               participantId: previous.participantId,
@@ -619,34 +667,37 @@ export function useLiveIndicator<
             });
             return previous;
           }
-          const nextSpeakerState = resolveLiveIndicatorSpeakerState(previous, data);
+          const waitingState = createCurrentWaitingState();
+          if (!shouldReconnectLiveIndicatorAfterSessionClose(previous, waitingState)) {
+            traceBrowser('stream_session_close_no_followup', {
+              participantId: previous.participantId,
+              catId: previous.catId,
+              speakerLabel: previous.speakerLabel,
+              reason: 'no_distinct_followup_target',
+            });
+            return previous;
+          }
+          const nextSpeakerState = resolveLiveIndicatorSpeakerState(waitingState, data);
           traceBrowser('stream_waiting_restart', {
             participantId: readTraceString(data.participantId),
             catId: nextSpeakerState.catId,
             speakerLabel: nextSpeakerState.speakerLabel,
             reason: 'session_close_reconnect',
           });
-          return mergeWaitingIndicatorTimelineState(previous, createWaitingLiveIndicatorState({
-            participantId: nextSpeakerState.participantId,
-            catId: nextSpeakerState.catId,
-            speakerLabel: nextSpeakerState.speakerLabel,
-            revealIdentity: Boolean(
-              nextSpeakerState.targetStateId
-              || nextSpeakerState.participantId
-              || nextSpeakerState.catId
-              || nextSpeakerState.speakerLabel
-            ),
-            targetStateId: nextSpeakerState.targetStateId,
-            segmentIndex:
-              nextSpeakerState.targetStateId && nextSpeakerState.targetStateId === previous.targetStateId
-                ? previous.segmentIndex + 1
-                : 0,
-          }));
+          return mergeWaitingIndicatorTimelineState(previous, waitingState);
         }
         return applyLiveIndicatorEvent(previous, eventType, data);
       });
 
-      if (shouldRetrySessionClose && !shouldPinReplyCommit) {
+      if (
+        shouldRetrySessionClose
+        && !shouldPinReplyCommit
+        && !shouldIgnoreSealedSessionClose
+        && shouldReconnectLiveIndicatorAfterSessionClose(
+          stateRef.current,
+          createCurrentWaitingState(),
+        )
+      ) {
         scheduleReconnect();
       }
     }
@@ -679,6 +730,22 @@ export function useLiveIndicator<
         if (disposed || source !== sourceRef.current) {
           return;
         }
+        if (!shouldReconnectLiveIndicatorAfterSourceError(
+          stateRef.current,
+          selectedChannelRef.current,
+        )) {
+          traceBrowser('stream_source_error_ignored', {
+            participantId: stateRef.current.participantId,
+            catId: stateRef.current.catId,
+            speakerLabel: stateRef.current.speakerLabel,
+            reason: 'reply_commit_or_sealed_segment',
+            details: {
+              phase: resolvePrimaryLiveIndicatorSegment(stateRef.current)?.phase ?? null,
+            },
+          });
+          closeSource();
+          return;
+        }
         traceBrowser('stream_source_error', {
           reason: 'eventsource_terminated',
           details: {
@@ -695,6 +762,18 @@ export function useLiveIndicator<
       clearReconnectTimer();
       closeSource();
       streamCursorRef.current = null;
+      if (shouldPinLiveIndicatorUntilPersistedReply(stateRef.current, selectedChannelRef.current)) {
+        traceBrowser('indicator_pin_pending_reply', {
+          participantId: stateRef.current.participantId,
+          catId: stateRef.current.catId,
+          speakerLabel: stateRef.current.speakerLabel,
+          reason: 'waiting_not_needed_but_reply_not_persisted',
+          details: {
+            phase: resolvePrimaryLiveIndicatorSegment(stateRef.current)?.phase ?? null,
+          },
+        });
+        return undefined;
+      }
       traceBrowser('indicator_reset', {
         reason: 'waiting_not_needed',
         details: {

@@ -52,7 +52,7 @@ function buildStreamSpeakerPayload(input: {
     speakerLabel: input.speakerLabel ?? null,
     sessionStartedAt: input.sessionStartedAt ?? null,
     requiresSessionStartConfirmation: input.requiresSessionStartConfirmation === true,
-    targetStateId: input.targetStateId ?? null,
+    ...(input.targetStateId != null ? { targetStateId: input.targetStateId } : {}),
   };
 }
 

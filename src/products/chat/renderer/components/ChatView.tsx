@@ -583,7 +583,7 @@ export function ChatView({
               latestUserTurnStatus={latestUserTurnPresentation.status}
               onRetryMessage={onRetryMessage}
               onRelayMessage={onRelayMessage}
-              liveIndicator={visibleLiveIndicator ?? undefined}
+              liveIndicator={(() => { if (visibleLiveIndicator?.active) { const ss = visibleLiveIndicator.segments?.length ? visibleLiveIndicator.segments : [visibleLiveIndicator]; console.log('[CV] li ph=' + visibleLiveIndicator.phase + ' segs=' + ss.length + ' detail=' + JSON.stringify(ss.map(s => s.phase + ':si' + s.segmentIndex + ':cb' + s.contentBlocks.length))); } return visibleLiveIndicator ?? undefined; })()}
               liveSpeakerParticipant={liveSpeakerParticipant}
               liveSpeakerParticipantCat={resolveParticipantCatRecord(liveSpeakerParticipant)}
               messageStackTone={messageStackTone}

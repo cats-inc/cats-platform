@@ -140,8 +140,19 @@ export function ChatTranscriptPanel({
     );
   }
 
+  const hasPersistedReplyAfterLastUserMessage = (() => {
+    let lastUserIdx = -1;
+    for (let i = visibleMessages.length - 1; i >= 0; i -= 1) {
+      if (visibleMessages[i]!.senderKind === 'user') { lastUserIdx = i; break; }
+    }
+    return visibleMessages.some((m, idx) =>
+      idx > lastUserIdx
+      && (m.senderKind === 'agent' || m.senderKind === 'orchestrator')
+      && m.metadata?.event === 'assistant_turn_segment');
+  })();
   const shouldRenderLiveTranscriptIndicator = Boolean(
     liveIndicator?.active
+    && !hasPersistedReplyAfterLastUserMessage
     && resolveLiveIndicatorSegments(liveIndicator).length > 0
     && (
       liveIndicator.phase !== 'waiting'

@@ -13,6 +13,8 @@ import {
   shouldPinLiveIndicatorUntilPersistedReply,
   shouldRetryLiveIndicatorSessionClose,
   shouldConnectLiveIndicatorStream,
+  shouldReconnectLiveIndicatorAfterSessionClose,
+  shouldReconnectLiveIndicatorAfterSourceError,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {
   applyLiveIndicatorEvent,
@@ -100,6 +102,116 @@ test('shouldRetryLiveIndicatorSessionClose stays off once the channel is no long
   );
 });
 
+test('shouldReconnectLiveIndicatorAfterSourceError stays off once the current segment is sealed', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterSourceError(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+      },
+      null,
+    ),
+    false,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterSourceError stays off while waiting for the persisted reply commit', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterSourceError(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'streaming',
+        participantId: 'participant-agent-1',
+        speakerLabel: 'Agent-1',
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text' as const,
+            status: 'streaming' as const,
+            title: null,
+            text: 'First answer',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow: {
+            activeTurn: {
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    false,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterSessionClose stays off when no distinct follow-up target exists', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterSessionClose(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        targetStateId: 'target-state-claude',
+        segmentIndex: 0,
+      },
+      createWaitingLiveIndicatorState({
+        targetStateId: 'target-state-claude',
+        participantId: 'participant-claude',
+        catId: null,
+        speakerLabel: 'Claude-CLI',
+        revealIdentity: true,
+        segmentIndex: 0,
+      }),
+    ),
+    false,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterSessionClose stays on when a distinct follow-up target exists', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterSessionClose(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        targetStateId: 'target-state-claude',
+        segmentIndex: 0,
+      },
+      createWaitingLiveIndicatorState({
+        targetStateId: 'target-state-codex',
+        participantId: 'participant-codex',
+        catId: null,
+        speakerLabel: 'Codex-CLI',
+        revealIdentity: true,
+        segmentIndex: 0,
+      }),
+    ),
+    true,
+  );
+});
+
 test('shouldPinLiveIndicatorUntilPersistedReply keeps a completed streaming bubble visible until the reply is durable', () => {
   const previous = {
     ...EMPTY_LIVE_INDICATOR,
@@ -113,6 +225,55 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a completed streaming bubb
         index: 0,
         kind: 'text' as const,
         status: 'streaming' as const,
+        title: null,
+        text: 'First answer',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  assert.equal(
+    shouldPinLiveIndicatorUntilPersistedReply(previous, {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user',
+            workflowShape: 'sequential',
+            targetStatuses: [],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    }),
+    true,
+  );
+});
+
+test('shouldPinLiveIndicatorUntilPersistedReply keeps a sealed bubble visible until the reply is durable', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
         title: null,
         text: 'First answer',
         toolName: null,
@@ -748,6 +909,59 @@ test('resolveVisibleLiveIndicator hides stale streaming progress once the same s
   assert.equal(visible, null);
 });
 
+test('resolveVisibleLiveIndicator hides a sealed targeted segment once the same speaker persisted reply is visible', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    targetStateId: 'target-state-1',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'Done.',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-1',
+        senderKind: 'agent',
+        senderName: 'Agent-1',
+        metadata: {
+          event: 'assistant_turn_segment',
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+          targetStateId: 'target-state-1',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-09T12:00:03.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, null);
+});
+
 test('resolveVisibleLiveIndicator keeps the assistant bubble hidden until session startup is persisted', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
@@ -985,8 +1199,17 @@ test('shared live indicator effect reconnects on EventSource termination without
   assert.match(source, /const waitingSpeakerState = useMemo\(\s*\(\) => resolveWaitingSpeakerState\(selectedChannel\)/u);
   assert.match(source, /const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>\(/u);
   assert.match(source, /const selectedChannelRef = useRef/u);
+  assert.match(source, /const shouldIgnoreSealedSessionClose = shouldRetrySessionClose\s*&& primarySegment\?\.phase === 'sealed';/u);
+  assert.match(source, /traceBrowser\('stream_session_close_ignored'/u);
+  assert.match(source, /shouldReconnectLiveIndicatorAfterSessionClose\(/u);
+  assert.match(source, /traceBrowser\('stream_session_close_no_followup'/u);
+  assert.match(source, /shouldReconnectLiveIndicatorAfterSourceError\(/u);
+  assert.match(source, /traceBrowser\('stream_source_error_ignored'/u);
+  assert.match(source, /traceBrowser\('indicator_pin_pending_reply'/u);
   assert.match(source, /activeTurn/u);
   assert.match(source, /selectedChannel\?\.messages/u);
+  assert.match(source, /function updateIndicatorState\(/u);
+  assert.doesNotMatch(source, /startTransition\(/u);
   assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*routingStatus,\s*shouldConnectStream,\s*shouldShowWaitingIndicator,\s*\]/u);
   assert.match(
     source,
@@ -1069,6 +1292,167 @@ test('live indicator event payload updates the active speaker metadata even with
   assert.equal(nextState.speakerLabel, 'Gemini-CLI');
   assert.equal(nextState.sessionStartedAt, '2026-04-09T12:00:02.500Z');
   assert.equal(nextState.requiresSessionStartConfirmation, true);
+});
+
+test('live indicator upgrades an anonymous waiting bubble in place when the first named progress event arrives', () => {
+  const nextState = applyLiveIndicatorEvent(
+    createWaitingLiveIndicatorState({
+      targetStateId: 'target-state-claude',
+      catId: null,
+      speakerLabel: null,
+      revealIdentity: false,
+    }),
+    'progress',
+    {
+      text: '',
+      participantId: 'participant-claude',
+      speakerLabel: 'Claude-CLI',
+      metadata: {
+        kind: 'session',
+      },
+    },
+  );
+
+  assert.equal(nextState.segments.length, 1);
+  assert.equal(nextState.phase, 'streaming');
+  assert.equal(nextState.targetStateId, 'target-state-claude');
+  assert.equal(nextState.participantId, 'participant-claude');
+  assert.equal(nextState.speakerLabel, 'Claude-CLI');
+});
+
+test('resolveVisibleLiveIndicator retires a previously anonymous live segment once the matching persisted segment is visible', () => {
+  let liveIndicator = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-claude',
+    catId: null,
+    speakerLabel: null,
+    revealIdentity: false,
+  });
+
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'progress', {
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    metadata: {
+      kind: 'session',
+    },
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'text', {
+    text: 'Hi! How can I help you today?',
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'result', {});
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-13T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-1',
+        senderKind: 'agent',
+        senderName: 'Claude-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          targetStateId: 'target-state-claude',
+          segmentIndex: 0,
+          targetKind: 'participant',
+          targetId: 'participant-claude',
+        },
+        createdAt: '2026-04-13T12:00:03.000Z',
+      },
+    ],
+    '2026-04-13T12:00:04.000Z',
+  );
+
+  assert.equal(visible, null);
+});
+
+test('resolveLiveIndicatorSpeakerState preserves targetStateId when stream event carries explicit null', () => {
+  const previous = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-abc',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+  });
+
+  const nextSpeaker = resolveLiveIndicatorSpeakerState(previous, {
+    participantId: 'orchestrator',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    targetStateId: null,
+  });
+
+  assert.equal(nextSpeaker.targetStateId, 'target-state-abc');
+});
+
+test('resolveLiveIndicatorSpeakerState updates targetStateId when stream event carries a non-null value', () => {
+  const previous = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-abc',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+  });
+
+  const nextSpeaker = resolveLiveIndicatorSpeakerState(previous, {
+    participantId: 'participant-2',
+    catId: null,
+    speakerLabel: 'Codex-CLI',
+    targetStateId: 'target-state-def',
+  });
+
+  assert.equal(nextSpeaker.targetStateId, 'target-state-def');
+});
+
+test('resolveVisibleLiveIndicator hides sealed segments with null targetStateId via participantId fallback', () => {
+  let liveIndicator = createWaitingLiveIndicatorState({
+    targetStateId: null,
+    catId: null,
+    speakerLabel: null,
+    revealIdentity: false,
+  });
+
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'progress', {
+    participantId: 'orchestrator',
+    speakerLabel: 'Claude-CLI',
+    metadata: { kind: 'session' },
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'text', {
+    text: 'Hello!',
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'result', {});
+
+  assert.equal(liveIndicator.targetStateId, null);
+  assert.equal(liveIndicator.participantId, 'orchestrator');
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-13T14:00:00.000Z',
+      },
+      {
+        id: 'message-agent-1',
+        senderKind: 'agent',
+        senderName: 'Claude-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          targetStateId: 'target-state-real',
+          segmentIndex: 0,
+          targetKind: 'orchestrator',
+          targetId: 'orchestrator',
+        },
+        createdAt: '2026-04-13T14:00:03.000Z',
+      },
+    ],
+    '2026-04-13T14:00:04.000Z',
+  );
+
+  assert.equal(visible, null);
 });
 
 test('chat top-bar presence stays anonymous while the live indicator is still waiting for session startup', () => {
@@ -1350,4 +1734,92 @@ test('applyLiveIndicatorEvent ignores raw text fallback once structured content 
   assert.equal(state.contentBlocks.length, 1);
   assert.equal(state.contentBlocks[0]?.text, 'Hello');
   assert.equal(state.contentBlocks[0]?.metadata, null);
+});
+
+test('structured text content blocks upgrade synthetic text fallback without starting a new segment', () => {
+  let state = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+  });
+
+  state = applyLiveIndicatorEvent(state, 'text', {
+    text: 'Hi! How can I help you today?',
+  });
+
+  assert.equal(state.segments.length, 1);
+  assert.equal(state.contentBlocks.length, 1);
+  assert.equal(state.contentBlocks[0]?.id, 'text:0');
+
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: {
+      id: 'runtime-text:0',
+      index: 0,
+      kind: 'text',
+      status: 'streaming',
+      text: 'Hi! How can I help you today?',
+    },
+  });
+
+  assert.equal(state.segments.length, 1);
+  assert.equal(state.phase, 'streaming');
+  assert.deepEqual(state.contentBlocks, [
+    {
+      id: 'runtime-text:0',
+      index: 0,
+      kind: 'text',
+      status: 'streaming',
+      title: null,
+      text: 'Hi! How can I help you today?',
+      toolName: null,
+      toolId: null,
+      metadata: null,
+    },
+  ]);
+});
+
+test('final text block completion after result updates the sealed segment in place', () => {
+  let state = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+  });
+
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'streaming',
+      text: 'Hi! How can I help you today?',
+    },
+  });
+
+  state = applyLiveIndicatorEvent(state, 'result', {});
+
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'complete',
+      text: 'Hi! How can I help you today?',
+    },
+  });
+
+  assert.equal(state.segments.length, 1);
+  assert.equal(state.phase, 'sealed');
+  assert.deepEqual(state.contentBlocks, [
+    {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'complete',
+      title: null,
+      text: 'Hi! How can I help you today?',
+      toolName: null,
+      toolId: null,
+      metadata: null,
+    },
+  ]);
 });
