@@ -117,6 +117,28 @@ function hasOutstandingTargetsBeyondRecoveredResponse(
   });
 }
 
+function resolveExpectedTurnTargetCount(turn: RoomWorkflowTurn): number {
+  const turnStartedEvent = turn.events.find((event) => event.kind === 'turn_started') ?? null;
+  if (turnStartedEvent) {
+    return turnStartedEvent.targets.length;
+  }
+
+  return turn.targetStatuses.length;
+}
+
+function hasUnmaterializedSequentialTargets(turn: RoomWorkflowTurn): boolean {
+  if (turn.workflowShape !== 'sequential') {
+    return false;
+  }
+
+  const expectedTargetCount = resolveExpectedTurnTargetCount(turn);
+  if (expectedTargetCount <= 1) {
+    return false;
+  }
+
+  return turn.targetStatuses.length < expectedTargetCount;
+}
+
 function resolveDefaultTargetReason(
   channel: ChatChannelState,
   participant: RoomRoutingParticipantRef | null,
@@ -673,7 +695,10 @@ export function repairOrphanedCompletedDispatchTurn(
   const candidateTurn = activeTurn ?? recoveredTurn;
   if (
     candidateTurn
-    && hasOutstandingTargetsBeyondRecoveredResponse(candidateTurn, assistantTurnId, targetStateId)
+    && (
+      hasOutstandingTargetsBeyondRecoveredResponse(candidateTurn, assistantTurnId, targetStateId)
+      || hasUnmaterializedSequentialTargets(candidateTurn)
+    )
   ) {
     return { repaired: false, state };
   }

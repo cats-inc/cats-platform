@@ -810,6 +810,118 @@ test('repairOrphanedCompletedDispatchTurn keeps an active sequential turn alive 
   );
 });
 
+test('repairOrphanedCompletedDispatchTurn keeps a sequential turn alive while later targets are still unmaterialized', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-09T12:00:00.000Z');
+  const responseAt = new Date('2026-04-09T12:00:06.000Z');
+  const stateStore = new MemoryChatStore();
+  let state = await stateStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Sequential target gap still active',
+      topic: 'Do not finalize the room turn before the next sequential target is written.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'First speaker should hand off, but the second target is not written yet.' },
+    runtimeClient,
+    seededAt,
+  );
+  const inFlightState = structuredClone(begun.state);
+  const inFlightChannel = requireChannel(inFlightState, channelId);
+  const activeTurn = inFlightChannel.roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+
+  activeTurn.workflowShape = 'sequential';
+  const turnStartedEvent = activeTurn.events.find((event) => event.kind === 'turn_started');
+  assert.ok(turnStartedEvent);
+  turnStartedEvent.targets = [
+    {
+      participantKind: 'cat',
+      participantId: 'participant-claude',
+      participantName: 'Claude-CLI',
+    },
+    {
+      participantKind: 'cat',
+      participantId: 'participant-codex',
+      participantName: 'Codex-CLI',
+    },
+  ];
+  activeTurn.targetStatuses = [
+    {
+      id: 'target-claude',
+      dispatchId: 'dispatch-claude',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-claude',
+        participantName: 'Claude-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'explicit_mention',
+      mentionNames: ['Claude-CLI', 'Codex-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'explicit_mention',
+      wakeRequestId: null,
+      status: 'completed',
+      queuedAt: seededAt.toISOString(),
+      startedAt: seededAt.toISOString(),
+      completedAt: responseAt.toISOString(),
+      response: null,
+      error: null,
+    },
+  ];
+
+  const firstSegmentState = appendMessage(
+    inFlightState,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Claude-CLI',
+      body: 'Hello from the first speaker.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-claude-gap',
+        targetStateId: 'target-claude',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'cat',
+        targetId: 'participant-claude',
+        routingTrigger: 'explicit_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  const repaired = repairOrphanedCompletedDispatchTurn(
+    firstSegmentState,
+    channelId,
+    new Date('2026-04-09T12:10:00.000Z'),
+  );
+
+  assert.equal(repaired.repaired, false);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  assert.equal(repairedChannel.roomRouting.workflow.activeTurn?.id, activeTurn.id);
+  assert.equal(repairedChannel.roomRouting.workflow.activeTurn?.targetStatuses.length, 1);
+  assert.equal(
+    repairedChannel.roomRouting.workflow.activeTurn?.targetStatuses[0]?.id,
+    'target-claude',
+  );
+});
+
 test('repairOrphanedCompletedDispatchTurn keeps later same-speaker re-entry targets in flight', async () => {
   const runtimeClient = createNoopRuntimeClient();
   const seededAt = new Date('2026-04-09T12:00:00.000Z');

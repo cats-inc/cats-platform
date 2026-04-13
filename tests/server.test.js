@@ -2808,6 +2808,117 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
   }, chatStore);
 });
 
+test('GET /api/app-shell does not finalize a sequential turn before the next target is materialized', async () => {
+  const runtime = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+  const responseAt = new Date('2026-03-11T00:00:06.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Sequential target gap still active',
+      topic: 'Keep the turn alive while the next speaker target is still being written.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Please answer in order, but leave a short target gap.' },
+    runtime,
+    seededAt,
+  );
+  const inFlightState = structuredClone(begun.state);
+  const inFlightChannel = requireChannel(inFlightState, channelId);
+  const activeTurn = inFlightChannel.roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+
+  activeTurn.workflowShape = 'sequential';
+  const turnStartedEvent = activeTurn.events.find((event) => event.kind === 'turn_started');
+  assert.ok(turnStartedEvent);
+  turnStartedEvent.targets = [
+    {
+      participantKind: 'cat',
+      participantId: 'participant-claude',
+      participantName: 'Claude-CLI',
+    },
+    {
+      participantKind: 'cat',
+      participantId: 'participant-codex',
+      participantName: 'Codex-CLI',
+    },
+  ];
+  activeTurn.targetStatuses = [
+    {
+      id: 'target-state-gap-1',
+      dispatchId: 'dispatch-gap-1',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-claude',
+        participantName: 'Claude-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'explicit_mention',
+      mentionNames: ['Claude-CLI', 'Codex-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'explicit_mention',
+      wakeRequestId: null,
+      status: 'completed',
+      queuedAt: seededAt.toISOString(),
+      startedAt: seededAt.toISOString(),
+      completedAt: responseAt.toISOString(),
+      response: null,
+      error: null,
+    },
+  ];
+
+  state = appendMessage(
+    inFlightState,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Claude-CLI',
+      body: 'First speaker reply.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-gap-claude',
+        targetStateId: 'target-state-gap-1',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'cat',
+        targetId: 'participant-claude',
+        routingTrigger: 'explicit_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  await withServer(runtime, async (baseUrl) => {
+    await chatStore.write(state);
+    const response = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.chat.selectedChannel.id, channelId);
+    assert.equal(payload.chat.selectedChannel.roomRouting.workflow.activeTurn?.id, activeTurn.id);
+    assert.equal(
+      payload.chat.selectedChannel.roomRouting.workflow.activeTurn?.targetStatuses.length,
+      1,
+    );
+    assert.equal(payload.chat.selectedChannel.roomRouting.lastOutcome?.status, 'running');
+  }, chatStore);
+});
+
 test('core recovery routes expose normalized orchestrator replay state without leaking raw task metadata', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const metadata = writeWorkflowContinuationReplayMetadata(
