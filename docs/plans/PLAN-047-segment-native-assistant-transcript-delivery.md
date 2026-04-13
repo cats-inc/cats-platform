@@ -27,6 +27,8 @@ The implementation will:
 - stop flattening runtime output into one `content` string
 - replace singular-response persistence with segment-aware assistant turns
 - make routing/recovery depend on canonical turn aggregates
+- replace the single mutable `liveIndicator` bubble with an assistant-turn
+  segment timeline
 - make live and durable transcript share one segment model
 - remove compatibility aliases for `previewText`-first rendering and singular
   `runtime_response` assumptions
@@ -45,6 +47,9 @@ The implementation will:
 - [ ] Task 1.4: Confirm `cats-runtime` emits the necessary text/tool/status
       segment boundaries for all supported providers; tighten runtime projection
       where the current stream is insufficient.
+- [ ] Task 1.5: Define the live segment identity contract
+      (`assistantTurnId`/`targetStateId`/provisional segment key) so same-speaker
+      follow-up segments do not rely on label-only matching.
 
 **Deliverables**: one canonical segment-native runtime delivery model with no
 flattened-response fallback as the primary path
@@ -69,8 +74,9 @@ no singular-response canonical path
 
 - [ ] Task 3.1: Persist assistant text segments incrementally as multiple chat
       messages within the same turn.
-- [ ] Task 3.2: Decide and implement the durable treatment for tool/status
-      segments so segment order remains truthful.
+- [ ] Task 3.2: Persist durable non-text phase records inside the assistant-turn
+      aggregate so the canonical turn timeline keeps truthful order even when
+      collapsed transcript mode hides those phases.
 - [ ] Task 3.3: Publish `room_updated` / transcript invalidation after each
       persisted segment, not only at final completion.
 - [ ] Task 3.4: Ensure app-shell/read-model refresh paths do not collapse or
@@ -81,13 +87,18 @@ refresh
 
 ### Phase 4: Rebuild Live Transcript Rendering on the Same Model
 
-- [ ] Task 4.1: Replace `previewText`-first simplified rendering with
+- [ ] Task 4.1: Replace `LiveIndicatorState`'s single mutable bubble model with
+      an assistant-turn live segment timeline.
+- [ ] Task 4.2: Replace `previewText`-first simplified rendering with
       segment/content-block-driven rendering in Chat transcript surfaces.
-- [ ] Task 4.2: Keep assistant-owned dots/tool waits between same-speaker text
-      segments at the correct insertion point.
-- [ ] Task 4.3: Make `Show live progress details` control extra detail density
+- [ ] Task 4.3: Keep assistant-owned dots/tool waits between same-speaker text
+      segments at the correct insertion point using the next segment bubble,
+      not by mutating the sealed prior bubble.
+- [ ] Task 4.4: Preserve speaker headers across same-speaker segment handoff,
+      including the waiting state before the next segment starts streaming.
+- [ ] Task 4.5: Make `Show live progress details` control extra detail density
       only; segmentation must remain visible in both settings states.
-- [ ] Task 4.4: Remove obsolete renderer branches and helpers that only exist
+- [ ] Task 4.6: Remove obsolete renderer branches and helpers that only exist
       for the flattened-response model.
 
 **Deliverables**: live transcript that shows real segment cadence instead of a
@@ -99,11 +110,14 @@ single synthetic assistant bubble
       `text -> tool wait -> text` turns.
 - [ ] Task 5.2: Add regression coverage proving persisted transcript contains
       multiple assistant messages for one turn where appropriate.
-- [ ] Task 5.3: Add routing/recovery tests proving continuation logic still
+- [ ] Task 5.3: Add live renderer coverage proving one sealed segment hands off
+      to the next named waiting segment without flashing, losing the header, or
+      returning to the user bubble.
+- [ ] Task 5.4: Add routing/recovery tests proving continuation logic still
       consumes the full assistant turn correctly.
-- [ ] Task 5.4: Confirm stale local/dev snapshots may be discarded and no
+- [ ] Task 5.5: Confirm stale local/dev snapshots may be discarded and no
       compatibility migration path remains in the landed product code.
-- [ ] Task 5.5: Manually smoke-check solo, direct, group sequential, and group
+- [ ] Task 5.6: Manually smoke-check solo, direct, group sequential, and group
       concurrent rooms against the new segment-native model.
 
 **Deliverables**: validated segment-native assistant delivery with no reliance
@@ -115,7 +129,7 @@ on legacy single-response semantics
 |------|--------|-------------|
 | `src/runtime/client.ts` | Modify | Replace flattened send-message contract with a segment-aware one |
 | `src/runtime/clientStreams.ts` | Modify | Stop concatenating NDJSON text into one final response string |
-| `src/shared/liveIndicator.ts` | Modify | Retire `previewText`-centric assumptions and align live state with segment order |
+| `src/shared/liveIndicator.ts` | Modify | Replace the single live bubble state with a segment-timeline model |
 | `src/shared/roomRouting.ts` | Modify | Replace singular response references with segment-aware turn response state |
 | `src/products/chat/api/contracts.ts` | Modify | Update chat API contracts for segment-native assistant turns |
 | `src/products/chat/state/runtime-dispatch/execution.ts` | Modify | Consume segment-aware runtime delivery and persist segments incrementally |
@@ -124,8 +138,9 @@ on legacy single-response semantics
 | `src/products/chat/state/runtimeTargeting.ts` | Modify | Remove singular-response assumptions in bootstrap/visibility helpers |
 | `src/products/chat/api/resources/channelRoutes.ts` | Modify | Publish updates after each persisted segment |
 | `src/products/chat/api/resources/channelRuntimeRoutes.ts` | Modify | Keep stream and persisted updates aligned with segment-native delivery |
-| `src/products/chat/renderer/components/chat-view/LiveTranscriptIndicator.tsx` | Modify | Render segment/content-block order directly |
-| `src/products/shared/renderer/components/chat-view/ChatTranscriptSurface.tsx` | Modify | Share the same segment-native live rendering model |
+| `src/products/shared/renderer/hooks/useLiveIndicator.ts` | Modify | Project runtime events into an assistant-turn live segment timeline |
+| `src/products/chat/renderer/components/chat-view/LiveTranscriptIndicator.tsx` | Modify | Render one live segment timeline instead of one mutable live bubble |
+| `src/products/shared/renderer/components/chat-view/ChatTranscriptSurface.tsx` | Modify | Share the same segment-timeline rendering model |
 | `src/products/shared/renderer/components/chat-view/liveTranscriptIndicatorSupport.ts` | Modify or remove | Retire flattened preview helpers that no longer fit the model |
 | `tests/live-indicator.test.tsx` | Modify | Cover segment-native live rendering and assistant-owned waits |
 | `tests/chat-view-participants.test.tsx` | Modify | Cover transcript rendering across segment boundaries |
@@ -155,8 +170,8 @@ on legacy single-response semantics
   segment, routing/recommendation parsing from aggregated turn text, and repair
   flows
 - **Manual Testing**:
-  - solo chat: first segment lands, assistant dots persist between later
-    segments, final transcript keeps multiple assistant bubbles
+  - solo chat: first segment lands, its dots seal correctly, and the next
+    same-speaker bubble appears with header + dots before later text
   - direct chat: same behavior without orchestrator leakage
   - group sequential: same-speaker segmentation plus next-speaker handoff
   - group concurrent: multiple active assistant lanes preserve independent
@@ -178,6 +193,7 @@ on legacy single-response semantics
 |------|--------|
 | 2026-04-12 | Plan created for a full segment-native assistant transcript redesign across live and persisted paths |
 | 2026-04-12 | Phase 2 hard-cut landed in chat routing/workflow/repair state: `responseMessageId` and `runtime_response` stop being canonical chat response contracts |
+| 2026-04-13 | Plan refined to replace the single mutable `liveIndicator` bubble with a per-turn live segment timeline, including named same-speaker waiting/streaming/sealed handoff |
 
 ---
 

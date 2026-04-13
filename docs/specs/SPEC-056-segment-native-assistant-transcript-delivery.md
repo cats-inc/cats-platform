@@ -17,7 +17,7 @@ it both while streaming and after persistence.
 
 This spec defines a full architectural correction:
 
-- live transcript becomes content-block / segment driven
+- live transcript becomes assistant-turn segment-timeline driven
 - persisted transcript can store multiple assistant text messages for one turn
 - workflow and continuation logic become turn-aggregate aware rather than
   assuming one `runtime_response`
@@ -28,6 +28,8 @@ This spec defines a full architectural correction:
 - make one assistant turn visibly segmented in both live and durable transcript
 - preserve the natural rhythm of `text -> wait/tool -> text` for a single
   assistant
+- make same-speaker follow-up segments render as their own named bubbles while
+  preserving the assistant header across handoff
 - keep assistant-owned waiting states on the assistant lane after the first
   assistant segment appears
 - unify solo, direct, group, sequential, and concurrent surfaces under one
@@ -70,22 +72,36 @@ This spec defines a full architectural correction:
    - find all persisted messages for a turn
    - reconstruct canonical full turn text
    - finalize target completion truthfully
-6. Live transcript rendering shall use structured `contentBlocks` or their
-   replacement segment model as the primary source of truth.
-7. After the first visible assistant segment in a turn, any further waiting
+6. The product shall model live assistant delivery as an ordered segment
+   timeline, not one mutable global live bubble.
+7. Each live segment shall carry stable identity sufficient to reconcile with
+   the active turn and target state without guessing from the latest visible
+   speaker label alone.
+8. Live segment state shall expose at least `waiting`, `streaming`, and
+   `sealed`.
+9. Live transcript rendering shall use structured `contentBlocks` plus the
+   segment-timeline projector as the primary source of truth.
+10. After the first visible assistant segment in a turn, any further waiting
    state for that same turn shall remain assistant-owned and shall not revert to
    the user bubble.
-8. The product shall render same-speaker waiting between persisted text
-   segments, including tool/status waits where relevant.
-9. `Show live progress details` shall not control whether segmentation exists;
+11. The product shall render same-speaker waiting between persisted text
+   segments as the next assistant bubble with the same speaker header, including
+   tool/status waits where relevant.
+12. When one live segment seals and the next same-speaker segment has not yet
+   emitted text, the UI shall show that next segment's named waiting bubble
+   instead of mutating the sealed segment bubble in place.
+13. Durable assistant-turn state shall preserve the ordered non-text phases
+   needed to reconstruct the same canonical turn timeline even when the main
+   transcript only persists text segments as chat messages.
+14. `Show live progress details` shall not control whether segmentation exists;
    it may only control the density of supplemental tool/status detail.
-10. Continuation routing, mention parsing, workflow recommendation parsing,
+15. Continuation routing, mention parsing, workflow recommendation parsing,
     repair, and recovery shall consume the canonical full turn transcript
     instead of assuming the last assistant message contains the whole answer.
-11. The server shall publish transcript invalidation/update events after each
+16. The server shall publish transcript invalidation/update events after each
     persisted assistant segment so the UI does not need manual refresh to see
     intermediate stages.
-12. The landed architecture shall not preserve old singular-response aliases as
+17. The landed architecture shall not preserve old singular-response aliases as
     first-class supported behavior.
 
 ### Non-Functional Requirements
@@ -106,9 +122,10 @@ This spec defines a full architectural correction:
 
 ```
 runtime stream
-  -> ordered assistant turn segments
+  -> ordered assistant turn phases
+  -> live segment timeline projector
   -> product turn aggregate
-  -> persisted transcript messages + live assistant wait states
+  -> persisted transcript messages + durable non-text phase records
   -> continuation/recommendation parser reads aggregate turn text
 ```
 
@@ -120,6 +137,26 @@ runtime stream
 4. Tool/status progress may be represented differently from text, but it must
    not destroy segment order.
 5. Renderer code must not rebuild fake segmentation from flattened strings.
+
+### Live Segment Timeline
+
+Each live assistant turn must be projected into an ordered segment timeline.
+
+| State | Meaning | UI contract |
+|-------|---------|-------------|
+| `waiting` | The next segment is known but has not emitted text yet | Render a named assistant bubble with header and dots |
+| `streaming` | The segment is actively receiving text or visible phase content | Render the segment bubble body plus trailing dots when still in flight |
+| `sealed` | The segment has landed and must not be mutated by the next segment | Keep the bubble stable while the next segment gets its own bubble |
+
+Projection rules:
+
+1. The segment timeline is canonical for live rendering.
+2. A sealed segment must stay visible while a following waiting/streaming
+   segment appears beneath it.
+3. Same-speaker follow-up segments must not be represented by resurrecting dots
+   inside the prior sealed bubble.
+4. The segment timeline must reconcile to the durable assistant-turn aggregate
+   without relying on timing heuristics.
 
 ### Delivery Principles
 
@@ -138,11 +175,10 @@ runtime stream
 
 ## Open Questions
 
-- [ ] Should tool/status phases persist as explicit system/tool transcript
-      entities, or remain live-only while text segments persist durably?
-- [ ] What is the final canonical shape for segment-aware workflow response
-      references: `responseMessageIds`, `responseSegments`, or a separate turn
-      aggregate record?
+- [ ] Whether the durable non-text phase records should later become
+      user-visible transcript rows in expanded/debug views, or remain part of
+      the hidden assistant-turn aggregate while collapsed transcript mode stays
+      text-first.
 
 ## References
 

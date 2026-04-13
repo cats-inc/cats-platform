@@ -15,6 +15,7 @@ Accepted
 Today the stack still assumes:
 
 - live text is a single `previewText` string built by naive concatenation
+- live rendering is owned by one mutable global `liveIndicator` bubble
 - dispatch persistence writes one final `runtime_response` message
 - routing and workflow state point to one `responseMessageId`
 - transcript rendering can treat assistant typing as a cosmetic prelude to one
@@ -33,6 +34,9 @@ But the product collapses that structure too early, which causes:
 - assistant dots that feel fake because they disappear into one final bubble
 - loss of the natural `text -> wait/tool -> text` rhythm of one turn
 - a mismatch between `cats-runtime` dashboard behavior and Cats Chat
+- same-speaker follow-up segments that cannot own their own header/dots handoff
+- sealed assistant bubbles that momentarily disappear or get replaced by one
+  generic live bubble
 - more special-case gating logic in the renderer because the canonical product
   model is too weak
 
@@ -71,16 +75,38 @@ live rendering and persisted transcript state.
      should read the normalized full turn transcript assembled from its
      segments.
 
-5. `contentBlocks` become the primary live transcript rendering source.
-   - `previewText` accumulation is retired as the primary rendering model.
-   - Dots/tool waiting states are part of the same segment timeline rather than
-     a separate cosmetic layer.
+5. Live transcript state becomes an assistant-turn segment timeline, not one
+   mutable global live bubble.
+   - Each assistant-owned live segment must carry stable identity scoped to the
+     active turn and target, so same-speaker follow-up segments do not have to
+     hijack or overwrite the prior bubble.
+   - The canonical live segment states are `waiting`, `streaming`, and
+     `sealed`.
+   - When one segment seals and the same speaker continues, the next waiting
+     state must appear as the next assistant bubble with the same speaker
+     header, not as dots appended to the old sealed bubble and not as a return
+     to the user bubble.
 
-6. `Show live progress details` is demoted to a presentation preference only.
+6. `contentBlocks` become the primary live transcript rendering source.
+   - `previewText` accumulation is retired as the primary rendering model.
+   - Dots/tool waiting states are projected into the same segment timeline
+     rather than treated as a separate cosmetic layer.
+   - The renderer must project runtime events into ordered segment phases
+     instead of rebuilding cadence from one concatenated string.
+
+7. `Show live progress details` is demoted to a presentation preference only.
    - It may control how much tool/status chrome is shown.
    - It must not control whether the assistant turn is segmented.
 
-7. No backward-compatibility aliases will be preserved for the old singular
+8. Durable and live segment order must share one canonical turn aggregate.
+   - Text segments persist as transcript messages.
+   - Non-text tool/status phases remain durable inside the same assistant-turn
+     aggregate even when the collapsed transcript hides them.
+   - Routing, repair, and later transcript reconstruction must read the same
+     ordered turn aggregate rather than mixing one live model with another
+     durable model.
+
+9. No backward-compatibility aliases will be preserved for the old singular
    response architecture.
    - Do not keep long-lived dual semantics such as
      `runtime_response` plus `runtime_response_segment`.
@@ -95,6 +121,8 @@ live rendering and persisted transcript state.
 
 - Cats Chat can finally show the real rhythm of one assistant turn:
   `text -> assistant dots/tool -> text`.
+- Same-speaker multi-segment turns can hand off from one sealed bubble to the
+  next named waiting bubble without losing avatar/header continuity.
 - Live and persisted transcript behavior become aligned instead of fighting
   each other.
 - Group, direct, and solo surfaces can share one truthful assistant-turn
@@ -145,6 +173,15 @@ live rendering and persisted transcript state.
   future regressions
 - **Why rejected**: the user explicitly asked for the correct architecture
   without alias/backward-compatibility drag
+
+### Alternative 4: Keep one global live bubble and infer segment cadence inside it
+
+- **Pros**: smaller renderer diff; fewer state types
+- **Cons**: same-speaker follow-up segments cannot own independent waiting or
+  sealed states; header/dots handoff remains timing-sensitive; persisted
+  multi-bubble transcript cannot share the same semantic model
+- **Why rejected**: it preserves the exact live-state mismatch now causing
+  missing second-bubble dots and anonymous follow-up bubbles
 
 ## References
 
