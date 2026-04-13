@@ -151,6 +151,7 @@ test('shouldReconnectLiveIndicatorAfterSourceError stays off while waiting for t
         ],
         roomRouting: {
           defaultRecipientId: null,
+          lastOutcome: null,
           workflow: {
             activeTurn: {
               status: 'running',
@@ -184,6 +185,54 @@ test('shouldReconnectLiveIndicatorAfterSessionClose stays off when no distinct f
         participantId: 'participant-claude',
         catId: null,
         speakerLabel: 'Claude-CLI',
+        revealIdentity: true,
+        segmentIndex: 0,
+      }),
+    ),
+    false,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterSessionClose stays off for the same target even after segment reindexing', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterSessionClose(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        targetStateId: 'target-state-codex',
+        sourceMessageId: 'message-user',
+        participantId: 'participant-codex',
+        speakerLabel: 'Codex-CLI',
+        segmentIndex: 1,
+        segments: [
+          {
+            id: 'message-user:target-state-codex:segment:1',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            targetStateId: 'target-state-codex',
+            segmentIndex: 1,
+            participantId: 'participant-codex',
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Codex-CLI',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: 'Finalizing...',
+            progressKind: 'finalizing',
+            tools: [],
+            contentBlocks: [],
+            events: [],
+          },
+        ],
+      },
+      createWaitingLiveIndicatorState({
+        sourceMessageId: 'message-user',
+        targetStateId: 'target-state-codex',
+        participantId: 'participant-codex',
+        catId: null,
+        speakerLabel: 'Codex-CLI',
         revealIdentity: true,
         segmentIndex: 0,
       }),
@@ -287,6 +336,98 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for a sealed spe
       },
     ),
     true,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the final sequential target while no later targets remain', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        targetStateId: 'target-codex',
+        participantId: 'participant-codex',
+        speakerLabel: 'Codex-CLI',
+        segmentIndex: 1,
+        segments: [
+          {
+            id: 'message-user:target-codex:segment:1',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            targetStateId: 'target-codex',
+            segmentIndex: 1,
+            participantId: 'participant-codex',
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Codex-CLI',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: 'Finalizing...',
+            progressKind: 'finalizing',
+            tools: [],
+            contentBlocks: [],
+            events: [],
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+          {
+            id: 'message-agent-1',
+            senderKind: 'agent',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          lastOutcome: null,
+          workflow: {
+            activeTurn: {
+              id: 'turn-1',
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [
+                {
+                  id: 'target-agent-1',
+                  status: 'completed',
+                  participant: {
+                    participantKind: 'cat',
+                    participantId: 'participant-agent-1',
+                    participantName: 'Agent-1',
+                  },
+                },
+                {
+                  id: 'target-codex',
+                  status: 'running',
+                  participant: {
+                    participantKind: 'cat',
+                    participantId: 'participant-codex',
+                    participantName: 'Codex-CLI',
+                  },
+                },
+              ],
+              events: [
+                {
+                  kind: 'turn_started',
+                  targets: [{ id: 'participant-agent-1' }, { id: 'participant-codex' }],
+                },
+              ],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    false,
   );
 });
 

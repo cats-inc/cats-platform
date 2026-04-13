@@ -40,8 +40,13 @@ export interface LiveIndicatorSelectedChannelLike {
   }>;
   roomRouting: {
     defaultRecipientId: string | null;
+    lastOutcome?: {
+      turnId?: string | null;
+      resolvedTargets?: Array<unknown>;
+    } | null;
     workflow: {
       activeTurn?: {
+        id?: string | null;
         status: string | null;
         sourceMessageId?: string | null;
         workflowShape?: string | null;
@@ -53,6 +58,10 @@ export interface LiveIndicatorSelectedChannelLike {
           participantId: string;
           participantName?: string | null;
         };
+        }>;
+        events?: Array<{
+          kind?: string | null;
+          targets?: Array<unknown>;
         }>;
       } | null;
     };
@@ -476,9 +485,53 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
     return false;
   }
 
-  return true;
-}
+  const activeTargets = activeTurn.targetStatuses?.filter((target) =>
+    target.status === 'running' || target.status === 'pending') ?? [];
+  if (activeTargets.length > 0) {
+    return activeTargets.some((target) => {
+      const targetStateId = target.id?.trim() || null;
+      if (primarySegment.targetStateId && targetStateId) {
+        return targetStateId !== primarySegment.targetStateId;
+      }
 
+      const participantId = target.participant.participantId?.trim() || null;
+      if (primarySegment.participantId && participantId) {
+        return participantId !== primarySegment.participantId;
+      }
+
+      const participantName = target.participant.participantName?.trim() || null;
+      return participantName !== (primarySegment.speakerLabel ?? null);
+    });
+  }
+
+  if (activeTurn.workflowShape !== 'sequential') {
+    return true;
+  }
+
+  const turnStartedEvent = activeTurn.events?.find((event) => event.kind === 'turn_started') ?? null;
+  const lastOutcome = selectedChannel?.roomRouting.lastOutcome ?? null;
+  const totalTurnTargets = turnStartedEvent?.targets?.length
+    ?? (
+      lastOutcome?.turnId === activeTurn.id
+        ? lastOutcome?.resolvedTargets?.length
+        : null
+    )
+    ?? null;
+  if (!totalTurnTargets) {
+    return true;
+  }
+
+  const knownTargetIds = new Set(
+    activeTurn.targetStatuses
+      ?.map((target) => target.id?.trim() || null)
+      .filter((targetId): targetId is string => Boolean(targetId)) ?? [],
+  );
+  if (primarySegment.targetStateId) {
+    knownTargetIds.add(primarySegment.targetStateId);
+  }
+
+  return knownTargetIds.size < totalTurnTargets;
+}
 export function shouldIgnoreSealedSessionClose(
   current: LiveIndicatorState,
   waitingState: LiveIndicatorState,
@@ -497,7 +550,7 @@ export function shouldReconnectLiveIndicatorAfterSessionClose(
 ): boolean {
   const currentSegment = resolvePrimaryLiveIndicatorSegment(current);
   const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
-  if (!waitingSegment?.targetStateId) {
+  if (!waitingSegment) {
     return false;
   }
 
@@ -505,8 +558,11 @@ export function shouldReconnectLiveIndicatorAfterSessionClose(
     return true;
   }
 
-  return waitingSegment.targetStateId !== currentSegment.targetStateId
-    || waitingSegment.segmentIndex !== currentSegment.segmentIndex;
+  if (waitingSegment.targetStateId && currentSegment.targetStateId) {
+    return waitingSegment.targetStateId !== currentSegment.targetStateId;
+  }
+
+  return !doesLiveIndicatorLogicalIdentityMatch(currentSegment, waitingSegment);
 }
 
 function defaultShouldShowWaitingIndicator(
