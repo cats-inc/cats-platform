@@ -968,6 +968,103 @@ test('resolveWaitingIndicatorStateTransition increments the segment index for sa
   assert.notEqual(next.segments[0]?.id, next.segments[1]?.id);
 });
 
+test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential speaker as a waiting bubble', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    sourceMessageId: 'message-user-current',
+    targetStateId: 'target-gemini',
+    participantId: 'participant-gemini',
+    speakerLabel: 'Gemini-CLI',
+    segments: [
+      {
+        id: 'message-user-current:target-gemini:segment:2',
+        phase: 'sealed' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: 'target-gemini',
+        segmentIndex: 2,
+        participantId: 'participant-gemini',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Gemini-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text' as const,
+            status: 'complete' as const,
+            title: null,
+            text: 'Gemini reply',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+        events: [],
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    targetStateId: 'target-gemini',
+    participantId: 'participant-gemini',
+    catId: null,
+    speakerLabel: 'Gemini-CLI',
+    revealIdentity: true,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user-current',
+          senderKind: 'user',
+        },
+        {
+          id: 'message-gemini',
+          senderKind: 'agent',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user-current',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                id: 'target-gemini',
+                status: 'running',
+                participant: {
+                  participantId: 'participant-gemini',
+                  participantName: 'Gemini-CLI',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next, previous);
+});
+
 test('resolveWaitingIndicatorStateTransition preserves an existing waiting segment index for the same logical follow-up speaker', () => {
   const previous = {
     ...EMPTY_LIVE_INDICATOR,
@@ -1334,6 +1431,94 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker hands off once the first speaker
       },
     ),
     true,
+  );
+});
+
+test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical speaker in a sequential room', () => {
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user',
+    targetStateId: 'target-gemini',
+    participantId: 'participant-gemini',
+    catId: null,
+    speakerLabel: 'Gemini-CLI',
+    revealIdentity: true,
+  });
+
+  assert.equal(
+    shouldPromoteSealedBubbleToWaitingSpeaker(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        targetStateId: 'target-gemini',
+        participantId: 'participant-gemini',
+        speakerLabel: 'Gemini-CLI',
+        segmentIndex: 2,
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text',
+            status: 'complete',
+            title: null,
+            text: 'Gemini reply.',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+      },
+      waitingState,
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+            senderName: 'Kenny',
+            metadata: {},
+            createdAt: '2026-04-14T01:00:00.000Z',
+          },
+          {
+            id: 'message-gemini',
+            senderKind: 'agent',
+            senderName: 'Gemini-CLI',
+            metadata: {
+              event: 'assistant_turn_segment',
+              sourceMessageId: 'message-user',
+              targetStateId: 'target-gemini',
+              targetId: 'participant-gemini',
+              segmentIndex: 2,
+            },
+            createdAt: '2026-04-14T01:00:03.000Z',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow: {
+            activeTurn: {
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [
+                {
+                  id: 'target-gemini',
+                  status: 'running',
+                  participant: {
+                    participantId: 'participant-gemini',
+                    participantName: 'Gemini-CLI',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    false,
   );
 });
 

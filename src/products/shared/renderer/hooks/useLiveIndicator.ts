@@ -232,6 +232,16 @@ export function resolveWaitingIndicatorStateTransition(input: {
   }
 
   if (input.previous.phase === 'sealed') {
+    const previousSegment = resolvePrimaryLiveIndicatorSegment(input.previous);
+    const waitingSegment = resolvePrimaryLiveIndicatorSegment(input.waitingState);
+    if (
+      previousSegment
+      && waitingSegment
+      && doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)
+      && !shouldAllowSameSpeakerWaitingFollowup(input.selectedChannel)
+    ) {
+      return input.previous;
+    }
     return mergeWaitingIndicatorTimelineState(input.previous, input.waitingState);
   }
 
@@ -265,6 +275,12 @@ function doesLiveIndicatorLogicalIdentityMatch(
     && left.participantId === right.participantId
     && left.catId === right.catId
     && left.speakerLabel === right.speakerLabel;
+}
+
+function shouldAllowSameSpeakerWaitingFollowup(
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+): boolean {
+  return selectedChannel?.roomRouting.workflow.activeTurn?.workflowShape === 'solo';
 }
 
 function shouldAdvanceWaitingSegmentIndex(
@@ -476,6 +492,17 @@ export function shouldPromoteStreamingBubbleToWaitingSpeaker(
     return false;
   }
 
+  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
+  const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
+  if (
+    previousSegment
+    && waitingSegment
+    && doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)
+    && !shouldAllowSameSpeakerWaitingFollowup(selectedChannel)
+  ) {
+    return false;
+  }
+
   const sourceMessageId = selectedChannel?.roomRouting.workflow.activeTurn?.sourceMessageId ?? null;
   if (!sourceMessageId) {
     return false;
@@ -500,6 +527,17 @@ export function shouldPromoteSealedBubbleToWaitingSpeaker(
     || waitingState.phase !== 'waiting'
     || !hasLiveIndicatorIdentity(waitingState)
     || doesLiveIndicatorIdentityMatch(previous, waitingState)
+  ) {
+    return false;
+  }
+
+  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
+  const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
+  if (
+    previousSegment
+    && waitingSegment
+    && doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)
+    && !shouldAllowSameSpeakerWaitingFollowup(selectedChannel)
   ) {
     return false;
   }
