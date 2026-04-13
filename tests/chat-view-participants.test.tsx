@@ -969,6 +969,66 @@ test('ChatView shows provider-specific live assistant progress when progress det
   assert.match(markup, /Searching for draft reviews/u);
 });
 
+test('ChatView keeps speaker headers on every persisted assistant segment bubble', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'What happened today?',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-agent-1',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Claude-CLI',
+              body: 'First segment.',
+              mentions: [],
+              metadata: {
+                event: 'assistant_turn_segment',
+                turnId: 'turn-1',
+                targetId: 'participant-claude',
+                assistantTurnId: 'assistant-turn-1',
+                terminal: false,
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:01.000Z',
+            },
+            {
+              id: 'message-agent-2',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Claude-CLI',
+              body: 'Second segment.',
+              mentions: [],
+              metadata: {
+                event: 'assistant_turn_segment',
+                turnId: 'turn-1',
+                targetId: 'participant-claude',
+                assistantTurnId: 'assistant-turn-1',
+                terminal: true,
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:02.000Z',
+            },
+          ],
+        }),
+      })}
+    />,
+  );
+
+  assert.equal((markup.match(/<strong>Claude-CLI<\/strong>/gu) ?? []).length, 2);
+});
+
 test('ChatView hides terminal live status details when progress details are off', () => {
   const markup = renderToStaticMarkup(
     <ChatView

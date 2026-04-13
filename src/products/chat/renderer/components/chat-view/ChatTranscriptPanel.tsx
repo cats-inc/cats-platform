@@ -148,19 +148,7 @@ export function ChatTranscriptPanel({
   return (
     <section className="transcriptPanel">
       <div ref={transcriptListRef} className="transcriptList">
-        {visibleMessages.map((message, index) => {
-          const previousMessage = index > 0 ? visibleMessages[index - 1] : null;
-          const isContinuationSegment =
-            previousMessage != null
-            && message.senderKind === previousMessage.senderKind
-            && message.senderKind !== 'user'
-            && message.senderKind !== 'system'
-            && message.metadata?.turnId != null
-            && message.metadata.turnId === previousMessage.metadata?.turnId
-            && message.metadata?.targetId != null
-            && message.metadata.targetId === previousMessage.metadata?.targetId;
-
-          return (
+        {visibleMessages.map((message) => (
             <TranscriptMessageItem
               key={message.id}
               message={message}
@@ -195,10 +183,9 @@ export function ChatTranscriptPanel({
               buildParticipantAvatarStyle={buildParticipantAvatarStyle}
               resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
               resolveParticipantDisplayName={resolveParticipantDisplayName}
-              showSpeakerHeader={!isContinuationSegment}
+              showSpeakerHeader
             />
-          );
-        })}
+        ))}
         {shouldRenderLiveTranscriptIndicator && liveIndicator ? (
           <LiveTranscriptIndicator
             cats={cats}
