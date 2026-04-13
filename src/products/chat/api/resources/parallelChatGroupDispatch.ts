@@ -3,6 +3,7 @@ import {
   continueBegunChannelMessageDispatch,
   settleBegunChannelMessageDispatchFailure,
 } from '../../state/runtimeActions.js';
+import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 import {
   replaceState,
   requireChannel,
@@ -341,6 +342,7 @@ export async function finalizeParallelChatBodies(
               staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
             },
             cancellationRegistry: channelDispatchCancellationRegistry,
+            onStateWritten: notifyStreamTargetChanged,
           },
         );
         const failedResults = completed.results.filter((result) => result.status === 'error');

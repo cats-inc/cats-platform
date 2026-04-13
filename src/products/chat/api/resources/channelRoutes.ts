@@ -13,6 +13,7 @@ import {
 } from '../../state/model/index.js';
 import { repairChannelReadState } from '../channelRepair.js';
 import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
+import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
 import type {
   CreateChatChannelInput,
@@ -148,6 +149,7 @@ async function continueAcknowledgedChannelDispatchInBackground(
           staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
         },
         cancellationRegistry: channelDispatchCancellationRegistry,
+        onStateWritten: notifyStreamTargetChanged,
       },
     );
   } catch (error) {

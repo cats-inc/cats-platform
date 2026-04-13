@@ -69,6 +69,7 @@ interface RouteChannelMessageOptions {
   chatStatePath?: string;
   runtimeDataDir?: string;
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
+  onStateWritten?: (channelId: string) => void;
 }
 
 function readMessageRetryMetadata(
@@ -371,6 +372,7 @@ export async function continueBegunChannelMessageDispatch(
     runtimeDataDir: options.runtimeDataDir,
     runtimeRecovery,
     cancellationRegistry: options.cancellationRegistry,
+    onStateWritten: options.onStateWritten,
   });
   nextState = loopResult.state;
   latestCheckpoint = loopResult.latestCheckpoint;

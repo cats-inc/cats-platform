@@ -93,6 +93,7 @@ export interface ProcessDispatchQueueOptions {
   runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
+  onStateWritten?: (channelId: string) => void;
 }
 
 export async function processDispatchQueue(
@@ -563,6 +564,7 @@ export async function processDispatchQueue(
       now,
     );
     nextState = await persistInFlightDispatchState(chatStore, nextState);
+    options.onStateWritten?.(channelId);
     latestCheckpoint = wakePrepared.latestCheckpoint;
     const readyRequests = wakePrepared.readyRequests;
 
@@ -698,6 +700,7 @@ export async function processDispatchQueue(
       now,
     );
     nextState = await persistInFlightDispatchState(chatStore, nextState);
+    options.onStateWritten?.(channelId);
     latestCheckpoint = appliedExecutions.latestCheckpoint;
     guardReason = guardReason ?? appliedExecutions.guardReason;
     blockedResolution = blockedResolution ?? appliedExecutions.blockedResolution;

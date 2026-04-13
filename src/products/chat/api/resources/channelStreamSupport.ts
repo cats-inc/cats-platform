@@ -10,9 +10,7 @@ import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestrator
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import { requireChannel } from '../../state/model/index.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
-
-const CHANNEL_STREAM_SESSION_WAIT_MS = 1500;
-const CHANNEL_STREAM_SESSION_POLL_MS = 75;
+import { awaitNextStreamTarget } from './streamTargetSignal.js';
 
 export interface ChannelStreamTarget {
   sessionId: string | null;
@@ -314,48 +312,16 @@ export function resolveChannelStreamSessionId(
   return streamTarget?.sessionId ?? null;
 }
 
-function waitForStreamLease(
-  durationMs: number,
-  signal: AbortSignal,
-): Promise<void> {
-  if (signal.aborted) {
-    return Promise.resolve();
-  }
-
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve();
-    }, durationMs);
-
-    function onAbort(): void {
-      clearTimeout(timer);
-      signal.removeEventListener('abort', onAbort);
-      resolve();
-    }
-
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
-}
-
 export async function waitForChannelStreamTarget(
   context: ChatApiRouteContext,
   channelId: string,
   signal: AbortSignal,
 ): Promise<ChannelStreamTarget | null> {
-  const deadline = Date.now() + CHANNEL_STREAM_SESSION_WAIT_MS;
-  let lastObservedTarget: ChannelStreamTarget | null = null;
-  let lastObservedReason: string | null = null;
-
   while (!signal.aborted) {
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
     const resolvedStreamTarget = resolveChannelStreamTargetWithReason(channel);
     const streamTarget = resolvedStreamTarget.target;
-    if (streamTarget) {
-      lastObservedTarget = streamTarget;
-      lastObservedReason = resolvedStreamTarget.reason;
-    }
     if (streamTarget?.sessionId) {
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
@@ -370,24 +336,11 @@ export async function waitForChannelStreamTarget(
       }
       return streamTarget;
     }
-    if (Date.now() >= deadline) {
-      if (context.dependencies.config.debugLiveTrace) {
-        pushServerLiveTrace({
-          event: 'stream_target_timeout',
-          channelId,
-          sessionId: lastObservedTarget?.sessionId ?? null,
-          participantId: lastObservedTarget?.participantId ?? null,
-          catId: lastObservedTarget?.catId ?? null,
-          speakerLabel: lastObservedTarget?.speakerLabel ?? null,
-          reason: lastObservedReason ?? resolvedStreamTarget.reason,
-        });
-      }
-      return lastObservedTarget;
-    }
-    await waitForStreamLease(CHANNEL_STREAM_SESSION_POLL_MS, signal);
+
+    await awaitNextStreamTarget(channelId, signal);
   }
 
-  return lastObservedTarget;
+  return null;
 }
 
 export function shouldWaitForNextChannelStreamTarget(
@@ -418,10 +371,6 @@ export async function waitForNextChannelStreamTarget(
   previousTargetStateId: string | null,
   signal: AbortSignal,
 ): Promise<ChannelStreamTarget | null> {
-  const deadline = Date.now() + CHANNEL_STREAM_SESSION_WAIT_MS;
-  let lastObservedTarget: ChannelStreamTarget | null = null;
-  let lastObservedReason: string | null = null;
-
   while (!signal.aborted) {
     const state = await context.dependencies.chatStore.read();
     const channel = requireChannel(state, channelId);
@@ -431,52 +380,29 @@ export async function waitForNextChannelStreamTarget(
 
     const resolvedStreamTarget = resolveWorkflowStreamTargetWithReason(channel);
     const streamTarget = resolvedStreamTarget.target;
-    if (streamTarget && streamTarget.targetStateId !== previousTargetStateId) {
-      lastObservedTarget = streamTarget;
-      lastObservedReason = resolvedStreamTarget.reason;
-      if (streamTarget.sessionId) {
-        if (context.dependencies.config.debugLiveTrace) {
-          pushServerLiveTrace({
-            event: 'stream_target_ready',
-            channelId,
-            sessionId: streamTarget.sessionId,
-            participantId: streamTarget.participantId,
-            catId: streamTarget.catId,
-            speakerLabel: streamTarget.speakerLabel,
-            reason: resolvedStreamTarget.reason,
-            details: {
-              targetStateId: streamTarget.targetStateId,
-              previousTargetStateId,
-            },
-          });
-        }
-        return streamTarget;
-      }
-    }
-
-    if (Date.now() >= deadline) {
+    if (streamTarget && streamTarget.targetStateId !== previousTargetStateId && streamTarget.sessionId) {
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
-          event: 'stream_target_timeout',
+          event: 'stream_target_ready',
           channelId,
-          sessionId: lastObservedTarget?.sessionId ?? null,
-          participantId: lastObservedTarget?.participantId ?? null,
-          catId: lastObservedTarget?.catId ?? null,
-          speakerLabel: lastObservedTarget?.speakerLabel ?? null,
-          reason: lastObservedReason ?? resolvedStreamTarget.reason,
+          sessionId: streamTarget.sessionId,
+          participantId: streamTarget.participantId,
+          catId: streamTarget.catId,
+          speakerLabel: streamTarget.speakerLabel,
+          reason: resolvedStreamTarget.reason,
           details: {
-            targetStateId: lastObservedTarget?.targetStateId ?? null,
+            targetStateId: streamTarget.targetStateId,
             previousTargetStateId,
           },
         });
       }
-      return lastObservedTarget;
+      return streamTarget;
     }
 
-    await waitForStreamLease(CHANNEL_STREAM_SESSION_POLL_MS, signal);
+    await awaitNextStreamTarget(channelId, signal);
   }
 
-  return lastObservedTarget;
+  return null;
 }
 
 export function writeSseEvent(
