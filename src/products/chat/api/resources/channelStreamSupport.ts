@@ -347,28 +347,6 @@ export async function waitForChannelStreamTarget(
   return null;
 }
 
-export function shouldWaitForNextChannelStreamTarget(
-  channel: ReturnType<typeof requireChannel>,
-  previousTargetStateId: string | null,
-): boolean {
-  if (!previousTargetStateId) {
-    return false;
-  }
-
-  const activeTurn = resolveActiveTurn(channel);
-  if (!activeTurn || !hasActiveWorkflowTurn(channel)) {
-    return false;
-  }
-
-  if (activeTurn.targetStatuses.some((target) =>
-    target.id !== previousTargetStateId
-    && (target.status === 'running' || target.status === 'pending'))) {
-    return true;
-  }
-
-  return resolveActiveTurnInitialTargetCount(channel) > 1;
-}
-
 export async function waitForNextChannelStreamTarget(
   context: ChatApiRouteContext,
   channelId: string,

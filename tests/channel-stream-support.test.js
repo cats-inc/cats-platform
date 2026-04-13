@@ -4,7 +4,6 @@ import test from 'node:test';
 import {
   resolveChannelStreamSessionId,
   resolveChannelStreamTarget,
-  shouldWaitForNextChannelStreamTarget,
 } from '../build/server/products/chat/api/resources/channelStreamSupport.js';
 
 function buildParticipantAssignment(
@@ -218,60 +217,6 @@ test('resolveChannelStreamTarget falls back to the default recipient while a sin
     requiresSessionStartConfirmation: false,
     targetStateId: null,
   });
-});
-
-test('shouldWaitForNextChannelStreamTarget only stays open for real follow-up speakers', () => {
-  const singleTargetChannel = {
-    roomMode: 'direct_cat_chat',
-    roomRouting: {
-      defaultRecipientId: 'participant-1',
-      lastOutcome: {
-        turnId: 'turn-1',
-        resolvedTargets: [{ participantId: 'participant-1' }],
-      },
-      workflow: {
-        activeTurn: {
-          id: 'turn-1',
-          status: 'running',
-          workflowShape: 'sequential',
-          targetStatuses: [
-            { id: 'target-1', status: 'completed' },
-          ],
-          events: [],
-        },
-      },
-    },
-    orchestratorLease: { status: 'idle', sessionId: null },
-    catAssignments: [],
-    participantAssignments: [],
-  };
-  assert.equal(shouldWaitForNextChannelStreamTarget(singleTargetChannel, 'target-1'), false);
-
-  const multiTargetChannel = {
-    roomMode: 'group',
-    roomRouting: {
-      defaultRecipientId: null,
-      lastOutcome: {
-        turnId: 'turn-2',
-        resolvedTargets: [{ participantId: 'participant-1' }, { participantId: 'participant-2' }],
-      },
-      workflow: {
-        activeTurn: {
-          id: 'turn-2',
-          status: 'running',
-          workflowShape: 'sequential',
-          targetStatuses: [
-            { id: 'target-1', status: 'completed' },
-          ],
-          events: [],
-        },
-      },
-    },
-    orchestratorLease: { status: 'idle', sessionId: null },
-    catAssignments: [],
-    participantAssignments: [],
-  };
-  assert.equal(shouldWaitForNextChannelStreamTarget(multiTargetChannel, 'target-1'), true);
 });
 
 test('resolveChannelStreamTarget does not leak the internal Chat placeholder for solo orchestrator turns', () => {

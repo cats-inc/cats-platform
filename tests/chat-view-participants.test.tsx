@@ -1076,6 +1076,105 @@ test('ChatView hides terminal live status details when progress details are off'
   assert.match(markup, /typingDots/u);
 });
 
+test('ChatView skips sealed status-only live segments when progress details are off', () => {
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'sealed',
+          participantId: 'participant-inline',
+          speakerLabel: 'Inline Reviewer',
+          segments: [
+            {
+              id: 'segment-0',
+              phase: 'sealed',
+              sourceMessageId: 'message-user',
+              targetStateId: 'target-inline',
+              segmentIndex: 0,
+              participantId: 'participant-inline',
+              catId: null,
+              activeCatIds: [],
+              catName: null,
+              speakerLabel: 'Inline Reviewer',
+              sessionStartedAt: null,
+              requiresSessionStartConfirmation: false,
+              progressText: '',
+              progressKind: null,
+              tools: [],
+              contentBlocks: [
+                {
+                  id: 'text:0',
+                  index: 0,
+                  kind: 'text',
+                  status: 'complete',
+                  title: null,
+                  text: 'First answer',
+                  toolName: null,
+                  toolId: null,
+                  metadata: null,
+                },
+              ],
+              events: [],
+            },
+            {
+              id: 'segment-1',
+              phase: 'sealed',
+              sourceMessageId: 'message-user',
+              targetStateId: 'target-inline',
+              segmentIndex: 1,
+              participantId: 'participant-inline',
+              catId: null,
+              activeCatIds: [],
+              catName: null,
+              speakerLabel: 'Inline Reviewer',
+              sessionStartedAt: null,
+              requiresSessionStartConfirmation: false,
+              progressText: 'Finalizing...',
+              progressKind: 'finalizing',
+              tools: [],
+              contentBlocks: [
+                {
+                  id: 'status:1',
+                  index: 1,
+                  kind: 'status',
+                  status: 'complete',
+                  title: null,
+                  text: 'Finalizing...',
+                  toolName: null,
+                  toolId: null,
+                  metadata: null,
+                },
+              ],
+              events: [],
+            },
+          ],
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /First answer/u);
+  assert.equal((markup.match(/<strong>Inline Reviewer<\/strong>/gu) ?? []).length, 1);
+  assert.doesNotMatch(markup, /Finalizing/u);
+});
+
 test('ChatView keeps typing dots visible for an initial streaming session phase without visible blocks', () => {
   const markup = renderToStaticMarkup(
     <ChatView

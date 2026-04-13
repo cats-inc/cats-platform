@@ -241,6 +241,23 @@ function doesLiveIndicatorIdentityMatch(
     && left.speakerLabel === right.speakerLabel;
 }
 
+function doesLiveIndicatorLogicalIdentityMatch(
+  left: Pick<
+    LiveIndicatorState | LiveIndicatorSegmentState,
+    'sourceMessageId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+  >,
+  right: Pick<
+    LiveIndicatorState | LiveIndicatorSegmentState,
+    'sourceMessageId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+  >,
+): boolean {
+  return left.sourceMessageId === right.sourceMessageId
+    && left.targetStateId === right.targetStateId
+    && left.participantId === right.participantId
+    && left.catId === right.catId
+    && left.speakerLabel === right.speakerLabel;
+}
+
 function shouldAdvanceWaitingSegmentIndex(
   previousSegment: LiveIndicatorSegmentState | null,
   waitingSegment: LiveIndicatorSegmentState | null,
@@ -358,6 +375,10 @@ function replaceWaitingIndicatorTimelineIdentity(
     return previous;
   }
 
+  if (doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)) {
+    return previous;
+  }
+
   return projectLiveIndicatorStateFromSegments([
     ...previous.segments.slice(0, -1),
     waitingSegment,
@@ -433,6 +454,41 @@ export function shouldReconnectLiveIndicatorAfterSourceError(
   }
 
   return true;
+}
+
+export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+  current: LiveIndicatorState,
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+): boolean {
+  const primarySegment = resolvePrimaryLiveIndicatorSegment(current);
+  const activeTurn = selectedChannel?.roomRouting.workflow.activeTurn ?? null;
+  const activeTurnSourceMessageId = activeTurn?.sourceMessageId?.trim() || null;
+  const currentSourceMessageId = primarySegment?.sourceMessageId ?? current.sourceMessageId;
+
+  if (
+    primarySegment?.phase !== 'sealed'
+    || !activeTurn
+    || (activeTurn.status !== 'running' && activeTurn.status !== 'pending')
+    || !activeTurnSourceMessageId
+    || !currentSourceMessageId
+    || currentSourceMessageId !== activeTurnSourceMessageId
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export function shouldIgnoreSealedSessionClose(
+  current: LiveIndicatorState,
+  waitingState: LiveIndicatorState,
+): boolean {
+  const primarySegment = resolvePrimaryLiveIndicatorSegment(current);
+  if (primarySegment?.phase !== 'sealed') {
+    return false;
+  }
+
+  return !shouldReconnectLiveIndicatorAfterSessionClose(current, waitingState);
 }
 
 export function shouldReconnectLiveIndicatorAfterSessionClose(
@@ -714,17 +770,22 @@ export function useLiveIndicator<
       reconnectAttempts = 0;
 
       const eventType = (data.type as string) ?? e.type;
-      const shouldRetrySessionClose = shouldRetryLiveIndicatorSessionClose({
-        eventType,
-        channelId,
-        busy,
-        routingStatus,
-      });
+      const waitingState = createCurrentWaitingState();
+      const shouldRetrySessionClose = eventType === 'session_closed'
+        && shouldConnectStream({ channelId, busy, routingStatus });
       const primarySegment = resolvePrimaryLiveIndicatorSegment(stateRef.current);
+      const shouldReconnectFollowupTarget = shouldRetrySessionClose
+        && shouldReconnectLiveIndicatorAfterSessionClose(stateRef.current, waitingState);
+      const shouldReconnectOngoingWorkflow = shouldRetrySessionClose
+        && shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+          stateRef.current,
+          selectedChannelRef.current,
+        );
       const shouldPinReplyCommit = shouldRetrySessionClose
         && shouldPinLiveIndicatorUntilPersistedReply(stateRef.current, selectedChannelRef.current);
-      const shouldIgnoreSealedSessionClose = shouldRetrySessionClose
-        && primarySegment?.phase === 'sealed';
+      const shouldIgnoreSealedBoundary = shouldRetrySessionClose
+        && shouldIgnoreSealedSessionClose(stateRef.current, waitingState)
+        && !shouldReconnectOngoingWorkflow;
 
       traceBrowser('stream_event', {
         sessionId: readTraceString(data.sessionId),
@@ -744,7 +805,7 @@ export function useLiveIndicator<
           return previous;
         }
         if (shouldRetrySessionClose) {
-          if (shouldIgnoreSealedSessionClose) {
+          if (shouldIgnoreSealedBoundary) {
             traceBrowser('stream_session_close_ignored', {
               participantId: previous.participantId,
               catId: previous.catId,
@@ -762,13 +823,21 @@ export function useLiveIndicator<
             });
             return previous;
           }
-          const waitingState = createCurrentWaitingState();
-          if (!shouldReconnectLiveIndicatorAfterSessionClose(previous, waitingState)) {
+          if (!shouldReconnectFollowupTarget && !shouldReconnectOngoingWorkflow) {
             traceBrowser('stream_session_close_no_followup', {
               participantId: previous.participantId,
               catId: previous.catId,
               speakerLabel: previous.speakerLabel,
               reason: 'no_distinct_followup_target',
+            });
+            return previous;
+          }
+          if (!shouldReconnectFollowupTarget) {
+            traceBrowser('stream_session_close_reconnect', {
+              participantId: previous.participantId,
+              catId: previous.catId,
+              speakerLabel: previous.speakerLabel,
+              reason: 'ongoing_workflow_boundary',
             });
             return previous;
           }
@@ -786,12 +855,8 @@ export function useLiveIndicator<
 
       if (
         shouldRetrySessionClose
-        && !shouldPinReplyCommit
-        && !shouldIgnoreSealedSessionClose
-        && shouldReconnectLiveIndicatorAfterSessionClose(
-          stateRef.current,
-          createCurrentWaitingState(),
-        )
+        && !shouldIgnoreSealedBoundary
+        && (shouldReconnectFollowupTarget || shouldReconnectOngoingWorkflow)
       ) {
         scheduleReconnect();
       }
@@ -825,10 +890,22 @@ export function useLiveIndicator<
         if (disposed || source !== sourceRef.current) {
           return;
         }
-        if (!shouldReconnectLiveIndicatorAfterSourceError(
+        const waitingState = createCurrentWaitingState();
+        const shouldReconnectFollowupTarget = shouldReconnectLiveIndicatorAfterSessionClose(
+          stateRef.current,
+          waitingState,
+        );
+        const shouldReconnectOngoingWorkflow = shouldReconnectLiveIndicatorAfterOngoingWorkflow(
           stateRef.current,
           selectedChannelRef.current,
-        )) {
+        );
+        const shouldReconnectAfterSourceTermination = shouldReconnectFollowupTarget
+          || shouldReconnectOngoingWorkflow
+          || shouldReconnectLiveIndicatorAfterSourceError(
+            stateRef.current,
+            selectedChannelRef.current,
+          );
+        if (!shouldReconnectAfterSourceTermination) {
           traceBrowser('stream_source_error_ignored', {
             participantId: stateRef.current.participantId,
             catId: stateRef.current.catId,
@@ -841,8 +918,15 @@ export function useLiveIndicator<
           closeSource();
           return;
         }
+        if (shouldReconnectFollowupTarget) {
+          updateIndicatorState((previous) => mergeWaitingIndicatorTimelineState(previous, waitingState));
+        }
         traceBrowser('stream_source_error', {
-          reason: 'eventsource_terminated',
+          reason: shouldReconnectFollowupTarget
+            ? 'eventsource_terminated_followup_handoff'
+            : shouldReconnectOngoingWorkflow
+              ? 'eventsource_terminated_running_workflow'
+            : 'eventsource_terminated',
           details: {
             busy,
             routingStatus,

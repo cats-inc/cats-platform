@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type CSSProperties,
@@ -464,6 +465,14 @@ export function ChatView({
     scrollOnChannelChange: true,
   });
 
+  useLayoutEffect(() => {
+    if (!visibleLiveIndicator?.active || !isNearBottom) {
+      return;
+    }
+
+    scrollToBottom();
+  }, [isNearBottom, scrollToBottom, transcriptScrollKey, visibleLiveIndicator?.active]);
+
   function navigateCompareMember(direction: 'prev' | 'next'): void {
     const channelId = direction === 'prev' ? comparePrevChannelId : compareNextChannelId;
     if (!channelId) {
@@ -646,7 +655,7 @@ export function ChatView({
                         .join('|');
                       return `${s.phase}:si${s.segmentIndex}:${blockDetail || metaDetail || 'empty'}`;
                     }),
-                  ));
+                  ) + ' nb=' + (isNearBottom ? '1' : '0'));
                 }
                 return visibleLiveIndicator ?? undefined;
               })()}

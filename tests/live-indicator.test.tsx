@@ -11,9 +11,11 @@ import {
   resolveLiveIndicatorSpeakerLabel,
   shouldPromoteStreamingBubbleToWaitingSpeaker,
   shouldPromoteSealedBubbleToWaitingSpeaker,
+  shouldIgnoreSealedSessionClose,
   shouldPinLiveIndicatorUntilPersistedReply,
   shouldRetryLiveIndicatorSessionClose,
   shouldConnectLiveIndicatorStream,
+  shouldReconnectLiveIndicatorAfterOngoingWorkflow,
   shouldReconnectLiveIndicatorAfterSessionClose,
   shouldReconnectLiveIndicatorAfterSourceError,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
@@ -205,6 +207,127 @@ test('shouldReconnectLiveIndicatorAfterSessionClose stays on when a distinct fol
         participantId: 'participant-codex',
         catId: null,
         speakerLabel: 'Codex-CLI',
+        revealIdentity: true,
+        segmentIndex: 0,
+      }),
+    ),
+    true,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for a sealed speaker while the same turn keeps running', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        participantId: 'participant-agent-1',
+        speakerLabel: 'Agent-1',
+        segments: [
+          {
+            id: 'segment-0',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            targetStateId: 'target-agent-1',
+            segmentIndex: 0,
+            participantId: 'participant-agent-1',
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Agent-1',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: '',
+            progressKind: null,
+            tools: [],
+            contentBlocks: [
+              {
+                id: 'text:0',
+                index: 0,
+                kind: 'text',
+                status: 'complete',
+                title: null,
+                text: 'First answer',
+                toolName: null,
+                toolId: null,
+                metadata: null,
+              },
+            ],
+            events: [],
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+          {
+            id: 'message-agent-1',
+            senderKind: 'agent',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow: {
+            activeTurn: {
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    true,
+  );
+});
+
+test('shouldIgnoreSealedSessionClose stays off when a distinct follow-up target exists', () => {
+  assert.equal(
+    shouldIgnoreSealedSessionClose(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        targetStateId: 'target-state-claude',
+        segmentIndex: 0,
+      },
+      createWaitingLiveIndicatorState({
+        targetStateId: 'target-state-codex',
+        participantId: 'participant-codex',
+        catId: null,
+        speakerLabel: 'Codex-CLI',
+        revealIdentity: true,
+        segmentIndex: 0,
+      }),
+    ),
+    false,
+  );
+});
+
+test('shouldIgnoreSealedSessionClose stays on when no distinct follow-up target exists', () => {
+  assert.equal(
+    shouldIgnoreSealedSessionClose(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        targetStateId: 'target-state-claude',
+        segmentIndex: 0,
+      },
+      createWaitingLiveIndicatorState({
+        targetStateId: 'target-state-claude',
+        participantId: 'participant-claude',
+        catId: null,
+        speakerLabel: 'Claude-CLI',
         revealIdentity: true,
         segmentIndex: 0,
       }),
@@ -546,6 +669,126 @@ test('resolveWaitingIndicatorStateTransition increments the segment index for sa
   assert.equal(next.segments[0]?.segmentIndex, 0);
   assert.equal(next.segments[1]?.segmentIndex, 1);
   assert.notEqual(next.segments[0]?.id, next.segments[1]?.id);
+});
+
+test('resolveWaitingIndicatorStateTransition preserves an existing waiting segment index for the same logical follow-up speaker', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting' as const,
+    sourceMessageId: 'message-user-current',
+    targetStateId: 'target-codex',
+    participantId: 'participant-codex',
+    speakerLabel: 'Codex-CLI',
+    segmentIndex: 3,
+    segments: [
+      {
+        id: 'message-user-current:participant-claude:segment:0',
+        phase: 'sealed' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: 'target-claude',
+        segmentIndex: 0,
+        participantId: 'participant-claude',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Claude-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text' as const,
+            status: 'complete' as const,
+            title: null,
+            text: 'First segment',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+        events: [],
+      },
+      {
+        id: 'message-user-current:participant-codex:segment:3',
+        phase: 'waiting' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: 'target-codex',
+        segmentIndex: 3,
+        participantId: 'participant-codex',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Codex-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [],
+        events: [],
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    targetStateId: 'target-codex',
+    participantId: 'participant-codex',
+    catId: null,
+    speakerLabel: 'Codex-CLI',
+    revealIdentity: true,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user-current',
+          senderKind: 'user',
+        },
+        {
+          id: 'message-agent-current-0',
+          senderKind: 'agent',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user-current',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                id: 'target-codex',
+                status: 'pending',
+                participant: {
+                  participantId: 'participant-codex',
+                  participantName: 'Codex-CLI',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next.phase, 'waiting');
+  assert.equal(next.segments.length, 2);
+  assert.equal(next.segments[1]?.segmentIndex, 3);
+  assert.equal(next.segments[1]?.id, 'message-user-current:participant-codex:segment:3');
 });
 
 test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage only matches the current streaming speaker', () => {
@@ -1378,11 +1621,18 @@ test('shared live indicator effect reconnects on EventSource termination without
   assert.match(source, /const waitingSpeakerState = useMemo\(\s*\(\) => resolveWaitingSpeakerState\(selectedChannel\)/u);
   assert.match(source, /const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>\(/u);
   assert.match(source, /const selectedChannelRef = useRef/u);
-  assert.match(source, /const shouldIgnoreSealedSessionClose = shouldRetrySessionClose\s*&& primarySegment\?\.phase === 'sealed';/u);
+  assert.match(source, /const shouldRetrySessionClose = eventType === 'session_closed'/u);
+  assert.match(source, /const shouldReconnectFollowupTarget = shouldRetrySessionClose/u);
+  assert.match(source, /const shouldReconnectOngoingWorkflow = shouldRetrySessionClose/u);
+  assert.match(source, /const shouldIgnoreSealedBoundary = shouldRetrySessionClose/u);
+  assert.match(source, /shouldIgnoreSealedSessionClose\(stateRef\.current, waitingState\)/u);
+  assert.match(source, /shouldReconnectLiveIndicatorAfterOngoingWorkflow\(/u);
   assert.match(source, /traceBrowser\('stream_session_close_ignored'/u);
   assert.match(source, /shouldReconnectLiveIndicatorAfterSessionClose\(/u);
   assert.match(source, /traceBrowser\('stream_session_close_no_followup'/u);
   assert.match(source, /shouldReconnectLiveIndicatorAfterSourceError\(/u);
+  assert.match(source, /eventsource_terminated_followup_handoff/u);
+  assert.match(source, /eventsource_terminated_running_workflow/u);
   assert.match(source, /traceBrowser\('stream_source_error_ignored'/u);
   assert.match(source, /traceBrowser\('indicator_pin_pending_reply'/u);
   assert.match(source, /activeTurn/u);

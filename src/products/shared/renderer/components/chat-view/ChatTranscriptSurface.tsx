@@ -178,6 +178,22 @@ export function ChatTranscriptSurface({
                 const renderedBlocks = sortedBlocks
                   .map(renderBlock)
                   .filter((block): block is JSX.Element => block != null);
+                const hasSegmentIdentity = Boolean(
+                  segment.participantId || segment.catId || segment.speakerLabel,
+                );
+                const shouldRenderSegment =
+                  segment.phase === 'waiting'
+                  || renderedBlocks.length > 0
+                  || (showProgressDetails && segment.progressText.trim().length > 0)
+                  || (
+                    segment.phase === 'streaming'
+                    && (hasVisibleLiveIndicatorSegmentActivity(segment) || hasSegmentIdentity)
+                  )
+                  || showTrailingDots;
+
+                if (!shouldRenderSegment) {
+                  return null;
+                }
 
                 return (
                   <article key={segment.id} className="transcriptMessage transcriptMessageAgent typingIndicator">
