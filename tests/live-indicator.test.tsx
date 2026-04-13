@@ -10,6 +10,7 @@ import {
   resolveWaitingIndicatorStateTransition,
   resolveLiveIndicatorSpeakerLabel,
   shouldPromoteStreamingBubbleToWaitingSpeaker,
+  shouldPromoteSealedBubbleToWaitingSpeaker,
   shouldPinLiveIndicatorUntilPersistedReply,
   shouldRetryLiveIndicatorSessionClose,
   shouldConnectLiveIndicatorStream,
@@ -712,6 +713,90 @@ test('shouldPromoteStreamingBubbleToWaitingSpeaker hands off to a named follow-u
   );
 });
 
+test('shouldPromoteSealedBubbleToWaitingSpeaker hands off once the first speaker reply is durable', () => {
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user',
+    targetStateId: 'target-agent-2',
+    participantId: 'participant-agent-2',
+    catId: null,
+    speakerLabel: 'Agent-2',
+    revealIdentity: true,
+  });
+
+  assert.equal(
+    shouldPromoteSealedBubbleToWaitingSpeaker(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        targetStateId: 'target-agent-1',
+        participantId: 'participant-agent-1',
+        speakerLabel: 'Agent-1',
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text',
+            status: 'complete',
+            title: null,
+            text: 'First reply.',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+      },
+      waitingState,
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+            senderName: 'Kenny',
+            metadata: {},
+            createdAt: '2026-04-14T01:00:00.000Z',
+          },
+          {
+            id: 'message-agent-1',
+            senderKind: 'agent',
+            senderName: 'Agent-1',
+            metadata: {
+              targetKind: 'cat',
+              targetId: 'participant-agent-1',
+            },
+            createdAt: '2026-04-14T01:00:03.000Z',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow: {
+            activeTurn: {
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [
+                {
+                  id: 'target-agent-2',
+                  status: 'pending',
+                  participant: {
+                    participantId: 'participant-agent-2',
+                    participantName: 'Agent-2',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    true,
+  );
+});
+
 test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', () => {
   const label = resolveLiveIndicatorSpeakerLabel({
     composerMode: 'solo',
@@ -1284,6 +1369,11 @@ test('shared live indicator effect reconnects on EventSource termination without
     ),
     'utf8',
   );
+  const waitingResetIndex = source.indexOf('if (!shouldShowWaiting) {');
+  const channelChangeResetIndex = source.indexOf('if (previousChannelId !== channelId) {');
+  assert.ok(waitingResetIndex >= 0);
+  assert.ok(channelChangeResetIndex > waitingResetIndex);
+  const waitingResetSection = source.slice(waitingResetIndex, channelChangeResetIndex);
 
   assert.match(source, /const waitingSpeakerState = useMemo\(\s*\(\) => resolveWaitingSpeakerState\(selectedChannel\)/u);
   assert.match(source, /const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>\(/u);
@@ -1299,7 +1389,7 @@ test('shared live indicator effect reconnects on EventSource termination without
   assert.match(source, /selectedChannel\?\.messages/u);
   assert.match(source, /function updateIndicatorState\(/u);
   assert.doesNotMatch(source, /startTransition\(/u);
-  assert.doesNotMatch(source, /if \(!shouldShowWaiting\)\s*\{[\s\S]*?streamCursorRef\.current = null;/u);
+  assert.doesNotMatch(waitingResetSection, /streamCursorRef\.current = null;/u);
   assert.match(source, /if \(previousChannelId !== channelId\)\s*\{\s*streamCursorRef\.current = null;\s*\}/u);
   assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*routingStatus,\s*shouldConnectStream,\s*shouldShowWaitingIndicator,\s*\]/u);
   assert.match(

@@ -391,6 +391,33 @@ export function shouldPromoteStreamingBubbleToWaitingSpeaker(
   );
 }
 
+export function shouldPromoteSealedBubbleToWaitingSpeaker(
+  previous: LiveIndicatorState,
+  waitingState: LiveIndicatorState,
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+): boolean {
+  if (
+    !previous.active
+    || previous.phase !== 'sealed'
+    || !waitingState.active
+    || waitingState.phase !== 'waiting'
+    || !hasLiveIndicatorIdentity(waitingState)
+    || doesLiveIndicatorIdentityMatch(previous, waitingState)
+  ) {
+    return false;
+  }
+
+  const sourceMessageId = selectedChannel?.roomRouting.workflow.activeTurn?.sourceMessageId ?? null;
+  if (!sourceMessageId) {
+    return false;
+  }
+
+  return hasVisibleAssistantReplyAfterMessage(
+    selectedChannel?.messages ?? [],
+    sourceMessageId,
+  );
+}
+
 export function shouldReconnectLiveIndicatorAfterSourceError(
   current: LiveIndicatorState,
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
@@ -923,6 +950,18 @@ export function useLiveIndicator<
     setState((previous) => {
       if (
         shouldPromoteStreamingBubbleToWaitingSpeaker(
+          previous,
+          waitingState,
+          selectedChannelRef.current,
+        )
+      ) {
+        const next = mergeWaitingIndicatorTimelineState(previous, waitingState);
+        stateRef.current = next;
+        return next;
+      }
+
+      if (
+        shouldPromoteSealedBubbleToWaitingSpeaker(
           previous,
           waitingState,
           selectedChannelRef.current,
