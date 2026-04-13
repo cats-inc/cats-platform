@@ -148,8 +148,7 @@ export function resolveDesktopStartupLaunchContext(options: {
     && options.background.keepServicesRunning
     && options.background.closeBehavior === 'minimize_to_tray';
 
-  const showWindowOnStartup = !launchedAtLogin
-    || options.preferences.openWindowOnStartup
+  const showWindowOnStartup = options.preferences.openWindowOnStartup
     || !backgroundLaunchAvailable;
 
   return {
