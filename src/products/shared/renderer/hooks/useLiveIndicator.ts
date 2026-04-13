@@ -63,6 +63,12 @@ export interface LiveIndicatorStreamDecisionInput {
   routingStatus?: string | null;
 }
 
+export interface SequencedLiveIndicatorStreamCursor {
+  sessionId: string;
+  streamSeq: number;
+  streamSeqIndex: number;
+}
+
 interface WaitingIndicatorInputs {
   participantId: string | null;
   catId: string | null;
@@ -255,6 +261,52 @@ function defaultShouldConnectStream(
   );
 }
 
+export function advanceSequencedLiveIndicatorStreamCursor(
+  previous: SequencedLiveIndicatorStreamCursor | null,
+  data: Record<string, unknown>,
+): {
+  accept: boolean;
+  cursor: SequencedLiveIndicatorStreamCursor | null;
+} {
+  const sessionId = readTraceString(data.sessionId);
+  const streamSeq = typeof data.streamSeq === 'number' && Number.isFinite(data.streamSeq)
+    ? data.streamSeq
+    : null;
+  const streamSeqIndex = typeof data.streamSeqIndex === 'number' && Number.isFinite(data.streamSeqIndex)
+    ? data.streamSeqIndex
+    : null;
+
+  if (!sessionId || streamSeq === null || streamSeqIndex === null) {
+    return {
+      accept: true,
+      cursor: previous,
+    };
+  }
+
+  if (
+    previous
+    && previous.sessionId === sessionId
+    && (
+      streamSeq < previous.streamSeq
+      || (streamSeq === previous.streamSeq && streamSeqIndex <= previous.streamSeqIndex)
+    )
+  ) {
+    return {
+      accept: false,
+      cursor: previous,
+    };
+  }
+
+  return {
+    accept: true,
+    cursor: {
+      sessionId,
+      streamSeq,
+      streamSeqIndex,
+    },
+  };
+}
+
 export function useLiveIndicator<
   TSelectedChannel extends LiveIndicatorSelectedChannelLike = LiveIndicatorSelectedChannelLike,
 >(options: {
@@ -280,6 +332,7 @@ export function useLiveIndicator<
   const stateRef = useRef<LiveIndicatorState>(EMPTY_LIVE_INDICATOR);
   const selectedChannelRef = useRef<TSelectedChannel | null>(selectedChannel);
   const previousChannelIdRef = useRef<string | null>(null);
+  const streamCursorRef = useRef<SequencedLiveIndicatorStreamCursor | null>(null);
 
   const defaultRecipientCatId = selectedChannel?.roomRouting.defaultRecipientId ?? null;
   const routingStatus = resolveRoutingStatus?.(selectedChannel) ?? null;
@@ -425,6 +478,27 @@ export function useLiveIndicator<
         return;
       }
 
+      const streamCursorDecision = advanceSequencedLiveIndicatorStreamCursor(
+        streamCursorRef.current,
+        data,
+      );
+      if (!streamCursorDecision.accept) {
+        traceBrowser('stream_event_deduped', {
+          sessionId: readTraceString(data.sessionId),
+          participantId: readTraceString(data.participantId),
+          catId: readTraceString(data.catId),
+          speakerLabel: readTraceString(data.speakerLabel),
+          reason: 'stale_replayed_event',
+          details: {
+            eventType: (data.type as string) ?? e.type,
+            streamSeq: typeof data.streamSeq === 'number' ? data.streamSeq : null,
+            streamSeqIndex: typeof data.streamSeqIndex === 'number' ? data.streamSeqIndex : null,
+          },
+        });
+        return;
+      }
+      streamCursorRef.current = streamCursorDecision.cursor;
+
       reconnectAttempts = 0;
 
       const eventType = (data.type as string) ?? e.type;
@@ -533,6 +607,7 @@ export function useLiveIndicator<
     if (!shouldShowWaiting) {
       clearReconnectTimer();
       closeSource();
+      streamCursorRef.current = null;
       traceBrowser('indicator_reset', {
         reason: 'waiting_not_needed',
         details: {
@@ -547,6 +622,9 @@ export function useLiveIndicator<
     }
 
     const waitingState = createCurrentWaitingState();
+    if (previousChannelId !== channelId) {
+      streamCursorRef.current = null;
+    }
     setState((previous) => {
       const next = resolveWaitingIndicatorStateTransition({
         previous,

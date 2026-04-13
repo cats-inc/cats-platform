@@ -389,6 +389,10 @@ function synthesizeTextContentBlock(
     return contentBlocks;
   }
 
+  if (contentBlocks.some((block) => !isSyntheticFallbackTextBlock(block))) {
+    return contentBlocks;
+  }
+
   const lastBlock = contentBlocks.at(-1);
   if (lastBlock?.kind === 'text' && lastBlock.status === 'streaming') {
     return contentBlocks.map((block) =>
@@ -413,9 +417,17 @@ function synthesizeTextContentBlock(
       text: textChunk,
       toolName: null,
       toolId: null,
-      metadata: null,
+      metadata: {
+        syntheticTextFallback: true,
+      },
     },
   ].slice(-MAX_LIVE_INDICATOR_BLOCKS);
+}
+
+function isSyntheticFallbackTextBlock(
+  block: LiveIndicatorContentBlock,
+): boolean {
+  return block.kind === 'text' && block.metadata?.syntheticTextFallback === true;
 }
 
 function applyToolUseEvent(

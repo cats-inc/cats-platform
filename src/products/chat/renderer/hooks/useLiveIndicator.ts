@@ -3,6 +3,7 @@ import {
   isComposerDispatchBusy,
 } from '../../../../shared/composer.js';
 import {
+  advanceSequencedLiveIndicatorStreamCursor,
   EMPTY_LIVE_INDICATOR,
   resolveWaitingIndicatorStateTransition,
   resolveLiveIndicatorSpeakerLabel,
@@ -112,6 +113,7 @@ export function useLiveIndicator(options: {
 }
 
 export {
+  advanceSequencedLiveIndicatorStreamCursor,
   resolveLiveIndicatorSpeakerLabel,
   resolveWaitingIndicatorStateTransition,
   shouldPromoteStreamingBubbleToWaitingSpeaker,

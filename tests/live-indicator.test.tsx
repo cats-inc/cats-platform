@@ -5,6 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  advanceSequencedLiveIndicatorStreamCursor,
   EMPTY_LIVE_INDICATOR,
   resolveWaitingIndicatorStateTransition,
   resolveLiveIndicatorSpeakerLabel,
@@ -888,13 +889,15 @@ test('applyLiveIndicatorEvent synthesizes text content blocks from text events',
   assert.equal(state.contentBlocks[0].text, 'Hello world');
 });
 
-test('applyLiveIndicatorEvent creates a new text block after tool_use via content_block', () => {
+test('applyLiveIndicatorEvent creates a new text block after tool_use via structured content blocks', () => {
   let state = { ...EMPTY_LIVE_INDICATOR, active: true, phase: 'streaming' as const };
   state = applyLiveIndicatorEvent(state, 'text', { text: 'First' });
   state = applyLiveIndicatorEvent(state, 'content_block', {
     block: { id: 'tool:1', index: 1, kind: 'tool', status: 'streaming', text: '', toolName: 'search' },
   });
-  state = applyLiveIndicatorEvent(state, 'text', { text: 'Second' });
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: { id: 'text:2', index: 2, kind: 'text', status: 'streaming', text: 'Second' },
+  });
   assert.equal(state.contentBlocks.length, 3);
   assert.equal(state.contentBlocks[0].kind, 'text');
   assert.equal(state.contentBlocks[0].text, 'First');
@@ -1265,4 +1268,72 @@ test('live indicator tracks content blocks by id and updates them in place', () 
       metadata: null,
     },
   ]);
+});
+
+test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys and rejects stale replays', () => {
+  let cursor = null;
+
+  let decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-1',
+    streamSeq: 4,
+    streamSeqIndex: 0,
+  });
+  assert.equal(decision.accept, true);
+  cursor = decision.cursor;
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-1',
+    streamSeq: 4,
+    streamSeqIndex: 1,
+  });
+  assert.equal(decision.accept, true);
+  cursor = decision.cursor;
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-1',
+    streamSeq: 4,
+    streamSeqIndex: 0,
+  });
+  assert.equal(decision.accept, false);
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-1',
+    streamSeq: 3,
+    streamSeqIndex: 9,
+  });
+  assert.equal(decision.accept, false);
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-2',
+    streamSeq: 1,
+    streamSeqIndex: 0,
+  });
+  assert.equal(decision.accept, true);
+});
+
+test('applyLiveIndicatorEvent ignores raw text fallback once structured content blocks are active', () => {
+  let state = createWaitingLiveIndicatorState({
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+  });
+
+  state = applyLiveIndicatorEvent(state, 'text', {
+    text: 'Hello',
+  });
+  state = applyLiveIndicatorEvent(state, 'content_block', {
+    block: {
+      id: 'text:0',
+      index: 0,
+      kind: 'text',
+      status: 'streaming',
+      text: 'Hello',
+    },
+  });
+  state = applyLiveIndicatorEvent(state, 'text', {
+    text: 'Hello',
+  });
+
+  assert.equal(state.contentBlocks.length, 1);
+  assert.equal(state.contentBlocks[0]?.text, 'Hello');
+  assert.equal(state.contentBlocks[0]?.metadata, null);
 });
