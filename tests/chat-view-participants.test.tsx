@@ -726,6 +726,155 @@ test('ChatView keeps the last user bubble in a generic processing state until se
   assert.doesNotMatch(markup, /catAvatarPulsing/u);
 });
 
+test('ChatView keeps a newer queued user bubble processing while the prior group turn is still streaming', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user-1',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'First request.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-agent-1',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Claude-CLI',
+              body: 'First reply.',
+              mentions: [],
+              metadata: {
+                event: 'assistant_turn_segment',
+                sourceMessageId: 'message-user-1',
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+                targetStateId: 'target-1',
+                segmentIndex: 0,
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:02.000Z',
+            },
+            {
+              id: 'message-user-2',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Second request.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:03.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-user-1',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 2,
+                targetStatuses: [
+                  {
+                    id: 'target-1',
+                    dispatchId: 'dispatch-1',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-inline',
+                      participantName: 'Claude-CLI',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user-1',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'completed',
+                    queuedAt: '2026-04-07T00:01:01.000Z',
+                    startedAt: '2026-04-07T00:01:01.500Z',
+                    completedAt: '2026-04-07T00:01:02.000Z',
+                    response: {
+                      assistantTurnId: 'assistant-turn-1',
+                      messageIds: ['message-agent-1'],
+                      fullText: 'First reply.',
+                      segmentCount: 1,
+                    },
+                    error: null,
+                  },
+                  {
+                    id: 'target-2',
+                    dispatchId: 'dispatch-2',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-verifier',
+                      participantName: 'Codex-CLI',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user-1',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'running',
+                    queuedAt: '2026-04-07T00:01:02.500Z',
+                    startedAt: '2026-04-07T00:01:03.200Z',
+                    completedAt: null,
+                    response: null,
+                    error: null,
+                  },
+                ],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:03.300Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          sourceMessageId: 'message-user-1',
+          targetStateId: 'target-2',
+          participantId: 'participant-verifier',
+          speakerLabel: 'Codex-CLI',
+          sessionStartedAt: '2026-04-07T00:01:03.200Z',
+          requiresSessionStartConfirmation: true,
+          progressKind: 'session',
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /userTurnStatusProcessing/u);
+});
+
 test('ChatView shows retry only on the latest failed acknowledged user turn', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(

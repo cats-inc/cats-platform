@@ -212,6 +212,16 @@ function findLatestUserMessage(
   return null;
 }
 
+function findMessageIndex(
+  messages: SelectedChannelView['messages'],
+  messageId: string | null | undefined,
+): number {
+  if (!messageId) {
+    return -1;
+  }
+  return messages.findIndex((message) => message.id === messageId);
+}
+
 function hasDispatchedWorkflowTarget(
   activeTurn: SelectedChannelView['roomRouting']['workflow']['activeTurn'] | null | undefined,
 ): boolean {
@@ -243,7 +253,21 @@ export function resolveLatestUserTurnPresentationState(input: {
 
   const activeTurn = input.selectedChannel.roomRouting.workflow.activeTurn ?? null;
   const lastOutcome = input.selectedChannel.roomRouting.lastOutcome ?? null;
-  const hasAssistantIdentityBubble = hasLiveIndicatorIdentity(input.visibleLiveIndicator);
+  const latestUserMessageIndex = findMessageIndex(
+    input.selectedChannel.messages,
+    latestUserMessage.id,
+  );
+  const activeTurnSourceMessageId = activeTurn?.sourceMessageId ?? null;
+  const activeTurnSourceMessageIndex = findMessageIndex(
+    input.selectedChannel.messages,
+    activeTurnSourceMessageId,
+  );
+  const liveIndicatorSourceMessageId = input.visibleLiveIndicator?.sourceMessageId ?? null;
+  const liveIndicatorMatchesLatestUserMessage = liveIndicatorSourceMessageId
+    ? liveIndicatorSourceMessageId === latestUserMessage.id
+    : activeTurnSourceMessageId === latestUserMessage.id;
+  const hasAssistantIdentityBubble = liveIndicatorMatchesLatestUserMessage
+    && hasLiveIndicatorIdentity(input.visibleLiveIndicator);
   const hasVisibleAssistantReply = hasVisibleAssistantReplyAfterMessage(
     input.selectedChannel.messages,
     latestUserMessage.id,
@@ -253,14 +277,27 @@ export function resolveLatestUserTurnPresentationState(input: {
     latestUserMessage.id,
   );
   const hasDispatchedTarget = hasDispatchedWorkflowTarget(activeTurn);
+  const queuedBehindActiveTurn = (
+    latestUserMessageIndex > -1
+    && activeTurnSourceMessageIndex > -1
+    && activeTurnSourceMessageIndex < latestUserMessageIndex
+    && (activeTurn?.status === 'running' || activeTurn?.status === 'pending')
+    && !hasVisibleAssistantReply
+    && !hasVisibleSessionStart
+  );
 
   if (
-    activeTurn?.sourceMessageId === latestUserMessage.id
-    && (activeTurn.status === 'running' || activeTurn.status === 'pending')
+    (
+      (
+        activeTurn?.sourceMessageId === latestUserMessage.id
+        && (activeTurn.status === 'running' || activeTurn.status === 'pending')
+        && !hasDispatchedTarget
+      )
+      || queuedBehindActiveTurn
+    )
     && !hasAssistantIdentityBubble
     && !hasVisibleAssistantReply
     && !hasVisibleSessionStart
-    && !hasDispatchedTarget
   ) {
     return {
       messageId: latestUserMessage.id,

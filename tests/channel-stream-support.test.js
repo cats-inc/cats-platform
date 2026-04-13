@@ -180,6 +180,32 @@ test('resolveChannelStreamTarget does not fall back to an arbitrary ready partic
   assert.equal(resolveChannelStreamTarget(channel), null);
 });
 
+test('resolveChannelStreamTarget does not fall back to the room default recipient while a multi-participant workflow target is still materializing', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: 'participant-1',
+      workflow: {
+        activeTurn: {
+          id: 'turn-1',
+          status: 'running',
+          targetStatuses: [],
+          events: [],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
+      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'Codex-CLI'),
+    ],
+  };
+
+  assert.equal(resolveChannelStreamSessionId(channel), null);
+  assert.equal(resolveChannelStreamTarget(channel), null);
+});
+
 test('resolveChannelStreamTarget falls back to the default recipient while a single-target workflow turn is still materializing', () => {
   const channel = {
     roomMode: 'direct_cat_chat',

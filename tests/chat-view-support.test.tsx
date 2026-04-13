@@ -367,6 +367,61 @@ test('resolveLatestUserTurnPresentationState keeps the user bubble idle once ses
   });
 });
 
+test('resolveLatestUserTurnPresentationState keeps the latest queued user bubble processing while a prior turn is still streaming', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user-1',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+        {
+          id: 'message-agent-1',
+          senderKind: 'agent',
+          createdAt: '2026-04-11T00:00:02.000Z',
+        },
+        {
+          id: 'message-user-2',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:03.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            sourceMessageId: 'message-user-1',
+            status: 'running',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                status: 'running',
+                participant: {
+                  participantId: 'participant-codex',
+                },
+              },
+            ],
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: {
+      ...EMPTY_LIVE_INDICATOR,
+      active: true,
+      phase: 'streaming',
+      sourceMessageId: 'message-user-1',
+      participantId: 'participant-codex',
+      speakerLabel: 'Codex-CLI',
+    },
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user-2',
+    status: 'processing',
+  });
+});
+
 test('resolveLatestUserTurnPresentationState marks the latest failed acknowledged user turn as retryable', () => {
   const result = resolveLatestUserTurnPresentationState({
     selectedChannel: {

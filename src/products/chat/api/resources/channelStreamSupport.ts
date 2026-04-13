@@ -189,8 +189,8 @@ function shouldAllowLegacyFallbackDuringActiveWorkflowTurn(
     return false;
   }
 
-  if (channel.roomRouting?.defaultRecipientId) {
-    return true;
+  if (isDirectLaneChannel(channel)) {
+    return Boolean(channel.roomRouting?.defaultRecipientId);
   }
 
   return resolveActiveParticipantCount(channel) <= 1;
