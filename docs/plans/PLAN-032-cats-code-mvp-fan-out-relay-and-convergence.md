@@ -16,6 +16,7 @@
 ## Related Spec / Dependencies
 
 - [SPEC-043: Cats Code MVP Multi-Agent Local-App Workflow](../specs/SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md)
+- [SPEC-061: Concurrent vs Parallel Semantics and Code Entry Presets](../specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-032: Core Task Lifecycle and Wakeup Integration](../specs/SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
 - [SPEC-041: Cats Code v1 Local Builder Loop](../specs/SPEC-041-cats-code-v1-local-builder-loop.md)
 - [PLAN-029: Cats Code v1 Local Builder Loop](./PLAN-029-cats-code-v1-local-builder-loop.md)
@@ -43,6 +44,10 @@ one pass. It narrows the first execution slice to:
 
 This slice should be useful on its own even before `shape`, `fit`,
 implementation, or human-verification loops are deeply integrated.
+
+Under the newer shared-engine semantics, this plan should be read primarily as
+`+Peer code`-style branch/review behavior above a parallel container. It is not
+the same thing as one-thread `concurrent` fan-out.
 
 The make-or-break risk for this slice is the runtime-backed relay contract. If
 the product cannot automatically send a prompt through `cats-runtime` and

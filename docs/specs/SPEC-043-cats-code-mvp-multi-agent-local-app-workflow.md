@@ -49,6 +49,13 @@ Under the current re-architecture, this project thread should be treated as a
 conversation/container projection above the shared interaction core rather than
 as a parallel standalone workflow engine.
 
+The first product entry points should also be read as presets above that shared
+engine:
+
+- `+New code`
+- `+Team code`
+- `+Peer code`
+
 ## Goals
 
 - eliminate the user's manual copy/paste relay between multiple coding agents
@@ -129,6 +136,21 @@ The first slice shall support at least these modes:
 
 The current mode is a focus hint, not a one-way lock. The user may re-enter an
 earlier mode at any time.
+
+### Entry presets above the shared engine
+
+The broader `Cats Code` MVP should expose three operator-facing entry presets:
+
+- `+New code`
+  - one primary coding conversation
+- `+Team code`
+  - one shared multi-participant coding conversation
+- `+Peer code`
+  - one parallel branch/review container with child conversations
+
+These presets do not create separate workflow engines. They configure topology,
+sharing, scheduler, and automation policy above the same shared interaction
+core.
 
 ### Rounds
 
@@ -440,6 +462,9 @@ user starts with vague or concrete app intent
 - This spec defines the broader `Cats Code` MVP workflow around discovery,
   shaping, fit, documentation, implementation relay, review, and human
   verification.
+- [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
+  defines how `+New code`, `+Team code`, and `+Peer code` map onto the shared
+  interaction engine.
 - In product terms, `SPEC-041` should be treated as one important build/run
   subsystem inside the larger `Cats Code` workflow rather than the whole
   product promise.
@@ -460,6 +485,7 @@ user starts with vague or concrete app intent
 ## References
 
 - [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md)
+- [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md)
 - [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
 - [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)

@@ -42,6 +42,10 @@ All product teams must treat these as frozen architectural rules:
    projections consume them.
 5. Boss Cat and Guide Cat are optional capability layers, not alternate engine
    topologies.
+6. `Concurrent` and `parallel` must stay separate abstraction layers.
+7. Product entry presets such as `+New code`, `+Team code`, and `+Peer code`
+   must map to shared engine policies rather than inventing local workflow
+   engines.
 
 ## Frozen Shared Contracts
 
@@ -63,12 +67,44 @@ Rules:
 At the doc/architecture level, the current freeze set also includes:
 
 - [ADR-059](./decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [ADR-062](./decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md)
+- [SPEC-061](./specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-058](./specs/SPEC-058-interaction-core-and-domain-materialization.md)
 - [ADR-060](./decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
 - [SPEC-060](./specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
 
 Products must not work around these invariants by inventing local room modes,
 local replay logic, or local materialization semantics.
+
+## Concurrent, Parallel, and Code-Preset Mapping
+
+All product teams must preserve this mapping:
+
+- `concurrent`
+  - one conversation turn
+  - many lanes
+- `parallel`
+  - one container
+  - many child conversations
+
+Current product presets should therefore map as:
+
+- `+New chat`
+  - one conversation preset
+- `+Group chat`
+  - one shared conversation preset
+- `+Parallel chat`
+  - one parallel container preset
+- `+New code`
+  - one primary coding conversation preset
+- `+Team code`
+  - one shared multi-participant coding conversation preset
+- `+Peer code`
+  - one parallel branch/review container preset
+
+Products may layer scheduler, sharing, coordinator, convergence, and automation
+policies on top of those presets, but must not redefine the underlying
+container/conversation/turn/lane/session model.
 
 ## Product Route Registration
 
@@ -177,6 +213,9 @@ Before a product team adds a new platform capability, confirm:
    materialization rules instead of creating product-local side channels.
 7. Tests cover both behavior and boundary expectations when the new seam
    matters architecturally.
+8. If the feature uses many workers/agents, it makes explicit whether that
+   means concurrent lanes inside one conversation or parallel child
+   conversations inside one container.
 
 ## Integration Owner Checklist
 

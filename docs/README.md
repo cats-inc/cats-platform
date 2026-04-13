@@ -55,6 +55,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-061](./specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
+- [ADR-062](./decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md)
+- [PLAN-053](./plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-060](./specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
 - [ADR-061](./decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
 - [PLAN-052](./plans/PLAN-052-guide-cat-optional-surface-assist-capability.md)

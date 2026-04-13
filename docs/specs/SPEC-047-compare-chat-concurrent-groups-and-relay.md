@@ -10,6 +10,12 @@
 
 Cats Chat needs a parallel mode that sits between a normal solo chat and a fully shared group chat. A user should be able to open multiple private AI threads at once, send the same prompt to all of them, switch between them quickly, and selectively relay one model's reply into the other private threads using reusable command patterns.
 
+This spec should now be read with the stricter shared-engine distinction:
+
+- `Parallel Chat` is a container of child conversations
+- it is not the same thing as thread-internal `concurrent` fan-out inside one
+  conversation turn
+
 ## Why
 
 - Current multi-chat workflows are too manual when the user wants to run multiple private AI threads in parallel, whether for comparison or simple parallel work.
@@ -52,6 +58,8 @@ Cats Chat needs a parallel mode that sits between a normal solo chat and a fully
 
 - Use `Parallel chat` as the user-facing label instead of `Concurrent chat`.
 - Parallel chat is the container. Compare / debate / adopt behaviors are optional relay workflows on top of that container.
+- Parallel chat should stay distinct from concurrent response clusters inside
+  one shared-thread group conversation.
 - Parallel-chat groups should feel like "bound private threads", not like a room where all AIs watch the same transcript.
 - Relay actions should read like intentional workflow commands, not like raw copy/paste.
 
@@ -75,3 +83,4 @@ Deferred:
 ## Related Plan
 
 - [PLAN-036](../plans/PLAN-036-compare-chat-concurrent-groups-and-relay.md)
+- [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)

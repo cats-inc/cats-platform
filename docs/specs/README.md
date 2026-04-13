@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md) | Concurrent vs Parallel Semantics and Code Entry Presets | Draft | [PLAN-053](../plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md), [ADR-062](../decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md) |
 | [SPEC-060](./SPEC-060-guide-cat-optional-surface-assist-capability.md) | Guide Cat Optional Surface-Assist Capability | Draft | [PLAN-052](../plans/PLAN-052-guide-cat-optional-surface-assist-capability.md), [ADR-061](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md) |
 | [SPEC-059](./SPEC-059-heterogeneous-runtime-delivery-normalization.md) | Heterogeneous Runtime Delivery Normalization | Draft | [PLAN-051](../plans/PLAN-051-heterogeneous-runtime-delivery-normalization.md), [ADR-060](../decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md) |
 | [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md) | Interaction Core and Domain Materialization | Draft | [PLAN-050](../plans/PLAN-050-interaction-core-and-domain-materialization.md), [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md) |

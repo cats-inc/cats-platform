@@ -53,6 +53,7 @@
 | Parallel Chat | The Cats Chat product mode that binds multiple isolated child chats into one comparison container. `Parallel Chat` is distinct from thread-internal concurrent dispatch inside one chat thread. |
 | Conversation topology | The stable shape of a conversation such as direct lane, single-counterpart thread, or team room. Topology answers "what kind of room is this?" rather than "who should answer the next turn?" or "how should that turn dispatch?" |
 | Turn strategy | The per-turn execution shape such as default recipient routing, explicit mention routing, sequential handoff, concurrent dispatch inside one thread, or later converge behavior. Turn strategy should not be confused with participant class. |
+| Convergence policy | The rule that decides how multi-lane outputs should be resolved after concurrent fan-out, such as `keep_all`, `pick_one`, `synthesize_one`, or `promote_one_continue`. |
 | Skill profile | A product-owned capability mapping that decides which runtime skill names should be requested for a Cat in a given room or transport context. |
 | Runtime skill catalog | The `cats-runtime` hosted catalog of execution-ready `SKILL.md` packages that can be validated, resolved, and mounted into sessions. |
 | Runtime skill manifest | The product-to-runtime request payload that carries requested skill names plus optional context metadata for one session or wake flow. |
@@ -86,6 +87,8 @@
 | Scheduler policy | The rule that decides whether lanes activate serially or concurrently. |
 | Sharing policy | The rule that decides whether execution happens in one shared conversation, isolated child conversations, or another bounded context-sharing model. |
 | Coordinator capability | An optional capability layer, such as `Boss Cat`, that may influence routing or orchestration without redefining the core interaction model. |
+| Concurrent response cluster | The product projection for one concurrent turn inside one conversation. It groups many stable lanes under one user-turn fan-out. |
+| Parallel container | A parent grouping that owns many child conversations, such as `Parallel Chat` or future `Peer code`. It is not the same thing as a concurrent response cluster. |
 | Materialization | The process by which interaction outcomes become durable structured product state outside the transcript projection. |
 | Mutation | A structured output proposing or applying a change to durable product state. |
 | Artifact | A durable output such as a spec, plan, code change, test result, preview, or review record. |
@@ -94,6 +97,10 @@
 | Runtime capability profile | The normalized description of how much delivery richness a runtime/backend exposes, such as rich streaming, text streaming, or terminal-only result delivery. |
 | Normalized delivery event | A product-owned runtime event used by transcript, repair, replay, and materialization logic after adapter-specific payloads have been normalized. |
 | Guide Cat assist capability | The optional low-privilege assist layer that may generate greetings, prompt chips, helper copy, and contextual suggestions for setup, lobby, chat entry, or other surfaces, while degrading cleanly into deterministic fallback when unavailable. |
+| Execution profile | A durable preset or binding that captures runtime-affecting inputs such as `cwd`, worktree mode, permission profile, tool/skill profile, and memory profile for a participant, lane, or child conversation. |
+| New Code | The one-person `Cats Code` entry preset that creates one primary coding conversation. |
+| Team Code | The shared-room `Cats Code` entry preset that creates one multi-participant coding conversation with workflow policy. |
+| Peer Code | The branch/review `Cats Code` entry preset that creates one parallel container with many child coding conversations and optional automation policies. |
 
 ## Roles
 

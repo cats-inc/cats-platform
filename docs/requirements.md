@@ -287,6 +287,22 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: Medium
 - **Status**: Planned
 
+### FR-037: Concurrent vs Parallel Semantic Split
+
+- **Description**: The platform shall treat `concurrent` as thread-internal
+  multi-lane fan-out inside one conversation turn, and `parallel` as
+  container-level composition of many child conversations.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-038: Code Entry Presets Over the Shared Engine
+
+- **Description**: `Cats Code` shall expose `+New code`, `+Team code`, and
+  `+Peer code` as product presets above the shared interaction engine rather
+  than as separate workflow engines.
+- **Priority**: High
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -400,6 +416,20 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - Guide Cat MUST remain optional at the platform and per-surface level
 - Surfaces that consume Guide Cat SHOULD degrade into deterministic fallback
   instead of losing baseline usability
+
+### NFR-018: Concurrent and Parallel Must Stay Layer-Separated
+
+- `Concurrent` MUST remain a one-conversation, one-turn, multi-lane concept
+- `Parallel` MUST remain a container-of-conversations concept
+- Renderers, APIs, and tests MUST NOT collapse those meanings into one generic
+  "many agents at once" abstraction
+
+### NFR-019: Code Presets Must Bind Execution Profiles Explicitly
+
+- Code entry presets SHOULD persist runtime-affecting setup such as `cwd`,
+  worktree policy, permissions, and tool/skill bindings as first-class
+  contracts
+- These inputs MUST NOT exist only as ad hoc renderer form state
 
 ## User Stories
 
@@ -652,6 +682,30 @@ is missing.
 **Acceptance Criteria**:
 - [ ] Lobby or entry surfaces can use runtime-backed or cached Guide Cat assist
 - [ ] Deterministic fallback remains available when Guide Cat output is absent
+
+### US-023: Concurrent Compare and Parallel Branches Feel Different
+
+**As a** user,
+**I want to** see one-turn concurrent compare clusters and multi-thread parallel
+containers presented differently,
+**So that** I can tell whether I am comparing replies inside one conversation
+or navigating independent branches.
+
+**Acceptance Criteria**:
+- [ ] Concurrent turns render as one-turn response clusters
+- [ ] Parallel surfaces render as child conversations inside a container
+
+### US-024: Code Entry Surfaces Match Different Working Styles
+
+**As a** code user,
+**I want to** choose between solo, shared-team, and peer-review entry points,
+**So that** I can start the right workflow without reconfiguring everything by
+hand after creation.
+
+**Acceptance Criteria**:
+- [ ] `+New code` maps to one primary coding conversation
+- [ ] `+Team code` maps to one shared multi-participant coding conversation
+- [ ] `+Peer code` maps to one parallel branch/review container
 
 ## Constraints
 

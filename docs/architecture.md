@@ -39,10 +39,37 @@ This means:
 
 - `+New chat`, `+Group chat`, `+Parallel chat`, and direct lanes are presets or
   compositions above one engine
+- `concurrent` remains one-turn multi-lane fan-out inside one conversation,
+  while `parallel` remains container composition across many child
+  conversations
 - `Chat`, `Work`, and `Code` do not get separate conversation lifecycles
 - transcript bubbles are projections over canonical turn/lane state
 - structured product state is materialized beside the transcript, not scraped
   back out of it later
+
+## Concurrent, Parallel, and Code Presets
+
+The platform now freezes these meanings:
+
+- `concurrent`
+  - one `Conversation`
+  - one `Turn`
+  - many active `Lane`s
+- `parallel`
+  - one `Container`
+  - many child `Conversation`s
+
+This distinction also drives the first `Cats Code` entry presets:
+
+- `+New code`
+  - one primary coding conversation
+- `+Team code`
+  - one shared multi-participant coding conversation
+- `+Peer code`
+  - one parallel branch/review container with child conversations
+
+The product may still expose friendly entry labels, but those labels are
+presets above one shared engine rather than separate workflow engines.
 
 ## Architecture Diagram
 
@@ -768,6 +795,7 @@ intentionally deferred:
   interface, not `agent-fleet`
 - Shared domain contracts before product-surface specialization
 - One interaction core with many presets rather than many mode-specific engines
+- Concurrent turn fan-out distinct from parallel container composition
 - Structured materialization beside transcript projection
 - Direct product APIs plus MCP tool access for orchestrators
 - Dependency injection by constructor or factory parameter
@@ -800,6 +828,9 @@ intentionally deferred:
 - [ADR-059](./decisions/059-adopt-a-unified-conversation-turn-lane-engine.md):
   use one canonical interaction engine for direct, sequential, concurrent, and
   parallel flows
+- [ADR-062](./decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md):
+  keep concurrent turn fan-out distinct from parallel container composition and
+  map Code entry points onto shared presets
 - [ADR-060](./decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md):
   normalize mixed runtime delivery into one product contract
 - [ADR-061](./decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md):
