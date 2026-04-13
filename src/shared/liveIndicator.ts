@@ -420,6 +420,35 @@ function segmentHasTextContent(
   );
 }
 
+function resolveProjectedTextSegmentOrdinal(
+  segments: ReadonlyArray<LiveIndicatorSegmentState>,
+  segmentIndex: number,
+): number | null {
+  const targetSegment = segments[segmentIndex];
+  if (!targetSegment || !segmentHasTextContent(targetSegment)) {
+    return null;
+  }
+
+  let ordinal = 0;
+  for (let index = 0; index < segments.length; index += 1) {
+    const candidate = segments[index]!;
+    if (
+      !segmentHasTextContent(candidate)
+      || !isSameLiveIndicatorTimelineIdentity(candidate, targetSegment)
+    ) {
+      continue;
+    }
+
+    if (index === segmentIndex) {
+      return ordinal;
+    }
+
+    ordinal += 1;
+  }
+
+  return null;
+}
+
 function segmentHasOnlySyntheticTextFallback(
   segment: LiveIndicatorSegmentState,
 ): boolean {
@@ -794,6 +823,8 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   const sourceSegments = resolveLiveIndicatorSegments(liveIndicator);
   const projectedSourceSegments = projectLogicalLiveIndicatorSegments(sourceSegments);
   const visibleSegments = projectedSourceSegments.filter((segment, index) => {
+    const persistedSegmentIndex =
+      resolveProjectedTextSegmentOrdinal(projectedSourceSegments, index) ?? segment.segmentIndex;
     if (
       (segment.phase === 'waiting' || segment.phase === 'streaming')
       && segment.requiresSessionStartConfirmation
@@ -805,7 +836,7 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     ) {
       return false;
     }
-    if (hasVisiblePersistedSegment(messages, segment)) {
+    if (hasVisiblePersistedSegment(messages, segment, persistedSegmentIndex)) {
       return false;
     }
     if (index > 0 && !hasVisibleLiveIndicatorSegmentActivity(segment)) {
@@ -1552,6 +1583,7 @@ function readMessageExecutionLabelSnapshot(
 function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMessageLike>(
   messages: ReadonlyArray<TMessage>,
   segment: LiveIndicatorSegmentState,
+  persistedSegmentIndex: number,
 ): boolean {
   const sourceMessageId = readString(segment.sourceMessageId);
   if (segment.targetStateId) {
@@ -1560,7 +1592,7 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
       && readMessageEvent(message) === 'assistant_turn_segment'
       && (!sourceMessageId || readMessageSourceMessageId(message) === sourceMessageId)
       && readMessageTargetStateId(message) === segment.targetStateId
-      && readMessageSegmentIndex(message) === segment.segmentIndex);
+      && readMessageSegmentIndex(message) === persistedSegmentIndex);
   }
 
   if (segment.phase === 'sealed' && segment.participantId && sourceMessageId) {
@@ -1568,7 +1600,7 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
       isVisibleAssistantReply(message)
       && readMessageEvent(message) === 'assistant_turn_segment'
       && readMessageSourceMessageId(message) === sourceMessageId
-      && readMessageSegmentIndex(message) === segment.segmentIndex
+      && readMessageSegmentIndex(message) === persistedSegmentIndex
       && readMessageTargetId(message) === segment.participantId);
   }
 
@@ -1580,7 +1612,7 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
     index > lastUserIndex
     && isVisibleAssistantReply(message)
     && readMessageEvent(message) === 'assistant_turn_segment'
-    && readMessageSegmentIndex(message) === segment.segmentIndex);
+    && readMessageSegmentIndex(message) === persistedSegmentIndex);
 }
 
 function readString(value: unknown): string | null {

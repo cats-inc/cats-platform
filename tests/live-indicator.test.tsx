@@ -3100,6 +3100,104 @@ test('resolveVisibleLiveIndicator keeps a later live text segment visible after 
   );
 });
 
+test('resolveVisibleLiveIndicator hides a later targeted speaker bubble using target-local segment ordinals', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    segments: [
+      {
+        id: 'segment-codex',
+        phase: 'sealed' as const,
+        sourceMessageId: 'message-user-3',
+        targetStateId: 'target-state-codex',
+        segmentIndex: 2,
+        participantId: 'participant-codex',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Codex-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text' as const,
+            status: 'complete' as const,
+            title: null,
+            text: 'Codex reply',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+        events: [],
+      },
+      {
+        id: 'segment-gemini',
+        phase: 'sealed' as const,
+        sourceMessageId: 'message-user-3',
+        targetStateId: 'target-state-gemini',
+        segmentIndex: 3,
+        participantId: 'participant-gemini',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Gemini-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text' as const,
+            status: 'complete' as const,
+            title: null,
+            text: 'Gemini reply',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+        events: [],
+      },
+    ],
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-agent-gemini',
+        senderKind: 'agent',
+        senderName: 'Gemini-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-user-3',
+          targetStateId: 'target-state-gemini',
+          segmentIndex: 0,
+          targetKind: 'participant',
+          targetId: 'participant-gemini',
+        },
+        createdAt: '2026-04-14T12:00:03.000Z',
+      },
+    ],
+    null,
+  );
+
+  assert.ok(visible);
+  assert.equal(visible.segments.length, 1);
+  assert.equal(visible.segments[0]?.targetStateId, 'target-state-codex');
+  assert.equal(visible.segments[0]?.segmentIndex, 2);
+});
+
 test('resolveVisibleLiveIndicator does not hide a new solo segment because an older turn by the same speaker already has segment 0', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
