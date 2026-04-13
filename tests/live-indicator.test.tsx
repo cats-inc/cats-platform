@@ -286,7 +286,15 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
     channelId: 'channel-1',
   });
 
-  assert.equal(next, waitingState);
+  assert.equal(next.phase, 'waiting');
+  assert.equal(next.participantId, 'participant-agent-2');
+  assert.equal(next.speakerLabel, 'Agent-2');
+  assert.equal(next.segments.length, 2);
+  assert.equal(next.segments[0]?.phase, 'sealed');
+  assert.equal(next.segments[0]?.participantId, 'participant-agent-1');
+  assert.equal(next.segments[0]?.contentBlocks[0]?.text, 'First answer');
+  assert.equal(next.segments[1]?.phase, 'waiting');
+  assert.equal(next.segments[1]?.participantId, 'participant-agent-2');
 });
 
 test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage only matches the current streaming speaker', () => {
@@ -898,12 +906,15 @@ test('applyLiveIndicatorEvent creates a new text block after tool_use via struct
   state = applyLiveIndicatorEvent(state, 'content_block', {
     block: { id: 'text:2', index: 2, kind: 'text', status: 'streaming', text: 'Second' },
   });
-  assert.equal(state.contentBlocks.length, 3);
-  assert.equal(state.contentBlocks[0].kind, 'text');
-  assert.equal(state.contentBlocks[0].text, 'First');
-  assert.equal(state.contentBlocks[1].kind, 'tool');
-  assert.equal(state.contentBlocks[2].kind, 'text');
-  assert.equal(state.contentBlocks[2].text, 'Second');
+  assert.equal(state.segments.length, 2);
+  assert.equal(state.segments[0]?.phase, 'sealed');
+  assert.equal(state.segments[0]?.contentBlocks.length, 1);
+  assert.equal(state.segments[0]?.contentBlocks[0]?.kind, 'text');
+  assert.equal(state.segments[0]?.contentBlocks[0]?.text, 'First');
+  assert.equal(state.contentBlocks.length, 2);
+  assert.equal(state.contentBlocks[0]?.kind, 'tool');
+  assert.equal(state.contentBlocks[1]?.kind, 'text');
+  assert.equal(state.contentBlocks[1]?.text, 'Second');
 });
 
 test('resolveTranscriptFollowState derives scroll keys from transcript content instead of channel timestamps', () => {
@@ -1244,7 +1255,8 @@ test('live indicator tracks content blocks by id and updates them in place', () 
     },
   });
 
-  assert.deepEqual(state.contentBlocks, [
+  assert.equal(state.segments.length, 2);
+  assert.deepEqual(state.segments[0]?.contentBlocks, [
     {
       id: 'text:0',
       index: 0,
@@ -1256,6 +1268,8 @@ test('live indicator tracks content blocks by id and updates them in place', () 
       toolId: null,
       metadata: null,
     },
+  ]);
+  assert.deepEqual(state.contentBlocks, [
     {
       id: 'tool:1',
       index: 1,

@@ -8,6 +8,7 @@ import {
   resolveTranscriptMessageSpeaker,
   type SelectedChannelView,
 } from '../../workspaceChatUtils.js';
+import { resolveLiveIndicatorSegments } from '../../../../../shared/liveIndicator.js';
 import { MessageBody } from '../MessageBody.js';
 import {
   MessageChoices,
@@ -119,19 +120,7 @@ export function ChatTranscriptSurface({
             </article>
           ))}
         {liveIndicator?.active ? (() => {
-          const speakerCat = liveIndicator.catId
-            ? payload.chat.cats.find((cat) => cat.id === liveIndicator.catId) ?? null
-            : null;
-          const speakerLabel = speakerCat?.name ?? liveIndicator.speakerLabel;
           const showProgressDetails = payload.chat.showLiveProgressDetails === true;
-          const sortedBlocks = [...liveIndicator.contentBlocks].sort(
-            (left, right) => left.index - right.index,
-          );
-          const lastBlock = sortedBlocks.at(-1);
-          const showTrailingDots = shouldShowLiveTranscriptTrailingDots(
-            liveIndicator.phase,
-            lastBlock,
-          );
 
           function renderBlock(block: LiveIndicatorContentBlock): JSX.Element | null {
             if (!shouldRenderLiveTranscriptBlock(block, showProgressDetails)) {
@@ -168,46 +157,64 @@ export function ChatTranscriptSurface({
             return null;
           }
 
-          const renderedBlocks = sortedBlocks
-            .map(renderBlock)
-            .filter((block): block is JSX.Element => block != null);
-
           return (
-            <article className="transcriptMessage transcriptMessageAgent typingIndicator">
-              {speakerCat ? (
-                <div className="transcriptMessageTop">
-                  <div
-                    className={speakerCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                    style={speakerCat.avatarUrl
-                      ? { backgroundImage: `url(${speakerCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                      : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
-                  >
-                    {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
-                  </div>
-                  <strong>{speakerCat.name}</strong>
-                </div>
-              ) : speakerLabel ? (
-                <div className="transcriptMessageTop">
-                  <strong>{speakerLabel}</strong>
-                </div>
-              ) : null}
-              {liveIndicator.phase === 'waiting' ? (
-                <span className="typingDots"><span /><span /><span /></span>
-              ) : renderedBlocks.length === 0 ? (
-                showProgressDetails && liveIndicator.progressText ? (
-                  <p className="typingStatusText">{liveIndicator.progressText}</p>
-                ) : (
-                  <span className="typingDots"><span /><span /><span /></span>
-                )
-              ) : (
-                <>
-                  {renderedBlocks}
-                  {showTrailingDots ? (
-                    <span className="typingDots"><span /><span /><span /></span>
-                  ) : null}
-                </>
-              )}
-            </article>
+            <>
+              {resolveLiveIndicatorSegments(liveIndicator).map((segment) => {
+                const speakerCat = segment.catId
+                  ? payload.chat.cats.find((cat) => cat.id === segment.catId) ?? null
+                  : null;
+                const speakerLabel = speakerCat?.name ?? segment.speakerLabel;
+                const sortedBlocks = [...segment.contentBlocks].sort(
+                  (left, right) => left.index - right.index,
+                );
+                const lastBlock = sortedBlocks.at(-1);
+                const showTrailingDots = shouldShowLiveTranscriptTrailingDots(
+                  segment.phase,
+                  lastBlock,
+                );
+                const renderedBlocks = sortedBlocks
+                  .map(renderBlock)
+                  .filter((block): block is JSX.Element => block != null);
+
+                return (
+                  <article key={segment.id} className="transcriptMessage transcriptMessageAgent typingIndicator">
+                    {speakerCat ? (
+                      <div className="transcriptMessageTop">
+                        <div
+                          className={speakerCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
+                          style={speakerCat.avatarUrl
+                            ? { backgroundImage: `url(${speakerCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                            : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
+                        >
+                          {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
+                        </div>
+                        <strong>{speakerCat.name}</strong>
+                      </div>
+                    ) : speakerLabel ? (
+                      <div className="transcriptMessageTop">
+                        <strong>{speakerLabel}</strong>
+                      </div>
+                    ) : null}
+                    {segment.phase === 'waiting' ? (
+                      <span className="typingDots"><span /><span /><span /></span>
+                    ) : renderedBlocks.length === 0 ? (
+                      showProgressDetails && segment.progressText ? (
+                        <p className="typingStatusText">{segment.progressText}</p>
+                      ) : (
+                        <span className="typingDots"><span /><span /><span /></span>
+                      )
+                    ) : (
+                      <>
+                        {renderedBlocks}
+                        {showTrailingDots ? (
+                          <span className="typingDots"><span /><span /><span /></span>
+                        ) : null}
+                      </>
+                    )}
+                  </article>
+                );
+              })}
+            </>
           );
         })() : null}
         <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />

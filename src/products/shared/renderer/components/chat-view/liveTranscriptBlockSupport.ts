@@ -26,7 +26,7 @@ export function shouldRenderLiveTranscriptBlock(
 }
 
 export function shouldShowLiveTranscriptTrailingDots(
-  phase: 'idle' | 'waiting' | 'streaming',
+  phase: 'idle' | 'waiting' | 'streaming' | 'sealed',
   lastBlock: LiveIndicatorContentBlock | null | undefined,
 ): boolean {
   return phase === 'streaming'

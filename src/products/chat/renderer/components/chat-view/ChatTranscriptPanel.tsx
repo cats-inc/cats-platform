@@ -19,7 +19,10 @@ import type { SelectedChannelView } from '../../chatUtils.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../shared/channelParticipants.js';
-import { hasLiveIndicatorIdentity } from '../../../../../shared/liveIndicator.js';
+import {
+  hasLiveIndicatorIdentity,
+  resolveLiveIndicatorSegments,
+} from '../../../../../shared/liveIndicator.js';
 import { TranscriptMessageItem } from './TranscriptMessageItem.js';
 import { LiveTranscriptIndicator } from './LiveTranscriptIndicator.js';
 
@@ -139,9 +142,10 @@ export function ChatTranscriptPanel({
 
   const shouldRenderLiveTranscriptIndicator = Boolean(
     liveIndicator?.active
+    && resolveLiveIndicatorSegments(liveIndicator).length > 0
     && (
-      liveIndicator.phase === 'streaming'
-      || (liveIndicator.phase === 'waiting' && hasLiveIndicatorIdentity(liveIndicator))
+      liveIndicator.phase !== 'waiting'
+      || hasLiveIndicatorIdentity(liveIndicator)
     ),
   );
 

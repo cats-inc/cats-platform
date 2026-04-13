@@ -8,7 +8,9 @@ import {
   hasLiveIndicatorIdentity,
   hasVisibleAssistantReplyAfterMessage,
   hasVisibleLiveIndicatorSpeakerReplyAfterMessage,
+  projectLiveIndicatorStateFromSegments,
   resolveLiveIndicatorSpeakerState,
+  resolvePrimaryLiveIndicatorSegment,
   type LiveIndicatorState,
 } from '../../../../shared/liveIndicator.js';
 import { pushBrowserLiveTrace } from '../../../../shared/liveTrace.js';
@@ -42,12 +44,13 @@ export interface LiveIndicatorSelectedChannelLike {
         sourceMessageId?: string | null;
         workflowShape?: string | null;
         targetStatuses?: Array<{
-          status: string | null;
-          participant: {
-            participantKind?: string | null;
-            participantId: string;
-            participantName?: string | null;
-          };
+        status: string | null;
+        id?: string | null;
+        participant: {
+          participantKind?: string | null;
+          participantId: string;
+          participantName?: string | null;
+        };
         }>;
       } | null;
     };
@@ -70,6 +73,7 @@ export interface SequencedLiveIndicatorStreamCursor {
 }
 
 interface WaitingIndicatorInputs {
+  targetStateId: string | null;
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
@@ -111,6 +115,7 @@ export function resolveLiveIndicatorSpeakerLabel(
 function resolveWaitingSpeakerState(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): {
+  targetStateId: string | null;
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
@@ -122,6 +127,7 @@ function resolveWaitingSpeakerState(
   const nextTarget = activeTargets[0];
   if (!nextTarget) {
     return {
+      targetStateId: null,
       participantId: null,
       catId: null,
       speakerLabel: null,
@@ -138,6 +144,7 @@ function resolveWaitingSpeakerState(
   const revealIdentity = activeTurn?.workflowShape === 'concurrent' || hasVisibleAssistantReply;
 
   return {
+    targetStateId: nextTarget.id?.trim() || null,
     participantId: nextTarget.participant.participantId,
     catId: null,
     speakerLabel: nextTarget.participant.participantName?.trim() || null,
@@ -198,11 +205,15 @@ export function resolveWaitingIndicatorStateTransition(input: {
   }
 
   if (input.previous.phase === 'streaming') {
-    return input.waitingState;
+    return mergeWaitingIndicatorTimelineState(input.previous, input.waitingState);
   }
 
   if (input.previous.phase === 'waiting' && !hasRenderableLiveIndicatorContent(input.previous)) {
-    return input.waitingState;
+    return replaceWaitingIndicatorTimelineIdentity(input.previous, input.waitingState);
+  }
+
+  if (input.previous.phase === 'sealed') {
+    return mergeWaitingIndicatorTimelineState(input.previous, input.waitingState);
   }
 
   return input.previous;
@@ -212,9 +223,76 @@ function doesLiveIndicatorIdentityMatch(
   left: LiveIndicatorState,
   right: LiveIndicatorState,
 ): boolean {
-  return left.participantId === right.participantId
+  return left.targetStateId === right.targetStateId
+    && left.segmentIndex === right.segmentIndex
+    && left.participantId === right.participantId
     && left.catId === right.catId
     && left.speakerLabel === right.speakerLabel;
+}
+
+function mergeWaitingIndicatorTimelineState(
+  previous: LiveIndicatorState,
+  waitingState: LiveIndicatorState,
+): LiveIndicatorState {
+  const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
+  if (!waitingSegment) {
+    return previous;
+  }
+
+  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
+  if (!previous.active || !previousSegment) {
+    return waitingState;
+  }
+
+  if (previousSegment.phase === 'waiting') {
+    if (doesLiveIndicatorIdentityMatch(previous, waitingState)) {
+      return previous;
+    }
+    return projectLiveIndicatorStateFromSegments([
+      ...previous.segments.slice(0, -1),
+      waitingSegment,
+    ]);
+  }
+
+  const sealedPrevious = previousSegment.phase === 'sealed'
+    ? previousSegment
+    : {
+        ...previousSegment,
+        phase: 'sealed' as const,
+      };
+  return projectLiveIndicatorStateFromSegments([
+    ...previous.segments.slice(0, -1),
+    sealedPrevious,
+    waitingSegment,
+  ]);
+}
+
+function replaceWaitingIndicatorTimelineIdentity(
+  previous: LiveIndicatorState,
+  waitingState: LiveIndicatorState,
+): LiveIndicatorState {
+  const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
+  if (!waitingSegment) {
+    return previous;
+  }
+
+  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
+  if (!previous.active || !previousSegment) {
+    return waitingState;
+  }
+
+  if (previousSegment.phase !== 'waiting') {
+    return previous;
+  }
+
+  if (doesLiveIndicatorIdentityMatch(previous, waitingState)) {
+    return previous;
+  }
+
+  return projectLiveIndicatorStateFromSegments([
+    ...previous.segments.slice(0, -1),
+    waitingSegment,
+  ]);
 }
 
 export function shouldPromoteStreamingBubbleToWaitingSpeaker(
@@ -346,6 +424,7 @@ export function useLiveIndicator<
   );
   const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>(
     () => ({
+      targetStateId: waitingSpeakerState.targetStateId,
       participantId: waitingSpeakerState.participantId,
       catId: waitingSpeakerState.catId,
       speakerLabel: waitingSpeakerState.speakerLabel,
@@ -357,6 +436,7 @@ export function useLiveIndicator<
       defaultRecipientCatId,
       speakerLabel,
       waitingSpeakerState.catId,
+      waitingSpeakerState.targetStateId,
       waitingSpeakerState.participantId,
       waitingSpeakerState.revealIdentity,
       waitingSpeakerState.speakerLabel,
@@ -367,6 +447,7 @@ export function useLiveIndicator<
   function createCurrentWaitingState(): LiveIndicatorState {
     const current = waitingIndicatorInputsRef.current;
     return createWaitingLiveIndicatorState({
+      targetStateId: current.targetStateId,
       participantId: current.revealIdentity ? current.participantId : null,
       catId: current.revealIdentity ? current.catId : current.defaultRecipientCatId,
       speakerLabel: current.revealIdentity ? current.speakerLabel : current.fallbackSpeakerLabel,
@@ -545,16 +626,22 @@ export function useLiveIndicator<
             speakerLabel: nextSpeakerState.speakerLabel,
             reason: 'session_close_reconnect',
           });
-          return createWaitingLiveIndicatorState({
+          return mergeWaitingIndicatorTimelineState(previous, createWaitingLiveIndicatorState({
             participantId: nextSpeakerState.participantId,
             catId: nextSpeakerState.catId,
             speakerLabel: nextSpeakerState.speakerLabel,
             revealIdentity: Boolean(
-              nextSpeakerState.participantId
+              nextSpeakerState.targetStateId
+              || nextSpeakerState.participantId
               || nextSpeakerState.catId
               || nextSpeakerState.speakerLabel
             ),
-          });
+            targetStateId: nextSpeakerState.targetStateId,
+            segmentIndex:
+              nextSpeakerState.targetStateId && nextSpeakerState.targetStateId === previous.targetStateId
+                ? previous.segmentIndex + 1
+                : 0,
+          }));
         }
         return applyLiveIndicatorEvent(previous, eventType, data);
       });
@@ -696,24 +783,18 @@ export function useLiveIndicator<
           selectedChannelRef.current,
         )
       ) {
-        stateRef.current = waitingState;
-        return waitingState;
+        const next = mergeWaitingIndicatorTimelineState(previous, waitingState);
+        stateRef.current = next;
+        return next;
       }
 
       if (!previous.active || previous.phase !== 'waiting') {
         return previous;
       }
 
-      if (
-        previous.participantId === waitingState.participantId
-        && previous.catId === waitingState.catId
-        && previous.speakerLabel === waitingState.speakerLabel
-      ) {
-        return previous;
-      }
-
-      stateRef.current = waitingState;
-      return waitingState;
+      const next = replaceWaitingIndicatorTimelineIdentity(previous, waitingState);
+      stateRef.current = next;
+      return next;
     });
   }, [
     busy,
