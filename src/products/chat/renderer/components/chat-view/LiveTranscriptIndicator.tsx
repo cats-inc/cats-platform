@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 
 import type { ChatCat } from '../../../api/contracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
+import type { LiveIndicatorSegmentState } from '../../hooks/useLiveIndicator.js';
 import type { LiveIndicatorContentBlock } from '../../../../../shared/runtimeContentBlocks.js';
 import { catInitials } from '../../chatUtils.js';
 import { normalizeVisibleOrchestratorLabel } from '../../../../../shared/orchestratorLabel.js';
@@ -27,6 +28,12 @@ export interface LiveTranscriptIndicatorProps {
   liveIndicator: LiveIndicatorState;
   liveSpeakerParticipant: ResolvedChannelParticipant | null;
   liveSpeakerParticipantCat: ChatCat | null;
+  resolveLiveIndicatorSegmentParticipant: (
+    segment: LiveIndicatorSegmentState,
+  ) => ResolvedChannelParticipant | null;
+  resolveParticipantCatRecord: (
+    participant: ResolvedChannelParticipant | null,
+  ) => ChatCat | null;
   buildParticipantAvatarClassName: (
     participant: ResolvedChannelParticipant,
     options?: { transcript?: boolean; catRecord?: ChatCat | null },
@@ -101,6 +108,8 @@ export function LiveTranscriptIndicator({
   liveIndicator,
   liveSpeakerParticipant,
   liveSpeakerParticipantCat,
+  resolveLiveIndicatorSegmentParticipant,
+  resolveParticipantCatRecord,
   buildParticipantAvatarClassName,
   buildParticipantAvatarStyle,
   resolveParticipantAvatarUrl,
@@ -111,8 +120,13 @@ export function LiveTranscriptIndicator({
     <>
       {resolveLiveIndicatorSegments(liveIndicator).map((segment, index, segments) => {
         const isPrimarySegment = segment.id === segments.at(-1)?.id;
-        const segmentParticipant = isPrimarySegment ? liveSpeakerParticipant : null;
-        const segmentParticipantCat = isPrimarySegment ? liveSpeakerParticipantCat : null;
+        const resolvedSegmentParticipant = resolveLiveIndicatorSegmentParticipant(segment);
+        const resolvedSegmentParticipantCat = resolveParticipantCatRecord(resolvedSegmentParticipant);
+        const segmentParticipant = resolvedSegmentParticipant
+          ?? (isPrimarySegment ? liveSpeakerParticipant : null);
+        const segmentParticipantCat = resolvedSegmentParticipant
+          ? resolvedSegmentParticipantCat
+          : (isPrimarySegment ? liveSpeakerParticipantCat : null);
         const normalizedStreamSpeakerLabel = (() => {
           const value = segment.speakerLabel?.trim();
           if (segment.participantId === 'orchestrator') {

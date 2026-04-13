@@ -24,6 +24,7 @@ import { isOptimisticDraftChannelId } from '../../shared/channelPaths.js';
 export type {
   LiveIndicatorContentBlock,
   LiveIndicatorEventEntry,
+  LiveIndicatorSegmentState,
   LiveIndicatorState,
   LiveToolEntry,
 } from '../../../../shared/liveIndicator.js';

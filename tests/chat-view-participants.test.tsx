@@ -1460,8 +1460,12 @@ test('ChatView keeps the next sequential speaker bubble visible after the prior 
               body: 'Done.',
               mentions: [],
               metadata: {
+                event: 'assistant_turn_segment',
+                sourceMessageId: 'message-user',
                 targetKind: 'cat',
                 targetId: 'participant-inline',
+                targetStateId: 'target-1',
+                segmentIndex: 0,
               },
               usage: null,
               createdAt: '2026-04-07T00:01:04.000Z',
@@ -1553,8 +1557,13 @@ test('ChatView keeps the next sequential speaker bubble visible after the prior 
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'streaming',
+          sourceMessageId: 'message-user',
+          targetStateId: 'target-2',
+          segmentIndex: 1,
           participantId: 'participant-verifier',
           speakerLabel: 'Runtime Verifier',
+          sessionStartedAt: '2026-04-07T00:01:03.600Z',
+          requiresSessionStartConfirmation: true,
         },
       })}
     />,
@@ -1563,6 +1572,162 @@ test('ChatView keeps the next sequential speaker bubble visible after the prior 
   assert.match(markup, /typingIndicator/u);
   assert.match(markup, /Runtime Verifier/u);
   assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
+});
+
+test('ChatView resolves a pending sequential follow-up bubble from the live segment participant id', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-agent-1',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Inline Reviewer',
+              body: 'Done.',
+              mentions: [],
+              metadata: {
+                event: 'assistant_turn_segment',
+                sourceMessageId: 'message-user',
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+                targetStateId: 'target-1',
+                segmentIndex: 0,
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:04.000Z',
+            },
+            {
+              id: 'message-session-verifier',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Runtime Verifier connected to cats-runtime session session-verifier.',
+              mentions: [],
+              metadata: {
+                event: 'session_started',
+                targetKind: 'cat',
+                targetId: 'participant-verifier',
+                verbosity: 'verbose',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:04.500Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-user',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 2,
+                targetStatuses: [
+                  {
+                    id: 'target-1',
+                    dispatchId: 'dispatch-1',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-inline',
+                      participantName: 'Inline Reviewer',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'completed',
+                    queuedAt: '2026-04-07T00:01:01.000Z',
+                    startedAt: '2026-04-07T00:01:02.000Z',
+                    completedAt: '2026-04-07T00:01:04.000Z',
+                    response: {
+                      assistantTurnId: 'assistant-turn-inline',
+                      messageIds: ['message-agent-1'],
+                      fullText: 'Done.',
+                      segmentCount: 1,
+                    },
+                    error: null,
+                  },
+                  {
+                    id: 'target-2',
+                    dispatchId: 'dispatch-2',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-verifier',
+                      participantName: 'Runtime Verifier',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'pending',
+                    queuedAt: '2026-04-07T00:01:04.200Z',
+                    startedAt: null,
+                    completedAt: null,
+                    response: null,
+                    error: null,
+                  },
+                ],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:04.500Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'streaming',
+          sourceMessageId: 'message-user',
+          targetStateId: 'target-2',
+          segmentIndex: 1,
+          participantId: 'participant-verifier',
+          speakerLabel: null,
+          sessionStartedAt: '2026-04-07T00:01:04.500Z',
+          requiresSessionStartConfirmation: true,
+          progressKind: 'session',
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /Runtime Verifier/u);
+  assert.match(markup, /typingDots/u);
 });
 
 test('ChatView promotes a waiting next sequential speaker placeholder instead of returning to the user bubble', () => {
@@ -1591,8 +1756,12 @@ test('ChatView promotes a waiting next sequential speaker placeholder instead of
               body: 'Done.',
               mentions: [],
               metadata: {
+                event: 'assistant_turn_segment',
+                sourceMessageId: 'message-user',
                 targetKind: 'cat',
                 targetId: 'participant-inline',
+                targetStateId: 'target-1',
+                segmentIndex: 0,
               },
               usage: null,
               createdAt: '2026-04-07T00:01:04.000Z',
@@ -1684,6 +1853,9 @@ test('ChatView promotes a waiting next sequential speaker placeholder instead of
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'waiting',
+          sourceMessageId: 'message-user',
+          targetStateId: 'target-2',
+          segmentIndex: 1,
           participantId: 'participant-verifier',
           speakerLabel: 'Runtime Verifier',
         },

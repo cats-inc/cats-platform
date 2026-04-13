@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -16,7 +17,10 @@ import type {
 } from '../../api/contracts';
 import { resolveCatStatusIndicator } from '../../shared/catStatusResolution';
 import { CatStatusRow } from './CatStatusRow';
-import type { LiveIndicatorState } from '../hooks/useLiveIndicator';
+import type {
+  LiveIndicatorSegmentState,
+  LiveIndicatorState,
+} from '../hooks/useLiveIndicator';
 import {
   resolveTranscriptFollowState,
 } from '../../../../shared/liveIndicator.js';
@@ -315,6 +319,42 @@ export function ChatView({
   );
   const { activeTopBarCatIds, activeTopBarParticipantIds, liveSpeakerParticipant } =
     topBarPresenceState;
+  const resolveLiveIndicatorSegmentParticipant = useCallback(
+    (segment: LiveIndicatorSegmentState) => {
+      if (segment.participantId) {
+        const byParticipantId = activeRoomParticipants.find(
+          (participant) => participant.participantId === segment.participantId,
+        ) ?? null;
+        if (byParticipantId) {
+          return byParticipantId;
+        }
+      }
+
+      if (segment.catId) {
+        const byCatId = activeRoomParticipants.find((participant) =>
+          resolveParticipantCatRecord(participant)?.id === segment.catId)
+          ?? null;
+        if (byCatId) {
+          return byCatId;
+        }
+      }
+
+      const normalizedSpeakerLabel = segment.speakerLabel?.trim();
+      if (!normalizedSpeakerLabel) {
+        return null;
+      }
+
+      return activeRoomParticipants.find((participant) => {
+        const participantCat = resolveParticipantCatRecord(participant);
+        return resolveParticipantDisplayName(participant, participantCat) === normalizedSpeakerLabel;
+      }) ?? null;
+    },
+    [
+      activeRoomParticipants,
+      resolveParticipantCatRecord,
+      resolveParticipantDisplayName,
+    ],
+  );
   const activeTopBarCatIdSet = useMemo(
     () => new Set(activeTopBarCatIds),
     [activeTopBarCatIds],
@@ -594,6 +634,9 @@ export function ChatView({
                         .map((b) => b.kind + '#' + b.index + ':' + b.status)
                         .join('|');
                       const metaDetail = [
+                        s.targetStateId ? 'ts:' + s.targetStateId : null,
+                        s.participantId ? 'pid:' + s.participantId : null,
+                        s.speakerLabel ? 'sp:' + s.speakerLabel : null,
                         s.progressKind ? 'pk:' + s.progressKind : null,
                         s.progressText ? 'pt:' + s.progressText : null,
                         s.tools.length > 0 ? 'tools:' + s.tools.map((tool) => `${tool.toolName}:${tool.done ? 'done' : 'pending'}`).join(',') : null,
@@ -609,6 +652,7 @@ export function ChatView({
               })()}
               liveSpeakerParticipant={liveSpeakerParticipant}
               liveSpeakerParticipantCat={resolveParticipantCatRecord(liveSpeakerParticipant)}
+              resolveLiveIndicatorSegmentParticipant={resolveLiveIndicatorSegmentParticipant}
               messageStackTone={messageStackTone}
               resolveMessageParticipant={resolveMessageParticipant}
               resolveParticipantCatRecord={resolveParticipantCatRecord}

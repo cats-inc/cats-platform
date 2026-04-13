@@ -12,6 +12,7 @@ import type {
   ParallelChatRelayCommandKind,
 } from '../../../api/contracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
+import type { LiveIndicatorSegmentState } from '../../hooks/useLiveIndicator.js';
 import type {
   MessageChoicesSubmitInput,
 } from '../MessageChoices.js';
@@ -48,6 +49,9 @@ export interface ChatTranscriptPanelProps {
   liveIndicator?: LiveIndicatorState;
   liveSpeakerParticipant: ResolvedChannelParticipant | null;
   liveSpeakerParticipantCat: ChatCat | null;
+  resolveLiveIndicatorSegmentParticipant: (
+    segment: LiveIndicatorSegmentState,
+  ) => ResolvedChannelParticipant | null;
   messageStackTone: (senderKind: string) => string;
   resolveMessageParticipant: (
     message: SelectedChannelView['messages'][number],
@@ -96,6 +100,7 @@ export function ChatTranscriptPanel({
   liveIndicator,
   liveSpeakerParticipant,
   liveSpeakerParticipantCat,
+  resolveLiveIndicatorSegmentParticipant,
   messageStackTone,
   resolveMessageParticipant,
   resolveParticipantCatRecord,
@@ -140,19 +145,8 @@ export function ChatTranscriptPanel({
     );
   }
 
-  const hasPersistedReplyAfterLastUserMessage = (() => {
-    let lastUserIdx = -1;
-    for (let i = visibleMessages.length - 1; i >= 0; i -= 1) {
-      if (visibleMessages[i]!.senderKind === 'user') { lastUserIdx = i; break; }
-    }
-    return visibleMessages.some((m, idx) =>
-      idx > lastUserIdx
-      && (m.senderKind === 'agent' || m.senderKind === 'orchestrator')
-      && m.metadata?.event === 'assistant_turn_segment');
-  })();
   const shouldRenderLiveTranscriptIndicator = Boolean(
     liveIndicator?.active
-    && !hasPersistedReplyAfterLastUserMessage
     && resolveLiveIndicatorSegments(liveIndicator).length > 0
     && (
       liveIndicator.phase !== 'waiting'
@@ -210,6 +204,8 @@ export function ChatTranscriptPanel({
             liveIndicator={liveIndicator}
             liveSpeakerParticipant={liveSpeakerParticipant}
             liveSpeakerParticipantCat={liveSpeakerParticipantCat}
+            resolveLiveIndicatorSegmentParticipant={resolveLiveIndicatorSegmentParticipant}
+            resolveParticipantCatRecord={resolveParticipantCatRecord}
             buildParticipantAvatarClassName={buildParticipantAvatarClassName}
             buildParticipantAvatarStyle={buildParticipantAvatarStyle}
             resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
