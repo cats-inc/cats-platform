@@ -300,6 +300,72 @@ function shouldAdvanceWaitingSegmentIndex(
     && previousSegment.speakerLabel === waitingSegment.speakerLabel;
 }
 
+interface SequentialTurnTargetIdentity {
+  participantId: string | null;
+  participantName: string | null;
+}
+
+function readSequentialTurnTargetIdentity(
+  target: unknown,
+): SequentialTurnTargetIdentity | null {
+  if (!target || typeof target !== 'object') {
+    return null;
+  }
+
+  const candidate = target as {
+    participantId?: unknown;
+    participantName?: unknown;
+  };
+  return {
+    participantId: typeof candidate.participantId === 'string'
+      ? candidate.participantId.trim() || null
+      : null,
+    participantName: typeof candidate.participantName === 'string'
+      ? candidate.participantName.trim() || null
+      : null,
+  };
+}
+
+function resolveSequentialTurnTargetOrder(
+  activeTurn: NonNullable<LiveIndicatorSelectedChannelLike['roomRouting']['workflow']['activeTurn']>,
+  lastOutcome: LiveIndicatorSelectedChannelLike['roomRouting']['lastOutcome'] | null | undefined,
+): SequentialTurnTargetIdentity[] {
+  const turnStartedEvent = activeTurn.events?.find((event) => event.kind === 'turn_started') ?? null;
+  const turnStartedTargets = turnStartedEvent?.targets
+    ?.map((target) => readSequentialTurnTargetIdentity(target))
+    .filter((target): target is SequentialTurnTargetIdentity => target !== null) ?? [];
+  if (turnStartedTargets.length > 0) {
+    return turnStartedTargets;
+  }
+
+  if (!lastOutcome || lastOutcome.turnId !== activeTurn.id) {
+    return [];
+  }
+
+  return lastOutcome.resolvedTargets
+    ?.map((target) => readSequentialTurnTargetIdentity(target))
+    .filter((target): target is SequentialTurnTargetIdentity => target !== null) ?? [];
+}
+
+function resolveSequentialTurnTargetIndex(
+  orderedTargets: SequentialTurnTargetIdentity[],
+  segment: LiveIndicatorSegmentState,
+): number {
+  if (segment.participantId) {
+    const participantIndex = orderedTargets.findIndex((target) =>
+      target.participantId === segment.participantId);
+    if (participantIndex >= 0) {
+      return participantIndex;
+    }
+  }
+
+  if (segment.speakerLabel) {
+    return orderedTargets.findIndex((target) => target.participantName === segment.speakerLabel);
+  }
+
+  return -1;
+}
+
 function reindexWaitingSegment(
   previousSegment: LiveIndicatorSegmentState | null,
   waitingSegment: LiveIndicatorSegmentState | null,
@@ -508,8 +574,16 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
     return true;
   }
 
-  const turnStartedEvent = activeTurn.events?.find((event) => event.kind === 'turn_started') ?? null;
   const lastOutcome = selectedChannel?.roomRouting.lastOutcome ?? null;
+  const orderedTargets = resolveSequentialTurnTargetOrder(activeTurn, lastOutcome);
+  if (orderedTargets.length > 0) {
+    const currentTargetIndex = resolveSequentialTurnTargetIndex(orderedTargets, primarySegment);
+    if (currentTargetIndex >= 0) {
+      return currentTargetIndex < orderedTargets.length - 1;
+    }
+  }
+
+  const turnStartedEvent = activeTurn.events?.find((event) => event.kind === 'turn_started') ?? null;
   const totalTurnTargets = turnStartedEvent?.targets?.length
     ?? (
       lastOutcome?.turnId === activeTurn.id

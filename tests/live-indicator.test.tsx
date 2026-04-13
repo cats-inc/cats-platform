@@ -339,6 +339,162 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for a sealed spe
   );
 });
 
+test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an earlier sequential target while later targets have not materialized yet', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        targetStateId: 'target-claude',
+        participantId: 'participant-claude',
+        speakerLabel: 'Claude-CLI',
+        segmentIndex: 0,
+        segments: [
+          {
+            id: 'message-user:target-claude:segment:0',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            targetStateId: 'target-claude',
+            segmentIndex: 0,
+            participantId: 'participant-claude',
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Claude-CLI',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: 'Finalizing...',
+            progressKind: 'finalizing',
+            tools: [],
+            contentBlocks: [],
+            events: [],
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          lastOutcome: null,
+          workflow: {
+            activeTurn: {
+              id: 'turn-1',
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [],
+              events: [
+                {
+                  kind: 'turn_started',
+                  targets: [
+                    {
+                      participantId: 'participant-claude',
+                      participantName: 'Claude-CLI',
+                    },
+                    {
+                      participantId: 'participant-codex',
+                      participantName: 'Codex-CLI',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    true,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the last sequential target once no later targets remain materialized', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        targetStateId: 'target-codex',
+        participantId: 'participant-codex',
+        speakerLabel: 'Codex-CLI',
+        segmentIndex: 1,
+        segments: [
+          {
+            id: 'message-user:target-codex:segment:1',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            targetStateId: 'target-codex',
+            segmentIndex: 1,
+            participantId: 'participant-codex',
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Codex-CLI',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: 'Finalizing...',
+            progressKind: 'finalizing',
+            tools: [],
+            contentBlocks: [],
+            events: [],
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          lastOutcome: null,
+          workflow: {
+            activeTurn: {
+              id: 'turn-1',
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [],
+              events: [
+                {
+                  kind: 'turn_started',
+                  targets: [
+                    {
+                      participantId: 'participant-claude',
+                      participantName: 'Claude-CLI',
+                    },
+                    {
+                      participantId: 'participant-codex',
+                      participantName: 'Codex-CLI',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    false,
+  );
+});
+
 test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the final sequential target while no later targets remain', () => {
   assert.equal(
     shouldReconnectLiveIndicatorAfterOngoingWorkflow(
