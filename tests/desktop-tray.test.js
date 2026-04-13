@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveDesktopWindowRevealNavigation } from '../build/desktop/bootstrapNavigation.js';
+import {
+  resolveDesktopWindowRevealNavigation,
+  shouldNavigateDesktopBootstrap,
+} from '../build/desktop/bootstrapNavigation.js';
 import { buildDesktopTrayMenuState } from '../build/desktop/trayMenu.js';
 
 test('tray menu shows setup-oriented actions before onboarding is complete', () => {
@@ -210,5 +213,23 @@ test('window reveal navigation exits the bootstrap page once chat is ready', () 
       bootstrapPageVisible: false,
     }),
     null,
+  );
+});
+
+test('manual window reveal keeps bootstrap navigation enabled even for hidden sign-in launches', () => {
+  assert.equal(
+    shouldNavigateDesktopBootstrap({
+      showWindowOnStartup: false,
+      windowRevealRequested: false,
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldNavigateDesktopBootstrap({
+      showWindowOnStartup: false,
+      windowRevealRequested: true,
+    }),
+    true,
   );
 });

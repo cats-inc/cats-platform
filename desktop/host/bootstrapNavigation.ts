@@ -26,6 +26,13 @@ export function resolveDesktopBootstrapNavigation(
   return null;
 }
 
+export function shouldNavigateDesktopBootstrap(options: {
+  showWindowOnStartup: boolean;
+  windowRevealRequested: boolean;
+}): boolean {
+  return options.showWindowOnStartup || options.windowRevealRequested;
+}
+
 export function resolveDesktopWindowRevealNavigation(
   snapshot: Pick<DesktopBootstrapSnapshot, 'phase' | 'app'> | null,
   options: {

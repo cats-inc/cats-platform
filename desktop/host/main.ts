@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import {
   resolveDesktopBootstrapNavigation,
+  shouldNavigateDesktopBootstrap,
   resolveDesktopWindowRevealNavigation,
 } from './bootstrapNavigation.js';
 import {
@@ -108,6 +109,7 @@ let packagingState: DesktopPackagingPlan | null = null;
 let setupState: DesktopSetupState | null = null;
 let diagnosticsState: DesktopHostDiagnosticsState | null = null;
 let bootstrapPageVisible = false;
+let bootstrapWindowRevealRequested = false;
 let startupLaunchContext: DesktopStartupLaunchContext | null = null;
 let latestDesktopStartupPreferences: DesktopStartupPreferences = {
   startAtLogin: true,
@@ -642,6 +644,9 @@ async function showMainWindow(url?: string): Promise<void> {
       allowedHosts: hostConfig ? [hostConfig.appHost] : null,
     }));
     bootstrapPageVisible = false;
+    bootstrapWindowRevealRequested = false;
+  } else if (!url && bootstrapPageVisible) {
+    bootstrapWindowRevealRequested = true;
   }
   mainWindow.show();
   mainWindow.focus();
@@ -894,7 +899,10 @@ async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
   }
   const nextUrl = resolveDesktopBootstrapNavigation(snapshot, {
     appBaseUrl: hostConfig.appBaseUrl,
-    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+    showWindowOnStartup: shouldNavigateDesktopBootstrap({
+      showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+      windowRevealRequested: bootstrapWindowRevealRequested,
+    }),
   });
   if (!nextUrl) {
     return;
