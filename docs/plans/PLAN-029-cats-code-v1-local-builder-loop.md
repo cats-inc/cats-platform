@@ -19,8 +19,11 @@
 - [SPEC-041: Cats Code v1 Local Builder Loop](../specs/SPEC-041-cats-code-v1-local-builder-loop.md)
 - [PLAN-021: Cross-Product Task Strategy Handoff and Runtime Bridge](./PLAN-021-cross-product-task-strategy-handoff-and-runtime-bridge.md)
 - [ADR-038: Separate room-owned workspaces from session-owned sandboxes](../decisions/038-separate-room-owned-workspaces-from-session-owned-sandboxes.md)
+- [ADR-059: Adopt a Unified Conversation-Turn-Lane Engine](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [ADR-060: Normalize Heterogeneous Runtime Delivery Into Product Events](../decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
 - [SPEC-034: Room-Owned Workspace Bootstrap and Ownership Semantics](../specs/SPEC-034-room-owned-workspace-bootstrap-and-ownership.md)
 - [SPEC-020: Embedded Preview Surfaces for Runtime Artifacts and Services](../specs/SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
+- [SPEC-058: Interaction Core and Domain Materialization](../specs/SPEC-058-interaction-core-and-domain-materialization.md)
 - [cats-runtime ADR-015: Own workspace substrate tools in cats-runtime](../../../cats-runtime/docs/decisions/015-own-workspace-substrate-tools-in-cats-runtime.md)
 - [cats-runtime ADR-016: Own executable delivery primitives, not delivery policy](../../../cats-runtime/docs/decisions/016-own-executable-delivery-primitives-not-delivery-policy.md)
 
@@ -169,6 +172,8 @@ later review automation.
   consumes resolved workspace context for execution.
 - Keep plan/progress product-owned on top of Core/task metadata rather than
   inventing a runtime-owned planning system.
+- Treat the builder loop as a Code projection over shared interaction and
+  materialization contracts plus normalized runtime delivery.
 - Start with one primary coder session per focused task to simplify the first
   builder loop.
 - Require approval only for externally consequential follow-through, not for

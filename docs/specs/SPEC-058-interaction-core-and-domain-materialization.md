@@ -315,4 +315,4 @@ The same underlying output may project differently:
 
 *Created: 2026-04-14*
 *Author: Codex*
-*Related Plan: TBD*
+*Related Plan: [PLAN-050](../plans/PLAN-050-interaction-core-and-domain-materialization.md)*

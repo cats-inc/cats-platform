@@ -45,6 +45,10 @@ The MVP should also keep the initial product scope narrow:
 - code editing is not the primary interaction model
 - visible code editors are explicitly out of scope for the MVP
 
+Under the current re-architecture, this project thread should be treated as a
+conversation/container projection above the shared interaction core rather than
+as a parallel standalone workflow engine.
+
 ## Goals
 
 - eliminate the user's manual copy/paste relay between multiple coding agents
@@ -458,5 +462,7 @@ user starts with vague or concrete app intent
 - [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md)
 - [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md)
 - [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
+- [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md)
 - [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md)
 - [Research: Codex View - Cats Chat, Cats Work, and Cats Code Product Boundaries](../research/2026-03-20-codex-cats-chat-work-code-product-boundaries.md)

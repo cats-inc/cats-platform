@@ -14,7 +14,10 @@ Extend the existing Core task substrate so Chat, Work, and Code can hand off
 tasks through one shared planning convention, then bridge those tasks into
 `cats-runtime` through a runtime-neutral execution request. The platform keeps
 `CoreTaskRecord` as the cross-product plan exchange surface while runtime stays
-session-local and strategy-execution-focused.
+session-local and strategy-execution-focused. Under the new architecture, this
+bridge sits above the unified interaction engine and the shared
+interaction/materialization seam rather than acting as a product-specific
+workflow shortcut.
 
 ## Goals
 
@@ -141,7 +144,9 @@ cats-runtime
 - [ADR-014](../decisions/014-freeze-parallel-delivery-boundaries-for-provider-telegram-and-chat-workstreams.md)
 - [ADR-032](../decisions/032-own-task-substrate-in-core-not-runtime.md)
 - [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
+- [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
 - [SPEC-032](./SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
+- [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md)
 - companion runtime spec:
   [SPEC-020](../../../cats-runtime/docs/specs/SPEC-020-pluggable-execution-strategy-substrate.md)
 
@@ -165,4 +170,4 @@ cats-runtime
 
 *Created: 2026-03-26*
 *Author: Codex*
-*Related Plan: TBD*
+*Related Plan: [PLAN-021](../plans/PLAN-021-cross-product-task-strategy-handoff-and-runtime-bridge.md)*

@@ -28,6 +28,10 @@ day 0, not only after they discover later settings or compose flows:
   says Guide Cat is the optional first helper and should support `Chat`,
   `Work`, and `Code`.
 
+Under the newer architecture direction, this ADR should be read as a
+surface-specific decision inside the broader optional Guide Cat
+surface-assist-capability model, not as the complete definition of Guide Cat.
+
 However, the platform still lacks a stable visible home for that helper after
 setup completes:
 
@@ -177,6 +181,7 @@ It should start with:
 - [SPEC-049](../specs/SPEC-049-guide-cat-setup-and-generalized-participant-entry.md)
 - [SPEC-046](../specs/SPEC-046-platform-product-landing-and-installed-apps.md)
 - [SPEC-051](../specs/SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md)
+- [ADR-061](./061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
 - [ADR-051](./051-generalize-participants-and-adopt-guide-cat-terminology.md)
 - [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md)
 - [PLAN-041](../plans/PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md)

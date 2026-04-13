@@ -5,9 +5,9 @@
 ## Overview
 
 `Cats` should become the shared platform foundation for the cats initiative.
-It must do so on a Node.js/TypeScript stack, through `cats-runtime`, and with
-shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
-`Cats Work`.
+It must do so on a Node.js/TypeScript stack, through `cats-runtime`, with one
+shared interaction engine, and with structured materialization contracts that
+can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 
 ## Functional Requirements
 
@@ -254,6 +254,39 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
 - **Priority**: High
 - **Status**: Planned
 
+### FR-033: Unified Conversation-Turn-Lane Engine
+
+- **Description**: The platform shall use one canonical
+  `Container -> Conversation -> Turn -> Lane -> Segment -> Session` engine for
+  direct, sequential, concurrent, and parallel interaction flows.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-034: Interaction-Core and Domain-Materialization Split
+
+- **Description**: The platform shall let turns and lanes materialize durable
+  product state such as tasks, specs, artifacts, test results, approvals, and
+  references without making transcript prose the only durable source of truth.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-035: Heterogeneous Runtime Delivery Normalization
+
+- **Description**: The platform shall normalize rich-streaming, text-streaming,
+  and terminal-only runtime backends into one product-owned delivery contract
+  before transcript, repair, replay, or materialization logic consume them.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-036: Guide Cat Optional Surface Assist
+
+- **Description**: The platform shall treat Guide Cat as an optional
+  surface-assist capability for setup, lobby, chat entry, composer, and later
+  Work/Code surfaces, with deterministic fallback when Guide Cat is absent or
+  unavailable.
+- **Priority**: Medium
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -341,6 +374,32 @@ shared `Cats Core v1` contracts that can be reused by both `Cats Chat` and
   always-on background session
 - Entry suggestions SHOULD be cacheable local data so empty states remain
   usable without live runtime work
+
+### NFR-014: One Engine, Many Presets
+
+- Product entry points such as direct lane, group chat, and parallel chat MUST
+  remain presets or compositions above one shared interaction engine rather
+  than separate core chat modes
+
+### NFR-015: Runtime Capability Heterogeneity
+
+- Product correctness MUST remain stable across runtimes that expose rich
+  block streaming, plain-text streaming, or terminal-only results
+- Product renderers and rebuild paths MUST consume normalized product delivery
+  events rather than provider-specific payloads directly
+
+### NFR-016: Materialization Traceability
+
+- Structured outputs and durable artifacts MUST retain provenance back to
+  conversation, turn, lane, participant, and session context where relevant
+- Replay and repair SHOULD rebuild both transcript and structured projections
+  from canonical state rather than scrape prose
+
+### NFR-017: Optional Assist With Deterministic Fallback
+
+- Guide Cat MUST remain optional at the platform and per-surface level
+- Surfaces that consume Guide Cat SHOULD degrade into deterministic fallback
+  instead of losing baseline usability
 
 ## User Stories
 
@@ -558,6 +617,42 @@ topology, and turn strategy,
       `turn strategy` as separate concepts
 - [ ] New setup and conversation work references those concepts consistently
 
+### US-020: Mixed Runtime Backends Still Feel Like One Product
+
+**As a** user,
+**I want to** see consistent transcript and artifact behavior even when
+different Cats use runtimes with different streaming richness,
+**So that** product correctness does not depend on one CLI family.
+
+**Acceptance Criteria**:
+- [ ] Rich-streaming, text-streaming, and terminal-only runtimes all project
+      through the same turn/lane model
+- [ ] Repair and replay do not require provider-native payload parsing
+
+### US-021: Chat Can Materialize Code and Work State
+
+**As an** owner,
+**I want to** use chat-driven turns to create or refine durable Code/Work
+artifacts,
+**So that** useful structured state survives beyond the transcript.
+
+**Acceptance Criteria**:
+- [ ] Turns can emit structured outputs such as mutations, artifacts, or
+      references
+- [ ] Durable records preserve provenance back to the originating interaction
+
+### US-022: Guide Cat Helps Without Becoming Required
+
+**As an** owner,
+**I want to** see contextual helper prompts and starter ideas when Guide Cat is
+available,
+**So that** the platform feels helpful without becoming unusable when Guide Cat
+is missing.
+
+**Acceptance Criteria**:
+- [ ] Lobby or entry surfaces can use runtime-backed or cached Guide Cat assist
+- [ ] Deterministic fallback remains available when Guide Cat output is absent
+
 ## Constraints
 
 - The stack for this subproject is Node.js/TypeScript
@@ -572,4 +667,4 @@ topology, and turn strategy,
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-14*

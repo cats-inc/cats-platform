@@ -51,6 +51,10 @@ keeping Cats' stronger boundaries:
   not as a runtime-owned second task system
 - keep approval gates only where actions become externally consequential
 
+Under the current re-architecture, this builder loop is a `Cats Code`
+projection over the shared interaction engine, the materialization seam, and
+normalized runtime delivery rather than a standalone execution model.
+
 ## Non-Goals
 
 - building a full IDE, text editor, or file-tree replacement in this slice
@@ -276,10 +280,13 @@ first serious builder slice:
 - [ADR-034](../decisions/034-require-human-approval-gates-at-pipeline-decision-points.md)
 - [ADR-038](../decisions/038-separate-room-owned-workspaces-from-session-owned-sandboxes.md)
 - [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
+- [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [ADR-060](../decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
 - [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
 - [SPEC-032](./SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
 - [SPEC-034](./SPEC-034-room-owned-workspace-bootstrap-and-ownership.md)
 - [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md)
+- [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md)
 - [cats-runtime ADR-011](../../../cats-runtime/docs/decisions/011-runtime-owned-browser-and-preview-subsystem-with-pluggable-drivers.md)
 - [cats-runtime ADR-015](../../../cats-runtime/docs/decisions/015-own-workspace-substrate-tools-in-cats-runtime.md)
 - [cats-runtime ADR-016](../../../cats-runtime/docs/decisions/016-own-executable-delivery-primitives-not-delivery-policy.md)

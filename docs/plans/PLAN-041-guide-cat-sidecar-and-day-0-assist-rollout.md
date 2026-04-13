@@ -12,6 +12,12 @@
 
 [SPEC-051: Guide Cat Sidecar and Day-0 Assist Surfaces](../specs/SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md)
 
+Additional capability context:
+
+- [ADR-061: Treat Guide Cat as an Optional Surface-Assist Capability](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
+- [SPEC-060: Guide Cat Optional Surface-Assist Capability](../specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
+- [PLAN-052: Guide Cat Optional Surface-Assist Capability](./PLAN-052-guide-cat-optional-surface-assist-capability.md)
+
 ## Overview
 
 Implement a platform-shell Guide Cat sidecar that becomes the first visible
@@ -21,6 +27,10 @@ This rollout should start with a shell-owned UI surface, host-owned view
 state, and runtime-backed Guide Cat replies when the existing dispatch
 pipeline is available, then add richer cross-surface continuity and explicit
 handoff into product-native conversations.
+
+The sidecar should now be treated as one surface-specific rollout underneath
+the broader Guide Cat assist-capability model rather than as the sole
+definition of Guide Cat behavior.
 
 ## Implementation Phases
 
@@ -113,6 +123,8 @@ conversation/workflow continuation
 - Decision 4: Use runtime-backed Guide Cat replies in the first slice when the
   existing dispatch pipeline is available; deterministic greeting and quick
   actions remain the degraded fallback when runtime dispatch is unavailable.
+- Decision 5: Keep sidecar-local UX separate from the broader Guide Cat assist
+  capability contract so other surfaces can reuse the same capability later.
 
 ## Testing Strategy
 

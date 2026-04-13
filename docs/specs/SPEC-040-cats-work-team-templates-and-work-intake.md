@@ -17,6 +17,10 @@ the owner can start a piece of work from `/work`, choose a team template,
 generate a first plan, review it, and mark follow-up tasks handoff-ready for
 Work, Chat, or Code without exposing raw runtime internals.
 
+Under the current re-architecture, `Cats Work` should be treated as a
+domain-materialized projection over the shared interaction core rather than a
+second workflow engine with independent conversation semantics.
+
 The first Work priority should therefore be:
 
 - product-owned work intake
@@ -218,9 +222,11 @@ useful.
 - [ADR-032](../decisions/032-own-task-substrate-in-core-not-runtime.md)
 - [ADR-034](../decisions/034-require-human-approval-gates-at-pipeline-decision-points.md)
 - [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
+- [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
 - [SPEC-025](./SPEC-025-budget-policy-override-flows-and-war-room-dashboard.md)
 - [SPEC-032](./SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
 - [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md)
+- [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md)
 
 ## Open Questions
 

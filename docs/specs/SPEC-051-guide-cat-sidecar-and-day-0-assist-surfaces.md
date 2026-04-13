@@ -22,6 +22,9 @@ This spec defines that missing surface as a platform-level `Guide Cat` sidecar:
 - explicit about when help stays in the sidecar versus when it promotes into a
   product-native conversation
 
+This sidecar is now one concrete projection of the broader optional Guide Cat
+surface-assist capability rather than the definition of Guide Cat itself.
+
 This spec is a follow-on to [SPEC-049](./SPEC-049-guide-cat-setup-and-generalized-participant-entry.md).
 SPEC-049 established that Guide Cat is the optional first helper and that users
 should receive help from day 0. This spec defines the first persistent visible
@@ -225,6 +228,8 @@ inside product-specific chat state.
 - [SPEC-046](./SPEC-046-platform-product-landing-and-installed-apps.md)
 - [ADR-051](../decisions/051-generalize-participants-and-adopt-guide-cat-terminology.md)
 - [ADR-054](../decisions/054-use-a-platform-level-guide-sidecar-for-day-0-assist.md)
+- [ADR-061](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
+- [SPEC-060](./SPEC-060-guide-cat-optional-surface-assist-capability.md)
 
 ---
 

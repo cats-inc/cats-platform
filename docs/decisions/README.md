@@ -39,6 +39,8 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [061-treat-guide-cat-as-an-optional-surface-assist-capability](./061-treat-guide-cat-as-an-optional-surface-assist-capability.md) | Treat Guide Cat as an optional surface-assist capability | Proposed | 2026-04-14 |
+| [060-normalize-heterogeneous-runtime-delivery-into-product-events](./060-normalize-heterogeneous-runtime-delivery-into-product-events.md) | Normalize heterogeneous runtime delivery into product events | Proposed | 2026-04-14 |
 | [059-adopt-a-unified-conversation-turn-lane-engine](./059-adopt-a-unified-conversation-turn-lane-engine.md) | Adopt a unified conversation-turn-lane engine | Proposed | 2026-04-14 |
 | [058-adopt-lane-native-concurrent-group-transcript-delivery](./058-adopt-lane-native-concurrent-group-transcript-delivery.md) | Adopt lane-native concurrent group transcript delivery | Proposed | 2026-04-14 |
 | [057-adopt-segment-native-assistant-transcript-delivery](./057-adopt-segment-native-assistant-transcript-delivery.md) | Adopt segment-native assistant transcript delivery | Accepted | 2026-04-12 |

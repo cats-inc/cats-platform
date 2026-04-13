@@ -24,8 +24,8 @@
 | Cats Core v1 | The shared product contract layer for identity, actors/resources, permissions, conversations, approvals, owner profile, and archive metadata. |
 | Chat | A topic-centered conversation thread inside `Cats Chat`. Chat is the primary navigation unit, even when one or more Cats participate in it. |
 | Cat | A reusable product-facing identity in the Cats platform. A Cat is not the same thing as a provider choice, and Cats are expected to become one class of generalized reusable entities rather than the only possible participant shape. |
-| Guide Cat | The canonical product and developer term for the optional first helper offered during setup. Guide Cat is a Cat identity that may help across `Chat`, `Work`, and `Code`, but it is not automatically the same thing as `Boss Cat` or the invisible orchestration layer. |
-| Boss Cat | The user-facing product term for the default public orchestrator and transport-facing Cat. Boss Cat is distinct from the current-turn recipient slot and is not automatically the front-stage counterpart for every new chat. |
+| Guide Cat | The canonical product and developer term for the optional first helper offered during setup. Guide Cat is a Cat identity that may help across `Chat`, `Work`, and `Code`, but it is not automatically the same thing as `Boss Cat` or the invisible orchestration layer. Guide Cat is now also framed as an optional low-privilege surface-assist capability. |
+| Boss Cat | The user-facing product term for the default public orchestrator and transport-facing Cat. Boss Cat is a coordinator capability layered above the shared interaction engine; it is distinct from the current-turn recipient slot and is not automatically the front-stage counterpart for every new chat. |
 | Default Boss Cat | The auto-provisioned neutral Boss Cat available before the user renames, personalizes, or replaces it. |
 | Primary Orchestrator Cat | The formal product and domain term for the Cat selected as the default public orchestrator. In UI copy, this should usually be presented as `Boss Cat`. |
 | Boss Chat | Historical term for an orchestrator-first chat where unmentioned turns route to `Boss Cat`. Newer Chat docs should prefer recipient and dispatch-policy language instead of expanding `Boss Chat` semantics. |
@@ -73,6 +73,28 @@
 | Archive / RAG | The later-stage pipeline that stores archived transcripts or artifacts for embeddings and cross-chat retrieval. |
 | Runtime boundary | The stable service seam between `cats` and `cats-runtime`. |
 
+## Interaction Core Terms
+
+| Term | Meaning |
+|------|---------|
+| Container | An optional parent grouping that owns one or more conversations, such as a parallel-comparison surface. |
+| Conversation | One durable interaction boundary with its own transcript and execution state. |
+| Turn | One user- or system-initiated dispatch cycle inside a conversation. |
+| Lane | One stable target-specific response track inside a turn. Lane identity is durable and must not be conflated with runtime session identity. |
+| Segment | One lane-local product-visible unit such as text, tool, or status delivery. A segment is product-normalized and is not required to equal a provider-native block or chunk. |
+| Session | One runtime attachment generation for a lane. `sessionId` is ephemeral runtime identity, not durable lane identity. |
+| Scheduler policy | The rule that decides whether lanes activate serially or concurrently. |
+| Sharing policy | The rule that decides whether execution happens in one shared conversation, isolated child conversations, or another bounded context-sharing model. |
+| Coordinator capability | An optional capability layer, such as `Boss Cat`, that may influence routing or orchestration without redefining the core interaction model. |
+| Materialization | The process by which interaction outcomes become durable structured product state outside the transcript projection. |
+| Mutation | A structured output proposing or applying a change to durable product state. |
+| Artifact | A durable output such as a spec, plan, code change, test result, preview, or review record. |
+| Reference | A structured pointer linking interaction state to files, workspaces, repos, conversations, or other resources. |
+| Projection | A product-specific view over shared canonical state, such as a chat transcript, work dashboard, or code review pane. |
+| Runtime capability profile | The normalized description of how much delivery richness a runtime/backend exposes, such as rich streaming, text streaming, or terminal-only result delivery. |
+| Normalized delivery event | A product-owned runtime event used by transcript, repair, replay, and materialization logic after adapter-specific payloads have been normalized. |
+| Guide Cat assist capability | The optional low-privilege assist layer that may generate greetings, prompt chips, helper copy, and contextual suggestions for setup, lobby, chat entry, or other surfaces, while degrading cleanly into deterministic fallback when unavailable. |
+
 ## Roles
 
 | Term | Meaning |
@@ -92,4 +114,4 @@
 
 ---
 
-Last updated: 2026-04-08
+Last updated: 2026-04-14

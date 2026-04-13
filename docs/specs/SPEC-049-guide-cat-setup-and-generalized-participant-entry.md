@@ -25,6 +25,10 @@ This setup step should stay lightweight:
 - if yes, capture only the Guide Cat name plus runtime target
 - do not ask for persona, skill profile, or memory profile during setup
 
+Setup should also be understood as provisioning the platform-level Guide Cat
+assist capability source, not as binding Guide Cat to one mandatory post-setup
+surface.
+
 It should also stay truthful:
 
 - only show provider/model choices that are truly usable right now
@@ -269,7 +273,9 @@ Starter ideas on `/lobby` and other entry surfaces should follow this order:
 - [ADR-042](../decisions/042-separate-channel-topology-from-routing-mode.md)
 - [ADR-051](../decisions/051-generalize-participants-and-adopt-guide-cat-terminology.md)
 - [ADR-054](../decisions/054-use-a-platform-level-guide-sidecar-for-day-0-assist.md)
+- [ADR-061](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
 - [SPEC-051](./SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md)
+- [SPEC-060](./SPEC-060-guide-cat-optional-surface-assist-capability.md)
 - [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md)
 - [PLAN-041](../plans/PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md)
 - [PLAN-040](../plans/PLAN-040-simplify-setup-wizard-and-decouple-runtime-bootstrap.md)

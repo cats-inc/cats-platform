@@ -30,6 +30,12 @@ The post-setup visible day-0 assist surface is now documented separately in:
 - [SPEC-051](../specs/SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md)
 - [PLAN-041](./PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md)
 
+The broader Guide Cat capability model is now documented separately in:
+
+- [ADR-061](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
+- [SPEC-060](../specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
+- [PLAN-052](./PLAN-052-guide-cat-optional-surface-assist-capability.md)
+
 ## Implementation Phases
 
 ### Phase 1: Freeze Terminology and Product Boundaries

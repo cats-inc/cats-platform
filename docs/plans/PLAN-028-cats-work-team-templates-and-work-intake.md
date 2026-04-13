@@ -19,8 +19,10 @@
 - [SPEC-040: Cats Work Team Templates and Work Intake](../specs/SPEC-040-cats-work-team-templates-and-work-intake.md)
 - [PLAN-021: Cross-Product Task Strategy Handoff and Runtime Bridge](./PLAN-021-cross-product-task-strategy-handoff-and-runtime-bridge.md)
 - [ADR-039: Use Core task metadata as the cross-product plan exchange surface](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
+- [ADR-059: Adopt a Unified Conversation-Turn-Lane Engine](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
 - [SPEC-032: Core Task Lifecycle and Wakeup Integration](../specs/SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
 - [SPEC-035: Cross-Product Task Strategy Handoff and Runtime Bridge](../specs/SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md)
+- [SPEC-058: Interaction Core and Domain Materialization](../specs/SPEC-058-interaction-core-and-domain-materialization.md)
 
 ## Overview
 
@@ -171,6 +173,8 @@ template packs.
   manifests.
 - Reuse shared Core records and planning metadata instead of inventing a
   Work-only persistence family.
+- Treat Work intake as a domain-materialized projection over the shared
+  interaction engine rather than as a second workflow engine.
 - Require explicit human review before first downstream handoff in the first slice.
 - Keep Work focused on planning, approval, and target-product signaling rather
   than direct runtime dispatch from Work UI state.

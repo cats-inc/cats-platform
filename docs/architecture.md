@@ -8,10 +8,41 @@
 host identity `cats-platform` and now uses the matching local monorepo folder
 `cats-platform/`. The current implementation is still a split architecture: a
 Node server owns product and runtime-facing APIs, and a React/Vite renderer
-owns the operator-facing shell. The accepted next step is to add `Cats Core
-v1` so `Cats Chat`, `Cats Work`, and `Cats Code` can launch on the same shared
-domain model while setup and conversation modeling stop depending on
-Boss-Cat-first assumptions.
+owns the operator-facing shell. The accepted next step is no longer "more chat
+modes." It is a unified interaction core plus a structured materialization
+layer so `Cats Chat`, `Cats Work`, and `Cats Code` can all project from the
+same engine and provenance model.
+
+## Unified Interaction and Materialization Direction
+
+The current architectural north star is:
+
+- one interaction core:
+  - `Container`
+  - `Conversation`
+  - `Turn`
+  - `Lane`
+  - `Segment`
+  - `Session`
+- one materialization seam:
+  - `mutation`
+  - `artifact`
+  - `reference`
+  - `execution_result`
+  - `governance_event`
+- many product projections:
+  - `Cats Chat`
+  - `Cats Work`
+  - `Cats Code`
+
+This means:
+
+- `+New chat`, `+Group chat`, `+Parallel chat`, and direct lanes are presets or
+  compositions above one engine
+- `Chat`, `Work`, and `Code` do not get separate conversation lifecycles
+- transcript bubbles are projections over canonical turn/lane state
+- structured product state is materialized beside the transcript, not scraped
+  back out of it later
 
 ## Architecture Diagram
 
@@ -235,6 +266,29 @@ Current platform settings behavior follows the same split:
 - channel-only temporary participants stay inside the room and are not persisted
   into the global settings registry
 
+`Guide Cat` is now also framed as an optional surface-assist capability.
+Sidecar help, setup assistance, lobby suggestions, and composer prompt chips
+should all be treated as projections of that capability rather than as
+separate one-off widgets or special chat modes.
+
+### Optional Capability Layers
+
+The current architecture distinguishes optional capability layers from the core
+interaction engine:
+
+- `Boss Cat`
+  - conversation-scoped coordinator capability
+  - may be visible or hidden
+  - may influence routing, scheduling, and privileged orchestration
+- `Guide Cat`
+  - surface-scoped assist capability
+  - may be visible or hidden
+  - may influence greetings, suggestions, helper copy, and explicit handoff
+    affordances
+
+Both are optional layers. Neither changes lane identity, session identity, or
+canonical transcript projection rules by itself.
+
 ### Runtime Client and Runtime Boundary
 
 - **Purpose**: Keep `cats-runtime` as the only execution boundary while
@@ -261,6 +315,30 @@ session lifecycle:
 - the platform may reuse a warm Guide Cat session briefly
 - Guide Cat output such as starter ideas should be cacheable local product data
   so empty states do not depend on a live session
+
+### Runtime Delivery Normalization
+
+The platform now assumes heterogeneous runtime delivery capabilities.
+
+Some runtime adapters can stream rich blocks, tool events, and status steps.
+Others can stream plain text only. Others can produce only a final result.
+
+The product must therefore normalize all runtime delivery into product-owned
+events before transcript, repair, or materialization code consumes it.
+
+That normalized contract preserves:
+
+- `conversationId`
+- `turnId`
+- `laneId`
+- `sessionId`
+- lane-local segment correlation
+
+but it does not require product `Segment` to equal a provider-native block or
+chunk.
+
+This keeps Chat/Work/Code projections stable even when different runtime
+backends have different streaming richness.
 
 ### HTTP Server
 
@@ -537,17 +615,21 @@ primary operator workflow. See
 5. If work needs execution, the product server can call `cats-runtime`
    directly, or an orchestrator can use the runtime MCP facade for runtime
    tools.
-6. Transport relays persist transport-only dedupe, binding, and delivery
+6. Runtime-native events are normalized into product delivery events before
+   transcript, artifact, or materialization projections consume them.
+7. Transport relays persist transport-only dedupe, binding, and delivery
    diagnostics in sidecar state rather than hiding them inside room
    transcripts.
-7. The product server persists operational transcript, approval, actor, and
+8. The product server persists operational transcript, approval, actor, and
    artifact state to product-owned storage.
-8. The product server can flush companion, owner, and channel context into a
-   Cats-owned canonical-memory projection and assemble retrieval context for
-   direct companion sessions.
-9. Archived data later flows into archive/RAG pipelines without replacing the
-   operational DB, canonical memory, or approval state.
-10. In built mode, the server also serves the static renderer bundle.
+9. Turns and lanes may also emit structured outputs that materialize into
+   shared product records for Chat, Work, and Code.
+10. The product server can flush companion, owner, and channel context into a
+    Cats-owned canonical-memory projection and assemble retrieval context for
+    direct companion sessions.
+11. Archived data later flows into archive/RAG pipelines without replacing the
+    operational DB, canonical memory, or approval state.
+12. In built mode, the server also serves the static renderer bundle.
 
 ## Desktop Host Topology
 
@@ -685,10 +767,14 @@ intentionally deferred:
 - Hexagonal boundary at the runtime edge: `cats` depends on a runtime client
   interface, not `agent-fleet`
 - Shared domain contracts before product-surface specialization
+- One interaction core with many presets rather than many mode-specific engines
+- Structured materialization beside transcript projection
 - Direct product APIs plus MCP tool access for orchestrators
 - Dependency injection by constructor or factory parameter
 - Explicit shell payloads over hidden process state
 - Product-owned memory over provider-owned session continuity
+- Optional capability layers with deterministic fallback (`Boss Cat` and
+  `Guide Cat`)
 - Operational DB plus archive/RAG split rather than using vector memory for
   every live workflow
 
@@ -711,7 +797,14 @@ intentionally deferred:
   `Cats Work`
 - [ADR-008](./decisions/008-expose-cats-runtime-via-direct-api-and-mcp-facade.md):
   keep direct product APIs while adding an MCP facade for orchestrators
+- [ADR-059](./decisions/059-adopt-a-unified-conversation-turn-lane-engine.md):
+  use one canonical interaction engine for direct, sequential, concurrent, and
+  parallel flows
+- [ADR-060](./decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md):
+  normalize mixed runtime delivery into one product contract
+- [ADR-061](./decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md):
+  treat Guide Cat as an optional assist capability rather than a chat mode
 
 ---
 
-*Last updated: 2026-04-12*
+*Last updated: 2026-04-14*
