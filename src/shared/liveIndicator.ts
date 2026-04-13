@@ -494,6 +494,8 @@ export function createWaitingLiveIndicatorState(input: {
   revealIdentity?: boolean;
   targetStateId?: string | null;
   segmentIndex?: number;
+  sessionStartedAt?: string | null;
+  requiresSessionStartConfirmation?: boolean;
 }): LiveIndicatorState {
   const revealIdentity = input.revealIdentity === true;
   return projectLiveIndicatorStateFromSegments([
@@ -508,6 +510,8 @@ export function createWaitingLiveIndicatorState(input: {
       participantId: revealIdentity ? input.participantId ?? null : null,
       catId: revealIdentity ? input.catId : null,
       speakerLabel: revealIdentity ? input.speakerLabel : null,
+      sessionStartedAt: input.sessionStartedAt ?? null,
+      requiresSessionStartConfirmation: input.requiresSessionStartConfirmation === true,
     }),
   ]);
 }

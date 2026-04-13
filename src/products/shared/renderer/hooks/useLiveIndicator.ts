@@ -31,6 +31,19 @@ const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
 const LIVE_INDICATOR_RETRY_LIMIT = 8;
 
 export interface LiveIndicatorSelectedChannelLike {
+  orchestratorLease?: {
+    sessionId?: string | null;
+    startedAt?: string | null;
+  } | null;
+  assignedParticipants?: Array<{
+    participantId: string;
+    execution?: {
+      lease?: {
+        sessionId?: string | null;
+        startedAt?: string | null;
+      } | null;
+    } | null;
+  }> | null;
   messages?: Array<{
     id: string;
     senderKind: string;
@@ -49,6 +62,7 @@ export interface LiveIndicatorSelectedChannelLike {
         id?: string | null;
         status: string | null;
         sourceMessageId?: string | null;
+        startedAt?: string | null;
         workflowShape?: string | null;
         targetStatuses?: Array<{
         status: string | null;
@@ -92,6 +106,8 @@ interface WaitingIndicatorInputs {
   revealIdentity: boolean;
   defaultRecipientCatId: string | null;
   fallbackSpeakerLabel: string | null;
+  sessionStartedAt: string | null;
+  requiresSessionStartConfirmation: boolean;
 }
 
 export function shouldConnectLiveIndicatorStream(
@@ -164,6 +180,79 @@ function resolveWaitingSpeakerState(
     catId: null,
     speakerLabel: nextTarget.participant.participantName?.trim() || null,
     revealIdentity,
+  };
+}
+
+interface WaitingSessionState {
+  sessionStartedAt: string | null;
+  requiresSessionStartConfirmation: boolean;
+}
+
+function resolveTargetLease(
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+  participantId: string | null,
+): {
+  sessionId: string | null;
+  startedAt: string | null;
+} | null {
+  if (!selectedChannel || !participantId) {
+    return null;
+  }
+
+  if (participantId === 'orchestrator') {
+    return {
+      sessionId: readTraceString(selectedChannel.orchestratorLease?.sessionId),
+      startedAt: readTraceString(selectedChannel.orchestratorLease?.startedAt),
+    };
+  }
+
+  const participantLease =
+    selectedChannel.assignedParticipants?.find((participant) => participant.participantId === participantId)
+      ?.execution?.lease
+    ?? null;
+
+  return {
+    sessionId: readTraceString(participantLease?.sessionId),
+    startedAt: readTraceString(participantLease?.startedAt),
+  };
+}
+
+export function resolveWaitingSessionState(
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+  participantId: string | null,
+): WaitingSessionState {
+  const activeTurnStartedAt = readTraceString(
+    selectedChannel?.roomRouting.workflow.activeTurn?.startedAt,
+  );
+  if (!participantId || !activeTurnStartedAt) {
+    return {
+      sessionStartedAt: null,
+      requiresSessionStartConfirmation: false,
+    };
+  }
+
+  const lease = resolveTargetLease(selectedChannel, participantId);
+  const sessionId = lease?.sessionId ?? null;
+  const sessionStartedAt = lease?.startedAt ?? null;
+  if (!sessionId || !sessionStartedAt) {
+    return {
+      sessionStartedAt: activeTurnStartedAt,
+      requiresSessionStartConfirmation: true,
+    };
+  }
+
+  const activeTurnTimestamp = Date.parse(activeTurnStartedAt);
+  const sessionTimestamp = Date.parse(sessionStartedAt);
+  if (Number.isNaN(activeTurnTimestamp) || Number.isNaN(sessionTimestamp)) {
+    return {
+      sessionStartedAt,
+      requiresSessionStartConfirmation: false,
+    };
+  }
+
+  return {
+    sessionStartedAt,
+    requiresSessionStartConfirmation: sessionTimestamp >= activeTurnTimestamp,
   };
 }
 
@@ -776,6 +865,10 @@ export function useLiveIndicator<
     () => resolveWaitingSpeakerState(selectedChannel),
     [activeTurn, selectedChannel?.messages],
   );
+  const waitingSessionState = useMemo(
+    () => resolveWaitingSessionState(selectedChannel, waitingSpeakerState.participantId),
+    [selectedChannel, waitingSpeakerState.participantId],
+  );
   const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>(
     () => ({
       sourceMessageId: waitingSpeakerState.sourceMessageId,
@@ -786,6 +879,8 @@ export function useLiveIndicator<
       revealIdentity: waitingSpeakerState.revealIdentity,
       defaultRecipientCatId,
       fallbackSpeakerLabel: speakerLabel,
+      sessionStartedAt: waitingSessionState.sessionStartedAt,
+      requiresSessionStartConfirmation: waitingSessionState.requiresSessionStartConfirmation,
     }),
     [
       waitingSpeakerState.sourceMessageId,
@@ -796,6 +891,8 @@ export function useLiveIndicator<
       waitingSpeakerState.participantId,
       waitingSpeakerState.revealIdentity,
       waitingSpeakerState.speakerLabel,
+      waitingSessionState.sessionStartedAt,
+      waitingSessionState.requiresSessionStartConfirmation,
     ],
   );
   const waitingIndicatorInputsRef = useRef<WaitingIndicatorInputs>(waitingIndicatorInputs);
@@ -809,6 +906,8 @@ export function useLiveIndicator<
       catId: current.revealIdentity ? current.catId : current.defaultRecipientCatId,
       speakerLabel: current.revealIdentity ? current.speakerLabel : current.fallbackSpeakerLabel,
       revealIdentity: current.revealIdentity,
+      sessionStartedAt: current.sessionStartedAt,
+      requiresSessionStartConfirmation: current.requiresSessionStartConfirmation,
     });
   }
 

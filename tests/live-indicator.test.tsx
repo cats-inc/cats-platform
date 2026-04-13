@@ -18,6 +18,7 @@ import {
   shouldReconnectLiveIndicatorAfterOngoingWorkflow,
   shouldReconnectLiveIndicatorAfterSessionClose,
   shouldReconnectLiveIndicatorAfterSourceError,
+  resolveWaitingSessionState,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {
   applyLiveIndicatorEvent,
@@ -79,6 +80,71 @@ test('shouldConnectLiveIndicatorStream only follows concurrent dispatch for runn
     shouldConnectLiveIndicatorStream(channelId, 'parallelChat:dispatch', 'running'),
     true,
   );
+});
+
+test('resolveWaitingSessionState requires session-start confirmation while a direct-lane reconnect target has no active lease yet', () => {
+  const waitingSessionState = resolveWaitingSessionState(
+    {
+      orchestratorLease: {
+        sessionId: null,
+        startedAt: null,
+      },
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            startedAt: '2026-04-14T12:00:01.000Z',
+          },
+        },
+      },
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingInstance: null,
+    },
+    'orchestrator',
+  );
+
+  assert.deepEqual(waitingSessionState, {
+    sessionStartedAt: '2026-04-14T12:00:01.000Z',
+    requiresSessionStartConfirmation: true,
+  });
+});
+
+test('resolveWaitingSessionState skips session-start confirmation when the target lease predates the active turn', () => {
+  const waitingSessionState = resolveWaitingSessionState(
+    {
+      assignedParticipants: [
+        {
+          participantId: 'participant-gemini',
+          execution: {
+            lease: {
+              sessionId: 'session-gemini',
+              startedAt: '2026-04-14T11:59:00.000Z',
+            },
+          },
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            startedAt: '2026-04-14T12:00:01.000Z',
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    'participant-gemini',
+  );
+
+  assert.deepEqual(waitingSessionState, {
+    sessionStartedAt: '2026-04-14T11:59:00.000Z',
+    requiresSessionStartConfirmation: false,
+  });
 });
 
 test('shouldRetryLiveIndicatorSessionClose reconnects when a streamed session closes during an active send', () => {
@@ -1871,6 +1937,34 @@ test('resolveVisibleLiveIndicator keeps the assistant bubble hidden until sessio
     sessionStartedAt: '2026-04-09T12:00:02.500Z',
     requiresSessionStartConfirmation: true,
     progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, null);
+});
+
+test('resolveVisibleLiveIndicator keeps a waiting speaker hidden until session startup is persisted', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    sessionStartedAt: '2026-04-09T12:00:02.500Z',
+    requiresSessionStartConfirmation: true,
   };
 
   const visible = resolveVisibleLiveIndicator(
