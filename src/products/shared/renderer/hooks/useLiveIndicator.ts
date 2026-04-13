@@ -828,7 +828,6 @@ export function useLiveIndicator<
     if (!shouldShowWaiting) {
       clearReconnectTimer();
       closeSource();
-      streamCursorRef.current = null;
       if (shouldPinLiveIndicatorUntilPersistedReply(stateRef.current, selectedChannelRef.current)) {
         traceBrowser('indicator_pin_pending_reply', {
           participantId: stateRef.current.participantId,

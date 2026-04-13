@@ -1299,6 +1299,8 @@ test('shared live indicator effect reconnects on EventSource termination without
   assert.match(source, /selectedChannel\?\.messages/u);
   assert.match(source, /function updateIndicatorState\(/u);
   assert.doesNotMatch(source, /startTransition\(/u);
+  assert.doesNotMatch(source, /if \(!shouldShowWaiting\)\s*\{[\s\S]*?streamCursorRef\.current = null;/u);
+  assert.match(source, /if \(previousChannelId !== channelId\)\s*\{\s*streamCursorRef\.current = null;\s*\}/u);
   assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*routingStatus,\s*shouldConnectStream,\s*shouldShowWaitingIndicator,\s*\]/u);
   assert.match(
     source,
