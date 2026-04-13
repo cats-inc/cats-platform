@@ -15,6 +15,7 @@ export interface DesktopTrayController {
 
 interface CreateDesktopTrayControllerOptions {
   getWindow: () => BrowserWindow | null;
+  onShowWindow: () => Promise<void>;
   onNavigate: (path: string) => Promise<void>;
   onRunAction: (actionId: DesktopHostActionId) => Promise<void>;
   onQuit: () => void;
@@ -77,6 +78,10 @@ function runTrayAction(action: () => Promise<void>): void {
       `Desktop tray action failed: ${error instanceof Error ? error.message : String(error)}\n`,
     );
   });
+}
+
+export function runDesktopTrayShowWindow(onShowWindow: () => Promise<void>): void {
+  runTrayAction(onShowWindow);
 }
 
 function buildDesktopTrayMenuTemplate(
@@ -157,12 +162,7 @@ export async function createDesktopTrayController(
   tray.setToolTip('Cats');
 
   const showWindow = () => {
-    const window = options.getWindow();
-    if (!window) {
-      return;
-    }
-    window.show();
-    window.focus();
+    runDesktopTrayShowWindow(options.onShowWindow);
   };
 
   const trayLifecycle = createGuardedTrayLifecycle<DesktopTrayMenuState>({

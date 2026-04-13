@@ -111,6 +111,7 @@ declare module 'electron' {
     };
     setLoginItemSettings(settings: {
       openAtLogin: boolean;
+      name?: string;
       path?: string;
       args?: string[];
     }): void;

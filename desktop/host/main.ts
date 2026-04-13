@@ -1,7 +1,10 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
-import { resolveDesktopBootstrapNavigation } from './bootstrapNavigation.js';
+import {
+  resolveDesktopBootstrapNavigation,
+  resolveDesktopWindowRevealNavigation,
+} from './bootstrapNavigation.js';
 import {
   resolveCatsHomeDir,
   resolveDesktopHostConfig,
@@ -602,14 +605,13 @@ function updateBackgroundState(
   });
 }
 
-function syncBackgroundPreferencesState(): void {
+async function syncBackgroundPreferencesState(): Promise<void> {
   if (!backgroundState) {
     return;
   }
   const shouldRevealWindow = !isSystemTrayEnabled() && backgroundState.mode === 'background';
   if (shouldRevealWindow) {
-    mainWindow?.show();
-    mainWindow?.focus();
+    await showMainWindow();
   }
   backgroundState = applyEffectiveBackgroundPreferences({
     ...backgroundState,
@@ -628,10 +630,10 @@ async function showMainWindow(url?: string): Promise<void> {
     return;
   }
   const nextUrl = url ?? (
-    bootstrapPageVisible && hostConfig && latestSnapshot
-      ? resolveDesktopBootstrapNavigation(latestSnapshot, {
+    hostConfig
+      ? resolveDesktopWindowRevealNavigation(latestSnapshot, {
         appBaseUrl: hostConfig.appBaseUrl,
-        showWindowOnStartup: true,
+        bootstrapPageVisible,
       })
       : null
   );
@@ -671,6 +673,9 @@ function hideMainWindowToTray(): void {
 function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayController>[0] {
   return {
     getWindow: () => mainWindow,
+    onShowWindow: async () => {
+      await showMainWindow();
+    },
     onNavigate: async (path) => {
       if (hostConfig) {
         await showMainWindow(`${hostConfig.appBaseUrl}${path}`);
@@ -1300,7 +1305,7 @@ async function main(): Promise<void> {
       preferences: latestDesktopStartupPreferences,
       background: hostConfig.background,
     });
-    syncBackgroundPreferencesState();
+    await syncBackgroundPreferencesState();
     await syncTrayController();
     if (latestSnapshot) {
       publishSnapshot(buildSnapshot(null));

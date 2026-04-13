@@ -19,6 +19,7 @@ export interface DesktopStartupAppLike {
   getPath(name: string): string;
   setLoginItemSettings?(settings: {
     openAtLogin: boolean;
+    name?: string;
     path?: string;
     args?: string[];
   }): void;
@@ -37,6 +38,7 @@ const DEFAULT_DESKTOP_STARTUP_PREFERENCES: DesktopStartupPreferences = {
 };
 
 export const DESKTOP_LAUNCH_AT_LOGIN_ARG = '--launch-at-login';
+export const DESKTOP_WINDOWS_LOGIN_ITEM_NAME = 'Cats';
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -177,6 +179,7 @@ export async function syncDesktopStartupPreferences(
   if (platform === 'win32') {
     appLike.setLoginItemSettings?.({
       openAtLogin: preferences.startAtLogin,
+      name: DESKTOP_WINDOWS_LOGIN_ITEM_NAME,
       path: executablePath,
       args: [DESKTOP_LAUNCH_AT_LOGIN_ARG],
     });

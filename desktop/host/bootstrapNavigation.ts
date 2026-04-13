@@ -25,3 +25,20 @@ export function resolveDesktopBootstrapNavigation(
 
   return null;
 }
+
+export function resolveDesktopWindowRevealNavigation(
+  snapshot: Pick<DesktopBootstrapSnapshot, 'phase' | 'app'> | null,
+  options: {
+    appBaseUrl: string;
+    bootstrapPageVisible: boolean;
+  },
+): string | null {
+  if (!options.bootstrapPageVisible || !snapshot) {
+    return null;
+  }
+
+  return resolveDesktopBootstrapNavigation(snapshot, {
+    appBaseUrl: options.appBaseUrl,
+    showWindowOnStartup: true,
+  });
+}

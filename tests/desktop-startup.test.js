@@ -183,6 +183,7 @@ test('desktop startup sync uses login item settings on Windows and writes autost
 
   assert.deepEqual(calls, [{
     openAtLogin: true,
+    name: 'Cats',
     path: 'C:/Program Files/Cats/Cats.exe',
     args: ['--launch-at-login'],
   }]);

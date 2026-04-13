@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { resolveDesktopWindowRevealNavigation } from '../build/desktop/bootstrapNavigation.js';
 import { buildDesktopTrayMenuState } from '../build/desktop/trayMenu.js';
 
 test('tray menu shows setup-oriented actions before onboarding is complete', () => {
@@ -179,5 +180,35 @@ test('tray menu hides unavailable or disabled products from app-shell descriptor
   assert.deepEqual(
     state.products.map((product) => product.id),
     ['chat'],
+  );
+});
+
+test('window reveal navigation exits the bootstrap page once chat is ready', () => {
+  assert.equal(
+    resolveDesktopWindowRevealNavigation({
+      phase: 'ready_for_chat',
+      app: {
+        entryPath: '/chat',
+        setupCompleteAt: '2026-04-04T10:00:00.000Z',
+      },
+    }, {
+      appBaseUrl: 'http://127.0.0.1:8181',
+      bootstrapPageVisible: true,
+    }),
+    'http://127.0.0.1:8181/chat',
+  );
+
+  assert.equal(
+    resolveDesktopWindowRevealNavigation({
+      phase: 'ready_for_chat',
+      app: {
+        entryPath: '/chat',
+        setupCompleteAt: '2026-04-04T10:00:00.000Z',
+      },
+    }, {
+      appBaseUrl: 'http://127.0.0.1:8181',
+      bootstrapPageVisible: false,
+    }),
+    null,
   );
 });
