@@ -28,7 +28,9 @@ This plan turns concurrent group delivery into an explicit two-level model:
 The goal is to stop using session timing to decide transcript structure. The
 cluster should appear once the fan-out target set is known. Each lane should
 then progress independently from `pending` to `sealed`, with reconnect and
-segment continuation staying inside that lane.
+segment continuation staying inside that lane. Text delivery should remain
+behind a cluster-ready barrier until every surviving lane has attached a
+session or become terminally unavailable.
 
 ## Implementation Phases
 
@@ -48,6 +50,11 @@ segment continuation staying inside that lane.
       `cancelled`.
 - [ ] Task 1.4: Define how cluster state and lane state should serialize into
       app-shell/read-model payloads.
+- [ ] Task 1.5: Define the cluster-ready barrier contract, including:
+      - what counts as "session-ready"
+      - how early lane text is buffered
+      - how failure/cancellation satisfy the barrier
+      - what bounded timeout releases the barrier if one lane never attaches
 
 **Deliverables**: one shared concurrent-cluster contract that separates lane
 identity from runtime-session identity
@@ -62,6 +69,11 @@ identity from runtime-session identity
       and local segment updates can be projected onto the same lane.
 - [ ] Task 2.4: Ensure reconnect updates target the existing lane rather than
       creating a new lane-generation row.
+- [ ] Task 2.5: Rework the concurrent SSE handler from serial handoff semantics
+      into a lane-scoped multiplex stream that can carry updates for multiple
+      active lanes in one turn.
+- [ ] Task 2.6: Add server-side buffering/release logic so early lane text is
+      held until the cluster-ready barrier opens.
 
 **Deliverables**: stable upstream lane materialization for concurrent group
 turns
@@ -80,9 +92,13 @@ turns
       - `streaming`
       - `sealed`
       - `failed` / `cancelled`
-- [ ] Task 3.5: Keep segment-native same-speaker continuation inside the lane's
+- [ ] Task 3.5: Keep pre-barrier lane states visible without leaking buffered
+      text before the whole cluster is ready.
+- [ ] Task 3.6: Flush buffered text into each lane in place when the
+      cluster-ready barrier opens.
+- [ ] Task 3.7: Keep segment-native same-speaker continuation inside the lane's
       local timeline instead of leaking back into global transcript order.
-- [ ] Task 3.6: Make reconnect/session-start transitions mutate the existing
+- [ ] Task 3.8: Make reconnect/session-start transitions mutate the existing
       lane instead of producing ghost or duplicate audience bubbles.
 
 **Deliverables**: a live concurrent renderer that behaves like a stable compare
@@ -108,6 +124,8 @@ order
       - all lanes materialized together
       - fixed dispatch-time order
       - sequential job startup under concurrent routing
+      - text held behind the ready barrier until all lanes are ready or one
+        lane is released by timeout/failure
 - [ ] Task 5.2: Add live-render tests for:
       - one fast lane and two slow lanes
       - reconnect inside one lane
@@ -117,11 +135,13 @@ order
       - preserved lane order after refresh
       - repair not flattening concurrent lanes
       - cluster surviving interruption and retry
+      - lane-scoped multiplex SSE delivery across multiple active targets
 - [ ] Task 5.4: Manual smoke-check:
       - three-target concurrent turn
       - one interrupted lane
       - one reconnecting lane
       - reordered audience chip at send time
+      - one lane attaching late while another lane becomes ready early
 
 **Deliverables**: regression coverage for the full concurrent cluster model
 
@@ -136,7 +156,7 @@ order
 | `src/products/chat/renderer/components/ChatView.tsx` | Modify | Expose cluster/lane diagnostics in `[CV]` tracing |
 | `src/products/chat/renderer/components/chat-view/chatViewSupport.ts` | Modify | Distinguish chronological transcript rows from concurrent lane clusters |
 | `src/products/chat/api/resources/channelRuntimeRoutes.ts` | Modify | Stream lane identity plus session attachment updates |
-| `src/products/chat/api/resources/channelStreamSupport.ts` | Modify | Preserve concurrent target materialization and dispatch-time lane order |
+| `src/products/chat/api/resources/channelStreamSupport.ts` | Modify | Preserve concurrent target materialization, dispatch-time lane order, and ready-barrier semantics |
 | `src/products/chat/state/runtime-dispatch/execution.ts` | Modify | Persist concurrent lane metadata from dispatch state |
 | `src/products/chat/state/runtime-dispatch/results.ts` | Modify | Finalize per-lane results without flattening cluster state |
 | `src/products/chat/state/runtime-dispatch/repair.ts` | Modify | Reconstruct clusters and lanes during repair/startup |
@@ -153,18 +173,23 @@ order
   runtime timing.
 - Decision 3: `sessionId` is a lane-local attachment detail and must never be
   the primary UI identity for concurrent lanes.
-- Decision 4: Repair and read-model paths must preserve cluster semantics, or
+- Decision 4: Early text should be buffered behind a cluster-ready barrier so
+  the compare surface does not leak sequential startup skew.
+- Decision 5: Repair and read-model paths must preserve cluster semantics, or
   the renderer will keep fighting server-side flattening.
 
 ## Testing Strategy
 
 - **Unit Tests**: cluster projector, lane identity matching, local segment
-  ordering, reconnect updates, and lane-order preservation
-- **Integration Tests**: server stream handoff, read-model rebuild, repair, and
-  transcript invalidation with concurrent clusters
+  ordering, reconnect updates, lane-order preservation, and ready-barrier
+  release rules
+- **Integration Tests**: server stream handoff, concurrent multiplex delivery,
+  read-model rebuild, repair, and transcript invalidation with concurrent
+  clusters
 - **Manual Testing**:
   - send a three-audience concurrent turn and confirm all lanes appear
     together in chip order
+  - confirm no lane text appears before the cluster-ready barrier opens
   - verify faster lanes seal in place while slower lanes continue
   - reconnect one lane and confirm no second bubble/lane appears
   - reload the room and confirm the same lane order persists
@@ -175,6 +200,7 @@ order
 |------|--------|------------|
 | The current renderer assumes one global chronological assistant list | High | Introduce an explicit concurrent-cluster projection instead of layering more timing heuristics on the old list |
 | Upstream contracts still expose only session timing, not stable lane identity | High | Materialize and transport `targetStateId`-based lane identity through server and read-model layers |
+| A cluster-ready barrier could stall the whole turn if one lane never attaches | High | Define bounded timeout and terminal-unavailable release rules up front and cover them in tests |
 | Durable transcript reconstruction flattens clusters after refresh | High | Persist lane order metadata and cover repair/read-model rebuild in tests |
 | Concurrent UX diverges from segment-native assistant rules | Medium | Reuse ADR-057 segment rules inside each lane and test lane-local continuation explicitly |
 

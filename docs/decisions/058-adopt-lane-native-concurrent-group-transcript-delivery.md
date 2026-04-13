@@ -18,6 +18,8 @@ That leads to the wrong user-visible behavior:
 - assistant bubbles appear in session-start order instead of audience order
 - sequential job startup leaks into the UI even when the routing mode is
   `concurrent`
+- faster targets can begin showing text before slower targets have even attached
+  a session, so the transcript still feels like a staggered startup race
 - reconnect and `session_started` timing can create duplicate or ghost bubbles
 - the same target can appear to create a second bubble because the product
   lacks a stable lane identity above `sessionId`
@@ -91,7 +93,25 @@ When the concurrent target set is known:
 - each lane starts in a pre-stream state such as `pending` or `connecting`
 - later session-start or text events only advance the existing lane state
 
-### 5. Each lane owns its own segment-native transcript timeline
+### 5. Lane text is gated by a cluster-ready barrier
+
+Materializing all lanes together is necessary but not sufficient.
+
+To avoid leaking sequential startup through token timing, concurrent lane text
+must not become user-visible until the cluster reaches a ready barrier.
+
+That barrier opens when every non-terminal lane has either:
+
+- attached its first valid session for this turn, or
+- entered a terminal unavailable state such as `failed` or `cancelled`
+
+This means:
+
+- early text from a faster lane may be buffered briefly
+- the concurrent compare surface becomes visible before text begins
+- the user sees "the cluster is ready" before "lane A happened to win the race"
+
+### 6. Each lane owns its own segment-native transcript timeline
 
 Within a concurrent lane, assistant delivery still follows the
 segment-native rules from ADR-057.
@@ -103,7 +123,7 @@ That means:
 - reconnect updates the same lane instead of creating a second lane for the
   same target
 
-### 6. Session and connection events are lane-state updates, not lane creation
+### 7. Session and connection events are lane-state updates, not lane creation
 
 `session_started`, attach progress, and reconnect events remain useful
 observability signals, but they must not decide whether a concurrent lane
@@ -117,7 +137,7 @@ They only transition an already-materialized lane through states such as:
 - `sealed`
 - `failed`
 
-### 7. Durable transcript should preserve cluster semantics
+### 8. Durable transcript should preserve cluster semantics
 
 After completion, the transcript should continue to preserve the notion that
 these assistant responses belonged to the same concurrent user turn.
@@ -133,6 +153,8 @@ assistant list.
 - concurrent group chat becomes visibly concurrent instead of "secretly
   sequential startup"
 - assistant lane positions stay stable and easier to scan
+- all lanes can enter visible content mode together instead of exposing backend
+  startup skew
 - reconnect no longer implies a second bubble or a second speaker row
 - session timing bugs become easier to diagnose because lane identity is no
   longer inferred from timing
@@ -143,6 +165,8 @@ assistant list.
 - the transcript renderer will need a cluster/lane concept above today's
   general bubble list
 - read-model and persistence logic must preserve dispatch-time lane order
+- server delivery will need a bounded buffering/multiplex layer so one fast lane
+  does not leak text before the cluster is ready
 - session/system-message rendering rules will need tightening so they do not
   fight lane visibility
 
@@ -178,7 +202,15 @@ assistant list.
 - **Why rejected**: it hides the fact that the turn already fanned out to all
   selected audiences
 
-### Alternative 4: Solve concurrent UX by reusing Parallel Chat semantics
+### Alternative 4: Materialize all lanes together but allow text to stream as soon as each lane is ready
+
+- **Pros**: lower latency for the fastest lane; less server buffering
+- **Cons**: the UI still reveals sequential startup timing and undermines the
+  "all lanes started together" mental model
+- **Why rejected**: this still makes concurrent group chat feel like a race
+  between attachments instead of one coordinated compare turn
+
+### Alternative 5: Solve concurrent UX by reusing Parallel Chat semantics
 
 - **Pros**: stable compare-style layout already fits multi-lane thinking
 - **Cons**: parallel chat is a different product boundary with private child

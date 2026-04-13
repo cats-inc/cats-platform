@@ -20,6 +20,8 @@ This spec defines a lane-native model for concurrent group delivery:
 - the user turn first shows one shared processing state
 - once concurrent targets are resolved, all target lanes appear together in a
   fixed order
+- lane text remains gated until the cluster is ready to reveal content as one
+  coordinated compare surface
 - each lane owns its own live segment timeline and grows in place
 - session/reconnect events only update a lane; they do not create a new lane
 - durable transcript preserves the same per-turn lane grouping
@@ -28,6 +30,7 @@ This spec defines a lane-native model for concurrent group delivery:
 
 - make concurrent group turns look concurrent, not sequential
 - keep lane order stable and predictable for the whole turn
+- hide backend startup skew even if sessions attach sequentially underneath
 - let each audience grow content in place without ghost or duplicate bubbles
 - separate dispatch-lane identity from runtime session identity
 - preserve segment-native assistant behavior inside each concurrent lane
@@ -65,40 +68,56 @@ This spec defines a lane-native model for concurrent group delivery:
    dispatch-lane identifier that survives reconnect.
 6. All lanes in the cluster shall become visible together as soon as the target
    set is known.
-7. A lane shall support at least these states:
+7. The cluster shall not release lane-local text or tool/status content to the
+   transcript until every non-terminal lane is session-ready or terminally
+   unavailable.
+8. The cluster-ready barrier shall be satisfied by a lane receiving
+   `session_started` or an equivalent valid session attachment for the active
+   turn, and shall also open when a lane becomes terminally unavailable.
+9. The cluster-ready barrier shall have bounded failure/timeout handling so one
+   dead lane cannot block the entire cluster indefinitely.
+10. A lane shall support at least these states:
    - `pending`
    - `connecting`
    - `streaming`
    - `sealed`
    - `failed`
    - `cancelled`
-8. Before the cluster is materialized, the transcript shall show only the
+11. Before the cluster is materialized, the transcript shall show only the
    user-turn processing state.
-9. After cluster materialization, per-lane session start and reconnect events
+12. After cluster materialization but before the ready barrier opens, the
+    transcript may show only cluster/lane preparation states such as
+    `pending` and `connecting`.
+13. After cluster materialization, per-lane session start and reconnect events
    shall only transition lane state; they shall not create, delete, or reorder
    lanes.
-10. Within each lane, assistant delivery shall remain segment-native as defined
+14. Within each lane, assistant delivery shall remain segment-native as defined
     by ADR-057.
-11. A lane that emits multiple text or tool/status segments shall keep them in
+15. A lane that emits multiple text or tool/status segments shall keep them in
     that lane's local timeline instead of turning them into unrelated global
     assistant rows.
-12. A sealed lane shall remain visible in place while slower lanes continue
+16. When the cluster-ready barrier opens, any already-buffered lane content
+    shall flush into the existing lane in that lane's local order without
+    creating a new lane or changing lane order.
+17. A sealed lane shall remain visible in place while slower lanes continue
     streaming.
-13. A lane reconnect shall preserve the same lane identity and visible slot.
-14. The transcript shall not create a second lane for the same logical target
+18. A lane reconnect shall preserve the same lane identity and visible slot.
+19. The transcript shall not create a second lane for the same logical target
     merely because a new `sessionId` appears.
-15. The transcript shall not reorder concurrent lanes by first token, first
+20. The transcript shall not reorder concurrent lanes by first token, first
     completion, or reconnect timing.
-16. System/session notices may be shown, but they shall be secondary to lane
+21. System/session notices may be shown, but they shall be secondary to lane
     ownership and shall not decide whether the lane exists.
-17. The durable transcript/read model shall preserve the concurrent response
+22. The server-side stream path shall multiplex per-lane session and content
+    updates instead of assuming one serial active speaker for the whole turn.
+23. The durable transcript/read model shall preserve the concurrent response
     cluster as one user-turn-owned structure whose lane order matches the live
     cluster order.
-18. When the transcript is reopened or refreshed, the product shall restore the
+24. When the transcript is reopened or refreshed, the product shall restore the
     same lane grouping and lane order from durable state.
-19. Interrupting a turn shall preserve completed/sealed lanes and mark affected
+25. Interrupting a turn shall preserve completed/sealed lanes and mark affected
     unfinished lanes as interrupted or cancelled instead of dropping them.
-20. Trace/debug surfaces shall expose both lane identity and current `sessionId`
+26. Trace/debug surfaces shall expose both lane identity and current `sessionId`
     so concurrent regressions can be diagnosed without inferring hidden state.
 
 ### Non-Functional Requirements
@@ -134,10 +153,13 @@ For a three-audience concurrent turn ordered as `CL -> CO -> GE`:
    - `CO`
    - `GE`
 3. Each lane starts in `pending` or `connecting`.
-4. When a lane receives `session_started`, that lane upgrades in place.
-5. When a lane receives text or tool/status phases, those phases render inside
+4. The cluster holds text behind a ready barrier until every surviving lane has
+   either attached a session or failed/cancelled.
+5. When the ready barrier opens, buffered lane text may flush and new text may
+   stream directly into each lane.
+6. When a lane receives text or tool/status phases, those phases render inside
    that lane's local segment timeline.
-6. When a lane completes, it seals in place while the other lanes continue.
+7. When a lane completes, it seals in place while the other lanes continue.
 
 ### State Ownership
 
@@ -155,12 +177,29 @@ There are two separate state layers:
    - local segment timeline
    - current terminal or non-terminal status
 
+3. **Barrier state**
+   - cluster-ready pending vs open
+   - readiness evidence per lane
+   - bounded timeout/failure release policy
+
 ### Identity Rules
 
 - `targetStateId` owns the visible lane
 - `sessionId` only owns the current runtime attachment inside that lane
 - local segment ordinals order content inside one lane
 - participant label alone is insufficient for matching
+
+### Stream Delivery Implication
+
+The server-side stream handler cannot keep a serial "one active speaker"
+assumption for concurrent group turns.
+
+It must instead:
+
+- multiplex lane-scoped updates
+- keep lane identity attached to every update
+- hold early lane text behind the cluster-ready barrier
+- release buffered content into the correct lane once the barrier opens
 
 ## Dependencies
 
@@ -177,6 +216,8 @@ There are two separate state layers:
 - [ ] Whether connection/system messages should remain separate transcript rows
       in default mode or collapse into lane-local status chrome outside debug
       mode.
+- [ ] What the bounded barrier timeout should be before the product releases
+      ready lanes without a missing/failed lane attaching successfully.
 
 ## References
 
