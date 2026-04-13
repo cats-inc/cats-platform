@@ -46,7 +46,9 @@ async function seedRuntimeSidecar(runtimeRoot) {
   await seedFile(join(runtimeRoot, 'public', 'playground.html'), '<!doctype html>');
   await seedFile(join(runtimeRoot, 'public', 'provider-setup.html'), '<!doctype html>');
   await seedFile(join(runtimeRoot, 'skills', 'README.md'), '# skills');
+  await seedFile(join(runtimeRoot, 'config', 'management.yaml.example'), 'version: 1\n');
   await seedFile(join(runtimeRoot, 'config', 'providers.yaml.example'), 'version: 1\n');
+  await seedFile(join(runtimeRoot, 'config', 'curated-model-catalogs.yaml.example'), 'schema_version: 1\ncatalogs: []\n');
   await seedFile(join(runtimeRoot, 'node_modules', '@hono', 'node-server', 'package.json'), '{"name":"@hono/node-server"}');
   await seedFile(join(runtimeRoot, 'node_modules', 'hono', 'package.json'), '{"name":"hono"}');
   await seedFile(join(runtimeRoot, 'node_modules', 'playwright-core', 'package.json'), '{"name":"playwright-core"}');
@@ -889,7 +891,9 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'public', 'provider-setup.html'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'skills', 'README.md'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'management.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'providers.yaml.example'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-NodeCliPack.ps1'));

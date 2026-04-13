@@ -118,8 +118,18 @@ const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
     directory: false,
   },
   {
+    sourceRelativePath: join('config', 'management.yaml.example'),
+    targetRelativePath: join('shared', 'cats-runtime', 'config', 'management.yaml.example'),
+    directory: false,
+  },
+  {
     sourceRelativePath: join('config', 'providers.yaml.example'),
     targetRelativePath: join('shared', 'cats-runtime', 'config', 'providers.yaml.example'),
+    directory: false,
+  },
+  {
+    sourceRelativePath: join('config', 'curated-model-catalogs.yaml.example'),
+    targetRelativePath: join('shared', 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example'),
     directory: false,
   },
 ];
@@ -147,7 +157,9 @@ async function ensureBundledRuntimeAssets(runtimePackageRoot: string): Promise<s
     join(runtimePackageRoot, 'package.json'),
     ...RUNTIME_PUBLIC_FILES.map((fileName) => join(runtimePackageRoot, 'public', fileName)),
     join(runtimePackageRoot, 'skills'),
+    join(runtimePackageRoot, 'config', 'management.yaml.example'),
     join(runtimePackageRoot, 'config', 'providers.yaml.example'),
+    join(runtimePackageRoot, 'config', 'curated-model-catalogs.yaml.example'),
     join(runtimePackageRoot, 'node_modules'),
     ...dependencyPackagePaths.map((dependencyPath) => join(runtimePackageRoot, dependencyPath)),
   ];

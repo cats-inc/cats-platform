@@ -45,6 +45,16 @@ interface ManagedServiceLifecyclePayload {
 
 const DEFAULT_APP_STARTUP_TIMEOUT_MS = 90_000;
 const DEFAULT_WINDOWS_RUNTIME_STARTUP_TIMEOUT_MS = 60_000;
+const RUNTIME_TEMPLATE_SEEDS = [
+  {
+    sourceFileName: 'management.yaml.example',
+    targetPathKey: 'runtimeManagementConfigPath',
+  },
+  {
+    sourceFileName: 'curated-model-catalogs.yaml.example',
+    targetPathKey: 'runtimeCuratedModelCatalogPath',
+  },
+] as const;
 
 function waitForTimeout(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -152,6 +162,42 @@ async function ensureLaunchAssets(config: DesktopHostConfig): Promise<void> {
   await mkdir(config.paths.runtimeSessionBaseDir, { recursive: true });
   await mkdir(dirname(config.paths.runtimeConfigPath), { recursive: true });
   await mkdir(config.paths.hostLogsDir, { recursive: true });
+  await seedBundledRuntimeConfigTemplates(config);
+}
+
+export async function seedBundledRuntimeConfigTemplates(
+  config: DesktopHostConfig,
+): Promise<void> {
+  if (!config.packaged) {
+    return;
+  }
+
+  await Promise.all(RUNTIME_TEMPLATE_SEEDS.map(async (seed) => {
+    const sourcePath = join(config.runtimePackageRoot, 'config', seed.sourceFileName);
+    try {
+      await access(sourcePath);
+    } catch {
+      return;
+    }
+
+    const targetPath = config.paths[seed.targetPathKey];
+    try {
+      await access(targetPath);
+      return;
+    } catch {
+      // Only seed packaged templates when the runtime-owned file is absent.
+    }
+
+    const raw = readFileSync(sourcePath, 'utf8');
+    await mkdir(dirname(targetPath), { recursive: true });
+    try {
+      await writeFile(targetPath, raw, { encoding: 'utf8', flag: 'wx' });
+    } catch (error) {
+      if (!(error && typeof error === 'object' && 'code' in error && error.code === 'EEXIST')) {
+        throw error;
+      }
+    }
+  }));
 }
 
 function buildPreviousLogPath(logPath: string): string {

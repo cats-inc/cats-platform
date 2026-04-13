@@ -25,6 +25,8 @@ export interface DesktopHostPaths {
   runtimeDataDir: string;
   runtimeSessionBaseDir: string;
   runtimeConfigPath: string;
+  runtimeManagementConfigPath: string;
+  runtimeCuratedModelCatalogPath: string;
   hostStatePath: string;
   hostLogsDir: string;
   packagingOutputRoot: string;
@@ -37,6 +39,7 @@ export interface DesktopHostBackgroundConfig {
 }
 
 export interface DesktopHostConfig {
+  packaged: boolean;
   packageRoot: string;
   runtimePackageRoot: string;
   userDataDir: string;
@@ -239,6 +242,7 @@ export function resolveDesktopHostConfig(
   const update = resolveDesktopUpdateConfig(env);
 
   return {
+    packaged: options.packaged === true,
     packageRoot,
     runtimePackageRoot,
     userDataDir,
@@ -280,6 +284,12 @@ export function resolveDesktopHostConfig(
       runtimeDataDir: resolveDesktopPath(joinDesktopPath(runtimeRootDir, 'data')),
       runtimeSessionBaseDir: resolveDesktopPath(joinDesktopPath(runtimeRootDir, 'sessions')),
       runtimeConfigPath: resolveDesktopPath(joinDesktopPath(runtimeConfigDir, 'providers.yaml')),
+      runtimeManagementConfigPath: resolveDesktopPath(
+        joinDesktopPath(runtimeConfigDir, 'management.yaml'),
+      ),
+      runtimeCuratedModelCatalogPath: resolveDesktopPath(
+        joinDesktopPath(runtimeConfigDir, 'curated-model-catalogs.yaml'),
+      ),
       hostStatePath: resolveDesktopPath(joinDesktopPath(desktopDir, 'state.json')),
       hostLogsDir: resolveDesktopPath(joinDesktopPath(desktopDir, 'logs')),
       packagingOutputRoot: resolveDesktopPath(

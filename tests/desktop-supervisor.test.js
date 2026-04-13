@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, posix } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
@@ -16,6 +16,7 @@ import {
   buildManagedServiceSpecs,
   ManagedServiceSupervisor,
   prepareManagedServiceLog,
+  seedBundledRuntimeConfigTemplates,
 } from '../build/desktop/processSupervisor.js';
 
 class FakeChildProcess extends EventEmitter {
@@ -155,6 +156,8 @@ test('desktop host config keeps Electron userData separate from cats home', () =
   assert.equal(config.paths.runtimeDataDir, 'C:\\Users\\test\\.cats\\runtime\\data');
   assert.equal(config.paths.runtimeSessionBaseDir, 'C:\\Users\\test\\.cats\\runtime\\sessions');
   assert.equal(config.paths.runtimeConfigPath, 'C:\\Users\\test\\.cats\\runtime\\config\\providers.yaml');
+  assert.equal(config.paths.runtimeManagementConfigPath, 'C:\\Users\\test\\.cats\\runtime\\config\\management.yaml');
+  assert.equal(config.paths.runtimeCuratedModelCatalogPath, 'C:\\Users\\test\\.cats\\runtime\\config\\curated-model-catalogs.yaml');
   assert.equal(config.paths.hostStatePath, 'C:\\Users\\test\\.cats\\desktop\\state.json');
   assert.equal(config.paths.hostLogsDir, 'C:\\Users\\test\\.cats\\desktop\\logs');
 });
@@ -198,6 +201,45 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
     config.paths.preloadScript,
     'C:\\Program Files\\Cats\\resources\\app.asar\\build\\desktop\\preload.cjs',
   );
+  assert.equal(config.packaged, true);
+});
+
+test('packaged desktop host seeds bundled runtime config templates into cats home without overwriting user files', async () => {
+  const resourcesRoot = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-resources-'));
+  const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-userdata-'));
+  const catsHomeDir = join(userDataDir, 'cats-home');
+  const managementExample = join(resourcesRoot, 'cats-runtime', 'config', 'management.yaml.example');
+  const curatedExample = join(resourcesRoot, 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example');
+
+  try {
+    await mkdir(join(resourcesRoot, 'cats-runtime', 'config'), { recursive: true });
+    await writeFile(managementExample, 'version: 1\nadapters: {}\n', 'utf8');
+    await writeFile(curatedExample, 'schema_version: 1\ncatalogs: []\n', 'utf8');
+
+    const config = resolveDesktopHostConfig({
+      env: {},
+      userDataDir,
+      catsHomeDir,
+      packaged: true,
+      resourcesPath: resourcesRoot,
+    });
+    await mkdir(dirname(config.paths.runtimeManagementConfigPath), { recursive: true });
+    await writeFile(config.paths.runtimeManagementConfigPath, 'version: 1\nadapters:\n  review:\n    default: github\n    instances: {}\n', 'utf8');
+
+    await seedBundledRuntimeConfigTemplates(config);
+
+    assert.equal(
+      await readFile(config.paths.runtimeManagementConfigPath, 'utf8'),
+      'version: 1\nadapters:\n  review:\n    default: github\n    instances: {}\n',
+    );
+    assert.equal(
+      await readFile(config.paths.runtimeCuratedModelCatalogPath, 'utf8'),
+      'schema_version: 1\ncatalogs: []\n',
+    );
+  } finally {
+    await rm(resourcesRoot, { recursive: true, force: true });
+    await rm(userDataDir, { recursive: true, force: true });
+  }
 });
 
 test('managed desktop services augment PATH for macOS packaged CLI discovery', () => {
