@@ -11,6 +11,7 @@ import {
   projectLiveIndicatorStateFromSegments,
   resolveLiveIndicatorSpeakerState,
   resolvePrimaryLiveIndicatorSegment,
+  type LiveIndicatorSegmentState,
   type LiveIndicatorState,
 } from '../../../../shared/liveIndicator.js';
 import { pushBrowserLiveTrace } from '../../../../shared/liveTrace.js';
@@ -239,6 +240,62 @@ function doesLiveIndicatorIdentityMatch(
     && left.speakerLabel === right.speakerLabel;
 }
 
+function shouldAdvanceWaitingSegmentIndex(
+  previousSegment: LiveIndicatorSegmentState | null,
+  waitingSegment: LiveIndicatorSegmentState | null,
+): boolean {
+  if (!previousSegment || !waitingSegment) {
+    return false;
+  }
+
+  if (!previousSegment.sourceMessageId || !waitingSegment.sourceMessageId) {
+    return false;
+  }
+
+  if (previousSegment.sourceMessageId !== waitingSegment.sourceMessageId) {
+    return false;
+  }
+
+  if (previousSegment.targetStateId && waitingSegment.targetStateId) {
+    return previousSegment.targetStateId === waitingSegment.targetStateId;
+  }
+
+  if (previousSegment.participantId && waitingSegment.participantId) {
+    return previousSegment.participantId === waitingSegment.participantId;
+  }
+
+  if (previousSegment.catId && waitingSegment.catId) {
+    return previousSegment.catId === waitingSegment.catId;
+  }
+
+  return previousSegment.speakerLabel != null
+    && waitingSegment.speakerLabel != null
+    && previousSegment.speakerLabel === waitingSegment.speakerLabel;
+}
+
+function reindexWaitingSegment(
+  previousSegment: LiveIndicatorSegmentState | null,
+  waitingSegment: LiveIndicatorSegmentState | null,
+): LiveIndicatorSegmentState {
+  if (!waitingSegment) {
+    throw new Error('reindexWaitingSegment requires a waiting segment');
+  }
+
+  if (!shouldAdvanceWaitingSegmentIndex(previousSegment, waitingSegment)) {
+    return waitingSegment;
+  }
+
+  return resolvePrimaryLiveIndicatorSegment(createWaitingLiveIndicatorState({
+    sourceMessageId: waitingSegment.sourceMessageId,
+    targetStateId: waitingSegment.targetStateId,
+    participantId: waitingSegment.participantId,
+    catId: waitingSegment.catId,
+    speakerLabel: waitingSegment.speakerLabel,
+    revealIdentity: true,
+    segmentIndex: previousSegment!.segmentIndex + 1,
+  })) ?? waitingSegment;
+}
+
 function mergeWaitingIndicatorTimelineState(
   previous: LiveIndicatorState,
   waitingState: LiveIndicatorState,
@@ -257,9 +314,10 @@ function mergeWaitingIndicatorTimelineState(
     if (doesLiveIndicatorIdentityMatch(previous, waitingState)) {
       return previous;
     }
+    const nextWaitingSegment = reindexWaitingSegment(previousSegment, waitingSegment);
     return projectLiveIndicatorStateFromSegments([
       ...previous.segments.slice(0, -1),
-      waitingSegment,
+      nextWaitingSegment,
     ]);
   }
 
@@ -269,10 +327,11 @@ function mergeWaitingIndicatorTimelineState(
         ...previousSegment,
         phase: 'sealed' as const,
       };
+  const nextWaitingSegment = reindexWaitingSegment(sealedPrevious, waitingSegment);
   return projectLiveIndicatorStateFromSegments([
     ...previous.segments.slice(0, -1),
     sealedPrevious,
-    waitingSegment,
+    nextWaitingSegment,
   ]);
 }
 

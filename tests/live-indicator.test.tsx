@@ -458,6 +458,95 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
   assert.equal(next.segments[1]?.participantId, 'participant-agent-2');
 });
 
+test('resolveWaitingIndicatorStateTransition increments the segment index for same-speaker follow-up bubbles', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    segments: [
+      {
+        id: 'message-user-current:participant-claude:segment:0',
+        phase: 'sealed' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: null,
+        segmentIndex: 0,
+        participantId: 'participant-claude',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Claude-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text' as const,
+            status: 'complete' as const,
+            title: null,
+            text: 'First segment',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+        events: [],
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user-current',
+          senderKind: 'user',
+        },
+        {
+          id: 'message-agent-current-0',
+          senderKind: 'agent',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user-current',
+            workflowShape: 'solo',
+            targetStatuses: [],
+          },
+        },
+      },
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next.segments.length, 2);
+  assert.equal(next.segments[0]?.segmentIndex, 0);
+  assert.equal(next.segments[1]?.segmentIndex, 1);
+  assert.notEqual(next.segments[0]?.id, next.segments[1]?.id);
+});
+
 test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage only matches the current streaming speaker', () => {
   assert.equal(
     hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
@@ -2288,4 +2377,43 @@ test('resolveVisibleLiveIndicator does not hide a new solo segment because an ol
   assert.equal(visible.segments.length, 2);
   assert.equal(visible.segments[0]?.segmentIndex, 0);
   assert.equal(visible.segments[1]?.segmentIndex, 1);
+});
+
+test('applyLiveIndicatorEvent increments the segment index for same-speaker solo follow-up phases', () => {
+  let state = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+
+  state = applyLiveIndicatorEvent(state, 'progress', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    progressKind: 'session',
+  });
+  state = applyLiveIndicatorEvent(state, 'text', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    text: 'First segment',
+  });
+  state = applyLiveIndicatorEvent(state, 'result', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+  });
+  state = applyLiveIndicatorEvent(state, 'progress', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    progressKind: 'session',
+  });
+
+  assert.equal(state.segments.length, 2);
+  assert.equal(state.segments[0]?.segmentIndex, 0);
+  assert.equal(state.segments[1]?.segmentIndex, 1);
+  assert.notEqual(state.segments[0]?.id, state.segments[1]?.id);
 });

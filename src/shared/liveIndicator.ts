@@ -99,18 +99,20 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
 };
 
 function buildLiveIndicatorSegmentId(input: {
+  sourceMessageId?: string | null;
   targetStateId: string | null;
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
   segmentIndex: number;
 }): string {
+  const sourceMessageId = readString(input.sourceMessageId) ?? 'no-source';
   const identity = input.targetStateId
     ?? input.participantId
     ?? input.catId
     ?? readString(input.speakerLabel)
     ?? 'anonymous';
-  return `${identity}:segment:${input.segmentIndex}`;
+  return `${sourceMessageId}:${identity}:segment:${input.segmentIndex}`;
 }
 
 export function createLiveIndicatorSegmentState(input: {
@@ -138,6 +140,7 @@ export function createLiveIndicatorSegmentState(input: {
     ?? (catId ? [catId] : []);
   return {
     id: input.id?.trim() || buildLiveIndicatorSegmentId({
+      sourceMessageId: input.sourceMessageId ?? null,
       targetStateId: input.targetStateId ?? null,
       participantId: input.participantId ?? null,
       catId,
@@ -278,6 +281,42 @@ function appendLiveIndicatorSegment(
     sealedPrimary,
     nextSegment,
   ]);
+}
+
+function isSameLiveIndicatorTimelineIdentity(
+  previousSegment: LiveIndicatorSegmentState | null,
+  nextSpeakerState: Pick<
+    LiveIndicatorSegmentState,
+    'sourceMessageId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+  >,
+): boolean {
+  if (!previousSegment) {
+    return false;
+  }
+
+  const previousSourceMessageId = readString(previousSegment.sourceMessageId);
+  const nextSourceMessageId = readString(nextSpeakerState.sourceMessageId);
+  if (!previousSourceMessageId || !nextSourceMessageId || previousSourceMessageId !== nextSourceMessageId) {
+    return false;
+  }
+
+  if (previousSegment.targetStateId && nextSpeakerState.targetStateId) {
+    return previousSegment.targetStateId === nextSpeakerState.targetStateId;
+  }
+
+  if (previousSegment.participantId && nextSpeakerState.participantId) {
+    return previousSegment.participantId === nextSpeakerState.participantId;
+  }
+
+  if (previousSegment.catId && nextSpeakerState.catId) {
+    return previousSegment.catId === nextSpeakerState.catId;
+  }
+
+  const previousSpeakerLabel = readString(previousSegment.speakerLabel);
+  const nextSpeakerLabel = readString(nextSpeakerState.speakerLabel);
+  return previousSpeakerLabel != null
+    && nextSpeakerLabel != null
+    && previousSpeakerLabel === nextSpeakerLabel;
 }
 
 function projectLogicalLiveIndicatorSegments(
@@ -623,13 +662,14 @@ function createNextLiveIndicatorSegment(
   >,
   phase: LiveIndicatorSegmentPhase,
 ): LiveIndicatorSegmentState {
-  const sameTarget = previousSegment?.targetStateId != null
-    && previousSegment.targetStateId === nextSpeakerState.targetStateId;
+  const sameTimeline = isSameLiveIndicatorTimelineIdentity(previousSegment, nextSpeakerState);
   return createLiveIndicatorSegmentState({
     phase,
     sourceMessageId: nextSpeakerState.sourceMessageId,
     targetStateId: nextSpeakerState.targetStateId,
-    segmentIndex: sameTarget ? previousSegment.segmentIndex + 1 : 0,
+    segmentIndex: sameTimeline && previousSegment
+      ? previousSegment.segmentIndex + 1
+      : 0,
     participantId: nextSpeakerState.participantId,
     catId: nextSpeakerState.catId,
     activeCatIds: nextSpeakerState.activeCatIds,
@@ -678,6 +718,7 @@ function prepareLiveIndicatorStateForEvent(
     ...nextSpeakerState,
     ...nextSessionState,
     id: buildLiveIndicatorSegmentId({
+      sourceMessageId: nextSpeakerState.sourceMessageId,
       targetStateId: nextSpeakerState.targetStateId,
       participantId: nextSpeakerState.participantId,
       catId: nextSpeakerState.catId,
