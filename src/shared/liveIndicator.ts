@@ -29,6 +29,7 @@ export interface LiveIndicatorSegmentState {
   sourceMessageId: string | null;
   targetStateId: string | null;
   segmentIndex: number;
+  sessionId: string | null;
   participantId: string | null;
   catId: string | null;
   activeCatIds: string[];
@@ -49,6 +50,7 @@ export interface LiveIndicatorState {
   sourceMessageId: string | null;
   targetStateId: string | null;
   segmentIndex: number;
+  sessionId: string | null;
   participantId: string | null;
   catId: string | null;
   activeCatIds: string[];
@@ -83,6 +85,7 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   sourceMessageId: null,
   targetStateId: null,
   segmentIndex: 0,
+  sessionId: null,
   participantId: null,
   catId: null,
   activeCatIds: [],
@@ -101,6 +104,7 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
 function buildLiveIndicatorSegmentId(input: {
   sourceMessageId?: string | null;
   targetStateId: string | null;
+  sessionId?: string | null;
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
@@ -108,6 +112,7 @@ function buildLiveIndicatorSegmentId(input: {
 }): string {
   const sourceMessageId = readString(input.sourceMessageId) ?? 'no-source';
   const identity = input.targetStateId
+    ?? readString(input.sessionId)
     ?? input.participantId
     ?? input.catId
     ?? readString(input.speakerLabel)
@@ -120,6 +125,7 @@ export function createLiveIndicatorSegmentState(input: {
   sourceMessageId?: string | null;
   targetStateId?: string | null;
   segmentIndex?: number;
+  sessionId?: string | null;
   participantId?: string | null;
   catId?: string | null;
   activeCatIds?: string[];
@@ -142,6 +148,7 @@ export function createLiveIndicatorSegmentState(input: {
     id: input.id?.trim() || buildLiveIndicatorSegmentId({
       sourceMessageId: input.sourceMessageId ?? null,
       targetStateId: input.targetStateId ?? null,
+      sessionId: input.sessionId ?? null,
       participantId: input.participantId ?? null,
       catId,
       speakerLabel: input.speakerLabel ?? null,
@@ -151,6 +158,7 @@ export function createLiveIndicatorSegmentState(input: {
     sourceMessageId: input.sourceMessageId ?? null,
     targetStateId: input.targetStateId ?? null,
     segmentIndex,
+    sessionId: input.sessionId ?? null,
     participantId: input.participantId ?? null,
     catId,
     activeCatIds,
@@ -198,6 +206,7 @@ export function resolveLiveIndicatorSegments(
       targetStateId: liveIndicator.targetStateId,
       sourceMessageId: liveIndicator.sourceMessageId,
       segmentIndex: liveIndicator.segmentIndex,
+      sessionId: liveIndicator.sessionId,
       participantId: liveIndicator.participantId,
       catId: liveIndicator.catId,
       activeCatIds: liveIndicator.activeCatIds,
@@ -230,6 +239,7 @@ export function projectLiveIndicatorStateFromSegments(
     sourceMessageId: primary.sourceMessageId,
     targetStateId: primary.targetStateId,
     segmentIndex: primary.segmentIndex,
+    sessionId: primary.sessionId,
     participantId: primary.participantId,
     catId: primary.catId,
     activeCatIds: primary.activeCatIds,
@@ -341,7 +351,9 @@ function projectLogicalLiveIndicatorSegments(
       projected.push(createLiveIndicatorSegmentState({
         ...segment,
         id: buildLiveIndicatorSegmentId({
+          sourceMessageId: segment.sourceMessageId,
           targetStateId: segment.targetStateId,
+          sessionId: segment.sessionId,
           participantId: segment.participantId,
           catId: segment.catId,
           speakerLabel: segment.speakerLabel,
@@ -494,6 +506,7 @@ export function createWaitingLiveIndicatorState(input: {
   revealIdentity?: boolean;
   targetStateId?: string | null;
   segmentIndex?: number;
+  sessionId?: string | null;
   sessionStartedAt?: string | null;
   requiresSessionStartConfirmation?: boolean;
 }): LiveIndicatorState {
@@ -507,6 +520,7 @@ export function createWaitingLiveIndicatorState(input: {
       sourceMessageId: input.sourceMessageId ?? null,
       targetStateId: input.targetStateId ?? null,
       segmentIndex: input.segmentIndex ?? 0,
+      sessionId: input.sessionId ?? null,
       participantId: revealIdentity ? input.participantId ?? null : null,
       catId: revealIdentity ? input.catId : null,
       speakerLabel: revealIdentity ? input.speakerLabel : null,
@@ -558,8 +572,12 @@ export function resolveLiveIndicatorSpeakerState(
 function resolveLiveIndicatorSessionState(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
-): Pick<LiveIndicatorSegmentState, 'sessionStartedAt' | 'requiresSessionStartConfirmation'> {
+): Pick<
+  LiveIndicatorSegmentState,
+  'sessionId' | 'sessionStartedAt' | 'requiresSessionStartConfirmation'
+> {
   const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
+  const hasSessionId = Object.prototype.hasOwnProperty.call(data, 'sessionId');
   const hasSessionStartedAt = Object.prototype.hasOwnProperty.call(data, 'sessionStartedAt');
   const hasSessionStartConfirmation = Object.prototype.hasOwnProperty.call(
     data,
@@ -567,6 +585,9 @@ function resolveLiveIndicatorSessionState(
   );
 
   return {
+    sessionId: hasSessionId
+      ? readNullableString(data.sessionId)
+      : previousSegment?.sessionId ?? previous.sessionId,
     sessionStartedAt: hasSessionStartedAt
       ? readNullableString(data.sessionStartedAt)
       : previousSegment?.sessionStartedAt ?? previous.sessionStartedAt,
@@ -691,7 +712,7 @@ function createNextLiveIndicatorSegment(
   >,
   nextSessionState: Pick<
     LiveIndicatorSegmentState,
-    'sessionStartedAt' | 'requiresSessionStartConfirmation'
+    'sessionId' | 'sessionStartedAt' | 'requiresSessionStartConfirmation'
   >,
   phase: LiveIndicatorSegmentPhase,
 ): LiveIndicatorSegmentState {
@@ -703,6 +724,7 @@ function createNextLiveIndicatorSegment(
     segmentIndex: sameTimeline && previousSegment
       ? previousSegment.segmentIndex + 1
       : 0,
+    sessionId: nextSessionState.sessionId,
     participantId: nextSpeakerState.participantId,
     catId: nextSpeakerState.catId,
     activeCatIds: nextSpeakerState.activeCatIds,
@@ -753,6 +775,7 @@ function prepareLiveIndicatorStateForEvent(
     id: buildLiveIndicatorSegmentId({
       sourceMessageId: nextSpeakerState.sourceMessageId,
       targetStateId: nextSpeakerState.targetStateId,
+      sessionId: nextSessionState.sessionId,
       participantId: nextSpeakerState.participantId,
       catId: nextSpeakerState.catId,
       speakerLabel: nextSpeakerState.speakerLabel,
@@ -778,6 +801,7 @@ export function buildLiveIndicatorScrollKey(
         segment.sourceMessageId ?? '',
         segment.targetStateId ?? '',
         String(segment.segmentIndex),
+        segment.sessionId ?? '',
         segment.participantId ?? '',
         segment.activeCatIds.join('|'),
         segment.catId ?? '',
@@ -1438,6 +1462,7 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
   liveIndicator: LiveIndicatorState,
   sessionStartedAt: string | null,
 ): boolean {
+  const liveSessionId = readString(liveIndicator.sessionId);
   const sessionStartFloorTimestamp = (() => {
     if (!sessionStartedAt) {
       return null;
@@ -1461,6 +1486,13 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
       )
     ) {
       return false;
+    }
+
+    if (liveSessionId) {
+      const messageSessionId = readMessageSessionId(message);
+      if (!messageSessionId || messageSessionId !== liveSessionId) {
+        return false;
+      }
     }
 
     const liveParticipantId = readString(liveIndicator.participantId);
@@ -1513,6 +1545,7 @@ function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMe
     },
     signature: [
       input.liveIndicator.phase,
+      input.liveIndicator.sessionId ?? '',
       input.liveIndicator.participantId ?? '',
       input.liveIndicator.speakerLabel ?? '',
       input.liveIndicator.catId ?? '',
@@ -1538,6 +1571,13 @@ function readMessageTargetId(
   return readString(metadata?.targetId)
     || readString(metadata?.sourceRefId)
     || readString(metadata?.participantId);
+}
+
+function readMessageSessionId(
+  message: LiveIndicatorTranscriptMessageLike,
+): string | null {
+  const metadata = asRecord(message.metadata);
+  return readString(metadata?.sessionId);
 }
 
 function readMessageTargetStateId(

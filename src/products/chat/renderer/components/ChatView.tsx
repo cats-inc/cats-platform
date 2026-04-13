@@ -652,6 +652,7 @@ export function ChatView({
                         .join('|');
                       const metaDetail = [
                         s.targetStateId ? 'ts:' + s.targetStateId : null,
+                        s.sessionId ? 'sid:' + s.sessionId : null,
                         s.participantId ? 'pid:' + s.participantId : null,
                         s.speakerLabel ? 'sp:' + s.speakerLabel : null,
                         s.progressKind ? 'pk:' + s.progressKind : null,

@@ -22,6 +22,7 @@ import {
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {
   applyLiveIndicatorEvent,
+  createLiveIndicatorSegmentState,
   createWaitingLiveIndicatorState,
   hasVisibleLiveIndicatorSpeakerReplyAfterMessage,
   resolveTranscriptFollowState,
@@ -1989,6 +1990,7 @@ test('resolveVisibleLiveIndicator shows assistant progress once the matching ses
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
+    sessionId: 'session-agent-1',
     participantId: 'participant-agent-1',
     speakerLabel: 'Agent-1',
     sessionStartedAt: '2026-04-09T12:00:02.500Z',
@@ -2012,6 +2014,7 @@ test('resolveVisibleLiveIndicator shows assistant progress once the matching ses
         senderName: 'Runtime',
         metadata: {
           event: 'session_started',
+          sessionId: 'session-agent-1',
           targetKind: 'cat',
           targetId: 'participant-agent-1',
         },
@@ -2029,6 +2032,7 @@ test('resolveVisibleLiveIndicator accepts orchestrator session_started messages 
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
+    sessionId: 'session-orchestrator',
     participantId: 'orchestrator',
     speakerLabel: 'Orchestrator',
     sessionStartedAt: '2026-04-09T12:00:02.500Z',
@@ -2052,6 +2056,7 @@ test('resolveVisibleLiveIndicator accepts orchestrator session_started messages 
         senderName: 'Runtime',
         metadata: {
           event: 'session_started',
+          sessionId: 'session-orchestrator',
           targetKind: 'orchestrator',
         },
         createdAt: '2026-04-09T12:00:02.500Z',
@@ -2068,6 +2073,7 @@ test('resolveVisibleLiveIndicator does not wait for a new session_started messag
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
+    sessionId: 'session-agent-1',
     participantId: 'participant-agent-1',
     speakerLabel: 'Agent-1',
     sessionStartedAt: '2026-04-09T11:59:00.000Z',
@@ -2090,6 +2096,69 @@ test('resolveVisibleLiveIndicator does not wait for a new session_started messag
   );
 
   assert.equal(visible, liveIndicator);
+});
+
+test('resolveVisibleLiveIndicator does not unlock a reconnect bubble from an older same-speaker session_started message', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    sessionId: 'session-agent-new',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    sessionStartedAt: '2026-04-09T12:00:05.000Z',
+    requiresSessionStartConfirmation: true,
+    progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-session-agent-old',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          sessionId: 'session-agent-old',
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:02.500Z',
+      },
+    ],
+    '2026-04-09T12:00:05.500Z',
+  );
+
+  assert.equal(visible, null);
+});
+
+test('createLiveIndicatorSegmentState gives reconnect sessions distinct ids even for the same speaker and segment index', () => {
+  const firstSegment = createLiveIndicatorSegmentState({
+    phase: 'sealed',
+    sourceMessageId: 'message-user',
+    participantId: 'participant-grandma',
+    speakerLabel: '奶奶',
+    sessionId: 'session-old',
+    segmentIndex: 0,
+  });
+  const secondSegment = createLiveIndicatorSegmentState({
+    phase: 'streaming',
+    sourceMessageId: 'message-user',
+    participantId: 'participant-grandma',
+    speakerLabel: '奶奶',
+    sessionId: 'session-new',
+    segmentIndex: 0,
+  });
+
+  assert.notEqual(firstSegment.id, secondSegment.id);
 });
 
 test('applyLiveIndicatorEvent synthesizes text content blocks from text events', () => {

@@ -38,6 +38,7 @@ import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 import { publishRoomMutation } from '../transportEventPublisher.js';
 
 function buildStreamSpeakerPayload(input: {
+  sessionId?: string | null;
   participantId?: string | null;
   catId?: string | null;
   speakerLabel?: string | null;
@@ -46,6 +47,7 @@ function buildStreamSpeakerPayload(input: {
   targetStateId?: string | null;
 }): Record<string, unknown> {
   return {
+    sessionId: input.sessionId ?? null,
     participantId: input.participantId ?? null,
     catId: input.catId ?? null,
     speakerLabel: input.speakerLabel ?? null,
