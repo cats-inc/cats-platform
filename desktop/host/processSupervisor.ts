@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { access, appendFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { access, appendFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, join, posix, win32 } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
@@ -188,7 +188,7 @@ export async function seedBundledRuntimeConfigTemplates(
       // Only seed packaged templates when the runtime-owned file is absent.
     }
 
-    const raw = readFileSync(sourcePath, 'utf8');
+    const raw = await readFile(sourcePath, 'utf8');
     await mkdir(dirname(targetPath), { recursive: true });
     try {
       await writeFile(targetPath, raw, { encoding: 'utf8', flag: 'wx' });
