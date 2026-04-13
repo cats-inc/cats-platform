@@ -52,6 +52,9 @@ import {
   type SelectedChannelView,
 } from '../chatUtils';
 import {
+  resolveActiveChannelMessageMetadata,
+} from '../composerMessageMetadata.js';
+import {
   resolveDraftRouteContext,
   resolveDraftRoutePath,
 } from '../draftParticipants';
@@ -372,6 +375,16 @@ export function useComposerSubmit(options: {
             workflowShape: draftWorkflowShape,
           }
         : null;
+      const activeChannelMessageMetadata = !wasDraftingNewChat
+        ? resolveActiveChannelMessageMetadata({
+            selectedChannel,
+            maxAudienceParticipants:
+              state.status === 'ready'
+                ? state.payload.chat.capabilities.maxAudienceParticipants
+                : undefined,
+          })
+        : null;
+      const messageMetadata = draftMessageMetadata ?? activeChannelMessageMetadata;
 
       if (soloDispatchTarget) {
         payload = applyPendingExecutionTargetPreview(payload, channelId, soloDispatchTarget);
@@ -386,9 +399,9 @@ export function useComposerSubmit(options: {
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
-        ...(draftMessageMetadata
+        ...(messageMetadata
           ? {
-              messageMetadata: draftMessageMetadata,
+              messageMetadata,
             }
           : {}),
       }, ackController.signal);
