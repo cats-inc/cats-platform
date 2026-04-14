@@ -8,7 +8,8 @@ import { useNavigate } from 'react-router-dom';
 
 import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkDashboardProjection } from '../../api/projection.js';
-import { buildChannelPath } from '../../shared/channelPaths.js';
+import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
+import { readCatIdFromActorId } from '../actorLinks.js';
 import { fetchWorkDashboard } from '../api/dashboard.js';
 import { IntakeStatusCard } from './IntakeStatusCard.js';
 
@@ -375,7 +376,7 @@ function WorkItemsSection({
               </div>
               <div className="operatorMetaRow">
                 <span>Owner: {item.ownerName}</span>
-                <span>Actors: {compactList(item.assignedActorNames)}</span>
+                <span>Actors: {compactList(item.assignedActors.map((actor) => actor.displayName))}</span>
               </div>
               <div className="operatorMetaRow">
                 <span>Conversation: {item.conversationTitle ?? 'No linked conversation'}</span>
@@ -396,6 +397,26 @@ function WorkItemsSection({
                     Open briefing thread
                   </button>
                 ) : null}
+                {item.assignedActors
+                  .map((actor) => ({
+                    ...actor,
+                    catId: readCatIdFromActorId(actor.actorId),
+                  }))
+                  .filter((actor): actor is typeof actor & { catId: string } => actor.catId !== null)
+                  .map((actor) => (
+                    <button
+                      key={actor.actorId}
+                      type="button"
+                      className="operatorActionButton"
+                      onClick={() => {
+                        startTransition(() => {
+                          navigate(buildMyCatPath(actor.catId));
+                        });
+                      }}
+                    >
+                      Open {actor.displayName}
+                    </button>
+                  ))}
               </div>
             </article>
           ))}

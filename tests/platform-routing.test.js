@@ -223,7 +223,7 @@ test('Work projections preserve briefing-thread channel links from shared conver
     conversationId,
     taskId,
     ownerActorId: core.ownerProfile.actorId,
-    assignedActorIds: [],
+    assignedActorIds: ['actor-cat-work-reviewer'],
     summary: 'Represent the managed work.',
     createdAt: '2026-04-15T06:00:00.000Z',
     updatedAt: '2026-04-15T06:05:00.000Z',
@@ -238,6 +238,8 @@ test('Work projections preserve briefing-thread channel links from shared conver
 
   assert.equal(projectList.projects[0].primaryConversationSourceChannelId, sourceChannelId);
   assert.equal(workItemList.workItems[0].conversationSourceChannelId, sourceChannelId);
+  assert.equal(workItemList.workItems[0].assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
+  assert.equal(workItemList.workItems[0].assignedActors[0]?.displayName, 'Work Reviewer');
   assert.equal(projectDetail.primaryConversation?.sourceChannelId, sourceChannelId);
   assert.equal(workItemDetail.conversation?.sourceChannelId, sourceChannelId);
   assert.equal(taskDetail.conversation?.sourceChannelId, sourceChannelId);

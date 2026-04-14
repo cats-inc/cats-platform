@@ -7,7 +7,8 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { WorkProjectDetailProjection } from '../../api/projection.js';
-import { buildChannelPath } from '../../shared/channelPaths.js';
+import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
+import { readCatIdFromActorId } from '../actorLinks.js';
 import { fetchWorkProjectDetail } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -266,23 +267,45 @@ export function ProjectDetailView() {
                     <p>{workItem.summary ?? 'No work-item summary recorded.'}</p>
                     <div className="operatorMetaRow">
                       <span>Owner: {workItem.ownerName}</span>
-                      <span>Actors: {workItem.assignedActorNames.join(', ') || 'Unassigned'}</span>
+                      <span>Actors: {workItem.assignedActors.map((actor) => actor.displayName).join(', ') || 'Unassigned'}</span>
                     </div>
                     <div className="operatorMetaRow">
                       <span>{workItem.taskTitle ?? 'No linked task'}</span>
                       <span>{formatTimestamp(workItem.updatedAt)}</span>
                     </div>
-                    <button
-                      type="button"
-                      className="operatorActionButton"
-                      onClick={() => {
-                        startTransition(() => {
-                          navigate(`/work/work-items/${encodeURIComponent(workItem.id)}`);
-                        });
-                      }}
-                    >
-                      Open work item
-                    </button>
+                    <div className="workWarRoomHeaderActions">
+                      <button
+                        type="button"
+                        className="operatorActionButton"
+                        onClick={() => {
+                          startTransition(() => {
+                            navigate(`/work/work-items/${encodeURIComponent(workItem.id)}`);
+                          });
+                        }}
+                      >
+                        Open work item
+                      </button>
+                      {workItem.assignedActors
+                        .map((actor) => ({
+                          ...actor,
+                          catId: readCatIdFromActorId(actor.actorId),
+                        }))
+                        .filter((actor): actor is typeof actor & { catId: string } => actor.catId !== null)
+                        .map((actor) => (
+                          <button
+                            key={actor.actorId}
+                            type="button"
+                            className="operatorActionButton"
+                            onClick={() => {
+                              startTransition(() => {
+                                navigate(buildMyCatPath(actor.catId));
+                              });
+                            }}
+                          >
+                            Open {actor.displayName}
+                          </button>
+                        ))}
+                    </div>
                   </article>
                 ))}
               </div>

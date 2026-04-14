@@ -7,7 +7,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import type { WorkWorkItemListProjection } from '../../api/projection.js';
-import { buildChannelPath } from '../../shared/channelPaths.js';
+import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
+import { readCatIdFromActorId } from '../actorLinks.js';
 import { fetchWorkItemList } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -219,7 +220,7 @@ export function WorkItemListView() {
                     </div>
                     <div className="operatorMetaRow">
                       <span>Owner: {workItem.ownerName}</span>
-                      <span>Actors: {compactList(workItem.assignedActorNames)}</span>
+                      <span>Actors: {compactList(workItem.assignedActors.map((actor) => actor.displayName))}</span>
                     </div>
                     <div className="operatorMetaRow">
                       <span>Conversation: {workItem.conversationTitle ?? 'No linked conversation'}</span>
@@ -276,6 +277,26 @@ export function WorkItemListView() {
                           Open briefing thread
                         </button>
                       ) : null}
+                      {workItem.assignedActors
+                        .map((actor) => ({
+                          ...actor,
+                          catId: readCatIdFromActorId(actor.actorId),
+                        }))
+                        .filter((actor): actor is typeof actor & { catId: string } => actor.catId !== null)
+                        .map((actor) => (
+                          <button
+                            key={actor.actorId}
+                            type="button"
+                            className="operatorActionButton"
+                            onClick={() => {
+                              startTransition(() => {
+                                navigate(buildMyCatPath(actor.catId));
+                              });
+                            }}
+                          >
+                            Open {actor.displayName}
+                          </button>
+                        ))}
                     </div>
                   </article>
                 ))}

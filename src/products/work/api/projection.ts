@@ -153,7 +153,10 @@ export interface WorkWorkItemListItem {
   taskTitle: string | null;
   ownerActorId: string;
   ownerName: string;
-  assignedActorNames: string[];
+  assignedActors: Array<{
+    actorId: string;
+    displayName: string;
+  }>;
   updatedAt: string;
 }
 
@@ -350,7 +353,10 @@ function buildWorkItemListItems(
         taskTitle: linkedTask?.title ?? null,
         ownerActorId: workItem.ownerActorId,
         ownerName: resolveActorName(core, workItem.ownerActorId),
-        assignedActorNames: workItem.assignedActorIds.map((actorId) => resolveActorName(core, actorId)),
+        assignedActors: workItem.assignedActorIds.map((actorId) => ({
+          actorId,
+          displayName: resolveActorName(core, actorId),
+        })),
         updatedAt: workItem.updatedAt,
       };
     });
