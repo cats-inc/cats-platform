@@ -69,6 +69,7 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(projectDetailSource, /fetchWorkProjectDetail/u);
   assert.match(projectDetailSource, /buildChannelPath/u);
   assert.match(projectDetailSource, /buildMyCatPath/u);
+  assert.match(projectDetailSource, /navigate\('\/work\/projects'\)/u);
   assert.match(projectDetailSource, /task\.conversationSourceChannelId/u);
   assert.match(projectDetailSource, /listCatActorLinks\(task\.assignedActors\)/u);
   assert.match(projectDetailSource, /navigate\(`\/work\/work-items\/\$\{encodeURIComponent\(workItem\.id\)\}`\)/u);
@@ -106,6 +107,7 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(workItemDetailSource, /fetchWorkItemDetail/u);
   assert.match(workItemDetailSource, /buildChannelPath/u);
   assert.match(workItemDetailSource, /buildMyCatPath/u);
+  assert.match(workItemDetailSource, /navigate\('\/work\/work-items'\)/u);
   assert.match(workItemDetailSource, /payload\.linkedTask\.conversation\?\.sourceChannelId/u);
   assert.match(workItemDetailSource, /listCatActorLinks\(payload\.linkedTask\.assignedActors\)/u);
   assert.match(workItemDetailSource, /navigate\(`\/work\/projects\/\$\{encodeURIComponent\(payload\.project!\.id\)\}`\)/u);
