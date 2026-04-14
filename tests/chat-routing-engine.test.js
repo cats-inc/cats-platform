@@ -1021,6 +1021,60 @@ test('routeChannelMessage persists in-flight workflow snapshots before the full 
   assert.equal(finalChannel.roomRouting?.workflow.turnHistory.length, 1);
 });
 
+test('continueBegunChannelMessageDispatch persists pending workflow targets before session wake completes', async () => {
+  const { state, channelId } = await createChannelState();
+  const store = new TrackingChatStore(state);
+  const createSessionGate = createDeferred();
+  let createSessionRequested = false;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('Agent-1 handled the review.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+  const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
+  runtimeClient.createSession = async (input) => {
+    createSessionRequested = true;
+    await createSessionGate.promise;
+    return originalCreateSession(input);
+  };
+
+  const now = new Date('2026-03-21T00:10:00.000Z');
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: '@Agent-1 review this change.' },
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+  const dispatchPromise = continueBegunChannelMessageDispatch(
+    begun,
+    channelId,
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+
+  while (!createSessionRequested || store.writeCount < 2) {
+    await Promise.resolve();
+  }
+
+  const persistedChannel = requireChannel(await store.read(), channelId);
+  assert.equal(persistedChannel.roomRouting?.workflow.activeTurn?.status, 'running');
+  assert.equal(
+    persistedChannel.roomRouting?.workflow.activeTurn?.targetStatuses.length,
+    1,
+  );
+  assert.equal(
+    persistedChannel.roomRouting?.workflow.activeTurn?.targetStatuses[0]?.status,
+    'pending',
+  );
+
+  createSessionGate.resolve();
+  await dispatchPromise;
+});
+
 test('routeChannelMessage auto-checks out an approved channel task for the assigned cat session', async () => {
   const { state, channelId } = await createChannelState();
   const store = new CountingCoreChatStore();

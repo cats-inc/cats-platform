@@ -545,6 +545,18 @@ export async function processDispatchQueue(
       );
     }
 
+    nextState = materializeInFlightDispatchState(
+      nextState,
+      channelId,
+      baseRoomRouting,
+      workflow,
+      outcome,
+      latestCheckpoint,
+      now,
+    );
+    nextState = await persistInFlightDispatchState(chatStore, nextState);
+    options.onStateWritten?.(channelId);
+
     const wakePrepared = await prepareReadyRequests(
       nextState,
       channelId,
