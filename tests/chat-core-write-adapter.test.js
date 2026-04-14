@@ -21,6 +21,9 @@ import {
 import {
   resumeWorkflowContinuationReplay,
 } from '../build/server/products/chat/state/runtime-dispatch/replay.js';
+import {
+  buildCanonicalChatMessage,
+} from '../build/server/products/chat/state/chatCoreInterop.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   buildWorkflowContinuationReplayRequest,
@@ -593,6 +596,94 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
   assert.ok(
     requireChannel(replayState, channelId).messages.some((message) =>
       message.body === 'Agent-2 resumed from the canonical handoff.'),
+  );
+});
+
+test('buildCanonicalChatMessage preserves assistant metadata when rebuilding from canonical segments', async () => {
+  const { state, channelId } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return {
+        segments: [
+          {
+            kind: 'tool_use',
+            text: '',
+            toolName: 'search_repo',
+            toolId: 'tool-search',
+          },
+          {
+            kind: 'text',
+            text: 'Agent-1 explored the repo. ',
+            toolName: null,
+            toolId: null,
+          },
+          {
+            kind: 'tool_use',
+            text: '',
+            toolName: 'plan_fix',
+            toolId: 'tool-plan',
+          },
+          {
+            kind: 'text',
+            text: [
+              'Continue with the next specialist.',
+              '```json',
+              JSON.stringify({
+                workflowRecommendation: {
+                  workflowShape: 'sequential',
+                  candidateTargetNames: ['Agent-2'],
+                  branchStrategy: 'transplant_context',
+                  rationale: 'Pass the next step to Agent-2.',
+                },
+              }),
+              '```',
+            ].join('\n'),
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 21,
+        outputTokens: 13,
+        tokensUsed: 34,
+      };
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 take the first pass.' },
+    runtimeClient,
+    new Date('2026-04-15T00:20:00.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const sourceMessage = requireChannel(dispatched.state, channelId).messages.findLast((message) =>
+    message.senderName === 'Agent-1'
+    && message.metadata?.event === 'assistant_turn_segment'
+    && message.metadata?.terminal === true);
+  assert.ok(sourceMessage);
+
+  const core = await store.readCore();
+  const rebuilt = buildCanonicalChatMessage(core, channelId, sourceMessage.id);
+  assert.ok(rebuilt);
+  assert.match(rebuilt?.body ?? '', /Agent-1 explored the repo\./u);
+  assert.match(rebuilt?.body ?? '', /Continue with the next specialist\./u);
+  assert.equal(rebuilt?.metadata?.event, 'assistant_turn_segment');
+  assert.equal(rebuilt?.metadata?.terminal, true);
+  assert.equal(rebuilt?.metadata?.routingTrigger, 'explicit_mention');
+  assert.equal(rebuilt?.metadata?.dispatchDepth, 0);
+  assert.deepEqual(rebuilt?.metadata?.precedingTools, [
+    { toolName: 'search_repo', toolId: 'tool-search' },
+    { toolName: 'plan_fix', toolId: 'tool-plan' },
+  ]);
+  assert.equal(rebuilt?.metadata?.workflowRecommendation?.workflowShape, 'sequential');
+  assert.equal(
+    rebuilt?.metadata?.workflowRecommendation?.candidateTargets?.[0]?.participantName,
+    'Agent-2',
   );
 });
 

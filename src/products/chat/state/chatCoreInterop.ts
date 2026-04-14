@@ -9,6 +9,11 @@ import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 
 export type CanonicalChatUserMessage = ChatMessage & { senderKind: 'user' };
 
+interface CanonicalToolMetadata {
+  toolName: string | null;
+  toolId: string | null;
+}
+
 function readTurnSourceSenderKind(
   turn: TurnRecord,
 ): ChatMessage['senderKind'] {
@@ -116,6 +121,15 @@ function buildCanonicalChatSegmentMessage(
   if (!fullText.trim()) {
     return null;
   }
+  const terminalSegment = laneSegments.at(-1) ?? segment;
+  const workflowRecommendation = readChatCoreMetadataRecord(
+    segment.metadata,
+    'workflowRecommendation',
+  ) ?? readChatCoreMetadataRecord(
+    terminalSegment.metadata,
+    'workflowRecommendation',
+  );
+  const precedingTools = collectCanonicalPrecedingTools(laneSegments);
 
   const targetKind = readChatCoreMetadataString(segment.metadata, 'targetKind')
     ?? readChatCoreMetadataString(lane?.metadata ?? null, 'participantKind');
@@ -142,6 +156,22 @@ function buildCanonicalChatSegmentMessage(
       ...(targetId ? { targetId } : {}),
       ...(segment.sessionId ? { sessionId: segment.sessionId } : {}),
       ...(segment.turnId ? { turnId: segment.turnId } : {}),
+      ...(readChatCoreMetadataBoolean(segment.metadata, 'terminal') === true
+        || readChatCoreMetadataBoolean(terminalSegment.metadata, 'terminal') === true
+        ? { terminal: true }
+        : {}),
+      ...(readChatCoreMetadataString(segment.metadata, 'routingTrigger')
+        ? { routingTrigger: readChatCoreMetadataString(segment.metadata, 'routingTrigger') }
+        : {}),
+      ...(readChatCoreMetadataNumber(segment.metadata, 'dispatchDepth') !== null
+        ? { dispatchDepth: readChatCoreMetadataNumber(segment.metadata, 'dispatchDepth') }
+        : {}),
+      ...(precedingTools.length > 0
+        ? { precedingTools }
+        : {}),
+      ...(workflowRecommendation
+        ? { workflowRecommendation }
+        : {}),
     },
     usage: null,
     executionProvider: readChatCoreMetadataString(segment.metadata, 'executionProvider'),
@@ -169,6 +199,62 @@ export function readChatCoreMetadataNumber(
   return typeof value === 'number' && Number.isFinite(value)
     ? value
     : null;
+}
+
+export function readChatCoreMetadataBoolean(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): boolean | null {
+  const value = metadata?.[key];
+  return typeof value === 'boolean'
+    ? value
+    : null;
+}
+
+export function readChatCoreMetadataRecord(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): Record<string, unknown> | null {
+  const value = metadata?.[key];
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? structuredClone(value as Record<string, unknown>)
+    : null;
+}
+
+function readChatCoreToolMetadataArray(
+  metadata: CoreRecordMetadata | null | undefined,
+  key: string,
+): CanonicalToolMetadata[] {
+  const value = metadata?.[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      return [];
+    }
+
+    const toolName = typeof entry.toolName === 'string' ? entry.toolName : null;
+    const toolId = typeof entry.toolId === 'string' ? entry.toolId : null;
+    if (!toolName && !toolId) {
+      return [];
+    }
+
+    return [{ toolName, toolId }];
+  });
+}
+
+function collectCanonicalPrecedingTools(
+  segments: ReadonlyArray<Pick<SegmentRecord, 'metadata'>>,
+): CanonicalToolMetadata[] {
+  const tools: CanonicalToolMetadata[] = [];
+
+  for (const segment of segments) {
+    tools.push(...readChatCoreToolMetadataArray(segment.metadata, 'precedingTools'));
+  }
+
+  return tools;
 }
 
 export function readChatCoreTurnMetadataString(

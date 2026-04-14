@@ -106,6 +106,40 @@ function readMessageMetadataNumber(message: ChatMessage, key: string): number | 
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function readMessageMetadataRecord(
+  message: ChatMessage,
+  key: string,
+): Record<string, unknown> | null {
+  const value = message.metadata?.[key];
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? structuredClone(value as Record<string, unknown>)
+    : null;
+}
+
+function readMessageToolMetadataArray(
+  message: ChatMessage,
+  key: string,
+): Array<{ toolName: string | null; toolId: string | null }> {
+  const value = message.metadata?.[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      return [];
+    }
+
+    const toolName = typeof entry.toolName === 'string' ? entry.toolName : null;
+    const toolId = typeof entry.toolId === 'string' ? entry.toolId : null;
+    if (!toolName && !toolId) {
+      return [];
+    }
+
+    return [{ toolName, toolId }];
+  });
+}
+
 function readRecordMetadataString(
   record: Pick<TurnRecord, 'metadata'> | null | undefined,
   key: string,
@@ -578,6 +612,12 @@ export function projectChatChannelInteractionToCore(
               executionInstance: message.executionInstance ?? null,
               routingTrigger: readMessageMetadataString(message, 'routingTrigger'),
               dispatchDepth: readMessageMetadataNumber(message, 'dispatchDepth'),
+              ...(readMessageToolMetadataArray(message, 'precedingTools').length > 0
+                ? { precedingTools: readMessageToolMetadataArray(message, 'precedingTools') }
+                : {}),
+              ...(readMessageMetadataRecord(message, 'workflowRecommendation')
+                ? { workflowRecommendation: readMessageMetadataRecord(message, 'workflowRecommendation') }
+                : {}),
             },
           },
           now,
