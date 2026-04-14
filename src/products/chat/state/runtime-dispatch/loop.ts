@@ -246,6 +246,9 @@ export async function processDispatchQueue(
             branchStrategy,
             ...buildContinuationReplayMetadata({
               sourceMessageId: effectiveSourceMessage.id,
+              sourceTurnId: frame.sourceTurnId ?? null,
+              sourceLaneId: frame.sourceLaneId ?? null,
+              sourceAssistantTurnId: frame.sourceAssistantTurnId ?? null,
               mentionNames: frame.mentionNames,
               trigger: frame.trigger,
               workflowStageId: activeTurn.stageId,
@@ -440,13 +443,16 @@ export async function processDispatchQueue(
           frame.sourceParticipant,
           [toParticipantRef(target)],
           {
-            reason: 'anti_ping_pong',
-            branchStrategy: request.branchStrategy,
-            ...buildContinuationReplayMetadata({
-              sourceMessageId: effectiveSourceMessage.id,
-              mentionNames: frame.mentionNames,
-              trigger: frame.trigger,
-              workflowStageId: activeTurn.stageId,
+                    reason: 'anti_ping_pong',
+                    branchStrategy: request.branchStrategy,
+                    ...buildContinuationReplayMetadata({
+                        sourceMessageId: effectiveSourceMessage.id,
+                        sourceTurnId: frame.sourceTurnId ?? null,
+                        sourceLaneId: frame.sourceLaneId ?? null,
+                        sourceAssistantTurnId: frame.sourceAssistantTurnId ?? null,
+                        mentionNames: frame.mentionNames,
+                        trigger: frame.trigger,
+                        workflowStageId: activeTurn.stageId,
               workflowShape: activeTurn.workflowShape,
               reviewRequired: activeTurn.reviewRequired,
               continuationSource: frame.continuationSource ?? null,

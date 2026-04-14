@@ -168,6 +168,11 @@ function advanceQueuedSequentialPromptFrontier(
   queue: DispatchFrame[],
   execution: DispatchExecution,
   responseMessage: ChatMessage,
+  sourceIdentity: {
+    sourceTurnId: string;
+    sourceLaneId: string;
+    sourceAssistantTurnId: string;
+  },
 ): DispatchFrame | null {
   const executionSourceParticipantKey = execution.sourceParticipant
     ? participantKey(execution.sourceParticipant)
@@ -191,6 +196,9 @@ function advanceQueuedSequentialPromptFrontier(
   }
 
   nextSequentialFrame.promptSourceMessage = responseMessage;
+  nextSequentialFrame.sourceTurnId = sourceIdentity.sourceTurnId;
+  nextSequentialFrame.sourceLaneId = sourceIdentity.sourceLaneId;
+  nextSequentialFrame.sourceAssistantTurnId = sourceIdentity.sourceAssistantTurnId;
   nextSequentialFrame.sourceParticipant = toParticipantRef(execution.target);
   nextSequentialFrame.trigger = 'continuation_mention';
   nextSequentialFrame.workflowStageId = 'continuation_handoff';
@@ -636,10 +644,16 @@ export function applyDispatchExecutions(
 
     const responseMessage = responseMessages.at(-1)!;
     const responseSourceMessage = buildAssistantTurnSourceMessage(responseMessages) ?? responseMessage;
+    const sourceIdentity = {
+      sourceTurnId: activeTurn.id,
+      sourceLaneId,
+      sourceAssistantTurnId: assistantTurnId,
+    };
     const advancedSequentialFrame = advanceQueuedSequentialPromptFrontier(
       queue,
       execution,
       responseSourceMessage,
+      sourceIdentity,
     );
     if (advancedSequentialFrame) {
       persistQueuedSequentialContinuationCheckpoint(
@@ -650,11 +664,7 @@ export function applyDispatchExecutions(
         advancedSequentialFrame,
         responseSourceMessage,
         nowIso,
-        {
-          sourceTurnId: activeTurn.id,
-          sourceLaneId,
-          sourceAssistantTurnId: assistantTurnId,
-        },
+        sourceIdentity,
       );
     }
     const response = buildAssistantTurnDelivery(assistantTurnId, responseMessages);
@@ -899,6 +909,9 @@ export function applyDispatchExecutions(
     );
     queue.push({
       sourceMessage: responseSourceMessage,
+      sourceTurnId: activeTurn.id,
+      sourceLaneId,
+      sourceAssistantTurnId: assistantTurnId,
       sourceParticipant: toParticipantRef(execution.target),
       targets: continuationResolution.targets,
       unresolved: continuationResolution.unresolved,
