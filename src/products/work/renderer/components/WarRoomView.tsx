@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkDashboardProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
-import { readCatIdFromActorId } from '../actorLinks.js';
+import { listCatActorLinks } from '../actorLinks.js';
 import { fetchWorkDashboard } from '../api/dashboard.js';
 import { IntakeStatusCard } from './IntakeStatusCard.js';
 
@@ -397,13 +397,7 @@ function WorkItemsSection({
                     Open briefing thread
                   </button>
                 ) : null}
-                {item.assignedActors
-                  .map((actor) => ({
-                    ...actor,
-                    catId: readCatIdFromActorId(actor.actorId),
-                  }))
-                  .filter((actor): actor is typeof actor & { catId: string } => actor.catId !== null)
-                  .map((actor) => (
+                {listCatActorLinks(item.assignedActors).map((actor) => (
                     <button
                       key={actor.actorId}
                       type="button"

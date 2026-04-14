@@ -8,7 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import type { WorkProjectDetailProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
-import { readCatIdFromActorId } from '../actorLinks.js';
+import { listCatActorLinks } from '../actorLinks.js';
 import { fetchWorkProjectDetail } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -285,13 +285,7 @@ export function ProjectDetailView() {
                       >
                         Open work item
                       </button>
-                      {workItem.assignedActors
-                        .map((actor) => ({
-                          ...actor,
-                          catId: readCatIdFromActorId(actor.actorId),
-                        }))
-                        .filter((actor): actor is typeof actor & { catId: string } => actor.catId !== null)
-                        .map((actor) => (
+                      {listCatActorLinks(workItem.assignedActors).map((actor) => (
                           <button
                             key={actor.actorId}
                             type="button"

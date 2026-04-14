@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkTaskDetailProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
-import { readCatIdFromActorId } from '../actorLinks.js';
+import { listCatActorLinks } from '../actorLinks.js';
 import { fetchWorkTaskDetail } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -248,13 +248,7 @@ export function TaskDetailView() {
                     Open chat thread
                   </button>
                 ) : null}
-                {payload.assignedActors
-                  .map((actor) => ({
-                    ...actor,
-                    catId: readCatIdFromActorId(actor.actorId),
-                  }))
-                  .filter((actor): actor is typeof actor & { catId: string } => actor.catId !== null)
-                  .map((actor) => (
+                {listCatActorLinks(payload.assignedActors).map((actor) => (
                     <button
                       key={actor.actorId}
                       type="button"
