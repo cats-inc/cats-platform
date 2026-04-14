@@ -14,8 +14,11 @@ import type { RoomWorkflowTurn } from '../../../../shared/roomRouting.js';
 import { ASSISTANT_TURN_SEGMENT_EVENT } from '../assistantTurnSegments.js';
 import { requireChannel } from '../model/index.js';
 import {
+  buildChatAssignedParticipantId,
   buildChatConversationId,
+  buildChatOrchestratorParticipantId,
   buildChatLaneId,
+  buildDirectLaneTransportBindingId,
 } from '../../../../shared/chatCoreIds.js';
 import type { DispatchExecution } from './execution.js';
 
@@ -39,6 +42,38 @@ function resolveTargetAgentId(state: ChatState, channelId: string, execution: Di
     (candidate) => candidate.participantId === execution.target.participantId,
   );
   return assignment ? createCatActorId(assignment.catId) : null;
+}
+
+function resolveCanonicalParticipantId(
+  channelId: string,
+  participant:
+    | Pick<DispatchExecution['target'], 'participantId' | 'participantKind'>
+    | null
+    | undefined,
+): string | null {
+  if (!participant?.participantId) {
+    return null;
+  }
+
+  return participant.participantKind === 'orchestrator'
+    ? buildChatOrchestratorParticipantId(channelId)
+    : buildChatAssignedParticipantId(channelId, participant.participantId);
+}
+
+function resolveSessionTransportBindingId(
+  state: ChatState,
+  channelId: string,
+  execution: DispatchExecution,
+): string | null {
+  const channel = requireChannel(state, channelId);
+  if (
+    channel.channelKind !== 'direct_lane'
+    || channel.roomRouting?.defaultRecipientId !== execution.target.participantId
+  ) {
+    return null;
+  }
+
+  return buildDirectLaneTransportBindingId(channelId);
 }
 
 function resolveExecutionResponseMessages(
@@ -93,6 +128,7 @@ export function recordDispatchExecutionInteraction(
   }
 
   const laneId = buildChatLaneId(input.workflowTurn.id, targetStateId, participantId);
+  const canonicalParticipantId = resolveCanonicalParticipantId(input.channelId, input.execution.target);
   const agentId = resolveTargetAgentId(input.state, input.channelId, input.execution);
   const responseMessages = resolveExecutionResponseMessages(
     input.state,
@@ -111,7 +147,10 @@ export function recordDispatchExecutionInteraction(
       conversationId,
       kind: input.workflowTurn.sourceSenderKind === 'user' ? 'user' : 'agent',
       status: input.workflowTurn.completedAt ? 'completed' : 'active',
-      sourceParticipantId: input.execution.sourceParticipant?.participantId ?? null,
+      sourceParticipantId: resolveCanonicalParticipantId(
+        input.channelId,
+        input.execution.sourceParticipant,
+      ),
       createdAt: input.workflowTurn.startedAt,
       startedAt: input.workflowTurn.startedAt,
       completedAt: input.workflowTurn.completedAt,
@@ -131,7 +170,7 @@ export function recordDispatchExecutionInteraction(
       id: laneId,
       turnId: input.workflowTurn.id,
       conversationId,
-      participantId,
+      participantId: canonicalParticipantId,
       agentId,
       orderIndex: matchedLaneIndex >= 0 ? matchedLaneIndex : 0,
       status: input.execution.error ? 'failed' : 'completed',
@@ -156,8 +195,13 @@ export function recordDispatchExecutionInteraction(
         conversationId,
         turnId: input.workflowTurn.id,
         laneId,
-        participantId,
+        participantId: canonicalParticipantId,
         agentId,
+        transportBindingId: resolveSessionTransportBindingId(
+          input.state,
+          input.channelId,
+          input.execution,
+        ),
         runtimeKey: input.execution.target.participantName,
         status: input.execution.error ? 'failed' : 'active',
         createdAt: input.workflowTurn.startedAt,

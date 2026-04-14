@@ -4,6 +4,10 @@ import test from 'node:test';
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import { ASSISTANT_TURN_SEGMENT_EVENT } from '../build/server/products/chat/state/assistantTurnSegments.js';
 import { recordDispatchExecutionInteraction } from '../build/server/products/chat/state/runtime-dispatch/canonicalInteraction.js';
+import {
+  buildChatAssignedParticipantId,
+  buildDirectLaneTransportBindingId,
+} from '../build/server/shared/chatCoreIds.js';
 
 test('recordDispatchExecutionInteraction projects persisted assistant messages into canonical interaction records', () => {
   const core = createDefaultCoreState();
@@ -11,6 +15,10 @@ test('recordDispatchExecutionInteraction projects persisted assistant messages i
     channels: [
       {
         id: 'channel-1',
+        channelKind: 'direct_lane',
+        roomRouting: {
+          defaultRecipientId: 'participant-cat-1',
+        },
         catAssignments: [
           {
             participantId: 'participant-cat-1',
@@ -106,6 +114,18 @@ test('recordDispatchExecutionInteraction projects persisted assistant messages i
   assert.equal(nextCore.lanes[0].id, 'lane-turn-1-target-state-1');
   assert.equal(nextCore.sessions[0].id, 'session-1');
   assert.equal(nextCore.sessions[0].laneId, 'lane-turn-1-target-state-1');
+  assert.equal(
+    nextCore.lanes[0].participantId,
+    buildChatAssignedParticipantId('channel-1', 'participant-cat-1'),
+  );
+  assert.equal(
+    nextCore.sessions[0].participantId,
+    buildChatAssignedParticipantId('channel-1', 'participant-cat-1'),
+  );
+  assert.equal(
+    nextCore.sessions[0].transportBindingId,
+    buildDirectLaneTransportBindingId('channel-1'),
+  );
   assert.equal(nextCore.lanes[0].agentId, 'actor-cat-claude');
   assert.deepEqual(
     nextCore.segments.map((segment) => ({

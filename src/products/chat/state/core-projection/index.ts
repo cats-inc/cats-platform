@@ -17,9 +17,11 @@ import {
   createChatConversationParticipants,
   createChatRootContainer,
   createConversationFromChannel,
+  createDirectLaneTransportBindings,
   createOrchestratorActor,
   createOwnerActor,
   createParallelGroupContainer,
+  createBotTransportBindings,
   createTaskFromChannel,
   createTemporaryParticipantActors,
   preserveCoreOwnedContainers,
@@ -27,6 +29,7 @@ import {
   preserveCoreOwnedActors,
   preserveCoreOwnedArchives,
   preserveCoreOwnedConversations,
+  preserveCoreOwnedTransportBindings,
   preserveCoreOwnedTasks,
   syncBotBindings,
 } from './entities.js';
@@ -87,6 +90,9 @@ export function syncCoreStateWithChatState(
     ),
   );
   const preservedTasks = preserveCoreOwnedTasks(existingCore.tasks ?? []);
+  const preservedTransportBindings = preserveCoreOwnedTransportBindings(
+    existingCore.transportBindings ?? [],
+  );
   const preservedRuns = preserveCoreOwnedRuns(existingCore.runs ?? []);
   const preservedTraces = preserveCoreOwnedTraces(existingCore.traces ?? []);
   const preservedCheckpoints = preserveCoreOwnedCheckpoints(existingCore.checkpoints ?? []);
@@ -122,6 +128,12 @@ export function syncCoreStateWithChatState(
   const workflowActivities = workflowTurns.flatMap(({ channel, turn }) =>
     turn.events.map((event) => createWorkflowActivity(channel, turn, event)),
   );
+  const botBindings = syncBotBindings(chat, existingCore.botBindings ?? []);
+  const transportBindings = [
+    ...createDirectLaneTransportBindings(chat),
+    ...createBotTransportBindings(botBindings),
+    ...preservedTransportBindings,
+  ];
 
   return {
     version: CATS_CORE_STATE_VERSION,
@@ -158,8 +170,8 @@ export function syncCoreStateWithChatState(
     artifacts: structuredClone(existingCore.artifacts ?? []),
     activities: [...workflowActivities, ...preservedActivities],
     approvalBindings: structuredClone(existingCore.approvalBindings ?? []),
-    transportBindings: structuredClone(existingCore.transportBindings ?? []),
-    botBindings: syncBotBindings(chat, existingCore.botBindings ?? []),
+    transportBindings,
+    botBindings,
     archives: [...archives, ...preservedArchives],
     durableMemory: structuredClone(existingCore.durableMemory ?? []),
   };

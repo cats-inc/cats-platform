@@ -15,6 +15,7 @@ import type {
   CoreRecordMetadata,
   CoreTaskRecord,
   CoreTaskStatus,
+  TransportBindingRecord,
   OwnerProfileRecord,
 } from '../../../../core/types.js';
 import {
@@ -63,10 +64,12 @@ import {
   buildChatArchiveId,
   buildChatAssignedParticipantId,
   buildChatConversationId,
+  buildDirectLaneTransportBindingId,
   buildChatOrchestratorParticipantId,
   buildChatOwnerParticipantId,
   buildChatParallelGroupContainerId,
   buildChatTaskId,
+  buildTelegramBotTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
   resolveChatConversationKind,
   resolveChatParticipantAgentId,
@@ -720,6 +723,65 @@ export function createParallelGroupContainer(
   };
 }
 
+export function createDirectLaneTransportBindings(
+  chat: ChatState,
+): TransportBindingRecord[] {
+  return chat.channels
+    .filter((channel) => channel.channelKind === 'direct_lane')
+    .map((channel) => {
+      const conversationId = buildChatConversationId(channel.id);
+      const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
+      const recipientAssignment = (channel.participantAssignments ?? []).find((assignment) =>
+        assignment.participantId === defaultRecipientId) ?? null;
+
+      return {
+        id: buildDirectLaneTransportBindingId(channel.id),
+        platform: 'internal',
+        direction: 'bidirectional',
+        conversationId,
+        participantId: defaultRecipientId
+          ? buildChatAssignedParticipantId(channel.id, defaultRecipientId)
+          : null,
+        agentId: recipientAssignment ? resolveChatParticipantAgentId(recipientAssignment) : null,
+        externalThreadKey: `channel:${channel.id}`,
+        status: channel.status === 'archived' ? 'archived' : 'active',
+        createdAt: channel.createdAt,
+        updatedAt: channel.updatedAt,
+        metadata: {
+          channelId: channel.id,
+          channelKind: channel.channelKind,
+          roomMode: channel.roomRouting?.mode ?? null,
+          defaultRecipientId,
+          recoverableDirectLaneCatId: channel.recoverableDirectLaneCatId ?? null,
+        },
+      };
+    });
+}
+
+export function createBotTransportBindings(
+  botBindings: BotBindingRecord[],
+): TransportBindingRecord[] {
+  return botBindings.map((binding) => ({
+    id: buildTelegramBotTransportBindingId(binding.id),
+    platform: binding.platform === 'telegram' ? 'telegram' : 'web',
+    direction: 'bidirectional',
+    conversationId: null,
+    participantId: null,
+    agentId: binding.catActorId ?? binding.bossCatActorId ?? null,
+    externalThreadKey: binding.botName ? `bot:${binding.botName}` : binding.id,
+    status: binding.status === 'disabled' ? 'disabled' : 'active',
+    createdAt: binding.createdAt,
+    updatedAt: binding.updatedAt,
+    metadata: {
+      bindingId: binding.id,
+      botName: binding.botName,
+      inboundMode: binding.inboundMode,
+      roomMode: binding.roomMode,
+      orchestratorActorId: binding.orchestratorActorId,
+    },
+  }));
+}
+
 export function createConversationFromChannel(
   channel: ChatChannelState,
   participantActorIds: string[],
@@ -821,6 +883,16 @@ export function preserveCoreOwnedContainers(
     .map((container) => structuredClone(container));
 }
 
+export function preserveCoreOwnedTransportBindings(
+  existingBindings: TransportBindingRecord[],
+): TransportBindingRecord[] {
+  return existingBindings
+    .filter((binding) =>
+      !binding.id.startsWith('transport-internal-direct-lane-')
+      && !binding.id.startsWith('transport-telegram-bot-'))
+    .map((binding) => structuredClone(binding));
+}
+
 export function preserveCoreOwnedArchives(
   existingArchives: ArchiveMetadataRecord[],
 ): ArchiveMetadataRecord[] {
@@ -909,7 +981,7 @@ export function syncBotBindings(
   }
 
   return [
-    ...preservedBindings,
+    ...normalizedBindings,
     {
       id: 'bot-binding-telegram-global',
       platform: 'telegram',

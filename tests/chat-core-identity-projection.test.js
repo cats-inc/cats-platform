@@ -7,7 +7,9 @@ import test from 'node:test';
 import {
   buildChatAssignedParticipantId,
   buildChatConversationId,
+  buildDirectLaneTransportBindingId,
   buildChatOwnerParticipantId,
+  buildTelegramBotTransportBindingId,
   buildChatParallelGroupContainerId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
@@ -35,6 +37,8 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
     now,
   );
   const companionId = state.cats[0].id;
+  state.bossCatId = companionId;
+  state.globalOrchestrator.telegramBotName = 'boss_cat_bot';
 
   state = createChannel(
     state,
@@ -109,6 +113,12 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
       participant.id === buildChatAssignedParticipantId(directChannelId, companionId)
       && participant.agentId === `actor-cat-${companionId}`),
   );
+  assert.ok(
+    core.transportBindings.some((binding) =>
+      binding.id === buildDirectLaneTransportBindingId(directChannelId)
+      && binding.conversationId === directConversationId
+      && binding.agentId === `actor-cat-${companionId}`),
+  );
 
   const temporaryConversationId = buildChatConversationId(temporaryChannelId);
   const temporaryActor = core.actors.find((actor) => actor.source === 'chat_participant');
@@ -131,4 +141,11 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
   assert.ok(parallelContainer);
   assert.equal(parallelContainer.kind, 'parallel_group');
   assert.equal(parallelContainer.parentContainerId, CHAT_ROOT_CONTAINER_ID);
+
+  assert.ok(
+    core.transportBindings.some((binding) =>
+      binding.id === buildTelegramBotTransportBindingId('bot-binding-telegram-global')
+      && binding.platform === 'telegram'
+      && binding.agentId === `actor-cat-${companionId}`),
+  );
 });

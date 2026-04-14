@@ -34,6 +34,14 @@ export function buildChatParallelGroupContainerId(groupId: string): ContainerId 
   return `container-parallel-group-${groupId}`;
 }
 
+export function buildDirectLaneTransportBindingId(channelId: string): string {
+  return `transport-internal-direct-lane-${channelId}`;
+}
+
+export function buildTelegramBotTransportBindingId(bindingId: string): string {
+  return `transport-telegram-bot-${bindingId}`;
+}
+
 export function buildChatParticipantRecordId(
   conversationId: ConversationId,
   participantKey: string,
