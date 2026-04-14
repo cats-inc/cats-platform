@@ -389,28 +389,52 @@ function matchesSessionStartedParticipant(
 function resolveLatestSessionStartedMessage(
   channel: ChatChannelState,
   participant: RoomRoutingParticipantRef,
-  sessionId?: string | null,
+  options: {
+    targetStateId?: string | null;
+    laneId?: string | null;
+    sessionId?: string | null;
+  } = {},
 ): ChatMessage | null {
+  let participantMatch: ChatMessage | null = null;
+  let sessionMatch: ChatMessage | null = null;
   for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
     const message = channel.messages[index]!;
+    if (!matchesSessionStartedParticipant(message, participant)) {
+      continue;
+    }
+    participantMatch ??= message;
+
     if (
-      matchesSessionStartedParticipant(message, participant)
-      && (
-        !sessionId
-        || readMessageMetadataString(message, 'sessionId') === sessionId
-      )
+      options.targetStateId
+      && readMessageMetadataString(message, 'targetStateId') === options.targetStateId
     ) {
       return message;
     }
+    if (options.laneId && readMessageMetadataString(message, 'laneId') === options.laneId) {
+      return message;
+    }
+    if (
+      !sessionMatch
+      && options.sessionId
+      && readMessageMetadataString(message, 'sessionId') === options.sessionId
+    ) {
+      sessionMatch = message;
+    }
   }
 
-  return null;
+  return sessionMatch
+    ?? (
+      !options.targetStateId && !options.laneId && !options.sessionId
+        ? participantMatch
+        : null
+    );
 }
 
 function resolveTargetSessionId(
   channel: ChatChannelState,
   target: RoomWorkflowTargetState,
   responseMessages: ChatMessage[],
+  laneId: string,
 ): string | null {
   for (let index = responseMessages.length - 1; index >= 0; index -= 1) {
     const sessionId = readMessageMetadataString(responseMessages[index]!, 'sessionId');
@@ -422,7 +446,10 @@ function resolveTargetSessionId(
   const sessionStartedMessage = resolveLatestSessionStartedMessage(
     channel,
     target.participant,
-    null,
+    {
+      targetStateId: target.id,
+      laneId,
+    },
   );
   if (sessionStartedMessage) {
     const sessionId = readMessageMetadataString(sessionStartedMessage, 'sessionId');
@@ -544,8 +571,18 @@ function resolveSessionTransportBindingId(
   channel: ChatChannelState,
   participant: RoomRoutingParticipantRef,
   sessionId: string | null,
+  targetStateId: string,
+  laneId: string,
 ): string | null {
-  const sessionStartedMessage = resolveLatestSessionStartedMessage(channel, participant, sessionId);
+  const sessionStartedMessage = resolveLatestSessionStartedMessage(
+    channel,
+    participant,
+    {
+      targetStateId,
+      laneId,
+      sessionId,
+    },
+  );
   const explicitTransportBindingId = sessionStartedMessage
     ? readMessageMetadataString(sessionStartedMessage, 'transportBindingId')
     : null;
@@ -611,9 +648,9 @@ export function projectChatChannelInteractionToCore(
     for (let index = 0; index < turn.targetStatuses.length; index += 1) {
       const target = turn.targetStatuses[index]!;
       const responseMessages = resolveExecutionResponseMessages(channel, turn.id, target.id);
-      const sessionId = resolveTargetSessionId(channel, target, responseMessages);
       const lease = resolveTargetLease(channel, target.participant);
       const laneId = buildChatLaneId(turn.id, target.id, target.participant.participantId);
+      const sessionId = resolveTargetSessionId(channel, target, responseMessages, laneId);
       const canonicalParticipantId = resolveCanonicalParticipantId(channelId, target.participant);
       const agentId = resolveTargetAgentId(channel, target.participant);
 
@@ -664,6 +701,8 @@ export function projectChatChannelInteractionToCore(
               channel,
               target.participant,
               sessionId,
+              target.id,
+              laneId,
             ),
             runtimeKey: target.participant.participantName,
             status: mapSessionStatus(target, lease),

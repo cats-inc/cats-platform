@@ -36,6 +36,7 @@ import {
 import {
   buildChatAssignedParticipantId,
   buildChatConversationId,
+  buildChatLaneId,
   buildChatTaskId,
 } from '../build/server/shared/chatCoreIds.js';
 
@@ -331,6 +332,69 @@ test('chatStore.write projects sequential audience order into canonical lane ord
   );
   assert.deepEqual(lanes.map((lane) => lane.status), ['completed', 'completed']);
   assert.equal(readTurnSegments(core, turn.id).length, 2);
+});
+
+test('chatStore.write ignores stale session_started messages when preseeded lanes have not woken yet', async () => {
+  let { state, channelId, agent1Id } = await createGroupChannelState();
+  const staleTurnId = 'turn-stale-session';
+  const staleTargetStateId = 'target-stale-session';
+  const staleSessionId = 'session-stale';
+  const seededAt = new Date('2026-04-15T00:05:30.000Z');
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: 'Agent-1 started a prior runtime session.',
+    },
+    new Date('2026-04-15T00:05:00.000Z'),
+    {
+      metadata: {
+        event: 'session_started',
+        conversationId: buildChatConversationId(channelId),
+        targetKind: 'cat',
+        targetId: agent1Id,
+        targetStateId: staleTargetStateId,
+        laneId: buildChatLaneId(staleTurnId, staleTargetStateId, agent1Id),
+        sessionId: staleSessionId,
+        verbosity: 'verbose',
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Pick this up next.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    createNoopRuntimeClient(),
+    seededAt,
+  );
+
+  const activeTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+  const targetStateId = activeTurn.targetStatuses[0]?.id ?? null;
+  assert.ok(targetStateId);
+
+  const store = new MemoryChatStore();
+  await store.write(begun.state);
+  const core = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const projectedTurn = core.turns.find((turn) =>
+    turn.conversationId === conversationId && turn.status === 'active');
+  assert.ok(projectedTurn);
+
+  const lanes = readOrderedTurnLanes(core, projectedTurn.id);
+  assert.equal(lanes.length, 1);
+  assert.equal(lanes[0]?.id, buildChatLaneId(projectedTurn.id, targetStateId, agent1Id));
+  assert.equal(core.sessions.filter((session) => session.turnId === projectedTurn.id).length, 0);
 });
 
 test('chatStore.write derives startup recovery replay for initial sequential queues from persisted handoff checkpoints', async () => {
