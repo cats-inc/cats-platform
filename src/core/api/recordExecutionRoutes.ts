@@ -15,6 +15,9 @@ import {
   readWrappedBody,
 } from './shared.js';
 import {
+  readActivityListQuery,
+  readCheckpointListQuery,
+  readOutcomeListQuery,
   readRunListQuery,
   readTraceListQuery,
 } from './queryFilters.js';
@@ -26,7 +29,13 @@ import {
   CORE_TRACE_KINDS,
 } from './constants.js';
 import type { CoreApiRouteContext } from './types.js';
-import { listRuns, listTraces } from '../executionRecordLists.js';
+import {
+  listActivities,
+  listCheckpoints,
+  listOutcomes,
+  listRuns,
+  listTraces,
+} from '../executionRecordLists.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 async function handleCoreRuns(
@@ -119,7 +128,8 @@ async function handleCoreCheckpoints(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { checkpoints: core.checkpoints });
+  const query = readCheckpointListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { checkpoints: listCheckpoints(core, query) });
 }
 
 async function handleCoreCheckpointWrite(
@@ -171,7 +181,8 @@ async function handleCoreOutcomes(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { outcomes: core.outcomes });
+  const query = readOutcomeListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { outcomes: listOutcomes(core, query) });
 }
 
 async function handleCoreOutcomeWrite(
@@ -214,7 +225,8 @@ async function handleCoreActivities(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { activities: core.activities });
+  const query = readActivityListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { activities: listActivities(core, query) });
 }
 
 async function handleCoreActivityWrite(
@@ -297,7 +309,11 @@ export async function routeCoreExecutionRecordApi(
 
   if (context.url.pathname === '/api/core/checkpoints') {
     if (context.method === 'GET') {
-      await handleCoreCheckpoints(context);
+      try {
+        await handleCoreCheckpoints(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -310,7 +326,11 @@ export async function routeCoreExecutionRecordApi(
 
   if (context.url.pathname === '/api/core/outcomes') {
     if (context.method === 'GET') {
-      await handleCoreOutcomes(context);
+      try {
+        await handleCoreOutcomes(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -323,7 +343,11 @@ export async function routeCoreExecutionRecordApi(
 
   if (context.url.pathname === '/api/core/activities') {
     if (context.method === 'GET') {
-      await handleCoreActivities(context);
+      try {
+        await handleCoreActivities(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {

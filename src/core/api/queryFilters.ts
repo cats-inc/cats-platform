@@ -43,6 +43,9 @@ import type {
 } from '../interactionRecordLists.js';
 import type { CoreMissionListQuery } from '../missionList.js';
 import type {
+  CoreActivityListQuery,
+  CoreCheckpointListQuery,
+  CoreOutcomeListQuery,
   CoreRunListQuery,
   CoreTraceListQuery,
 } from '../executionRecordLists.js';
@@ -59,12 +62,15 @@ import {
   type CoreTaskTimelineQuery,
 } from '../taskTimeline.js';
 import {
+  CORE_ACTIVITY_KINDS,
+  CORE_CHECKPOINT_STATUSES,
   CORE_ACTOR_KINDS,
   CORE_ACTOR_SOURCES,
   CORE_ACTOR_STATUSES,
   CORE_ARTIFACT_KINDS,
   CORE_ARTIFACT_STATUSES,
   CORE_MISSION_STATUSES,
+  CORE_OUTCOME_STATUSES,
   CORE_PROJECT_STATUSES,
   CORE_RUN_STATUSES,
   CORE_LANE_STATUSES,
@@ -638,6 +644,47 @@ export function readTraceListQuery(
     taskIds: readOptionalQueryValues(searchParams, 'taskId'),
     actorIds: readOptionalQueryValues(searchParams, 'actorId'),
     traceIds: readOptionalQueryValues(searchParams, 'traceId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readCheckpointListQuery(
+  searchParams: URLSearchParams,
+): CoreCheckpointListQuery {
+  return {
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_CHECKPOINT_STATUSES),
+    conversationIds: readConversationIds(searchParams),
+    runIds: readOptionalQueryValues(searchParams, 'runId'),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    sourceTraceIds: readOptionalQueryValues(searchParams, 'sourceTraceId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readOutcomeListQuery(
+  searchParams: URLSearchParams,
+): CoreOutcomeListQuery {
+  return {
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_OUTCOME_STATUSES),
+    conversationIds: readConversationIds(searchParams),
+    runIds: readOptionalQueryValues(searchParams, 'runId'),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readActivityListQuery(
+  searchParams: URLSearchParams,
+): CoreActivityListQuery {
+  return {
+    kinds: readEnumQueryValues(searchParams, 'kind', CORE_ACTIVITY_KINDS),
+    actorIds: readOptionalQueryValues(searchParams, 'actorId'),
+    projectIds: readOptionalQueryValues(searchParams, 'projectId'),
+    workItemIds: readOptionalQueryValues(searchParams, 'workItemId'),
+    conversationIds: readConversationIds(searchParams),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    runIds: readOptionalQueryValues(searchParams, 'runId'),
+    artifactIds: readOptionalQueryValues(searchParams, 'artifactId'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

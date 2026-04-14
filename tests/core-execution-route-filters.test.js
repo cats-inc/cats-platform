@@ -8,8 +8,11 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryCoreStore } from '../build/server/core/store.js';
 import {
+  appendCoreActivity,
   appendCoreTrace,
   createDefaultCoreState,
+  upsertCoreCheckpoint,
+  upsertCoreOutcome,
   upsertCoreRun,
 } from '../build/server/core/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
@@ -108,6 +111,53 @@ function createCoreState() {
     new Date('2026-04-15T04:51:00.000Z'),
   ).core;
 
+  core = upsertCoreCheckpoint(
+    core,
+    {
+      id: 'checkpoint-1',
+      label: 'Checkpoint one',
+      status: 'open',
+      conversationId: 'conversation-1',
+      runId: 'run-1',
+      taskId: 'task-1',
+      sourceTraceId: 'trace-1',
+      createdAt: '2026-04-15T04:52:00.000Z',
+    },
+    new Date('2026-04-15T04:52:00.000Z'),
+  ).core;
+
+  core = upsertCoreOutcome(
+    core,
+    {
+      id: 'outcome-1',
+      title: 'Outcome one',
+      status: 'succeeded',
+      conversationId: 'conversation-1',
+      runId: 'run-1',
+      taskId: 'task-1',
+      recordedAt: '2026-04-15T04:53:00.000Z',
+    },
+    new Date('2026-04-15T04:53:00.000Z'),
+  ).core;
+
+  core = appendCoreActivity(
+    core,
+    {
+      id: 'activity-1',
+      kind: 'checkpoint_recorded',
+      actorId: 'actor-owner',
+      projectId: 'project-1',
+      workItemId: 'work-item-1',
+      conversationId: 'conversation-1',
+      taskId: 'task-1',
+      runId: 'run-1',
+      artifactId: 'artifact-1',
+      message: 'activity',
+      createdAt: '2026-04-15T04:54:00.000Z',
+    },
+    new Date('2026-04-15T04:54:00.000Z'),
+  ).core;
+
   return core;
 }
 
@@ -185,5 +235,55 @@ test('core execution routes reject invalid run and trace filters with structured
     const tracePayload = await traceResponse.json();
     assert.equal(tracePayload.error.code, 'bad_request');
     assert.match(tracePayload.error.message, /kind must be one of/i);
+  });
+});
+
+test('core execution routes support filtered checkpoint, outcome, and activity queries', async () => {
+  await withServer(async (baseUrl) => {
+    const checkpointResponse = await fetch(
+      `${baseUrl}/api/core/checkpoints?status=open&conversationId=conversation-1&runId=run-1&taskId=task-1&sourceTraceId=trace-1`,
+    );
+    assert.equal(checkpointResponse.status, 200);
+    const checkpointPayload = await checkpointResponse.json();
+    assert.equal(checkpointPayload.checkpoints.length, 1);
+    assert.equal(checkpointPayload.checkpoints[0].id, 'checkpoint-1');
+
+    const outcomeResponse = await fetch(
+      `${baseUrl}/api/core/outcomes?status=succeeded&conversationId=conversation-1&runId=run-1&taskId=task-1`,
+    );
+    assert.equal(outcomeResponse.status, 200);
+    const outcomePayload = await outcomeResponse.json();
+    assert.equal(outcomePayload.outcomes.length, 1);
+    assert.equal(outcomePayload.outcomes[0].id, 'outcome-1');
+
+    const activityResponse = await fetch(
+      `${baseUrl}/api/core/activities?kind=checkpoint_recorded&actorId=actor-owner&projectId=project-1&workItemId=work-item-1&conversationId=conversation-1&taskId=task-1&runId=run-1&artifactId=artifact-1`,
+    );
+    assert.equal(activityResponse.status, 200);
+    const activityPayload = await activityResponse.json();
+    assert.equal(activityPayload.activities.length, 1);
+    assert.equal(activityPayload.activities[0].id, 'activity-1');
+  });
+});
+
+test('core execution routes reject invalid checkpoint, outcome, and activity filters with structured 400 responses', async () => {
+  await withServer(async (baseUrl) => {
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints?status=pending`);
+    assert.equal(checkpointResponse.status, 400);
+    const checkpointPayload = await checkpointResponse.json();
+    assert.equal(checkpointPayload.error.code, 'bad_request');
+    assert.match(checkpointPayload.error.message, /status must be one of/i);
+
+    const outcomeResponse = await fetch(`${baseUrl}/api/core/outcomes?status=pending`);
+    assert.equal(outcomeResponse.status, 400);
+    const outcomePayload = await outcomeResponse.json();
+    assert.equal(outcomePayload.error.code, 'bad_request');
+    assert.match(outcomePayload.error.message, /status must be one of/i);
+
+    const activityResponse = await fetch(`${baseUrl}/api/core/activities?kind=heartbeat`);
+    assert.equal(activityResponse.status, 400);
+    const activityPayload = await activityResponse.json();
+    assert.equal(activityPayload.error.code, 'bad_request');
+    assert.match(activityPayload.error.message, /kind must be one of/i);
   });
 });

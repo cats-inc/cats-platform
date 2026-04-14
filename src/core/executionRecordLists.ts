@@ -1,5 +1,11 @@
 import type {
   CatsCoreState,
+  CoreActivityKind,
+  CoreActivityRecord,
+  CoreCheckpointRecord,
+  CoreCheckpointStatus,
+  CoreOrchestrationOutcomeRecord,
+  CoreOrchestrationOutcomeStatus,
   CoreRunRecord,
   CoreRunStatus,
   CoreTraceKind,
@@ -23,6 +29,35 @@ export interface CoreTraceListQuery {
   taskIds?: string[];
   actorIds?: string[];
   traceIds?: string[];
+  limit?: number;
+}
+
+export interface CoreCheckpointListQuery {
+  statuses?: CoreCheckpointStatus[];
+  conversationIds?: string[];
+  runIds?: string[];
+  taskIds?: string[];
+  sourceTraceIds?: string[];
+  limit?: number;
+}
+
+export interface CoreOutcomeListQuery {
+  statuses?: CoreOrchestrationOutcomeStatus[];
+  conversationIds?: string[];
+  runIds?: string[];
+  taskIds?: string[];
+  limit?: number;
+}
+
+export interface CoreActivityListQuery {
+  kinds?: CoreActivityKind[];
+  actorIds?: string[];
+  projectIds?: string[];
+  workItemIds?: string[];
+  conversationIds?: string[];
+  taskIds?: string[];
+  runIds?: string[];
+  artifactIds?: string[];
   limit?: number;
 }
 
@@ -134,6 +169,96 @@ function matchesTraceQuery(
   return true;
 }
 
+function matchesCheckpointQuery(
+  checkpoint: CoreCheckpointRecord,
+  query: CoreCheckpointListQuery,
+): boolean {
+  if (query.statuses && !query.statuses.includes(checkpoint.status)) {
+    return false;
+  }
+  if (
+    query.conversationIds
+    && !query.conversationIds.includes(checkpoint.conversationId ?? '')
+  ) {
+    return false;
+  }
+  if (query.runIds && !query.runIds.includes(checkpoint.runId ?? '')) {
+    return false;
+  }
+  if (query.taskIds && !query.taskIds.includes(checkpoint.taskId ?? '')) {
+    return false;
+  }
+  if (
+    query.sourceTraceIds
+    && !query.sourceTraceIds.includes(checkpoint.sourceTraceId ?? '')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function matchesOutcomeQuery(
+  outcome: CoreOrchestrationOutcomeRecord,
+  query: CoreOutcomeListQuery,
+): boolean {
+  if (query.statuses && !query.statuses.includes(outcome.status)) {
+    return false;
+  }
+  if (
+    query.conversationIds
+    && !query.conversationIds.includes(outcome.conversationId ?? '')
+  ) {
+    return false;
+  }
+  if (query.runIds && !query.runIds.includes(outcome.runId ?? '')) {
+    return false;
+  }
+  if (query.taskIds && !query.taskIds.includes(outcome.taskId ?? '')) {
+    return false;
+  }
+  return true;
+}
+
+function matchesActivityQuery(
+  activity: CoreActivityRecord,
+  query: CoreActivityListQuery,
+): boolean {
+  if (query.kinds && !query.kinds.includes(activity.kind)) {
+    return false;
+  }
+  if (query.actorIds && !query.actorIds.includes(activity.actorId ?? '')) {
+    return false;
+  }
+  if (query.projectIds && !query.projectIds.includes(activity.projectId ?? '')) {
+    return false;
+  }
+  if (
+    query.workItemIds
+    && !query.workItemIds.includes(activity.workItemId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.conversationIds
+    && !query.conversationIds.includes(activity.conversationId ?? '')
+  ) {
+    return false;
+  }
+  if (query.taskIds && !query.taskIds.includes(activity.taskId ?? '')) {
+    return false;
+  }
+  if (query.runIds && !query.runIds.includes(activity.runId ?? '')) {
+    return false;
+  }
+  if (
+    query.artifactIds
+    && !query.artifactIds.includes(activity.artifactId ?? '')
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function listRuns(
   core: CatsCoreState,
   query: CoreRunListQuery = {},
@@ -150,6 +275,36 @@ export function listTraces(
 ): CoreTraceRecord[] {
   return core.traces
     .filter((trace) => matchesTraceQuery(trace, query))
+    .sort(compareByCreatedAt)
+    .slice(0, query.limit);
+}
+
+export function listCheckpoints(
+  core: CatsCoreState,
+  query: CoreCheckpointListQuery = {},
+): CoreCheckpointRecord[] {
+  return core.checkpoints
+    .filter((checkpoint) => matchesCheckpointQuery(checkpoint, query))
+    .sort(compareByUpdatedAt)
+    .slice(0, query.limit);
+}
+
+export function listOutcomes(
+  core: CatsCoreState,
+  query: CoreOutcomeListQuery = {},
+): CoreOrchestrationOutcomeRecord[] {
+  return core.outcomes
+    .filter((outcome) => matchesOutcomeQuery(outcome, query))
+    .sort(compareByUpdatedAt)
+    .slice(0, query.limit);
+}
+
+export function listActivities(
+  core: CatsCoreState,
+  query: CoreActivityListQuery = {},
+): CoreActivityRecord[] {
+  return core.activities
+    .filter((activity) => matchesActivityQuery(activity, query))
     .sort(compareByCreatedAt)
     .slice(0, query.limit);
 }
