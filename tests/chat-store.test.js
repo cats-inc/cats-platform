@@ -2137,6 +2137,17 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
         metadata: { severity: 'info' },
       },
     ],
+    archives: [
+      {
+        id: 'archive-system-1',
+        sourceConversationId: 'conversation-system-1',
+        sourceChannelId: 'channel-system-1',
+        exportFormat: 'chat-channel-json',
+        status: 'ready_for_archive',
+        lastExportedAt: null,
+        updatedAt: '2026-03-21T01:05:00.000Z',
+      },
+    ],
     artifacts: [fixtures.artifact],
     activities: [fixtures.activity],
     approvalBindings: [fixtures.approvalBinding],
@@ -2184,6 +2195,11 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
   assert.equal(reloadedCore.traces[0].id, 'trace-record-1');
   assert.equal(reloadedCore.checkpoints[0].id, 'checkpoint-system-1');
   assert.equal(reloadedCore.outcomes[0].id, 'outcome-system-1');
+  assert.ok(reloadedCore.archives.some((archive) => archive.id === 'archive-system-1'));
+  assert.equal(
+    reloadedCore.archives.find((archive) => archive.id === 'archive-system-1')?.sourceChannelId,
+    'channel-system-1',
+  );
   assert.equal(reloadedCore.artifacts[0].id, fixtures.artifact.id);
   assert.equal(reloadedCore.activities[0].id, fixtures.activity.id);
   assert.equal(reloadedCore.approvalBindings[0].id, fixtures.approvalBinding.id);

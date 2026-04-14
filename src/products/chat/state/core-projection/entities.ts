@@ -1062,7 +1062,7 @@ export function preserveCoreOwnedArchives(
   return existingArchives
     .filter(
       (archive) =>
-        archive.sourceChannelId === null && !archive.id.startsWith('archive-channel-'),
+        !archive.id.startsWith('archive-channel-'),
     )
     .map((archive) => structuredClone(archive));
 }
