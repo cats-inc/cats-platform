@@ -198,6 +198,10 @@ function buildCanonicalRuntimeResponseForTurn(
   const targetId = participantKind === 'orchestrator'
     ? 'orchestrator'
     : resolveRawChatParticipantId(lane.participantId, conversationId);
+  const anchorMessageId = readChatCoreMetadataString(anchorMetadata, 'chatMessageId');
+  const canonicalMessage = anchorMessageId
+    ? buildCanonicalChatMessage(core, channelId, anchorMessageId)
+    : null;
   const fullText = laneSegments
     .map((segment) => segment.content ?? '')
     .join('');
@@ -205,39 +209,47 @@ function buildCanonicalRuntimeResponseForTurn(
     ?? (participantKind === 'orchestrator' ? ORCHESTRATOR_NAME : 'Agent');
 
   return {
-    message: {
-      id: readChatCoreMetadataString(anchorMetadata, 'chatMessageId')
-        ?? `canonical-segment-${assistantTurnId}-${anchorSegment.sequence}`,
-      channelId,
-      senderKind: participantKind === 'orchestrator' ? 'orchestrator' : 'agent',
-      senderName,
-      body: fullText,
-      mentions: [],
-      metadata: {
-        event: 'assistant_turn_segment',
-        assistantTurnId,
-        targetStateId: readChatCoreMetadataString(anchorMetadata, 'targetStateId')
-          ?? readChatCoreMetadataString(laneMetadata, 'targetStateId')
-          ?? null,
-        terminal: true,
-        turnId,
-        targetKind: participantKind,
-        ...(targetId ? { targetId } : {}),
-        ...(anchorSegment.sessionId ? { sessionId: anchorSegment.sessionId } : {}),
-        ...(readChatCoreMetadataString(anchorMetadata, 'routingTrigger')
-          ? { routingTrigger: readChatCoreMetadataString(anchorMetadata, 'routingTrigger') }
-          : {}),
-        ...(readChatCoreMetadataNumber(anchorMetadata, 'dispatchDepth') !== null
-          ? { dispatchDepth: readChatCoreMetadataNumber(anchorMetadata, 'dispatchDepth') }
-          : {}),
-        repairSource: 'canonical_segment_fallback',
-      },
-      usage: null,
-      executionProvider: readChatCoreMetadataString(anchorMetadata, 'executionProvider'),
-      executionModel: readChatCoreMetadataString(anchorMetadata, 'executionModel'),
-      executionInstance: readChatCoreMetadataString(anchorMetadata, 'executionInstance'),
-      createdAt: anchorSegment.createdAt,
-    },
+    message: canonicalMessage
+      ? {
+          ...canonicalMessage,
+          metadata: {
+            ...(canonicalMessage.metadata ?? {}),
+            repairSource: 'canonical_segment_fallback',
+          },
+        }
+      : {
+          id: anchorMessageId
+            ?? `canonical-segment-${assistantTurnId}-${anchorSegment.sequence}`,
+          channelId,
+          senderKind: participantKind === 'orchestrator' ? 'orchestrator' : 'agent',
+          senderName,
+          body: fullText,
+          mentions: [],
+          metadata: {
+            event: 'assistant_turn_segment',
+            assistantTurnId,
+            targetStateId: readChatCoreMetadataString(anchorMetadata, 'targetStateId')
+              ?? readChatCoreMetadataString(laneMetadata, 'targetStateId')
+              ?? null,
+            terminal: true,
+            turnId,
+            targetKind: participantKind,
+            ...(targetId ? { targetId } : {}),
+            ...(anchorSegment.sessionId ? { sessionId: anchorSegment.sessionId } : {}),
+            ...(readChatCoreMetadataString(anchorMetadata, 'routingTrigger')
+              ? { routingTrigger: readChatCoreMetadataString(anchorMetadata, 'routingTrigger') }
+              : {}),
+            ...(readChatCoreMetadataNumber(anchorMetadata, 'dispatchDepth') !== null
+              ? { dispatchDepth: readChatCoreMetadataNumber(anchorMetadata, 'dispatchDepth') }
+              : {}),
+            repairSource: 'canonical_segment_fallback',
+          },
+          usage: null,
+          executionProvider: readChatCoreMetadataString(anchorMetadata, 'executionProvider'),
+          executionModel: readChatCoreMetadataString(anchorMetadata, 'executionModel'),
+          executionInstance: readChatCoreMetadataString(anchorMetadata, 'executionInstance'),
+          createdAt: anchorSegment.createdAt,
+        },
     response: {
       assistantTurnId,
       messageIds: laneSegments.map((segment) =>

@@ -1803,6 +1803,246 @@ test('applyChannelReadRepairs upgrades a surviving terminal segment to the full 
   assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'completed');
 });
 
+test('applyChannelReadRepairs restores canonical assistant metadata when rebuilding a partial transcript reply', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-15T00:35:00.000Z');
+  const responseAt = new Date('2026-04-15T00:35:06.000Z');
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Repair canonical metadata fallback',
+      topic: 'Recover assistant metadata from canonical interaction segments.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Please recover this rich canonical reply from partial transcript history.' },
+    runtimeClient,
+    seededAt,
+  );
+  const activeTurnId = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn?.id;
+  assert.ok(activeTurnId);
+  const repliedState = appendMessage(
+    appendMessage(
+      begun.state,
+      channelId,
+      {
+        senderKind: 'orchestrator',
+        senderName: 'Chat',
+        body: 'Agent explored the repo. ',
+      },
+      responseAt,
+      {
+        metadata: {
+          event: 'assistant_turn_segment',
+          assistantTurnId: 'assistant-turn-read-repair-metadata',
+          targetStateId: 'target-orchestrator-read-repair-metadata',
+          turnId: activeTurnId,
+          targetKind: 'orchestrator',
+          targetId: 'orchestrator',
+          sessionId: 'session-read-repair-metadata',
+          routingTrigger: 'room_default',
+          dispatchDepth: 0,
+          precedingTools: [
+            {
+              toolName: 'search_repo',
+              toolId: 'tool-search',
+            },
+          ],
+        },
+      },
+    ).state,
+    channelId,
+    {
+      senderKind: 'orchestrator',
+      senderName: 'Chat',
+      body: 'Continue with the next specialist.',
+    },
+    new Date('2026-04-15T00:35:07.000Z'),
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-read-repair-metadata',
+        targetStateId: 'target-orchestrator-read-repair-metadata',
+        terminal: true,
+        turnId: activeTurnId,
+        targetKind: 'orchestrator',
+        targetId: 'orchestrator',
+        sessionId: 'session-read-repair-metadata',
+        routingTrigger: 'room_default',
+        dispatchDepth: 0,
+        precedingTools: [
+          {
+            toolName: 'plan_fix',
+            toolId: 'tool-plan',
+          },
+        ],
+        workflowRecommendation: {
+          workflowShape: 'sequential',
+          candidateTargets: [
+            {
+              participantKind: 'cat',
+              participantId: 'agent-2',
+              participantName: 'Agent-2',
+            },
+          ],
+          branchStrategy: 'transplant_context',
+        },
+      },
+    },
+  ).state;
+
+  const baselineRecovered = repairOrphanedCompletedDispatchTurn(
+    repliedState,
+    channelId,
+    new Date('2026-04-15T00:35:30.000Z'),
+  );
+  assert.equal(baselineRecovered.repaired, true);
+  await store.write(baselineRecovered.state);
+  const canonicalCore = await store.readCore();
+  const baselineResponseMessage = requireChannel(baselineRecovered.state, channelId).messages.find((message) =>
+    message.metadata?.assistantTurnId === 'assistant-turn-read-repair-metadata'
+    && message.metadata?.terminal === true);
+  assert.ok(baselineResponseMessage);
+  const canonicalMessage = buildCanonicalChatMessage(
+    canonicalCore,
+    channelId,
+    baselineResponseMessage.id,
+  );
+  assert.ok(canonicalMessage);
+  assert.deepEqual(canonicalMessage?.metadata?.precedingTools, [
+    { toolName: 'search_repo', toolId: 'tool-search' },
+    { toolName: 'plan_fix', toolId: 'tool-plan' },
+  ]);
+  assert.equal(canonicalMessage?.metadata?.workflowRecommendation?.workflowShape, 'sequential');
+
+  const corruptedState = structuredClone(baselineRecovered.state);
+  const corruptedChannel = requireChannel(corruptedState, channelId);
+  corruptedChannel.messages = corruptedChannel.messages.filter((message) =>
+    message.metadata?.assistantTurnId !== 'assistant-turn-read-repair-metadata'
+    || message.metadata?.terminal === true);
+  const interruptedTurn = structuredClone(corruptedChannel.roomRouting.workflow.turnHistory[0]);
+  assert.ok(interruptedTurn);
+  interruptedTurn.status = 'blocked';
+  interruptedTurn.stageId = 'startup_recovery';
+  interruptedTurn.completedAt = '2026-04-15T00:35:07.000Z';
+  interruptedTurn.updatedAt = '2026-04-15T00:35:07.000Z';
+  interruptedTurn.targetStatuses = [];
+  interruptedTurn.events = interruptedTurn.events.filter((event) =>
+    event.kind === 'turn_started' || event.kind === 'checkpoint');
+  interruptedTurn.events.push(
+    {
+      id: 'guard-blocked-read-repair-metadata',
+      turnId: interruptedTurn.id,
+      kind: 'guard_blocked',
+      status: 'blocked',
+      message: 'Recovered an interrupted room workflow after restart.',
+      actor: null,
+      sourceMessageId: null,
+      targets: [],
+      dispatchId: null,
+      checkpointId: 'loop-guard-read-repair-metadata',
+      outcomeId: null,
+      createdAt: '2026-04-15T00:35:07.000Z',
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+    {
+      id: 'outcome-blocked-read-repair-metadata',
+      turnId: interruptedTurn.id,
+      kind: 'outcome',
+      status: 'blocked',
+      message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+      actor: null,
+      sourceMessageId: interruptedTurn.sourceMessageId,
+      targets: [],
+      dispatchId: null,
+      checkpointId: null,
+      outcomeId: null,
+      createdAt: '2026-04-15T00:35:07.000Z',
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+  );
+  corruptedChannel.roomRouting.workflow.activeTurn = null;
+  corruptedChannel.roomRouting.workflow.turnHistory = [interruptedTurn];
+  corruptedChannel.roomRouting.lastCheckpoint = {
+    id: 'loop-guard-read-repair-metadata',
+    kind: 'loop_guard',
+    message: 'Recovered an interrupted room workflow after restart.',
+    actor: null,
+    sourceMessageId: null,
+    targets: [],
+    createdAt: '2026-04-15T00:35:07.000Z',
+  };
+  corruptedChannel.roomRouting.lastOutcome = {
+    turnId: interruptedTurn.id,
+    mode: corruptedChannel.roomRouting.mode,
+    sourceMessageId: interruptedTurn.sourceMessageId,
+    sourceSenderKind: interruptedTurn.sourceSenderKind,
+    sourceSenderName: interruptedTurn.sourceSenderName,
+    status: 'blocked',
+    resolution: {
+      routingMode: 'room_default',
+      selectionKind: 'default_target',
+      defaultTarget: {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+      defaultTargetReason: 'boss_chat_default',
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    },
+    resolvedTargets: [
+      {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+    ],
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 0,
+    guard: null,
+    startedAt: seededAt.toISOString(),
+    completedAt: '2026-04-15T00:35:07.000Z',
+  };
+
+  const repaired = applyChannelReadRepairs(corruptedState, channelId, {
+    core: canonicalCore,
+    now: new Date('2026-04-15T00:35:45.000Z'),
+  });
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const repairedResponse = repairedChannel.messages.find((message) =>
+    message.metadata?.assistantTurnId === 'assistant-turn-read-repair-metadata');
+  assert.ok(repairedResponse);
+  assert.match(repairedResponse?.body ?? '', /Agent explored the repo\./u);
+  assert.match(repairedResponse?.body ?? '', /Continue with the next specialist\./u);
+  assert.deepEqual(repairedResponse?.metadata?.precedingTools, [
+    { toolName: 'search_repo', toolId: 'tool-search' },
+    { toolName: 'plan_fix', toolId: 'tool-plan' },
+  ]);
+  assert.equal(repairedResponse?.metadata?.workflowRecommendation?.workflowShape, 'sequential');
+  assert.equal(
+    repairedResponse?.metadata?.workflowRecommendation?.candidateTargets?.[0]?.participantName,
+    'Agent-2',
+  );
+});
+
 test('repairOrphanedCompletedDispatchTurn keeps a concurrent turn active when canonical core still has another live lane', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const store = new MemoryChatStore();
