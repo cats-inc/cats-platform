@@ -272,9 +272,19 @@ export function resolveLatestUserTurnPresentationState(input: {
     input.selectedChannel.messages,
     latestUserMessage.id,
   );
+  const activeTurnTargetStateIds = activeTurn?.targetStatuses
+    ?.map((target) => target.id ?? null)
+    ?? [];
+  const activeTurnParticipantIds = activeTurn?.targetStatuses
+    ?.map((target) => target.participant.participantId ?? null)
+    ?? [];
   const hasVisibleSessionStart = hasVisibleSessionStartAfterMessage(
     input.selectedChannel.messages,
     latestUserMessage.id,
+    {
+      targetStateIds: activeTurnTargetStateIds,
+      participantIds: activeTurnParticipantIds,
+    },
   );
   const hasDispatchedTarget = hasDispatchedWorkflowTarget(activeTurn);
   const queuedBehindActiveTurn = (

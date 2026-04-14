@@ -335,6 +335,8 @@ test('resolveLatestUserTurnPresentationState keeps the user bubble idle once ses
           senderKind: 'system',
           metadata: {
             event: 'session_started',
+            targetId: 'participant-claude',
+            targetStateId: 'target-state-claude',
           },
           createdAt: '2026-04-11T00:00:01.000Z',
         },
@@ -348,6 +350,7 @@ test('resolveLatestUserTurnPresentationState keeps the user bubble idle once ses
             workflowShape: 'sequential',
             targetStatuses: [
               {
+                id: 'target-state-claude',
                 status: 'running',
                 participant: {
                   participantId: 'participant-claude',
@@ -364,6 +367,55 @@ test('resolveLatestUserTurnPresentationState keeps the user bubble idle once ses
   assert.deepEqual(result, {
     messageId: 'message-user',
     status: 'idle',
+  });
+});
+
+test('resolveLatestUserTurnPresentationState ignores unrelated session startup from another active target', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+        {
+          id: 'message-session-other-target',
+          senderKind: 'system',
+          metadata: {
+            event: 'session_started',
+            targetId: 'participant-codex',
+            targetStateId: 'target-state-codex',
+          },
+          createdAt: '2026-04-11T00:00:01.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            sourceMessageId: 'message-user',
+            status: 'running',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                id: 'target-state-claude',
+                status: 'running',
+                participant: {
+                  participantId: 'participant-claude',
+                },
+              },
+            ],
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: null,
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'processing',
   });
 });
 

@@ -1415,18 +1415,56 @@ export function hasVisibleSessionStartAfterMessage<TMessage extends {
 }>(
   messages: ReadonlyArray<TMessage>,
   messageId: string,
+  options: {
+    targetStateIds?: ReadonlyArray<string | null | undefined>;
+    participantIds?: ReadonlyArray<string | null | undefined>;
+  } = {},
 ): boolean {
   const sourceIndex = messages.findIndex((message) => message.id === messageId);
   if (sourceIndex === -1) {
     return false;
   }
 
+  const targetStateIds = new Set(
+    (options.targetStateIds ?? [])
+      .map((value) => readString(value))
+      .filter((value): value is string => value !== null),
+  );
+  const participantIds = new Set(
+    (options.participantIds ?? [])
+      .map((value) => readString(value))
+      .filter((value): value is string => value !== null),
+  );
+  const allowOrchestrator = participantIds.has('orchestrator');
+
   return messages.slice(sourceIndex + 1).some((message) => {
     if (message.senderKind !== 'system') {
       return false;
     }
     const metadata = asRecord(message.metadata);
-    return readString(metadata?.event) === 'session_started';
+    if (readString(metadata?.event) !== 'session_started') {
+      return false;
+    }
+
+    if (targetStateIds.size > 0) {
+      const targetStateId = readMessageTargetStateId(message);
+      if (targetStateId) {
+        return targetStateIds.has(targetStateId);
+      }
+    }
+
+    if (participantIds.size > 0) {
+      const targetId = readMessageTargetId(message);
+      if (targetId) {
+        return participantIds.has(targetId);
+      }
+      if (allowOrchestrator && readMessageTargetKind(message) === 'orchestrator') {
+        return true;
+      }
+      return false;
+    }
+
+    return true;
   });
 }
 
