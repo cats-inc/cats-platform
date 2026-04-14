@@ -113,9 +113,9 @@ export function resolveWorkflowHandoffReason(
 export function resolveWorkflowBranchStrategy(
   sourceParticipant: RoomRoutingParticipantRef | null,
   target: RoutingTarget,
-  depth: number,
+  _depth: number,
 ): RoomWorkflowBranchStrategy {
-  if (depth > 0 && sourceParticipant && sourceParticipant.participantId !== target.participantId) {
+  if (sourceParticipant && sourceParticipant.participantId !== target.participantId) {
     return 'transplant_context';
   }
 

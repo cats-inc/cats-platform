@@ -328,6 +328,12 @@ test('current-turn draft audience metadata routes multi-target turns sequentiall
     )?.sourceMessageId,
     replies[0]?.id,
   );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-1',
+    )?.branchStrategy,
+    'transplant_context',
+  );
   assert.deepEqual(
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
       (target) => target.participant.participantName === 'Agent-1',
@@ -440,6 +446,18 @@ test('sequential room audience does not redispatch queued targets when replies m
   assert.deepEqual(
     replies.map((message) => message.senderName),
     ['Agent-1', 'Agent-2', 'Agent-3'],
+  );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-2',
+    )?.branchStrategy,
+    'transplant_context',
+  );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-3',
+    )?.branchStrategy,
+    'transplant_context',
   );
   assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 3);
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
