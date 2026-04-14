@@ -12,6 +12,7 @@ import {
 } from '../build/server/products/chat/state/model/index.js';
 import {
   beginChannelMessageDispatch,
+  continueBegunChannelMessageDispatch,
   beginChannelMessageRetryDispatch,
   routeChannelMessage,
 } from '../build/server/products/chat/state/runtimeActions.js';
@@ -30,10 +31,12 @@ import {
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   buildWorkflowContinuationReplayRequest,
+  readWorkflowContinuationReplay,
 } from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 import {
   buildChatAssignedParticipantId,
   buildChatConversationId,
+  buildChatTaskId,
 } from '../build/server/shared/chatCoreIds.js';
 
 function createDeferred() {
@@ -328,6 +331,231 @@ test('chatStore.write projects sequential audience order into canonical lane ord
   );
   assert.deepEqual(lanes.map((lane) => lane.status), ['completed', 'completed']);
   assert.equal(readTurnSegments(core, turn.id).length, 2);
+});
+
+test('chatStore.write derives startup recovery replay for initial sequential queues from persisted handoff checkpoints', async () => {
+  let { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const seededAt = new Date('2026-04-15T00:06:00.000Z');
+  state = createCat(
+    state,
+    {
+      name: 'Agent-3',
+      provider: 'codex',
+      roles: ['verifier'],
+    },
+    seededAt,
+  );
+  const agent3Id = state.cats[0].id;
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId: agent3Id,
+      provider: 'codex',
+      roles: ['verifier'],
+    },
+    seededAt,
+  );
+
+  const liveStore = new MemoryChatStore(state);
+  const firstReply = createDeferred();
+  const secondReply = createDeferred();
+  const secondRequested = createDeferred();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      return firstReply.promise;
+    }
+    if (content.includes('You are Agent-1')) {
+      secondRequested.resolve();
+      return secondReply.promise;
+    }
+    if (content.includes('You are Agent-3')) {
+      return usage('Agent-3 closed the recovered room.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Handle this in sequence.',
+      messageMetadata: {
+        recipientParticipantIds: [agent2Id, agent1Id, agent3Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    seededAt,
+    { chatStore: liveStore },
+  );
+  const dispatchPromise = continueBegunChannelMessageDispatch(
+    begun,
+    channelId,
+    runtimeClient,
+    seededAt,
+    { chatStore: liveStore },
+  );
+
+  firstReply.resolve(usage('Agent-2 handled the first sequential step.'));
+  await secondRequested.promise;
+  const inFlightState = await liveStore.read();
+  const inFlightChannel = requireChannel(inFlightState, channelId);
+  const firstReplyMessage = inFlightChannel.messages.find((message) =>
+    message.senderKind === 'agent' && message.senderName === 'Agent-2');
+  assert.ok(firstReplyMessage);
+
+  secondReply.resolve(usage('Agent-1 handled the second sequential step.'));
+  await dispatchPromise;
+
+  const interruptedState = structuredClone(inFlightState);
+  const interruptedChannel = requireChannel(interruptedState, channelId);
+  const interruptedTurn = structuredClone(interruptedChannel.roomRouting.workflow.activeTurn);
+  assert.ok(interruptedTurn);
+  const firstCompletedTarget = interruptedTurn.targetStatuses.find((target) =>
+    target.participant.participantName === 'Agent-2');
+  assert.ok(firstCompletedTarget);
+  const continuationCheckpoint = [...interruptedTurn.events].reverse().find((event) =>
+    event.kind === 'checkpoint'
+    && event.metadata?.checkpointKind === 'continuation'
+    && event.metadata?.continuationSourceMessageId === firstReplyMessage?.id);
+  assert.ok(continuationCheckpoint);
+
+  const recoveryAt = '2026-04-15T00:06:30.000Z';
+  interruptedTurn.status = 'blocked';
+  interruptedTurn.stageId = 'startup_recovery';
+  interruptedTurn.completedAt = recoveryAt;
+  interruptedTurn.updatedAt = recoveryAt;
+  interruptedTurn.targetStatuses = [structuredClone(firstCompletedTarget)];
+  interruptedTurn.events = [
+    ...interruptedTurn.events.filter((event) => event.kind === 'turn_started'),
+    structuredClone(continuationCheckpoint),
+    {
+      id: 'guard-blocked-initial-sequential-recovery',
+      turnId: interruptedTurn.id,
+      kind: 'guard_blocked',
+      status: 'blocked',
+      message: 'Recovered an interrupted room workflow after restart.',
+      actor: null,
+      sourceMessageId: null,
+      targets: [
+        {
+          participantKind: 'cat',
+          participantId: buildChatAssignedParticipantId(channelId, agent1Id),
+          participantName: 'Agent-1',
+        },
+        {
+          participantKind: 'cat',
+          participantId: buildChatAssignedParticipantId(channelId, agent3Id),
+          participantName: 'Agent-3',
+        },
+      ],
+      dispatchId: null,
+      checkpointId: 'loop-guard-initial-sequential-recovery',
+      outcomeId: null,
+      createdAt: recoveryAt,
+      metadata: {
+        checkpointKind: 'loop_guard',
+        reason: 'startup_restart',
+        recoveryPhase: 'startup_recovered',
+        recoverySource: 'server_restart',
+        interruptedError: 'Cats server restarted before room workflow cleanup completed.',
+        interruptedTargetCount: 2,
+        workflowStageIdBeforeRecovery: 'continuation_handoff',
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+      },
+    },
+    {
+      id: 'outcome-blocked-initial-sequential-recovery',
+      turnId: interruptedTurn.id,
+      kind: 'outcome',
+      status: 'blocked',
+      message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+      actor: null,
+      sourceMessageId: interruptedTurn.sourceMessageId,
+      targets: [],
+      dispatchId: null,
+      checkpointId: null,
+      outcomeId: null,
+      createdAt: recoveryAt,
+      metadata: {
+        recoveryPhase: 'startup_recovered',
+        recoverySource: 'server_restart',
+        interruptedError: 'Cats server restarted before room workflow cleanup completed.',
+        interruptedTargetCount: 2,
+        workflowStageIdBeforeRecovery: 'continuation_handoff',
+        workflowStageId: 'startup_recovery',
+        workflowShape: 'sequential',
+      },
+    },
+  ];
+  interruptedChannel.roomRouting.workflow.activeTurn = null;
+  interruptedChannel.roomRouting.workflow.turnHistory = [interruptedTurn];
+  interruptedChannel.roomRouting.lastCheckpoint = {
+    id: 'loop-guard-initial-sequential-recovery',
+    kind: 'loop_guard',
+    message: 'Recovered an interrupted room workflow after restart.',
+    actor: null,
+    sourceMessageId: null,
+    targets: [
+      {
+        participantKind: 'cat',
+        participantId: buildChatAssignedParticipantId(channelId, agent1Id),
+        participantName: 'Agent-1',
+      },
+      {
+        participantKind: 'cat',
+        participantId: buildChatAssignedParticipantId(channelId, agent3Id),
+        participantName: 'Agent-3',
+      },
+    ],
+    createdAt: recoveryAt,
+  };
+  interruptedChannel.roomRouting.lastOutcome = {
+    turnId: interruptedTurn.id,
+    mode: interruptedChannel.roomRouting.mode,
+    sourceMessageId: interruptedTurn.sourceMessageId,
+    sourceSenderKind: interruptedTurn.sourceSenderKind,
+    sourceSenderName: interruptedTurn.sourceSenderName,
+    status: 'blocked',
+    resolution: {
+      routingMode: 'explicit_multi',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    },
+    resolvedTargets: [],
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: [],
+    continuationCount: 1,
+    totalDispatchCount: 1,
+    guard: 'loop_guard',
+    startedAt: interruptedTurn.startedAt,
+    completedAt: recoveryAt,
+  };
+
+  const recoveryStore = new MemoryChatStore(interruptedState);
+  const recoveryCore = await recoveryStore.readCore();
+  const projectedTask = recoveryCore.tasks.find((task) => task.id === buildChatTaskId(channelId));
+  assert.ok(projectedTask);
+  const replay = readWorkflowContinuationReplay(projectedTask.metadata, {
+    includeInProgress: true,
+  });
+
+  assert.ok(replay);
+  assert.equal(replay?.sourceParticipant?.participantName, 'Agent-2');
+  assert.equal(replay?.sourceMessageId, firstReplyMessage?.id);
+  assert.deepEqual(
+    replay?.targets.map((target) => target.participantName),
+    ['Agent-1', 'Agent-3'],
+  );
+  assert.equal(replay?.workflowStageId, 'continuation_handoff');
+  assert.equal(replay?.workflowShape, 'sequential');
 });
 
 test('chatStore.write keeps concurrent lane order stable even when replies finish out of order', async () => {
