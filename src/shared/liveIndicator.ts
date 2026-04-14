@@ -838,6 +838,39 @@ export function buildLiveIndicatorScrollKey(
   ].join('::');
 }
 
+function anonymizeLiveIndicatorSegmentIfSessionUnconfirmed<
+  TMessage extends LiveIndicatorTranscriptMessageLike,
+>(
+  segment: LiveIndicatorSegmentState,
+  sessionMessages: ReadonlyArray<TMessage>,
+): LiveIndicatorSegmentState {
+  const requiresAnonymousSessionGate =
+    (segment.phase === 'waiting' || segment.phase === 'streaming')
+    && segment.requiresSessionStartConfirmation
+    && !hasConfirmedLiveIndicatorSessionStart(
+      sessionMessages,
+      projectLiveIndicatorStateFromSegments([segment]),
+      segment.sessionStartedAt,
+    );
+  if (!requiresAnonymousSessionGate) {
+    return segment;
+  }
+  return createLiveIndicatorSegmentState({
+    ...segment,
+    phase: 'waiting',
+    participantId: null,
+    catId: null,
+    activeCatIds: [],
+    catName: null,
+    speakerLabel: null,
+    progressText: '',
+    progressKind: null,
+    tools: [],
+    contentBlocks: [],
+    events: [],
+  });
+}
+
 export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTranscriptMessageLike>(
   liveIndicator: LiveIndicatorState | null | undefined,
   messages: ReadonlyArray<TMessage>,
@@ -850,72 +883,25 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
 
   const sourceSegments = resolveLiveIndicatorSegments(liveIndicator);
   const projectedSourceSegments = projectLogicalLiveIndicatorSegments(sourceSegments);
-  const visibleSegments = projectedSourceSegments.filter((segment, index) => {
+  const gatedSegments = projectedSourceSegments.map((segment) =>
+    anonymizeLiveIndicatorSegmentIfSessionUnconfirmed(segment, sessionMessages),
+  );
+  const visibleSegments = gatedSegments.filter((segment, index) => {
     const persistedSegmentIndex =
       resolveProjectedTextSegmentOrdinal(projectedSourceSegments, index) ?? segment.segmentIndex;
-    const requiresAnonymousSessionGate =
-      (segment.phase === 'waiting' || segment.phase === 'streaming')
-      && segment.requiresSessionStartConfirmation
-      && !hasConfirmedLiveIndicatorSessionStart(
-        sessionMessages,
-        projectLiveIndicatorStateFromSegments([segment]),
-        segment.sessionStartedAt,
-      );
-    const visibleSegment = requiresAnonymousSessionGate
-      ? createLiveIndicatorSegmentState({
-        ...segment,
-        phase: 'waiting',
-        participantId: null,
-        catId: null,
-        activeCatIds: [],
-        catName: null,
-        speakerLabel: null,
-        progressText: '',
-        progressKind: null,
-        tools: [],
-        contentBlocks: [],
-        events: [],
-      })
-      : segment;
     if (
       hasVisiblePersistedSegment(
         messages,
-        visibleSegment,
+        segment,
         persistedSegmentIndex,
       )
     ) {
       return false;
     }
-    if (index > 0 && !hasVisibleLiveIndicatorSegmentActivity(visibleSegment)) {
+    if (index > 0 && !hasVisibleLiveIndicatorSegmentActivity(segment)) {
       return false;
     }
     return true;
-  }).map((segment) => {
-    if (
-      (segment.phase === 'waiting' || segment.phase === 'streaming')
-      && segment.requiresSessionStartConfirmation
-      && !hasConfirmedLiveIndicatorSessionStart(
-        sessionMessages,
-        projectLiveIndicatorStateFromSegments([segment]),
-        segment.sessionStartedAt,
-      )
-    ) {
-      return createLiveIndicatorSegmentState({
-        ...segment,
-        phase: 'waiting',
-        participantId: null,
-        catId: null,
-        activeCatIds: [],
-        catName: null,
-        speakerLabel: null,
-        progressText: '',
-        progressKind: null,
-        tools: [],
-        contentBlocks: [],
-        events: [],
-      });
-    }
-    return segment;
   });
 
   if (visibleSegments.length === 0) {
