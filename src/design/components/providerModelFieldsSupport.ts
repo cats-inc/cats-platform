@@ -4,6 +4,7 @@ import {
   type ProductProviderInstanceDescriptor,
   type ProductProviderRegistryReadModel,
   type ProductProviderRegistryState,
+  type ProviderCatalogEntry,
   type ProviderAdvancedCatalogControl,
   type ProviderAdvancedCatalogPreset,
   type ProviderAdvancedControlValue,
@@ -258,6 +259,36 @@ export function resolveProviderSupportBadge(
     return { label: 'Read-only', tone: 'readOnly' };
   }
   return { label: 'Catalog', tone: 'catalog' };
+}
+
+export function resolveCatalogEntryStatusSuffix(
+  status: string | null | undefined,
+): string {
+  const trimmed = status?.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const normalized = trimmed.toLowerCase();
+  if (normalized === 'available' || normalized === 'supported') {
+    return '';
+  }
+
+  if (
+    normalized === 'preview'
+    || normalized === 'deprecated'
+    || normalized === 'unavailable'
+  ) {
+    return ` (${normalized})`;
+  }
+
+  return ` (${trimmed})`;
+}
+
+export function formatCatalogEntryLabel(
+  entry: Pick<ProviderCatalogEntry, 'label' | 'status'>,
+): string {
+  return `${entry.label}${resolveCatalogEntryStatusSuffix(entry.status)}`;
 }
 
 export function listPersistentControlOptions(

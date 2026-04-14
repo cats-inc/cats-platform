@@ -12,6 +12,7 @@ import {
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   catalogMatchesTarget,
   filterPersistentControlValues,
+  formatCatalogEntryLabel,
   resolveProviderModelFieldsViewState,
   shouldAutoRecheckProviderRegistry,
 } from './providerModelFieldsSupport.js';
@@ -32,9 +33,11 @@ export {
   catalogMatchesTarget,
   countRequestScopedControls,
   filterPersistentControlValues,
+  formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,
   listPersistentControlOptions,
   resolveDisplayedEnumControlValue,
+  resolveCatalogEntryStatusSuffix,
   resolveProviderModelFieldsViewState,
   resolveProviderRegistryHint,
   resolveProviderRegistryPlaceholder,
@@ -272,8 +275,7 @@ export function ProviderModelFields({
           ) : null}
           {entryOptions.map((option) => (
             <option key={option.id} value={option.id}>
-              {option.label}
-              {option.status ? ` (${option.status})` : ''}
+              {formatCatalogEntryLabel(option)}
             </option>
           ))}
           {allowLegacyManualModelEntry ? (

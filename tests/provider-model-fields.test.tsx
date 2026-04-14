@@ -5,6 +5,7 @@ import {
   catalogMatchesTarget,
   countRequestScopedControls,
   filterPersistentControlValues,
+  formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   listPersistentControlOptions,
@@ -216,6 +217,14 @@ test('createStaticProviderModelCatalog preserves the curated Gemini CLI order', 
   );
 });
 
+test('createStaticProviderModelCatalog exposes Cursor Auto as the static default', () => {
+  const catalog = createStaticProviderModelCatalog('cursor', { instance: 'native' });
+
+  assert.equal(catalog.defaultModel, 'auto');
+  assert.equal(catalog.models[0]?.id, 'auto');
+  assert.equal(catalog.models[0]?.default, true);
+});
+
 test('static fallback catalogs do not overwrite an existing model selection during panel reopen', () => {
   assert.equal(
     shouldDeferCatalogTargetReconciliation({
@@ -369,6 +378,44 @@ test('support badge labels match runtime catalog support tiers', () => {
     label: 'Read-only',
     tone: 'readOnly',
   });
+});
+
+test('catalog entry labels hide available markers but keep actionable statuses', () => {
+  assert.equal(
+    formatCatalogEntryLabel({
+      label: 'GPT-5.4',
+      status: 'available',
+    }),
+    'GPT-5.4',
+  );
+  assert.equal(
+    formatCatalogEntryLabel({
+      label: 'GPT-5.4',
+      status: ' supported ',
+    }),
+    'GPT-5.4',
+  );
+  assert.equal(
+    formatCatalogEntryLabel({
+      label: 'GPT-5.4',
+      status: 'Preview',
+    }),
+    'GPT-5.4 (preview)',
+  );
+  assert.equal(
+    formatCatalogEntryLabel({
+      label: 'GPT-5.4',
+      status: 'deprecated',
+    }),
+    'GPT-5.4 (deprecated)',
+  );
+  assert.equal(
+    formatCatalogEntryLabel({
+      label: 'GPT-5.4',
+      status: 'experimental',
+    }),
+    'GPT-5.4 (experimental)',
+  );
 });
 
 test('provider registry empty states distinguish runtime failure from no usable targets', () => {
