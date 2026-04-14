@@ -14,6 +14,11 @@ import {
 } from '../build/server/products/chat/state/model/index.js';
 import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
 import { createServer } from '../build/server/app/server/index.js';
+import {
+  upsertCoreRun,
+  upsertCoreTask,
+  writeApprovalDecision,
+} from '../build/server/core/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { resolveMentionRoute } from '../build/server/products/chat/state/mentionRouter.js';
 import {
@@ -27,6 +32,10 @@ import {
   createWorkflowTurn,
 } from '../build/server/products/chat/state/room-routing/workflow.js';
 import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
+import {
+  buildWorkflowContinuationReplayRequest,
+  writeWorkflowContinuationReplayMetadata,
+} from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -1107,6 +1116,223 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
     );
     assert.equal(payload.operator.executionLoopPath, `/api/orchestrator/channels/${channelId}/execution-loop`);
   });
+});
+
+test('GET /api/orchestrator/channels/:id/execution-loop exposes task-scoped delivery intent and approval actions', async () => {
+  const chatStore = new MemoryChatStore();
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+    const taskId = `task-channel-${channelId}`;
+    const conversationId = `conversation-channel-${channelId}`;
+    let core = await chatStore.readCore();
+    core = upsertCoreTask(
+      core,
+      {
+        id: taskId,
+        title: 'Owner-gated review',
+        status: 'pending_approval',
+        conversationId,
+        metadata: {
+          effectiveDeliveryPolicy: {
+            mode: 'commit_only',
+            gates: ['owner_approval_required'],
+            source: 'task_override',
+            rationale: 'Need owner approval before shipping changes.',
+          },
+          channelId,
+          transport: 'web',
+          roomRoutingMode: 'boss_chat',
+        },
+      },
+      new Date('2026-04-15T04:10:00.000Z'),
+    ).core;
+    core = writeApprovalDecision(
+      core,
+      {
+        taskId,
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+        notes: 'Need approval before dispatch.',
+      },
+      new Date('2026-04-15T04:11:00.000Z'),
+    ).core;
+    core = upsertCoreRun(
+      core,
+      {
+        id: `run-${channelId}-approval`,
+        title: 'Blocked approval run',
+        status: 'blocked',
+        conversationId,
+        taskId,
+        metadata: {
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          dispatchCount: 1,
+          continuationCount: 0,
+          targetCount: 1,
+        },
+      },
+      new Date('2026-04-15T04:12:00.000Z'),
+    ).core;
+    await chatStore.writeCore(core);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/channels/${channelId}/execution-loop`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const controlPlaneResponse = await fetch(`${baseUrl}/api/core/tasks/${taskId}/control-plane`);
+    assert.equal(controlPlaneResponse.status, 200);
+    const controlPlanePayload = await controlPlaneResponse.json();
+
+    assert.deepEqual(
+      payload.executionLoop.operator.attention,
+      controlPlanePayload.controlPlane.attention,
+    );
+    assert.deepEqual(
+      payload.executionLoop.operator.runtimeDeliveryIntent,
+      controlPlanePayload.controlPlane.runtimeDeliveryIntent,
+    );
+    assert.deepEqual(
+      payload.executionLoop.operator.nextActions.map((action) => action.kind),
+      controlPlanePayload.controlPlane.nextActions.map((action) => action.kind),
+    );
+    assert.deepEqual(
+      payload.executionLoop.runInspector?.attention,
+      controlPlanePayload.controlPlane.attention,
+    );
+    assert.deepEqual(
+      payload.executionLoop.runInspector?.runtimeDeliveryIntent,
+      controlPlanePayload.controlPlane.runtimeDeliveryIntent,
+    );
+    assert.deepEqual(
+      payload.executionLoop.runInspector?.nextActions.map((action) => action.kind),
+      controlPlanePayload.controlPlane.nextActions.map((action) => action.kind),
+    );
+  }, chatStore);
+});
+
+test('GET /api/orchestrator/channels/:id/execution-loop keeps historical run inspectors task-neutral', async () => {
+  const chatStore = new MemoryChatStore();
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      cats: [
+        {
+          name: 'Reviewer',
+          provider: 'claude',
+          roles: ['reviewer'],
+          skillProfile: 'companion',
+          mcpProfile: 'chat-memory',
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const taskId = `task-channel-${channelId}`;
+    const conversationId = `conversation-channel-${channelId}`;
+    const historicalRunId = `run-${channelId}-historical`;
+    const latestRunId = `run-${channelId}-latest`;
+    let core = await chatStore.readCore();
+    core = upsertCoreTask(
+      core,
+      {
+        id: taskId,
+        title: 'Historical execution-loop view',
+        status: 'blocked',
+        conversationId,
+        metadata: writeWorkflowContinuationReplayMetadata(
+          {},
+          buildWorkflowContinuationReplayRequest({
+            channelId,
+            checkpointId: `checkpoint-${channelId}`,
+            sourceMessageId: `message-${channelId}`,
+            sourceTurnId: `turn-${channelId}`,
+            sourceLaneId: `lane-${channelId}`,
+            sourceAssistantTurnId: `assistant-turn-${channelId}`,
+            sourceParticipant: {
+              participantKind: 'orchestrator',
+              participantId: 'actor-orchestrator-global',
+              participantName: 'Orchestrator',
+            },
+            targets: [
+              {
+                participantKind: 'cat',
+                participantId: 'cat-reviewer',
+                participantName: 'Reviewer',
+              },
+            ],
+            trigger: 'continuation_mention',
+            branchStrategy: 'transplant_context',
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'sequential',
+            reviewRequired: false,
+            continuationSource: 'explicit_mentions',
+            unresolvedTargets: [],
+            blockedReason: 'anti_ping_pong',
+            recordedAt: '2026-04-15T04:00:00.000Z',
+          }),
+          {
+            replayState: 'failed',
+            replayTrigger: 'retry',
+            replayAttemptAt: '2026-04-15T04:01:00.000Z',
+            replayError: 'loop guard fired',
+          },
+        ),
+      },
+      new Date('2026-04-15T04:02:00.000Z'),
+    ).core;
+    core = upsertCoreRun(
+      core,
+      {
+        id: historicalRunId,
+        title: 'Completed run',
+        status: 'completed',
+        conversationId,
+        taskId,
+        metadata: {
+          workflowStageId: 'initial_dispatch',
+          workflowShape: 'sequential',
+          dispatchCount: 1,
+          continuationCount: 0,
+          targetCount: 1,
+        },
+      },
+      new Date('2026-04-15T04:03:00.000Z'),
+    ).core;
+    core = upsertCoreRun(
+      core,
+      {
+        id: latestRunId,
+        title: 'Blocked continuation run',
+        status: 'blocked',
+        conversationId,
+        taskId,
+        metadata: {
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          dispatchCount: 2,
+          continuationCount: 1,
+          targetCount: 1,
+        },
+      },
+      new Date('2026-04-15T04:04:00.000Z'),
+    ).core;
+    await chatStore.writeCore(core);
+
+    const response = await fetch(
+      `${baseUrl}/api/orchestrator/channels/${channelId}/execution-loop?runId=${encodeURIComponent(historicalRunId)}`,
+    );
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+
+    assert.equal(payload.operator.latestRunId, latestRunId);
+    assert.equal(payload.executionLoop.operator.workflowContinuation?.stageId, 'continuation_handoff');
+    assert.equal(payload.executionLoop.operator.attention?.severity, 'attention');
+    assert.ok(payload.executionLoop.operator.nextActions.some((action) => action.kind === 'retry'));
+    assert.equal(payload.executionLoop.runInspector?.run.id, historicalRunId);
+    assert.equal(payload.executionLoop.runInspector?.workflowContinuation, null);
+    assert.equal(payload.executionLoop.runInspector?.attention, null);
+    assert.equal(payload.executionLoop.runInspector?.runtimeDeliveryIntent, null);
+    assert.deepEqual(payload.executionLoop.runInspector?.nextActions, []);
+  }, chatStore);
 });
 
 test('POST /api/core/operator-actions auto-resumes stored dispatch replay on retry', async () => {
