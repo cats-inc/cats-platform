@@ -81,15 +81,34 @@ contracts.
 - [ ] Promote replay, repair, and recovery to rebuild from canonical
       interaction records plus transport bindings instead of heuristic
       transcript/session inference
+      Progress: canonical fallback now rebuilds replay handoffs from full
+      assistant turns, restores replay context from canonical history when the
+      transcript drifts, preserves terminal turns across workflow drift, and
+      allows retry/choice-response/session-repair paths to recover missing
+      source and target identity from canonical interaction/session records;
+      the remaining work is to make canonical records the primary recovery
+      source end to end instead of a fallback beside legacy workflow heuristics.
 - [ ] Land concurrent group transcript delivery on stable lane identity,
       cluster-ready text barriers, and runtime multiplex semantics so
       concurrent UI shape no longer depends on connection timing
+      Progress: backend stream-target foundations now expose all concurrent
+      workflow targets plus the subset that are session-ready; the remaining
+      work is to consume that in SSE attach/multiplex delivery, lane-aware
+      live-indicator payloads, and cluster-ready release logic.
 - [ ] Normalize heterogeneous runtime delivery into one product-owned event
       contract so block-streaming CLIs, text-only CLIs, and final-result-only
       runtimes can all feed the same lane/segment engine
+      Progress: nested runtime result segments and content-array result payloads
+      now normalize into the product envelope, but mixed-granularity runtime
+      outputs still need to converge on one fully canonical lane/segment
+      delivery contract.
 - [ ] Finish end-to-end transport binding adoption for external entrypoints
       and direct lanes so Telegram/bot threads, product conversations, and
       runtime sessions stop sharing overloaded identity semantics
+      Progress: Telegram transport-binding ids now persist into runtime context,
+      session-start events, and canonical session projection, but the same
+      transport identity still needs to govern recovery, close/reconnect, and
+      non-Telegram external entrypoints end to end.
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
@@ -354,7 +373,9 @@ contracts.
       remove/re-add cycle, and startup-recovered orchestrator-target
       continuations can now also auto-resume when channel activation or room-
       entry wake restores the Boss Cat session; broader group replan
-      auto-resume still remains.
+      auto-resume still remains, along with first-class startup recovery for
+      full concurrent fan-out checkpoints rather than only sequential and
+      single-target continuation chains.
 - [ ] Promote the current machine-readable governance/workflow summaries into
       a fuller operator-control-plane contract, including stable approval
       actions, workflow continuation state, and runtime-delivery intent
@@ -516,6 +537,27 @@ contracts.
       product defaults and runtime bridge inputs through their own
       product-owned adapters
 
+### Near-Term Migration Focus
+
+- [ ] Finish the first high-risk chat-core migration wave by moving
+      sequential dispatch, continuation replay, and startup recovery fully onto
+      the canonical interaction writer/reader path rather than dual-writing
+      around legacy workflow assumptions
+- [ ] Carry stable `laneId` / `participantId` identity through concurrent
+      stream delivery, replay, retry, and repair paths so same-name speakers,
+      reassigned sessions, and repaired system messages no longer rely on
+      best-effort name matching
+- [ ] Replace the remaining single-target SSE attach assumptions with true
+      lane-aware multiplex delivery, including attach lifecycle, session-close
+      recovery, and late-attach bootstrap for concurrent group turns
+- [ ] Promote canonical transport/session history into the default source for
+      direct-lane and external-entrypoint recovery so Telegram/bot ingress can
+      recover independently of transient transcript/workflow state
+- [ ] Decide the first user-facing smoke checkpoint for the high-risk migration
+      wave, covering sequential frontier propagation, startup recovery,
+      concurrent attach ordering, and transport-bound reconnect behavior before
+      the old workflow path is retired
+
 ### Exploratory: Paperclip-Informed Control Plane Evolution (Pending Review)
 
 - [ ] Add company, goal, project, and work-item objects above chat channels
@@ -536,4 +578,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-14*
+*Last updated: 2026-04-15*
