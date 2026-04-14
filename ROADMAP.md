@@ -71,6 +71,25 @@ contracts.
 
 ### Phase 4: Cats Chat Launch Track
 
+- [ ] Complete the `Cats Core v1` chat-runtime migration onto the unified
+      `Container -> Conversation -> Turn -> Lane -> Segment -> Session`
+      engine, including removal of remaining mode-driven dispatch
+      assumptions and legacy chat-only interaction writes
+- [ ] Finish sequential frontier propagation so later sequential lanes inherit
+      prior completed lane outputs as canonical input frontier instead of only
+      the originating user message
+- [ ] Promote replay, repair, and recovery to rebuild from canonical
+      interaction records plus transport bindings instead of heuristic
+      transcript/session inference
+- [ ] Land concurrent group transcript delivery on stable lane identity,
+      cluster-ready text barriers, and runtime multiplex semantics so
+      concurrent UI shape no longer depends on connection timing
+- [ ] Normalize heterogeneous runtime delivery into one product-owned event
+      contract so block-streaming CLIs, text-only CLIs, and final-result-only
+      runtimes can all feed the same lane/segment engine
+- [ ] Finish end-to-end transport binding adoption for external entrypoints
+      and direct lanes so Telegram/bot threads, product conversations, and
+      runtime sessions stop sharing overloaded identity semantics
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
@@ -112,6 +131,10 @@ contracts.
 - [ ] Add Guide-Cat-backed entry suggestions with deterministic static
       fallbacks so `+New chat` and later `+Group chat` empty states can be
       prepared dynamically without depending on a permanently awake helper
+- [ ] Implement `Guide Cat` as an optional surface-assist capability with
+      deterministic fallback surfaces so onboarding copy, composer helper
+      prompts, and future guidance affordances stop depending on hardcoded
+      product-only helpers
 - [ ] Finish destructive-delete UX above the landed runtime-session delete policy,
       including explicit renderer feedback for retained or failed runtime cleanup,
       clearer confirmation and busy states for chat / parallel-group / Cat delete,
@@ -470,6 +493,22 @@ contracts.
       actors/resources, and artifact metadata
 - [x] Add a first code dashboard that reuses shared tasks plus build/preview
       artifact output instead of a separate code schema
+- [ ] Separate managed work, agent missions, runtime runs, and schedules
+      across Work and Code so operational planning objects stay durable while
+      execution attempts remain inspectable, retryable, and transport-agnostic
+- [ ] Project conversational and operational agents consistently across Chat,
+      Work, and Code so OpenClaw-style worker agents are managed from Work
+      while direct-lane and companion cats remain chat-first surfaces
+- [ ] Ship `MY CATS` as one platform-level agent home with
+      `Overview / Chat / Work / Code` lenses while product surfaces render
+      contextual subsets from the same registry instead of separate cat lists
+- [ ] Introduce first-class `Cats Code` execution profiles for `cwd`,
+      worktree, permissions, and tool/skill/memory bindings on top of the
+      shared agent, mission, and transport contracts
+- [ ] Add `+New code`, `+Team code`, and `+Peer code` presets as product-owned
+      surfaces over the shared conversation/container engine, including
+      convergence policy, automated review-share loops, and role/workflow
+      templates such as single-coder, team PDCA, and peer review modes
 - [ ] Keep work surfaces product-owned and avoid leaking provider or runtime
       internals into the UI model
 - [ ] Extend task-strategy handoff beyond the current Chat-first
@@ -497,4 +536,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-08*
+*Last updated: 2026-04-14*
