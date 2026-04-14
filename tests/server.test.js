@@ -2675,6 +2675,29 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     },
   };
   const structuralFixtures = {
+    actor: {
+      id: 'actor-worker-system-1',
+      name: 'Ops Cat',
+      kind: 'worker',
+      status: 'active',
+      roles: ['planner', 'executor'],
+      skillProfile: 'ops-v1',
+      mcpProfile: 'work-memory',
+      defaultExecutionTarget: {
+        provider: 'claude',
+        instance: 'subscription',
+        model: 'sonnet',
+      },
+      memory: {
+        summary: 'Ready for background work.',
+        facts: ['prefers retries'],
+        openLoops: ['nightly sync'],
+        updatedAt: fixtures.project.createdAt,
+      },
+      source: 'core_record',
+      sourceId: 'ops-cat',
+      createdAt: fixtures.project.createdAt,
+    },
     container: {
       id: 'container-system-1',
       kind: 'chat_root',
@@ -2758,6 +2781,15 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       body: JSON.stringify({ project: fixtures.project }),
     });
     assert.equal(projectResponse.status, 201);
+
+    const actorResponse = await fetch(`${baseUrl}/api/core/actors`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ actor: structuralFixtures.actor }),
+    });
+    assert.equal(actorResponse.status, 201);
 
     const containerResponse = await fetch(`${baseUrl}/api/core/containers`, {
       method: 'POST',
@@ -3044,6 +3076,7 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
     assert.equal(statePayload.ownerProfile.displayName, 'Boss Owner');
+    assert.ok(statePayload.actors.some((actor) => actor.id === structuralFixtures.actor.id));
     assert.ok(
       statePayload.containers.some((container) => container.id === structuralFixtures.container.id),
     );

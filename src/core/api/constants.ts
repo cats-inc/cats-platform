@@ -1,6 +1,9 @@
 import type {
   ContainerRecordKind,
   ContainerRecordStatus,
+  CoreActorKind,
+  CoreActorSource,
+  CoreActorStatus,
   CoreConversationKind,
   CoreConversationStatus,
   CoreActivityKind,
@@ -30,6 +33,28 @@ import type {
   TurnRecordStatus,
   CoreWorkItemStatus,
 } from '../types.js';
+
+export const CORE_ACTOR_KINDS = [
+  'owner',
+  'orchestrator',
+  'worker',
+  'stakeholder',
+  'bot',
+  'resource',
+] as const satisfies readonly CoreActorKind[];
+
+export const CORE_ACTOR_STATUSES = [
+  'active',
+  'archived',
+] as const satisfies readonly CoreActorStatus[];
+
+export const CORE_ACTOR_SOURCES = [
+  'owner_profile',
+  'global_orchestrator',
+  'chat_cat',
+  'chat_participant',
+  'core_record',
+] as const satisfies readonly CoreActorSource[];
 
 export const CORE_CONTAINER_KINDS = [
   'chat_root',

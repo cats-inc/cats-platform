@@ -1,3 +1,4 @@
+export { upsertCoreActor } from './actorRecords.js';
 export {
   upsertCoreArtifact,
   upsertCoreProject,

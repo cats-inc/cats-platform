@@ -8,6 +8,7 @@ import {
 import {
   appendCoreActivity,
   appendCoreTrace,
+  upsertCoreActor,
   upsertCoreApprovalBinding,
   upsertCoreArtifact,
   upsertCoreContainer,
@@ -54,6 +55,7 @@ import type {
 } from '../types.js';
 import { CATS_CORE_STATE_VERSION } from '../types.js';
 import type {
+  CoreActorWriteInput,
   CoreActivityWriteInput,
   CoreApprovalBindingWriteInput,
   CoreApprovalWriteInput,
@@ -92,6 +94,7 @@ export {
   removeBotBinding,
   removeDurableMemory,
   updateDurableMemory,
+  upsertCoreActor,
   upsertCoreApprovalBinding,
   upsertCoreArtifact,
   upsertCoreCheckpoint,
@@ -113,6 +116,7 @@ export {
 };
 export type {
   BotBindingRecord,
+  CoreActorWriteInput,
   CoreActivityWriteInput,
   CoreApprovalBindingWriteInput,
   CoreApprovalWriteInput,

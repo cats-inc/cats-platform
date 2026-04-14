@@ -1,6 +1,9 @@
 import type {
   ContainerRecordKind,
   ContainerRecordStatus,
+  CoreActorKind,
+  CoreActorSource,
+  CoreActorStatus,
   CoreConversationKind,
   CoreConversationStatus,
   CoreActivityKind,
@@ -25,11 +28,30 @@ import type {
   CoreRunStatus,
   CoreTaskStatus,
   CoreTraceKind,
+  ExecutionTargetSummary,
+  MemoryCheckpointSummary,
   MissionRecordStatus,
   TurnRecordKind,
   TurnRecordStatus,
   CoreWorkItemStatus,
 } from '../types.js';
+
+export interface CoreActorWriteInput {
+  id?: string;
+  name: string;
+  kind?: CoreActorKind;
+  status?: CoreActorStatus;
+  roles?: string[];
+  skillProfile?: string | null;
+  mcpProfile?: string | null;
+  defaultExecutionTarget?: Partial<ExecutionTargetSummary> | null;
+  memory?: Partial<MemoryCheckpointSummary> | null;
+  source?: CoreActorSource;
+  sourceId?: string | null;
+  createdAt?: string;
+  archivedAt?: string | null;
+  metadata?: CoreRecordMetadata;
+}
 
 export interface CoreContainerWriteInput {
   id?: string;
