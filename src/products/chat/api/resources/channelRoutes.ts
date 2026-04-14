@@ -41,7 +41,10 @@ import { routeChatChannelAttachmentResourceApi } from './channelAttachmentRoutes
 import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
-import { readChatCoreTurnMetadataString } from '../../state/chatCoreInterop.js';
+import {
+  buildCanonicalChatUserMessage,
+  readChatCoreTurnMetadataString,
+} from '../../state/chatCoreInterop.js';
 
 function publishChannelMutationEvents(
   context: ChatApiRouteContext,
@@ -153,29 +156,17 @@ function buildCanonicalRetryMessage(
   body: string;
   createdAt: string;
 } | null {
-  const conversationId = buildChatConversationId(channelId);
-  const turn = core.turns
-    .filter((candidate) =>
-      candidate.conversationId === conversationId
-      && readChatCoreTurnMetadataString(candidate, 'sourceSenderKind') === 'user'
-      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === messageId)
-    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-    .at(-1);
-  if (!turn) {
-    return null;
-  }
-
-  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
-  if (!body) {
+  const message = buildCanonicalChatUserMessage(core, channelId, messageId);
+  if (!message) {
     return null;
   }
 
   return {
     id: messageId,
-    senderKind: 'user',
-    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
-    body,
-    createdAt: turn.createdAt,
+    senderKind: message.senderKind,
+    senderName: message.senderName,
+    body: message.body,
+    createdAt: message.createdAt,
   };
 }
 

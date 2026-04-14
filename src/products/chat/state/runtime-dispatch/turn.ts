@@ -20,6 +20,7 @@ import {
   buildChannelView,
   requireChannel,
 } from '../model/index.js';
+import { buildCanonicalChatUserMessage } from '../chatCoreInterop.js';
 import {
   DEFAULT_MAX_ROUTING_CONTINUATIONS,
   DEFAULT_MAX_ROUTING_DISPATCHES,
@@ -338,15 +339,19 @@ export function prepareDispatchTurnForUserMessage(
 function findChannelUserMessage(
   channel: ReturnType<typeof buildChannelView>,
   messageId: string,
+  core?: CatsCoreState,
 ): ChatMessage {
   const userMessage = channel.messages.find((message) => message.id === messageId);
-  if (!userMessage) {
+  const resolvedUserMessage = userMessage ?? (core
+    ? buildCanonicalChatUserMessage(core, channel.id, messageId)
+    : null);
+  if (!resolvedUserMessage) {
     throw new Error(`Channel message not found: ${messageId}`);
   }
-  if (userMessage.senderKind !== 'user') {
+  if (resolvedUserMessage.senderKind !== 'user') {
     throw new Error(`Only user messages can seed a routed turn: ${messageId}`);
   }
-  return userMessage;
+  return resolvedUserMessage;
 }
 
 export function prepareDispatchTurn(
@@ -378,7 +383,7 @@ export function prepareDispatchTurnForExistingUserMessage(
   core?: CatsCoreState,
 ): PreparedDispatchTurn {
   const channel = buildChannelView(state, channelId);
-  const userMessage = findChannelUserMessage(channel, messageId);
+  const userMessage = findChannelUserMessage(channel, messageId, core);
   return prepareDispatchTurnForUserMessage(
     state,
     channelId,

@@ -1,8 +1,13 @@
 import type {
+  CatsCoreState,
   CoreRecordMetadata,
   SegmentRecord,
   TurnRecord,
 } from '../../../core/types.js';
+import type { ChatMessage } from '../api/contracts.js';
+import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
+
+export type CanonicalChatUserMessage = ChatMessage & { senderKind: 'user' };
 
 export function readChatCoreMetadataString(
   metadata: CoreRecordMetadata | null | undefined,
@@ -77,4 +82,61 @@ export function compareChatCoreSegmentsDescending(
     return sequenceComparison;
   }
   return left.id.localeCompare(right.id);
+}
+
+export function buildCanonicalChatUserMessage(
+  core: CatsCoreState,
+  channelId: string,
+  sourceMessageId: string,
+): CanonicalChatUserMessage | null {
+  const conversationId = buildChatConversationId(channelId);
+  const turn = core.turns
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && readChatCoreTurnMetadataString(candidate, 'sourceSenderKind') === 'user'
+      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === sourceMessageId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .at(-1);
+  if (!turn) {
+    return null;
+  }
+
+  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
+  if (!body) {
+    return null;
+  }
+
+  const lanes = core.lanes
+    .filter((lane) => lane.turnId === turn.id && lane.conversationId === conversationId)
+    .sort((left, right) => left.orderIndex - right.orderIndex);
+  const recipientParticipantIds = lanes
+    .map((lane) => resolveRawChatParticipantId(lane.participantId, conversationId))
+    .filter((participantId): participantId is string => Boolean(participantId));
+  const workflowShape = readChatCoreTurnMetadataString(turn, 'workflowShape');
+
+  return {
+    id: sourceMessageId,
+    channelId,
+    senderKind: 'user',
+    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
+    body,
+    mentions: [],
+    metadata: {
+      ...(recipientParticipantIds.length > 0
+        ? {
+            recipientParticipantIds,
+          }
+        : {}),
+      ...(workflowShape
+        ? {
+            workflowShape,
+          }
+        : {}),
+    },
+    usage: null,
+    executionProvider: null,
+    executionModel: null,
+    executionInstance: null,
+    createdAt: turn.createdAt,
+  };
 }

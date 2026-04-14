@@ -6,7 +6,7 @@ import type {
   ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
-import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
+import type { CatsCoreState } from '../../../../core/types.js';
 import type {
   RoomRoutingGuardReason,
 } from '../../../../shared/roomRouting.js';
@@ -31,11 +31,9 @@ import {
   createExplicitProviderModelSelection,
   sameProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
-import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import {
-  readChatCoreTurnMetadataString,
-  resolveRawChatParticipantId,
+  buildCanonicalChatUserMessage,
 } from '../chatCoreInterop.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
@@ -43,7 +41,6 @@ import {
 } from '../runtimeTargeting.js';
 import {
   prepareDispatchTurn,
-  prepareDispatchTurnForUserMessage,
   prepareDispatchTurnForExistingUserMessage,
 } from './turn.js';
 import type {
@@ -130,67 +127,6 @@ function buildRetrySendPayload(message: ChatMessage): SendChannelMessageInput {
           messageMetadata,
         }
       : {}),
-  };
-}
-
-function buildCanonicalRetrySourceMessage(
-  core: CatsCoreState,
-  channelId: string,
-  sourceMessageId: string,
-): ChatMessage | null {
-  const conversationId = buildChatConversationId(channelId);
-  const turn = core.turns
-    .filter((candidate) =>
-      candidate.conversationId === conversationId
-      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === sourceMessageId)
-    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-    .at(-1);
-  if (!turn) {
-    return null;
-  }
-
-  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
-  if (!body) {
-    return null;
-  }
-
-  const senderKind = readChatCoreTurnMetadataString(turn, 'sourceSenderKind');
-  if (senderKind !== 'user') {
-    return null;
-  }
-
-  const lanes = core.lanes
-    .filter((lane) => lane.turnId === turn.id && lane.conversationId === conversationId)
-    .sort((left, right) => left.orderIndex - right.orderIndex);
-  const recipientParticipantIds = lanes
-    .map((lane) => resolveRawChatParticipantId(lane.participantId, conversationId))
-    .filter((participantId): participantId is string => Boolean(participantId));
-  const workflowShape = readChatCoreTurnMetadataString(turn, 'workflowShape');
-
-  return {
-    id: sourceMessageId,
-    channelId,
-    senderKind: 'user',
-    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
-    body,
-    mentions: [],
-    metadata: {
-      ...(recipientParticipantIds.length > 0
-        ? {
-            recipientParticipantIds,
-          }
-        : {}),
-      ...(workflowShape
-        ? {
-            workflowShape,
-          }
-        : {}),
-    },
-    usage: null,
-    executionProvider: null,
-    executionModel: null,
-    executionInstance: null,
-    createdAt: turn.createdAt,
   };
 }
 
@@ -360,11 +296,11 @@ export async function beginChannelMessageRetryDispatch(
   options: RouteChannelMessageOptions = {},
 ): Promise<BegunChannelMessageDispatch> {
   const channel = requireChannel(state, channelId);
+  let core: CatsCoreState | undefined;
   let sourceMessage = channel.messages.find((message) => message.id === sourceMessageId) ?? null;
-  const sourceMessageMissingFromTranscript = !sourceMessage;
   if (!sourceMessage && options.chatStore) {
-    const core = await options.chatStore.readCore();
-    sourceMessage = buildCanonicalRetrySourceMessage(core, channelId, sourceMessageId);
+    core = await options.chatStore.readCore();
+    sourceMessage = buildCanonicalChatUserMessage(core, channelId, sourceMessageId);
   }
   if (!sourceMessage) {
     throw new Error(`Channel message not found: ${sourceMessageId}`);
@@ -374,25 +310,16 @@ export async function beginChannelMessageRetryDispatch(
   }
 
   const choiceResponseCore = sourceMessage.choiceResponse && options.chatStore
-    ? await options.chatStore.readCore()
-    : undefined;
-  const preparedTurn = sourceMessageMissingFromTranscript
-    ? prepareDispatchTurnForUserMessage(
-        state,
-        channelId,
-        buildRetrySendPayload(sourceMessage),
-        sourceMessage,
-        now,
-        choiceResponseCore,
-      )
-    : prepareDispatchTurnForExistingUserMessage(
-        state,
-        channelId,
-        buildRetrySendPayload(sourceMessage),
-        sourceMessageId,
-        now,
-        choiceResponseCore,
-      );
+    ? (core ?? await options.chatStore.readCore())
+    : core;
+  const preparedTurn = prepareDispatchTurnForExistingUserMessage(
+    state,
+    channelId,
+    buildRetrySendPayload(sourceMessage),
+    sourceMessageId,
+    now,
+    choiceResponseCore,
+  );
   const nextState = await persistInFlightDispatchState(
     options.chatStore,
     materializeInFlightDispatchState(
