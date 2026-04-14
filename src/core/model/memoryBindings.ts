@@ -6,9 +6,18 @@ import { touchCoreState } from './shared.js';
 import type {
   BotBindingRecord,
   CatsCoreState,
+  DurableMemoryCategory,
   DurableMemoryRecord,
   DurableMemorySubjectType,
 } from '../types.js';
+
+export interface DurableMemoryListQuery {
+  categories?: DurableMemoryCategory[];
+  sourceRefs?: string[];
+  minConfidence?: number;
+  maxConfidence?: number;
+  limit?: number;
+}
 
 export function addDurableMemory(
   core: CatsCoreState,
@@ -82,10 +91,35 @@ export function listDurableMemoryBySubject(
   core: CatsCoreState,
   subjectType: DurableMemorySubjectType,
   subjectId: string,
+  query: DurableMemoryListQuery = {},
 ): DurableMemoryRecord[] {
-  return core.durableMemory.filter(
-    (record) => record.subjectType === subjectType && record.subjectId === subjectId,
-  );
+  return core.durableMemory
+    .filter((record) => record.subjectType === subjectType && record.subjectId === subjectId)
+    .filter((record) => {
+      if (query.categories && !query.categories.includes(record.category)) {
+        return false;
+      }
+      if (
+        query.sourceRefs
+        && !record.sourceRefs.some((sourceRef) => query.sourceRefs?.includes(sourceRef))
+      ) {
+        return false;
+      }
+      if (
+        query.minConfidence !== undefined
+        && (record.confidence === null || record.confidence < query.minConfidence)
+      ) {
+        return false;
+      }
+      if (
+        query.maxConfidence !== undefined
+        && (record.confidence === null || record.confidence > query.maxConfidence)
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .slice(0, query.limit);
 }
 
 export function createBotBinding(

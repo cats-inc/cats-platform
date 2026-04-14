@@ -42,6 +42,14 @@ interface FlushMemoryInput {
   reason?: unknown;
 }
 
+interface ScopedMemoryListQuery {
+  categories?: DurableMemoryCategory[];
+  sourceRefs?: string[];
+  minConfidence?: number;
+  maxConfidence?: number;
+  limit?: number;
+}
+
 function validateCategory(value: unknown): value is DurableMemoryCategory {
   return (
     value === 'preference'
@@ -129,6 +137,73 @@ function parseTransportQuery(
   return value === 'telegram' || value === 'line' || value === 'web'
     ? value
     : null;
+}
+
+function readQueryValues(
+  searchParams: URLSearchParams,
+  key: string,
+): string[] {
+  const values = searchParams.getAll(key)
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  return Array.from(new Set(values));
+}
+
+function readOptionalNumberQuery(
+  searchParams: URLSearchParams,
+  key: string,
+): number | undefined {
+  const raw = searchParams.get(key);
+  if (raw === null || raw.trim().length === 0) {
+    return undefined;
+  }
+
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed)) {
+    throw new CoreValidationError(`${key} must be a number.`, 'invalid_query_number');
+  }
+
+  return parsed;
+}
+
+function readPositiveIntegerQuery(
+  searchParams: URLSearchParams,
+  key: string,
+): number | undefined {
+  const raw = searchParams.get(key);
+  if (raw === null || raw.trim().length === 0) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new CoreValidationError(`${key} must be a positive integer.`, 'invalid_query_limit');
+  }
+
+  return parsed;
+}
+
+function readScopedMemoryListQuery(
+  searchParams: URLSearchParams,
+): ScopedMemoryListQuery {
+  const rawCategories = readQueryValues(searchParams, 'category');
+  const invalidCategory = rawCategories.find((value) => !validateCategory(value));
+  if (invalidCategory) {
+    throw new CoreValidationError('Invalid memory category.', 'invalid_category');
+  }
+
+  return {
+    categories: rawCategories.length > 0 ? rawCategories as DurableMemoryCategory[] : undefined,
+    sourceRefs: (() => {
+      const values = readQueryValues(searchParams, 'sourceRef');
+      return values.length > 0 ? values : undefined;
+    })(),
+    minConfidence: readOptionalNumberQuery(searchParams, 'minConfidence'),
+    maxConfidence: readOptionalNumberQuery(searchParams, 'maxConfidence'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
 }
 
 function ensureProjectExists(
@@ -227,7 +302,8 @@ async function handleListScopedMemory(
     ensureProjectExists(subjectId, core);
   }
 
-  const records = listDurableMemoryBySubject(core, subjectKind, subjectId);
+  const query = readScopedMemoryListQuery(context.url.searchParams);
+  const records = listDurableMemoryBySubject(core, subjectKind, subjectId, query);
   sendJson(context.response, 200, { records });
 }
 
