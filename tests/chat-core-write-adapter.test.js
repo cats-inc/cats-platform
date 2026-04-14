@@ -471,12 +471,30 @@ test('resumeWorkflowContinuationReplay persists canonical interaction records fo
   );
 });
 
-test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff source from canonical segments', async () => {
+test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff source from the full canonical assistant turn', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const store = new MemoryChatStore();
   const runtimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Agent-1')) {
-      return usage('Agent-1 completed the first step.');
+      return {
+        segments: [
+          {
+            kind: 'text',
+            text: 'Agent-1 completed the first step. ',
+            toolName: null,
+            toolId: null,
+          },
+          {
+            kind: 'text',
+            text: 'Implementation notes included.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 11,
+        outputTokens: 9,
+        tokensUsed: 20,
+      };
     }
     throw new Error(`Unexpected prompt:\n${content}`);
   });
@@ -491,9 +509,9 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
   );
   await store.write(dispatched.state);
 
-  const sourceMessage = requireChannel(dispatched.state, channelId).messages.find((message) =>
+  const sourceMessage = requireChannel(dispatched.state, channelId).messages.filter((message) =>
     message.senderName === 'Agent-1'
-    && message.metadata?.event === 'assistant_turn_segment');
+    && message.metadata?.event === 'assistant_turn_segment').at(-1);
   assert.ok(sourceMessage);
 
   const brokenState = structuredClone(dispatched.state);
@@ -522,7 +540,10 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
 
   const replayRuntimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Agent-2')) {
-      assert.match(content, /Latest routed handoff:\nAgent-1 completed the first step\./u);
+      assert.match(
+        content,
+        /Latest routed handoff:\nAgent-1 completed the first step\. ?Implementation notes included\./u,
+      );
       return usage('Agent-2 resumed from the canonical handoff.');
     }
     throw new Error(`Unexpected prompt:\n${content}`);

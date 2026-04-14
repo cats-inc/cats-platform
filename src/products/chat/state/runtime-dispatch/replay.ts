@@ -451,6 +451,39 @@ function readMetadataString(
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
+function compareSegmentsAscending(
+  left: CatsCoreState['segments'][number],
+  right: CatsCoreState['segments'][number],
+): number {
+  const sequenceComparison = left.sequence - right.sequence;
+  if (sequenceComparison !== 0) {
+    return sequenceComparison;
+  }
+  const createdComparison = left.createdAt.localeCompare(right.createdAt);
+  if (createdComparison !== 0) {
+    return createdComparison;
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function resolveRawChatParticipantId(
+  canonicalParticipantId: string | null | undefined,
+  conversationId: string,
+): string | null {
+  if (!canonicalParticipantId) {
+    return null;
+  }
+
+  const prefix = `participant-${conversationId}-`;
+  if (canonicalParticipantId.startsWith(prefix)) {
+    const rawParticipantId = canonicalParticipantId.slice(prefix.length).trim();
+    return rawParticipantId.length > 0 ? rawParticipantId : null;
+  }
+
+  const trimmedParticipantId = canonicalParticipantId.trim();
+  return trimmedParticipantId.length > 0 ? trimmedParticipantId : null;
+}
+
 function readTurnSourceSenderKind(
   turn: TurnRecord,
 ): ChatMessage['senderKind'] {
@@ -512,14 +545,34 @@ function buildCanonicalSegmentSourceMessage(
       && readMetadataString(candidate.metadata, 'chatMessageId') === request.sourceMessageId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .at(-1);
-  if (!segment || !segment.content) {
+  if (!segment) {
     return null;
   }
 
   const lane = core.lanes.find((candidate) => candidate.id === segment.laneId) ?? null;
+  const assistantTurnId = readMetadataString(segment.metadata, 'assistantTurnId');
+  const laneSegments = core.segments
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && candidate.laneId === segment.laneId
+      && candidate.kind === 'text'
+      && (
+        assistantTurnId
+          ? readMetadataString(candidate.metadata, 'assistantTurnId') === assistantTurnId
+          : true
+      ))
+    .sort(compareSegmentsAscending);
+  const fullText = laneSegments
+    .map((candidate) => candidate.content ?? '')
+    .join('');
+  if (!fullText.trim()) {
+    return null;
+  }
+
   const targetKind = readMetadataString(segment.metadata, 'targetKind')
     ?? readMetadataString(lane?.metadata ?? null, 'participantKind');
-  const targetId = readMetadataString(segment.metadata, 'targetId');
+  const targetId = readMetadataString(segment.metadata, 'targetId')
+    ?? resolveRawChatParticipantId(lane?.participantId ?? null, conversationId);
   const senderKind: ChatMessage['senderKind'] = targetKind === 'orchestrator'
     ? 'orchestrator'
     : 'agent';
@@ -529,10 +582,14 @@ function buildCanonicalSegmentSourceMessage(
     channelId: request.channelId,
     senderKind,
     senderName: readMetadataString(lane?.metadata ?? null, 'speakerLabel') ?? senderKind,
-    body: segment.content,
+    body: fullText,
     mentions: [],
     metadata: {
       event: 'assistant_turn_segment',
+      ...(assistantTurnId ? { assistantTurnId } : {}),
+      ...(readMetadataString(segment.metadata, 'targetStateId')
+        ? { targetStateId: readMetadataString(segment.metadata, 'targetStateId') }
+        : {}),
       ...(targetKind ? { targetKind } : {}),
       ...(targetId ? { targetId } : {}),
       ...(segment.sessionId ? { sessionId: segment.sessionId } : {}),
