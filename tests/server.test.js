@@ -7047,6 +7047,198 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
   });
 });
 
+test('GET /api/work/tasks/:id mirrors shared control-plane and recovery projections', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskId = 'task-work-projection-contract';
+    const conversationId = 'conversation-channel-work-projection-contract';
+
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: taskId,
+          title: 'Work projection contract task',
+          status: 'pending_approval',
+          conversationId,
+          metadata: writeTaskPlanningMetadata(
+            writeWorkflowContinuationReplayMetadata(
+              writeOrchestratorDispatchReplayMetadata(
+                {
+                  effectiveDeliveryPolicy: {
+                    mode: 'commit_only',
+                    gates: ['owner_approval_required'],
+                    source: 'task_override',
+                    rationale: 'Need owner approval before the work handoff resumes.',
+                  },
+                  channelId: 'channel-work-projection-contract',
+                  transport: 'web',
+                  roomRoutingMode: 'boss_chat',
+                },
+                buildOrchestratorDispatchReplayRequest({
+                  channelId: 'channel-work-projection-contract',
+                  body: 'Resume the work-item handoff.',
+                  recordedAt: '2026-04-15T05:10:00.000Z',
+                }),
+                {
+                  replayState: 'failed',
+                  replayTrigger: 'retry',
+                  replayAttemptAt: '2026-04-15T05:11:00.000Z',
+                  replayError: 'worker offline',
+                  sourceMessageId: 'message-work-projection-contract',
+                },
+              ),
+              buildWorkflowContinuationReplayRequest({
+                channelId: 'channel-work-projection-contract',
+                checkpointId: 'checkpoint-work-projection-contract',
+                sourceMessageId: 'message-work-projection-contract',
+                sourceTurnId: 'turn-work-projection-contract',
+                sourceLaneId: 'lane-work-projection-contract',
+                sourceAssistantTurnId: 'assistant-turn-work-projection-contract',
+                sourceParticipant: {
+                  participantKind: 'orchestrator',
+                  participantId: 'actor-orchestrator-global',
+                  participantName: 'Orchestrator',
+                },
+                targets: [
+                  {
+                    participantKind: 'cat',
+                    participantId: 'cat-work-reviewer',
+                    participantName: 'Work Reviewer',
+                  },
+                ],
+                trigger: 'continuation_mention',
+                branchStrategy: 'transplant_context',
+                workflowStageId: 'continuation_handoff',
+                workflowShape: 'converge',
+                reviewRequired: true,
+                continuationSource: 'workflow_recommendation',
+                unresolvedTargets: ['Work Reviewer'],
+                blockedReason: 'max_dispatches',
+                recordedAt: '2026-04-15T05:12:00.000Z',
+              }),
+              {
+                replayState: 'failed',
+                replayTrigger: 'retry',
+                replayAttemptAt: '2026-04-15T05:13:00.000Z',
+                replayError: 'reviewer offline',
+              },
+            ),
+            {
+              productHint: 'work',
+              strategyHint: 'project_board',
+            },
+          ),
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId,
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+        notes: 'Need owner approval before the work handoff resumes.',
+      }),
+    });
+    assert.equal(approvalResponse.status, 200);
+
+    const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-work-projection-contract',
+          title: 'Blocked work handoff',
+          status: 'blocked',
+          conversationId,
+          taskId,
+          metadata: {
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'converge',
+            dispatchCount: 1,
+            continuationCount: 1,
+            targetCount: 1,
+          },
+        },
+      }),
+    });
+    assert.equal(runResponse.status, 201);
+
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkpoint: {
+          id: 'checkpoint-work-projection-contract',
+          label: 'work-review',
+          status: 'open',
+          conversationId,
+          taskId,
+          runId: 'run-work-projection-contract',
+          summary: 'Waiting for the work reviewer to return.',
+          metadata: {
+            continuationSource: 'workflow_recommendation',
+            unresolvedTargets: ['Work Reviewer'],
+            workflowRecommendation: {
+              source: 'checkpoint',
+              workflowShape: 'converge',
+              branchStrategy: 'single_target_review',
+              rationale: 'Need work reviewer approval before continuing.',
+              reviewRequired: true,
+              candidateTargets: [
+                {
+                  participantKind: 'cat',
+                  participantId: 'cat-work-reviewer',
+                  participantName: 'Work Reviewer',
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+    assert.equal(checkpointResponse.status, 201);
+
+    const workDetailResponse = await fetch(`${baseUrl}/api/work/tasks/${taskId}`);
+    assert.equal(workDetailResponse.status, 200);
+    const workDetailPayload = await workDetailResponse.json();
+
+    const controlPlaneResponse = await fetch(`${baseUrl}/api/core/tasks/${taskId}/control-plane`);
+    assert.equal(controlPlaneResponse.status, 200);
+    const controlPlanePayload = await controlPlaneResponse.json();
+
+    const recoveryResponse = await fetch(`${baseUrl}/api/core/tasks/${taskId}/recovery`);
+    assert.equal(recoveryResponse.status, 200);
+    const recoveryPayload = await recoveryResponse.json();
+
+    assert.equal(workDetailPayload.product.id, 'work');
+    assert.equal(workDetailPayload.task.id, taskId);
+    assert.equal(workDetailPayload.inspection.planning.effectiveProduct, 'work');
+    assert.equal(workDetailPayload.controlPlane.taskId, taskId);
+    assert.deepEqual(workDetailPayload.controlPlane, controlPlanePayload.controlPlane);
+    assert.deepEqual(workDetailPayload.recovery, recoveryPayload.recovery);
+    assert.equal(
+      workDetailPayload.controlPlane.workflowContinuation.sourceAssistantTurnId,
+      'assistant-turn-work-projection-contract',
+    );
+    assert.equal(workDetailPayload.controlPlane.runtimeDeliveryIntent.mode, 'commit_only');
+    assert.equal(workDetailPayload.recovery.context.deliveryMode, 'commit_only');
+    assert.equal(workDetailPayload.recovery.workflowContinuationReplay.blockedReason, 'max_dispatches');
+  });
+});
+
 test('GET /api/shell/browse lists subdirectories for the folder browser modal', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-folder-browser-'));
   const alphaDir = path.join(root, 'alpha');
