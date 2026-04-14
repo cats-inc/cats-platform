@@ -202,8 +202,8 @@
 }
 
 .platformLobbyCard--chat .platformLobbyCardAccent { background: #E0B323; }
-.platformLobbyCard--work .platformLobbyCardAccent { background: #6E8450; }
-.platformLobbyCard--code .platformLobbyCardAccent { background: #4F6C92; }
+.platformLobbyCard--code .platformLobbyCardAccent { background: #6E8450; }
+.platformLobbyCard--work .platformLobbyCardAccent { background: #4F6C92; }
 
 .platformLobbyCard--recent {
   box-shadow: 0 0 0 2px var(--accent-soft);

@@ -7,7 +7,6 @@ import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
-import { buildProductSurfaceToggleStates } from './productSurfaceToggles.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
 
 export interface CatCreationFieldsProps {
@@ -54,24 +53,11 @@ export function CatCreationFields({
   makeBoss,
   onMakeBossChange,
   hideMakeBoss,
-  products,
-  onProductsChange,
-  availableSurfaces,
-  enabledSurfaces,
-  hideProductToggles,
   fetchProviderRegistry,
   fetchProviderModels,
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
 }: CatCreationFieldsProps) {
-  const normalizedProducts = products ?? [];
-  const selectableSurfaces = availableSurfaces ?? [];
-  const toggleStates = buildProductSurfaceToggleStates({
-    surfaces: selectableSurfaces,
-    selected: normalizedProducts,
-    enabledSurfaces,
-    requiredSurfaces: (makeBoss ?? false) ? ['chat'] : [],
-  });
 
   return (
     <>
@@ -95,35 +81,6 @@ export function CatCreationFields({
           />
           <span>Set as Boss Cat</span>
         </label>
-      ) : null}
-      {!hideProductToggles && selectableSurfaces.length > 1 && onProductsChange ? (
-        <div className="fieldLabel">
-          <span>Available in</span>
-          <div className="productToggles">
-            {toggleStates.map(({ surface, active, disabled, unavailable }) => {
-              return (
-                <button
-                  key={surface}
-                  type="button"
-                  className={active ? 'productToggle productToggleActive' : 'productToggle'}
-                  disabled={disabled}
-                  onClick={() => {
-                    if (disabled) {
-                      return;
-                    }
-                    const next = active
-                      ? normalizedProducts.filter((s) => s !== surface)
-                      : [...normalizedProducts, surface];
-                    onProductsChange(next);
-                  }}
-                  data-tooltip={unavailable ? `${surface} is not enabled yet` : undefined}
-                >
-                  {surface}
-                </button>
-              );
-            })}
-          </div>
-        </div>
       ) : null}
       <ProviderModelFields
         provider={provider}

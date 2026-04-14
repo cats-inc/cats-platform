@@ -27,27 +27,6 @@ const PLATFORM_PRODUCT_DESCRIPTORS: readonly PlatformProductDescriptor[] = [
     ],
   },
   {
-    id: 'work',
-    surface: 'work',
-    routePrefix: '/work',
-    productName: 'Cats Work',
-    subtitle: 'Projects, approvals, and operator workflow',
-    group: 'office',
-    installPolicy: 'required',
-    installState: 'installed',
-    maturity: 'preview',
-    setup: {
-      selectable: true,
-    },
-    settings: [
-      {
-        id: 'work',
-        label: 'Work',
-        path: '/settings/work',
-      },
-    ],
-  },
-  {
     id: 'code',
     surface: 'code',
     routePrefix: '/code',
@@ -65,6 +44,27 @@ const PLATFORM_PRODUCT_DESCRIPTORS: readonly PlatformProductDescriptor[] = [
         id: 'code',
         label: 'Code',
         path: '/settings/code',
+      },
+    ],
+  },
+  {
+    id: 'work',
+    surface: 'work',
+    routePrefix: '/work',
+    productName: 'Cats Work',
+    subtitle: 'Projects, approvals, and operator workflow',
+    group: 'office',
+    installPolicy: 'required',
+    installState: 'installed',
+    maturity: 'preview',
+    setup: {
+      selectable: true,
+    },
+    settings: [
+      {
+        id: 'work',
+        label: 'Work',
+        path: '/settings/work',
       },
     ],
   },
