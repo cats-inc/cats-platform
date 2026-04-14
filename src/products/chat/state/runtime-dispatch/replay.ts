@@ -215,9 +215,12 @@ function requiresCompleteConcreteReplayResolution(
   request: WorkflowContinuationReplaySnapshot,
   missingTargets: string[],
 ): boolean {
+  if (request.targets.length <= 1 || missingTargets.length === 0) {
+    return false;
+  }
+
   return request.workflowShape === 'concurrent'
-    && request.targets.length > 1
-    && missingTargets.length > 0;
+    || request.workflowShape === 'sequential';
 }
 
 function buildReplayResolution(
@@ -235,7 +238,7 @@ function buildReplayResolution(
     return {
       resolution: null,
       blockedReason: 'no_valid_targets',
-      note: 'Stored workflow continuation replay is still waiting for all preserved parallel targets to recover.',
+      note: 'Stored workflow continuation replay is still waiting for all preserved concrete targets to recover.',
       unresolvedTargets: uniqueStrings([
         ...request.unresolvedTargets,
         ...missingConcreteTargets,

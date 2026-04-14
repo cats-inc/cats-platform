@@ -676,6 +676,160 @@ test('startup recovery skips startup-recovered parallel continuation replays unt
   );
 });
 
+test('startup recovery skips startup-recovered sequential continuation replays until every concrete target recovers', async () => {
+  const now = new Date('2026-03-26T06:47:00.000Z');
+  let chat = createDefaultChatState();
+  chat = createChannel(
+    chat,
+    {
+      title: 'Recovered sequential continuation replay',
+      topic: 'Wait for the full preserved sequential audience after restart.',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Followup-Agent',
+          provider: 'gemini',
+          roles: ['auditor'],
+        },
+        {
+          name: 'Verifier-Agent',
+          provider: 'codex',
+          roles: ['verifier'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  const chatChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(chatChannel);
+  assert.equal(chatChannel.catAssignments.length, 3);
+  chatChannel.catAssignments[1].execution.lease.sessionId = 'session-followup';
+  chatChannel.catAssignments[2].status = 'removed';
+  chatChannel.catAssignments[2].leftAt = '2026-03-26T06:46:00.000Z';
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Inline-Agent',
+      body: 'Continue this in sequence once both preserved specialists are back.',
+    },
+    now,
+  ).state;
+
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+
+  const chatStore = new MemoryChatStore(chat);
+  await chatStore.write(chat);
+  const taskId = buildChannelTaskId(channelId);
+  const baseCore = await chatStore.readCore();
+  const existingTask = baseCore.tasks.find((candidate) => candidate.id === taskId) ?? null;
+  const taskWrite = upsertCoreTask(
+    baseCore,
+    {
+      id: taskId,
+      title: existingTask?.title ?? 'Recovered sequential continuation replay',
+      status: 'blocked',
+      conversationId: existingTask?.conversationId ?? `conversation-channel-${channelId}`,
+      summary: existingTask?.summary ?? 'Recover the preserved sequential continuation replay.',
+      createdAt: existingTask?.createdAt ?? now.toISOString(),
+      metadata: writeWorkflowContinuationReplayMetadata(
+        existingTask?.metadata,
+        buildWorkflowContinuationReplayRequest({
+          channelId,
+          checkpointId: 'checkpoint-startup-recovered-sequential',
+          sourceMessageId: sourceMessage.id,
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: channel.assignedCats[0]?.catId ?? 'cat-inline',
+            participantName: channel.assignedCats[0]?.name ?? 'Inline-Agent',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: channel.assignedCats[1]?.catId ?? 'cat-followup',
+              participantName: channel.assignedCats[1]?.name ?? 'Followup-Agent',
+            },
+            {
+              participantKind: 'cat',
+              participantId: channel.assignedCats[2]?.catId ?? 'cat-verifier',
+              participantName: channel.assignedCats[2]?.name ?? 'Verifier-Agent',
+            },
+          ],
+          branchStrategy: 'transplant_context',
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          continuationSource: 'workflow_recommendation',
+          unresolvedTargets: ['Verifier-Agent'],
+          blockedReason: null,
+          recordedAt: '2026-03-26T06:46:30.000Z',
+        }),
+        {
+          replayState: 'ready',
+          replayTrigger: 'retry',
+        },
+      ),
+    },
+    now,
+  );
+  const activityWrite = appendCoreActivity(
+    taskWrite.core,
+    {
+      kind: 'note',
+      conversationId: existingTask?.conversationId ?? `conversation-channel-${channelId}`,
+      taskId,
+      message: 'Startup recovery preserved the interrupted sequential continuation replay.',
+      metadata: {
+        source: 'workflow-continuation-replay',
+        replayPhase: 'startup_recovered',
+      },
+    },
+    now,
+  );
+  const sharedCoreStore = new MemoryCoreStore(activityWrite.core);
+  let resumeCalls = 0;
+
+  const recoveredCount = await reconcileOrchestratorRecoveryOnStartup({
+    shared: {
+      coreStore: sharedCoreStore,
+      now: () => new Date('2026-03-26T06:48:00.000Z'),
+      async resumeWorkflowContinuationDispatch() {
+        resumeCalls += 1;
+        throw new Error('startup recovery should not replay partially recovered sequential targets');
+      },
+    },
+    chat: {
+      chatStore,
+    },
+  });
+
+  assert.equal(recoveredCount, 0);
+  assert.equal(resumeCalls, 0);
+  const sharedCore = await sharedCoreStore.readCore();
+  const sharedTask = sharedCore.tasks.find((candidate) => candidate.id === taskId);
+  assert.ok(sharedTask);
+  assert.equal(sharedTask.metadata.workflowContinuationReplay?.workflowShape, 'sequential');
+  assert.deepEqual(
+    sharedTask.metadata.workflowContinuationReplay?.targets.map((target) => target.participantName),
+    ['Followup-Agent', 'Verifier-Agent'],
+  );
+  assert.ok(
+    !sharedCore.activities.some((activity) =>
+      activity.taskId === taskId
+      && activity.metadata?.source === 'workflow-continuation-replay'
+      && activity.metadata?.resumeReason === 'target_recovered'),
+  );
+});
+
 test('startup recovery finalizes stranded room workflow turns into blocked history and core records', async () => {
   const now = new Date('2026-03-26T06:20:00.000Z');
   let chat = createDefaultChatState();
