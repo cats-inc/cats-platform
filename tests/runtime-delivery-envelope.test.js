@@ -259,6 +259,30 @@ test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands coarse result-
   assert.equal(normalized[1]?.sequence.segmentIndex, 1);
 });
 
+test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands content-array output_text payloads into canonical content blocks before the result', () => {
+  const normalized = buildNormalizedRuntimeDeliveryEventsFromStreamEvent({
+    conversationId: 'conversation-3bb',
+    turnId: 'turn-3bb',
+    laneId: 'lane-3bb',
+    sessionId: 'session-3bb',
+    eventIndex: 5,
+    emittedAt: '2026-04-14T20:11:30.000Z',
+    event: {
+      event: 'result',
+      data: {
+        content: [{ type: 'output_text', text: 'Array-wrapped final reply.' }],
+      },
+    },
+  });
+
+  assert.equal(normalized.length, 2);
+  assert.equal(normalized[0]?.kind, 'content_block');
+  assert.equal(normalized[0]?.contentBlock?.kind, 'text');
+  assert.equal(normalized[0]?.contentBlock?.text, 'Array-wrapped final reply.');
+  assert.equal(normalized[1]?.kind, 'result');
+  assert.equal(normalized[1]?.sequence.segmentIndex, 1);
+});
+
 test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands final result segments into canonical content blocks before the result', () => {
   const normalized = buildNormalizedRuntimeDeliveryEventsFromStreamEvent({
     conversationId: 'conversation-3c',
@@ -287,6 +311,61 @@ test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands final result s
   assert.equal(normalized[1]?.contentBlock?.text, 'Done after tool.');
   assert.equal(normalized[2]?.kind, 'result');
   assert.equal(normalized[2]?.sequence.segmentIndex, 2);
+});
+
+test('buildRuntimeDeliveryContentBlocksFromResultPayload expands Claude-style content arrays with tool metadata aliases', () => {
+  const blocks = buildRuntimeDeliveryContentBlocksFromResultPayload({
+    content: [
+      { type: 'tool_use', id: 'claude-tool-1', name: 'read_file' },
+      { type: 'tool_result', tool_use_id: 'claude-tool-1', content: 'file contents' },
+      { type: 'text', text: 'Claude saw value 7.' },
+    ],
+  });
+
+  assert.deepEqual(blocks, [
+    {
+      id: 'result-block-0',
+      index: 0,
+      kind: 'tool',
+      status: 'complete',
+      title: 'read_file',
+      text: '',
+      toolName: 'read_file',
+      toolId: 'claude-tool-1',
+      metadata: {
+        source: 'runtime_result',
+        segmentKind: 'tool_use',
+      },
+    },
+    {
+      id: 'result-block-1',
+      index: 1,
+      kind: 'tool',
+      status: 'complete',
+      title: null,
+      text: 'file contents',
+      toolName: null,
+      toolId: 'claude-tool-1',
+      metadata: {
+        source: 'runtime_result',
+        segmentKind: 'tool_result',
+      },
+    },
+    {
+      id: 'result-block-2',
+      index: 2,
+      kind: 'text',
+      status: 'complete',
+      title: null,
+      text: 'Claude saw value 7.',
+      toolName: null,
+      toolId: null,
+      metadata: {
+        source: 'runtime_result',
+        segmentKind: 'text',
+      },
+    },
+  ]);
 });
 
 test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands nested result segment payloads into canonical content blocks before the result', () => {

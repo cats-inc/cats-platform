@@ -168,6 +168,47 @@ test('runtime client synthesizes a text segment from coarse result-only delivery
   }
 });
 
+test('runtime client synthesizes a text segment from content-array result delivery', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      return new Response(
+        [
+          JSON.stringify({
+            type: 'result',
+            content: [{ type: 'output_text', text: 'final content-array reply' }],
+            usage: { inputTokens: 4, outputTokens: 6 },
+          }),
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const result = await client.sendMessage('session-1', 'hello');
+
+    assert.deepEqual(result, {
+      segments: [{ kind: 'text', text: 'final content-array reply', toolName: null, toolId: null }],
+      inputTokens: 4,
+      outputTokens: 6,
+      tokensUsed: 10,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('runtime client appends final result text after tool-only delivery events', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
