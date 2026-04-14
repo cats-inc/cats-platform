@@ -196,6 +196,18 @@ function resolveExecutionResponseMessages(
     });
 }
 
+function resolveSourceMessageBody(
+  channel: ChatChannelState,
+  sourceMessageId: string,
+): string | null {
+  const sourceMessage = channel.messages.find((message) => message.id === sourceMessageId);
+  if (!sourceMessage) {
+    return null;
+  }
+
+  return sourceMessage.body;
+}
+
 function matchesSessionStartedParticipant(
   message: ChatMessage,
   participant: RoomRoutingParticipantRef,
@@ -380,6 +392,9 @@ export function projectChatChannelInteractionToCore(
         metadata: {
           channelId,
           sourceMessageId: turn.sourceMessageId,
+          sourceSenderKind: turn.sourceSenderKind,
+          sourceSenderName: turn.sourceSenderName,
+          sourceMessageBody: resolveSourceMessageBody(channel, turn.sourceMessageId),
           workflowShape: turn.workflowShape,
           workflowStageId: turn.stageId,
           reviewRequired: turn.reviewRequired,

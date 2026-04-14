@@ -309,6 +309,7 @@ test('chatStore.write projects sequential audience order into canonical lane ord
   const turn = readLatestConversationTurn(core, conversationId);
   assert.ok(turn);
   assert.equal(turn.metadata.workflowShape, 'sequential');
+  assert.equal(turn.metadata.sourceMessageBody, 'Handle this in audience order.');
 
   const lanes = readOrderedTurnLanes(core, turn.id);
   assert.deepEqual(
@@ -467,6 +468,97 @@ test('resumeWorkflowContinuationReplay persists canonical interaction records fo
   assert.equal(
     core.sessions.find((session) => session.turnId === turn.id)?.id,
     'session-agent-2',
+  );
+});
+
+test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff source from canonical segments', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('Agent-1 completed the first step.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 take the first pass.' },
+    runtimeClient,
+    new Date('2026-04-15T00:18:00.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const sourceMessage = requireChannel(dispatched.state, channelId).messages.find((message) =>
+    message.senderName === 'Agent-1'
+    && message.metadata?.event === 'assistant_turn_segment');
+  assert.ok(sourceMessage);
+
+  const brokenState = structuredClone(dispatched.state);
+  const brokenChannel = requireChannel(brokenState, channelId);
+  brokenChannel.messages = brokenChannel.messages.filter((message) => message.id !== sourceMessage.id);
+  const canonicalCore = await store.readCore();
+  let replayState = structuredClone(brokenState);
+  let replayCore = structuredClone(canonicalCore);
+
+  const replayStore = {
+    async read() {
+      return structuredClone(replayState);
+    },
+    async write(nextState) {
+      replayState = structuredClone(nextState);
+      return structuredClone(replayState);
+    },
+    async readCore() {
+      return structuredClone(replayCore);
+    },
+    async writeCore(nextCore) {
+      replayCore = structuredClone(nextCore);
+      return structuredClone(replayCore);
+    },
+  };
+
+  const replayRuntimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      assert.match(content, /Latest routed handoff:\nAgent-1 completed the first step\./u);
+      return usage('Agent-2 resumed from the canonical handoff.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const result = await resumeWorkflowContinuationReplay({
+    request: buildWorkflowContinuationReplayRequest({
+      channelId,
+      checkpointId: 'checkpoint-replay-canonical-segment',
+      sourceMessageId: sourceMessage.id,
+      sourceParticipant: {
+        participantKind: 'cat',
+        participantId: agent1Id,
+        participantName: 'Agent-1',
+      },
+      targets: [
+        {
+          participantKind: 'cat',
+          participantId: agent2Id,
+          participantName: 'Agent-2',
+        },
+      ],
+      branchStrategy: 'transplant_context',
+      workflowStageId: 'continuation_handoff',
+      workflowShape: 'sequential',
+      recordedAt: '2026-04-15T00:18:30.000Z',
+    }),
+    chatStore: replayStore,
+    runtimeClient: replayRuntimeClient,
+    now: new Date('2026-04-15T00:19:00.000Z'),
+  });
+
+  assert.equal(result.status, 'dispatched');
+  assert.ok(
+    requireChannel(replayState, channelId).messages.some((message) =>
+      message.body === 'Agent-2 resumed from the canonical handoff.'),
   );
 });
 
