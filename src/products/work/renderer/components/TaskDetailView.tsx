@@ -8,7 +8,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkTaskDetailProjection } from '../../api/projection.js';
-import { buildChannelPath } from '../../shared/channelPaths.js';
+import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
+import { readCatIdFromActorId } from '../actorLinks.js';
 import { fetchWorkTaskDetail } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -226,22 +227,48 @@ export function TaskDetailView() {
                 <span>Updated: {formatTimestamp(payload.task.updatedAt)}</span>
               </div>
               <div className="operatorMetaRow">
+                <span>Assigned: {compactList(payload.assignedActors.map((actor) => actor.displayName))}</span>
+                <span>Task: {payload.task.id}</span>
+              </div>
+              <div className="operatorMetaRow">
                 <span>Actions: {compactList(payload.controlPlane.nextActions.map((action) => action.kind))}</span>
                 <span>Attention: {compactList(payload.controlPlane.attention.reasons)}</span>
               </div>
-              {payload.conversation?.sourceChannelId ? (
-                <button
-                  type="button"
-                  className="operatorActionButton"
-                  onClick={() => {
-                    startTransition(() => {
-                      navigate(buildChannelPath(payload.conversation!.sourceChannelId!));
-                    });
-                  }}
-                >
-                  Open chat thread
-                </button>
-              ) : null}
+              <div className="workWarRoomHeaderActions">
+                {payload.conversation?.sourceChannelId ? (
+                  <button
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      startTransition(() => {
+                        navigate(buildChannelPath(payload.conversation!.sourceChannelId!));
+                      });
+                    }}
+                  >
+                    Open chat thread
+                  </button>
+                ) : null}
+                {payload.assignedActors
+                  .map((actor) => ({
+                    ...actor,
+                    catId: readCatIdFromActorId(actor.actorId),
+                  }))
+                  .filter((actor): actor is typeof actor & { catId: string } => actor.catId !== null)
+                  .map((actor) => (
+                    <button
+                      key={actor.actorId}
+                      type="button"
+                      className="operatorActionButton"
+                      onClick={() => {
+                        startTransition(() => {
+                          navigate(buildMyCatPath(actor.catId));
+                        });
+                      }}
+                    >
+                      Open {actor.displayName}
+                    </button>
+                  ))}
+              </div>
             </article>
           </section>
 

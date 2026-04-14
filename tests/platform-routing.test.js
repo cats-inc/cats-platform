@@ -150,6 +150,22 @@ test('Work projections preserve briefing-thread channel links from shared conver
   const projectId = 'project-work-briefing';
   const taskId = 'task-work-briefing';
   const workItemId = 'work-item-work-briefing';
+  core.actors.push({
+    id: 'actor-cat-work-reviewer',
+    name: 'Work Reviewer',
+    kind: 'worker',
+    status: 'active',
+    roles: ['reviewer'],
+    skillProfile: null,
+    mcpProfile: null,
+    defaultExecutionTarget: null,
+    memory: { summary: null, facts: [], openLoops: [], updatedAt: null },
+    source: 'core_record',
+    sourceId: 'work-reviewer',
+    createdAt: '2026-04-15T05:59:00.000Z',
+    updatedAt: '2026-04-15T05:59:00.000Z',
+    archivedAt: null,
+  });
 
   core.conversations.push({
     id: conversationId,
@@ -185,7 +201,7 @@ test('Work projections preserve briefing-thread channel links from shared conver
     parentTaskId: null,
     ownerActorId: core.ownerProfile.actorId,
     orchestratorActorId: null,
-    assignedActorIds: [],
+    assignedActorIds: ['actor-cat-work-reviewer'],
     summary: 'Follow the briefing thread.',
     approval: {
       status: 'not_requested',
@@ -225,4 +241,6 @@ test('Work projections preserve briefing-thread channel links from shared conver
   assert.equal(projectDetail.primaryConversation?.sourceChannelId, sourceChannelId);
   assert.equal(workItemDetail.conversation?.sourceChannelId, sourceChannelId);
   assert.equal(taskDetail.conversation?.sourceChannelId, sourceChannelId);
+  assert.equal(taskDetail.assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
+  assert.equal(taskDetail.assignedActors[0]?.displayName, 'Work Reviewer');
 });

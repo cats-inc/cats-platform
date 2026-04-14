@@ -264,6 +264,10 @@ export interface WorkTaskDetailProjection {
   };
   task: CoreTaskRecord;
   conversation: CoreConversationRecord | null;
+  assignedActors: Array<{
+    actorId: string;
+    displayName: string;
+  }>;
   inspection: CoreTaskInspectionView;
   controlPlane: CoreTaskControlPlaneView;
   recovery: CoreTaskRecoveryView;
@@ -752,6 +756,10 @@ export function buildWorkTaskDetailProjection(
   const conversation = task.conversationId
     ? core.conversations.find((candidate) => candidate.id === task.conversationId) ?? null
     : null;
+  const assignedActors = task.assignedActorIds.map((actorId) => ({
+    actorId,
+    displayName: resolveActorName(core, actorId),
+  }));
 
   return {
     product: {
@@ -760,6 +768,7 @@ export function buildWorkTaskDetailProjection(
     },
     task,
     conversation,
+    assignedActors,
     inspection: buildCoreTaskInspectionView(core, task),
     controlPlane: buildCoreTaskControlPlaneView(core, task),
     recovery: buildCoreTaskRecoveryView(core, task),

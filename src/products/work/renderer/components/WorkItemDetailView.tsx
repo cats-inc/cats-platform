@@ -7,7 +7,8 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { WorkWorkItemDetailProjection } from '../../api/projection.js';
-import { buildChannelPath } from '../../shared/channelPaths.js';
+import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
+import { readCatIdFromActorId } from '../actorLinks.js';
 import { fetchWorkItemDetail } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -186,19 +187,41 @@ export function WorkItemDetailView() {
                 <span>Assigned: {compactList(payload.assignedActors.map((actor) => actor.displayName))}</span>
                 <span>Artifacts: {payload.artifacts.readyCount} ready / {payload.artifacts.totalCount} total</span>
               </div>
-              {payload.conversation?.sourceChannelId ? (
-                <button
-                  type="button"
-                  className="operatorActionButton"
-                  onClick={() => {
-                    startTransition(() => {
-                      navigate(buildChannelPath(payload.conversation!.sourceChannelId!));
-                    });
-                  }}
-                >
-                  Open briefing thread
-                </button>
-              ) : null}
+              <div className="workWarRoomHeaderActions">
+                {payload.conversation?.sourceChannelId ? (
+                  <button
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      startTransition(() => {
+                        navigate(buildChannelPath(payload.conversation!.sourceChannelId!));
+                      });
+                    }}
+                  >
+                    Open briefing thread
+                  </button>
+                ) : null}
+                {payload.assignedActors
+                  .map((actor) => ({
+                    ...actor,
+                    catId: readCatIdFromActorId(actor.actorId),
+                  }))
+                  .filter((actor): actor is typeof actor & { catId: string } => actor.catId !== null)
+                  .map((actor) => (
+                    <button
+                      key={actor.actorId}
+                      type="button"
+                      className="operatorActionButton"
+                      onClick={() => {
+                        startTransition(() => {
+                          navigate(buildMyCatPath(actor.catId));
+                        });
+                      }}
+                    >
+                      Open {actor.displayName}
+                    </button>
+                  ))}
+              </div>
             </article>
           </section>
 
