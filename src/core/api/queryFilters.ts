@@ -4,6 +4,7 @@ import {
   CORE_MEMORY_MAINTENANCE_TRIGGERS,
   type CoreMemoryMaintenanceQuery,
 } from '../memoryMaintenance.js';
+import type { CoreActorWorkloadProjectionQuery } from '../actorWorkloadProjection.js';
 import type { CoreManagedWorkProjectionQuery } from '../managedWorkProjection.js';
 import type { CoreMissionRunProjectionQuery } from '../missionRunProjection.js';
 import {
@@ -40,6 +41,9 @@ import {
   type CoreTaskTimelineQuery,
 } from '../taskTimeline.js';
 import {
+  CORE_ACTOR_KINDS,
+  CORE_ACTOR_SOURCES,
+  CORE_ACTOR_STATUSES,
   CORE_MISSION_STATUSES,
   CORE_RUN_STATUSES,
   CORE_TRANSPORT_BINDING_PLATFORMS,
@@ -393,6 +397,32 @@ export function readManagedWorkProjectionQuery(
     hasTask: readBooleanQuery(searchParams, 'hasTask'),
     hasMission: readBooleanQuery(searchParams, 'hasMission'),
     hasRun: readBooleanQuery(searchParams, 'hasRun'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readActorWorkloadProjectionQuery(
+  searchParams: URLSearchParams,
+): CoreActorWorkloadProjectionQuery {
+  return {
+    actorKinds: readEnumQueryValues(searchParams, 'actorKind', CORE_ACTOR_KINDS),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_ACTOR_STATUSES),
+    sources: readEnumQueryValues(searchParams, 'source', CORE_ACTOR_SOURCES),
+    missionStatuses: readEnumQueryValues(
+      searchParams,
+      'missionStatus',
+      CORE_MISSION_STATUSES,
+    ),
+    platforms: readEnumQueryValues(
+      searchParams,
+      'platform',
+      CORE_TRANSPORT_BINDING_PLATFORMS,
+    ),
+    hasActiveParticipant: readBooleanQuery(searchParams, 'hasActiveParticipant'),
+    hasManagedWork: readBooleanQuery(searchParams, 'hasManagedWork'),
+    hasMission: readBooleanQuery(searchParams, 'hasMission'),
+    hasTransport: readBooleanQuery(searchParams, 'hasTransport'),
+    hasActiveSession: readBooleanQuery(searchParams, 'hasActiveSession'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

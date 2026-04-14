@@ -9,8 +9,10 @@ import { createServer } from '../build/server/app/server/index.js';
 import { MemoryCoreStore } from '../build/server/core/store.js';
 import {
   createDefaultCoreState,
+  upsertCoreActor,
   upsertCoreConversation,
   upsertCoreMission,
+  upsertCoreParticipant,
   upsertCoreProject,
   upsertCoreRun,
   upsertCoreSession,
@@ -82,6 +84,30 @@ function createRuntimeStub() {
 function createProjectionCoreState() {
   let core = createDefaultCoreState();
 
+  core = upsertCoreActor(
+    core,
+    {
+      id: 'actor-agent-1',
+      name: 'Ops Cat',
+      kind: 'worker',
+      source: 'core_record',
+      createdAt: '2026-04-15T00:59:59.000Z',
+    },
+    new Date('2026-04-15T00:59:59.000Z'),
+  ).core;
+
+  core = upsertCoreActor(
+    core,
+    {
+      id: 'actor-agent-2',
+      name: 'Review Cat',
+      kind: 'worker',
+      source: 'core_record',
+      createdAt: '2026-04-15T00:59:59.500Z',
+    },
+    new Date('2026-04-15T00:59:59.500Z'),
+  ).core;
+
   core = upsertCoreConversation(
     core,
     {
@@ -128,6 +154,18 @@ function createProjectionCoreState() {
       createdAt: '2026-04-15T01:00:03.000Z',
     },
     new Date('2026-04-15T01:00:03.000Z'),
+  ).core;
+
+  core = upsertCoreParticipant(
+    core,
+    {
+      id: 'participant-1',
+      conversationId: 'conversation-1',
+      agentId: 'actor-agent-1',
+      status: 'active',
+      joinedAt: '2026-04-15T01:00:03.500Z',
+    },
+    new Date('2026-04-15T01:00:03.500Z'),
   ).core;
 
   core = upsertCoreWorkItem(
@@ -237,6 +275,8 @@ function createProjectionCoreState() {
     {
       id: 'session-1',
       conversationId: 'conversation-1',
+      participantId: 'participant-1',
+      agentId: 'actor-agent-1',
       transportBindingId: 'transport-binding-1',
       status: 'active',
       createdAt: '2026-04-15T01:00:11.000Z',
@@ -306,6 +346,14 @@ test('projection routes support filtered control-plane queries', async () => {
     const missionRunsPayload = await missionRunsResponse.json();
     assert.equal(missionRunsPayload.items.length, 1);
     assert.equal(missionRunsPayload.items[0].mission.id, 'mission-2');
+
+    const actorWorkloadResponse = await fetch(
+      `${baseUrl}/api/core/actor-workload?actorKind=worker&hasMission=true&hasActiveSession=true`,
+    );
+    assert.equal(actorWorkloadResponse.status, 200);
+    const actorWorkloadPayload = await actorWorkloadResponse.json();
+    assert.equal(actorWorkloadPayload.items.length, 1);
+    assert.equal(actorWorkloadPayload.items[0].actor.id, 'actor-agent-1');
 
     const transportStateResponse = await fetch(
       `${baseUrl}/api/core/transport-state?platform=telegram&activeSession=true`,

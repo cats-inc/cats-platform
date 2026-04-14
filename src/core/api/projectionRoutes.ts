@@ -1,7 +1,9 @@
+import { buildActorWorkloadProjection } from '../actorWorkloadProjection.js';
 import { buildManagedWorkProjection } from '../managedWorkProjection.js';
 import { buildMissionRunProjection } from '../missionRunProjection.js';
 import { buildTransportStateProjection } from '../transportStateProjection.js';
 import {
+  readActorWorkloadProjectionQuery,
   readManagedWorkProjectionQuery,
   readMissionRunProjectionQuery,
   readTransportStateProjectionQuery,
@@ -16,6 +18,14 @@ async function handleCoreManagedWork(
   const core = await context.dependencies.coreStore.readCore();
   const query = readManagedWorkProjectionQuery(context.url.searchParams);
   sendJson(context.response, 200, buildManagedWorkProjection(core, query));
+}
+
+async function handleCoreActorWorkload(
+  context: CoreApiRouteContext,
+): Promise<void> {
+  const core = await context.dependencies.coreStore.readCore();
+  const query = readActorWorkloadProjectionQuery(context.url.searchParams);
+  sendJson(context.response, 200, buildActorWorkloadProjection(core, query));
 }
 
 async function handleCoreMissionRuns(
@@ -44,6 +54,19 @@ export async function routeCoreProjectionApi(
     }
     try {
       await handleCoreManagedWork(context);
+    } catch (error) {
+      handleCoreError(context, error);
+    }
+    return true;
+  }
+
+  if (context.url.pathname === '/api/core/actor-workload') {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    try {
+      await handleCoreActorWorkload(context);
     } catch (error) {
       handleCoreError(context, error);
     }
