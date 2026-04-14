@@ -1622,6 +1622,187 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
   );
 });
 
+test('applyChannelReadRepairs upgrades a surviving terminal segment to the full canonical reply', async () => {
+  const { state, channelId, agent1Id } = await createGroupChannelState();
+  const seededAt = new Date('2026-04-15T00:34:00.000Z');
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return {
+        segments: [
+          {
+            kind: 'text',
+            text: 'Agent-1 completed the first step. ',
+            toolName: null,
+            toolId: null,
+          },
+          {
+            kind: 'text',
+            text: 'Implementation notes included.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 11,
+        outputTokens: 9,
+        tokensUsed: 20,
+      };
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 take the first pass.' },
+    runtimeClient,
+    seededAt,
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+  const canonicalCore = await store.readCore();
+
+  const sourceMessages = requireChannel(dispatched.state, channelId).messages.filter((message) =>
+    message.senderName === 'Agent-1'
+    && message.metadata?.event === 'assistant_turn_segment');
+  assert.equal(sourceMessages.length, 2);
+  const survivingTerminalMessage = sourceMessages.at(-1);
+  assert.ok(survivingTerminalMessage);
+
+  const corruptedState = structuredClone(dispatched.state);
+  const corruptedChannel = requireChannel(corruptedState, channelId);
+  corruptedChannel.messages = corruptedChannel.messages.filter((message) =>
+    message.id === survivingTerminalMessage.id
+    || message.metadata?.assistantTurnId !== survivingTerminalMessage.metadata?.assistantTurnId);
+  const participantAssignments = corruptedChannel.participantAssignments ?? [];
+  const agent1Participant = participantAssignments.find((assignment) =>
+    assignment.sourceKind === 'cat' && assignment.sourceRefId === agent1Id);
+  assert.ok(agent1Participant);
+  const interruptedTurn = structuredClone(corruptedChannel.roomRouting.workflow.turnHistory[0]);
+  assert.ok(interruptedTurn);
+  interruptedTurn.status = 'blocked';
+  interruptedTurn.stageId = 'startup_recovery';
+  interruptedTurn.completedAt = survivingTerminalMessage.createdAt;
+  interruptedTurn.updatedAt = survivingTerminalMessage.createdAt;
+  interruptedTurn.targetStatuses = [];
+  interruptedTurn.events = interruptedTurn.events.filter((event) =>
+    event.kind === 'turn_started' || event.kind === 'checkpoint');
+  interruptedTurn.events.push(
+    {
+      id: 'guard-blocked-surviving-terminal-segment',
+      turnId: interruptedTurn.id,
+      kind: 'guard_blocked',
+      status: 'blocked',
+      message: 'Recovered an interrupted room workflow after restart.',
+      actor: null,
+      sourceMessageId: null,
+      targets: [],
+      dispatchId: null,
+      checkpointId: 'loop-guard-surviving-terminal-segment',
+      outcomeId: null,
+      createdAt: survivingTerminalMessage.createdAt,
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+    {
+      id: 'outcome-blocked-surviving-terminal-segment',
+      turnId: interruptedTurn.id,
+      kind: 'outcome',
+      status: 'blocked',
+      message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+      actor: null,
+      sourceMessageId: interruptedTurn.sourceMessageId,
+      targets: [],
+      dispatchId: null,
+      checkpointId: null,
+      outcomeId: null,
+      createdAt: survivingTerminalMessage.createdAt,
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+  );
+  corruptedChannel.roomRouting.workflow.activeTurn = null;
+  corruptedChannel.roomRouting.workflow.turnHistory = [interruptedTurn];
+  corruptedChannel.roomRouting.lastCheckpoint = {
+    id: 'loop-guard-surviving-terminal-segment',
+    kind: 'loop_guard',
+    message: 'Recovered an interrupted room workflow after restart.',
+    actor: null,
+    sourceMessageId: null,
+    targets: [],
+    createdAt: survivingTerminalMessage.createdAt,
+  };
+  corruptedChannel.roomRouting.lastOutcome = {
+    turnId: interruptedTurn.id,
+    mode: corruptedChannel.roomRouting.mode,
+    sourceMessageId: interruptedTurn.sourceMessageId,
+    sourceSenderKind: interruptedTurn.sourceSenderKind,
+    sourceSenderName: interruptedTurn.sourceSenderName,
+    status: 'blocked',
+    resolution: {
+      routingMode: 'explicit_single',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    },
+    resolvedTargets: [
+      {
+        participantKind: 'cat',
+        participantId: agent1Participant.participantId,
+        participantName: agent1Participant.name,
+      },
+    ],
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 0,
+    guard: null,
+    startedAt: interruptedTurn.startedAt,
+    completedAt: interruptedTurn.completedAt,
+  };
+
+  const directRepair = repairOrphanedCompletedDispatchTurn(
+    corruptedState,
+    channelId,
+    new Date('2026-04-15T00:34:15.000Z'),
+    canonicalCore,
+  );
+  assert.equal(directRepair.repaired, true);
+  const directlyRepairedChannel = requireChannel(directRepair.state, channelId);
+  const directlyRepairedResponses = directlyRepairedChannel.messages.filter((message) =>
+    message.metadata?.assistantTurnId === survivingTerminalMessage.metadata?.assistantTurnId);
+  assert.equal(directlyRepairedResponses.length, 1);
+  assert.match(
+    directlyRepairedResponses[0]?.body ?? '',
+    /Agent-1 completed the first step\. ?Implementation notes included\./u,
+  );
+
+  const repaired = applyChannelReadRepairs(corruptedState, channelId, {
+    core: canonicalCore,
+    now: new Date('2026-04-15T00:34:30.000Z'),
+  });
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const repairedResponses = repairedChannel.messages.filter((message) =>
+    message.metadata?.assistantTurnId === survivingTerminalMessage.metadata?.assistantTurnId);
+  assert.equal(repairedResponses.length, 1);
+  assert.equal(repairedResponses[0]?.id, survivingTerminalMessage.id);
+  assert.match(
+    repairedResponses[0]?.body ?? '',
+    /Agent-1 completed the first step\. ?Implementation notes included\./u,
+  );
+  assert.equal(repairedChannel.roomRouting.workflow.activeTurn, null);
+  assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'completed');
+  assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'completed');
+});
+
 test('repairOrphanedCompletedDispatchTurn keeps a concurrent turn active when canonical core still has another live lane', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const store = new MemoryChatStore();

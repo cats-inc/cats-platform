@@ -82,6 +82,17 @@ function readRuntimeResponseForTurn(
     if (!response) {
       return null;
     }
+    const transcriptResponse = {
+      message: terminalSegment,
+      response,
+    };
+    if (!core) {
+      return transcriptResponse;
+    }
+    const canonicalResponse = buildCanonicalRuntimeResponseForTurn(channelId, turnId, core);
+    if (shouldPreferCanonicalRuntimeResponse(transcriptResponse, canonicalResponse)) {
+      return canonicalResponse;
+    }
     return {
       message: terminalSegment,
       response,
@@ -93,6 +104,38 @@ function readRuntimeResponseForTurn(
   }
 
   return buildCanonicalRuntimeResponseForTurn(channelId, turnId, core);
+}
+
+function shouldPreferCanonicalRuntimeResponse(
+  transcriptResponse: {
+    message: ChatMessage;
+    response: RoomAssistantTurnDelivery;
+  },
+  canonicalResponse: {
+    message: ChatMessage;
+    response: RoomAssistantTurnDelivery;
+  } | null,
+): canonicalResponse is {
+  message: ChatMessage;
+  response: RoomAssistantTurnDelivery;
+} {
+  if (!canonicalResponse) {
+    return false;
+  }
+
+  const transcriptAssistantTurnId = readAssistantTurnId(transcriptResponse.message);
+  const canonicalAssistantTurnId = readAssistantTurnId(canonicalResponse.message);
+  if (!transcriptAssistantTurnId || transcriptAssistantTurnId !== canonicalAssistantTurnId) {
+    return false;
+  }
+
+  if (canonicalResponse.response.segmentCount > transcriptResponse.response.segmentCount) {
+    return true;
+  }
+
+  const transcriptText = transcriptResponse.response.fullText.trim();
+  const canonicalText = canonicalResponse.response.fullText.trim();
+  return canonicalText.length > transcriptText.length && canonicalText.includes(transcriptText);
 }
 
 function buildCanonicalRuntimeResponseForTurn(
@@ -796,22 +839,68 @@ function hasRecoveredResponseMessage(
   channel: ChatChannelState,
   responseMessage: ChatMessage,
 ): boolean {
-  if (channel.messages.some((message) => message.id === responseMessage.id)) {
-    return true;
-  }
-
   const assistantTurnId = readAssistantTurnId(responseMessage);
   if (!assistantTurnId) {
+    return channel.messages.some((message) => message.id === responseMessage.id);
+  }
+
+  const matchingMessages = channel.messages.filter((message) =>
+    readAssistantTurnId(message) === assistantTurnId);
+  if (matchingMessages.length === 0) {
     return false;
   }
 
-  return channel.messages.some((message) => readAssistantTurnId(message) === assistantTurnId);
+  if (matchingMessages.length > 1) {
+    return true;
+  }
+
+  return !canUpgradeRecoveredResponseMessage(matchingMessages[0] ?? null, responseMessage);
+}
+
+function canUpgradeRecoveredResponseMessage(
+  existingMessage: ChatMessage | null,
+  recoveredMessage: ChatMessage,
+): boolean {
+  if (!existingMessage || !isAssistantTurnSegmentMessage(existingMessage)) {
+    return false;
+  }
+
+  const existingAssistantTurnId = readAssistantTurnId(existingMessage);
+  const recoveredAssistantTurnId = readAssistantTurnId(recoveredMessage);
+  if (!existingAssistantTurnId || existingAssistantTurnId !== recoveredAssistantTurnId) {
+    return false;
+  }
+
+  const existingText = existingMessage.body.trim();
+  const recoveredText = recoveredMessage.body.trim();
+  return recoveredText.length > existingText.length && recoveredText.includes(existingText);
 }
 
 function insertRecoveredResponseMessage(
   channel: ChatChannelState,
   responseMessage: ChatMessage,
 ): boolean {
+  const assistantTurnId = readAssistantTurnId(responseMessage);
+  if (assistantTurnId) {
+    const matchingIndices = channel.messages.flatMap((message, index) =>
+      readAssistantTurnId(message) === assistantTurnId ? [index] : []);
+    if (matchingIndices.length === 1) {
+      const existingIndex = matchingIndices[0] ?? -1;
+      const existingMessage = existingIndex >= 0
+        ? channel.messages[existingIndex] ?? null
+        : null;
+      if (existingIndex >= 0 && canUpgradeRecoveredResponseMessage(existingMessage, responseMessage)) {
+        channel.messages[existingIndex] = {
+          ...structuredClone(responseMessage),
+          id: existingMessage?.id ?? responseMessage.id,
+          createdAt: existingMessage?.createdAt ?? responseMessage.createdAt,
+        };
+        channel.lastMessageAt = channel.messages[channel.messages.length - 1]?.createdAt ?? channel.lastMessageAt;
+        return true;
+      }
+    }
+  }
+
   if (hasRecoveredResponseMessage(channel, responseMessage)) {
     return false;
   }
