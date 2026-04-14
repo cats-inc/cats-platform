@@ -7,12 +7,18 @@ import type {
   CoreArtifactKind,
   CoreArtifactStatus,
   CoreCheckpointStatus,
+  LaneRecordStatus,
+  SegmentRecordKind,
+  SegmentRecordStatus,
+  SessionRecordStatus,
   CoreOrchestrationOutcomeStatus,
   CoreProjectStatus,
   CoreRecordMetadata,
   CoreRunStatus,
   CoreTaskStatus,
   CoreTraceKind,
+  TurnRecordKind,
+  TurnRecordStatus,
   CoreWorkItemStatus,
 } from '../types.js';
 
@@ -95,6 +101,63 @@ export interface CoreRunWriteInput {
   orchestratorActorId?: string | null;
   traceId?: string | null;
   summary?: string | null;
+  createdAt?: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreTurnWriteInput {
+  id?: string;
+  conversationId: string;
+  kind?: TurnRecordKind;
+  status?: TurnRecordStatus;
+  sourceParticipantId?: string | null;
+  createdAt?: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreLaneWriteInput {
+  id?: string;
+  turnId: string;
+  conversationId: string;
+  participantId?: string | null;
+  agentId?: string | null;
+  orderIndex?: number;
+  status?: LaneRecordStatus;
+  createdAt?: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreSegmentWriteInput {
+  id?: string;
+  laneId: string;
+  turnId: string;
+  conversationId: string;
+  sessionId?: string | null;
+  sequence?: number;
+  kind?: SegmentRecordKind;
+  status?: SegmentRecordStatus;
+  content?: string | null;
+  createdAt?: string;
+  completedAt?: string | null;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreSessionWriteInput {
+  id?: string;
+  conversationId: string;
+  turnId?: string | null;
+  laneId?: string | null;
+  participantId?: string | null;
+  agentId?: string | null;
+  transportBindingId?: string | null;
+  runtimeKey?: string | null;
+  status?: SessionRecordStatus;
   createdAt?: string;
   startedAt?: string | null;
   completedAt?: string | null;

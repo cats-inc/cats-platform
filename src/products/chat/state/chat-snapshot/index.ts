@@ -7,6 +7,7 @@ import type {
   AssistantPresetRecord,
   ArchiveMetadataRecord,
   BotBindingRecord,
+  ContainerRecord,
   CoreActivityRecord,
   CoreActorRecord,
   CoreApprovalBindingRecord,
@@ -20,6 +21,13 @@ import type {
   CoreTraceRecord,
   CoreWorkItemRecord,
   DurableMemoryRecord,
+  LaneRecord,
+  MissionRecord,
+  ParticipantRecord,
+  SegmentRecord,
+  SessionRecord,
+  TransportBindingRecord,
+  TurnRecord,
 } from '../../../../core/types.js';
 import {
   createDefaultChatState,
@@ -30,6 +38,7 @@ import {
   normalizeAssistantPresetRecord,
   normalizeArchiveMetadata,
   normalizeBotBinding,
+  normalizeContainerRecord,
   normalizeCoreActivity,
   normalizeCoreActor,
   normalizeCoreApprovalBinding,
@@ -44,7 +53,14 @@ import {
   normalizeCoreWorkItem,
   normalizeDurableMemoryRecord,
   normalizeGuideCatRecord,
+  normalizeLaneRecord,
+  normalizeMissionRecord,
   normalizeOwnerProfile,
+  normalizeParticipantRecord,
+  normalizeSegmentRecord,
+  normalizeSessionRecord,
+  normalizeTransportBindingRecord,
+  normalizeTurnRecord,
 } from '../core-snapshot/index.js';
 import {
   looksLikeChatState,
@@ -152,6 +168,36 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
         .map((conversation) => normalizeCoreConversation(conversation))
         .filter((conversation): conversation is CoreConversationRecord => conversation !== null)
     : [];
+  const participants = Array.isArray(stateRecord.participants)
+    ? stateRecord.participants
+        .map((participant) => normalizeParticipantRecord(participant))
+        .filter((participant): participant is ParticipantRecord => participant !== null)
+    : [];
+  const containers = Array.isArray(stateRecord.containers)
+    ? stateRecord.containers
+        .map((container) => normalizeContainerRecord(container))
+        .filter((container): container is ContainerRecord => container !== null)
+    : [];
+  const turns = Array.isArray(stateRecord.turns)
+    ? stateRecord.turns
+        .map((turn) => normalizeTurnRecord(turn))
+        .filter((turn): turn is TurnRecord => turn !== null)
+    : [];
+  const lanes = Array.isArray(stateRecord.lanes)
+    ? stateRecord.lanes
+        .map((lane) => normalizeLaneRecord(lane))
+        .filter((lane): lane is LaneRecord => lane !== null)
+    : [];
+  const segments = Array.isArray(stateRecord.segments)
+    ? stateRecord.segments
+        .map((segment) => normalizeSegmentRecord(segment))
+        .filter((segment): segment is SegmentRecord => segment !== null)
+    : [];
+  const sessions = Array.isArray(stateRecord.sessions)
+    ? stateRecord.sessions
+        .map((session) => normalizeSessionRecord(session))
+        .filter((session): session is SessionRecord => session !== null)
+    : [];
   const projects = Array.isArray(stateRecord.projects)
     ? stateRecord.projects
         .map((project) => normalizeCoreProject(project))
@@ -161,6 +207,11 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
     ? stateRecord.workItems
         .map((workItem) => normalizeCoreWorkItem(workItem))
         .filter((workItem): workItem is CoreWorkItemRecord => workItem !== null)
+    : [];
+  const missions = Array.isArray(stateRecord.missions)
+    ? stateRecord.missions
+        .map((mission) => normalizeMissionRecord(mission))
+        .filter((mission): mission is MissionRecord => mission !== null)
     : [];
   const tasks = Array.isArray(stateRecord.tasks)
     ? stateRecord.tasks
@@ -205,6 +256,14 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
             approvalBinding !== null,
         )
     : [];
+  const transportBindings = Array.isArray(stateRecord.transportBindings)
+    ? stateRecord.transportBindings
+        .map((transportBinding) => normalizeTransportBindingRecord(transportBinding))
+        .filter(
+          (transportBinding): transportBinding is TransportBindingRecord =>
+            transportBinding !== null,
+        )
+    : [];
   const botBindings = Array.isArray(stateRecord.botBindings)
     ? stateRecord.botBindings
         .map((binding) => normalizeBotBinding(binding, chat))
@@ -231,9 +290,16 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
     guideCat: normalizeGuideCatRecord(stateRecord.guideCat),
     assistantPresets,
     actors,
+    participants,
+    containers,
     conversations,
+    turns,
+    lanes,
+    segments,
+    sessions,
     projects,
     workItems,
+    missions,
     tasks,
     runs,
     traces,
@@ -242,6 +308,7 @@ export function normalizePersistedChatSnapshot(rawState: unknown): PersistedChat
     artifacts,
     activities,
     approvalBindings,
+    transportBindings,
     botBindings,
     archives,
     durableMemory,

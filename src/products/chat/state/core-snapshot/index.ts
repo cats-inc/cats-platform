@@ -5,6 +5,7 @@ export {
   normalizeAssistantPresetRecord,
   normalizeArchiveMetadata,
   normalizeBotBinding,
+  normalizeContainerRecord,
   normalizeCoreActivity,
   normalizeCoreActor,
   normalizeCoreApprovalBinding,
@@ -19,7 +20,14 @@ export {
   normalizeCoreWorkItem,
   normalizeDurableMemoryRecord,
   normalizeGuideCatRecord,
+  normalizeLaneRecord,
+  normalizeMissionRecord,
   normalizeOwnerProfile,
+  normalizeParticipantRecord,
+  normalizeSegmentRecord,
+  normalizeSessionRecord,
+  normalizeTransportBindingRecord,
+  normalizeTurnRecord,
 } from './records.js';
 
 export interface PersistedChatSnapshot extends CatsCoreState {

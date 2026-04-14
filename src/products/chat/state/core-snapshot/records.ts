@@ -16,6 +16,16 @@ export {
   normalizeCoreTrace,
 } from './workflowRecords.js';
 export {
+  normalizeContainerRecord,
+  normalizeLaneRecord,
+  normalizeMissionRecord,
+  normalizeParticipantRecord,
+  normalizeSegmentRecord,
+  normalizeSessionRecord,
+  normalizeTransportBindingRecord,
+  normalizeTurnRecord,
+} from './interactionRecords.js';
+export {
   normalizeAssistantPresetRecord,
   normalizeArchiveMetadata,
   normalizeBotBinding,

@@ -764,9 +764,16 @@ export interface CatsCoreState {
   guideCat: GuideCatRecord | null;
   assistantPresets: AssistantPresetRecord[];
   actors: CoreActorRecord[];
+  participants: ParticipantRecord[];
+  containers: ContainerRecord[];
   conversations: CoreConversationRecord[];
+  turns: TurnRecord[];
+  lanes: LaneRecord[];
+  segments: SegmentRecord[];
+  sessions: SessionRecord[];
   projects: CoreProjectRecord[];
   workItems: CoreWorkItemRecord[];
+  missions: MissionRecord[];
   tasks: CoreTaskRecord[];
   runs: CoreRunRecord[];
   traces: CoreTraceRecord[];
@@ -775,6 +782,7 @@ export interface CatsCoreState {
   artifacts: CoreArtifactRecord[];
   activities: CoreActivityRecord[];
   approvalBindings: CoreApprovalBindingRecord[];
+  transportBindings: TransportBindingRecord[];
   botBindings: BotBindingRecord[];
   archives: ArchiveMetadataRecord[];
   durableMemory: DurableMemoryRecord[];
