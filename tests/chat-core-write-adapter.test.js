@@ -1151,6 +1151,163 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
   assert.equal(repairedChannel.roomRouting.lastOutcome?.dispatches[0]?.status, 'completed');
 });
 
+test('repairOrphanedCompletedDispatchTurn keeps a concurrent turn active when canonical core still has another live lane', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const seededAt = new Date('2026-04-15T00:35:00.000Z');
+  const responseAt = new Date('2026-04-15T00:35:06.000Z');
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Run both agents in parallel, but only one reply is visible so far.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id, agent2Id],
+        workflowShape: 'concurrent',
+      },
+    },
+    createNoopRuntimeClient(),
+    seededAt,
+  );
+
+  const projectedState = structuredClone(begun.state);
+  const projectedChannel = requireChannel(projectedState, channelId);
+  const activeTurn = projectedChannel.roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+  const turnStartedEvent = activeTurn.events.find((event) => event.kind === 'turn_started');
+  assert.ok(turnStartedEvent);
+
+  const agent1ParticipantId = projectedChannel.participantAssignments?.find((assignment) =>
+    assignment.sourceKind === 'cat' && assignment.sourceRefId === agent1Id)?.participantId;
+  const agent2ParticipantId = projectedChannel.participantAssignments?.find((assignment) =>
+    assignment.sourceKind === 'cat' && assignment.sourceRefId === agent2Id)?.participantId;
+  assert.ok(agent1ParticipantId);
+  assert.ok(agent2ParticipantId);
+
+  turnStartedEvent.targets = [
+    {
+      participantKind: 'cat',
+      participantId: agent1ParticipantId,
+      participantName: 'Agent-1',
+    },
+    {
+      participantKind: 'cat',
+      participantId: agent2ParticipantId,
+      participantName: 'Agent-2',
+    },
+  ];
+  activeTurn.workflowShape = 'concurrent';
+  activeTurn.targetStatuses = [
+    {
+      id: 'target-agent-1-canonical-active-peer',
+      dispatchId: 'dispatch-agent-1-canonical-active-peer',
+      participant: {
+        participantKind: 'cat',
+        participantId: agent1ParticipantId,
+        participantName: 'Agent-1',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'explicit_mention',
+      mentionNames: ['Agent-1', 'Agent-2'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'explicit_mention',
+      wakeRequestId: null,
+      status: 'completed',
+      queuedAt: seededAt.toISOString(),
+      startedAt: seededAt.toISOString(),
+      completedAt: responseAt.toISOString(),
+      response: {
+        assistantTurnId: 'assistant-turn-agent-1-canonical-active-peer',
+        messageIds: ['message-agent-1-canonical-active-peer'],
+        fullText: 'Agent-1 finished, but Agent-2 is still running.',
+        segmentCount: 1,
+      },
+      error: null,
+    },
+    {
+      id: 'target-agent-2-canonical-active-peer',
+      dispatchId: 'dispatch-agent-2-canonical-active-peer',
+      participant: {
+        participantKind: 'cat',
+        participantId: agent2ParticipantId,
+        participantName: 'Agent-2',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'explicit_mention',
+      mentionNames: ['Agent-1', 'Agent-2'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'explicit_mention',
+      wakeRequestId: null,
+      status: 'running',
+      queuedAt: seededAt.toISOString(),
+      startedAt: responseAt.toISOString(),
+      completedAt: null,
+      response: null,
+      error: null,
+    },
+  ];
+
+  const repliedState = appendMessage(
+    projectedState,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Agent-1',
+      body: 'Agent-1 finished, but Agent-2 is still running.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-agent-1-canonical-active-peer',
+        targetStateId: 'target-agent-1-canonical-active-peer',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'cat',
+        targetId: agent1ParticipantId,
+        routingTrigger: 'explicit_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  await store.write(repliedState);
+  const canonicalCore = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const turn = readLatestConversationTurn(canonicalCore, conversationId);
+  assert.ok(turn);
+  const lanes = readOrderedTurnLanes(canonicalCore, turn.id);
+  assert.deepEqual(
+    lanes.map((lane) => lane.status),
+    ['completed', 'connecting'],
+  );
+
+  const corruptedState = structuredClone(repliedState);
+  const corruptedChannel = requireChannel(corruptedState, channelId);
+  const corruptedTurn = corruptedChannel.roomRouting.workflow.activeTurn;
+  assert.ok(corruptedTurn);
+  corruptedTurn.targetStatuses = [];
+
+  const repaired = repairOrphanedCompletedDispatchTurn(
+    corruptedState,
+    channelId,
+    new Date('2026-04-15T00:35:30.000Z'),
+    canonicalCore,
+  );
+
+  assert.equal(repaired.repaired, false);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  assert.equal(repairedChannel.roomRouting.workflow.activeTurn?.id, turn.id);
+});
+
 test('repairOrphanedCompletedDispatchTurn restores final sequential target metadata from canonical lanes', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const store = new MemoryChatStore();

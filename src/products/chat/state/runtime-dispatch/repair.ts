@@ -469,6 +469,44 @@ function hasOutstandingSequentialTargetsAfterRecoveredLane(
   return recoveredTargetOrderIndex < expectedTargetCount - 1;
 }
 
+const ACTIVE_CANONICAL_LANE_STATUSES = new Set([
+  'pending',
+  'waiting',
+  'connecting',
+  'running',
+  'streaming',
+]);
+
+function doesCanonicalLaneMatchRecoveredResponse(
+  lane: LaneRecord,
+  assistantTurnId: string,
+  targetStateId: string | null,
+): boolean {
+  return (targetStateId !== null
+    && readChatCoreMetadataString(lane.metadata, 'targetStateId') === targetStateId)
+    || readChatCoreMetadataString(lane.metadata, 'responseAssistantTurnId') === assistantTurnId;
+}
+
+function hasOutstandingCanonicalLanesBeyondRecoveredResponse(
+  core: CatsCoreState | undefined,
+  channelId: string,
+  turnId: string,
+  assistantTurnId: string,
+  targetStateId: string | null,
+): boolean {
+  if (!core) {
+    return false;
+  }
+
+  const conversationId = buildChatConversationId(channelId);
+  const relevantLanes = core.lanes.filter((lane) =>
+    lane.conversationId === conversationId && lane.turnId === turnId);
+
+  return relevantLanes.some((lane) =>
+    ACTIVE_CANONICAL_LANE_STATUSES.has(lane.status)
+    && !doesCanonicalLaneMatchRecoveredResponse(lane, assistantTurnId, targetStateId));
+}
+
 function resolveDefaultTargetReason(
   channel: ChatChannelState,
   participant: RoomRoutingParticipantRef | null,
@@ -1065,6 +1103,13 @@ export function repairOrphanedCompletedDispatchTurn(
     candidateTurn
     && (
       hasOutstandingTargetsBeyondRecoveredResponse(candidateTurn, assistantTurnId, targetStateId)
+      || hasOutstandingCanonicalLanesBeyondRecoveredResponse(
+        core,
+        channelId,
+        repairTurnId,
+        assistantTurnId,
+        targetStateId,
+      )
       || hasOutstandingSequentialTargetsAfterRecoveredLane(
         candidateTurn,
         canonicalRecoveredTarget?.orderIndex ?? null,
