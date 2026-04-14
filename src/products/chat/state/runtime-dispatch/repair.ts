@@ -827,9 +827,24 @@ function readMessageSessionId(message: ChatMessage): string | null {
     : null;
 }
 
+function resolveCanonicalSessionRecord(
+  core: CatsCoreState | undefined,
+  channelId: string,
+  sessionId: string | null,
+) {
+  if (!core || !sessionId) {
+    return null;
+  }
+
+  const conversationId = buildChatConversationId(channelId);
+  return core.sessions.find((session) =>
+    session.id === sessionId && session.conversationId === conversationId) ?? null;
+}
+
 function resolveMissingSessionParticipantName(
   channel: ChatChannelState,
   responseMessage: ChatMessage,
+  core?: CatsCoreState,
 ): string {
   const targetKind = responseMessage.metadata?.targetKind;
   const targetId = typeof responseMessage.metadata?.targetId === 'string'
@@ -859,12 +874,23 @@ function resolveMissingSessionParticipantName(
     }
   }
 
+  const canonicalSession = resolveCanonicalSessionRecord(core, channel.id, readMessageSessionId(responseMessage));
+  if (canonicalSession?.laneId) {
+    const canonicalLane = core?.lanes.find((lane) =>
+      lane.id === canonicalSession.laneId && lane.conversationId === canonicalSession.conversationId) ?? null;
+    const canonicalSpeakerLabel = readChatCoreMetadataString(canonicalLane?.metadata, 'speakerLabel');
+    if (canonicalSpeakerLabel) {
+      return canonicalSpeakerLabel;
+    }
+  }
+
   return responseMessage.senderName;
 }
 
 function resolveMissingSessionCwd(
   channel: ChatChannelState,
   responseMessage: ChatMessage,
+  core?: CatsCoreState,
   runtimeDataDir?: string | null,
 ): string | null {
   const sessionId = readMessageSessionId(responseMessage);
@@ -897,6 +923,12 @@ function resolveMissingSessionCwd(
     }
   }
 
+  const canonicalSession = resolveCanonicalSessionRecord(core, channel.id, sessionId);
+  const canonicalCwd = readChatCoreMetadataString(canonicalSession?.metadata, 'leaseCwd');
+  if (canonicalCwd) {
+    return canonicalCwd;
+  }
+
   return channel.chatCwd;
 }
 
@@ -904,6 +936,7 @@ export function repairMissingSessionStartedMessages(
   state: ChatState,
   channelId: string,
   options: {
+    core?: CatsCoreState;
     runtimeDataDir?: string | null;
     now?: Date;
   } = {},
@@ -950,8 +983,17 @@ export function repairMissingSessionStartedMessages(
       continue;
     }
 
-    const cwd = resolveMissingSessionCwd(nextChannel, responseMessage, options.runtimeDataDir);
-    const participantName = resolveMissingSessionParticipantName(nextChannel, responseMessage);
+    const cwd = resolveMissingSessionCwd(
+      nextChannel,
+      responseMessage,
+      options.core,
+      options.runtimeDataDir,
+    );
+    const participantName = resolveMissingSessionParticipantName(
+      nextChannel,
+      responseMessage,
+      options.core,
+    );
     const targetKind = responseMessage.metadata?.targetKind === 'cat' ? 'cat' : 'orchestrator';
     const targetId = typeof responseMessage.metadata?.targetId === 'string'
       && responseMessage.metadata.targetId.trim().length > 0

@@ -42,6 +42,7 @@ export function applyChannelReadRepairs(
     repairedTurn.state,
     channelId,
     {
+      core: options.core,
       runtimeDataDir: options.runtimeDataDir,
       now,
     },

@@ -9,6 +9,11 @@ import {
   createChannel,
   requireChannel,
 } from '../build/server/products/chat/state/model/index.js';
+import {
+  createDefaultCoreState,
+  upsertCoreLane,
+  upsertCoreSession,
+} from '../build/server/core/model/index.js';
 import { createAsyncKeyedGate } from '../build/server/products/chat/shared/asyncControl.js';
 import {
   beginChannelMessageDispatch,
@@ -25,6 +30,7 @@ import {
   repairMissingStartupRecoveryNotice,
   repairOrphanedCompletedDispatchTurn,
 } from '../build/server/products/chat/state/runtime-dispatch/repair.js';
+import { buildChatConversationId } from '../build/server/shared/chatCoreIds.js';
 
 function createNoopRuntimeClient() {
   return {
@@ -1149,6 +1155,109 @@ test('repairMissingSessionStartedMessages restores missing runtime metadata befo
   } finally {
     await rm(runtimeDataDir, { recursive: true, force: true });
   }
+});
+
+test('repairMissingSessionStartedMessages falls back to canonical session metadata when leases drift', async () => {
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-04-09T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Canonical session metadata fallback',
+      topic: 'Restore missing session metadata from canonical records.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const conversationId = buildChatConversationId(channelId);
+
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: 'First question',
+    },
+    new Date('2026-04-09T12:00:01.000Z'),
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Fallback Agent',
+      body: 'Recovered answer',
+    },
+    new Date('2026-04-09T12:00:02.000Z'),
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-canonical-fallback',
+        terminal: true,
+        turnId: 'turn-canonical-fallback',
+        targetKind: 'cat',
+        targetId: 'participant-inline',
+        sessionId: 'session-canonical-fallback',
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  let core = createDefaultCoreState();
+  core = upsertCoreLane(
+    core,
+    {
+      id: 'lane-canonical-fallback',
+      turnId: 'turn-canonical-fallback',
+      conversationId,
+      participantId: 'participant-inline-record',
+      agentId: 'agent-inline',
+      orderIndex: 0,
+      status: 'completed',
+      createdAt: '2026-04-09T12:00:01.500Z',
+      metadata: {
+        speakerLabel: 'Canonical Agent',
+      },
+    },
+    new Date('2026-04-09T12:00:01.500Z'),
+  ).core;
+  core = upsertCoreSession(
+    core,
+    {
+      id: 'session-canonical-fallback',
+      conversationId,
+      turnId: 'turn-canonical-fallback',
+      laneId: 'lane-canonical-fallback',
+      participantId: 'participant-inline-record',
+      agentId: 'agent-inline',
+      runtimeKey: 'claude:cli',
+      status: 'active',
+      createdAt: '2026-04-09T12:00:01.500Z',
+      startedAt: '2026-04-09T12:00:01.500Z',
+      metadata: {
+        leaseCwd: 'C:/canonical/session-canonical-fallback',
+      },
+    },
+    new Date('2026-04-09T12:00:01.500Z'),
+  ).core;
+
+  const repaired = repairMissingSessionStartedMessages(state, channelId, {
+    core,
+    now: new Date('2026-04-09T12:05:00.000Z'),
+  });
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const sessionStarted = repairedChannel.messages.find((message) =>
+    message.metadata?.event === 'session_started'
+    && message.metadata?.sessionId === 'session-canonical-fallback');
+  assert.ok(sessionStarted);
+  assert.match(sessionStarted.body, /Canonical Agent/u);
+  assert.match(sessionStarted.body, /C:\/canonical\/session-canonical-fallback/u);
+  assert.equal(repairedChannel.chatCwd, 'C:/canonical/session-canonical-fallback');
 });
 
 test('repairMissingStartupRecoveryNotice inserts an interrupted-turn note before the next user message', async () => {
