@@ -2,6 +2,11 @@ export interface CodeExecutionSummaryPanelProps {
   taskId: string | null;
   taskStatus: string | null;
   effectiveStrategy: string | null;
+  deliveryMode: string | null;
+  deliveryRequiresOwnerDecision: boolean;
+  deliveryApprovalPending: boolean;
+  continuationBlockedReason: string | null;
+  continuationTargetNames: string[];
   sessionId: string | null;
   sessionStatus: string | null;
   provider: string | null;
@@ -26,15 +31,37 @@ function statusBadgeClass(status: string | null): string {
   }
 }
 
+function formatControlLabel(value: string | null): string | null {
+  return value ? value.split('_').join(' ') : null;
+}
+
 export function CodeExecutionSummaryPanel({
   taskId,
   taskStatus,
   effectiveStrategy,
+  deliveryMode,
+  deliveryRequiresOwnerDecision,
+  deliveryApprovalPending,
+  continuationBlockedReason,
+  continuationTargetNames,
   sessionId,
   sessionStatus,
   provider,
   model,
 }: CodeExecutionSummaryPanelProps) {
+  const controlBadgeClass = continuationBlockedReason
+    ? 'operatorStatusBadge isError'
+    : deliveryMode
+      ? 'operatorStatusBadge isAttention'
+      : 'operatorStatusBadge isMuted';
+  const controlBadgeLabel = continuationBlockedReason
+    ? 'blocked'
+    : deliveryMode
+      ? 'active'
+      : 'idle';
+  const formattedDeliveryMode = formatControlLabel(deliveryMode);
+  const formattedBlockedReason = formatControlLabel(continuationBlockedReason);
+
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
@@ -71,6 +98,26 @@ export function CodeExecutionSummaryPanel({
             {sessionId ? <span>Session: {sessionId}</span> : <span>No active session</span>}
           </div>
         </article>
+
+        {deliveryMode || continuationBlockedReason ? (
+          <article className="operatorCard">
+            <div className="operatorCardHeader">
+              <strong>Control</strong>
+              <span className={controlBadgeClass}>{controlBadgeLabel}</span>
+            </div>
+            <div className="operatorMetaRow">
+              {formattedDeliveryMode ? <span>Delivery: {formattedDeliveryMode}</span> : null}
+              {deliveryRequiresOwnerDecision ? <span>Owner decision required</span> : null}
+              {deliveryApprovalPending ? <span>Approval pending</span> : null}
+            </div>
+            {formattedBlockedReason ? (
+              <p>Continuation blocked by {formattedBlockedReason}.</p>
+            ) : null}
+            {continuationTargetNames.length > 0 ? (
+              <p>Targets: {continuationTargetNames.join(', ')}</p>
+            ) : null}
+          </article>
+        ) : null}
       </div>
     </section>
   );

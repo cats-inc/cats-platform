@@ -6,6 +6,7 @@ import {
   normalizeCodeBuilderTaskId,
   resolveCodeBuilderExecutionTaskId,
 } from '../build/server/products/code/shared/builderExecution.js';
+import { readCodeTaskBuilderDetail } from '../build/server/products/code/shared/taskDetailSummary.js';
 
 test('normalizeCodeBuilderTaskId trims usable task ids', () => {
   assert.equal(normalizeCodeBuilderTaskId('  task-123  '), 'task-123');
@@ -25,6 +26,58 @@ test('resolveCodeBuilderExecutionTaskId prefers an existing task over resume inp
   assert.equal(resolveCodeBuilderExecutionTaskId(null, '   '), null);
 });
 
+test('readCodeTaskBuilderDetail normalizes shared control state for the code builder', () => {
+  const result = readCodeTaskBuilderDetail({
+    task: {
+      id: 'task-code-builder',
+      title: 'Resume blocked code task',
+      summary: 'Continue the reviewer handoff.',
+      status: 'blocked',
+    },
+    effectiveStrategy: 'reflexion',
+    workspace: {
+      workspacePath: 'C:/repo/cats-platform',
+      workspaceKind: 'conversation_repo',
+      ownershipState: 'conversation_bound',
+    },
+    linkedArtifacts: [{ id: 'artifact-preview' }],
+    controlPlane: {
+      runtimeDeliveryIntent: {
+        mode: 'commit_only',
+        requiresOwnerDecision: true,
+        approvalPending: true,
+      },
+      workflowContinuation: {
+        blockedReason: 'max_dispatches',
+        targetNames: ['Code Reviewer'],
+        stageId: 'continuation_handoff',
+      },
+    },
+  });
+
+  assert.equal(result.taskId, 'task-code-builder');
+  assert.equal(result.title, 'Resume blocked code task');
+  assert.equal(result.summary, 'Continue the reviewer handoff.');
+  assert.equal(result.taskStatus, 'blocked');
+  assert.equal(result.effectiveStrategy, 'reflexion');
+  assert.deepEqual(result.workspace, {
+    workspacePath: 'C:/repo/cats-platform',
+    workspaceKind: 'conversation_repo',
+    ownershipState: 'conversation_bound',
+  });
+  assert.deepEqual(result.linkedArtifacts, [{ id: 'artifact-preview' }]);
+  assert.deepEqual(result.runtimeDeliveryIntent, {
+    mode: 'commit_only',
+    requiresOwnerDecision: true,
+    approvalPending: true,
+  });
+  assert.deepEqual(result.workflowContinuation, {
+    blockedReason: 'max_dispatches',
+    targetNames: ['Code Reviewer'],
+    stageId: 'continuation_handoff',
+  });
+});
+
 test('CodeBuilderView exposes resume, workspace binding, and execution summary seams', () => {
   const source = readFileSync(
     new URL('../src/products/code/renderer/components/CodeBuilderView.tsx', import.meta.url),
@@ -38,6 +91,8 @@ test('CodeBuilderView exposes resume, workspace binding, and execution summary s
   assert.match(source, /roomWorkspacePath: fallbackRoomWorkspacePath/u);
   assert.match(source, /Task \$\{resumedTaskId\} is ready to continue\./u);
   assert.match(source, /CodeExecutionSummaryPanel/u);
+  assert.match(source, /readCodeTaskBuilderDetail/u);
+  assert.match(source, /continuationBlockedReason=\{continuationBlockedReason\}/u);
+  assert.match(source, /deliveryMode=\{deliveryMode\}/u);
   assert.match(source, /setSessionStatus\('running'\)/u);
 });
-

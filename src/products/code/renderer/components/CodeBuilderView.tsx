@@ -13,6 +13,7 @@ import {
   labelCodeWorkspaceKind,
   type CodeWorkspaceSummary,
 } from '../../shared/workspaceSummary.js';
+import { readCodeTaskBuilderDetail } from '../../shared/taskDetailSummary.js';
 import { useCodeTaskExecution } from '../hooks/useCodeTaskExecution.js';
 import { PlanPanel, type PlanState } from './PlanPanel.js';
 import { BuildPreviewPanel, type ArtifactItem } from './BuildPreviewPanel.js';
@@ -43,17 +44,6 @@ interface CodeBuilderViewProps {
   selectedChannelContext?: CodeBuilderSelectedChannelContext | null;
 }
 
-interface CodeTaskDetailPayload {
-  task?: {
-    title?: unknown;
-    summary?: unknown;
-    status?: unknown;
-  } | null;
-  effectiveStrategy?: string | null;
-  linkedArtifacts?: unknown;
-  workspace?: CodeWorkspaceSummary | null;
-}
-
 export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderViewProps) {
   const navigate = useNavigate();
   const { state, create, execute, resume, refreshRepoStatus, reset, stopPolling } = useCodeTaskExecution();
@@ -69,6 +59,11 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   const [workspaceSummary, setWorkspaceSummary] = useState<CodeWorkspaceSummary | null>(null);
   const [taskStatus, setTaskStatus] = useState<string | null>(null);
   const [effectiveStrategy, setEffectiveStrategy] = useState<string | null>(null);
+  const [deliveryMode, setDeliveryMode] = useState<string | null>(null);
+  const [deliveryRequiresOwnerDecision, setDeliveryRequiresOwnerDecision] = useState(false);
+  const [deliveryApprovalPending, setDeliveryApprovalPending] = useState(false);
+  const [continuationBlockedReason, setContinuationBlockedReason] = useState<string | null>(null);
+  const [continuationTargetNames, setContinuationTargetNames] = useState<string[]>([]);
   const [sessionStatus, setSessionStatus] = useState<string | null>(null);
   const [artifacts, setArtifacts] = useState<ArtifactItem[]>([]);
   const [previewTarget, setPreviewTarget] = useState<ProductPreviewSurfaceTarget | null>(null);
@@ -140,27 +135,27 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
       // Fetch task detail for artifacts
       try {
-        const detail = (await fetchCodeTaskDetail(state.taskId)) as CodeTaskDetailPayload;
+        const detail = readCodeTaskBuilderDetail(await fetchCodeTaskDetail(state.taskId));
         if (cancelled) {
           return;
         }
 
-        const linked = detail.linkedArtifacts;
-        if (Array.isArray(linked) && linked.length > 0) {
-          linkedArtifacts = linked as ArtifactItem[];
+        if (detail.linkedArtifacts.length > 0) {
+          linkedArtifacts = detail.linkedArtifacts as ArtifactItem[];
           setArtifacts(linkedArtifacts);
         } else {
           setArtifacts([]);
         }
-        setWorkspaceSummary(detail.workspace ?? null);
-        setEffectiveStrategy(
-          typeof detail.effectiveStrategy === 'string' && detail.effectiveStrategy.trim()
-            ? detail.effectiveStrategy
-            : null,
+        setWorkspaceSummary(detail.workspace);
+        setEffectiveStrategy(detail.effectiveStrategy);
+        setTaskStatus(detail.taskStatus);
+        setDeliveryMode(detail.runtimeDeliveryIntent?.mode ?? null);
+        setDeliveryRequiresOwnerDecision(
+          detail.runtimeDeliveryIntent?.requiresOwnerDecision ?? false,
         );
-        if (isRecord(detail.task) && typeof detail.task.status === 'string' && detail.task.status.trim()) {
-          setTaskStatus(detail.task.status);
-        }
+        setDeliveryApprovalPending(detail.runtimeDeliveryIntent?.approvalPending ?? false);
+        setContinuationBlockedReason(detail.workflowContinuation?.blockedReason ?? null);
+        setContinuationTargetNames(detail.workflowContinuation?.targetNames ?? []);
       } catch {
         // Non-fatal
       }
@@ -283,8 +278,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
     let nextFeedback = `Task ${resumedTaskId} is ready to continue.`;
     try {
-      const detail = (await fetchCodeTaskDetail(resumedTaskId)) as CodeTaskDetailPayload;
-      const task = isRecord(detail.task) ? detail.task : null;
+      const detail = readCodeTaskBuilderDetail(await fetchCodeTaskDetail(resumedTaskId));
       if (detail.workspace) {
         setWorkspaceSummary(detail.workspace);
         setWorkspacePath(detail.workspace.workspacePath);
@@ -296,23 +290,22 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
             + 'before continuing.';
         }
       }
-      if (typeof task?.title === 'string' && task.title.trim()) {
-        setTaskTitle(task.title);
+      if (detail.title) {
+        setTaskTitle(detail.title);
       }
-      if (typeof task?.summary === 'string') {
-        setTaskDescription(task.summary);
-      }
-      if (typeof task?.status === 'string' && task.status.trim()) {
-        setTaskStatus(task.status);
-      }
-      setEffectiveStrategy(
-        typeof detail.effectiveStrategy === 'string' && detail.effectiveStrategy.trim()
-          ? detail.effectiveStrategy
-          : null,
+      setTaskDescription(detail.summary ?? '');
+      setTaskStatus(detail.taskStatus);
+      setEffectiveStrategy(detail.effectiveStrategy);
+      setDeliveryMode(detail.runtimeDeliveryIntent?.mode ?? null);
+      setDeliveryRequiresOwnerDecision(
+        detail.runtimeDeliveryIntent?.requiresOwnerDecision ?? false,
       );
-      } catch {
-        // Non-fatal: keep the resumed task id and let the owner continue from the task step.
-      }
+      setDeliveryApprovalPending(detail.runtimeDeliveryIntent?.approvalPending ?? false);
+      setContinuationBlockedReason(detail.workflowContinuation?.blockedReason ?? null);
+      setContinuationTargetNames(detail.workflowContinuation?.targetNames ?? []);
+    } catch {
+      // Non-fatal: keep the resumed task id and let the owner continue from the task step.
+    }
 
     setStep('task');
     setFeedback(nextFeedback);
@@ -358,6 +351,11 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
     setWorkspaceSummary(null);
     setTaskStatus(null);
     setEffectiveStrategy(null);
+    setDeliveryMode(null);
+    setDeliveryRequiresOwnerDecision(false);
+    setDeliveryApprovalPending(false);
+    setContinuationBlockedReason(null);
+    setContinuationTargetNames([]);
     setSessionStatus(null);
     setArtifacts([]);
     setPreviewTarget(null);
@@ -394,6 +392,11 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
           taskId={activeTaskId}
           taskStatus={taskStatus}
           effectiveStrategy={effectiveStrategy}
+          deliveryMode={deliveryMode}
+          deliveryRequiresOwnerDecision={deliveryRequiresOwnerDecision}
+          deliveryApprovalPending={deliveryApprovalPending}
+          continuationBlockedReason={continuationBlockedReason}
+          continuationTargetNames={continuationTargetNames}
           sessionId={state.sessionId}
           sessionStatus={sessionStatus}
           provider={provider}
@@ -600,8 +603,4 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       ) : null}
     </div>
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object';
 }
