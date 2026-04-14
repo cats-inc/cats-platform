@@ -6859,6 +6859,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
           id: 'task-work-dashboard',
           title: 'Work dashboard task',
           conversationId,
+          assignedActorIds: ['actor-orchestrator-global'],
           status: 'in_progress',
           summary: 'Prove Work consumes the shared task substrate.',
         },
@@ -6996,6 +6997,11 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     assert.equal(workProjectDetailPayload.workItems[0].id, 'work-item-work-dashboard');
     assert.equal(workProjectDetailPayload.linkedTasks.length, 1);
     assert.equal(workProjectDetailPayload.linkedTasks[0].id, 'task-work-dashboard');
+    assert.equal(workProjectDetailPayload.linkedTasks[0].conversationSourceChannelId, sourceChannelId);
+    assert.equal(
+      workProjectDetailPayload.linkedTasks[0].assignedActors[0]?.actorId,
+      'actor-orchestrator-global',
+    );
 
     const workItemsResponse = await fetch(`${baseUrl}/api/work/work-items`);
     assert.equal(workItemsResponse.status, 200);

@@ -127,6 +127,12 @@ export interface WorkProjectDetailProjection {
     title: string;
     status: CoreTaskStatus;
     summary: string | null;
+    conversationTitle: string | null;
+    conversationSourceChannelId: string | null;
+    assignedActors: Array<{
+      actorId: string;
+      displayName: string;
+    }>;
     updatedAt: string;
   }>;
   artifacts: {
@@ -653,13 +659,25 @@ export function buildWorkProjectDetailProjection(
     .filter((task) => linkedTaskIds.has(task.id))
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .slice(0, WORK_DETAIL_LIST_LIMIT)
-    .map((task) => ({
-      id: task.id,
-      title: task.title,
-      status: task.status,
-      summary: task.summary,
-      updatedAt: task.updatedAt,
-    }));
+    .map((task) => {
+      const conversation = task.conversationId
+        ? core.conversations.find((candidate) => candidate.id === task.conversationId) ?? null
+        : null;
+
+      return {
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        summary: task.summary,
+        conversationTitle: conversation?.title ?? null,
+        conversationSourceChannelId: conversation?.sourceChannelId ?? null,
+        assignedActors: task.assignedActorIds.map((actorId) => ({
+          actorId,
+          displayName: resolveActorName(core, actorId),
+        })),
+        updatedAt: task.updatedAt,
+      };
+    });
   const projectArtifacts = core.artifacts.filter((artifact) => artifact.projectId === project.id);
   const projectActivity = core.activities
     .filter((activity) => activity.projectId === project.id)

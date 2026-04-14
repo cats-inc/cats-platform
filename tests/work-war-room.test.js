@@ -54,6 +54,8 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(projectDetailSource, /fetchWorkProjectDetail/u);
   assert.match(projectDetailSource, /buildChannelPath/u);
   assert.match(projectDetailSource, /buildMyCatPath/u);
+  assert.match(projectDetailSource, /task\.conversationSourceChannelId/u);
+  assert.match(projectDetailSource, /listCatActorLinks\(task\.assignedActors\)/u);
   assert.match(projectDetailSource, /navigate\(`\/work\/work-items\/\$\{encodeURIComponent\(workItem\.id\)\}`\)/u);
   assert.match(projectDetailSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(task\.id\)\}`\)/u);
   assert.doesNotMatch(projectDetailSource, /as unknown as/u);

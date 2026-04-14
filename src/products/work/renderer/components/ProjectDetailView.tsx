@@ -225,17 +225,50 @@ export function ProjectDetailView() {
                       <span>{task.id}</span>
                       <span>{formatTimestamp(task.updatedAt)}</span>
                     </div>
-                    <button
-                      type="button"
-                      className="operatorActionButton"
-                      onClick={() => {
-                        startTransition(() => {
-                          navigate(`/work/tasks/${encodeURIComponent(task.id)}`);
-                        });
-                      }}
-                    >
-                      Open task
-                    </button>
+                    <div className="operatorMetaRow">
+                      <span>Conversation: {task.conversationTitle ?? 'No linked conversation'}</span>
+                      <span>Actors: {task.assignedActors.map((actor) => actor.displayName).join(', ') || 'Unassigned'}</span>
+                    </div>
+                    <div className="workWarRoomHeaderActions">
+                      <button
+                        type="button"
+                        className="operatorActionButton"
+                        onClick={() => {
+                          startTransition(() => {
+                            navigate(`/work/tasks/${encodeURIComponent(task.id)}`);
+                          });
+                        }}
+                      >
+                        Open task
+                      </button>
+                      {task.conversationSourceChannelId ? (
+                        <button
+                          type="button"
+                          className="operatorActionButton"
+                          onClick={() => {
+                            startTransition(() => {
+                              navigate(buildChannelPath(task.conversationSourceChannelId!));
+                            });
+                          }}
+                        >
+                          Open briefing thread
+                        </button>
+                      ) : null}
+                      {listCatActorLinks(task.assignedActors).map((actor) => (
+                        <button
+                          key={actor.actorId}
+                          type="button"
+                          className="operatorActionButton"
+                          onClick={() => {
+                            startTransition(() => {
+                              navigate(buildMyCatPath(actor.catId));
+                            });
+                          }}
+                        >
+                          Open {actor.displayName}
+                        </button>
+                      ))}
+                    </div>
                   </article>
                 ))}
               </div>
