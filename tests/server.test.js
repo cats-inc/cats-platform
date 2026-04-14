@@ -2889,6 +2889,16 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     const missionsListPayload = await missionsListResponse.json();
     assert.ok(missionsListPayload.missions.some((mission) => mission.id === fixtures.mission.id));
 
+    const missionRunsResponse = await fetch(`${baseUrl}/api/core/mission-runs`);
+    assert.equal(missionRunsResponse.status, 200);
+    const missionRunsPayload = await missionRunsResponse.json();
+    assert.ok(missionRunsPayload.items.some((item) => item.mission.id === fixtures.mission.id));
+    assert.equal(
+      missionRunsPayload.items.find((item) => item.mission.id === fixtures.mission.id)
+        ?.linkedRun?.id,
+      fixtures.run.id,
+    );
+
     const turnsListResponse = await fetch(`${baseUrl}/api/core/turns`);
     assert.equal(turnsListResponse.status, 200);
     const turnsListPayload = await turnsListResponse.json();
