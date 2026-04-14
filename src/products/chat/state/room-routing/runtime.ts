@@ -26,6 +26,7 @@ export interface TargetResolution {
 
 export interface DispatchFrame {
   sourceMessage: ChatMessage;
+  promptSourceMessage?: ChatMessage | null;
   sourceParticipant: RoomRoutingParticipantRef | null;
   targets: RoutingTarget[];
   unresolved: string[];

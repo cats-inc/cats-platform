@@ -494,10 +494,11 @@ export function buildPromptForTarget(
   transport?: RuntimeTransportContext,
 ): DispatchPrompt {
   const channel = buildChannelView(state, channelId);
+  const promptSourceMessage = request.promptSourceMessage ?? request.sourceMessage;
   const recentMessages = sliceRecentContextForTarget(
     channel,
     request.target,
-    request.sourceMessage.id,
+    promptSourceMessage.id,
   );
   const routingContext = {
     reason: describeRoutingReason(channel, request.sourceParticipant, request.trigger),
@@ -514,10 +515,10 @@ export function buildPromptForTarget(
       };
     }
     return {
-      message: buildOrchestratorPrompt(
+        message: buildOrchestratorPrompt(
         channel,
         state.globalOrchestrator,
-        request.sourceMessage,
+        promptSourceMessage,
         request.target.participantName,
         routingContext,
       ),
@@ -530,12 +531,12 @@ export function buildPromptForTarget(
   }
 
   return {
-    message: buildCatPrompt(
-      channel,
-      state.globalOrchestrator,
-      participant,
-      request.sourceMessage,
-      routingContext,
-    ),
+      message: buildCatPrompt(
+        channel,
+        state.globalOrchestrator,
+        participant,
+        promptSourceMessage,
+        routingContext,
+      ),
   };
 }

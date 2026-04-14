@@ -14,6 +14,7 @@ import {
 import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { patchTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
+import { buildChatWorkItemId } from '../build/server/shared/chatCoreIds.js';
 
 function createRuntimeStub(responder) {
   let nextSession = 1;
@@ -312,6 +313,14 @@ test('current-turn draft audience metadata routes multi-target turns sequentiall
   assert.deepEqual(
     replies.map((message) => message.senderName),
     ['Agent-2', 'Agent-1'],
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.content ?? '',
+    /\[agent:Agent-2\] Agent-2 handled the first step\./u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.content ?? '',
+    /Latest routed handoff:\nAgent-2 handled the first step\./u,
   );
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
   assert.equal(
@@ -814,6 +823,7 @@ test('routeChannelMessage auto-checks out an approved channel task for the assig
   assert.deepEqual(runtimeClient.createdSessions[0]?.correlation, {
     taskId,
     conversationId: `conversation-channel-${channelId}`,
+    workItemId: buildChatWorkItemId(channelId),
     product: 'chat',
   });
   assert.equal(run?.status, 'completed');
@@ -883,6 +893,7 @@ test('routeChannelMessage forwards planning metadata into chat session creation 
   assert.deepEqual(runtimeClient.createdSessions[0].correlation, {
     taskId,
     conversationId: `conversation-channel-${channelId}`,
+    workItemId: buildChatWorkItemId(channelId),
     product: 'chat',
   });
 });

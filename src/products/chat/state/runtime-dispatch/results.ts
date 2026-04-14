@@ -162,6 +162,24 @@ function filterQueuedContinuationTargets(
   return filteredTargets;
 }
 
+function advanceQueuedSequentialPromptFrontier(
+  queue: DispatchFrame[],
+  execution: DispatchExecution,
+  responseMessage: ChatMessage,
+): void {
+  const nextSequentialFrame = queue.find((frame) =>
+    frame.workflowShapeOverride === 'sequential'
+    && frame.depth === execution.depth
+    && frame.sourceMessage.id === execution.sourceMessage.id
+    && frame.targets.length > 0);
+
+  if (!nextSequentialFrame) {
+    return;
+  }
+
+  nextSequentialFrame.promptSourceMessage = responseMessage;
+}
+
 function appendRecoveredDispatchMessages(
   state: ChatState,
   channelId: string,
@@ -536,6 +554,7 @@ export function applyDispatchExecutions(
     }
 
     const responseMessage = responseMessages.at(-1)!;
+    advanceQueuedSequentialPromptFrontier(queue, execution, responseMessage);
     const response = buildAssistantTurnDelivery(assistantTurnId, responseMessages);
     nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
     updateDispatch(outcome, execution.dispatchId, {
