@@ -48,6 +48,7 @@ import { publishRoomMutation } from '../transportEventPublisher.js';
 
 function buildStreamSpeakerPayload(input: {
   sessionId?: string | null;
+  laneId?: string | null;
   participantId?: string | null;
   catId?: string | null;
   speakerLabel?: string | null;
@@ -57,6 +58,7 @@ function buildStreamSpeakerPayload(input: {
 }): Record<string, unknown> {
   return {
     sessionId: input.sessionId ?? null,
+    laneId: input.laneId ?? null,
     participantId: input.participantId ?? null,
     catId: input.catId ?? null,
     speakerLabel: input.speakerLabel ?? null,
@@ -169,6 +171,7 @@ async function streamChannelTarget(input: {
         speakerLabel: target.speakerLabel,
         reason: 'attach_ready_session',
         details: {
+          laneId: target.laneId,
           targetStateId: target.targetStateId,
         },
       });
@@ -265,10 +268,11 @@ async function streamChannelTarget(input: {
           catId: target.catId,
           speakerLabel: target.speakerLabel,
           reason: 'runtime_stream_unavailable',
-          details: {
-            targetStateId: target.targetStateId,
-          },
-        });
+        details: {
+          laneId: target.laneId,
+          targetStateId: target.targetStateId,
+        },
+      });
       }
       emitEvent('error', {
         type: 'error',

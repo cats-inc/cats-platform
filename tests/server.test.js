@@ -1611,6 +1611,8 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
     const begunChannel = requireChannel(begunState, channelId);
     const begunTurn = begunChannel.roomRouting.workflow.activeTurn;
     assert.ok(begunTurn);
+    const firstLaneId = `lane-${begunTurn.id}-target-state-concurrent-1`;
+    const secondLaneId = `lane-${begunTurn.id}-target-state-concurrent-2`;
     begunTurn.targetStatuses = [
       {
         id: 'target-state-concurrent-1',
@@ -1715,18 +1717,22 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
       stream,
       (text) =>
         text.includes('"speakerLabel":"Claude Cat"')
+        && text.includes(`"laneId":"${firstLaneId}"`)
         && text.includes('"targetStateId":"target-state-concurrent-1"')
         && text.includes('"text":"Claude Cat is thinking"')
         && text.includes('"speakerLabel":"Codex Cat"')
+        && text.includes(`"laneId":"${secondLaneId}"`)
         && text.includes('"targetStateId":"target-state-concurrent-2"')
         && text.includes('"text":"Codex Cat is thinking"'),
     );
     await stream.reader.cancel();
 
     assert.match(streamBody, /"speakerLabel":"Claude Cat"/u);
+    assert.match(streamBody, new RegExp(`"laneId":"${firstLaneId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-concurrent-1"/u);
     assert.match(streamBody, /"text":"Claude Cat is thinking"/u);
     assert.match(streamBody, /"speakerLabel":"Codex Cat"/u);
+    assert.match(streamBody, new RegExp(`"laneId":"${secondLaneId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-concurrent-2"/u);
     assert.match(streamBody, /"text":"Codex Cat is thinking"/u);
     assert.deepEqual(runtime.streamedSessions, [
@@ -2191,6 +2197,8 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
     let nextChannel = requireChannel(nextState, channelId);
     let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
     assert.ok(nextTurn);
+    const firstLaneId = `lane-${nextTurn.id}-target-state-gap-1`;
+    const secondLaneId = `lane-${nextTurn.id}-target-state-gap-2`;
     nextTurn.targetStatuses = [
       {
         id: 'target-state-gap-1',
@@ -2339,8 +2347,10 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
 
     const streamBody = await streamBodyPromise;
     assert.match(streamBody, /"speakerLabel":"First Cat"/u);
+    assert.match(streamBody, new RegExp(`"laneId":"${firstLaneId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-gap-1"/u);
     assert.match(streamBody, /"speakerLabel":"Second Cat"/u);
+    assert.match(streamBody, new RegExp(`"laneId":"${secondLaneId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-gap-2"/u);
     assert.match(streamBody, /"text":"Second speaker picked up after the gap"/u);
     assert.deepEqual(runtime.streamedSessions, [

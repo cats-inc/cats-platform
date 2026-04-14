@@ -14,9 +14,11 @@ import {
   awaitNextStreamTarget,
   readStreamTargetSignalVersion,
 } from './streamTargetSignal.js';
+import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
 
 export interface ChannelStreamTarget {
   sessionId: string | null;
+  laneId: string | null;
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
@@ -88,6 +90,7 @@ function buildParticipantStreamTarget(
       participantId,
       { statuses: ['ready', 'initializing'] },
     ),
+    laneId: null,
     participantId,
     catId: assignment ? resolveParticipantCatId(assignment) : null,
     speakerLabel: normalizeVisibleSpeakerLabel(assignment?.name ?? fallbackSpeakerLabel),
@@ -111,6 +114,7 @@ function buildOrchestratorStreamTarget(
   });
   return {
     sessionId: channel.orchestratorLease?.sessionId?.trim() || null,
+    laneId: null,
     participantId: 'orchestrator',
     catId: null,
     speakerLabel,
@@ -147,6 +151,7 @@ function shouldRequireSessionStartConfirmation(
 
 function buildWorkflowTargetStreamTarget(
   channel: ReturnType<typeof requireChannel>,
+  turnId: string,
   targetStatus: {
     id: string;
     participant: {
@@ -166,6 +171,7 @@ function buildWorkflowTargetStreamTarget(
       );
   return {
     ...target,
+    laneId: buildChatLaneId(turnId, targetStatus.id, participant.participantId),
     targetStateId: targetStatus.id,
   };
 }
@@ -210,7 +216,7 @@ function resolveWorkflowStreamTargetWithReason(
   ];
 
   for (const targetStatus of prioritizedTargetStatuses) {
-    const target = buildWorkflowTargetStreamTarget(channel, targetStatus);
+    const target = buildWorkflowTargetStreamTarget(channel, activeTurn.id, targetStatus);
     if (target.sessionId) {
       return {
         target,
@@ -224,7 +230,7 @@ function resolveWorkflowStreamTargetWithReason(
   if (prioritizedTargetStatuses.length > 0) {
     const nextTarget = prioritizedTargetStatuses[0]!;
     return {
-      target: buildWorkflowTargetStreamTarget(channel, nextTarget),
+      target: buildWorkflowTargetStreamTarget(channel, activeTurn.id, nextTarget),
       reason: nextTarget.status === 'running'
         ? 'active_workflow_running_target_waiting_for_session'
         : 'active_workflow_pending_target_waiting_for_session',
@@ -250,7 +256,7 @@ function resolveWorkflowStreamTargets(
   return [
     ...activeTurn.targetStatuses.filter((target) => target.status === 'running'),
     ...activeTurn.targetStatuses.filter((target) => target.status === 'pending'),
-  ].map((targetStatus) => buildWorkflowTargetStreamTarget(channel, targetStatus));
+  ].map((targetStatus) => buildWorkflowTargetStreamTarget(channel, activeTurn.id, targetStatus));
 }
 
 export function resolveChannelStreamTarget(
@@ -324,6 +330,7 @@ function resolveChannelStreamTargetWithReason(
     return {
       target: {
         sessionId: participantSessionId,
+        laneId: null,
         participantId: null,
         catId: null,
         speakerLabel: null,
@@ -369,6 +376,9 @@ export async function waitForChannelStreamTarget(
           catId: streamTarget.catId,
           speakerLabel: streamTarget.speakerLabel,
           reason: resolvedStreamTarget.reason,
+          details: {
+            laneId: streamTarget.laneId,
+          },
         });
       }
       return streamTarget;
@@ -416,6 +426,7 @@ export async function waitForNextChannelStreamTarget(
           speakerLabel: streamTarget.speakerLabel,
           reason: resolvedStreamTarget.reason,
           details: {
+            laneId: streamTarget.laneId,
             targetStateId: streamTarget.targetStateId,
             previousTargetStateId,
           },

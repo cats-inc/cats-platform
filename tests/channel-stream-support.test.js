@@ -47,6 +47,7 @@ test('resolveChannelStreamSessionId follows the currently running workflow targe
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
+          id: 'turn-running-target',
           status: 'running',
           targetStatuses: [
             {
@@ -81,6 +82,7 @@ test('resolveChannelStreamTargets lists all concurrent workflow targets in stabl
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
+          id: 'turn-running-target',
           status: 'running',
           targetStatuses: [
             {
@@ -107,6 +109,7 @@ test('resolveChannelStreamTargets lists all concurrent workflow targets in stabl
   assert.deepEqual(resolveChannelStreamTargets(channel), [
     {
       sessionId: 'session-1',
+      laneId: 'lane-turn-running-target-target-1',
       participantId: 'participant-1',
       catId: null,
       speakerLabel: 'Claude-CLI',
@@ -116,6 +119,7 @@ test('resolveChannelStreamTargets lists all concurrent workflow targets in stabl
     },
     {
       sessionId: 'session-2',
+      laneId: 'lane-turn-running-target-target-2',
       participantId: 'participant-2',
       catId: null,
       speakerLabel: 'Codex-CLI',
@@ -134,6 +138,7 @@ test('resolveChannelReadyStreamTargets keeps only attachable concurrent workflow
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
+          id: 'turn-ready-targets',
           status: 'running',
           targetStatuses: [
             {
@@ -160,6 +165,7 @@ test('resolveChannelReadyStreamTargets keeps only attachable concurrent workflow
   assert.deepEqual(resolveChannelReadyStreamTargets(channel), [
     {
       sessionId: 'session-1',
+      laneId: 'lane-turn-ready-targets-target-1',
       participantId: 'participant-1',
       catId: null,
       speakerLabel: 'Claude-CLI',
@@ -178,6 +184,7 @@ test('resolveChannelStreamSessionId waits for the next sequential target instead
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
+          id: 'turn-sequential-gap',
           status: 'running',
           targetStatuses: [
             {
@@ -212,6 +219,7 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
+          id: 'turn-sequential-gap',
           status: 'running',
           targetStatuses: [
             {
@@ -237,6 +245,7 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
 
   assert.deepEqual(resolveChannelStreamTarget(channel), {
     sessionId: null,
+    laneId: 'lane-turn-sequential-gap-target-2',
     participantId: 'participant-2',
     catId: null,
     speakerLabel: 'Codex-CLI',
@@ -335,6 +344,7 @@ test('resolveChannelStreamTarget falls back to the default recipient while a sin
   assert.equal(resolveChannelStreamSessionId(channel), 'session-1');
   assert.deepEqual(resolveChannelStreamTarget(channel), {
     sessionId: 'session-1',
+    laneId: null,
     participantId: 'participant-1',
     catId: null,
     speakerLabel: 'Claude-CLI',
@@ -359,6 +369,7 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
+          id: 'turn-solo-orchestrator',
           status: 'running',
           targetStatuses: [
             {
@@ -380,6 +391,7 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
 
   assert.deepEqual(resolveChannelStreamTarget(channel), {
     sessionId: 'session-orchestrator',
+    laneId: 'lane-turn-solo-orchestrator-target-orchestrator',
     participantId: 'orchestrator',
     catId: null,
     speakerLabel: 'Claude-CLI',
@@ -404,6 +416,7 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
+          id: 'turn-solo-orchestrator',
           status: 'running',
           targetStatuses: [
             {
@@ -425,6 +438,7 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
 
   assert.deepEqual(resolveChannelStreamTarget(channel), {
     sessionId: 'session-orchestrator',
+    laneId: 'lane-turn-solo-orchestrator-target-orchestrator',
     participantId: 'orchestrator',
     catId: null,
     speakerLabel: 'Gemini-CLI',
