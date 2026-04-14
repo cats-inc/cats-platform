@@ -616,19 +616,27 @@ function ensureCompletedDispatch(
       dispatch.status === 'running' || dispatch.status === 'pending');
 
   if (existing) {
+    if (targetStatus?.source) {
+      existing.source = structuredClone(targetStatus.source);
+    }
+    if (targetStatus?.sourceMessageId) {
+      existing.sourceMessageId = targetStatus.sourceMessageId;
+    }
+    if (targetStatus?.trigger) {
+      existing.trigger = targetStatus.trigger;
+    }
     existing.target = structuredClone(participant);
     existing.status = 'completed';
     existing.completedAt = existing.completedAt ?? completedAt;
     existing.response = structuredClone(response);
     existing.error = null;
-    existing.trigger = existing.trigger ?? 'room_default';
     return existing;
   }
 
   const dispatch: RoomRoutingDispatch = {
     id: targetStatus?.dispatchId ?? randomUUID(),
-    sourceMessageId: outcome.sourceMessageId,
-    source: null,
+    sourceMessageId: targetStatus?.sourceMessageId ?? outcome.sourceMessageId,
+    source: targetStatus?.source ? structuredClone(targetStatus.source) : null,
     target: structuredClone(participant),
     trigger: targetStatus?.trigger ?? 'room_default',
     status: 'completed',

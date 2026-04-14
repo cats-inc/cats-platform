@@ -1296,4 +1296,9 @@ test('repairOrphanedCompletedDispatchTurn restores final sequential target metad
   assert.equal(repairedTarget.sourceMessageId, repairedLane?.metadata.sourceMessageId);
   assert.equal(repairedTarget.branchStrategy, repairedLane?.metadata.branchStrategy);
   assert.equal(repairedTarget.handoffReason, repairedLane?.metadata.handoffReason);
+  const repairedDispatch = repairedChannel.roomRouting.lastOutcome?.dispatches[0];
+  assert.ok(repairedDispatch);
+  assert.equal(repairedDispatch?.source?.participantName, 'Agent-1');
+  assert.equal(repairedDispatch?.sourceMessageId, repairedLane?.metadata.sourceMessageId);
+  assert.equal(repairedDispatch?.trigger, repairedLane?.metadata.trigger);
 });
