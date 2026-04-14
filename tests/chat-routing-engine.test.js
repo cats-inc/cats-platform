@@ -334,6 +334,18 @@ test('current-turn draft audience metadata routes multi-target turns sequentiall
     )?.branchStrategy,
     'transplant_context',
   );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-1',
+    )?.trigger,
+    'continuation_mention',
+  );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-1',
+    )?.handoffReason,
+    'workflow_continuation',
+  );
   assert.deepEqual(
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
       (target) => target.participant.participantName === 'Agent-1',
@@ -463,9 +475,33 @@ test('sequential room audience does not redispatch queued targets when replies m
   );
   assert.equal(
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-2',
+    )?.trigger,
+    'continuation_mention',
+  );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-2',
+    )?.handoffReason,
+    'workflow_continuation',
+  );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
       (target) => target.participant.participantName === 'Agent-3',
     )?.branchStrategy,
     'transplant_context',
+  );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-3',
+    )?.trigger,
+    'continuation_mention',
+  );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-3',
+    )?.handoffReason,
+    'workflow_continuation',
   );
   assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 3);
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');

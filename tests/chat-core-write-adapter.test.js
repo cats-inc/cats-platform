@@ -1189,9 +1189,10 @@ test('repairOrphanedCompletedDispatchTurn restores final sequential target metad
   assert.equal(lanes.length, 2);
   const repairedLane = lanes[1];
   assert.ok(repairedLane);
+  assert.equal(repairedLane?.metadata.trigger, 'continuation_mention');
   assert.equal(repairedLane?.metadata.branchStrategy, 'transplant_context');
   assert.ok(typeof repairedLane?.metadata.sourceMessageId === 'string');
-  assert.ok(typeof repairedLane?.metadata.handoffReason === 'string');
+  assert.equal(repairedLane?.metadata.handoffReason, 'workflow_continuation');
 
   const corruptedState = structuredClone(dispatched.state);
   const corruptedChannel = requireChannel(corruptedState, channelId);

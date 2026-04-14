@@ -190,6 +190,8 @@ function advanceQueuedSequentialPromptFrontier(
 
   nextSequentialFrame.promptSourceMessage = responseMessage;
   nextSequentialFrame.sourceParticipant = toParticipantRef(execution.target);
+  nextSequentialFrame.trigger = 'continuation_mention';
+  nextSequentialFrame.workflowStageId = 'continuation_handoff';
 }
 
 function appendRecoveredDispatchMessages(
