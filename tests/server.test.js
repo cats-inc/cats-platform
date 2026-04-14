@@ -2944,6 +2944,15 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       ),
     );
 
+    const transportStateResponse = await fetch(`${baseUrl}/api/core/transport-state`);
+    assert.equal(transportStateResponse.status, 200);
+    const transportStatePayload = await transportStateResponse.json();
+    assert.ok(
+      transportStatePayload.items.some(
+        (item) => item.transportBinding.id === fixtures.transportBinding.id,
+      ),
+    );
+
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();

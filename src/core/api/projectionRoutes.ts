@@ -1,5 +1,6 @@
 import { buildManagedWorkProjection } from '../managedWorkProjection.js';
 import { buildMissionRunProjection } from '../missionRunProjection.js';
+import { buildTransportStateProjection } from '../transportStateProjection.js';
 import type { CoreApiRouteContext } from './types.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
@@ -15,6 +16,13 @@ async function handleCoreMissionRuns(
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
   sendJson(context.response, 200, buildMissionRunProjection(core));
+}
+
+async function handleCoreTransportState(
+  context: CoreApiRouteContext,
+): Promise<void> {
+  const core = await context.dependencies.coreStore.readCore();
+  sendJson(context.response, 200, buildTransportStateProjection(core));
 }
 
 export async function routeCoreProjectionApi(
@@ -35,6 +43,15 @@ export async function routeCoreProjectionApi(
       return true;
     }
     await handleCoreMissionRuns(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/core/transport-state') {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleCoreTransportState(context);
     return true;
   }
 
