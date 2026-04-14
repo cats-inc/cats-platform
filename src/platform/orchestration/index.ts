@@ -30,6 +30,7 @@ export {
   type ToolIntentManifest,
 } from './contracts.js';
 export {
+  buildRuntimeDeliveryContentBlocksFromResultPayload,
   buildNormalizedRuntimeDeliveryEvent,
   buildNormalizedRuntimeDeliveryEventsFromStreamEvent,
   buildNormalizedRuntimeDeliveryEventsFromResult,

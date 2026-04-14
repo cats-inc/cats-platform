@@ -398,6 +398,86 @@ test('GET /api/channels/:id/stream relays runtime session events through the run
   }, chatStore);
 });
 
+test('GET /api/channels/:id/stream synthesizes a content_block before a coarse final-only result', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Coarse lane',
+      topic: 'Normalize coarse runtime result streaming.',
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-coarse-1',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-coarse-1', {
+    session: {
+      id: 'session-coarse-1',
+    },
+    observePath: '/sessions/session-coarse-1/observe',
+    stream: {
+      path: '/sessions/session-coarse-1/stream',
+      available: true,
+      events: [
+        {
+          event: 'result',
+          data: {
+            type: 'result',
+            text: 'final coarse reply',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(response.status, 200);
+
+    const body = await response.text();
+    assert.match(body, /event: content_block/u);
+    assert.match(body, /"text":"final coarse reply"/u);
+    assert.match(body, /"synthesizedFromResult":true/u);
+    assert.match(body, /event: result/u);
+    assert.ok(
+      body.indexOf('event: content_block') < body.indexOf('event: result'),
+      `Expected synthesized content block before result.\n${body}`,
+    );
+  }, chatStore);
+});
+
 test('GET /api/channels/:id/stream waits for a pending session lease before closing the stream', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();

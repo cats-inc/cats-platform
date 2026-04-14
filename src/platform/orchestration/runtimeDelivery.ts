@@ -117,6 +117,22 @@ function buildResultContentBlock(
   };
 }
 
+export function buildRuntimeDeliveryContentBlocksFromResultPayload(
+  payload: Record<string, unknown>,
+): RuntimeDeliveryContentBlock[] {
+  const resultSegments = readRuntimeMessageResultSegments(payload);
+  const synthesizedSegments = resultSegments.length > 0
+    ? resultSegments
+    : (() => {
+        const text = readRuntimeMessageResultText(payload);
+        return text.length > 0
+          ? [{ kind: 'text', text, toolName: null, toolId: null } satisfies RuntimeMessageSegment]
+          : [];
+      })();
+
+  return synthesizedSegments.map((segment, index) => buildResultContentBlock(segment, index));
+}
+
 function buildNormalizedRuntimeDeliveryResultEvent(input: {
   conversationId: ConversationId;
   turnId: TurnId;
@@ -187,17 +203,7 @@ function buildNormalizedRuntimeDeliveryContentEventsFromResultEvent(
     emittedAt: string;
   },
 ): NormalizedRuntimeDeliveryEvent[] {
-  const resultSegments = readRuntimeMessageResultSegments(input.event.data);
-  const synthesizedSegments = resultSegments.length > 0
-    ? resultSegments
-    : (() => {
-        const text = readRuntimeMessageResultText(input.event.data);
-        return text.length > 0
-          ? [{ kind: 'text', text, toolName: null, toolId: null } satisfies RuntimeMessageSegment]
-          : [];
-      })();
-
-  return synthesizedSegments.map((segment, index) => ({
+  return buildRuntimeDeliveryContentBlocksFromResultPayload(input.event.data).map((contentBlock, index) => ({
     version: ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
     conversationId: input.conversationId,
     turnId: input.turnId,
@@ -217,7 +223,7 @@ function buildNormalizedRuntimeDeliveryContentEventsFromResultEvent(
       segmentIndex: index,
       synthesizedFromResult: true,
     },
-    contentBlock: buildResultContentBlock(segment, index),
+    contentBlock,
   }));
 }
 

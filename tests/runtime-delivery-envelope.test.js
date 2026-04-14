@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
+  buildRuntimeDeliveryContentBlocksFromResultPayload,
   buildNormalizedRuntimeDeliveryEvent,
   buildNormalizedRuntimeDeliveryEventsFromStreamEvent,
   buildNormalizedRuntimeDeliveryEventsFromResult,
@@ -161,6 +162,29 @@ test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands final result s
   assert.equal(normalized[1]?.contentBlock?.text, 'Done after tool.');
   assert.equal(normalized[2]?.kind, 'result');
   assert.equal(normalized[2]?.sequence.segmentIndex, 2);
+});
+
+test('buildRuntimeDeliveryContentBlocksFromResultPayload synthesizes a text block for coarse final-only payloads', () => {
+  const blocks = buildRuntimeDeliveryContentBlocksFromResultPayload({
+    text: 'Coarse final reply',
+  });
+
+  assert.deepEqual(blocks, [
+    {
+      id: 'result-block-0',
+      index: 0,
+      kind: 'text',
+      status: 'complete',
+      title: null,
+      text: 'Coarse final reply',
+      toolName: null,
+      toolId: null,
+      metadata: {
+        source: 'runtime_result',
+        segmentKind: 'text',
+      },
+    },
+  ]);
 });
 
 test('buildNormalizedRuntimeDeliveryEventsFromResult expands final result segments into canonical content blocks', () => {

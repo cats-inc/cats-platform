@@ -1,5 +1,9 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
+import {
+  buildRuntimeDeliveryContentBlocksFromResultPayload,
+} from '../../../../platform/orchestration/index.js';
+import { normalizeRuntimeContentBlock } from '../../../../shared/runtimeContentBlocks.js';
 import { activateChannelSessions } from '../../state/runtimeActions.js';
 import {
   requireChannel,
@@ -71,6 +75,27 @@ function publishStreamAttachMutationEvents(
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
+}
+
+function eventHasMaterializedContent(event: { event: string; data: Record<string, unknown> }): boolean {
+  if (
+    event.event === 'text'
+    || event.event === 'tool_use'
+    || event.event === 'tool_result'
+    || event.event === 'content_block'
+  ) {
+    return true;
+  }
+  return normalizeRuntimeContentBlock(event.data) !== null;
+}
+
+function eventHasTextContent(event: { event: string; data: Record<string, unknown> }): boolean {
+  if (event.event === 'text') {
+    return typeof event.data.text === 'string' && event.data.text.length > 0;
+  }
+
+  const block = normalizeRuntimeContentBlock(event.data);
+  return block?.kind === 'text' && block.text.length > 0;
 }
 
 async function handleRestCancelChannel(
@@ -287,6 +312,8 @@ async function handleRestStreamChannel(
         });
 
         let segmentCompleted = false;
+        let segmentHasMaterializedContent = false;
+        let segmentHasTextContent = false;
         const streamAbortController = new AbortController();
         const abortCurrentSegment = (): void => {
           if (!streamAbortController.signal.aborted) {
@@ -303,10 +330,36 @@ async function handleRestStreamChannel(
               if (abortController.signal.aborted || context.response.writableEnded) {
                 return;
               }
+              if (event.event === 'result') {
+                const synthesizedBlocks = buildRuntimeDeliveryContentBlocksFromResultPayload(event.data);
+                const blocksToEmit = segmentHasMaterializedContent
+                  ? (segmentHasTextContent
+                      ? []
+                      : synthesizedBlocks.filter((block) => block.kind === 'text'))
+                  : synthesizedBlocks;
+                for (const block of blocksToEmit) {
+                  writeSseEvent(context, 'content_block', {
+                    type: 'content_block',
+                    block,
+                    synthesizedFromResult: true,
+                    ...buildStreamSpeakerPayload(nextTarget),
+                  });
+                  segmentHasMaterializedContent = true;
+                  if (block.kind === 'text' && block.text.length > 0) {
+                    segmentHasTextContent = true;
+                  }
+                }
+              }
               writeSseEvent(context, event.event, {
                 ...event.data,
                 ...buildStreamSpeakerPayload(nextTarget),
               });
+              if (eventHasMaterializedContent(event)) {
+                segmentHasMaterializedContent = true;
+              }
+              if (eventHasTextContent(event)) {
+                segmentHasTextContent = true;
+              }
               if (event.event === 'result' || event.event === 'error') {
                 segmentCompleted = true;
                 abortCurrentSegment();
