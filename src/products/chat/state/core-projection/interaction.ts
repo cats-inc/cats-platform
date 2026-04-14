@@ -338,6 +338,27 @@ function matchesSessionStartedParticipant(
     && readMessageMetadataString(message, 'targetId') === participant.participantId;
 }
 
+function resolveLatestSessionStartedMessage(
+  channel: ChatChannelState,
+  participant: RoomRoutingParticipantRef,
+  sessionId?: string | null,
+): ChatMessage | null {
+  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
+    const message = channel.messages[index]!;
+    if (
+      matchesSessionStartedParticipant(message, participant)
+      && (
+        !sessionId
+        || readMessageMetadataString(message, 'sessionId') === sessionId
+      )
+    ) {
+      return message;
+    }
+  }
+
+  return null;
+}
+
 function resolveTargetSessionId(
   channel: ChatChannelState,
   target: RoomWorkflowTargetState,
@@ -350,12 +371,13 @@ function resolveTargetSessionId(
     }
   }
 
-  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
-    const message = channel.messages[index]!;
-    if (!matchesSessionStartedParticipant(message, target.participant)) {
-      continue;
-    }
-    const sessionId = readMessageMetadataString(message, 'sessionId');
+  const sessionStartedMessage = resolveLatestSessionStartedMessage(
+    channel,
+    target.participant,
+    null,
+  );
+  if (sessionStartedMessage) {
+    const sessionId = readMessageMetadataString(sessionStartedMessage, 'sessionId');
     if (sessionId) {
       return sessionId;
     }
@@ -473,7 +495,16 @@ function resolveSessionTransportBindingId(
   channelId: string,
   channel: ChatChannelState,
   participant: RoomRoutingParticipantRef,
+  sessionId: string | null,
 ): string | null {
+  const sessionStartedMessage = resolveLatestSessionStartedMessage(channel, participant, sessionId);
+  const explicitTransportBindingId = sessionStartedMessage
+    ? readMessageMetadataString(sessionStartedMessage, 'transportBindingId')
+    : null;
+  if (explicitTransportBindingId) {
+    return explicitTransportBindingId;
+  }
+
   return channel.channelKind === 'direct_lane'
     && channel.roomRouting?.defaultRecipientId === participant.participantId
     ? buildDirectLaneTransportBindingId(channelId)
@@ -584,6 +615,7 @@ export function projectChatChannelInteractionToCore(
               channelId,
               channel,
               target.participant,
+              sessionId,
             ),
             runtimeKey: target.participant.participantName,
             status: mapSessionStatus(target, lease),

@@ -77,6 +77,7 @@ export async function prepareReadyRequests(
     latestCheckpoint: RoomRoutingCheckpoint | null;
     results: ChannelDispatchResult[];
     transport?: import('../runtimeTargeting.js').RuntimeTransportContext;
+    transportBindingId?: string | null;
     companionStore?: CompanionBoxStore;
     memoryService?: CatsMemoryService;
     chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
@@ -109,6 +110,7 @@ export async function prepareReadyRequests(
       now,
       {
         transport: options.transport,
+        transportBindingId: options.transportBindingId,
         companionStore: options.companionStore,
         memoryService: options.memoryService,
         chatStore: options.chatStore,
@@ -248,6 +250,7 @@ export async function executeDispatchWithRecovery(input: {
   runtimeClient: RuntimeClient;
   now: Date;
   transport?: import('../runtimeTargeting.js').RuntimeTransportContext;
+  transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
@@ -276,6 +279,7 @@ export async function executeDispatchWithRecovery(input: {
       input.runtimeClient,
       input.now,
       input.transport,
+      input.transportBindingId,
       input.companionStore,
       core,
     );
@@ -327,6 +331,7 @@ export async function executeDispatchWithRecovery(input: {
       input.now,
       {
         transport: input.transport,
+        transportBindingId: input.transportBindingId,
         companionStore: input.companionStore,
         memoryService: input.memoryService,
         chatStore: input.chatStore,

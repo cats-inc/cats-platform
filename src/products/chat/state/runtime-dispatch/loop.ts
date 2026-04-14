@@ -86,6 +86,7 @@ export interface ProcessDispatchQueueOptions {
   maxTargetVisits: number;
   describeGuardReason: (reason: Exclude<RoomRoutingGuardReason, null>) => string;
   transport?: RuntimeTransportContext;
+  transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
@@ -549,6 +550,7 @@ export async function processDispatchQueue(
         latestCheckpoint,
         results,
         transport,
+        transportBindingId: options.transportBindingId,
         companionStore,
         memoryService,
         chatStore,
@@ -619,6 +621,7 @@ export async function processDispatchQueue(
           runtimeClient,
           now,
           transport,
+          transportBindingId: options.transportBindingId,
           companionStore,
           memoryService,
           chatStore,

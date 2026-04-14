@@ -389,6 +389,7 @@ export async function ensureTargetSession(
       channel,
       target,
       options.transport,
+      options.transportBindingId,
       now,
       options.companionStore,
     );

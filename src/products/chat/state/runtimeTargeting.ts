@@ -234,6 +234,7 @@ function buildSessionContextForTarget(
   channel: ChatChannelView,
   target: RoutingTarget,
   transport?: RuntimeTransportContext,
+  transportBindingIdOverride?: string | null,
 ): {
   source: 'interactive';
   reason: string;
@@ -242,9 +243,14 @@ function buildSessionContextForTarget(
 } {
   const resolvedTransport = resolveTransportContext(channel, transport);
   const conversationId = buildChatConversationId(channel.id);
-  const transportBindingId = isDirectLaneChannel(channel)
-    ? buildDirectLaneTransportBindingId(channel.id)
+  const explicitTransportBindingId = typeof transportBindingIdOverride === 'string'
+    && transportBindingIdOverride.trim().length > 0
+    ? transportBindingIdOverride.trim()
     : null;
+  const transportBindingId = explicitTransportBindingId
+    ?? (isDirectLaneChannel(channel)
+      ? buildDirectLaneTransportBindingId(channel.id)
+      : null);
   return {
     source: 'interactive',
     reason: `cats:${channel.channelKind ?? channel.roomRouting?.mode ?? 'boss_chat'}`,
@@ -400,10 +406,16 @@ export async function resolveRuntimeEnvelopeForTarget(
   channel: ChatChannelView,
   target: RoutingTarget,
   transport: RuntimeTransportContext | undefined,
+  transportBindingId: string | null | undefined,
   now: Date,
   companionStore?: CompanionBoxStore,
 ) {
-  const baseContext = buildSessionContextForTarget(channel, target, transport);
+  const baseContext = buildSessionContextForTarget(
+    channel,
+    target,
+    transport,
+    transportBindingId,
+  );
   const baseSkills = resolveSessionSkillManifestForTarget(
     state,
     channel,

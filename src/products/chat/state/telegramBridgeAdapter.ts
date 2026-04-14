@@ -1,5 +1,6 @@
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
 import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecovery.js';
+import { buildTelegramBotTransportBindingId } from '../../../shared/chatCoreIds.js';
 import type { ChatState } from '../api/contracts.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
@@ -78,6 +79,7 @@ export function createChatTelegramRoomBridge(input: {
       roomId,
       body,
       senderName,
+      bindingId,
       runtimeClient,
       memoryService,
       timestamp,
@@ -93,6 +95,9 @@ export function createChatTelegramRoomBridge(input: {
         timestamp,
         {
           transport: 'telegram',
+          transportBindingId: bindingId
+            ? buildTelegramBotTransportBindingId(bindingId)
+            : null,
           companionStore: input.companionStore,
           memoryService,
           chatStore: input.chatStore,

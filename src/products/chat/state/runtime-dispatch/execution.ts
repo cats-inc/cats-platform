@@ -47,6 +47,7 @@ export async function executeDispatch(
   runtimeClient: RuntimeClient,
   now: Date,
   transport?: RuntimeTransportContext,
+  transportBindingId?: string | null,
   companionStore?: CompanionBoxStore,
   core?: CatsCoreState,
 ): Promise<DispatchExecution> {
@@ -58,6 +59,7 @@ export async function executeDispatch(
       channel,
       request.target,
       transport,
+      transportBindingId,
       now,
       companionStore,
     );

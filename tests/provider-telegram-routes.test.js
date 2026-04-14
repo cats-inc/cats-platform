@@ -8,6 +8,10 @@ import test from 'node:test';
 import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
 import { createServer } from '../build/server/app/server/index.js';
 import {
+  buildChatConversationId,
+  buildTelegramBotTransportBindingId,
+} from '../build/server/shared/chatCoreIds.js';
+import {
   FileChatStore,
   MemoryChatStore,
 } from '../build/server/products/chat/state/store.js';
@@ -1735,6 +1739,8 @@ test('telegram webhook routes can scope ingress to a specific bot binding path a
 });
 
 test('telegram webhook for a cat binding reuses that cat direct lane', async () => {
+  const chatStore = new MemoryChatStore();
+
   await withServer(createRuntimeStub(), async (baseUrl) => {
     await configureTelegramBossCat(baseUrl);
 
@@ -1816,6 +1822,15 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
     const roomPayload = await roomResponse.json();
     assert.equal(roomPayload.channel.roomRouting.mode, 'direct_cat_chat');
     assert.equal(roomPayload.channel.roomRouting.defaultRecipientId, catId);
+    const sessionStartedMessage = roomPayload.channel.messages.find((message) =>
+      message.metadata?.event === 'session_started'
+      && message.metadata?.targetId === catId,
+    );
+    assert.ok(sessionStartedMessage);
+    assert.equal(
+      sessionStartedMessage?.metadata?.transportBindingId,
+      buildTelegramBotTransportBindingId(bindingId),
+    );
 
     const messagesResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}/messages`);
     assert.equal(messagesResponse.status, 200);
@@ -1824,7 +1839,11 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
       message.senderKind === 'user' && message.body === 'hello companion'));
     assert.ok(messagesPayload.messages.some((message) =>
       message.senderKind === 'agent' && message.senderName === 'Companion'));
-  });
+    const core = await chatStore.readCore();
+    assert.ok(core.sessions.some((session) =>
+      session.conversationId === buildChatConversationId(directLaneId)
+      && session.transportBindingId === buildTelegramBotTransportBindingId(bindingId)));
+  }, chatStore);
 });
 
 test('telegram webhook normalizes legacy boss room mode for cat-bound bots into direct lanes', async () => {

@@ -9,6 +9,7 @@ import { activeAssignedParticipants } from '../../shared/channelParticipants.js'
 
 export interface RuntimeSessionRoutingOptions {
   transport?: import('../runtimeTargeting.js').RuntimeTransportContext;
+  transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;

@@ -65,6 +65,7 @@ import { applyRoomRoutingSnapshot } from '../runtime-session/state.js';
 
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
+  transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
@@ -389,6 +390,7 @@ export async function continueBegunChannelMessageDispatch(
     maxTargetVisits,
     describeGuardReason,
     transport: options.transport,
+    transportBindingId: options.transportBindingId,
     companionStore: options.companionStore,
     memoryService: options.memoryService,
     chatStore: options.chatStore,

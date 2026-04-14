@@ -576,6 +576,7 @@ export async function persistCatAssignmentUpdate(
         resolvedChannelView,
         buildCatTarget(resolvedCat),
         undefined,
+        null,
         now,
         context.dependencies.companionStore,
       );
