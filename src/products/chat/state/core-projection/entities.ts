@@ -50,6 +50,9 @@ import type {
 import {
   isReplayableContinuationGuardReason,
 } from '../room-routing/continuationReplay.js';
+import {
+  readLatestWorkflowContinuationContext,
+} from '../room-routing/continuationContext.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   readMetadataBoolean,
@@ -122,46 +125,6 @@ function shouldPreserveActiveChannelWorkItemStatus(
 function latestWorkflowTurn(channel: ChatChannelState): RoomWorkflowTurn | null {
   const workflow = channel.roomRouting?.workflow;
   return workflow?.activeTurn ?? workflow?.turnHistory[0] ?? null;
-}
-
-function readLatestContinuationContext(
-  turn: RoomWorkflowTurn | null,
-  options: {
-    excludeEventId?: string | null;
-  } = {},
-): {
-  metadata: CoreRecordMetadata;
-  targets: RoomRoutingParticipantRef[];
-} | null {
-  if (!turn) {
-    return null;
-  }
-
-  for (const event of [...turn.events].reverse()) {
-    if (options.excludeEventId && event.id === options.excludeEventId) {
-      continue;
-    }
-
-    const metadata = readMetadataRecord(event.metadata);
-    if (!metadata) {
-      continue;
-    }
-
-    if (
-      readMetadataString(metadata, 'continuationSource') !== null
-      || readMetadataRecord(metadata.workflowRecommendation) !== null
-      || readMetadataStringArray(metadata, 'unresolvedTargets').length > 0
-      || readMetadataStringArray(metadata, 'mentionNames').length > 0
-      || readMetadataString(metadata, 'branchStrategy') !== null
-    ) {
-      return {
-        metadata,
-        targets: readParticipantRefs(event.targets),
-      };
-    }
-  }
-
-  return null;
 }
 
 function findLatestContinuationReplayEvent(turn: RoomWorkflowTurn | null) {
@@ -262,7 +225,7 @@ function readRecoveredStartupContinuationReplayRequest(
   }
 
   let replayTargets = interruptedTargetStates.map((target) => structuredClone(target.participant));
-  const continuationContext = readLatestContinuationContext(turn, {
+  const continuationContext = readLatestWorkflowContinuationContext(turn, {
     excludeEventId: event.id,
   });
   if (

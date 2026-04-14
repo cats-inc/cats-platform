@@ -53,12 +53,11 @@ import {
   resolveRawChatParticipantId,
 } from '../chatCoreInterop.js';
 import {
-  readMetadataRecord,
-  readMetadataString,
-  readMetadataStringArray,
-  readParticipantRefs,
   sameParticipantRef,
 } from '../core-projection/entityMetadata.js';
+import {
+  readLatestWorkflowContinuationContext,
+} from '../room-routing/continuationContext.js';
 
 function describeGuardReason(): string {
   return 'a routing guard';
@@ -493,26 +492,7 @@ function hasOutstandingSequentialTargetsAfterRecoveredLane(
 function readLatestSequentialContinuationTargets(
   turn: RoomWorkflowTurn,
 ): RoomRoutingParticipantRef[] {
-  for (const event of [...turn.events].reverse()) {
-    const metadata = readMetadataRecord(event.metadata);
-    if (!metadata) {
-      continue;
-    }
-
-    const hasContinuationContext =
-      readMetadataString(metadata, 'continuationSource') !== null
-      || readMetadataRecord(metadata.workflowRecommendation) !== null
-      || readMetadataStringArray(metadata, 'unresolvedTargets').length > 0
-      || readMetadataStringArray(metadata, 'mentionNames').length > 0
-      || readMetadataString(metadata, 'branchStrategy') !== null;
-    if (!hasContinuationContext) {
-      continue;
-    }
-
-    return readParticipantRefs(event.targets);
-  }
-
-  return [];
+  return readLatestWorkflowContinuationContext(turn)?.targets ?? [];
 }
 
 const ACTIVE_CANONICAL_LANE_STATUSES = new Set([
