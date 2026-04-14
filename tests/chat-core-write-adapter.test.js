@@ -19,6 +19,9 @@ import {
   repairOrphanedCompletedDispatchTurn,
 } from '../build/server/products/chat/state/runtime-dispatch/repair.js';
 import {
+  applyChannelReadRepairs,
+} from '../build/server/products/chat/api/channelRepair.js';
+import {
   resumeWorkflowContinuationReplay,
 } from '../build/server/products/chat/state/runtime-dispatch/replay.js';
 import {
@@ -1244,6 +1247,185 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
   assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'completed');
   assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'completed');
   assert.equal(repairedChannel.roomRouting.lastOutcome?.dispatches[0]?.status, 'completed');
+});
+
+test('applyChannelReadRepairs restores canonical reply and session metadata after transcript drift', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-15T00:32:00.000Z');
+  const responseAt = new Date('2026-04-15T00:32:06.000Z');
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Repair chain canonical fallback',
+      topic: 'Restore canonical reply and session metadata during read repair.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Please rebuild the missing transcript from canonical state.' },
+    runtimeClient,
+    seededAt,
+  );
+  const activeTurnId = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn?.id;
+  assert.ok(activeTurnId);
+  const repliedState = appendMessage(
+    begun.state,
+    channelId,
+    {
+      senderKind: 'orchestrator',
+      senderName: 'Chat',
+      body: 'Recovered by the canonical read-repair chain.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-read-repair-chain',
+        targetStateId: 'target-orchestrator-read-repair-chain',
+        terminal: true,
+        turnId: activeTurnId,
+        targetKind: 'orchestrator',
+        targetId: 'orchestrator',
+        sessionId: 'session-read-repair-chain',
+        routingTrigger: 'room_default',
+        dispatchDepth: 0,
+      },
+    },
+  ).state;
+
+  const baselineRecovered = repairOrphanedCompletedDispatchTurn(
+    repliedState,
+    channelId,
+    new Date('2026-04-15T00:32:30.000Z'),
+  );
+  assert.equal(baselineRecovered.repaired, true);
+  await store.write(baselineRecovered.state);
+  const canonicalCore = await store.readCore();
+
+  const corruptedState = structuredClone(baselineRecovered.state);
+  const corruptedChannel = requireChannel(corruptedState, channelId);
+  corruptedChannel.messages = corruptedChannel.messages.filter((message) =>
+    message.metadata?.assistantTurnId !== 'assistant-turn-read-repair-chain'
+    && !(message.metadata?.event === 'session_started'
+      && message.metadata?.sessionId === 'session-read-repair-chain'));
+  const interruptedTurn = structuredClone(corruptedChannel.roomRouting.workflow.turnHistory[0]);
+  assert.ok(interruptedTurn);
+  interruptedTurn.status = 'blocked';
+  interruptedTurn.stageId = 'startup_recovery';
+  interruptedTurn.completedAt = responseAt.toISOString();
+  interruptedTurn.updatedAt = responseAt.toISOString();
+  interruptedTurn.targetStatuses = [];
+  interruptedTurn.events = interruptedTurn.events.filter((event) =>
+    event.kind === 'turn_started' || event.kind === 'checkpoint');
+  interruptedTurn.events.push(
+    {
+      id: 'guard-blocked-read-repair-chain',
+      turnId: interruptedTurn.id,
+      kind: 'guard_blocked',
+      status: 'blocked',
+      message: 'Recovered an interrupted room workflow after restart.',
+      actor: null,
+      sourceMessageId: null,
+      targets: [],
+      dispatchId: null,
+      checkpointId: 'loop-guard-read-repair-chain',
+      outcomeId: null,
+      createdAt: responseAt.toISOString(),
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+    {
+      id: 'outcome-blocked-read-repair-chain',
+      turnId: interruptedTurn.id,
+      kind: 'outcome',
+      status: 'blocked',
+      message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+      actor: null,
+      sourceMessageId: interruptedTurn.sourceMessageId,
+      targets: [],
+      dispatchId: null,
+      checkpointId: null,
+      outcomeId: null,
+      createdAt: responseAt.toISOString(),
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+  );
+  corruptedChannel.roomRouting.workflow.activeTurn = null;
+  corruptedChannel.roomRouting.workflow.turnHistory = [interruptedTurn];
+  corruptedChannel.roomRouting.lastCheckpoint = {
+    id: 'loop-guard-read-repair-chain',
+    kind: 'loop_guard',
+    message: 'Recovered an interrupted room workflow after restart.',
+    actor: null,
+    sourceMessageId: null,
+    targets: [],
+    createdAt: responseAt.toISOString(),
+  };
+  corruptedChannel.roomRouting.lastOutcome = {
+    turnId: interruptedTurn.id,
+    mode: corruptedChannel.roomRouting.mode,
+    sourceMessageId: interruptedTurn.sourceMessageId,
+    sourceSenderKind: interruptedTurn.sourceSenderKind,
+    sourceSenderName: interruptedTurn.sourceSenderName,
+    status: 'blocked',
+    resolution: {
+      routingMode: 'room_default',
+      selectionKind: 'default_target',
+      defaultTarget: {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+      defaultTargetReason: 'boss_chat_default',
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    },
+    resolvedTargets: [
+      {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+    ],
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 0,
+    guard: null,
+    startedAt: seededAt.toISOString(),
+    completedAt: responseAt.toISOString(),
+  };
+
+  const repaired = applyChannelReadRepairs(corruptedState, channelId, {
+    core: canonicalCore,
+    now: new Date('2026-04-15T00:33:00.000Z'),
+  });
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const sessionStartedIndex = repairedChannel.messages.findIndex((message) =>
+    message.metadata?.event === 'session_started'
+    && message.metadata?.sessionId === 'session-read-repair-chain');
+  const responseIndex = repairedChannel.messages.findIndex((message) =>
+    message.metadata?.assistantTurnId === 'assistant-turn-read-repair-chain');
+  assert.equal(sessionStartedIndex >= 0, true);
+  assert.equal(responseIndex >= 0, true);
+  assert.equal(sessionStartedIndex < responseIndex, true);
+  assert.equal(
+    repairedChannel.messages[responseIndex]?.body,
+    'Recovered by the canonical read-repair chain.',
+  );
 });
 
 test('repairOrphanedCompletedDispatchTurn keeps a concurrent turn active when canonical core still has another live lane', async () => {
