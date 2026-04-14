@@ -892,6 +892,96 @@ test('chatStore.write preserves canonical turn and segment history when transcri
   );
 });
 
+test('resumeWorkflowContinuationReplay prefers full canonical assistant turns over surviving terminal transcript segments', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return {
+        segments: [
+          {
+            kind: 'text',
+            text: 'Agent-1 completed the first step. ',
+            toolName: null,
+            toolId: null,
+          },
+          {
+            kind: 'text',
+            text: 'Implementation notes included.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 11,
+        outputTokens: 9,
+        tokensUsed: 20,
+      };
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 take the first pass.' },
+    runtimeClient,
+    new Date('2026-04-15T00:20:45.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const sourceMessages = requireChannel(dispatched.state, channelId).messages.filter((message) =>
+    message.senderName === 'Agent-1'
+    && message.metadata?.event === 'assistant_turn_segment');
+  assert.equal(sourceMessages.length, 2);
+  const sourceMessage = sourceMessages.at(-1);
+  assert.ok(sourceMessage);
+
+  const replayRuntimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      assert.match(
+        content,
+        /Latest routed handoff:\nAgent-1 completed the first step\. ?Implementation notes included\./u,
+      );
+      return usage('Agent-2 resumed from the surviving canonical handoff.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const replayResult = await resumeWorkflowContinuationReplay({
+    request: buildWorkflowContinuationReplayRequest({
+      channelId,
+      checkpointId: 'checkpoint-replay-surviving-canonical-history',
+      sourceMessageId: sourceMessage.id,
+      sourceParticipant: {
+        participantKind: 'cat',
+        participantId: agent1Id,
+        participantName: 'Agent-1',
+      },
+      targets: [
+        {
+          participantKind: 'cat',
+          participantId: agent2Id,
+          participantName: 'Agent-2',
+        },
+      ],
+      branchStrategy: 'transplant_context',
+      workflowStageId: 'continuation_handoff',
+      workflowShape: 'sequential',
+      recordedAt: '2026-04-15T00:21:00.000Z',
+    }),
+    chatStore: store,
+    runtimeClient: replayRuntimeClient,
+    now: new Date('2026-04-15T00:21:30.000Z'),
+  });
+
+  assert.equal(replayResult.status, 'dispatched');
+  assert.ok(
+    requireChannel(await store.read(), channelId).messages.some((message) =>
+      message.body === 'Agent-2 resumed from the surviving canonical handoff.'),
+  );
+});
+
 test('beginChannelMessageRetryDispatch can rebuild a missing user source from canonical turn metadata', async () => {
   const { state, channelId } = await createGroupChannelState();
   const store = new MemoryChatStore();

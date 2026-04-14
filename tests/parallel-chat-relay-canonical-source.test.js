@@ -227,3 +227,117 @@ test('parallel chat relay rebuilds a missing source reply from canonical history
     );
   });
 });
+
+test('parallel chat relay prefers full canonical assistant turns over surviving terminal transcript segments', async () => {
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.sendMessage = async function sendMessage(sessionId, content) {
+    this.sentMessages.push({ sessionId, content });
+    if (content.includes('Seed the source reply before relay.')) {
+      return {
+        segments: [
+          { kind: 'text', text: 'First source segment. ', toolName: null, toolId: null },
+          { kind: 'text', text: 'Second source segment.', toolName: null, toolId: null },
+        ],
+        inputTokens: 9,
+        outputTokens: 7,
+        tokensUsed: 16,
+      };
+    }
+
+    assert.match(content, /First source segment\.\s*Second source segment\./u);
+    return {
+      segments: [{ kind: 'text', text: 'Target channel accepted the canonical relay.', toolName: null, toolId: null }],
+      inputTokens: 11,
+      outputTokens: 7,
+      tokensUsed: 18,
+    };
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createGroupResponse = await fetch(`${baseUrl}/api/concurrent-groups`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Parallel Relay Canonical Surviving Segment',
+        targets: [
+          { provider: 'claude', instance: 'native' },
+          { provider: 'codex', instance: 'native' },
+        ],
+      }),
+    });
+    assert.equal(createGroupResponse.status, 201);
+    const createGroupPayload = await createGroupResponse.json();
+    const groupId = createGroupPayload.group.id;
+    const [sourceChannelId, targetChannelId] = createGroupPayload.group.memberChannelIds;
+
+    const sendResponse = await fetch(`${baseUrl}/api/channels/${sourceChannelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        body: 'Seed the source reply before relay.',
+      }),
+    });
+    assert.equal(sendResponse.status, 200);
+
+    const sourceReplyId = await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${sourceChannelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      const sourceReply = payload.channel.messages.find((message) =>
+        message.metadata?.event === 'assistant_turn_segment'
+        && message.metadata?.terminal === true);
+      return sourceReply?.id ?? null;
+    }, {
+      timeoutMs: 2_000,
+      intervalMs: 25,
+    });
+
+    const relayResponse = await fetch(`${baseUrl}/api/concurrent-groups/${groupId}/relay`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        activeChannelId: sourceChannelId,
+        sourceChannelId,
+        sourceMessageId: sourceReplyId,
+        targetPolicy: 'single',
+        targetChannelId,
+        command: 'check_this',
+      }),
+    });
+    assert.equal(relayResponse.status, 200);
+
+    await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${targetChannelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      return payload.channel.messages.some((message) =>
+        message.metadata?.event === 'parallel_relay_incoming'
+        && message.metadata?.sourceMessageId === sourceReplyId)
+        ? true
+        : null;
+    }, {
+      timeoutMs: 2_000,
+      intervalMs: 25,
+    });
+
+    await waitForCondition(() => runtimeClient.sentMessages[1]?.content ?? null, {
+      timeoutMs: 2_000,
+      intervalMs: 25,
+    });
+    assert.match(
+      runtimeClient.sentMessages[1]?.content ?? '',
+      /First source segment\.\s*Second source segment\./u,
+    );
+  });
+});

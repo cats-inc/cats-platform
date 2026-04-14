@@ -6,6 +6,7 @@ import type {
 } from '../../../core/types.js';
 import type { ChatMessage } from '../api/contracts.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
+import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
 
 export type CanonicalChatUserMessage = ChatMessage & { senderKind: 'user' };
 
@@ -331,4 +332,22 @@ export function buildCanonicalChatMessage(
 ): ChatMessage | null {
   return buildCanonicalChatSegmentMessage(core, channelId, sourceMessageId)
     ?? buildCanonicalChatTurnMessage(core, channelId, sourceMessageId);
+}
+
+export function resolveTranscriptOrCanonicalChatMessage(input: {
+  core: CatsCoreState | null | undefined;
+  channelId: string;
+  transcriptMessages: ReadonlyArray<ChatMessage>;
+  sourceMessageId: string;
+}): ChatMessage | null {
+  const transcriptMessage = input.transcriptMessages.find(
+    (message) => message.id === input.sourceMessageId,
+  ) ?? null;
+  const canonicalMessage = input.core
+    ? buildCanonicalChatMessage(input.core, input.channelId, input.sourceMessageId)
+    : null;
+  if (transcriptMessage && !isAssistantTurnSegmentMessage(transcriptMessage)) {
+    return transcriptMessage;
+  }
+  return canonicalMessage ?? transcriptMessage;
 }

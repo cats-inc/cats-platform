@@ -5,7 +5,6 @@ import type {
   RoomRoutingTrigger,
   RoomWorkflowShape,
 } from '../../../../shared/roomRouting.js';
-import type { CatsCoreState } from '../../../../core/types.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
@@ -59,7 +58,7 @@ import {
   persistInFlightDispatchState,
 } from './persistence.js';
 import {
-  buildCanonicalChatMessage,
+  resolveTranscriptOrCanonicalChatMessage,
 } from '../chatCoreInterop.js';
 
 function describeGuardReason(reason: string): string {
@@ -448,13 +447,6 @@ function mapTurnStatusToExecutionState(
   }
 }
 
-function resolveCanonicalReplaySourceMessage(
-  core: CatsCoreState,
-  request: WorkflowContinuationReplaySnapshot,
-): ChatMessage | null {
-  return buildCanonicalChatMessage(core, request.channelId, request.sourceMessageId);
-}
-
 export async function resumeWorkflowContinuationReplay(input: {
   request: WorkflowContinuationReplaySnapshot;
   chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore'>;
@@ -469,8 +461,12 @@ export async function resumeWorkflowContinuationReplay(input: {
   const state = await input.chatStore.read();
   const core = await input.chatStore.readCore();
   const channel = buildChannelView(state, input.request.channelId);
-  const sourceMessage = channel.messages.find((message) => message.id === input.request.sourceMessageId)
-    ?? resolveCanonicalReplaySourceMessage(core, input.request);
+  const sourceMessage = resolveTranscriptOrCanonicalChatMessage({
+    core,
+    channelId: input.request.channelId,
+    transcriptMessages: channel.messages,
+    sourceMessageId: input.request.sourceMessageId,
+  });
   if (!sourceMessage) {
     throw new Error(`Stored workflow continuation source message not found: ${input.request.sourceMessageId}`);
   }
