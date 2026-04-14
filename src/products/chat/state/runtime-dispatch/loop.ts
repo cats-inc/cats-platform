@@ -218,6 +218,7 @@ export async function processDispatchQueue(
       });
     }
 
+    const effectiveSourceMessage = frame.promptSourceMessage ?? frame.sourceMessage;
     const allowedRequests: DispatchRequest[] = [];
     for (const target of targetsForThisPass) {
       const branchStrategy = frame.branchStrategyOverride
@@ -243,7 +244,7 @@ export async function processDispatchQueue(
             reason: 'max_dispatches',
             branchStrategy,
             ...buildContinuationReplayMetadata({
-              sourceMessageId: frame.sourceMessage.id,
+              sourceMessageId: effectiveSourceMessage.id,
               mentionNames: frame.mentionNames,
               trigger: frame.trigger,
               workflowStageId: activeTurn.stageId,
@@ -260,6 +261,7 @@ export async function processDispatchQueue(
 
       const request: DispatchRequest = {
         ...frame,
+        sourceMessage: effectiveSourceMessage,
         target,
         dispatchId: randomUUID(),
         targetStateId: randomUUID(),
@@ -279,7 +281,7 @@ export async function processDispatchQueue(
           `${target.participantName} is pending dispatch for this room turn.`,
           nowIso,
           frame.sourceParticipant,
-          frame.sourceMessage.id,
+          effectiveSourceMessage.id,
           [toParticipantRef(target)],
           {
             dispatchId: request.dispatchId,
@@ -322,7 +324,7 @@ export async function processDispatchQueue(
             blockedError,
             nowIso,
             frame.sourceParticipant,
-            frame.sourceMessage.id,
+            effectiveSourceMessage.id,
             [toParticipantRef(target)],
             {
               dispatchId: request.dispatchId,
@@ -352,7 +354,7 @@ export async function processDispatchQueue(
             reason: 'max_target_visits',
             branchStrategy: request.branchStrategy,
             ...buildContinuationReplayMetadata({
-              sourceMessageId: frame.sourceMessage.id,
+              sourceMessageId: effectiveSourceMessage.id,
               mentionNames: frame.mentionNames,
               trigger: frame.trigger,
               workflowStageId: activeTurn.stageId,
@@ -377,7 +379,7 @@ export async function processDispatchQueue(
           turnId: activeTurn.id,
           targetStatus: 'blocked',
           error: blockedError,
-          sourceMessageId: frame.sourceMessage.id,
+          sourceMessageId: effectiveSourceMessage.id,
           trigger: frame.trigger,
           dispatchDepth: frame.depth,
         });
@@ -409,7 +411,7 @@ export async function processDispatchQueue(
             blockedError,
             nowIso,
             frame.sourceParticipant,
-            frame.sourceMessage.id,
+            effectiveSourceMessage.id,
             [toParticipantRef(target)],
             {
               dispatchId: request.dispatchId,
@@ -439,7 +441,7 @@ export async function processDispatchQueue(
             reason: 'anti_ping_pong',
             branchStrategy: request.branchStrategy,
             ...buildContinuationReplayMetadata({
-              sourceMessageId: frame.sourceMessage.id,
+              sourceMessageId: effectiveSourceMessage.id,
               mentionNames: frame.mentionNames,
               trigger: frame.trigger,
               workflowStageId: activeTurn.stageId,
@@ -464,7 +466,7 @@ export async function processDispatchQueue(
           turnId: activeTurn.id,
           targetStatus: 'blocked',
           error: blockedError,
-          sourceMessageId: frame.sourceMessage.id,
+          sourceMessageId: effectiveSourceMessage.id,
           trigger: frame.trigger,
           dispatchDepth: frame.depth,
         });
@@ -497,7 +499,7 @@ export async function processDispatchQueue(
           `Fan-out scheduled ${allowedRequests.map((request) => request.target.participantName).join(', ')} in parallel.`,
           nowIso,
           frame.sourceParticipant,
-          frame.sourceMessage.id,
+          effectiveSourceMessage.id,
           allowedRequests.map((request) => toParticipantRef(request.target)),
           {
             metadata: {

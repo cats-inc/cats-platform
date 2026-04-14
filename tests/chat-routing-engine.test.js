@@ -1229,6 +1229,12 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
         && target.branchStrategy === 'transplant_context',
     ),
   );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-2',
+    )?.sourceMessageId,
+    replies[0]?.id,
+  );
 });
 
 test('structured workflow recommendations drive continuation when no explicit @mention is present', async () => {
