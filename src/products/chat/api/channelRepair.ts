@@ -50,6 +50,7 @@ export function applyChannelReadRepairs(
     repairedSessionMetadata.state,
     channelId,
     {
+      core: options.core,
       now,
     },
   );

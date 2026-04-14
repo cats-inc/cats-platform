@@ -1298,3 +1298,160 @@ test('repairMissingStartupRecoveryNotice inserts an interrupted-turn note before
     /Cats server restarted before room workflow cleanup completed/i,
   );
 });
+
+test('repairMissingStartupRecoveryNotice falls back to canonical turn timing when the source message drifted', async () => {
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-04-09T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Interrupted startup recovery with drift',
+      topic: 'Restore startup notice even when the source user message is missing.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: 'First question',
+    },
+    new Date('2026-04-09T12:00:01.000Z'),
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: 'Chat connected to cats-runtime session session-interrupted.\n(cwd: C:/runtime/session-interrupted)',
+    },
+    new Date('2026-04-09T12:00:01.000Z'),
+    {
+      metadata: {
+        event: 'session_started',
+        targetKind: 'orchestrator',
+        sessionId: 'session-interrupted',
+      },
+      incrementUnread: false,
+    },
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: 'Second question',
+    },
+    new Date('2026-04-09T12:10:00.000Z'),
+  ).state;
+
+  const channel = requireChannel(state, channelId);
+  const sourceMessageId = channel.messages[1].id;
+  channel.roomRouting.workflow.turnHistory.unshift({
+    id: 'turn-startup-recovery-drifted',
+    status: 'blocked',
+    sourceMessageId,
+    sourceSenderKind: 'user',
+    sourceSenderName: 'User',
+    guard: null,
+    stageId: 'startup_recovery',
+    workflowShape: 'sequential',
+    reviewRequired: false,
+    lastCheckpointId: 'checkpoint-startup-recovery-drifted',
+    convergeTargetId: null,
+    continuationCount: 0,
+    dispatchCount: 0,
+    targetStatuses: [
+      {
+        id: 'target-startup-recovery-drifted',
+        dispatchId: 'dispatch-startup-recovery-drifted',
+        participant: {
+          participantKind: 'orchestrator',
+          participantId: 'orchestrator',
+          participantName: 'Chat',
+        },
+        source: null,
+        sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: 'checkpoint-startup-recovery-drifted',
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: 'wake-startup-recovery-drifted',
+        status: 'blocked',
+        queuedAt: '2026-04-09T12:00:01.000Z',
+        startedAt: '2026-04-09T12:00:01.000Z',
+        completedAt: '2026-04-09T12:05:00.000Z',
+        response: null,
+        error: 'Cats server restarted before room workflow cleanup completed.',
+      },
+    ],
+    events: [
+      {
+        id: 'event-startup-recovery-drifted',
+        turnId: 'turn-startup-recovery-drifted',
+        kind: 'outcome',
+        status: 'blocked',
+        message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+        actor: null,
+        sourceMessageId,
+        targets: [
+          {
+            participantKind: 'orchestrator',
+            participantId: 'orchestrator',
+            participantName: 'Chat',
+          },
+        ],
+        dispatchId: null,
+        checkpointId: null,
+        outcomeId: null,
+        createdAt: '2026-04-09T12:05:00.000Z',
+        metadata: {
+          recoverySource: 'server_restart',
+          interruptedError: 'Cats server restarted before room workflow cleanup completed.',
+        },
+      },
+    ],
+    startedAt: '2026-04-09T12:00:01.000Z',
+    updatedAt: '2026-04-09T12:05:00.000Z',
+    completedAt: '2026-04-09T12:05:00.000Z',
+  });
+
+  await chatStore.write(state);
+  const core = await chatStore.readCore();
+  const driftedState = structuredClone(state);
+  requireChannel(driftedState, channelId).messages = requireChannel(driftedState, channelId)
+    .messages
+    .filter((message) => message.id !== sourceMessageId);
+
+  const repaired = repairMissingStartupRecoveryNotice(
+    driftedState,
+    channelId,
+    {
+      core,
+      now: new Date('2026-04-09T12:15:00.000Z'),
+    },
+  );
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const noticeIndex = repairedChannel.messages.findIndex((message) =>
+    message.metadata?.event === 'workflow_interrupted'
+    && message.metadata?.turnId === 'turn-startup-recovery-drifted');
+  const nextUserIndex = repairedChannel.messages.findIndex((message) => message.body === 'Second question');
+
+  assert.ok(noticeIndex >= 0);
+  assert.ok(nextUserIndex > noticeIndex);
+  assert.match(
+    repairedChannel.messages[noticeIndex].body,
+    /Cats server restarted before room workflow cleanup completed/i,
+  );
+});

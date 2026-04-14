@@ -727,6 +727,7 @@ export function repairMissingStartupRecoveryNotice(
   channelId: string,
   options: {
     now?: Date;
+    core?: CatsCoreState;
   } = {},
 ): {
   repaired: boolean;
@@ -745,6 +746,7 @@ export function repairMissingStartupRecoveryNotice(
   const nextState = structuredClone(state);
   const nextChannel = requireChannel(nextState, channelId);
   const nowIso = (options.now ?? new Date()).toISOString();
+  const conversationId = buildChatConversationId(channelId);
   let repaired = false;
 
   for (const turn of nextChannel.roomRouting?.workflow?.turnHistory ?? []) {
@@ -754,14 +756,22 @@ export function repairMissingStartupRecoveryNotice(
 
     const sourceMessageIndex = nextChannel.messages.findIndex((message) =>
       message.id === turn.sourceMessageId);
-    if (sourceMessageIndex < 0) {
-      continue;
-    }
+    const sourceBoundaryCreatedAt = sourceMessageIndex >= 0
+      ? nextChannel.messages[sourceMessageIndex]!.createdAt
+      : options.core?.turns.find((candidate) =>
+        candidate.id === turn.id
+        && candidate.conversationId === conversationId)?.createdAt
+        ?? turn.startedAt;
+    const isAfterSourceBoundary = (message: ChatMessage, index: number): boolean => (
+      sourceMessageIndex >= 0
+        ? index > sourceMessageIndex
+        : message.createdAt.localeCompare(sourceBoundaryCreatedAt) > 0
+    );
 
     const nextUserMessageIndex = nextChannel.messages.findIndex((message, index) =>
-      index > sourceMessageIndex && message.senderKind === 'user');
+      isAfterSourceBoundary(message, index) && message.senderKind === 'user');
     const noticeAlreadyExists = nextChannel.messages.some((message, index) =>
-      index > sourceMessageIndex
+      isAfterSourceBoundary(message, index)
       && (nextUserMessageIndex < 0 || index < nextUserMessageIndex)
       && message.metadata?.event === 'workflow_interrupted'
       && message.metadata?.turnId === turn.id);
