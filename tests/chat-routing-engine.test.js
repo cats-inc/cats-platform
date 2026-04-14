@@ -447,6 +447,14 @@ test('sequential room audience does not redispatch queued targets when replies m
     replies.map((message) => message.senderName),
     ['Agent-1', 'Agent-2', 'Agent-3'],
   );
+  assert.match(
+    runtimeClient.sentMessages[2]?.content ?? '',
+    /\[agent:Agent-2\] @Agent-3 finish the room\./u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[2]?.content ?? '',
+    /Latest routed handoff:\n@Agent-3 finish the room\./u,
+  );
   assert.equal(
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
       (target) => target.participant.participantName === 'Agent-2',

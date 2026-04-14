@@ -167,10 +167,21 @@ function advanceQueuedSequentialPromptFrontier(
   execution: DispatchExecution,
   responseMessage: ChatMessage,
 ): void {
+  const executionSourceParticipantKey = execution.sourceParticipant
+    ? participantKey(execution.sourceParticipant)
+    : null;
   const nextSequentialFrame = queue.find((frame) =>
     frame.workflowShapeOverride === 'sequential'
     && frame.depth === execution.depth
-    && frame.sourceMessage.id === execution.sourceMessage.id
+    && (
+      (frame.promptSourceMessage ?? frame.sourceMessage).id === execution.sourceMessage.id
+      || (
+        executionSourceParticipantKey === null
+          ? frame.sourceParticipant === null
+          : frame.sourceParticipant !== null
+            && participantKey(frame.sourceParticipant) === executionSourceParticipantKey
+      )
+    )
     && frame.targets.length > 0);
 
   if (!nextSequentialFrame) {
