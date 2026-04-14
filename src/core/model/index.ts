@@ -47,6 +47,7 @@ import { buildApprovalQueue } from '../approvalQueue.js';
 import type {
   BotBindingRecord,
   CatsCoreState,
+  CoreTaskRecord,
   DurableMemoryRecord,
   DurableMemorySubjectType,
   OwnerProfileRecord,
