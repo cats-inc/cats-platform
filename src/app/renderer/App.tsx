@@ -1,12 +1,17 @@
-import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Suspense,
+  lazy,
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { flushSync } from 'react-dom';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
-import ChatApp from '../../products/chat/renderer/App';
-import WorkApp from '../../products/work/renderer/App';
-import CodeApp from '../../products/code/renderer/App';
 import {
   isPlatformNonProductPath,
   resolvePreferredPlatformSurface,
@@ -27,6 +32,9 @@ type PlatformLoadState =
   | { status: 'error'; message: string };
 
 const PLATFORM_ENVELOPE_BACKGROUND_REFRESH_MS = 5_000;
+const ChatApp = lazy(() => import('../../products/chat/renderer/App'));
+const WorkApp = lazy(() => import('../../products/work/renderer/App'));
+const CodeApp = lazy(() => import('../../products/code/renderer/App'));
 
 function isLobbyPath(pathname: string): boolean {
   return pathname === '/lobby' || pathname.startsWith('/lobby/');
@@ -35,6 +43,31 @@ function isLobbyPath(pathname: string): boolean {
 function resolveProductEntryPath(surface: string): string {
   const route = PLATFORM_SURFACE_ROUTES[surface as keyof typeof PLATFORM_SURFACE_ROUTES];
   return route ? route.routePrefix : '/';
+}
+
+function ProductSurfaceFallback({ surface }: { surface: PlatformSurfaceId }) {
+  return (
+    <div className="screen screenCentered">
+      <div className="loadingPanel">
+        <p className="eyebrow">Cats</p>
+        <h1>Loading {surface}</h1>
+      </div>
+    </div>
+  );
+}
+
+function renderProductSurface(surface: PlatformSurfaceId) {
+  const AppComponent = surface === 'work'
+    ? WorkApp
+    : surface === 'code'
+      ? CodeApp
+      : ChatApp;
+
+  return (
+    <Suspense fallback={<ProductSurfaceFallback surface={surface} />}>
+      <AppComponent />
+    </Suspense>
+  );
 }
 
 function readRequestedPlatformSurface(
@@ -390,11 +423,7 @@ export default function PlatformApp() {
   const shellSurface = resolvePlatformShellSurface(location.pathname, preferredSurface);
   const hasStoredSurface = Boolean(readyEnvelope.lastProductSurface);
   const entryPath = hasStoredSurface ? resolveProductEntryPath(preferredSurface) : '/lobby';
-  const settingsSurfaceElement = shellSurface === 'work'
-    ? <WorkApp />
-    : shellSurface === 'code'
-      ? <CodeApp />
-      : <ChatApp />;
+  const settingsSurfaceElement = renderProductSurface(shellSurface);
   return (
     <>
       {readyEnvelope.guideCat && readyEnvelope.guideCat.status !== 'dismissed' ? (
@@ -411,9 +440,18 @@ export default function PlatformApp() {
         <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
         <Route path="/products" element={<Navigate to="/lobby" replace />} />
         <Route path="/settings/*" element={settingsSurfaceElement} />
-        <Route path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`} element={<ChatApp />} />
-        <Route path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`} element={<WorkApp />} />
-        <Route path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`} element={<CodeApp />} />
+        <Route
+          path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`}
+          element={renderProductSurface('chat')}
+        />
+        <Route
+          path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`}
+          element={renderProductSurface('work')}
+        />
+        <Route
+          path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`}
+          element={renderProductSurface('code')}
+        />
         <Route path="/setup" element={<Navigate to={entryPath} replace />} />
         <Route path="/" element={<Navigate to={entryPath} replace />} />
         <Route path="*" element={<Navigate to={entryPath} replace />} />
