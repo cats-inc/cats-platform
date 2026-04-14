@@ -299,6 +299,8 @@ test('Work projections preserve briefing-thread channel links from shared conver
   assert.equal(projectDetail.linkedTasks[0].assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
   assert.equal(projectDetail.linkedTasks[0].assignedActors[0]?.displayName, 'Work Reviewer');
   assert.equal(workItemDetail.conversation?.sourceChannelId, sourceChannelId);
+  assert.equal(taskDetail.project?.id, projectId);
+  assert.equal(taskDetail.workItem?.id, workItemId);
   assert.equal(taskDetail.conversation?.sourceChannelId, sourceChannelId);
   assert.equal(taskDetail.assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
   assert.equal(taskDetail.assignedActors[0]?.displayName, 'Work Reviewer');

@@ -336,6 +336,8 @@ export interface WorkTaskDetailProjection {
     name: 'Cats Work';
   };
   task: CoreTaskRecord;
+  project: WorkProjectListItem | null;
+  workItem: WorkWorkItemListItem | null;
   conversation: CoreConversationRecord | null;
   assignedActors: Array<{
     actorId: string;
@@ -949,6 +951,10 @@ export function buildWorkTaskDetailProjection(
   const timeline = queryCoreTaskTimelineView(core, task, {
     limit: WORK_TIMELINE_PREVIEW_LIMIT,
   });
+  const linkedWorkItem = core.workItems.find((candidate) => candidate.taskId === task.id) ?? null;
+  const project = linkedWorkItem?.projectId
+    ? core.projects.find((candidate) => candidate.id === linkedWorkItem.projectId) ?? null
+    : null;
   const conversation = task.conversationId
     ? core.conversations.find((candidate) => candidate.id === task.conversationId) ?? null
     : null;
@@ -963,6 +969,24 @@ export function buildWorkTaskDetailProjection(
       name: 'Cats Work',
     },
     task,
+    project: project
+      ? buildProjectListItems(
+        {
+          ...core,
+          projects: [project],
+        },
+        1,
+      )[0] ?? null
+      : null,
+    workItem: linkedWorkItem
+      ? buildWorkItemListItems(
+        {
+          ...core,
+          workItems: [linkedWorkItem],
+        },
+        1,
+      )[0] ?? null
+      : null,
     conversation,
     assignedActors,
     inspection: buildCoreTaskInspectionView(core, task),

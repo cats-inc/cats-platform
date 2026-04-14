@@ -227,6 +227,10 @@ export function TaskDetailView() {
                 <span>Updated: {formatTimestamp(payload.task.updatedAt)}</span>
               </div>
               <div className="operatorMetaRow">
+                <span>Project: {payload.project?.title ?? 'No linked project'}</span>
+                <span>Work item: {payload.workItem?.title ?? 'No linked work item'}</span>
+              </div>
+              <div className="operatorMetaRow">
                 <span>Assigned: {compactList(payload.assignedActors.map((actor) => actor.displayName))}</span>
                 <span>Task: {payload.task.id}</span>
               </div>
@@ -246,6 +250,32 @@ export function TaskDetailView() {
                     }}
                   >
                     Open chat thread
+                  </button>
+                ) : null}
+                {payload.project ? (
+                  <button
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      startTransition(() => {
+                        navigate(`/work/projects/${encodeURIComponent(payload.project!.id)}`);
+                      });
+                    }}
+                  >
+                    Open project
+                  </button>
+                ) : null}
+                {payload.workItem ? (
+                  <button
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      startTransition(() => {
+                        navigate(`/work/work-items/${encodeURIComponent(payload.workItem!.id)}`);
+                      });
+                    }}
+                  >
+                    Open work item
                   </button>
                 ) : null}
                 {listCatActorLinks(payload.assignedActors).map((actor) => (

@@ -7098,6 +7098,8 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     assert.equal(workDetailResponse.status, 200);
     const workDetailPayload = await workDetailResponse.json();
     assert.equal(workDetailPayload.task.id, 'task-work-dashboard');
+    assert.equal(workDetailPayload.project?.id, 'project-work-dashboard');
+    assert.equal(workDetailPayload.workItem?.id, 'work-item-work-dashboard');
     assert.equal(workDetailPayload.controlPlane.taskId, 'task-work-dashboard');
     assert.equal(workDetailPayload.timeline.view.taskId, 'task-work-dashboard');
 
