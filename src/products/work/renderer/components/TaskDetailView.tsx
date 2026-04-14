@@ -157,11 +157,11 @@ export function TaskDetailView() {
             className="operatorActionButton"
             onClick={() => {
               startTransition(() => {
-                navigate('/work/war-room');
+                navigate('/work/tasks');
               });
             }}
           >
-            Back to War Room
+            Back to Tasks
           </button>
           <button
             type="button"

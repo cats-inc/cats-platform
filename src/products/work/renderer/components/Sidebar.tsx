@@ -39,6 +39,7 @@ export interface SidebarProps {
   onStartWorkIntake?: () => void;
   onOpenWarRoom?: () => void;
   onOpenProjects?: () => void;
+  onOpenTasks?: () => void;
   onOpenWorkItems?: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
@@ -116,7 +117,7 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           key: 'war-room',
           label: 'War Room',
           onClick: props.onOpenWarRoom,
-          active: currentPath.startsWith('/work/war-room') || currentPath.startsWith('/work/tasks/'),
+          active: currentPath.startsWith('/work/war-room'),
           icon: (
             <svg
               width="16"
@@ -132,6 +133,38 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
               <path d="M4 5h8" />
               <path d="M4 8h8" />
               <path d="M6 11h4" />
+            </svg>
+          ),
+        },
+      ],
+    });
+  }
+
+  if (props.onOpenTasks) {
+    groups.push({
+      key: 'tasks',
+      ariaLabel: 'Execution',
+      items: [
+        {
+          key: 'tasks',
+          label: 'Tasks',
+          onClick: props.onOpenTasks,
+          active: currentPath === '/work/tasks' || currentPath.startsWith('/work/tasks/'),
+          icon: (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+              <path d="M5 5.5h6" />
+              <path d="M5 8h6" />
+              <path d="M5 10.5h4" />
             </svg>
           ),
         },

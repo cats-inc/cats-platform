@@ -307,8 +307,8 @@ test('Work sidebar keeps the Work product selected on platform settings routes',
   });
 });
 
-test('Work sidebar marks War Room active for operational task routes', () => {
-  withLocationPathname('/work/tasks/task-123', () => {
+test('Work sidebar marks War Room active for war-room routes', () => {
+  withLocationPathname('/work/war-room', () => {
     const tree = WorkSidebar({
       payload: createPayload(),
       sidebarOpen: true,
@@ -340,6 +340,43 @@ test('Work sidebar marks War Room active for operational task routes', () => {
     });
 
     assert.match(findButtonClassByLabel(tree, 'War Room'), /navItemActive/u);
+  });
+});
+
+test('Work sidebar marks Tasks active for task routes', () => {
+  withLocationPathname('/work/tasks/task-123', () => {
+    const tree = WorkSidebar({
+      payload: createPayload(),
+      sidebarOpen: true,
+      accountMenuOpen: false,
+      overflowMenuOpenId: null,
+      busy: '',
+      surface: 'chats',
+      shellSurface: 'work',
+      routeChannelId: null,
+      accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+      onToggleSidebar: () => {},
+      onCollapsedSidebarClick: () => {},
+      onOpenChatsOverview: () => {},
+      onStartNewChat: () => {},
+      onStartWorkIntake: () => {},
+      onOpenWarRoom: () => {},
+      onOpenProjects: () => {},
+      onOpenTasks: () => {},
+      onOpenWorkItems: () => {},
+      onSelect: () => {},
+      onDeleteChannel: () => {},
+      onRenameChannel: () => {},
+      onArchiveCat: () => {},
+      onAccountMenuToggle: () => {},
+      onOverflowMenuToggle: () => {},
+      onNavigateSettings: () => {},
+      onSwitchProduct: () => {},
+      activeMyCatId: null,
+      onDirectChatCat: () => {},
+    });
+
+    assert.match(findButtonClassByLabel(tree, 'Tasks'), /navItemActive/u);
   });
 });
 

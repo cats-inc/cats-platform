@@ -22,6 +22,7 @@ import {
 import { PlanReviewPanel } from './components/PlanReviewPanel.js';
 import { ProjectListView } from './components/ProjectListView.js';
 import { ProjectDetailView } from './components/ProjectDetailView.js';
+import { WorkTaskListView } from './components/WorkTaskListView.js';
 import { TaskDetailView } from './components/TaskDetailView.js';
 import { WarRoomView } from './components/WarRoomView.js';
 import { WorkItemListView } from './components/WorkItemListView.js';
@@ -91,6 +92,7 @@ export function AppRoutes({
       <Route key="intake-project" path="intake/:projectId" element={<PlanReviewPanel />} />,
       <Route key="project-list" path="projects" element={<ProjectListView />} />,
       <Route key="project-detail" path="projects/:projectId" element={<ProjectDetailView />} />,
+      <Route key="task-list" path="tasks" element={<WorkTaskListView />} />,
       <Route key="task-detail" path="tasks/:taskId" element={<TaskDetailView />} />,
       <Route key="work-item-list" path="work-items" element={<WorkItemListView />} />,
       <Route key="work-item-detail" path="work-items/:workItemId" element={<WorkItemDetailView />} />,

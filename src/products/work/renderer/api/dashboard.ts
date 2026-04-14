@@ -4,6 +4,7 @@ import type {
   WorkDashboardProjection,
   WorkProjectListProjection,
   WorkProjectDetailProjection,
+  WorkTaskListProjection,
   WorkTaskDetailProjection,
   WorkWorkItemListProjection,
   WorkWorkItemDetailProjection,
@@ -22,6 +23,13 @@ export async function fetchWorkTaskDetail(
 ): Promise<WorkTaskDetailProjection> {
   const response = await fetch(`/api/work/tasks/${encodeURIComponent(taskId)}`, { signal });
   return expectJson<WorkTaskDetailProjection>(response, 'Failed to load work task detail');
+}
+
+export async function fetchWorkTaskList(
+  signal?: AbortSignal,
+): Promise<WorkTaskListProjection> {
+  const response = await fetch('/api/work/tasks', { signal });
+  return expectJson<WorkTaskListProjection>(response, 'Failed to load work tasks');
 }
 
 export async function fetchWorkProjectDetail(

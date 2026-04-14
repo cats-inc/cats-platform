@@ -11,6 +11,7 @@ test('work renderer dashboard api keeps war-room payloads typed', async () => {
 
   assert.match(dashboardApiSource, /expectJson<WorkDashboardProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkProjectListProjection>/u);
+  assert.match(dashboardApiSource, /expectJson<WorkTaskListProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkTaskDetailProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkProjectDetailProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkWorkItemListProjection>/u);
@@ -32,6 +33,10 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   );
   const taskDetailSource = await readFile(
     path.join(process.cwd(), 'src/products/work/renderer/components/TaskDetailView.tsx'),
+    'utf8',
+  );
+  const workTaskListSource = await readFile(
+    path.join(process.cwd(), 'src/products/work/renderer/components/WorkTaskListView.tsx'),
     'utf8',
   );
   const workItemListSource = await readFile(
@@ -76,8 +81,16 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(taskDetailSource, /fetchWorkTaskDetail/u);
   assert.match(taskDetailSource, /buildChannelPath/u);
   assert.match(taskDetailSource, /buildMyCatPath/u);
-  assert.match(taskDetailSource, /navigate\('\/work\/war-room'\)/u);
+  assert.match(taskDetailSource, /navigate\('\/work\/tasks'\)/u);
   assert.doesNotMatch(taskDetailSource, /as unknown as/u);
+
+  assert.match(workTaskListSource, /fetchWorkTaskList/u);
+  assert.match(workTaskListSource, /buildChannelPath/u);
+  assert.match(workTaskListSource, /buildMyCatPath/u);
+  assert.match(workTaskListSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(task\.id\)\}`\)/u);
+  assert.match(workTaskListSource, /navigate\(`\/work\/projects\/\$\{encodeURIComponent\(task\.projectId!\)\}`\)/u);
+  assert.match(workTaskListSource, /navigate\(`\/work\/work-items\/\$\{encodeURIComponent\(task\.workItemId!\)\}`\)/u);
+  assert.doesNotMatch(workTaskListSource, /as unknown as/u);
 
   assert.match(workItemListSource, /fetchWorkItemList/u);
   assert.match(workItemListSource, /buildChannelPath/u);
