@@ -38,6 +38,7 @@ import {
 } from '../runtime-session/index.js';
 import type { DispatchExecution } from './execution.js';
 import { executeDispatch } from './execution.js';
+import { buildDispatchRuntimeContextMetadata } from './context.js';
 import {
   applyDispatchChannelChatCwd,
   applyDispatchLeasePatch,
@@ -119,6 +120,7 @@ export async function prepareReadyRequests(
           ? 'workflow_continuation'
           : resolveWakeReasonFromRoutingTrigger(request.trigger),
         sourceMessageId: request.sourceMessage.id,
+        dispatchContextMetadata: buildDispatchRuntimeContextMetadata(request),
       },
     );
     nextState = ensured.state;
@@ -328,6 +330,7 @@ export async function executeDispatchWithRecovery(input: {
           ? 'workflow_continuation'
           : resolveWakeReasonFromRoutingTrigger(request.trigger),
         sourceMessageId: request.sourceMessage.id,
+        dispatchContextMetadata: buildDispatchRuntimeContextMetadata(request),
       },
     );
 

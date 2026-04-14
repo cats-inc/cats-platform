@@ -322,6 +322,39 @@ test('current-turn draft audience metadata routes multi-target turns sequentiall
     runtimeClient.sentMessages[1]?.content ?? '',
     /Latest routed handoff:\nAgent-2 handled the first step\./u,
   );
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.sourceMessageId,
+    replies[0]?.id,
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.trigger,
+    'continuation_mention',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.branchStrategy,
+    'transplant_context',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.handoffReason,
+    'workflow_continuation',
+  );
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.sourceMessageId,
+    replies[0]?.id,
+  );
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.trigger,
+    'continuation_mention',
+  );
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.branchStrategy,
+    'transplant_context',
+  );
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.handoffReason,
+    'workflow_continuation',
+  );
   assert.equal(
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
       (target) => target.participant.participantName === 'Agent-1',

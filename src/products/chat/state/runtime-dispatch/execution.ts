@@ -25,6 +25,10 @@ import {
 import { participantKey } from '../runtime-session/state.js';
 import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
 import type { DispatchLeasePatch } from './recovery.js';
+import {
+  buildDispatchRuntimeContextMetadata,
+  mergeRuntimeInvocationContextMetadata,
+} from './context.js';
 
 export interface DispatchExecution extends DispatchRequest {
   responseSegments: RuntimeMessageSegment[] | null;
@@ -55,12 +59,16 @@ export async function executeDispatch(
       now,
       companionStore,
     );
+    const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request);
     const runtimeResult = await runtimeClient.sendMessage(
       request.target.sessionId ?? '',
       dispatchPrompt.message,
       {
         instructions: dispatchPrompt.instructions?.trim() || undefined,
-        context: runtimeEnvelope.context,
+        context: mergeRuntimeInvocationContextMetadata(
+          runtimeEnvelope.context,
+          dispatchContextMetadata,
+        ),
         skills: runtimeEnvelope.skills,
       },
     );

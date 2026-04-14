@@ -15,6 +15,7 @@ export interface RuntimeSessionRoutingOptions {
   forceReviveClosedSessions?: boolean;
   chatStatePath?: string;
   runtimeDataDir?: string;
+  dispatchContextMetadata?: Record<string, unknown>;
 }
 
 export function shouldRewriteOrchestratorReply(

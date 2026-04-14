@@ -45,6 +45,9 @@ import {
   classifyRuntimeDispatchRecoveryError,
 } from '../runtime-dispatch/recovery.js';
 import {
+  mergeRuntimeInvocationContextMetadata,
+} from '../runtime-dispatch/context.js';
+import {
   findAssignedParticipant,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
@@ -395,7 +398,10 @@ export async function ensureTargetSession(
         cwd: spawnCwd,
         workspaceKind,
         workspaceAccess: 'read_write',
-        context: runtimeEnvelope.context,
+        context: mergeRuntimeInvocationContextMetadata(
+          runtimeEnvelope.context,
+          options.dispatchContextMetadata ?? {},
+        ),
         skills: runtimeEnvelope.skills,
         ...(taskExecutionContext?.executionRequest ?? {}),
       });
@@ -500,7 +506,10 @@ export async function ensureTargetSession(
       cwd: spawnCwd,
       workspaceKind,
       workspaceAccess: 'read_write',
-      context: runtimeEnvelope.context,
+      context: mergeRuntimeInvocationContextMetadata(
+        runtimeEnvelope.context,
+        options.dispatchContextMetadata ?? {},
+      ),
       skills: runtimeEnvelope.skills,
       ...(taskExecutionContext?.executionRequest ?? {}),
     });
