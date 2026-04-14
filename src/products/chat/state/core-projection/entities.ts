@@ -67,6 +67,7 @@ import {
 import {
   buildChatArchiveId,
   buildChatAssignedParticipantId,
+  buildChatLaneId,
   buildChatConversationId,
   buildDirectLaneTransportBindingId,
   buildChatOrchestratorParticipantId,
@@ -215,12 +216,14 @@ function readRecoveredStartupContinuationReplayRequest(
   let sourceMessageId = interruptedTargetStates[0]?.sourceMessageId?.trim() ?? '';
   let trigger = interruptedTargetStates[0]?.trigger ?? 'continuation_mention';
   let branchStrategy = interruptedTargetStates[0]?.branchStrategy ?? null;
-  if (startupRecoveredInitialSequential) {
-    const latestCompletedTargetState = [...turn.targetStatuses].reverse().find((target) =>
+  const latestCompletedTargetState = startupRecoveredInitialSequential
+    ? [...turn.targetStatuses].reverse().find((target) =>
       target.response?.messageIds.length
       && target.depth === 0
       && target.source === null
-      && target.status === 'completed') ?? null;
+      && target.status === 'completed') ?? null
+    : null;
+  if (startupRecoveredInitialSequential) {
     sourceParticipant = latestCompletedTargetState
       ? structuredClone(latestCompletedTargetState.participant)
       : null;
@@ -276,16 +279,34 @@ function readRecoveredStartupContinuationReplayRequest(
 
   const continuationMetadata = continuationContext?.metadata ?? null;
   const continuationSource = readMetadataString(continuationMetadata, 'continuationSource');
+  const sourceTurnId = readMetadataString(metadata, 'continuationSourceTurnId')
+    ?? readMetadataString(continuationMetadata, 'continuationSourceTurnId')
+    ?? (latestCompletedTargetState ? turn.id : null);
+  const sourceLaneId = readMetadataString(metadata, 'continuationSourceLaneId')
+    ?? readMetadataString(continuationMetadata, 'continuationSourceLaneId')
+    ?? (
+      latestCompletedTargetState
+        ? buildChatLaneId(
+          turn.id,
+          latestCompletedTargetState.id,
+          latestCompletedTargetState.participant.participantId,
+        )
+        : null
+    );
+  const sourceAssistantTurnId = readMetadataString(
+    metadata,
+    'continuationSourceAssistantTurnId',
+  )
+    ?? readMetadataString(continuationMetadata, 'continuationSourceAssistantTurnId')
+    ?? latestCompletedTargetState?.response?.assistantTurnId
+    ?? null;
 
   return {
     sourceParticipant,
     sourceMessageId,
-    sourceTurnId: readMetadataString(metadata, 'continuationSourceTurnId'),
-    sourceLaneId: readMetadataString(metadata, 'continuationSourceLaneId'),
-    sourceAssistantTurnId: readMetadataString(
-      metadata,
-      'continuationSourceAssistantTurnId',
-    ),
+    sourceTurnId,
+    sourceLaneId,
+    sourceAssistantTurnId,
     targets: replayTargets,
     mentionNames: uniqueStrings(
       [

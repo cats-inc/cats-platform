@@ -33,6 +33,7 @@ import {
   readWorkflowContinuationReplay,
   writeWorkflowContinuationReplayMetadata,
 } from '../build/server/platform/orchestration/workflowContinuationReplay.js';
+import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
 import {
   createDefaultRoomRoutingState,
   resolveRoomRoutingState,
@@ -2063,6 +2064,19 @@ test('startup recovery advances initial sequential replays to the latest complet
   assert.equal(replay?.replayState, 'ready');
   assert.equal(replay?.workflowShape, 'sequential');
   assert.equal(replay?.sourceMessageId, handoffMessageId);
+  assert.equal(replay?.sourceTurnId, activeTurn.id);
+  assert.equal(
+    replay?.sourceLaneId,
+    buildChatLaneId(
+      activeTurn.id,
+      'target-state-interrupted-initial-sequential-handoff',
+      firstParticipant.participantId,
+    ),
+  );
+  assert.equal(
+    replay?.sourceAssistantTurnId,
+    'assistant-turn-initial-sequential-handoff',
+  );
   assert.equal(replay?.sourceParticipant?.participantName, 'Agent-1');
   assert.equal(replay?.branchStrategy, 'transplant_context');
   assert.deepEqual(
@@ -2341,6 +2355,22 @@ test('startup recovery auto-resumes initial sequential replays from the latest c
   assert.equal(resumedRequests.length, 1);
   assert.equal(resumedRequests[0]?.sourceParticipant?.participantName, 'Agent-1');
   assert.equal(resumedRequests[0]?.sourceMessageId, handoffMessageId);
+  assert.equal(
+    resumedRequests[0]?.sourceTurnId,
+    activeTurn.id,
+  );
+  assert.equal(
+    resumedRequests[0]?.sourceLaneId,
+    buildChatLaneId(
+      activeTurn.id,
+      'target-state-interrupted-initial-sequential-handoff-auto-resume',
+      firstParticipant.participantId,
+    ),
+  );
+  assert.equal(
+    resumedRequests[0]?.sourceAssistantTurnId,
+    'assistant-turn-initial-sequential-handoff-auto-resume',
+  );
   assert.equal(resumedRequests[0]?.branchStrategy, 'transplant_context');
   assert.deepEqual(
     resumedRequests[0]?.targets.map((target) => target.participantId),
