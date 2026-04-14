@@ -478,6 +478,177 @@ test('GET /api/channels/:id/stream synthesizes a content_block before a coarse f
   }, chatStore);
 });
 
+test('GET /api/channels/:id/stream only synthesizes final text after tool-only stream events', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Tool-only lane',
+      topic: 'Normalize final text after tool stream events.',
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-tool-only-1',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-tool-only-1', {
+    session: {
+      id: 'session-tool-only-1',
+    },
+    observePath: '/sessions/session-tool-only-1/observe',
+    stream: {
+      path: '/sessions/session-tool-only-1/stream',
+      available: true,
+      events: [
+        {
+          event: 'tool_use',
+          data: {
+            type: 'tool_use',
+            toolName: 'search_repo',
+            toolId: 'tool-1',
+          },
+        },
+        {
+          event: 'result',
+          data: {
+            type: 'result',
+            text: 'completed after tool call',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(response.status, 200);
+
+    const body = await response.text();
+    assert.match(body, /event: tool_use/u);
+    assert.match(body, /"toolName":"search_repo"/u);
+    assert.match(body, /event: content_block/u);
+    assert.match(body, /"text":"completed after tool call"/u);
+    assert.ok(
+      body.indexOf('event: tool_use') < body.indexOf('event: content_block')
+      && body.indexOf('event: content_block') < body.indexOf('event: result'),
+      `Expected tool_use, then synthesized content_block, then result.\n${body}`,
+    );
+  }, chatStore);
+});
+
+test('GET /api/channels/:id/stream does not synthesize duplicate content blocks after streamed text', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Text lane',
+      topic: 'Avoid duplicate synthesized text blocks.',
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-text-1',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-text-1', {
+    session: {
+      id: 'session-text-1',
+    },
+    observePath: '/sessions/session-text-1/observe',
+    stream: {
+      path: '/sessions/session-text-1/stream',
+      available: true,
+      events: [
+        {
+          event: 'text',
+          data: {
+            type: 'text',
+            text: 'already streamed',
+          },
+        },
+        {
+          event: 'result',
+          data: {
+            type: 'result',
+            text: 'already streamed',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(response.status, 200);
+
+    const body = await response.text();
+    assert.match(body, /event: text/u);
+    assert.match(body, /event: result/u);
+    assert.doesNotMatch(body, /event: content_block/u);
+  }, chatStore);
+});
+
 test('GET /api/channels/:id/stream waits for a pending session lease before closing the stream', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();
