@@ -18,7 +18,7 @@ import {
   ORCHESTRATOR_REPLAY_ACTIVITY_PHASES,
   ORCHESTRATOR_REPLAY_ACTIVITY_SOURCES,
   ORCHESTRATOR_REPLAY_ACTIVITY_TRIGGERS,
-} from '../platform/orchestration/replayActivity.js';
+} from '../platform/orchestration/replayActivityContracts.js';
 import { readOrchestratorDispatchReplay } from '../platform/orchestration/dispatchReplay.js';
 import { readPendingOrchestratorDispatchSnapshot } from '../platform/orchestration/pendingDispatch.js';
 import { readWorkflowContinuationReplay } from '../platform/orchestration/workflowContinuationReplay.js';

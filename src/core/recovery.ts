@@ -60,7 +60,7 @@ import {
   ORCHESTRATOR_REPLAY_ACTIVITY_TRIGGERS,
   type OrchestratorReplayActivityPhase,
   type OrchestratorReplayActivitySource,
-} from '../platform/orchestration/replayActivity.js';
+} from '../platform/orchestration/replayActivityContracts.js';
 
 export interface CoreTaskRecoveryApprovalView {
   status: CoreApprovalStatus;
