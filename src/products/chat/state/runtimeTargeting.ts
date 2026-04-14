@@ -385,10 +385,12 @@ function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): bool
 function sliceRecentContextForTarget(
   channel: ChatChannelView,
   target: RoutingTarget,
-  sourceMessageId: string,
+  sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): ChatMessage[] {
-  const sourceIndex = channel.messages.findIndex((message) => message.id === sourceMessageId);
-  const boundedSourceIndex = sourceIndex === -1 ? channel.messages.length - 1 : sourceIndex;
+  const boundedSourceIndex = resolveSourceBoundaryIndex(channel, sourceMessage);
+  if (boundedSourceIndex < 0) {
+    return [];
+  }
   let lastOwnReplyIndex = -1;
 
   for (let index = boundedSourceIndex - 1; index >= 0; index -= 1) {
@@ -405,9 +407,9 @@ function sliceRecentContextForTarget(
 
 function messagesBeforeSource(
   channel: ChatChannelView,
-  sourceMessageId: string,
+  sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): ChatMessage[] {
-  const sourceIndex = channel.messages.findIndex((message) => message.id === sourceMessageId);
+  const sourceIndex = resolveSourceBoundaryIndex(channel, sourceMessage);
   if (sourceIndex <= 0) {
     return [];
   }
@@ -415,16 +417,35 @@ function messagesBeforeSource(
   return channel.messages.slice(0, sourceIndex);
 }
 
+function resolveSourceBoundaryIndex(
+  channel: ChatChannelView,
+  sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
+): number {
+  const sourceIndex = channel.messages.findIndex((message) => message.id === sourceMessage.id);
+  if (sourceIndex !== -1) {
+    return sourceIndex;
+  }
+
+  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
+    const candidate = channel.messages[index]!;
+    if (candidate.createdAt.localeCompare(sourceMessage.createdAt) <= 0) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
 function hasVisibleResponseFromCurrentSession(
   channel: ChatChannelView,
   target: RoutingTarget,
-  sourceMessageId: string,
+  sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): boolean {
   if (!target.sessionId) {
     return false;
   }
 
-  return messagesBeforeSource(channel, sourceMessageId).some((message) => {
+  return messagesBeforeSource(channel, sourceMessage).some((message) => {
     if (message.senderKind === 'system') {
       return false;
     }
@@ -450,12 +471,12 @@ function resolveSoloChatBootstrapInstructions(
   channel: ChatChannelView,
   request: DispatchRequest,
 ): string | null {
-  if (hasVisibleResponseFromCurrentSession(channel, request.target, request.sourceMessage.id)) {
+  if (hasVisibleResponseFromCurrentSession(channel, request.target, request.sourceMessage)) {
     return null;
   }
 
   return buildSoloChatBootstrapInstructions(
-    messagesBeforeSource(channel, request.sourceMessage.id),
+    messagesBeforeSource(channel, request.sourceMessage),
   );
 }
 
@@ -498,7 +519,7 @@ export function buildPromptForTarget(
   const recentMessages = sliceRecentContextForTarget(
     channel,
     request.target,
-    promptSourceMessage.id,
+    promptSourceMessage,
   );
   const routingContext = {
     reason: describeRoutingReason(channel, request.sourceParticipant, request.trigger),

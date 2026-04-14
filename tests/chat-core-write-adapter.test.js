@@ -517,8 +517,19 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
   const brokenState = structuredClone(dispatched.state);
   const brokenChannel = requireChannel(brokenState, channelId);
   brokenChannel.messages = brokenChannel.messages.filter((message) => message.id !== sourceMessage.id);
+  const withLaterMessage = appendMessage(
+    brokenState,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Owner',
+      body: 'Ignore this later note.',
+    },
+    new Date('2026-04-15T00:18:45.000Z'),
+  );
+  const driftedState = withLaterMessage.state;
   const canonicalCore = await store.readCore();
-  let replayState = structuredClone(brokenState);
+  let replayState = structuredClone(driftedState);
   let replayCore = structuredClone(canonicalCore);
 
   const replayStore = {
@@ -544,6 +555,7 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
         content,
         /Latest routed handoff:\nAgent-1 completed the first step\. ?Implementation notes included\./u,
       );
+      assert.doesNotMatch(content, /Ignore this later note\./u);
       return usage('Agent-2 resumed from the canonical handoff.');
     }
     throw new Error(`Unexpected prompt:\n${content}`);
