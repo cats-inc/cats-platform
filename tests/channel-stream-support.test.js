@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  resolveChannelReadyStreamTargets,
   resolveChannelStreamSessionId,
   resolveChannelStreamTargets,
   resolveChannelStreamTarget,
@@ -121,6 +122,50 @@ test('resolveChannelStreamTargets lists all concurrent workflow targets in stabl
       sessionStartedAt: null,
       requiresSessionStartConfirmation: false,
       targetStateId: 'target-2',
+    },
+  ]);
+});
+
+test('resolveChannelReadyStreamTargets keeps only attachable concurrent workflow targets', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          status: 'running',
+          targetStatuses: [
+            {
+              id: 'target-1',
+              status: 'running',
+              participant: { participantId: 'participant-1', participantName: 'Claude-CLI' },
+            },
+            {
+              id: 'target-2',
+              status: 'pending',
+              participant: { participantId: 'participant-2', participantName: 'Codex-CLI' },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
+      buildParticipantAssignment('participant-2', null, 'initializing', 'Codex-CLI'),
+    ],
+  };
+
+  assert.deepEqual(resolveChannelReadyStreamTargets(channel), [
+    {
+      sessionId: 'session-1',
+      participantId: 'participant-1',
+      catId: null,
+      speakerLabel: 'Claude-CLI',
+      sessionStartedAt: null,
+      requiresSessionStartConfirmation: false,
+      targetStateId: 'target-1',
     },
   ]);
 });

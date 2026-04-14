@@ -271,6 +271,13 @@ export function resolveChannelStreamTargets(
   return fallbackTarget ? [fallbackTarget] : [];
 }
 
+export function resolveChannelReadyStreamTargets(
+  channel: ReturnType<typeof requireChannel>,
+): ChannelStreamTarget[] {
+  return resolveChannelStreamTargets(channel)
+    .filter((target) => Boolean(target.sessionId));
+}
+
 function resolveChannelStreamTargetWithReason(
   channel: ReturnType<typeof requireChannel>,
 ): ResolvedChannelStreamTarget {
