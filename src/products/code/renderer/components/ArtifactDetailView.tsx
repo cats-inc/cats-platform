@@ -4,49 +4,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   resolvePreviewSurfaceTargetFromArtifacts,
 } from '../../../../core/previewSurfaces.js';
-import { fetchCodeArtifactDetail } from '../api/codeTask.js';
-import type { ArtifactItem } from './BuildPreviewPanel.js';
-
-interface ArtifactSummary {
-  id: string;
-  title: string;
-  kind: string;
-  status: string;
-  summary: string | null;
-  path: string | null;
-  updatedAt: string;
-}
-
-interface ArtifactDetailPayload {
-  artifact: ArtifactSummary;
-  task: {
-    id: string;
-    title: string;
-    status: string;
-  } | null;
-  workItem: {
-    id: string;
-    title: string;
-    status: string;
-    projectTitle: string | null;
-  } | null;
-  project: {
-    id: string;
-    title: string;
-    status: string;
-  } | null;
-  conversation: {
-    id: string;
-    title: string;
-    kind: string;
-  } | null;
-  relatedArtifacts: ArtifactItem[];
-  focus: {
-    kind: string;
-    isReady: boolean;
-    isPublished: boolean;
-  };
-}
+import {
+  fetchCodeArtifactDetail,
+  type CodeArtifactDetailResponse,
+} from '../api/codeTask.js';
 
 function artifactStatusClassName(status: string): string {
   switch (status) {
@@ -64,7 +25,7 @@ function artifactStatusClassName(status: string): string {
 export function ArtifactDetailView() {
   const navigate = useNavigate();
   const { artifactId } = useParams<{ artifactId: string }>();
-  const [payload, setPayload] = useState<ArtifactDetailPayload | null>(null);
+  const [payload, setPayload] = useState<CodeArtifactDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +45,7 @@ export function ArtifactDetailView() {
         if (cancelled) {
           return;
         }
-        setPayload(detail as ArtifactDetailPayload);
+        setPayload(detail);
       })
       .catch((fetchError) => {
         if (cancelled) {

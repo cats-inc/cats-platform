@@ -114,6 +114,50 @@ export interface RuntimeObservationResponse extends Record<string, unknown> {
   session?: RuntimeObservationSession;
 }
 
+export interface CodeArtifactSummary {
+  id: string;
+  title: string;
+  kind: string;
+  status: string;
+  summary: string | null;
+  path: string | null;
+  updatedAt: string;
+}
+
+export interface CodeArtifactLinkSummary {
+  id: string;
+  title: string;
+  status: string;
+}
+
+export interface CodeArtifactWorkItemSummary extends CodeArtifactLinkSummary {
+  projectTitle: string | null;
+}
+
+export interface CodeArtifactConversationSummary {
+  id: string;
+  title: string;
+  kind: string;
+}
+
+export interface CodeArtifactRelatedSummary extends CodeArtifactSummary {}
+
+export interface CodeArtifactDetailFocus {
+  kind: string;
+  isReady: boolean;
+  isPublished: boolean;
+}
+
+export interface CodeArtifactDetailResponse {
+  artifact: CodeArtifactSummary;
+  task: CodeArtifactLinkSummary | null;
+  workItem: CodeArtifactWorkItemSummary | null;
+  project: CodeArtifactLinkSummary | null;
+  conversation: CodeArtifactConversationSummary | null;
+  relatedArtifacts: CodeArtifactRelatedSummary[];
+  focus: CodeArtifactDetailFocus;
+}
+
 export async function resolveWorkspace(
   input: ResolveWorkspaceInput,
 ): Promise<ResolveWorkspaceResponse> {
@@ -229,8 +273,12 @@ export async function fetchCodeTaskDetail(
   );
 }
 
-export async function fetchCodeArtifactDetail(artifactId: string): Promise<unknown> {
-  return fetchJson(`/api/code/artifacts/${encodeURIComponent(artifactId)}`);
+export async function fetchCodeArtifactDetail(
+  artifactId: string,
+): Promise<CodeArtifactDetailResponse> {
+  return fetchJson<CodeArtifactDetailResponse>(
+    `/api/code/artifacts/${encodeURIComponent(artifactId)}`,
+  );
 }
 
 export async function observeRuntimeSession(

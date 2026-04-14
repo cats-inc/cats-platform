@@ -115,3 +115,18 @@ test('DeliveryPanel consumes typed delivery results without inline unknown casts
   assert.match(source, /onPreviewCommit: \(message: string\) => Promise<CodeDeliveryResult>/u);
   assert.doesNotMatch(source, /\)\s+as DeliveryPreview/u);
 });
+
+test('ArtifactDetailView consumes typed artifact detail responses without local casts', () => {
+  const apiSource = readFileSync(
+    new URL('../src/products/code/renderer/api/codeTask.ts', import.meta.url),
+    'utf8',
+  );
+  const viewSource = readFileSync(
+    new URL('../src/products/code/renderer/components/ArtifactDetailView.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(apiSource, /Promise<CodeArtifactDetailResponse>/u);
+  assert.match(viewSource, /type CodeArtifactDetailResponse/u);
+  assert.doesNotMatch(viewSource, /as ArtifactDetailPayload/u);
+});
