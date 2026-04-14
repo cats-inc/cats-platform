@@ -182,6 +182,15 @@ function buildCanonicalChatSegmentMessage(
   };
 }
 
+function pickPreferredCanonicalTextSegment(
+  segments: ReadonlyArray<SegmentRecord>,
+): SegmentRecord | null {
+  const sortedSegments = [...segments].sort(compareChatCoreSegmentsDescending);
+  return sortedSegments.find((candidate) =>
+    readChatCoreMetadataBoolean(candidate.metadata, 'terminal') === true,
+  ) ?? sortedSegments[0] ?? null;
+}
+
 function buildCanonicalChatSegmentMessageFromAssistantTurn(input: {
   core: CatsCoreState;
   channelId: string;
@@ -190,24 +199,13 @@ function buildCanonicalChatSegmentMessageFromAssistantTurn(input: {
   sourceAssistantTurnId: string;
 }): ChatMessage | null {
   const conversationId = buildChatConversationId(input.channelId);
-  const terminalSegment = input.core.segments
+  const terminalSegment = pickPreferredCanonicalTextSegment(input.core.segments
     .filter((candidate) =>
       candidate.conversationId === conversationId
       && candidate.kind === 'text'
       && readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === input.sourceAssistantTurnId
       && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true)
-      && (input.sourceLaneId ? candidate.laneId === input.sourceLaneId : true))
-    .sort(compareChatCoreSegmentsDescending)
-    .find((candidate) => readChatCoreMetadataBoolean(candidate.metadata, 'terminal') === true)
-    ?? input.core.segments
-      .filter((candidate) =>
-        candidate.conversationId === conversationId
-        && candidate.kind === 'text'
-        && readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === input.sourceAssistantTurnId
-        && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true)
-        && (input.sourceLaneId ? candidate.laneId === input.sourceLaneId : true))
-      .sort(compareChatCoreSegmentsDescending)[0]
-    ?? null;
+      && (input.sourceLaneId ? candidate.laneId === input.sourceLaneId : true)));
   const sourceMessageId = readChatCoreMetadataString(terminalSegment?.metadata, 'chatMessageId');
   return sourceMessageId
     ? buildCanonicalChatSegmentMessage(input.core, input.channelId, sourceMessageId)
@@ -246,22 +244,12 @@ function buildCanonicalChatSegmentMessageFromLane(input: {
     }
   }
 
-  const terminalSegment = input.core.segments
+  const terminalSegment = pickPreferredCanonicalTextSegment(input.core.segments
     .filter((candidate) =>
       candidate.conversationId === conversationId
       && candidate.kind === 'text'
       && candidate.laneId === lane.id
-      && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true))
-    .sort(compareChatCoreSegmentsDescending)
-    .find((candidate) => readChatCoreMetadataBoolean(candidate.metadata, 'terminal') === true)
-    ?? input.core.segments
-      .filter((candidate) =>
-        candidate.conversationId === conversationId
-        && candidate.kind === 'text'
-        && candidate.laneId === lane.id
-        && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true))
-      .sort(compareChatCoreSegmentsDescending)[0]
-    ?? null;
+      && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true)));
   const sourceMessageId = readChatCoreMetadataString(terminalSegment?.metadata, 'chatMessageId');
   return sourceMessageId
     ? buildCanonicalChatSegmentMessage(input.core, input.channelId, sourceMessageId)
