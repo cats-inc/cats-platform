@@ -6346,8 +6346,12 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
     const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
     assert.equal(channelResponse.status, 200);
     const channelPayload = await channelResponse.json();
+    const assignmentParticipantId = channelPayload.channel.catAssignments?.[0]?.participantId;
+    assert.equal(typeof assignmentParticipantId, 'string');
     const sessionStartedMessage = channelPayload.channel.messages.find(
-      (message) => message.metadata?.event === 'session_started' && message.metadata?.targetId === catId,
+      (message) =>
+        message.metadata?.event === 'session_started'
+        && message.metadata?.targetId === assignmentParticipantId,
     );
     assert.ok(sessionStartedMessage);
     assert.equal(

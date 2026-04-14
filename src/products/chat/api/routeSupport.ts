@@ -534,6 +534,7 @@ export async function persistCatAssignmentUpdate(
   const updatedCat = refreshedChannel.catAssignments.find(
     (candidate) => candidate.catId === input.catId,
   );
+  const assignmentTargetId = updatedCat?.participantId ?? input.catId;
   const resolvedChannel = requireChannel(nextState, channelId);
   const spawnCwd = (
     resolveChannelSpawnCwd(resolvedChannel.repoPath, resolvedChannel.chatCwd)
@@ -630,7 +631,7 @@ export async function persistCatAssignmentUpdate(
           metadata: {
             event: 'session_started',
             targetKind: 'cat',
-            targetId: input.catId,
+            targetId: assignmentTargetId,
             sessionId: session.id,
             verbosity: 'verbose',
           },
@@ -656,7 +657,7 @@ export async function persistCatAssignmentUpdate(
           metadata: {
             event: 'session_start_failed',
             targetKind: 'cat',
-            targetId: input.catId,
+            targetId: assignmentTargetId,
           },
         },
       ).state;
