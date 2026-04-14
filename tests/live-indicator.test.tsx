@@ -2044,6 +2044,50 @@ test('resolveVisibleLiveIndicator shows assistant progress once the matching ses
   assert.equal(visible, liveIndicator);
 });
 
+test('resolveVisibleLiveIndicator accepts a matching targetStateId for session startup confirmation even when the sessionId changed', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    targetStateId: 'target-state-agent-1',
+    sessionId: 'session-agent-new',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    sessionStartedAt: '2026-04-09T12:00:02.500Z',
+    requiresSessionStartConfirmation: true,
+    progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-session-agent-1',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          sessionId: 'session-agent-old',
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+          targetStateId: 'target-state-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:02.500Z',
+      },
+    ],
+    '2026-04-09T12:00:05.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
+});
+
 test('resolveVisibleLiveIndicator accepts orchestrator session_started messages that only declare targetKind', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
@@ -3484,6 +3528,46 @@ test('resolveVisibleLiveIndicator does not hide a new solo segment because an ol
   assert.equal(visible.segments.length, 2);
   assert.equal(visible.segments[0]?.segmentIndex, 0);
   assert.equal(visible.segments[1]?.segmentIndex, 1);
+});
+
+test('resolveVisibleLiveIndicator does not hide a targeted live bubble because the same speaker already replied on another target state', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming' as const,
+    targetStateId: 'target-state-codex',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-13T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-claude-other-target',
+        senderKind: 'agent',
+        senderName: 'Claude-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          targetKind: 'participant',
+          targetId: 'participant-claude',
+          targetStateId: 'target-state-claude',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-13T12:00:03.000Z',
+      },
+    ],
+    '2026-04-13T12:00:02.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
 });
 
 test('applyLiveIndicatorEvent increments the segment index for same-speaker solo follow-up phases', () => {

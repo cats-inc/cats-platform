@@ -1473,6 +1473,14 @@ function doesMessageMatchLiveIndicatorSpeaker(
   message: LiveIndicatorTranscriptMessageLike,
   liveIndicator: LiveIndicatorState,
 ): boolean {
+  const liveTargetStateId = readString(liveIndicator.targetStateId);
+  if (liveTargetStateId) {
+    const messageTargetStateId = readMessageTargetStateId(message);
+    if (messageTargetStateId) {
+      return messageTargetStateId === liveTargetStateId;
+    }
+  }
+
   const messageTargetId = readMessageTargetId(message);
   const liveTargetId = readString(liveIndicator.participantId)
     ?? liveIndicator.catId
@@ -1496,6 +1504,7 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
   liveIndicator: LiveIndicatorState,
   sessionStartedAt: string | null,
 ): boolean {
+  const liveTargetStateId = readString(liveIndicator.targetStateId);
   const liveSessionId = readString(liveIndicator.sessionId);
   const sessionStartFloorTimestamp = (() => {
     if (!sessionStartedAt) {
@@ -1520,6 +1529,13 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
       )
     ) {
       return false;
+    }
+
+    if (liveTargetStateId) {
+      const messageTargetStateId = readMessageTargetStateId(message);
+      if (messageTargetStateId) {
+        return messageTargetStateId === liveTargetStateId;
+      }
     }
 
     if (liveSessionId) {
