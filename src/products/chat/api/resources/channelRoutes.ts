@@ -39,6 +39,8 @@ import {
 import { publishRoomMutation } from '../transportEventPublisher.js';
 import { routeChatChannelAttachmentResourceApi } from './channelAttachmentRoutes.js';
 import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
+import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
+import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 
 function publishChannelMutationEvents(
   context: ChatApiRouteContext,
@@ -90,14 +92,95 @@ function buildRestErrorPayload(code: string, message: string): {
 
 function findLatestUserMessageId(
   channel: ReturnType<typeof requireChannel>,
+  core?: CatsCoreState,
 ): string | null {
+  let latestTranscriptUserId: string | null = null;
+  let latestTranscriptUserCreatedAt: string | null = null;
   for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
     const message = channel.messages[index];
     if (message.senderKind === 'user') {
-      return message.id;
+      latestTranscriptUserId = message.id;
+      latestTranscriptUserCreatedAt = message.createdAt;
+      break;
     }
   }
-  return null;
+
+  if (!core) {
+    return latestTranscriptUserId;
+  }
+
+  const latestCanonicalUserTurn = findLatestCanonicalUserTurn(core, channel.id);
+  const latestCanonicalUserId = readTurnMetadataString(latestCanonicalUserTurn, 'sourceMessageId');
+  if (!latestCanonicalUserId) {
+    return latestTranscriptUserId;
+  }
+  if (!latestTranscriptUserCreatedAt) {
+    return latestCanonicalUserId;
+  }
+
+  return latestCanonicalUserTurn
+    && latestCanonicalUserTurn.createdAt.localeCompare(latestTranscriptUserCreatedAt) >= 0
+    ? latestCanonicalUserId
+    : latestTranscriptUserId;
+}
+
+function readTurnMetadataString(
+  turn: Pick<TurnRecord, 'metadata'> | null | undefined,
+  key: string,
+): string | null {
+  const value = turn?.metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function findLatestCanonicalUserTurn(
+  core: CatsCoreState,
+  channelId: string,
+): TurnRecord | null {
+  const conversationId = buildChatConversationId(channelId);
+  return core.turns
+    .filter((turn) =>
+      turn.conversationId === conversationId
+      && readTurnMetadataString(turn, 'sourceSenderKind') === 'user'
+      && readTurnMetadataString(turn, 'sourceMessageId'))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .at(0) ?? null;
+}
+
+function buildCanonicalRetryMessage(
+  core: CatsCoreState,
+  channelId: string,
+  messageId: string,
+): {
+  id: string;
+  senderKind: 'user';
+  senderName: string;
+  body: string;
+  createdAt: string;
+} | null {
+  const conversationId = buildChatConversationId(channelId);
+  const turn = core.turns
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && readTurnMetadataString(candidate, 'sourceSenderKind') === 'user'
+      && readTurnMetadataString(candidate, 'sourceMessageId') === messageId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .at(-1);
+  if (!turn) {
+    return null;
+  }
+
+  const body = readTurnMetadataString(turn, 'sourceMessageBody');
+  if (!body) {
+    return null;
+  }
+
+  return {
+    id: messageId,
+    senderKind: 'user',
+    senderName: readTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
+    body,
+    createdAt: turn.createdAt,
+  };
 }
 
 async function continueAcknowledgedChannelDispatchInBackground(
@@ -449,9 +532,11 @@ async function handleRestRetryMessage(
 
     await context.dependencies.mutationGate.run(channelId, async () => {
       const state = await context.dependencies.chatStore.read();
+      const core = await context.dependencies.chatStore.readCore();
       const channel = requireChannel(state, channelId);
       const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-      const retryMessage = channel.messages.find((message) => message.id === messageId);
+      const retryMessage = channel.messages.find((message) => message.id === messageId)
+        ?? buildCanonicalRetryMessage(core, channelId, messageId);
       if (!retryMessage) {
         sendJson(
           context.response,
@@ -485,7 +570,7 @@ async function handleRestRetryMessage(
         );
         return;
       }
-      if (findLatestUserMessageId(channel) !== messageId) {
+      if (findLatestUserMessageId(channel, core) !== messageId) {
         sendJson(
           context.response,
           409,
