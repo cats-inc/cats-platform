@@ -55,6 +55,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-065](./specs/SPEC-065-core-contract-freeze-and-first-migration-wave.md)
+- [PLAN-057](./plans/PLAN-057-core-contract-freeze-and-first-migration-wave.md)
 - [SPEC-064](./specs/SPEC-064-my-cats-platform-home-and-lens-projections.md)
 - [ADR-065](./decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md)
 - [PLAN-056](./plans/PLAN-056-my-cats-platform-home-and-lens-projections.md)

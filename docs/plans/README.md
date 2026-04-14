@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-057](./PLAN-057-core-contract-freeze-and-first-migration-wave.md) | Core Contract Freeze and First Migration Wave | Draft | [SPEC-065](../specs/SPEC-065-core-contract-freeze-and-first-migration-wave.md) |
 | [PLAN-056](./PLAN-056-my-cats-platform-home-and-lens-projections.md) | MY CATS Platform Home and Lens Projections | Draft | [SPEC-064](../specs/SPEC-064-my-cats-platform-home-and-lens-projections.md), [ADR-065](../decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md) |
 | [PLAN-055](./PLAN-055-conversational-and-operational-agent-projections.md) | Conversational and Operational Agent Projections | Draft | [SPEC-063](../specs/SPEC-063-conversational-vs-operational-agents-and-surface-projections.md), [ADR-064](../decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md) |
 | [PLAN-054](./PLAN-054-agent-missions-managed-work-and-transport-bindings.md) | Agent Missions, Managed Work, and Transport Bindings | Draft | [SPEC-062](../specs/SPEC-062-agent-missions-and-transport-bindings.md), [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md) |
