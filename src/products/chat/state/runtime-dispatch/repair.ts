@@ -45,6 +45,7 @@ import {
 } from '../assistantTurnSegments.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import {
+  buildCanonicalChatMessage,
   compareChatCoreSegmentsAscending,
   compareChatCoreSegmentsDescending,
   readChatCoreMetadataNumber,
@@ -866,6 +867,50 @@ function readStartupRecoveryInterruptMessage(turn: RoomWorkflowTurn): string {
   return 'Previous room turn was interrupted because Cats server restarted before room workflow cleanup completed.';
 }
 
+function resolveStartupRecoverySourceBoundaryCreatedAt(
+  turn: RoomWorkflowTurn,
+  options: {
+    core?: CatsCoreState;
+    channelId: string;
+  },
+): string {
+  const canonicalSourceMessage = options.core
+    ? buildCanonicalChatMessage(options.core, options.channelId, turn.sourceMessageId)
+    : null;
+  if (
+    canonicalSourceMessage?.createdAt
+    && (
+      canonicalSourceMessage.senderKind === 'user'
+      || canonicalSourceMessage.metadata?.event === 'assistant_turn_segment'
+    )
+  ) {
+    return canonicalSourceMessage.createdAt;
+  }
+
+  const targetBoundary = turn.targetStatuses
+    .filter((target) => target.sourceMessageId === turn.sourceMessageId)
+    .flatMap((target) => [target.queuedAt, target.startedAt, target.completedAt ?? null])
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .sort((left, right) => left.localeCompare(right))[0] ?? null;
+  if (targetBoundary) {
+    return targetBoundary;
+  }
+
+  const eventBoundary = turn.events
+    .filter((event) => event.sourceMessageId === turn.sourceMessageId)
+    .map((event) => event.createdAt)
+    .filter((value) => value.length > 0)
+    .sort((left, right) => left.localeCompare(right))[0] ?? null;
+  if (eventBoundary) {
+    return eventBoundary;
+  }
+
+  return options.core?.turns.find((candidate) =>
+    candidate.id === turn.id
+    && candidate.conversationId === buildChatConversationId(options.channelId))?.createdAt
+    ?? turn.startedAt;
+}
+
 function readMessageSessionId(message: ChatMessage): string | null {
   return typeof message.metadata?.sessionId === 'string' && message.metadata.sessionId.trim().length > 0
     ? message.metadata.sessionId.trim()
@@ -1104,7 +1149,6 @@ export function repairMissingStartupRecoveryNotice(
   const nextState = structuredClone(state);
   const nextChannel = requireChannel(nextState, channelId);
   const nowIso = (options.now ?? new Date()).toISOString();
-  const conversationId = buildChatConversationId(channelId);
   let repaired = false;
 
   for (const turn of nextChannel.roomRouting?.workflow?.turnHistory ?? []) {
@@ -1116,10 +1160,10 @@ export function repairMissingStartupRecoveryNotice(
       message.id === turn.sourceMessageId);
     const sourceBoundaryCreatedAt = sourceMessageIndex >= 0
       ? nextChannel.messages[sourceMessageIndex]!.createdAt
-      : options.core?.turns.find((candidate) =>
-        candidate.id === turn.id
-        && candidate.conversationId === conversationId)?.createdAt
-        ?? turn.startedAt;
+      : resolveStartupRecoverySourceBoundaryCreatedAt(turn, {
+        core: options.core,
+        channelId,
+      });
     const isAfterSourceBoundary = (message: ChatMessage, index: number): boolean => (
       sourceMessageIndex >= 0
         ? index > sourceMessageIndex

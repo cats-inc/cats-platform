@@ -1564,3 +1564,172 @@ test('repairMissingStartupRecoveryNotice falls back to canonical turn timing whe
     /Cats server restarted before room workflow cleanup completed/i,
   );
 });
+
+test('repairMissingStartupRecoveryNotice uses canonical assistant source timing for drifted later sequential handoffs', async () => {
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-04-09T12:20:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Interrupted later sequential startup recovery',
+      topic: 'Place startup recovery notice after the missing assistant handoff frontier.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: 'Initial room request',
+    },
+    new Date('2026-04-09T12:20:01.000Z'),
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: 'Queued follow-up while the room was still running',
+    },
+    new Date('2026-04-09T12:20:04.000Z'),
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Agent-1',
+      body: '@Agent-2 continue the recovered room step.',
+    },
+    new Date('2026-04-09T12:20:05.000Z'),
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-later-sequential-source',
+        targetStateId: 'target-later-sequential-source',
+        terminal: true,
+        turnId: 'turn-later-sequential-recovery',
+        targetKind: 'cat',
+        targetId: 'participant-agent-1',
+        routingTrigger: 'continuation_mention',
+        dispatchDepth: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  const channel = requireChannel(state, channelId);
+  const sourceAssistantMessageId = channel.messages.at(-1)?.id;
+  assert.ok(sourceAssistantMessageId);
+  channel.roomRouting.workflow.turnHistory.unshift({
+    id: 'turn-later-sequential-recovery',
+    status: 'blocked',
+    sourceMessageId: sourceAssistantMessageId,
+    sourceSenderKind: 'agent',
+    sourceSenderName: 'Agent-1',
+    guard: null,
+    stageId: 'startup_recovery',
+    workflowShape: 'sequential',
+    reviewRequired: false,
+    lastCheckpointId: 'checkpoint-later-sequential-recovery',
+    convergeTargetId: null,
+    continuationCount: 1,
+    dispatchCount: 2,
+    targetStatuses: [
+      {
+        id: 'target-later-sequential-recovery',
+        dispatchId: 'dispatch-later-sequential-recovery',
+        participant: {
+          participantKind: 'cat',
+          participantId: 'participant-agent-2',
+          participantName: 'Agent-2',
+        },
+        source: {
+          participantKind: 'cat',
+          participantId: 'participant-agent-1',
+          participantName: 'Agent-1',
+        },
+        sourceMessageId: sourceAssistantMessageId,
+        trigger: 'continuation_mention',
+        mentionNames: ['Agent-2'],
+        depth: 1,
+        parentCheckpointId: 'checkpoint-later-sequential-recovery',
+        branchStrategy: 'transplant_context',
+        handoffReason: 'workflow_continuation',
+        wakeRequestId: 'wake-later-sequential-recovery',
+        status: 'blocked',
+        queuedAt: '2026-04-09T12:20:05.000Z',
+        startedAt: '2026-04-09T12:20:05.000Z',
+        completedAt: '2026-04-09T12:20:07.000Z',
+        response: null,
+        error: 'Cats server restarted before room workflow cleanup completed.',
+      },
+    ],
+    events: [
+      {
+        id: 'event-later-sequential-recovery',
+        turnId: 'turn-later-sequential-recovery',
+        kind: 'outcome',
+        status: 'blocked',
+        message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+        actor: null,
+        sourceMessageId: sourceAssistantMessageId,
+        targets: [
+          {
+            participantKind: 'cat',
+            participantId: 'participant-agent-2',
+            participantName: 'Agent-2',
+          },
+        ],
+        dispatchId: null,
+        checkpointId: null,
+        outcomeId: null,
+        createdAt: '2026-04-09T12:20:07.000Z',
+        metadata: {
+          recoverySource: 'server_restart',
+          interruptedError: 'Cats server restarted before room workflow cleanup completed.',
+        },
+      },
+    ],
+    startedAt: '2026-04-09T12:20:01.000Z',
+    updatedAt: '2026-04-09T12:20:07.000Z',
+    completedAt: '2026-04-09T12:20:07.000Z',
+  });
+
+  await chatStore.write(state);
+  const core = await chatStore.readCore();
+  const driftedState = structuredClone(state);
+  requireChannel(driftedState, channelId).messages = requireChannel(driftedState, channelId)
+    .messages
+    .filter((message) => message.id !== sourceAssistantMessageId);
+
+  const repaired = repairMissingStartupRecoveryNotice(
+    driftedState,
+    channelId,
+    {
+      core,
+      now: new Date('2026-04-09T12:25:00.000Z'),
+    },
+  );
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const queuedUserIndex = repairedChannel.messages.findIndex((message) =>
+    message.body === 'Queued follow-up while the room was still running');
+  const noticeIndex = repairedChannel.messages.findIndex((message) =>
+    message.metadata?.event === 'workflow_interrupted'
+    && message.metadata?.turnId === 'turn-later-sequential-recovery');
+
+  assert.ok(queuedUserIndex >= 0);
+  assert.ok(noticeIndex > queuedUserIndex);
+  assert.match(
+    repairedChannel.messages[noticeIndex].body,
+    /Cats server restarted before room workflow cleanup completed/i,
+  );
+});
