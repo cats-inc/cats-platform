@@ -3,6 +3,7 @@ import type {
   CoreActivityRecord,
   CoreCheckpointRecord,
   CoreCheckpointStatus,
+  MissionRecord,
   CoreOrchestrationOutcomeRecord,
   CoreRunRecord,
   CoreTraceKind,
@@ -12,13 +13,18 @@ import {
   buildCoreWorkflowSummary,
 } from '../../../../core/governance.js';
 import { GLOBAL_ORCHESTRATOR_ACTOR_ID, createCatActorId } from '../../../../core/actors.js';
+import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
 import type { ChatChannelState } from '../../api/contracts.js';
 import type {
   RoomRoutingParticipantRef,
   RoomWorkflowEvent,
+  RoomWorkflowTargetState,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
-import { buildRoomWorkflowRunId } from '../../../../platform/orchestration/runIds.js';
+import {
+  buildRoomWorkflowMissionId,
+  buildRoomWorkflowRunId,
+} from '../../../../platform/orchestration/runIds.js';
 
 function actorIdForParticipant(
   participant: RoomRoutingParticipantRef | null,
@@ -36,6 +42,12 @@ export function preserveCoreOwnedRuns(existingRuns: CoreRunRecord[]): CoreRunRec
   return existingRuns
     .filter((run) => !run.id.startsWith('run-room-routing-'))
     .map((run) => structuredClone(run));
+}
+
+export function preserveCoreOwnedMissions(existingMissions: MissionRecord[]): MissionRecord[] {
+  return existingMissions
+    .filter((mission) => !mission.id.startsWith('mission-room-routing-'))
+    .map((mission) => structuredClone(mission));
 }
 
 export function preserveCoreOwnedTraces(existingTraces: CoreTraceRecord[]): CoreTraceRecord[] {
@@ -93,6 +105,26 @@ function toCoreRunStatus(status: RoomWorkflowTurn['status']): CoreRunRecord['sta
     case 'pending':
       return 'queued';
     case 'idle':
+    default:
+      return 'queued';
+  }
+}
+
+function toMissionStatus(
+  status: RoomWorkflowTargetState['status'],
+): MissionRecord['status'] {
+  switch (status) {
+    case 'running':
+      return 'running';
+    case 'completed':
+      return 'completed';
+    case 'failed':
+      return 'failed';
+    case 'cancelled':
+      return 'cancelled';
+    case 'pending':
+    case 'blocked':
+    case 'waiting_for_converge':
     default:
       return 'queued';
   }
@@ -177,9 +209,72 @@ export function createWorkflowRun(
       workflowReviewRequired: turn.reviewRequired,
       workflowConvergeTargetId: turn.convergeTargetId,
       branchStates: structuredClone(turn.targetStatuses),
+      missionIds: turn.targetStatuses.map((target) =>
+        buildRoomWorkflowMissionId(channel.id, turn.id, target.id)),
       continuationCount: turn.continuationCount,
       dispatchCount: turn.dispatchCount,
       targetCount: turn.targetStatuses.length,
+      workflowSummary: buildCoreWorkflowSummary({
+        runStatus: toCoreRunStatus(turn.status),
+        stageId: turn.stageId,
+        shape: turn.workflowShape,
+        reviewRequired: turn.reviewRequired,
+        lastCheckpointId: turn.lastCheckpointId,
+        convergeTargetId: turn.convergeTargetId,
+        continuationCount: turn.continuationCount,
+        dispatchCount: turn.dispatchCount,
+        targetCount: turn.targetStatuses.length,
+        branchStates: turn.targetStatuses,
+      }),
+    },
+  };
+}
+
+export function createWorkflowMission(
+  channel: ChatChannelState,
+  turn: RoomWorkflowTurn,
+  target: RoomWorkflowTargetState,
+): MissionRecord {
+  return {
+    id: buildRoomWorkflowMissionId(channel.id, turn.id, target.id),
+    managedWorkId: null,
+    conversationId: `conversation-channel-${channel.id}`,
+    sourceTurnId: turn.id,
+    sourceLaneId: buildChatLaneId(turn.id, target.id, target.participant.participantId),
+    assignedAgentId: actorIdForParticipant(target.participant),
+    title: `${channel.title} -> ${target.participant.participantName}`,
+    status: toMissionStatus(target.status),
+    summary: target.error ?? null,
+    createdAt: target.queuedAt,
+    updatedAt: target.completedAt ?? target.startedAt ?? turn.updatedAt,
+    metadata: {
+      source: 'chat-room-workflow',
+      channelId: channel.id,
+      turnId: turn.id,
+      targetStateId: target.id,
+      runId: buildRoomWorkflowRunId(channel.id, turn.id),
+      participantId: target.participant.participantId,
+      participantKind: target.participant.participantKind,
+      participantName: target.participant.participantName,
+      dispatchId: target.dispatchId,
+      trigger: target.trigger,
+      mentionNames: structuredClone(target.mentionNames),
+      depth: target.depth,
+      parentCheckpointId: target.parentCheckpointId,
+      branchStrategy: target.branchStrategy,
+      handoffReason: target.handoffReason,
+      wakeRequestId: target.wakeRequestId,
+      sourceMessageId: target.sourceMessageId,
+      sourceParticipantId: target.source?.participantId ?? null,
+      sourceParticipantKind: target.source?.participantKind ?? null,
+      targetStatus: target.status,
+      queuedAt: target.queuedAt,
+      startedAt: target.startedAt,
+      completedAt: target.completedAt,
+      error: target.error,
+      responseAssistantTurnId: target.response?.assistantTurnId ?? null,
+      workflowShape: turn.workflowShape,
+      workflowStageId: turn.stageId,
       workflowSummary: buildCoreWorkflowSummary({
         runStatus: toCoreRunStatus(turn.status),
         stageId: turn.stageId,

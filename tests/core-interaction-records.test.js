@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createDefaultCoreState,
   upsertCoreLane,
+  upsertCoreMission,
   upsertCoreSegment,
   upsertCoreSession,
   upsertCoreTurn,
@@ -98,4 +99,32 @@ test('core interaction helpers persist turns, lanes, segments, and sessions with
   assert.equal(core.sessions[0].laneId, 'lane-cat-1');
   assert.equal(core.segments[0].laneId, 'lane-cat-1');
   assert.equal(core.segments[0].sessionId, 'session-runtime-1');
+});
+
+test('core mission helper persists source turn, lane, and assigned agent identity separately from runs', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-1',
+      conversationId: 'conversation-direct-1',
+      sourceTurnId: 'turn-user-1',
+      sourceLaneId: 'lane-cat-1',
+      assignedAgentId: 'agent-cat-1',
+      title: 'Review the latest reply',
+      status: 'queued',
+      createdAt: '2026-04-14T21:10:00.000Z',
+      metadata: {
+        runId: 'run-1',
+      },
+    },
+    new Date('2026-04-14T21:10:00.000Z'),
+  ).core;
+
+  assert.equal(core.missions.length, 1);
+  assert.equal(core.missions[0].sourceTurnId, 'turn-user-1');
+  assert.equal(core.missions[0].sourceLaneId, 'lane-cat-1');
+  assert.equal(core.missions[0].assignedAgentId, 'agent-cat-1');
+  assert.equal(core.missions[0].metadata.runId, 'run-1');
 });

@@ -37,11 +37,13 @@ import {
   collectWorkflowTurns,
   createWorkflowActivity,
   createWorkflowCheckpoint,
+  createWorkflowMission,
   createWorkflowOutcome,
   createWorkflowRun,
   createWorkflowTrace,
   preserveCoreOwnedActivities,
   preserveCoreOwnedCheckpoints,
+  preserveCoreOwnedMissions,
   preserveCoreOwnedOutcomes,
   preserveCoreOwnedRuns,
   preserveCoreOwnedTraces,
@@ -90,6 +92,7 @@ export function syncCoreStateWithChatState(
     ),
   );
   const preservedTasks = preserveCoreOwnedTasks(existingCore.tasks ?? []);
+  const preservedMissions = preserveCoreOwnedMissions(existingCore.missions ?? []);
   const preservedTransportBindings = preserveCoreOwnedTransportBindings(
     existingCore.transportBindings ?? [],
   );
@@ -111,6 +114,9 @@ export function syncCoreStateWithChatState(
   );
   const workflowRuns = workflowTurns.map(({ channel, turn }) =>
     createWorkflowRun(channel, turn),
+  );
+  const workflowMissions = workflowTurns.flatMap(({ channel, turn }) =>
+    turn.targetStatuses.map((target) => createWorkflowMission(channel, turn, target)),
   );
   const workflowTraces = workflowTurns.flatMap(({ channel, turn }) =>
     turn.events.map((event) => createWorkflowTrace(channel, turn, event)),
@@ -161,7 +167,7 @@ export function syncCoreStateWithChatState(
     sessions: structuredClone(existingCore.sessions ?? []),
     projects: structuredClone(existingCore.projects ?? []),
     workItems: structuredClone(existingCore.workItems ?? []),
-    missions: structuredClone(existingCore.missions ?? []),
+    missions: [...workflowMissions, ...preservedMissions],
     tasks: [...tasks, ...preservedTasks],
     runs: [...workflowRuns, ...preservedRuns],
     traces: [...workflowTraces, ...preservedTraces],

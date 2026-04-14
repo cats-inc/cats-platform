@@ -3,6 +3,7 @@ export {
   upsertCoreProject,
   upsertCoreWorkItem,
 } from './planningRecords.js';
+export { upsertCoreMission } from './missionRecords.js';
 export {
   appendCoreActivity,
   appendCoreTrace,

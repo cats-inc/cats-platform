@@ -17,6 +17,7 @@ import type {
   CoreRunStatus,
   CoreTaskStatus,
   CoreTraceKind,
+  MissionRecordStatus,
   TurnRecordKind,
   TurnRecordStatus,
   CoreWorkItemStatus,
@@ -104,6 +105,20 @@ export interface CoreRunWriteInput {
   createdAt?: string;
   startedAt?: string | null;
   completedAt?: string | null;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreMissionWriteInput {
+  id?: string;
+  managedWorkId?: string | null;
+  conversationId?: string | null;
+  sourceTurnId?: string | null;
+  sourceLaneId?: string | null;
+  assignedAgentId?: string | null;
+  title: string;
+  status?: MissionRecordStatus;
+  summary?: string | null;
+  createdAt?: string;
   metadata?: CoreRecordMetadata;
 }
 

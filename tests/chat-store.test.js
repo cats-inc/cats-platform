@@ -912,6 +912,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
     ['workflow_continuation', 'explicit_mention'],
   );
   assert.ok(core.runs.some((run) => run.id.startsWith(`run-room-routing-${channelId}-`)));
+  assert.ok(core.missions.some((mission) => mission.id.startsWith(`mission-room-routing-${channelId}-`)));
   assert.ok(
     core.runs.some(
       (run) =>
@@ -963,6 +964,13 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.equal(projectedRun.metadata.workflowSummary?.shape, 'sequential');
   assert.equal(projectedRun.metadata.workflowSummary?.dispatchCount, 2);
   assert.equal(projectedRun.metadata.workflowSummary?.branchStatusCounts.completed, 2);
+  assert.deepEqual(projectedRun.metadata.missionIds.length, 2);
+  const projectedMission = core.missions.find((mission) =>
+    mission.id === projectedRun.metadata.missionIds[0]);
+  assert.ok(projectedMission);
+  assert.equal(projectedMission.status, 'completed');
+  assert.equal(projectedMission.sourceTurnId, projectedRun.metadata.turnId);
+  assert.equal(projectedMission.metadata.runId, projectedRun.id);
   assert.ok(projectedCheckpoint);
   assert.equal(projectedCheckpoint.metadata.workflowSummary?.stageId, 'continuation_handoff');
   assert.ok(projectedOutcome);
