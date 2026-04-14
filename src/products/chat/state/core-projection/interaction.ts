@@ -29,6 +29,7 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import {
   ASSISTANT_TURN_SEGMENT_EVENT,
+  buildAssistantTurnSourceMessage,
 } from '../assistantTurnSegments.js';
 import { requireChannel } from '../model/index.js';
 import {
@@ -268,7 +269,29 @@ function resolveSourceMessageBody(
     return null;
   }
 
-  return sourceMessage.body;
+  if (readMessageMetadataString(sourceMessage, 'event') !== ASSISTANT_TURN_SEGMENT_EVENT) {
+    return sourceMessage.body;
+  }
+
+  const assistantTurnId = readMessageMetadataString(sourceMessage, 'assistantTurnId');
+  if (!assistantTurnId) {
+    return sourceMessage.body;
+  }
+
+  const assistantTurnMessages = channel.messages
+    .filter((message) =>
+      readMessageMetadataString(message, 'event') === ASSISTANT_TURN_SEGMENT_EVENT
+      && readMessageMetadataString(message, 'assistantTurnId') === assistantTurnId)
+    .sort((left, right) => {
+      const leftIndex = readMessageMetadataNumber(left, 'segmentIndex') ?? 0;
+      const rightIndex = readMessageMetadataNumber(right, 'segmentIndex') ?? 0;
+      if (leftIndex !== rightIndex) {
+        return leftIndex - rightIndex;
+      }
+      return left.createdAt.localeCompare(right.createdAt);
+    });
+
+  return buildAssistantTurnSourceMessage(assistantTurnMessages)?.body ?? sourceMessage.body;
 }
 
 function preserveExistingTurnProjection(

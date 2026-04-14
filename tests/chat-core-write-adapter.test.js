@@ -980,6 +980,13 @@ test('resumeWorkflowContinuationReplay prefers full canonical assistant turns ov
     requireChannel(await store.read(), channelId).messages.some((message) =>
       message.body === 'Agent-2 resumed from the surviving canonical handoff.'),
   );
+  const replayCore = await store.readCore();
+  const replayConversationId = buildChatConversationId(channelId);
+  const replayTurn = readLatestConversationTurn(replayCore, replayConversationId);
+  assert.match(
+    replayTurn?.metadata.sourceMessageBody ?? '',
+    /Agent-1 completed the first step\. ?Implementation notes included\./u,
+  );
 });
 
 test('beginChannelMessageRetryDispatch can rebuild a missing user source from canonical turn metadata', async () => {
