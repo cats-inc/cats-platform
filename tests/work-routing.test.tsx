@@ -56,8 +56,12 @@ function createProps(): AppRoutesProps {
   };
 }
 
-test('Work AppRoutes keeps intake and plan review surfaces reachable', () => {
+test('Work AppRoutes keeps operational and intake surfaces reachable', () => {
   const routes = collectRoutes(AppRoutes(createProps()));
+
+  const warRoomRoute = routes.find((entry) => entry.path === 'war-room');
+  assert.ok(warRoomRoute, 'expected /work/war-room route');
+  assert.ok(isValidElement(warRoomRoute?.element));
 
   const intakeRoute = routes.find((entry) => entry.path === 'intake');
   assert.ok(intakeRoute, 'expected /work/intake route');
@@ -66,4 +70,8 @@ test('Work AppRoutes keeps intake and plan review surfaces reachable', () => {
   const planRoute = routes.find((entry) => entry.path === 'intake/:projectId');
   assert.ok(planRoute, 'expected /work/intake/:projectId route');
   assert.ok(isValidElement(planRoute?.element));
+
+  const taskRoute = routes.find((entry) => entry.path === 'tasks/:taskId');
+  assert.ok(taskRoute, 'expected /work/tasks/:taskId route');
+  assert.ok(isValidElement(taskRoute?.element));
 });

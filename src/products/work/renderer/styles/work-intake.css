@@ -469,3 +469,72 @@
   color: var(--text-secondary, #888);
   font-size: 13px;
 }
+
+/* Work War Room */
+
+.workWarRoomView,
+.workTaskDetailView {
+  display: grid;
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.workWarRoomHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.workWarRoomSummaryGrid,
+.workTaskDetailGrid,
+.workWarRoomTaskGrid {
+  display: grid;
+  gap: 16px;
+}
+
+.workWarRoomSummaryGrid,
+.workTaskDetailGrid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.workWarRoomTaskGrid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.workWarRoomSummaryCard,
+.workTaskDetailFact,
+.workWarRoomTaskCard {
+  height: 100%;
+}
+
+.workWarRoomBadgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workWarRoomTaskCard .operatorMetaRow {
+  gap: 10px 16px;
+}
+
+.workWarRoomTaskCard .operatorMetaRow span,
+.workTaskDetailFact p {
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .workWarRoomView,
+  .workTaskDetailView {
+    padding: 20px 12px;
+  }
+
+  .workWarRoomHeaderActions {
+    width: 100%;
+  }
+
+  .workWarRoomHeaderActions > .operatorActionButton {
+    flex: 1 1 140px;
+  }
+}

@@ -14,6 +14,7 @@ export default createWorkspaceProductApp({
     <Sidebar
       {...props}
       onStartWorkIntake={() => props.navigate("/work/intake")}
+      onOpenWarRoom={() => props.navigate("/work/war-room")}
     />
   ),
 });

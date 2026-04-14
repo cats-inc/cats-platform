@@ -20,6 +20,8 @@ import {
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
 import { PlanReviewPanel } from './components/PlanReviewPanel.js';
+import { TaskDetailView } from './components/TaskDetailView.js';
+import { WarRoomView } from './components/WarRoomView.js';
 import {
   WorkspaceAppRoutes,
   type WorkspaceAppRoutesProps,
@@ -80,8 +82,10 @@ export function AppRoutes({
     entryPath: resolveAppEntryPath(payload.setupCompleteAt),
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
     extraRoutes: [
+      <Route key="war-room" path="war-room" element={<WarRoomView />} />,
       <Route key="intake" path="intake" element={<IntakeForm />} />,
       <Route key="intake-project" path="intake/:projectId" element={<PlanReviewPanel />} />,
+      <Route key="task-detail" path="tasks/:taskId" element={<TaskDetailView />} />,
     ],
     renderBootShell: () => <BootShell />,
     renderChatView: (channel, options) => (

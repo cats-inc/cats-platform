@@ -3,6 +3,7 @@ import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 import {
   ConversationSidebar,
   type ConversationSidebarAction,
+  type ConversationSidebarActionGroup,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import {
@@ -36,6 +37,7 @@ export interface SidebarProps {
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
   onStartWorkIntake?: () => void;
+  onOpenWarRoom?: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
@@ -99,6 +101,46 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
   return actions;
 }
 
+function createExtraActionGroups(props: SidebarProps): ConversationSidebarActionGroup[] {
+  if (!props.onOpenWarRoom) {
+    return [];
+  }
+
+  const currentPath = globalThis.location?.pathname ?? '/work';
+
+  return [
+    {
+      key: 'war-room',
+      ariaLabel: 'Operations',
+      items: [
+        {
+          key: 'war-room',
+          label: 'War Room',
+          onClick: props.onOpenWarRoom,
+          active: currentPath.startsWith('/work/war-room') || currentPath.startsWith('/work/tasks/'),
+          icon: (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+              <path d="M4 5h8" />
+              <path d="M4 8h8" />
+              <path d="M6 11h4" />
+            </svg>
+          ),
+        },
+      ],
+    },
+  ];
+}
+
 export function Sidebar(props: SidebarProps) {
   return ConversationSidebar({
     payload: props.payload,
@@ -111,6 +153,7 @@ export function Sidebar(props: SidebarProps) {
     routeChannelId: props.routeChannelId,
     accountMenuRef: props.accountMenuRef,
     primaryActions: createPrimaryActions(props),
+    extraActionGroups: createExtraActionGroups(props),
     helpers: {
       catInitials,
       presentChannelTitle,
