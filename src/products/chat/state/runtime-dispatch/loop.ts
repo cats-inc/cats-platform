@@ -217,6 +217,7 @@ export async function processDispatchQueue(
       queue.unshift({
         ...frame,
         targets: frame.targets.slice(1),
+        targetStateIds: frame.targetStateIds?.slice(1) ?? null,
         // Keep the original room-audience queue on the sequential rail even if
         // an earlier reply mutates the active turn's workflow shape.
         workflowShapeOverride: 'sequential',

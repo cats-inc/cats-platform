@@ -1091,6 +1091,67 @@ test('continueBegunChannelMessageDispatch persists pending workflow targets befo
   await dispatchPromise;
 });
 
+test('continueBegunChannelMessageDispatch keeps preseeded lane ids stable across sequential handoff', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createChannelState();
+  const store = new TrackingChatStore(state);
+  const firstReply = createDeferred();
+  const secondRequested = createDeferred();
+  let secondHasStarted = false;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      return firstReply.promise;
+    }
+    if (content.includes('You are Agent-1')) {
+      secondHasStarted = true;
+      secondRequested.resolve();
+      return usage('Agent-1 handled the second sequential step.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const now = new Date('2026-03-21T00:12:00.000Z');
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Handle this in audience order.',
+      messageMetadata: {
+        recipientParticipantIds: [agent2Id, agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+  const begunTargetIds = (
+    requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn?.targetStatuses ?? []
+  ).map((target) => target.id);
+  assert.deepEqual(begunTargetIds.length, 2);
+
+  const dispatchPromise = continueBegunChannelMessageDispatch(
+    begun,
+    channelId,
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+
+  await Promise.resolve();
+  assert.equal(secondHasStarted, false);
+  firstReply.resolve(usage('Agent-2 handled the first sequential step.'));
+  await secondRequested.promise;
+
+  const persistedChannel = requireChannel(await store.read(), channelId);
+  const persistedTargetStatuses = persistedChannel.roomRouting.workflow.activeTurn?.targetStatuses ?? [];
+  assert.deepEqual(
+    persistedTargetStatuses.map((target) => target.id),
+    begunTargetIds,
+  );
+
+  await dispatchPromise;
+});
+
 test('routeChannelMessage auto-checks out an approved channel task for the assigned cat session', async () => {
   const { state, channelId } = await createChannelState();
   const store = new CountingCoreChatStore();
