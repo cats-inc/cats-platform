@@ -18,6 +18,7 @@ type WorkControlPlaneItem = WorkDashboardProjection['sections']['controlPlane'][
 type WorkProjectItem = WorkDashboardProjection['sections']['projects']['items'][number];
 type WorkRecoveryItem = WorkDashboardProjection['sections']['recovery']['items'][number];
 type WorkWorkItemItem = WorkDashboardProjection['sections']['workItems']['items'][number];
+type WorkTaskActionContext = WorkOperatorInboxItem['taskContext'];
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -140,6 +141,49 @@ function WorkWarRoomOpenTaskButton({
   );
 }
 
+function WorkWarRoomTaskContextActions({
+  taskId,
+  taskContext,
+}: {
+  taskId: string;
+  taskContext: WorkTaskActionContext;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="workWarRoomHeaderActions">
+      <WorkWarRoomOpenTaskButton taskId={taskId} />
+      {taskContext.conversationSourceChannelId ? (
+        <button
+          type="button"
+          className="operatorActionButton"
+          onClick={() => {
+            startTransition(() => {
+              navigate(buildChannelPath(taskContext.conversationSourceChannelId!));
+            });
+          }}
+        >
+          Open briefing thread
+        </button>
+      ) : null}
+      {listCatActorLinks(taskContext.assignedActors).map((actor) => (
+        <button
+          key={actor.actorId}
+          type="button"
+          className="operatorActionButton"
+          onClick={() => {
+            startTransition(() => {
+              navigate(buildMyCatPath(actor.catId));
+            });
+          }}
+        >
+          Open {actor.displayName}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function OperatorInboxSection({
   items,
   totalAvailable,
@@ -194,7 +238,11 @@ function OperatorInboxSection({
                 <span>Latest: {item.latestTimelineItem?.title ?? 'No timeline item yet'}</span>
                 <span>{formatTimestamp(item.latestTimelineItem?.timestamp)}</span>
               </div>
-              <WorkWarRoomOpenTaskButton taskId={item.taskId} />
+              <div className="operatorMetaRow">
+                <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>
+                <span>Actors: {compactList(item.taskContext.assignedActors.map((actor) => actor.displayName))}</span>
+              </div>
+              <WorkWarRoomTaskContextActions taskId={item.taskId} taskContext={item.taskContext} />
             </article>
           ))}
         </div>
@@ -259,7 +307,11 @@ function ControlPlaneSection({
                 <span>Replay: {item.workflowContinuation?.replayState ?? 'Not recorded'}</span>
                 <span>Blocked: {item.workflowContinuation?.blockedReason ?? 'No'}</span>
               </div>
-              <WorkWarRoomOpenTaskButton taskId={item.taskId} />
+              <div className="operatorMetaRow">
+                <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>
+                <span>Actors: {compactList(item.taskContext.assignedActors.map((actor) => actor.displayName))}</span>
+              </div>
+              <WorkWarRoomTaskContextActions taskId={item.taskId} taskContext={item.taskContext} />
             </article>
           ))}
         </div>

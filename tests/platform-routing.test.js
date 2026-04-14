@@ -196,7 +196,7 @@ test('Work projections preserve briefing-thread channel links from shared conver
   core.tasks.push({
     id: taskId,
     title: 'Work briefing task',
-    status: 'in_progress',
+    status: 'pending_approval',
     conversationId,
     parentTaskId: null,
     ownerActorId: core.ownerProfile.actorId,
@@ -204,8 +204,8 @@ test('Work projections preserve briefing-thread channel links from shared conver
     assignedActorIds: ['actor-cat-work-reviewer'],
     summary: 'Follow the briefing thread.',
     approval: {
-      status: 'not_requested',
-      requestedAt: null,
+      status: 'pending',
+      requestedAt: '2026-04-15T06:01:00.000Z',
       decidedAt: null,
       decidedByActorId: null,
       decisionAction: null,
@@ -231,6 +231,7 @@ test('Work projections preserve briefing-thread channel links from shared conver
   });
 
   const projectList = buildWorkProjectListProjection(core);
+  const workDashboard = buildWorkDashboardProjection(core);
   const workItemList = buildWorkWorkItemListProjection(core);
   const projectDetail = buildWorkProjectDetailProjection(core, core.projects[0]);
   const workItemDetail = buildWorkWorkItemDetailProjection(core, core.workItems[0]);
@@ -240,6 +241,10 @@ test('Work projections preserve briefing-thread channel links from shared conver
   assert.equal(workItemList.workItems[0].conversationSourceChannelId, sourceChannelId);
   assert.equal(workItemList.workItems[0].assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
   assert.equal(workItemList.workItems[0].assignedActors[0]?.displayName, 'Work Reviewer');
+  assert.equal(workDashboard.sections.operatorInbox.items[0].taskContext.conversationSourceChannelId, sourceChannelId);
+  assert.equal(workDashboard.sections.operatorInbox.items[0].taskContext.assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
+  assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.conversationSourceChannelId, sourceChannelId);
+  assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.assignedActors[0]?.displayName, 'Work Reviewer');
   assert.equal(projectDetail.primaryConversation?.sourceChannelId, sourceChannelId);
   assert.equal(projectDetail.linkedTasks[0].conversationSourceChannelId, sourceChannelId);
   assert.equal(projectDetail.linkedTasks[0].assignedActors[0]?.actorId, 'actor-cat-work-reviewer');

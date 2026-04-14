@@ -237,6 +237,23 @@ export interface WorkPendingPlanSummary {
   returned: number;
 }
 
+export interface WorkTaskActionContext {
+  conversationTitle: string | null;
+  conversationSourceChannelId: string | null;
+  assignedActors: Array<{
+    actorId: string;
+    displayName: string;
+  }>;
+}
+
+export interface WorkOperatorInboxItem extends CoreOperatorInboxItem {
+  taskContext: WorkTaskActionContext;
+}
+
+export interface WorkControlPlaneItem extends CoreTaskControlPlaneView {
+  taskContext: WorkTaskActionContext;
+}
+
 export interface WorkDashboardProjection {
   product: {
     id: 'work';
@@ -251,8 +268,8 @@ export interface WorkDashboardProjection {
     pendingPlans: WorkDashboardSection<WorkPendingPlanItem, WorkPendingPlanSummary>;
     projects: WorkDashboardSection<WorkProjectListItem, WorkProjectListSummary>;
     workItems: WorkDashboardSection<WorkWorkItemListItem, WorkWorkItemListSummary>;
-    operatorInbox: WorkDashboardSection<CoreOperatorInboxItem, CoreOperatorInboxSummary>;
-    controlPlane: WorkDashboardSection<CoreTaskControlPlaneView, CoreTaskControlPlaneListSummary>;
+    operatorInbox: WorkDashboardSection<WorkOperatorInboxItem, CoreOperatorInboxSummary>;
+    controlPlane: WorkDashboardSection<WorkControlPlaneItem, CoreTaskControlPlaneListSummary>;
     recovery: WorkDashboardSection<CoreTaskRecoveryView, CoreTaskRecoveryListSummary>;
   };
   selection: {
@@ -490,29 +507,56 @@ function buildPendingPlanItems(
     });
 }
 
+function buildWorkTaskActionContext(
+  core: CatsCoreState,
+  taskId: string,
+): WorkTaskActionContext {
+  const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
+  const conversation = task?.conversationId
+    ? core.conversations.find((candidate) => candidate.id === task.conversationId) ?? null
+    : null;
+
+  return {
+    conversationTitle: conversation?.title ?? null,
+    conversationSourceChannelId: conversation?.sourceChannelId ?? null,
+    assignedActors: task?.assignedActorIds.map((actorId) => ({
+      actorId,
+      displayName: resolveActorName(core, actorId),
+    })) ?? [],
+  };
+}
+
 export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboardProjection {
   const workTasks = core.tasks.filter((task) => isWorkTask(core, task));
   const workTaskIds = new Set(workTasks.map((task) => task.id));
   const operatorInboxItems = listCoreOperatorInboxItems(core)
     .filter((item) => workTaskIds.has(item.taskId))
     .slice(0, WORK_DASHBOARD_INBOX_LIMIT);
+  const operatorInboxTaskItems: WorkOperatorInboxItem[] = operatorInboxItems.map((item) => ({
+    ...item,
+    taskContext: buildWorkTaskActionContext(core, item.taskId),
+  }));
   const operatorInbox = {
-    tasks: operatorInboxItems,
+    tasks: operatorInboxTaskItems,
     summary: summarizeCoreOperatorInboxItems({
-      totalAvailable: operatorInboxItems.length,
-      matching: operatorInboxItems.length,
-      items: operatorInboxItems,
+      totalAvailable: operatorInboxTaskItems.length,
+      matching: operatorInboxTaskItems.length,
+      items: operatorInboxTaskItems,
     }),
   };
   const controlPlaneItems = listCoreTaskControlPlaneViews(core)
     .filter((view) => workTaskIds.has(view.taskId))
     .slice(0, WORK_DASHBOARD_CONTROL_PLANE_LIMIT);
+  const controlPlaneTaskItems: WorkControlPlaneItem[] = controlPlaneItems.map((item) => ({
+    ...item,
+    taskContext: buildWorkTaskActionContext(core, item.taskId),
+  }));
   const controlPlane = {
-    tasks: controlPlaneItems,
+    tasks: controlPlaneTaskItems,
     summary: summarizeCoreTaskControlPlaneViews({
-      totalAvailable: controlPlaneItems.length,
-      matching: controlPlaneItems.length,
-      views: controlPlaneItems,
+      totalAvailable: controlPlaneTaskItems.length,
+      matching: controlPlaneTaskItems.length,
+      views: controlPlaneTaskItems,
     }),
   };
   const recoveryItems = listCoreTaskRecoveryViews(core)

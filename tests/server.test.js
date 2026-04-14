@@ -6860,7 +6860,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
           title: 'Work dashboard task',
           conversationId,
           assignedActorIds: ['actor-orchestrator-global'],
-          status: 'in_progress',
+          status: 'pending_approval',
           summary: 'Prove Work consumes the shared task substrate.',
         },
       }),
@@ -6971,6 +6971,24 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     assert.equal(
       workPayload.sections.workItems.items[0].conversationSourceChannelId,
       sourceChannelId,
+    );
+    assert.equal(workPayload.sections.operatorInbox.summary.totalAvailable, 1);
+    assert.equal(workPayload.sections.controlPlane.summary.totalAvailable, 1);
+    assert.equal(
+      workPayload.sections.operatorInbox.items[0].taskContext.conversationSourceChannelId,
+      sourceChannelId,
+    );
+    assert.equal(
+      workPayload.sections.operatorInbox.items[0].taskContext.assignedActors[0]?.actorId,
+      'actor-orchestrator-global',
+    );
+    assert.equal(
+      workPayload.sections.controlPlane.items[0].taskContext.conversationSourceChannelId,
+      sourceChannelId,
+    );
+    assert.equal(
+      workPayload.sections.controlPlane.items[0].taskContext.assignedActors[0]?.actorId,
+      'actor-orchestrator-global',
     );
     assert.ok('operatorInbox' in workPayload.sections);
     assert.ok('controlPlane' in workPayload.sections);
