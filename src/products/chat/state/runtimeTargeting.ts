@@ -23,7 +23,10 @@ import {
 } from '../shared/channelParticipants.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
-import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
+import {
+  buildChatConversationId,
+  buildDirectLaneTransportBindingId,
+} from '../../../shared/chatCoreIds.js';
 import {
   readChatCoreMetadataString,
   resolveRawChatParticipantId,
@@ -237,6 +240,10 @@ function buildSessionContextForTarget(
   metadata: Record<string, unknown>;
 } {
   const resolvedTransport = resolveTransportContext(channel, transport);
+  const conversationId = buildChatConversationId(channel.id);
+  const transportBindingId = isDirectLaneChannel(channel)
+    ? buildDirectLaneTransportBindingId(channel.id)
+    : null;
   return {
     source: 'interactive',
     reason: `cats:${channel.channelKind ?? channel.roomRouting?.mode ?? 'boss_chat'}`,
@@ -249,11 +256,13 @@ function buildSessionContextForTarget(
     ],
     metadata: {
       channelId: channel.id,
+      conversationId,
       channelTitle: channel.title,
       channelKind: channel.channelKind ?? 'boss_thread',
       roomMode: channel.roomRouting?.mode ?? 'boss_chat',
       defaultRecipientId: channel.roomRouting?.defaultRecipientId ?? null,
       transport: resolvedTransport,
+      transportBindingId,
       targetKind: target.participantKind,
       targetId: target.participantId,
     },

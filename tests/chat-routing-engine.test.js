@@ -14,7 +14,11 @@ import {
 import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { patchTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
-import { buildChatWorkItemId } from '../build/server/shared/chatCoreIds.js';
+import {
+  buildChatConversationId,
+  buildChatWorkItemId,
+  buildDirectLaneTransportBindingId,
+} from '../build/server/shared/chatCoreIds.js';
 
 function createRuntimeStub(responder) {
   let nextSession = 1;
@@ -1708,6 +1712,22 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   const channel = buildChannelView(dispatched.state, channelId);
 
   assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(
+    runtimeClient.createdSessions[0]?.context?.metadata?.conversationId,
+    buildChatConversationId(channelId),
+  );
+  assert.equal(
+    runtimeClient.createdSessions[0]?.context?.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
+  );
+  assert.equal(
+    runtimeClient.sentMessages[0]?.input?.context?.metadata?.conversationId,
+    buildChatConversationId(channelId),
+  );
+  assert.equal(
+    runtimeClient.sentMessages[0]?.input?.context?.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
+  );
   assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Smelly')), false);
   assert.equal(channel.orchestratorLease.sessionId, null);
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
