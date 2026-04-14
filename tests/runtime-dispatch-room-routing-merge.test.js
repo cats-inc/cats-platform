@@ -1339,6 +1339,7 @@ test('repairMissingSessionStartedMessages restores a missing cat targetId from c
       status: 'active',
       createdAt: '2026-04-09T12:00:01.500Z',
       startedAt: '2026-04-09T12:00:01.500Z',
+      transportBindingId: 'transport-binding-canonical-target-fallback',
       metadata: {
         leaseCwd: 'C:/canonical/session-canonical-target-fallback',
       },
@@ -1357,7 +1358,12 @@ test('repairMissingSessionStartedMessages restores a missing cat targetId from c
     message.metadata?.event === 'session_started'
     && message.metadata?.sessionId === 'session-canonical-target-fallback');
   assert.ok(sessionStarted);
+  assert.equal(sessionStarted.metadata?.conversationId, conversationId);
   assert.equal(sessionStarted.metadata?.targetId, 'participant-inline-record');
+  assert.equal(
+    sessionStarted.metadata?.transportBindingId,
+    'transport-binding-canonical-target-fallback',
+  );
   assert.match(sessionStarted.body, /Canonical Agent/u);
 });
 

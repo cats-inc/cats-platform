@@ -55,6 +55,7 @@ import {
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
 } from '../workspace.js';
+import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import {
   clearTargetSessionLease,
   ensureChannelMarkedActive,
@@ -242,6 +243,16 @@ export async function maybeAutoCheckoutChannelTask(
   });
 }
 
+function readInvocationContextMetadataString(
+  context: { metadata?: Record<string, unknown> } | undefined,
+  key: string,
+): string | null {
+  const value = context?.metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
 export async function ensureTargetSession(
   state: ChatState,
   channelId: string,
@@ -381,6 +392,14 @@ export async function ensureTargetSession(
       now,
       options.companionStore,
     );
+    const conversationId = readInvocationContextMetadataString(
+      runtimeEnvelope.context,
+      'conversationId',
+    ) ?? buildChatConversationId(channelId);
+    const transportBindingId = readInvocationContextMetadataString(
+      runtimeEnvelope.context,
+      'transportBindingId',
+    );
     if (target.participantKind === 'orchestrator') {
       const sessionTarget = resolveOrchestratorExecutionTarget(
         nextState,
@@ -466,7 +485,9 @@ export async function ensureTargetSession(
         {
           metadata: {
             event: 'session_started',
+            conversationId,
             targetKind: 'orchestrator',
+            ...(transportBindingId ? { transportBindingId } : {}),
             sessionId: session.id,
             verbosity: 'verbose',
           },
@@ -567,8 +588,10 @@ export async function ensureTargetSession(
       {
         metadata: {
           event: 'session_started',
+          conversationId,
           targetKind: 'cat',
           targetId: target.participantId,
+          ...(transportBindingId ? { transportBindingId } : {}),
           sessionId: session.id,
           verbosity: 'verbose',
         },

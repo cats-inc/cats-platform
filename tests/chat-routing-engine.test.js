@@ -1728,6 +1728,18 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
     runtimeClient.sentMessages[0]?.input?.context?.metadata?.transportBindingId,
     buildDirectLaneTransportBindingId(channelId),
   );
+  const sessionStarted = channel.messages.find((message) =>
+    message.metadata?.event === 'session_started'
+    && message.metadata?.sessionId === 'session-1');
+  assert.ok(sessionStarted);
+  assert.equal(
+    sessionStarted.metadata?.conversationId,
+    buildChatConversationId(channelId),
+  );
+  assert.equal(
+    sessionStarted.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
+  );
   assert.equal(runtimeClient.sentMessages.some((message) => message.content.includes('You are Smelly')), false);
   assert.equal(channel.orchestratorLease.sessionId, null);
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');

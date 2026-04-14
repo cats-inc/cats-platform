@@ -43,7 +43,10 @@ import {
   readAssistantTurnId,
   readAssistantTurnTargetStateId,
 } from '../assistantTurnSegments.js';
-import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
+import {
+  buildChatConversationId,
+  buildDirectLaneTransportBindingId,
+} from '../../../../shared/chatCoreIds.js';
 import {
   buildCanonicalChatMessage,
   compareChatCoreSegmentsAscending,
@@ -1012,6 +1015,21 @@ function resolveCanonicalSessionRecord(
     session.id === sessionId && session.conversationId === conversationId) ?? null;
 }
 
+function resolveMissingSessionTransportBindingId(
+  channel: ChatChannelState,
+  sessionId: string,
+  core?: CatsCoreState,
+): string | null {
+  const canonicalSession = resolveCanonicalSessionRecord(core, channel.id, sessionId);
+  if (canonicalSession?.transportBindingId) {
+    return canonicalSession.transportBindingId;
+  }
+
+  return channel.channelKind === 'direct_lane'
+    ? buildDirectLaneTransportBindingId(channel.id)
+    : null;
+}
+
 function resolveMissingSessionParticipantName(
   channel: ChatChannelState,
   responseMessage: ChatMessage,
@@ -1198,6 +1216,11 @@ export function repairMissingSessionStartedMessages(
       channelId,
       options.core,
     ) ?? undefined;
+    const transportBindingId = resolveMissingSessionTransportBindingId(
+      nextChannel,
+      sessionId,
+      options.core,
+    ) ?? undefined;
 
     nextChannel.messages.splice(responseIndex, 0, {
       id: randomUUID(),
@@ -1208,8 +1231,10 @@ export function repairMissingSessionStartedMessages(
       mentions: [],
       metadata: {
         event: 'session_started',
+        conversationId: buildChatConversationId(channelId),
         targetKind,
         ...(targetId ? { targetId } : {}),
+        ...(transportBindingId ? { transportBindingId } : {}),
         sessionId,
         verbosity: 'verbose',
         repairSource: 'missing_session_started_message',
