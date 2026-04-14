@@ -239,10 +239,36 @@ function resolveWorkflowStreamTargetWithReason(
   };
 }
 
+function resolveWorkflowStreamTargets(
+  channel: ReturnType<typeof requireChannel>,
+): ChannelStreamTarget[] {
+  const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
+  if (!hasActiveWorkflowTurn(channel) || !activeTurn) {
+    return [];
+  }
+
+  return [
+    ...activeTurn.targetStatuses.filter((target) => target.status === 'running'),
+    ...activeTurn.targetStatuses.filter((target) => target.status === 'pending'),
+  ].map((targetStatus) => buildWorkflowTargetStreamTarget(channel, targetStatus));
+}
+
 export function resolveChannelStreamTarget(
   channel: ReturnType<typeof requireChannel>,
 ): ChannelStreamTarget | null {
   return resolveChannelStreamTargetWithReason(channel).target;
+}
+
+export function resolveChannelStreamTargets(
+  channel: ReturnType<typeof requireChannel>,
+): ChannelStreamTarget[] {
+  const workflowTargets = resolveWorkflowStreamTargets(channel);
+  if (workflowTargets.length > 0) {
+    return workflowTargets;
+  }
+
+  const fallbackTarget = resolveChannelStreamTarget(channel);
+  return fallbackTarget ? [fallbackTarget] : [];
 }
 
 function resolveChannelStreamTargetWithReason(

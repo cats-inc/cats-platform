@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   resolveChannelStreamSessionId,
+  resolveChannelStreamTargets,
   resolveChannelStreamTarget,
 } from '../build/server/products/chat/api/resources/channelStreamSupport.js';
 
@@ -69,6 +70,59 @@ test('resolveChannelStreamSessionId follows the currently running workflow targe
   };
 
   assert.equal(resolveChannelStreamSessionId(channel), 'session-2');
+});
+
+test('resolveChannelStreamTargets lists all concurrent workflow targets in stable target order', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          status: 'running',
+          targetStatuses: [
+            {
+              id: 'target-1',
+              status: 'running',
+              participant: { participantId: 'participant-1', participantName: 'Claude-CLI' },
+            },
+            {
+              id: 'target-2',
+              status: 'running',
+              participant: { participantId: 'participant-2', participantName: 'Codex-CLI' },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
+      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'Codex-CLI'),
+    ],
+  };
+
+  assert.deepEqual(resolveChannelStreamTargets(channel), [
+    {
+      sessionId: 'session-1',
+      participantId: 'participant-1',
+      catId: null,
+      speakerLabel: 'Claude-CLI',
+      sessionStartedAt: null,
+      requiresSessionStartConfirmation: false,
+      targetStateId: 'target-1',
+    },
+    {
+      sessionId: 'session-2',
+      participantId: 'participant-2',
+      catId: null,
+      speakerLabel: 'Codex-CLI',
+      sessionStartedAt: null,
+      requiresSessionStartConfirmation: false,
+      targetStateId: 'target-2',
+    },
+  ]);
 });
 
 test('resolveChannelStreamSessionId waits for the next sequential target instead of falling back to a completed target session', () => {
