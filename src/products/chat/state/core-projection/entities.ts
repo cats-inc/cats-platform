@@ -124,12 +124,15 @@ function latestWorkflowTurn(channel: ChatChannelState): RoomWorkflowTurn | null 
   return workflow?.activeTurn ?? workflow?.turnHistory[0] ?? null;
 }
 
-function readLatestContinuationMetadata(
+function readLatestContinuationContext(
   turn: RoomWorkflowTurn | null,
   options: {
     excludeEventId?: string | null;
   } = {},
-): CoreRecordMetadata | null {
+): {
+  metadata: CoreRecordMetadata;
+  targets: RoomRoutingParticipantRef[];
+} | null {
   if (!turn) {
     return null;
   }
@@ -151,7 +154,10 @@ function readLatestContinuationMetadata(
       || readMetadataStringArray(metadata, 'mentionNames').length > 0
       || readMetadataString(metadata, 'branchStrategy') !== null
     ) {
-      return metadata;
+      return {
+        metadata,
+        targets: readParticipantRefs(event.targets),
+      };
     }
   }
 
@@ -256,6 +262,9 @@ function readRecoveredStartupContinuationReplayRequest(
   }
 
   let replayTargets = interruptedTargetStates.map((target) => structuredClone(target.participant));
+  const continuationContext = readLatestContinuationContext(turn, {
+    excludeEventId: event.id,
+  });
   if (
     turn.workflowShape === 'sequential'
     && sourceParticipant === null
@@ -266,11 +275,16 @@ function readRecoveredStartupContinuationReplayRequest(
       replayTargets = readParticipantRefs(turnStartedEvent.targets);
       branchStrategy = null;
     }
+  } else if (
+    turn.workflowShape === 'sequential'
+    && continuationContext?.targets.length
+    && interruptedTargetStates.every((target) =>
+      continuationContext.targets.some((participant) => sameParticipantRef(participant, target.participant)))
+  ) {
+    replayTargets = continuationContext.targets;
   }
 
-  const continuationMetadata = readLatestContinuationMetadata(turn, {
-    excludeEventId: event.id,
-  });
+  const continuationMetadata = continuationContext?.metadata ?? null;
   const continuationSource = readMetadataString(continuationMetadata, 'continuationSource');
 
   return {
@@ -278,7 +292,10 @@ function readRecoveredStartupContinuationReplayRequest(
     sourceMessageId,
     targets: replayTargets,
     mentionNames: uniqueStrings(
-      interruptedTargetStates.flatMap((target) => [...target.mentionNames]),
+      [
+        ...interruptedTargetStates.flatMap((target) => [...target.mentionNames]),
+        ...readMetadataStringArray(continuationMetadata, 'mentionNames'),
+      ],
     ),
     branchStrategy,
     trigger,

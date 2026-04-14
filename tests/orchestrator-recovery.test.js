@@ -1227,6 +1227,201 @@ test('startup recovery preserves retryable continuation replay metadata for inte
   );
 });
 
+test('startup recovery preserves later sequential continuation audiences beyond the running target', async () => {
+  const now = new Date('2026-03-26T06:26:00.000Z');
+  let chat = createDefaultChatState();
+  chat = createChannel(
+    chat,
+    {
+      title: 'Recovered later sequential continuation',
+      topic: 'Keep the full later sequential queue after startup recovery.',
+      cats: [
+        {
+          name: 'Inline-Agent',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Reviewer-Agent',
+          provider: 'gemini',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Verifier-Agent',
+          provider: 'codex',
+          roles: ['verifier'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Inline-Agent',
+      body: 'Please hand this later-stage sequential review to Reviewer-Agent, then Verifier-Agent.',
+    },
+    now,
+  ).state;
+
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+  const inlineParticipant = {
+    participantKind: 'cat',
+    participantId: channel.assignedCats[0]?.catId ?? 'cat-inline-agent',
+    participantName: channel.assignedCats[0]?.name ?? 'Inline-Agent',
+  };
+  const reviewerParticipant = {
+    participantKind: 'cat',
+    participantId: channel.assignedCats[1]?.catId ?? 'cat-reviewer-agent',
+    participantName: channel.assignedCats[1]?.name ?? 'Reviewer-Agent',
+  };
+  const verifierParticipant = {
+    participantKind: 'cat',
+    participantId: channel.assignedCats[2]?.catId ?? 'cat-verifier-agent',
+    participantName: channel.assignedCats[2]?.name ?? 'Verifier-Agent',
+  };
+
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
+  const activeTurn = createWorkflowTurn(
+    sourceMessage,
+    now.toISOString(),
+    'continuation_handoff',
+    'sequential',
+  );
+  activeTurn.id = 'turn-interrupted-later-sequential-recovery';
+  activeTurn.dispatchCount = 2;
+  activeTurn.continuationCount = 1;
+  activeTurn.targetStatuses.push({
+    id: 'target-state-interrupted-later-sequential-recovery',
+    dispatchId: 'dispatch-interrupted-later-sequential-recovery',
+    participant: reviewerParticipant,
+    source: inlineParticipant,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'continuation_mention',
+    mentionNames: ['Reviewer-Agent', 'Verifier-Agent'],
+    depth: 1,
+    parentCheckpointId: 'checkpoint-later-sequential-continuation',
+    branchStrategy: 'transplant_context',
+    handoffReason: 'workflow_continuation',
+    wakeRequestId: null,
+    status: 'running',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: null,
+    response: null,
+    error: null,
+  });
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'checkpoint',
+      'running',
+      'Inline-Agent handed the room to Reviewer-Agent, then Verifier-Agent.',
+      now.toISOString(),
+      inlineParticipant,
+      sourceMessage.id,
+      [reviewerParticipant, verifierParticipant],
+      {
+        checkpointId: 'checkpoint-later-sequential-continuation',
+        metadata: {
+          checkpointKind: 'continuation',
+          mentionNames: ['Reviewer-Agent', 'Verifier-Agent'],
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+          branchStrategy: 'transplant_context',
+          continuationSource: 'explicit_mentions',
+        },
+      },
+    ),
+  );
+  workflow.activeTurn = activeTurn;
+  roomRouting.workflow = workflow;
+  roomRouting.lastOutcome = {
+    turnId: activeTurn.id,
+    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    status: 'running',
+    resolution: {
+      routingMode: 'explicit_multi',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: 'Reviewer-Agent is running and Verifier-Agent remains queued next.',
+    },
+    resolvedTargets: [reviewerParticipant, verifierParticipant],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-interrupted-later-sequential-recovery',
+        sourceMessageId: sourceMessage.id,
+        source: inlineParticipant,
+        target: reviewerParticipant,
+        trigger: 'continuation_mention',
+        status: 'running',
+        mentionNames: ['Reviewer-Agent', 'Verifier-Agent'],
+        response: null,
+        startedAt: now.toISOString(),
+        completedAt: null,
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 1,
+    totalDispatchCount: 2,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: null,
+  };
+  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
+
+  const chatStore = new MemoryChatStore(chat);
+  const recoveredCount = await reconcileChatWorkflowRecoveryOnStartup({
+    shared: {
+      coreStore: chatStore,
+      now: () => new Date('2026-03-26T06:27:00.000Z'),
+    },
+    chat: {
+      chatStore,
+    },
+  });
+
+  assert.equal(recoveredCount, 1);
+
+  const core = await chatStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === buildChannelTaskId(channelId));
+  const replay = readWorkflowContinuationReplay(task?.metadata);
+
+  assert.ok(task);
+  assert.ok(replay);
+  assert.equal(replay?.replayState, 'ready');
+  assert.equal(replay?.blockedReason, null);
+  assert.equal(replay?.workflowStageId, 'continuation_handoff');
+  assert.equal(replay?.workflowShape, 'sequential');
+  assert.equal(replay?.sourceMessageId, sourceMessage.id);
+  assert.deepEqual(replay?.sourceParticipant, inlineParticipant);
+  assert.deepEqual(
+    replay?.targets.map((target) => target.participantId),
+    [
+      reviewerParticipant.participantId,
+      verifierParticipant.participantId,
+    ],
+  );
+});
+
 test('startup recovery preserves the full initial sequential audience for interrupted user-origin turns', async () => {
   const now = new Date('2026-03-26T06:27:00.000Z');
   let chat = createDefaultChatState();
