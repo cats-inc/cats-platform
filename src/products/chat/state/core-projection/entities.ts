@@ -171,6 +171,9 @@ function readRecoveredStartupContinuationReplayRequest(
 ): {
   sourceParticipant: RoomRoutingParticipantRef | null;
   sourceMessageId: string;
+  sourceTurnId: string | null;
+  sourceLaneId: string | null;
+  sourceAssistantTurnId: string | null;
   targets: RoomRoutingParticipantRef[];
   mentionNames: string[];
   branchStrategy: 'fork_if_possible' | 'transplant_context' | 'fresh_no_parent' | null;
@@ -277,6 +280,12 @@ function readRecoveredStartupContinuationReplayRequest(
   return {
     sourceParticipant,
     sourceMessageId,
+    sourceTurnId: readMetadataString(metadata, 'continuationSourceTurnId'),
+    sourceLaneId: readMetadataString(metadata, 'continuationSourceLaneId'),
+    sourceAssistantTurnId: readMetadataString(
+      metadata,
+      'continuationSourceAssistantTurnId',
+    ),
     targets: replayTargets,
     mentionNames: uniqueStrings(
       [
@@ -320,6 +329,12 @@ function readWorkflowContinuationReplayRequest(
   const sourceMessageId = startupRecoveryReplay?.sourceMessageId
     ?? readMetadataString(metadata, 'continuationSourceMessageId')
     ?? event.sourceMessageId;
+  const sourceTurnId = startupRecoveryReplay?.sourceTurnId
+    ?? readMetadataString(metadata, 'continuationSourceTurnId');
+  const sourceLaneId = startupRecoveryReplay?.sourceLaneId
+    ?? readMetadataString(metadata, 'continuationSourceLaneId');
+  const sourceAssistantTurnId = startupRecoveryReplay?.sourceAssistantTurnId
+    ?? readMetadataString(metadata, 'continuationSourceAssistantTurnId');
   const sourceParticipant = startupRecoveryReplay?.sourceParticipant ?? event.actor;
   const targets = startupRecoveryReplay?.targets ?? readParticipantRefs(event.targets);
   const workflowRecommendation = startupRecoveryReplay?.workflowRecommendation
@@ -353,6 +368,9 @@ function readWorkflowContinuationReplayRequest(
     channelId: channel.id,
     checkpointId,
     sourceMessageId,
+    sourceTurnId,
+    sourceLaneId,
+    sourceAssistantTurnId,
     sourceParticipant,
     targets,
     mentionNames: startupRecoveryReplay?.mentionNames ?? readMetadataStringArray(metadata, 'mentionNames'),

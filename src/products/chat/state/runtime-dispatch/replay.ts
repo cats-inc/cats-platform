@@ -466,6 +466,9 @@ export async function resumeWorkflowContinuationReplay(input: {
     channelId: input.request.channelId,
     transcriptMessages: channel.messages,
     sourceMessageId: input.request.sourceMessageId,
+    sourceTurnId: input.request.sourceTurnId,
+    sourceLaneId: input.request.sourceLaneId,
+    sourceAssistantTurnId: input.request.sourceAssistantTurnId,
   });
   if (!sourceMessage) {
     throw new Error(`Stored workflow continuation source message not found: ${input.request.sourceMessageId}`);

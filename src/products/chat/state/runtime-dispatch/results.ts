@@ -51,6 +51,7 @@ import {
   buildAssistantTurnDelivery,
   buildAssistantTurnSourceMessage,
 } from '../assistantTurnSegments.js';
+import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
 import {
   participantKey,
   setReadyAfterMessage,
@@ -204,6 +205,11 @@ function persistQueuedSequentialContinuationCheckpoint(
   queueFrame: DispatchFrame,
   responseSourceMessage: ChatMessage,
   nowIso: string,
+  sourceIdentity: {
+    sourceTurnId: string;
+    sourceLaneId: string;
+    sourceAssistantTurnId: string;
+  },
 ): void {
   activeTurn.stageId = queueFrame.workflowStageId ?? 'continuation_handoff';
   activeTurn.workflowShape = 'sequential';
@@ -234,6 +240,9 @@ function persistQueuedSequentialContinuationCheckpoint(
       unresolvedTargets: structuredClone(queueFrame.unresolved),
       ...buildContinuationReplayMetadata({
         sourceMessageId: responseSourceMessage.id,
+        sourceTurnId: sourceIdentity.sourceTurnId,
+        sourceLaneId: sourceIdentity.sourceLaneId,
+        sourceAssistantTurnId: sourceIdentity.sourceAssistantTurnId,
         mentionNames: queueFrame.mentionNames,
         trigger: 'continuation_mention',
         workflowStageId: queueFrame.workflowStageId ?? 'continuation_handoff',
@@ -542,6 +551,11 @@ export function applyDispatchExecutions(
     const senderName = hiddenSoloReply ? 'Orchestrator' : execution.target.participantName;
     const executionMeta = resolveExecutionMetadataForTarget(nextState, channelId, execution.target);
     const assistantTurnId = randomUUID();
+    const sourceLaneId = buildChatLaneId(
+      activeTurn.id,
+      execution.targetStateId,
+      execution.target.participantId,
+    );
 
     const responseMessages: ChatMessage[] = [];
     for (let segmentIndex = 0; segmentIndex < persistedTextSegments.length; segmentIndex += 1) {
@@ -636,6 +650,11 @@ export function applyDispatchExecutions(
         advancedSequentialFrame,
         responseSourceMessage,
         nowIso,
+        {
+          sourceTurnId: activeTurn.id,
+          sourceLaneId,
+          sourceAssistantTurnId: assistantTurnId,
+        },
       );
     }
     const response = buildAssistantTurnDelivery(assistantTurnId, responseMessages);
@@ -764,6 +783,9 @@ export function applyDispatchExecutions(
             branchStrategy: recommendationBranchStrategy,
             ...buildContinuationReplayMetadata({
               sourceMessageId: responseSourceMessage.id,
+              sourceTurnId: activeTurn.id,
+              sourceLaneId,
+              sourceAssistantTurnId: assistantTurnId,
               mentionNames: continuationResolution.mentionNames,
               trigger: continuationResolution.trigger,
               workflowStageId: continuationStage.stageId,
@@ -831,6 +853,9 @@ export function applyDispatchExecutions(
           branchStrategy,
           ...buildContinuationReplayMetadata({
             sourceMessageId: responseSourceMessage.id,
+            sourceTurnId: activeTurn.id,
+            sourceLaneId,
+            sourceAssistantTurnId: assistantTurnId,
             mentionNames: continuationResolution.mentionNames,
             trigger: continuationResolution.trigger,
             workflowStageId: continuationStage.stageId,

@@ -24,6 +24,9 @@ export function isReplayableContinuationGuardReason(
 
 export function buildContinuationReplayMetadata(input: {
   sourceMessageId: string;
+  sourceTurnId?: string | null;
+  sourceLaneId?: string | null;
+  sourceAssistantTurnId?: string | null;
   mentionNames: string[];
   trigger: RoomRoutingTrigger;
   workflowStageId: string | null;
@@ -35,6 +38,9 @@ export function buildContinuationReplayMetadata(input: {
 }): Record<string, unknown> {
   return {
     continuationSourceMessageId: input.sourceMessageId,
+    continuationSourceTurnId: input.sourceTurnId ?? null,
+    continuationSourceLaneId: input.sourceLaneId ?? null,
+    continuationSourceAssistantTurnId: input.sourceAssistantTurnId ?? null,
     mentionNames: structuredClone(input.mentionNames),
     trigger: input.trigger,
     workflowStageId: input.workflowStageId,

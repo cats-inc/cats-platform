@@ -803,6 +803,107 @@ test('resumeWorkflowContinuationReplay supports user-origin sequential replays w
   assert.equal(lanes[1]?.metadata.branchStrategy, 'transplant_context');
 });
 
+test('resumeWorkflowContinuationReplay can rebuild a missing user continuation source from sourceTurnId', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const channel = requireChannel(state, channelId);
+  channel.catAssignments[0].execution.lease.sessionId = 'session-agent-1';
+  channel.catAssignments[0].execution.lease.status = 'ready';
+  channel.catAssignments[1].execution.lease.sessionId = 'session-agent-2';
+  channel.catAssignments[1].execution.lease.status = 'ready';
+
+  const originalBody = '@Agent-1 capture this user turn so replay can reuse it.';
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('Agent-1 captured the original user turn.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: originalBody },
+    runtimeClient,
+    new Date('2026-04-15T00:17:15.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const sourceMessageId = requireChannel(dispatched.state, channelId).messages.find((message) =>
+    message.senderKind === 'user' && message.body === originalBody)?.id;
+  assert.ok(sourceMessageId);
+
+  const canonicalCore = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const sourceTurn = readLatestConversationTurn(canonicalCore, conversationId);
+  assert.ok(sourceTurn);
+  assert.equal(sourceTurn?.metadata.sourceMessageBody, originalBody);
+
+  const driftedState = structuredClone(dispatched.state);
+  const driftedChannel = requireChannel(driftedState, channelId);
+  driftedChannel.messages = driftedChannel.messages.filter((message) => message.id !== sourceMessageId);
+  let replayState = structuredClone(driftedState);
+  let replayCore = structuredClone(canonicalCore);
+  const replayStore = {
+    async read() {
+      return structuredClone(replayState);
+    },
+    async write(nextState) {
+      replayState = structuredClone(nextState);
+      return structuredClone(replayState);
+    },
+    async readCore() {
+      return structuredClone(replayCore);
+    },
+    async writeCore(nextCore) {
+      replayCore = structuredClone(nextCore);
+      return structuredClone(replayCore);
+    },
+  };
+
+  const replayRuntimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      assert.match(content, /@Agent-1 capture this user turn so replay can reuse it\./u);
+      return usage('Agent-2 resumed from the canonical user source.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const replayResult = await resumeWorkflowContinuationReplay({
+    request: buildWorkflowContinuationReplayRequest({
+      channelId,
+      checkpointId: 'checkpoint-replay-user-source-turn-id',
+      sourceMessageId: 'missing-user-source-message',
+      sourceTurnId: sourceTurn.id,
+      sourceParticipant: null,
+      targets: [
+        {
+          participantKind: 'cat',
+          participantId: agent2Id,
+          participantName: 'Agent-2',
+        },
+      ],
+      branchStrategy: null,
+      workflowStageId: 'continuation_handoff',
+      workflowShape: 'sequential',
+      recordedAt: '2026-04-15T00:17:30.000Z',
+    }),
+    chatStore: replayStore,
+    runtimeClient: replayRuntimeClient,
+    now: new Date('2026-04-15T00:18:00.000Z'),
+  });
+
+  assert.equal(replayResult.status, 'dispatched');
+  assert.ok(
+    requireChannel(await replayStore.read(), channelId).messages.some((message) =>
+      message.body === 'Agent-2 resumed from the canonical user source.'),
+  );
+  const replayedCore = await replayStore.readCore();
+  const replayTurn = readLatestConversationTurn(replayedCore, conversationId);
+  assert.equal(replayTurn?.metadata.sourceMessageBody, originalBody);
+});
+
 test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff source from the full canonical assistant turn', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const store = new MemoryChatStore();
@@ -928,6 +1029,130 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
   assert.ok(
     requireChannel(replayState, channelId).messages.some((message) =>
       message.body === 'Agent-2 resumed from the canonical handoff.'),
+  );
+});
+
+test('resumeWorkflowContinuationReplay can rebuild a missing assistant continuation source from source identity metadata', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return {
+        segments: [
+          {
+            kind: 'text',
+            text: 'Agent-1 completed the first source-aware step. ',
+            toolName: null,
+            toolId: null,
+          },
+          {
+            kind: 'text',
+            text: 'Preserve this assistant handoff.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 12,
+        outputTokens: 9,
+        tokensUsed: 21,
+      };
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 create a resumable handoff.' },
+    runtimeClient,
+    new Date('2026-04-15T00:18:10.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const sourceMessage = requireChannel(dispatched.state, channelId).messages.filter((message) =>
+    message.senderName === 'Agent-1'
+    && message.metadata?.event === 'assistant_turn_segment').at(-1);
+  assert.ok(sourceMessage);
+  const sourceTurnId = sourceMessage?.metadata?.turnId;
+  const sourceAssistantTurnId = sourceMessage?.metadata?.assistantTurnId;
+  assert.equal(typeof sourceTurnId, 'string');
+  assert.equal(typeof sourceAssistantTurnId, 'string');
+
+  const canonicalCore = await store.readCore();
+  const sourceLane = canonicalCore.lanes.find((lane) =>
+    lane.turnId === sourceTurnId
+    && lane.metadata.responseAssistantTurnId === sourceAssistantTurnId) ?? null;
+  assert.ok(sourceLane);
+
+  const driftedState = structuredClone(dispatched.state);
+  const driftedChannel = requireChannel(driftedState, channelId);
+  driftedChannel.messages = driftedChannel.messages.filter((message) =>
+    !(message.senderName === 'Agent-1' && message.metadata?.event === 'assistant_turn_segment'));
+  let replayState = structuredClone(driftedState);
+  let replayCore = structuredClone(canonicalCore);
+  const replayStore = {
+    async read() {
+      return structuredClone(replayState);
+    },
+    async write(nextState) {
+      replayState = structuredClone(nextState);
+      return structuredClone(replayState);
+    },
+    async readCore() {
+      return structuredClone(replayCore);
+    },
+    async writeCore(nextCore) {
+      replayCore = structuredClone(nextCore);
+      return structuredClone(replayCore);
+    },
+  };
+
+  const replayRuntimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      assert.match(
+        content,
+        /Latest routed handoff:\nAgent-1 completed the first source-aware step\. ?Preserve this assistant handoff\./u,
+      );
+      return usage('Agent-2 resumed from source identity metadata.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const replayResult = await resumeWorkflowContinuationReplay({
+    request: buildWorkflowContinuationReplayRequest({
+      channelId,
+      checkpointId: 'checkpoint-replay-assistant-source-identity',
+      sourceMessageId: 'missing-assistant-source-message',
+      sourceTurnId,
+      sourceLaneId: sourceLane.id,
+      sourceAssistantTurnId,
+      sourceParticipant: {
+        participantKind: 'cat',
+        participantId: agent1Id,
+        participantName: 'Agent-1',
+      },
+      targets: [
+        {
+          participantKind: 'cat',
+          participantId: agent2Id,
+          participantName: 'Agent-2',
+        },
+      ],
+      branchStrategy: 'transplant_context',
+      workflowStageId: 'continuation_handoff',
+      workflowShape: 'sequential',
+      recordedAt: '2026-04-15T00:18:40.000Z',
+    }),
+    chatStore: replayStore,
+    runtimeClient: replayRuntimeClient,
+    now: new Date('2026-04-15T00:19:00.000Z'),
+  });
+
+  assert.equal(replayResult.status, 'dispatched');
+  assert.ok(
+    requireChannel(await replayStore.read(), channelId).messages.some((message) =>
+      message.body === 'Agent-2 resumed from source identity metadata.'),
   );
 });
 

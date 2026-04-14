@@ -31,6 +31,9 @@ export interface WorkflowContinuationReplayRequest {
   channelId: string;
   checkpointId: string;
   sourceMessageId: string;
+  sourceTurnId: string | null;
+  sourceLaneId: string | null;
+  sourceAssistantTurnId: string | null;
   sourceParticipant: RoomRoutingParticipantRef | null;
   targets: RoomRoutingParticipantRef[];
   mentionNames: string[];
@@ -188,6 +191,9 @@ export function buildWorkflowContinuationReplayRequest(input: {
   channelId: string;
   checkpointId: string;
   sourceMessageId: string;
+  sourceTurnId?: string | null;
+  sourceLaneId?: string | null;
+  sourceAssistantTurnId?: string | null;
   sourceParticipant: RoomRoutingParticipantRef | null;
   targets: RoomRoutingParticipantRef[];
   mentionNames?: string[];
@@ -206,6 +212,9 @@ export function buildWorkflowContinuationReplayRequest(input: {
     channelId: input.channelId,
     checkpointId: input.checkpointId,
     sourceMessageId: input.sourceMessageId,
+    sourceTurnId: input.sourceTurnId ?? null,
+    sourceLaneId: input.sourceLaneId ?? null,
+    sourceAssistantTurnId: input.sourceAssistantTurnId ?? null,
     sourceParticipant: input.sourceParticipant
       ? structuredClone(input.sourceParticipant)
       : null,
@@ -240,6 +249,9 @@ export function readWorkflowContinuationReplay(
   const channelId = readNonEmptyString(record.channelId);
   const checkpointId = readNonEmptyString(record.checkpointId);
   const sourceMessageId = readNonEmptyString(record.sourceMessageId);
+  const sourceTurnId = readNullableString(record.sourceTurnId);
+  const sourceLaneId = readNullableString(record.sourceLaneId);
+  const sourceAssistantTurnId = readNullableString(record.sourceAssistantTurnId);
   const sourceParticipant = record.sourceParticipant === null
     ? null
     : readParticipantRef(record.sourceParticipant);
@@ -271,6 +283,9 @@ export function readWorkflowContinuationReplay(
     channelId,
     checkpointId,
     sourceMessageId,
+    sourceTurnId,
+    sourceLaneId,
+    sourceAssistantTurnId,
     sourceParticipant,
     targets,
     mentionNames: readStringArray(record.mentionNames),
@@ -309,6 +324,9 @@ export function writeWorkflowContinuationReplayMetadata(
     channelId: request.channelId,
     checkpointId: request.checkpointId,
     sourceMessageId: request.sourceMessageId,
+    sourceTurnId: request.sourceTurnId,
+    sourceLaneId: request.sourceLaneId,
+    sourceAssistantTurnId: request.sourceAssistantTurnId,
     sourceParticipant: request.sourceParticipant
       ? structuredClone(request.sourceParticipant)
       : null,

@@ -182,6 +182,139 @@ function buildCanonicalChatSegmentMessage(
   };
 }
 
+function buildCanonicalChatSegmentMessageFromAssistantTurn(input: {
+  core: CatsCoreState;
+  channelId: string;
+  sourceTurnId?: string | null;
+  sourceLaneId?: string | null;
+  sourceAssistantTurnId: string;
+}): ChatMessage | null {
+  const conversationId = buildChatConversationId(input.channelId);
+  const terminalSegment = input.core.segments
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && candidate.kind === 'text'
+      && readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === input.sourceAssistantTurnId
+      && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true)
+      && (input.sourceLaneId ? candidate.laneId === input.sourceLaneId : true))
+    .sort(compareChatCoreSegmentsDescending)
+    .find((candidate) => readChatCoreMetadataBoolean(candidate.metadata, 'terminal') === true)
+    ?? input.core.segments
+      .filter((candidate) =>
+        candidate.conversationId === conversationId
+        && candidate.kind === 'text'
+        && readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === input.sourceAssistantTurnId
+        && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true)
+        && (input.sourceLaneId ? candidate.laneId === input.sourceLaneId : true))
+      .sort(compareChatCoreSegmentsDescending)[0]
+    ?? null;
+  const sourceMessageId = readChatCoreMetadataString(terminalSegment?.metadata, 'chatMessageId');
+  return sourceMessageId
+    ? buildCanonicalChatSegmentMessage(input.core, input.channelId, sourceMessageId)
+    : null;
+}
+
+function buildCanonicalChatSegmentMessageFromLane(input: {
+  core: CatsCoreState;
+  channelId: string;
+  sourceTurnId?: string | null;
+  sourceLaneId: string;
+}): ChatMessage | null {
+  const conversationId = buildChatConversationId(input.channelId);
+  const lane = input.core.lanes.find((candidate) =>
+    candidate.conversationId === conversationId
+    && candidate.id === input.sourceLaneId
+    && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true)) ?? null;
+  if (!lane) {
+    return null;
+  }
+
+  const responseAssistantTurnId = readChatCoreMetadataString(
+    lane.metadata,
+    'responseAssistantTurnId',
+  );
+  if (responseAssistantTurnId) {
+    const message = buildCanonicalChatSegmentMessageFromAssistantTurn({
+      core: input.core,
+      channelId: input.channelId,
+      sourceTurnId: lane.turnId,
+      sourceLaneId: lane.id,
+      sourceAssistantTurnId: responseAssistantTurnId,
+    });
+    if (message) {
+      return message;
+    }
+  }
+
+  const terminalSegment = input.core.segments
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && candidate.kind === 'text'
+      && candidate.laneId === lane.id
+      && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true))
+    .sort(compareChatCoreSegmentsDescending)
+    .find((candidate) => readChatCoreMetadataBoolean(candidate.metadata, 'terminal') === true)
+    ?? input.core.segments
+      .filter((candidate) =>
+        candidate.conversationId === conversationId
+        && candidate.kind === 'text'
+        && candidate.laneId === lane.id
+        && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true))
+      .sort(compareChatCoreSegmentsDescending)[0]
+    ?? null;
+  const sourceMessageId = readChatCoreMetadataString(terminalSegment?.metadata, 'chatMessageId');
+  return sourceMessageId
+    ? buildCanonicalChatSegmentMessage(input.core, input.channelId, sourceMessageId)
+    : null;
+}
+
+function buildCanonicalChatTurnMessageFromTurnId(
+  core: CatsCoreState,
+  channelId: string,
+  sourceTurnId: string,
+): ChatMessage | null {
+  const conversationId = buildChatConversationId(channelId);
+  const turn = core.turns.find((candidate) =>
+    candidate.conversationId === conversationId && candidate.id === sourceTurnId) ?? null;
+  const sourceMessageId = readChatCoreTurnMetadataString(turn, 'sourceMessageId');
+  return sourceMessageId
+    ? buildCanonicalChatTurnMessage(core, channelId, sourceMessageId)
+    : null;
+}
+
+function buildCanonicalChatMessageFromSourceIdentity(input: {
+  core: CatsCoreState;
+  channelId: string;
+  sourceTurnId?: string | null;
+  sourceLaneId?: string | null;
+  sourceAssistantTurnId?: string | null;
+}): ChatMessage | null {
+  return (input.sourceAssistantTurnId
+    ? buildCanonicalChatSegmentMessageFromAssistantTurn({
+      core: input.core,
+      channelId: input.channelId,
+      sourceTurnId: input.sourceTurnId,
+      sourceLaneId: input.sourceLaneId,
+      sourceAssistantTurnId: input.sourceAssistantTurnId,
+    })
+    : null)
+    ?? (input.sourceLaneId
+      ? buildCanonicalChatSegmentMessageFromLane({
+        core: input.core,
+        channelId: input.channelId,
+        sourceTurnId: input.sourceTurnId,
+        sourceLaneId: input.sourceLaneId,
+      })
+      : null)
+    ?? (input.sourceTurnId
+      ? buildCanonicalChatTurnMessageFromTurnId(
+        input.core,
+        input.channelId,
+        input.sourceTurnId,
+      )
+      : null);
+}
+
 export function readChatCoreMetadataString(
   metadata: CoreRecordMetadata | null | undefined,
   key: string,
@@ -516,6 +649,9 @@ export function resolveTranscriptOrCanonicalChatMessage(input: {
   channelId: string;
   transcriptMessages: ReadonlyArray<ChatMessage>;
   sourceMessageId: string;
+  sourceTurnId?: string | null;
+  sourceLaneId?: string | null;
+  sourceAssistantTurnId?: string | null;
 }): ChatMessage | null {
   const transcriptMessage = input.transcriptMessages.find(
     (message) => message.id === input.sourceMessageId,
@@ -526,5 +662,14 @@ export function resolveTranscriptOrCanonicalChatMessage(input: {
   if (transcriptMessage && !isAssistantTurnSegmentMessage(transcriptMessage)) {
     return transcriptMessage;
   }
-  return canonicalMessage ?? transcriptMessage;
+  const identityMessage = input.core
+    ? buildCanonicalChatMessageFromSourceIdentity({
+      core: input.core,
+      channelId: input.channelId,
+      sourceTurnId: input.sourceTurnId,
+      sourceLaneId: input.sourceLaneId,
+      sourceAssistantTurnId: input.sourceAssistantTurnId,
+    })
+    : null;
+  return canonicalMessage ?? identityMessage ?? transcriptMessage;
 }
