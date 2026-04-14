@@ -1023,8 +1023,7 @@ export function preserveCoreOwnedConversations(
   return existingConversations
     .filter(
       (conversation) =>
-        conversation.sourceChannelId === null
-        && !conversation.id.startsWith('conversation-channel-'),
+        !conversation.id.startsWith('conversation-channel-'),
     )
     .map((conversation) => structuredClone(conversation));
 }

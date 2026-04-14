@@ -2043,7 +2043,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
         kind: 'work_thread',
         status: 'active',
         participantActorIds: ['actor-owner', 'actor-stakeholder-1'],
-        sourceChannelId: null,
+        sourceChannelId: 'channel-system-1',
         repoPath: 'C:/repo/one-man-digital-company',
         responseLanguage: 'en',
         createdAt: '2026-03-21T01:00:00.000Z',
@@ -2168,6 +2168,11 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
     reloadedCore.conversations.some(
       (conversation) => conversation.id === 'conversation-system-1',
     ),
+  );
+  assert.equal(
+    reloadedCore.conversations.find((conversation) => conversation.id === 'conversation-system-1')
+      ?.sourceChannelId,
+    'channel-system-1',
   );
   assert.ok(reloadedCore.projects.some((project) => project.id === fixtures.project.id));
   assert.ok(

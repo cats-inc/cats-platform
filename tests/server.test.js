@@ -3547,6 +3547,7 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       status: 'active',
       containerId: 'container-system-1',
       participantActorIds: ['actor-owner', 'actor-orchestrator-global'],
+      sourceChannelId: 'channel-system-1',
       createdAt: fixtures.project.createdAt,
       lastMessageAt: fixtures.project.createdAt,
     },
@@ -3824,6 +3825,12 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       conversationsListPayload.conversations.some(
         (conversation) => conversation.id === structuralFixtures.conversation.id,
       ),
+    );
+    assert.equal(
+      conversationsListPayload.conversations.find(
+        (conversation) => conversation.id === structuralFixtures.conversation.id,
+      )?.sourceChannelId,
+      structuralFixtures.conversation.sourceChannelId,
     );
 
     const participantsListResponse = await fetch(`${baseUrl}/api/core/participants`);
@@ -6798,6 +6805,33 @@ test('core approval bindings require an existing approval task', async () => {
 test('GET /api/work and /api/code expose shared-core product dashboards without inventing separate schemas', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const fixtures = createSharedCoreFixtureBundle();
+    const conversationId = 'conversation-work-dashboard';
+    const sourceChannelId = 'channel-work-dashboard';
+
+    const conversationResponse = await fetch(`${baseUrl}/api/core/conversations`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        conversation: {
+          id: conversationId,
+          title: 'Work dashboard briefing',
+          kind: 'chat_channel',
+          status: 'active',
+          containerId: null,
+          participantActorIds: ['actor-owner'],
+          sourceChannelId,
+          repoPath: null,
+          responseLanguage: 'en',
+          createdAt: '2026-04-15T04:00:00.000Z',
+          updatedAt: '2026-04-15T04:05:00.000Z',
+          lastMessageAt: '2026-04-15T04:05:00.000Z',
+        },
+      }),
+    });
+    assert.equal(conversationResponse.status, 201);
+
     const projectResponse = await fetch(`${baseUrl}/api/core/projects`, {
       method: 'POST',
       headers: {
@@ -6808,6 +6842,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
           ...fixtures.project,
           id: 'project-work-dashboard',
           title: 'Work Dashboard Project',
+          primaryConversationId: conversationId,
         },
       }),
     });
@@ -6823,6 +6858,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
           ...fixtures.task,
           id: 'task-work-dashboard',
           title: 'Work dashboard task',
+          conversationId,
           status: 'in_progress',
           summary: 'Prove Work consumes the shared task substrate.',
         },
@@ -6841,6 +6877,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
           id: 'work-item-work-dashboard',
           title: 'Work Dashboard Item',
           projectId: 'project-work-dashboard',
+          conversationId,
           taskId: 'task-work-dashboard',
         },
       }),
@@ -6926,6 +6963,14 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     assert.equal(workPayload.summary.workItemCount, 1);
     assert.equal(workPayload.sections.projects.items[0].id, 'project-work-dashboard');
     assert.equal(workPayload.sections.workItems.items[0].id, 'work-item-work-dashboard');
+    assert.equal(
+      workPayload.sections.projects.items[0].primaryConversationSourceChannelId,
+      sourceChannelId,
+    );
+    assert.equal(
+      workPayload.sections.workItems.items[0].conversationSourceChannelId,
+      sourceChannelId,
+    );
     assert.ok('operatorInbox' in workPayload.sections);
     assert.ok('controlPlane' in workPayload.sections);
     assert.ok('recovery' in workPayload.sections);
@@ -6938,6 +6983,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     const workProjectsPayload = await workProjectsResponse.json();
     assert.equal(workProjectsPayload.projects.length, 1);
     assert.equal(workProjectsPayload.projects[0].id, 'project-work-dashboard');
+    assert.equal(workProjectsPayload.projects[0].primaryConversationSourceChannelId, sourceChannelId);
     assert.equal(workProjectsPayload.summary.totalAvailable, 1);
 
     const workProjectDetailResponse = await fetch(
@@ -6956,6 +7002,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     const workItemsPayload = await workItemsResponse.json();
     assert.equal(workItemsPayload.workItems.length, 1);
     assert.equal(workItemsPayload.workItems[0].id, 'work-item-work-dashboard');
+    assert.equal(workItemsPayload.workItems[0].conversationSourceChannelId, sourceChannelId);
     assert.equal(workItemsPayload.summary.totalAvailable, 1);
 
     const workItemDetailResponse = await fetch(
