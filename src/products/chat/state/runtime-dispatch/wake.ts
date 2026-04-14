@@ -266,10 +266,7 @@ export async function executeDispatchWithRecovery(input: {
   let staleRecoveryCount = 0;
 
   while (true) {
-    const promptSourceMessageId = (request.promptSourceMessage ?? request.sourceMessage).id;
-    const channelMessages = requireChannel(dispatchState, input.channelId).messages;
     const core = input.chatStore
-      && !channelMessages.some((message) => message.id === promptSourceMessageId)
       ? await input.chatStore.readCore()
       : undefined;
     const execution = await executeDispatch(

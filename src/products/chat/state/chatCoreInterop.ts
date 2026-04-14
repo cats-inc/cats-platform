@@ -313,6 +313,24 @@ export function compareChatCoreSegmentsDescending(
   return left.id.localeCompare(right.id);
 }
 
+function compareConversationMessagePhase(
+  left: ChatMessage,
+  right: ChatMessage,
+): number {
+  const phaseOrder = (message: ChatMessage): number => {
+    switch (message.senderKind) {
+      case 'user':
+        return 0;
+      case 'system':
+        return 1;
+      default:
+        return 2;
+    }
+  };
+
+  return phaseOrder(left) - phaseOrder(right);
+}
+
 export function buildCanonicalChatUserMessage(
   core: CatsCoreState,
   channelId: string,
@@ -409,6 +427,11 @@ export function buildCanonicalConversationMessages(
       return createdComparison;
     }
 
+    const phaseComparison = compareConversationMessagePhase(left, right);
+    if (phaseComparison !== 0) {
+      return phaseComparison;
+    }
+
     return left.id.localeCompare(right.id);
   });
 }
@@ -465,6 +488,11 @@ export function resolveTranscriptOrCanonicalConversationMessages(input: {
     const createdComparison = left.createdAt.localeCompare(right.createdAt);
     if (createdComparison !== 0) {
       return createdComparison;
+    }
+
+    const phaseComparison = compareConversationMessagePhase(left, right);
+    if (phaseComparison !== 0) {
+      return phaseComparison;
     }
 
     const leftTranscriptIndex = transcriptIndexById.get(left.id);
