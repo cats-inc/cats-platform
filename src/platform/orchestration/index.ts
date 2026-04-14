@@ -31,6 +31,7 @@ export {
 } from './contracts.js';
 export {
   buildNormalizedRuntimeDeliveryEvent,
+  buildNormalizedRuntimeDeliveryEventsFromStreamEvent,
   buildNormalizedRuntimeDeliveryEventsFromResult,
   type BuildNormalizedRuntimeDeliveryEventInput,
   type BuildNormalizedRuntimeDeliveryEventsFromResultInput,

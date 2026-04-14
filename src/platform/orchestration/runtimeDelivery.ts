@@ -9,6 +9,10 @@ import type {
   RuntimeMessageSegment,
   RuntimeSessionStreamEvent,
 } from '../../runtime/client.js';
+import {
+  readRuntimeMessageResultSegments,
+  readRuntimeMessageResultText,
+} from '../../runtime/messageSegments.js';
 import { normalizeRuntimeContentBlock } from '../../shared/runtimeContentBlocks.js';
 import {
   ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
@@ -113,6 +117,110 @@ function buildResultContentBlock(
   };
 }
 
+function buildNormalizedRuntimeDeliveryResultEvent(input: {
+  conversationId: ConversationId;
+  turnId: TurnId;
+  laneId: LaneId;
+  sessionId: SessionId | null;
+  emittedAt: string;
+  eventIndex: number;
+  segmentCount: number;
+  payload: Record<string, unknown>;
+}): NormalizedRuntimeDeliveryEvent {
+  return {
+    version: ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
+    conversationId: input.conversationId,
+    turnId: input.turnId,
+    laneId: input.laneId,
+    sessionId: input.sessionId,
+    kind: 'result',
+    sourceEvent: 'result',
+    eventId: `${input.turnId}:${input.laneId}:${input.eventIndex}:result`,
+    emittedAt: input.emittedAt,
+    sequence: {
+      segmentIndex: input.segmentCount,
+      blockIndex: null,
+      eventIndex: input.eventIndex,
+    },
+    payload: structuredClone(input.payload),
+    contentBlock: null,
+  };
+}
+
+function buildBaseNormalizedRuntimeDeliveryEvent(input: {
+  conversationId: ConversationId;
+  turnId: TurnId;
+  laneId: LaneId;
+  sessionId: SessionId | null;
+  kind: NormalizedRuntimeDeliveryKind;
+  sourceEvent: string;
+  eventId: string;
+  emittedAt: string;
+  segmentIndex: number;
+  blockIndex: number | null;
+  eventIndex: number;
+  payload: Record<string, unknown>;
+  contentBlock: RuntimeDeliveryContentBlock | null;
+}): NormalizedRuntimeDeliveryEvent {
+  return {
+    version: ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
+    conversationId: input.conversationId,
+    turnId: input.turnId,
+    laneId: input.laneId,
+    sessionId: input.sessionId,
+    kind: input.kind,
+    sourceEvent: input.sourceEvent,
+    eventId: input.eventId,
+    emittedAt: input.emittedAt,
+    sequence: {
+      segmentIndex: input.segmentIndex,
+      blockIndex: input.blockIndex,
+      eventIndex: input.eventIndex,
+    },
+    payload: structuredClone(input.payload),
+    contentBlock: cloneRuntimeDeliveryContentBlock(input.contentBlock),
+  };
+}
+
+function buildNormalizedRuntimeDeliveryContentEventsFromResultEvent(
+  input: BuildNormalizedRuntimeDeliveryEventInput & {
+    emittedAt: string;
+  },
+): NormalizedRuntimeDeliveryEvent[] {
+  const resultSegments = readRuntimeMessageResultSegments(input.event.data);
+  const synthesizedSegments = resultSegments.length > 0
+    ? resultSegments
+    : (() => {
+        const text = readRuntimeMessageResultText(input.event.data);
+        return text.length > 0
+          ? [{ kind: 'text', text, toolName: null, toolId: null } satisfies RuntimeMessageSegment]
+          : [];
+      })();
+
+  return synthesizedSegments.map((segment, index) => ({
+    version: ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
+    conversationId: input.conversationId,
+    turnId: input.turnId,
+    laneId: input.laneId,
+    sessionId: input.sessionId ?? null,
+    kind: 'content_block',
+    sourceEvent: 'result',
+    eventId: `${input.turnId}:${input.laneId}:${input.eventIndex}:result-block:${index}`,
+    emittedAt: input.emittedAt,
+    sequence: {
+      segmentIndex: index,
+      blockIndex: index,
+      eventIndex: input.eventIndex,
+    },
+    payload: {
+      ...input.event.data,
+      segmentIndex: index,
+      synthesizedFromResult: true,
+    },
+    contentBlock: buildResultContentBlock(segment, index),
+  }));
+}
+
 export interface BuildNormalizedRuntimeDeliveryEventInput {
   conversationId: ConversationId;
   turnId: TurnId;
@@ -146,8 +254,7 @@ export function buildNormalizedRuntimeDeliveryEvent(
   });
   const emittedAt = readString(input.emittedAt) ?? new Date().toISOString();
 
-  return {
-    version: ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
+  return buildBaseNormalizedRuntimeDeliveryEvent({
     conversationId: input.conversationId,
     turnId: input.turnId,
     laneId: input.laneId,
@@ -156,14 +263,53 @@ export function buildNormalizedRuntimeDeliveryEvent(
     sourceEvent: input.event.event,
     eventId: `${input.turnId}:${input.laneId}:${input.eventIndex}:${input.event.event}`,
     emittedAt,
-    sequence: {
-      segmentIndex,
+    segmentIndex,
+    blockIndex: contentBlock?.index ?? null,
+    eventIndex: input.eventIndex,
+    payload: { ...input.event.data },
+    contentBlock,
+  });
+}
+
+export function buildNormalizedRuntimeDeliveryEventsFromStreamEvent(
+  input: BuildNormalizedRuntimeDeliveryEventInput,
+): NormalizedRuntimeDeliveryEvent[] {
+  const contentBlock = toRuntimeDeliveryContentBlock(input.event);
+  const kind = resolveNormalizedRuntimeDeliveryKind({
+    event: input.event,
+    contentBlock,
+  });
+  const segmentIndex = resolveNormalizedRuntimeDeliverySegmentIndex({
+    event: input.event,
+    contentBlock,
+  });
+  const emittedAt = readString(input.emittedAt) ?? new Date().toISOString();
+
+  const resultContentEvents = kind === 'result'
+    ? buildNormalizedRuntimeDeliveryContentEventsFromResultEvent({
+        ...input,
+        emittedAt,
+      })
+    : [];
+
+  return [
+    ...resultContentEvents,
+    buildBaseNormalizedRuntimeDeliveryEvent({
+      conversationId: input.conversationId,
+      turnId: input.turnId,
+      laneId: input.laneId,
+      sessionId: input.sessionId ?? null,
+      kind,
+      sourceEvent: input.event.event,
+      eventId: `${input.turnId}:${input.laneId}:${input.eventIndex}:${input.event.event}`,
+      emittedAt,
+      segmentIndex: kind === 'result' ? resultContentEvents.length : segmentIndex,
       blockIndex: contentBlock?.index ?? null,
       eventIndex: input.eventIndex,
-    },
-    payload: { ...input.event.data },
-    contentBlock: cloneRuntimeDeliveryContentBlock(contentBlock),
-  };
+      payload: { ...input.event.data },
+      contentBlock,
+    }),
+  ];
 }
 
 export function buildNormalizedRuntimeDeliveryEventsFromResult(
@@ -199,29 +345,21 @@ export function buildNormalizedRuntimeDeliveryEventsFromResult(
     };
   });
 
-  events.push({
-    version: ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
+  events.push(buildNormalizedRuntimeDeliveryResultEvent({
     conversationId: input.conversationId,
     turnId: input.turnId,
     laneId: input.laneId,
     sessionId: input.sessionId ?? null,
-    kind: 'result',
-    sourceEvent: 'result',
-    eventId: `${input.turnId}:${input.laneId}:result`,
     emittedAt,
-    sequence: {
-      segmentIndex: input.result.segments.length,
-      blockIndex: null,
-      eventIndex: input.result.segments.length,
-    },
+    eventIndex: input.result.segments.length,
+    segmentCount: input.result.segments.length,
     payload: {
       inputTokens: input.result.inputTokens,
       outputTokens: input.result.outputTokens,
       tokensUsed: input.result.tokensUsed,
       segmentCount: input.result.segments.length,
     },
-    contentBlock: null,
-  });
+  }));
 
   return events;
 }
