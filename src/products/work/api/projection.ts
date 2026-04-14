@@ -209,6 +209,49 @@ export interface WorkWorkItemDetailProjection {
   };
 }
 
+export interface WorkTaskListItem {
+  id: string;
+  title: string;
+  status: CoreTaskStatus;
+  summary: string | null;
+  conversationTitle: string | null;
+  conversationSourceChannelId: string | null;
+  ownerActorId: string;
+  ownerName: string;
+  assignedActors: Array<{
+    actorId: string;
+    displayName: string;
+  }>;
+  projectId: string | null;
+  projectTitle: string | null;
+  workItemId: string | null;
+  workItemTitle: string | null;
+  controlPlane: CoreTaskControlPlaneView;
+  recovery: CoreTaskRecoveryView;
+  updatedAt: string;
+}
+
+export interface WorkTaskListSummary {
+  totalAvailable: number;
+  returned: number;
+  pendingApprovalCount: number;
+  inProgressCount: number;
+  blockedCount: number;
+  completedCount: number;
+  linkedWorkItemCount: number;
+  needsOperatorAttentionCount: number;
+  recoveryCount: number;
+}
+
+export interface WorkTaskListProjection {
+  product: {
+    id: 'work';
+    name: 'Cats Work';
+  };
+  tasks: WorkTaskListItem[];
+  summary: WorkTaskListSummary;
+}
+
 export interface WorkIntakeSummaryItem {
   projectId: string;
   projectTitle: string;
@@ -419,6 +462,68 @@ function buildWorkItemListSummary(
     blockedCount: workItemStatusCounts.blocked,
     completedCount: workItemStatusCounts.completed,
     linkedTaskCount: core.workItems.filter((workItem) => workItem.taskId !== null).length,
+  };
+}
+
+function buildTaskListItems(
+  core: CatsCoreState,
+  limit = Number.POSITIVE_INFINITY,
+): WorkTaskListItem[] {
+  return core.tasks
+    .filter((task) => isWorkTask(core, task))
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, limit)
+    .map((task) => {
+      const conversation = task.conversationId
+        ? core.conversations.find((candidate) => candidate.id === task.conversationId) ?? null
+        : null;
+      const workItem = core.workItems.find((candidate) => candidate.taskId === task.id) ?? null;
+      const project = workItem?.projectId
+        ? core.projects.find((candidate) => candidate.id === workItem.projectId) ?? null
+        : null;
+
+      return {
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        summary: task.summary,
+        conversationTitle: conversation?.title ?? null,
+        conversationSourceChannelId: conversation?.sourceChannelId ?? null,
+        ownerActorId: task.ownerActorId,
+        ownerName: resolveActorName(core, task.ownerActorId),
+        assignedActors: task.assignedActorIds.map((actorId) => ({
+          actorId,
+          displayName: resolveActorName(core, actorId),
+        })),
+        projectId: project?.id ?? null,
+        projectTitle: project?.title ?? null,
+        workItemId: workItem?.id ?? null,
+        workItemTitle: workItem?.title ?? null,
+        controlPlane: buildCoreTaskControlPlaneView(core, task),
+        recovery: buildCoreTaskRecoveryView(core, task),
+        updatedAt: task.updatedAt,
+      };
+    });
+}
+
+function buildTaskListSummary(
+  items: WorkTaskListItem[],
+  core: CatsCoreState,
+): WorkTaskListSummary {
+  const workTasks = core.tasks.filter((task) => isWorkTask(core, task));
+  const taskStatusCounts = buildTaskStatusCounts(workTasks);
+
+  return {
+    totalAvailable: workTasks.length,
+    returned: items.length,
+    pendingApprovalCount: taskStatusCounts.pending_approval,
+    inProgressCount: taskStatusCounts.in_progress,
+    blockedCount: taskStatusCounts.blocked,
+    completedCount: taskStatusCounts.completed,
+    linkedWorkItemCount: items.filter((item) => item.workItemId !== null).length,
+    needsOperatorAttentionCount: items.filter((item) =>
+      item.controlPlane.attention.needsOperatorAttention).length,
+    recoveryCount: items.filter((item) => item.recovery.recoveryRequired).length,
   };
 }
 
@@ -672,6 +777,7 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
       projectionSource: 'cats-core',
       futureRoutes: [
         '/api/work/projects',
+        '/api/work/tasks',
         '/api/work/work-items',
         '/api/work/intake',
         '/api/work/templates',
@@ -692,6 +798,20 @@ export function buildWorkProjectListProjection(
     },
     projects,
     summary: buildProjectListSummary(projects, core),
+  };
+}
+
+export function buildWorkTaskListProjection(
+  core: CatsCoreState,
+): WorkTaskListProjection {
+  const tasks = buildTaskListItems(core, Number.POSITIVE_INFINITY);
+  return {
+    product: {
+      id: 'work',
+      name: 'Cats Work',
+    },
+    tasks,
+    summary: buildTaskListSummary(tasks, core),
   };
 }
 

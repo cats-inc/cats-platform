@@ -3,11 +3,13 @@ import {
   buildWorkDashboardProjection,
   buildWorkProjectDetailProjection,
   buildWorkProjectListProjection,
+  buildWorkTaskListProjection,
   buildWorkTaskDetailProjection,
   buildWorkWorkItemDetailProjection,
   buildWorkWorkItemListProjection,
   type WorkDashboardProjection,
   type WorkProjectDetailProjection,
+  type WorkTaskListProjection,
   type WorkTaskDetailProjection,
   type WorkWorkItemDetailProjection,
 } from './projection.js';
@@ -46,6 +48,12 @@ export function createWorkProjectListPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
 ) {
   return buildWorkProjectListProjection(core);
+}
+
+export function createWorkTaskListPayload(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+): WorkTaskListProjection {
+  return buildWorkTaskListProjection(core);
 }
 
 export function createWorkProjectDetailPayload(
@@ -162,6 +170,20 @@ export async function routeWorkApi(
       context.response,
       200,
       createWorkWorkItemListPayload(await context.dependencies.coreStore.readCore()),
+    );
+    return true;
+  }
+
+  if (context.url.pathname === '/api/work/tasks') {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+
+    sendJson(
+      context.response,
+      200,
+      createWorkTaskListPayload(await context.dependencies.coreStore.readCore()),
     );
     return true;
   }

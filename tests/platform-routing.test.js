@@ -22,6 +22,7 @@ import {
   buildWorkDashboardProjection,
   buildWorkProjectListProjection,
   buildWorkProjectDetailProjection,
+  buildWorkTaskListProjection,
   buildWorkTaskDetailProjection,
   buildWorkWorkItemListProjection,
   buildWorkWorkItemDetailProjection,
@@ -140,6 +141,7 @@ test('Work and Code dashboard projections stay core-backed without inventing new
   assert.equal(code.sections.tasks.summary.totalAvailable, 0);
   assert.equal(code.sections.artifacts.summary.totalAvailable, 0);
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/projects'));
+  assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/tasks'));
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/work-items'));
   assert.ok(work.extensionPoints.futureRoutes.includes('/api/work/war-room'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/tasks'));
@@ -270,6 +272,7 @@ test('Work projections preserve briefing-thread channel links from shared conver
 
   const projectList = buildWorkProjectListProjection(core);
   const workDashboard = buildWorkDashboardProjection(core);
+  const taskList = buildWorkTaskListProjection(core);
   const workItemList = buildWorkWorkItemListProjection(core);
   const projectDetail = buildWorkProjectDetailProjection(core, core.projects[0]);
   const workItemDetail = buildWorkWorkItemDetailProjection(core, core.workItems[0]);
@@ -285,6 +288,12 @@ test('Work projections preserve briefing-thread channel links from shared conver
   assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.assignedActors[0]?.displayName, 'Work Reviewer');
   assert.equal(workDashboard.sections.recovery.items[0].taskContext.conversationSourceChannelId, sourceChannelId);
   assert.equal(workDashboard.sections.recovery.items[0].taskContext.assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
+  assert.equal(taskList.tasks[0].conversationSourceChannelId, sourceChannelId);
+  assert.equal(taskList.tasks[0].projectId, projectId);
+  assert.equal(taskList.tasks[0].workItemId, workItemId);
+  assert.equal(taskList.tasks[0].assignedActors[0]?.displayName, 'Work Reviewer');
+  assert.equal(taskList.tasks[0].controlPlane.taskId, taskId);
+  assert.equal(taskList.tasks[0].recovery.taskId, taskId);
   assert.equal(projectDetail.primaryConversation?.sourceChannelId, sourceChannelId);
   assert.equal(projectDetail.linkedTasks[0].conversationSourceChannelId, sourceChannelId);
   assert.equal(projectDetail.linkedTasks[0].assignedActors[0]?.actorId, 'actor-cat-work-reviewer');

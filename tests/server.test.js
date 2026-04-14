@@ -7065,6 +7065,18 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
       'actor-orchestrator-global',
     );
 
+    const workTasksResponse = await fetch(`${baseUrl}/api/work/tasks`);
+    assert.equal(workTasksResponse.status, 200);
+    const workTasksPayload = await workTasksResponse.json();
+    assert.equal(workTasksPayload.tasks.length, 1);
+    assert.equal(workTasksPayload.tasks[0].id, 'task-work-dashboard');
+    assert.equal(workTasksPayload.tasks[0].conversationSourceChannelId, sourceChannelId);
+    assert.equal(workTasksPayload.tasks[0].workItemId, 'work-item-work-dashboard');
+    assert.equal(workTasksPayload.tasks[0].projectId, 'project-work-dashboard');
+    assert.equal(workTasksPayload.tasks[0].controlPlane.taskId, 'task-work-dashboard');
+    assert.equal(workTasksPayload.tasks[0].recovery.taskId, 'task-work-dashboard');
+    assert.equal(workTasksPayload.summary.totalAvailable, 1);
+
     const workItemsResponse = await fetch(`${baseUrl}/api/work/work-items`);
     assert.equal(workItemsResponse.status, 200);
     const workItemsPayload = await workItemsResponse.json();
