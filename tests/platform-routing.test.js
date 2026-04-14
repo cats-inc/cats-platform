@@ -3,6 +3,10 @@ import test from 'node:test';
 
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
 import {
+  buildWorkflowContinuationReplayRequest,
+  writeWorkflowContinuationReplayMetadata,
+} from '../build/server/platform/orchestration/workflowContinuationReplay.js';
+import {
   isPlatformNonProductPath,
   resolvePreferredPlatformSurface,
   resolvePlatformShellSurface,
@@ -213,7 +217,41 @@ test('Work projections preserve briefing-thread channel links from shared conver
     },
     createdAt: '2026-04-15T06:00:00.000Z',
     updatedAt: '2026-04-15T06:05:00.000Z',
-    metadata: {},
+    metadata: writeWorkflowContinuationReplayMetadata(
+      {},
+      buildWorkflowContinuationReplayRequest({
+        channelId: sourceChannelId,
+        checkpointId: 'checkpoint-work-briefing',
+        sourceMessageId: 'message-work-briefing',
+        sourceTurnId: 'turn-work-briefing',
+        sourceLaneId: 'lane-work-briefing',
+        sourceAssistantTurnId: 'assistant-turn-work-briefing',
+        sourceParticipant: {
+          participantKind: 'cat',
+          participantId: 'cat-work-reviewer',
+          participantName: 'Work Reviewer',
+        },
+        targets: [
+          {
+            participantKind: 'cat',
+            participantId: 'cat-work-reviewer',
+            participantName: 'Work Reviewer',
+          },
+        ],
+        mentionNames: ['Work Reviewer'],
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+        continuationSource: 'workflow_recommendation',
+        blockedReason: 'max_dispatches',
+        recordedAt: '2026-04-15T06:02:00.000Z',
+      }),
+      {
+        replayState: 'failed',
+        replayTrigger: 'retry',
+        replayAttemptAt: '2026-04-15T06:03:00.000Z',
+        replayError: 'guard tripped',
+      },
+    ),
   });
   core.workItems.push({
     id: workItemId,
@@ -245,6 +283,8 @@ test('Work projections preserve briefing-thread channel links from shared conver
   assert.equal(workDashboard.sections.operatorInbox.items[0].taskContext.assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
   assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.conversationSourceChannelId, sourceChannelId);
   assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.assignedActors[0]?.displayName, 'Work Reviewer');
+  assert.equal(workDashboard.sections.recovery.items[0].taskContext.conversationSourceChannelId, sourceChannelId);
+  assert.equal(workDashboard.sections.recovery.items[0].taskContext.assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
   assert.equal(projectDetail.primaryConversation?.sourceChannelId, sourceChannelId);
   assert.equal(projectDetail.linkedTasks[0].conversationSourceChannelId, sourceChannelId);
   assert.equal(projectDetail.linkedTasks[0].assignedActors[0]?.actorId, 'actor-cat-work-reviewer');

@@ -6862,6 +6862,41 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
           assignedActorIds: ['actor-orchestrator-global'],
           status: 'pending_approval',
           summary: 'Prove Work consumes the shared task substrate.',
+          metadata: writeWorkflowContinuationReplayMetadata(
+            {},
+            buildWorkflowContinuationReplayRequest({
+              channelId: sourceChannelId,
+              checkpointId: 'checkpoint-work-dashboard',
+              sourceMessageId: 'message-work-dashboard',
+              sourceTurnId: 'turn-work-dashboard',
+              sourceLaneId: 'lane-work-dashboard',
+              sourceAssistantTurnId: 'assistant-turn-work-dashboard',
+              sourceParticipant: {
+                participantKind: 'cat',
+                participantId: 'cat-work-dashboard',
+                participantName: 'Work Dashboard Cat',
+              },
+              targets: [
+                {
+                  participantKind: 'cat',
+                  participantId: 'cat-work-dashboard',
+                  participantName: 'Work Dashboard Cat',
+                },
+              ],
+              mentionNames: ['Work Dashboard Cat'],
+              workflowStageId: 'continuation_handoff',
+              workflowShape: 'sequential',
+              continuationSource: 'workflow_recommendation',
+              blockedReason: 'max_dispatches',
+              recordedAt: '2026-04-15T06:02:00.000Z',
+            }),
+            {
+              replayState: 'failed',
+              replayTrigger: 'retry',
+              replayAttemptAt: '2026-04-15T06:03:00.000Z',
+              replayError: 'guard tripped',
+            },
+          ),
         },
       }),
     });
@@ -6974,6 +7009,7 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     );
     assert.equal(workPayload.sections.operatorInbox.summary.totalAvailable, 1);
     assert.equal(workPayload.sections.controlPlane.summary.totalAvailable, 1);
+    assert.equal(workPayload.sections.recovery.summary.totalAvailable, 1);
     assert.equal(
       workPayload.sections.operatorInbox.items[0].taskContext.conversationSourceChannelId,
       sourceChannelId,
@@ -6988,6 +7024,14 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     );
     assert.equal(
       workPayload.sections.controlPlane.items[0].taskContext.assignedActors[0]?.actorId,
+      'actor-orchestrator-global',
+    );
+    assert.equal(
+      workPayload.sections.recovery.items[0].taskContext.conversationSourceChannelId,
+      sourceChannelId,
+    );
+    assert.equal(
+      workPayload.sections.recovery.items[0].taskContext.assignedActors[0]?.actorId,
       'actor-orchestrator-global',
     );
     assert.ok('operatorInbox' in workPayload.sections);

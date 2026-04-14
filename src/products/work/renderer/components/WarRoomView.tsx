@@ -527,7 +527,11 @@ function RecoverySection({
                 <span>Latest source: {item.latestActivity?.source ?? 'Not recorded'}</span>
                 <span>{formatTimestamp(item.latestActivity?.createdAt)}</span>
               </div>
-              <WorkWarRoomOpenTaskButton taskId={item.taskId} />
+              <div className="operatorMetaRow">
+                <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>
+                <span>Actors: {compactList(item.taskContext.assignedActors.map((actor) => actor.displayName))}</span>
+              </div>
+              <WorkWarRoomTaskContextActions taskId={item.taskId} taskContext={item.taskContext} />
             </article>
           ))}
         </div>

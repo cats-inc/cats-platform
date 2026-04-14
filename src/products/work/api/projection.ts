@@ -254,6 +254,10 @@ export interface WorkControlPlaneItem extends CoreTaskControlPlaneView {
   taskContext: WorkTaskActionContext;
 }
 
+export interface WorkRecoveryItem extends CoreTaskRecoveryView {
+  taskContext: WorkTaskActionContext;
+}
+
 export interface WorkDashboardProjection {
   product: {
     id: 'work';
@@ -270,7 +274,7 @@ export interface WorkDashboardProjection {
     workItems: WorkDashboardSection<WorkWorkItemListItem, WorkWorkItemListSummary>;
     operatorInbox: WorkDashboardSection<WorkOperatorInboxItem, CoreOperatorInboxSummary>;
     controlPlane: WorkDashboardSection<WorkControlPlaneItem, CoreTaskControlPlaneListSummary>;
-    recovery: WorkDashboardSection<CoreTaskRecoveryView, CoreTaskRecoveryListSummary>;
+    recovery: WorkDashboardSection<WorkRecoveryItem, CoreTaskRecoveryListSummary>;
   };
   selection: {
     defaultProjectId: string | null;
@@ -562,12 +566,16 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
   const recoveryItems = listCoreTaskRecoveryViews(core)
     .filter((view) => workTaskIds.has(view.taskId))
     .slice(0, WORK_DASHBOARD_RECOVERY_LIMIT);
+  const recoveryTaskItems: WorkRecoveryItem[] = recoveryItems.map((item) => ({
+    ...item,
+    taskContext: buildWorkTaskActionContext(core, item.taskId),
+  }));
   const recovery = {
-    recoveries: recoveryItems,
+    recoveries: recoveryTaskItems,
     summary: summarizeCoreTaskRecoveryViews({
-      totalAvailable: recoveryItems.length,
-      matching: recoveryItems.length,
-      recoveries: recoveryItems,
+      totalAvailable: recoveryTaskItems.length,
+      matching: recoveryTaskItems.length,
+      recoveries: recoveryTaskItems,
     }),
   };
   const intakeItems = buildIntakeSummaryItems(core);
