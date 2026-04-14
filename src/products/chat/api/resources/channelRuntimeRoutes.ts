@@ -126,19 +126,23 @@ async function readChannelReadyStreamSnapshot(
   const signalVersion = readStreamTargetSignalVersion(channelId);
   const state = await context.dependencies.chatStore.read();
   const channel = requireChannel(state, channelId);
+  const hasActiveWorkflowTurn = hasChannelActiveWorkflowTurn(channel);
   const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
   const activeConcurrentTargets = activeTurn?.workflowShape === 'concurrent'
     ? activeTurn.targetStatuses.filter((target) =>
       target.status === 'running' || target.status === 'pending')
     : [];
+  const readyTargets = hasActiveWorkflowTurn
+    ? resolveChannelReadyStreamTargets(channel)
+    : [];
   const readyTargetStateIds = new Set(
-    resolveChannelReadyStreamTargets(channel)
+    readyTargets
       .map((target) => target.targetStateId)
       .filter((targetStateId): targetStateId is string => typeof targetStateId === 'string'),
   );
   return {
-    readyTargets: resolveChannelReadyStreamTargets(channel),
-    hasActiveWorkflowTurn: hasChannelActiveWorkflowTurn(channel),
+    readyTargets,
+    hasActiveWorkflowTurn,
     concurrentBarrierReleased:
       activeConcurrentTargets.length <= 1
       || activeConcurrentTargets.every((target) => readyTargetStateIds.has(target.id)),
@@ -147,7 +151,7 @@ async function readChannelReadyStreamSnapshot(
 }
 
 function buildStreamAttachKey(target: ChannelStreamTarget): string | null {
-  return target.sessionId ?? null;
+  return target.laneId ?? target.sessionId ?? null;
 }
 
 async function streamChannelTarget(input: {
@@ -489,7 +493,7 @@ async function handleRestStreamChannel(
       return;
     }
 
-    const completedSessionIds = new Set<string>();
+    const completedAttachKeys = new Set<string>();
     const activeStreams = new Map<string, Promise<void>>();
     const bufferedEvents: Array<{ event: string; data: Record<string, unknown> }> = [];
     let concurrentBarrierReleased = false;
@@ -522,7 +526,7 @@ async function handleRestStreamChannel(
     const attachReadyTargets = (targets: ChannelStreamTarget[]): void => {
       for (const target of targets) {
         const attachKey = buildStreamAttachKey(target);
-        if (!attachKey || activeStreams.has(attachKey) || completedSessionIds.has(attachKey)) {
+        if (!attachKey || activeStreams.has(attachKey) || completedAttachKeys.has(attachKey)) {
           continue;
         }
         const streamPromise = streamChannelTarget({
@@ -533,7 +537,7 @@ async function handleRestStreamChannel(
           requestAbortSignal: abortController.signal,
         }).finally(() => {
           activeStreams.delete(attachKey);
-          completedSessionIds.add(attachKey);
+          completedAttachKeys.add(attachKey);
         });
         activeStreams.set(attachKey, streamPromise);
       }

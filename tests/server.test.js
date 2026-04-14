@@ -1235,8 +1235,14 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
   const secondResultSeen = new Promise((resolve) => {
     releaseSecondResultSeen = resolve;
   });
+  const streamedTargetIds = [];
   runtime.streamSession = async (sessionId, onEvent, options) => {
     runtime.streamedSessions.push(sessionId);
+    streamedTargetIds.push(
+      (requireChannel(await chatStore.read(), channelId).roomRouting.workflow.activeTurn?.targetStatuses ?? [])
+        .filter((target) => target.status === 'running' || target.status === 'pending')
+        .map((target) => target.id),
+    );
     if (sessionId === 'session-live-sequential-1') {
       await onEvent({
         event: 'progress',
@@ -1474,6 +1480,303 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
     assert.deepEqual(runtime.streamedSessions, [
       'session-live-sequential-1',
       'session-live-sequential-2',
+    ]);
+    assert.deepEqual(streamedTargetIds, [
+      ['target-state-sequential-1'],
+      ['target-state-sequential-2'],
+    ]);
+  }, chatStore);
+});
+
+test('GET /api/channels/:id/stream reattaches a reused warm session for a new sequential target', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:10:00.000Z');
+  const firstReplyAt = new Date('2026-03-11T00:10:02.000Z');
+  const secondStartAt = new Date('2026-03-11T00:10:03.000Z');
+  const secondReplyAt = new Date('2026-03-11T00:10:04.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'First Cat',
+      provider: 'claude',
+      roles: ['researcher'],
+    },
+    seededAt,
+  );
+  const firstCatId = state.cats[0].id;
+  state = createCat(
+    state,
+    {
+      name: 'Second Cat',
+      provider: 'codex',
+      roles: ['reviewer'],
+    },
+    seededAt,
+  );
+  const secondCatId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Sequential warm-session reuse',
+      topic: 'Reuse one ready session across sequential lane targets.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId: firstCatId }, seededAt);
+  state = assignCatToChannel(state, channelId, { catId: secondCatId }, seededAt);
+  const seededChannel = requireChannel(state, channelId);
+  const firstParticipantId = seededChannel.catAssignments.find((assignment) => assignment.catId === firstCatId)?.participantId;
+  const secondParticipantId = seededChannel.catAssignments.find((assignment) => assignment.catId === secondCatId)?.participantId;
+  assert.ok(firstParticipantId);
+  assert.ok(secondParticipantId);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    firstCatId,
+    {
+      sessionId: 'session-live-reused',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  let streamAttachCount = 0;
+  let releaseFirstResultSeen;
+  const firstResultSeen = new Promise((resolve) => {
+    releaseFirstResultSeen = resolve;
+  });
+  let releaseSecondResultSeen;
+  const secondResultSeen = new Promise((resolve) => {
+    releaseSecondResultSeen = resolve;
+  });
+  const streamedTargetIds = [];
+  runtime.streamSession = async (sessionId, onEvent, options) => {
+    runtime.streamedSessions.push(sessionId);
+    streamedTargetIds.push(
+      (requireChannel(await chatStore.read(), channelId).roomRouting.workflow.activeTurn?.targetStatuses ?? [])
+        .filter((target) => target.status === 'running' || target.status === 'pending')
+        .map((target) => target.id),
+    );
+    streamAttachCount += 1;
+    if (sessionId !== 'session-live-reused') {
+      throw new Error(`Unexpected streamed session ${sessionId}`);
+    }
+
+    if (streamAttachCount === 1) {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'Initial phase on reused session',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseFirstResultSeen();
+      await new Promise((resolve) => {
+        if (options?.signal?.aborted) {
+          resolve();
+          return;
+        }
+        options?.signal?.addEventListener('abort', resolve, { once: true });
+      });
+      return;
+    }
+
+    if (streamAttachCount === 2) {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'Follow-up phase on reused session',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseSecondResultSeen();
+      return;
+    }
+
+    throw new Error(`Unexpected stream attach #${streamAttachCount}`);
+  };
+
+  await withServer(runtime, async (baseUrl) => {
+    const begun = await beginChannelMessageDispatch(
+      await chatStore.read(),
+      channelId,
+      {
+        body: 'Route this twice through the same runtime session.',
+        messageMetadata: {
+          recipientParticipantIds: [firstParticipantId, secondParticipantId],
+          workflowShape: 'sequential',
+        },
+      },
+      runtime,
+      seededAt,
+    );
+    let nextState = begun.state;
+    let nextChannel = requireChannel(nextState, channelId);
+    let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
+    nextTurn.targetStatuses = [
+      {
+        id: 'target-state-reused-1',
+        dispatchId: 'dispatch-reused-1',
+        participant: {
+          participantKind: 'cat',
+          participantId: firstParticipantId,
+          participantName: 'First Cat',
+        },
+        source: null,
+        sourceMessageId: nextTurn.sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: nextTurn.lastCheckpointId,
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: null,
+        status: 'running',
+        queuedAt: seededAt.toISOString(),
+        startedAt: seededAt.toISOString(),
+        completedAt: null,
+        response: null,
+        error: null,
+      },
+    ];
+    nextTurn.updatedAt = seededAt.toISOString();
+    await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
+
+    const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+
+    const streamResponse = await streamResponsePromise;
+    assert.equal(streamResponse.status, 200);
+    const streamBodyPromise = streamResponse.text();
+
+    await firstResultSeen;
+
+    nextState = await chatStore.read();
+    nextChannel = requireChannel(nextState, channelId);
+    nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
+    nextTurn.targetStatuses = [
+      {
+        ...nextTurn.targetStatuses[0],
+        status: 'completed',
+        completedAt: firstReplyAt.toISOString(),
+      },
+      {
+        id: 'target-state-reused-2',
+        dispatchId: 'dispatch-reused-2',
+        participant: {
+          participantKind: 'cat',
+          participantId: firstParticipantId,
+          participantName: 'First Cat',
+        },
+        source: null,
+        sourceMessageId: nextTurn.sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: nextTurn.lastCheckpointId,
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: null,
+        status: 'running',
+        queuedAt: secondStartAt.toISOString(),
+        startedAt: secondStartAt.toISOString(),
+        completedAt: null,
+        response: null,
+        error: null,
+      },
+    ];
+    nextTurn.updatedAt = secondStartAt.toISOString();
+    nextState = appendMessage(
+      nextState,
+      channelId,
+      {
+        senderKind: 'agent',
+        senderName: 'First Cat',
+        body: 'First phase reply.',
+      },
+      firstReplyAt,
+      {
+        metadata: {
+          event: 'assistant_turn_segment',
+          assistantTurnId: 'assistant-turn-reused-1',
+          terminal: true,
+          targetKind: 'cat',
+          targetId: firstParticipantId,
+          sessionId: 'session-live-reused',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
+
+    await secondResultSeen;
+
+    let finalState = await chatStore.read();
+    finalState = appendMessage(
+      finalState,
+      channelId,
+      {
+        senderKind: 'agent',
+        senderName: 'First Cat',
+        body: 'Second phase reply.',
+      },
+      secondReplyAt,
+      {
+        metadata: {
+          event: 'assistant_turn_segment',
+          assistantTurnId: 'assistant-turn-reused-2',
+          terminal: true,
+          targetKind: 'cat',
+          targetId: firstParticipantId,
+          sessionId: 'session-live-reused',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    const finalChannel = requireChannel(finalState, channelId);
+    finalChannel.roomRouting.workflow.activeTurn = null;
+    await chatStore.write(finalState);
+    notifyStreamTargetChanged(channelId);
+
+    const streamBody = await streamBodyPromise;
+    assert.match(streamBody, /"targetStateId":"target-state-reused-1"/u);
+    assert.match(streamBody, /"text":"Initial phase on reused session"/u);
+    assert.match(streamBody, /"targetStateId":"target-state-reused-2"/u);
+    assert.match(streamBody, /"text":"Follow-up phase on reused session"/u);
+    assert.deepEqual(runtime.streamedSessions, [
+      'session-live-reused',
+      'session-live-reused',
+    ]);
+    assert.deepEqual(streamedTargetIds, [
+      ['target-state-reused-1'],
+      ['target-state-reused-2'],
     ]);
   }, chatStore);
 });
