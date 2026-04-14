@@ -712,6 +712,13 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
   The payload now also includes a product-owned `execution` read model derived
   from the room workflow turn, plus approval/recovery action templates that
   point back to `/api/core/approvals` and `/api/core/operator-actions`.
+  The `operator` payload also now carries:
+  - `latestWorkflowRecommendation` for the newest normalized continuation
+    recommendation summary
+  - `workflowContinuation` for the task-scoped normalized continuation replay
+    state, including `sourceMessageId`, `sourceTurnId`, `sourceLaneId`, and
+    `sourceAssistantTurnId` when a blocked/retryable continuation snapshot is
+    currently preserved on the task
 
 ### Runtime Bridge
 

@@ -288,6 +288,102 @@ test('buildChatOperatorView exposes latest workflow recommendation summaries', (
   assert.equal(inspector?.latestWorkflowRecommendation?.rationale, 'Agent-2 is the current implementer.');
 });
 
+test('buildChatOperatorView exposes normalized workflow continuation state', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-channel-room-continuation',
+      title: 'Continuation replay task',
+      status: 'blocked',
+      conversationId: 'conversation-channel-room-continuation',
+      createdAt: '2026-04-15T01:00:00.000Z',
+      metadata: {
+        workflowContinuationReplay: {
+          channelId: 'room-continuation',
+          checkpointId: 'checkpoint-room-continuation',
+          sourceMessageId: 'message-room-continuation',
+          sourceTurnId: 'turn-room-continuation',
+          sourceLaneId: 'lane-room-continuation',
+          sourceAssistantTurnId: 'assistant-turn-room-continuation',
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: 'cat-agent-1',
+            participantName: 'Agent-1',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-agent-2',
+              participantName: 'Agent-2',
+            },
+          ],
+          mentionNames: ['Agent-2'],
+          trigger: 'continuation_mention',
+          branchStrategy: 'transplant_context',
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          reviewRequired: false,
+          continuationSource: 'explicit_mentions',
+          workflowRecommendation: null,
+          unresolvedTargets: [],
+          blockedReason: 'anti_ping_pong',
+          recordedAt: '2026-04-15T01:01:00.000Z',
+          replayState: 'failed',
+          replayTrigger: 'retry',
+          replayAttemptAt: '2026-04-15T01:02:00.000Z',
+          replayError: 'loop guard fired',
+        },
+      },
+    },
+    new Date('2026-04-15T01:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-room-continuation',
+      title: 'Continuation replay run',
+      status: 'blocked',
+      conversationId: 'conversation-channel-room-continuation',
+      taskId: 'task-channel-room-continuation',
+      traceId: 'trace-room-continuation',
+      summary: 'Blocked after a continuation guard fired.',
+      createdAt: '2026-04-15T01:01:00.000Z',
+      metadata: {
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+      },
+    },
+    new Date('2026-04-15T01:01:00.000Z'),
+  ).core;
+
+  const view = buildChatOperatorView(
+    {
+      core,
+      approvals: buildApprovalQueue(core),
+    },
+    'room-continuation',
+  );
+
+  assert.equal(view?.workflowContinuation?.stageId, 'continuation_handoff');
+  assert.equal(view?.workflowContinuation?.workflowShape, 'sequential');
+  assert.equal(view?.workflowContinuation?.sourceMessageId, 'message-room-continuation');
+  assert.equal(view?.workflowContinuation?.sourceTurnId, 'turn-room-continuation');
+  assert.equal(view?.workflowContinuation?.sourceLaneId, 'lane-room-continuation');
+  assert.equal(
+    view?.workflowContinuation?.sourceAssistantTurnId,
+    'assistant-turn-room-continuation',
+  );
+  assert.equal(view?.workflowContinuation?.continuationSource, 'explicit_mentions');
+  assert.equal(view?.workflowContinuation?.blockedReason, 'anti_ping_pong');
+  assert.deepEqual(view?.workflowContinuation?.targetNames, ['Agent-2']);
+  assert.equal(view?.workflowContinuation?.replayState, 'failed');
+  assert.equal(view?.workflowContinuation?.replayTrigger, 'retry');
+  assert.equal(view?.workflowContinuation?.replayError, 'loop guard fired');
+  assert.equal(view?.workflowContinuation?.retryAvailable, true);
+});
+
 test('buildChatOperatorView filters invalid effective policy metadata enum values', () => {
   let core = createDefaultCoreState();
 
@@ -526,4 +622,3 @@ test('buildChatOperatorView classifies orchestrator replay lifecycle notes for o
   assert.equal(recoveryItem?.label, 'Recovery');
   assert.equal(recoveryItem?.severity, 'attention');
 });
-

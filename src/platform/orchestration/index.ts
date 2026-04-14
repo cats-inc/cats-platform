@@ -23,6 +23,8 @@ export {
   type OrchestratorPlanRequest,
   type OrchestratorPlanResponse,
   type OrchestratorRecoveryLoop,
+  type OrchestratorWorkflowContinuationView,
+  type OrchestratorWorkflowRecommendationView,
   type OrchestratorRuntimeToolPlane,
   type OrchestratorTransportContext,
   type OrchestratorTurnPlan,

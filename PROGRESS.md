@@ -458,6 +458,12 @@ Known follow-ups:
   recommendation out of checkpoint metadata into a first-class inspectable
   view, so continuation source, candidate targets, branch strategy, and
   rationale no longer require raw metadata scraping
+- execution-loop operator payloads now also expose the same normalized
+  `workflowContinuation` view, including preserved continuation source identity
+  (`sourceMessageId`, `sourceTurnId`, `sourceLaneId`,
+  `sourceAssistantTurnId`), so room-level operator inspection no longer has to
+  detour through `/api/core/*` just to inspect the current blocked continuation
+  replay state
 - `src/core/taskRecords.ts` plus `GET /api/core/tasks/{taskId}/records` now
   expose grouped task-scoped approval bindings, runs, traces, checkpoints,
   outcomes, and activity rows so later recovery/control-plane consumers can

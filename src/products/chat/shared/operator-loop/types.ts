@@ -16,6 +16,10 @@ import type {
   CoreWorkflowSummary,
 } from '../../../../core/types.js';
 import type { RoomAssistantTurnDelivery } from '../../../../shared/roomRouting.js';
+import type {
+  WorkflowContinuationReplayBlockedReason,
+  WorkflowContinuationReplaySource,
+} from '../../../../platform/orchestration/workflowContinuationReplay.js';
 
 export interface ChatOperatorSnapshot {
   core: CatsCoreState;
@@ -74,6 +78,27 @@ export interface ChatWorkflowRecommendationView {
   reviewRequired: boolean;
   candidateTargets: ChatWorkflowRecommendationTargetView[];
   unresolvedTargets: string[];
+}
+
+export interface ChatWorkflowContinuationView {
+  checkpointId: string | null;
+  stageId: string | null;
+  workflowShape: 'sequential' | 'concurrent' | 'converge' | null;
+  sourceMessageId: string | null;
+  sourceTurnId: string | null;
+  sourceLaneId: string | null;
+  sourceAssistantTurnId: string | null;
+  continuationSource: WorkflowContinuationReplaySource | null;
+  reviewRequired: boolean;
+  convergeTargetId: string | null;
+  blockedReason: WorkflowContinuationReplayBlockedReason | null;
+  targetCount: number;
+  targetNames: string[];
+  unresolvedTargets: string[];
+  replayState: 'ready' | 'in_progress' | 'failed' | null;
+  replayTrigger: 'retry' | null;
+  replayError: string | null;
+  retryAvailable: boolean;
 }
 
 export interface ChatEffectivePolicyView {
@@ -151,6 +176,7 @@ export interface ChatOperatorView {
   governanceSummary: CoreGovernanceSummary | null;
   workflowSummary: CoreWorkflowSummary | null;
   latestWorkflowRecommendation: ChatWorkflowRecommendationView | null;
+  workflowContinuation: ChatWorkflowContinuationView | null;
   approvalActions: ChatApprovalActionView[];
   incidentActions: ChatOperatorActionView[];
 }

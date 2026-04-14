@@ -2,6 +2,7 @@ import {
   deriveCoreGovernanceSummary,
   deriveCoreWorkflowSummary,
 } from '../../../../core/governance.js';
+import { buildCoreTaskControlPlaneView } from '../../../../core/taskControlPlane.js';
 import {
   buildActivityFeed,
   buildApprovalActions,
@@ -35,6 +36,7 @@ export type {
   ChatRunInspectorView,
   ChatRunMetrics,
   ChatWorkflowBranchView,
+  ChatWorkflowContinuationView,
   ChatWorkflowRecommendationView,
 } from './types.js';
 
@@ -82,14 +84,18 @@ export function buildChatOperatorView(
   const latestApproval = approvals[0] ?? null;
   const guardReason = resolveGuardReason(latestRun, latestOutcome, latestCheckpoint, traces);
   const cooldownLabel = resolveCooldownLabel(latestRun, latestOutcome, latestCheckpoint, traces);
+  const controlPlane = task
+    ? buildCoreTaskControlPlaneView(snapshot.core, task)
+    : null;
   const effectivePolicy = buildEffectivePolicyView(task);
   const workflowSummary = deriveCoreWorkflowSummary(latestRun);
-  const latestWorkflowRecommendation = resolveLatestWorkflowRecommendation({
-    latestCheckpoint,
-    latestOutcome,
-    latestRun,
-    traces,
-  });
+  const latestWorkflowRecommendation = controlPlane?.latestWorkflowRecommendation
+    ?? resolveLatestWorkflowRecommendation({
+      latestCheckpoint,
+      latestOutcome,
+      latestRun,
+      traces,
+    });
   const governanceSummary = deriveCoreGovernanceSummary(task, latestRun);
   const approvalActions = buildApprovalActions(latestApproval);
   const activityFeed = buildActivityFeed(
@@ -121,6 +127,7 @@ export function buildChatOperatorView(
     governanceSummary,
     workflowSummary,
     latestWorkflowRecommendation,
+    workflowContinuation: controlPlane?.workflowContinuation ?? null,
     approvalActions,
     incidentActions: buildIncidentActions(
       task,

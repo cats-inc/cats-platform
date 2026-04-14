@@ -36,6 +36,10 @@ import type {
 } from '../../core/types.js';
 import type { RuntimeClient, RuntimeSkillManifest } from '../runtime/client.js';
 import type { CatsMemoryService } from '../memory/index.js';
+import type {
+  WorkflowContinuationReplayBlockedReason,
+  WorkflowContinuationReplaySource,
+} from './workflowContinuationReplay.js';
 
 export const ORCHESTRATOR_CONTRACT_VERSION = 1;
 export const ORCHESTRATOR_RUNTIME_TOOL_SCHEMA_VERSION = 1;
@@ -195,6 +199,44 @@ export interface OrchestratorWorkflowBranchView {
   error: string | null;
 }
 
+export interface OrchestratorWorkflowRecommendationTargetView {
+  participantKind: 'orchestrator' | 'cat' | null;
+  participantId: string | null;
+  participantName: string | null;
+}
+
+export interface OrchestratorWorkflowRecommendationView {
+  source: 'checkpoint' | 'boss_replan' | 'system_inference' | null;
+  workflowShape: RoomWorkflowShape | null;
+  continuationSource: WorkflowContinuationReplaySource | null;
+  branchStrategy: string | null;
+  rationale: string | null;
+  reviewRequired: boolean;
+  candidateTargets: OrchestratorWorkflowRecommendationTargetView[];
+  unresolvedTargets: string[];
+}
+
+export interface OrchestratorWorkflowContinuationView {
+  checkpointId: string | null;
+  stageId: string | null;
+  workflowShape: RoomWorkflowShape | null;
+  sourceMessageId: string | null;
+  sourceTurnId: string | null;
+  sourceLaneId: string | null;
+  sourceAssistantTurnId: string | null;
+  continuationSource: WorkflowContinuationReplaySource | null;
+  reviewRequired: boolean;
+  convergeTargetId: string | null;
+  blockedReason: WorkflowContinuationReplayBlockedReason | null;
+  targetCount: number;
+  targetNames: string[];
+  unresolvedTargets: string[];
+  replayState: 'ready' | 'in_progress' | 'failed' | null;
+  replayTrigger: 'retry' | null;
+  replayError: string | null;
+  retryAvailable: boolean;
+}
+
 export interface OrchestratorEffectivePolicyView {
   deliveryMode: CoreDeliveryMode | null;
   deliveryGates: CoreDeliveryGate[];
@@ -244,6 +286,7 @@ export interface OrchestratorRunInspectorView {
   workflowShape: string | null;
   reviewRequired: boolean;
   branchStates: OrchestratorWorkflowBranchView[];
+  latestWorkflowRecommendation: OrchestratorWorkflowRecommendationView | null;
   approvalActions: OrchestratorApprovalActionView[];
   incidentActions: OrchestratorOperatorActionView[];
 }
@@ -268,6 +311,8 @@ export interface OrchestratorOperatorView {
   effectivePolicy: OrchestratorEffectivePolicyView | null;
   governanceSummary: CoreGovernanceSummary | null;
   workflowSummary: CoreWorkflowSummary | null;
+  latestWorkflowRecommendation: OrchestratorWorkflowRecommendationView | null;
+  workflowContinuation: OrchestratorWorkflowContinuationView | null;
   approvalActions: OrchestratorApprovalActionView[];
   incidentActions: OrchestratorOperatorActionView[];
 }

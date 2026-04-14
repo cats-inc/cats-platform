@@ -1034,6 +1034,57 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
     assert.ok(
       payload.executionLoop.execution.nextActions.some((action) => action.kind === 'retry'),
     );
+    assert.ok(payload.executionLoop.operator.workflowContinuation);
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.blockedReason,
+      'anti_ping_pong',
+    );
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.stageId,
+      'continuation_handoff',
+    );
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.workflowShape,
+      'sequential',
+    );
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.continuationSource,
+      'explicit_mentions',
+    );
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.retryAvailable,
+      true,
+    );
+    assert.equal(
+      payload.executionLoop.operator.latestWorkflowRecommendation,
+      null,
+    );
+
+    const coreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(coreResponse.status, 200);
+    const corePayload = await coreResponse.json();
+    const task = corePayload.tasks.find((candidate) => candidate.id === `task-channel-${channelId}`);
+    assert.ok(task?.metadata?.workflowContinuationReplay);
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.sourceMessageId,
+      task.metadata.workflowContinuationReplay.sourceMessageId,
+    );
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.sourceTurnId,
+      task.metadata.workflowContinuationReplay.sourceTurnId,
+    );
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.sourceLaneId,
+      task.metadata.workflowContinuationReplay.sourceLaneId,
+    );
+    assert.equal(
+      payload.executionLoop.operator.workflowContinuation.sourceAssistantTurnId,
+      task.metadata.workflowContinuationReplay.sourceAssistantTurnId,
+    );
+    assert.deepEqual(
+      payload.executionLoop.operator.workflowContinuation.targetNames,
+      task.metadata.workflowContinuationReplay.targets.map((target) => target.participantName),
+    );
     assert.equal(payload.operator.executionLoopPath, `/api/orchestrator/channels/${channelId}/execution-loop`);
   });
 });
