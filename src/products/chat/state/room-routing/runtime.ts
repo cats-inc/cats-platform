@@ -42,6 +42,7 @@ export interface DispatchFrame {
 }
 
 export interface DispatchRequest extends DispatchFrame {
+  turnId: string;
   target: RoutingTarget;
   dispatchId: string;
   targetStateId: string;

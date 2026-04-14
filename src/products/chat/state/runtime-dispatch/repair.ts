@@ -1103,6 +1103,50 @@ function resolveMissingSessionTargetId(
   );
 }
 
+function resolveMissingSessionLaneId(
+  responseMessage: ChatMessage,
+  channelId: string,
+  core?: CatsCoreState,
+): string | null {
+  const laneId = typeof responseMessage.metadata?.laneId === 'string'
+    && responseMessage.metadata.laneId.trim().length > 0
+    ? responseMessage.metadata.laneId.trim()
+    : null;
+  if (laneId) {
+    return laneId;
+  }
+
+  return resolveCanonicalSessionRecord(
+    core,
+    channelId,
+    readMessageSessionId(responseMessage),
+  )?.laneId ?? null;
+}
+
+function resolveMissingSessionTargetStateId(
+  responseMessage: ChatMessage,
+  channelId: string,
+  core?: CatsCoreState,
+): string | null {
+  const targetStateId = typeof responseMessage.metadata?.targetStateId === 'string'
+    && responseMessage.metadata.targetStateId.trim().length > 0
+    ? responseMessage.metadata.targetStateId.trim()
+    : null;
+  if (targetStateId) {
+    return targetStateId;
+  }
+
+  const laneId = resolveMissingSessionLaneId(responseMessage, channelId, core);
+  if (!laneId) {
+    return null;
+  }
+
+  const conversationId = buildChatConversationId(channelId);
+  const canonicalLane = core?.lanes.find((lane) =>
+    lane.id === laneId && lane.conversationId === conversationId) ?? null;
+  return readChatCoreMetadataString(canonicalLane?.metadata, 'targetStateId');
+}
+
 function resolveMissingSessionCwd(
   channel: ChatChannelState,
   responseMessage: ChatMessage,
@@ -1216,6 +1260,16 @@ export function repairMissingSessionStartedMessages(
       channelId,
       options.core,
     ) ?? undefined;
+    const targetStateId = resolveMissingSessionTargetStateId(
+      responseMessage,
+      channelId,
+      options.core,
+    ) ?? undefined;
+    const laneId = resolveMissingSessionLaneId(
+      responseMessage,
+      channelId,
+      options.core,
+    ) ?? undefined;
     const transportBindingId = resolveMissingSessionTransportBindingId(
       nextChannel,
       sessionId,
@@ -1234,6 +1288,8 @@ export function repairMissingSessionStartedMessages(
         conversationId: buildChatConversationId(channelId),
         targetKind,
         ...(targetId ? { targetId } : {}),
+        ...(targetStateId ? { targetStateId } : {}),
+        ...(laneId ? { laneId } : {}),
         ...(transportBindingId ? { transportBindingId } : {}),
         sessionId,
         verbosity: 'verbose',

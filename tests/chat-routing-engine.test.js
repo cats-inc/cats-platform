@@ -21,6 +21,7 @@ import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { patchTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 import {
   buildChatConversationId,
+  buildChatLaneId,
   buildChatWorkItemId,
   buildDirectLaneTransportBindingId,
 } from '../build/server/shared/chatCoreIds.js';
@@ -1885,12 +1886,14 @@ test('direct cat chat records targetStateId on real session_started messages', a
   assert.equal(completedTurn?.targetStatuses.length, 1);
   const targetStateId = completedTurn?.targetStatuses[0]?.id;
   assert.equal(typeof targetStateId, 'string');
+  const laneId = buildChatLaneId(completedTurn.id, targetStateId, companionId);
 
   const sessionStarted = channel.messages.find((message) =>
     message.metadata?.event === 'session_started'
     && message.metadata?.sessionId === 'session-1');
   assert.ok(sessionStarted);
   assert.equal(sessionStarted?.metadata?.targetStateId, targetStateId);
+  assert.equal(sessionStarted?.metadata?.laneId, laneId);
 });
 
 test('direct cat chat records targetStateId on session_start_failed messages', async () => {
@@ -1942,11 +1945,13 @@ test('direct cat chat records targetStateId on session_start_failed messages', a
   assert.equal(failedTurn?.targetStatuses.length, 1);
   const targetStateId = failedTurn?.targetStatuses[0]?.id;
   assert.equal(typeof targetStateId, 'string');
+  const laneId = buildChatLaneId(failedTurn.id, targetStateId, companionId);
 
   const sessionStartFailed = channel.messages.find((message) =>
     message.metadata?.event === 'session_start_failed');
   assert.ok(sessionStartFailed);
   assert.equal(sessionStartFailed?.metadata?.targetStateId, targetStateId);
+  assert.equal(sessionStartFailed?.metadata?.laneId, laneId);
 });
 
 test('direct cat chat treats lead-cat mentions as plain text and stays on the lane', async () => {

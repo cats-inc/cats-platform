@@ -262,6 +262,7 @@ export async function processDispatchQueue(
 
       const request: DispatchRequest = {
         ...frame,
+        turnId: activeTurn.id,
         sourceMessage: effectiveSourceMessage,
         target,
         dispatchId: randomUUID(),

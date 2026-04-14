@@ -1,11 +1,14 @@
 import type { RuntimeSessionInvocationContext } from '../../../../runtime/client.js';
 import type { DispatchRequest } from '../room-routing/runtime.js';
+import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
 
 export function buildDispatchRuntimeContextMetadata(
   request: Pick<
     DispatchRequest,
     | 'dispatchId'
+    | 'turnId'
     | 'targetStateId'
+    | 'target'
     | 'sourceMessage'
     | 'sourceParticipant'
     | 'trigger'
@@ -17,7 +20,13 @@ export function buildDispatchRuntimeContextMetadata(
 ): Record<string, unknown> {
   return {
     dispatchId: request.dispatchId,
+    turnId: request.turnId,
     targetStateId: request.targetStateId,
+    laneId: buildChatLaneId(
+      request.turnId,
+      request.targetStateId,
+      request.target.participantId,
+    ),
     sourceMessageId: request.sourceMessage.id,
     trigger: request.trigger,
     dispatchDepth: request.depth,

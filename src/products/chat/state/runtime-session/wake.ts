@@ -291,6 +291,10 @@ export async function ensureTargetSession(
     options.dispatchContextMetadata,
     'targetStateId',
   );
+  const laneId = readDispatchContextMetadataString(
+    options.dispatchContextMetadata,
+    'laneId',
+  );
   const taskExecutionContext = await resolveChannelTaskExecutionRequest(
     options.chatStore,
     channelId,
@@ -503,6 +507,7 @@ export async function ensureTargetSession(
             conversationId,
             targetKind: 'orchestrator',
             ...(targetStateId ? { targetStateId } : {}),
+            ...(laneId ? { laneId } : {}),
             ...(transportBindingId ? { transportBindingId } : {}),
             sessionId: session.id,
             verbosity: 'verbose',
@@ -608,6 +613,7 @@ export async function ensureTargetSession(
           targetKind: 'cat',
           targetId: target.participantId,
           ...(targetStateId ? { targetStateId } : {}),
+          ...(laneId ? { laneId } : {}),
           ...(transportBindingId ? { transportBindingId } : {}),
           sessionId: session.id,
           verbosity: 'verbose',
@@ -646,6 +652,7 @@ export async function ensureTargetSession(
           targetKind: target.participantKind,
           targetId: target.participantId,
           ...(targetStateId ? { targetStateId } : {}),
+          ...(laneId ? { laneId } : {}),
         },
       },
     ).state;

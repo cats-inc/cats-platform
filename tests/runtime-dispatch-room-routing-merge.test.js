@@ -30,7 +30,10 @@ import {
   repairMissingStartupRecoveryNotice,
   repairOrphanedCompletedDispatchTurn,
 } from '../build/server/products/chat/state/runtime-dispatch/repair.js';
-import { buildChatConversationId } from '../build/server/shared/chatCoreIds.js';
+import {
+  buildChatConversationId,
+  buildChatLaneId,
+} from '../build/server/shared/chatCoreIds.js';
 
 function createNoopRuntimeClient() {
   return {
@@ -458,6 +461,8 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
     },
   );
   const settledChannel = requireChannel(settled.state, channelId);
+  const recoveredTurn = settledChannel.roomRouting.workflow.turnHistory[0];
+  const recoveredTargetStateId = recoveredTurn?.targetStatuses[0]?.id;
   const recoveredSessionStartedIndex = settledChannel.messages.findIndex((message) =>
     message.metadata?.event === 'session_started'
     && message.metadata?.sessionId === 'session-recovered');
@@ -469,6 +474,15 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
   assert.equal(settledChannel.chatCwd, 'C:/Users/middl/.cats/runtime/sessions/session-recovered');
   assert.ok(recoveredSessionStartedIndex >= 0);
   assert.ok(recoveredResponseIndex > recoveredSessionStartedIndex);
+  assert.equal(typeof recoveredTargetStateId, 'string');
+  assert.equal(
+    settledChannel.messages[recoveredSessionStartedIndex]?.metadata?.targetStateId,
+    recoveredTargetStateId,
+  );
+  assert.equal(
+    settledChannel.messages[recoveredSessionStartedIndex]?.metadata?.laneId,
+    buildChatLaneId(recoveredTurn.id, recoveredTargetStateId, 'participant-inline'),
+  );
   assert.deepEqual(sentSessionIds, ['session-stale', 'session-recovered']);
   assert.deepEqual(closedSessionIds, ['session-stale']);
 });
@@ -1220,6 +1234,7 @@ test('repairMissingSessionStartedMessages falls back to canonical session metada
       createdAt: '2026-04-09T12:00:01.500Z',
       metadata: {
         speakerLabel: 'Canonical Agent',
+        targetStateId: 'target-canonical-fallback',
       },
     },
     new Date('2026-04-09T12:00:01.500Z'),
@@ -1258,6 +1273,8 @@ test('repairMissingSessionStartedMessages falls back to canonical session metada
   assert.match(sessionStarted.body, /Canonical Agent/u);
   assert.match(sessionStarted.body, /C:\/canonical\/session-canonical-fallback/u);
   assert.equal(repairedChannel.chatCwd, 'C:/canonical/session-canonical-fallback');
+  assert.equal(sessionStarted.metadata?.laneId, 'lane-canonical-fallback');
+  assert.equal(sessionStarted.metadata?.targetStateId, 'target-canonical-fallback');
 });
 
 test('repairMissingSessionStartedMessages restores a missing cat targetId from canonical session records', async () => {
@@ -1322,6 +1339,7 @@ test('repairMissingSessionStartedMessages restores a missing cat targetId from c
       createdAt: '2026-04-09T12:00:01.500Z',
       metadata: {
         speakerLabel: 'Canonical Agent',
+        targetStateId: 'target-canonical-target-fallback',
       },
     },
     new Date('2026-04-09T12:00:01.500Z'),
@@ -1360,6 +1378,8 @@ test('repairMissingSessionStartedMessages restores a missing cat targetId from c
   assert.ok(sessionStarted);
   assert.equal(sessionStarted.metadata?.conversationId, conversationId);
   assert.equal(sessionStarted.metadata?.targetId, 'participant-inline-record');
+  assert.equal(sessionStarted.metadata?.targetStateId, 'target-canonical-target-fallback');
+  assert.equal(sessionStarted.metadata?.laneId, 'lane-canonical-target-fallback');
   assert.equal(
     sessionStarted.metadata?.transportBindingId,
     'transport-binding-canonical-target-fallback',
