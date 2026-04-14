@@ -10,6 +10,10 @@ export function createCatActorId(catId: string): string {
   return `actor-cat-${catId}`;
 }
 
+export function createTemporaryParticipantActorId(participantId: string): string {
+  return `actor-participant-${participantId}`;
+}
+
 export function createEmptyMemoryCheckpoint(): MemoryCheckpointSummary {
   return {
     summary: null,

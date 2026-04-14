@@ -1,6 +1,7 @@
 import type {
   ArchiveMetadataRecord,
   BotBindingRecord,
+  ContainerRecord,
   CoreActorRecord,
   CoreApprovalRecord,
   CoreBudgetAlertLevel,
@@ -10,6 +11,7 @@ import type {
   CoreDeliveryGate,
   CoreDeliveryMode,
   CoreEffectivePolicySource,
+  ParticipantRecord,
   CoreRecordMetadata,
   CoreTaskRecord,
   CoreTaskStatus,
@@ -24,6 +26,7 @@ import {
   createCatActorId,
   createEmptyMemoryCheckpoint,
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
+  OWNER_ACTOR_ID,
 } from '../../../../core/actors.js';
 import {
   buildWorkflowContinuationReplayRequest,
@@ -31,8 +34,10 @@ import {
   writeWorkflowContinuationReplayMetadata,
 } from '../../../../platform/orchestration/workflowContinuationReplay.js';
 import type {
+  ChannelParticipantAssignment,
   ChatChannelState,
   ChatCat,
+  ParallelChatGroupState,
   ChatState,
 } from '../../api/contracts.js';
 import type {
@@ -54,6 +59,18 @@ import {
   sameParticipantRef,
   uniqueStrings,
 } from './entityMetadata.js';
+import {
+  buildChatArchiveId,
+  buildChatAssignedParticipantId,
+  buildChatConversationId,
+  buildChatOrchestratorParticipantId,
+  buildChatOwnerParticipantId,
+  buildChatParallelGroupContainerId,
+  buildChatTaskId,
+  CHAT_ROOT_CONTAINER_ID,
+  resolveChatConversationKind,
+  resolveChatParticipantAgentId,
+} from '../../../../shared/chatCoreIds.js';
 
 function mapChannelStatusToConversationStatus(channel: ChatChannelState): CoreConversationStatus {
   if (channel.status === 'planned') {
@@ -414,8 +431,8 @@ function buildChannelTaskMetadata(
     deliveryMode: effectiveDeliveryPolicy.mode,
     deliveryGates: effectiveDeliveryPolicy.gates,
     channelId: channel.id,
-    conversationId: `conversation-channel-${channel.id}`,
-    taskId: `task-channel-${channel.id}`,
+    conversationId: buildChatConversationId(channel.id),
+    taskId: buildChatTaskId(channel.id),
     roomMode: roomRouting?.mode ?? 'boss_chat',
     transport: null,
     workflowStageId: latestTurn?.stageId ?? null,
@@ -543,14 +560,174 @@ export function createCatActor(cat: ChatCat, bossCatId: string | null): CoreActo
   };
 }
 
+export function createTemporaryParticipantActor(
+  assignment: ChannelParticipantAssignment,
+): CoreActorRecord {
+  return {
+    id: resolveChatParticipantAgentId(assignment),
+    name: assignment.name,
+    kind: 'stakeholder',
+    status: 'active',
+    roles: uniqueStrings([
+      ...structuredClone(assignment.roles),
+      ...(assignment.roleHint ? [assignment.roleHint] : []),
+    ]),
+    skillProfile: null,
+    mcpProfile: null,
+    defaultExecutionTarget: structuredClone(assignment.execution.target),
+    memory: createEmptyMemoryCheckpoint(),
+    source: 'chat_participant',
+    sourceId: assignment.participantId,
+    createdAt: assignment.joinedAt,
+    updatedAt: assignment.leftAt ?? assignment.joinedAt,
+    archivedAt: null,
+  };
+}
+
+export function createTemporaryParticipantActors(chat: ChatState): CoreActorRecord[] {
+  const actorsById = new Map<string, CoreActorRecord>();
+
+  for (const channel of chat.channels) {
+    for (const assignment of channel.participantAssignments ?? []) {
+      if (assignment.sourceKind === 'cat') {
+        continue;
+      }
+
+      const actor = createTemporaryParticipantActor(assignment);
+      actorsById.set(actor.id, actor);
+    }
+  }
+
+  return [...actorsById.values()];
+}
+
+function mapAssignmentStatusToParticipantStatus(
+  assignment: ChannelParticipantAssignment,
+): ParticipantRecord['status'] {
+  return assignment.status === 'removed' ? 'removed' : 'active';
+}
+
+function buildParticipantRole(assignment: ChannelParticipantAssignment): string | null {
+  return assignment.roleHint ?? assignment.roles[0] ?? null;
+}
+
+export function createChatConversationParticipants(
+  channel: ChatChannelState,
+): ParticipantRecord[] {
+  const conversationId = buildChatConversationId(channel.id);
+  const assignments = channel.participantAssignments ?? [];
+  const participants: ParticipantRecord[] = [
+    {
+      id: buildChatOwnerParticipantId(channel.id),
+      conversationId,
+      agentId: OWNER_ACTOR_ID,
+      joinedAt: channel.createdAt,
+      updatedAt: channel.updatedAt,
+      role: 'owner',
+      status: 'active',
+      metadata: {
+        channelId: channel.id,
+        source: 'chat_owner',
+      },
+    },
+  ];
+
+  if (channel.channelKind !== 'direct_lane') {
+    participants.push({
+      id: buildChatOrchestratorParticipantId(channel.id),
+      conversationId,
+      agentId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
+      joinedAt: channel.createdAt,
+      updatedAt: channel.updatedAt,
+      role: 'orchestrator',
+      status: 'active',
+      metadata: {
+        channelId: channel.id,
+        source: 'chat_orchestrator',
+      },
+    });
+  }
+
+  participants.push(
+    ...assignments.map((assignment) => ({
+      id: buildChatAssignedParticipantId(channel.id, assignment.participantId),
+      conversationId,
+      agentId: resolveChatParticipantAgentId(assignment),
+      joinedAt: assignment.joinedAt,
+      updatedAt: assignment.leftAt ?? channel.updatedAt,
+      role: buildParticipantRole(assignment),
+      status: mapAssignmentStatusToParticipantStatus(assignment),
+      metadata: {
+        channelId: channel.id,
+        channelKind: channel.channelKind ?? null,
+        sourceKind: assignment.sourceKind,
+        sourceRefId: assignment.sourceRefId,
+        roleHint: assignment.roleHint,
+        roles: structuredClone(assignment.roles),
+        executionTarget: structuredClone(assignment.execution.target),
+      },
+    })),
+  );
+
+  return participants;
+}
+
+export function createChatRootContainer(chat: ChatState): ContainerRecord {
+  const earliestCreatedAt = [...chat.channels]
+    .map((channel) => channel.createdAt)
+    .sort((left, right) => left.localeCompare(right))[0]
+    ?? chat.globalOrchestrator.updatedAt;
+  const latestUpdatedAt = [...chat.channels]
+    .map((channel) => channel.updatedAt)
+    .sort((left, right) => right.localeCompare(left))[0]
+    ?? chat.globalOrchestrator.updatedAt;
+
+  return {
+    id: CHAT_ROOT_CONTAINER_ID,
+    kind: 'chat_root',
+    title: 'Cats Chat',
+    status: 'active',
+    parentContainerId: null,
+    createdAt: earliestCreatedAt,
+    updatedAt: latestUpdatedAt,
+    metadata: {
+      channelIds: chat.channels.map((channel) => channel.id),
+      conversationIds: chat.channels.map((channel) => buildChatConversationId(channel.id)),
+      parallelGroupIds: chat.parallelChatGroups.map((group) => group.id),
+    },
+  };
+}
+
+export function createParallelGroupContainer(
+  group: ParallelChatGroupState,
+): ContainerRecord {
+  return {
+    id: buildChatParallelGroupContainerId(group.id),
+    kind: 'parallel_group',
+    title: group.title,
+    status: group.status === 'archived' ? 'archived' : 'active',
+    parentContainerId: CHAT_ROOT_CONTAINER_ID,
+    createdAt: group.createdAt,
+    updatedAt: group.updatedAt,
+    metadata: {
+      groupId: group.id,
+      mode: group.mode,
+      memberChannelIds: structuredClone(group.memberChannelIds),
+      memberConversationIds: group.memberChannelIds.map((channelId) =>
+        buildChatConversationId(channelId)),
+      lastMessageAt: group.lastMessageAt,
+    },
+  };
+}
+
 export function createConversationFromChannel(
   channel: ChatChannelState,
   participantActorIds: string[],
 ): CoreConversationRecord {
   return {
-    id: `conversation-channel-${channel.id}`,
+    id: buildChatConversationId(channel.id),
     title: channel.title,
-    kind: 'chat_channel',
+    kind: resolveChatConversationKind(channel.channelKind),
     status: mapChannelStatusToConversationStatus(channel),
     participantActorIds: uniqueStrings(participantActorIds),
     sourceChannelId: channel.id,
@@ -586,13 +763,14 @@ export function createTaskFromChannel(
       : existingTask?.status ?? derivedStatus;
 
   return {
-    id: `task-channel-${channel.id}`,
+    id: buildChatTaskId(channel.id),
     title: channel.title,
     status,
     conversationId,
     ownerActorId,
     orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
-    assignedActorIds: channel.catAssignments.map((assignment) => `actor-cat-${assignment.catId}`),
+    assignedActorIds: (channel.participantAssignments ?? []).map((assignment) =>
+      resolveChatParticipantAgentId(assignment)),
     summary: channel.topic,
     approval,
     createdAt: channel.createdAt,
@@ -625,6 +803,24 @@ export function preserveCoreOwnedConversations(
     .map((conversation) => structuredClone(conversation));
 }
 
+export function preserveCoreOwnedParticipants(
+  existingParticipants: ParticipantRecord[],
+): ParticipantRecord[] {
+  return existingParticipants
+    .filter((participant) => !participant.conversationId.startsWith('conversation-channel-'))
+    .map((participant) => structuredClone(participant));
+}
+
+export function preserveCoreOwnedContainers(
+  existingContainers: ContainerRecord[],
+): ContainerRecord[] {
+  return existingContainers
+    .filter((container) =>
+      container.id !== CHAT_ROOT_CONTAINER_ID
+      && !container.id.startsWith('container-parallel-group-'))
+    .map((container) => structuredClone(container));
+}
+
 export function preserveCoreOwnedArchives(
   existingArchives: ArchiveMetadataRecord[],
 ): ArchiveMetadataRecord[] {
@@ -642,7 +838,7 @@ export function createArchiveMetadata(
   existingArchive: ArchiveMetadataRecord | null,
 ): ArchiveMetadataRecord {
   return {
-    id: `archive-channel-${channel.id}`,
+    id: buildChatArchiveId(channel.id),
     sourceConversationId: conversationId,
     sourceChannelId: channel.id,
     exportFormat: 'chat-channel-json',

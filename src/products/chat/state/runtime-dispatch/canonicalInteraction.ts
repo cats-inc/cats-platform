@@ -13,6 +13,10 @@ import type { ChatMessage, ChatState } from '../../api/contracts.js';
 import type { RoomWorkflowTurn } from '../../../../shared/roomRouting.js';
 import { ASSISTANT_TURN_SEGMENT_EVENT } from '../assistantTurnSegments.js';
 import { requireChannel } from '../model/index.js';
+import {
+  buildChatConversationId,
+  buildChatLaneId,
+} from '../../../../shared/chatCoreIds.js';
 import type { DispatchExecution } from './execution.js';
 
 function readMessageMetadataString(message: ChatMessage, key: string): string | null {
@@ -23,14 +27,6 @@ function readMessageMetadataString(message: ChatMessage, key: string): string | 
 function readMessageMetadataNumber(message: ChatMessage, key: string): number | null {
   const value = message.metadata?.[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function buildCanonicalConversationId(channelId: string): string {
-  return `conversation-channel-${channelId}`;
-}
-
-function buildCanonicalLaneId(turnId: string, targetStateId: string, participantId: string): string {
-  return `lane-${turnId}-${targetStateId || participantId}`;
 }
 
 function resolveTargetAgentId(state: ChatState, channelId: string, execution: DispatchExecution): string | null {
@@ -89,14 +85,14 @@ export interface RecordDispatchExecutionInteractionInput {
 export function recordDispatchExecutionInteraction(
   input: RecordDispatchExecutionInteractionInput,
 ): CatsCoreState {
-  const conversationId = buildCanonicalConversationId(input.channelId);
+  const conversationId = buildChatConversationId(input.channelId);
   const participantId = input.execution.target.participantId;
   const targetStateId = input.execution.targetStateId;
   if (!participantId || !targetStateId) {
     return input.core;
   }
 
-  const laneId = buildCanonicalLaneId(input.workflowTurn.id, targetStateId, participantId);
+  const laneId = buildChatLaneId(input.workflowTurn.id, targetStateId, participantId);
   const agentId = resolveTargetAgentId(input.state, input.channelId, input.execution);
   const responseMessages = resolveExecutionResponseMessages(
     input.state,

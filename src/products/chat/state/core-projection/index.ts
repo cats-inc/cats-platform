@@ -3,16 +3,27 @@ import { CATS_CORE_STATE_VERSION } from '../../../../core/types.js';
 import { createDefaultCoreState } from '../../../../core/model/index.js';
 import {
   createDefaultOwnerProfile,
-  GLOBAL_ORCHESTRATOR_ACTOR_ID,
 } from '../../../../core/actors.js';
 import type { ChatState } from '../../api/contracts.js';
 import {
+  buildChatArchiveId,
+  buildChatConversationId,
+  buildChatTaskId,
+  resolveChatConversationActorIds,
+} from '../../../../shared/chatCoreIds.js';
+import {
   createArchiveMetadata,
   createCatActor,
+  createChatConversationParticipants,
+  createChatRootContainer,
   createConversationFromChannel,
   createOrchestratorActor,
   createOwnerActor,
+  createParallelGroupContainer,
   createTaskFromChannel,
+  createTemporaryParticipantActors,
+  preserveCoreOwnedContainers,
+  preserveCoreOwnedParticipants,
   preserveCoreOwnedActors,
   preserveCoreOwnedArchives,
   preserveCoreOwnedConversations,
@@ -42,28 +53,37 @@ export function syncCoreStateWithChatState(
   const ownerActor = createOwnerActor(ownerProfile);
   const orchestratorActor = createOrchestratorActor(chat);
   const catActors = chat.cats.map((cat) => createCatActor(cat, chat.bossCatId));
+  const temporaryParticipantActors = createTemporaryParticipantActors(chat);
   const preservedActors = preserveCoreOwnedActors(existingCore.actors ?? []);
   const existingTasks = new Map((existingCore.tasks ?? []).map((task) => [task.id, task]));
   const existingArchives = new Map((existingCore.archives ?? []).map((archive) => [archive.id, archive]));
+  const preservedParticipants = preserveCoreOwnedParticipants(existingCore.participants ?? []);
+  const preservedContainers = preserveCoreOwnedContainers(existingCore.containers ?? []);
   const preservedConversations = preserveCoreOwnedConversations(
     existingCore.conversations ?? [],
   );
   const conversations = chat.channels.map((channel) =>
     createConversationFromChannel(
       channel,
-      [
-        ownerProfile.actorId,
-        GLOBAL_ORCHESTRATOR_ACTOR_ID,
-        ...channel.catAssignments.map((assignment) => `actor-cat-${assignment.catId}`),
-      ],
+      resolveChatConversationActorIds({
+        channelId: channel.id,
+        channelKind: channel.channelKind,
+        assignments: channel.participantAssignments ?? [],
+      }),
     ),
   );
+  const participants = chat.channels.flatMap((channel) =>
+    createChatConversationParticipants(channel));
+  const containers = [
+    createChatRootContainer(chat),
+    ...chat.parallelChatGroups.map((group) => createParallelGroupContainer(group)),
+  ];
   const tasks = chat.channels.map((channel) =>
     createTaskFromChannel(
       channel,
       ownerProfile.actorId,
-      `conversation-channel-${channel.id}`,
-      existingTasks.get(`task-channel-${channel.id}`) as CoreTaskRecord | null ?? null,
+      buildChatConversationId(channel.id),
+      existingTasks.get(buildChatTaskId(channel.id)) as CoreTaskRecord | null ?? null,
     ),
   );
   const preservedTasks = preserveCoreOwnedTasks(existingCore.tasks ?? []);
@@ -76,8 +96,8 @@ export function syncCoreStateWithChatState(
   const archives = chat.channels.map((channel) =>
     createArchiveMetadata(
       channel,
-      `conversation-channel-${channel.id}`,
-      existingArchives.get(`archive-channel-${channel.id}`) ?? null,
+      buildChatConversationId(channel.id),
+      existingArchives.get(buildChatArchiveId(channel.id)) ?? null,
     ),
   );
   const workflowTurns = chat.channels.flatMap((channel) =>
@@ -113,9 +133,15 @@ export function syncCoreStateWithChatState(
     },
     guideCat: existingCore.guideCat ? structuredClone(existingCore.guideCat) : null,
     assistantPresets: structuredClone(existingCore.assistantPresets ?? []),
-    actors: [ownerActor, orchestratorActor, ...catActors, ...preservedActors],
-    participants: structuredClone(existingCore.participants ?? []),
-    containers: structuredClone(existingCore.containers ?? []),
+    actors: [
+      ownerActor,
+      orchestratorActor,
+      ...catActors,
+      ...temporaryParticipantActors,
+      ...preservedActors,
+    ],
+    participants: [...participants, ...preservedParticipants],
+    containers: [...containers, ...preservedContainers],
     conversations: [...conversations, ...preservedConversations],
     turns: structuredClone(existingCore.turns ?? []),
     lanes: structuredClone(existingCore.lanes ?? []),

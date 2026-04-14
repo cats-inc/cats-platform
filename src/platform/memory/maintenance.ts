@@ -1,5 +1,6 @@
 import { appendCoreActivity } from '../../core/model/index.js';
 import type { CoreStore } from '../../core/store.js';
+import { buildChatConversationId } from '../../shared/chatCoreIds.js';
 import type {
   MemoryFlushResult,
   MemoryFlushSummary,
@@ -182,7 +183,7 @@ export async function appendMemoryMaintenanceActivity(
     core,
     {
       kind: 'note',
-      conversationId: input.channelId ? `conversation-channel-${input.channelId}` : null,
+      conversationId: input.channelId ? buildChatConversationId(input.channelId) : null,
       message: buildMemoryMaintenanceMessage(input),
       metadata: {
         category: 'memory_maintenance',

@@ -62,6 +62,7 @@ export function normalizeCoreActor(rawActor: unknown): CoreActorRecord | null {
     rawSource === 'owner_profile'
     || rawSource === 'global_orchestrator'
     || rawSource === 'chat_cat'
+    || rawSource === 'chat_participant'
     || rawSource === 'core_record'
   )
     ? rawSource

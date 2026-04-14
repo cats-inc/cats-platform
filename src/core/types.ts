@@ -265,6 +265,7 @@ export type CoreActorSource =
   | 'owner_profile'
   | 'global_orchestrator'
   | 'chat_cat'
+  | 'chat_participant'
   | 'core_record';
 
 export interface CoreActorRecord {

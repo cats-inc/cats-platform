@@ -17,6 +17,7 @@ import {
   resolveGuardReason,
   resolveLatestWorkflowRecommendation,
 } from './metadata.js';
+import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 import type {
   ChatOperatorSnapshot,
   ChatOperatorView,
@@ -38,7 +39,7 @@ export type {
 } from './types.js';
 
 export function resolveChatConversationId(channelId: string): string {
-  return `conversation-channel-${channelId}`;
+  return buildChatConversationId(channelId);
 }
 
 export function buildChatOperatorView(
