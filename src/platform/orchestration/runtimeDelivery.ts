@@ -4,7 +4,11 @@ import type {
   SessionId,
   TurnId,
 } from '../../core/types.js';
-import type { RuntimeSessionStreamEvent } from '../../runtime/client.js';
+import type {
+  RuntimeMessageResult,
+  RuntimeMessageSegment,
+  RuntimeSessionStreamEvent,
+} from '../../runtime/client.js';
 import { normalizeRuntimeContentBlock } from '../../shared/runtimeContentBlocks.js';
 import {
   ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
@@ -89,6 +93,26 @@ function resolveNormalizedRuntimeDeliverySegmentIndex(input: {
     ?? 0;
 }
 
+function buildResultContentBlock(
+  segment: RuntimeMessageSegment,
+  index: number,
+): RuntimeDeliveryContentBlock {
+  return {
+    id: `result-block-${index}`,
+    index,
+    kind: segment.kind === 'text' ? 'text' : 'tool',
+    status: 'complete',
+    title: segment.kind === 'text' ? null : segment.toolName,
+    text: segment.text,
+    toolName: segment.toolName,
+    toolId: segment.toolId,
+    metadata: {
+      source: 'runtime_result',
+      segmentKind: segment.kind,
+    },
+  };
+}
+
 export interface BuildNormalizedRuntimeDeliveryEventInput {
   conversationId: ConversationId;
   turnId: TurnId;
@@ -96,6 +120,15 @@ export interface BuildNormalizedRuntimeDeliveryEventInput {
   sessionId?: SessionId | null;
   event: RuntimeSessionStreamEvent;
   eventIndex: number;
+  emittedAt?: string | null;
+}
+
+export interface BuildNormalizedRuntimeDeliveryEventsFromResultInput {
+  conversationId: ConversationId;
+  turnId: TurnId;
+  laneId: LaneId;
+  sessionId?: SessionId | null;
+  result: RuntimeMessageResult;
   emittedAt?: string | null;
 }
 
@@ -131,4 +164,64 @@ export function buildNormalizedRuntimeDeliveryEvent(
     payload: { ...input.event.data },
     contentBlock: cloneRuntimeDeliveryContentBlock(contentBlock),
   };
+}
+
+export function buildNormalizedRuntimeDeliveryEventsFromResult(
+  input: BuildNormalizedRuntimeDeliveryEventsFromResultInput,
+): NormalizedRuntimeDeliveryEvent[] {
+  const emittedAt = readString(input.emittedAt) ?? new Date().toISOString();
+  const events: NormalizedRuntimeDeliveryEvent[] = input.result.segments.map((segment, index) => {
+    const contentBlock = buildResultContentBlock(segment, index);
+    return {
+      version: ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
+      conversationId: input.conversationId,
+      turnId: input.turnId,
+      laneId: input.laneId,
+      sessionId: input.sessionId ?? null,
+      kind: 'content_block',
+      sourceEvent: 'result',
+      eventId: `${input.turnId}:${input.laneId}:result-block:${index}`,
+      emittedAt,
+      sequence: {
+        segmentIndex: index,
+        blockIndex: index,
+        eventIndex: index,
+      },
+      payload: {
+        segmentIndex: index,
+        result: {
+          inputTokens: input.result.inputTokens,
+          outputTokens: input.result.outputTokens,
+          tokensUsed: input.result.tokensUsed,
+        },
+      },
+      contentBlock,
+    };
+  });
+
+  events.push({
+    version: ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
+    conversationId: input.conversationId,
+    turnId: input.turnId,
+    laneId: input.laneId,
+    sessionId: input.sessionId ?? null,
+    kind: 'result',
+    sourceEvent: 'result',
+    eventId: `${input.turnId}:${input.laneId}:result`,
+    emittedAt,
+    sequence: {
+      segmentIndex: input.result.segments.length,
+      blockIndex: null,
+      eventIndex: input.result.segments.length,
+    },
+    payload: {
+      inputTokens: input.result.inputTokens,
+      outputTokens: input.result.outputTokens,
+      tokensUsed: input.result.tokensUsed,
+      segmentCount: input.result.segments.length,
+    },
+    contentBlock: null,
+  });
+
+  return events;
 }

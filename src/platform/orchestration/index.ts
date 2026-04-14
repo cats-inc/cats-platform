@@ -31,7 +31,9 @@ export {
 } from './contracts.js';
 export {
   buildNormalizedRuntimeDeliveryEvent,
+  buildNormalizedRuntimeDeliveryEventsFromResult,
   type BuildNormalizedRuntimeDeliveryEventInput,
+  type BuildNormalizedRuntimeDeliveryEventsFromResultInput,
 } from './runtimeDelivery.js';
 export {
   buildOrchestratorExecutionLoopResponse,
