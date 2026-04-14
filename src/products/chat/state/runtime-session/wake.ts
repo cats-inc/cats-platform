@@ -253,6 +253,16 @@ function readInvocationContextMetadataString(
     : null;
 }
 
+function readDispatchContextMetadataString(
+  metadata: Record<string, unknown> | undefined,
+  key: string,
+): string | null {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
 export async function ensureTargetSession(
   state: ChatState,
   channelId: string,
@@ -277,6 +287,10 @@ export async function ensureTargetSession(
   const wakeReason = options.wakeReason ?? 'room_default';
   const sourceMessageId = options.sourceMessageId ?? null;
   const participant = toParticipantRef(target);
+  const targetStateId = readDispatchContextMetadataString(
+    options.dispatchContextMetadata,
+    'targetStateId',
+  );
   const taskExecutionContext = await resolveChannelTaskExecutionRequest(
     options.chatStore,
     channelId,
@@ -488,6 +502,7 @@ export async function ensureTargetSession(
             event: 'session_started',
             conversationId,
             targetKind: 'orchestrator',
+            ...(targetStateId ? { targetStateId } : {}),
             ...(transportBindingId ? { transportBindingId } : {}),
             sessionId: session.id,
             verbosity: 'verbose',
@@ -592,6 +607,7 @@ export async function ensureTargetSession(
           conversationId,
           targetKind: 'cat',
           targetId: target.participantId,
+          ...(targetStateId ? { targetStateId } : {}),
           ...(transportBindingId ? { transportBindingId } : {}),
           sessionId: session.id,
           verbosity: 'verbose',
@@ -629,6 +645,7 @@ export async function ensureTargetSession(
           event: 'session_start_failed',
           targetKind: target.participantKind,
           targetId: target.participantId,
+          ...(targetStateId ? { targetStateId } : {}),
         },
       },
     ).state;

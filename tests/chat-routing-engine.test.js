@@ -9,6 +9,7 @@ import {
   createChannel,
   createCat,
   removeCatFromChannel,
+  requireChannel,
   setChannelCatLease,
 } from '../build/server/products/chat/state/model/index.js';
 import {
@@ -1836,6 +1837,116 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assert.equal(channel.roomRouting?.wakeHistory[0]?.participant.participantId, companionId);
   assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
   assert.equal(channel.status, 'active');
+});
+
+test('direct cat chat records targetStateId on real session_started messages', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Track targetStateId on real session_started messages.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async () => usage('Companion session started normally.'));
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Start the lane and respond.' },
+    runtimeClient,
+    now,
+  );
+  const channel = requireChannel(dispatched.state, channelId);
+  const completedTurn = channel.roomRouting.workflow.turnHistory[0];
+
+  assert.ok(completedTurn);
+  assert.equal(completedTurn?.targetStatuses.length, 1);
+  const targetStateId = completedTurn?.targetStatuses[0]?.id;
+  assert.equal(typeof targetStateId, 'string');
+
+  const sessionStarted = channel.messages.find((message) =>
+    message.metadata?.event === 'session_started'
+    && message.metadata?.sessionId === 'session-1');
+  assert.ok(sessionStarted);
+  assert.equal(sessionStarted?.metadata?.targetStateId, targetStateId);
+});
+
+test('direct cat chat records targetStateId on session_start_failed messages', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Track targetStateId on session_start_failed messages.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async () => usage('unused'));
+  runtimeClient.createSession = async () => {
+    throw new Error('Runtime session boot failed.');
+  };
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Try to start the lane.' },
+    runtimeClient,
+    now,
+  );
+  const channel = requireChannel(dispatched.state, channelId);
+  const failedTurn = channel.roomRouting.workflow.turnHistory[0];
+
+  assert.ok(failedTurn);
+  assert.equal(failedTurn?.targetStatuses.length, 1);
+  const targetStateId = failedTurn?.targetStatuses[0]?.id;
+  assert.equal(typeof targetStateId, 'string');
+
+  const sessionStartFailed = channel.messages.find((message) =>
+    message.metadata?.event === 'session_start_failed');
+  assert.ok(sessionStartFailed);
+  assert.equal(sessionStartFailed?.metadata?.targetStateId, targetStateId);
 });
 
 test('direct cat chat treats lead-cat mentions as plain text and stays on the lane', async () => {
