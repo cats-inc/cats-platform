@@ -7018,6 +7018,8 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
       workPayload.sections.operatorInbox.items[0].taskContext.assignedActors[0]?.actorId,
       'actor-orchestrator-global',
     );
+    assert.equal(workPayload.sections.operatorInbox.items[0].taskContext.projectId, 'project-work-dashboard');
+    assert.equal(workPayload.sections.operatorInbox.items[0].taskContext.workItemId, 'work-item-work-dashboard');
     assert.equal(
       workPayload.sections.controlPlane.items[0].taskContext.conversationSourceChannelId,
       sourceChannelId,
@@ -7027,6 +7029,14 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
       'actor-orchestrator-global',
     );
     assert.equal(
+      workPayload.sections.controlPlane.items[0].taskContext.projectId,
+      'project-work-dashboard',
+    );
+    assert.equal(
+      workPayload.sections.controlPlane.items[0].taskContext.workItemId,
+      'work-item-work-dashboard',
+    );
+    assert.equal(
       workPayload.sections.recovery.items[0].taskContext.conversationSourceChannelId,
       sourceChannelId,
     );
@@ -7034,6 +7044,8 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
       workPayload.sections.recovery.items[0].taskContext.assignedActors[0]?.actorId,
       'actor-orchestrator-global',
     );
+    assert.equal(workPayload.sections.recovery.items[0].taskContext.projectId, 'project-work-dashboard');
+    assert.equal(workPayload.sections.recovery.items[0].taskContext.workItemId, 'work-item-work-dashboard');
     assert.ok('operatorInbox' in workPayload.sections);
     assert.ok('controlPlane' in workPayload.sections);
     assert.ok('recovery' in workPayload.sections);

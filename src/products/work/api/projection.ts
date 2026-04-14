@@ -283,6 +283,10 @@ export interface WorkPendingPlanSummary {
 export interface WorkTaskActionContext {
   conversationTitle: string | null;
   conversationSourceChannelId: string | null;
+  projectId: string | null;
+  projectTitle: string | null;
+  workItemId: string | null;
+  workItemTitle: string | null;
   assignedActors: Array<{
     actorId: string;
     displayName: string;
@@ -626,10 +630,20 @@ function buildWorkTaskActionContext(
   const conversation = task?.conversationId
     ? core.conversations.find((candidate) => candidate.id === task.conversationId) ?? null
     : null;
+  const workItem = task
+    ? core.workItems.find((candidate) => candidate.taskId === task.id) ?? null
+    : null;
+  const project = workItem?.projectId
+    ? core.projects.find((candidate) => candidate.id === workItem.projectId) ?? null
+    : null;
 
   return {
     conversationTitle: conversation?.title ?? null,
     conversationSourceChannelId: conversation?.sourceChannelId ?? null,
+    projectId: project?.id ?? null,
+    projectTitle: project?.title ?? null,
+    workItemId: workItem?.id ?? null,
+    workItemTitle: workItem?.title ?? null,
     assignedActors: task?.assignedActorIds.map((actorId) => ({
       actorId,
       displayName: resolveActorName(core, actorId),

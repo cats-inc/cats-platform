@@ -153,6 +153,32 @@ function WorkWarRoomTaskContextActions({
   return (
     <div className="workWarRoomHeaderActions">
       <WorkWarRoomOpenTaskButton taskId={taskId} />
+      {taskContext.projectId ? (
+        <button
+          type="button"
+          className="operatorActionButton"
+          onClick={() => {
+            startTransition(() => {
+              navigate(`/work/projects/${encodeURIComponent(taskContext.projectId!)}`);
+            });
+          }}
+        >
+          Open project
+        </button>
+      ) : null}
+      {taskContext.workItemId ? (
+        <button
+          type="button"
+          className="operatorActionButton"
+          onClick={() => {
+            startTransition(() => {
+              navigate(`/work/work-items/${encodeURIComponent(taskContext.workItemId!)}`);
+            });
+          }}
+        >
+          Open work item
+        </button>
+      ) : null}
       {taskContext.conversationSourceChannelId ? (
         <button
           type="button"
@@ -239,6 +265,10 @@ function OperatorInboxSection({
                 <span>{formatTimestamp(item.latestTimelineItem?.timestamp)}</span>
               </div>
               <div className="operatorMetaRow">
+                <span>Project: {item.taskContext.projectTitle ?? 'No linked project'}</span>
+                <span>Work item: {item.taskContext.workItemTitle ?? 'No linked work item'}</span>
+              </div>
+              <div className="operatorMetaRow">
                 <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>
                 <span>Actors: {compactList(item.taskContext.assignedActors.map((actor) => actor.displayName))}</span>
               </div>
@@ -306,6 +336,10 @@ function ControlPlaneSection({
               <div className="operatorMetaRow">
                 <span>Replay: {item.workflowContinuation?.replayState ?? 'Not recorded'}</span>
                 <span>Blocked: {item.workflowContinuation?.blockedReason ?? 'No'}</span>
+              </div>
+              <div className="operatorMetaRow">
+                <span>Project: {item.taskContext.projectTitle ?? 'No linked project'}</span>
+                <span>Work item: {item.taskContext.workItemTitle ?? 'No linked work item'}</span>
               </div>
               <div className="operatorMetaRow">
                 <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>
@@ -526,6 +560,10 @@ function RecoverySection({
               <div className="operatorMetaRow">
                 <span>Latest source: {item.latestActivity?.source ?? 'Not recorded'}</span>
                 <span>{formatTimestamp(item.latestActivity?.createdAt)}</span>
+              </div>
+              <div className="operatorMetaRow">
+                <span>Project: {item.taskContext.projectTitle ?? 'No linked project'}</span>
+                <span>Work item: {item.taskContext.workItemTitle ?? 'No linked work item'}</span>
               </div>
               <div className="operatorMetaRow">
                 <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>

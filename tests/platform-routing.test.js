@@ -284,10 +284,16 @@ test('Work projections preserve briefing-thread channel links from shared conver
   assert.equal(workItemList.workItems[0].assignedActors[0]?.displayName, 'Work Reviewer');
   assert.equal(workDashboard.sections.operatorInbox.items[0].taskContext.conversationSourceChannelId, sourceChannelId);
   assert.equal(workDashboard.sections.operatorInbox.items[0].taskContext.assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
+  assert.equal(workDashboard.sections.operatorInbox.items[0].taskContext.projectId, projectId);
+  assert.equal(workDashboard.sections.operatorInbox.items[0].taskContext.workItemId, workItemId);
   assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.conversationSourceChannelId, sourceChannelId);
   assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.assignedActors[0]?.displayName, 'Work Reviewer');
+  assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.projectTitle, 'Work briefing project');
+  assert.equal(workDashboard.sections.controlPlane.items[0].taskContext.workItemTitle, 'Work briefing item');
   assert.equal(workDashboard.sections.recovery.items[0].taskContext.conversationSourceChannelId, sourceChannelId);
   assert.equal(workDashboard.sections.recovery.items[0].taskContext.assignedActors[0]?.actorId, 'actor-cat-work-reviewer');
+  assert.equal(workDashboard.sections.recovery.items[0].taskContext.projectId, projectId);
+  assert.equal(workDashboard.sections.recovery.items[0].taskContext.workItemId, workItemId);
   assert.equal(taskList.tasks[0].conversationSourceChannelId, sourceChannelId);
   assert.equal(taskList.tasks[0].projectId, projectId);
   assert.equal(taskList.tasks[0].workItemId, workItemId);

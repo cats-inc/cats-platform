@@ -52,6 +52,8 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(warRoomSource, /buildChannelPath/u);
   assert.match(warRoomSource, /buildMyCatPath/u);
   assert.match(warRoomSource, /taskContext\.conversationSourceChannelId/u);
+  assert.match(warRoomSource, /taskContext\.projectId/u);
+  assert.match(warRoomSource, /taskContext\.workItemId/u);
   assert.match(warRoomSource, /listCatActorLinks\(taskContext\.assignedActors\)/u);
   assert.equal(
     warRoomSource.match(
