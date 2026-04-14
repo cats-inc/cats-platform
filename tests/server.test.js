@@ -2899,6 +2899,18 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       fixtures.run.id,
     );
 
+    const managedWorkResponse = await fetch(`${baseUrl}/api/core/managed-work`);
+    assert.equal(managedWorkResponse.status, 200);
+    const managedWorkPayload = await managedWorkResponse.json();
+    assert.ok(
+      managedWorkPayload.items.some((item) => item.workItem.id === fixtures.workItem.id),
+    );
+    assert.equal(
+      managedWorkPayload.items.find((item) => item.workItem.id === fixtures.workItem.id)
+        ?.latestRun?.id,
+      fixtures.run.id,
+    );
+
     const turnsListResponse = await fetch(`${baseUrl}/api/core/turns`);
     assert.equal(turnsListResponse.status, 200);
     const turnsListPayload = await turnsListResponse.json();
