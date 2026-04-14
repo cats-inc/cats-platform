@@ -25,6 +25,10 @@ import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 import {
+  readChatCoreMetadataString,
+  resolveRawChatParticipantId,
+} from './chatCoreInterop.js';
+import {
   buildChannelView,
   requireChannel,
   requireCat,
@@ -174,32 +178,6 @@ export function resolveChoiceResponseTarget(
   return cat ? buildCatTarget(cat) : null;
 }
 
-function readCoreMetadataString(
-  metadata: Record<string, unknown> | null | undefined,
-  key: string,
-): string | null {
-  const value = metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
-function resolveRawChatParticipantId(
-  canonicalParticipantId: string | null | undefined,
-  conversationId: string,
-): string | null {
-  if (!canonicalParticipantId) {
-    return null;
-  }
-
-  const prefix = `participant-${conversationId}-`;
-  if (canonicalParticipantId.startsWith(prefix)) {
-    const rawParticipantId = canonicalParticipantId.slice(prefix.length).trim();
-    return rawParticipantId.length > 0 ? rawParticipantId : null;
-  }
-
-  const normalized = canonicalParticipantId.trim();
-  return normalized.length > 0 ? normalized : null;
-}
-
 function resolveCanonicalChoiceResponseTarget(
   state: ChatState,
   channel: ChatChannelView,
@@ -210,7 +188,7 @@ function resolveCanonicalChoiceResponseTarget(
   const segment = core.segments
     .filter((candidate) =>
       candidate.conversationId === conversationId
-      && readCoreMetadataString(candidate.metadata, 'chatMessageId') === sourceMessageId)
+      && readChatCoreMetadataString(candidate.metadata, 'chatMessageId') === sourceMessageId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .at(-1);
   if (!segment) {
@@ -220,8 +198,8 @@ function resolveCanonicalChoiceResponseTarget(
   const lane = core.lanes.find((candidate) =>
     candidate.id === segment.laneId
     && candidate.conversationId === conversationId) ?? null;
-  const targetKind = readCoreMetadataString(segment.metadata, 'targetKind')
-    ?? readCoreMetadataString(lane?.metadata ?? null, 'participantKind');
+  const targetKind = readChatCoreMetadataString(segment.metadata, 'targetKind')
+    ?? readChatCoreMetadataString(lane?.metadata ?? null, 'participantKind');
 
   if (targetKind === 'orchestrator') {
     return buildOrchestratorTarget(state, channel);
@@ -231,7 +209,7 @@ function resolveCanonicalChoiceResponseTarget(
     return null;
   }
 
-  const targetId = readCoreMetadataString(segment.metadata, 'targetId')
+  const targetId = readChatCoreMetadataString(segment.metadata, 'targetId')
     ?? resolveRawChatParticipantId(lane?.participantId ?? null, conversationId);
   if (!targetId) {
     return null;

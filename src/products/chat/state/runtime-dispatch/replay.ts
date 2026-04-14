@@ -59,6 +59,12 @@ import {
   persistInFlightDispatchState,
 } from './persistence.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
+import {
+  compareChatCoreSegmentsAscending,
+  readChatCoreMetadataString,
+  readChatCoreTurnMetadataString,
+  resolveRawChatParticipantId,
+} from '../chatCoreInterop.js';
 
 function describeGuardReason(reason: string): string {
   switch (reason) {
@@ -443,51 +449,10 @@ function mapTurnStatusToExecutionState(
   }
 }
 
-function readMetadataString(
-  metadata: Record<string, unknown> | null | undefined,
-  key: string,
-): string | null {
-  const value = metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
-function compareSegmentsAscending(
-  left: CatsCoreState['segments'][number],
-  right: CatsCoreState['segments'][number],
-): number {
-  const sequenceComparison = left.sequence - right.sequence;
-  if (sequenceComparison !== 0) {
-    return sequenceComparison;
-  }
-  const createdComparison = left.createdAt.localeCompare(right.createdAt);
-  if (createdComparison !== 0) {
-    return createdComparison;
-  }
-  return left.id.localeCompare(right.id);
-}
-
-function resolveRawChatParticipantId(
-  canonicalParticipantId: string | null | undefined,
-  conversationId: string,
-): string | null {
-  if (!canonicalParticipantId) {
-    return null;
-  }
-
-  const prefix = `participant-${conversationId}-`;
-  if (canonicalParticipantId.startsWith(prefix)) {
-    const rawParticipantId = canonicalParticipantId.slice(prefix.length).trim();
-    return rawParticipantId.length > 0 ? rawParticipantId : null;
-  }
-
-  const trimmedParticipantId = canonicalParticipantId.trim();
-  return trimmedParticipantId.length > 0 ? trimmedParticipantId : null;
-}
-
 function readTurnSourceSenderKind(
   turn: TurnRecord,
 ): ChatMessage['senderKind'] {
-  const metadataKind = readMetadataString(turn.metadata, 'sourceSenderKind');
+  const metadataKind = readChatCoreTurnMetadataString(turn, 'sourceSenderKind');
   switch (metadataKind) {
     case 'agent':
     case 'system':
@@ -506,14 +471,14 @@ function buildCanonicalTurnSourceMessage(
   const turn = core.turns
     .filter((candidate) =>
       candidate.conversationId === conversationId
-      && readMetadataString(candidate.metadata, 'sourceMessageId') === request.sourceMessageId)
+      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === request.sourceMessageId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .at(-1);
   if (!turn) {
     return null;
   }
 
-  const body = readMetadataString(turn.metadata, 'sourceMessageBody');
+  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
   if (!body) {
     return null;
   }
@@ -522,7 +487,7 @@ function buildCanonicalTurnSourceMessage(
     id: request.sourceMessageId,
     channelId: request.channelId,
     senderKind: readTurnSourceSenderKind(turn),
-    senderName: readMetadataString(turn.metadata, 'sourceSenderName') ?? turn.kind,
+    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? turn.kind,
     body,
     mentions: [],
     metadata: {},
@@ -542,7 +507,7 @@ function buildCanonicalSegmentSourceMessage(
   const segment = core.segments
     .filter((candidate) =>
       candidate.conversationId === conversationId
-      && readMetadataString(candidate.metadata, 'chatMessageId') === request.sourceMessageId)
+      && readChatCoreMetadataString(candidate.metadata, 'chatMessageId') === request.sourceMessageId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .at(-1);
   if (!segment) {
@@ -550,7 +515,7 @@ function buildCanonicalSegmentSourceMessage(
   }
 
   const lane = core.lanes.find((candidate) => candidate.id === segment.laneId) ?? null;
-  const assistantTurnId = readMetadataString(segment.metadata, 'assistantTurnId');
+  const assistantTurnId = readChatCoreMetadataString(segment.metadata, 'assistantTurnId');
   const laneSegments = core.segments
     .filter((candidate) =>
       candidate.conversationId === conversationId
@@ -558,10 +523,10 @@ function buildCanonicalSegmentSourceMessage(
       && candidate.kind === 'text'
       && (
         assistantTurnId
-          ? readMetadataString(candidate.metadata, 'assistantTurnId') === assistantTurnId
+          ? readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === assistantTurnId
           : true
       ))
-    .sort(compareSegmentsAscending);
+    .sort(compareChatCoreSegmentsAscending);
   const fullText = laneSegments
     .map((candidate) => candidate.content ?? '')
     .join('');
@@ -569,9 +534,9 @@ function buildCanonicalSegmentSourceMessage(
     return null;
   }
 
-  const targetKind = readMetadataString(segment.metadata, 'targetKind')
-    ?? readMetadataString(lane?.metadata ?? null, 'participantKind');
-  const targetId = readMetadataString(segment.metadata, 'targetId')
+  const targetKind = readChatCoreMetadataString(segment.metadata, 'targetKind')
+    ?? readChatCoreMetadataString(lane?.metadata ?? null, 'participantKind');
+  const targetId = readChatCoreMetadataString(segment.metadata, 'targetId')
     ?? resolveRawChatParticipantId(lane?.participantId ?? null, conversationId);
   const senderKind: ChatMessage['senderKind'] = targetKind === 'orchestrator'
     ? 'orchestrator'
@@ -581,14 +546,14 @@ function buildCanonicalSegmentSourceMessage(
     id: request.sourceMessageId,
     channelId: request.channelId,
     senderKind,
-    senderName: readMetadataString(lane?.metadata ?? null, 'speakerLabel') ?? senderKind,
+    senderName: readChatCoreMetadataString(lane?.metadata ?? null, 'speakerLabel') ?? senderKind,
     body: fullText,
     mentions: [],
     metadata: {
       event: 'assistant_turn_segment',
       ...(assistantTurnId ? { assistantTurnId } : {}),
-      ...(readMetadataString(segment.metadata, 'targetStateId')
-        ? { targetStateId: readMetadataString(segment.metadata, 'targetStateId') }
+      ...(readChatCoreMetadataString(segment.metadata, 'targetStateId')
+        ? { targetStateId: readChatCoreMetadataString(segment.metadata, 'targetStateId') }
         : {}),
       ...(targetKind ? { targetKind } : {}),
       ...(targetId ? { targetId } : {}),
@@ -596,9 +561,9 @@ function buildCanonicalSegmentSourceMessage(
       ...(segment.turnId ? { turnId: segment.turnId } : {}),
     },
     usage: null,
-    executionProvider: readMetadataString(segment.metadata, 'executionProvider'),
-    executionModel: readMetadataString(segment.metadata, 'executionModel'),
-    executionInstance: readMetadataString(segment.metadata, 'executionInstance'),
+    executionProvider: readChatCoreMetadataString(segment.metadata, 'executionProvider'),
+    executionModel: readChatCoreMetadataString(segment.metadata, 'executionModel'),
+    executionInstance: readChatCoreMetadataString(segment.metadata, 'executionInstance'),
     createdAt: segment.createdAt,
   };
 }

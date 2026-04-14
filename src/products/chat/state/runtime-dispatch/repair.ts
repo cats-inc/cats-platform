@@ -41,6 +41,13 @@ import {
   readAssistantTurnTargetStateId,
 } from '../assistantTurnSegments.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
+import {
+  compareChatCoreSegmentsAscending,
+  compareChatCoreSegmentsDescending,
+  readChatCoreMetadataNumber,
+  readChatCoreMetadataString,
+  resolveRawChatParticipantId,
+} from '../chatCoreInterop.js';
 
 function describeGuardReason(): string {
   return 'a routing guard';
@@ -78,74 +85,6 @@ function readRuntimeResponseForTurn(
   return buildCanonicalRuntimeResponseForTurn(channelId, turnId, core);
 }
 
-function readCoreMetadataString(
-  metadata: Record<string, unknown> | null | undefined,
-  key: string,
-): string | null {
-  const value = metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0
-    ? value.trim()
-    : null;
-}
-
-function readCoreMetadataNumber(
-  metadata: Record<string, unknown> | null | undefined,
-  key: string,
-): number | null {
-  const value = metadata?.[key];
-  return typeof value === 'number' && Number.isFinite(value)
-    ? value
-    : null;
-}
-
-function compareSegmentsAscending(
-  left: SegmentRecord,
-  right: SegmentRecord,
-): number {
-  const sequenceComparison = left.sequence - right.sequence;
-  if (sequenceComparison !== 0) {
-    return sequenceComparison;
-  }
-  const createdComparison = left.createdAt.localeCompare(right.createdAt);
-  if (createdComparison !== 0) {
-    return createdComparison;
-  }
-  return left.id.localeCompare(right.id);
-}
-
-function compareSegmentsDescending(
-  left: SegmentRecord,
-  right: SegmentRecord,
-): number {
-  const createdComparison = right.createdAt.localeCompare(left.createdAt);
-  if (createdComparison !== 0) {
-    return createdComparison;
-  }
-  const sequenceComparison = right.sequence - left.sequence;
-  if (sequenceComparison !== 0) {
-    return sequenceComparison;
-  }
-  return left.id.localeCompare(right.id);
-}
-
-function resolveRawChatParticipantId(
-  canonicalParticipantId: string | null | undefined,
-  conversationId: string,
-): string | null {
-  if (!canonicalParticipantId) {
-    return null;
-  }
-
-  const prefix = `participant-${conversationId}-`;
-  if (canonicalParticipantId.startsWith(prefix)) {
-    const rawParticipantId = canonicalParticipantId.slice(prefix.length).trim();
-    return rawParticipantId.length > 0 ? rawParticipantId : null;
-  }
-
-  const trimmedParticipantId = canonicalParticipantId.trim();
-  return trimmedParticipantId.length > 0 ? trimmedParticipantId : null;
-}
-
 function buildCanonicalRuntimeResponseForTurn(
   channelId: string,
   turnId: string,
@@ -178,7 +117,7 @@ function buildCanonicalRuntimeResponseForTurn(
   const terminalSegments = relevantSegments.filter((segment) =>
     segment.metadata?.terminal === true);
   const anchorSegment = (terminalSegments.length > 0 ? terminalSegments : relevantSegments)
-    .sort(compareSegmentsDescending)[0];
+    .sort(compareChatCoreSegmentsDescending)[0];
   if (!anchorSegment) {
     return null;
   }
@@ -190,17 +129,17 @@ function buildCanonicalRuntimeResponseForTurn(
 
   const laneSegments = relevantSegments
     .filter((segment) => segment.laneId === lane.id)
-    .sort(compareSegmentsAscending);
+    .sort(compareChatCoreSegmentsAscending);
   if (laneSegments.length === 0) {
     return null;
   }
 
   const anchorMetadata = anchorSegment.metadata as Record<string, unknown> | undefined;
   const laneMetadata = lane.metadata as Record<string, unknown> | undefined;
-  const assistantTurnId = readCoreMetadataString(anchorMetadata, 'assistantTurnId')
-    ?? readCoreMetadataString(laneMetadata, 'responseAssistantTurnId')
+  const assistantTurnId = readChatCoreMetadataString(anchorMetadata, 'assistantTurnId')
+    ?? readChatCoreMetadataString(laneMetadata, 'responseAssistantTurnId')
     ?? `assistant-turn-${turnId}`;
-  const participantKind = readCoreMetadataString(laneMetadata, 'participantKind') === 'orchestrator'
+  const participantKind = readChatCoreMetadataString(laneMetadata, 'participantKind') === 'orchestrator'
     ? 'orchestrator'
     : 'cat';
   const targetId = participantKind === 'orchestrator'
@@ -209,12 +148,12 @@ function buildCanonicalRuntimeResponseForTurn(
   const fullText = laneSegments
     .map((segment) => segment.content ?? '')
     .join('');
-  const senderName = readCoreMetadataString(laneMetadata, 'speakerLabel')
+  const senderName = readChatCoreMetadataString(laneMetadata, 'speakerLabel')
     ?? (participantKind === 'orchestrator' ? ORCHESTRATOR_NAME : 'Agent');
 
   return {
     message: {
-      id: readCoreMetadataString(anchorMetadata, 'chatMessageId')
+      id: readChatCoreMetadataString(anchorMetadata, 'chatMessageId')
         ?? `canonical-segment-${assistantTurnId}-${anchorSegment.sequence}`,
       channelId,
       senderKind: participantKind === 'orchestrator' ? 'orchestrator' : 'agent',
@@ -224,32 +163,32 @@ function buildCanonicalRuntimeResponseForTurn(
       metadata: {
         event: 'assistant_turn_segment',
         assistantTurnId,
-        targetStateId: readCoreMetadataString(anchorMetadata, 'targetStateId')
-          ?? readCoreMetadataString(laneMetadata, 'targetStateId')
+        targetStateId: readChatCoreMetadataString(anchorMetadata, 'targetStateId')
+          ?? readChatCoreMetadataString(laneMetadata, 'targetStateId')
           ?? null,
         terminal: true,
         turnId,
         targetKind: participantKind,
         ...(targetId ? { targetId } : {}),
         ...(anchorSegment.sessionId ? { sessionId: anchorSegment.sessionId } : {}),
-        ...(readCoreMetadataString(anchorMetadata, 'routingTrigger')
-          ? { routingTrigger: readCoreMetadataString(anchorMetadata, 'routingTrigger') }
+        ...(readChatCoreMetadataString(anchorMetadata, 'routingTrigger')
+          ? { routingTrigger: readChatCoreMetadataString(anchorMetadata, 'routingTrigger') }
           : {}),
-        ...(readCoreMetadataNumber(anchorMetadata, 'dispatchDepth') !== null
-          ? { dispatchDepth: readCoreMetadataNumber(anchorMetadata, 'dispatchDepth') }
+        ...(readChatCoreMetadataNumber(anchorMetadata, 'dispatchDepth') !== null
+          ? { dispatchDepth: readChatCoreMetadataNumber(anchorMetadata, 'dispatchDepth') }
           : {}),
         repairSource: 'canonical_segment_fallback',
       },
       usage: null,
-      executionProvider: readCoreMetadataString(anchorMetadata, 'executionProvider'),
-      executionModel: readCoreMetadataString(anchorMetadata, 'executionModel'),
-      executionInstance: readCoreMetadataString(anchorMetadata, 'executionInstance'),
+      executionProvider: readChatCoreMetadataString(anchorMetadata, 'executionProvider'),
+      executionModel: readChatCoreMetadataString(anchorMetadata, 'executionModel'),
+      executionInstance: readChatCoreMetadataString(anchorMetadata, 'executionInstance'),
       createdAt: anchorSegment.createdAt,
     },
     response: {
       assistantTurnId,
       messageIds: laneSegments.map((segment) =>
-        readCoreMetadataString(
+        readChatCoreMetadataString(
           segment.metadata as Record<string, unknown> | undefined,
           'chatMessageId',
         ) ?? segment.id),

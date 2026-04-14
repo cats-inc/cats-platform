@@ -33,6 +33,10 @@ import {
 } from '../../../../shared/providerSelection.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
+import {
+  readChatCoreTurnMetadataString,
+  resolveRawChatParticipantId,
+} from '../chatCoreInterop.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   type RuntimeTransportContext,
@@ -129,32 +133,6 @@ function buildRetrySendPayload(message: ChatMessage): SendChannelMessageInput {
   };
 }
 
-function readTurnMetadataString(
-  turn: Pick<TurnRecord, 'metadata'> | null | undefined,
-  key: string,
-): string | null {
-  const value = turn?.metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
-function resolveRawChatParticipantId(
-  canonicalParticipantId: string | null | undefined,
-  conversationId: string,
-): string | null {
-  if (!canonicalParticipantId) {
-    return null;
-  }
-
-  const prefix = `participant-${conversationId}-`;
-  if (canonicalParticipantId.startsWith(prefix)) {
-    const rawParticipantId = canonicalParticipantId.slice(prefix.length).trim();
-    return rawParticipantId.length > 0 ? rawParticipantId : null;
-  }
-
-  const normalized = canonicalParticipantId.trim();
-  return normalized.length > 0 ? normalized : null;
-}
-
 function buildCanonicalRetrySourceMessage(
   core: CatsCoreState,
   channelId: string,
@@ -164,19 +142,19 @@ function buildCanonicalRetrySourceMessage(
   const turn = core.turns
     .filter((candidate) =>
       candidate.conversationId === conversationId
-      && readTurnMetadataString(candidate, 'sourceMessageId') === sourceMessageId)
+      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === sourceMessageId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .at(-1);
   if (!turn) {
     return null;
   }
 
-  const body = readTurnMetadataString(turn, 'sourceMessageBody');
+  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
   if (!body) {
     return null;
   }
 
-  const senderKind = readTurnMetadataString(turn, 'sourceSenderKind');
+  const senderKind = readChatCoreTurnMetadataString(turn, 'sourceSenderKind');
   if (senderKind !== 'user') {
     return null;
   }
@@ -187,13 +165,13 @@ function buildCanonicalRetrySourceMessage(
   const recipientParticipantIds = lanes
     .map((lane) => resolveRawChatParticipantId(lane.participantId, conversationId))
     .filter((participantId): participantId is string => Boolean(participantId));
-  const workflowShape = readTurnMetadataString(turn, 'workflowShape');
+  const workflowShape = readChatCoreTurnMetadataString(turn, 'workflowShape');
 
   return {
     id: sourceMessageId,
     channelId,
     senderKind: 'user',
-    senderName: readTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
+    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
     body,
     mentions: [],
     metadata: {

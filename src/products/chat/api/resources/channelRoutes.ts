@@ -41,6 +41,7 @@ import { routeChatChannelAttachmentResourceApi } from './channelAttachmentRoutes
 import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
+import { readChatCoreTurnMetadataString } from '../../state/chatCoreInterop.js';
 
 function publishChannelMutationEvents(
   context: ChatApiRouteContext,
@@ -110,7 +111,10 @@ function findLatestUserMessageId(
   }
 
   const latestCanonicalUserTurn = findLatestCanonicalUserTurn(core, channel.id);
-  const latestCanonicalUserId = readTurnMetadataString(latestCanonicalUserTurn, 'sourceMessageId');
+  const latestCanonicalUserId = readChatCoreTurnMetadataString(
+    latestCanonicalUserTurn,
+    'sourceMessageId',
+  );
   if (!latestCanonicalUserId) {
     return latestTranscriptUserId;
   }
@@ -124,14 +128,6 @@ function findLatestUserMessageId(
     : latestTranscriptUserId;
 }
 
-function readTurnMetadataString(
-  turn: Pick<TurnRecord, 'metadata'> | null | undefined,
-  key: string,
-): string | null {
-  const value = turn?.metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
 function findLatestCanonicalUserTurn(
   core: CatsCoreState,
   channelId: string,
@@ -140,8 +136,8 @@ function findLatestCanonicalUserTurn(
   return core.turns
     .filter((turn) =>
       turn.conversationId === conversationId
-      && readTurnMetadataString(turn, 'sourceSenderKind') === 'user'
-      && readTurnMetadataString(turn, 'sourceMessageId'))
+      && readChatCoreTurnMetadataString(turn, 'sourceSenderKind') === 'user'
+      && readChatCoreTurnMetadataString(turn, 'sourceMessageId'))
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
     .at(0) ?? null;
 }
@@ -161,15 +157,15 @@ function buildCanonicalRetryMessage(
   const turn = core.turns
     .filter((candidate) =>
       candidate.conversationId === conversationId
-      && readTurnMetadataString(candidate, 'sourceSenderKind') === 'user'
-      && readTurnMetadataString(candidate, 'sourceMessageId') === messageId)
+      && readChatCoreTurnMetadataString(candidate, 'sourceSenderKind') === 'user'
+      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === messageId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .at(-1);
   if (!turn) {
     return null;
   }
 
-  const body = readTurnMetadataString(turn, 'sourceMessageBody');
+  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
   if (!body) {
     return null;
   }
@@ -177,7 +173,7 @@ function buildCanonicalRetryMessage(
   return {
     id: messageId,
     senderKind: 'user',
-    senderName: readTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
+    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
     body,
     createdAt: turn.createdAt,
   };
