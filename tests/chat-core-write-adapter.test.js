@@ -1150,3 +1150,149 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
   assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'completed');
   assert.equal(repairedChannel.roomRouting.lastOutcome?.dispatches[0]?.status, 'completed');
 });
+
+test('repairOrphanedCompletedDispatchTurn restores final sequential target metadata from canonical lanes', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const seededAt = new Date('2026-04-15T00:40:00.000Z');
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('@Agent-2 carry the sequential fix forward.');
+    }
+    if (content.includes('You are Agent-2')) {
+      return usage('Agent-2 finished the repaired sequential step.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Handle this in sequence.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id, agent2Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    seededAt,
+    { chatStore: store },
+  );
+
+  await store.write(dispatched.state);
+  const canonicalCore = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const turn = readLatestConversationTurn(canonicalCore, conversationId);
+  assert.ok(turn);
+  const lanes = readOrderedTurnLanes(canonicalCore, turn.id);
+  assert.equal(lanes.length, 2);
+  const repairedLane = lanes[1];
+  assert.ok(repairedLane);
+  assert.equal(repairedLane?.metadata.branchStrategy, 'transplant_context');
+  assert.ok(typeof repairedLane?.metadata.sourceMessageId === 'string');
+  assert.ok(typeof repairedLane?.metadata.handoffReason === 'string');
+
+  const corruptedState = structuredClone(dispatched.state);
+  const corruptedChannel = requireChannel(corruptedState, channelId);
+  const interruptedTurn = structuredClone(corruptedChannel.roomRouting.workflow.turnHistory[0]);
+  assert.ok(interruptedTurn);
+  interruptedTurn.status = 'blocked';
+  interruptedTurn.stageId = 'startup_recovery';
+  interruptedTurn.targetStatuses = [];
+  interruptedTurn.events = interruptedTurn.events.filter((event) =>
+    event.kind === 'turn_started' || event.kind === 'checkpoint');
+  interruptedTurn.events.push(
+    {
+      id: 'guard-blocked-sequential-final-lane',
+      turnId: interruptedTurn.id,
+      kind: 'guard_blocked',
+      status: 'blocked',
+      message: 'Recovered an interrupted room workflow after restart.',
+      actor: null,
+      sourceMessageId: null,
+      targets: [],
+      dispatchId: null,
+      checkpointId: 'loop-guard-sequential-final-lane',
+      outcomeId: null,
+      createdAt: interruptedTurn.completedAt ?? turn.completedAt ?? seededAt.toISOString(),
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+    {
+      id: 'outcome-blocked-sequential-final-lane',
+      turnId: interruptedTurn.id,
+      kind: 'outcome',
+      status: 'blocked',
+      message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+      actor: null,
+      sourceMessageId: interruptedTurn.sourceMessageId,
+      targets: [],
+      dispatchId: null,
+      checkpointId: null,
+      outcomeId: null,
+      createdAt: interruptedTurn.completedAt ?? turn.completedAt ?? seededAt.toISOString(),
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+  );
+  corruptedChannel.roomRouting.workflow.activeTurn = null;
+  corruptedChannel.roomRouting.workflow.turnHistory = [interruptedTurn];
+  corruptedChannel.roomRouting.lastCheckpoint = {
+    id: 'loop-guard-sequential-final-lane',
+    kind: 'loop_guard',
+    message: 'Recovered an interrupted room workflow after restart.',
+    actor: null,
+    sourceMessageId: null,
+    targets: [],
+    createdAt: interruptedTurn.completedAt ?? turn.completedAt ?? seededAt.toISOString(),
+  };
+  corruptedChannel.roomRouting.lastOutcome = {
+    turnId: interruptedTurn.id,
+    mode: corruptedChannel.roomRouting.mode,
+    sourceMessageId: interruptedTurn.sourceMessageId,
+    sourceSenderKind: interruptedTurn.sourceSenderKind,
+    sourceSenderName: interruptedTurn.sourceSenderName,
+    status: 'blocked',
+    resolution: {
+      routingMode: 'room_default',
+      selectionKind: 'default_target',
+      defaultTarget: null,
+      defaultTargetReason: 'boss_chat_default',
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    },
+    resolvedTargets: [],
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 0,
+    guard: null,
+    startedAt: interruptedTurn.startedAt,
+    completedAt: interruptedTurn.completedAt,
+  };
+
+  const repaired = repairOrphanedCompletedDispatchTurn(
+    corruptedState,
+    channelId,
+    new Date('2026-04-15T00:41:00.000Z'),
+    canonicalCore,
+  );
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const repairedTurn = repairedChannel.roomRouting.workflow.turnHistory[0];
+  assert.ok(repairedTurn);
+  assert.equal(repairedTurn.status, 'completed');
+  const repairedTarget = repairedTurn.targetStatuses[0];
+  assert.ok(repairedTarget);
+  assert.equal(repairedTarget.participant.participantName, 'Agent-2');
+  assert.equal(repairedTarget.source?.participantName, 'Agent-1');
+  assert.equal(repairedTarget.sourceMessageId, repairedLane?.metadata.sourceMessageId);
+  assert.equal(repairedTarget.branchStrategy, repairedLane?.metadata.branchStrategy);
+  assert.equal(repairedTarget.handoffReason, repairedLane?.metadata.handoffReason);
+});

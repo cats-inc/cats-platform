@@ -18,6 +18,9 @@ import type {
   RoomRoutingDispatch,
   RoomRoutingOutcome,
   RoomRoutingParticipantRef,
+  RoomRoutingTrigger,
+  RoomWorkflowBranchStrategy,
+  RoomWorkflowHandoffReason,
   RoomWorkflowTargetState,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
@@ -291,6 +294,181 @@ function hasUnmaterializedSequentialTargets(turn: RoomWorkflowTurn): boolean {
   return turn.targetStatuses.length < expectedTargetCount;
 }
 
+interface CanonicalRecoveredTargetMetadata {
+  orderIndex: number | null;
+  sourceMessageId: string | null;
+  sourceParticipant: RoomRoutingParticipantRef | null;
+  trigger: RoomRoutingTrigger | null;
+  branchStrategy: RoomWorkflowBranchStrategy | null;
+  handoffReason: RoomWorkflowHandoffReason | null;
+}
+
+function resolveCanonicalRecoveredTargetMetadata(
+  core: CatsCoreState | undefined,
+  channelId: string,
+  turnId: string,
+  assistantTurnId: string,
+  targetStateId: string | null,
+): CanonicalRecoveredTargetMetadata | null {
+  if (!core) {
+    return null;
+  }
+
+  const conversationId = buildChatConversationId(channelId);
+  const lane = core.lanes.find((candidate) =>
+    candidate.conversationId === conversationId
+    && candidate.turnId === turnId
+    && (
+      (targetStateId !== null
+        && readChatCoreMetadataString(candidate.metadata, 'targetStateId') === targetStateId)
+      || readChatCoreMetadataString(candidate.metadata, 'responseAssistantTurnId') === assistantTurnId
+    )) ?? null;
+  if (!lane) {
+    return null;
+  }
+
+  const sourceMessageId = readChatCoreMetadataString(lane.metadata, 'sourceMessageId');
+  return {
+    orderIndex: lane.orderIndex,
+    sourceMessageId,
+    sourceParticipant: resolveCanonicalSourceParticipant(core, conversationId, turnId, sourceMessageId),
+    trigger: normalizeCanonicalRoutingTrigger(readChatCoreMetadataString(lane.metadata, 'trigger')),
+    branchStrategy: normalizeCanonicalBranchStrategy(
+      readChatCoreMetadataString(lane.metadata, 'branchStrategy'),
+    ),
+    handoffReason: normalizeCanonicalHandoffReason(
+      readChatCoreMetadataString(lane.metadata, 'handoffReason'),
+    ),
+  };
+}
+
+function resolveCanonicalSourceParticipant(
+  core: CatsCoreState,
+  conversationId: string,
+  turnId: string,
+  sourceMessageId: string | null,
+): RoomRoutingParticipantRef | null {
+  if (!sourceMessageId) {
+    return null;
+  }
+
+  const turn = core.turns.find((candidate) =>
+    candidate.conversationId === conversationId && candidate.id === turnId) ?? null;
+  if (turn && readChatCoreMetadataString(turn.metadata, 'sourceMessageId') === sourceMessageId) {
+    const sourceSenderKind = readChatCoreMetadataString(turn.metadata, 'sourceSenderKind');
+    const sourceSenderName = readChatCoreMetadataString(turn.metadata, 'sourceSenderName') ?? '';
+    if (sourceSenderKind === 'orchestrator') {
+      return {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: sourceSenderName || ORCHESTRATOR_NAME,
+      };
+    }
+  }
+
+  const sourceSegment = core.segments
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && readChatCoreMetadataString(candidate.metadata, 'chatMessageId') === sourceMessageId)
+    .sort(compareChatCoreSegmentsDescending)[0] ?? null;
+  if (!sourceSegment) {
+    return null;
+  }
+
+  const sourceLane = core.lanes.find((candidate) =>
+    candidate.conversationId === conversationId && candidate.id === sourceSegment.laneId) ?? null;
+  if (!sourceLane) {
+    return null;
+  }
+
+  const participantKind = readChatCoreMetadataString(sourceLane.metadata, 'participantKind');
+  const speakerLabel = readChatCoreMetadataString(sourceLane.metadata, 'speakerLabel');
+  if (participantKind === 'orchestrator') {
+    return {
+      participantKind: 'orchestrator',
+      participantId: 'orchestrator',
+      participantName: speakerLabel ?? ORCHESTRATOR_NAME,
+    };
+  }
+
+  const participantId = resolveRawChatParticipantId(sourceLane.participantId, conversationId);
+  if (!participantId) {
+    return null;
+  }
+
+  return {
+    participantKind: 'cat',
+    participantId,
+    participantName: speakerLabel ?? participantId,
+  };
+}
+
+function normalizeCanonicalRoutingTrigger(
+  value: string | null,
+): RoomRoutingTrigger | null {
+  switch (value) {
+    case 'room_default':
+    case 'explicit_mention':
+    case 'continuation_mention':
+      return value;
+    default:
+      return null;
+  }
+}
+
+function normalizeCanonicalBranchStrategy(
+  value: string | null,
+): RoomWorkflowBranchStrategy | null {
+  switch (value) {
+    case 'fresh_no_parent':
+    case 'transplant_context':
+      return value;
+    default:
+      return null;
+  }
+}
+
+function normalizeCanonicalHandoffReason(
+  value: string | null,
+): RoomWorkflowHandoffReason | null {
+  switch (value) {
+    case 'room_entry':
+    case 'room_default':
+      return value;
+    case 'explicit_mention':
+      return value;
+    case 'workflow_continuation':
+      return value;
+    case 'choice_response':
+      return 'workflow_continuation';
+    case 'operator_reroute':
+      return value;
+    case 'runtime_retry':
+      return value;
+    default:
+      return null;
+  }
+}
+
+function hasOutstandingSequentialTargetsAfterRecoveredLane(
+  turn: RoomWorkflowTurn,
+  recoveredTargetOrderIndex: number | null,
+): boolean {
+  if (turn.workflowShape !== 'sequential') {
+    return false;
+  }
+
+  const expectedTargetCount = resolveExpectedTurnTargetCount(turn);
+  if (expectedTargetCount <= 1) {
+    return false;
+  }
+  if (recoveredTargetOrderIndex === null) {
+    return turn.targetStatuses.length < expectedTargetCount;
+  }
+
+  return recoveredTargetOrderIndex < expectedTargetCount - 1;
+}
+
 function resolveDefaultTargetReason(
   channel: ChatChannelState,
   participant: RoomRoutingParticipantRef | null,
@@ -347,6 +525,7 @@ function ensureCompletedTargetStatus(
   responseMessage: ChatMessage,
   response: NonNullable<RoomWorkflowTargetState['response']>,
   targetStateId: string | null,
+  recoveredMetadata?: CanonicalRecoveredTargetMetadata | null,
 ): RoomWorkflowTargetState | null {
   if (!participant) {
     return null;
@@ -363,14 +542,26 @@ function ensureCompletedTargetStatus(
 
   if (existing) {
     existing.participant = structuredClone(participant);
+    if (recoveredMetadata?.sourceParticipant) {
+      existing.source = structuredClone(recoveredMetadata.sourceParticipant);
+    }
+    if (recoveredMetadata?.sourceMessageId) {
+      existing.sourceMessageId = recoveredMetadata.sourceMessageId;
+    }
     existing.status = 'completed';
     existing.completedAt = existing.completedAt ?? completedAt;
     existing.response = structuredClone(response);
     existing.error = null;
     existing.dispatchId = existing.dispatchId ?? randomUUID();
-    existing.trigger = existing.trigger ?? 'room_default';
-    existing.handoffReason = existing.handoffReason ?? 'room_default';
-    existing.branchStrategy = existing.branchStrategy ?? 'fresh_no_parent';
+    existing.trigger = existing.trigger
+      ?? recoveredMetadata?.trigger
+      ?? 'room_default';
+    existing.handoffReason = existing.handoffReason
+      ?? recoveredMetadata?.handoffReason
+      ?? 'room_default';
+    existing.branchStrategy = existing.branchStrategy
+      ?? recoveredMetadata?.branchStrategy
+      ?? 'fresh_no_parent';
     existing.startedAt = existing.startedAt ?? existing.queuedAt;
     return existing;
   }
@@ -379,14 +570,16 @@ function ensureCompletedTargetStatus(
     id: targetStateId ?? randomUUID(),
     dispatchId: randomUUID(),
     participant: structuredClone(participant),
-    source: null,
-    sourceMessageId: turn.sourceMessageId,
-    trigger: 'room_default',
+    source: recoveredMetadata?.sourceParticipant
+      ? structuredClone(recoveredMetadata.sourceParticipant)
+      : null,
+    sourceMessageId: recoveredMetadata?.sourceMessageId ?? turn.sourceMessageId,
+    trigger: recoveredMetadata?.trigger ?? 'room_default',
     mentionNames: [],
     depth: 0,
     parentCheckpointId: turn.lastCheckpointId,
-    branchStrategy: 'fresh_no_parent',
-    handoffReason: 'room_default',
+    branchStrategy: recoveredMetadata?.branchStrategy ?? 'fresh_no_parent',
+    handoffReason: recoveredMetadata?.handoffReason ?? 'room_default',
     wakeRequestId: null,
     status: 'completed',
     queuedAt: turn.startedAt,
@@ -851,13 +1044,23 @@ export function repairOrphanedCompletedDispatchTurn(
     return { repaired: false, state };
   }
   const targetStateId = readAssistantTurnTargetStateId(responseMessage);
+  const canonicalRecoveredTarget = resolveCanonicalRecoveredTargetMetadata(
+    core,
+    channelId,
+    repairTurnId,
+    assistantTurnId,
+    targetStateId,
+  );
   const participant = buildParticipantRefFromResponse(responseMessage);
   const candidateTurn = activeTurn ?? recoveredTurn;
   if (
     candidateTurn
     && (
       hasOutstandingTargetsBeyondRecoveredResponse(candidateTurn, assistantTurnId, targetStateId)
-      || hasUnmaterializedSequentialTargets(candidateTurn)
+      || hasOutstandingSequentialTargetsAfterRecoveredLane(
+        candidateTurn,
+        canonicalRecoveredTarget?.orderIndex ?? null,
+      )
     )
   ) {
     return { repaired: false, state };
@@ -889,6 +1092,7 @@ export function repairOrphanedCompletedDispatchTurn(
     responseMessage,
     response,
     targetStateId,
+    canonicalRecoveredTarget,
   );
   const outcome = nextRoomRouting.lastOutcome?.turnId === nextActiveTurn.id
     ? structuredClone(nextRoomRouting.lastOutcome)
