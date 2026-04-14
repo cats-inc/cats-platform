@@ -93,6 +93,8 @@ export interface LiveIndicatorStreamDecisionInput {
 
 export interface SequencedLiveIndicatorStreamCursor {
   sessionId: string;
+  targetStateId: string | null;
+  sourceMessageId: string | null;
   streamSeq: number;
   streamSeqIndex: number;
 }
@@ -790,6 +792,8 @@ export function advanceSequencedLiveIndicatorStreamCursor(
   cursor: SequencedLiveIndicatorStreamCursor | null;
 } {
   const sessionId = readTraceString(data.sessionId);
+  const targetStateId = readTraceString(data.targetStateId);
+  const sourceMessageId = readTraceString(data.sourceMessageId);
   const streamSeq = typeof data.streamSeq === 'number' && Number.isFinite(data.streamSeq)
     ? data.streamSeq
     : null;
@@ -807,6 +811,8 @@ export function advanceSequencedLiveIndicatorStreamCursor(
   if (
     previous
     && previous.sessionId === sessionId
+    && previous.targetStateId === targetStateId
+    && previous.sourceMessageId === sourceMessageId
     && (
       streamSeq < previous.streamSeq
       || (streamSeq === previous.streamSeq && streamSeqIndex <= previous.streamSeqIndex)
@@ -822,6 +828,8 @@ export function advanceSequencedLiveIndicatorStreamCursor(
     accept: true,
     cursor: {
       sessionId,
+      targetStateId,
+      sourceMessageId,
       streamSeq,
       streamSeqIndex,
     },

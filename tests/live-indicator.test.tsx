@@ -2815,6 +2815,8 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   let decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    targetStateId: 'target-1',
+    sourceMessageId: 'message-1',
     streamSeq: 4,
     streamSeqIndex: 0,
   });
@@ -2823,6 +2825,8 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    targetStateId: 'target-1',
+    sourceMessageId: 'message-1',
     streamSeq: 4,
     streamSeqIndex: 1,
   });
@@ -2831,6 +2835,8 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    targetStateId: 'target-1',
+    sourceMessageId: 'message-1',
     streamSeq: 4,
     streamSeqIndex: 0,
   });
@@ -2838,13 +2844,37 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    targetStateId: 'target-1',
+    sourceMessageId: 'message-1',
     streamSeq: 3,
     streamSeqIndex: 9,
   });
   assert.equal(decision.accept, false);
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-1',
+    targetStateId: 'target-2',
+    sourceMessageId: 'message-1',
+    streamSeq: 1,
+    streamSeqIndex: 0,
+  });
+  assert.equal(decision.accept, true);
+  cursor = decision.cursor;
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-1',
+    targetStateId: null,
+    sourceMessageId: 'message-2',
+    streamSeq: 1,
+    streamSeqIndex: 0,
+  });
+  assert.equal(decision.accept, true);
+  cursor = decision.cursor;
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-2',
+    targetStateId: null,
+    sourceMessageId: 'message-2',
     streamSeq: 1,
     streamSeqIndex: 0,
   });

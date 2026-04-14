@@ -49,6 +49,7 @@ import { publishRoomMutation } from '../transportEventPublisher.js';
 function buildStreamSpeakerPayload(input: {
   sessionId?: string | null;
   laneId?: string | null;
+  sourceMessageId?: string | null;
   participantId?: string | null;
   catId?: string | null;
   speakerLabel?: string | null;
@@ -59,6 +60,7 @@ function buildStreamSpeakerPayload(input: {
   return {
     sessionId: input.sessionId ?? null,
     laneId: input.laneId ?? null,
+    ...(input.sourceMessageId != null ? { sourceMessageId: input.sourceMessageId } : {}),
     participantId: input.participantId ?? null,
     catId: input.catId ?? null,
     speakerLabel: input.speakerLabel ?? null,
@@ -160,6 +162,14 @@ async function streamChannelTarget(input: {
     return;
   }
 
+  const streamState = await context.dependencies.chatStore.read();
+  const streamChannel = requireChannel(streamState, channelId);
+  const activeTurn = streamChannel.roomRouting?.workflow?.activeTurn ?? null;
+  const sourceMessageId = typeof activeTurn?.sourceMessageId === 'string'
+    && activeTurn.sourceMessageId.trim().length > 0
+    ? activeTurn.sourceMessageId.trim()
+    : null;
+
   try {
     if (context.dependencies.config.debugLiveTrace) {
       pushServerLiveTrace({
@@ -183,7 +193,10 @@ async function streamChannelTarget(input: {
       metadata: {
         kind: 'session',
       },
-      ...buildStreamSpeakerPayload(target),
+      ...buildStreamSpeakerPayload({
+        ...target,
+        sourceMessageId,
+      }),
     });
 
     let segmentCompleted = false;
@@ -217,7 +230,10 @@ async function streamChannelTarget(input: {
                 type: 'content_block',
                 block,
                 synthesizedFromResult: true,
-                ...buildStreamSpeakerPayload(target),
+                ...buildStreamSpeakerPayload({
+                  ...target,
+                  sourceMessageId,
+                }),
               });
               segmentHasMaterializedContent = true;
               if (block.kind === 'text' && block.text.length > 0) {
@@ -227,7 +243,10 @@ async function streamChannelTarget(input: {
           }
           emitEvent(event.event, {
             ...event.data,
-            ...buildStreamSpeakerPayload(target),
+            ...buildStreamSpeakerPayload({
+              ...target,
+              sourceMessageId,
+            }),
           });
           if (eventHasMaterializedContent(event)) {
             segmentHasMaterializedContent = true;
@@ -277,7 +296,10 @@ async function streamChannelTarget(input: {
       emitEvent('error', {
         type: 'error',
         text: 'Runtime stream unavailable',
-        ...buildStreamSpeakerPayload(target),
+        ...buildStreamSpeakerPayload({
+          ...target,
+          sourceMessageId,
+        }),
       });
     }
   }

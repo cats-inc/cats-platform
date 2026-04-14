@@ -1297,6 +1297,8 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
       seededAt,
     );
     await chatStore.write(begun.state);
+    const begunSourceMessageId = requireChannel(begun.state, channelId)
+      .roomRouting.workflow.activeTurn?.sourceMessageId;
 
     const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
 
@@ -1453,9 +1455,11 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
 
     const streamBody = await streamBodyPromise;
     assert.match(streamBody, /"speakerLabel":"First Cat"/u);
+    assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-sequential-1"/u);
     assert.match(streamBody, /"text":"First speaker is thinking"/u);
     assert.match(streamBody, /"speakerLabel":"Second Cat"/u);
+    assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-sequential-2"/u);
     assert.match(streamBody, /"text":"Second speaker picked up the room"/u);
     assert.deepEqual(runtime.streamedSessions, [
@@ -1613,6 +1617,7 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
     const begunChannel = requireChannel(begunState, channelId);
     const begunTurn = begunChannel.roomRouting.workflow.activeTurn;
     assert.ok(begunTurn);
+    const begunSourceMessageId = begunTurn.sourceMessageId;
     const firstLaneId = `lane-${begunTurn.id}-target-state-concurrent-1`;
     const secondLaneId = `lane-${begunTurn.id}-target-state-concurrent-2`;
     begunTurn.targetStatuses = [
@@ -1730,10 +1735,12 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
     await stream.reader.cancel();
 
     assert.match(streamBody, /"speakerLabel":"Claude Cat"/u);
+    assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
     assert.match(streamBody, new RegExp(`"laneId":"${firstLaneId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-concurrent-1"/u);
     assert.match(streamBody, /"text":"Claude Cat is thinking"/u);
     assert.match(streamBody, /"speakerLabel":"Codex Cat"/u);
+    assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
     assert.match(streamBody, new RegExp(`"laneId":"${secondLaneId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-concurrent-2"/u);
     assert.match(streamBody, /"text":"Codex Cat is thinking"/u);
