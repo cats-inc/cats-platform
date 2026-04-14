@@ -36,6 +36,7 @@ import type { CoreTransportStateProjectionQuery } from '../transportStateProject
 import type { CoreTransportBindingListQuery } from '../transportBindingList.js';
 import type { CoreSessionListQuery } from '../sessionList.js';
 import type { CoreActorListQuery } from '../actorList.js';
+import type { CoreApprovalBindingListQuery } from '../governanceRecordList.js';
 import type {
   CoreLaneListQuery,
   CoreSegmentListQuery,
@@ -54,6 +55,7 @@ import type {
   CoreProjectListQuery,
   CoreWorkItemListQuery,
 } from '../planningRecordLists.js';
+import type { CoreTaskListQuery } from '../taskList.js';
 import { CoreValidationError } from '../errors.js';
 import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
 import {
@@ -63,6 +65,10 @@ import {
 } from '../taskTimeline.js';
 import {
   CORE_ACTIVITY_KINDS,
+  CORE_APPROVAL_ACTIONS,
+  CORE_APPROVAL_BINDING_KINDS,
+  CORE_APPROVAL_BINDING_SUBJECT_KINDS,
+  CORE_APPROVAL_STATUSES,
   CORE_CHECKPOINT_STATUSES,
   CORE_ACTOR_KINDS,
   CORE_ACTOR_SOURCES,
@@ -82,6 +88,7 @@ import {
   CORE_TRANSPORT_BINDING_STATUSES,
   CORE_TURN_KINDS,
   CORE_TURN_STATUSES,
+  CORE_TASK_STATUSES,
   CORE_WORK_ITEM_STATUSES,
   CORE_TRACE_KINDS,
 } from './constants.js';
@@ -531,6 +538,27 @@ export function readTransportBindingListQuery(
   };
 }
 
+export function readApprovalBindingListQuery(
+  searchParams: URLSearchParams,
+): CoreApprovalBindingListQuery {
+  return {
+    kinds: readEnumQueryValues(searchParams, 'kind', CORE_APPROVAL_BINDING_KINDS),
+    subjectKinds: readEnumQueryValues(
+      searchParams,
+      'subjectKind',
+      CORE_APPROVAL_BINDING_SUBJECT_KINDS,
+    ),
+    approvalTaskIds: readOptionalQueryValues(searchParams, 'approvalTaskId'),
+    subjectIds: readOptionalQueryValues(searchParams, 'subjectId'),
+    projectIds: readOptionalQueryValues(searchParams, 'projectId'),
+    workItemIds: readOptionalQueryValues(searchParams, 'workItemId'),
+    conversationIds: readConversationIds(searchParams),
+    requestedByActorIds: readOptionalQueryValues(searchParams, 'requestedByActorId'),
+    requestedForActorIds: readOptionalQueryValues(searchParams, 'requestedForActorId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
 export function readSessionListQuery(
   searchParams: URLSearchParams,
 ): CoreSessionListQuery {
@@ -724,6 +752,30 @@ export function readSegmentListQuery(
     sessionIds: readOptionalQueryValues(searchParams, 'sessionId'),
     kinds: readEnumQueryValues(searchParams, 'kind', CORE_SEGMENT_KINDS),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_SEGMENT_STATUSES),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readTaskListQuery(
+  searchParams: URLSearchParams,
+): CoreTaskListQuery {
+  return {
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_TASK_STATUSES),
+    conversationIds: readConversationIds(searchParams),
+    parentTaskIds: readOptionalQueryValues(searchParams, 'parentTaskId'),
+    ownerActorIds: readOptionalQueryValues(searchParams, 'ownerActorId'),
+    orchestratorActorIds: readOptionalQueryValues(searchParams, 'orchestratorActorId'),
+    assignedActorIds: readOptionalQueryValues(searchParams, 'assignedActorId'),
+    approvalStatuses: readEnumQueryValues(
+      searchParams,
+      'approvalStatus',
+      CORE_APPROVAL_STATUSES,
+    ),
+    approvalDecisionActions: readEnumQueryValues(
+      searchParams,
+      'approvalDecisionAction',
+      CORE_APPROVAL_ACTIONS,
+    ),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

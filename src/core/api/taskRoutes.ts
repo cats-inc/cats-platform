@@ -1,4 +1,5 @@
 import { upsertCoreTask } from '../model/index.js';
+import { listTasks } from '../taskList.js';
 import {
   applyTaskAssignmentLifecycle,
   checkoutTaskExecution,
@@ -17,6 +18,7 @@ import {
   readStringArray,
   readWrappedBody,
 } from './shared.js';
+import { readTaskListQuery } from './queryFilters.js';
 import {
   CORE_APPROVAL_ACTIONS,
   CORE_APPROVAL_STATUSES,
@@ -35,7 +37,8 @@ async function handleCoreTasks(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { tasks: core.tasks });
+  const query = readTaskListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { tasks: listTasks(core, query) });
 }
 
 async function handleCoreTaskWrite(
@@ -241,7 +244,11 @@ export async function routeCoreTaskApi(
 
   if (context.url.pathname === '/api/core/tasks') {
     if (context.method === 'GET') {
-      await handleCoreTasks(context);
+      try {
+        await handleCoreTasks(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {

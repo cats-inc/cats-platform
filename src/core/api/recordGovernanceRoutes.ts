@@ -1,4 +1,5 @@
 import { upsertCoreApprovalBinding } from '../model/index.js';
+import { listApprovalBindings } from '../governanceRecordList.js';
 import {
   handleCoreError,
   readEnumValue,
@@ -8,6 +9,7 @@ import {
   readRequiredString,
   readWrappedBody,
 } from './shared.js';
+import { readApprovalBindingListQuery } from './queryFilters.js';
 import {
   CORE_APPROVAL_BINDING_KINDS,
   CORE_APPROVAL_BINDING_SUBJECT_KINDS,
@@ -19,7 +21,8 @@ async function handleCoreApprovalBindings(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { approvalBindings: core.approvalBindings });
+  const query = readApprovalBindingListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { approvalBindings: listApprovalBindings(core, query) });
 }
 
 async function handleCoreApprovalBindingWrite(
@@ -99,7 +102,11 @@ export async function routeCoreGovernanceRecordApi(
 ): Promise<boolean> {
   if (context.url.pathname === '/api/core/approval-bindings') {
     if (context.method === 'GET') {
-      await handleCoreApprovalBindings(context);
+      try {
+        await handleCoreApprovalBindings(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
