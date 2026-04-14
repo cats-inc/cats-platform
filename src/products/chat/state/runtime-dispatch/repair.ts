@@ -51,6 +51,13 @@ import {
   readChatCoreMetadataString,
   resolveRawChatParticipantId,
 } from '../chatCoreInterop.js';
+import {
+  readMetadataRecord,
+  readMetadataString,
+  readMetadataStringArray,
+  readParticipantRefs,
+  sameParticipantRef,
+} from '../core-projection/entityMetadata.js';
 
 function describeGuardReason(): string {
   return 'a routing guard';
@@ -452,10 +459,23 @@ function normalizeCanonicalHandoffReason(
 
 function hasOutstandingSequentialTargetsAfterRecoveredLane(
   turn: RoomWorkflowTurn,
+  recoveredParticipant: RoomRoutingParticipantRef | null,
   recoveredTargetOrderIndex: number | null,
 ): boolean {
   if (turn.workflowShape !== 'sequential') {
     return false;
+  }
+
+  const continuationTargets = readLatestSequentialContinuationTargets(turn);
+  if (continuationTargets.length > 0 && recoveredParticipant) {
+    const recoveredContinuationIndex = continuationTargets.findIndex((target) =>
+      sameParticipantRef(target, recoveredParticipant));
+    if (
+      recoveredContinuationIndex !== -1
+      && recoveredContinuationIndex < continuationTargets.length - 1
+    ) {
+      return true;
+    }
   }
 
   const expectedTargetCount = resolveExpectedTurnTargetCount(turn);
@@ -467,6 +487,31 @@ function hasOutstandingSequentialTargetsAfterRecoveredLane(
   }
 
   return recoveredTargetOrderIndex < expectedTargetCount - 1;
+}
+
+function readLatestSequentialContinuationTargets(
+  turn: RoomWorkflowTurn,
+): RoomRoutingParticipantRef[] {
+  for (const event of [...turn.events].reverse()) {
+    const metadata = readMetadataRecord(event.metadata);
+    if (!metadata) {
+      continue;
+    }
+
+    const hasContinuationContext =
+      readMetadataString(metadata, 'continuationSource') !== null
+      || readMetadataRecord(metadata.workflowRecommendation) !== null
+      || readMetadataStringArray(metadata, 'unresolvedTargets').length > 0
+      || readMetadataStringArray(metadata, 'mentionNames').length > 0
+      || readMetadataString(metadata, 'branchStrategy') !== null;
+    if (!hasContinuationContext) {
+      continue;
+    }
+
+    return readParticipantRefs(event.targets);
+  }
+
+  return [];
 }
 
 const ACTIVE_CANONICAL_LANE_STATUSES = new Set([
@@ -1164,6 +1209,7 @@ export function repairOrphanedCompletedDispatchTurn(
     return { repaired: false, state };
   }
   const targetStateId = readAssistantTurnTargetStateId(responseMessage);
+  const participant = buildParticipantRefFromResponse(responseMessage);
   const canonicalRecoveredTarget = resolveCanonicalRecoveredTargetMetadata(
     core,
     channelId,
@@ -1171,7 +1217,6 @@ export function repairOrphanedCompletedDispatchTurn(
     assistantTurnId,
     targetStateId,
   );
-  const participant = buildParticipantRefFromResponse(responseMessage);
   const candidateTurn = activeTurn ?? recoveredTurn;
   if (
     candidateTurn
@@ -1186,6 +1231,7 @@ export function repairOrphanedCompletedDispatchTurn(
       )
       || hasOutstandingSequentialTargetsAfterRecoveredLane(
         candidateTurn,
+        participant,
         canonicalRecoveredTarget?.orderIndex ?? null,
       )
     )

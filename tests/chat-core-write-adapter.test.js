@@ -1833,3 +1833,210 @@ test('repairOrphanedCompletedDispatchTurn restores final sequential target metad
   assert.equal(repairedDispatch?.sourceMessageId, repairedLane?.metadata.sourceMessageId);
   assert.equal(repairedDispatch?.trigger, repairedLane?.metadata.trigger);
 });
+
+test('repairOrphanedCompletedDispatchTurn keeps a startup-recovered sequential continuation blocked when later queued targets only exist in continuation checkpoints', async () => {
+  let { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const seededAt = new Date('2026-04-15T00:42:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Agent-3',
+      provider: 'codex',
+      roles: ['verifier'],
+    },
+    seededAt,
+  );
+  const agent3Id = state.cats[0].id;
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId: agent3Id,
+      provider: 'codex',
+      roles: ['verifier'],
+    },
+    seededAt,
+  );
+
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('@Agent-2 carry the sequential fix forward.');
+    }
+    if (content.includes('You are Agent-2')) {
+      return usage('Agent-2 completed the recovered step.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Handle this in sequence.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id, agent2Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    seededAt,
+    { chatStore: store },
+  );
+
+  await store.write(dispatched.state);
+  const canonicalCore = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const turn = readLatestConversationTurn(canonicalCore, conversationId);
+  assert.ok(turn);
+  const lanes = readOrderedTurnLanes(canonicalCore, turn.id);
+  assert.equal(lanes.length, 2);
+  const repairedLane = lanes[1];
+  assert.ok(repairedLane);
+  assert.equal(repairedLane?.metadata.trigger, 'continuation_mention');
+
+  const corruptedState = structuredClone(dispatched.state);
+  const corruptedChannel = requireChannel(corruptedState, channelId);
+  const participantAssignments = corruptedChannel.participantAssignments ?? [];
+  const agent1Participant = participantAssignments.find((assignment) =>
+    assignment.sourceKind === 'cat' && assignment.sourceRefId === agent1Id);
+  const agent2Participant = participantAssignments.find((assignment) =>
+    assignment.sourceKind === 'cat' && assignment.sourceRefId === agent2Id);
+  const agent3Participant = participantAssignments.find((assignment) =>
+    assignment.sourceKind === 'cat' && assignment.sourceRefId === agent3Id);
+  assert.ok(agent1Participant);
+  assert.ok(agent2Participant);
+  assert.ok(agent3Participant);
+  const interruptedTurn = structuredClone(corruptedChannel.roomRouting.workflow.turnHistory[0]);
+  assert.ok(interruptedTurn);
+  interruptedTurn.status = 'blocked';
+  interruptedTurn.stageId = 'startup_recovery';
+  interruptedTurn.targetStatuses = [];
+  interruptedTurn.events = interruptedTurn.events.filter((event) =>
+    event.kind === 'turn_started' || event.kind === 'checkpoint');
+  interruptedTurn.events.push(
+    {
+      id: 'checkpoint-later-sequential-queued-target',
+      turnId: interruptedTurn.id,
+      kind: 'checkpoint',
+      status: 'running',
+      message: 'Agent-1 handed the room forward to Agent-2, then Agent-3.',
+      actor: {
+        participantKind: 'cat',
+        participantId: agent1Participant.participantId,
+        participantName: agent1Participant.name,
+      },
+      sourceMessageId: repairedLane?.metadata.sourceMessageId,
+      targets: [
+        {
+          participantKind: 'cat',
+          participantId: agent2Participant.participantId,
+          participantName: agent2Participant.name,
+        },
+        {
+          participantKind: 'cat',
+          participantId: agent3Participant.participantId,
+          participantName: agent3Participant.name,
+        },
+      ],
+      dispatchId: null,
+      checkpointId: 'checkpoint-later-sequential-queued-target',
+      outcomeId: null,
+      createdAt: interruptedTurn.completedAt ?? turn.completedAt ?? seededAt.toISOString(),
+      metadata: {
+        checkpointKind: 'continuation',
+        mentionNames: ['Agent-2', 'Agent-3'],
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+        branchStrategy: 'transplant_context',
+        handoffReason: 'workflow_continuation',
+        continuationSource: 'explicit_mentions',
+      },
+    },
+    {
+      id: 'guard-blocked-later-sequential-queued-target',
+      turnId: interruptedTurn.id,
+      kind: 'guard_blocked',
+      status: 'blocked',
+      message: 'Recovered an interrupted room workflow after restart.',
+      actor: null,
+      sourceMessageId: null,
+      targets: [],
+      dispatchId: null,
+      checkpointId: 'loop-guard-later-sequential-queued-target',
+      outcomeId: null,
+      createdAt: interruptedTurn.completedAt ?? turn.completedAt ?? seededAt.toISOString(),
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+    {
+      id: 'outcome-blocked-later-sequential-queued-target',
+      turnId: interruptedTurn.id,
+      kind: 'outcome',
+      status: 'blocked',
+      message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+      actor: null,
+      sourceMessageId: interruptedTurn.sourceMessageId,
+      targets: [],
+      dispatchId: null,
+      checkpointId: null,
+      outcomeId: null,
+      createdAt: interruptedTurn.completedAt ?? turn.completedAt ?? seededAt.toISOString(),
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+  );
+  corruptedChannel.roomRouting.workflow.activeTurn = null;
+  corruptedChannel.roomRouting.workflow.turnHistory = [interruptedTurn];
+  corruptedChannel.roomRouting.lastCheckpoint = {
+    id: 'loop-guard-later-sequential-queued-target',
+    kind: 'loop_guard',
+    message: 'Recovered an interrupted room workflow after restart.',
+    actor: null,
+    sourceMessageId: null,
+    targets: [],
+    createdAt: interruptedTurn.completedAt ?? turn.completedAt ?? seededAt.toISOString(),
+  };
+  corruptedChannel.roomRouting.lastOutcome = {
+    turnId: interruptedTurn.id,
+    mode: corruptedChannel.roomRouting.mode,
+    sourceMessageId: interruptedTurn.sourceMessageId,
+    sourceSenderKind: interruptedTurn.sourceSenderKind,
+    sourceSenderName: interruptedTurn.sourceSenderName,
+    status: 'blocked',
+    resolution: {
+      routingMode: 'room_default',
+      selectionKind: 'default_target',
+      defaultTarget: null,
+      defaultTargetReason: 'boss_chat_default',
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    },
+    resolvedTargets: [],
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 0,
+    guard: null,
+    startedAt: interruptedTurn.startedAt,
+    completedAt: interruptedTurn.completedAt,
+  };
+
+  const repaired = repairOrphanedCompletedDispatchTurn(
+    corruptedState,
+    channelId,
+    new Date('2026-04-15T00:43:00.000Z'),
+    canonicalCore,
+  );
+
+  assert.equal(repaired.repaired, false);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  assert.equal(repairedChannel.roomRouting.workflow.activeTurn, null);
+  assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'blocked');
+  assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'blocked');
+});
