@@ -13,6 +13,10 @@ import type {
   RoomWorkflowTargetStatus,
 } from '../../shared/roomRouting.js';
 import type {
+  ConversationId,
+  LaneId,
+  SessionId,
+  TurnId,
   CatsCoreState,
   CoreApprovalDecisionAction,
   CoreApprovalQueueItem,
@@ -35,6 +39,50 @@ import type { CatsMemoryService } from '../memory/index.js';
 
 export const ORCHESTRATOR_CONTRACT_VERSION = 1;
 export const ORCHESTRATOR_RUNTIME_TOOL_SCHEMA_VERSION = 1;
+export const ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION = 1;
+
+export type RuntimeDeliveryContentBlockKind = 'text' | 'tool' | 'status';
+export type RuntimeDeliveryContentBlockStatus = 'streaming' | 'complete' | 'error';
+
+export interface RuntimeDeliveryContentBlock {
+  id: string;
+  index: number;
+  kind: RuntimeDeliveryContentBlockKind;
+  status: RuntimeDeliveryContentBlockStatus;
+  title: string | null;
+  text: string;
+  toolName: string | null;
+  toolId: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export type NormalizedRuntimeDeliveryKind =
+  | 'session_status'
+  | 'progress'
+  | 'content_block'
+  | 'result'
+  | 'error';
+
+export interface NormalizedRuntimeDeliverySequence {
+  segmentIndex: number;
+  blockIndex: number | null;
+  eventIndex: number;
+}
+
+export interface NormalizedRuntimeDeliveryEvent {
+  version: typeof ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION;
+  conversationId: ConversationId;
+  turnId: TurnId;
+  laneId: LaneId;
+  sessionId: SessionId | null;
+  kind: NormalizedRuntimeDeliveryKind;
+  sourceEvent: string;
+  eventId: string;
+  emittedAt: string;
+  sequence: NormalizedRuntimeDeliverySequence;
+  payload: Record<string, unknown>;
+  contentBlock: RuntimeDeliveryContentBlock | null;
+}
 
 export type OrchestratorTransportContext = 'telegram' | 'line' | 'web';
 export type OrchestratorExecutionState =

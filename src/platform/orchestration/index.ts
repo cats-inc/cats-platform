@@ -1,6 +1,9 @@
 export {
   ORCHESTRATOR_CONTRACT_VERSION,
+  ORCHESTRATOR_RUNTIME_DELIVERY_EVENT_VERSION,
   ORCHESTRATOR_RUNTIME_TOOL_SCHEMA_VERSION,
+  type NormalizedRuntimeDeliveryEvent,
+  type NormalizedRuntimeDeliveryKind,
   type OrchestratorActionEnvelope,
   type OrchestratorApprovalActionContract,
   type OrchestratorApprovalGate,
@@ -23,8 +26,13 @@ export {
   type OrchestratorRuntimeToolPlane,
   type OrchestratorTransportContext,
   type OrchestratorTurnPlan,
+  type RuntimeDeliveryContentBlock,
   type ToolIntentManifest,
 } from './contracts.js';
+export {
+  buildNormalizedRuntimeDeliveryEvent,
+  type BuildNormalizedRuntimeDeliveryEventInput,
+} from './runtimeDelivery.js';
 export {
   buildOrchestratorExecutionLoopResponse,
   buildOrchestratorExecutionLoopSnapshot,
