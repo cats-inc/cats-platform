@@ -142,7 +142,12 @@ function writeRetryReplayMetadata(
 
   nextMetadata = writeWorkflowContinuationReplayMetadata(
     nextMetadata,
-    input.continuationReplay ?? null,
+    input.continuationReplay
+      ? {
+          ...input.continuationReplay,
+          sourceMessageId: options.sourceMessageId ?? input.continuationReplay.sourceMessageId,
+        }
+      : null,
     input.continuationReplay
       ? {
           replayState: options.replayState,

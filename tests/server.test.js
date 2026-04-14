@@ -228,6 +228,7 @@ async function withServer(
     startup,
     coreStore,
     resumePendingOrchestratorDispatch,
+    resumeWorkflowContinuationDispatch,
     work,
     code,
     ...chatOverrides
@@ -244,6 +245,7 @@ async function withServer(
       startup,
       coreStore,
       resumePendingOrchestratorDispatch,
+      resumeWorkflowContinuationDispatch,
     },
     chat: {
       chatStore,
@@ -6478,6 +6480,178 @@ test('core operator actions annotate blocked runs and append operator activity r
     assert.ok(activity);
     assert.equal(activity.metadata.action, 'retry');
   }, chatStore);
+});
+
+test('core operator retry preserves continuation source identity while refreshing source message id', async () => {
+  const chatStore = new MemoryChatStore();
+  let capturedReplayRequest = null;
+
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          task: {
+            id: 'task-operator-continuation-retry',
+            title: 'Continuation replay retry task',
+            status: 'blocked',
+            conversationId: 'conversation-channel-operator-continuation-retry',
+            summary: 'Retry the stored continuation replay.',
+            createdAt: '2026-03-26T18:40:00.000Z',
+            metadata: writeWorkflowContinuationReplayMetadata(
+              {},
+              buildWorkflowContinuationReplayRequest({
+                channelId: 'channel-operator-continuation-retry',
+                checkpointId: 'checkpoint-operator-continuation-retry',
+                sourceMessageId: 'message-operator-continuation-original',
+                sourceTurnId: 'turn-operator-continuation',
+                sourceLaneId: 'lane-operator-continuation',
+                sourceAssistantTurnId: 'assistant-turn-operator-continuation',
+                sourceParticipant: {
+                  participantKind: 'cat',
+                  participantId: 'cat-inline',
+                  participantName: 'Inline-Agent',
+                },
+                targets: [
+                  {
+                    participantKind: 'cat',
+                    participantId: 'cat-followup',
+                    participantName: 'Followup-Agent',
+                  },
+                ],
+                trigger: 'continuation_mention',
+                branchStrategy: 'transplant_context',
+                workflowStageId: 'continuation_handoff',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                continuationSource: 'explicit_mentions',
+                blockedReason: 'max_dispatches',
+                recordedAt: '2026-03-26T18:41:00.000Z',
+              }),
+              {
+                replayState: 'failed',
+                replayTrigger: 'retry',
+                replayAttemptAt: '2026-03-26T18:42:00.000Z',
+                replayError: 'guard tripped',
+              },
+            ),
+          },
+        }),
+      });
+      assert.equal(taskResponse.status, 201);
+
+      const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          run: {
+            id: 'run-operator-continuation-retry',
+            title: 'Blocked continuation retry run',
+            status: 'blocked',
+            taskId: 'task-operator-continuation-retry',
+            conversationId: 'conversation-channel-operator-continuation-retry',
+            summary: 'Run blocked pending continuation retry.',
+            createdAt: '2026-03-26T18:43:00.000Z',
+            metadata: {
+              workflowStageId: 'continuation_handoff',
+              workflowShape: 'sequential',
+            },
+          },
+        }),
+      });
+      assert.equal(runResponse.status, 201);
+
+      const operatorActionResponse = await fetch(`${baseUrl}/api/core/operator-actions`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'retry',
+          actorId: 'actor-owner',
+          taskId: 'task-operator-continuation-retry',
+          runId: 'run-operator-continuation-retry',
+        }),
+      });
+      assert.equal(operatorActionResponse.status, 200);
+      const operatorActionPayload = await operatorActionResponse.json();
+
+      assert.ok(capturedReplayRequest);
+      assert.equal(capturedReplayRequest.sourceMessageId, 'message-operator-continuation-original');
+      assert.equal(capturedReplayRequest.sourceTurnId, 'turn-operator-continuation');
+      assert.equal(capturedReplayRequest.sourceLaneId, 'lane-operator-continuation');
+      assert.equal(
+        capturedReplayRequest.sourceAssistantTurnId,
+        'assistant-turn-operator-continuation',
+      );
+      assert.equal(operatorActionPayload.autoResume.status, 'blocked');
+      assert.equal(
+        operatorActionPayload.autoResume.sourceMessageId,
+        'message-operator-continuation-rebuilt',
+      );
+      assert.equal(
+        operatorActionPayload.task.metadata.workflowContinuationReplay.sourceMessageId,
+        'message-operator-continuation-rebuilt',
+      );
+      assert.equal(
+        operatorActionPayload.task.metadata.workflowContinuationReplay.sourceTurnId,
+        'turn-operator-continuation',
+      );
+      assert.equal(
+        operatorActionPayload.task.metadata.workflowContinuationReplay.sourceLaneId,
+        'lane-operator-continuation',
+      );
+      assert.equal(
+        operatorActionPayload.task.metadata.workflowContinuationReplay.sourceAssistantTurnId,
+        'assistant-turn-operator-continuation',
+      );
+      assert.equal(
+        operatorActionPayload.task.metadata.workflowContinuationReplay.replayState,
+        'ready',
+      );
+      assert.ok(typeof operatorActionPayload.task.metadata.workflowContinuationReplay.replayAttemptAt === 'string');
+      assert.equal(operatorActionPayload.task.metadata.workflowContinuationReplay.replayError, null);
+
+      const stateResponse = await fetch(`${baseUrl}/api/core`);
+      assert.equal(stateResponse.status, 200);
+      const statePayload = await stateResponse.json();
+      const task = statePayload.tasks.find(
+        (candidate) => candidate.id === 'task-operator-continuation-retry',
+      );
+
+      assert.ok(task);
+      assert.equal(
+        task.metadata.workflowContinuationReplay.sourceMessageId,
+        'message-operator-continuation-rebuilt',
+      );
+      assert.equal(task.metadata.workflowContinuationReplay.sourceTurnId, 'turn-operator-continuation');
+      assert.equal(task.metadata.workflowContinuationReplay.sourceLaneId, 'lane-operator-continuation');
+      assert.equal(
+        task.metadata.workflowContinuationReplay.sourceAssistantTurnId,
+        'assistant-turn-operator-continuation',
+      );
+    },
+    chatStore,
+    {
+      resumeWorkflowContinuationDispatch: async (request) => {
+        capturedReplayRequest = structuredClone(request);
+        return {
+          channelId: request.channelId,
+          sourceMessageId: 'message-operator-continuation-rebuilt',
+          status: 'blocked',
+          blockedReason: 'no_valid_targets',
+          results: [],
+          executionState: 'blocked',
+        };
+      },
+    },
+  );
 });
 
 test('core acknowledge actions use acknowledged metadata keys and append operator activity records', async () => {
