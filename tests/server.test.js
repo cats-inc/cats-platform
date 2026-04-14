@@ -7443,6 +7443,185 @@ test('GET /api/code/tasks/:id mirrors shared control-plane and recovery projecti
   });
 });
 
+test('POST /api/code/tasks mutations mirror shared detail, control-plane, and recovery projections', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createResponse = await fetch(`${baseUrl}/api/code/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Code mutation projection contract task',
+        summary: 'Verify code task mutation responses stay aligned with shared projections.',
+        workspacePath: 'C:/repo/cats-platform',
+        workspaceKind: 'conversation_repo',
+        acceptanceCriteria: 'Every mutation returns the shared task detail projection.',
+      }),
+    });
+    assert.equal(createResponse.status, 201);
+    const createPayload = await createResponse.json();
+    const taskId = createPayload.task.task.id;
+
+    const assertTaskProjection = async (taskProjection, expectedStatus) => {
+      const codeTaskDetailResponse = await fetch(`${baseUrl}/api/code/tasks/${taskId}`);
+      assert.equal(codeTaskDetailResponse.status, 200);
+      const codeTaskDetailPayload = await codeTaskDetailResponse.json();
+
+      const controlPlaneResponse = await fetch(`${baseUrl}/api/core/tasks/${taskId}/control-plane`);
+      assert.equal(controlPlaneResponse.status, 200);
+      const controlPlanePayload = await controlPlaneResponse.json();
+
+      const recoveryResponse = await fetch(`${baseUrl}/api/core/tasks/${taskId}/recovery`);
+      assert.equal(recoveryResponse.status, 200);
+      const recoveryPayload = await recoveryResponse.json();
+
+      assert.equal(taskProjection.product.id, 'code');
+      assert.equal(taskProjection.task.id, taskId);
+      assert.equal(taskProjection.task.status, expectedStatus);
+      assert.deepEqual(taskProjection, codeTaskDetailPayload);
+      assert.deepEqual(taskProjection.controlPlane, controlPlanePayload.controlPlane);
+      assert.deepEqual(taskProjection.recovery, recoveryPayload.recovery);
+    };
+
+    await assertTaskProjection(createPayload.task, 'approved');
+    assert.equal(createPayload.task.effectiveStrategy, 'reflexion');
+    assert.deepEqual(createPayload.task.workspace, {
+      workspacePath: 'C:/repo/cats-platform',
+      workspaceKind: 'conversation_repo',
+      ownershipState: 'conversation_bound',
+    });
+
+    const executeResponse = await fetch(`${baseUrl}/api/code/tasks/${taskId}/execute`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        workspacePath: 'C:/repo/cats-platform',
+        workspaceKind: 'conversation_repo',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(executeResponse.status, 200);
+    const executePayload = await executeResponse.json();
+    assert.equal(executePayload.sessionId, 'session-1');
+    await assertTaskProjection(executePayload.task, 'in_progress');
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.createdSessions[0].cwd, 'C:/repo/cats-platform');
+
+    const blockedMetadata = writeTaskPlanningMetadata(
+      writeWorkflowContinuationReplayMetadata(
+        writeOrchestratorDispatchReplayMetadata(
+          {
+            ...executePayload.task.task.metadata,
+            effectiveDeliveryPolicy: {
+              mode: 'commit_only',
+              gates: ['owner_approval_required'],
+              source: 'task_override',
+              rationale: 'Need owner approval before the blocked code task resumes.',
+            },
+            channelId: 'channel-code-mutation-projection-contract',
+            transport: 'web',
+            roomRoutingMode: 'boss_chat',
+          },
+          buildOrchestratorDispatchReplayRequest({
+            channelId: 'channel-code-mutation-projection-contract',
+            body: 'Resume the blocked code task.',
+            recordedAt: '2026-04-15T07:30:00.000Z',
+          }),
+          {
+            replayState: 'failed',
+            replayTrigger: 'retry',
+            replayAttemptAt: '2026-04-15T07:31:00.000Z',
+            replayError: 'runtime stalled',
+            sourceMessageId: 'message-code-mutation-projection-contract',
+          },
+        ),
+        buildWorkflowContinuationReplayRequest({
+          channelId: 'channel-code-mutation-projection-contract',
+          checkpointId: 'checkpoint-code-mutation-projection-contract',
+          sourceMessageId: 'message-code-mutation-projection-contract',
+          sourceTurnId: 'turn-code-mutation-projection-contract',
+          sourceLaneId: 'lane-code-mutation-projection-contract',
+          sourceAssistantTurnId: 'assistant-turn-code-mutation-projection-contract',
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: 'cat-code-reviewer',
+            participantName: 'Code Reviewer',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-code-reviewer',
+              participantName: 'Code Reviewer',
+            },
+          ],
+          mentionNames: ['Code Reviewer'],
+          trigger: 'continuation_mention',
+          branchStrategy: 'transplant_context',
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'converge',
+          reviewRequired: true,
+          continuationSource: 'workflow_recommendation',
+          unresolvedTargets: ['Code Reviewer'],
+          blockedReason: 'max_dispatches',
+          recordedAt: '2026-04-15T07:32:00.000Z',
+        }),
+        {
+          replayState: 'failed',
+          replayTrigger: 'retry',
+          replayAttemptAt: '2026-04-15T07:33:00.000Z',
+          replayError: 'reviewer offline',
+        },
+      ),
+      {
+        productHint: 'code',
+        strategyHint: 'reflexion',
+        acceptanceCriteria: 'Every mutation returns the shared task detail projection.',
+      },
+    );
+
+    const blockTaskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: taskId,
+          title: 'Code mutation projection contract task',
+          status: 'blocked',
+          metadata: blockedMetadata,
+        },
+      }),
+    });
+    assert.equal(blockTaskResponse.status, 200);
+
+    const resumeResponse = await fetch(`${baseUrl}/api/code/tasks/${taskId}/resume`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    assert.equal(resumeResponse.status, 200);
+    const resumePayload = await resumeResponse.json();
+    await assertTaskProjection(resumePayload.task, 'approved');
+    assert.equal(
+      resumePayload.task.controlPlane.workflowContinuation.sourceAssistantTurnId,
+      'assistant-turn-code-mutation-projection-contract',
+    );
+    assert.equal(resumePayload.task.controlPlane.runtimeDeliveryIntent.mode, 'commit_only');
+    assert.equal(
+      resumePayload.task.recovery.workflowContinuationReplay.blockedReason,
+      'max_dispatches',
+    );
+  });
+});
+
 test('GET /api/shell/browse lists subdirectories for the folder browser modal', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-folder-browser-'));
   const alphaDir = path.join(root, 'alpha');
