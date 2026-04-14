@@ -552,8 +552,11 @@ GET /api/code/previews
 - `GET /api/code/tasks/:taskId` joins:
   - the shared `task` record
   - the derived `inspection` view
+  - the task-scoped `controlPlane` view
+  - the task-scoped `recovery` view
   - a normalized timeline preview
   - linked build/preview artifacts
+  - code-specific workspace/plan context
 - `GET /api/code/artifacts` returns the code-output list read model above all
   code-linked artifacts.
 - `GET /api/code/artifacts/:artifactId` returns the focused code-output detail
