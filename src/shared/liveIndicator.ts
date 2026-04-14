@@ -1408,11 +1408,7 @@ export function hasVisibleLiveIndicatorSpeakerReplyAfterMessage<
     isVisibleAssistantReply(message) && doesMessageMatchLiveIndicatorSpeaker(message, liveIndicator));
 }
 
-export function hasVisibleSessionStartAfterMessage<TMessage extends {
-  id: string;
-  senderKind: string;
-  metadata?: Record<string, unknown> | null | undefined;
-}>(
+export function hasVisibleSessionStartAfterMessage<TMessage extends LiveIndicatorTranscriptMessageLike>(
   messages: ReadonlyArray<TMessage>,
   messageId: string,
   options: {

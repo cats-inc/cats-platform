@@ -13,6 +13,7 @@ function buildParticipantAssignment(
   sessionId,
   status = 'ready',
   name = participantId,
+  startedAt = null,
 ) {
   return {
     participantId,
@@ -33,7 +34,8 @@ function buildParticipantAssignment(
         status,
         sessionId,
         cwd: null,
-        lastUsedAt: '2026-04-11T00:00:00.000Z',
+        startedAt,
+        lastUsedAt: startedAt ?? '2026-04-11T00:00:00.000Z',
       },
     },
   };
@@ -252,6 +254,56 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
     targetStateId: 'target-2',
+  });
+});
+
+test('resolveChannelStreamTarget uses target-local queue time for workflow session-start confirmation', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          id: 'turn-target-local-floor',
+          status: 'running',
+          startedAt: '2026-04-14T12:00:01.000Z',
+          targetStatuses: [
+            {
+              id: 'target-gemini',
+              status: 'running',
+              queuedAt: '2026-04-14T12:05:00.000Z',
+              startedAt: null,
+              participant: {
+                participantId: 'participant-gemini',
+                participantName: 'Gemini-CLI',
+              },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment(
+        'participant-gemini',
+        'session-gemini',
+        'ready',
+        'Gemini-CLI',
+        '2026-04-14T12:03:00.000Z',
+      ),
+    ],
+  };
+
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: 'session-gemini',
+    laneId: 'lane-turn-target-local-floor-target-gemini',
+    participantId: 'participant-gemini',
+    catId: null,
+    speakerLabel: 'Gemini-CLI',
+    sessionStartedAt: '2026-04-14T12:03:00.000Z',
+    requiresSessionStartConfirmation: false,
+    targetStateId: 'target-gemini',
   });
 });
 

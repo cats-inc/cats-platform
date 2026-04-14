@@ -80,6 +80,7 @@ function buildParticipantStreamTarget(
   channel: ReturnType<typeof requireChannel>,
   participantId: string,
   fallbackSpeakerLabel: string | null = null,
+  sessionConfirmationFloorAt: string | null = null,
 ): ChannelStreamTarget {
   const assignment = resolvePrimaryParticipantExecutionAssignment(channel, participantId);
   const lease = resolveParticipantExecutionLease(channel, participantId);
@@ -98,6 +99,7 @@ function buildParticipantStreamTarget(
     requiresSessionStartConfirmation: shouldRequireSessionStartConfirmation(
       channel,
       sessionStartedAt,
+      sessionConfirmationFloorAt,
     ),
     targetStateId: null,
   };
@@ -106,6 +108,7 @@ function buildParticipantStreamTarget(
 function buildOrchestratorStreamTarget(
   channel: ReturnType<typeof requireChannel>,
   fallbackSpeakerLabel: string | null = null,
+  sessionConfirmationFloorAt: string | null = null,
 ): ChannelStreamTarget {
   const speakerLabel = resolveVisibleOrchestratorLabel({
     displayName: fallbackSpeakerLabel,
@@ -122,6 +125,7 @@ function buildOrchestratorStreamTarget(
     requiresSessionStartConfirmation: shouldRequireSessionStartConfirmation(
       channel,
       channel.orchestratorLease.startedAt ?? null,
+      sessionConfirmationFloorAt,
     ),
     targetStateId: null,
   };
@@ -130,23 +134,25 @@ function buildOrchestratorStreamTarget(
 function shouldRequireSessionStartConfirmation(
   channel: ReturnType<typeof requireChannel>,
   sessionStartedAt: string | null,
+  sessionConfirmationFloorAt: string | null = null,
 ): boolean {
   if (!sessionStartedAt) {
     return false;
   }
 
   const activeTurnStartedAt = channel.roomRouting?.workflow?.activeTurn?.startedAt ?? null;
-  if (!activeTurnStartedAt) {
+  const confirmationFloorAt = sessionConfirmationFloorAt ?? activeTurnStartedAt;
+  if (!confirmationFloorAt) {
     return false;
   }
 
   const sessionTimestamp = Date.parse(sessionStartedAt);
-  const activeTurnTimestamp = Date.parse(activeTurnStartedAt);
-  if (Number.isNaN(sessionTimestamp) || Number.isNaN(activeTurnTimestamp)) {
+  const confirmationFloorTimestamp = Date.parse(confirmationFloorAt);
+  if (Number.isNaN(sessionTimestamp) || Number.isNaN(confirmationFloorTimestamp)) {
     return false;
   }
 
-  return sessionTimestamp >= activeTurnTimestamp;
+  return sessionTimestamp >= confirmationFloorTimestamp;
 }
 
 function buildWorkflowTargetStreamTarget(
@@ -154,6 +160,8 @@ function buildWorkflowTargetStreamTarget(
   turnId: string,
   targetStatus: {
     id: string;
+    queuedAt?: string | null;
+    startedAt?: string | null;
     participant: {
       participantKind: 'orchestrator' | 'cat';
       participantId: string;
@@ -162,12 +170,18 @@ function buildWorkflowTargetStreamTarget(
   },
 ): ChannelStreamTarget {
   const participant = targetStatus.participant;
+  const sessionConfirmationFloorAt = targetStatus.startedAt ?? targetStatus.queuedAt ?? null;
   const target = participant.participantKind === 'orchestrator'
-    ? buildOrchestratorStreamTarget(channel, participant.participantName)
+    ? buildOrchestratorStreamTarget(
+        channel,
+        participant.participantName,
+        sessionConfirmationFloorAt,
+      )
     : buildParticipantStreamTarget(
         channel,
         participant.participantId,
         participant.participantName,
+        sessionConfirmationFloorAt,
       );
   return {
     ...target,

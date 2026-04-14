@@ -1152,6 +1152,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
   const runtime = createRuntimeStub();
   const seededAt = new Date('2026-03-11T00:00:00.000Z');
   const firstReplyAt = new Date('2026-03-11T00:00:02.000Z');
+  const secondLeaseStartedAt = new Date('2026-03-11T00:00:01.500Z');
   const secondStartAt = new Date('2026-03-11T00:00:03.000Z');
   const secondReplyAt = new Date('2026-03-11T00:00:04.000Z');
 
@@ -1220,10 +1221,10 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
       lastError: null,
       provider: 'codex',
       model: 'gpt-5.4',
-      startedAt: secondStartAt.toISOString(),
-      lastUsedAt: secondStartAt.toISOString(),
+      startedAt: secondLeaseStartedAt.toISOString(),
+      lastUsedAt: secondLeaseStartedAt.toISOString(),
     },
-    secondStartAt,
+    secondLeaseStartedAt,
   );
   await chatStore.write(state);
   let releaseFirstResultSeen;
@@ -1461,6 +1462,14 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
     assert.match(streamBody, /"speakerLabel":"Second Cat"/u);
     assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-sequential-2"/u);
+    assert.match(
+      streamBody,
+      new RegExp(`"speakerLabel":"Second Cat"[\\s\\S]*"sessionStartedAt":"${secondLeaseStartedAt.toISOString()}"`, 'u'),
+    );
+    assert.match(
+      streamBody,
+      /"speakerLabel":"Second Cat"[\s\S]*"requiresSessionStartConfirmation":false/u,
+    );
     assert.match(streamBody, /"text":"Second speaker picked up the room"/u);
     assert.deepEqual(runtime.streamedSessions, [
       'session-live-sequential-1',
