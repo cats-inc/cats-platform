@@ -74,7 +74,8 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'sonnet', label: 'sonnet' },
   ],
   cursor: [
-    { value: 'auto', label: 'auto (default)', default: true },
+    { value: 'auto', label: 'auto' },
+    { value: 'composer-2-fast', label: 'Composer 2 Fast (default)', default: true },
     { value: 'gpt-5.4', label: 'gpt-5.4' },
     { value: 'claude-opus-4-6', label: 'claude 4.6 opus' },
     { value: 'gemini-3.1-pro', label: 'gemini 3.1 pro' },

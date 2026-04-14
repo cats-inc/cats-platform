@@ -445,7 +445,8 @@ export function normalizeProductProviderModelId(
 }
 
 export function getDefaultModel(provider: string): string {
-  return getProviderModels(provider)[0]?.value ?? '';
+  const models = getProviderModels(provider);
+  return models.find((model) => model.default)?.value ?? models[0]?.value ?? '';
 }
 
 export function getProviderInstances(

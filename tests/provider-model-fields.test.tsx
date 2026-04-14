@@ -217,12 +217,14 @@ test('createStaticProviderModelCatalog preserves the curated Gemini CLI order', 
   );
 });
 
-test('createStaticProviderModelCatalog exposes Cursor Auto as the static default', () => {
+test('createStaticProviderModelCatalog exposes Cursor Composer 2 Fast as the static default', () => {
   const catalog = createStaticProviderModelCatalog('cursor', { instance: 'native' });
 
-  assert.equal(catalog.defaultModel, 'auto');
-  assert.equal(catalog.models[0]?.id, 'auto');
-  assert.equal(catalog.models[0]?.default, true);
+  assert.equal(catalog.defaultModel, 'composer-2-fast');
+  assert.equal(
+    catalog.models.find((model) => model.default)?.id,
+    'composer-2-fast',
+  );
 });
 
 test('static fallback catalogs do not overwrite an existing model selection during panel reopen', () => {
