@@ -7,6 +7,7 @@ import {
   upsertCoreMission,
   upsertCoreSegment,
   upsertCoreSession,
+  upsertCoreTransportBinding,
   upsertCoreTurn,
 } from '../build/server/core/model/index.js';
 
@@ -127,4 +128,32 @@ test('core mission helper persists source turn, lane, and assigned agent identit
   assert.equal(core.missions[0].sourceLaneId, 'lane-cat-1');
   assert.equal(core.missions[0].assignedAgentId, 'agent-cat-1');
   assert.equal(core.missions[0].metadata.runId, 'run-1');
+});
+
+test('core transport binding helper persists transport identity separately from conversations and sessions', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'transport-binding-1',
+      platform: 'telegram',
+      direction: 'bidirectional',
+      conversationId: 'conversation-direct-1',
+      agentId: 'agent-cat-1',
+      externalThreadKey: 'bot:boss_cat_bot',
+      status: 'active',
+      createdAt: '2026-04-14T21:20:00.000Z',
+      metadata: {
+        botName: 'boss_cat_bot',
+      },
+    },
+    new Date('2026-04-14T21:20:00.000Z'),
+  ).core;
+
+  assert.equal(core.transportBindings.length, 1);
+  assert.equal(core.transportBindings[0].platform, 'telegram');
+  assert.equal(core.transportBindings[0].conversationId, 'conversation-direct-1');
+  assert.equal(core.transportBindings[0].externalThreadKey, 'bot:boss_cat_bot');
+  assert.equal(core.transportBindings[0].metadata.botName, 'boss_cat_bot');
 });

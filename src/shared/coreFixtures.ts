@@ -53,6 +53,21 @@ export function createSharedCoreFixtureBundle() {
         runId: 'run-system-1',
       },
     },
+    transportBinding: {
+      id: 'transport-binding-system-1',
+      platform: 'telegram',
+      direction: 'bidirectional',
+      conversationId: 'conversation-system-1',
+      participantId: null,
+      agentId: 'actor-orchestrator-global',
+      externalThreadKey: 'bot:boss_cat_bot',
+      status: 'active',
+      createdAt: SHARED_CORE_FIXTURE_TIME,
+      metadata: {
+        source: 'shared-fixture',
+        botName: 'boss_cat_bot',
+      },
+    },
     task: {
       id: 'task-system-1',
       title: 'Approve orchestrator dispatch',

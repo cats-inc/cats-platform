@@ -11,6 +11,9 @@ import type {
   SegmentRecordKind,
   SegmentRecordStatus,
   SessionRecordStatus,
+  TransportBindingDirection,
+  TransportBindingPlatform,
+  TransportBindingStatus,
   CoreOrchestrationOutcomeStatus,
   CoreProjectStatus,
   CoreRecordMetadata,
@@ -176,6 +179,19 @@ export interface CoreSessionWriteInput {
   createdAt?: string;
   startedAt?: string | null;
   completedAt?: string | null;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreTransportBindingWriteInput {
+  id?: string;
+  platform: TransportBindingPlatform;
+  direction?: TransportBindingDirection;
+  conversationId?: string | null;
+  participantId?: string | null;
+  agentId?: string | null;
+  externalThreadKey?: string | null;
+  status?: TransportBindingStatus;
+  createdAt?: string;
   metadata?: CoreRecordMetadata;
 }
 

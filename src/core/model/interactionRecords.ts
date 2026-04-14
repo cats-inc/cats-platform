@@ -5,6 +5,7 @@ import type {
   CoreLaneWriteInput,
   CoreSegmentWriteInput,
   CoreSessionWriteInput,
+  CoreTransportBindingWriteInput,
   CoreTurnWriteInput,
 } from './inputs.js';
 import {
@@ -18,6 +19,7 @@ import type {
   LaneRecord,
   SegmentRecord,
   SessionRecord,
+  TransportBindingRecord,
   TurnRecord,
 } from '../types.js';
 
@@ -302,6 +304,59 @@ export function upsertCoreSession(
       nowIso,
     ),
     session,
+    created,
+  };
+}
+
+export function upsertCoreTransportBinding(
+  core: CatsCoreState,
+  input: CoreTransportBindingWriteInput,
+  now: Date = new Date(),
+): { core: CatsCoreState; transportBinding: TransportBindingRecord; created: boolean } {
+  const nowIso = now.toISOString();
+  const bindingId = normalizeNullableString(input.id) ?? `transport-binding-${randomUUID()}`;
+  const existing = core.transportBindings.find((binding) => binding.id === bindingId);
+  const createdAt = existing?.createdAt ?? input.createdAt ?? nowIso;
+  const transportBinding: TransportBindingRecord = {
+    id: bindingId,
+    platform: input.platform ?? existing?.platform ?? 'internal',
+    direction: input.direction ?? existing?.direction ?? 'bidirectional',
+    conversationId:
+      input.conversationId === undefined
+        ? existing?.conversationId ?? null
+        : normalizeNullableString(input.conversationId),
+    participantId:
+      input.participantId === undefined
+        ? existing?.participantId ?? null
+        : normalizeNullableString(input.participantId),
+    agentId:
+      input.agentId === undefined
+        ? existing?.agentId ?? null
+        : normalizeNullableString(input.agentId),
+    externalThreadKey:
+      input.externalThreadKey === undefined
+        ? existing?.externalThreadKey ?? null
+        : normalizeNullableString(input.externalThreadKey),
+    status: input.status ?? existing?.status ?? 'active',
+    createdAt,
+    updatedAt: existing ? nowIso : createdAt,
+    metadata:
+      input.metadata === undefined
+        ? normalizeMetadata(existing?.metadata)
+        : normalizeMetadata(input.metadata),
+  };
+
+  const { records, created } = replaceById(core.transportBindings, transportBinding);
+
+  return {
+    core: touchCoreState(
+      {
+        ...core,
+        transportBindings: records,
+      },
+      nowIso,
+    ),
+    transportBinding,
     created,
   };
 }

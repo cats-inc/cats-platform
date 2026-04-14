@@ -14,6 +14,9 @@ import type {
   CoreRunStatus,
   CoreTaskStatus,
   CoreTraceKind,
+  TransportBindingDirection,
+  TransportBindingPlatform,
+  TransportBindingStatus,
   CoreWorkItemStatus,
 } from '../types.js';
 
@@ -94,6 +97,24 @@ export const CORE_MISSION_STATUSES = [
   'failed',
   'cancelled',
 ] as const satisfies readonly MissionRecordStatus[];
+
+export const CORE_TRANSPORT_BINDING_PLATFORMS = [
+  'telegram',
+  'line',
+  'internal',
+  'web',
+] as const satisfies readonly TransportBindingPlatform[];
+
+export const CORE_TRANSPORT_BINDING_DIRECTIONS = [
+  'inbound',
+  'bidirectional',
+] as const satisfies readonly TransportBindingDirection[];
+
+export const CORE_TRANSPORT_BINDING_STATUSES = [
+  'active',
+  'disabled',
+  'archived',
+] as const satisfies readonly TransportBindingStatus[];
 
 export const CORE_ARTIFACT_KINDS = [
   'document',

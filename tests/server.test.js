@@ -2701,6 +2701,17 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     const missionPayload = await missionResponse.json();
     assert.equal(missionPayload.mission.id, fixtures.mission.id);
 
+    const transportBindingResponse = await fetch(`${baseUrl}/api/core/transport-bindings`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ transportBinding: fixtures.transportBinding }),
+    });
+    assert.equal(transportBindingResponse.status, 201);
+    const transportBindingPayload = await transportBindingResponse.json();
+    assert.equal(transportBindingPayload.transportBinding.id, fixtures.transportBinding.id);
+
     const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
       method: 'POST',
       headers: {
@@ -2797,6 +2808,15 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     const missionsListPayload = await missionsListResponse.json();
     assert.ok(missionsListPayload.missions.some((mission) => mission.id === fixtures.mission.id));
 
+    const transportBindingsListResponse = await fetch(`${baseUrl}/api/core/transport-bindings`);
+    assert.equal(transportBindingsListResponse.status, 200);
+    const transportBindingsListPayload = await transportBindingsListResponse.json();
+    assert.ok(
+      transportBindingsListPayload.transportBindings.some(
+        (transportBinding) => transportBinding.id === fixtures.transportBinding.id,
+      ),
+    );
+
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
@@ -2804,6 +2824,11 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.ok(statePayload.projects.some((project) => project.id === fixtures.project.id));
     assert.ok(statePayload.workItems.some((workItem) => workItem.id === fixtures.workItem.id));
     assert.ok(statePayload.missions.some((mission) => mission.id === fixtures.mission.id));
+    assert.ok(
+      statePayload.transportBindings.some(
+        (transportBinding) => transportBinding.id === fixtures.transportBinding.id,
+      ),
+    );
     assert.ok(statePayload.tasks.some((task) => task.id === fixtures.task.id));
     assert.equal(
       statePayload.tasks.find((task) => task.id === fixtures.task.id)?.parentTaskId,

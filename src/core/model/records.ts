@@ -15,6 +15,7 @@ export {
   upsertCoreLane,
   upsertCoreSegment,
   upsertCoreSession,
+  upsertCoreTransportBinding,
   upsertCoreTurn,
 } from './interactionRecords.js';
 export { upsertCoreApprovalBinding } from './governanceRecords.js';
