@@ -766,6 +766,38 @@ function appendRecoveredTargetCompletedEvent(
   );
 }
 
+function hasRecoveredResponseMessage(
+  channel: ChatChannelState,
+  responseMessage: ChatMessage,
+): boolean {
+  if (channel.messages.some((message) => message.id === responseMessage.id)) {
+    return true;
+  }
+
+  const assistantTurnId = readAssistantTurnId(responseMessage);
+  if (!assistantTurnId) {
+    return false;
+  }
+
+  return channel.messages.some((message) => readAssistantTurnId(message) === assistantTurnId);
+}
+
+function insertRecoveredResponseMessage(
+  channel: ChatChannelState,
+  responseMessage: ChatMessage,
+): boolean {
+  if (hasRecoveredResponseMessage(channel, responseMessage)) {
+    return false;
+  }
+
+  const insertIndex = channel.messages.findIndex((message) =>
+    message.createdAt.localeCompare(responseMessage.createdAt) > 0);
+  const nextIndex = insertIndex >= 0 ? insertIndex : channel.messages.length;
+  channel.messages.splice(nextIndex, 0, structuredClone(responseMessage));
+  channel.lastMessageAt = channel.messages[channel.messages.length - 1]?.createdAt ?? channel.lastMessageAt;
+  return true;
+}
+
 function isStartupRecoveredBlockedTurn(turn: RoomWorkflowTurn): boolean {
   return turn.status === 'blocked'
     && turn.stageId === 'startup_recovery'
@@ -1172,6 +1204,10 @@ export function repairOrphanedCompletedDispatchTurn(
     response,
     nextWorkflow,
   );
+  const insertedRecoveredResponse = insertRecoveredResponseMessage(nextChannel, responseMessage);
+  if (insertedRecoveredResponse) {
+    nextChannel.updatedAt = now.toISOString();
+  }
 
   return {
     repaired: true,

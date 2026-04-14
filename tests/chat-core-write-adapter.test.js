@@ -1236,6 +1236,10 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
 
   assert.equal(repaired.repaired, true);
   const repairedChannel = requireChannel(repaired.state, channelId);
+  const repairedResponse = repairedChannel.messages.find((message) =>
+    message.metadata?.assistantTurnId === 'assistant-turn-canonical-fallback');
+  assert.ok(repairedResponse);
+  assert.equal(repairedResponse?.body, 'Recovered from canonical core.');
   assert.equal(repairedChannel.roomRouting.workflow.activeTurn, null);
   assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'completed');
   assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'completed');
