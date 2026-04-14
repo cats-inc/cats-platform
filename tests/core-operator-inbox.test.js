@@ -222,6 +222,9 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
             channelId: 'channel-inbox',
             checkpointId: 'checkpoint-inbox-match',
             sourceMessageId: 'message-inbox-match',
+            sourceTurnId: 'turn-inbox-match',
+            sourceLaneId: 'lane-inbox-match',
+            sourceAssistantTurnId: 'assistant-turn-inbox-match',
             continuationSource: 'workflow_recommendation',
             sourceParticipant: {
               participantKind: 'cat',
@@ -345,6 +348,10 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
     workflowShapes: ['converge'],
     workflowReviewRequired: true,
     workflowConvergeTargetIds: ['cat-reviewer'],
+    sourceMessageIds: ['message-inbox-match'],
+    sourceTurnIds: ['turn-inbox-match'],
+    sourceLaneIds: ['lane-inbox-match'],
+    sourceAssistantTurnIds: ['assistant-turn-inbox-match'],
     workflowContinuationSources: ['workflow_recommendation'],
     workflowContinuationBlockedReasons: ['max_dispatches'],
     workflowUnresolvedTargets: ['Reviewer'],
@@ -395,4 +402,3 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.equal(result.summary.withChildrenCount, 0);
   assert.equal(result.summary.withActiveChildrenCount, 0);
 });
-

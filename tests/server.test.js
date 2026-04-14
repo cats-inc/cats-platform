@@ -4260,7 +4260,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(listPayload.summary.withActiveChildrenCount, 0);
 
     const filteredListResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-followup&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?actionKind=approve&pendingDispatchReplayState=failed&dispatchReplayState=ready&workflowContinuationReplayState=failed&workflowContinuationBlockedReason=max_dispatches&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-followup&sourceMessageId=message-recovery-routes&sourceTurnId=turn-recovery-routes&sourceLaneId=lane-recovery-routes&sourceAssistantTurnId=assistant-turn-recovery-routes&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&rootTaskId=task-recovery-routes-root&parentTaskId=task-recovery-routes-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(filteredListResponse.status, 200);
     const filteredListPayload = await filteredListResponse.json();
@@ -5765,6 +5765,9 @@ test('core operator inspection routes support additive filters and summaries', a
                 channelId: 'channel-ops',
                 checkpointId: 'checkpoint-ops',
                 sourceMessageId: 'message-ops',
+                sourceTurnId: 'turn-ops',
+                sourceLaneId: 'lane-ops',
+                sourceAssistantTurnId: 'assistant-turn-ops',
                 continuationSource: 'workflow_recommendation',
                 sourceParticipant: {
                   participantKind: 'cat',
@@ -5845,7 +5848,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(replayActivityResponse.status, 201);
 
     const inboxResponse = await fetch(
-      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&executionProduct=code&requestedStrategy=reflexion&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/operator-inbox?conversationId=conversation-channel-ops&executionProduct=code&requestedStrategy=reflexion&nextAction=retry&needsOperatorAttention=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&sourceMessageId=message-ops&sourceTurnId=turn-ops&sourceLaneId=lane-ops&sourceAssistantTurnId=assistant-turn-ops&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(inboxResponse.status, 200);
     const inboxPayload = await inboxResponse.json();
@@ -5881,7 +5884,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(inboxPayload.tasks[0].workflowContinuation.convergeTargetId, 'cat-reviewer');
 
     const controlPlaneResponse = await fetch(
-      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&executionProduct=code&requestedStrategy=reflexion&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
+      `${baseUrl}/api/core/control-plane/tasks?conversationId=conversation-channel-ops&executionProduct=code&requestedStrategy=reflexion&reason=retry_available&nextAction=retry&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&workflowReviewRequired=true&workflowConvergeTargetId=cat-reviewer&sourceMessageId=message-ops&sourceTurnId=turn-ops&sourceLaneId=lane-ops&sourceAssistantTurnId=assistant-turn-ops&workflowContinuationSource=workflow_recommendation&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&workflowContinuationBlockedReason=max_dispatches&latestReplaySource=workflow-continuation-replay&latestReplayTrigger=retry&latestReplayPhase=replay_failed&latestReplayResumeReason=target_recovered&latestTimelineCategory=execution&latestTimelineKind=run&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false&limit=1`,
     );
     assert.equal(controlPlaneResponse.status, 200);
     const controlPlanePayload = await controlPlaneResponse.json();
@@ -5927,7 +5930,7 @@ test('core operator inspection routes support additive filters and summaries', a
     assert.equal(controlPlanePayload.tasks[0].workflowContinuation.convergeTargetId, 'cat-reviewer');
 
     const recoveryResponse = await fetch(
-      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&workflowContinuationReplayState=failed&workflowContinuationSource=workflow_recommendation&workflowContinuationBlockedReason=max_dispatches&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
+      `${baseUrl}/api/core/recovery/tasks?conversationId=conversation-channel-ops&hasWorkflowContinuationReplay=true&workflowContinuationReplayState=failed&sourceMessageId=message-ops&sourceTurnId=turn-ops&sourceLaneId=lane-ops&sourceAssistantTurnId=assistant-turn-ops&workflowContinuationSource=workflow_recommendation&workflowContinuationBlockedReason=max_dispatches&workflowUnresolvedTarget=Reviewer&hasUnresolvedWorkflowTargets=true&canRetry=true&deliveryMode=commit_only&deliveryAction=create_commit&workflowStageId=continuation_handoff&workflowShape=converge&rootTaskId=task-ops-root&parentTaskId=task-ops-root&hasChildren=false&hasActiveChildren=false`,
     );
     assert.equal(recoveryResponse.status, 200);
     const recoveryPayload = await recoveryResponse.json();

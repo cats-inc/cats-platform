@@ -196,6 +196,36 @@ function matchesOperatorInboxQuery(
   }
 
   if (
+    query.sourceMessageIds?.length
+    && !query.sourceMessageIds.includes(item.workflowContinuation?.sourceMessageId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    query.sourceTurnIds?.length
+    && !query.sourceTurnIds.includes(item.workflowContinuation?.sourceTurnId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    query.sourceLaneIds?.length
+    && !query.sourceLaneIds.includes(item.workflowContinuation?.sourceLaneId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    query.sourceAssistantTurnIds?.length
+    && !query.sourceAssistantTurnIds.includes(
+      item.workflowContinuation?.sourceAssistantTurnId ?? '',
+    )
+  ) {
+    return false;
+  }
+
+  if (
     query.workflowContinuationSources?.length
     && (!readEffectiveWorkflowContinuationSource(item)
       || !query.workflowContinuationSources.includes(

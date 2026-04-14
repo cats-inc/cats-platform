@@ -270,6 +270,10 @@ export interface CoreTaskRecoveryListOptions extends CoreTaskViewCommonQuery {
   workflowShapes?: CoreTaskRecoveryWorkflowShape[];
   workflowReviewRequired?: boolean | null;
   workflowConvergeTargetIds?: string[];
+  sourceMessageIds?: string[];
+  sourceTurnIds?: string[];
+  sourceLaneIds?: string[];
+  sourceAssistantTurnIds?: string[];
   workflowContinuationSources?: WorkflowContinuationReplaySource[];
   workflowUnresolvedTargets?: string[];
   hasUnresolvedWorkflowTargets?: boolean | null;
@@ -509,6 +513,42 @@ function matchesRecoveryListOptions(
     options.workflowConvergeTargetIds?.length
     && !options.workflowConvergeTargetIds.includes(
       recovery.context?.workflowConvergeTargetId ?? '',
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    options.sourceMessageIds?.length
+    && !options.sourceMessageIds.includes(
+      recovery.workflowContinuationReplay?.sourceMessageId ?? '',
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    options.sourceTurnIds?.length
+    && !options.sourceTurnIds.includes(
+      recovery.workflowContinuationReplay?.sourceTurnId ?? '',
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    options.sourceLaneIds?.length
+    && !options.sourceLaneIds.includes(
+      recovery.workflowContinuationReplay?.sourceLaneId ?? '',
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    options.sourceAssistantTurnIds?.length
+    && !options.sourceAssistantTurnIds.includes(
+      recovery.workflowContinuationReplay?.sourceAssistantTurnId ?? '',
     )
   ) {
     return false;

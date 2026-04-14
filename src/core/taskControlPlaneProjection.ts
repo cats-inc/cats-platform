@@ -610,6 +610,36 @@ export function matchesControlPlaneListOptions(
     return false;
   }
 
+  if (
+    options.sourceMessageIds?.length
+    && !options.sourceMessageIds.includes(view.workflowContinuation?.sourceMessageId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    options.sourceTurnIds?.length
+    && !options.sourceTurnIds.includes(view.workflowContinuation?.sourceTurnId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    options.sourceLaneIds?.length
+    && !options.sourceLaneIds.includes(view.workflowContinuation?.sourceLaneId ?? '')
+  ) {
+    return false;
+  }
+
+  if (
+    options.sourceAssistantTurnIds?.length
+    && !options.sourceAssistantTurnIds.includes(
+      view.workflowContinuation?.sourceAssistantTurnId ?? '',
+    )
+  ) {
+    return false;
+  }
+
   const continuationSource = readContinuationSource(view.workflowContinuation?.continuationSource);
   if (
     options.workflowContinuationSources?.length

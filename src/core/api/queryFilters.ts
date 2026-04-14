@@ -240,6 +240,10 @@ export function readTaskAttentionListOptions(
     ),
     workflowReviewRequired: readBooleanQuery(searchParams, 'workflowReviewRequired'),
     workflowConvergeTargetIds: readQueryValues(searchParams, 'workflowConvergeTargetId'),
+    sourceMessageIds: readQueryValues(searchParams, 'sourceMessageId'),
+    sourceTurnIds: readQueryValues(searchParams, 'sourceTurnId'),
+    sourceLaneIds: readQueryValues(searchParams, 'sourceLaneId'),
+    sourceAssistantTurnIds: readQueryValues(searchParams, 'sourceAssistantTurnId'),
     workflowContinuationSources: readEnumQueryValues(
       searchParams,
       'workflowContinuationSource',
@@ -344,6 +348,10 @@ export function readTaskRecoveryListOptions(
     ),
     workflowReviewRequired: readBooleanQuery(searchParams, 'workflowReviewRequired'),
     workflowConvergeTargetIds: readQueryValues(searchParams, 'workflowConvergeTargetId'),
+    sourceMessageIds: readQueryValues(searchParams, 'sourceMessageId'),
+    sourceTurnIds: readQueryValues(searchParams, 'sourceTurnId'),
+    sourceLaneIds: readQueryValues(searchParams, 'sourceLaneId'),
+    sourceAssistantTurnIds: readQueryValues(searchParams, 'sourceAssistantTurnId'),
     workflowContinuationSources: readEnumQueryValues(
       searchParams,
       'workflowContinuationSource',

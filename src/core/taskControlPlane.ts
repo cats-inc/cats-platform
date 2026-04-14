@@ -282,6 +282,10 @@ export interface CoreTaskControlPlaneListOptions extends CoreTaskViewCommonQuery
   workflowShapes?: CoreTaskWorkflowShape[];
   workflowReviewRequired?: boolean | null;
   workflowConvergeTargetIds?: string[];
+  sourceMessageIds?: string[];
+  sourceTurnIds?: string[];
+  sourceLaneIds?: string[];
+  sourceAssistantTurnIds?: string[];
   workflowContinuationSources?: WorkflowContinuationReplaySource[];
   workflowContinuationBlockedReasons?: WorkflowContinuationReplayBlockedReason[];
   workflowUnresolvedTargets?: string[];
