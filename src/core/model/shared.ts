@@ -6,7 +6,6 @@ import {
 import type {
   CatsCoreState,
   CoreActorRecord,
-  CoreApprovalDecisionOptionRecord,
   CoreApprovalStatus,
   CoreRecordMetadata,
   ExecutionTargetSummary,
@@ -21,24 +20,6 @@ export function createDefaultExecutionTarget(): ExecutionTargetSummary {
     model: null,
   };
 }
-
-export const DEFAULT_APPROVAL_DECISION_OPTIONS: CoreApprovalDecisionOptionRecord[] = [
-  {
-    action: 'approve',
-    label: 'Approve',
-    description: 'Allow the orchestrator plan to proceed.',
-  },
-  {
-    action: 'reroute',
-    label: 'Reroute',
-    description: 'Send the plan back for a different handoff or dispatch path.',
-  },
-  {
-    action: 'reject',
-    label: 'Reject',
-    description: 'Do not allow the plan to proceed.',
-  },
-];
 
 export const ALLOWED_APPROVAL_TRANSITIONS: Record<
   CoreApprovalStatus,

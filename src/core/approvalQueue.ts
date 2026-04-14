@@ -1,8 +1,26 @@
-import { DEFAULT_APPROVAL_DECISION_OPTIONS } from './model/shared.js';
 import type {
   CatsCoreState,
+  CoreApprovalDecisionOptionRecord,
   CoreApprovalQueueItem,
 } from './types.js';
+
+const DEFAULT_APPROVAL_DECISION_OPTIONS: CoreApprovalDecisionOptionRecord[] = [
+  {
+    action: 'approve',
+    label: 'Approve',
+    description: 'Allow the orchestrator plan to proceed.',
+  },
+  {
+    action: 'reroute',
+    label: 'Reroute',
+    description: 'Send the plan back for a different handoff or dispatch path.',
+  },
+  {
+    action: 'reject',
+    label: 'Reject',
+    description: 'Do not allow the plan to proceed.',
+  },
+];
 
 export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[] {
   return core.tasks

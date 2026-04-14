@@ -34,7 +34,7 @@ test('renderer bundle excludes server-only replay persistence and core model mod
     false,
   );
   assert.equal(
-    inputs.some((entry) => entry === 'src/core/model/index.ts'),
+    inputs.some((entry) => entry.startsWith('src/core/model/')),
     false,
   );
 });
