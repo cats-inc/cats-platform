@@ -79,3 +79,91 @@ test('buildMissionRunProjection links missions to managed work, tasks, and runs'
   assert.equal(projection.items[0].linkedTask?.id, 'task-1');
   assert.equal(projection.items[0].linkedRun?.id, 'run-1');
 });
+
+test('buildMissionRunProjection filters missions by assigned agent, run presence, and limit', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-1',
+      title: 'Shared task',
+      conversationId: 'conversation-1',
+      ownerActorId: 'actor-owner',
+      createdAt: '2026-04-14T23:00:00.000Z',
+    },
+    new Date('2026-04-14T23:00:00.000Z'),
+  ).core;
+
+  core = upsertCoreWorkItem(
+    core,
+    {
+      id: 'work-item-1',
+      title: 'Shared work item',
+      conversationId: 'conversation-1',
+      taskId: 'task-1',
+      ownerActorId: 'actor-owner',
+      createdAt: '2026-04-14T23:01:00.000Z',
+    },
+    new Date('2026-04-14T23:01:00.000Z'),
+  ).core;
+
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-1',
+      title: 'Primary run',
+      conversationId: 'conversation-1',
+      taskId: 'task-1',
+      status: 'running',
+      createdAt: '2026-04-14T23:02:00.000Z',
+      startedAt: '2026-04-14T23:02:00.000Z',
+    },
+    new Date('2026-04-14T23:02:00.000Z'),
+  ).core;
+
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-1',
+      managedWorkId: 'work-item-1',
+      conversationId: 'conversation-1',
+      assignedAgentId: 'actor-worker-1',
+      title: 'Runnable mission',
+      status: 'running',
+      createdAt: '2026-04-14T23:03:00.000Z',
+      metadata: {
+        runId: 'run-1',
+      },
+    },
+    new Date('2026-04-14T23:03:00.000Z'),
+  ).core;
+
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-2',
+      managedWorkId: 'work-item-1',
+      conversationId: 'conversation-2',
+      assignedAgentId: 'actor-worker-2',
+      title: 'Queued mission',
+      status: 'queued',
+      createdAt: '2026-04-14T23:04:00.000Z',
+    },
+    new Date('2026-04-14T23:04:00.000Z'),
+  ).core;
+
+  const withRun = buildMissionRunProjection(core, {
+    assignedAgentIds: ['actor-worker-1'],
+    hasRun: true,
+  });
+  assert.equal(withRun.items.length, 1);
+  assert.equal(withRun.items[0].mission.id, 'mission-1');
+
+  const queuedOnly = buildMissionRunProjection(core, {
+    missionStatuses: ['queued'],
+    limit: 1,
+  });
+  assert.equal(queuedOnly.items.length, 1);
+  assert.equal(queuedOnly.items[0].mission.id, 'mission-2');
+});

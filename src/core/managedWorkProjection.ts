@@ -4,9 +4,12 @@ import type {
   CoreConversationRecord,
   CoreProjectRecord,
   CoreRunRecord,
+  CoreRunStatus,
   CoreTaskRecord,
   CoreWorkItemRecord,
+  CoreWorkItemStatus,
   MissionRecord,
+  MissionRecordStatus,
 } from './types.js';
 
 export interface CoreManagedWorkProjectionItem {
@@ -42,6 +45,21 @@ export interface CoreManagedWorkProjection {
   items: CoreManagedWorkProjectionItem[];
 }
 
+export interface CoreManagedWorkProjectionQuery {
+  workItemStatuses?: CoreWorkItemStatus[];
+  projectIds?: string[];
+  conversationIds?: string[];
+  ownerActorIds?: string[];
+  assignedActorIds?: string[];
+  taskIds?: string[];
+  missionStatuses?: MissionRecordStatus[];
+  runStatuses?: CoreRunStatus[];
+  hasTask?: boolean;
+  hasMission?: boolean;
+  hasRun?: boolean;
+  limit?: number;
+}
+
 function buildEmptySummary(): CoreManagedWorkProjectionSummary {
   return {
     total: 0,
@@ -75,7 +93,74 @@ function compareRecordsByUpdatedAt(
   return left.id.localeCompare(right.id);
 }
 
-export function buildManagedWorkProjection(core: CatsCoreState): CoreManagedWorkProjection {
+function matchesQuery(
+  item: CoreManagedWorkProjectionItem,
+  query: CoreManagedWorkProjectionQuery,
+): boolean {
+  if (
+    query.workItemStatuses
+    && !query.workItemStatuses.includes(item.workItem.status)
+  ) {
+    return false;
+  }
+  if (
+    query.projectIds
+    && !query.projectIds.includes(item.workItem.projectId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.conversationIds
+    && !query.conversationIds.includes(item.workItem.conversationId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.ownerActorIds
+    && !query.ownerActorIds.includes(item.workItem.ownerActorId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.assignedActorIds
+    && !item.assignedActors.some((actor) => query.assignedActorIds!.includes(actor.id))
+  ) {
+    return false;
+  }
+  if (
+    query.taskIds
+    && !query.taskIds.includes(item.linkedTask?.id ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.missionStatuses
+    && !item.linkedMissions.some((mission) => query.missionStatuses!.includes(mission.status))
+  ) {
+    return false;
+  }
+  if (
+    query.runStatuses
+    && (!item.latestRun || !query.runStatuses.includes(item.latestRun.status))
+  ) {
+    return false;
+  }
+  if (query.hasTask !== undefined && (item.linkedTask !== null) !== query.hasTask) {
+    return false;
+  }
+  if (query.hasMission !== undefined && (item.linkedMissions.length > 0) !== query.hasMission) {
+    return false;
+  }
+  if (query.hasRun !== undefined && (item.latestRun !== null) !== query.hasRun) {
+    return false;
+  }
+  return true;
+}
+
+export function buildManagedWorkProjection(
+  core: CatsCoreState,
+  query: CoreManagedWorkProjectionQuery = {},
+): CoreManagedWorkProjection {
   const items = core.workItems
     .map<CoreManagedWorkProjectionItem>((workItem) => {
       const linkedTask = workItem.taskId
@@ -138,13 +223,15 @@ export function buildManagedWorkProjection(core: CatsCoreState): CoreManagedWork
         updatedAt,
       };
     })
+    .filter((item) => matchesQuery(item, query))
     .sort((left, right) => {
       const updatedComparison = right.updatedAt.localeCompare(left.updatedAt);
       if (updatedComparison !== 0) {
         return updatedComparison;
       }
       return left.workItem.id.localeCompare(right.workItem.id);
-    });
+    })
+    .slice(0, query.limit);
 
   const summary = items.reduce<CoreManagedWorkProjectionSummary>((accumulator, item) => {
     accumulator.total += 1;

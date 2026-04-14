@@ -4,6 +4,8 @@ import {
   CORE_MEMORY_MAINTENANCE_TRIGGERS,
   type CoreMemoryMaintenanceQuery,
 } from '../memoryMaintenance.js';
+import type { CoreManagedWorkProjectionQuery } from '../managedWorkProjection.js';
+import type { CoreMissionRunProjectionQuery } from '../missionRunProjection.js';
 import {
   CORE_TASK_CONTROL_PLANE_DELIVERY_ACTIONS,
   CORE_TASK_CONTROL_PLANE_DELIVERY_MODES,
@@ -29,6 +31,7 @@ import {
   CORE_TASK_WORKFLOW_CONTINUATION_REPLAY_STATES,
   type CoreTaskRecoveryListOptions,
 } from '../recovery.js';
+import type { CoreTransportStateProjectionQuery } from '../transportStateProjection.js';
 import { CoreValidationError } from '../errors.js';
 import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
 import {
@@ -36,6 +39,13 @@ import {
   CORE_TASK_TIMELINE_ITEM_KINDS,
   type CoreTaskTimelineQuery,
 } from '../taskTimeline.js';
+import {
+  CORE_MISSION_STATUSES,
+  CORE_RUN_STATUSES,
+  CORE_TRANSPORT_BINDING_PLATFORMS,
+  CORE_TRANSPORT_BINDING_STATUSES,
+  CORE_WORK_ITEM_STATUSES,
+} from './constants.js';
 import {
   WORKFLOW_CONTINUATION_REPLAY_SOURCES,
 } from '../../platform/orchestration/workflowContinuationReplay.js';
@@ -57,6 +67,14 @@ function readQueryValues(
     .filter((value) => value.length > 0);
 
   return Array.from(new Set(values));
+}
+
+function readOptionalQueryValues(
+  searchParams: URLSearchParams,
+  key: string,
+): string[] | undefined {
+  const values = readQueryValues(searchParams, key);
+  return values.length > 0 ? values : undefined;
 }
 
 function readEnumQueryValues<T extends string>(
@@ -348,6 +366,75 @@ export function readMemoryMaintenanceQuery(
     sourceScopeKeys: readQueryValues(searchParams, 'sourceScopeKey'),
     replacementGroups: readQueryValues(searchParams, 'replacementGroup'),
     removedRecordIds: readQueryValues(searchParams, 'removedRecordId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readManagedWorkProjectionQuery(
+  searchParams: URLSearchParams,
+): CoreManagedWorkProjectionQuery {
+  return {
+    workItemStatuses: readEnumQueryValues(
+      searchParams,
+      'workItemStatus',
+      CORE_WORK_ITEM_STATUSES,
+    ),
+    projectIds: readOptionalQueryValues(searchParams, 'projectId'),
+    conversationIds: readConversationIds(searchParams),
+    ownerActorIds: readOptionalQueryValues(searchParams, 'ownerActorId'),
+    assignedActorIds: readOptionalQueryValues(searchParams, 'assignedActorId'),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    missionStatuses: readEnumQueryValues(
+      searchParams,
+      'missionStatus',
+      CORE_MISSION_STATUSES,
+    ),
+    runStatuses: readEnumQueryValues(searchParams, 'runStatus', CORE_RUN_STATUSES),
+    hasTask: readBooleanQuery(searchParams, 'hasTask'),
+    hasMission: readBooleanQuery(searchParams, 'hasMission'),
+    hasRun: readBooleanQuery(searchParams, 'hasRun'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readMissionRunProjectionQuery(
+  searchParams: URLSearchParams,
+): CoreMissionRunProjectionQuery {
+  return {
+    missionStatuses: readEnumQueryValues(
+      searchParams,
+      'missionStatus',
+      CORE_MISSION_STATUSES,
+    ),
+    conversationIds: readConversationIds(searchParams),
+    assignedAgentIds: readOptionalQueryValues(searchParams, 'assignedAgentId'),
+    managedWorkIds: readOptionalQueryValues(searchParams, 'managedWorkId'),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    runIds: readOptionalQueryValues(searchParams, 'runId'),
+    hasRun: readBooleanQuery(searchParams, 'hasRun'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readTransportStateProjectionQuery(
+  searchParams: URLSearchParams,
+): CoreTransportStateProjectionQuery {
+  return {
+    platforms: readEnumQueryValues(
+      searchParams,
+      'platform',
+      CORE_TRANSPORT_BINDING_PLATFORMS,
+    ),
+    statuses: readEnumQueryValues(
+      searchParams,
+      'status',
+      CORE_TRANSPORT_BINDING_STATUSES,
+    ),
+    conversationIds: readConversationIds(searchParams),
+    participantIds: readOptionalQueryValues(searchParams, 'participantId'),
+    agentIds: readOptionalQueryValues(searchParams, 'agentId'),
+    hasSession: readBooleanQuery(searchParams, 'hasSession'),
+    activeSession: readBooleanQuery(searchParams, 'activeSession'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

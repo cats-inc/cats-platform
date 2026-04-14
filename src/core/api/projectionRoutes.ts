@@ -1,6 +1,12 @@
 import { buildManagedWorkProjection } from '../managedWorkProjection.js';
 import { buildMissionRunProjection } from '../missionRunProjection.js';
 import { buildTransportStateProjection } from '../transportStateProjection.js';
+import {
+  readManagedWorkProjectionQuery,
+  readMissionRunProjectionQuery,
+  readTransportStateProjectionQuery,
+} from './queryFilters.js';
+import { handleCoreError } from './shared.js';
 import type { CoreApiRouteContext } from './types.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
@@ -8,21 +14,24 @@ async function handleCoreManagedWork(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, buildManagedWorkProjection(core));
+  const query = readManagedWorkProjectionQuery(context.url.searchParams);
+  sendJson(context.response, 200, buildManagedWorkProjection(core, query));
 }
 
 async function handleCoreMissionRuns(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, buildMissionRunProjection(core));
+  const query = readMissionRunProjectionQuery(context.url.searchParams);
+  sendJson(context.response, 200, buildMissionRunProjection(core, query));
 }
 
 async function handleCoreTransportState(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, buildTransportStateProjection(core));
+  const query = readTransportStateProjectionQuery(context.url.searchParams);
+  sendJson(context.response, 200, buildTransportStateProjection(core, query));
 }
 
 export async function routeCoreProjectionApi(
@@ -33,7 +42,11 @@ export async function routeCoreProjectionApi(
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
     }
-    await handleCoreManagedWork(context);
+    try {
+      await handleCoreManagedWork(context);
+    } catch (error) {
+      handleCoreError(context, error);
+    }
     return true;
   }
 
@@ -42,7 +55,11 @@ export async function routeCoreProjectionApi(
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
     }
-    await handleCoreMissionRuns(context);
+    try {
+      await handleCoreMissionRuns(context);
+    } catch (error) {
+      handleCoreError(context, error);
+    }
     return true;
   }
 
@@ -51,7 +68,11 @@ export async function routeCoreProjectionApi(
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
     }
-    await handleCoreTransportState(context);
+    try {
+      await handleCoreTransportState(context);
+    } catch (error) {
+      handleCoreError(context, error);
+    }
     return true;
   }
 

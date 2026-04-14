@@ -81,3 +81,74 @@ test('buildManagedWorkProjection links work items to task, missions, and latest 
   assert.equal(projection.items[0].latestMission?.id, 'mission-1');
   assert.equal(projection.items[0].latestRun?.id, 'run-1');
 });
+
+test('buildManagedWorkProjection filters items by owner, task linkage, and limit', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-1',
+      title: 'Shared task',
+      conversationId: 'conversation-1',
+      ownerActorId: 'actor-owner',
+      createdAt: '2026-04-14T23:00:00.000Z',
+    },
+    new Date('2026-04-14T23:00:00.000Z'),
+  ).core;
+
+  core = upsertCoreWorkItem(
+    core,
+    {
+      id: 'work-item-1',
+      title: 'Owned item',
+      conversationId: 'conversation-1',
+      taskId: 'task-1',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-worker-1'],
+      createdAt: '2026-04-14T23:01:00.000Z',
+    },
+    new Date('2026-04-14T23:01:00.000Z'),
+  ).core;
+
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-1',
+      managedWorkId: 'work-item-1',
+      conversationId: 'conversation-1',
+      assignedAgentId: 'actor-worker-1',
+      title: 'Delivery mission',
+      status: 'running',
+      createdAt: '2026-04-14T23:02:00.000Z',
+    },
+    new Date('2026-04-14T23:02:00.000Z'),
+  ).core;
+
+  core = upsertCoreWorkItem(
+    core,
+    {
+      id: 'work-item-2',
+      title: 'Unlinked item',
+      conversationId: 'conversation-2',
+      ownerActorId: 'actor-other',
+      createdAt: '2026-04-14T23:03:00.000Z',
+    },
+    new Date('2026-04-14T23:03:00.000Z'),
+  ).core;
+
+  const byOwner = buildManagedWorkProjection(core, {
+    ownerActorIds: ['actor-owner'],
+    hasTask: true,
+  });
+  assert.equal(byOwner.items.length, 1);
+  assert.equal(byOwner.items[0].workItem.id, 'work-item-1');
+
+  const byMission = buildManagedWorkProjection(core, {
+    ownerActorIds: ['actor-owner'],
+    missionStatuses: ['running'],
+    limit: 1,
+  });
+  assert.equal(byMission.items.length, 1);
+  assert.equal(byMission.items[0].workItem.id, 'work-item-1');
+});

@@ -7,6 +7,7 @@ import type {
   CoreWorkItemRecord,
   LaneRecord,
   MissionRecord,
+  MissionRecordStatus,
   TurnRecord,
 } from './types.js';
 
@@ -38,6 +39,17 @@ export interface CoreMissionRunProjection {
   items: CoreMissionRunProjectionItem[];
 }
 
+export interface CoreMissionRunProjectionQuery {
+  missionStatuses?: MissionRecordStatus[];
+  conversationIds?: string[];
+  assignedAgentIds?: string[];
+  managedWorkIds?: string[];
+  taskIds?: string[];
+  runIds?: string[];
+  hasRun?: boolean;
+  limit?: number;
+}
+
 function buildEmptySummary(): CoreMissionRunProjectionSummary {
   return {
     total: 0,
@@ -56,7 +68,56 @@ function resolveMissionRunId(mission: MissionRecord): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
-export function buildMissionRunProjection(core: CatsCoreState): CoreMissionRunProjection {
+function matchesQuery(
+  item: CoreMissionRunProjectionItem,
+  query: CoreMissionRunProjectionQuery,
+): boolean {
+  if (
+    query.missionStatuses
+    && !query.missionStatuses.includes(item.mission.status)
+  ) {
+    return false;
+  }
+  if (
+    query.conversationIds
+    && !query.conversationIds.includes(item.mission.conversationId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.assignedAgentIds
+    && !query.assignedAgentIds.includes(item.mission.assignedAgentId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.managedWorkIds
+    && !query.managedWorkIds.includes(item.mission.managedWorkId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.taskIds
+    && !query.taskIds.includes(item.linkedTask?.id ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.runIds
+    && !query.runIds.includes(item.linkedRun?.id ?? '')
+  ) {
+    return false;
+  }
+  if (query.hasRun !== undefined && (item.linkedRun !== null) !== query.hasRun) {
+    return false;
+  }
+  return true;
+}
+
+export function buildMissionRunProjection(
+  core: CatsCoreState,
+  query: CoreMissionRunProjectionQuery = {},
+): CoreMissionRunProjection {
   const items = core.missions
     .map<CoreMissionRunProjectionItem>((mission) => {
       const managedWork = mission.managedWorkId
@@ -103,13 +164,15 @@ export function buildMissionRunProjection(core: CatsCoreState): CoreMissionRunPr
         updatedAt,
       };
     })
+    .filter((item) => matchesQuery(item, query))
     .sort((left, right) => {
       const updatedComparison = right.updatedAt.localeCompare(left.updatedAt);
       if (updatedComparison !== 0) {
         return updatedComparison;
       }
       return left.mission.id.localeCompare(right.mission.id);
-    });
+    })
+    .slice(0, query.limit);
 
   const summary = items.reduce<CoreMissionRunProjectionSummary>((accumulator, item) => {
     accumulator.total += 1;

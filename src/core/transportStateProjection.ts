@@ -5,6 +5,8 @@ import type {
   ParticipantRecord,
   SessionRecord,
   TransportBindingRecord,
+  TransportBindingPlatform,
+  TransportBindingStatus,
 } from './types.js';
 
 export interface CoreTransportStateProjectionItem {
@@ -34,6 +36,17 @@ export interface CoreTransportStateProjection {
   items: CoreTransportStateProjectionItem[];
 }
 
+export interface CoreTransportStateProjectionQuery {
+  platforms?: TransportBindingPlatform[];
+  statuses?: TransportBindingStatus[];
+  conversationIds?: string[];
+  participantIds?: string[];
+  agentIds?: string[];
+  hasSession?: boolean;
+  activeSession?: boolean;
+  limit?: number;
+}
+
 function buildEmptySummary(): CoreTransportStateProjectionSummary {
   return {
     total: 0,
@@ -60,7 +73,56 @@ function compareByUpdatedAt(
   return left.id.localeCompare(right.id);
 }
 
-export function buildTransportStateProjection(core: CatsCoreState): CoreTransportStateProjection {
+function matchesQuery(
+  item: CoreTransportStateProjectionItem,
+  query: CoreTransportStateProjectionQuery,
+): boolean {
+  if (
+    query.platforms
+    && !query.platforms.includes(item.transportBinding.platform)
+  ) {
+    return false;
+  }
+  if (
+    query.statuses
+    && !query.statuses.includes(item.transportBinding.status)
+  ) {
+    return false;
+  }
+  if (
+    query.conversationIds
+    && !query.conversationIds.includes(item.transportBinding.conversationId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.participantIds
+    && !query.participantIds.includes(item.transportBinding.participantId ?? '')
+  ) {
+    return false;
+  }
+  if (
+    query.agentIds
+    && !query.agentIds.includes(item.transportBinding.agentId ?? '')
+  ) {
+    return false;
+  }
+  if (query.hasSession !== undefined && (item.latestSession !== null) !== query.hasSession) {
+    return false;
+  }
+  if (
+    query.activeSession !== undefined
+    && ((item.latestSession?.status === 'active') !== query.activeSession)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function buildTransportStateProjection(
+  core: CatsCoreState,
+  query: CoreTransportStateProjectionQuery = {},
+): CoreTransportStateProjection {
   const items = core.transportBindings
     .map<CoreTransportStateProjectionItem>((transportBinding) => {
       const conversation = transportBinding.conversationId
@@ -94,13 +156,15 @@ export function buildTransportStateProjection(core: CatsCoreState): CoreTranspor
         updatedAt,
       };
     })
+    .filter((item) => matchesQuery(item, query))
     .sort((left, right) => {
       const updatedComparison = right.updatedAt.localeCompare(left.updatedAt);
       if (updatedComparison !== 0) {
         return updatedComparison;
       }
       return left.transportBinding.id.localeCompare(right.transportBinding.id);
-    });
+    })
+    .slice(0, query.limit);
 
   const summary = items.reduce<CoreTransportStateProjectionSummary>((accumulator, item) => {
     accumulator.total += 1;
