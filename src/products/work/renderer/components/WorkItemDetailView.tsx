@@ -272,17 +272,50 @@ export function WorkItemDetailView() {
                   <span>Next: {compactList(payload.linkedTask.controlPlane.nextActions.map((action) => action.kind))}</span>
                   <span>Recovery: {payload.linkedTask.recovery.workflowContinuationReplay?.blockedReason ?? 'No replay block'}</span>
                 </div>
-                <button
-                  type="button"
-                  className="operatorActionButton"
-                  onClick={() => {
-                    startTransition(() => {
-                      navigate(`/work/tasks/${encodeURIComponent(payload.linkedTask!.task.id)}`);
-                    });
-                  }}
-                >
-                  Open task
-                </button>
+                <div className="operatorMetaRow">
+                  <span>Conversation: {payload.linkedTask.conversation?.title ?? 'No linked conversation'}</span>
+                  <span>Assigned: {compactList(payload.linkedTask.assignedActors.map((actor) => actor.displayName))}</span>
+                </div>
+                <div className="workWarRoomHeaderActions">
+                  <button
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      startTransition(() => {
+                        navigate(`/work/tasks/${encodeURIComponent(payload.linkedTask!.task.id)}`);
+                      });
+                    }}
+                  >
+                    Open task
+                  </button>
+                  {payload.linkedTask.conversation?.sourceChannelId ? (
+                    <button
+                      type="button"
+                      className="operatorActionButton"
+                      onClick={() => {
+                        startTransition(() => {
+                          navigate(buildChannelPath(payload.linkedTask!.conversation!.sourceChannelId!));
+                        });
+                      }}
+                    >
+                      Open briefing thread
+                    </button>
+                  ) : null}
+                  {listCatActorLinks(payload.linkedTask.assignedActors).map((actor) => (
+                    <button
+                      key={actor.actorId}
+                      type="button"
+                      className="operatorActionButton"
+                      onClick={() => {
+                        startTransition(() => {
+                          navigate(buildMyCatPath(actor.catId));
+                        });
+                      }}
+                    >
+                      Open {actor.displayName}
+                    </button>
+                  ))}
+                </div>
               </article>
             ) : (
               <article className="operatorCard">
