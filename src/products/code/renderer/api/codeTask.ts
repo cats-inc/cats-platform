@@ -1,4 +1,12 @@
-import type { CodeWorkspaceKind } from '../../shared/workspaceSummary.js';
+import type { CodePlanState } from '../../state/planSteps.js';
+import {
+  readCodeTaskBuilderDetail,
+  type CodeTaskBuilderDetailSummary,
+} from '../../shared/taskDetailSummary.js';
+import type {
+  CodeWorkspaceKind,
+  CodeWorkspaceSummary,
+} from '../../shared/workspaceSummary.js';
 
 export interface CreateCodeTaskInput {
   title: string;
@@ -23,6 +31,11 @@ export interface ResolveWorkspaceInput {
   roomWorkspacePath?: string | null;
 }
 
+export interface ResolveWorkspaceResponse {
+  workspace?: CodeWorkspaceSummary | null;
+  error?: string | null;
+}
+
 export interface PlanStepInput {
   id: string;
   ordinal: number;
@@ -41,27 +54,61 @@ export interface DeliveryRepoInput {
   branch?: string | null;
 }
 
-export async function resolveWorkspace(input: ResolveWorkspaceInput): Promise<unknown> {
-  return postJson('/api/code/workspace/resolve', input);
+export interface CreateCodeTaskResponse {
+  task: CodeTaskBuilderDetailSummary;
 }
 
-export async function createCodeTask(input: CreateCodeTaskInput): Promise<unknown> {
-  return postJson('/api/code/tasks', input);
+export interface ExecuteCodeTaskResponse {
+  task: CodeTaskBuilderDetailSummary;
+  sessionId: string;
+}
+
+export interface ResumeCodeTaskResponse {
+  task: CodeTaskBuilderDetailSummary;
+}
+
+export async function resolveWorkspace(
+  input: ResolveWorkspaceInput,
+): Promise<ResolveWorkspaceResponse> {
+  return postJson<ResolveWorkspaceResponse>('/api/code/workspace/resolve', input);
+}
+
+export async function createCodeTask(input: CreateCodeTaskInput): Promise<CreateCodeTaskResponse> {
+  const response = await postJson<{ task: unknown }>('/api/code/tasks', input);
+  return {
+    task: readCodeTaskBuilderDetail(response.task),
+  };
 }
 
 export async function executeCodeTask(
   taskId: string,
   input: ExecuteCodeTaskInput,
-): Promise<unknown> {
-  return postJson(`/api/code/tasks/${encodeURIComponent(taskId)}/execute`, input);
+): Promise<ExecuteCodeTaskResponse> {
+  const response = await postJson<{ task: unknown; sessionId: string }>(
+    `/api/code/tasks/${encodeURIComponent(taskId)}/execute`,
+    input,
+  );
+  return {
+    task: readCodeTaskBuilderDetail(response.task),
+    sessionId: response.sessionId,
+  };
 }
 
-export async function resumeCodeTask(taskId: string): Promise<unknown> {
-  return postJson(`/api/code/tasks/${encodeURIComponent(taskId)}/resume`, {});
+export async function resumeCodeTask(taskId: string): Promise<ResumeCodeTaskResponse> {
+  const response = await postJson<{ task: unknown }>(
+    `/api/code/tasks/${encodeURIComponent(taskId)}/resume`,
+    {},
+  );
+  return {
+    task: readCodeTaskBuilderDetail(response.task),
+  };
 }
 
-export async function fetchCodePlan(taskId: string): Promise<unknown> {
-  return fetchJson(`/api/code/tasks/${encodeURIComponent(taskId)}/plan`);
+export async function fetchCodePlan(taskId: string): Promise<CodePlanState | null> {
+  const response = await fetchJson<{ plan?: CodePlanState | null }>(
+    `/api/code/tasks/${encodeURIComponent(taskId)}/plan`,
+  );
+  return response.plan ?? null;
 }
 
 export async function updateCodePlan(
@@ -115,8 +162,12 @@ export async function exportArtifacts(input: {
   return postJson('/api/code/delivery/artifacts/export', input);
 }
 
-export async function fetchCodeTaskDetail(taskId: string): Promise<unknown> {
-  return fetchJson(`/api/code/tasks/${encodeURIComponent(taskId)}`);
+export async function fetchCodeTaskDetail(
+  taskId: string,
+): Promise<CodeTaskBuilderDetailSummary> {
+  return readCodeTaskBuilderDetail(
+    await fetchJson(`/api/code/tasks/${encodeURIComponent(taskId)}`),
+  );
 }
 
 export async function fetchCodeArtifactDetail(artifactId: string): Promise<unknown> {
@@ -129,16 +180,16 @@ export async function observeRuntimeSession(sessionId: string): Promise<unknown>
   );
 }
 
-function fetchJson(url: string): Promise<unknown> {
+function fetchJson<T>(url: string): Promise<T> {
   return fetch(url).then(async (response) => {
     if (!response.ok) {
       throw new Error(`GET ${url} failed: ${response.status}`);
     }
-    return response.json();
+    return response.json() as Promise<T>;
   });
 }
 
-function postJson(url: string, body: unknown, method = 'POST'): Promise<unknown> {
+function postJson<T>(url: string, body: unknown, method = 'POST'): Promise<T> {
   return fetch(url, {
     method,
     headers: { 'content-type': 'application/json' },
@@ -147,6 +198,6 @@ function postJson(url: string, body: unknown, method = 'POST'): Promise<unknown>
     if (!response.ok) {
       throw new Error(`${method} ${url} failed: ${response.status}`);
     }
-    return response.json();
+    return response.json() as Promise<T>;
   });
 }

@@ -91,8 +91,17 @@ test('CodeBuilderView exposes resume, workspace binding, and execution summary s
   assert.match(source, /roomWorkspacePath: fallbackRoomWorkspacePath/u);
   assert.match(source, /Task \$\{resumedTaskId\} is ready to continue\./u);
   assert.match(source, /CodeExecutionSummaryPanel/u);
-  assert.match(source, /readCodeTaskBuilderDetail/u);
   assert.match(source, /continuationBlockedReason=\{continuationBlockedReason\}/u);
   assert.match(source, /deliveryMode=\{deliveryMode\}/u);
   assert.match(source, /setSessionStatus\('running'\)/u);
+});
+
+test('code task renderer api normalizes detail responses and unwraps plan envelopes', () => {
+  const source = readFileSync(
+    new URL('../src/products/code/renderer/api/codeTask.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /task: readCodeTaskBuilderDetail\(response\.task\)/u);
+  assert.match(source, /return response\.plan \?\? null;/u);
 });

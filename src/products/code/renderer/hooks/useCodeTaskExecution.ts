@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import type { CodePlanState } from '../../state/planSteps.js';
 import {
   createCodeTask,
   executeCodeTask,
@@ -21,7 +22,7 @@ export interface CodeTaskExecutionState {
   phase: CodeTaskPhase;
   taskId: string | null;
   sessionId: string | null;
-  plan: unknown | null;
+  plan: CodePlanState | null;
   repoStatus: unknown | null;
   error: string | null;
 }
@@ -61,8 +62,11 @@ export function useCodeTaskExecution() {
   const create = useCallback(async (input: CreateCodeTaskInput) => {
     setState((prev) => ({ ...prev, phase: 'creating', error: null }));
     try {
-      const result = (await createCodeTask(input)) as { task: { task: { id: string } } };
-      const taskId = result.task.task.id;
+      const result = await createCodeTask(input);
+      const taskId = result.task.taskId;
+      if (!taskId) {
+        throw new Error('Task creation response did not include a task id.');
+      }
       setState((prev) => ({
         ...prev,
         phase: 'idle',
@@ -79,7 +83,7 @@ export function useCodeTaskExecution() {
   const execute = useCallback(async (taskId: string, input: ExecuteCodeTaskInput) => {
     setState((prev) => ({ ...prev, phase: 'executing', error: null }));
     try {
-      const result = (await executeCodeTask(taskId, input)) as { sessionId: string };
+      const result = await executeCodeTask(taskId, input);
       setState((prev) => ({
         ...prev,
         phase: 'running',

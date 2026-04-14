@@ -13,9 +13,8 @@ import {
   labelCodeWorkspaceKind,
   type CodeWorkspaceSummary,
 } from '../../shared/workspaceSummary.js';
-import { readCodeTaskBuilderDetail } from '../../shared/taskDetailSummary.js';
 import { useCodeTaskExecution } from '../hooks/useCodeTaskExecution.js';
-import { PlanPanel, type PlanState } from './PlanPanel.js';
+import { PlanPanel } from './PlanPanel.js';
 import { BuildPreviewPanel, type ArtifactItem } from './BuildPreviewPanel.js';
 import { CodeExecutionSummaryPanel } from './CodeExecutionSummaryPanel.js';
 import { CodeWorkspaceSummaryPanel } from './CodeWorkspaceSummaryPanel.js';
@@ -84,10 +83,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
         path: workspacePath.trim() || null,
         conversationRepoPath: fallbackConversationRepoPath,
         roomWorkspacePath: fallbackRoomWorkspacePath,
-      }) as {
-        workspace?: CodeWorkspaceSummary | null;
-        error?: string | null;
-      };
+      });
 
       if (!result.workspace) {
         setFeedback(result.error || 'Failed to resolve the workspace.');
@@ -135,7 +131,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
       // Fetch task detail for artifacts
       try {
-        const detail = readCodeTaskBuilderDetail(await fetchCodeTaskDetail(state.taskId));
+        const detail = await fetchCodeTaskDetail(state.taskId);
         if (cancelled) {
           return;
         }
@@ -278,7 +274,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
     let nextFeedback = `Task ${resumedTaskId} is ready to continue.`;
     try {
-      const detail = readCodeTaskBuilderDetail(await fetchCodeTaskDetail(resumedTaskId));
+      const detail = await fetchCodeTaskDetail(resumedTaskId);
       if (detail.workspace) {
         setWorkspaceSummary(detail.workspace);
         setWorkspacePath(detail.workspace.workspacePath);
@@ -311,7 +307,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
     setFeedback(nextFeedback);
   }, [resumeTaskId, resume, resolveWorkspaceBinding, state.error]);
 
-  const plan = state.plan as PlanState | null;
+  const plan = state.plan;
   const repoStatus = state.repoStatus as RepoStatus | null;
   const activeTaskId = resolveCodeBuilderExecutionTaskId(state.taskId, resumeTaskId);
   const usingExistingTask = activeTaskId !== null;
