@@ -34,11 +34,16 @@ import {
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../../state/runtime-dispatch/cancellation.js';
 import {
+  resolveChannelReadyStreamTargets,
+  type ChannelStreamTarget,
   waitForChannelStreamTarget,
-  waitForNextChannelStreamTarget,
   writeSseEvent,
 } from './channelStreamSupport.js';
-import { notifyStreamTargetChanged } from './streamTargetSignal.js';
+import {
+  awaitNextStreamTarget,
+  notifyStreamTargetChanged,
+  readStreamTargetSignalVersion,
+} from './streamTargetSignal.js';
 import { publishRoomMutation } from '../transportEventPublisher.js';
 
 function buildStreamSpeakerPayload(input: {
@@ -96,6 +101,167 @@ function eventHasTextContent(event: { event: string; data: Record<string, unknow
 
   const block = normalizeRuntimeContentBlock(event.data);
   return block?.kind === 'text' && block.text.length > 0;
+}
+
+function hasChannelActiveWorkflowTurn(
+  channel: ReturnType<typeof requireChannel>,
+): boolean {
+  const status = channel.roomRouting?.workflow?.activeTurn?.status ?? null;
+  return status === 'running' || status === 'pending';
+}
+
+async function readChannelReadyStreamSnapshot(
+  context: ChatApiRouteContext,
+  channelId: string,
+): Promise<{
+  readyTargets: ChannelStreamTarget[];
+  hasActiveWorkflowTurn: boolean;
+  signalVersion: number;
+}> {
+  const signalVersion = readStreamTargetSignalVersion(channelId);
+  const state = await context.dependencies.chatStore.read();
+  const channel = requireChannel(state, channelId);
+  return {
+    readyTargets: resolveChannelReadyStreamTargets(channel),
+    hasActiveWorkflowTurn: hasChannelActiveWorkflowTurn(channel),
+    signalVersion,
+  };
+}
+
+function buildStreamAttachKey(target: ChannelStreamTarget): string | null {
+  return target.sessionId ?? null;
+}
+
+async function streamChannelTarget(input: {
+  context: ChatApiRouteContext;
+  channelId: string;
+  target: ChannelStreamTarget;
+  requestAbortSignal: AbortSignal;
+}): Promise<void> {
+  const { channelId, context, requestAbortSignal, target } = input;
+  if (!target.sessionId || requestAbortSignal.aborted || context.response.writableEnded) {
+    return;
+  }
+
+  try {
+    if (context.dependencies.config.debugLiveTrace) {
+      pushServerLiveTrace({
+        event: 'stream_attach_open',
+        channelId,
+        sessionId: target.sessionId,
+        participantId: target.participantId,
+        catId: target.catId,
+        speakerLabel: target.speakerLabel,
+        reason: 'attach_ready_session',
+        details: {
+          targetStateId: target.targetStateId,
+        },
+      });
+    }
+    publishStreamAttachMutationEvents(context, channelId);
+    writeSseEvent(context, 'progress', {
+      type: 'progress',
+      text: '',
+      metadata: {
+        kind: 'session',
+      },
+      ...buildStreamSpeakerPayload(target),
+    });
+
+    let segmentCompleted = false;
+    let segmentHasMaterializedContent = false;
+    let segmentHasTextContent = false;
+    const streamAbortController = new AbortController();
+    const abortCurrentSegment = (): void => {
+      if (!streamAbortController.signal.aborted) {
+        streamAbortController.abort();
+      }
+    };
+    const onRequestAbort = (): void => abortCurrentSegment();
+    requestAbortSignal.addEventListener('abort', onRequestAbort, { once: true });
+
+    try {
+      await context.dependencies.runtimeClient.streamSession(
+        target.sessionId,
+        async (event) => {
+          if (requestAbortSignal.aborted || context.response.writableEnded) {
+            return;
+          }
+          if (event.event === 'result') {
+            const synthesizedBlocks = buildRuntimeDeliveryContentBlocksFromResultPayload(event.data);
+            const blocksToEmit = segmentHasMaterializedContent
+              ? (segmentHasTextContent
+                  ? []
+                  : synthesizedBlocks.filter((block) => block.kind === 'text'))
+              : synthesizedBlocks;
+            for (const block of blocksToEmit) {
+              writeSseEvent(context, 'content_block', {
+                type: 'content_block',
+                block,
+                synthesizedFromResult: true,
+                ...buildStreamSpeakerPayload(target),
+              });
+              segmentHasMaterializedContent = true;
+              if (block.kind === 'text' && block.text.length > 0) {
+                segmentHasTextContent = true;
+              }
+            }
+          }
+          writeSseEvent(context, event.event, {
+            ...event.data,
+            ...buildStreamSpeakerPayload(target),
+          });
+          if (eventHasMaterializedContent(event)) {
+            segmentHasMaterializedContent = true;
+          }
+          if (eventHasTextContent(event)) {
+            segmentHasTextContent = true;
+          }
+          if (event.event === 'result' || event.event === 'error') {
+            segmentCompleted = true;
+            abortCurrentSegment();
+          }
+        },
+        {
+          signal: streamAbortController.signal,
+        },
+      );
+    } catch (error) {
+      const expectedBoundaryAbort =
+        streamAbortController.signal.aborted && segmentCompleted && !requestAbortSignal.aborted;
+      if (!expectedBoundaryAbort && !isAbortError(error)) {
+        throw error;
+      }
+    } finally {
+      requestAbortSignal.removeEventListener('abort', onRequestAbort);
+    }
+
+    if (!requestAbortSignal.aborted && !context.response.writableEnded) {
+      publishStreamAttachMutationEvents(context, channelId);
+    }
+  } catch {
+    if (!requestAbortSignal.aborted && !context.response.writableEnded) {
+      if (context.dependencies.config.debugLiveTrace) {
+        pushServerLiveTrace({
+          event: 'stream_attach_error',
+          channelId,
+          sessionId: target.sessionId,
+          participantId: target.participantId,
+          catId: target.catId,
+          speakerLabel: target.speakerLabel,
+          reason: 'runtime_stream_unavailable',
+          details: {
+            targetStateId: target.targetStateId,
+          },
+        });
+      }
+      writeSseEvent(context, 'error', {
+        type: 'error',
+        text: 'Runtime stream unavailable',
+        ...buildStreamSpeakerPayload(target),
+      });
+    }
+  }
 }
 
 async function handleRestCancelChannel(
@@ -282,150 +448,52 @@ async function handleRestStreamChannel(
       return;
     }
 
-    let nextTarget = streamTarget;
-    while (nextTarget?.sessionId && !abortController.signal.aborted && !context.response.writableEnded) {
-      try {
-        if (context.dependencies.config.debugLiveTrace) {
-          pushServerLiveTrace({
-            event: 'stream_attach_open',
-            channelId,
-            sessionId: nextTarget.sessionId,
-            participantId: nextTarget.participantId,
-            catId: nextTarget.catId,
-            speakerLabel: nextTarget.speakerLabel,
-            reason: 'attach_ready_session',
-            details: {
-              targetStateId: nextTarget.targetStateId,
-            },
-          });
+    const completedSessionIds = new Set<string>();
+    const activeStreams = new Map<string, Promise<void>>();
+
+    const attachReadyTargets = (targets: ChannelStreamTarget[]): void => {
+      for (const target of targets) {
+        const attachKey = buildStreamAttachKey(target);
+        if (!attachKey || activeStreams.has(attachKey) || completedSessionIds.has(attachKey)) {
+          continue;
         }
-        // Surface the persisted session_started system message before transcript
-        // progress hands off from the user bubble to the assistant bubble.
-        publishStreamAttachMutationEvents(context, channelId);
-        writeSseEvent(context, 'progress', {
-          type: 'progress',
-          text: '',
-          metadata: {
-            kind: 'session',
-          },
-          ...buildStreamSpeakerPayload(nextTarget),
+        const streamPromise = streamChannelTarget({
+          context,
+          channelId,
+          target,
+          requestAbortSignal: abortController.signal,
+        }).finally(() => {
+          activeStreams.delete(attachKey);
+          completedSessionIds.add(attachKey);
         });
+        activeStreams.set(attachKey, streamPromise);
+      }
+    };
 
-        let segmentCompleted = false;
-        let segmentHasMaterializedContent = false;
-        let segmentHasTextContent = false;
-        const streamAbortController = new AbortController();
-        const abortCurrentSegment = (): void => {
-          if (!streamAbortController.signal.aborted) {
-            streamAbortController.abort();
-          }
-        };
-        const onRequestAbort = (): void => abortCurrentSegment();
-        abortController.signal.addEventListener('abort', onRequestAbort, { once: true });
+    while (!abortController.signal.aborted && !context.response.writableEnded) {
+      const snapshot = await readChannelReadyStreamSnapshot(context, channelId);
+      attachReadyTargets(snapshot.readyTargets);
 
-        try {
-          await context.dependencies.runtimeClient.streamSession(
-            nextTarget.sessionId,
-            async (event) => {
-              if (abortController.signal.aborted || context.response.writableEnded) {
-                return;
-              }
-              if (event.event === 'result') {
-                const synthesizedBlocks = buildRuntimeDeliveryContentBlocksFromResultPayload(event.data);
-                const blocksToEmit = segmentHasMaterializedContent
-                  ? (segmentHasTextContent
-                      ? []
-                      : synthesizedBlocks.filter((block) => block.kind === 'text'))
-                  : synthesizedBlocks;
-                for (const block of blocksToEmit) {
-                  writeSseEvent(context, 'content_block', {
-                    type: 'content_block',
-                    block,
-                    synthesizedFromResult: true,
-                    ...buildStreamSpeakerPayload(nextTarget),
-                  });
-                  segmentHasMaterializedContent = true;
-                  if (block.kind === 'text' && block.text.length > 0) {
-                    segmentHasTextContent = true;
-                  }
-                }
-              }
-              writeSseEvent(context, event.event, {
-                ...event.data,
-                ...buildStreamSpeakerPayload(nextTarget),
-              });
-              if (eventHasMaterializedContent(event)) {
-                segmentHasMaterializedContent = true;
-              }
-              if (eventHasTextContent(event)) {
-                segmentHasTextContent = true;
-              }
-              if (event.event === 'result' || event.event === 'error') {
-                segmentCompleted = true;
-                abortCurrentSegment();
-              }
-            },
-            {
-              signal: streamAbortController.signal,
-            }
-          );
-        } catch (error) {
-          const expectedBoundaryAbort =
-            streamAbortController.signal.aborted && segmentCompleted && !abortController.signal.aborted;
-          if (!expectedBoundaryAbort && !isAbortError(error)) {
-            throw error;
-          }
-        } finally {
-          abortController.signal.removeEventListener('abort', onRequestAbort);
+      if (activeStreams.size === 0 && !snapshot.hasActiveWorkflowTurn) {
+        break;
+      }
+
+      const loopAbortController = new AbortController();
+      const onRequestAbort = (): void => loopAbortController.abort();
+      abortController.signal.addEventListener('abort', onRequestAbort, { once: true });
+      try {
+        const waiters: Array<Promise<void>> = [];
+        if (activeStreams.size > 0) {
+          waiters.push(Promise.race(activeStreams.values()).then(() => {}));
         }
-
-        if (!abortController.signal.aborted && !context.response.writableEnded) {
-          // Once one sequential speaker finishes, refresh the transcript so the
-          // persisted reply is visible before the next stream attachment begins.
-          publishStreamAttachMutationEvents(context, channelId);
-        }
-      } catch {
-        if (!abortController.signal.aborted && !context.response.writableEnded) {
-          if (context.dependencies.config.debugLiveTrace) {
-            pushServerLiveTrace({
-              event: 'stream_attach_error',
-              channelId,
-              sessionId: nextTarget.sessionId,
-              participantId: nextTarget.participantId,
-              catId: nextTarget.catId,
-              speakerLabel: nextTarget.speakerLabel,
-              reason: 'runtime_stream_unavailable',
-              details: {
-                targetStateId: nextTarget.targetStateId,
-              },
-            });
-          }
-          writeSseEvent(context, 'error', {
-            type: 'error',
-            text: 'Runtime stream unavailable',
-          });
-        }
-        break;
+        waiters.push(
+          awaitNextStreamTarget(channelId, snapshot.signalVersion, loopAbortController.signal),
+        );
+        await Promise.race(waiters);
+      } finally {
+        abortController.signal.removeEventListener('abort', onRequestAbort);
+        loopAbortController.abort();
       }
-
-      if (abortController.signal.aborted || context.response.writableEnded) {
-        break;
-      }
-
-      if (!nextTarget.targetStateId) {
-        break;
-      }
-
-      const followingTarget = await waitForNextChannelStreamTarget(
-        context,
-        channelId,
-        nextTarget.targetStateId,
-        abortController.signal,
-      );
-      if (!followingTarget?.sessionId) {
-        break;
-      }
-      nextTarget = followingTarget;
     }
 
     if (!context.response.writableEnded) {
