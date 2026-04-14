@@ -320,6 +320,10 @@ export interface OrchestratorRunInspectorView {
   reviewRequired: boolean;
   branchStates: OrchestratorWorkflowBranchView[];
   latestWorkflowRecommendation: OrchestratorWorkflowRecommendationView | null;
+  workflowContinuation: OrchestratorWorkflowContinuationView | null;
+  runtimeDeliveryIntent: OrchestratorRuntimeDeliveryIntentView | null;
+  attention: OrchestratorOperatorAttentionView | null;
+  nextActions: OrchestratorNextAction[];
   approvalActions: OrchestratorApprovalActionView[];
   incidentActions: OrchestratorOperatorActionView[];
 }

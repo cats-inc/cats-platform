@@ -1061,6 +1061,13 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
       payload.executionLoop.operator.nextActions.some((action) => action.kind === 'retry'),
     );
     assert.equal(
+      payload.executionLoop.runInspector.attention?.severity,
+      'attention',
+    );
+    assert.ok(
+      payload.executionLoop.runInspector.nextActions.some((action) => action.kind === 'retry'),
+    );
+    assert.equal(
       payload.executionLoop.operator.latestWorkflowRecommendation,
       null,
     );
@@ -1085,6 +1092,14 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
     assert.equal(
       payload.executionLoop.operator.workflowContinuation.sourceAssistantTurnId,
       task.metadata.workflowContinuationReplay.sourceAssistantTurnId,
+    );
+    assert.equal(
+      payload.executionLoop.runInspector.workflowContinuation.sourceMessageId,
+      task.metadata.workflowContinuationReplay.sourceMessageId,
+    );
+    assert.equal(
+      payload.executionLoop.runInspector.workflowContinuation.sourceTurnId,
+      task.metadata.workflowContinuationReplay.sourceTurnId,
     );
     assert.deepEqual(
       payload.executionLoop.operator.workflowContinuation.targetNames,

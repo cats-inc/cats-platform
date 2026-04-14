@@ -224,6 +224,12 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   assert.equal(inspector.workflowSummary?.dispatchCount, 2);
   assert.equal(inspector.workflowStageId, 'concurrent_fan_out');
   assert.equal(inspector.workflowShape, 'concurrent');
+  assert.equal(inspector.attention?.severity, 'attention');
+  assert.equal(inspector.attention?.needsOperatorAttention, true);
+  assert.ok(inspector.attention?.reasons.includes('approval_pending'));
+  assert.equal(inspector.runtimeDeliveryIntent?.mode, 'commit_only');
+  assert.equal(inspector.runtimeDeliveryIntent?.approvalPending, true);
+  assert.ok(inspector.nextActions.some((action) => action.kind === 'approve'));
   assert.equal(inspector.branchStates[0].participantName, 'Agent-1');
   assert.equal(inspector.approvalActions[1].kind, 'reroute');
   assert.equal(inspector.incidentActions[0].kind, 'retry');
@@ -395,6 +401,11 @@ test('buildChatOperatorView exposes normalized workflow continuation state', () 
   assert.equal(view?.workflowContinuation?.replayTrigger, 'retry');
   assert.equal(view?.workflowContinuation?.replayError, 'loop guard fired');
   assert.equal(view?.workflowContinuation?.retryAvailable, true);
+  const inspector = buildRunInspectorView(view, 'run-room-continuation');
+  assert.equal(inspector?.workflowContinuation?.stageId, 'continuation_handoff');
+  assert.equal(inspector?.runtimeDeliveryIntent, null);
+  assert.equal(inspector?.attention?.severity, 'attention');
+  assert.ok(inspector?.nextActions.some((action) => action.kind === 'retry'));
 });
 
 test('buildChatOperatorView filters invalid effective policy metadata enum values', () => {

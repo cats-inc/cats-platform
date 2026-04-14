@@ -195,6 +195,10 @@ export interface ChatRunInspectorView {
   reviewRequired: boolean;
   branchStates: ChatWorkflowBranchView[];
   latestWorkflowRecommendation: ChatWorkflowRecommendationView | null;
+  workflowContinuation: ChatWorkflowContinuationView | null;
+  runtimeDeliveryIntent: ChatRuntimeDeliveryIntentView | null;
+  attention: ChatOperatorAttentionView | null;
+  nextActions: ChatNextActionView[];
   approvalActions: ChatApprovalActionView[];
   incidentActions: ChatOperatorActionView[];
 }

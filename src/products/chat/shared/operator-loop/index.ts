@@ -222,6 +222,7 @@ export function buildRunInspectorView(
     latestRun: run,
     traces,
   });
+  const isLatestTaskRun = operatorView.latestRun?.id === run.id;
   const governanceSummary = deriveCoreGovernanceSummary(operatorView.task, run);
   const latestApproval = approvals[0] ?? operatorView.latestApproval;
 
@@ -243,6 +244,29 @@ export function buildRunInspectorView(
     reviewRequired: workflowSummary?.reviewRequired ?? false,
     branchStates: buildBranchStates(run),
     latestWorkflowRecommendation,
+    workflowContinuation: isLatestTaskRun
+      ? operatorView.workflowContinuation
+      : null,
+    runtimeDeliveryIntent: isLatestTaskRun
+      ? operatorView.runtimeDeliveryIntent
+      : null,
+    attention: isLatestTaskRun
+      ? operatorView.attention
+      : null,
+    nextActions: isLatestTaskRun
+      ? operatorView.nextActions.map((action) => ({
+          kind: action.kind,
+          label: action.label,
+          blocking: action.blocking,
+          action: action.action
+            ? {
+                method: action.action.method,
+                path: action.action.path,
+                body: structuredClone(action.action.body),
+              }
+            : null,
+        }))
+      : [],
     approvalActions: buildApprovalActions(latestApproval),
     incidentActions: buildIncidentActions(
       operatorView.task,

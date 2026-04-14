@@ -725,6 +725,11 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     (requested actions, gates, room/workflow context, and owner-decision state)
   - task-scoped `nextActions`, so room-level consumers can use the same stable
     action shortlist without separately hydrating `/api/core/control-plane/*`
+  - when `runInspector` is focused on the latest task run, it also mirrors that
+    same task-scoped `workflowContinuation`, `attention`,
+    `runtimeDeliveryIntent`, and `nextActions` state so run-focused consumers do
+    not have to cross-read `operator` just to inspect the active replay/control
+    loop context
 
 ### Runtime Bridge
 

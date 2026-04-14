@@ -468,6 +468,11 @@ Known follow-ups:
   task-scoped `attention`, `runtimeDeliveryIntent`, and stable `nextActions`,
   so room-level consumers can reuse the core control-plane attention/delivery
   contract without making a second control-plane read
+- latest-run execution-loop `runInspector` payloads now mirror the same
+  task-scoped `workflowContinuation`, `attention`, `runtimeDeliveryIntent`, and
+  `nextActions` state, so run-focused operator consumers can inspect the active
+  replay/control-loop contract without cross-reading the sibling `operator`
+  payload
 - `src/core/taskRecords.ts` plus `GET /api/core/tasks/{taskId}/records` now
   expose grouped task-scoped approval bindings, runs, traces, checkpoints,
   outcomes, and activity rows so later recovery/control-plane consumers can
