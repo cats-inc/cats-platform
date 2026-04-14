@@ -55,6 +55,11 @@ import type {
   CoreProjectListQuery,
   CoreWorkItemListQuery,
 } from '../planningRecordLists.js';
+import type {
+  CoreContainerListQuery,
+  CoreConversationListQuery,
+  CoreParticipantListQuery,
+} from '../structuralRecordLists.js';
 import type { CoreTaskListQuery } from '../taskList.js';
 import { CoreValidationError } from '../errors.js';
 import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
@@ -75,11 +80,16 @@ import {
   CORE_ACTOR_STATUSES,
   CORE_ARTIFACT_KINDS,
   CORE_ARTIFACT_STATUSES,
+  CORE_CONTAINER_KINDS,
+  CORE_CONTAINER_STATUSES,
+  CORE_CONVERSATION_KINDS,
+  CORE_CONVERSATION_STATUSES,
   CORE_MISSION_STATUSES,
   CORE_OUTCOME_STATUSES,
   CORE_PROJECT_STATUSES,
   CORE_RUN_STATUSES,
   CORE_LANE_STATUSES,
+  CORE_PARTICIPANT_STATUSES,
   CORE_SEGMENT_KINDS,
   CORE_SEGMENT_STATUSES,
   CORE_SESSION_STATUSES,
@@ -571,6 +581,44 @@ export function readSessionListQuery(
     transportBindingIds: readOptionalQueryValues(searchParams, 'transportBindingId'),
     runtimeKeys: readOptionalQueryValues(searchParams, 'runtimeKey'),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_SESSION_STATUSES),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readContainerListQuery(
+  searchParams: URLSearchParams,
+): CoreContainerListQuery {
+  return {
+    kinds: readEnumQueryValues(searchParams, 'kind', CORE_CONTAINER_KINDS),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_CONTAINER_STATUSES),
+    parentContainerIds: readOptionalQueryValues(searchParams, 'parentContainerId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readConversationListQuery(
+  searchParams: URLSearchParams,
+): CoreConversationListQuery {
+  return {
+    kinds: readEnumQueryValues(searchParams, 'kind', CORE_CONVERSATION_KINDS),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_CONVERSATION_STATUSES),
+    containerIds: readOptionalQueryValues(searchParams, 'containerId'),
+    participantActorIds: readOptionalQueryValues(searchParams, 'participantActorId'),
+    sourceChannelIds: readOptionalQueryValues(searchParams, 'sourceChannelId'),
+    repoPaths: readOptionalQueryValues(searchParams, 'repoPath'),
+    responseLanguages: readOptionalQueryValues(searchParams, 'responseLanguage'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readParticipantListQuery(
+  searchParams: URLSearchParams,
+): CoreParticipantListQuery {
+  return {
+    conversationIds: readConversationIds(searchParams),
+    agentIds: readOptionalQueryValues(searchParams, 'agentId'),
+    roles: readOptionalQueryValues(searchParams, 'role'),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_PARTICIPANT_STATUSES),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

@@ -4,6 +4,11 @@ import {
   upsertCoreParticipant,
 } from '../model/index.js';
 import {
+  listContainers,
+  listConversations,
+  listParticipants,
+} from '../structuralRecordLists.js';
+import {
   CORE_CONTAINER_KINDS,
   CORE_CONTAINER_STATUSES,
   CORE_CONVERSATION_KINDS,
@@ -20,6 +25,11 @@ import {
   readStringArray,
   readWrappedBody,
 } from './shared.js';
+import {
+  readContainerListQuery,
+  readConversationListQuery,
+  readParticipantListQuery,
+} from './queryFilters.js';
 import type { CoreApiRouteContext } from './types.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
@@ -27,7 +37,8 @@ async function handleCoreContainers(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { containers: core.containers });
+  const query = readContainerListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { containers: listContainers(core, query) });
 }
 
 async function handleCoreContainerWrite(
@@ -72,7 +83,8 @@ async function handleCoreConversations(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { conversations: core.conversations });
+  const query = readConversationListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { conversations: listConversations(core, query) });
 }
 
 async function handleCoreConversationWrite(
@@ -134,7 +146,8 @@ async function handleCoreParticipants(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { participants: core.participants });
+  const query = readParticipantListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { participants: listParticipants(core, query) });
 }
 
 async function handleCoreParticipantWrite(
@@ -178,7 +191,11 @@ export async function routeCoreStructuralRecordApi(
 ): Promise<boolean> {
   if (context.url.pathname === '/api/core/containers') {
     if (context.method === 'GET') {
-      await handleCoreContainers(context);
+      try {
+        await handleCoreContainers(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -191,7 +208,11 @@ export async function routeCoreStructuralRecordApi(
 
   if (context.url.pathname === '/api/core/conversations') {
     if (context.method === 'GET') {
-      await handleCoreConversations(context);
+      try {
+        await handleCoreConversations(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -204,7 +225,11 @@ export async function routeCoreStructuralRecordApi(
 
   if (context.url.pathname === '/api/core/participants') {
     if (context.method === 'GET') {
-      await handleCoreParticipants(context);
+      try {
+        await handleCoreParticipants(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
