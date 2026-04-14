@@ -1,7 +1,15 @@
 import {
+  buildCoreTaskControlPlaneView,
+  type CoreTaskControlPlaneView,
+} from '../../../core/taskControlPlane.js';
+import {
   buildCoreTaskInspectionView,
   type CoreTaskInspectionView,
 } from '../../../core/taskInspection.js';
+import {
+  buildCoreTaskRecoveryView,
+  type CoreTaskRecoveryView,
+} from '../../../core/recovery.js';
 import {
   queryCoreTaskTimelineView,
   type CoreTaskTimelineQuerySummary,
@@ -120,6 +128,8 @@ export interface CodeTaskDetailProjection {
   effectiveStrategy: string | null;
   workspace: CodeWorkspaceSummary | null;
   inspection: CoreTaskInspectionView;
+  controlPlane: CoreTaskControlPlaneView;
+  recovery: CoreTaskRecoveryView;
   timeline: {
     summary: CoreTaskTimelineQuerySummary;
     view: CoreTaskTimelineView;
@@ -439,6 +449,8 @@ export function buildCodeTaskDetailProjection(
     workspace: readCodeWorkspaceSummaryFromTask(task),
     plan: readCodePlanFromTask(task),
     inspection: buildCoreTaskInspectionView(core, task),
+    controlPlane: buildCoreTaskControlPlaneView(core, task),
+    recovery: buildCoreTaskRecoveryView(core, task),
     timeline: {
       summary: timeline.summary,
       view: timeline.timeline,

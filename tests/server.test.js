@@ -7239,6 +7239,210 @@ test('GET /api/work/tasks/:id mirrors shared control-plane and recovery projecti
   });
 });
 
+test('GET /api/code/tasks/:id mirrors shared control-plane and recovery projections', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const taskId = 'task-code-projection-contract';
+    const conversationId = 'conversation-channel-code-projection-contract';
+
+    const taskResponse = await fetch(`${baseUrl}/api/core/tasks`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        task: {
+          id: taskId,
+          title: 'Code projection contract task',
+          status: 'pending_approval',
+          conversationId,
+          metadata: {
+            ...writeTaskPlanningMetadata(
+              writeWorkflowContinuationReplayMetadata(
+                writeOrchestratorDispatchReplayMetadata(
+                  {
+                    effectiveDeliveryPolicy: {
+                      mode: 'commit_only',
+                      gates: ['owner_approval_required'],
+                      source: 'task_override',
+                      rationale: 'Need owner approval before the code delivery resumes.',
+                    },
+                    channelId: 'channel-code-projection-contract',
+                    transport: 'web',
+                    roomRoutingMode: 'boss_chat',
+                  },
+                  buildOrchestratorDispatchReplayRequest({
+                    channelId: 'channel-code-projection-contract',
+                    body: 'Resume the code delivery handoff.',
+                    recordedAt: '2026-04-15T05:20:00.000Z',
+                  }),
+                  {
+                    replayState: 'failed',
+                    replayTrigger: 'retry',
+                    replayAttemptAt: '2026-04-15T05:21:00.000Z',
+                    replayError: 'builder offline',
+                    sourceMessageId: 'message-code-projection-contract',
+                  },
+                ),
+                buildWorkflowContinuationReplayRequest({
+                  channelId: 'channel-code-projection-contract',
+                  checkpointId: 'checkpoint-code-projection-contract',
+                  sourceMessageId: 'message-code-projection-contract',
+                  sourceTurnId: 'turn-code-projection-contract',
+                  sourceLaneId: 'lane-code-projection-contract',
+                  sourceAssistantTurnId: 'assistant-turn-code-projection-contract',
+                  sourceParticipant: {
+                    participantKind: 'orchestrator',
+                    participantId: 'actor-orchestrator-global',
+                    participantName: 'Orchestrator',
+                  },
+                  targets: [
+                    {
+                      participantKind: 'cat',
+                      participantId: 'cat-code-reviewer',
+                      participantName: 'Code Reviewer',
+                    },
+                  ],
+                  trigger: 'continuation_mention',
+                  branchStrategy: 'transplant_context',
+                  workflowStageId: 'continuation_handoff',
+                  workflowShape: 'converge',
+                  reviewRequired: true,
+                  continuationSource: 'workflow_recommendation',
+                  unresolvedTargets: ['Code Reviewer'],
+                  blockedReason: 'max_dispatches',
+                  recordedAt: '2026-04-15T05:22:00.000Z',
+                }),
+                {
+                  replayState: 'failed',
+                  replayTrigger: 'retry',
+                  replayAttemptAt: '2026-04-15T05:23:00.000Z',
+                  replayError: 'reviewer offline',
+                },
+              ),
+              {
+                productHint: 'code',
+                strategyHint: 'reflexion',
+              },
+            ),
+            codeWorkspace: {
+              workspacePath: 'C:/repo/cats-platform',
+              workspaceKind: 'conversation_repo',
+              ownershipState: 'conversation_bound',
+            },
+          },
+        },
+      }),
+    });
+    assert.equal(taskResponse.status, 201);
+
+    const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        taskId,
+        status: 'pending',
+        requestedByActorId: 'actor-orchestrator-global',
+        notes: 'Need owner approval before the code delivery resumes.',
+      }),
+    });
+    assert.equal(approvalResponse.status, 200);
+
+    const runResponse = await fetch(`${baseUrl}/api/core/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        run: {
+          id: 'run-code-projection-contract',
+          title: 'Blocked code handoff',
+          status: 'blocked',
+          conversationId,
+          taskId,
+          metadata: {
+            workflowStageId: 'continuation_handoff',
+            workflowShape: 'converge',
+            dispatchCount: 1,
+            continuationCount: 1,
+            targetCount: 1,
+          },
+        },
+      }),
+    });
+    assert.equal(runResponse.status, 201);
+
+    const checkpointResponse = await fetch(`${baseUrl}/api/core/checkpoints`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        checkpoint: {
+          id: 'checkpoint-code-projection-contract',
+          label: 'code-review',
+          status: 'open',
+          conversationId,
+          taskId,
+          runId: 'run-code-projection-contract',
+          summary: 'Waiting for the code reviewer to return.',
+          metadata: {
+            continuationSource: 'workflow_recommendation',
+            unresolvedTargets: ['Code Reviewer'],
+            workflowRecommendation: {
+              source: 'checkpoint',
+              workflowShape: 'converge',
+              branchStrategy: 'single_target_review',
+              rationale: 'Need code reviewer approval before continuing.',
+              reviewRequired: true,
+              candidateTargets: [
+                {
+                  participantKind: 'cat',
+                  participantId: 'cat-code-reviewer',
+                  participantName: 'Code Reviewer',
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+    assert.equal(checkpointResponse.status, 201);
+
+    const codeTaskDetailResponse = await fetch(`${baseUrl}/api/code/tasks/${taskId}`);
+    assert.equal(codeTaskDetailResponse.status, 200);
+    const codeTaskDetailPayload = await codeTaskDetailResponse.json();
+
+    const controlPlaneResponse = await fetch(`${baseUrl}/api/core/tasks/${taskId}/control-plane`);
+    assert.equal(controlPlaneResponse.status, 200);
+    const controlPlanePayload = await controlPlaneResponse.json();
+
+    const recoveryResponse = await fetch(`${baseUrl}/api/core/tasks/${taskId}/recovery`);
+    assert.equal(recoveryResponse.status, 200);
+    const recoveryPayload = await recoveryResponse.json();
+
+    assert.equal(codeTaskDetailPayload.product.id, 'code');
+    assert.equal(codeTaskDetailPayload.task.id, taskId);
+    assert.equal(codeTaskDetailPayload.effectiveStrategy, 'reflexion');
+    assert.deepEqual(codeTaskDetailPayload.workspace, {
+      workspacePath: 'C:/repo/cats-platform',
+      workspaceKind: 'conversation_repo',
+      ownershipState: 'conversation_bound',
+    });
+    assert.equal(codeTaskDetailPayload.controlPlane.taskId, taskId);
+    assert.deepEqual(codeTaskDetailPayload.controlPlane, controlPlanePayload.controlPlane);
+    assert.deepEqual(codeTaskDetailPayload.recovery, recoveryPayload.recovery);
+    assert.equal(
+      codeTaskDetailPayload.controlPlane.workflowContinuation.sourceAssistantTurnId,
+      'assistant-turn-code-projection-contract',
+    );
+    assert.equal(codeTaskDetailPayload.controlPlane.runtimeDeliveryIntent.mode, 'commit_only');
+    assert.equal(codeTaskDetailPayload.recovery.context.deliveryMode, 'commit_only');
+    assert.equal(codeTaskDetailPayload.recovery.workflowContinuationReplay.blockedReason, 'max_dispatches');
+  });
+});
+
 test('GET /api/shell/browse lists subdirectories for the folder browser modal', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cats-folder-browser-'));
   const alphaDir = path.join(root, 'alpha');
