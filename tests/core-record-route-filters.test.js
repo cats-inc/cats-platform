@@ -10,7 +10,10 @@ import { MemoryCoreStore } from '../build/server/core/store.js';
 import {
   createDefaultCoreState,
   upsertCoreActor,
+  upsertCoreArtifact,
   upsertCoreMission,
+  upsertCoreProject,
+  upsertCoreWorkItem,
 } from '../build/server/core/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
@@ -152,6 +155,54 @@ function createCoreState() {
     new Date('2026-04-15T04:23:00.000Z'),
   ).core;
 
+  core = upsertCoreProject(
+    core,
+    {
+      id: 'project-1',
+      title: 'Project one',
+      status: 'active',
+      ownerActorId: 'actor-owner',
+      primaryConversationId: 'conversation-1',
+      repoPath: 'C:/repo-one',
+      createdAt: '2026-04-15T04:24:00.000Z',
+    },
+    new Date('2026-04-15T04:24:00.000Z'),
+  ).core;
+
+  core = upsertCoreWorkItem(
+    core,
+    {
+      id: 'work-item-1',
+      title: 'Work item one',
+      status: 'in_progress',
+      projectId: 'project-1',
+      conversationId: 'conversation-1',
+      taskId: 'task-1',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-1'],
+      createdAt: '2026-04-15T04:25:00.000Z',
+    },
+    new Date('2026-04-15T04:25:00.000Z'),
+  ).core;
+
+  core = upsertCoreArtifact(
+    core,
+    {
+      id: 'artifact-1',
+      title: 'Artifact one',
+      kind: 'document',
+      status: 'ready',
+      projectId: 'project-1',
+      workItemId: 'work-item-1',
+      conversationId: 'conversation-1',
+      taskId: 'task-1',
+      runId: 'run-1',
+      mimeType: 'text/markdown',
+      createdAt: '2026-04-15T04:26:00.000Z',
+    },
+    new Date('2026-04-15T04:26:00.000Z'),
+  ).core;
+
   return core;
 }
 
@@ -229,5 +280,55 @@ test('core record routes reject invalid actor and mission filters with structure
     const missionsPayload = await missionsResponse.json();
     assert.equal(missionsPayload.error.code, 'bad_request');
     assert.match(missionsPayload.error.message, /status must be one of/i);
+  });
+});
+
+test('core record routes support filtered project, work item, and artifact queries', async () => {
+  await withServer(async (baseUrl) => {
+    const projectsResponse = await fetch(
+      `${baseUrl}/api/core/projects?status=active&ownerActorId=actor-owner&primaryConversationId=conversation-1&repoPath=C:/repo-one`,
+    );
+    assert.equal(projectsResponse.status, 200);
+    const projectsPayload = await projectsResponse.json();
+    assert.equal(projectsPayload.projects.length, 1);
+    assert.equal(projectsPayload.projects[0].id, 'project-1');
+
+    const workItemsResponse = await fetch(
+      `${baseUrl}/api/core/work-items?status=in_progress&projectId=project-1&conversationId=conversation-1&taskId=task-1&ownerActorId=actor-owner&assignedActorId=actor-1`,
+    );
+    assert.equal(workItemsResponse.status, 200);
+    const workItemsPayload = await workItemsResponse.json();
+    assert.equal(workItemsPayload.workItems.length, 1);
+    assert.equal(workItemsPayload.workItems[0].id, 'work-item-1');
+
+    const artifactsResponse = await fetch(
+      `${baseUrl}/api/core/artifacts?kind=document&status=ready&projectId=project-1&workItemId=work-item-1&conversationId=conversation-1&taskId=task-1&runId=run-1&mimeType=text/markdown`,
+    );
+    assert.equal(artifactsResponse.status, 200);
+    const artifactsPayload = await artifactsResponse.json();
+    assert.equal(artifactsPayload.artifacts.length, 1);
+    assert.equal(artifactsPayload.artifacts[0].id, 'artifact-1');
+  });
+});
+
+test('core record routes reject invalid project, work item, and artifact filters with structured 400 responses', async () => {
+  await withServer(async (baseUrl) => {
+    const projectsResponse = await fetch(`${baseUrl}/api/core/projects?status=running`);
+    assert.equal(projectsResponse.status, 400);
+    const projectsPayload = await projectsResponse.json();
+    assert.equal(projectsPayload.error.code, 'bad_request');
+    assert.match(projectsPayload.error.message, /status must be one of/i);
+
+    const workItemsResponse = await fetch(`${baseUrl}/api/core/work-items?status=waiting`);
+    assert.equal(workItemsResponse.status, 400);
+    const workItemsPayload = await workItemsResponse.json();
+    assert.equal(workItemsPayload.error.code, 'bad_request');
+    assert.match(workItemsPayload.error.message, /status must be one of/i);
+
+    const artifactsResponse = await fetch(`${baseUrl}/api/core/artifacts?kind=binary`);
+    assert.equal(artifactsResponse.status, 400);
+    const artifactsPayload = await artifactsResponse.json();
+    assert.equal(artifactsPayload.error.code, 'bad_request');
+    assert.match(artifactsPayload.error.message, /kind must be one of/i);
   });
 });

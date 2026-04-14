@@ -42,6 +42,11 @@ import type {
   CoreTurnListQuery,
 } from '../interactionRecordLists.js';
 import type { CoreMissionListQuery } from '../missionList.js';
+import type {
+  CoreArtifactListQuery,
+  CoreProjectListQuery,
+  CoreWorkItemListQuery,
+} from '../planningRecordLists.js';
 import { CoreValidationError } from '../errors.js';
 import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
 import {
@@ -53,7 +58,10 @@ import {
   CORE_ACTOR_KINDS,
   CORE_ACTOR_SOURCES,
   CORE_ACTOR_STATUSES,
+  CORE_ARTIFACT_KINDS,
+  CORE_ARTIFACT_STATUSES,
   CORE_MISSION_STATUSES,
+  CORE_PROJECT_STATUSES,
   CORE_RUN_STATUSES,
   CORE_LANE_STATUSES,
   CORE_SEGMENT_KINDS,
@@ -554,6 +562,49 @@ export function readMissionListQuery(
     assignedAgentIds: readOptionalQueryValues(searchParams, 'assignedAgentId'),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_MISSION_STATUSES),
     runIds: readOptionalQueryValues(searchParams, 'runId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readProjectListQuery(
+  searchParams: URLSearchParams,
+): CoreProjectListQuery {
+  return {
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_PROJECT_STATUSES),
+    ownerActorIds: readOptionalQueryValues(searchParams, 'ownerActorId'),
+    primaryConversationIds: readOptionalQueryValues(searchParams, 'primaryConversationId'),
+    repoPaths: readOptionalQueryValues(searchParams, 'repoPath'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readWorkItemListQuery(
+  searchParams: URLSearchParams,
+): CoreWorkItemListQuery {
+  return {
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_WORK_ITEM_STATUSES),
+    projectIds: readOptionalQueryValues(searchParams, 'projectId'),
+    conversationIds: readConversationIds(searchParams),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    parentWorkItemIds: readOptionalQueryValues(searchParams, 'parentWorkItemId'),
+    ownerActorIds: readOptionalQueryValues(searchParams, 'ownerActorId'),
+    assignedActorIds: readOptionalQueryValues(searchParams, 'assignedActorId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readArtifactListQuery(
+  searchParams: URLSearchParams,
+): CoreArtifactListQuery {
+  return {
+    kinds: readEnumQueryValues(searchParams, 'kind', CORE_ARTIFACT_KINDS),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_ARTIFACT_STATUSES),
+    projectIds: readOptionalQueryValues(searchParams, 'projectId'),
+    workItemIds: readOptionalQueryValues(searchParams, 'workItemId'),
+    conversationIds: readConversationIds(searchParams),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    runIds: readOptionalQueryValues(searchParams, 'runId'),
+    mimeTypes: readOptionalQueryValues(searchParams, 'mimeType'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

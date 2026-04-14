@@ -17,6 +17,11 @@ import {
 } from './shared.js';
 import { readMissionListQuery } from './queryFilters.js';
 import {
+  readArtifactListQuery,
+  readProjectListQuery,
+  readWorkItemListQuery,
+} from './queryFilters.js';
+import {
   CORE_ARTIFACT_KINDS,
   CORE_ARTIFACT_STATUSES,
   CORE_MISSION_STATUSES,
@@ -25,13 +30,19 @@ import {
 } from './constants.js';
 import type { CoreApiRouteContext } from './types.js';
 import { listMissions } from '../missionList.js';
+import {
+  listArtifacts,
+  listProjects,
+  listWorkItems,
+} from '../planningRecordLists.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 async function handleCoreProjects(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { projects: core.projects });
+  const query = readProjectListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { projects: listProjects(core, query) });
 }
 
 async function handleCoreProjectWrite(
@@ -78,7 +89,8 @@ async function handleCoreWorkItems(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { workItems: core.workItems });
+  const query = readWorkItemListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { workItems: listWorkItems(core, query) });
 }
 
 async function handleCoreMissions(
@@ -183,7 +195,8 @@ async function handleCoreArtifacts(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { artifacts: core.artifacts });
+  const query = readArtifactListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { artifacts: listArtifacts(core, query) });
 }
 
 async function handleCoreArtifactWrite(
@@ -237,7 +250,11 @@ export async function routeCorePlanningRecordApi(
 ): Promise<boolean> {
   if (context.url.pathname === '/api/core/projects') {
     if (context.method === 'GET') {
-      await handleCoreProjects(context);
+      try {
+        await handleCoreProjects(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -250,7 +267,11 @@ export async function routeCorePlanningRecordApi(
 
   if (context.url.pathname === '/api/core/work-items') {
     if (context.method === 'GET') {
-      await handleCoreWorkItems(context);
+      try {
+        await handleCoreWorkItems(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -280,7 +301,11 @@ export async function routeCorePlanningRecordApi(
 
   if (context.url.pathname === '/api/core/artifacts') {
     if (context.method === 'GET') {
-      await handleCoreArtifacts(context);
+      try {
+        await handleCoreArtifacts(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
