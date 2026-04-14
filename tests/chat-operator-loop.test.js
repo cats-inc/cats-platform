@@ -408,6 +408,110 @@ test('buildChatOperatorView exposes normalized workflow continuation state', () 
   assert.ok(inspector?.nextActions.some((action) => action.kind === 'retry'));
 });
 
+test('buildRunInspectorView does not mirror latest control state onto historical runs', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-channel-room-history',
+      title: 'Historical run task',
+      status: 'blocked',
+      conversationId: 'conversation-channel-room-history',
+      createdAt: '2026-04-15T02:00:00.000Z',
+      metadata: {
+        workflowContinuationReplay: {
+          channelId: 'room-history',
+          checkpointId: 'checkpoint-room-history',
+          sourceMessageId: 'message-room-history',
+          sourceTurnId: 'turn-room-history',
+          sourceLaneId: 'lane-room-history',
+          sourceAssistantTurnId: 'assistant-turn-room-history',
+          sourceParticipant: {
+            participantKind: 'cat',
+            participantId: 'cat-agent-1',
+            participantName: 'Agent-1',
+          },
+          targets: [
+            {
+              participantKind: 'cat',
+              participantId: 'cat-agent-2',
+              participantName: 'Agent-2',
+            },
+          ],
+          mentionNames: ['Agent-2'],
+          trigger: 'continuation_mention',
+          branchStrategy: 'transplant_context',
+          workflowStageId: 'continuation_handoff',
+          workflowShape: 'sequential',
+          reviewRequired: false,
+          continuationSource: 'explicit_mentions',
+          workflowRecommendation: null,
+          unresolvedTargets: [],
+          blockedReason: 'anti_ping_pong',
+          recordedAt: '2026-04-15T02:02:00.000Z',
+          replayState: 'failed',
+          replayTrigger: 'retry',
+          replayAttemptAt: '2026-04-15T02:03:00.000Z',
+          replayError: 'loop guard fired',
+        },
+      },
+    },
+    new Date('2026-04-15T02:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-room-history-old',
+      title: 'Historical completed run',
+      status: 'completed',
+      conversationId: 'conversation-channel-room-history',
+      taskId: 'task-channel-room-history',
+      traceId: 'trace-room-history-old',
+      summary: 'Completed before the current blocked continuation.',
+      createdAt: '2026-04-15T02:00:00.000Z',
+      metadata: {
+        workflowStageId: 'turn_completed',
+        workflowShape: 'sequential',
+      },
+    },
+    new Date('2026-04-15T02:01:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-room-history-latest',
+      title: 'Latest blocked run',
+      status: 'blocked',
+      conversationId: 'conversation-channel-room-history',
+      taskId: 'task-channel-room-history',
+      traceId: 'trace-room-history-latest',
+      summary: 'Blocked after a continuation guard fired.',
+      createdAt: '2026-04-15T02:02:00.000Z',
+      metadata: {
+        workflowStageId: 'continuation_handoff',
+        workflowShape: 'sequential',
+      },
+    },
+    new Date('2026-04-15T02:02:00.000Z'),
+  ).core;
+
+  const view = buildChatOperatorView(
+    {
+      core,
+      approvals: buildApprovalQueue(core),
+    },
+    'room-history',
+  );
+  const historicalInspector = buildRunInspectorView(view, 'run-room-history-old');
+
+  assert.equal(historicalInspector?.run.id, 'run-room-history-old');
+  assert.equal(historicalInspector?.workflowContinuation, null);
+  assert.equal(historicalInspector?.runtimeDeliveryIntent, null);
+  assert.equal(historicalInspector?.attention, null);
+  assert.deepEqual(historicalInspector?.nextActions, []);
+});
+
 test('buildChatOperatorView filters invalid effective policy metadata enum values', () => {
   let core = createDefaultCoreState();
 
