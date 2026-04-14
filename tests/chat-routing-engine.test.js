@@ -322,6 +322,22 @@ test('current-turn draft audience metadata routes multi-target turns sequentiall
     runtimeClient.sentMessages[1]?.content ?? '',
     /Latest routed handoff:\nAgent-2 handled the first step\./u,
   );
+  assert.equal(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-1',
+    )?.sourceMessageId,
+    replies[0]?.id,
+  );
+  assert.deepEqual(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.find(
+      (target) => target.participant.participantName === 'Agent-1',
+    )?.source,
+    {
+      participantKind: 'cat',
+      participantId: agent2Id,
+      participantName: 'Agent-2',
+    },
+  );
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
   assert.equal(
     channel.roomRouting?.workflow.eventHistory.some((event) => event.kind === 'fan_out'),

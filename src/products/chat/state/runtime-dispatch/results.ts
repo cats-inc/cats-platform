@@ -178,6 +178,7 @@ function advanceQueuedSequentialPromptFrontier(
   }
 
   nextSequentialFrame.promptSourceMessage = responseMessage;
+  nextSequentialFrame.sourceParticipant = toParticipantRef(execution.target);
 }
 
 function appendRecoveredDispatchMessages(
