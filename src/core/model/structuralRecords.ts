@@ -88,6 +88,10 @@ export function upsertCoreConversation(
     title,
     kind: input.kind ?? existing?.kind ?? 'chat_channel',
     status: input.status ?? existing?.status ?? 'planned',
+    containerId:
+      input.containerId === undefined
+        ? existing?.containerId ?? null
+        : normalizeNullableString(input.containerId),
     participantActorIds:
       input.participantActorIds === undefined
         ? normalizeStringArray(existing?.participantActorIds)

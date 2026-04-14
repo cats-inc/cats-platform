@@ -847,6 +847,7 @@ export function createBotTransportBindings(
 
 export function createConversationFromChannel(
   channel: ChatChannelState,
+  containerId: string | null,
   participantActorIds: string[],
 ): CoreConversationRecord {
   return {
@@ -854,6 +855,7 @@ export function createConversationFromChannel(
     title: channel.title,
     kind: resolveChatConversationKind(channel.channelKind),
     status: mapChannelStatusToConversationStatus(channel),
+    containerId,
     participantActorIds: uniqueStrings(participantActorIds),
     sourceChannelId: channel.id,
     repoPath: channel.repoPath,

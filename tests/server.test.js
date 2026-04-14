@@ -2690,6 +2690,7 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       title: 'System conversation',
       kind: 'direct_message',
       status: 'active',
+      containerId: 'container-system-1',
       participantActorIds: ['actor-owner', 'actor-orchestrator-global'],
       createdAt: fixtures.project.createdAt,
       lastMessageAt: fixtures.project.createdAt,

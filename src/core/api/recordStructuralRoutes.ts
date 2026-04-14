@@ -95,6 +95,7 @@ async function handleCoreConversationWrite(
           'conversation.status',
           CORE_CONVERSATION_STATUSES,
         ),
+        containerId: readNullableString(conversation.containerId, 'conversation.containerId'),
         participantActorIds: readStringArray(
           conversation.participantActorIds,
           'conversation.participantActorIds',

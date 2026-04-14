@@ -29,6 +29,7 @@ test('core structural record helpers persist containers, conversations, and part
       title: 'Primary conversation',
       kind: 'direct_message',
       status: 'active',
+      containerId: 'container-1',
       participantActorIds: ['actor-owner', 'actor-orchestrator-global'],
       createdAt: '2026-04-14T22:01:00.000Z',
     },
@@ -51,6 +52,7 @@ test('core structural record helpers persist containers, conversations, and part
   assert.equal(core.containers[0].title, 'Chat Root');
   assert.equal(core.conversations.length, 1);
   assert.equal(core.conversations[0].kind, 'direct_message');
+  assert.equal(core.conversations[0].containerId, 'container-1');
   assert.equal(core.participants.length, 1);
   assert.equal(core.participants[0].agentId, 'actor-orchestrator-global');
 });

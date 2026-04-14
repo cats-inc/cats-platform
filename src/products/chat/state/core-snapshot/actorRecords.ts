@@ -127,6 +127,7 @@ export function normalizeCoreConversation(rawConversation: unknown): CoreConvers
     title: readString(conversationRecord.title, 'Untitled conversation'),
     kind,
     status,
+    containerId: readNullableString(conversationRecord.containerId),
     participantActorIds: readStringArray(conversationRecord.participantActorIds),
     sourceChannelId: readNullableString(conversationRecord.sourceChannelId),
     repoPath: readNullableString(conversationRecord.repoPath),

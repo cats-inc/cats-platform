@@ -46,6 +46,7 @@ export interface CoreConversationWriteInput {
   title: string;
   kind?: CoreConversationKind;
   status?: CoreConversationStatus;
+  containerId?: string | null;
   participantActorIds?: string[];
   sourceChannelId?: string | null;
   repoPath?: string | null;

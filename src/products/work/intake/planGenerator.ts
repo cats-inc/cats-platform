@@ -75,6 +75,7 @@ export function generateWorkIntakePlan(
     title: input.title,
     kind: 'work_thread',
     status: 'planned',
+    containerId: null,
     participantActorIds: [ownerActorId],
     sourceChannelId: null,
     repoPath: input.repoPath ?? null,

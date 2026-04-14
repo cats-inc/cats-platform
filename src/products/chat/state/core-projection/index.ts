@@ -10,10 +10,12 @@ import {
 } from '../../../../core/actors.js';
 import type { ChatState } from '../../api/contracts.js';
 import {
+  buildChatParallelGroupContainerId,
   buildChatArchiveId,
   buildChatConversationId,
   buildChatTaskId,
   buildChatWorkItemId,
+  CHAT_ROOT_CONTAINER_ID,
   resolveChatConversationActorIds,
 } from '../../../../shared/chatCoreIds.js';
 import {
@@ -75,9 +77,17 @@ export function syncCoreStateWithChatState(
   const preservedConversations = preserveCoreOwnedConversations(
     existingCore.conversations ?? [],
   );
+  const channelContainerIds = new Map(
+    chat.parallelChatGroups.flatMap((group) =>
+      group.memberChannelIds.map((channelId) => [
+        channelId,
+        buildChatParallelGroupContainerId(group.id),
+      ] as const)),
+  );
   const conversations = chat.channels.map((channel) =>
     createConversationFromChannel(
       channel,
+      channelContainerIds.get(channel.id) ?? CHAT_ROOT_CONTAINER_ID,
       resolveChatConversationActorIds({
         channelId: channel.id,
         channelKind: channel.channelKind,
