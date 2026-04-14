@@ -1701,6 +1701,10 @@ Semantics:
   - `workflowShape`
   - `workflowReviewRequired`
   - `workflowConvergeTargetId`
+  - `sourceMessageId`
+  - `sourceTurnId`
+  - `sourceLaneId`
+  - `sourceAssistantTurnId`
   - `workflowContinuationSource`
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
@@ -1769,6 +1773,10 @@ Semantics:
 - `workflowContinuationSource` / `workflowContinuationSourceCounts` let
   control-plane consumers distinguish explicit-mention continuations from
   workflow-recommendation replays without reopening raw continuation metadata
+- `sourceMessageId`, `sourceTurnId`, `sourceLaneId`, and
+  `sourceAssistantTurnId` let control-plane consumers facet replay work by the
+  exact preserved continuation source identity without scraping raw task
+  metadata
 - `latestReplaySource`, `latestReplayTrigger`, `latestReplayPhase`, and
   `latestReplayResumeReason` plus their summary counts let control-plane
   consumers facet retry/recovery queues by the newest normalized replay
@@ -1855,6 +1863,10 @@ Semantics:
   - `workflowShape`
   - `workflowReviewRequired`
   - `workflowConvergeTargetId`
+  - `sourceMessageId`
+  - `sourceTurnId`
+  - `sourceLaneId`
+  - `sourceAssistantTurnId`
   - `workflowContinuationSource`
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
@@ -1890,6 +1902,9 @@ Semantics:
 - `latestReplaySource`, `latestReplayTrigger`, `latestReplayPhase`, and
   `latestReplayResumeReason` give the inbox the same replay-lifecycle queue
   faceting as recovery, while staying on the operator-facing shortlist surface
+- `sourceMessageId`, `sourceTurnId`, `sourceLaneId`, and
+  `sourceAssistantTurnId` let inbox consumers target the exact preserved
+  continuation source identity without reopening raw replay blobs
 - each entry keeps the stable task-scoped action shortlist in `nextActions`
   while also surfacing the latest normalized timeline item, so consumers do not
   have to join those surfaces client-side to answer "what needs attention and
@@ -2092,6 +2107,10 @@ Semantics:
   - `workflowShape`
   - `workflowReviewRequired`
   - `workflowConvergeTargetId`
+  - `sourceMessageId`
+  - `sourceTurnId`
+  - `sourceLaneId`
+  - `sourceAssistantTurnId`
   - `workflowContinuationSource`
   - `workflowUnresolvedTarget`
   - `hasUnresolvedWorkflowTargets`
@@ -2163,6 +2182,10 @@ Semantics:
   facet queues by the specific continuation targets that are still unresolved
   instead of treating every `no_valid_targets` replay as one undifferentiated
   bucket
+- `sourceMessageId`, `sourceTurnId`, `sourceLaneId`, and
+  `sourceAssistantTurnId` let recovery, control-plane, and operator-inbox
+  callers facet retryable continuation work by the canonical source identity
+  that seeded the preserved replay snapshot
 - `workflowShape` / `workflowShapeCounts` let recovery automation distinguish
   sequential, parallel, or converge replay topology without inferring it from
   stage ids alone

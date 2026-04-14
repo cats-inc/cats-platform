@@ -427,6 +427,11 @@ Known follow-ups:
   `workflowContinuationSourceCounts`, so automation can distinguish explicit
   mention-driven continuations from workflow-recommendation replays without
   scraping raw continuation blobs
+- those same recovery, control-plane, and operator-inbox list routes now also
+  support `sourceMessageId`, `sourceTurnId`, `sourceLaneId`, and
+  `sourceAssistantTurnId`, so queue automation can facet preserved
+  continuation replays by the exact canonical source identity that seeded the
+  retryable handoff instead of reopening raw replay metadata
 - control-plane and operator-inbox list routes now also support
   `latestReplaySource`, `latestReplayTrigger`, `latestReplayPhase`, and
   `latestReplayResumeReason`, and summarize
