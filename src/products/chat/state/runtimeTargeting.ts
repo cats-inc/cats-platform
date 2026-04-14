@@ -6,6 +6,7 @@ import type {
   ChatMessage,
   ChatState,
 } from '../api/contracts.js';
+import type { CatsCoreState } from '../../../core/types.js';
 import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
@@ -22,6 +23,7 @@ import {
 } from '../shared/channelParticipants.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 import {
   buildChannelView,
   requireChannel,
@@ -134,10 +136,14 @@ export function resolveChoiceResponseTarget(
   state: ChatState,
   channel: ChatChannelView,
   sourceMessageId: string,
+  core?: CatsCoreState,
 ): RoutingTarget | null {
   const sourceMessage = channel.messages.find((message) => message.id === sourceMessageId);
+  const canonicalTarget = !sourceMessage && core
+    ? resolveCanonicalChoiceResponseTarget(state, channel, sourceMessageId, core)
+    : null;
   if (!sourceMessage) {
-    return null;
+    return canonicalTarget;
   }
 
   const targetKind = sourceMessage.metadata.targetKind === 'orchestrator'
@@ -160,6 +166,73 @@ export function resolveChoiceResponseTarget(
   const targetId = typeof sourceMessage.metadata.targetId === 'string'
     ? sourceMessage.metadata.targetId
     : null;
+  if (!targetId) {
+    return null;
+  }
+
+  const cat = activeAssignedParticipants(channel).find((candidate) => candidate.participantId === targetId);
+  return cat ? buildCatTarget(cat) : null;
+}
+
+function readCoreMetadataString(
+  metadata: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function resolveRawChatParticipantId(
+  canonicalParticipantId: string | null | undefined,
+  conversationId: string,
+): string | null {
+  if (!canonicalParticipantId) {
+    return null;
+  }
+
+  const prefix = `participant-${conversationId}-`;
+  if (canonicalParticipantId.startsWith(prefix)) {
+    const rawParticipantId = canonicalParticipantId.slice(prefix.length).trim();
+    return rawParticipantId.length > 0 ? rawParticipantId : null;
+  }
+
+  const normalized = canonicalParticipantId.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function resolveCanonicalChoiceResponseTarget(
+  state: ChatState,
+  channel: ChatChannelView,
+  sourceMessageId: string,
+  core: CatsCoreState,
+): RoutingTarget | null {
+  const conversationId = buildChatConversationId(channel.id);
+  const segment = core.segments
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && readCoreMetadataString(candidate.metadata, 'chatMessageId') === sourceMessageId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .at(-1);
+  if (!segment) {
+    return null;
+  }
+
+  const lane = core.lanes.find((candidate) =>
+    candidate.id === segment.laneId
+    && candidate.conversationId === conversationId) ?? null;
+  const targetKind = readCoreMetadataString(segment.metadata, 'targetKind')
+    ?? readCoreMetadataString(lane?.metadata ?? null, 'participantKind');
+
+  if (targetKind === 'orchestrator') {
+    return buildOrchestratorTarget(state, channel);
+  }
+
+  if (targetKind !== 'cat') {
+    return null;
+  }
+
+  const targetId = readCoreMetadataString(segment.metadata, 'targetId')
+    ?? resolveRawChatParticipantId(lane?.participantId ?? null, conversationId);
   if (!targetId) {
     return null;
   }

@@ -6,6 +6,7 @@ import type {
   ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
+import type { CatsCoreState } from '../../../../core/types.js';
 import type {
   RoomRoutingCheckpoint,
   RoomRoutingOutcome,
@@ -96,6 +97,7 @@ export function prepareDispatchTurnForUserMessage(
   payload: SendChannelMessageInput,
   userMessage: ChatMessage,
   now: Date,
+  core?: CatsCoreState,
 ): PreparedDispatchTurn {
   let nextState = state;
   const channelAfterUserMessage = buildChannelView(nextState, channelId);
@@ -104,6 +106,7 @@ export function prepareDispatchTurnForUserMessage(
         nextState,
         channelAfterUserMessage,
         payload.choiceResponse.sourceMessageId,
+        core,
       )
     : null;
   let initialResolution = choiceResponseTarget
@@ -351,6 +354,7 @@ export function prepareDispatchTurn(
   channelId: string,
   payload: SendChannelMessageInput,
   now: Date,
+  core?: CatsCoreState,
 ): PreparedDispatchTurn {
   const channelAfterUserMessage = buildChannelView(state, channelId);
   const userMessage =
@@ -361,6 +365,7 @@ export function prepareDispatchTurn(
     payload,
     userMessage,
     now,
+    core,
   );
 }
 
@@ -370,6 +375,7 @@ export function prepareDispatchTurnForExistingUserMessage(
   payload: SendChannelMessageInput,
   messageId: string,
   now: Date,
+  core?: CatsCoreState,
 ): PreparedDispatchTurn {
   const channel = buildChannelView(state, channelId);
   const userMessage = findChannelUserMessage(channel, messageId);
@@ -379,5 +385,6 @@ export function prepareDispatchTurnForExistingUserMessage(
     payload,
     userMessage,
     now,
+    core,
   );
 }

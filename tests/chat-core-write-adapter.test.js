@@ -751,6 +751,66 @@ test('beginChannelMessageRetryDispatch can rebuild a missing user source from ca
   );
 });
 
+test('beginChannelMessageDispatch can route a choice response from canonical source segments after transcript drift', async () => {
+  const { state, channelId } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('Pick a style:\n```json\n{"choices":[{"question":"Which style?","options":[{"id":"minimal","label":"Minimal"}]}]}\n```');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 ask the style question.' },
+    runtimeClient,
+    new Date('2026-04-15T00:22:00.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const sourceMessage = requireChannel(dispatched.state, channelId).messages.find((message) =>
+    message.senderName === 'Agent-1'
+    && message.metadata?.event === 'assistant_turn_segment');
+  assert.ok(sourceMessage);
+
+  const brokenState = structuredClone(dispatched.state);
+  const brokenChannel = requireChannel(brokenState, channelId);
+  brokenChannel.messages = brokenChannel.messages.filter((message) => message.id !== sourceMessage.id);
+  await store.write(brokenState);
+
+  const begun = await beginChannelMessageDispatch(
+    await store.read(),
+    channelId,
+    {
+      body: 'Q: Which style?\nA: Minimal',
+      choiceResponse: {
+        sourceMessageId: sourceMessage.id,
+        status: 'submitted',
+        submittedAt: '2026-04-15T00:22:30.000Z',
+        answers: [
+          {
+            question: 'Which style?',
+            selectedOptionIds: ['minimal'],
+          },
+        ],
+      },
+    },
+    createNoopRuntimeClient(),
+    new Date('2026-04-15T00:22:30.000Z'),
+    {
+      chatStore: store,
+    },
+  );
+
+  assert.deepEqual(
+    begun.preparedTurn?.initialResolution.targets.map((target) => target.participantName),
+    ['Agent-1'],
+  );
+});
+
 test('repairOrphanedCompletedDispatchTurn syncs repaired turns back into canonical interaction records', async () => {
   const runtimeClient = createNoopRuntimeClient();
   const seededAt = new Date('2026-04-15T00:20:00.000Z');

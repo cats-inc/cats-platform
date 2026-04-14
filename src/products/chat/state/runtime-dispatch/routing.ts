@@ -343,7 +343,16 @@ export async function beginChannelMessageDispatch(
   ).state;
   nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
 
-  const preparedTurn = prepareDispatchTurn(nextState, channelId, payload, now);
+  const choiceResponseCore = payload.choiceResponse && options.chatStore
+    ? await options.chatStore.readCore()
+    : undefined;
+  const preparedTurn = prepareDispatchTurn(
+    nextState,
+    channelId,
+    payload,
+    now,
+    choiceResponseCore,
+  );
   nextState = materializeInFlightDispatchState(
     preparedTurn.state,
     channelId,
@@ -386,6 +395,9 @@ export async function beginChannelMessageRetryDispatch(
     throw new Error(`Only user messages can be retried: ${sourceMessageId}`);
   }
 
+  const choiceResponseCore = sourceMessage.choiceResponse && options.chatStore
+    ? await options.chatStore.readCore()
+    : undefined;
   const preparedTurn = sourceMessageMissingFromTranscript
     ? prepareDispatchTurnForUserMessage(
         state,
@@ -393,6 +405,7 @@ export async function beginChannelMessageRetryDispatch(
         buildRetrySendPayload(sourceMessage),
         sourceMessage,
         now,
+        choiceResponseCore,
       )
     : prepareDispatchTurnForExistingUserMessage(
         state,
@@ -400,6 +413,7 @@ export async function beginChannelMessageRetryDispatch(
         buildRetrySendPayload(sourceMessage),
         sourceMessageId,
         now,
+        choiceResponseCore,
       );
   const nextState = await persistInFlightDispatchState(
     options.chatStore,
