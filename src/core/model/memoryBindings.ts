@@ -12,6 +12,7 @@ import type {
 } from '../types.js';
 
 export interface DurableMemoryListQuery {
+  ids?: string[];
   categories?: DurableMemoryCategory[];
   sourceRefs?: string[];
   minConfidence?: number;
@@ -96,6 +97,9 @@ export function listDurableMemoryBySubject(
   return core.durableMemory
     .filter((record) => record.subjectType === subjectType && record.subjectId === subjectId)
     .filter((record) => {
+      if (query.ids && !query.ids.includes(record.id)) {
+        return false;
+      }
       if (query.categories && !query.categories.includes(record.category)) {
         return false;
       }

@@ -178,7 +178,7 @@ async function withServer(callback) {
 test('core task and governance routes support filtered raw record queries', async () => {
   await withServer(async (baseUrl) => {
     const taskResponse = await fetch(
-      `${baseUrl}/api/core/tasks?status=in_progress&conversationId=conversation-1&parentTaskId=task-parent&ownerActorId=actor-owner&orchestratorActorId=actor-orchestrator&assignedActorId=actor-worker&approvalStatus=approved&approvalDecisionAction=approve`,
+      `${baseUrl}/api/core/tasks?id=task-1&status=in_progress&conversationId=conversation-1&parentTaskId=task-parent&ownerActorId=actor-owner&orchestratorActorId=actor-orchestrator&assignedActorId=actor-worker&approvalStatus=approved&approvalDecisionAction=approve`,
     );
     assert.equal(taskResponse.status, 200);
     const taskPayload = await taskResponse.json();
@@ -186,7 +186,7 @@ test('core task and governance routes support filtered raw record queries', asyn
     assert.equal(taskPayload.tasks[0].id, 'task-1');
 
     const approvalBindingResponse = await fetch(
-      `${baseUrl}/api/core/approval-bindings?kind=owner_decision&subjectKind=task&approvalTaskId=task-1&subjectId=task-1&projectId=project-1&workItemId=work-item-1&conversationId=conversation-1&requestedByActorId=actor-orchestrator&requestedForActorId=actor-owner`,
+      `${baseUrl}/api/core/approval-bindings?id=approval-binding-1&kind=owner_decision&subjectKind=task&approvalTaskId=task-1&subjectId=task-1&projectId=project-1&workItemId=work-item-1&conversationId=conversation-1&requestedByActorId=actor-orchestrator&requestedForActorId=actor-owner`,
     );
     assert.equal(approvalBindingResponse.status, 200);
     const approvalBindingPayload = await approvalBindingResponse.json();

@@ -159,7 +159,7 @@ async function withServer(callback) {
 test('core memory routes support filtered scoped memory queries', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(
-      `${baseUrl}/api/core/projects/project-1/memory?category=policy&sourceRef=source-1&minConfidence=0.8&maxConfidence=1&limit=1`,
+      `${baseUrl}/api/core/projects/project-1/memory?id=memory-1&category=policy&sourceRef=source-1&minConfidence=0.8&maxConfidence=1&limit=1`,
     );
     assert.equal(response.status, 200);
     const payload = await response.json();

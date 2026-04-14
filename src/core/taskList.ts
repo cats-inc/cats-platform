@@ -7,6 +7,7 @@ import type {
 } from './types.js';
 
 export interface CoreTaskListQuery {
+  ids?: string[];
   statuses?: CoreTaskStatus[];
   conversationIds?: string[];
   parentTaskIds?: string[];
@@ -33,6 +34,9 @@ function matchesTaskQuery(
   task: CoreTaskRecord,
   query: CoreTaskListQuery,
 ): boolean {
+  if (query.ids && !query.ids.includes(task.id)) {
+    return false;
+  }
   if (query.statuses && !query.statuses.includes(task.status)) {
     return false;
   }

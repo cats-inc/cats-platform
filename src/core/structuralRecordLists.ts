@@ -11,6 +11,7 @@ import type {
 } from './types.js';
 
 export interface CoreContainerListQuery {
+  ids?: string[];
   kinds?: ContainerRecordKind[];
   statuses?: ContainerRecordStatus[];
   parentContainerIds?: string[];
@@ -18,6 +19,7 @@ export interface CoreContainerListQuery {
 }
 
 export interface CoreConversationListQuery {
+  ids?: string[];
   kinds?: CoreConversationKind[];
   statuses?: CoreConversationStatus[];
   containerIds?: string[];
@@ -29,6 +31,7 @@ export interface CoreConversationListQuery {
 }
 
 export interface CoreParticipantListQuery {
+  ids?: string[];
   conversationIds?: string[];
   agentIds?: string[];
   roles?: string[];
@@ -51,6 +54,9 @@ function matchesContainerQuery(
   container: ContainerRecord,
   query: CoreContainerListQuery,
 ): boolean {
+  if (query.ids && !query.ids.includes(container.id)) {
+    return false;
+  }
   if (query.kinds && !query.kinds.includes(container.kind)) {
     return false;
   }
@@ -70,6 +76,9 @@ function matchesConversationQuery(
   conversation: CoreConversationRecord,
   query: CoreConversationListQuery,
 ): boolean {
+  if (query.ids && !query.ids.includes(conversation.id)) {
+    return false;
+  }
   if (query.kinds && !query.kinds.includes(conversation.kind)) {
     return false;
   }
@@ -113,6 +122,9 @@ function matchesParticipantQuery(
   participant: ParticipantRecord,
   query: CoreParticipantListQuery,
 ): boolean {
+  if (query.ids && !query.ids.includes(participant.id)) {
+    return false;
+  }
   if (
     query.conversationIds
     && !query.conversationIds.includes(participant.conversationId)

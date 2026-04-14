@@ -43,6 +43,7 @@ interface FlushMemoryInput {
 }
 
 interface ScopedMemoryListQuery {
+  ids?: string[];
   categories?: DurableMemoryCategory[];
   sourceRefs?: string[];
   minConfidence?: number;
@@ -195,6 +196,10 @@ function readScopedMemoryListQuery(
   }
 
   return {
+    ids: (() => {
+      const values = readQueryValues(searchParams, 'id');
+      return values.length > 0 ? values : undefined;
+    })(),
     categories: rawCategories.length > 0 ? rawCategories as DurableMemoryCategory[] : undefined,
     sourceRefs: (() => {
       const values = readQueryValues(searchParams, 'sourceRef');

@@ -60,6 +60,7 @@ test('structural record lists filter containers, conversations, and participants
   ).core;
 
   const containers = listContainers(core, {
+    ids: ['container-1'],
     kinds: ['chat_root'],
     statuses: ['active'],
     parentContainerIds: ['container-parent'],
@@ -68,6 +69,7 @@ test('structural record lists filter containers, conversations, and participants
   assert.equal(containers[0].id, 'container-1');
 
   const conversations = listConversations(core, {
+    ids: ['conversation-1'],
     kinds: ['direct_message'],
     statuses: ['active'],
     containerIds: ['container-1'],
@@ -80,6 +82,7 @@ test('structural record lists filter containers, conversations, and participants
   assert.equal(conversations[0].id, 'conversation-1');
 
   const participants = listParticipants(core, {
+    ids: ['participant-1'],
     conversationIds: ['conversation-1'],
     agentIds: ['actor-worker'],
     roles: ['assistant'],

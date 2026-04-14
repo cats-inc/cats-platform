@@ -6,6 +6,7 @@ import type {
 } from './types.js';
 
 export interface CoreApprovalBindingListQuery {
+  ids?: string[];
   kinds?: CoreApprovalBindingKind[];
   subjectKinds?: CoreApprovalBindingSubjectKind[];
   approvalTaskIds?: string[];
@@ -33,6 +34,9 @@ function matchesApprovalBindingQuery(
   approvalBinding: CoreApprovalBindingRecord,
   query: CoreApprovalBindingListQuery,
 ): boolean {
+  if (query.ids && !query.ids.includes(approvalBinding.id)) {
+    return false;
+  }
   if (query.kinds && !query.kinds.includes(approvalBinding.kind)) {
     return false;
   }

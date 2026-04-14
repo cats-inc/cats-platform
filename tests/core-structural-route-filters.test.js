@@ -167,7 +167,7 @@ async function withServer(callback) {
 test('core structural routes support filtered raw record queries', async () => {
   await withServer(async (baseUrl) => {
     const containerResponse = await fetch(
-      `${baseUrl}/api/core/containers?kind=chat_root&status=active&parentContainerId=container-parent`,
+      `${baseUrl}/api/core/containers?id=container-1&kind=chat_root&status=active&parentContainerId=container-parent`,
     );
     assert.equal(containerResponse.status, 200);
     const containerPayload = await containerResponse.json();
@@ -175,7 +175,7 @@ test('core structural routes support filtered raw record queries', async () => {
     assert.equal(containerPayload.containers[0].id, 'container-1');
 
     const conversationResponse = await fetch(
-      `${baseUrl}/api/core/conversations?kind=direct_message&status=active&containerId=container-1&participantActorId=actor-worker&sourceChannelId=channel-1&repoPath=C:/repo-one&responseLanguage=en`,
+      `${baseUrl}/api/core/conversations?id=conversation-1&kind=direct_message&status=active&containerId=container-1&participantActorId=actor-worker&sourceChannelId=channel-1&repoPath=C:/repo-one&responseLanguage=en`,
     );
     assert.equal(conversationResponse.status, 200);
     const conversationPayload = await conversationResponse.json();
@@ -183,7 +183,7 @@ test('core structural routes support filtered raw record queries', async () => {
     assert.equal(conversationPayload.conversations[0].id, 'conversation-1');
 
     const participantResponse = await fetch(
-      `${baseUrl}/api/core/participants?conversationId=conversation-1&agentId=actor-worker&role=assistant&status=active`,
+      `${baseUrl}/api/core/participants?id=participant-1&conversationId=conversation-1&agentId=actor-worker&role=assistant&status=active`,
     );
     assert.equal(participantResponse.status, 200);
     const participantPayload = await participantResponse.json();

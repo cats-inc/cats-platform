@@ -50,6 +50,7 @@ test('listTasks filters task records by workflow, ownership, and approval fields
   ).core;
 
   const tasks = listTasks(core, {
+    ids: ['task-1'],
     statuses: ['in_progress'],
     conversationIds: ['conversation-1'],
     parentTaskIds: ['task-parent'],
@@ -98,6 +99,7 @@ test('listApprovalBindings filters governance records by canonical relationship 
   ).core;
 
   const approvalBindings = listApprovalBindings(core, {
+    ids: ['approval-binding-1'],
     kinds: ['owner_decision'],
     subjectKinds: ['task'],
     approvalTaskIds: ['task-1'],

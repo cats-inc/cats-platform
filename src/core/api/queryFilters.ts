@@ -552,6 +552,7 @@ export function readApprovalBindingListQuery(
   searchParams: URLSearchParams,
 ): CoreApprovalBindingListQuery {
   return {
+    ids: readOptionalQueryValues(searchParams, 'id'),
     kinds: readEnumQueryValues(searchParams, 'kind', CORE_APPROVAL_BINDING_KINDS),
     subjectKinds: readEnumQueryValues(
       searchParams,
@@ -589,6 +590,7 @@ export function readContainerListQuery(
   searchParams: URLSearchParams,
 ): CoreContainerListQuery {
   return {
+    ids: readOptionalQueryValues(searchParams, 'id'),
     kinds: readEnumQueryValues(searchParams, 'kind', CORE_CONTAINER_KINDS),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_CONTAINER_STATUSES),
     parentContainerIds: readOptionalQueryValues(searchParams, 'parentContainerId'),
@@ -600,6 +602,7 @@ export function readConversationListQuery(
   searchParams: URLSearchParams,
 ): CoreConversationListQuery {
   return {
+    ids: readOptionalQueryValues(searchParams, 'id'),
     kinds: readEnumQueryValues(searchParams, 'kind', CORE_CONVERSATION_KINDS),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_CONVERSATION_STATUSES),
     containerIds: readOptionalQueryValues(searchParams, 'containerId'),
@@ -615,6 +618,7 @@ export function readParticipantListQuery(
   searchParams: URLSearchParams,
 ): CoreParticipantListQuery {
   return {
+    ids: readOptionalQueryValues(searchParams, 'id'),
     conversationIds: readConversationIds(searchParams),
     agentIds: readOptionalQueryValues(searchParams, 'agentId'),
     roles: readOptionalQueryValues(searchParams, 'role'),
@@ -808,6 +812,7 @@ export function readTaskListQuery(
   searchParams: URLSearchParams,
 ): CoreTaskListQuery {
   return {
+    ids: readOptionalQueryValues(searchParams, 'id'),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_TASK_STATUSES),
     conversationIds: readConversationIds(searchParams),
     parentTaskIds: readOptionalQueryValues(searchParams, 'parentTaskId'),

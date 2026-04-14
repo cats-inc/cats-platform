@@ -47,6 +47,7 @@ test('listDurableMemoryBySubject filters scoped durable memories by category, so
   });
 
   const records = listDurableMemoryBySubject(core, 'project', 'project-1', {
+    ids: ['memory-1'],
     categories: ['policy'],
     sourceRefs: ['source-1'],
     minConfidence: 0.8,
