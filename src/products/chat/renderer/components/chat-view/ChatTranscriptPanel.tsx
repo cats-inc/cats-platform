@@ -21,7 +21,6 @@ import type {
   ResolvedChannelParticipant,
 } from '../../../shared/channelParticipants.js';
 import {
-  hasLiveIndicatorIdentity,
   resolveLiveIndicatorSegments,
 } from '../../../../../shared/liveIndicator.js';
 import { TranscriptMessageItem } from './TranscriptMessageItem.js';
@@ -148,10 +147,6 @@ export function ChatTranscriptPanel({
   const shouldRenderLiveTranscriptIndicator = Boolean(
     liveIndicator?.active
     && resolveLiveIndicatorSegments(liveIndicator).length > 0
-    && (
-      liveIndicator.phase !== 'waiting'
-      || hasLiveIndicatorIdentity(liveIndicator)
-    ),
   );
 
   return (

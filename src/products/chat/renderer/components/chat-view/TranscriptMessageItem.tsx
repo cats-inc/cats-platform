@@ -162,11 +162,6 @@ export function TranscriptMessageItem({
             disabledMentionNames={disabledMentionNames}
           />
         ) : null}
-        {message.senderKind === 'user' && userTurnStatus === 'processing' ? (
-          <div className="userTurnStatus userTurnStatusProcessing" aria-label="Preparing response">
-            <span className="typingDots userTurnStatusDots" aria-hidden="true"><span /><span /><span /></span>
-          </div>
-        ) : null}
         {message.senderKind === 'user' && userTurnStatus === 'failed' ? (
           <div className="userTurnStatus userTurnStatusFailed">Response failed</div>
         ) : null}

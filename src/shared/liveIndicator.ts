@@ -853,6 +853,44 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   const visibleSegments = projectedSourceSegments.filter((segment, index) => {
     const persistedSegmentIndex =
       resolveProjectedTextSegmentOrdinal(projectedSourceSegments, index) ?? segment.segmentIndex;
+    const requiresAnonymousSessionGate =
+      (segment.phase === 'waiting' || segment.phase === 'streaming')
+      && segment.requiresSessionStartConfirmation
+      && !hasConfirmedLiveIndicatorSessionStart(
+        sessionMessages,
+        projectLiveIndicatorStateFromSegments([segment]),
+        segment.sessionStartedAt,
+      );
+    const visibleSegment = requiresAnonymousSessionGate
+      ? createLiveIndicatorSegmentState({
+        ...segment,
+        phase: 'waiting',
+        participantId: null,
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: null,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [],
+        events: [],
+      })
+      : segment;
+    if (
+      hasVisiblePersistedSegment(
+        messages,
+        visibleSegment,
+        persistedSegmentIndex,
+      )
+    ) {
+      return false;
+    }
+    if (index > 0 && !hasVisibleLiveIndicatorSegmentActivity(visibleSegment)) {
+      return false;
+    }
+    return true;
+  }).map((segment) => {
     if (
       (segment.phase === 'waiting' || segment.phase === 'streaming')
       && segment.requiresSessionStartConfirmation
@@ -862,25 +900,35 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
         segment.sessionStartedAt,
       )
     ) {
-      return false;
+      return createLiveIndicatorSegmentState({
+        ...segment,
+        phase: 'waiting',
+        participantId: null,
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: null,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [],
+        events: [],
+      });
     }
-    if (hasVisiblePersistedSegment(messages, segment, persistedSegmentIndex)) {
-      return false;
-    }
-    if (index > 0 && !hasVisibleLiveIndicatorSegmentActivity(segment)) {
-      return false;
-    }
-    return true;
+    return segment;
   });
 
   if (visibleSegments.length === 0) {
     return null;
   }
 
-  const normalizedVisibleIndicator = (
+  const canReuseOriginalLiveIndicator =
     visibleSegments.length === projectedSourceSegments.length
     && projectedSourceSegments.length === sourceSegments.length
     && liveIndicator.segments.length === 0
+    && visibleSegments.every((segment, index) => segment === projectedSourceSegments[index]);
+  const normalizedVisibleIndicator = (
+    canReuseOriginalLiveIndicator
   )
     ? liveIndicator
     : projectLiveIndicatorStateFromSegments(visibleSegments);

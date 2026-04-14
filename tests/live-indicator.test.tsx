@@ -1928,11 +1928,16 @@ test('resolveVisibleLiveIndicator hides a sealed targeted segment once the same 
   assert.equal(visible, null);
 });
 
-test('resolveVisibleLiveIndicator keeps the assistant bubble hidden until session startup is persisted', () => {
+test('resolveVisibleLiveIndicator downgrades pre-session assistant progress into an anonymous waiting bubble', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
+    activeCatIds: [],
+    tools: [],
+    contentBlocks: [],
+    events: [],
+    segments: [],
     participantId: 'participant-agent-1',
     speakerLabel: 'Agent-1',
     sessionStartedAt: '2026-04-09T12:00:02.500Z',
@@ -1954,14 +1959,23 @@ test('resolveVisibleLiveIndicator keeps the assistant bubble hidden until sessio
     '2026-04-09T12:00:02.000Z',
   );
 
-  assert.equal(visible, null);
+  assert.ok(visible);
+  assert.equal(visible.phase, 'waiting');
+  assert.equal(visible.participantId, null);
+  assert.equal(visible.speakerLabel, null);
+  assert.equal(visible.contentBlocks.length, 0);
 });
 
-test('resolveVisibleLiveIndicator keeps a waiting speaker hidden until session startup is persisted', () => {
+test('resolveVisibleLiveIndicator keeps a pre-session waiting speaker visible as an anonymous bubble', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting',
+    activeCatIds: [],
+    tools: [],
+    contentBlocks: [],
+    events: [],
+    segments: [],
     participantId: 'participant-agent-1',
     speakerLabel: 'Agent-1',
     sessionStartedAt: '2026-04-09T12:00:02.500Z',
@@ -1982,7 +1996,10 @@ test('resolveVisibleLiveIndicator keeps a waiting speaker hidden until session s
     '2026-04-09T12:00:02.000Z',
   );
 
-  assert.equal(visible, null);
+  assert.ok(visible);
+  assert.equal(visible.phase, 'waiting');
+  assert.equal(visible.participantId, null);
+  assert.equal(visible.speakerLabel, null);
 });
 
 test('resolveVisibleLiveIndicator shows assistant progress once the matching session_started message is visible even if the turn timestamp moved later', () => {
@@ -2137,7 +2154,12 @@ test('resolveVisibleLiveIndicator does not unlock a reconnect bubble from an old
     '2026-04-09T12:00:05.500Z',
   );
 
-  assert.equal(visible, null);
+  assert.ok(visible);
+  assert.equal(visible.phase, 'waiting');
+  assert.equal(visible.participantId, null);
+  assert.equal(visible.speakerLabel, null);
+  assert.equal(visible.sessionId, 'session-agent-new');
+  assert.equal(visible.requiresSessionStartConfirmation, true);
 });
 
 test('createLiveIndicatorSegmentState gives reconnect sessions distinct ids even for the same speaker and segment index', () => {

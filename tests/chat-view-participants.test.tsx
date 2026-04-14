@@ -634,7 +634,7 @@ test('ChatView promotes solo orchestrator progress once the session_started syst
   assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
 });
 
-test('ChatView keeps the last user bubble in a generic processing state until session startup is persisted', () => {
+test('ChatView shows an anonymous assistant typing bubble until session startup is persisted', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
     <ChatView
@@ -710,6 +710,11 @@ test('ChatView keeps the last user bubble in a generic processing state until se
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'streaming',
+          activeCatIds: [],
+          tools: [],
+          contentBlocks: [],
+          events: [],
+          segments: [],
           participantId: 'participant-inline',
           speakerLabel: 'Inline Reviewer',
           sessionStartedAt: '2026-04-07T00:01:02.000Z',
@@ -720,13 +725,18 @@ test('ChatView keeps the last user bubble in a generic processing state until se
     />,
   );
 
-  assert.match(markup, /userTurnStatusProcessing/u);
-  assert.match(markup, /typingDots userTurnStatusDots/u);
-  assert.doesNotMatch(markup, /typingIndicator/u);
+  assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
+  assert.match(markup, /typingIndicator/u);
+  assert.match(markup, /typingDots/u);
+  assert.match(
+    markup,
+    /typingIndicator"><div class="transcriptMessage transcriptMessageAgent"><span class="typingDots"/u,
+  );
+  assert.doesNotMatch(markup, /typingIndicator[\s\S]*transcriptMessageTop/u);
   assert.doesNotMatch(markup, /catAvatarPulsing/u);
 });
 
-test('ChatView keeps a newer queued user bubble processing while the prior group turn is still streaming', () => {
+test('ChatView keeps queued user turns free of inline dots while the prior group turn is still streaming', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
     <ChatView
@@ -860,6 +870,11 @@ test('ChatView keeps a newer queued user bubble processing while the prior group
           ...EMPTY_LIVE_INDICATOR,
           active: true,
           phase: 'streaming',
+          activeCatIds: [],
+          tools: [],
+          contentBlocks: [],
+          events: [],
+          segments: [],
           sourceMessageId: 'message-user-1',
           targetStateId: 'target-2',
           participantId: 'participant-verifier',
@@ -872,7 +887,8 @@ test('ChatView keeps a newer queued user bubble processing while the prior group
     />,
   );
 
-  assert.match(markup, /userTurnStatusProcessing/u);
+  assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
+  assert.match(markup, /typingIndicator/u);
 });
 
 test('ChatView shows retry only on the latest failed acknowledged user turn', () => {
@@ -1976,6 +1992,143 @@ test('ChatView resolves a pending sequential follow-up bubble from the live segm
 
   assert.match(markup, /Runtime Verifier/u);
   assert.match(markup, /typingDots/u);
+});
+
+test('ChatView shows an anonymous waiting assistant bubble during sequential handoff before the next session starts', () => {
+  const baseChannel = createChannel();
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-agent-1',
+              channelId: 'channel-1',
+              senderKind: 'agent',
+              senderName: 'Inline Reviewer',
+              body: 'Done.',
+              mentions: [],
+              metadata: {
+                event: 'assistant_turn_segment',
+                sourceMessageId: 'message-user',
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+                targetStateId: 'target-1',
+                segmentIndex: 0,
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:04.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-user',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'sequential',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 2,
+                targetStatuses: [
+                  {
+                    id: 'target-1',
+                    dispatchId: 'dispatch-1',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-inline',
+                      participantName: 'Inline Reviewer',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'completed',
+                    queuedAt: '2026-04-07T00:01:01.000Z',
+                    startedAt: '2026-04-07T00:01:02.000Z',
+                    completedAt: '2026-04-07T00:01:04.000Z',
+                    response: {
+                      assistantTurnId: 'assistant-turn-inline',
+                      messageIds: ['message-agent-1'],
+                      fullText: 'Done.',
+                      segmentCount: 1,
+                    },
+                    error: null,
+                  },
+                  {
+                    id: 'target-2',
+                    dispatchId: 'dispatch-2',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-verifier',
+                      participantName: 'Runtime Verifier',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'running',
+                    queuedAt: '2026-04-07T00:01:04.200Z',
+                    startedAt: null,
+                    completedAt: null,
+                    response: null,
+                    error: null,
+                  },
+                ],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:04.200Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...EMPTY_LIVE_INDICATOR,
+          active: true,
+          phase: 'waiting',
+          sourceMessageId: 'message-user',
+          targetStateId: 'target-2',
+          segmentIndex: 1,
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /typingIndicator/u);
+  assert.match(markup, /typingDots/u);
+  assert.doesNotMatch(markup, /Runtime Verifier/u);
+  assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
 });
 
 test('ChatView promotes a waiting next sequential speaker placeholder instead of returning to the user bubble', () => {
