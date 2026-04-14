@@ -244,6 +244,7 @@ export interface WorkTaskDetailProjection {
     name: 'Cats Work';
   };
   task: CoreTaskRecord;
+  conversation: CoreConversationRecord | null;
   inspection: CoreTaskInspectionView;
   controlPlane: CoreTaskControlPlaneView;
   recovery: CoreTaskRecoveryView;
@@ -731,6 +732,9 @@ export function buildWorkTaskDetailProjection(
   const timeline = queryCoreTaskTimelineView(core, task, {
     limit: WORK_TIMELINE_PREVIEW_LIMIT,
   });
+  const conversation = task.conversationId
+    ? core.conversations.find((candidate) => candidate.id === task.conversationId) ?? null
+    : null;
 
   return {
     product: {
@@ -738,6 +742,7 @@ export function buildWorkTaskDetailProjection(
       name: 'Cats Work',
     },
     task,
+    conversation,
     inspection: buildCoreTaskInspectionView(core, task),
     controlPlane: buildCoreTaskControlPlaneView(core, task),
     recovery: buildCoreTaskRecoveryView(core, task),

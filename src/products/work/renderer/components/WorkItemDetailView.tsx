@@ -7,6 +7,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { WorkWorkItemDetailProjection } from '../../api/projection.js';
+import { buildChannelPath } from '../../shared/channelPaths.js';
 import { fetchWorkItemDetail } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -185,6 +186,19 @@ export function WorkItemDetailView() {
                 <span>Assigned: {compactList(payload.assignedActors.map((actor) => actor.displayName))}</span>
                 <span>Artifacts: {payload.artifacts.readyCount} ready / {payload.artifacts.totalCount} total</span>
               </div>
+              {payload.conversation?.sourceChannelId ? (
+                <button
+                  type="button"
+                  className="operatorActionButton"
+                  onClick={() => {
+                    startTransition(() => {
+                      navigate(buildChannelPath(payload.conversation!.sourceChannelId!));
+                    });
+                  }}
+                >
+                  Open briefing thread
+                </button>
+              ) : null}
             </article>
           </section>
 

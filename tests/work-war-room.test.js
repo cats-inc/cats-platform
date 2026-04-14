@@ -40,15 +40,18 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.doesNotMatch(warRoomSource, /as unknown as/u);
 
   assert.match(projectDetailSource, /fetchWorkProjectDetail/u);
+  assert.match(projectDetailSource, /buildChannelPath/u);
   assert.match(projectDetailSource, /navigate\(`\/work\/work-items\/\$\{encodeURIComponent\(workItem\.id\)\}`\)/u);
   assert.match(projectDetailSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(task\.id\)\}`\)/u);
   assert.doesNotMatch(projectDetailSource, /as unknown as/u);
 
   assert.match(taskDetailSource, /fetchWorkTaskDetail/u);
+  assert.match(taskDetailSource, /buildChannelPath/u);
   assert.match(taskDetailSource, /navigate\('\/work\/war-room'\)/u);
   assert.doesNotMatch(taskDetailSource, /as unknown as/u);
 
   assert.match(workItemDetailSource, /fetchWorkItemDetail/u);
+  assert.match(workItemDetailSource, /buildChannelPath/u);
   assert.match(workItemDetailSource, /navigate\(`\/work\/projects\/\$\{encodeURIComponent\(payload\.project!\.id\)\}`\)/u);
   assert.match(workItemDetailSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(payload\.linkedTask!\.task\.id\)\}`\)/u);
   assert.doesNotMatch(workItemDetailSource, /as unknown as/u);

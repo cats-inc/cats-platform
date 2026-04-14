@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkTaskDetailProjection } from '../../api/projection.js';
+import { buildChannelPath } from '../../shared/channelPaths.js';
 import { fetchWorkTaskDetail } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -221,13 +222,26 @@ export function TaskDetailView() {
                 <span>Strategy: {payload.inspection.planning.effectiveStrategy ?? 'Not specified'}</span>
               </div>
               <div className="operatorMetaRow">
-                <span>Conversation: {payload.task.conversationId ?? 'Detached'}</span>
+                <span>Conversation: {payload.conversation?.title ?? payload.task.conversationId ?? 'Detached'}</span>
                 <span>Updated: {formatTimestamp(payload.task.updatedAt)}</span>
               </div>
               <div className="operatorMetaRow">
                 <span>Actions: {compactList(payload.controlPlane.nextActions.map((action) => action.kind))}</span>
                 <span>Attention: {compactList(payload.controlPlane.attention.reasons)}</span>
               </div>
+              {payload.conversation?.sourceChannelId ? (
+                <button
+                  type="button"
+                  className="operatorActionButton"
+                  onClick={() => {
+                    startTransition(() => {
+                      navigate(buildChannelPath(payload.conversation!.sourceChannelId!));
+                    });
+                  }}
+                >
+                  Open chat thread
+                </button>
+              ) : null}
             </article>
           </section>
 

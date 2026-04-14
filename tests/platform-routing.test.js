@@ -16,6 +16,9 @@ import {
 } from '../build/server/core/platformSurface.js';
 import {
   buildWorkDashboardProjection,
+  buildWorkProjectDetailProjection,
+  buildWorkTaskDetailProjection,
+  buildWorkWorkItemDetailProjection,
 } from '../build/server/products/work/api/projection.js';
 import {
   buildCodeDashboardProjection,
@@ -61,15 +64,15 @@ test('platform surface descriptors expose product switcher metadata and stable r
         maturity: 'active',
       },
       {
-        id: 'work',
-        routePrefix: '/work',
-        subtitle: 'Projects, approvals, and operator workflow',
-        maturity: 'preview',
-      },
-      {
         id: 'code',
         routePrefix: '/code',
         subtitle: 'Repos, runs, and coding workspace',
+        maturity: 'preview',
+      },
+      {
+        id: 'work',
+        routePrefix: '/work',
+        subtitle: 'Projects, approvals, and operator workflow',
         maturity: 'preview',
       },
     ],
@@ -136,4 +139,84 @@ test('Work and Code dashboard projections stay core-backed without inventing new
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/tasks'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/artifacts'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/previews'));
+});
+
+test('Work detail projections preserve briefing-thread channel links from shared conversations', () => {
+  const core = createDefaultCoreState();
+  const conversationId = 'conversation-work-briefing';
+  const sourceChannelId = 'channel-work-briefing';
+  const projectId = 'project-work-briefing';
+  const taskId = 'task-work-briefing';
+  const workItemId = 'work-item-work-briefing';
+
+  core.conversations.push({
+    id: conversationId,
+    title: 'Work briefing thread',
+    kind: 'chat_channel',
+    status: 'active',
+    containerId: null,
+    participantActorIds: [core.ownerProfile.actorId],
+    sourceChannelId,
+    repoPath: null,
+    responseLanguage: 'en',
+    createdAt: '2026-04-15T06:00:00.000Z',
+    updatedAt: '2026-04-15T06:05:00.000Z',
+    lastMessageAt: '2026-04-15T06:05:00.000Z',
+  });
+  core.projects.push({
+    id: projectId,
+    title: 'Work briefing project',
+    status: 'active',
+    ownerActorId: core.ownerProfile.actorId,
+    summary: 'Track the work handoff.',
+    repoPath: null,
+    primaryConversationId: conversationId,
+    createdAt: '2026-04-15T06:00:00.000Z',
+    updatedAt: '2026-04-15T06:05:00.000Z',
+    metadata: {},
+  });
+  core.tasks.push({
+    id: taskId,
+    title: 'Work briefing task',
+    status: 'in_progress',
+    conversationId,
+    parentTaskId: null,
+    ownerActorId: core.ownerProfile.actorId,
+    orchestratorActorId: null,
+    assignedActorIds: [],
+    summary: 'Follow the briefing thread.',
+    approval: {
+      status: 'not_requested',
+      requestedAt: null,
+      decidedAt: null,
+      decidedByActorId: null,
+      decisionAction: null,
+      notes: null,
+    },
+    createdAt: '2026-04-15T06:00:00.000Z',
+    updatedAt: '2026-04-15T06:05:00.000Z',
+    metadata: {},
+  });
+  core.workItems.push({
+    id: workItemId,
+    title: 'Work briefing item',
+    status: 'ready',
+    projectId,
+    conversationId,
+    taskId,
+    ownerActorId: core.ownerProfile.actorId,
+    assignedActorIds: [],
+    summary: 'Represent the managed work.',
+    createdAt: '2026-04-15T06:00:00.000Z',
+    updatedAt: '2026-04-15T06:05:00.000Z',
+    metadata: {},
+  });
+
+  const projectDetail = buildWorkProjectDetailProjection(core, core.projects[0]);
+  const workItemDetail = buildWorkWorkItemDetailProjection(core, core.workItems[0]);
+  const taskDetail = buildWorkTaskDetailProjection(core, core.tasks[0]);
+
+  assert.equal(projectDetail.primaryConversation?.sourceChannelId, sourceChannelId);
+  assert.equal(workItemDetail.conversation?.sourceChannelId, sourceChannelId);
+  assert.equal(taskDetail.conversation?.sourceChannelId, sourceChannelId);
 });
