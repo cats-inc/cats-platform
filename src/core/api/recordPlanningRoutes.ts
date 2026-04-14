@@ -15,6 +15,7 @@ import {
   readStringArray,
   readWrappedBody,
 } from './shared.js';
+import { readMissionListQuery } from './queryFilters.js';
 import {
   CORE_ARTIFACT_KINDS,
   CORE_ARTIFACT_STATUSES,
@@ -23,6 +24,7 @@ import {
   CORE_WORK_ITEM_STATUSES,
 } from './constants.js';
 import type { CoreApiRouteContext } from './types.js';
+import { listMissions } from '../missionList.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 async function handleCoreProjects(
@@ -83,7 +85,8 @@ async function handleCoreMissions(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { missions: core.missions });
+  const query = readMissionListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { missions: listMissions(core, query) });
 }
 
 async function handleCoreWorkItemWrite(
@@ -260,7 +263,11 @@ export async function routeCorePlanningRecordApi(
 
   if (context.url.pathname === '/api/core/missions') {
     if (context.method === 'GET') {
-      await handleCoreMissions(context);
+      try {
+        await handleCoreMissions(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {

@@ -1,4 +1,5 @@
 import { upsertCoreActor } from '../model/index.js';
+import { listActors } from '../actorList.js';
 import {
   CORE_ACTOR_KINDS,
   CORE_ACTOR_SOURCES,
@@ -13,6 +14,7 @@ import {
   readStringArray,
   readWrappedBody,
 } from './shared.js';
+import { readActorListQuery } from './queryFilters.js';
 import type { CoreApiRouteContext } from './types.js';
 import { routeCoreControlApi } from './controlRoutes.js';
 import { routeCoreMemoryMaintenanceApi } from './memoryMaintenanceRoutes.js';
@@ -32,7 +34,8 @@ async function handleCoreActors(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { actors: core.actors });
+  const query = readActorListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { actors: listActors(core, query) });
 }
 
 function readExecutionTargetInput(value: unknown): {
@@ -133,7 +136,11 @@ export async function routeCoreApi(
 
   if (context.url.pathname === '/api/core/actors') {
     if (context.method === 'GET') {
-      await handleCoreActors(context);
+      try {
+        await handleCoreActors(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {

@@ -35,11 +35,13 @@ import {
 import type { CoreTransportStateProjectionQuery } from '../transportStateProjection.js';
 import type { CoreTransportBindingListQuery } from '../transportBindingList.js';
 import type { CoreSessionListQuery } from '../sessionList.js';
+import type { CoreActorListQuery } from '../actorList.js';
 import type {
   CoreLaneListQuery,
   CoreSegmentListQuery,
   CoreTurnListQuery,
 } from '../interactionRecordLists.js';
+import type { CoreMissionListQuery } from '../missionList.js';
 import { CoreValidationError } from '../errors.js';
 import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
 import {
@@ -522,6 +524,36 @@ export function readSessionListQuery(
     transportBindingIds: readOptionalQueryValues(searchParams, 'transportBindingId'),
     runtimeKeys: readOptionalQueryValues(searchParams, 'runtimeKey'),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_SESSION_STATUSES),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readActorListQuery(
+  searchParams: URLSearchParams,
+): CoreActorListQuery {
+  return {
+    actorKinds: readEnumQueryValues(searchParams, 'actorKind', CORE_ACTOR_KINDS),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_ACTOR_STATUSES),
+    sources: readEnumQueryValues(searchParams, 'source', CORE_ACTOR_SOURCES),
+    sourceIds: readOptionalQueryValues(searchParams, 'sourceId'),
+    roles: readOptionalQueryValues(searchParams, 'role'),
+    hasDefaultExecutionTarget: readBooleanQuery(searchParams, 'hasDefaultExecutionTarget'),
+    hasMemory: readBooleanQuery(searchParams, 'hasMemory'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readMissionListQuery(
+  searchParams: URLSearchParams,
+): CoreMissionListQuery {
+  return {
+    managedWorkIds: readOptionalQueryValues(searchParams, 'managedWorkId'),
+    conversationIds: readConversationIds(searchParams),
+    sourceTurnIds: readOptionalQueryValues(searchParams, 'sourceTurnId'),
+    sourceLaneIds: readOptionalQueryValues(searchParams, 'sourceLaneId'),
+    assignedAgentIds: readOptionalQueryValues(searchParams, 'assignedAgentId'),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_MISSION_STATUSES),
+    runIds: readOptionalQueryValues(searchParams, 'runId'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }
