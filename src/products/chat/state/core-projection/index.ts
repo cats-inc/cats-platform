@@ -1,4 +1,8 @@
-import type { CatsCoreState, CoreTaskRecord } from '../../../../core/types.js';
+import type {
+  CatsCoreState,
+  CoreTaskRecord,
+  CoreWorkItemRecord,
+} from '../../../../core/types.js';
 import { CATS_CORE_STATE_VERSION } from '../../../../core/types.js';
 import { createDefaultCoreState } from '../../../../core/model/index.js';
 import {
@@ -9,6 +13,7 @@ import {
   buildChatArchiveId,
   buildChatConversationId,
   buildChatTaskId,
+  buildChatWorkItemId,
   resolveChatConversationActorIds,
 } from '../../../../shared/chatCoreIds.js';
 import {
@@ -23,6 +28,7 @@ import {
   createParallelGroupContainer,
   createBotTransportBindings,
   createTaskFromChannel,
+  createWorkItemFromChannel,
   createTemporaryParticipantActors,
   preserveCoreOwnedContainers,
   preserveCoreOwnedParticipants,
@@ -31,6 +37,7 @@ import {
   preserveCoreOwnedConversations,
   preserveCoreOwnedTransportBindings,
   preserveCoreOwnedTasks,
+  preserveCoreOwnedWorkItems,
   syncBotBindings,
 } from './entities.js';
 import {
@@ -61,6 +68,7 @@ export function syncCoreStateWithChatState(
   const temporaryParticipantActors = createTemporaryParticipantActors(chat);
   const preservedActors = preserveCoreOwnedActors(existingCore.actors ?? []);
   const existingTasks = new Map((existingCore.tasks ?? []).map((task) => [task.id, task]));
+  const existingWorkItems = new Map((existingCore.workItems ?? []).map((workItem) => [workItem.id, workItem]));
   const existingArchives = new Map((existingCore.archives ?? []).map((archive) => [archive.id, archive]));
   const preservedParticipants = preserveCoreOwnedParticipants(existingCore.participants ?? []);
   const preservedContainers = preserveCoreOwnedContainers(existingCore.containers ?? []);
@@ -91,7 +99,16 @@ export function syncCoreStateWithChatState(
       existingTasks.get(buildChatTaskId(channel.id)) as CoreTaskRecord | null ?? null,
     ),
   );
+  const workItems = chat.channels.map((channel) =>
+    createWorkItemFromChannel(
+      channel,
+      ownerProfile.actorId,
+      buildChatConversationId(channel.id),
+      existingWorkItems.get(buildChatWorkItemId(channel.id)) as CoreWorkItemRecord | null ?? null,
+    ),
+  );
   const preservedTasks = preserveCoreOwnedTasks(existingCore.tasks ?? []);
+  const preservedWorkItems = preserveCoreOwnedWorkItems(existingCore.workItems ?? []);
   const preservedMissions = preserveCoreOwnedMissions(existingCore.missions ?? []);
   const preservedTransportBindings = preserveCoreOwnedTransportBindings(
     existingCore.transportBindings ?? [],
@@ -166,7 +183,7 @@ export function syncCoreStateWithChatState(
     segments: structuredClone(existingCore.segments ?? []),
     sessions: structuredClone(existingCore.sessions ?? []),
     projects: structuredClone(existingCore.projects ?? []),
-    workItems: structuredClone(existingCore.workItems ?? []),
+    workItems: [...workItems, ...preservedWorkItems],
     missions: [...workflowMissions, ...preservedMissions],
     tasks: [...tasks, ...preservedTasks],
     runs: [...workflowRuns, ...preservedRuns],

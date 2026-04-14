@@ -24,6 +24,7 @@ import {
 import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
 import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
+import { buildChatWorkItemId } from '../build/server/shared/chatCoreIds.js';
 import { FileChatStore } from '../build/server/products/chat/state/store.js';
 
 test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
@@ -781,6 +782,7 @@ test('ChatStore exposes a derived Cats Core view that stays in sync with chat st
   assert.ok(core.actors.some((actor) => actor.name === 'Planner'));
   assert.ok(core.conversations.some((conversation) => conversation.sourceChannelId === channelId));
   assert.ok(core.tasks.some((task) => task.conversationId === `conversation-channel-${channelId}`));
+  assert.ok(core.workItems.some((workItem) => workItem.id === buildChatWorkItemId(channelId)));
 });
 
 test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes into core records', async () => {
@@ -970,6 +972,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.ok(projectedMission);
   assert.equal(projectedMission.status, 'completed');
   assert.equal(projectedMission.sourceTurnId, projectedRun.metadata.turnId);
+  assert.equal(projectedMission.managedWorkId, buildChatWorkItemId(channelId));
   assert.equal(projectedMission.metadata.runId, projectedRun.id);
   assert.ok(projectedCheckpoint);
   assert.equal(projectedCheckpoint.metadata.workflowSummary?.stageId, 'continuation_handoff');

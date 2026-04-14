@@ -13,7 +13,10 @@ import {
   buildCoreWorkflowSummary,
 } from '../../../../core/governance.js';
 import { GLOBAL_ORCHESTRATOR_ACTOR_ID, createCatActorId } from '../../../../core/actors.js';
-import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
+import {
+  buildChatLaneId,
+  buildChatWorkItemId,
+} from '../../../../shared/chatCoreIds.js';
 import type { ChatChannelState } from '../../api/contracts.js';
 import type {
   RoomRoutingParticipantRef,
@@ -237,7 +240,7 @@ export function createWorkflowMission(
 ): MissionRecord {
   return {
     id: buildRoomWorkflowMissionId(channel.id, turn.id, target.id),
-    managedWorkId: null,
+    managedWorkId: buildChatWorkItemId(channel.id),
     conversationId: `conversation-channel-${channel.id}`,
     sourceTurnId: turn.id,
     sourceLaneId: buildChatLaneId(turn.id, target.id, target.participant.participantId),

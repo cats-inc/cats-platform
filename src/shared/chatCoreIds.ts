@@ -26,6 +26,10 @@ export function buildChatTaskId(channelId: string): string {
   return `task-channel-${channelId}`;
 }
 
+export function buildChatWorkItemId(channelId: string): string {
+  return `work-item-chat-channel-${channelId}`;
+}
+
 export function buildChatArchiveId(channelId: string): string {
   return `archive-channel-${channelId}`;
 }

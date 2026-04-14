@@ -15,6 +15,7 @@ import type {
   CoreRecordMetadata,
   CoreTaskRecord,
   CoreTaskStatus,
+  CoreWorkItemRecord,
   TransportBindingRecord,
   OwnerProfileRecord,
 } from '../../../../core/types.js';
@@ -69,6 +70,7 @@ import {
   buildChatOwnerParticipantId,
   buildChatParallelGroupContainerId,
   buildChatTaskId,
+  buildChatWorkItemId,
   buildTelegramBotTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
   resolveChatConversationKind,
@@ -96,6 +98,24 @@ function mapChannelStatusToTaskStatus(channel: ChatChannelState): CoreTaskStatus
 }
 
 function shouldPreserveActiveChannelTaskStatus(status: CoreTaskStatus | null | undefined): boolean {
+  return status === 'blocked' || status === 'completed' || status === 'cancelled';
+}
+
+function mapChannelStatusToWorkItemStatus(
+  channel: ChatChannelState,
+): CoreWorkItemRecord['status'] {
+  if (channel.status === 'active' || channel.status === 'watching') {
+    return 'in_progress';
+  }
+  if (channel.status === 'archived') {
+    return 'archived';
+  }
+  return 'draft';
+}
+
+function shouldPreserveActiveChannelWorkItemStatus(
+  status: CoreWorkItemRecord['status'] | null | undefined,
+): boolean {
   return status === 'blocked' || status === 'completed' || status === 'cancelled';
 }
 
@@ -498,6 +518,49 @@ function buildChannelTaskMetadata(
   return nextMetadata;
 }
 
+function buildChannelWorkItemMetadata(
+  channel: ChatChannelState,
+  existingWorkItem: CoreWorkItemRecord | null,
+): CoreRecordMetadata {
+  const latestTurn = latestWorkflowTurn(channel);
+  const roomRouting = channel.roomRouting;
+
+  return {
+    ...structuredClone(existingWorkItem?.metadata ?? {}),
+    source: 'chat-channel',
+    channelId: channel.id,
+    roomRoutingMode: roomRouting?.mode ?? 'boss_chat',
+    workflowStageId: latestTurn?.stageId ?? null,
+    workflowShape: latestTurn?.workflowShape ?? null,
+    workflowLastCheckpointId:
+      latestTurn?.lastCheckpointId
+      ?? roomRouting?.lastCheckpoint?.id
+      ?? null,
+    workflowReviewRequired: latestTurn?.reviewRequired ?? false,
+    workflowConvergeTargetId: latestTurn?.convergeTargetId ?? null,
+    taskId: buildChatTaskId(channel.id),
+    repoPath: channel.repoPath,
+    responseLanguage: channel.responseLanguage,
+    messageCount: channel.messages.length,
+    lastMessageAt: channel.lastMessageAt,
+    workflowSummary: buildCoreWorkflowSummary({
+      runStatus: null,
+      stageId: latestTurn?.stageId ?? null,
+      shape: latestTurn?.workflowShape ?? null,
+      reviewRequired: latestTurn?.reviewRequired ?? false,
+      lastCheckpointId:
+        latestTurn?.lastCheckpointId
+        ?? roomRouting?.lastCheckpoint?.id
+        ?? null,
+      convergeTargetId: latestTurn?.convergeTargetId ?? null,
+      continuationCount: latestTurn?.continuationCount ?? null,
+      dispatchCount: latestTurn?.dispatchCount ?? null,
+      targetCount: latestTurn?.targetStatuses.length ?? null,
+      branchStates: latestTurn?.targetStatuses,
+    }),
+  };
+}
+
 export function createOwnerActor(ownerProfile: OwnerProfileRecord): CoreActorRecord {
   return {
     id: ownerProfile.actorId,
@@ -841,10 +904,51 @@ export function createTaskFromChannel(
   };
 }
 
+export function createWorkItemFromChannel(
+  channel: ChatChannelState,
+  ownerActorId: string,
+  conversationId: string,
+  existingWorkItem: CoreWorkItemRecord | null,
+): CoreWorkItemRecord {
+  const derivedStatus = mapChannelStatusToWorkItemStatus(channel);
+  const status = derivedStatus === 'archived'
+    ? derivedStatus
+    : derivedStatus === 'in_progress'
+      ? shouldPreserveActiveChannelWorkItemStatus(existingWorkItem?.status)
+        ? existingWorkItem?.status ?? derivedStatus
+        : derivedStatus
+      : existingWorkItem?.status ?? derivedStatus;
+
+  return {
+    id: buildChatWorkItemId(channel.id),
+    title: channel.title,
+    status,
+    projectId: null,
+    conversationId,
+    taskId: buildChatTaskId(channel.id),
+    parentWorkItemId: null,
+    ownerActorId,
+    assignedActorIds: (channel.participantAssignments ?? []).map((assignment) =>
+      resolveChatParticipantAgentId(assignment)),
+    summary: channel.topic,
+    createdAt: channel.createdAt,
+    updatedAt: channel.updatedAt,
+    metadata: buildChannelWorkItemMetadata(channel, existingWorkItem),
+  };
+}
+
 export function preserveCoreOwnedTasks(existingTasks: CoreTaskRecord[]): CoreTaskRecord[] {
   return existingTasks
     .filter((task) => !task.id.startsWith('task-channel-'))
     .map((task) => structuredClone(task));
+}
+
+export function preserveCoreOwnedWorkItems(
+  existingWorkItems: CoreWorkItemRecord[],
+): CoreWorkItemRecord[] {
+  return existingWorkItems
+    .filter((workItem) => !workItem.id.startsWith('work-item-chat-channel-'))
+    .map((workItem) => structuredClone(workItem));
 }
 
 export function preserveCoreOwnedActors(existingActors: CoreActorRecord[]): CoreActorRecord[] {
