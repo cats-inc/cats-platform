@@ -397,6 +397,48 @@ test('chatStore.write ignores stale session_started messages when preseeded lane
   assert.equal(core.sessions.filter((session) => session.turnId === projectedTurn.id).length, 0);
 });
 
+test('chatStore.write ignores closed participant leases when a new lane is only preseeded', async () => {
+  let { state, channelId, agent1Id } = await createGroupChannelState();
+  const seededAt = new Date('2026-04-15T00:05:45.000Z');
+  const channel = requireChannel(state, channelId);
+  const assignment = channel.catAssignments.find((candidate) => candidate.catId === agent1Id);
+  assert.ok(assignment);
+  assignment.execution.lease.sessionId = 'session-closed-stale';
+  assignment.execution.lease.status = 'closed';
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Pick this up next.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    createNoopRuntimeClient(),
+    seededAt,
+  );
+
+  const activeTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+  const targetStateId = activeTurn.targetStatuses[0]?.id ?? null;
+  assert.ok(targetStateId);
+
+  const store = new MemoryChatStore();
+  await store.write(begun.state);
+  const core = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const projectedTurn = core.turns.find((turn) =>
+    turn.conversationId === conversationId && turn.status === 'active');
+  assert.ok(projectedTurn);
+
+  const lanes = readOrderedTurnLanes(core, projectedTurn.id);
+  assert.equal(lanes.length, 1);
+  assert.equal(lanes[0]?.id, buildChatLaneId(projectedTurn.id, targetStateId, agent1Id));
+  assert.equal(core.sessions.filter((session) => session.turnId === projectedTurn.id).length, 0);
+});
+
 test('chatStore.write derives startup recovery replay for initial sequential queues from persisted handoff checkpoints', async () => {
   let { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const seededAt = new Date('2026-04-15T00:06:00.000Z');

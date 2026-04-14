@@ -461,6 +461,7 @@ function resolveTargetSessionId(
   const lease = resolveTargetLease(channel, target.participant);
   if (
     lease?.sessionId
+    && (lease.status === 'ready' || lease.status === 'initializing')
     && (target.status === 'pending' || target.status === 'running' || target.status === 'waiting_for_converge')
   ) {
     return lease.sessionId;
