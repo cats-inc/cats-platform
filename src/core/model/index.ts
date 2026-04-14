@@ -42,13 +42,11 @@ import {
 import {
   createDefaultOrchestratorActor,
   createOwnerActor,
-  DEFAULT_APPROVAL_DECISION_OPTIONS,
 } from './shared.js';
+import { buildApprovalQueue } from '../approvalQueue.js';
 import type {
   BotBindingRecord,
   CatsCoreState,
-  CoreApprovalQueueItem,
-  CoreTaskRecord,
   DurableMemoryRecord,
   DurableMemorySubjectType,
   OwnerProfileRecord,
@@ -143,6 +141,7 @@ export type {
   OwnerProfilePatchInput,
   OwnerProfileRecord,
 };
+export { buildApprovalQueue };
 
 export function createDefaultCoreState(): CatsCoreState {
   const updatedAt = new Date().toISOString();
@@ -182,32 +181,4 @@ export function createDefaultCoreState(): CatsCoreState {
     archives: [],
     durableMemory: [],
   };
-}
-
-export function buildApprovalQueue(core: CatsCoreState): CoreApprovalQueueItem[] {
-  return core.tasks
-    .filter(
-      (task) =>
-        task.status === 'pending_approval' && task.approval.status === 'pending',
-    )
-    .map((task) => ({
-      id: `approval-${task.id}`,
-      kind: 'dispatch_plan',
-      taskId: task.id,
-      conversationId: task.conversationId,
-      status: task.approval.status,
-      title: task.title,
-      summary: task.summary,
-      requestedByActorId: task.orchestratorActorId,
-      requestedForActorId: task.ownerActorId,
-      requestedAt: task.approval.requestedAt,
-      decidedAt: task.approval.decidedAt,
-      decidedByActorId: task.approval.decidedByActorId,
-      decisionAction: task.approval.decisionAction,
-      notes: task.approval.notes,
-      requiresOwnerDecision: task.approval.status === 'pending',
-      decisionOptions: DEFAULT_APPROVAL_DECISION_OPTIONS.map((option) => ({
-        ...option,
-      })),
-    }));
 }

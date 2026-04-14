@@ -1,4 +1,4 @@
-import { buildApprovalQueue } from './model/index.js';
+import { buildApprovalQueue } from './approvalQueue.js';
 import {
   deriveCoreGovernanceSummary,
   deriveCoreWorkflowSummary,

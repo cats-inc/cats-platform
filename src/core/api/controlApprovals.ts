@@ -1,8 +1,8 @@
 import {
   appendCoreActivity,
-  buildApprovalQueue,
   writeApprovalDecision,
 } from '../model/index.js';
+import { buildApprovalQueue } from '../approvalQueue.js';
 import { deriveCoreGovernanceSummary } from '../governance.js';
 import { applyTaskAssignmentLifecycle } from '../taskLifecycle.js';
 import {

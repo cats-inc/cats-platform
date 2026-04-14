@@ -1,4 +1,4 @@
-import { buildApprovalQueue } from './model/index.js';
+import { buildApprovalQueue } from './approvalQueue.js';
 import {
   buildCoreTaskRecoveryView,
   CORE_TASK_RECOVERY_REPLAY_PHASES,
