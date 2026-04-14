@@ -11,7 +11,11 @@ import {
   removeCatFromChannel,
   setChannelCatLease,
 } from '../build/server/products/chat/state/model/index.js';
-import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
+import {
+  beginChannelMessageDispatch,
+  continueBegunChannelMessageDispatch,
+  routeChannelMessage,
+} from '../build/server/products/chat/state/runtimeActions.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { patchTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 import {
@@ -488,6 +492,88 @@ test('initial sequential audience keeps handing off the canonical frontier throu
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.map((target) => target.sourceMessageId),
     [channel.messages.find((message) => message.senderKind === 'user')?.id, replies[0]?.id, replies[1]?.id],
   );
+});
+
+test('initial sequential audience persists continuation checkpoints as the prompt frontier advances', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createChannelState();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+  const store = new TrackingChatStore(state);
+  const firstReply = createDeferred();
+  const secondReply = createDeferred();
+  const secondRequested = createDeferred();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      return firstReply.promise;
+    }
+    if (content.includes('You are Agent-1')) {
+      secondRequested.resolve();
+      return secondReply.promise;
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Run the room in sequence.',
+      messageMetadata: {
+        recipientParticipantIds: [agent2Id, agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+  const dispatchPromise = continueBegunChannelMessageDispatch(
+    begun,
+    channelId,
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+
+  firstReply.resolve(usage('Agent-2 handled the first step.'));
+  await secondRequested.promise;
+
+  const inFlightState = await store.read();
+  const inFlightChannel = buildChannelView(inFlightState, channelId);
+  const activeTurn = inFlightChannel.roomRouting?.workflow.activeTurn;
+  const firstReplyMessage = inFlightChannel.messages.find((message) =>
+    message.senderKind === 'agent' && message.senderName === 'Agent-2');
+  const continuationCheckpoint = [...(activeTurn?.events ?? [])].reverse().find((event) =>
+    event.kind === 'checkpoint'
+    && event.metadata?.checkpointKind === 'continuation'
+    && event.metadata?.continuationSourceMessageId === firstReplyMessage?.id);
+
+  assert.ok(activeTurn);
+  assert.equal(activeTurn?.stageId, 'continuation_handoff');
+  assert.ok(firstReplyMessage);
+  assert.ok(continuationCheckpoint);
+  assert.deepEqual(
+    continuationCheckpoint?.targets.map((target) => target.participantName),
+    ['Agent-1'],
+  );
+  assert.equal(
+    continuationCheckpoint?.metadata?.workflowStageId,
+    'continuation_handoff',
+  );
+  assert.equal(
+    continuationCheckpoint?.metadata?.workflowShape,
+    'sequential',
+  );
+  assert.equal(
+    continuationCheckpoint?.metadata?.branchStrategy,
+    'transplant_context',
+  );
+  assert.equal(
+    continuationCheckpoint?.metadata?.continuationSourceMessageId,
+    firstReplyMessage?.id,
+  );
+
+  secondReply.resolve(usage('Agent-1 handled the second step.'));
+  await dispatchPromise;
 });
 
 test('sequential room audience does not redispatch queued targets when replies mention the remaining audience', async () => {

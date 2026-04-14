@@ -167,7 +167,7 @@ function advanceQueuedSequentialPromptFrontier(
   queue: DispatchFrame[],
   execution: DispatchExecution,
   responseMessage: ChatMessage,
-): void {
+): DispatchFrame | null {
   const executionSourceParticipantKey = execution.sourceParticipant
     ? participantKey(execution.sourceParticipant)
     : null;
@@ -186,13 +186,65 @@ function advanceQueuedSequentialPromptFrontier(
     && frame.targets.length > 0);
 
   if (!nextSequentialFrame) {
-    return;
+    return null;
   }
 
   nextSequentialFrame.promptSourceMessage = responseMessage;
   nextSequentialFrame.sourceParticipant = toParticipantRef(execution.target);
   nextSequentialFrame.trigger = 'continuation_mention';
   nextSequentialFrame.workflowStageId = 'continuation_handoff';
+  return nextSequentialFrame;
+}
+
+function persistQueuedSequentialContinuationCheckpoint(
+  workflow: RoomWorkflowState,
+  activeTurn: RoomWorkflowTurn,
+  outcome: RoomRoutingOutcome,
+  execution: DispatchExecution,
+  queueFrame: DispatchFrame,
+  responseSourceMessage: ChatMessage,
+  nowIso: string,
+): void {
+  activeTurn.stageId = queueFrame.workflowStageId ?? 'continuation_handoff';
+  activeTurn.workflowShape = 'sequential';
+  if (queueFrame.reviewRequired !== undefined) {
+    activeTurn.reviewRequired = queueFrame.reviewRequired;
+  }
+
+  addWorkflowCheckpoint(
+    outcome,
+    workflow,
+    activeTurn,
+    'continuation',
+    `${execution.target.participantName} handed the room forward to ${queueFrame.targets.map((target) => target.participantName).join(', ')}.`,
+    nowIso,
+    toParticipantRef(execution.target),
+    queueFrame.targets.map((target) => toParticipantRef(target)),
+    {
+      mentionNames: structuredClone(queueFrame.mentionNames),
+      workflowStageId: queueFrame.workflowStageId ?? 'continuation_handoff',
+      workflowShape: 'sequential',
+      reviewRequired: queueFrame.reviewRequired ?? false,
+      handoffReason: 'workflow_continuation',
+      branchStrategy: queueFrame.branchStrategyOverride ?? 'transplant_context',
+      continuationSource: queueFrame.continuationSource ?? null,
+      workflowRecommendation: queueFrame.workflowRecommendation
+        ? structuredClone(queueFrame.workflowRecommendation)
+        : null,
+      unresolvedTargets: structuredClone(queueFrame.unresolved),
+      ...buildContinuationReplayMetadata({
+        sourceMessageId: responseSourceMessage.id,
+        mentionNames: queueFrame.mentionNames,
+        trigger: 'continuation_mention',
+        workflowStageId: queueFrame.workflowStageId ?? 'continuation_handoff',
+        workflowShape: 'sequential',
+        reviewRequired: queueFrame.reviewRequired ?? false,
+        continuationSource: queueFrame.continuationSource ?? null,
+        workflowRecommendation: queueFrame.workflowRecommendation ?? null,
+        unresolvedTargets: queueFrame.unresolved,
+      }),
+    },
+  );
 }
 
 function appendRecoveredDispatchMessages(
@@ -570,7 +622,22 @@ export function applyDispatchExecutions(
 
     const responseMessage = responseMessages.at(-1)!;
     const responseSourceMessage = buildAssistantTurnSourceMessage(responseMessages) ?? responseMessage;
-    advanceQueuedSequentialPromptFrontier(queue, execution, responseSourceMessage);
+    const advancedSequentialFrame = advanceQueuedSequentialPromptFrontier(
+      queue,
+      execution,
+      responseSourceMessage,
+    );
+    if (advancedSequentialFrame) {
+      persistQueuedSequentialContinuationCheckpoint(
+        workflow,
+        activeTurn,
+        outcome,
+        execution,
+        advancedSequentialFrame,
+        responseSourceMessage,
+        nowIso,
+      );
+    }
     const response = buildAssistantTurnDelivery(assistantTurnId, responseMessages);
     nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
     updateDispatch(outcome, execution.dispatchId, {
