@@ -528,6 +528,12 @@ test('initial sequential audience persists continuation checkpoints as the promp
     now,
     { chatStore: store },
   );
+  const begunChannel = requireChannel(begun.state, channelId);
+  const begunTargetStatuses = begunChannel.roomRouting.workflow.activeTurn?.targetStatuses ?? [];
+  assert.equal(begunTargetStatuses.length, 1);
+  assert.equal(begunTargetStatuses[0]?.status, 'pending');
+  const begunTargetStateId = begunTargetStatuses[0]?.id ?? null;
+  assert.ok(begunTargetStateId);
   const dispatchPromise = continueBegunChannelMessageDispatch(
     begun,
     channelId,
@@ -1048,6 +1054,12 @@ test('continueBegunChannelMessageDispatch persists pending workflow targets befo
     now,
     { chatStore: store },
   );
+  const begunChannel = requireChannel(begun.state, channelId);
+  const begunTargetStatuses = begunChannel.roomRouting.workflow.activeTurn?.targetStatuses ?? [];
+  assert.equal(begunTargetStatuses.length, 1);
+  assert.equal(begunTargetStatuses[0]?.status, 'pending');
+  const begunTargetStateId = begunTargetStatuses[0]?.id ?? null;
+  assert.ok(begunTargetStateId);
   const dispatchPromise = continueBegunChannelMessageDispatch(
     begun,
     channelId,
@@ -1069,6 +1081,10 @@ test('continueBegunChannelMessageDispatch persists pending workflow targets befo
   assert.equal(
     persistedChannel.roomRouting?.workflow.activeTurn?.targetStatuses[0]?.status,
     'pending',
+  );
+  assert.equal(
+    persistedChannel.roomRouting?.workflow.activeTurn?.targetStatuses[0]?.id,
+    begunTargetStateId,
   );
 
   createSessionGate.resolve();

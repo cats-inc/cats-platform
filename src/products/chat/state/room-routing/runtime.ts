@@ -30,6 +30,7 @@ export interface DispatchFrame {
   sourceTurnId?: string | null;
   sourceLaneId?: string | null;
   sourceAssistantTurnId?: string | null;
+  targetStateIds?: string[] | null;
   sourceParticipant: RoomRoutingParticipantRef | null;
   targets: RoutingTarget[];
   unresolved: string[];

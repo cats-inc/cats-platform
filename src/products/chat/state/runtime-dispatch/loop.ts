@@ -133,10 +133,14 @@ export async function processDispatchQueue(
   } = options;
   let latestCheckpoint = options.latestCheckpoint;
   let nextState = options.state;
+  const initialTargetStateIds = activeTurn.targetStatuses.length === initialResolution.targets.length
+    ? activeTurn.targetStatuses.map((target) => target.id)
+    : null;
 
   const queue: DispatchFrame[] = [
     {
       sourceMessage: userMessage,
+      targetStateIds: initialTargetStateIds,
       sourceParticipant: null,
       targets: initialResolution.targets,
       unresolved: initialResolution.unresolved,
@@ -221,7 +225,8 @@ export async function processDispatchQueue(
 
     const effectiveSourceMessage = frame.promptSourceMessage ?? frame.sourceMessage;
     const allowedRequests: DispatchRequest[] = [];
-    for (const target of targetsForThisPass) {
+    for (let targetIndex = 0; targetIndex < targetsForThisPass.length; targetIndex += 1) {
+      const target = targetsForThisPass[targetIndex]!;
       const branchStrategy = frame.branchStrategyOverride
         ?? resolveWorkflowBranchStrategy(
           frame.sourceParticipant,
@@ -269,7 +274,7 @@ export async function processDispatchQueue(
         sourceMessage: effectiveSourceMessage,
         target,
         dispatchId: randomUUID(),
-        targetStateId: randomUUID(),
+        targetStateId: frame.targetStateIds?.[targetIndex] ?? randomUUID(),
         parentCheckpointId: latestCheckpoint?.id ?? null,
         branchStrategy,
         handoffReason: resolveWorkflowHandoffReason(frame.trigger),

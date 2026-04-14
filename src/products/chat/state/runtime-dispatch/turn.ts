@@ -30,6 +30,8 @@ import {
 } from '../room-routing/index.js';
 import {
   mergeUnresolvedMentions,
+  resolveWorkflowBranchStrategy,
+  resolveWorkflowHandoffReason,
   resolveTargets,
   type TargetResolution,
   workflowShapeForTargets,
@@ -204,6 +206,26 @@ export function prepareDispatchTurnForUserMessage(
     null,
     initialResolution.targets.map((target) => toParticipantRef(target)),
   );
+  activeTurn.targetStatuses = initialResolution.targets.map((target) => ({
+    id: randomUUID(),
+    dispatchId: null,
+    participant: toParticipantRef(target),
+    source: null,
+    sourceMessageId: userMessage.id,
+    trigger: initialResolution.trigger,
+    mentionNames: structuredClone(initialResolution.mentionNames),
+    depth: 0,
+    parentCheckpointId: latestCheckpoint?.id ?? null,
+    branchStrategy: resolveWorkflowBranchStrategy(null, target, 0),
+    handoffReason: resolveWorkflowHandoffReason(initialResolution.trigger),
+    wakeRequestId: null,
+    status: 'pending',
+    queuedAt: nowIso,
+    startedAt: null,
+    completedAt: null,
+    response: null,
+    error: null,
+  }));
 
   if (initialResolution.unresolved.length > 0) {
     mergeUnresolvedMentions(outcome, initialResolution.unresolved);

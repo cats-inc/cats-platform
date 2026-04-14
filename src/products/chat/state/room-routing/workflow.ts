@@ -174,6 +174,25 @@ export function queueWorkflowTarget(
   request: DispatchRequest,
   nowIso: string,
 ): RoomWorkflowTargetState {
+  const existingTargetStatus = turn.targetStatuses.find((target) => target.id === request.targetStateId);
+  if (existingTargetStatus) {
+    existingTargetStatus.dispatchId = request.dispatchId;
+    existingTargetStatus.participant = toParticipantRef(request.target);
+    existingTargetStatus.source = request.sourceParticipant;
+    existingTargetStatus.sourceMessageId = request.sourceMessage.id;
+    existingTargetStatus.trigger = request.trigger;
+    existingTargetStatus.mentionNames = structuredClone(request.mentionNames);
+    existingTargetStatus.depth = request.depth;
+    existingTargetStatus.parentCheckpointId = request.parentCheckpointId;
+    existingTargetStatus.branchStrategy = request.branchStrategy;
+    existingTargetStatus.handoffReason = request.handoffReason;
+    existingTargetStatus.wakeRequestId = null;
+    existingTargetStatus.status = 'pending';
+    existingTargetStatus.error = null;
+    turn.updatedAt = nowIso;
+    return existingTargetStatus;
+  }
+
   const targetStatus: RoomWorkflowTargetState = {
     id: request.targetStateId,
     dispatchId: request.dispatchId,
