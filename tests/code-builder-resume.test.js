@@ -105,3 +105,13 @@ test('code task renderer api normalizes detail responses and unwraps plan envelo
   assert.match(source, /task: readCodeTaskBuilderDetail\(response\.task\)/u);
   assert.match(source, /return response\.plan \?\? null;/u);
 });
+
+test('DeliveryPanel consumes typed delivery results without inline unknown casts', () => {
+  const source = readFileSync(
+    new URL('../src/products/code/renderer/components/DeliveryPanel.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /onPreviewCommit: \(message: string\) => Promise<CodeDeliveryResult>/u);
+  assert.doesNotMatch(source, /\)\s+as DeliveryPreview/u);
+});

@@ -18,7 +18,7 @@ import { PlanPanel } from './PlanPanel.js';
 import { BuildPreviewPanel, type ArtifactItem } from './BuildPreviewPanel.js';
 import { CodeExecutionSummaryPanel } from './CodeExecutionSummaryPanel.js';
 import { CodeWorkspaceSummaryPanel } from './CodeWorkspaceSummaryPanel.js';
-import { DeliveryPanel, type RepoStatus } from './DeliveryPanel.js';
+import { DeliveryPanel } from './DeliveryPanel.js';
 import {
   previewCommit as apiPreviewCommit,
   applyCommit as apiApplyCommit,
@@ -159,18 +159,17 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       // Observe runtime session to detect completion
       if (state.sessionId && step === 'running') {
         try {
-          const observation = (await observeRuntimeSession(state.sessionId)) as Record<string, unknown>;
+          const observation = await observeRuntimeSession(state.sessionId);
           if (cancelled) {
             return;
           }
           setPreviewTarget(resolveObservedPreviewSurfaceTarget(observation, linkedArtifacts));
-          const session = observation.session as Record<string, unknown> | undefined;
           setSessionStatus(
-            typeof session?.status === 'string' && session.status.trim()
-              ? session.status
+            typeof observation.session?.status === 'string' && observation.session.status.trim()
+              ? observation.session.status
               : null,
           );
-          if (session?.status === 'closed') {
+          if (observation.session?.status === 'closed') {
             setStep('done');
             refreshRepoStatus(workspacePath);
           }
@@ -308,7 +307,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   }, [resumeTaskId, resume, resolveWorkspaceBinding, state.error]);
 
   const plan = state.plan;
-  const repoStatus = state.repoStatus as RepoStatus | null;
+  const repoStatus = state.repoStatus;
   const activeTaskId = resolveCodeBuilderExecutionTaskId(state.taskId, resumeTaskId);
   const usingExistingTask = activeTaskId !== null;
 

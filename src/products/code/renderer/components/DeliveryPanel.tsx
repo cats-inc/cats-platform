@@ -1,40 +1,21 @@
 import { useCallback, useState } from 'react';
+import type {
+  CodeDeliveryResult,
+  CodeDeliveryResult as DeliveryPreview,
+} from '../api/codeTask.js';
 
-export interface RepoStatus {
-  action: string;
-  state: string;
-  repo?: {
-    branch?: string;
-    clean?: boolean;
-    staged?: number;
-    unstaged?: number;
-    untracked?: number;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
-
-interface DeliveryPreview {
-  action?: string;
-  state?: string;
-  contract?: { mode?: string; applyRequested?: boolean; applyDecision?: string };
-  warnings?: Array<{ code?: string; message?: string }>;
-  blockedReasons?: Array<{ code?: string; message?: string }>;
-  capabilities?: Record<string, { state?: string }>;
-  repo?: Record<string, unknown>;
-  [key: string]: unknown;
-}
+export type RepoStatus = CodeDeliveryResult;
 
 export interface DeliveryPanelProps {
   workspacePath: string | null;
   sessionId: string | null;
   repoStatus: RepoStatus | null;
   onRefreshRepoStatus: () => void;
-  onPreviewCommit: (message: string) => Promise<unknown>;
-  onApplyCommit: (message: string) => Promise<unknown>;
-  onPreviewPush: () => Promise<unknown>;
-  onApplyPush: () => Promise<unknown>;
-  onExportArtifacts: () => Promise<unknown>;
+  onPreviewCommit: (message: string) => Promise<CodeDeliveryResult>;
+  onApplyCommit: (message: string) => Promise<CodeDeliveryResult>;
+  onPreviewPush: () => Promise<CodeDeliveryResult>;
+  onApplyPush: () => Promise<CodeDeliveryResult>;
+  onExportArtifacts: () => Promise<CodeDeliveryResult>;
 }
 
 function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: string }) {
@@ -131,7 +112,7 @@ export function DeliveryPanel({
     }
     setBusy(true);
     try {
-      const result = (await onPreviewCommit(commitMessage)) as DeliveryPreview;
+      const result = await onPreviewCommit(commitMessage);
       setCommitPreview(result);
     } finally {
       setBusy(false);
@@ -156,7 +137,7 @@ export function DeliveryPanel({
   const handlePreviewPush = useCallback(async () => {
     setBusy(true);
     try {
-      const result = (await onPreviewPush()) as DeliveryPreview;
+      const result = await onPreviewPush();
       setPushPreview(result);
     } finally {
       setBusy(false);

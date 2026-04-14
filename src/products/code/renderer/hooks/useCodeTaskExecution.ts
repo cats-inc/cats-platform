@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { CodePlanState } from '../../state/planSteps.js';
 import {
+  type CodeDeliveryResult,
   createCodeTask,
   executeCodeTask,
   resumeCodeTask,
@@ -23,7 +24,7 @@ export interface CodeTaskExecutionState {
   taskId: string | null;
   sessionId: string | null;
   plan: CodePlanState | null;
-  repoStatus: unknown | null;
+  repoStatus: CodeDeliveryResult | null;
   error: string | null;
 }
 

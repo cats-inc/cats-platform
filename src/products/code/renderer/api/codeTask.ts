@@ -54,6 +54,44 @@ export interface DeliveryRepoInput {
   branch?: string | null;
 }
 
+export interface CodeDeliveryRepoSummary {
+  branch?: string;
+  clean?: boolean;
+  staged?: number;
+  unstaged?: number;
+  untracked?: number;
+  ahead?: number;
+  behind?: number;
+  remote?: string;
+  [key: string]: unknown;
+}
+
+export interface CodeDeliveryContract {
+  mode?: string;
+  applyRequested?: boolean;
+  applyDecision?: string;
+}
+
+export interface CodeDeliveryMessage {
+  code?: string;
+  message?: string;
+}
+
+export interface CodeDeliveryCapability {
+  state?: string;
+}
+
+export interface CodeDeliveryResult {
+  action?: string;
+  state?: string;
+  contract?: CodeDeliveryContract;
+  warnings?: CodeDeliveryMessage[];
+  blockedReasons?: CodeDeliveryMessage[];
+  capabilities?: Record<string, CodeDeliveryCapability>;
+  repo?: CodeDeliveryRepoSummary;
+  [key: string]: unknown;
+}
+
 export interface CreateCodeTaskResponse {
   task: CodeTaskBuilderDetailSummary;
 }
@@ -65,6 +103,15 @@ export interface ExecuteCodeTaskResponse {
 
 export interface ResumeCodeTaskResponse {
   task: CodeTaskBuilderDetailSummary;
+}
+
+export interface RuntimeObservationSession {
+  status?: string;
+  [key: string]: unknown;
+}
+
+export interface RuntimeObservationResponse extends Record<string, unknown> {
+  session?: RuntimeObservationSession;
 }
 
 export async function resolveWorkspace(
@@ -134,32 +181,44 @@ export async function updateCodePlanStep(
   );
 }
 
-export async function inspectRepoStatus(input: DeliveryRepoInput): Promise<unknown> {
-  return postJson('/api/code/delivery/repo/status', input);
+export async function inspectRepoStatus(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/status', input);
 }
 
-export async function previewCommit(input: DeliveryRepoInput): Promise<unknown> {
-  return postJson('/api/code/delivery/repo/commit', { ...input, apply: false });
+export async function previewCommit(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/commit', {
+    ...input,
+    apply: false,
+  });
 }
 
-export async function applyCommit(input: DeliveryRepoInput): Promise<unknown> {
-  return postJson('/api/code/delivery/repo/commit', { ...input, apply: true });
+export async function applyCommit(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/commit', {
+    ...input,
+    apply: true,
+  });
 }
 
-export async function previewPush(input: DeliveryRepoInput): Promise<unknown> {
-  return postJson('/api/code/delivery/repo/push', { ...input, apply: false });
+export async function previewPush(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/push', {
+    ...input,
+    apply: false,
+  });
 }
 
-export async function applyPush(input: DeliveryRepoInput): Promise<unknown> {
-  return postJson('/api/code/delivery/repo/push', { ...input, apply: true });
+export async function applyPush(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/push', {
+    ...input,
+    apply: true,
+  });
 }
 
 export async function exportArtifacts(input: {
   workspacePath?: string | null;
   sessionId?: string | null;
   artifactIds?: string[];
-}): Promise<unknown> {
-  return postJson('/api/code/delivery/artifacts/export', input);
+}): Promise<CodeDeliveryResult> {
+  return postJson<CodeDeliveryResult>('/api/code/delivery/artifacts/export', input);
 }
 
 export async function fetchCodeTaskDetail(
@@ -174,8 +233,10 @@ export async function fetchCodeArtifactDetail(artifactId: string): Promise<unkno
   return fetchJson(`/api/code/artifacts/${encodeURIComponent(artifactId)}`);
 }
 
-export async function observeRuntimeSession(sessionId: string): Promise<unknown> {
-  return fetchJson(
+export async function observeRuntimeSession(
+  sessionId: string,
+): Promise<RuntimeObservationResponse> {
+  return fetchJson<RuntimeObservationResponse>(
     `/api/code/runtime/sessions/${encodeURIComponent(sessionId)}/observe`,
   );
 }
