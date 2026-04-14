@@ -13,7 +13,9 @@ import { IntakeStatusCard } from './IntakeStatusCard.js';
 
 type WorkOperatorInboxItem = WorkDashboardProjection['sections']['operatorInbox']['items'][number];
 type WorkControlPlaneItem = WorkDashboardProjection['sections']['controlPlane']['items'][number];
+type WorkProjectItem = WorkDashboardProjection['sections']['projects']['items'][number];
 type WorkRecoveryItem = WorkDashboardProjection['sections']['recovery']['items'][number];
+type WorkWorkItemItem = WorkDashboardProjection['sections']['workItems']['items'][number];
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -56,13 +58,18 @@ function attentionBadgeClassName(severity: string | null | undefined): string {
 function taskStatusBadgeClassName(status: string | null | undefined): string {
   switch (status) {
     case 'blocked':
+    case 'paused':
     case 'cancelled':
       return 'operatorStatusBadge isError';
+    case 'ready':
     case 'pending_approval':
+    case 'planned':
       return 'operatorStatusBadge isAttention';
+    case 'active':
     case 'in_progress':
       return 'operatorStatusBadge isProgress';
     case 'completed':
+    case 'archived':
       return 'operatorStatusBadge isSuccess';
     default:
       return 'operatorStatusBadge isMuted';
@@ -259,6 +266,110 @@ function ControlPlaneSection({
   );
 }
 
+function ProjectsSection({
+  items,
+  totalAvailable,
+}: {
+  items: WorkProjectItem[];
+  totalAvailable: number;
+}) {
+  return (
+    <section className="operatorPanel">
+      <WorkSectionHeader
+        eyebrow="Portfolio"
+        title="Projects"
+        summary={`${items.length} of ${totalAvailable}`}
+      />
+      {items.length === 0 ? (
+        <article className="operatorCard">
+          <div className="operatorCardHeader">
+            <strong>No projects recorded yet.</strong>
+            <span className="operatorStatusBadge isMuted">empty</span>
+          </div>
+          <p>Projects created from intake or manual work setup will appear here.</p>
+        </article>
+      ) : (
+        <div className="workWarRoomTaskGrid">
+          {items.map((item) => (
+            <article key={item.id} className="operatorCard workWarRoomTaskCard">
+              <div className="operatorCardHeader">
+                <strong>{item.title}</strong>
+                <span className={taskStatusBadgeClassName(item.status)}>{item.status}</span>
+              </div>
+              <p>{item.summary ?? 'No project summary recorded.'}</p>
+              <div className="operatorMetaRow">
+                <span>Owner: {item.ownerName}</span>
+                <span>Repo: {item.repoPath ?? 'Not bound'}</span>
+              </div>
+              <div className="operatorMetaRow">
+                <span>Work items: {item.linkedWorkItemCount}</span>
+                <span>Tasks: {item.linkedTaskCount}</span>
+              </div>
+              <div className="operatorMetaRow">
+                <span>Conversation: {item.primaryConversationTitle ?? 'No primary conversation'}</span>
+                <span>{formatTimestamp(item.updatedAt)}</span>
+              </div>
+              <WorkWarRoomOpenProjectButton projectId={item.id} />
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WorkItemsSection({
+  items,
+  totalAvailable,
+}: {
+  items: WorkWorkItemItem[];
+  totalAvailable: number;
+}) {
+  return (
+    <section className="operatorPanel">
+      <WorkSectionHeader
+        eyebrow="Managed Work"
+        title="Work Items"
+        summary={`${items.length} of ${totalAvailable}`}
+      />
+      {items.length === 0 ? (
+        <article className="operatorCard">
+          <div className="operatorCardHeader">
+            <strong>No work items recorded yet.</strong>
+            <span className="operatorStatusBadge isMuted">empty</span>
+          </div>
+          <p>Operational work items will appear here as projects start executing.</p>
+        </article>
+      ) : (
+        <div className="workWarRoomTaskGrid">
+          {items.map((item) => (
+            <article key={item.id} className="operatorCard workWarRoomTaskCard">
+              <div className="operatorCardHeader">
+                <strong>{item.title}</strong>
+                <span className={taskStatusBadgeClassName(item.status)}>{item.status}</span>
+              </div>
+              <p>{item.summary ?? 'No work-item summary recorded.'}</p>
+              <div className="operatorMetaRow">
+                <span>Project: {item.projectTitle ?? 'No linked project'}</span>
+                <span>Task: {item.taskTitle ?? 'No linked task'}</span>
+              </div>
+              <div className="operatorMetaRow">
+                <span>Owner: {item.ownerName}</span>
+                <span>Actors: {compactList(item.assignedActorNames)}</span>
+              </div>
+              <div className="operatorMetaRow">
+                <span>Conversation: {item.conversationTitle ?? 'No linked conversation'}</span>
+                <span>{formatTimestamp(item.updatedAt)}</span>
+              </div>
+              <WorkWarRoomOpenWorkItemButton workItemId={item.id} />
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function RecoverySection({
   items,
   totalAvailable,
@@ -320,6 +431,50 @@ function RecoverySection({
         </div>
       )}
     </section>
+  );
+}
+
+function WorkWarRoomOpenProjectButton({
+  projectId,
+}: {
+  projectId: string;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      className="operatorActionButton"
+      onClick={() => {
+        startTransition(() => {
+          navigate(`/work/projects/${encodeURIComponent(projectId)}`);
+        });
+      }}
+    >
+      Open project
+    </button>
+  );
+}
+
+function WorkWarRoomOpenWorkItemButton({
+  workItemId,
+}: {
+  workItemId: string;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      className="operatorActionButton"
+      onClick={() => {
+        startTransition(() => {
+          navigate(`/work/work-items/${encodeURIComponent(workItemId)}`);
+        });
+      }}
+    >
+      Open work item
+    </button>
   );
 }
 
@@ -461,6 +616,14 @@ export function WarRoomView() {
             />
           </section>
 
+          <ProjectsSection
+            items={payload.sections.projects.items}
+            totalAvailable={payload.sections.projects.summary.totalAvailable}
+          />
+          <WorkItemsSection
+            items={payload.sections.workItems.items}
+            totalAvailable={payload.sections.workItems.summary.totalAvailable}
+          />
           <OperatorInboxSection
             items={payload.sections.operatorInbox.items}
             totalAvailable={payload.sections.operatorInbox.summary.totalAvailable}
