@@ -10,6 +10,7 @@ import { MemoryCoreStore } from '../build/server/core/store.js';
 import {
   createDefaultCoreState,
   upsertCoreConversation,
+  upsertCoreSession,
   upsertCoreTransportBinding,
 } from '../build/server/core/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
@@ -132,6 +133,43 @@ function createInteractionCoreState() {
     new Date('2026-04-15T03:23:00.000Z'),
   ).core;
 
+  core = upsertCoreSession(
+    core,
+    {
+      id: 'session-1',
+      conversationId: 'conversation-1',
+      turnId: 'turn-1',
+      laneId: 'lane-1',
+      participantId: 'participant-1',
+      agentId: 'actor-agent-1',
+      transportBindingId: 'transport-binding-1',
+      runtimeKey: 'claude:cli',
+      status: 'active',
+      createdAt: '2026-04-15T03:24:00.000Z',
+      startedAt: '2026-04-15T03:24:00.000Z',
+    },
+    new Date('2026-04-15T03:24:00.000Z'),
+  ).core;
+
+  core = upsertCoreSession(
+    core,
+    {
+      id: 'session-2',
+      conversationId: 'conversation-2',
+      turnId: 'turn-2',
+      laneId: 'lane-2',
+      participantId: 'participant-2',
+      agentId: 'actor-agent-2',
+      transportBindingId: 'transport-binding-2',
+      runtimeKey: 'gemini:cli',
+      status: 'failed',
+      createdAt: '2026-04-15T03:25:00.000Z',
+      startedAt: '2026-04-15T03:25:00.000Z',
+      completedAt: '2026-04-15T03:26:00.000Z',
+    },
+    new Date('2026-04-15T03:26:00.000Z'),
+  ).core;
+
   return core;
 }
 
@@ -197,5 +235,29 @@ test('core interaction routes reject invalid transport binding filters with stru
     const payload = await response.json();
     assert.equal(payload.error.code, 'bad_request');
     assert.match(payload.error.message, /direction must be one of/i);
+  });
+});
+
+test('core interaction routes support filtered session queries', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(
+      `${baseUrl}/api/core/sessions?conversationId=conversation-1&laneId=lane-1&transportBindingId=transport-binding-1&status=active&runtimeKey=claude:cli`,
+    );
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.sessions.length, 1);
+    assert.equal(payload.sessions[0].id, 'session-1');
+  });
+});
+
+test('core interaction routes reject invalid session filters with structured 400 responses', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/core/sessions?status=paused`);
+    assert.equal(response.status, 400);
+
+    const payload = await response.json();
+    assert.equal(payload.error.code, 'bad_request');
+    assert.match(payload.error.message, /status must be one of/i);
   });
 });

@@ -34,6 +34,7 @@ import {
 } from '../recovery.js';
 import type { CoreTransportStateProjectionQuery } from '../transportStateProjection.js';
 import type { CoreTransportBindingListQuery } from '../transportBindingList.js';
+import type { CoreSessionListQuery } from '../sessionList.js';
 import { CoreValidationError } from '../errors.js';
 import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
 import {
@@ -47,6 +48,7 @@ import {
   CORE_ACTOR_STATUSES,
   CORE_MISSION_STATUSES,
   CORE_RUN_STATUSES,
+  CORE_SESSION_STATUSES,
   CORE_TRANSPORT_BINDING_DIRECTIONS,
   CORE_TRANSPORT_BINDING_PLATFORMS,
   CORE_TRANSPORT_BINDING_STATUSES,
@@ -494,6 +496,22 @@ export function readTransportBindingListQuery(
     participantIds: readOptionalQueryValues(searchParams, 'participantId'),
     agentIds: readOptionalQueryValues(searchParams, 'agentId'),
     externalThreadKeys: readOptionalQueryValues(searchParams, 'externalThreadKey'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readSessionListQuery(
+  searchParams: URLSearchParams,
+): CoreSessionListQuery {
+  return {
+    conversationIds: readConversationIds(searchParams),
+    turnIds: readOptionalQueryValues(searchParams, 'turnId'),
+    laneIds: readOptionalQueryValues(searchParams, 'laneId'),
+    participantIds: readOptionalQueryValues(searchParams, 'participantId'),
+    agentIds: readOptionalQueryValues(searchParams, 'agentId'),
+    transportBindingIds: readOptionalQueryValues(searchParams, 'transportBindingId'),
+    runtimeKeys: readOptionalQueryValues(searchParams, 'runtimeKey'),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_SESSION_STATUSES),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

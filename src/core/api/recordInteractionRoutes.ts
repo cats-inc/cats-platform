@@ -14,6 +14,7 @@ import {
   readWrappedBody,
 } from './shared.js';
 import { readTransportBindingListQuery } from './queryFilters.js';
+import { readSessionListQuery } from './queryFilters.js';
 import {
   CORE_TRANSPORT_BINDING_DIRECTIONS,
   CORE_TRANSPORT_BINDING_PLATFORMS,
@@ -27,6 +28,7 @@ import {
 } from './constants.js';
 import type { CoreApiRouteContext } from './types.js';
 import { listTransportBindings } from '../transportBindingList.js';
+import { listSessions } from '../sessionList.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 async function handleCoreTransportBindings(
@@ -64,7 +66,8 @@ async function handleCoreSessions(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { sessions: core.sessions });
+  const query = readSessionListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { sessions: listSessions(core, query) });
 }
 
 async function handleCoreTurnWrite(
@@ -316,7 +319,11 @@ export async function routeCoreInteractionRecordApi(
 
   if (context.url.pathname === '/api/core/sessions') {
     if (context.method === 'GET') {
-      await handleCoreSessions(context);
+      try {
+        await handleCoreSessions(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
