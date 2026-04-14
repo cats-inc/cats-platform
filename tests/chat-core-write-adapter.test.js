@@ -1222,6 +1222,45 @@ test('chatStore.write preserves canonical turn and segment history when transcri
   );
 });
 
+test('chatStore.write preserves canonical terminal turns when workflow history disappears', async () => {
+  const { state, channelId } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('Agent-1 completed the durable terminal turn.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 preserve this terminal turn.' },
+    runtimeClient,
+    new Date('2026-04-15T00:24:00.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const conversationId = buildChatConversationId(channelId);
+  const beforeCore = await store.readCore();
+  const latestTurn = readLatestConversationTurn(beforeCore, conversationId);
+  assert.ok(latestTurn);
+  assert.equal(latestTurn.status, 'completed');
+  assert.equal(readTurnSegments(beforeCore, latestTurn.id).length, 1);
+
+  const driftedState = structuredClone(dispatched.state);
+  const driftedChannel = requireChannel(driftedState, channelId);
+  driftedChannel.roomRouting.workflow.turnHistory = [];
+  await store.write(driftedState);
+
+  const afterCore = await store.readCore();
+  const preservedTurn = afterCore.turns.find((turn) => turn.id === latestTurn.id) ?? null;
+  assert.ok(preservedTurn);
+  assert.equal(preservedTurn.status, 'completed');
+  assert.equal(readTurnSegments(afterCore, latestTurn.id).length, 1);
+});
+
 test('resumeWorkflowContinuationReplay prefers full canonical assistant turns over surviving terminal transcript segments', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const store = new MemoryChatStore();

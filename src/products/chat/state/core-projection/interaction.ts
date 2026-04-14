@@ -97,6 +97,54 @@ export function preserveCoreOwnedSessions(
     .map((session) => structuredClone(session));
 }
 
+function collectDurableChatTurnIds(
+  core: CatsCoreState,
+): Set<string> {
+  return new Set(
+    core.turns
+      .filter((turn) =>
+        isChatConversationId(turn.conversationId)
+        && (turn.status === 'completed' || turn.status === 'failed'))
+      .map((turn) => turn.id),
+  );
+}
+
+function preserveDurableChatTurns(
+  existingTurns: CatsCoreState['turns'],
+  durableTurnIds: ReadonlySet<string>,
+): CatsCoreState['turns'] {
+  return existingTurns
+    .filter((turn) => durableTurnIds.has(turn.id))
+    .map((turn) => structuredClone(turn));
+}
+
+function preserveDurableChatLanes(
+  existingLanes: CatsCoreState['lanes'],
+  durableTurnIds: ReadonlySet<string>,
+): CatsCoreState['lanes'] {
+  return existingLanes
+    .filter((lane) => durableTurnIds.has(lane.turnId))
+    .map((lane) => structuredClone(lane));
+}
+
+function preserveDurableChatSegments(
+  existingSegments: CatsCoreState['segments'],
+  durableTurnIds: ReadonlySet<string>,
+): CatsCoreState['segments'] {
+  return existingSegments
+    .filter((segment) => durableTurnIds.has(segment.turnId))
+    .map((segment) => structuredClone(segment));
+}
+
+function preserveDurableChatSessions(
+  existingSessions: CatsCoreState['sessions'],
+  durableTurnIds: ReadonlySet<string>,
+): CatsCoreState['sessions'] {
+  return existingSessions
+    .filter((session) => session.turnId !== null && durableTurnIds.has(session.turnId))
+    .map((session) => structuredClone(session));
+}
+
 function readMessageMetadataString(message: ChatMessage, key: string): string | null {
   const value = message.metadata?.[key];
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
@@ -689,12 +737,25 @@ export function projectChatInteractionRecordsToCore(
   chat: ChatState,
   now: Date = new Date(),
 ): CatsCoreState {
+  const durableTurnIds = collectDurableChatTurnIds(core);
   let nextCore: CatsCoreState = {
     ...core,
-    turns: preserveCoreOwnedTurns(core.turns),
-    lanes: preserveCoreOwnedLanes(core.lanes),
-    segments: preserveCoreOwnedSegments(core.segments),
-    sessions: preserveCoreOwnedSessions(core.sessions),
+    turns: [
+      ...preserveCoreOwnedTurns(core.turns),
+      ...preserveDurableChatTurns(core.turns, durableTurnIds),
+    ],
+    lanes: [
+      ...preserveCoreOwnedLanes(core.lanes),
+      ...preserveDurableChatLanes(core.lanes, durableTurnIds),
+    ],
+    segments: [
+      ...preserveCoreOwnedSegments(core.segments),
+      ...preserveDurableChatSegments(core.segments, durableTurnIds),
+    ],
+    sessions: [
+      ...preserveCoreOwnedSessions(core.sessions),
+      ...preserveDurableChatSessions(core.sessions, durableTurnIds),
+    ],
   };
 
   for (const channel of chat.channels) {

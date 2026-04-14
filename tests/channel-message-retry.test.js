@@ -325,6 +325,7 @@ test('POST /api/channels/:id/messages/:messageId/retry accepts the latest failed
     const driftedState = await chatStore.read();
     const driftedChannel = requireChannel(driftedState, channelId);
     driftedChannel.roomRouting.lastOutcome = null;
+    driftedChannel.roomRouting.workflow.turnHistory = [];
     await chatStore.write(driftedState);
 
     const retryResponse = await fetch(
