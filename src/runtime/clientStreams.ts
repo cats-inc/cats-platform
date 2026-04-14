@@ -28,6 +28,94 @@ export async function readRuntimeNdjsonResponse(response: Response): Promise<Run
     }
   }
 
+  function normalizeSegmentEntry(entry: unknown): RuntimeMessageSegment | null {
+    if (typeof entry === 'string') {
+      return entry.length > 0
+        ? { kind: 'text', text: entry, toolName: null, toolId: null }
+        : null;
+    }
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return null;
+    }
+
+    const record = entry as Record<string, unknown>;
+    const kind = typeof record.kind === 'string'
+      ? record.kind
+      : typeof record.type === 'string'
+        ? record.type
+        : null;
+    if (kind === 'text') {
+      const text = typeof record.text === 'string'
+        ? record.text
+        : typeof record.content === 'string'
+          ? record.content
+          : '';
+      return text.length > 0
+        ? { kind: 'text', text, toolName: null, toolId: null }
+        : null;
+    }
+    if (kind === 'tool_use') {
+      return {
+        kind: 'tool_use',
+        text: typeof record.text === 'string' ? record.text : '',
+        toolName: typeof record.toolName === 'string' ? record.toolName : null,
+        toolId: typeof record.toolId === 'string' ? record.toolId : null,
+      };
+    }
+    if (kind === 'tool_result') {
+      return {
+        kind: 'tool_result',
+        text: typeof record.text === 'string' ? record.text : '',
+        toolName: typeof record.toolName === 'string' ? record.toolName : null,
+        toolId: typeof record.toolId === 'string' ? record.toolId : null,
+      };
+    }
+
+    return null;
+  }
+
+  function readResultSegments(event: Record<string, unknown>): RuntimeMessageSegment[] {
+    const candidates = [
+      event.segments,
+      event.blocks,
+      event.contentBlocks,
+      event.content,
+      event.result,
+    ];
+    for (const candidate of candidates) {
+      if (!Array.isArray(candidate)) {
+        continue;
+      }
+
+      const normalized = candidate
+        .map((entry) => normalizeSegmentEntry(entry))
+        .filter((entry): entry is RuntimeMessageSegment => entry !== null);
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
+
+    return [];
+  }
+
+  function readResultText(event: Record<string, unknown>): string {
+    if (typeof event.text === 'string' && event.text.length > 0) {
+      return event.text;
+    }
+
+    const result = event.result;
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+      return '';
+    }
+
+    const record = result as Record<string, unknown>;
+    return typeof record.text === 'string'
+      ? record.text
+      : typeof record.content === 'string'
+        ? record.content
+        : '';
+  }
+
   function processEvent(event: Record<string, unknown>): void {
     const type = String(event.type ?? '');
 
@@ -60,6 +148,26 @@ export async function readRuntimeNdjsonResponse(response: Response): Promise<Run
       const usage = (event.usage ?? {}) as Record<string, unknown>;
       inputTokens = Number(usage.inputTokens ?? 0);
       outputTokens = Number(usage.outputTokens ?? 0);
+      const normalizedResultSegments = readResultSegments(event);
+      if (normalizedResultSegments.length > 0) {
+        if (segments.length === 0) {
+          for (const segment of normalizedResultSegments) {
+            if (segment.kind === 'text') {
+              appendTextToSegments(segment.text);
+            } else {
+              segments.push(segment);
+            }
+          }
+        } else if (!segments.some((segment) => segment.kind === 'text' && segment.text.length > 0)) {
+          for (const segment of normalizedResultSegments) {
+            if (segment.kind === 'text') {
+              appendTextToSegments(segment.text);
+            }
+          }
+        }
+      } else if (!segments.some((segment) => segment.kind === 'text' && segment.text.length > 0)) {
+        appendTextToSegments(readResultText(event));
+      }
       return;
     }
 

@@ -134,6 +134,81 @@ test('runtime client reuses the shared execution-request serializer for outbound
   ]);
 });
 
+test('runtime client synthesizes a text segment from coarse result-only delivery', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      return new Response(
+        '{"type":"result","text":"final coarse reply","usage":{"inputTokens":2,"outputTokens":3}}\n',
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const result = await client.sendMessage('session-1', 'hello');
+
+    assert.deepEqual(result, {
+      segments: [{ kind: 'text', text: 'final coarse reply', toolName: null, toolId: null }],
+      inputTokens: 2,
+      outputTokens: 3,
+      tokensUsed: 5,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime client appends final result text after tool-only delivery events', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      return new Response(
+        [
+          '{"type":"tool_use","toolName":"search_repo","toolId":"tool-1"}',
+          '{"type":"result","text":"completed after tool call","usage":{"inputTokens":5,"outputTokens":8}}',
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const result = await client.sendMessage('session-1', 'hello');
+
+    assert.deepEqual(result, {
+      segments: [
+        { kind: 'tool_use', text: '', toolName: 'search_repo', toolId: 'tool-1' },
+        { kind: 'text', text: 'completed after tool call', toolName: null, toolId: null },
+      ],
+      inputTokens: 5,
+      outputTokens: 8,
+      tokensUsed: 13,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('runtime setup summary reads still use the standard runtime timeout budget', async () => {
   const timeoutCalls = [];
   const originalFetch = globalThis.fetch;
