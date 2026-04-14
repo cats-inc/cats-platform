@@ -2331,11 +2331,11 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
   }, chatStore);
 });
 
-test('startup-recovered continuation replay auto-resumes when an active target regains its session', async () => {
+test('startup-recovered continuation replay auto-resumes on server startup when an active target needs a fresh session', async () => {
   const runtimeClient = createRuntimeStub({
     sendMessage: ({ content }) => {
       if (content.includes('You are Reviewer-Agent')) {
-        return usage('Reviewer-Agent completed the recovered continuation after session recovery.');
+        return usage('Reviewer-Agent completed the recovered continuation after session wake.');
       }
       return usage('Boss Cat acknowledged the retry.');
     },
@@ -2533,47 +2533,29 @@ test('startup-recovered continuation replay auto-resumes when an active target r
   chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
 
   const chatStore = new MemoryChatStore(chat);
-  const reviewerCat = chat.cats.find((cat) => cat.id === reviewerAssignment.catId);
-  assert.ok(reviewerCat);
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const initialCoreResponse = await fetch(`${baseUrl}/api/core`);
-    assert.equal(initialCoreResponse.status, 200);
-    const initialCorePayload = await initialCoreResponse.json();
     const taskId = `task-channel-${channelId}`;
-    const task = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
-    assert.ok(task);
-    assert.ok(task.metadata.workflowContinuationReplay);
-    assert.equal(runtimeClient.sentMessages.length, 0);
-
-    const recoverResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${reviewerCat.id}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        provider: reviewerCat.defaultExecutionTarget.provider,
-        instance: reviewerCat.defaultExecutionTarget.instance,
-        model: reviewerCat.defaultExecutionTarget.model,
-        modelSelection: reviewerCat.defaultModelSelection ?? null,
-      }),
+    await waitFor(async () => {
+      const coreResponse = await fetch(`${baseUrl}/api/core`);
+      assert.equal(coreResponse.status, 200);
+      const corePayload = await coreResponse.json();
+      const task = corePayload.tasks.find((candidate) => candidate.id === taskId);
+      assert.ok(task);
+      assert.equal(task.metadata.workflowContinuationReplay, undefined);
+      assert.equal(runtimeClient.createdSessions.length, 1);
+      assert.equal(runtimeClient.createdSessions[0]?.provider, 'gemini');
+      assert.equal(runtimeClient.sentMessages.length, 1);
+      assert.match(runtimeClient.sentMessages[0]?.content ?? '', /You are Reviewer-Agent/u);
+      assert.ok(
+        corePayload.activities.some((activity) =>
+          activity.taskId === taskId
+          && activity.metadata?.source === 'workflow-continuation-replay'
+          && activity.metadata?.replayPhase === 'replay_dispatched'
+          && activity.metadata?.resumeReason === null
+          && activity.metadata?.resultCount === 1),
+      );
     });
-    assert.equal(recoverResponse.status, 200);
-    assert.equal(runtimeClient.sentMessages.length, 1);
-    assert.match(runtimeClient.sentMessages[0]?.content ?? '', /You are Reviewer-Agent/u);
-
-    const finalCoreResponse = await fetch(`${baseUrl}/api/core`);
-    assert.equal(finalCoreResponse.status, 200);
-    const finalCorePayload = await finalCoreResponse.json();
-    const finalTask = finalCorePayload.tasks.find((candidate) => candidate.id === taskId);
-    assert.ok(finalTask);
-    assert.equal(finalTask.metadata.workflowContinuationReplay, undefined);
-    assert.ok(
-      finalCorePayload.activities.some((activity) =>
-        activity.taskId === taskId
-        && activity.metadata?.source === 'workflow-continuation-replay'
-        && activity.metadata?.replayPhase === 'replay_dispatched'
-        && activity.metadata?.resumeReason === 'target_recovered'
-        && activity.metadata?.resultCount === 1),
-    );
   }, chatStore);
 });
 
