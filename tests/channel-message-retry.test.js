@@ -281,6 +281,87 @@ test('POST /api/channels/:id/messages/:messageId/retry rebuilds a missing user s
   }, chatStore);
 });
 
+test('POST /api/channels/:id/messages/:messageId/retry accepts the latest failed user turn from canonical history when workflow state drifts', async () => {
+  const runtimeClient = createRetryRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-04-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createChannel(state, {
+    title: 'Retry from canonical failure state',
+    topic: 'Verify retry survives workflow snapshot drift.',
+    entryKind: 'solo',
+    skipBossCatGreeting: true,
+  }, now);
+  const channelId = state.selectedChannelId;
+  await chatStore.write(state);
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const firstSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        body: 'Please recover this failed response after workflow drift.',
+      }),
+    });
+    assert.equal(firstSendResponse.status, 200);
+    const firstSendPayload = await firstSendResponse.json();
+    const sourceMessageId = firstSendPayload.message.id;
+
+    await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      return payload.channel.roomRouting.lastOutcome?.status === 'error'
+        ? payload.channel
+        : null;
+    }, {
+      timeoutMs: 2_000,
+      intervalMs: 25,
+    });
+
+    const driftedState = await chatStore.read();
+    const driftedChannel = requireChannel(driftedState, channelId);
+    driftedChannel.roomRouting.lastOutcome = null;
+    await chatStore.write(driftedState);
+
+    const retryResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/messages/${sourceMessageId}/retry`,
+      {
+        method: 'POST',
+      },
+    );
+    assert.equal(retryResponse.status, 200);
+    const retryPayload = await retryResponse.json();
+    assert.equal(retryPayload.phase, 'acknowledged');
+    assert.equal(retryPayload.message.id, sourceMessageId);
+    assert.equal(
+      retryPayload.message.body,
+      'Please recover this failed response after workflow drift.',
+    );
+
+    const completedChannel = await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      return payload.channel.roomRouting.workflow.turnHistory[0]?.status === 'completed'
+        ? payload.channel
+        : null;
+    }, {
+      timeoutMs: 2_000,
+      intervalMs: 25,
+    });
+
+    assert.ok(
+      completedChannel.messages.some((message) =>
+        message.senderKind === 'agent'
+        && message.body === 'Recovered response from retry.'),
+    );
+  }, chatStore);
+});
+
 test('POST /api/channels/:id/messages/:messageId/retry rejects retry when the latest acknowledged user turn did not fail', async () => {
   const runtimeClient = {
     ...createRetryRuntimeStub(),

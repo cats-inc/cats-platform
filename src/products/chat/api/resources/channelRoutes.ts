@@ -170,6 +170,23 @@ function buildCanonicalRetryMessage(
   };
 }
 
+function hasCanonicalRetryableUserTurn(
+  core: CatsCoreState | undefined,
+  channelId: string,
+  messageId: string,
+): boolean {
+  if (!core) {
+    return false;
+  }
+
+  const latestCanonicalUserTurn = findLatestCanonicalUserTurn(core, channelId);
+  if (!latestCanonicalUserTurn || latestCanonicalUserTurn.status !== 'failed') {
+    return false;
+  }
+
+  return readChatCoreTurnMetadataString(latestCanonicalUserTurn, 'sourceMessageId') === messageId;
+}
+
 async function continueAcknowledgedChannelDispatchInBackground(
   context: ChatApiRouteContext,
   channelId: string,
@@ -568,10 +585,10 @@ async function handleRestRetryMessage(
         );
         return;
       }
-      if (
-        roomRouting.lastOutcome?.sourceMessageId !== messageId
-        || roomRouting.lastOutcome.status !== 'error'
-      ) {
+      const retryAvailableFromWorkflow = roomRouting.lastOutcome?.sourceMessageId === messageId
+        && roomRouting.lastOutcome.status === 'error';
+      const retryAvailableFromCanonical = hasCanonicalRetryableUserTurn(core, channelId, messageId);
+      if (!retryAvailableFromWorkflow && !retryAvailableFromCanonical) {
         sendJson(
           context.response,
           409,
