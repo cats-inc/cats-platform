@@ -957,6 +957,33 @@ function resolveMissingSessionParticipantName(
   return responseMessage.senderName;
 }
 
+function resolveMissingSessionTargetId(
+  responseMessage: ChatMessage,
+  channelId: string,
+  core?: CatsCoreState,
+): string | null {
+  const targetId = typeof responseMessage.metadata?.targetId === 'string'
+    && responseMessage.metadata.targetId.trim().length > 0
+    ? responseMessage.metadata.targetId.trim()
+    : null;
+  if (targetId) {
+    return targetId;
+  }
+  if (responseMessage.metadata?.targetKind !== 'cat') {
+    return targetId;
+  }
+
+  const canonicalSession = resolveCanonicalSessionRecord(
+    core,
+    channelId,
+    readMessageSessionId(responseMessage),
+  );
+  return resolveRawChatParticipantId(
+    canonicalSession?.participantId ?? null,
+    buildChatConversationId(channelId),
+  );
+}
+
 function resolveMissingSessionCwd(
   channel: ChatChannelState,
   responseMessage: ChatMessage,
@@ -1065,10 +1092,11 @@ export function repairMissingSessionStartedMessages(
       options.core,
     );
     const targetKind = responseMessage.metadata?.targetKind === 'cat' ? 'cat' : 'orchestrator';
-    const targetId = typeof responseMessage.metadata?.targetId === 'string'
-      && responseMessage.metadata.targetId.trim().length > 0
-      ? responseMessage.metadata.targetId.trim()
-      : undefined;
+    const targetId = resolveMissingSessionTargetId(
+      responseMessage,
+      channelId,
+      options.core,
+    ) ?? undefined;
 
     nextChannel.messages.splice(responseIndex, 0, {
       id: randomUUID(),
