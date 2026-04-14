@@ -15,6 +15,10 @@ import {
   readWrappedBody,
 } from './shared.js';
 import {
+  readRunListQuery,
+  readTraceListQuery,
+} from './queryFilters.js';
+import {
   CORE_ACTIVITY_KINDS,
   CORE_CHECKPOINT_STATUSES,
   CORE_OUTCOME_STATUSES,
@@ -22,13 +26,15 @@ import {
   CORE_TRACE_KINDS,
 } from './constants.js';
 import type { CoreApiRouteContext } from './types.js';
+import { listRuns, listTraces } from '../executionRecordLists.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 async function handleCoreRuns(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { runs: core.runs });
+  const query = readRunListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { runs: listRuns(core, query) });
 }
 
 async function handleCoreRunWrite(
@@ -73,7 +79,8 @@ async function handleCoreTraces(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { traces: core.traces });
+  const query = readTraceListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { traces: listTraces(core, query) });
 }
 
 async function handleCoreTraceWrite(
@@ -256,7 +263,11 @@ export async function routeCoreExecutionRecordApi(
 ): Promise<boolean> {
   if (context.url.pathname === '/api/core/runs') {
     if (context.method === 'GET') {
-      await handleCoreRuns(context);
+      try {
+        await handleCoreRuns(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -269,7 +280,11 @@ export async function routeCoreExecutionRecordApi(
 
   if (context.url.pathname === '/api/core/traces') {
     if (context.method === 'GET') {
-      await handleCoreTraces(context);
+      try {
+        await handleCoreTraces(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {

@@ -43,6 +43,10 @@ import type {
 } from '../interactionRecordLists.js';
 import type { CoreMissionListQuery } from '../missionList.js';
 import type {
+  CoreRunListQuery,
+  CoreTraceListQuery,
+} from '../executionRecordLists.js';
+import type {
   CoreArtifactListQuery,
   CoreProjectListQuery,
   CoreWorkItemListQuery,
@@ -73,6 +77,7 @@ import {
   CORE_TURN_KINDS,
   CORE_TURN_STATUSES,
   CORE_WORK_ITEM_STATUSES,
+  CORE_TRACE_KINDS,
 } from './constants.js';
 import {
   WORKFLOW_CONTINUATION_REPLAY_SOURCES,
@@ -605,6 +610,34 @@ export function readArtifactListQuery(
     taskIds: readOptionalQueryValues(searchParams, 'taskId'),
     runIds: readOptionalQueryValues(searchParams, 'runId'),
     mimeTypes: readOptionalQueryValues(searchParams, 'mimeType'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readRunListQuery(
+  searchParams: URLSearchParams,
+): CoreRunListQuery {
+  return {
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_RUN_STATUSES),
+    conversationIds: readConversationIds(searchParams),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    parentRunIds: readOptionalQueryValues(searchParams, 'parentRunId'),
+    orchestratorActorIds: readOptionalQueryValues(searchParams, 'orchestratorActorId'),
+    traceIds: readOptionalQueryValues(searchParams, 'traceId'),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readTraceListQuery(
+  searchParams: URLSearchParams,
+): CoreTraceListQuery {
+  return {
+    kinds: readEnumQueryValues(searchParams, 'kind', CORE_TRACE_KINDS),
+    conversationIds: readConversationIds(searchParams),
+    runIds: readOptionalQueryValues(searchParams, 'runId'),
+    taskIds: readOptionalQueryValues(searchParams, 'taskId'),
+    actorIds: readOptionalQueryValues(searchParams, 'actorId'),
+    traceIds: readOptionalQueryValues(searchParams, 'traceId'),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }
