@@ -96,6 +96,46 @@ The practical ownership split is:
 - shared platform/core layers
   - mission, run, schedule, provenance, and transport-binding seams
 
+## Conversational and Operational Agent Projections
+
+The platform also freezes a separate projection split for agent identity.
+
+One shared `Agent` core may project into:
+
+- `Conversational Agent`
+  - chat-first
+  - appears in `Cats Chat`, `My Cats`, direct lanes, companion surfaces, and
+    transport-facing persona entrypoints
+- `Operational Agent`
+  - work-first
+  - appears in `Cats Work` as a managed worker with assignments, missions,
+    runs, schedules, approvals, and outcomes
+- `Hybrid Agent`
+  - one shared identity that can appear in both projections when the current
+    product surface makes the posture explicit
+
+This matters because OpenClaw-style long-lived workers are not the same thing
+as every chat-visible Cat.
+
+The current direction is therefore:
+
+- `My Cats`
+  - a chat projection and quick-access roster for conversational agents plus
+    selected hybrid agents
+  - not the universal registry or control plane for every worker agent
+- `Cats Work`
+  - the primary control plane for operational agents
+  - the place where users manage assignments, missions, schedules, approvals,
+    and follow-up
+- `Cats Code`
+  - the execution home for code-oriented missions, runs, artifacts, previews,
+    and review loops
+- platform/core layers
+  - the canonical agent/entity registry beneath all projections
+
+The same canonical agent may therefore be visible in Chat, manageable in Work,
+and execution-capable in Code without forking identity.
+
 ## Concurrent, Parallel, and Code Presets
 
 The platform now freezes these meanings:
@@ -895,6 +935,11 @@ intentionally deferred:
   normalize mixed runtime delivery into one product contract
 - [ADR-061](./decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md):
   treat Guide Cat as an optional assist capability rather than a chat mode
+- [ADR-063](./decisions/063-agent-missions-and-transport-bindings.md):
+  separate managed work, agent missions, execution runs, and transport
+  bindings
+- [ADR-064](./decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md):
+  project conversational agents into Chat and operational agents into Work
 
 ---
 

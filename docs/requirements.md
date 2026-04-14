@@ -339,6 +339,30 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: Medium
 - **Status**: Planned
 
+### FR-043: Conversational vs Operational Agent Projection
+
+- **Description**: The platform shall support one shared agent core that can
+  project as `conversational`, `operational`, or `hybrid` depending on product
+  surface and responsibility.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-044: My Cats as a Conversational Agent Surface
+
+- **Description**: `My Cats` shall remain a chat-first roster for
+  conversational agents and selected hybrid agents, rather than becoming the
+  universal registry or control plane for every operational worker.
+- **Priority**: Medium
+- **Status**: Planned
+
+### FR-045: Work as the Operational Agent Control Plane
+
+- **Description**: `Cats Work` shall be the primary management surface for
+  OpenClaw-style operational agents that need assignments, missions, runs,
+  schedules, approvals, and follow-up outcomes.
+- **Priority**: High
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -480,6 +504,14 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
   runtime session changes
 - A transport binding MUST NEVER be redefined implicitly by a new session id or
   by a renderer-local heuristic
+
+### NFR-022: Agent Projection Clarity
+
+- Users SHOULD be able to tell whether they are chatting with an agent,
+  managing its work, or inspecting its execution without identity forks across
+  surfaces
+- Product surfaces MUST preserve one shared agent identity beneath
+  conversational, operational, and hybrid projections
 
 ## User Stories
 

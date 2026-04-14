@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-063](./SPEC-063-conversational-vs-operational-agents-and-surface-projections.md) | Conversational vs Operational Agents and Surface Projections | Draft | [PLAN-055](../plans/PLAN-055-conversational-and-operational-agent-projections.md), [ADR-064](../decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md) |
 | [SPEC-062](./SPEC-062-agent-missions-and-transport-bindings.md) | Agent Missions, Managed Work, and Transport Bindings | Draft | [PLAN-054](../plans/PLAN-054-agent-missions-managed-work-and-transport-bindings.md), [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md) |
 | [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md) | Concurrent vs Parallel Semantics and Code Entry Presets | Draft | [PLAN-053](../plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md), [ADR-062](../decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md) |
 | [SPEC-060](./SPEC-060-guide-cat-optional-surface-assist-capability.md) | Guide Cat Optional Surface-Assist Capability | Draft | [PLAN-052](../plans/PLAN-052-guide-cat-optional-surface-assist-capability.md), [ADR-061](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md) |

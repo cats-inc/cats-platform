@@ -31,6 +31,8 @@ Use this guide together with:
 - [ADR-061](./decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
 - [ADR-063](./decisions/063-agent-missions-and-transport-bindings.md)
 - [SPEC-062](./specs/SPEC-062-agent-missions-and-transport-bindings.md)
+- [ADR-064](./decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md)
+- [SPEC-063](./specs/SPEC-063-conversational-vs-operational-agents-and-surface-projections.md)
 
 ## Foundational Integration Rules
 
@@ -51,6 +53,8 @@ All product teams must treat these as frozen architectural rules:
 8. Managed Work, missions, runs, and schedules must stay distinct.
 9. External transports must use transport bindings that stay separate from bot
    binding, conversation identity, and runtime session identity.
+10. Conversational and operational agent projections must stay distinct even
+    when one shared agent identity supports both surfaces.
 
 ## Frozen Shared Contracts
 
@@ -79,9 +83,39 @@ At the doc/architecture level, the current freeze set also includes:
 - [SPEC-060](./specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
 - [ADR-063](./decisions/063-agent-missions-and-transport-bindings.md)
 - [SPEC-062](./specs/SPEC-062-agent-missions-and-transport-bindings.md)
+- [ADR-064](./decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md)
+- [SPEC-063](./specs/SPEC-063-conversational-vs-operational-agents-and-surface-projections.md)
 
 Products must not work around these invariants by inventing local room modes,
 local replay logic, or local materialization semantics.
+
+## Conversational and Operational Agent Projections
+
+All product teams must preserve this split:
+
+- `Conversational Agent`
+  - chat-first
+  - appears primarily in `Cats Chat`, `My Cats`, direct lanes, companion, and
+    transport-facing persona surfaces
+- `Operational Agent`
+  - work-first
+  - appears primarily in `Cats Work` as a managed worker with assignments,
+    missions, runs, schedules, approvals, and outcomes
+- `Hybrid Agent`
+  - one shared identity that can appear in both contexts when the current
+    surface makes the posture explicit
+
+Rules:
+
+- `My Cats` is a chat projection, not the universal registry or control plane
+  for every operational worker.
+- `Cats Work` is the primary control plane for OpenClaw-style operational
+  agents.
+- `Cats Code` may consume either projection when code execution or review work
+  is involved, but it must not fork the underlying identity.
+- Cross-links between Chat, Work, and Code should remain explicit so users can
+  tell whether they are conversing with an agent, managing its work, or
+  inspecting its execution.
 
 ## Managed Work, Missions, Runs, and Schedules
 
@@ -277,6 +311,8 @@ Before a product team adds a new platform capability, confirm:
 10. If the feature touches Telegram or other transports, it preserves explicit
     transport-binding identity instead of collapsing that identity into session
     or room state.
+11. If the feature introduces or reuses an agent, it makes explicit whether the
+    surface is conversational, operational, or hybrid.
 
 ## Integration Owner Checklist
 

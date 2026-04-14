@@ -35,6 +35,7 @@
 | My Cats | A lightweight sidebar roster for quick Cat access, in-place private-lane entry, and transport ownership hints. Selecting a Cat opens that Cat's direct lane in place and does not create a normal `Recents` thread. It is not the full registry management surface. |
 | Chat view mode | The sidebar list mode used to organize chats, such as `Latest`, `By Cat`, or `By Chat Type`. |
 | Cat registry | The chat-global list of reusable cats that can be assigned into one or more chats. Full management lives under `Settings > Cats`. |
+| Agent registry | The broader platform-owned registry of reusable entities/agents and their capabilities. Chat rosters, `My Cats`, and Work-side agent views are projections over this registry rather than separate sources of truth. |
 | Bot binding | A product record that maps one external bot identity to one visible Cat/Agent identity plus routing policy, inbox scope, and transport configuration. One environment may have many bot bindings. |
 | Cat-bound inbox | One external transport thread owned by one specific bot binding, such as a Telegram DM with `將將_bot` or `醜醜_bot`. |
 | Cat assignment | The channel-scoped record that decides whether a chat-global cat is active in one chat and which execution target it should use there. |
@@ -48,6 +49,9 @@
 | Routing layer | The product-owned system layer that resolves mentions, default targets, wake-before-route behavior, and per-room routing mode before prompts are sent to runtime sessions. |
 | Entity | The broader reusable identity model the platform is moving toward. It is expected to subsume Cats, owner-facing helpers, system-facing specialists, and other named collaborators with prompt, memory, and execution metadata. |
 | Agent | An execution-capable entity that can chat, run tools, perform background work, or serve transport-facing tasks. An Agent is not automatically a participant in every conversation. |
+| Conversational Agent | An agent whose primary product projection is chat-first interaction, direct-lane presence, companion behavior, or transport-facing persona. `My Cats` is primarily a roster of conversational and selected hybrid agents. |
+| Operational Agent | An agent whose primary product projection is work-first management, including assignments, missions, runs, schedules, approvals, and outputs. OpenClaw-style agents are the canonical example. |
+| Hybrid Agent | One shared agent identity that intentionally supports both conversational and operational projections across Chat and Work. |
 | Participant | One entity or agent's membership inside one conversation context, including role, status, and execution lease. |
 | Current-turn recipient | The participant or implicit model target that the next outgoing message is addressed to. The composer slot next to Send should represent current-turn recipient(s), not the whole room roster. |
 | Implicit recipient | A provider/model-backed execution target shown in the composer when the next turn is aimed at pending provider/model selection rather than at a named participant. |

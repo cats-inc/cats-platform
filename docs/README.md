@@ -15,8 +15,8 @@ These important documents live in the project root:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [requirements.md](./requirements.md) | Complete | Requirements for the current shell plus the accepted unified interaction engine, materialization layer, runtime-normalization, and Guide/Boss capability direction |
-| [architecture.md](./architecture.md) | Complete | Current implementation architecture, the landed platform-host code layout, and the unified interaction-core/materialization/capability model including transport bindings plus managed-work/mission/run separation |
+| [requirements.md](./requirements.md) | Complete | Requirements for the current shell plus the accepted unified interaction engine, materialization layer, runtime-normalization, Guide/Boss capability direction, and conversational-vs-operational agent projections |
+| [architecture.md](./architecture.md) | Complete | Current implementation architecture, the landed platform-host code layout, and the unified interaction-core/materialization/capability model including transport bindings, managed-work/mission/run separation, and conversational-vs-operational agent projections |
 | [api.md](./api.md) | Complete | Current API surface plus the approved RESTful migration direction and shared-core/runtime-boundary notes |
 
 ## Development Guides
@@ -26,7 +26,7 @@ These important documents live in the project root:
 | [setup-guide.md](./setup-guide.md) | Complete | Environment setup |
 | [testing.md](./testing.md) | Complete | Current testing strategy and coverage boundaries |
 | [deployment.md](./deployment.md) | Complete | Current local deployment plus planned desktop-first packaged topology and onboarding direction |
-| [product-integration-guide.md](./product-integration-guide.md) | Complete | Product registration plus unified engine, materialization, agent/transport vocabulary, and optional-capability integration rules for parallel Chat/Work/Code delivery |
+| [product-integration-guide.md](./product-integration-guide.md) | Complete | Product registration plus unified engine, materialization, agent/transport vocabulary, conversational-vs-operational projection rules, and optional-capability integration rules for parallel Chat/Work/Code delivery |
 | [security-guidelines.md](./security-guidelines.md) | Template | Security policies placeholder inherited from bootstrap |
 | [mcp-config.md](./mcp-config.md) | Partial | Planning notes for the future `cats-runtime` MCP facade used by orchestrators |
 | [services.md](./services.md) | Complete | Service registry, port assignments, and shared service-boundary notes |
@@ -47,7 +47,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | Document | Status | Description |
 |----------|--------|-------------|
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current platform-foundation context plus the same-environment CLI collaboration contract |
-| [terminology.md](./terminology.md) | Complete | Product, engine, and protocol terms including `Container`, `Turn`, `Lane`, `Segment`, `Session`, `Mission`, `Run`, `Schedule`, `Transport Binding`, Guide/Boss capability language, materialization, scheduler policy, and runtime capability profiles |
+| [terminology.md](./terminology.md) | Complete | Product, engine, and protocol terms including `Container`, `Turn`, `Lane`, `Segment`, `Session`, `Mission`, `Run`, `Schedule`, `Transport Binding`, conversational/operational/hybrid agent projections, Guide/Boss capability language, materialization, scheduler policy, and runtime capability profiles |
 | [a2a/](./a2a/) | Complete | Pilot-owned A2A v1.0 example set for future platform-host/orchestrator adapter work; standards-aligned docs, not a claim of a live A2A endpoint today |
 | [specs/](./specs/) | Complete | Feature specifications covering the unified conversation-turn-lane engine, interaction/materialization split, heterogeneous runtime delivery normalization, Guide Cat optional assist capability, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
 | [plans/](./plans/) | Complete | Implementation plans covering the unified engine rollout, interaction/materialization seam, runtime normalization, Guide Cat capability rollout, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
@@ -55,6 +55,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-063](./specs/SPEC-063-conversational-vs-operational-agents-and-surface-projections.md)
+- [ADR-064](./decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md)
+- [PLAN-055](./plans/PLAN-055-conversational-and-operational-agent-projections.md)
 - [SPEC-062](./specs/SPEC-062-agent-missions-and-transport-bindings.md)
 - [ADR-063](./decisions/063-agent-missions-and-transport-bindings.md)
 - [PLAN-054](./plans/PLAN-054-agent-missions-managed-work-and-transport-bindings.md)

@@ -20,6 +20,7 @@ This spec defines that vocabulary.
 It freezes:
 
 - `Entity`, `Agent`, and `Participant`
+- `Conversational Agent`, `Operational Agent`, and `Hybrid Agent`
 - `Managed Work`
 - `Mission`
 - `Run`
@@ -168,6 +169,26 @@ share.
     across Chat, Work, and Code without duplicating identity.
 28. The canonical vocabulary shall prefer `mission` and `run` over overloaded
     uses of `job` in new product docs and contracts.
+29. The platform shall support these projection classes for one shared agent
+    core:
+    - `Conversational Agent`
+    - `Operational Agent`
+    - `Hybrid Agent`
+30. A `Conversational Agent` shall mean a chat-first projection that may appear
+    in direct lanes, `My Cats`, companion surfaces, or transport-facing entry
+    points.
+31. An `Operational Agent` shall mean a work-first projection that may appear
+    in assignment, mission, run, schedule, approval, and outcome views.
+32. A `Hybrid Agent` shall mean one shared agent identity that may appear in
+    both conversational and operational surfaces without forking identity.
+33. `My Cats` shall remain a chat projection and quick-access roster for
+    conversational agents and selected hybrid agents rather than the universal
+    list of every operational worker.
+34. `Cats Work` shall remain the primary management surface for operational and
+    hybrid agents when the user is managing assignments, missions, runs,
+    schedules, approvals, and outcomes.
+35. `Cats Chat` shall remain the primary interaction surface for direct
+    conversation with conversational and hybrid agents.
 
 ### Non-Functional Requirements
 
@@ -181,6 +202,8 @@ share.
   compatible with the unified conversation-turn-lane engine.
 - **Extensibility**: future agents and schedules must fit the same vocabulary
   without another core re-architecture.
+- **Projection clarity**: users should be able to tell whether they are
+  talking to an agent, managing its work, or inspecting its execution.
 
 ## Design Overview
 
@@ -223,6 +246,19 @@ Execution / Materialization
   - should remain mostly invisible unless they produce operator-actionable
     results
 
+### Agent Projection Model
+
+- `Conversational Agent`
+  - chat-first projection
+  - natural home: `Cats Chat`
+- `Operational Agent`
+  - work-first projection
+  - natural home: `Cats Work`
+- `Hybrid Agent`
+  - one shared identity that may be present in both
+  - should retain explicit context about whether the user is conversing,
+    assigning work, or inspecting execution
+
 ## Boundaries
 
 ### What belongs in managed work
@@ -250,12 +286,14 @@ Execution / Materialization
 - [ADR-061](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
 - [ADR-062](../decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md)
 - [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
+- [ADR-064](../decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md)
 - [SPEC-017](./SPEC-017-telegram-inbox-and-room-routing.md)
 - [SPEC-018](./SPEC-018-direct-cat-chat-and-conversation-routing-layer.md)
 - [SPEC-029](./SPEC-029-companion-boxes-ingestion-and-response-profiles.md)
 - [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md)
 - [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md)
 - [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md)
+- [SPEC-063](./SPEC-063-conversational-vs-operational-agents-and-surface-projections.md)
 
 ## Open Questions
 
@@ -270,6 +308,7 @@ Execution / Materialization
 ## References
 
 - [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
+- [ADR-064](../decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md)
 - [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md)
 - [Architecture](../architecture.md)
 - [terminology.md](../terminology.md)
