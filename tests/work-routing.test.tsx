@@ -71,6 +71,10 @@ test('Work AppRoutes keeps operational and intake surfaces reachable', () => {
   assert.ok(planRoute, 'expected /work/intake/:projectId route');
   assert.ok(isValidElement(planRoute?.element));
 
+  const projectListRoute = routes.find((entry) => entry.path === 'projects');
+  assert.ok(projectListRoute, 'expected /work/projects route');
+  assert.ok(isValidElement(projectListRoute?.element));
+
   const projectRoute = routes.find((entry) => entry.path === 'projects/:projectId');
   assert.ok(projectRoute, 'expected /work/projects/:projectId route');
   assert.ok(isValidElement(projectRoute?.element));
@@ -78,6 +82,10 @@ test('Work AppRoutes keeps operational and intake surfaces reachable', () => {
   const taskRoute = routes.find((entry) => entry.path === 'tasks/:taskId');
   assert.ok(taskRoute, 'expected /work/tasks/:taskId route');
   assert.ok(isValidElement(taskRoute?.element));
+
+  const workItemsRoute = routes.find((entry) => entry.path === 'work-items');
+  assert.ok(workItemsRoute, 'expected /work/work-items route');
+  assert.ok(isValidElement(workItemsRoute?.element));
 
   const workItemRoute = routes.find((entry) => entry.path === 'work-items/:workItemId');
   assert.ok(workItemRoute, 'expected /work/work-items/:workItemId route');

@@ -15,6 +15,8 @@ export default createWorkspaceProductApp({
       {...props}
       onStartWorkIntake={() => props.navigate("/work/intake")}
       onOpenWarRoom={() => props.navigate("/work/war-room")}
+      onOpenProjects={() => props.navigate("/work/projects")}
+      onOpenWorkItems={() => props.navigate("/work/work-items")}
     />
   ),
 });

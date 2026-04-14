@@ -104,6 +104,15 @@ export interface WorkProjectListSummary {
   linkedWorkItemCount: number;
 }
 
+export interface WorkProjectListProjection {
+  product: {
+    id: 'work';
+    name: 'Cats Work';
+  };
+  projects: WorkProjectListItem[];
+  summary: WorkProjectListSummary;
+}
+
 export interface WorkProjectDetailProjection {
   product: {
     id: 'work';
@@ -155,6 +164,15 @@ export interface WorkWorkItemListSummary {
   blockedCount: number;
   completedCount: number;
   linkedTaskCount: number;
+}
+
+export interface WorkWorkItemListProjection {
+  product: {
+    id: 'work';
+    name: 'Cats Work';
+  };
+  workItems: WorkWorkItemListItem[];
+  summary: WorkWorkItemListSummary;
 }
 
 export interface WorkWorkItemDetailProjection {
@@ -586,14 +604,9 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
   };
 }
 
-export function buildWorkProjectListProjection(core: CatsCoreState): {
-  product: {
-    id: 'work';
-    name: 'Cats Work';
-  };
-  projects: WorkProjectListItem[];
-  summary: WorkProjectListSummary;
-} {
+export function buildWorkProjectListProjection(
+  core: CatsCoreState,
+): WorkProjectListProjection {
   const projects = buildProjectListItems(core, Number.POSITIVE_INFINITY);
   return {
     product: {
@@ -656,14 +669,9 @@ export function buildWorkProjectDetailProjection(
   };
 }
 
-export function buildWorkWorkItemListProjection(core: CatsCoreState): {
-  product: {
-    id: 'work';
-    name: 'Cats Work';
-  };
-  workItems: WorkWorkItemListItem[];
-  summary: WorkWorkItemListSummary;
-} {
+export function buildWorkWorkItemListProjection(
+  core: CatsCoreState,
+): WorkWorkItemListProjection {
   const workItems = buildWorkItemListItems(core, Number.POSITIVE_INFINITY);
   return {
     product: {

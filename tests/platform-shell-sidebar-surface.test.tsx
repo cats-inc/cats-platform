@@ -289,6 +289,8 @@ test('Work sidebar keeps the Work product selected on platform settings routes',
       onStartNewChat: () => {},
       onStartWorkIntake: () => {},
       onOpenWarRoom: () => {},
+      onOpenProjects: () => {},
+      onOpenWorkItems: () => {},
       onSelect: () => {},
       onDeleteChannel: () => {},
       onRenameChannel: () => {},
@@ -323,6 +325,8 @@ test('Work sidebar marks War Room active for operational task routes', () => {
       onStartNewChat: () => {},
       onStartWorkIntake: () => {},
       onOpenWarRoom: () => {},
+      onOpenProjects: () => {},
+      onOpenWorkItems: () => {},
       onSelect: () => {},
       onDeleteChannel: () => {},
       onRenameChannel: () => {},
@@ -336,6 +340,78 @@ test('Work sidebar marks War Room active for operational task routes', () => {
     });
 
     assert.match(findButtonClassByLabel(tree, 'War Room'), /navItemActive/u);
+  });
+});
+
+test('Work sidebar marks Projects active for portfolio routes', () => {
+  withLocationPathname('/work/projects/project-123', () => {
+    const tree = WorkSidebar({
+      payload: createPayload(),
+      sidebarOpen: true,
+      accountMenuOpen: false,
+      overflowMenuOpenId: null,
+      busy: '',
+      surface: 'chats',
+      shellSurface: 'work',
+      routeChannelId: null,
+      accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+      onToggleSidebar: () => {},
+      onCollapsedSidebarClick: () => {},
+      onOpenChatsOverview: () => {},
+      onStartNewChat: () => {},
+      onStartWorkIntake: () => {},
+      onOpenWarRoom: () => {},
+      onOpenProjects: () => {},
+      onOpenWorkItems: () => {},
+      onSelect: () => {},
+      onDeleteChannel: () => {},
+      onRenameChannel: () => {},
+      onArchiveCat: () => {},
+      onAccountMenuToggle: () => {},
+      onOverflowMenuToggle: () => {},
+      onNavigateSettings: () => {},
+      onSwitchProduct: () => {},
+      activeMyCatId: null,
+      onDirectChatCat: () => {},
+    });
+
+    assert.match(findButtonClassByLabel(tree, 'Projects'), /navItemActive/u);
+  });
+});
+
+test('Work sidebar marks Work Items active for managed-work routes', () => {
+  withLocationPathname('/work/work-items/work-item-123', () => {
+    const tree = WorkSidebar({
+      payload: createPayload(),
+      sidebarOpen: true,
+      accountMenuOpen: false,
+      overflowMenuOpenId: null,
+      busy: '',
+      surface: 'chats',
+      shellSurface: 'work',
+      routeChannelId: null,
+      accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+      onToggleSidebar: () => {},
+      onCollapsedSidebarClick: () => {},
+      onOpenChatsOverview: () => {},
+      onStartNewChat: () => {},
+      onStartWorkIntake: () => {},
+      onOpenWarRoom: () => {},
+      onOpenProjects: () => {},
+      onOpenWorkItems: () => {},
+      onSelect: () => {},
+      onDeleteChannel: () => {},
+      onRenameChannel: () => {},
+      onArchiveCat: () => {},
+      onAccountMenuToggle: () => {},
+      onOverflowMenuToggle: () => {},
+      onNavigateSettings: () => {},
+      onSwitchProduct: () => {},
+      activeMyCatId: null,
+      onDirectChatCat: () => {},
+    });
+
+    assert.match(findButtonClassByLabel(tree, 'Work Items'), /navItemActive/u);
   });
 });
 
@@ -390,6 +466,8 @@ test('Work and Code sidebars keep the shared environment account menu wiring', (
     onStartNewChat: () => {},
     onStartWorkIntake: () => {},
     onOpenWarRoom: () => {},
+    onOpenProjects: () => {},
+    onOpenWorkItems: () => {},
     onSelect: () => {},
     onDeleteChannel: () => {},
     onRenameChannel: () => {},

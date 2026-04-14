@@ -10,8 +10,10 @@ test('work renderer dashboard api keeps war-room payloads typed', async () => {
   );
 
   assert.match(dashboardApiSource, /expectJson<WorkDashboardProjection>/u);
+  assert.match(dashboardApiSource, /expectJson<WorkProjectListProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkTaskDetailProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkProjectDetailProjection>/u);
+  assert.match(dashboardApiSource, /expectJson<WorkWorkItemListProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkWorkItemDetailProjection>/u);
 });
 
@@ -24,8 +26,16 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
     path.join(process.cwd(), 'src/products/work/renderer/components/ProjectDetailView.tsx'),
     'utf8',
   );
+  const projectListSource = await readFile(
+    path.join(process.cwd(), 'src/products/work/renderer/components/ProjectListView.tsx'),
+    'utf8',
+  );
   const taskDetailSource = await readFile(
     path.join(process.cwd(), 'src/products/work/renderer/components/TaskDetailView.tsx'),
+    'utf8',
+  );
+  const workItemListSource = await readFile(
+    path.join(process.cwd(), 'src/products/work/renderer/components/WorkItemListView.tsx'),
     'utf8',
   );
   const workItemDetailSource = await readFile(
@@ -45,10 +55,19 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(projectDetailSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(task\.id\)\}`\)/u);
   assert.doesNotMatch(projectDetailSource, /as unknown as/u);
 
+  assert.match(projectListSource, /fetchWorkProjectList/u);
+  assert.match(projectListSource, /navigate\(`\/work\/projects\/\$\{encodeURIComponent\(project\.id\)\}`\)/u);
+  assert.doesNotMatch(projectListSource, /as unknown as/u);
+
   assert.match(taskDetailSource, /fetchWorkTaskDetail/u);
   assert.match(taskDetailSource, /buildChannelPath/u);
   assert.match(taskDetailSource, /navigate\('\/work\/war-room'\)/u);
   assert.doesNotMatch(taskDetailSource, /as unknown as/u);
+
+  assert.match(workItemListSource, /fetchWorkItemList/u);
+  assert.match(workItemListSource, /navigate\(`\/work\/work-items\/\$\{encodeURIComponent\(workItem\.id\)\}`\)/u);
+  assert.match(workItemListSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(workItem\.taskId!\)\}`\)/u);
+  assert.doesNotMatch(workItemListSource, /as unknown as/u);
 
   assert.match(workItemDetailSource, /fetchWorkItemDetail/u);
   assert.match(workItemDetailSource, /buildChannelPath/u);

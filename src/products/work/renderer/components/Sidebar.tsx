@@ -38,6 +38,8 @@ export interface SidebarProps {
   onStartNewChat: () => void;
   onStartWorkIntake?: () => void;
   onOpenWarRoom?: () => void;
+  onOpenProjects?: () => void;
+  onOpenWorkItems?: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
@@ -102,14 +104,11 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 }
 
 function createExtraActionGroups(props: SidebarProps): ConversationSidebarActionGroup[] {
-  if (!props.onOpenWarRoom) {
-    return [];
-  }
-
   const currentPath = globalThis.location?.pathname ?? '/work';
+  const groups: ConversationSidebarActionGroup[] = [];
 
-  return [
-    {
+  if (props.onOpenWarRoom) {
+    groups.push({
       key: 'war-room',
       ariaLabel: 'Operations',
       items: [
@@ -137,8 +136,74 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           ),
         },
       ],
-    },
-  ];
+    });
+  }
+
+  if (props.onOpenProjects) {
+    groups.push({
+      key: 'projects',
+      ariaLabel: 'Portfolio',
+      items: [
+        {
+          key: 'projects',
+          label: 'Projects',
+          onClick: props.onOpenProjects,
+          active: currentPath.startsWith('/work/projects'),
+          icon: (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2.5" y="3" width="11" height="10" rx="1.5" />
+              <path d="M5 3v-1" />
+              <path d="M11 3v-1" />
+              <path d="M4.5 7h7" />
+            </svg>
+          ),
+        },
+      ],
+    });
+  }
+
+  if (props.onOpenWorkItems) {
+    groups.push({
+      key: 'work-items',
+      ariaLabel: 'Managed Work',
+      items: [
+        {
+          key: 'work-items',
+          label: 'Work Items',
+          onClick: props.onOpenWorkItems,
+          active: currentPath.startsWith('/work/work-items'),
+          icon: (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+              <path d="M5 6h6" />
+              <path d="M5 8.5h6" />
+              <path d="M5 11h3.5" />
+            </svg>
+          ),
+        },
+      ],
+    });
+  }
+
+  return groups;
 }
 
 export function Sidebar(props: SidebarProps) {
