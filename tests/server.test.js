@@ -3072,6 +3072,18 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       ),
     );
 
+    const structuredOutputsResponse = await fetch(
+      `${baseUrl}/api/core/tasks/${fixtures.task.id}/structured-outputs`,
+    );
+    assert.equal(structuredOutputsResponse.status, 200);
+    const structuredOutputsPayload = await structuredOutputsResponse.json();
+    assert.ok(
+      structuredOutputsPayload.outputs.some((output) => output.kind === 'artifact'),
+    );
+    assert.ok(
+      structuredOutputsPayload.outputs.some((output) => output.kind === 'reference'),
+    );
+
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
