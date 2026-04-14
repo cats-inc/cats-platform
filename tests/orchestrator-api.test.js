@@ -2280,6 +2280,300 @@ test('startup-recovered continuation replay auto-resumes when an active target r
   }, chatStore);
 });
 
+test('startup-recovered initial sequential latest handoff auto-resumes on server startup with source identity intact', async () => {
+  const runtimeClient = createRuntimeStub({
+    sendMessage: ({ content }) => {
+      if (content.includes('You are Agent-2')) {
+        return usage('Agent-2 resumed the recovered startup handoff.');
+      }
+      if (content.includes('You are Agent-3')) {
+        return usage('Agent-3 completed the recovered startup handoff.');
+      }
+      return usage('Boss Cat acknowledged the retry.');
+    },
+  });
+  const now = new Date('2026-03-26T16:40:30.000Z');
+  const responseAt = new Date('2026-03-26T16:40:45.000Z');
+  let chat = createDefaultChatState();
+  chat = seedChannel(
+    chat,
+    {
+      title: 'Recovered startup latest handoff',
+      topic: 'Resume the remaining audience from the latest assistant handoff during startup.',
+      repoPath: 'C:/repo/cats-platform',
+      cats: [
+        {
+          name: 'Agent-1',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Agent-2',
+          provider: 'gemini',
+          roles: ['implementer'],
+        },
+        {
+          name: 'Agent-3',
+          provider: 'codex',
+          roles: ['verifier'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(seededChannel);
+  seededChannel.status = 'active';
+  const firstAssignment = seededChannel.catAssignments[0];
+  const secondAssignment = seededChannel.catAssignments[1];
+  const thirdAssignment = seededChannel.catAssignments[2];
+  assert.ok(firstAssignment);
+  assert.ok(secondAssignment);
+  assert.ok(thirdAssignment);
+  chat = setChannelCatLease(
+    chat,
+    channelId,
+    firstAssignment.catId,
+    {
+      sessionId: 'session-agent-1',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+  chat = setChannelCatLease(
+    chat,
+    channelId,
+    secondAssignment.catId,
+    {
+      sessionId: 'session-agent-2',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'gemini',
+      model: 'gemini-2.5-pro',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+  chat = setChannelCatLease(
+    chat,
+    channelId,
+    thirdAssignment.catId,
+    {
+      sessionId: 'session-agent-3',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'codex',
+      model: 'gpt-5.4',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Owner',
+      body: 'Resume this startup sequential handoff from the latest assistant reply.',
+    },
+    now,
+  ).state;
+
+  const initialChannel = buildChannelView(chat, channelId);
+  const sourceMessage = initialChannel.messages.at(-1);
+  assert.ok(sourceMessage);
+  const firstParticipant = {
+    participantKind: 'cat',
+    participantId: initialChannel.assignedCats[0]?.catId ?? 'cat-agent-1',
+    participantName: initialChannel.assignedCats[0]?.name ?? 'Agent-1',
+  };
+  const secondParticipant = {
+    participantKind: 'cat',
+    participantId: initialChannel.assignedCats[1]?.catId ?? 'cat-agent-2',
+    participantName: initialChannel.assignedCats[1]?.name ?? 'Agent-2',
+  };
+  const thirdParticipant = {
+    participantKind: 'cat',
+    participantId: initialChannel.assignedCats[2]?.catId ?? 'cat-agent-3',
+    participantName: initialChannel.assignedCats[2]?.name ?? 'Agent-3',
+  };
+
+  const appendedReply = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Agent-1',
+      body: 'Agent-1 handled the first step.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-api-startup-auto-resume',
+        terminal: true,
+        turnId: 'turn-api-startup-auto-resume',
+        targetKind: 'cat',
+        targetId: firstParticipant.participantId,
+        sourceMessageId: sourceMessage.id,
+        routingTrigger: 'explicit_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  );
+  chat = appendedReply.state;
+  const handoffMessageId = appendedReply.message.id;
+
+  const channel = buildChannelView(chat, channelId);
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
+  const activeTurn = createWorkflowTurn(
+    sourceMessage,
+    now.toISOString(),
+    'continuation_handoff',
+    'sequential',
+  );
+  activeTurn.id = 'turn-api-startup-auto-resume';
+  activeTurn.dispatchCount = 1;
+  activeTurn.targetStatuses.push({
+    id: 'target-state-api-startup-auto-resume',
+    dispatchId: 'dispatch-api-startup-auto-resume',
+    participant: firstParticipant,
+    source: null,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'explicit_mention',
+    mentionNames: ['Agent-1', 'Agent-2', 'Agent-3'],
+    depth: 0,
+    parentCheckpointId: null,
+    branchStrategy: 'fresh_no_parent',
+    handoffReason: 'explicit_mention',
+    wakeRequestId: null,
+    status: 'completed',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: responseAt.toISOString(),
+    response: {
+      assistantTurnId: 'assistant-turn-api-startup-auto-resume',
+      messageIds: [handoffMessageId],
+      fullText: 'Agent-1 handled the first step.',
+      segmentCount: 1,
+    },
+    error: null,
+  });
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'turn_started',
+      'running',
+      'System resumed the initial sequential audience.',
+      now.toISOString(),
+      null,
+      sourceMessage.id,
+      [firstParticipant, secondParticipant, thirdParticipant],
+      {
+        metadata: {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+        },
+      },
+    ),
+  );
+  workflow.activeTurn = activeTurn;
+  roomRouting.workflow = workflow;
+  roomRouting.lastOutcome = {
+    turnId: activeTurn.id,
+    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    status: 'running',
+    resolution: {
+      routingMode: 'explicit_multi',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: 'Initial sequential audience is ready to resume from the latest handoff during startup.',
+    },
+    resolvedTargets: [firstParticipant, secondParticipant, thirdParticipant],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-api-startup-auto-resume',
+        sourceMessageId: sourceMessage.id,
+        source: null,
+        target: firstParticipant,
+        trigger: 'explicit_mention',
+        status: 'completed',
+        mentionNames: ['Agent-1', 'Agent-2', 'Agent-3'],
+        response: {
+          assistantTurnId: 'assistant-turn-api-startup-auto-resume',
+          messageIds: [handoffMessageId],
+          fullText: 'Agent-1 handled the first step.',
+          segmentCount: 1,
+        },
+        startedAt: now.toISOString(),
+        completedAt: responseAt.toISOString(),
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 1,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: null,
+  };
+  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
+
+  const chatStore = new MemoryChatStore(chat);
+  const taskId = `task-channel-${channelId}`;
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const initialCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(initialCoreResponse.status, 200);
+    const initialCorePayload = await initialCoreResponse.json();
+    const task = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
+    assert.ok(task);
+    assert.equal(task.metadata.workflowContinuationReplay, undefined);
+    assert.equal(runtimeClient.sentMessages.length, 2);
+    assert.match(runtimeClient.sentMessages[0]?.content ?? '', /You are Agent-2/u);
+    assert.match(runtimeClient.sentMessages[1]?.content ?? '', /You are Agent-3/u);
+    assert.ok(
+      initialCorePayload.activities.some((activity) =>
+        activity.taskId === taskId
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'startup_recovered'),
+    );
+    assert.ok(
+      initialCorePayload.activities.some((activity) =>
+        activity.taskId === taskId
+        && activity.metadata?.source === 'workflow-continuation-replay'
+        && activity.metadata?.replayPhase === 'replay_dispatched'
+        && activity.metadata?.resumeReason === null
+        && activity.metadata?.resultCount === 2),
+    );
+  }, chatStore);
+});
+
 test('startup-recovered initial sequential latest handoff keeps source identity when a cat session recovers', async () => {
   const runtimeClient = createRuntimeStub({
     sendMessage: ({ content }) => {
