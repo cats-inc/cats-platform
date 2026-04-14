@@ -103,8 +103,9 @@ function recoverChannelWorkflowTurn(
   state: ChatState,
   channel: ChatChannelState,
   now: Date,
+  core?: CatsCoreState,
 ): ChatState {
-  const repaired = repairOrphanedCompletedDispatchTurn(state, channel.id, now);
+  const repaired = repairOrphanedCompletedDispatchTurn(state, channel.id, now, core);
   if (repaired.repaired) {
     return repaired.state;
   }
@@ -212,6 +213,7 @@ export async function reconcileChatWorkflowRecoveryOnStartup(
 ): Promise<number> {
   const now = dependencies.shared.now?.() ?? new Date();
   const initialChat = await dependencies.chat.chatStore.read();
+  const initialCore = await dependencies.shared.coreStore.readCore();
   let nextChat = initialChat;
   let recoveredCount = 0;
   const recoveredTaskIds: string[] = [];
@@ -222,7 +224,7 @@ export async function reconcileChatWorkflowRecoveryOnStartup(
       continue;
     }
 
-    nextChat = recoverChannelWorkflowTurn(nextChat, channel, now);
+    nextChat = recoverChannelWorkflowTurn(nextChat, channel, now, initialCore);
     recoveredTaskIds.push(`task-channel-${channelId}`);
     recoveredCount += 1;
   }

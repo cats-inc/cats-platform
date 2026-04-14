@@ -730,3 +730,174 @@ test('repairOrphanedCompletedDispatchTurn syncs repaired turns back into canonic
     'session-recovered',
   );
 });
+
+test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canonical segments when the transcript reply is missing', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-15T00:30:00.000Z');
+  const responseAt = new Date('2026-04-15T00:30:06.000Z');
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Repair canonical fallback',
+      topic: 'Recover a completed turn from canonical interaction segments.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Please recover this completed reply from canonical state' },
+    runtimeClient,
+    seededAt,
+  );
+  const activeTurnId = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn?.id;
+  assert.ok(activeTurnId);
+  const repliedState = appendMessage(
+    begun.state,
+    channelId,
+    {
+      senderKind: 'orchestrator',
+      senderName: 'Chat',
+      body: 'Recovered from canonical core.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-canonical-fallback',
+        targetStateId: 'target-orchestrator-canonical-fallback',
+        terminal: true,
+        turnId: activeTurnId,
+        targetKind: 'orchestrator',
+        targetId: 'orchestrator',
+        sessionId: 'session-canonical-fallback',
+        routingTrigger: 'room_default',
+        dispatchDepth: 0,
+      },
+    },
+  ).state;
+
+  const baselineRecovered = repairOrphanedCompletedDispatchTurn(
+    repliedState,
+    channelId,
+    new Date('2026-04-15T00:30:30.000Z'),
+  );
+  assert.equal(baselineRecovered.repaired, true);
+  await store.write(baselineRecovered.state);
+  const canonicalCore = await store.readCore();
+
+  const corruptedState = structuredClone(baselineRecovered.state);
+  const corruptedChannel = requireChannel(corruptedState, channelId);
+  corruptedChannel.messages = corruptedChannel.messages.filter((message) =>
+    message.metadata?.assistantTurnId !== 'assistant-turn-canonical-fallback');
+  const interruptedTurn = structuredClone(corruptedChannel.roomRouting.workflow.turnHistory[0]);
+  assert.ok(interruptedTurn);
+  interruptedTurn.status = 'blocked';
+  interruptedTurn.stageId = 'startup_recovery';
+  interruptedTurn.completedAt = responseAt.toISOString();
+  interruptedTurn.updatedAt = responseAt.toISOString();
+  interruptedTurn.targetStatuses = [];
+  interruptedTurn.events = interruptedTurn.events.filter((event) =>
+    event.kind === 'turn_started' || event.kind === 'checkpoint');
+  interruptedTurn.events.push(
+    {
+      id: 'guard-blocked-canonical-fallback',
+      turnId: interruptedTurn.id,
+      kind: 'guard_blocked',
+      status: 'blocked',
+      message: 'Recovered an interrupted room workflow after restart.',
+      actor: null,
+      sourceMessageId: null,
+      targets: [],
+      dispatchId: null,
+      checkpointId: 'loop-guard-canonical-fallback',
+      outcomeId: null,
+      createdAt: responseAt.toISOString(),
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+    {
+      id: 'outcome-blocked-canonical-fallback',
+      turnId: interruptedTurn.id,
+      kind: 'outcome',
+      status: 'blocked',
+      message: 'Room workflow moved to blocked recovery after startup interrupted the active turn.',
+      actor: null,
+      sourceMessageId: interruptedTurn.sourceMessageId,
+      targets: [],
+      dispatchId: null,
+      checkpointId: null,
+      outcomeId: null,
+      createdAt: responseAt.toISOString(),
+      metadata: {
+        recoverySource: 'server_restart',
+      },
+    },
+  );
+  corruptedChannel.roomRouting.workflow.activeTurn = null;
+  corruptedChannel.roomRouting.workflow.turnHistory = [interruptedTurn];
+  corruptedChannel.roomRouting.lastCheckpoint = {
+    id: 'loop-guard-canonical-fallback',
+    kind: 'loop_guard',
+    message: 'Recovered an interrupted room workflow after restart.',
+    actor: null,
+    sourceMessageId: null,
+    targets: [],
+    createdAt: responseAt.toISOString(),
+  };
+  corruptedChannel.roomRouting.lastOutcome = {
+    turnId: interruptedTurn.id,
+    mode: corruptedChannel.roomRouting.mode,
+    sourceMessageId: interruptedTurn.sourceMessageId,
+    sourceSenderKind: interruptedTurn.sourceSenderKind,
+    sourceSenderName: interruptedTurn.sourceSenderName,
+    status: 'blocked',
+    resolution: {
+      routingMode: 'room_default',
+      selectionKind: 'default_target',
+      defaultTarget: {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+      defaultTargetReason: 'boss_chat_default',
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    },
+    resolvedTargets: [
+      {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+    ],
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 0,
+    guard: null,
+    startedAt: seededAt.toISOString(),
+    completedAt: responseAt.toISOString(),
+  };
+
+  const repaired = repairOrphanedCompletedDispatchTurn(
+    corruptedState,
+    channelId,
+    new Date('2026-04-15T00:31:00.000Z'),
+    canonicalCore,
+  );
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  assert.equal(repairedChannel.roomRouting.workflow.activeTurn, null);
+  assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'completed');
+  assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'completed');
+  assert.equal(repairedChannel.roomRouting.lastOutcome?.dispatches[0]?.status, 'completed');
+});

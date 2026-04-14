@@ -8,7 +8,13 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type {
+  CatsCoreState,
+  LaneRecord,
+  SegmentRecord,
+} from '../../../../core/types.js';
+import type {
   RoomRouteDefaultTargetReason,
+  RoomAssistantTurnDelivery,
   RoomRoutingDispatch,
   RoomRoutingOutcome,
   RoomRoutingParticipantRef,
@@ -34,6 +40,7 @@ import {
   readAssistantTurnId,
   readAssistantTurnTargetStateId,
 } from '../assistantTurnSegments.js';
+import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 
 function describeGuardReason(): string {
   return 'a routing guard';
@@ -41,9 +48,215 @@ function describeGuardReason(): string {
 
 function readRuntimeResponseForTurn(
   channel: ChatChannelState,
+  channelId: string,
   turnId: string,
-): ChatMessage | null {
-  return findTerminalAssistantTurnSegmentForTurn(channel, turnId);
+  core?: CatsCoreState,
+): {
+  message: ChatMessage;
+  response: RoomAssistantTurnDelivery;
+} | null {
+  const terminalSegment = findTerminalAssistantTurnSegmentForTurn(channel, turnId);
+  if (terminalSegment) {
+    const assistantTurnId = readAssistantTurnId(terminalSegment);
+    if (!assistantTurnId) {
+      return null;
+    }
+    const response = buildAssistantTurnDeliveryFromChannel(channel, assistantTurnId);
+    if (!response) {
+      return null;
+    }
+    return {
+      message: terminalSegment,
+      response,
+    };
+  }
+
+  if (!core) {
+    return null;
+  }
+
+  return buildCanonicalRuntimeResponseForTurn(channelId, turnId, core);
+}
+
+function readCoreMetadataString(
+  metadata: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function readCoreMetadataNumber(
+  metadata: Record<string, unknown> | null | undefined,
+  key: string,
+): number | null {
+  const value = metadata?.[key];
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : null;
+}
+
+function compareSegmentsAscending(
+  left: SegmentRecord,
+  right: SegmentRecord,
+): number {
+  const sequenceComparison = left.sequence - right.sequence;
+  if (sequenceComparison !== 0) {
+    return sequenceComparison;
+  }
+  const createdComparison = left.createdAt.localeCompare(right.createdAt);
+  if (createdComparison !== 0) {
+    return createdComparison;
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function compareSegmentsDescending(
+  left: SegmentRecord,
+  right: SegmentRecord,
+): number {
+  const createdComparison = right.createdAt.localeCompare(left.createdAt);
+  if (createdComparison !== 0) {
+    return createdComparison;
+  }
+  const sequenceComparison = right.sequence - left.sequence;
+  if (sequenceComparison !== 0) {
+    return sequenceComparison;
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function resolveRawChatParticipantId(
+  canonicalParticipantId: string | null | undefined,
+  conversationId: string,
+): string | null {
+  if (!canonicalParticipantId) {
+    return null;
+  }
+
+  const prefix = `participant-${conversationId}-`;
+  if (canonicalParticipantId.startsWith(prefix)) {
+    const rawParticipantId = canonicalParticipantId.slice(prefix.length).trim();
+    return rawParticipantId.length > 0 ? rawParticipantId : null;
+  }
+
+  const trimmedParticipantId = canonicalParticipantId.trim();
+  return trimmedParticipantId.length > 0 ? trimmedParticipantId : null;
+}
+
+function buildCanonicalRuntimeResponseForTurn(
+  channelId: string,
+  turnId: string,
+  core: CatsCoreState,
+): {
+  message: ChatMessage;
+  response: RoomAssistantTurnDelivery;
+} | null {
+  const conversationId = buildChatConversationId(channelId);
+  const relevantLanes = core.lanes.filter((lane) =>
+    lane.conversationId === conversationId && lane.turnId === turnId);
+  if (relevantLanes.length === 0) {
+    return null;
+  }
+
+  const lanesById = new Map<string, LaneRecord>(
+    relevantLanes.map((lane) => [lane.id, lane]),
+  );
+  const relevantSegments = core.segments.filter((segment) =>
+    segment.conversationId === conversationId
+    && segment.turnId === turnId
+    && segment.kind === 'text'
+    && segment.status === 'complete'
+    && lanesById.has(segment.laneId),
+  );
+  if (relevantSegments.length === 0) {
+    return null;
+  }
+
+  const terminalSegments = relevantSegments.filter((segment) =>
+    segment.metadata?.terminal === true);
+  const anchorSegment = (terminalSegments.length > 0 ? terminalSegments : relevantSegments)
+    .sort(compareSegmentsDescending)[0];
+  if (!anchorSegment) {
+    return null;
+  }
+
+  const lane = lanesById.get(anchorSegment.laneId);
+  if (!lane) {
+    return null;
+  }
+
+  const laneSegments = relevantSegments
+    .filter((segment) => segment.laneId === lane.id)
+    .sort(compareSegmentsAscending);
+  if (laneSegments.length === 0) {
+    return null;
+  }
+
+  const anchorMetadata = anchorSegment.metadata as Record<string, unknown> | undefined;
+  const laneMetadata = lane.metadata as Record<string, unknown> | undefined;
+  const assistantTurnId = readCoreMetadataString(anchorMetadata, 'assistantTurnId')
+    ?? readCoreMetadataString(laneMetadata, 'responseAssistantTurnId')
+    ?? `assistant-turn-${turnId}`;
+  const participantKind = readCoreMetadataString(laneMetadata, 'participantKind') === 'orchestrator'
+    ? 'orchestrator'
+    : 'cat';
+  const targetId = participantKind === 'orchestrator'
+    ? 'orchestrator'
+    : resolveRawChatParticipantId(lane.participantId, conversationId);
+  const fullText = laneSegments
+    .map((segment) => segment.content ?? '')
+    .join('');
+  const senderName = readCoreMetadataString(laneMetadata, 'speakerLabel')
+    ?? (participantKind === 'orchestrator' ? ORCHESTRATOR_NAME : 'Agent');
+
+  return {
+    message: {
+      id: readCoreMetadataString(anchorMetadata, 'chatMessageId')
+        ?? `canonical-segment-${assistantTurnId}-${anchorSegment.sequence}`,
+      channelId,
+      senderKind: participantKind === 'orchestrator' ? 'orchestrator' : 'agent',
+      senderName,
+      body: fullText,
+      mentions: [],
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId,
+        targetStateId: readCoreMetadataString(anchorMetadata, 'targetStateId')
+          ?? readCoreMetadataString(laneMetadata, 'targetStateId')
+          ?? null,
+        terminal: true,
+        turnId,
+        targetKind: participantKind,
+        ...(targetId ? { targetId } : {}),
+        ...(anchorSegment.sessionId ? { sessionId: anchorSegment.sessionId } : {}),
+        ...(readCoreMetadataString(anchorMetadata, 'routingTrigger')
+          ? { routingTrigger: readCoreMetadataString(anchorMetadata, 'routingTrigger') }
+          : {}),
+        ...(readCoreMetadataNumber(anchorMetadata, 'dispatchDepth') !== null
+          ? { dispatchDepth: readCoreMetadataNumber(anchorMetadata, 'dispatchDepth') }
+          : {}),
+        repairSource: 'canonical_segment_fallback',
+      },
+      usage: null,
+      executionProvider: readCoreMetadataString(anchorMetadata, 'executionProvider'),
+      executionModel: readCoreMetadataString(anchorMetadata, 'executionModel'),
+      executionInstance: readCoreMetadataString(anchorMetadata, 'executionInstance'),
+      createdAt: anchorSegment.createdAt,
+    },
+    response: {
+      assistantTurnId,
+      messageIds: laneSegments.map((segment) =>
+        readCoreMetadataString(
+          segment.metadata as Record<string, unknown> | undefined,
+          'chatMessageId',
+        ) ?? segment.id),
+      fullText,
+      segmentCount: laneSegments.length,
+    },
+  };
 }
 
 function buildParticipantRefFromResponse(
@@ -653,6 +866,7 @@ export function repairOrphanedCompletedDispatchTurn(
   state: ChatState,
   channelId: string,
   now: Date = new Date(),
+  core?: CatsCoreState,
 ): {
   repaired: boolean;
   state: ChatState;
@@ -678,19 +892,16 @@ export function repairOrphanedCompletedDispatchTurn(
     return { repaired: false, state };
   }
 
-  const responseMessage = readRuntimeResponseForTurn(channel, repairTurnId);
-  if (!responseMessage) {
+  const recoveredResponse = readRuntimeResponseForTurn(channel, channelId, repairTurnId, core);
+  if (!recoveredResponse) {
     return { repaired: false, state };
   }
+  const { message: responseMessage, response } = recoveredResponse;
   const assistantTurnId = readAssistantTurnId(responseMessage);
   if (!assistantTurnId) {
     return { repaired: false, state };
   }
   const targetStateId = readAssistantTurnTargetStateId(responseMessage);
-  const response = buildAssistantTurnDeliveryFromChannel(channel, assistantTurnId);
-  if (!response) {
-    return { repaired: false, state };
-  }
   const participant = buildParticipantRefFromResponse(responseMessage);
   const candidateTurn = activeTurn ?? recoveredTurn;
   if (

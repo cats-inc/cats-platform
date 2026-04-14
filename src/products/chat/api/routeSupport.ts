@@ -198,6 +198,7 @@ export async function buildAppShellPayload(
       },
       selectedChannelId,
       resolvedState,
+      core,
     );
   }
   const runtime = await dependencies.runtimeClient.getHealth();

@@ -1,6 +1,7 @@
 import type { ChatState } from './contracts.js';
 import type { ChatStore } from '../state/store.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
+import type { CatsCoreState } from '../../../core/types.js';
 import {
   repairMissingSessionStartedMessages,
   repairMissingStartupRecoveryNotice,
@@ -8,7 +9,7 @@ import {
 } from '../state/runtime-dispatch/repair.js';
 
 interface ChannelReadRepairDependencies {
-  chatStore: Pick<ChatStore, 'read' | 'write'>;
+  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore'>;
   mutationGate: AsyncKeyedGate;
   runtimeDataDir?: string | null;
   now?: () => Date;
@@ -22,6 +23,7 @@ export function applyChannelReadRepairs(
   state: ChatState,
   channelId: string,
   options: {
+    core?: CatsCoreState;
     runtimeDataDir?: string | null;
     now?: Date;
   } = {},
@@ -30,7 +32,12 @@ export function applyChannelReadRepairs(
   state: ChatState;
 } {
   const now = options.now ?? new Date();
-  const repairedTurn = repairOrphanedCompletedDispatchTurn(state, channelId, now);
+  const repairedTurn = repairOrphanedCompletedDispatchTurn(
+    state,
+    channelId,
+    now,
+    options.core,
+  );
   const repairedSessionMetadata = repairMissingSessionStartedMessages(
     repairedTurn.state,
     channelId,
@@ -60,10 +67,13 @@ export async function repairChannelReadState(
   dependencies: ChannelReadRepairDependencies,
   channelId: string,
   state?: ChatState,
+  core?: CatsCoreState,
 ): Promise<ChatState> {
   const runtimeDataDir = dependencies.runtimeDataDir;
   let resolvedState = state ?? await dependencies.chatStore.read();
+  const resolvedCore = core ?? await dependencies.chatStore.readCore();
   const repairedState = applyChannelReadRepairs(resolvedState, channelId, {
+    core: resolvedCore,
     runtimeDataDir,
     now: resolveRepairNow(dependencies),
   });
@@ -74,7 +84,9 @@ export async function repairChannelReadState(
   resolvedState = repairedState.state;
   return dependencies.mutationGate.run(channelId, async () => {
     const latestState = await dependencies.chatStore.read();
+    const latestCore = await dependencies.chatStore.readCore();
     const latestRepair = applyChannelReadRepairs(latestState, channelId, {
+      core: latestCore,
       runtimeDataDir,
       now: resolveRepairNow(dependencies),
     });
