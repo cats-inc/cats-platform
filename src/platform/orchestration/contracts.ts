@@ -28,6 +28,7 @@ import type {
   CoreEffectivePolicySource,
   CoreGovernanceSummary,
   CoreOrchestrationOutcomeRecord,
+  CoreRuntimeDeliveryAction,
   CoreRunRecord,
   CoreTaskRecord,
   CoreTraceRecord,
@@ -237,6 +238,38 @@ export interface OrchestratorWorkflowContinuationView {
   retryAvailable: boolean;
 }
 
+export type OrchestratorOperatorAttentionReason =
+  | 'approval_pending'
+  | 'run_blocked'
+  | 'run_failed'
+  | 'retry_available'
+  | 'workflow_review_required'
+  | 'child_tasks_in_progress';
+
+export interface OrchestratorOperatorAttentionView {
+  severity: OrchestratorOperatorSeverity;
+  reasons: OrchestratorOperatorAttentionReason[];
+  needsOperatorAttention: boolean;
+}
+
+export interface OrchestratorRuntimeDeliveryIntentView {
+  mode: CoreDeliveryMode | null;
+  source: CoreEffectivePolicySource | null;
+  rationale: string | null;
+  gates: CoreDeliveryGate[];
+  requestedActions: CoreRuntimeDeliveryAction[];
+  strict: boolean;
+  requiresOwnerDecision: boolean;
+  approvalPending: boolean;
+  channelId: string | null;
+  conversationId: string | null;
+  taskId: string | null;
+  roomMode: string | null;
+  transport: string | null;
+  workflowStageId: string | null;
+  workflowShape: string | null;
+}
+
 export interface OrchestratorEffectivePolicyView {
   deliveryMode: CoreDeliveryMode | null;
   deliveryGates: CoreDeliveryGate[];
@@ -313,6 +346,9 @@ export interface OrchestratorOperatorView {
   workflowSummary: CoreWorkflowSummary | null;
   latestWorkflowRecommendation: OrchestratorWorkflowRecommendationView | null;
   workflowContinuation: OrchestratorWorkflowContinuationView | null;
+  runtimeDeliveryIntent: OrchestratorRuntimeDeliveryIntentView | null;
+  attention: OrchestratorOperatorAttentionView | null;
+  nextActions: OrchestratorNextAction[];
   approvalActions: OrchestratorApprovalActionView[];
   incidentActions: OrchestratorOperatorActionView[];
 }

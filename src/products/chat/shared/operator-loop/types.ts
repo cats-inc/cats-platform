@@ -10,6 +10,7 @@ import type {
   CoreEffectivePolicySource,
   CoreGovernanceSummary,
   CoreOrchestrationOutcomeRecord,
+  CoreRuntimeDeliveryAction,
   CoreRunRecord,
   CoreTaskRecord,
   CoreTraceRecord,
@@ -101,6 +102,49 @@ export interface ChatWorkflowContinuationView {
   retryAvailable: boolean;
 }
 
+export type ChatOperatorAttentionReason =
+  | 'approval_pending'
+  | 'run_blocked'
+  | 'run_failed'
+  | 'retry_available'
+  | 'workflow_review_required'
+  | 'child_tasks_in_progress';
+
+export interface ChatOperatorAttentionView {
+  severity: ChatOperatorSeverity;
+  reasons: ChatOperatorAttentionReason[];
+  needsOperatorAttention: boolean;
+}
+
+export interface ChatRuntimeDeliveryIntentView {
+  mode: CoreDeliveryMode | null;
+  source: CoreEffectivePolicySource | null;
+  rationale: string | null;
+  gates: CoreDeliveryGate[];
+  requestedActions: CoreRuntimeDeliveryAction[];
+  strict: boolean;
+  requiresOwnerDecision: boolean;
+  approvalPending: boolean;
+  channelId: string | null;
+  conversationId: string | null;
+  taskId: string | null;
+  roomMode: string | null;
+  transport: string | null;
+  workflowStageId: string | null;
+  workflowShape: string | null;
+}
+
+export interface ChatNextActionView {
+  kind: 'approve' | 'reroute' | 'reject' | 'retry' | 'acknowledge' | 'wait' | 'complete';
+  label: string;
+  blocking: boolean;
+  action: {
+    method: 'POST';
+    path: string;
+    body: Record<string, unknown>;
+  } | null;
+}
+
 export interface ChatEffectivePolicyView {
   deliveryMode: CoreDeliveryMode | null;
   deliveryGates: CoreDeliveryGate[];
@@ -177,6 +221,9 @@ export interface ChatOperatorView {
   workflowSummary: CoreWorkflowSummary | null;
   latestWorkflowRecommendation: ChatWorkflowRecommendationView | null;
   workflowContinuation: ChatWorkflowContinuationView | null;
+  runtimeDeliveryIntent: ChatRuntimeDeliveryIntentView | null;
+  attention: ChatOperatorAttentionView | null;
+  nextActions: ChatNextActionView[];
   approvalActions: ChatApprovalActionView[];
   incidentActions: ChatOperatorActionView[];
 }

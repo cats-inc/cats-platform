@@ -187,6 +187,19 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   );
   assert.equal(view.workflowSummary?.shape, 'concurrent');
   assert.equal(view.workflowSummary?.branchStatusCounts.completed, 1);
+  assert.equal(view.attention?.severity, 'attention');
+  assert.equal(view.attention?.needsOperatorAttention, true);
+  assert.ok(view.attention?.reasons.includes('approval_pending'));
+  assert.equal(view.runtimeDeliveryIntent?.mode, 'commit_only');
+  assert.deepEqual(
+    view.runtimeDeliveryIntent?.gates,
+    ['owner_approval_required'],
+  );
+  assert.equal(view.runtimeDeliveryIntent?.approvalPending, true);
+  assert.equal(view.runtimeDeliveryIntent?.taskId, 'task-channel-room-1');
+  assert.ok(view.nextActions.some((action) => action.kind === 'approve'));
+  assert.ok(view.nextActions.some((action) => action.kind === 'reroute'));
+  assert.ok(view.nextActions.some((action) => action.kind === 'reject'));
   assert.deepEqual(
     view.approvalActions.map((action) => action.kind),
     ['approve', 'reroute', 'reject'],

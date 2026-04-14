@@ -464,6 +464,10 @@ Known follow-ups:
   `sourceAssistantTurnId`), so room-level operator inspection no longer has to
   detour through `/api/core/*` just to inspect the current blocked continuation
   replay state
+- those same execution-loop operator payloads now also expose normalized
+  task-scoped `attention`, `runtimeDeliveryIntent`, and stable `nextActions`,
+  so room-level consumers can reuse the core control-plane attention/delivery
+  contract without making a second control-plane read
 - `src/core/taskRecords.ts` plus `GET /api/core/tasks/{taskId}/records` now
   expose grouped task-scoped approval bindings, runs, traces, checkpoints,
   outcomes, and activity rows so later recovery/control-plane consumers can

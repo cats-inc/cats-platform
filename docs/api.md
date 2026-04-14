@@ -719,6 +719,12 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     state, including `sourceMessageId`, `sourceTurnId`, `sourceLaneId`, and
     `sourceAssistantTurnId` when a blocked/retryable continuation snapshot is
     currently preserved on the task
+  - `attention` for the normalized operator-attention severity/reason summary
+    already used by the core control-plane read model
+  - `runtimeDeliveryIntent` for the normalized delivery-policy context
+    (requested actions, gates, room/workflow context, and owner-decision state)
+  - task-scoped `nextActions`, so room-level consumers can use the same stable
+    action shortlist without separately hydrating `/api/core/control-plane/*`
 
 ### Runtime Bridge
 

@@ -1055,6 +1055,11 @@ test('GET /api/orchestrator/channels/:id/execution-loop returns recovery actions
       payload.executionLoop.operator.workflowContinuation.retryAvailable,
       true,
     );
+    assert.equal(payload.executionLoop.operator.attention?.severity, 'attention');
+    assert.equal(payload.executionLoop.operator.attention?.needsOperatorAttention, true);
+    assert.ok(
+      payload.executionLoop.operator.nextActions.some((action) => action.kind === 'retry'),
+    );
     assert.equal(
       payload.executionLoop.operator.latestWorkflowRecommendation,
       null,

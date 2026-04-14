@@ -20,9 +20,12 @@ import {
 } from './metadata.js';
 import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import type {
+  ChatNextActionView,
+  ChatOperatorAttentionView,
   ChatOperatorSnapshot,
   ChatOperatorView,
   ChatRunInspectorView,
+  ChatRuntimeDeliveryIntentView,
 } from './types.js';
 
 export type {
@@ -32,11 +35,14 @@ export type {
   ChatOperatorActivityItem,
   ChatOperatorSeverity,
   ChatOperatorSnapshot,
+  ChatNextActionView,
   ChatOperatorView,
   ChatRunInspectorView,
   ChatRunMetrics,
+  ChatOperatorAttentionView,
   ChatWorkflowBranchView,
   ChatWorkflowContinuationView,
+  ChatRuntimeDeliveryIntentView,
   ChatWorkflowRecommendationView,
 } from './types.js';
 
@@ -105,6 +111,44 @@ export function buildChatOperatorView(
     outcomes,
     actorNameById,
   );
+  const nextActions: ChatNextActionView[] = controlPlane?.nextActions.map((action) => ({
+    kind: action.kind,
+    label: action.label,
+    blocking: action.blocking,
+    action: action.action
+      ? {
+          method: action.action.method,
+          path: action.action.path,
+          body: structuredClone(action.action.body),
+        }
+      : null,
+  })) ?? [];
+  const attention: ChatOperatorAttentionView | null = controlPlane
+    ? {
+        severity: controlPlane.attention.severity,
+        reasons: [...controlPlane.attention.reasons],
+        needsOperatorAttention: controlPlane.attention.needsOperatorAttention,
+      }
+    : null;
+  const runtimeDeliveryIntent: ChatRuntimeDeliveryIntentView | null = controlPlane?.runtimeDeliveryIntent
+    ? {
+        mode: controlPlane.runtimeDeliveryIntent.mode,
+        source: controlPlane.runtimeDeliveryIntent.source,
+        rationale: controlPlane.runtimeDeliveryIntent.rationale,
+        gates: [...controlPlane.runtimeDeliveryIntent.gates],
+        requestedActions: [...controlPlane.runtimeDeliveryIntent.requestedActions],
+        strict: controlPlane.runtimeDeliveryIntent.strict,
+        requiresOwnerDecision: controlPlane.runtimeDeliveryIntent.requiresOwnerDecision,
+        approvalPending: controlPlane.runtimeDeliveryIntent.approvalPending,
+        channelId: controlPlane.runtimeDeliveryIntent.channelId,
+        conversationId: controlPlane.runtimeDeliveryIntent.conversationId,
+        taskId: controlPlane.runtimeDeliveryIntent.taskId,
+        roomMode: controlPlane.runtimeDeliveryIntent.roomMode,
+        transport: controlPlane.runtimeDeliveryIntent.transport,
+        workflowStageId: controlPlane.runtimeDeliveryIntent.workflowStageId,
+        workflowShape: controlPlane.runtimeDeliveryIntent.workflowShape,
+      }
+    : null;
 
   return {
     channelId,
@@ -128,6 +172,9 @@ export function buildChatOperatorView(
     workflowSummary,
     latestWorkflowRecommendation,
     workflowContinuation: controlPlane?.workflowContinuation ?? null,
+    runtimeDeliveryIntent,
+    attention,
+    nextActions,
     approvalActions,
     incidentActions: buildIncidentActions(
       task,
