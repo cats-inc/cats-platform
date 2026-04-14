@@ -396,6 +396,96 @@ test('current-turn draft audience metadata routes multi-target turns sequentiall
   );
 });
 
+test('initial sequential audience keeps handing off the canonical frontier through later targets', async () => {
+  let { state, channelId, agent1Id, agent2Id } = await createChannelState();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+  state = createCat(
+    state,
+    {
+      name: 'Agent-3',
+      provider: 'codex',
+      roles: ['synthesizer'],
+    },
+    now,
+  );
+  const agent3Id = state.cats[0].id;
+  state = assignCatToChannel(
+    state,
+    channelId,
+    {
+      catId: agent3Id,
+      provider: 'codex',
+      roles: ['synthesizer'],
+    },
+    now,
+  );
+
+  const firstReply = createDeferred();
+  const secondReply = createDeferred();
+  const thirdRequested = createDeferred();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      return firstReply.promise;
+    }
+    if (content.includes('You are Agent-1')) {
+      return secondReply.promise;
+    }
+    if (content.includes('You are Agent-3')) {
+      thirdRequested.resolve();
+      return usage('Agent-3 handled the third step.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatchedPromise = routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Run the room in sequence.',
+      messageMetadata: {
+        recipientParticipantIds: [agent2Id, agent1Id, agent3Id],
+        workflowShape: 'sequential',
+      },
+    },
+    runtimeClient,
+    now,
+  );
+
+  firstReply.resolve(usage('Agent-2 handled the first step.'));
+  await Promise.resolve();
+  secondReply.resolve(usage('Agent-1 handled the second step.'));
+  await thirdRequested.promise;
+
+  const dispatched = await dispatchedPromise;
+  const channel = buildChannelView(dispatched.state, channelId);
+  const replies = channel.messages.filter((message) => message.senderKind === 'agent');
+
+  assert.deepEqual(
+    replies.map((message) => message.senderName),
+    ['Agent-2', 'Agent-1', 'Agent-3'],
+  );
+  assert.match(
+    runtimeClient.sentMessages[2]?.content ?? '',
+    /\[agent:Agent-1\] Agent-1 handled the second step\./u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[2]?.content ?? '',
+    /Latest routed handoff:\nAgent-1 handled the second step\./u,
+  );
+  assert.equal(
+    runtimeClient.createdSessions[2]?.context?.metadata?.sourceMessageId,
+    replies[1]?.id,
+  );
+  assert.equal(
+    runtimeClient.sentMessages[2]?.input?.context?.metadata?.sourceMessageId,
+    replies[1]?.id,
+  );
+  assert.deepEqual(
+    channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.map((target) => target.sourceMessageId),
+    [channel.messages.find((message) => message.senderKind === 'user')?.id, replies[0]?.id, replies[1]?.id],
+  );
+});
+
 test('sequential room audience does not redispatch queued targets when replies mention the remaining audience', async () => {
   let { state, channelId, agent1Id, agent2Id } = await createChannelState();
   const now = new Date('2026-03-21T00:00:00.000Z');
