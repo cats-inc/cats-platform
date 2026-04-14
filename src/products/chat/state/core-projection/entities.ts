@@ -197,34 +197,58 @@ function readRecoveredStartupContinuationReplayRequest(
 
   const interruptedTargetStates = turn.targetStatuses.filter((target) =>
     interruptedTargets.some((participant) => sameParticipantRef(participant, target.participant)));
-  if (interruptedTargetStates.length === 0) {
+  const startupRecoveredInitialSequential =
+    turn.workflowShape === 'sequential'
+    && turn.sourceSenderKind === 'user'
+    && interruptedTargetStates.length === 0
+    && interruptedTargets.length > 0
+    && turn.targetStatuses.length > 0
+    && turn.targetStatuses.every((target) => target.depth === 0 && target.source === null);
+  if (!startupRecoveredInitialSequential && interruptedTargetStates.length === 0) {
     return null;
   }
 
-  const sourceParticipant = interruptedTargetStates[0]?.source ?? null;
-  const sourceMessageId = interruptedTargetStates[0]?.sourceMessageId?.trim() ?? '';
+  let sourceParticipant = interruptedTargetStates[0]?.source ?? null;
+  let sourceMessageId = interruptedTargetStates[0]?.sourceMessageId?.trim() ?? '';
+  let trigger = interruptedTargetStates[0]?.trigger ?? 'continuation_mention';
+  let branchStrategy = interruptedTargetStates[0]?.branchStrategy ?? null;
+  if (startupRecoveredInitialSequential) {
+    const latestCompletedTargetState = [...turn.targetStatuses].reverse().find((target) =>
+      target.response?.messageIds.length
+      && target.depth === 0
+      && target.source === null
+      && target.status === 'completed') ?? null;
+    sourceParticipant = latestCompletedTargetState
+      ? structuredClone(latestCompletedTargetState.participant)
+      : null;
+    sourceMessageId = latestCompletedTargetState?.response?.messageIds.at(-1)?.trim() ?? '';
+    trigger = 'continuation_mention';
+    branchStrategy = 'transplant_context';
+  }
   if (sourceMessageId.length === 0) {
     return null;
   }
 
-  const trigger = interruptedTargetStates[0]?.trigger ?? 'continuation_mention';
-  let branchStrategy = interruptedTargetStates[0]?.branchStrategy ?? null;
-  for (const target of interruptedTargetStates) {
-    if (
-      (
-        sourceParticipant
-          ? !target.source || !sameParticipantRef(target.source, sourceParticipant)
-          : target.source !== null
-      )
-      || target.sourceMessageId !== sourceMessageId
-      || target.trigger !== trigger
-      || target.branchStrategy !== branchStrategy
-    ) {
-      return null;
+  if (!startupRecoveredInitialSequential) {
+    for (const target of interruptedTargetStates) {
+      if (
+        (
+          sourceParticipant
+            ? !target.source || !sameParticipantRef(target.source, sourceParticipant)
+            : target.source !== null
+        )
+        || target.sourceMessageId !== sourceMessageId
+        || target.trigger !== trigger
+        || target.branchStrategy !== branchStrategy
+      ) {
+        return null;
+      }
     }
   }
 
-  let replayTargets = interruptedTargetStates.map((target) => structuredClone(target.participant));
+  let replayTargets = startupRecoveredInitialSequential
+    ? interruptedTargets.map((target) => structuredClone(target))
+    : interruptedTargetStates.map((target) => structuredClone(target.participant));
   const continuationContext = readLatestWorkflowContinuationContext(turn, {
     excludeEventId: event.id,
   });

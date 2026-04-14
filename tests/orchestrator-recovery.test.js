@@ -1846,6 +1846,231 @@ test('startup recovery preserves the full initial sequential audience for interr
   );
 });
 
+test('startup recovery advances initial sequential replays to the latest completed assistant handoff', async () => {
+  const now = new Date('2026-03-26T06:28:30.000Z');
+  const responseAt = new Date('2026-03-26T06:28:45.000Z');
+  let chat = createDefaultChatState();
+  chat = createChannel(
+    chat,
+    {
+      title: 'Recovered initial sequential handoff',
+      topic: 'Preserve the latest assistant handoff before the next sequential target materializes.',
+      cats: [
+        {
+          name: 'Agent-1',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Agent-2',
+          provider: 'gemini',
+          roles: ['implementer'],
+        },
+        {
+          name: 'Agent-3',
+          provider: 'codex',
+          roles: ['verifier'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Owner',
+      body: 'Run this room in sequence and keep handing off.',
+    },
+    now,
+  ).state;
+
+  const sourceChannel = buildChannelView(chat, channelId);
+  const sourceMessage = sourceChannel.messages.at(-1);
+  assert.ok(sourceMessage);
+  const firstParticipant = {
+    participantKind: 'cat',
+    participantId: sourceChannel.assignedCats[0]?.catId ?? 'cat-agent-1',
+    participantName: sourceChannel.assignedCats[0]?.name ?? 'Agent-1',
+  };
+  const secondParticipant = {
+    participantKind: 'cat',
+    participantId: sourceChannel.assignedCats[1]?.catId ?? 'cat-agent-2',
+    participantName: sourceChannel.assignedCats[1]?.name ?? 'Agent-2',
+  };
+  const thirdParticipant = {
+    participantKind: 'cat',
+    participantId: sourceChannel.assignedCats[2]?.catId ?? 'cat-agent-3',
+    participantName: sourceChannel.assignedCats[2]?.name ?? 'Agent-3',
+  };
+
+  const appendedReply = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Agent-1',
+      body: 'Agent-1 handled the first step.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-initial-sequential-handoff',
+        terminal: true,
+        turnId: 'turn-interrupted-initial-sequential-handoff',
+        targetKind: 'cat',
+        targetId: firstParticipant.participantId,
+        sourceMessageId: sourceMessage.id,
+        routingTrigger: 'explicit_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  );
+  chat = appendedReply.state;
+  const handoffMessageId = appendedReply.message.id;
+
+  const channel = buildChannelView(chat, channelId);
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
+  const activeTurn = createWorkflowTurn(
+    sourceMessage,
+    now.toISOString(),
+    'continuation_handoff',
+    'sequential',
+  );
+  activeTurn.id = 'turn-interrupted-initial-sequential-handoff';
+  activeTurn.dispatchCount = 1;
+  activeTurn.targetStatuses.push({
+    id: 'target-state-interrupted-initial-sequential-handoff',
+    dispatchId: 'dispatch-interrupted-initial-sequential-handoff',
+    participant: firstParticipant,
+    source: null,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'explicit_mention',
+    mentionNames: ['Agent-1', 'Agent-2', 'Agent-3'],
+    depth: 0,
+    parentCheckpointId: null,
+    branchStrategy: 'fresh_no_parent',
+    handoffReason: 'explicit_mention',
+    wakeRequestId: null,
+    status: 'completed',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: responseAt.toISOString(),
+    response: {
+      assistantTurnId: 'assistant-turn-initial-sequential-handoff',
+      messageIds: [handoffMessageId],
+      fullText: 'Agent-1 handled the first step.',
+      segmentCount: 1,
+    },
+    error: null,
+  });
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'turn_started',
+      'running',
+      'System resumed the initial sequential audience.',
+      now.toISOString(),
+      null,
+      sourceMessage.id,
+      [firstParticipant, secondParticipant, thirdParticipant],
+      {
+        metadata: {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+        },
+      },
+    ),
+  );
+  workflow.activeTurn = activeTurn;
+  roomRouting.workflow = workflow;
+  roomRouting.lastOutcome = {
+    turnId: activeTurn.id,
+    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    status: 'running',
+    resolution: {
+      routingMode: 'explicit_multi',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: 'Initial sequential audience is waiting for the next handoff target.',
+    },
+    resolvedTargets: [firstParticipant, secondParticipant, thirdParticipant],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-interrupted-initial-sequential-handoff',
+        sourceMessageId: sourceMessage.id,
+        source: null,
+        target: firstParticipant,
+        trigger: 'explicit_mention',
+        status: 'completed',
+        mentionNames: ['Agent-1', 'Agent-2', 'Agent-3'],
+        response: {
+          assistantTurnId: 'assistant-turn-initial-sequential-handoff',
+          messageIds: [handoffMessageId],
+          fullText: 'Agent-1 handled the first step.',
+          segmentCount: 1,
+        },
+        startedAt: now.toISOString(),
+        completedAt: responseAt.toISOString(),
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 1,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: null,
+  };
+  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
+
+  const chatStore = new MemoryChatStore(chat);
+  const recoveredCount = await reconcileChatWorkflowRecoveryOnStartup({
+    shared: {
+      coreStore: chatStore,
+      now: () => new Date('2026-03-26T06:29:00.000Z'),
+    },
+    chat: {
+      chatStore,
+    },
+  });
+
+  assert.equal(recoveredCount, 1);
+
+  const core = await chatStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === buildChannelTaskId(channelId));
+  const replay = readWorkflowContinuationReplay(task?.metadata);
+
+  assert.ok(task);
+  assert.ok(replay);
+  assert.equal(replay?.replayState, 'ready');
+  assert.equal(replay?.workflowShape, 'sequential');
+  assert.equal(replay?.sourceMessageId, handoffMessageId);
+  assert.equal(replay?.sourceParticipant?.participantName, 'Agent-1');
+  assert.equal(replay?.branchStrategy, 'transplant_context');
+  assert.deepEqual(
+    replay?.targets.map((target) => target.participantName),
+    ['Agent-2', 'Agent-3'],
+  );
+});
+
 test('startup recovery auto-resumes preserved initial sequential user-origin replays after core sync', async () => {
   const now = new Date('2026-03-26T06:29:00.000Z');
   let chat = createDefaultChatState();

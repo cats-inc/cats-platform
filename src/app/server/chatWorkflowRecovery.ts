@@ -25,6 +25,7 @@ import type {
 } from '../../products/chat/api/contracts.js';
 import type {
   RoomRoutingOutcome,
+  RoomRoutingParticipantRef,
   RoomWorkflowTargetState,
   RoomWorkflowTurn,
 } from '../../shared/roomRouting.js';
@@ -64,6 +65,56 @@ function finalizeInterruptedDispatches(
 
   outcome.status = 'blocked';
   outcome.completedAt = nowIso;
+}
+
+function sameParticipantRef(
+  left: RoomRoutingParticipantRef,
+  right: RoomRoutingParticipantRef,
+): boolean {
+  return left.participantKind === right.participantKind
+    && left.participantId === right.participantId
+    && left.participantName === right.participantName;
+}
+
+function resolveInterruptedTargetsForRecovery(
+  turn: RoomWorkflowTurn,
+): RoomRoutingParticipantRef[] {
+  const interruptedTargets = turn.targetStatuses
+    .filter(isInterruptedTargetStatus)
+    .map((target) => structuredClone(target.participant));
+  if (interruptedTargets.length > 0) {
+    return interruptedTargets;
+  }
+  if (
+    turn.workflowShape !== 'sequential'
+    || turn.sourceSenderKind !== 'user'
+    || turn.targetStatuses.length === 0
+    || !turn.targetStatuses.every((target) => target.depth === 0 && target.source === null)
+  ) {
+    return [];
+  }
+
+  const turnStartedTargets = turn.events.find((event) => event.kind === 'turn_started')?.targets ?? [];
+  if (turnStartedTargets.length === 0) {
+    return [];
+  }
+
+  let lastMaterializedIndex = -1;
+  for (const targetStatus of turn.targetStatuses) {
+    const targetIndex = turnStartedTargets.findIndex((participant) =>
+      sameParticipantRef(participant, targetStatus.participant));
+    if (targetIndex > lastMaterializedIndex) {
+      lastMaterializedIndex = targetIndex;
+    }
+  }
+
+  if (lastMaterializedIndex < 0 || lastMaterializedIndex >= turnStartedTargets.length - 1) {
+    return [];
+  }
+
+  return turnStartedTargets
+    .slice(lastMaterializedIndex + 1)
+    .map((participant) => structuredClone(participant));
 }
 
 function createFallbackOutcome(
@@ -123,9 +174,7 @@ function recoverChannelWorkflowTurn(
     : createFallbackOutcome(channel, activeTurn, nowIso);
   finalizeInterruptedDispatches(outcome, nowIso);
 
-  const interruptedTargets = activeTurn.targetStatuses
-    .filter(isInterruptedTargetStatus)
-    .map((target) => structuredClone(target.participant));
+  const interruptedTargets = resolveInterruptedTargetsForRecovery(activeTurn);
 
   for (const target of activeTurn.targetStatuses) {
     if (!isInterruptedTargetStatus(target)) {
