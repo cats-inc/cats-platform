@@ -49,6 +49,7 @@ import { isSoloChatChannel } from '../runtimeTargeting.js';
 import {
   ASSISTANT_TURN_SEGMENT_EVENT,
   buildAssistantTurnDelivery,
+  buildAssistantTurnSourceMessage,
 } from '../assistantTurnSegments.js';
 import {
   participantKey,
@@ -568,7 +569,8 @@ export function applyDispatchExecutions(
     }
 
     const responseMessage = responseMessages.at(-1)!;
-    advanceQueuedSequentialPromptFrontier(queue, execution, responseMessage);
+    const responseSourceMessage = buildAssistantTurnSourceMessage(responseMessages) ?? responseMessage;
+    advanceQueuedSequentialPromptFrontier(queue, execution, responseSourceMessage);
     const response = buildAssistantTurnDelivery(assistantTurnId, responseMessages);
     nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
     updateDispatch(outcome, execution.dispatchId, {
@@ -694,7 +696,7 @@ export function applyDispatchExecutions(
             blockedReason: 'no_valid_targets',
             branchStrategy: recommendationBranchStrategy,
             ...buildContinuationReplayMetadata({
-              sourceMessageId: responseMessage.id,
+              sourceMessageId: responseSourceMessage.id,
               mentionNames: continuationResolution.mentionNames,
               trigger: continuationResolution.trigger,
               workflowStageId: continuationStage.stageId,
@@ -761,7 +763,7 @@ export function applyDispatchExecutions(
           reason: 'max_continuations',
           branchStrategy,
           ...buildContinuationReplayMetadata({
-            sourceMessageId: responseMessage.id,
+            sourceMessageId: responseSourceMessage.id,
             mentionNames: continuationResolution.mentionNames,
             trigger: continuationResolution.trigger,
             workflowStageId: continuationStage.stageId,
@@ -804,7 +806,7 @@ export function applyDispatchExecutions(
       },
     );
     queue.push({
-      sourceMessage: responseMessage,
+      sourceMessage: responseSourceMessage,
       sourceParticipant: toParticipantRef(execution.target),
       targets: continuationResolution.targets,
       unresolved: continuationResolution.unresolved,

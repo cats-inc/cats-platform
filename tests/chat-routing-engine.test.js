@@ -1574,6 +1574,18 @@ test('segmented replies keep final-only completion semantics while workflow reco
     agentOneReplies[1]?.metadata.workflowRecommendation?.workflowShape,
     'sequential',
   );
+  assert.match(
+    runtimeClient.sentMessages[1]?.content ?? '',
+    /Latest routed handoff:\nPassing implementation to the next specialist\.I already gathered notes for Agent-2\./u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.content ?? '',
+    /\[agent:Agent-1\] Passing implementation to the next specialist\./u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.content ?? '',
+    /\[agent:Agent-1\] I already gathered notes for Agent-2\./u,
+  );
   assert.ok(
     channel.roomRouting?.workflow.turnHistory[0]?.targetStatuses.some(
       (target) =>

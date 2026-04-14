@@ -58,6 +58,22 @@ export function buildAssistantTurnDelivery(
   };
 }
 
+export function buildAssistantTurnSourceMessage(
+  messages: ReadonlyArray<ChatMessage>,
+): ChatMessage | null {
+  const terminalMessage = messages.at(-1);
+  if (!terminalMessage) {
+    return null;
+  }
+
+  const mentions = Array.from(new Set(messages.flatMap((message) => message.mentions)));
+  return {
+    ...terminalMessage,
+    body: messages.map((message) => message.body).join(''),
+    mentions,
+  };
+}
+
 export function buildAssistantTurnDeliveryFromChannel(
   channel: Pick<ChatChannelState, 'messages'>,
   assistantTurnId: string,
