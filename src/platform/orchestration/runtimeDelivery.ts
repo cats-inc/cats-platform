@@ -48,6 +48,48 @@ function toRuntimeDeliveryContentBlock(
 ): RuntimeDeliveryContentBlock | null {
   const normalized = normalizeRuntimeContentBlock(event.data);
   if (!normalized) {
+    const fallbackIndex = readFiniteIndex(event.data.segmentIndex) ?? 0;
+    if (event.event === 'text') {
+      const text = readString(event.data.text) ?? '';
+      if (text.length === 0) {
+        return null;
+      }
+      return {
+        id: `stream-text-${fallbackIndex}`,
+        index: fallbackIndex,
+        kind: 'text',
+        status: 'streaming',
+        title: null,
+        text,
+        toolName: null,
+        toolId: null,
+        metadata: {
+          source: 'runtime_stream',
+          sourceEvent: 'text',
+        },
+      };
+    }
+    if (event.event === 'tool_use') {
+      const toolName = readString(event.data.toolName);
+      const toolId = readString(event.data.toolId);
+      if (!toolName && !toolId) {
+        return null;
+      }
+      return {
+        id: toolId ?? `stream-tool-${fallbackIndex}`,
+        index: fallbackIndex,
+        kind: 'tool',
+        status: 'streaming',
+        title: toolName,
+        text: readString(event.data.text) ?? '',
+        toolName,
+        toolId,
+        metadata: {
+          source: 'runtime_stream',
+          sourceEvent: 'tool_use',
+        },
+      };
+    }
     return null;
   }
 

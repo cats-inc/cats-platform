@@ -87,6 +87,55 @@ test('buildNormalizedRuntimeDeliveryEvent treats session_started metadata as a s
   assert.equal(normalized.sequence.blockIndex, null);
 });
 
+test('buildNormalizedRuntimeDeliveryEvent normalizes raw text stream events into content blocks', () => {
+  const normalized = buildNormalizedRuntimeDeliveryEvent({
+    conversationId: 'conversation-2b',
+    turnId: 'turn-2b',
+    laneId: 'lane-2b',
+    sessionId: 'session-2b',
+    eventIndex: 2,
+    emittedAt: '2026-04-14T20:07:00.000Z',
+    event: {
+      event: 'text',
+      data: {
+        segmentIndex: 4,
+        text: 'Streaming text chunk',
+      },
+    },
+  });
+
+  assert.equal(normalized.kind, 'content_block');
+  assert.equal(normalized.contentBlock?.kind, 'text');
+  assert.equal(normalized.contentBlock?.text, 'Streaming text chunk');
+  assert.equal(normalized.contentBlock?.id, 'stream-text-4');
+  assert.equal(normalized.sequence.segmentIndex, 4);
+});
+
+test('buildNormalizedRuntimeDeliveryEvent normalizes raw tool_use stream events into tool content blocks', () => {
+  const normalized = buildNormalizedRuntimeDeliveryEvent({
+    conversationId: 'conversation-2c',
+    turnId: 'turn-2c',
+    laneId: 'lane-2c',
+    sessionId: 'session-2c',
+    eventIndex: 3,
+    emittedAt: '2026-04-14T20:08:00.000Z',
+    event: {
+      event: 'tool_use',
+      data: {
+        segmentIndex: 5,
+        toolName: 'search_repo',
+        toolId: 'tool-5',
+      },
+    },
+  });
+
+  assert.equal(normalized.kind, 'content_block');
+  assert.equal(normalized.contentBlock?.kind, 'tool');
+  assert.equal(normalized.contentBlock?.toolName, 'search_repo');
+  assert.equal(normalized.contentBlock?.toolId, 'tool-5');
+  assert.equal(normalized.sequence.segmentIndex, 5);
+});
+
 test('buildNormalizedRuntimeDeliveryEvent preserves result events without inventing content blocks', () => {
   const normalized = buildNormalizedRuntimeDeliveryEvent({
     conversationId: 'conversation-3',
