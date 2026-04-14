@@ -7,16 +7,22 @@ import type {
   CoreArtifactKind,
   CoreArtifactStatus,
   CoreCheckpointStatus,
+  LaneRecordStatus,
   MissionRecordStatus,
   CoreOperatorActionKind,
   CoreOrchestrationOutcomeStatus,
   CoreProjectStatus,
   CoreRunStatus,
+  SegmentRecordKind,
+  SegmentRecordStatus,
+  SessionRecordStatus,
   CoreTaskStatus,
   CoreTraceKind,
   TransportBindingDirection,
   TransportBindingPlatform,
   TransportBindingStatus,
+  TurnRecordKind,
+  TurnRecordStatus,
   CoreWorkItemStatus,
 } from '../types.js';
 
@@ -46,6 +52,52 @@ export const CORE_RUN_STATUSES = [
   'failed',
   'cancelled',
 ] as const satisfies readonly CoreRunStatus[];
+
+export const CORE_TURN_KINDS = [
+  'user',
+  'agent',
+  'system',
+] as const satisfies readonly TurnRecordKind[];
+
+export const CORE_TURN_STATUSES = [
+  'planned',
+  'active',
+  'completed',
+  'cancelled',
+] as const satisfies readonly TurnRecordStatus[];
+
+export const CORE_LANE_STATUSES = [
+  'pending',
+  'connecting',
+  'streaming',
+  'completed',
+  'failed',
+  'cancelled',
+] as const satisfies readonly LaneRecordStatus[];
+
+export const CORE_SEGMENT_KINDS = [
+  'status',
+  'text',
+  'tool',
+  'artifact',
+  'system',
+] as const satisfies readonly SegmentRecordKind[];
+
+export const CORE_SEGMENT_STATUSES = [
+  'pending',
+  'streaming',
+  'complete',
+  'failed',
+  'cancelled',
+] as const satisfies readonly SegmentRecordStatus[];
+
+export const CORE_SESSION_STATUSES = [
+  'connecting',
+  'active',
+  'completed',
+  'failed',
+  'cancelled',
+] as const satisfies readonly SessionRecordStatus[];
 
 export const CORE_TRACE_KINDS = [
   'note',

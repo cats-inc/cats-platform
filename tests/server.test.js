@@ -2629,6 +2629,51 @@ test('POST /api/core/memory-maintenance runs project and relationship canonical 
 test('core write APIs persist shared project, work, approval, trace, artifact, and owner records', async () => {
   const chatStore = new MemoryChatStore();
   const fixtures = createSharedCoreFixtureBundle();
+  const interactionFixtures = {
+    turn: {
+      id: 'turn-system-1',
+      conversationId: 'conversation-system-1',
+      kind: 'user',
+      status: 'active',
+      sourceParticipantId: 'participant-owner',
+      createdAt: '2026-03-21T01:00:00.000Z',
+    },
+    lane: {
+      id: 'lane-system-1',
+      turnId: 'turn-system-1',
+      conversationId: 'conversation-system-1',
+      participantId: 'participant-agent-1',
+      agentId: 'actor-orchestrator-global',
+      orderIndex: 0,
+      status: 'streaming',
+      createdAt: '2026-03-21T01:00:01.000Z',
+    },
+    session: {
+      id: 'session-system-1',
+      conversationId: 'conversation-system-1',
+      turnId: 'turn-system-1',
+      laneId: 'lane-system-1',
+      participantId: 'participant-agent-1',
+      agentId: 'actor-orchestrator-global',
+      transportBindingId: fixtures.transportBinding.id,
+      runtimeKey: 'claude:cli',
+      status: 'active',
+      createdAt: '2026-03-21T01:00:02.000Z',
+      startedAt: '2026-03-21T01:00:02.000Z',
+    },
+    segment: {
+      id: 'segment-system-1',
+      laneId: 'lane-system-1',
+      turnId: 'turn-system-1',
+      conversationId: 'conversation-system-1',
+      sessionId: 'session-system-1',
+      sequence: 0,
+      kind: 'text',
+      status: 'streaming',
+      content: 'Working on the shared interaction seam.',
+      createdAt: '2026-03-21T01:00:03.000Z',
+    },
+  };
 
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const ownerProfileResponse = await fetch(`${baseUrl}/api/core/owner-profile`, {
@@ -2700,6 +2745,42 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.equal(missionResponse.status, 201);
     const missionPayload = await missionResponse.json();
     assert.equal(missionPayload.mission.id, fixtures.mission.id);
+
+    const turnResponse = await fetch(`${baseUrl}/api/core/turns`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ turn: interactionFixtures.turn }),
+    });
+    assert.equal(turnResponse.status, 201);
+
+    const laneResponse = await fetch(`${baseUrl}/api/core/lanes`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ lane: interactionFixtures.lane }),
+    });
+    assert.equal(laneResponse.status, 201);
+
+    const sessionResponse = await fetch(`${baseUrl}/api/core/sessions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ session: interactionFixtures.session }),
+    });
+    assert.equal(sessionResponse.status, 201);
+
+    const segmentResponse = await fetch(`${baseUrl}/api/core/segments`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ segment: interactionFixtures.segment }),
+    });
+    assert.equal(segmentResponse.status, 201);
 
     const transportBindingResponse = await fetch(`${baseUrl}/api/core/transport-bindings`, {
       method: 'POST',
@@ -2808,6 +2889,30 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     const missionsListPayload = await missionsListResponse.json();
     assert.ok(missionsListPayload.missions.some((mission) => mission.id === fixtures.mission.id));
 
+    const turnsListResponse = await fetch(`${baseUrl}/api/core/turns`);
+    assert.equal(turnsListResponse.status, 200);
+    const turnsListPayload = await turnsListResponse.json();
+    assert.ok(turnsListPayload.turns.some((turn) => turn.id === interactionFixtures.turn.id));
+
+    const lanesListResponse = await fetch(`${baseUrl}/api/core/lanes`);
+    assert.equal(lanesListResponse.status, 200);
+    const lanesListPayload = await lanesListResponse.json();
+    assert.ok(lanesListPayload.lanes.some((lane) => lane.id === interactionFixtures.lane.id));
+
+    const sessionsListResponse = await fetch(`${baseUrl}/api/core/sessions`);
+    assert.equal(sessionsListResponse.status, 200);
+    const sessionsListPayload = await sessionsListResponse.json();
+    assert.ok(
+      sessionsListPayload.sessions.some((session) => session.id === interactionFixtures.session.id),
+    );
+
+    const segmentsListResponse = await fetch(`${baseUrl}/api/core/segments`);
+    assert.equal(segmentsListResponse.status, 200);
+    const segmentsListPayload = await segmentsListResponse.json();
+    assert.ok(
+      segmentsListPayload.segments.some((segment) => segment.id === interactionFixtures.segment.id),
+    );
+
     const transportBindingsListResponse = await fetch(`${baseUrl}/api/core/transport-bindings`);
     assert.equal(transportBindingsListResponse.status, 200);
     const transportBindingsListPayload = await transportBindingsListResponse.json();
@@ -2824,6 +2929,10 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.ok(statePayload.projects.some((project) => project.id === fixtures.project.id));
     assert.ok(statePayload.workItems.some((workItem) => workItem.id === fixtures.workItem.id));
     assert.ok(statePayload.missions.some((mission) => mission.id === fixtures.mission.id));
+    assert.ok(statePayload.turns.some((turn) => turn.id === interactionFixtures.turn.id));
+    assert.ok(statePayload.lanes.some((lane) => lane.id === interactionFixtures.lane.id));
+    assert.ok(statePayload.sessions.some((session) => session.id === interactionFixtures.session.id));
+    assert.ok(statePayload.segments.some((segment) => segment.id === interactionFixtures.segment.id));
     assert.ok(
       statePayload.transportBindings.some(
         (transportBinding) => transportBinding.id === fixtures.transportBinding.id,
