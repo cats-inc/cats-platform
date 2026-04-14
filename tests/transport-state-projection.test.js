@@ -97,6 +97,7 @@ test('buildTransportStateProjection filters bindings by platform, agent, and ses
   ).core;
 
   const activeTelegram = buildTransportStateProjection(core, {
+    transportBindingIds: ['transport-binding-1'],
     platforms: ['telegram'],
     activeSession: true,
   });
@@ -104,6 +105,7 @@ test('buildTransportStateProjection filters bindings by platform, agent, and ses
   assert.equal(activeTelegram.items[0].transportBinding.id, 'transport-binding-1');
 
   const webOnly = buildTransportStateProjection(core, {
+    transportBindingIds: ['transport-binding-2'],
     agentIds: ['actor-agent-2'],
     hasSession: false,
     statuses: ['disabled'],

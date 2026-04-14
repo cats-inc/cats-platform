@@ -37,6 +37,7 @@ export interface CoreTransportStateProjection {
 }
 
 export interface CoreTransportStateProjectionQuery {
+  transportBindingIds?: string[];
   platforms?: TransportBindingPlatform[];
   statuses?: TransportBindingStatus[];
   conversationIds?: string[];
@@ -77,6 +78,12 @@ function matchesQuery(
   item: CoreTransportStateProjectionItem,
   query: CoreTransportStateProjectionQuery,
 ): boolean {
+  if (
+    query.transportBindingIds
+    && !query.transportBindingIds.includes(item.transportBinding.id)
+  ) {
+    return false;
+  }
   if (
     query.platforms
     && !query.platforms.includes(item.transportBinding.platform)

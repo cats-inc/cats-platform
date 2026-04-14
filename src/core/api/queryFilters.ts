@@ -430,6 +430,7 @@ export function readManagedWorkProjectionQuery(
   searchParams: URLSearchParams,
 ): CoreManagedWorkProjectionQuery {
   return {
+    workItemIds: readOptionalQueryValues(searchParams, 'workItemId'),
     workItemStatuses: readEnumQueryValues(
       searchParams,
       'workItemStatus',
@@ -457,6 +458,7 @@ export function readActorWorkloadProjectionQuery(
   searchParams: URLSearchParams,
 ): CoreActorWorkloadProjectionQuery {
   return {
+    actorIds: readOptionalQueryValues(searchParams, 'actorId'),
     actorKinds: readEnumQueryValues(searchParams, 'actorKind', CORE_ACTOR_KINDS),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_ACTOR_STATUSES),
     sources: readEnumQueryValues(searchParams, 'source', CORE_ACTOR_SOURCES),
@@ -483,6 +485,7 @@ export function readMissionRunProjectionQuery(
   searchParams: URLSearchParams,
 ): CoreMissionRunProjectionQuery {
   return {
+    missionIds: readOptionalQueryValues(searchParams, 'missionId'),
     missionStatuses: readEnumQueryValues(
       searchParams,
       'missionStatus',
@@ -502,6 +505,7 @@ export function readTransportStateProjectionQuery(
   searchParams: URLSearchParams,
 ): CoreTransportStateProjectionQuery {
   return {
+    transportBindingIds: readOptionalQueryValues(searchParams, 'transportBindingId'),
     platforms: readEnumQueryValues(
       searchParams,
       'platform',

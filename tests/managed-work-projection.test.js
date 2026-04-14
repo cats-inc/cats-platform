@@ -138,6 +138,7 @@ test('buildManagedWorkProjection filters items by owner, task linkage, and limit
   ).core;
 
   const byOwner = buildManagedWorkProjection(core, {
+    workItemIds: ['work-item-1'],
     ownerActorIds: ['actor-owner'],
     hasTask: true,
   });
@@ -145,6 +146,7 @@ test('buildManagedWorkProjection filters items by owner, task linkage, and limit
   assert.equal(byOwner.items[0].workItem.id, 'work-item-1');
 
   const byMission = buildManagedWorkProjection(core, {
+    workItemIds: ['work-item-1'],
     ownerActorIds: ['actor-owner'],
     missionStatuses: ['running'],
     limit: 1,

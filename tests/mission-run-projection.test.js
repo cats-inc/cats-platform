@@ -154,6 +154,7 @@ test('buildMissionRunProjection filters missions by assigned agent, run presence
   ).core;
 
   const withRun = buildMissionRunProjection(core, {
+    missionIds: ['mission-1'],
     assignedAgentIds: ['actor-worker-1'],
     hasRun: true,
   });
@@ -161,6 +162,7 @@ test('buildMissionRunProjection filters missions by assigned agent, run presence
   assert.equal(withRun.items[0].mission.id, 'mission-1');
 
   const queuedOnly = buildMissionRunProjection(core, {
+    missionIds: ['mission-2'],
     missionStatuses: ['queued'],
     limit: 1,
   });

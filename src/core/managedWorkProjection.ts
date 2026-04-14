@@ -46,6 +46,7 @@ export interface CoreManagedWorkProjection {
 }
 
 export interface CoreManagedWorkProjectionQuery {
+  workItemIds?: string[];
   workItemStatuses?: CoreWorkItemStatus[];
   projectIds?: string[];
   conversationIds?: string[];
@@ -97,6 +98,9 @@ function matchesQuery(
   item: CoreManagedWorkProjectionItem,
   query: CoreManagedWorkProjectionQuery,
 ): boolean {
+  if (query.workItemIds && !query.workItemIds.includes(item.workItem.id)) {
+    return false;
+  }
   if (
     query.workItemStatuses
     && !query.workItemStatuses.includes(item.workItem.status)

@@ -127,6 +127,7 @@ test('buildActorWorkloadProjection summarizes managed work, missions, transports
   ).core;
 
   const projection = buildActorWorkloadProjection(core, {
+    actorIds: ['actor-worker-1'],
     actorKinds: ['worker'],
     hasMission: true,
     hasActiveSession: true,

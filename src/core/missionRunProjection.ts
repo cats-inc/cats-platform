@@ -40,6 +40,7 @@ export interface CoreMissionRunProjection {
 }
 
 export interface CoreMissionRunProjectionQuery {
+  missionIds?: string[];
   missionStatuses?: MissionRecordStatus[];
   conversationIds?: string[];
   assignedAgentIds?: string[];
@@ -72,6 +73,9 @@ function matchesQuery(
   item: CoreMissionRunProjectionItem,
   query: CoreMissionRunProjectionQuery,
 ): boolean {
+  if (query.missionIds && !query.missionIds.includes(item.mission.id)) {
+    return false;
+  }
   if (
     query.missionStatuses
     && !query.missionStatuses.includes(item.mission.status)

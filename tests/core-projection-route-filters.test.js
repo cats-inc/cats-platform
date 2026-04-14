@@ -332,7 +332,7 @@ async function withServer(callback) {
 test('projection routes support filtered control-plane queries', async () => {
   await withServer(async (baseUrl) => {
     const managedWorkResponse = await fetch(
-      `${baseUrl}/api/core/managed-work?ownerActorId=actor-owner&hasRun=true`,
+      `${baseUrl}/api/core/managed-work?workItemId=work-item-1&ownerActorId=actor-owner&hasRun=true`,
     );
     assert.equal(managedWorkResponse.status, 200);
     const managedWorkPayload = await managedWorkResponse.json();
@@ -340,7 +340,7 @@ test('projection routes support filtered control-plane queries', async () => {
     assert.equal(managedWorkPayload.items[0].workItem.id, 'work-item-1');
 
     const missionRunsResponse = await fetch(
-      `${baseUrl}/api/core/mission-runs?assignedAgentId=actor-agent-2&missionStatus=queued`,
+      `${baseUrl}/api/core/mission-runs?missionId=mission-2&assignedAgentId=actor-agent-2&missionStatus=queued`,
     );
     assert.equal(missionRunsResponse.status, 200);
     const missionRunsPayload = await missionRunsResponse.json();
@@ -348,7 +348,7 @@ test('projection routes support filtered control-plane queries', async () => {
     assert.equal(missionRunsPayload.items[0].mission.id, 'mission-2');
 
     const actorWorkloadResponse = await fetch(
-      `${baseUrl}/api/core/actor-workload?actorKind=worker&hasMission=true&hasActiveSession=true`,
+      `${baseUrl}/api/core/actor-workload?actorId=actor-agent-1&actorKind=worker&hasMission=true&hasActiveSession=true`,
     );
     assert.equal(actorWorkloadResponse.status, 200);
     const actorWorkloadPayload = await actorWorkloadResponse.json();
@@ -356,7 +356,7 @@ test('projection routes support filtered control-plane queries', async () => {
     assert.equal(actorWorkloadPayload.items[0].actor.id, 'actor-agent-1');
 
     const transportStateResponse = await fetch(
-      `${baseUrl}/api/core/transport-state?platform=telegram&activeSession=true`,
+      `${baseUrl}/api/core/transport-state?transportBindingId=transport-binding-1&platform=telegram&activeSession=true`,
     );
     assert.equal(transportStateResponse.status, 200);
     const transportStatePayload = await transportStateResponse.json();

@@ -46,6 +46,7 @@ export interface CoreActorWorkloadProjection {
 }
 
 export interface CoreActorWorkloadProjectionQuery {
+  actorIds?: string[];
   actorKinds?: CoreActorKind[];
   statuses?: CoreActorStatus[];
   sources?: CoreActorSource[];
@@ -94,6 +95,9 @@ function matchesQuery(
   item: CoreActorWorkloadProjectionItem,
   query: CoreActorWorkloadProjectionQuery,
 ): boolean {
+  if (query.actorIds && !query.actorIds.includes(item.actor.id)) {
+    return false;
+  }
   if (query.actorKinds && !query.actorKinds.includes(item.actor.kind)) {
     return false;
   }
