@@ -43,6 +43,9 @@ import {
   syncBotBindings,
 } from './entities.js';
 import {
+  projectChatInteractionRecordsToCore,
+} from './interaction.js';
+import {
   collectWorkflowTurns,
   createWorkflowActivity,
   createWorkflowCheckpoint,
@@ -168,7 +171,7 @@ export function syncCoreStateWithChatState(
     ...preservedTransportBindings,
   ];
 
-  return {
+  const nextCore = projectChatInteractionRecordsToCore({
     version: CATS_CORE_STATE_VERSION,
     updatedAt,
     setupCompleteAt: existingCore.setupCompleteAt ?? null,
@@ -207,5 +210,7 @@ export function syncCoreStateWithChatState(
     botBindings,
     archives: [...archives, ...preservedArchives],
     durableMemory: structuredClone(existingCore.durableMemory ?? []),
-  };
+  }, chat, new Date(updatedAt));
+
+  return nextCore;
 }

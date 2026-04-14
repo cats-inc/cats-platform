@@ -62,7 +62,6 @@ import {
   materializeInFlightDispatchState,
   persistInFlightDispatchState,
 } from './persistence.js';
-import { recordDispatchExecutionInteraction } from './canonicalInteraction.js';
 import type {
   ChannelDispatchCancellationRegistry,
   ChannelDispatchCancellationRequest,
@@ -692,20 +691,6 @@ export async function processDispatchQueue(
       };
     } else {
       nextState = appliedExecutions.state;
-    }
-    if (chatStore && executionsForThisPass.length > 0) {
-      let core = await chatStore.readCore();
-      for (const execution of executionsForThisPass) {
-        core = recordDispatchExecutionInteraction({
-          core,
-          state: nextState,
-          channelId,
-          workflowTurn: activeTurn,
-          execution,
-          now,
-        });
-      }
-      await chatStore.writeCore(core);
     }
     nextState = materializeInFlightDispatchState(
       nextState,

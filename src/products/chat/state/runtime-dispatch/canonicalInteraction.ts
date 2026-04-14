@@ -1,112 +1,11 @@
-import {
-  createCatActorId,
-  GLOBAL_ORCHESTRATOR_ACTOR_ID,
-} from '../../../../core/actors.js';
-import {
-  upsertCoreLane,
-  upsertCoreSegment,
-  upsertCoreSession,
-  upsertCoreTurn,
-} from '../../../../core/model/index.js';
 import type { CatsCoreState } from '../../../../core/types.js';
-import type { ChatMessage, ChatState } from '../../api/contracts.js';
+import type { ChatState } from '../../api/contracts.js';
 import type { RoomWorkflowTurn } from '../../../../shared/roomRouting.js';
-import { ASSISTANT_TURN_SEGMENT_EVENT } from '../assistantTurnSegments.js';
-import { requireChannel } from '../model/index.js';
 import {
-  buildChatAssignedParticipantId,
-  buildChatConversationId,
-  buildChatOrchestratorParticipantId,
-  buildChatLaneId,
-  buildDirectLaneTransportBindingId,
-} from '../../../../shared/chatCoreIds.js';
+  projectChatChannelInteractionToCore,
+} from '../core-projection/interaction.js';
+import { requireChannel } from '../model/index.js';
 import type { DispatchExecution } from './execution.js';
-
-function readMessageMetadataString(message: ChatMessage, key: string): string | null {
-  const value = message.metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
-}
-
-function readMessageMetadataNumber(message: ChatMessage, key: string): number | null {
-  const value = message.metadata?.[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function resolveTargetAgentId(state: ChatState, channelId: string, execution: DispatchExecution): string | null {
-  if (execution.target.participantKind === 'orchestrator') {
-    return GLOBAL_ORCHESTRATOR_ACTOR_ID;
-  }
-
-  const channel = requireChannel(state, channelId);
-  const assignment = channel.catAssignments.find(
-    (candidate) => candidate.participantId === execution.target.participantId,
-  );
-  return assignment ? createCatActorId(assignment.catId) : null;
-}
-
-function resolveCanonicalParticipantId(
-  channelId: string,
-  participant:
-    | Pick<DispatchExecution['target'], 'participantId' | 'participantKind'>
-    | null
-    | undefined,
-): string | null {
-  if (!participant?.participantId) {
-    return null;
-  }
-
-  return participant.participantKind === 'orchestrator'
-    ? buildChatOrchestratorParticipantId(channelId)
-    : buildChatAssignedParticipantId(channelId, participant.participantId);
-}
-
-function resolveSessionTransportBindingId(
-  state: ChatState,
-  channelId: string,
-  execution: DispatchExecution,
-): string | null {
-  const channel = requireChannel(state, channelId);
-  if (
-    channel.channelKind !== 'direct_lane'
-    || channel.roomRouting?.defaultRecipientId !== execution.target.participantId
-  ) {
-    return null;
-  }
-
-  return buildDirectLaneTransportBindingId(channelId);
-}
-
-function resolveExecutionResponseMessages(
-  state: ChatState,
-  channelId: string,
-  execution: DispatchExecution,
-  workflowTurnId: string,
-): ChatMessage[] {
-  const channel = requireChannel(state, channelId);
-
-  return channel.messages
-    .filter((message) => {
-      if (readMessageMetadataString(message, 'event') !== ASSISTANT_TURN_SEGMENT_EVENT) {
-        return false;
-      }
-      if (readMessageMetadataString(message, 'targetStateId') !== execution.targetStateId) {
-        return false;
-      }
-      if (readMessageMetadataString(message, 'sourceMessageId') !== execution.sourceMessage.id) {
-        return false;
-      }
-      const turnId = readMessageMetadataString(message, 'turnId');
-      return !turnId || turnId === workflowTurnId;
-    })
-    .sort((left, right) => {
-      const leftIndex = readMessageMetadataNumber(left, 'segmentIndex') ?? 0;
-      const rightIndex = readMessageMetadataNumber(right, 'segmentIndex') ?? 0;
-      if (leftIndex !== rightIndex) {
-        return leftIndex - rightIndex;
-      }
-      return left.createdAt.localeCompare(right.createdAt);
-    });
-}
 
 export interface RecordDispatchExecutionInteractionInput {
   core: CatsCoreState;
@@ -120,132 +19,131 @@ export interface RecordDispatchExecutionInteractionInput {
 export function recordDispatchExecutionInteraction(
   input: RecordDispatchExecutionInteractionInput,
 ): CatsCoreState {
-  const conversationId = buildChatConversationId(input.channelId);
-  const participantId = input.execution.target.participantId;
-  const targetStateId = input.execution.targetStateId;
-  if (!participantId || !targetStateId) {
-    return input.core;
+  const channel = requireChannel(input.state, input.channelId);
+  const existingTurnIds = new Set([
+    ...(channel.roomRouting?.workflow?.turnHistory ?? []).map((turn) => turn.id),
+    ...(channel.roomRouting?.workflow?.activeTurn ? [channel.roomRouting.workflow.activeTurn.id] : []),
+  ]);
+  if (!existingTurnIds.has(input.workflowTurn.id)) {
+    const nowIso = input.now.toISOString();
+    const nextState = structuredClone(input.state);
+    const nextChannel = requireChannel(nextState, input.channelId);
+    const defaultRecipientId = nextChannel.roomRouting?.defaultRecipientId ?? null;
+    const syntheticSessionMessageId = input.execution.target.sessionId
+      ? `session-started-${input.workflowTurn.id}-${input.execution.targetStateId}`
+      : null;
+    nextChannel.roomRouting = {
+      mode: nextChannel.channelKind === 'direct_lane' ? 'direct_cat_chat' : 'boss_chat',
+      defaultRecipientId,
+      maxContinuations: 8,
+      maxDispatchesPerTurn: 8,
+      maxTargetVisitsPerTurn: 3,
+      lastOutcome: null,
+      lastCheckpoint: null,
+      lastWakeRequest: null,
+      wakeHistory: [],
+      ...nextChannel.roomRouting,
+      workflow: {
+        activeTurn: null,
+        turnHistory: [],
+        eventHistory: [],
+        lastCheckpointEvent: null,
+        lastOutcomeEvent: null,
+        ...nextChannel.roomRouting?.workflow,
+      },
+    };
+    nextChannel.roomRouting.workflow.activeTurn = {
+      id: input.workflowTurn.id,
+      status: input.workflowTurn.completedAt ? 'completed' : 'running',
+      sourceMessageId: input.workflowTurn.sourceMessageId,
+      sourceSenderKind: input.workflowTurn.sourceSenderKind,
+      sourceSenderName:
+        input.workflowTurn.sourceSenderKind === 'user'
+          ? 'User'
+          : input.execution.target.participantName,
+      guard: null,
+      stageId: 'dispatch',
+      workflowShape: input.workflowTurn.workflowShape,
+      reviewRequired: input.workflowTurn.reviewRequired,
+      lastCheckpointId: null,
+      convergeTargetId: null,
+      continuationCount: 0,
+      dispatchCount: 1,
+      targetStatuses: [
+        {
+          id: input.execution.targetStateId,
+          dispatchId: null,
+          participant: {
+            participantKind: input.execution.target.participantKind,
+            participantId: input.execution.target.participantId,
+            participantName: input.execution.target.participantName,
+          },
+          source: input.execution.sourceParticipant ?? null,
+          sourceMessageId: input.execution.sourceMessage.id,
+          trigger: input.execution.trigger ?? 'room_default',
+          mentionNames: [],
+          depth: input.execution.depth ?? 0,
+          parentCheckpointId: null,
+          branchStrategy: input.execution.branchStrategy ?? null,
+          handoffReason: input.execution.handoffReason ?? null,
+          wakeRequestId: null,
+          status: input.execution.error ? 'failed' : 'completed',
+          queuedAt: input.workflowTurn.startedAt,
+          startedAt: input.workflowTurn.startedAt,
+          completedAt: input.workflowTurn.completedAt ?? nowIso,
+          response: null,
+          error: input.execution.error,
+        },
+      ],
+      events: [],
+      startedAt: input.workflowTurn.startedAt,
+      updatedAt: nowIso,
+      completedAt: input.workflowTurn.completedAt,
+    };
+    if (
+      syntheticSessionMessageId
+      && !nextChannel.messages.some((message) => message.id === syntheticSessionMessageId)
+    ) {
+      nextChannel.messages.push({
+        id: syntheticSessionMessageId,
+        channelId: input.channelId,
+        senderKind: 'system',
+        senderName: 'system',
+        body: '',
+        mentions: [],
+        metadata: {
+          event: 'session_started',
+          sessionId: input.execution.target.sessionId,
+          targetKind:
+            input.execution.target.participantKind === 'orchestrator'
+              ? 'orchestrator'
+              : 'cat',
+          targetId:
+            input.execution.target.participantKind === 'orchestrator'
+              ? null
+              : input.execution.target.participantId,
+          turnId: input.workflowTurn.id,
+          targetStateId: input.execution.targetStateId,
+        },
+        usage: null,
+        executionProvider: null,
+        executionModel: null,
+        executionInstance: null,
+        createdAt: input.workflowTurn.startedAt,
+      });
+    }
+    return projectChatChannelInteractionToCore(
+      input.core,
+      nextState,
+      input.channelId,
+      input.now,
+    );
   }
 
-  const laneId = buildChatLaneId(input.workflowTurn.id, targetStateId, participantId);
-  const canonicalParticipantId = resolveCanonicalParticipantId(input.channelId, input.execution.target);
-  const agentId = resolveTargetAgentId(input.state, input.channelId, input.execution);
-  const responseMessages = resolveExecutionResponseMessages(
+  return projectChatChannelInteractionToCore(
+    input.core,
     input.state,
     input.channelId,
-    input.execution,
-    input.workflowTurn.id,
-  );
-  const matchedLaneIndex = input.workflowTurn.targetStatuses.findIndex(
-    (target) => target.id === targetStateId,
-  );
-
-  let core = upsertCoreTurn(
-    input.core,
-    {
-      id: input.workflowTurn.id,
-      conversationId,
-      kind: input.workflowTurn.sourceSenderKind === 'user' ? 'user' : 'agent',
-      status: input.workflowTurn.completedAt ? 'completed' : 'active',
-      sourceParticipantId: resolveCanonicalParticipantId(
-        input.channelId,
-        input.execution.sourceParticipant,
-      ),
-      createdAt: input.workflowTurn.startedAt,
-      startedAt: input.workflowTurn.startedAt,
-      completedAt: input.workflowTurn.completedAt,
-      metadata: {
-        channelId: input.channelId,
-        sourceMessageId: input.workflowTurn.sourceMessageId,
-        workflowShape: input.workflowTurn.workflowShape,
-        reviewRequired: input.workflowTurn.reviewRequired,
-      },
-    },
     input.now,
-  ).core;
-
-  core = upsertCoreLane(
-    core,
-    {
-      id: laneId,
-      turnId: input.workflowTurn.id,
-      conversationId,
-      participantId: canonicalParticipantId,
-      agentId,
-      orderIndex: matchedLaneIndex >= 0 ? matchedLaneIndex : 0,
-      status: input.execution.error ? 'failed' : 'completed',
-      createdAt: input.workflowTurn.startedAt,
-      completedAt: input.execution.error ? input.now.toISOString() : null,
-      metadata: {
-        channelId: input.channelId,
-        targetStateId,
-        sourceMessageId: input.execution.sourceMessage.id,
-        participantKind: input.execution.target.participantKind,
-        speakerLabel: input.execution.target.participantName,
-      },
-    },
-    input.now,
-  ).core;
-
-  if (input.execution.target.sessionId) {
-    core = upsertCoreSession(
-      core,
-      {
-        id: input.execution.target.sessionId,
-        conversationId,
-        turnId: input.workflowTurn.id,
-        laneId,
-        participantId: canonicalParticipantId,
-        agentId,
-        transportBindingId: resolveSessionTransportBindingId(
-          input.state,
-          input.channelId,
-          input.execution,
-        ),
-        runtimeKey: input.execution.target.participantName,
-        status: input.execution.error ? 'failed' : 'active',
-        createdAt: input.workflowTurn.startedAt,
-        startedAt: input.workflowTurn.startedAt,
-        metadata: {
-          channelId: input.channelId,
-          targetStateId,
-        },
-      },
-      input.now,
-    ).core;
-  }
-
-  for (let index = 0; index < responseMessages.length; index += 1) {
-    const message = responseMessages[index]!;
-    const segmentIndex = readMessageMetadataNumber(message, 'segmentIndex') ?? index;
-    const assistantTurnId = readMessageMetadataString(message, 'assistantTurnId') ?? 'assistant-turn';
-    core = upsertCoreSegment(
-      core,
-      {
-        id: `segment-${assistantTurnId}-${segmentIndex}`,
-        laneId,
-        turnId: input.workflowTurn.id,
-        conversationId,
-        sessionId: input.execution.target.sessionId ?? null,
-        sequence: segmentIndex,
-        kind: 'text',
-        status: 'complete',
-        content: message.body,
-        createdAt: message.createdAt,
-        completedAt: message.createdAt,
-        metadata: {
-          chatMessageId: message.id,
-          assistantTurnId,
-          targetStateId,
-          sourceMessageId: input.execution.sourceMessage.id,
-          executionProvider: message.executionProvider ?? null,
-          executionModel: message.executionModel ?? null,
-          executionInstance: message.executionInstance ?? null,
-        },
-      },
-      input.now,
-    ).core;
-  }
-
-  return core;
+  );
 }
