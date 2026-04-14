@@ -2,8 +2,212 @@ import type { ProviderModelSelection } from '../shared/providerSelection.js';
 
 export const CATS_CORE_STATE_VERSION = 5 as const;
 
+export const CORE_CANONICAL_ID_KEYS = [
+  'agentId',
+  'participantId',
+  'containerId',
+  'conversationId',
+  'turnId',
+  'laneId',
+  'sessionId',
+  'transportBindingId',
+  'managedWorkId',
+  'missionId',
+  'runId',
+] as const;
+
+export type CanonicalIdKey = (typeof CORE_CANONICAL_ID_KEYS)[number];
+
+export const CORE_CANONICAL_RECORD_FAMILIES = [
+  'AgentRecord',
+  'ParticipantRecord',
+  'ContainerRecord',
+  'ConversationRecord',
+  'TurnRecord',
+  'LaneRecord',
+  'SegmentRecord',
+  'SessionRecord',
+  'TransportBindingRecord',
+  'ManagedWorkRecord',
+  'MissionRecord',
+  'RunRecord',
+] as const;
+
+export type CanonicalRecordFamily = (typeof CORE_CANONICAL_RECORD_FAMILIES)[number];
+
 export interface CoreRecordMetadata {
   [key: string]: unknown;
+}
+
+export type AgentId = string;
+export type ParticipantId = string;
+export type ContainerId = string;
+export type ConversationId = string;
+export type TurnId = string;
+// `laneId` is the durable transcript/read-model identity.
+export type LaneId = string;
+// `sessionId` is an ephemeral runtime attachment and must not replace `laneId`.
+export type SessionId = string;
+export type TransportBindingId = string;
+export type ManagedWorkId = string;
+export type MissionId = string;
+export type RunId = string;
+
+export type AgentRecord = CoreActorRecord;
+export type ConversationRecord = CoreConversationRecord;
+export type ManagedWorkRecord = CoreWorkItemRecord;
+export type RunRecord = CoreRunRecord;
+
+export type ParticipantRecordStatus = 'active' | 'inactive' | 'removed';
+
+export interface ParticipantRecord {
+  id: ParticipantId;
+  conversationId: ConversationId;
+  agentId: AgentId;
+  joinedAt: string;
+  updatedAt: string;
+  role: string | null;
+  status: ParticipantRecordStatus;
+  metadata: CoreRecordMetadata;
+}
+
+export type ContainerRecordKind =
+  | 'chat_root'
+  | 'parallel_group'
+  | 'project_workspace'
+  | 'work_portfolio';
+
+export type ContainerRecordStatus = 'active' | 'archived';
+
+export interface ContainerRecord {
+  id: ContainerId;
+  kind: ContainerRecordKind;
+  title: string;
+  status: ContainerRecordStatus;
+  parentContainerId: ContainerId | null;
+  createdAt: string;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type TurnRecordKind = 'user' | 'agent' | 'system' | 'transport';
+export type TurnRecordStatus = 'planned' | 'active' | 'completed' | 'failed' | 'cancelled';
+
+export interface TurnRecord {
+  id: TurnId;
+  conversationId: ConversationId;
+  kind: TurnRecordKind;
+  status: TurnRecordStatus;
+  sourceParticipantId: ParticipantId | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type LaneRecordStatus =
+  | 'pending'
+  | 'waiting'
+  | 'connecting'
+  | 'running'
+  | 'streaming'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface LaneRecord {
+  id: LaneId;
+  turnId: TurnId;
+  conversationId: ConversationId;
+  participantId: ParticipantId | null;
+  agentId: AgentId | null;
+  orderIndex: number;
+  status: LaneRecordStatus;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type SegmentRecordKind = 'status' | 'text' | 'tool' | 'artifact' | 'system';
+export type SegmentRecordStatus = 'pending' | 'streaming' | 'complete' | 'failed' | 'cancelled';
+
+export interface SegmentRecord {
+  id: string;
+  laneId: LaneId;
+  turnId: TurnId;
+  conversationId: ConversationId;
+  sessionId: SessionId | null;
+  sequence: number;
+  kind: SegmentRecordKind;
+  status: SegmentRecordStatus;
+  content: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  metadata: CoreRecordMetadata;
+}
+
+export type SessionRecordStatus = 'connecting' | 'active' | 'completed' | 'failed' | 'cancelled';
+
+export interface SessionRecord {
+  id: SessionId;
+  conversationId: ConversationId;
+  turnId: TurnId | null;
+  laneId: LaneId | null;
+  participantId: ParticipantId | null;
+  agentId: AgentId | null;
+  transportBindingId: TransportBindingId | null;
+  runtimeKey: string | null;
+  status: SessionRecordStatus;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type TransportBindingPlatform = 'telegram' | 'line' | 'internal' | 'web';
+export type TransportBindingDirection = 'inbound' | 'bidirectional';
+export type TransportBindingStatus = 'active' | 'disabled' | 'archived';
+
+export interface TransportBindingRecord {
+  id: TransportBindingId;
+  platform: TransportBindingPlatform;
+  direction: TransportBindingDirection;
+  conversationId: ConversationId | null;
+  participantId: ParticipantId | null;
+  agentId: AgentId | null;
+  externalThreadKey: string | null;
+  status: TransportBindingStatus;
+  createdAt: string;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
+}
+
+export type MissionRecordStatus =
+  | 'draft'
+  | 'planned'
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface MissionRecord {
+  id: MissionId;
+  managedWorkId: ManagedWorkId | null;
+  conversationId: ConversationId | null;
+  sourceTurnId: TurnId | null;
+  sourceLaneId: LaneId | null;
+  assignedAgentId: AgentId | null;
+  title: string;
+  status: MissionRecordStatus;
+  summary: string | null;
+  createdAt: string;
+  updatedAt: string;
+  metadata: CoreRecordMetadata;
 }
 
 export interface ExecutionTargetSummary {
