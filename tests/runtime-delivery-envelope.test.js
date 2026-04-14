@@ -87,6 +87,54 @@ test('buildNormalizedRuntimeDeliveryEvent treats session_started metadata as a s
   assert.equal(normalized.sequence.blockIndex, null);
 });
 
+test('buildNormalizedRuntimeDeliveryEvent treats session-kind progress metadata as a session status event', () => {
+  const normalized = buildNormalizedRuntimeDeliveryEvent({
+    conversationId: 'conversation-2a',
+    turnId: 'turn-2a',
+    laneId: 'lane-2a',
+    sessionId: 'session-2a',
+    eventIndex: 1,
+    emittedAt: '2026-04-14T20:06:00.000Z',
+    event: {
+      event: 'progress',
+      data: {
+        text: '',
+        metadata: {
+          kind: 'session',
+        },
+      },
+    },
+  });
+
+  assert.equal(normalized.kind, 'session_status');
+  assert.equal(normalized.sequence.segmentIndex, 0);
+  assert.equal(normalized.sequence.blockIndex, null);
+});
+
+test('buildNormalizedRuntimeDeliveryEvent treats session_closed metadata as a session status event', () => {
+  const normalized = buildNormalizedRuntimeDeliveryEvent({
+    conversationId: 'conversation-2aa',
+    turnId: 'turn-2aa',
+    laneId: 'lane-2aa',
+    sessionId: 'session-2aa',
+    eventIndex: 2,
+    emittedAt: '2026-04-14T20:06:30.000Z',
+    event: {
+      event: 'progress',
+      data: {
+        text: '',
+        metadata: {
+          event: 'session_closed',
+        },
+      },
+    },
+  });
+
+  assert.equal(normalized.kind, 'session_status');
+  assert.equal(normalized.sequence.segmentIndex, 0);
+  assert.equal(normalized.sequence.blockIndex, null);
+});
+
 test('buildNormalizedRuntimeDeliveryEvent normalizes raw text stream events into content blocks', () => {
   const normalized = buildNormalizedRuntimeDeliveryEvent({
     conversationId: 'conversation-2b',

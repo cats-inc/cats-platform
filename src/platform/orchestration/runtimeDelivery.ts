@@ -134,6 +134,9 @@ function resolveNormalizedRuntimeDeliveryKind(input: {
   event: RuntimeSessionStreamEvent;
   contentBlock: RuntimeDeliveryContentBlock | null;
 }): NormalizedRuntimeDeliveryKind {
+  const metadata = asRecord(input.event.data.metadata);
+  const metadataEvent = readString(metadata?.event);
+  const metadataKind = readString(metadata?.kind);
   if (input.event.event === 'error') {
     return 'error';
   }
@@ -143,7 +146,9 @@ function resolveNormalizedRuntimeDeliveryKind(input: {
   if (
     input.event.event === 'session_started'
     || input.event.event === 'session_closed'
-    || readString(asRecord(input.event.data.metadata)?.event) === 'session_started'
+    || metadataKind === 'session'
+    || metadataEvent === 'session_started'
+    || metadataEvent === 'session_closed'
   ) {
     return 'session_status';
   }
