@@ -116,14 +116,28 @@ async function readChannelReadyStreamSnapshot(
 ): Promise<{
   readyTargets: ChannelStreamTarget[];
   hasActiveWorkflowTurn: boolean;
+  concurrentBarrierReleased: boolean;
   signalVersion: number;
 }> {
   const signalVersion = readStreamTargetSignalVersion(channelId);
   const state = await context.dependencies.chatStore.read();
   const channel = requireChannel(state, channelId);
+  const activeTurn = channel.roomRouting?.workflow?.activeTurn ?? null;
+  const activeConcurrentTargets = activeTurn?.workflowShape === 'concurrent'
+    ? activeTurn.targetStatuses.filter((target) =>
+      target.status === 'running' || target.status === 'pending')
+    : [];
+  const readyTargetStateIds = new Set(
+    resolveChannelReadyStreamTargets(channel)
+      .map((target) => target.targetStateId)
+      .filter((targetStateId): targetStateId is string => typeof targetStateId === 'string'),
+  );
   return {
     readyTargets: resolveChannelReadyStreamTargets(channel),
     hasActiveWorkflowTurn: hasChannelActiveWorkflowTurn(channel),
+    concurrentBarrierReleased:
+      activeConcurrentTargets.length <= 1
+      || activeConcurrentTargets.every((target) => readyTargetStateIds.has(target.id)),
     signalVersion,
   };
 }
@@ -135,10 +149,11 @@ function buildStreamAttachKey(target: ChannelStreamTarget): string | null {
 async function streamChannelTarget(input: {
   context: ChatApiRouteContext;
   channelId: string;
+  emitEvent: (event: string, data: Record<string, unknown>) => void;
   target: ChannelStreamTarget;
   requestAbortSignal: AbortSignal;
 }): Promise<void> {
-  const { channelId, context, requestAbortSignal, target } = input;
+  const { channelId, context, emitEvent, requestAbortSignal, target } = input;
   if (!target.sessionId || requestAbortSignal.aborted || context.response.writableEnded) {
     return;
   }
@@ -159,7 +174,7 @@ async function streamChannelTarget(input: {
       });
     }
     publishStreamAttachMutationEvents(context, channelId);
-    writeSseEvent(context, 'progress', {
+    emitEvent('progress', {
       type: 'progress',
       text: '',
       metadata: {
@@ -195,7 +210,7 @@ async function streamChannelTarget(input: {
                   : synthesizedBlocks.filter((block) => block.kind === 'text'))
               : synthesizedBlocks;
             for (const block of blocksToEmit) {
-              writeSseEvent(context, 'content_block', {
+              emitEvent('content_block', {
                 type: 'content_block',
                 block,
                 synthesizedFromResult: true,
@@ -207,7 +222,7 @@ async function streamChannelTarget(input: {
               }
             }
           }
-          writeSseEvent(context, event.event, {
+          emitEvent(event.event, {
             ...event.data,
             ...buildStreamSpeakerPayload(target),
           });
@@ -255,7 +270,7 @@ async function streamChannelTarget(input: {
           },
         });
       }
-      writeSseEvent(context, 'error', {
+      emitEvent('error', {
         type: 'error',
         text: 'Runtime stream unavailable',
         ...buildStreamSpeakerPayload(target),
@@ -450,6 +465,33 @@ async function handleRestStreamChannel(
 
     const completedSessionIds = new Set<string>();
     const activeStreams = new Map<string, Promise<void>>();
+    const bufferedEvents: Array<{ event: string; data: Record<string, unknown> }> = [];
+    let concurrentBarrierReleased = false;
+
+    const emitStreamEvent = (event: string, data: Record<string, unknown>): void => {
+      const isSessionGateProgress =
+        event === 'progress'
+        && typeof data.text === 'string'
+        && data.text.length === 0
+        && typeof data.metadata === 'object'
+        && data.metadata !== null
+        && (data.metadata as { kind?: unknown }).kind === 'session';
+      if (!concurrentBarrierReleased && !isSessionGateProgress) {
+        bufferedEvents.push({ event, data });
+        return;
+      }
+      writeSseEvent(context, event, data);
+    };
+
+    const flushBufferedEvents = (): void => {
+      while (bufferedEvents.length > 0) {
+        const nextEvent = bufferedEvents.shift();
+        if (!nextEvent) {
+          continue;
+        }
+        writeSseEvent(context, nextEvent.event, nextEvent.data);
+      }
+    };
 
     const attachReadyTargets = (targets: ChannelStreamTarget[]): void => {
       for (const target of targets) {
@@ -460,6 +502,7 @@ async function handleRestStreamChannel(
         const streamPromise = streamChannelTarget({
           context,
           channelId,
+          emitEvent: emitStreamEvent,
           target,
           requestAbortSignal: abortController.signal,
         }).finally(() => {
@@ -473,6 +516,12 @@ async function handleRestStreamChannel(
     while (!abortController.signal.aborted && !context.response.writableEnded) {
       const snapshot = await readChannelReadyStreamSnapshot(context, channelId);
       attachReadyTargets(snapshot.readyTargets);
+      if (snapshot.concurrentBarrierReleased && !concurrentBarrierReleased) {
+        concurrentBarrierReleased = true;
+      }
+      if (concurrentBarrierReleased) {
+        flushBufferedEvents();
+      }
 
       if (activeStreams.size === 0 && !snapshot.hasActiveWorkflowTurn) {
         break;
