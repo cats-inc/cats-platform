@@ -1072,3 +1072,199 @@ test('startup recovery preserves retryable continuation replay metadata for inte
       && activity.metadata?.replayPhase === 'startup_recovered'),
   );
 });
+
+test('startup recovery preserves the full initial sequential audience for interrupted user-origin turns', async () => {
+  const now = new Date('2026-03-26T06:27:00.000Z');
+  let chat = createDefaultChatState();
+  chat = createChannel(
+    chat,
+    {
+      title: 'Recovered initial sequential turn',
+      topic: 'Preserve the whole planned audience after startup recovery.',
+      cats: [
+        {
+          name: 'Agent-1',
+          provider: 'claude',
+          roles: ['reviewer'],
+        },
+        {
+          name: 'Agent-2',
+          provider: 'gemini',
+          roles: ['implementer'],
+        },
+        {
+          name: 'Agent-3',
+          provider: 'codex',
+          roles: ['verifier'],
+        },
+      ],
+    },
+    now,
+  );
+
+  const channelId = chat.channels[0]?.id;
+  assert.ok(channelId);
+  chat = appendMessage(
+    chat,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Owner',
+      body: 'Run this room in sequence.',
+    },
+    now,
+  ).state;
+
+  const channel = buildChannelView(chat, channelId);
+  const sourceMessage = channel.messages.at(-1);
+  assert.ok(sourceMessage);
+  const firstParticipant = {
+    participantKind: 'cat',
+    participantId: channel.assignedCats[0]?.catId ?? 'cat-agent-1',
+    participantName: channel.assignedCats[0]?.name ?? 'Agent-1',
+  };
+  const secondParticipant = {
+    participantKind: 'cat',
+    participantId: channel.assignedCats[1]?.catId ?? 'cat-agent-2',
+    participantName: channel.assignedCats[1]?.name ?? 'Agent-2',
+  };
+  const thirdParticipant = {
+    participantKind: 'cat',
+    participantId: channel.assignedCats[2]?.catId ?? 'cat-agent-3',
+    participantName: channel.assignedCats[2]?.name ?? 'Agent-3',
+  };
+
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  const workflow = resolveRoomWorkflowState(roomRouting.workflow);
+  const activeTurn = createWorkflowTurn(
+    sourceMessage,
+    now.toISOString(),
+    'continuation_handoff',
+    'sequential',
+  );
+  activeTurn.id = 'turn-interrupted-initial-sequential-recovery';
+  activeTurn.dispatchCount = 1;
+  activeTurn.targetStatuses.push({
+    id: 'target-state-interrupted-initial-sequential-recovery',
+    dispatchId: 'dispatch-interrupted-initial-sequential-recovery',
+    participant: firstParticipant,
+    source: null,
+    sourceMessageId: sourceMessage.id,
+    trigger: 'explicit_mention',
+    mentionNames: ['Agent-1', 'Agent-2', 'Agent-3'],
+    depth: 0,
+    parentCheckpointId: null,
+    branchStrategy: 'fresh_no_parent',
+    handoffReason: 'explicit_mention',
+    wakeRequestId: null,
+    status: 'running',
+    queuedAt: now.toISOString(),
+    startedAt: now.toISOString(),
+    completedAt: null,
+    response: null,
+    error: null,
+  });
+  appendWorkflowEvent(
+    workflow,
+    activeTurn,
+    createWorkflowEvent(
+      activeTurn.id,
+      'turn_started',
+      'running',
+      'System resumed the initial sequential audience.',
+      now.toISOString(),
+      null,
+      sourceMessage.id,
+      [firstParticipant, secondParticipant, thirdParticipant],
+      {
+        metadata: {
+          workflowStageId: activeTurn.stageId,
+          workflowShape: activeTurn.workflowShape,
+        },
+      },
+    ),
+  );
+  workflow.activeTurn = activeTurn;
+  roomRouting.workflow = workflow;
+  roomRouting.lastOutcome = {
+    turnId: activeTurn.id,
+    mode: roomRouting.mode ?? createDefaultRoomRoutingState().mode,
+    sourceMessageId: sourceMessage.id,
+    sourceSenderKind: sourceMessage.senderKind,
+    sourceSenderName: sourceMessage.senderName,
+    status: 'running',
+    resolution: {
+      routingMode: 'explicit_multi',
+      selectionKind: 'explicit_mentions',
+      defaultTarget: null,
+      defaultTargetReason: null,
+      fallbackTarget: null,
+      blockedReason: null,
+      note: 'Initial sequential audience is waiting on Agent-1.',
+    },
+    resolvedTargets: [firstParticipant, secondParticipant, thirdParticipant],
+    unresolvedMentions: [],
+    dispatches: [
+      {
+        id: 'dispatch-interrupted-initial-sequential-recovery',
+        sourceMessageId: sourceMessage.id,
+        source: null,
+        target: firstParticipant,
+        trigger: 'explicit_mention',
+        status: 'running',
+        mentionNames: ['Agent-1', 'Agent-2', 'Agent-3'],
+        response: null,
+        startedAt: now.toISOString(),
+        completedAt: null,
+        error: null,
+      },
+    ],
+    checkpoints: [],
+    continuationCount: 0,
+    totalDispatchCount: 1,
+    guard: null,
+    startedAt: now.toISOString(),
+    completedAt: null,
+  };
+  chat = setChannelRoomRouting(chat, channelId, roomRouting, now);
+
+  const chatStore = new MemoryChatStore(chat);
+  const recoveredCount = await reconcileChatWorkflowRecoveryOnStartup({
+    shared: {
+      coreStore: chatStore,
+      now: () => new Date('2026-03-26T06:28:00.000Z'),
+    },
+    chat: {
+      chatStore,
+    },
+  });
+
+  assert.equal(recoveredCount, 1);
+
+  const core = await chatStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === buildChannelTaskId(channelId));
+  const replay = readWorkflowContinuationReplay(task?.metadata);
+
+  assert.ok(task);
+  assert.ok(replay);
+  assert.equal(replay?.replayState, 'ready');
+  assert.equal(replay?.blockedReason, null);
+  assert.equal(replay?.workflowStageId, 'continuation_handoff');
+  assert.equal(replay?.workflowShape, 'sequential');
+  assert.equal(replay?.sourceMessageId, sourceMessage.id);
+  assert.equal(replay?.sourceParticipant, null);
+  assert.deepEqual(
+    replay?.targets.map((target) => target.participantId),
+    [
+      firstParticipant.participantId,
+      secondParticipant.participantId,
+      thirdParticipant.participantId,
+    ],
+  );
+  assert.ok(
+    core.activities.some((activity) =>
+      activity.taskId === buildChannelTaskId(channelId)
+      && activity.metadata?.source === 'workflow-continuation-replay'
+      && activity.metadata?.replayPhase === 'startup_recovered'),
+  );
+});

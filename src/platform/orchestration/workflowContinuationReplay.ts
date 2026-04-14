@@ -31,7 +31,7 @@ export interface WorkflowContinuationReplayRequest {
   channelId: string;
   checkpointId: string;
   sourceMessageId: string;
-  sourceParticipant: RoomRoutingParticipantRef;
+  sourceParticipant: RoomRoutingParticipantRef | null;
   targets: RoomRoutingParticipantRef[];
   mentionNames: string[];
   trigger: RoomRoutingTrigger;
@@ -188,7 +188,7 @@ export function buildWorkflowContinuationReplayRequest(input: {
   channelId: string;
   checkpointId: string;
   sourceMessageId: string;
-  sourceParticipant: RoomRoutingParticipantRef;
+  sourceParticipant: RoomRoutingParticipantRef | null;
   targets: RoomRoutingParticipantRef[];
   mentionNames?: string[];
   trigger?: RoomRoutingTrigger;
@@ -206,7 +206,9 @@ export function buildWorkflowContinuationReplayRequest(input: {
     channelId: input.channelId,
     checkpointId: input.checkpointId,
     sourceMessageId: input.sourceMessageId,
-    sourceParticipant: structuredClone(input.sourceParticipant),
+    sourceParticipant: input.sourceParticipant
+      ? structuredClone(input.sourceParticipant)
+      : null,
     targets: input.targets.map((target) => structuredClone(target)),
     mentionNames: [...(input.mentionNames ?? [])],
     trigger: input.trigger ?? 'continuation_mention',
@@ -238,7 +240,9 @@ export function readWorkflowContinuationReplay(
   const channelId = readNonEmptyString(record.channelId);
   const checkpointId = readNonEmptyString(record.checkpointId);
   const sourceMessageId = readNonEmptyString(record.sourceMessageId);
-  const sourceParticipant = readParticipantRef(record.sourceParticipant);
+  const sourceParticipant = record.sourceParticipant === null
+    ? null
+    : readParticipantRef(record.sourceParticipant);
   const targets = readParticipantRefArray(record.targets);
   const trigger = readTrigger(record.trigger);
   const workflowShape = readWorkflowShape(record.workflowShape);
@@ -250,7 +254,6 @@ export function readWorkflowContinuationReplay(
     !channelId
     || !checkpointId
     || !sourceMessageId
-    || !sourceParticipant
     || (targets.length === 0 && !workflowRecommendation)
     || !trigger
     || !workflowShape
@@ -306,7 +309,9 @@ export function writeWorkflowContinuationReplayMetadata(
     channelId: request.channelId,
     checkpointId: request.checkpointId,
     sourceMessageId: request.sourceMessageId,
-    sourceParticipant: structuredClone(request.sourceParticipant),
+    sourceParticipant: request.sourceParticipant
+      ? structuredClone(request.sourceParticipant)
+      : null,
     targets: request.targets.map((target) => structuredClone(target)),
     mentionNames: [...request.mentionNames],
     trigger: request.trigger,

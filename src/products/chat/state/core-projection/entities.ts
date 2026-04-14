@@ -200,7 +200,7 @@ function readRecoveredStartupContinuationReplayRequest(
   turn: RoomWorkflowTurn | null,
   event: NonNullable<ReturnType<typeof findLatestContinuationReplayEvent>>,
 ): {
-  sourceParticipant: RoomRoutingParticipantRef;
+  sourceParticipant: RoomRoutingParticipantRef | null;
   sourceMessageId: string;
   targets: RoomRoutingParticipantRef[];
   mentionNames: string[];
@@ -234,21 +234,37 @@ function readRecoveredStartupContinuationReplayRequest(
 
   const sourceParticipant = interruptedTargetStates[0]?.source ?? null;
   const sourceMessageId = interruptedTargetStates[0]?.sourceMessageId?.trim() ?? '';
-  if (!sourceParticipant || sourceMessageId.length === 0) {
+  if (sourceMessageId.length === 0) {
     return null;
   }
 
   const trigger = interruptedTargetStates[0]?.trigger ?? 'continuation_mention';
-  const branchStrategy = interruptedTargetStates[0]?.branchStrategy ?? null;
+  let branchStrategy = interruptedTargetStates[0]?.branchStrategy ?? null;
   for (const target of interruptedTargetStates) {
     if (
-      !target.source
-      || !sameParticipantRef(target.source, sourceParticipant)
+      (
+        sourceParticipant
+          ? !target.source || !sameParticipantRef(target.source, sourceParticipant)
+          : target.source !== null
+      )
       || target.sourceMessageId !== sourceMessageId
       || target.trigger !== trigger
       || target.branchStrategy !== branchStrategy
     ) {
       return null;
+    }
+  }
+
+  let replayTargets = interruptedTargetStates.map((target) => structuredClone(target.participant));
+  if (
+    turn.workflowShape === 'sequential'
+    && sourceParticipant === null
+    && interruptedTargetStates.every((target) => target.depth === 0)
+  ) {
+    const turnStartedEvent = turn.events.find((candidate) => candidate.kind === 'turn_started') ?? null;
+    if (turnStartedEvent?.targets.length) {
+      replayTargets = readParticipantRefs(turnStartedEvent.targets);
+      branchStrategy = null;
     }
   }
 
@@ -260,7 +276,7 @@ function readRecoveredStartupContinuationReplayRequest(
   return {
     sourceParticipant,
     sourceMessageId,
-    targets: interruptedTargetStates.map((target) => structuredClone(target.participant)),
+    targets: replayTargets,
     mentionNames: uniqueStrings(
       interruptedTargetStates.flatMap((target) => [...target.mentionNames]),
     ),
@@ -317,7 +333,6 @@ function readWorkflowContinuationReplayRequest(
     !metadata
     || !checkpointId
     || !sourceMessageId
-    || !sourceParticipant
     || (!workflowRecommendation && targets.length === 0)
     || (
       workflowShape !== 'sequential'

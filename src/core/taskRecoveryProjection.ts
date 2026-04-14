@@ -177,11 +177,13 @@ export function buildWorkflowContinuationReplayView(
     checkpointId: snapshot.checkpointId,
     recordedAt: snapshot.recordedAt,
     sourceMessageId: snapshot.sourceMessageId,
-    sourceParticipant: {
-      participantKind: snapshot.sourceParticipant.participantKind,
-      participantId: snapshot.sourceParticipant.participantId,
-      participantName: snapshot.sourceParticipant.participantName,
-    },
+    sourceParticipant: snapshot.sourceParticipant
+      ? {
+          participantKind: snapshot.sourceParticipant.participantKind,
+          participantId: snapshot.sourceParticipant.participantId,
+          participantName: snapshot.sourceParticipant.participantName,
+        }
+      : null,
     targets: snapshot.targets.map((target) => ({
       participantKind: target.participantKind,
       participantId: target.participantId,
