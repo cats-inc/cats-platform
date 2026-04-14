@@ -67,6 +67,8 @@ export interface LiveIndicatorSelectedChannelLike {
         targetStatuses?: Array<{
         status: string | null;
         id?: string | null;
+        queuedAt?: string | null;
+        startedAt?: string | null;
         participant: {
           participantKind?: string | null;
           participantId: string;
@@ -222,11 +224,21 @@ function resolveTargetLease(
 export function resolveWaitingSessionState(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
   participantId: string | null,
+  targetStateId: string | null = null,
 ): WaitingSessionState {
   const activeTurnStartedAt = readTraceString(
     selectedChannel?.roomRouting.workflow.activeTurn?.startedAt,
   );
-  if (!participantId || !activeTurnStartedAt) {
+  const targetStatus = selectedChannel?.roomRouting.workflow.activeTurn?.targetStatuses?.find((target) => {
+    if (targetStateId && target.id?.trim() === targetStateId) {
+      return true;
+    }
+    return participantId !== null && target.participant.participantId === participantId;
+  }) ?? null;
+  const targetActivationAt = readTraceString(targetStatus?.startedAt)
+    ?? readTraceString(targetStatus?.queuedAt)
+    ?? activeTurnStartedAt;
+  if (!participantId || !targetActivationAt) {
     return {
       sessionStartedAt: null,
       requiresSessionStartConfirmation: false,
@@ -238,14 +250,14 @@ export function resolveWaitingSessionState(
   const sessionStartedAt = lease?.startedAt ?? null;
   if (!sessionId || !sessionStartedAt) {
     return {
-      sessionStartedAt: activeTurnStartedAt,
+      sessionStartedAt: targetActivationAt,
       requiresSessionStartConfirmation: true,
     };
   }
 
-  const activeTurnTimestamp = Date.parse(activeTurnStartedAt);
+  const targetActivationTimestamp = Date.parse(targetActivationAt);
   const sessionTimestamp = Date.parse(sessionStartedAt);
-  if (Number.isNaN(activeTurnTimestamp) || Number.isNaN(sessionTimestamp)) {
+  if (Number.isNaN(targetActivationTimestamp) || Number.isNaN(sessionTimestamp)) {
     return {
       sessionStartedAt,
       requiresSessionStartConfirmation: false,
@@ -254,7 +266,7 @@ export function resolveWaitingSessionState(
 
   return {
     sessionStartedAt,
-    requiresSessionStartConfirmation: sessionTimestamp >= activeTurnTimestamp,
+    requiresSessionStartConfirmation: sessionTimestamp >= targetActivationTimestamp,
   };
 }
 
@@ -874,8 +886,12 @@ export function useLiveIndicator<
     [activeTurn, selectedChannel?.messages],
   );
   const waitingSessionState = useMemo(
-    () => resolveWaitingSessionState(selectedChannel, waitingSpeakerState.participantId),
-    [selectedChannel, waitingSpeakerState.participantId],
+    () => resolveWaitingSessionState(
+      selectedChannel,
+      waitingSpeakerState.participantId,
+      waitingSpeakerState.targetStateId,
+    ),
+    [selectedChannel, waitingSpeakerState.participantId, waitingSpeakerState.targetStateId],
   );
   const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>(
     () => ({
