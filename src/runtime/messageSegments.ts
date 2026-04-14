@@ -62,12 +62,18 @@ export function readRuntimeMessageResultSegments(value: unknown): RuntimeMessage
     return [];
   }
 
+  const nestedResult = asRecord(record.result);
+
   const candidates = [
     record.segments,
     record.blocks,
     record.contentBlocks,
     record.content,
     record.result,
+    nestedResult?.segments,
+    nestedResult?.blocks,
+    nestedResult?.contentBlocks,
+    nestedResult?.content,
   ];
   for (const candidate of candidates) {
     if (!Array.isArray(candidate)) {

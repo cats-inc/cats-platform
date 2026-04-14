@@ -289,6 +289,38 @@ test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands final result s
   assert.equal(normalized[2]?.sequence.segmentIndex, 2);
 });
 
+test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands nested result segment payloads into canonical content blocks before the result', () => {
+  const normalized = buildNormalizedRuntimeDeliveryEventsFromStreamEvent({
+    conversationId: 'conversation-3d',
+    turnId: 'turn-3d',
+    laneId: 'lane-3d',
+    sessionId: 'session-3d',
+    eventIndex: 6,
+    emittedAt: '2026-04-14T20:13:00.000Z',
+    event: {
+      event: 'result',
+      data: {
+        result: {
+          segments: [
+            { kind: 'tool_use', toolName: 'search_repo', toolId: 'tool-2' },
+            { kind: 'text', text: 'Nested result payload.' },
+          ],
+        },
+      },
+    },
+  });
+
+  assert.equal(normalized.length, 3);
+  assert.equal(normalized[0]?.kind, 'content_block');
+  assert.equal(normalized[0]?.contentBlock?.kind, 'tool');
+  assert.equal(normalized[0]?.contentBlock?.toolName, 'search_repo');
+  assert.equal(normalized[1]?.kind, 'content_block');
+  assert.equal(normalized[1]?.contentBlock?.kind, 'text');
+  assert.equal(normalized[1]?.contentBlock?.text, 'Nested result payload.');
+  assert.equal(normalized[2]?.kind, 'result');
+  assert.equal(normalized[2]?.sequence.segmentIndex, 2);
+});
+
 test('buildRuntimeDeliveryContentBlocksFromResultPayload synthesizes a text block for coarse final-only payloads', () => {
   const blocks = buildRuntimeDeliveryContentBlocksFromResultPayload({
     text: 'Coarse final reply',
@@ -302,6 +334,48 @@ test('buildRuntimeDeliveryContentBlocksFromResultPayload synthesizes a text bloc
       status: 'complete',
       title: null,
       text: 'Coarse final reply',
+      toolName: null,
+      toolId: null,
+      metadata: {
+        source: 'runtime_result',
+        segmentKind: 'text',
+      },
+    },
+  ]);
+});
+
+test('buildRuntimeDeliveryContentBlocksFromResultPayload expands nested result segments', () => {
+  const blocks = buildRuntimeDeliveryContentBlocksFromResultPayload({
+    result: {
+      segments: [
+        { kind: 'tool_use', toolName: 'search_repo', toolId: 'tool-3' },
+        { kind: 'text', text: 'Nested blocks.' },
+      ],
+    },
+  });
+
+  assert.deepEqual(blocks, [
+    {
+      id: 'result-block-0',
+      index: 0,
+      kind: 'tool',
+      status: 'complete',
+      title: 'search_repo',
+      text: '',
+      toolName: 'search_repo',
+      toolId: 'tool-3',
+      metadata: {
+        source: 'runtime_result',
+        segmentKind: 'tool_use',
+      },
+    },
+    {
+      id: 'result-block-1',
+      index: 1,
+      kind: 'text',
+      status: 'complete',
+      title: null,
+      text: 'Nested blocks.',
       toolName: null,
       toolId: null,
       metadata: {
