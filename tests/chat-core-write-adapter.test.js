@@ -583,6 +583,111 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
   );
 });
 
+test('chatStore.write preserves canonical turn and segment history when transcript messages disappear', async () => {
+  const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return {
+        segments: [
+          {
+            kind: 'text',
+            text: 'Agent-1 completed the first step. ',
+            toolName: null,
+            toolId: null,
+          },
+          {
+            kind: 'text',
+            text: 'Implementation notes included.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 11,
+        outputTokens: 9,
+        tokensUsed: 20,
+      };
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 take the first pass.' },
+    runtimeClient,
+    new Date('2026-04-15T00:19:30.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const sourceMessages = requireChannel(dispatched.state, channelId).messages.filter((message) =>
+    message.senderName === 'Agent-1'
+    && message.metadata?.event === 'assistant_turn_segment');
+  assert.equal(sourceMessages.length, 2);
+  const sourceMessage = sourceMessages.at(-1);
+  assert.ok(sourceMessage);
+
+  const brokenState = structuredClone(dispatched.state);
+  const brokenChannel = requireChannel(brokenState, channelId);
+  brokenChannel.messages = brokenChannel.messages.filter((message) =>
+    message.id !== sourceMessage.id
+    && message.body !== '@Agent-1 take the first pass.'
+    && !(message.senderName === 'Agent-1' && message.metadata?.event === 'assistant_turn_segment'));
+  await store.write(brokenState);
+
+  const preservedCore = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const preservedTurn = readLatestConversationTurn(preservedCore, conversationId);
+  assert.ok(preservedTurn);
+  assert.equal(preservedTurn.metadata.sourceMessageBody, '@Agent-1 take the first pass.');
+  assert.equal(readTurnSegments(preservedCore, preservedTurn.id).length, 2);
+
+  const replayRuntimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-2')) {
+      assert.match(
+        content,
+        /Latest routed handoff:\nAgent-1 completed the first step\. ?Implementation notes included\./u,
+      );
+      return usage('Agent-2 resumed after transcript drift.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const replayResult = await resumeWorkflowContinuationReplay({
+    request: buildWorkflowContinuationReplayRequest({
+      channelId,
+      checkpointId: 'checkpoint-replay-preserved-canonical-history',
+      sourceMessageId: sourceMessage.id,
+      sourceParticipant: {
+        participantKind: 'cat',
+        participantId: agent1Id,
+        participantName: 'Agent-1',
+      },
+      targets: [
+        {
+          participantKind: 'cat',
+          participantId: agent2Id,
+          participantName: 'Agent-2',
+        },
+      ],
+      branchStrategy: 'transplant_context',
+      workflowStageId: 'continuation_handoff',
+      workflowShape: 'sequential',
+      recordedAt: '2026-04-15T00:20:00.000Z',
+    }),
+    chatStore: store,
+    runtimeClient: replayRuntimeClient,
+    now: new Date('2026-04-15T00:20:30.000Z'),
+  });
+
+  assert.equal(replayResult.status, 'dispatched');
+  assert.ok(
+    requireChannel(await store.read(), channelId).messages.some((message) =>
+      message.body === 'Agent-2 resumed after transcript drift.'),
+  );
+});
+
 test('repairOrphanedCompletedDispatchTurn syncs repaired turns back into canonical interaction records', async () => {
   const runtimeClient = createNoopRuntimeClient();
   const seededAt = new Date('2026-04-15T00:20:00.000Z');

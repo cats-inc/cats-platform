@@ -12,6 +12,7 @@ import type {
   CatsCoreState,
   LaneRecordStatus,
   SessionRecordStatus,
+  TurnRecord,
   TurnRecordStatus,
 } from '../../../../core/types.js';
 import type {
@@ -41,6 +42,26 @@ import {
 
 function isChatConversationId(conversationId: string | null | undefined): boolean {
   return typeof conversationId === 'string' && conversationId.startsWith('conversation-channel-');
+}
+
+function appendMissingById<T extends { id: string }>(
+  existing: T[],
+  additions: ReadonlyArray<T>,
+): T[] {
+  if (additions.length === 0) {
+    return existing;
+  }
+
+  const seenIds = new Set(existing.map((record) => record.id));
+  const next = [...existing];
+  for (const addition of additions) {
+    if (seenIds.has(addition.id)) {
+      continue;
+    }
+    seenIds.add(addition.id);
+    next.push(structuredClone(addition));
+  }
+  return next;
 }
 
 export function preserveCoreOwnedTurns(
@@ -83,6 +104,14 @@ function readMessageMetadataString(message: ChatMessage, key: string): string | 
 function readMessageMetadataNumber(message: ChatMessage, key: string): number | null {
   const value = message.metadata?.[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function readRecordMetadataString(
+  record: Pick<TurnRecord, 'metadata'> | null | undefined,
+  key: string,
+): string | null {
+  const value = record?.metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
 function resolveCanonicalParticipantId(
@@ -206,6 +235,34 @@ function resolveSourceMessageBody(
   }
 
   return sourceMessage.body;
+}
+
+function preserveExistingTurnProjection(
+  nextCore: CatsCoreState,
+  core: CatsCoreState,
+  conversationId: string,
+  turnId: string,
+): CatsCoreState {
+  const existingTurns = core.turns.filter((turn) =>
+    turn.conversationId === conversationId
+    && turn.id === turnId);
+  const existingLanes = core.lanes.filter((lane) =>
+    lane.conversationId === conversationId
+    && lane.turnId === turnId);
+  const existingSegments = core.segments.filter((segment) =>
+    segment.conversationId === conversationId
+    && segment.turnId === turnId);
+  const existingSessions = core.sessions.filter((session) =>
+    session.conversationId === conversationId
+    && session.turnId === turnId);
+
+  return {
+    ...nextCore,
+    turns: appendMissingById(nextCore.turns, existingTurns),
+    lanes: appendMissingById(nextCore.lanes, existingLanes),
+    segments: appendMissingById(nextCore.segments, existingSegments),
+    sessions: appendMissingById(nextCore.sessions, existingSessions),
+  };
 }
 
 function matchesSessionStartedParticipant(
@@ -371,6 +428,7 @@ export function projectChatChannelInteractionToCore(
   state: ChatState,
   channelId: string,
   now: Date = new Date(),
+  existingCore: CatsCoreState = core,
 ): CatsCoreState {
   const channel = requireChannel(state, channelId);
   const conversationId = buildChatConversationId(channelId);
@@ -378,6 +436,10 @@ export function projectChatChannelInteractionToCore(
   let nextCore = core;
 
   for (const turn of turns) {
+    nextCore = preserveExistingTurnProjection(nextCore, existingCore, conversationId, turn.id);
+    const existingTurn = existingCore.turns.find((candidate) =>
+      candidate.conversationId === conversationId
+      && candidate.id === turn.id) ?? null;
     nextCore = upsertCoreTurn(
       nextCore,
         {
@@ -394,7 +456,9 @@ export function projectChatChannelInteractionToCore(
           sourceMessageId: turn.sourceMessageId,
           sourceSenderKind: turn.sourceSenderKind,
           sourceSenderName: turn.sourceSenderName,
-          sourceMessageBody: resolveSourceMessageBody(channel, turn.sourceMessageId),
+          sourceMessageBody:
+            resolveSourceMessageBody(channel, turn.sourceMessageId)
+            ?? readRecordMetadataString(existingTurn, 'sourceMessageBody'),
           workflowShape: turn.workflowShape,
           workflowStageId: turn.stageId,
           reviewRequired: turn.reviewRequired,
@@ -539,7 +603,7 @@ export function projectChatInteractionRecordsToCore(
   };
 
   for (const channel of chat.channels) {
-    nextCore = projectChatChannelInteractionToCore(nextCore, chat, channel.id, now);
+    nextCore = projectChatChannelInteractionToCore(nextCore, chat, channel.id, now, core);
   }
 
   return nextCore;
