@@ -90,6 +90,30 @@ function toRuntimeDeliveryContentBlock(
         },
       };
     }
+    if (event.event === 'tool_result') {
+      const toolName = readString(event.data.toolName);
+      const toolId = readString(event.data.toolId);
+      const text = readString(event.data.text) ?? '';
+      const isError = event.data.isError === true;
+      if (!toolName && !toolId && text.length === 0) {
+        return null;
+      }
+      return {
+        id: toolId ?? `stream-tool-result-${fallbackIndex}`,
+        index: fallbackIndex,
+        kind: 'status',
+        status: isError ? 'error' : 'complete',
+        title: toolName ?? 'Tool',
+        text,
+        toolName,
+        toolId,
+        metadata: {
+          source: 'runtime_stream',
+          sourceEvent: 'tool_result',
+          isError,
+        },
+      };
+    }
     return null;
   }
 
