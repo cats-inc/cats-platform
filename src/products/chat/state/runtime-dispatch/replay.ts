@@ -5,7 +5,7 @@ import type {
   RoomRoutingTrigger,
   RoomWorkflowShape,
 } from '../../../../shared/roomRouting.js';
-import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
+import type { CatsCoreState } from '../../../../core/types.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
@@ -58,12 +58,8 @@ import {
   materializeInFlightDispatchState,
   persistInFlightDispatchState,
 } from './persistence.js';
-import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import {
-  compareChatCoreSegmentsAscending,
-  readChatCoreMetadataString,
-  readChatCoreTurnMetadataString,
-  resolveRawChatParticipantId,
+  buildCanonicalChatMessage,
 } from '../chatCoreInterop.js';
 
 function describeGuardReason(reason: string): string {
@@ -449,131 +445,11 @@ function mapTurnStatusToExecutionState(
   }
 }
 
-function readTurnSourceSenderKind(
-  turn: TurnRecord,
-): ChatMessage['senderKind'] {
-  const metadataKind = readChatCoreTurnMetadataString(turn, 'sourceSenderKind');
-  switch (metadataKind) {
-    case 'agent':
-    case 'system':
-    case 'orchestrator':
-      return metadataKind;
-    default:
-      return 'user';
-  }
-}
-
-function buildCanonicalTurnSourceMessage(
-  core: CatsCoreState,
-  request: WorkflowContinuationReplaySnapshot,
-): ChatMessage | null {
-  const conversationId = buildChatConversationId(request.channelId);
-  const turn = core.turns
-    .filter((candidate) =>
-      candidate.conversationId === conversationId
-      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === request.sourceMessageId)
-    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-    .at(-1);
-  if (!turn) {
-    return null;
-  }
-
-  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
-  if (!body) {
-    return null;
-  }
-
-  return {
-    id: request.sourceMessageId,
-    channelId: request.channelId,
-    senderKind: readTurnSourceSenderKind(turn),
-    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? turn.kind,
-    body,
-    mentions: [],
-    metadata: {},
-    usage: null,
-    executionProvider: null,
-    executionModel: null,
-    executionInstance: null,
-    createdAt: turn.createdAt,
-  };
-}
-
-function buildCanonicalSegmentSourceMessage(
-  core: CatsCoreState,
-  request: WorkflowContinuationReplaySnapshot,
-): ChatMessage | null {
-  const conversationId = buildChatConversationId(request.channelId);
-  const segment = core.segments
-    .filter((candidate) =>
-      candidate.conversationId === conversationId
-      && readChatCoreMetadataString(candidate.metadata, 'chatMessageId') === request.sourceMessageId)
-    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-    .at(-1);
-  if (!segment) {
-    return null;
-  }
-
-  const lane = core.lanes.find((candidate) => candidate.id === segment.laneId) ?? null;
-  const assistantTurnId = readChatCoreMetadataString(segment.metadata, 'assistantTurnId');
-  const laneSegments = core.segments
-    .filter((candidate) =>
-      candidate.conversationId === conversationId
-      && candidate.laneId === segment.laneId
-      && candidate.kind === 'text'
-      && (
-        assistantTurnId
-          ? readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === assistantTurnId
-          : true
-      ))
-    .sort(compareChatCoreSegmentsAscending);
-  const fullText = laneSegments
-    .map((candidate) => candidate.content ?? '')
-    .join('');
-  if (!fullText.trim()) {
-    return null;
-  }
-
-  const targetKind = readChatCoreMetadataString(segment.metadata, 'targetKind')
-    ?? readChatCoreMetadataString(lane?.metadata ?? null, 'participantKind');
-  const targetId = readChatCoreMetadataString(segment.metadata, 'targetId')
-    ?? resolveRawChatParticipantId(lane?.participantId ?? null, conversationId);
-  const senderKind: ChatMessage['senderKind'] = targetKind === 'orchestrator'
-    ? 'orchestrator'
-    : 'agent';
-
-  return {
-    id: request.sourceMessageId,
-    channelId: request.channelId,
-    senderKind,
-    senderName: readChatCoreMetadataString(lane?.metadata ?? null, 'speakerLabel') ?? senderKind,
-    body: fullText,
-    mentions: [],
-    metadata: {
-      event: 'assistant_turn_segment',
-      ...(assistantTurnId ? { assistantTurnId } : {}),
-      ...(readChatCoreMetadataString(segment.metadata, 'targetStateId')
-        ? { targetStateId: readChatCoreMetadataString(segment.metadata, 'targetStateId') }
-        : {}),
-      ...(targetKind ? { targetKind } : {}),
-      ...(targetId ? { targetId } : {}),
-      ...(segment.sessionId ? { sessionId: segment.sessionId } : {}),
-      ...(segment.turnId ? { turnId: segment.turnId } : {}),
-    },
-    usage: null,
-    executionProvider: readChatCoreMetadataString(segment.metadata, 'executionProvider'),
-    executionModel: readChatCoreMetadataString(segment.metadata, 'executionModel'),
-    executionInstance: readChatCoreMetadataString(segment.metadata, 'executionInstance'),
-    createdAt: segment.createdAt,
-  };
-}
-
 function resolveCanonicalReplaySourceMessage(
   core: CatsCoreState,
   request: WorkflowContinuationReplaySnapshot,
 ): ChatMessage | null {
-  return buildCanonicalSegmentSourceMessage(core, request)
-    ?? buildCanonicalTurnSourceMessage(core, request);
+  return buildCanonicalChatMessage(core, request.channelId, request.sourceMessageId);
 }
 
 export async function resumeWorkflowContinuationReplay(input: {

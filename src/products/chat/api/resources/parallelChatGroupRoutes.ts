@@ -16,6 +16,7 @@ import {
   appendMessage,
   requireChannel,
 } from '../../state/model/index.js';
+import { buildCanonicalChatMessage } from '../../state/chatCoreInterop.js';
 import type {
   CancelParallelChatGroupInput,
   RelayParallelChatMessageInput,
@@ -223,7 +224,9 @@ async function handleRelayParallelChatGroupMessage(
         }
 
         const sourceChannel = requireChannel(state, body.sourceChannelId);
-        const sourceMessage = sourceChannel.messages.find((message) => message.id === body.sourceMessageId) ?? null;
+        const core = await context.dependencies.chatStore.readCore();
+        const sourceMessage = sourceChannel.messages.find((message) => message.id === body.sourceMessageId)
+          ?? buildCanonicalChatMessage(core, body.sourceChannelId, body.sourceMessageId);
         if (!sourceMessage || !sourceMessage.body.trim()) {
           sendRestError(
             context,

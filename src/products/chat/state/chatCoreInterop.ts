@@ -9,6 +9,148 @@ import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
 
 export type CanonicalChatUserMessage = ChatMessage & { senderKind: 'user' };
 
+function readTurnSourceSenderKind(
+  turn: TurnRecord,
+): ChatMessage['senderKind'] {
+  const metadataKind = readChatCoreTurnMetadataString(turn, 'sourceSenderKind');
+  switch (metadataKind) {
+    case 'agent':
+    case 'system':
+    case 'orchestrator':
+      return metadataKind;
+    default:
+      return 'user';
+  }
+}
+
+function buildCanonicalChatTurnMessage(
+  core: CatsCoreState,
+  channelId: string,
+  sourceMessageId: string,
+): ChatMessage | null {
+  const conversationId = buildChatConversationId(channelId);
+  const turn = core.turns
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === sourceMessageId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .at(-1);
+  if (!turn) {
+    return null;
+  }
+
+  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
+  if (!body) {
+    return null;
+  }
+
+  const lanes = core.lanes
+    .filter((lane) => lane.turnId === turn.id && lane.conversationId === conversationId)
+    .sort((left, right) => left.orderIndex - right.orderIndex);
+  const recipientParticipantIds = lanes
+    .map((lane) => resolveRawChatParticipantId(lane.participantId, conversationId))
+    .filter((participantId): participantId is string => Boolean(participantId));
+  const workflowShape = readChatCoreTurnMetadataString(turn, 'workflowShape');
+
+  return {
+    id: sourceMessageId,
+    channelId,
+    senderKind: readTurnSourceSenderKind(turn),
+    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? turn.kind,
+    body,
+    mentions: [],
+    metadata: {
+      ...(recipientParticipantIds.length > 0
+        ? {
+            recipientParticipantIds,
+          }
+        : {}),
+      ...(workflowShape
+        ? {
+            workflowShape,
+          }
+        : {}),
+    },
+    usage: null,
+    executionProvider: null,
+    executionModel: null,
+    executionInstance: null,
+    createdAt: turn.createdAt,
+  };
+}
+
+function buildCanonicalChatSegmentMessage(
+  core: CatsCoreState,
+  channelId: string,
+  sourceMessageId: string,
+): ChatMessage | null {
+  const conversationId = buildChatConversationId(channelId);
+  const segment = core.segments
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && readChatCoreMetadataString(candidate.metadata, 'chatMessageId') === sourceMessageId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .at(-1);
+  if (!segment) {
+    return null;
+  }
+
+  const lane = core.lanes.find((candidate) =>
+    candidate.id === segment.laneId
+    && candidate.conversationId === conversationId) ?? null;
+  const assistantTurnId = readChatCoreMetadataString(segment.metadata, 'assistantTurnId');
+  const laneSegments = core.segments
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && candidate.laneId === segment.laneId
+      && candidate.kind === 'text'
+      && (
+        assistantTurnId
+          ? readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === assistantTurnId
+          : true
+      ))
+    .sort(compareChatCoreSegmentsAscending);
+  const fullText = laneSegments
+    .map((candidate) => candidate.content ?? '')
+    .join('');
+  if (!fullText.trim()) {
+    return null;
+  }
+
+  const targetKind = readChatCoreMetadataString(segment.metadata, 'targetKind')
+    ?? readChatCoreMetadataString(lane?.metadata ?? null, 'participantKind');
+  const targetId = readChatCoreMetadataString(segment.metadata, 'targetId')
+    ?? resolveRawChatParticipantId(lane?.participantId ?? null, conversationId);
+  const senderKind: ChatMessage['senderKind'] = targetKind === 'orchestrator'
+    ? 'orchestrator'
+    : 'agent';
+
+  return {
+    id: sourceMessageId,
+    channelId,
+    senderKind,
+    senderName: readChatCoreMetadataString(lane?.metadata ?? null, 'speakerLabel') ?? senderKind,
+    body: fullText,
+    mentions: [],
+    metadata: {
+      event: 'assistant_turn_segment',
+      ...(assistantTurnId ? { assistantTurnId } : {}),
+      ...(readChatCoreMetadataString(segment.metadata, 'targetStateId')
+        ? { targetStateId: readChatCoreMetadataString(segment.metadata, 'targetStateId') }
+        : {}),
+      ...(targetKind ? { targetKind } : {}),
+      ...(targetId ? { targetId } : {}),
+      ...(segment.sessionId ? { sessionId: segment.sessionId } : {}),
+      ...(segment.turnId ? { turnId: segment.turnId } : {}),
+    },
+    usage: null,
+    executionProvider: readChatCoreMetadataString(segment.metadata, 'executionProvider'),
+    executionModel: readChatCoreMetadataString(segment.metadata, 'executionModel'),
+    executionInstance: readChatCoreMetadataString(segment.metadata, 'executionInstance'),
+    createdAt: segment.createdAt,
+  };
+}
+
 export function readChatCoreMetadataString(
   metadata: CoreRecordMetadata | null | undefined,
   key: string,
@@ -89,54 +231,18 @@ export function buildCanonicalChatUserMessage(
   channelId: string,
   sourceMessageId: string,
 ): CanonicalChatUserMessage | null {
-  const conversationId = buildChatConversationId(channelId);
-  const turn = core.turns
-    .filter((candidate) =>
-      candidate.conversationId === conversationId
-      && readChatCoreTurnMetadataString(candidate, 'sourceSenderKind') === 'user'
-      && readChatCoreTurnMetadataString(candidate, 'sourceMessageId') === sourceMessageId)
-    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-    .at(-1);
-  if (!turn) {
+  const message = buildCanonicalChatTurnMessage(core, channelId, sourceMessageId);
+  if (!message || message.senderKind !== 'user') {
     return null;
   }
+  return message as CanonicalChatUserMessage;
+}
 
-  const body = readChatCoreTurnMetadataString(turn, 'sourceMessageBody');
-  if (!body) {
-    return null;
-  }
-
-  const lanes = core.lanes
-    .filter((lane) => lane.turnId === turn.id && lane.conversationId === conversationId)
-    .sort((left, right) => left.orderIndex - right.orderIndex);
-  const recipientParticipantIds = lanes
-    .map((lane) => resolveRawChatParticipantId(lane.participantId, conversationId))
-    .filter((participantId): participantId is string => Boolean(participantId));
-  const workflowShape = readChatCoreTurnMetadataString(turn, 'workflowShape');
-
-  return {
-    id: sourceMessageId,
-    channelId,
-    senderKind: 'user',
-    senderName: readChatCoreTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
-    body,
-    mentions: [],
-    metadata: {
-      ...(recipientParticipantIds.length > 0
-        ? {
-            recipientParticipantIds,
-          }
-        : {}),
-      ...(workflowShape
-        ? {
-            workflowShape,
-          }
-        : {}),
-    },
-    usage: null,
-    executionProvider: null,
-    executionModel: null,
-    executionInstance: null,
-    createdAt: turn.createdAt,
-  };
+export function buildCanonicalChatMessage(
+  core: CatsCoreState,
+  channelId: string,
+  sourceMessageId: string,
+): ChatMessage | null {
+  return buildCanonicalChatSegmentMessage(core, channelId, sourceMessageId)
+    ?? buildCanonicalChatTurnMessage(core, channelId, sourceMessageId);
 }
