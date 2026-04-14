@@ -657,6 +657,10 @@ test('resumeWorkflowContinuationReplay can rebuild a missing routed handoff sour
     if (content.includes('You are Agent-2')) {
       assert.match(
         content,
+        /Recent messages:[\s\S]*\[user:User\] @Agent-1 take the first pass\./u,
+      );
+      assert.match(
+        content,
         /Latest routed handoff:\nAgent-1 completed the first step\. ?Implementation notes included\./u,
       );
       assert.doesNotMatch(content, /Ignore this later note\./u);

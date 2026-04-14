@@ -28,6 +28,7 @@ import {
   buildDirectLaneTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
 import {
+  resolveTranscriptOrCanonicalConversationMessages,
   readChatCoreMetadataString,
   resolveRawChatParticipantId,
 } from './chatCoreInterop.js';
@@ -443,51 +444,51 @@ function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): bool
 }
 
 function sliceRecentContextForTarget(
-  channel: ChatChannelView,
+  messages: ReadonlyArray<ChatMessage>,
   target: RoutingTarget,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): ChatMessage[] {
-  const boundedSourceIndex = resolveSourceBoundaryIndex(channel, sourceMessage);
+  const boundedSourceIndex = resolveSourceBoundaryIndex(messages, sourceMessage);
   if (boundedSourceIndex < 0) {
     return [];
   }
   let lastOwnReplyIndex = -1;
 
   for (let index = boundedSourceIndex - 1; index >= 0; index -= 1) {
-    if (messageMatchesTarget(channel.messages[index], target)) {
+    if (messageMatchesTarget(messages[index]!, target)) {
       lastOwnReplyIndex = index;
       break;
     }
   }
 
   const startIndex = Math.max(lastOwnReplyIndex + 1, 0);
-  const relevantMessages = channel.messages.slice(startIndex, boundedSourceIndex + 1);
+  const relevantMessages = messages.slice(startIndex, boundedSourceIndex + 1);
   return relevantMessages.slice(-MAX_RECENT_CONTEXT_MESSAGES);
 }
 
 function messagesBeforeSource(
-  channel: ChatChannelView,
+  messages: ReadonlyArray<ChatMessage>,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): ChatMessage[] {
-  const sourceIndex = resolveSourceBoundaryIndex(channel, sourceMessage);
+  const sourceIndex = resolveSourceBoundaryIndex(messages, sourceMessage);
   if (sourceIndex <= 0) {
     return [];
   }
 
-  return channel.messages.slice(0, sourceIndex);
+  return messages.slice(0, sourceIndex);
 }
 
 function resolveSourceBoundaryIndex(
-  channel: ChatChannelView,
+  messages: ReadonlyArray<ChatMessage>,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): number {
-  const sourceIndex = channel.messages.findIndex((message) => message.id === sourceMessage.id);
+  const sourceIndex = messages.findIndex((message) => message.id === sourceMessage.id);
   if (sourceIndex !== -1) {
     return sourceIndex;
   }
 
-  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
-    const candidate = channel.messages[index]!;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const candidate = messages[index]!;
     if (candidate.createdAt.localeCompare(sourceMessage.createdAt) <= 0) {
       return index;
     }
@@ -497,7 +498,7 @@ function resolveSourceBoundaryIndex(
 }
 
 function hasVisibleResponseFromCurrentSession(
-  channel: ChatChannelView,
+  messages: ReadonlyArray<ChatMessage>,
   target: RoutingTarget,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): boolean {
@@ -505,7 +506,7 @@ function hasVisibleResponseFromCurrentSession(
     return false;
   }
 
-  return messagesBeforeSource(channel, sourceMessage).some((message) => {
+  return messagesBeforeSource(messages, sourceMessage).some((message) => {
     if (message.senderKind === 'system') {
       return false;
     }
@@ -528,15 +529,15 @@ function hasVisibleResponseFromCurrentSession(
 }
 
 function resolveSoloChatBootstrapInstructions(
-  channel: ChatChannelView,
+  messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
 ): string | null {
-  if (hasVisibleResponseFromCurrentSession(channel, request.target, request.sourceMessage)) {
+  if (hasVisibleResponseFromCurrentSession(messages, request.target, request.sourceMessage)) {
     return null;
   }
 
   return buildSoloChatBootstrapInstructions(
-    messagesBeforeSource(channel, request.sourceMessage),
+    messagesBeforeSource(messages, request.sourceMessage),
   );
 }
 
@@ -573,11 +574,17 @@ export function buildPromptForTarget(
   channelId: string,
   request: DispatchRequest,
   transport?: RuntimeTransportContext,
+  core?: CatsCoreState,
 ): DispatchPrompt {
   const channel = buildChannelView(state, channelId);
   const promptSourceMessage = request.promptSourceMessage ?? request.sourceMessage;
+  const promptMessages = resolveTranscriptOrCanonicalConversationMessages({
+    core,
+    channelId,
+    transcriptMessages: channel.messages,
+  });
   const recentMessages = sliceRecentContextForTarget(
-    channel,
+    promptMessages,
     request.target,
     promptSourceMessage,
   );
@@ -592,7 +599,7 @@ export function buildPromptForTarget(
     if (isSoloChatChannel(channel)) {
       return {
         message: request.sourceMessage.body,
-        instructions: resolveSoloChatBootstrapInstructions(channel, request),
+        instructions: resolveSoloChatBootstrapInstructions(promptMessages, request),
       };
     }
     return {

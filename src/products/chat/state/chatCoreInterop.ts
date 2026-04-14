@@ -334,6 +334,155 @@ export function buildCanonicalChatMessage(
     ?? buildCanonicalChatTurnMessage(core, channelId, sourceMessageId);
 }
 
+function buildCanonicalConversationTurnMessages(
+  core: CatsCoreState,
+  channelId: string,
+): ChatMessage[] {
+  const conversationId = buildChatConversationId(channelId);
+  return core.turns
+    .filter((turn) =>
+      turn.conversationId === conversationId
+      && readTurnSourceSenderKind(turn) === 'user'
+      && readChatCoreTurnMetadataString(turn, 'sourceMessageId') !== null)
+    .flatMap((turn) => {
+      const sourceMessageId = readChatCoreTurnMetadataString(turn, 'sourceMessageId');
+      if (!sourceMessageId) {
+        return [];
+      }
+
+      const message = buildCanonicalChatTurnMessage(core, channelId, sourceMessageId);
+      return message ? [message] : [];
+    });
+}
+
+function buildCanonicalConversationAssistantMessages(
+  core: CatsCoreState,
+  channelId: string,
+): ChatMessage[] {
+  const conversationId = buildChatConversationId(channelId);
+  const assistantMessageIds = new Set<string>();
+
+  for (const segment of core.segments) {
+    if (segment.conversationId !== conversationId || segment.kind !== 'text') {
+      continue;
+    }
+
+    const chatMessageId = readChatCoreMetadataString(segment.metadata, 'chatMessageId');
+    if (!chatMessageId) {
+      continue;
+    }
+
+    if (readChatCoreMetadataBoolean(segment.metadata, 'terminal') === true) {
+      assistantMessageIds.add(chatMessageId);
+      continue;
+    }
+
+    const assistantTurnId = readChatCoreMetadataString(segment.metadata, 'assistantTurnId');
+    if (!assistantTurnId) {
+      assistantMessageIds.add(chatMessageId);
+    }
+  }
+
+  return [...assistantMessageIds]
+    .flatMap((messageId) => {
+      const message = buildCanonicalChatSegmentMessage(core, channelId, messageId);
+      return message ? [message] : [];
+    });
+}
+
+export function buildCanonicalConversationMessages(
+  core: CatsCoreState,
+  channelId: string,
+): ChatMessage[] {
+  const dedupedMessages = new Map<string, ChatMessage>();
+
+  for (const message of [
+    ...buildCanonicalConversationTurnMessages(core, channelId),
+    ...buildCanonicalConversationAssistantMessages(core, channelId),
+  ]) {
+    dedupedMessages.set(message.id, message);
+  }
+
+  return [...dedupedMessages.values()].sort((left, right) => {
+    const createdComparison = left.createdAt.localeCompare(right.createdAt);
+    if (createdComparison !== 0) {
+      return createdComparison;
+    }
+
+    return left.id.localeCompare(right.id);
+  });
+}
+
+export function resolveTranscriptOrCanonicalConversationMessages(input: {
+  core: CatsCoreState | null | undefined;
+  channelId: string;
+  transcriptMessages: ReadonlyArray<ChatMessage>;
+}): ChatMessage[] {
+  if (!input.core) {
+    return [...input.transcriptMessages];
+  }
+
+  const canonicalMessages = buildCanonicalConversationMessages(input.core, input.channelId);
+  const canonicalMessageIds = new Set(canonicalMessages.map((message) => message.id));
+  const canonicalAssistantTurnIds = new Set(
+    canonicalMessages.flatMap((message) => {
+      if (!isAssistantTurnSegmentMessage(message)) {
+        return [];
+      }
+
+      const assistantTurnId = typeof message.metadata?.assistantTurnId === 'string'
+        ? message.metadata.assistantTurnId.trim()
+        : '';
+      return assistantTurnId.length > 0 ? [assistantTurnId] : [];
+    }),
+  );
+  const transcriptIndexById = new Map<string, number>();
+  const dedupedMessages = new Map<string, ChatMessage>();
+  input.transcriptMessages.forEach((message, index) => {
+    if (isAssistantTurnSegmentMessage(message)) {
+      const assistantTurnId = typeof message.metadata?.assistantTurnId === 'string'
+        ? message.metadata.assistantTurnId.trim()
+        : '';
+      if (
+        assistantTurnId.length > 0
+        && canonicalAssistantTurnIds.has(assistantTurnId)
+        && !canonicalMessageIds.has(message.id)
+      ) {
+        return;
+      }
+    }
+    transcriptIndexById.set(message.id, index);
+    dedupedMessages.set(message.id, message);
+  });
+
+  for (const message of canonicalMessages) {
+    if (!dedupedMessages.has(message.id)) {
+      dedupedMessages.set(message.id, message);
+    }
+  }
+
+  return [...dedupedMessages.values()].sort((left, right) => {
+    const createdComparison = left.createdAt.localeCompare(right.createdAt);
+    if (createdComparison !== 0) {
+      return createdComparison;
+    }
+
+    const leftTranscriptIndex = transcriptIndexById.get(left.id);
+    const rightTranscriptIndex = transcriptIndexById.get(right.id);
+    if (leftTranscriptIndex !== undefined && rightTranscriptIndex !== undefined) {
+      return leftTranscriptIndex - rightTranscriptIndex;
+    }
+    if (leftTranscriptIndex !== undefined) {
+      return -1;
+    }
+    if (rightTranscriptIndex !== undefined) {
+      return 1;
+    }
+
+    return left.id.localeCompare(right.id);
+  });
+}
+
 export function resolveTranscriptOrCanonicalChatMessage(input: {
   core: CatsCoreState | null | undefined;
   channelId: string;

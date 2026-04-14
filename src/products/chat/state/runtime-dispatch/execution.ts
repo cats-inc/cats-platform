@@ -8,6 +8,7 @@ import type {
   RoomRoutingParticipantRef,
 } from '../../../../shared/roomRouting.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
+import type { CatsCoreState } from '../../../../core/types.js';
 import {
   resolveFullResponseText,
   type RuntimeClient,
@@ -47,9 +48,10 @@ export async function executeDispatch(
   now: Date,
   transport?: RuntimeTransportContext,
   companionStore?: CompanionBoxStore,
+  core?: CatsCoreState,
 ): Promise<DispatchExecution> {
   try {
-    const dispatchPrompt = buildPromptForTarget(state, channelId, request, transport);
+    const dispatchPrompt = buildPromptForTarget(state, channelId, request, transport, core);
     const channel = buildChannelView(state, channelId);
     const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
       state,
