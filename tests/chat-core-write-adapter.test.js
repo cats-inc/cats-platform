@@ -12,6 +12,7 @@ import {
 } from '../build/server/products/chat/state/model/index.js';
 import {
   beginChannelMessageDispatch,
+  beginChannelMessageRetryDispatch,
   routeChannelMessage,
 } from '../build/server/products/chat/state/runtimeActions.js';
 import {
@@ -697,6 +698,56 @@ test('chatStore.write preserves canonical turn and segment history when transcri
   assert.ok(
     requireChannel(await store.read(), channelId).messages.some((message) =>
       message.body === 'Agent-2 resumed after transcript drift.'),
+  );
+});
+
+test('beginChannelMessageRetryDispatch can rebuild a missing user source from canonical turn metadata', async () => {
+  const { state, channelId } = await createGroupChannelState();
+  const store = new MemoryChatStore();
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Agent-1')) {
+      return usage('Agent-1 completed the retryable turn.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: '@Agent-1 create a retryable result.' },
+    runtimeClient,
+    new Date('2026-04-15T00:21:00.000Z'),
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const originalUserMessage = requireChannel(dispatched.state, channelId).messages.find((message) =>
+    message.senderKind === 'user'
+    && message.body === '@Agent-1 create a retryable result.');
+  assert.ok(originalUserMessage);
+
+  const brokenState = structuredClone(dispatched.state);
+  const brokenChannel = requireChannel(brokenState, channelId);
+  brokenChannel.messages = brokenChannel.messages.filter((message) =>
+    message.id !== originalUserMessage.id);
+  await store.write(brokenState);
+
+  const begun = await beginChannelMessageRetryDispatch(
+    await store.read(),
+    channelId,
+    originalUserMessage.id,
+    createNoopRuntimeClient(),
+    new Date('2026-04-15T00:21:30.000Z'),
+    {
+      chatStore: store,
+    },
+  );
+
+  assert.equal(begun.userMessage.id, originalUserMessage.id);
+  assert.equal(begun.userMessage.body, '@Agent-1 create a retryable result.');
+  assert.deepEqual(
+    begun.preparedTurn?.initialResolution.targets.map((target) => target.participantName),
+    ['Agent-1'],
   );
 });
 

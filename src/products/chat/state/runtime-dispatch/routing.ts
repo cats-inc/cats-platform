@@ -6,6 +6,7 @@ import type {
   ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
+import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
 import type {
   RoomRoutingGuardReason,
 } from '../../../../shared/roomRouting.js';
@@ -30,6 +31,7 @@ import {
   createExplicitProviderModelSelection,
   sameProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
+import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
@@ -37,6 +39,7 @@ import {
 } from '../runtimeTargeting.js';
 import {
   prepareDispatchTurn,
+  prepareDispatchTurnForUserMessage,
   prepareDispatchTurnForExistingUserMessage,
 } from './turn.js';
 import type {
@@ -123,6 +126,93 @@ function buildRetrySendPayload(message: ChatMessage): SendChannelMessageInput {
           messageMetadata,
         }
       : {}),
+  };
+}
+
+function readTurnMetadataString(
+  turn: Pick<TurnRecord, 'metadata'> | null | undefined,
+  key: string,
+): string | null {
+  const value = turn?.metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function resolveRawChatParticipantId(
+  canonicalParticipantId: string | null | undefined,
+  conversationId: string,
+): string | null {
+  if (!canonicalParticipantId) {
+    return null;
+  }
+
+  const prefix = `participant-${conversationId}-`;
+  if (canonicalParticipantId.startsWith(prefix)) {
+    const rawParticipantId = canonicalParticipantId.slice(prefix.length).trim();
+    return rawParticipantId.length > 0 ? rawParticipantId : null;
+  }
+
+  const normalized = canonicalParticipantId.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function buildCanonicalRetrySourceMessage(
+  core: CatsCoreState,
+  channelId: string,
+  sourceMessageId: string,
+): ChatMessage | null {
+  const conversationId = buildChatConversationId(channelId);
+  const turn = core.turns
+    .filter((candidate) =>
+      candidate.conversationId === conversationId
+      && readTurnMetadataString(candidate, 'sourceMessageId') === sourceMessageId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .at(-1);
+  if (!turn) {
+    return null;
+  }
+
+  const body = readTurnMetadataString(turn, 'sourceMessageBody');
+  if (!body) {
+    return null;
+  }
+
+  const senderKind = readTurnMetadataString(turn, 'sourceSenderKind');
+  if (senderKind !== 'user') {
+    return null;
+  }
+
+  const lanes = core.lanes
+    .filter((lane) => lane.turnId === turn.id && lane.conversationId === conversationId)
+    .sort((left, right) => left.orderIndex - right.orderIndex);
+  const recipientParticipantIds = lanes
+    .map((lane) => resolveRawChatParticipantId(lane.participantId, conversationId))
+    .filter((participantId): participantId is string => Boolean(participantId));
+  const workflowShape = readTurnMetadataString(turn, 'workflowShape');
+
+  return {
+    id: sourceMessageId,
+    channelId,
+    senderKind: 'user',
+    senderName: readTurnMetadataString(turn, 'sourceSenderName') ?? 'User',
+    body,
+    mentions: [],
+    metadata: {
+      ...(recipientParticipantIds.length > 0
+        ? {
+            recipientParticipantIds,
+          }
+        : {}),
+      ...(workflowShape
+        ? {
+            workflowShape,
+          }
+        : {}),
+    },
+    usage: null,
+    executionProvider: null,
+    executionModel: null,
+    executionInstance: null,
+    createdAt: turn.createdAt,
   };
 }
 
@@ -283,7 +373,12 @@ export async function beginChannelMessageRetryDispatch(
   options: RouteChannelMessageOptions = {},
 ): Promise<BegunChannelMessageDispatch> {
   const channel = requireChannel(state, channelId);
-  const sourceMessage = channel.messages.find((message) => message.id === sourceMessageId);
+  let sourceMessage = channel.messages.find((message) => message.id === sourceMessageId) ?? null;
+  const sourceMessageMissingFromTranscript = !sourceMessage;
+  if (!sourceMessage && options.chatStore) {
+    const core = await options.chatStore.readCore();
+    sourceMessage = buildCanonicalRetrySourceMessage(core, channelId, sourceMessageId);
+  }
   if (!sourceMessage) {
     throw new Error(`Channel message not found: ${sourceMessageId}`);
   }
@@ -291,13 +386,21 @@ export async function beginChannelMessageRetryDispatch(
     throw new Error(`Only user messages can be retried: ${sourceMessageId}`);
   }
 
-  const preparedTurn = prepareDispatchTurnForExistingUserMessage(
-    state,
-    channelId,
-    buildRetrySendPayload(sourceMessage),
-    sourceMessageId,
-    now,
-  );
+  const preparedTurn = sourceMessageMissingFromTranscript
+    ? prepareDispatchTurnForUserMessage(
+        state,
+        channelId,
+        buildRetrySendPayload(sourceMessage),
+        sourceMessage,
+        now,
+      )
+    : prepareDispatchTurnForExistingUserMessage(
+        state,
+        channelId,
+        buildRetrySendPayload(sourceMessage),
+        sourceMessageId,
+        now,
+      );
   const nextState = await persistInFlightDispatchState(
     options.chatStore,
     materializeInFlightDispatchState(

@@ -90,7 +90,7 @@ export interface PreparedDispatchTurn {
   terminalResult: { state: ChatState; results: ChannelDispatchResult[] } | null;
 }
 
-function prepareDispatchTurnForUserMessage(
+export function prepareDispatchTurnForUserMessage(
   state: ChatState,
   channelId: string,
   payload: SendChannelMessageInput,
