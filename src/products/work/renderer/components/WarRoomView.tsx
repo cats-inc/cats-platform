@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkDashboardProjection } from '../../api/projection.js';
+import { buildChannelPath } from '../../shared/channelPaths.js';
 import { fetchWorkDashboard } from '../api/dashboard.js';
 import { IntakeStatusCard } from './IntakeStatusCard.js';
 
@@ -273,6 +274,8 @@ function ProjectsSection({
   items: WorkProjectItem[];
   totalAvailable: number;
 }) {
+  const navigate = useNavigate();
+
   return (
     <section className="operatorPanel">
       <WorkSectionHeader
@@ -309,7 +312,22 @@ function ProjectsSection({
                 <span>Conversation: {item.primaryConversationTitle ?? 'No primary conversation'}</span>
                 <span>{formatTimestamp(item.updatedAt)}</span>
               </div>
-              <WorkWarRoomOpenProjectButton projectId={item.id} />
+              <div className="workWarRoomHeaderActions">
+                <WorkWarRoomOpenProjectButton projectId={item.id} />
+                {item.primaryConversationSourceChannelId ? (
+                  <button
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      startTransition(() => {
+                        navigate(buildChannelPath(item.primaryConversationSourceChannelId!));
+                      });
+                    }}
+                  >
+                    Open briefing thread
+                  </button>
+                ) : null}
+              </div>
             </article>
           ))}
         </div>
@@ -325,6 +343,8 @@ function WorkItemsSection({
   items: WorkWorkItemItem[];
   totalAvailable: number;
 }) {
+  const navigate = useNavigate();
+
   return (
     <section className="operatorPanel">
       <WorkSectionHeader
@@ -361,7 +381,22 @@ function WorkItemsSection({
                 <span>Conversation: {item.conversationTitle ?? 'No linked conversation'}</span>
                 <span>{formatTimestamp(item.updatedAt)}</span>
               </div>
-              <WorkWarRoomOpenWorkItemButton workItemId={item.id} />
+              <div className="workWarRoomHeaderActions">
+                <WorkWarRoomOpenWorkItemButton workItemId={item.id} />
+                {item.conversationSourceChannelId ? (
+                  <button
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      startTransition(() => {
+                        navigate(buildChannelPath(item.conversationSourceChannelId!));
+                      });
+                    }}
+                  >
+                    Open briefing thread
+                  </button>
+                ) : null}
+              </div>
             </article>
           ))}
         </div>

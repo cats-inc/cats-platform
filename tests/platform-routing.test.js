@@ -16,8 +16,10 @@ import {
 } from '../build/server/core/platformSurface.js';
 import {
   buildWorkDashboardProjection,
+  buildWorkProjectListProjection,
   buildWorkProjectDetailProjection,
   buildWorkTaskDetailProjection,
+  buildWorkWorkItemListProjection,
   buildWorkWorkItemDetailProjection,
 } from '../build/server/products/work/api/projection.js';
 import {
@@ -141,7 +143,7 @@ test('Work and Code dashboard projections stay core-backed without inventing new
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/previews'));
 });
 
-test('Work detail projections preserve briefing-thread channel links from shared conversations', () => {
+test('Work projections preserve briefing-thread channel links from shared conversations', () => {
   const core = createDefaultCoreState();
   const conversationId = 'conversation-work-briefing';
   const sourceChannelId = 'channel-work-briefing';
@@ -212,10 +214,14 @@ test('Work detail projections preserve briefing-thread channel links from shared
     metadata: {},
   });
 
+  const projectList = buildWorkProjectListProjection(core);
+  const workItemList = buildWorkWorkItemListProjection(core);
   const projectDetail = buildWorkProjectDetailProjection(core, core.projects[0]);
   const workItemDetail = buildWorkWorkItemDetailProjection(core, core.workItems[0]);
   const taskDetail = buildWorkTaskDetailProjection(core, core.tasks[0]);
 
+  assert.equal(projectList.projects[0].primaryConversationSourceChannelId, sourceChannelId);
+  assert.equal(workItemList.workItems[0].conversationSourceChannelId, sourceChannelId);
   assert.equal(projectDetail.primaryConversation?.sourceChannelId, sourceChannelId);
   assert.equal(workItemDetail.conversation?.sourceChannelId, sourceChannelId);
   assert.equal(taskDetail.conversation?.sourceChannelId, sourceChannelId);

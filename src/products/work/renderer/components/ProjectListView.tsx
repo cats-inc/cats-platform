@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import type { WorkProjectListProjection } from '../../api/projection.js';
+import { buildChannelPath } from '../../shared/channelPaths.js';
 import { fetchWorkProjectList } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -230,17 +231,32 @@ export function ProjectListView() {
                       <span>Conversation: {project.primaryConversationTitle ?? 'No primary conversation'}</span>
                       <span>{formatTimestamp(project.updatedAt)}</span>
                     </div>
-                    <button
-                      type="button"
-                      className="operatorActionButton"
-                      onClick={() => {
-                        startTransition(() => {
-                          navigate(`/work/projects/${encodeURIComponent(project.id)}`);
-                        });
-                      }}
-                    >
-                      Open project
-                    </button>
+                    <div className="workWarRoomHeaderActions">
+                      <button
+                        type="button"
+                        className="operatorActionButton"
+                        onClick={() => {
+                          startTransition(() => {
+                            navigate(`/work/projects/${encodeURIComponent(project.id)}`);
+                          });
+                        }}
+                      >
+                        Open project
+                      </button>
+                      {project.primaryConversationSourceChannelId ? (
+                        <button
+                          type="button"
+                          className="operatorActionButton"
+                          onClick={() => {
+                            startTransition(() => {
+                              navigate(buildChannelPath(project.primaryConversationSourceChannelId!));
+                            });
+                          }}
+                        >
+                          Open briefing thread
+                        </button>
+                      ) : null}
+                    </div>
                   </article>
                 ))}
               </div>

@@ -43,7 +43,6 @@ import {
   buildWorkItemStatusCounts,
   isWorkTask,
   resolveActorName,
-  resolveConversationTitle,
 } from './projectionSupport.js';
 import { getWorkTemplate } from '../templates/index.js';
 
@@ -87,6 +86,7 @@ export interface WorkProjectListItem {
   repoPath: string | null;
   primaryConversationId: string | null;
   primaryConversationTitle: string | null;
+  primaryConversationSourceChannelId: string | null;
   ownerActorId: string;
   ownerName: string;
   linkedWorkItemCount: number;
@@ -148,6 +148,7 @@ export interface WorkWorkItemListItem {
   projectTitle: string | null;
   conversationId: string | null;
   conversationTitle: string | null;
+  conversationSourceChannelId: string | null;
   taskId: string | null;
   taskTitle: string | null;
   ownerActorId: string;
@@ -285,6 +286,9 @@ function buildProjectListItems(
         workItem.status !== 'completed'
         && workItem.status !== 'cancelled'
         && workItem.status !== 'archived');
+      const primaryConversation = project.primaryConversationId
+        ? core.conversations.find((conversation) => conversation.id === project.primaryConversationId) ?? null
+        : null;
       const linkedTaskIds = new Set(
         linkedWorkItems
           .map((workItem) => workItem.taskId)
@@ -298,7 +302,8 @@ function buildProjectListItems(
         summary: project.summary,
         repoPath: project.repoPath,
         primaryConversationId: project.primaryConversationId,
-        primaryConversationTitle: resolveConversationTitle(core, project.primaryConversationId),
+        primaryConversationTitle: primaryConversation?.title ?? null,
+        primaryConversationSourceChannelId: primaryConversation?.sourceChannelId ?? null,
         ownerActorId: project.ownerActorId,
         ownerName: resolveActorName(core, project.ownerActorId),
         linkedWorkItemCount: linkedWorkItems.length,
@@ -320,6 +325,9 @@ function buildWorkItemListItems(
       const linkedTask = workItem.taskId
         ? core.tasks.find((task) => task.id === workItem.taskId) ?? null
         : null;
+      const conversation = workItem.conversationId
+        ? core.conversations.find((candidate) => candidate.id === workItem.conversationId) ?? null
+        : null;
       const projectTitle = workItem.projectId
         ? core.projects.find((project) => project.id === workItem.projectId)?.title ?? null
         : null;
@@ -332,7 +340,8 @@ function buildWorkItemListItems(
         projectId: workItem.projectId,
         projectTitle,
         conversationId: workItem.conversationId,
-        conversationTitle: resolveConversationTitle(core, workItem.conversationId),
+        conversationTitle: conversation?.title ?? null,
+        conversationSourceChannelId: conversation?.sourceChannelId ?? null,
         taskId: workItem.taskId,
         taskTitle: linkedTask?.title ?? null,
         ownerActorId: workItem.ownerActorId,

@@ -163,7 +163,7 @@ Known follow-ups:
 | Task | Status | Notes |
 |------|--------|-------|
 | Add work dashboard and inbox surfaces | [x] | `/api/work` plus the Work renderer now expose `/work/war-room` and `/work/tasks/:taskId` above core-owned operator inbox, control-plane, recovery, and timeline reads |
-| Add project/work-item views on top of shared contracts | [x] | `/api/work/projects`, `/api/work/work-items`, `/api/work/projects/:projectId`, `/api/work/work-items/:workItemId`, and `/api/work/tasks/:taskId` now back renderer overview/detail routes that project shared-core conversations, actors, artifacts, and activity into the Work-owned navigation slice, including briefing-thread links back into Chat when a shared `sourceChannelId` exists |
+| Add project/work-item views on top of shared contracts | [x] | `/api/work/projects`, `/api/work/work-items`, `/api/work/projects/:projectId`, `/api/work/work-items/:workItemId`, and `/api/work/tasks/:taskId` now back renderer overview/detail routes that project shared-core conversations, actors, artifacts, and activity into the Work-owned navigation slice, including direct briefing-thread links back into Chat across War Room, overview, and detail cards when a shared `sourceChannelId` exists |
 | Reuse Chat actors/resources, permissions, and archive metadata | [ ] | Shared core must land before Work diverges |
 | Keep Work surfaces decoupled from runtime internals | [x] | The first Work slice only consumes Cats Core projections and does not couple the renderer to runtime internals |
 

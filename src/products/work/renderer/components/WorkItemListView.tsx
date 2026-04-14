@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import type { WorkWorkItemListProjection } from '../../api/projection.js';
+import { buildChannelPath } from '../../shared/channelPaths.js';
 import { fetchWorkItemList } from '../api/dashboard.js';
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -260,6 +261,19 @@ export function WorkItemListView() {
                           }}
                         >
                           Open task
+                        </button>
+                      ) : null}
+                      {workItem.conversationSourceChannelId ? (
+                        <button
+                          type="button"
+                          className="operatorActionButton"
+                          onClick={() => {
+                            startTransition(() => {
+                              navigate(buildChannelPath(workItem.conversationSourceChannelId!));
+                            });
+                          }}
+                        >
+                          Open briefing thread
                         </button>
                       ) : null}
                     </div>
