@@ -29,6 +29,8 @@ Use this guide together with:
 - [SPEC-058](./specs/SPEC-058-interaction-core-and-domain-materialization.md)
 - [ADR-060](./decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
 - [ADR-061](./decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
+- [ADR-063](./decisions/063-agent-missions-and-transport-bindings.md)
+- [SPEC-062](./specs/SPEC-062-agent-missions-and-transport-bindings.md)
 
 ## Foundational Integration Rules
 
@@ -46,6 +48,9 @@ All product teams must treat these as frozen architectural rules:
 7. Product entry presets such as `+New code`, `+Team code`, and `+Peer code`
    must map to shared engine policies rather than inventing local workflow
    engines.
+8. Managed Work, missions, runs, and schedules must stay distinct.
+9. External transports must use transport bindings that stay separate from bot
+   binding, conversation identity, and runtime session identity.
 
 ## Frozen Shared Contracts
 
@@ -72,9 +77,59 @@ At the doc/architecture level, the current freeze set also includes:
 - [SPEC-058](./specs/SPEC-058-interaction-core-and-domain-materialization.md)
 - [ADR-060](./decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
 - [SPEC-060](./specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
+- [ADR-063](./decisions/063-agent-missions-and-transport-bindings.md)
+- [SPEC-062](./specs/SPEC-062-agent-missions-and-transport-bindings.md)
 
 Products must not work around these invariants by inventing local room modes,
 local replay logic, or local materialization semantics.
+
+## Managed Work, Missions, Runs, and Schedules
+
+All product teams must preserve this split:
+
+- `Managed Work`
+  - durable, operator-visible planning objects
+  - canonically owned by `Cats Work`
+- `Mission`
+  - delegated agent work bridging intent into execution
+- `Run`
+  - one execution attempt for a mission or runtime action
+- `Schedule / Trigger`
+  - the condition that launches a mission or run
+
+Rules:
+
+- Not every mission or run becomes managed Work.
+- `Chat` may originate missions and create or update managed Work through the
+  shared materialization seam.
+- `Code` may originate many missions and runs for one task without replacing
+  the canonical Work record.
+- Companion and other background agent capabilities should default to missions
+  and runs, promoting into Work only when operator-visible tracking or approval
+  is needed.
+
+## Transport Bindings and External Entry
+
+All product teams must preserve this split:
+
+- `bot binding`
+  - which Cat/Agent identity owns a public transport endpoint
+- `transport binding`
+  - the product-owned relation between one external thread/account and one
+    canonical Cats entry path
+- `conversation`
+  - the internal interaction unit used by the shared engine
+- `session`
+  - one runtime attachment for execution
+
+Rules:
+
+- A transport binding may move between direct-lane continuation and linked-room
+  routing without changing the external thread identity.
+- Reconnects and new runtime sessions must not redefine transport-binding
+  identity.
+- Product teams must not rely on renderer-local heuristics to recover transport
+  identity after reconnect.
 
 ## Concurrent, Parallel, and Code-Preset Mapping
 
@@ -216,6 +271,12 @@ Before a product team adds a new platform capability, confirm:
 8. If the feature uses many workers/agents, it makes explicit whether that
    means concurrent lanes inside one conversation or parallel child
    conversations inside one container.
+9. If the feature introduces automation or agent background work, it makes
+   explicit whether it is creating managed Work, missions, runs, or only a
+   schedule/trigger.
+10. If the feature touches Telegram or other transports, it preserves explicit
+    transport-binding identity instead of collapsing that identity into session
+    or room state.
 
 ## Integration Owner Checklist
 
@@ -230,6 +291,10 @@ When converging product work into the platform host:
    materialization seam, and optional capability boundaries.
 6. Keep `npm test` green so dependency graph and boundary rules continue to
    protect the layering.
+7. Verify new work/automation flows do not blur managed Work, missions, runs,
+   and schedules.
+8. Verify transport-facing changes preserve explicit transport-binding identity
+   across reconnect and reroute behavior.
 
 ---
 

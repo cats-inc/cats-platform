@@ -55,6 +55,16 @@ Under the current re-architecture, this builder loop is a `Cats Code`
 projection over the shared interaction engine, the materialization seam, and
 normalized runtime delivery rather than a standalone execution model.
 
+That also means `Cats Code` should distinguish:
+
+- managed work owned by `Cats Work`
+- code missions delegated into execution
+- execution runs and review/build/test attempts
+- code-owned artifacts and execution profiles
+
+One durable task may therefore spawn many Code missions and many runs without
+duplicating the canonical planning record.
+
 ## Non-Goals
 
 - building a full IDE, text editor, or file-tree replacement in this slice
@@ -199,6 +209,17 @@ normalized runtime delivery rather than a standalone execution model.
     follow-on work and shall not block the first real builder-loop slice.
 28. `Cats Code` should preserve structured coder/reviewer summaries as visible
     task-adjacent outputs once review-oriented follow-ons land.
+29. `Cats Code` shall treat research notes, specs, ADRs, implementation plans,
+    code changes, tests, reviews, previews, and execution profiles as
+    code-adjacent artifacts/resources owned by the Code domain.
+30. A single managed-work record may materialize into one or more Code missions
+    and many Code runs without changing the canonical Work ownership of the
+    planning record.
+31. `Cats Code` shall surface mission and run history as execution context and
+    observability, not as replacements for Work task identity.
+32. Code-originated follow-up work that needs durable operator planning or
+    prioritization shall be promoted back through shared managed-work records
+    rather than kept only as session-local run state.
 
 ### Non-Functional Requirements
 
@@ -212,6 +233,8 @@ normalized runtime delivery rather than a standalone execution model.
   session, plan step, and preview output they are looking at.
 - **Safety**: approval gates must remain explicit for external consequences
   while keeping local iteration fast.
+- **Ownership clarity**: Work-task identity, Code mission identity, and run
+  identity must remain distinguishable.
 
 ## Design Overview
 
@@ -282,6 +305,7 @@ first serious builder slice:
 - [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
 - [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
 - [ADR-060](../decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
+- [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
 - [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
 - [SPEC-032](./SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
 - [SPEC-034](./SPEC-034-room-owned-workspace-bootstrap-and-ownership.md)

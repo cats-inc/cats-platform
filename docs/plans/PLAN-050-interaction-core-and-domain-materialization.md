@@ -16,6 +16,7 @@
 
 - [SPEC-058: Interaction Core and Domain Materialization](../specs/SPEC-058-interaction-core-and-domain-materialization.md)
 - [ADR-059: Adopt a Unified Conversation-Turn-Lane Engine](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [ADR-063: Separate Managed Work, Agent Missions, Execution Runs, and Transport Bindings](../decisions/063-agent-missions-and-transport-bindings.md)
 - [ADR-039: Use Core task metadata as the cross-product plan exchange surface](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
 - [SPEC-035: Cross-Product Task Strategy Handoff and Runtime Bridge](../specs/SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md)
 
@@ -50,9 +51,15 @@ This plan introduces that seam in a way that preserves:
       - `superseded`
       - `rejected`
       - `informational`
-- [ ] Task 1.3: Define the minimum provenance tuple required on every
+- [ ] Task 1.3: Freeze the shared vocabulary for:
+      - `Managed Work`
+      - `Mission`
+      - `Run`
+      - `Schedule / Trigger`
+      - `Transport Binding`
+- [ ] Task 1.4: Define the minimum provenance tuple required on every
       structured output.
-- [ ] Task 1.4: Define idempotency keys or deduplication rules so replay and
+- [ ] Task 1.5: Define idempotency keys or deduplication rules so replay and
       reconnect do not create duplicate durable records.
 
 **Deliverables**: one normalized structured-output contract shared by Chat,
@@ -68,6 +75,11 @@ Code, and Work
       participant/session provenance on applied records.
 - [ ] Task 2.4: Define how previously materialized state becomes input context
       for future turns without requiring transcript scraping.
+- [ ] Task 2.5: Define promotion rules from mission/run outcomes into
+      managed-work records so background automation does not flood Work by
+      default.
+- [ ] Task 2.6: Preserve transport-binding provenance for materialized outputs
+      that originate from Telegram or other external entrypoints.
 
 **Deliverables**: durable materialization records with traceable interaction
 lineage
@@ -133,6 +145,7 @@ lineage
 |------|--------|-------------|
 | `src/core/**` | Modify | Add materialization contracts, provenance, and persistence seams |
 | `src/platform/orchestration/**` | Modify | Carry structured outputs through orchestration flows |
+| `src/platform/transports/**` | Modify | Preserve transport-binding provenance where external entry drives materialization |
 | `src/products/chat/**` | Modify | Emit and project structured outputs in transcript surfaces |
 | `src/products/work/**` | Modify | Consume materialized work/project/task outputs |
 | `src/products/code/**` | Modify | Consume materialized code/test/review outputs |

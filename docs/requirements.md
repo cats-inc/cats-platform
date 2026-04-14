@@ -303,6 +303,42 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: High
 - **Status**: Planned
 
+### FR-039: Agent Mission and Run Vocabulary
+
+- **Description**: The platform shall distinguish operator-visible managed work
+  from agent missions, execution runs, and schedules/triggers so future Cats,
+  Guide Cat, Companion, and other agents do not overload one `task` or `job`
+  term for every layer of work.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-040: Transport Binding and External Thread Compatibility
+
+- **Description**: The platform shall model external entrypoints such as
+  Telegram through explicit transport bindings that stay distinct from bot
+  binding identity, canonical conversation identity, and runtime session
+  identity.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-041: Managed Work Canonical Ownership
+
+- **Description**: `Cats Work` shall remain the canonical home for durable
+  managed-work records such as goals, projects, requirements, backlog items,
+  issues, and tasks, while `Chat` and `Code` may create or refine those records
+  through the shared materialization seam.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-042: Background Agent Activity Promotion Rules
+
+- **Description**: Background agent activity such as companion ingestion,
+  memory extraction, scheduled assistance, and future helper automation shall
+  default to missions and runs, and shall be promoted into managed Work only
+  when operator-visible tracking, approval, or follow-up is required.
+- **Priority**: Medium
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -430,6 +466,20 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
   worktree policy, permissions, and tool/skill bindings as first-class
   contracts
 - These inputs MUST NOT exist only as ad hoc renderer form state
+
+### NFR-020: Vocabulary Separation
+
+- The platform MUST NOT treat `task`, `job`, `mission`, `run`, and `schedule`
+  as interchangeable terms across Chat, Work, Code, and runtime surfaces
+- Operator-facing product surfaces SHOULD prefer precise terms so planning,
+  execution, and automation remain legible
+
+### NFR-021: Transport and Session Identity Separation
+
+- External thread identity MUST remain stable across reconnects, reroutes, and
+  runtime session changes
+- A transport binding MUST NEVER be redefined implicitly by a new session id or
+  by a renderer-local heuristic
 
 ## User Stories
 

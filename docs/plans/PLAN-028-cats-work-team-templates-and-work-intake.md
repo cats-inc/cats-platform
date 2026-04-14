@@ -20,6 +20,7 @@
 - [PLAN-021: Cross-Product Task Strategy Handoff and Runtime Bridge](./PLAN-021-cross-product-task-strategy-handoff-and-runtime-bridge.md)
 - [ADR-039: Use Core task metadata as the cross-product plan exchange surface](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
 - [ADR-059: Adopt a Unified Conversation-Turn-Lane Engine](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [ADR-063: Separate Managed Work, Agent Missions, Execution Runs, and Transport Bindings](../decisions/063-agent-missions-and-transport-bindings.md)
 - [SPEC-032: Core Task Lifecycle and Wakeup Integration](../specs/SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
 - [SPEC-035: Cross-Product Task Strategy Handoff and Runtime Bridge](../specs/SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md)
 - [SPEC-058: Interaction Core and Domain Materialization](../specs/SPEC-058-interaction-core-and-domain-materialization.md)
@@ -84,6 +85,9 @@ mechanics do not become the Work UI.
 - [ ] Persist initial approval/activity placeholders through Core-owned records
 - [ ] Keep `Cats Work` above shared Core records rather than introducing a
       Work-only task schema
+- [ ] Define promotion rules so template expansion, planning assistance, and
+      downstream delegation can stay as missions/runs unless operator-visible
+      Work tracking is required
 
 **Deliverables**: intake can create a real Work initiative on top of existing
 shared Core contracts.
@@ -113,6 +117,8 @@ shared Core contracts.
       strategy hints, and acceptance criteria
 - [ ] Keep Work-targeted tasks visible in Work while Chat/Code-targeted tasks
       become handoff-ready for downstream pickup
+- [ ] Keep background template or agent activity out of Work by default unless
+      it needs durable operator-visible tracking, approval, or reprioritization
 - [ ] Keep Work above the existing product-to-runtime bridge instead of sending
       `CoreTaskRecord` directly to `cats-runtime`
 - [ ] Surface transfer status, next action, and blocker reasons in Work detail
@@ -175,6 +181,8 @@ template packs.
   Work-only persistence family.
 - Treat Work intake as a domain-materialized projection over the shared
   interaction engine rather than as a second workflow engine.
+- Keep managed Work distinct from missions and runs so Work does not become a
+  dump of every internal agent step.
 - Require explicit human review before first downstream handoff in the first slice.
 - Keep Work focused on planning, approval, and target-product signaling rather
   than direct runtime dispatch from Work UI state.

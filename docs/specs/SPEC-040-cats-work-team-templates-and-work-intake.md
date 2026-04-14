@@ -21,6 +21,12 @@ Under the current re-architecture, `Cats Work` should be treated as a
 domain-materialized projection over the shared interaction core rather than a
 second workflow engine with independent conversation semantics.
 
+`Cats Work` is also the canonical home for operator-visible managed work
+records. Template expansion, downstream delegation, and background agent
+activity may create missions and runs, but they should only become Work records
+when operator-visible planning, approval, prioritization, or follow-up is
+needed.
+
 The first Work priority should therefore be:
 
 - product-owned work intake
@@ -145,6 +151,14 @@ The first Work priority should therefore be:
     If later Work templates cover proposal submission or client delivery, they
     must follow
     [ADR-034](../decisions/034-require-human-approval-gates-at-pipeline-decision-points.md).
+20. `Cats Work` shall remain the canonical owner of durable managed-work
+    records such as projects, requirements, backlog items, issues, and tasks.
+21. Work template expansion, planning assistance, and downstream delegation may
+    create missions and runs without requiring one new Work task for every
+    internal agent action.
+22. Work shall be able to promote mission or run outcomes into managed-work
+    records when operator-visible tracking, approval, or manual follow-up is
+    required.
 
 ### Non-Functional Requirements
 
@@ -158,6 +172,8 @@ The first Work priority should therefore be:
   `/api/work` projections and Core task/control-plane infrastructure.
 - **Extensibility**: additional team templates should be addable later without
   rewriting the first intake model.
+- **Promotion discipline**: internal template/multi-agent activity should stay
+  below Work unless it needs durable operator-visible tracking.
 
 ## Design Overview
 
@@ -223,6 +239,7 @@ useful.
 - [ADR-034](../decisions/034-require-human-approval-gates-at-pipeline-decision-points.md)
 - [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
 - [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
 - [SPEC-025](./SPEC-025-budget-policy-override-flows-and-war-room-dashboard.md)
 - [SPEC-032](./SPEC-032-core-task-lifecycle-and-wakeup-integration.md)
 - [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md)

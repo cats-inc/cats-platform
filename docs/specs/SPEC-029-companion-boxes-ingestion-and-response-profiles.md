@@ -34,6 +34,11 @@ This spec introduces a product-owned `CompanionBox` concept that sits above
 The runtime still hosts the reusable `companion` skill, but the per-Cat box,
 response profile, and long-lived companion context remain product-owned.
 
+Under the current re-architecture, companion ingest, extraction, and memory
+refresh should usually be treated as missions and runs rather than as managed
+Work by default. Only operator-visible outcomes that need tracking, approval,
+or follow-up should be promoted into Work-facing records.
+
 ## Implementation Snapshot
 
 The current first slice now lands these product-owned seams:
@@ -215,6 +220,11 @@ Visible companion-specific UI remains intentionally deferred.
 31. The system shall preserve room- and transport-aware privacy rules so
     companion information that is safe in a private direct chat does not
     silently leak into other rooms or public transports.
+32. Background companion ingest, analysis, and memory-refresh activity shall be
+    allowed to execute as missions and runs without creating new managed-work
+    records by default.
+33. Companion-originated outcomes shall be promotable into managed Work or
+    review-style operator queues when explicit follow-up is required.
 
 ### Non-Functional Requirements
 
@@ -227,6 +237,8 @@ Visible companion-specific UI remains intentionally deferred.
 - **Extensibility**: richer media analysis, semantic retrieval, and audio
   output should be addable without redefining the box model.
 - **Privacy**: companion memory recall must be scope-aware and Cat-aware.
+- **Promotion discipline**: background companion automation should not flood
+  Work surfaces with low-signal tasks by default.
 
 ## Conceptual Model
 
@@ -353,6 +365,7 @@ cats-runtime session execution
 - [ADR-017](../decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md)
 - [ADR-018](../decisions/018-separate-product-skill-intent-from-runtime-skill-hosting.md)
 - [ADR-030](../decisions/030-own-per-cat-companion-boxes-in-product-and-hydrate-runtime-sessions.md)
+- [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
 - [SPEC-015](./SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md)
 - [SPEC-018](./SPEC-018-direct-cat-chat-and-conversation-routing-layer.md)
 - [SPEC-019](./SPEC-019-product-skill-profiles-and-runtime-skill-manifests.md)

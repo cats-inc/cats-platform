@@ -8,20 +8,18 @@
 | **Owner** | Codex |
 | **Reviewer** | User |
 
-> Revision note (2026-04-08): [ADR-055](../decisions/055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
-> and [SPEC-052](./SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md)
-> retire lead-based composer language. This spec still governs direct-lane
-> routing behavior, but references below to a room "lead" should be read as
-> historical wording for the default direct counterpart until this document is
-> fully refreshed.
+> Revision note (2026-04-14): [ADR-055](../decisions/055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
+> retires lead-based composer language. This spec now treats direct lanes as
+> one-default-counterpart conversations and distinguishes transport binding,
+> conversation identity, and runtime session identity explicitly.
 
 ## Summary
 
 `cats` should support two first-class conversation modes:
 
 - `Boss Chat`: the default orchestrated conversation mode
-- `Direct Cat Chat`: a Cat-scoped private lane with one chosen Cat as the lead
-  participant
+- `Direct Cat Chat`: a Cat-scoped private lane with one chosen Cat as the
+  default direct counterpart
 
 To make that reliable, mention parsing and target resolution must move into a
 shared routing layer owned by the product, not mainly by prompt conventions.
@@ -34,6 +32,8 @@ shared routing layer owned by the product, not mainly by prompt conventions.
 - make mention handling and default-target rules deterministic
 - share one routing model across web rooms, direct specialist chats, and
   transport-bound private lanes
+- keep transport binding identity separate from direct-lane conversation
+  identity and runtime session identity
 
 ## Non-Goals
 
@@ -61,11 +61,11 @@ shared routing layer owned by the product, not mainly by prompt conventions.
      as Telegram)
 2. Every persisted conversation that appears in `Recents` shall have a routing
    mode.
-3. A room or Cat-private lane may declare a lead participant for default target
-   resolution.
+3. A room or Cat-private lane may declare a default direct counterpart
+   participant for default target resolution.
 4. `+ New Chat` shall continue creating `boss_chat` rooms by default.
-5. The product shall support a Cat-private lane whose lead participant is a
-   chosen Cat.
+5. The product shall support a Cat-private lane whose default direct
+   counterpart is a chosen Cat.
 6. Selecting a Cat from `My Cats` shall resolve to that Cat's private lane.
    That lane is an in-place direct-chat surface, not a normal persisted
    chat/channel record in `Recents`.
@@ -73,7 +73,7 @@ shared routing layer owned by the product, not mainly by prompt conventions.
    record as a side effect.
 7. In `boss_chat`, an unmentioned operator turn shall default to `Boss Cat`.
 8. In `direct_cat_chat`, an unmentioned operator turn (or inbound transport
-   message) shall default to the chosen lead Cat.
+   message) shall default to the chosen direct counterpart Cat.
 10. Explicit `@mentions` shall be parsed and resolved by the routing layer
    before prompt construction.
 11. If an explicit `@mention` resolves to a valid room participant, that target
@@ -85,6 +85,9 @@ shared routing layer owned by the product, not mainly by prompt conventions.
     work is dispatched.
 14. Prompt construction shall consume resolved routing decisions rather than
     acting as the only source of routing truth.
+15. A direct lane reached through Telegram or other external entrypoints shall
+    do so through a transport binding that is distinct from the direct-lane
+    conversation identity and from runtime session identity.
 
 ### Non-Functional Requirements
 
@@ -102,7 +105,7 @@ shared routing layer owned by the product, not mainly by prompt conventions.
 - `roomMode`
   - `boss_chat`
   - `direct_cat_chat` (with optional transport binding)
-- `leadParticipantId`
+- `defaultDirectCounterpartParticipantId`
   - the default non-mentioned target for that room mode
 - `resolvedTargets`
   - the participants selected by the routing layer for this turn
@@ -122,7 +125,7 @@ Parse explicit @mentions
         +--> if no valid explicit mentions:
                 use roomMode default target
                   - boss_chat -> Boss Cat
-                  - direct_cat_chat -> lead Cat
+                  - direct_cat_chat -> default direct counterpart
         |
         v
 Wake missing targets if needed
@@ -155,6 +158,9 @@ Dispatch
   chat/channel record just because it was opened.
 - Once inside that lane, the chosen Cat is the implicit counterpart.
 - `Boss Cat` is not required in the route for normal unmentioned turns.
+- If the lane is entered through Telegram or another transport, that external
+  thread should attach through a transport binding rather than by turning the
+  transport thread into the runtime session identity.
 
 ### Mention Behavior
 
@@ -166,12 +172,16 @@ Dispatch
 
 ## Implementation Direction
 
-- Extend room state to carry routing mode and lead participant metadata.
+- Extend room state to carry routing mode and default-direct-counterpart
+  metadata.
 - Move target resolution into a reusable routing module or routing service.
 - Keep `prompts.ts` as a consumer of resolved routing outcomes, not the owner of
   target truth.
 - Align wake/sleep lifecycle with routing outcomes so newly targeted Cats can be
   awakened before dispatch.
+- Keep transport-binding continuity outside the routing/session lifecycle so a
+  reconnect cannot silently redefine which direct lane a transport thread is
+  attached to.
 
 ## Dependencies
 
@@ -182,6 +192,7 @@ Dispatch
 - [ADR-015](../decisions/015-adopt-cat-sleep-wake-lifecycle-for-chat-sessions.md)
 - [ADR-016](../decisions/016-treat-telegram-as-boss-cat-inbox-not-room-mirror.md)
 - [ADR-017](../decisions/017-allow-direct-cat-chat-and-move-routing-into-system-layer.md)
+- [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
 
 ## Design Notes
 
@@ -195,10 +206,10 @@ Dispatch
   one-to-one web and transport entry.
 - It may preserve lane-scoped state, but it is not a normal persisted
   `Recents` thread.
-- The lane stays single-lead. If the product later needs a broader companion /
-  agent collaboration surface, it should break out into an explicit normal room
-  rather than silently re-introducing Boss Cat or extra worker topology inside
-  the direct lane.
+- The lane stays single-counterpart. If the product later needs a broader
+  companion / agent collaboration surface, it should break out into an explicit
+  normal room rather than silently re-introducing Boss Cat or extra worker
+  topology inside the direct lane.
 - The product may still expose explicit `/new?cat=<catId>` drafts or internal
   route state to enter that lane, but `My Cats` should not materialize a
   standard chat record as a side effect.
@@ -209,9 +220,9 @@ Dispatch
       cat card action, add button menu, or a new composer picker?
 - [ ] Should a `direct_cat_chat` room allow `Boss Cat` to be added later as a
       participant or escalation path?
-- [x] Direct lanes stay one-lead; escalation to broader collaboration should
-      create or switch into an explicit normal room instead of mutating the
-      private lane into a hidden Boss-backed room.
+- [x] Direct lanes stay one-counterpart; escalation to broader collaboration
+      should create or switch into an explicit normal room instead of mutating
+      the private lane into a hidden Boss-backed room.
 
 ## References
 

@@ -21,6 +21,7 @@
 - [ADR-038: Separate room-owned workspaces from session-owned sandboxes](../decisions/038-separate-room-owned-workspaces-from-session-owned-sandboxes.md)
 - [ADR-059: Adopt a Unified Conversation-Turn-Lane Engine](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
 - [ADR-060: Normalize Heterogeneous Runtime Delivery Into Product Events](../decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
+- [ADR-063: Separate Managed Work, Agent Missions, Execution Runs, and Transport Bindings](../decisions/063-agent-missions-and-transport-bindings.md)
 - [SPEC-034: Room-Owned Workspace Bootstrap and Ownership Semantics](../specs/SPEC-034-room-owned-workspace-bootstrap-and-ownership.md)
 - [SPEC-020: Embedded Preview Surfaces for Runtime Artifacts and Services](../specs/SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
 - [SPEC-058: Interaction Core and Domain Materialization](../specs/SPEC-058-interaction-core-and-domain-materialization.md)
@@ -72,6 +73,8 @@ builder loop.
 
 - [x] Add Code-surface actions that create or target shared Core tasks with
       `productHint = 'code'`
+- [ ] Define the first Code mission/run contract so one managed task can spawn
+      many execution attempts without blurring task identity
 - [x] Resolve default execution strategy to `reflexion` unless task planning
       overrides it
 - [x] Bridge task planning, workspace context, and correlation metadata into
@@ -143,6 +146,8 @@ primitives.
       Code-only review model
 - [ ] Preserve structured coder summaries/checkpoints as visible task-adjacent
       outputs
+- [ ] Make mission/run history legible in Code without replacing the canonical
+      Work task record
 - [x] Add regression coverage for workspace binding, re-plan flows,
       preview/build rendering, and approval-gated follow-through
 - [ ] Document deferred follow-ons such as automatic peer fan-out and broad
@@ -174,6 +179,8 @@ later review automation.
   inventing a runtime-owned planning system.
 - Treat the builder loop as a Code projection over shared interaction and
   materialization contracts plus normalized runtime delivery.
+- Keep managed task identity, Code mission identity, and run identity
+  distinct.
 - Start with one primary coder session per focused task to simplify the first
   builder loop.
 - Require approval only for externally consequential follow-through, not for

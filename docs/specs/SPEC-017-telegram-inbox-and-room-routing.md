@@ -23,6 +23,13 @@ also captures the future UI direction hinted by products like Manus: a
 higher-level agent/channel surface can coexist with room-based chat, but must
 not replace the room model.
 
+Under the current re-architecture, each Telegram thread should be modeled as a
+transport binding that remains distinct from:
+
+- the bot binding that exposes a Cat/Agent identity publicly
+- the canonical direct-lane or room conversation used by the interaction engine
+- any runtime session used to answer or continue work
+
 ## Goals
 
 - keep each Telegram bot as one clean operator-to-one-Cat entry thread
@@ -93,6 +100,14 @@ not replace the room model.
 18. The web product may surface Cat-owned Telegram binding state from the same
     `My Cats` roster used for Cat-private entry, while durable topic work still
     belongs in `Recents`.
+19. Each Telegram chat thread shall be represented by a transport binding that
+    is distinct from bot binding identity, canonical conversation identity, and
+    runtime session identity.
+20. A transport binding may continue a direct lane or link into one or more
+    internal rooms over time without changing the external Telegram thread
+    identity.
+21. Runtime session reconnects, reroutes, or room changes shall not redefine
+    transport-binding identity or thread ownership.
 
 ### Non-Functional Requirements
 
@@ -109,7 +124,7 @@ not replace the room model.
 Telegram private chat
         |
         v
- Cat-bound inbox
+ Bot binding + transport binding
         |
         +--> direct Telegram reply
         |
@@ -192,6 +207,7 @@ Telegram private chat
 - [ADR-015](../decisions/015-adopt-cat-sleep-wake-lifecycle-for-chat-sessions.md)
 - [ADR-016](../decisions/016-treat-telegram-as-boss-cat-inbox-not-room-mirror.md)
 - [ADR-028](../decisions/028-allow-multiple-public-bot-bindings-with-one-boss-cat.md)
+- [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
 
 ## Design Notes
 
@@ -202,6 +218,8 @@ Telegram private chat
   chat as the canonical work model.
 - This spec intentionally keeps Telegram summary-first. If a later slice wants
   selective transcript mirroring, that must be an explicit additive policy.
+- Telegram thread identity should survive room reroute and session reconnect by
+  way of transport bindings rather than renderer heuristics.
 
 ## Open Questions
 

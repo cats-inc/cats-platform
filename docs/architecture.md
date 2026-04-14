@@ -47,6 +47,55 @@ This means:
 - structured product state is materialized beside the transcript, not scraped
   back out of it later
 
+## Managed Work, Missions, Runs, and Transport Bindings
+
+The unified interaction engine is not enough by itself. The platform also needs
+one shared vocabulary for agent work, background automation, and external
+entrypoints.
+
+The current architectural direction therefore freezes these adjacent but
+separate concepts:
+
+- `Managed Work`
+  - operator-visible durable planning state such as goals, projects,
+    requirements, issues, backlog items, and tasks
+  - canonically owned by `Cats Work`
+- `Mission`
+  - an agent-delegated unit of work that bridges user intent or managed work
+    into execution
+  - may exist even when no new Work task should be created
+- `Run`
+  - one execution attempt for a mission, tool invocation, review loop, or
+    background analysis pass
+- `Schedule / Trigger`
+  - the policy or event that launches a mission or run
+  - not a task by itself
+- `Transport Binding`
+  - the product-owned relation between an external thread/account and a
+    canonical Cats entry path
+  - distinct from bot binding, conversation identity, and runtime session
+
+This split matters because:
+
+- not every agent action deserves a durable Work task
+- one Work task may spawn many missions and many runs
+- companion and future agent automation should often stay below Work until an
+  operator-visible outcome exists
+- Telegram or future transports must keep thread identity stable even while
+  conversations and runtime sessions change underneath
+
+The practical ownership split is:
+
+- `Chat`
+  - interaction engine and transcript projections
+- `Work`
+  - canonical managed-work records and planning hierarchy
+- `Code`
+  - implementation artifacts, execution profiles, previews, reviews, and other
+    code-adjacent resources
+- shared platform/core layers
+  - mission, run, schedule, provenance, and transport-binding seams
+
 ## Concurrent, Parallel, and Code Presets
 
 The platform now freezes these meanings:
@@ -215,6 +264,9 @@ below product orchestration policy:
     and bounded body size
   - durably dedupe update ids and retain chat-to-conversation bindings outside
     the main transcript model
+  - persist one transport binding per Telegram thread so external thread
+    identity remains distinct from bot binding, room identity, and runtime
+    session identity
   - normalize inbound message/media summaries for transport receipts and later
     system-layer consumers
   - link each Telegram inbox to one current canonical `Cats Chat` room while
@@ -315,6 +367,11 @@ interaction engine:
 
 Both are optional layers. Neither changes lane identity, session identity, or
 canonical transcript projection rules by itself.
+
+Guide Cat, Companion, and future background helpers should therefore be treated
+as agent-powered capabilities that emit missions and runs. They are not
+separate conversation engines and they do not become Work by default just
+because they did something useful.
 
 ### Runtime Client and Runtime Boundary
 
@@ -424,6 +481,9 @@ backends have different streaming richness.
     layout
   - expose Cat-scoped ingest/read APIs and a normalized
     `CompanionSessionContext` seam for direct sessions
+  - keep background ingest, extraction, and memory-refresh activity modeled as
+    missions and runs by default, promoting only operator-visible outcomes into
+    managed Work when needed
 
 ### Cats Memory Substrate
 

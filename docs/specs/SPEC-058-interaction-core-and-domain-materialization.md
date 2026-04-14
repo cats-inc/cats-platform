@@ -24,6 +24,9 @@ This spec defines that relationship explicitly:
 - `Code` and `Work` own product-specific domain projections and workflows
 - turns and lanes may emit structured mutations and artifacts, not only
   transcript text
+- not every agent mission or run becomes operator-visible managed work
+- external transports contribute context through transport bindings, not by
+  redefining conversations or sessions
 - domain state must preserve provenance back to the originating conversation
   flow
 - future Code/Work schemas must build on this materialization seam rather than
@@ -54,6 +57,10 @@ but `Code` and `Work` need more than transcript correctness.
 
 They need durable, structured state such as:
 
+- goals
+- projects
+- requirements
+- backlog items
 - tasks
 - issues
 - specs
@@ -78,6 +85,20 @@ forced to:
 
 The platform needs a first-class materialization layer that sits next to the
 interaction core and turns conversation outcomes into durable structured state.
+
+The platform also needs one shared vocabulary for how agents execute work:
+
+- `Managed Work`
+  - durable operator-visible planning state
+- `Mission`
+  - delegated agent work bridging intent into execution
+- `Run`
+  - one execution attempt
+- `Schedule / Trigger`
+  - what launches a mission or run
+- `Transport Binding`
+  - the product-owned relation between an external thread/account and a
+    canonical Cats entry path
 
 ## User Stories
 
@@ -125,6 +146,8 @@ interaction core and turns conversation outcomes into durable structured state.
    - `sessionId` when relevant to runtime attachment history
 7. A structured output shall support linkage to one or more domain records.
 8. The platform shall support at least these cross-product record families:
+   - managed work records such as goals, requirements, backlog items, issues,
+     and tasks
    - task / issue / work item style records
    - specification / plan / decision style documents
    - code-change / test-run / review / preview style artifacts
@@ -181,6 +204,25 @@ interaction core and turns conversation outcomes into durable structured state.
 24. The materialization contract shall support product-specific projection
     policies without allowing product-specific redefinition of turn/lane
     identity.
+25. The platform shall distinguish:
+    - managed work records
+    - missions
+    - runs
+    - schedules / triggers
+    instead of overloading one `task` or `job` concept for every layer.
+26. Not every mission or run shall require promotion into a managed-work
+    record.
+27. The platform shall allow product policy to promote mission or run outcomes
+    into managed Work when operator-visible tracking, approval, or follow-up is
+    required.
+28. `Cats Work` shall be the canonical home for managed-work records, while
+    `Chat` and `Code` may create or update those records through the shared
+    materialization seam.
+29. `Cats Code` shall be able to own code-adjacent artifacts, execution
+    profiles, previews, reviews, and other implementation resources without
+    becoming the canonical owner of every project or backlog record.
+30. External transports shall contribute context through transport bindings that
+    remain distinct from conversation and session identity.
 
 ### Non-Functional Requirements
 
@@ -205,6 +247,10 @@ Interaction Core
 
 Materialization Layer
   Turn/Lane outputs -> Effects/Mutations -> Entities/Artifacts -> Product projections
+
+Execution and Entry Layers
+  Managed Work -> Mission -> Run
+  External thread/account -> Transport Binding -> Conversation entry
 ```
 
 ### Conceptual Flow
@@ -259,6 +305,18 @@ The same underlying output may project differently:
   - approval queue
   - downstream handoff summary
 
+### Ownership Model
+
+- `Chat`
+  - owns interaction and transcript projection
+- `Work`
+  - owns managed-work records and planning hierarchy
+- `Code`
+  - owns implementation artifacts, execution profiles, previews, reviews, and
+    other code-adjacent resources
+- shared platform/core layers
+  - own mission, run, schedule, provenance, and transport-binding seams
+
 ## Boundaries
 
 ### What stays in the interaction core
@@ -271,10 +329,12 @@ The same underlying output may project differently:
 ### What belongs in materialization
 
 - task/spec/issue/code/work entities
+- managed work, mission, run, and schedule contracts
 - artifacts and execution outputs
 - approval application state
 - domain-specific product dashboards
 - resource bindings and cross-product references
+- transport-binding state for external entrypoint continuity
 
 ### What must not happen
 
@@ -286,6 +346,7 @@ The same underlying output may project differently:
 ## Dependencies
 
 - [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
 - [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md)
 - [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md)
 - [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md)
@@ -306,6 +367,7 @@ The same underlying output may project differently:
 ## References
 
 - [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
+- [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
 - [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md)
 - [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md)
 - [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md)
