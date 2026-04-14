@@ -1,4 +1,8 @@
 import type {
+  ContainerRecordKind,
+  ContainerRecordStatus,
+  CoreConversationKind,
+  CoreConversationStatus,
   CoreActivityKind,
   CoreApprovalDecisionAction,
   CoreApprovalBindingKind,
@@ -14,6 +18,7 @@ import type {
   TransportBindingDirection,
   TransportBindingPlatform,
   TransportBindingStatus,
+  ParticipantRecordStatus,
   CoreOrchestrationOutcomeStatus,
   CoreProjectStatus,
   CoreRecordMetadata,
@@ -25,6 +30,39 @@ import type {
   TurnRecordStatus,
   CoreWorkItemStatus,
 } from '../types.js';
+
+export interface CoreContainerWriteInput {
+  id?: string;
+  kind?: ContainerRecordKind;
+  title: string;
+  status?: ContainerRecordStatus;
+  parentContainerId?: string | null;
+  createdAt?: string;
+  metadata?: CoreRecordMetadata;
+}
+
+export interface CoreConversationWriteInput {
+  id?: string;
+  title: string;
+  kind?: CoreConversationKind;
+  status?: CoreConversationStatus;
+  participantActorIds?: string[];
+  sourceChannelId?: string | null;
+  repoPath?: string | null;
+  responseLanguage?: string | null;
+  createdAt?: string;
+  lastMessageAt?: string | null;
+}
+
+export interface CoreParticipantWriteInput {
+  id?: string;
+  conversationId: string;
+  agentId: string;
+  role?: string | null;
+  status?: ParticipantRecordStatus;
+  joinedAt?: string;
+  metadata?: CoreRecordMetadata;
+}
 
 export interface CoreProjectWriteInput {
   id?: string;

@@ -2674,6 +2674,38 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       createdAt: '2026-03-21T01:00:03.000Z',
     },
   };
+  const structuralFixtures = {
+    container: {
+      id: 'container-system-1',
+      kind: 'chat_root',
+      title: 'System container',
+      status: 'active',
+      createdAt: fixtures.project.createdAt,
+      metadata: {
+        source: 'shared-fixture',
+      },
+    },
+    conversation: {
+      id: 'conversation-system-1',
+      title: 'System conversation',
+      kind: 'direct_message',
+      status: 'active',
+      participantActorIds: ['actor-owner', 'actor-orchestrator-global'],
+      createdAt: fixtures.project.createdAt,
+      lastMessageAt: fixtures.project.createdAt,
+    },
+    participant: {
+      id: 'participant-system-1',
+      conversationId: 'conversation-system-1',
+      agentId: 'actor-orchestrator-global',
+      role: 'assistant',
+      status: 'active',
+      joinedAt: fixtures.project.createdAt,
+      metadata: {
+        source: 'shared-fixture',
+      },
+    },
+  };
 
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const ownerProfileResponse = await fetch(`${baseUrl}/api/core/owner-profile`, {
@@ -2725,6 +2757,33 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
       body: JSON.stringify({ project: fixtures.project }),
     });
     assert.equal(projectResponse.status, 201);
+
+    const containerResponse = await fetch(`${baseUrl}/api/core/containers`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ container: structuralFixtures.container }),
+    });
+    assert.equal(containerResponse.status, 201);
+
+    const conversationResponse = await fetch(`${baseUrl}/api/core/conversations`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ conversation: structuralFixtures.conversation }),
+    });
+    assert.equal(conversationResponse.status, 201);
+
+    const participantResponse = await fetch(`${baseUrl}/api/core/participants`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ participant: structuralFixtures.participant }),
+    });
+    assert.equal(participantResponse.status, 201);
 
     const workItemResponse = await fetch(`${baseUrl}/api/core/work-items`, {
       method: 'POST',
@@ -2884,6 +2943,33 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     const approvalsListPayload = await approvalsListResponse.json();
     assert.equal(approvalsListPayload.approvals.length, 1);
 
+    const containersListResponse = await fetch(`${baseUrl}/api/core/containers`);
+    assert.equal(containersListResponse.status, 200);
+    const containersListPayload = await containersListResponse.json();
+    assert.ok(
+      containersListPayload.containers.some(
+        (container) => container.id === structuralFixtures.container.id,
+      ),
+    );
+
+    const conversationsListResponse = await fetch(`${baseUrl}/api/core/conversations`);
+    assert.equal(conversationsListResponse.status, 200);
+    const conversationsListPayload = await conversationsListResponse.json();
+    assert.ok(
+      conversationsListPayload.conversations.some(
+        (conversation) => conversation.id === structuralFixtures.conversation.id,
+      ),
+    );
+
+    const participantsListResponse = await fetch(`${baseUrl}/api/core/participants`);
+    assert.equal(participantsListResponse.status, 200);
+    const participantsListPayload = await participantsListResponse.json();
+    assert.ok(
+      participantsListPayload.participants.some(
+        (participant) => participant.id === structuralFixtures.participant.id,
+      ),
+    );
+
     const missionsListResponse = await fetch(`${baseUrl}/api/core/missions`);
     assert.equal(missionsListResponse.status, 200);
     const missionsListPayload = await missionsListResponse.json();
@@ -2957,6 +3043,19 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
     assert.equal(statePayload.ownerProfile.displayName, 'Boss Owner');
+    assert.ok(
+      statePayload.containers.some((container) => container.id === structuralFixtures.container.id),
+    );
+    assert.ok(
+      statePayload.conversations.some(
+        (conversation) => conversation.id === structuralFixtures.conversation.id,
+      ),
+    );
+    assert.ok(
+      statePayload.participants.some(
+        (participant) => participant.id === structuralFixtures.participant.id,
+      ),
+    );
     assert.ok(statePayload.projects.some((project) => project.id === fixtures.project.id));
     assert.ok(statePayload.workItems.some((workItem) => workItem.id === fixtures.workItem.id));
     assert.ok(statePayload.missions.some((mission) => mission.id === fixtures.mission.id));

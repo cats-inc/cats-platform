@@ -20,13 +20,6 @@ async function handleCoreActors(
   sendJson(context.response, 200, { actors: core.actors });
 }
 
-async function handleCoreConversations(
-  context: CoreApiRouteContext,
-): Promise<void> {
-  const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { conversations: core.conversations });
-}
-
 export async function routeCoreApi(
   context: CoreApiRouteContext,
 ): Promise<boolean> {
@@ -45,15 +38,6 @@ export async function routeCoreApi(
       return true;
     }
     await handleCoreActors(context);
-    return true;
-  }
-
-  if (context.url.pathname === '/api/core/conversations') {
-    if (context.method !== 'GET') {
-      sendMethodNotAllowed(context.response, ['GET']);
-      return true;
-    }
-    await handleCoreConversations(context);
     return true;
   }
 
