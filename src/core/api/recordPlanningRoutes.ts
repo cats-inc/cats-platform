@@ -1,5 +1,6 @@
 import {
   upsertCoreArtifact,
+  upsertCoreMission,
   upsertCoreProject,
   upsertCoreWorkItem,
 } from '../model/index.js';
@@ -17,6 +18,7 @@ import {
 import {
   CORE_ARTIFACT_KINDS,
   CORE_ARTIFACT_STATUSES,
+  CORE_MISSION_STATUSES,
   CORE_PROJECT_STATUSES,
   CORE_WORK_ITEM_STATUSES,
 } from './constants.js';
@@ -77,6 +79,13 @@ async function handleCoreWorkItems(
   sendJson(context.response, 200, { workItems: core.workItems });
 }
 
+async function handleCoreMissions(
+  context: CoreApiRouteContext,
+): Promise<void> {
+  const core = await context.dependencies.coreStore.readCore();
+  sendJson(context.response, 200, { missions: core.missions });
+}
+
 async function handleCoreWorkItemWrite(
   context: CoreApiRouteContext,
 ): Promise<void> {
@@ -119,6 +128,47 @@ async function handleCoreWorkItemWrite(
 
     sendJson(context.response, next.created ? 201 : 200, {
       workItem: persistedWorkItem ?? next.workItem,
+      created: next.created,
+    });
+  } catch (error) {
+    handleCoreError(context, error);
+  }
+}
+
+async function handleCoreMissionWrite(
+  context: CoreApiRouteContext,
+): Promise<void> {
+  try {
+    const mission = await readWrappedBody(context, 'mission');
+    const next = upsertCoreMission(
+      await context.dependencies.coreStore.readCore(),
+      {
+        id: readOptionalString(mission.id, 'mission.id'),
+        managedWorkId: readNullableString(mission.managedWorkId, 'mission.managedWorkId'),
+        conversationId: readNullableString(
+          mission.conversationId,
+          'mission.conversationId',
+        ),
+        sourceTurnId: readNullableString(mission.sourceTurnId, 'mission.sourceTurnId'),
+        sourceLaneId: readNullableString(mission.sourceLaneId, 'mission.sourceLaneId'),
+        assignedAgentId: readNullableString(
+          mission.assignedAgentId,
+          'mission.assignedAgentId',
+        ),
+        title: readRequiredString(mission.title, 'mission.title'),
+        status: readEnumValue(mission.status, 'mission.status', CORE_MISSION_STATUSES),
+        summary: readNullableString(mission.summary, 'mission.summary'),
+        createdAt: readOptionalString(mission.createdAt, 'mission.createdAt'),
+        metadata: readMetadata(mission.metadata, 'mission.metadata'),
+      },
+    );
+    const persisted = await context.dependencies.coreStore.writeCore(next.core);
+    const persistedMission = persisted.missions.find(
+      (candidate) => candidate.id === next.mission.id,
+    );
+
+    sendJson(context.response, next.created ? 201 : 200, {
+      mission: persistedMission ?? next.mission,
       created: next.created,
     });
   } catch (error) {
@@ -202,6 +252,19 @@ export async function routeCorePlanningRecordApi(
     }
     if (context.method === 'POST') {
       await handleCoreWorkItemWrite(context);
+      return true;
+    }
+    sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/core/missions') {
+    if (context.method === 'GET') {
+      await handleCoreMissions(context);
+      return true;
+    }
+    if (context.method === 'POST') {
+      await handleCoreMissionWrite(context);
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);

@@ -37,6 +37,22 @@ export function createSharedCoreFixtureBundle() {
         milestone: 'm2',
       },
     },
+    mission: {
+      id: 'mission-chat-routing',
+      managedWorkId: 'work-item-chat-routing',
+      conversationId: 'conversation-system-1',
+      sourceTurnId: 'turn-system-1',
+      sourceLaneId: 'lane-system-1',
+      assignedAgentId: 'actor-orchestrator-global',
+      title: 'Route the chat follow-up mission',
+      status: 'queued',
+      summary: 'Baseline mission fixture for shared-core projections.',
+      createdAt: SHARED_CORE_FIXTURE_TIME,
+      metadata: {
+        source: 'shared-fixture',
+        runId: 'run-system-1',
+      },
+    },
     task: {
       id: 'task-system-1',
       title: 'Approve orchestrator dispatch',

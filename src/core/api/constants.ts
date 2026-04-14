@@ -7,6 +7,7 @@ import type {
   CoreArtifactKind,
   CoreArtifactStatus,
   CoreCheckpointStatus,
+  MissionRecordStatus,
   CoreOperatorActionKind,
   CoreOrchestrationOutcomeStatus,
   CoreProjectStatus,
@@ -83,6 +84,16 @@ export const CORE_WORK_ITEM_STATUSES = [
   'cancelled',
   'archived',
 ] as const satisfies readonly CoreWorkItemStatus[];
+
+export const CORE_MISSION_STATUSES = [
+  'draft',
+  'planned',
+  'queued',
+  'running',
+  'completed',
+  'failed',
+  'cancelled',
+] as const satisfies readonly MissionRecordStatus[];
 
 export const CORE_ARTIFACT_KINDS = [
   'document',

@@ -2690,6 +2690,17 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     });
     assert.equal(workItemResponse.status, 201);
 
+    const missionResponse = await fetch(`${baseUrl}/api/core/missions`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ mission: fixtures.mission }),
+    });
+    assert.equal(missionResponse.status, 201);
+    const missionPayload = await missionResponse.json();
+    assert.equal(missionPayload.mission.id, fixtures.mission.id);
+
     const approvalResponse = await fetch(`${baseUrl}/api/core/approvals`, {
       method: 'POST',
       headers: {
@@ -2781,12 +2792,18 @@ test('core write APIs persist shared project, work, approval, trace, artifact, a
     const approvalsListPayload = await approvalsListResponse.json();
     assert.equal(approvalsListPayload.approvals.length, 1);
 
+    const missionsListResponse = await fetch(`${baseUrl}/api/core/missions`);
+    assert.equal(missionsListResponse.status, 200);
+    const missionsListPayload = await missionsListResponse.json();
+    assert.ok(missionsListPayload.missions.some((mission) => mission.id === fixtures.mission.id));
+
     const stateResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(stateResponse.status, 200);
     const statePayload = await stateResponse.json();
     assert.equal(statePayload.ownerProfile.displayName, 'Boss Owner');
     assert.ok(statePayload.projects.some((project) => project.id === fixtures.project.id));
     assert.ok(statePayload.workItems.some((workItem) => workItem.id === fixtures.workItem.id));
+    assert.ok(statePayload.missions.some((mission) => mission.id === fixtures.mission.id));
     assert.ok(statePayload.tasks.some((task) => task.id === fixtures.task.id));
     assert.equal(
       statePayload.tasks.find((task) => task.id === fixtures.task.id)?.parentTaskId,
