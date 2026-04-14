@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [065-keep-my-cats-as-one-platform-agent-home-with-lenses](./065-keep-my-cats-as-one-platform-agent-home-with-lenses.md) | Keep MY CATS as one platform agent home with lenses | Proposed | 2026-04-14 |
 | [064-project-conversational-agents-into-chat-and-operational-agents-into-work](./064-project-conversational-agents-into-chat-and-operational-agents-into-work.md) | Project conversational agents into Chat and operational agents into Work | Proposed | 2026-04-14 |
 | [063-agent-missions-and-transport-bindings](./063-agent-missions-and-transport-bindings.md) | Separate managed work, agent missions, execution runs, and transport bindings | Proposed | 2026-04-14 |
 | [062-separate-concurrent-turn-fan-out-from-parallel-container-composition](./062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md) | Separate concurrent turn fan-out from parallel container composition | Proposed | 2026-04-14 |

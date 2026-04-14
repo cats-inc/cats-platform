@@ -33,6 +33,10 @@ Use this guide together with:
 - [SPEC-062](./specs/SPEC-062-agent-missions-and-transport-bindings.md)
 - [ADR-064](./decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md)
 - [SPEC-063](./specs/SPEC-063-conversational-vs-operational-agents-and-surface-projections.md)
+- [ADR-065](./decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md)
+- [SPEC-064](./specs/SPEC-064-my-cats-platform-home-and-lens-projections.md)
+- [ADR-065](./decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md)
+- [SPEC-064](./specs/SPEC-064-my-cats-platform-home-and-lens-projections.md)
 
 ## Foundational Integration Rules
 
@@ -55,6 +59,8 @@ All product teams must treat these as frozen architectural rules:
    binding, conversation identity, and runtime session identity.
 10. Conversational and operational agent projections must stay distinct even
     when one shared agent identity supports both surfaces.
+11. `MY CATS` must remain one platform-level agent home; product-local agent
+    panels are contextual subsets, not alternate registries.
 
 ## Frozen Shared Contracts
 
@@ -88,6 +94,30 @@ At the doc/architecture level, the current freeze set also includes:
 
 Products must not work around these invariants by inventing local room modes,
 local replay logic, or local materialization semantics.
+
+## MY CATS Platform Home and Product Subsets
+
+All product teams must preserve this split:
+
+- `MY CATS`
+  - one platform-level agent home
+  - may expose many lenses such as `Overview`, `Chat`, `Work`, and `Code`
+- product-local agent panels
+  - contextual subsets that show only the state relevant to the current
+    product surface
+
+Rules:
+
+- Product teams must not invent alternate top-level homes such as `Chat Cats`,
+  `Work Cats`, or `Code Cats`.
+- `Cats Chat` may show quick-access conversational subsets, but those remain a
+  projection of `MY CATS`.
+- `Cats Work` may show assignment/workload subsets, but those remain a
+  projection of `MY CATS`.
+- `Cats Code` may show repo/worktree/review subsets, but those remain a
+  projection of `MY CATS`.
+- Product-local subsets should deep-link back into the canonical `MY CATS`
+  home with a selected lens and agent where appropriate.
 
 ## Conversational and Operational Agent Projections
 
@@ -313,6 +343,8 @@ Before a product team adds a new platform capability, confirm:
     or room state.
 11. If the feature introduces or reuses an agent, it makes explicit whether the
     surface is conversational, operational, or hybrid.
+12. If the feature surfaces agents in product-local UI, it makes explicit
+    whether that UI is a contextual subset or the canonical `MY CATS` home.
 
 ## Integration Owner Checklist
 

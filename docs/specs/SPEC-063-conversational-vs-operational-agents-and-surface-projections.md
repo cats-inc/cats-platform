@@ -29,10 +29,11 @@ and freezes how they should appear across:
 - `Cats Chat`
 - `Cats Work`
 - `Cats Code`
+- `MY CATS`
 
 including:
 
-- `My Cats`
+- `MY CATS`
 - direct lanes
 - companion behavior
 - transport-facing bots
@@ -83,13 +84,15 @@ including:
    the canonical agent identity.
 6. `Cats Chat` shall be the primary interaction home for conversational
    agents.
-7. `My Cats` shall be treated as a chat projection and quick-access roster for
-   conversational and selected hybrid agents.
-8. `My Cats` shall not be required to list every operational agent in the
-   platform.
-9. `Cats Work` shall be the primary management and control-plane surface for
+7. `MY CATS` shall remain one platform-level agent home over the shared agent
+   registry.
+8. `MY CATS > Chat` shall be treated as the chat-oriented lens and quick-access
+   roster for conversational and selected hybrid agents.
+9. `MY CATS` shall not be required to list every operational agent in every
+   lens by default.
+10. `Cats Work` shall be the primary management and control-plane surface for
    operational agents.
-10. `Cats Work` shall be able to show:
+11. `Cats Work` shall be able to show:
     - assignments
     - missions
     - runs
@@ -97,31 +100,31 @@ including:
     - approvals
     - outputs
     for operational and hybrid agents.
-11. `Cats Code` shall remain the primary execution surface for code-oriented
+12. `Cats Code` shall remain the primary execution surface for code-oriented
     missions and runs, but not the canonical owner of every agent or planning
     record.
-12. The platform shall allow a conversational agent to create or update managed
+13. The platform shall allow a conversational agent to create or update managed
     work through the shared materialization seam.
-13. The platform shall allow an operational agent to expose a linked chat
+14. The platform shall allow an operational agent to expose a linked chat
     surface for briefing, status inspection, escalation, or follow-up.
-14. The platform shall support explicit cross-links between projections such as:
+15. The platform shall support explicit cross-links between projections such as:
     - `Open in Chat`
     - `Open in Work`
     - `Promote to Work`
     - `Open agent briefing thread`
-15. A transport-facing Cat/Agent may be conversational or hybrid, but its
+16. A transport-facing Cat/Agent may be conversational or hybrid, but its
     transport presence shall not force it to become the canonical Work control
     plane.
-16. Guide Cat shall remain an optional low-privilege assist capability and
+17. Guide Cat shall remain an optional low-privilege assist capability and
     shall not be redefined as the universal operational-agent manager.
-17. Companion-style agents shall default to the conversational projection even
+18. Companion-style agents shall default to the conversational projection even
     when they also perform background missions and runs.
-18. OpenClaw-style or Hermes-style long-running agents shall default to the
+19. OpenClaw-style or Hermes-style long-running agents shall default to the
     operational projection even when they also expose a chat briefing surface.
-19. Product policy may choose whether a hybrid agent appears in both `My Cats`
+20. Product policy may choose whether a hybrid agent appears in both `MY CATS`
     and Work by default, but that choice shall not fork the underlying agent
     identity.
-20. The canonical vocabulary shall keep these distinctions explicit:
+21. The canonical vocabulary shall keep these distinctions explicit:
     - managed work
     - mission
     - run
@@ -150,7 +153,8 @@ Shared Agent Core
   capability metadata
 
 Chat Projection
-  My Cats
+  MY CATS
+  Chat lens
   direct lanes
   companion / transport-facing interaction
 
@@ -182,9 +186,9 @@ Expected examples:
 Primary surfaces:
 
 - `Cats Chat`
-- `My Cats`
-- direct lane
-- transport-bound chat entry
+- `MY CATS`
+  - direct lane
+  - transport-bound chat entry
 
 ### Operational Agents
 
@@ -241,10 +245,10 @@ Primary surfaces:
 
 ### What must not happen
 
-- `My Cats` becoming the universal list of every background worker
-- `Work` becoming the only place an agent can be talked to
-- Chat and Work forking the same agent into unrelated identities
-- transport bindings or sessions being used as substitutes for agent identity
+- `MY CATS` becoming the universal list of every background worker
+  - `Work` becoming the only place an agent can be talked to
+  - Chat and Work forking the same agent into unrelated identities
+  - transport bindings or sessions being used as substitutes for agent identity
 
 ## Dependencies
 
@@ -254,10 +258,11 @@ Primary surfaces:
 - [ADR-064](../decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md)
 - [SPEC-060](./SPEC-060-guide-cat-optional-surface-assist-capability.md)
 - [SPEC-062](./SPEC-062-agent-missions-and-transport-bindings.md)
+- [SPEC-064](./SPEC-064-my-cats-platform-home-and-lens-projections.md)
 
 ## Open Questions
 
-- [ ] Which hybrid agents should appear in both `My Cats` and Work by default?
+- [ ] Which hybrid agents should appear in both `MY CATS` and Work by default?
 - [ ] Whether `Settings > Cats` should remain a conversational-only registry
       projection or later expose broader agent classification.
 - [ ] How strongly the UI should differentiate `conversational` vs

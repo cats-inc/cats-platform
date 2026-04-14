@@ -136,6 +136,38 @@ The current direction is therefore:
 The same canonical agent may therefore be visible in Chat, manageable in Work,
 and execution-capable in Code without forking identity.
 
+## MY CATS as a Platform Home
+
+`MY CATS` should now be treated as one platform-level navigation surface and
+one stable agent-home concept.
+
+It should not split into top-level product names such as:
+
+- `Chat Cats`
+- `Work Cats`
+- `Code Cats`
+
+Instead, `MY CATS` should expose lens-based projections over the same shared
+agent registry:
+
+- `Overview`
+- `Chat`
+- `Work`
+- `Code`
+
+This means:
+
+- `MY CATS` remains the canonical home for inspecting an agent across the
+  platform
+- product-local Chat/Work/Code panels should be contextual subsets rather than
+  alternate agent homes
+- `MY CATS > Chat` may still preserve direct-lane and companion-first behavior
+- `MY CATS > Work` may emphasize assignments, workload, schedules, and
+  approvals
+- `MY CATS > Code` may emphasize repo/worktree/run/review state
+
+The same underlying identity should remain stable across all of these views.
+
 ## Concurrent, Parallel, and Code Presets
 
 The platform now freezes these meanings:
@@ -288,8 +320,9 @@ below product orchestration policy:
   ownership, activity, and allow external transport messages to reach the
   orchestrator safely. For Chat, high-frequency actions such as adding a cat
   should stay in current-chat context, `Recents` should remain the primary
-  sidebar surface, a lightweight `My Cats` roster may coexist for quick
-  private-room entry, and reusable registry management lives under Settings.
+  chat-thread sidebar surface, `MY CATS` should remain the platform-level
+  agent home, Chat may expose a contextual subset for quick private-room
+  entry, and reusable registry management lives under Settings.
 
 ### Telegram Transport Layer
 
@@ -940,6 +973,8 @@ intentionally deferred:
   bindings
 - [ADR-064](./decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md):
   project conversational agents into Chat and operational agents into Work
+- [ADR-065](./decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md):
+  keep `MY CATS` as one platform-level agent home with lens-based projections
 
 ---
 

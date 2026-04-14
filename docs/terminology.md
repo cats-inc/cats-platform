@@ -32,7 +32,7 @@
 | Boss Chat | Historical term for an orchestrator-first chat where unmentioned turns route to `Boss Cat`. Newer Chat docs should prefer recipient and dispatch-policy language instead of expanding `Boss Chat` semantics. |
 | Direct Cat Chat | A Cat-scoped private-lane mode where one chosen Cat is the default direct counterpart for ordinary turns. When opened from `My Cats`, it is an in-place lane, not a normal `Recents` thread. |
 | Group chat | A chat with more than one participant. Group chat may expose one or more default recipients plus a dispatch policy; it is not defined by a permanent lead Cat. |
-| My Cats | A lightweight sidebar roster for quick Cat access, in-place private-lane entry, and transport ownership hints. Selecting a Cat opens that Cat's direct lane in place and does not create a normal `Recents` thread. It is not the full registry management surface. |
+| My Cats | The single platform-level agent home in Cats. `MY CATS` resolves over the shared agent registry and may expose `Overview`, `Chat`, `Work`, and `Code` lenses. In `MY CATS > Chat`, selecting a Cat may still open that Cat's direct lane in place and does not create a normal `Recents` thread. Product-local Chat/Work/Code panels are contextual subsets of `MY CATS`, not separate registries. |
 | Chat view mode | The sidebar list mode used to organize chats, such as `Latest`, `By Cat`, or `By Chat Type`. |
 | Cat registry | The chat-global list of reusable cats that can be assigned into one or more chats. Full management lives under `Settings > Cats`. |
 | Agent registry | The broader platform-owned registry of reusable entities/agents and their capabilities. Chat rosters, `My Cats`, and Work-side agent views are projections over this registry rather than separate sources of truth. |
@@ -100,6 +100,8 @@
 | Artifact | A durable output such as a spec, plan, code change, test result, preview, or review record. |
 | Reference | A structured pointer linking interaction state to files, workspaces, repos, conversations, or other resources. |
 | Projection | A product-specific view over shared canonical state, such as a chat transcript, work dashboard, or code review pane. |
+| Lens | A stable view over one canonical product home or record family. In `MY CATS`, lenses such as `Overview`, `Chat`, `Work`, and `Code` expose different agent state without forking identity. |
+| Contextual subset | A product-local subset or panel that shows only the state relevant to the current surface, such as `Cats in this chat`, assigned agents in Work, or a Code crew list. A contextual subset is not a second registry and should deep-link back to the canonical platform home when appropriate. |
 | Runtime capability profile | The normalized description of how much delivery richness a runtime/backend exposes, such as rich streaming, text streaming, or terminal-only result delivery. |
 | Normalized delivery event | A product-owned runtime event used by transcript, repair, replay, and materialization logic after adapter-specific payloads have been normalized. |
 | Guide Cat assist capability | The optional low-privilege assist layer that may generate greetings, prompt chips, helper copy, and contextual suggestions for setup, lobby, chat entry, or other surfaces, while degrading cleanly into deterministic fallback when unavailable. |

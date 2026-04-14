@@ -363,6 +363,22 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: High
 - **Status**: Planned
 
+### FR-046: MY CATS as a Single Platform Agent Home
+
+- **Description**: The platform shall expose one platform-level `MY CATS`
+  surface rather than splitting agent-home navigation into separate top-level
+  names such as `Chat Cats`, `Work Cats`, or `Code Cats`.
+- **Priority**: High
+- **Status**: Planned
+
+### FR-047: MY CATS Lens-Based Projections
+
+- **Description**: `MY CATS` shall support lens-based projections such as
+  `Overview`, `Chat`, `Work`, and `Code`, while product-local panels remain
+  contextual subsets over the same shared agent identity.
+- **Priority**: Medium
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries
@@ -512,6 +528,13 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
   surfaces
 - Product surfaces MUST preserve one shared agent identity beneath
   conversational, operational, and hybrid projections
+
+### NFR-023: Single Agent-Home Naming
+
+- The platform SHOULD keep one stable `MY CATS` concept instead of renaming
+  the same registry into product-specific top-level surfaces
+- Product-local Chat/Work/Code subsets MUST remain legible as projections of
+  that one home rather than shadow registries
 
 ## User Stories
 
