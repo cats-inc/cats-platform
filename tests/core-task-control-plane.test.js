@@ -66,6 +66,9 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
             channelId: 'channel-control-plane',
             checkpointId: 'checkpoint-control-plane',
             sourceMessageId: 'message-control-plane',
+            sourceTurnId: 'turn-control-plane',
+            sourceLaneId: 'lane-control-plane',
+            sourceAssistantTurnId: 'assistant-turn-control-plane',
             sourceParticipant: {
               participantKind: 'orchestrator',
               participantId: 'actor-orchestrator-global',
@@ -220,6 +223,13 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   assert.equal(view.workflowContinuation?.checkpointId, 'checkpoint-control-plane');
   assert.equal(view.workflowContinuation?.stageId, 'continuation_handoff');
   assert.equal(view.workflowContinuation?.workflowShape, 'converge');
+  assert.equal(view.workflowContinuation?.sourceMessageId, 'message-control-plane');
+  assert.equal(view.workflowContinuation?.sourceTurnId, 'turn-control-plane');
+  assert.equal(view.workflowContinuation?.sourceLaneId, 'lane-control-plane');
+  assert.equal(
+    view.workflowContinuation?.sourceAssistantTurnId,
+    'assistant-turn-control-plane',
+  );
   assert.equal(view.workflowContinuation?.continuationSource, 'workflow_recommendation');
   assert.equal(view.workflowContinuation?.reviewRequired, true);
   assert.equal(view.workflowContinuation?.convergeTargetId, 'cat-reviewer');
@@ -511,4 +521,3 @@ test('buildCoreTaskControlPlaneView surfaces waiting parent tasks with active ch
   assert.equal(query.summary.withChildrenCount, 1);
   assert.equal(query.summary.withActiveChildrenCount, 1);
 });
-

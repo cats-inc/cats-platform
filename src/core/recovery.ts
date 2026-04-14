@@ -188,6 +188,9 @@ export interface CoreTaskWorkflowContinuationRecoveryView {
   checkpointId: string;
   recordedAt: string;
   sourceMessageId: string;
+  sourceTurnId: string | null;
+  sourceLaneId: string | null;
+  sourceAssistantTurnId: string | null;
   sourceParticipant: CoreTaskRecoveryParticipantView | null;
   targets: CoreTaskRecoveryParticipantView[];
   mentionNames: string[];

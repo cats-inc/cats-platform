@@ -210,6 +210,10 @@ export interface CoreTaskControlPlaneWorkflowContinuationView {
   checkpointId: string | null;
   stageId: string | null;
   workflowShape: 'sequential' | 'concurrent' | 'converge' | null;
+  sourceMessageId: string | null;
+  sourceTurnId: string | null;
+  sourceLaneId: string | null;
+  sourceAssistantTurnId: string | null;
   continuationSource: 'explicit_mentions' | 'workflow_recommendation' | null;
   reviewRequired: boolean;
   convergeTargetId: string | null;

@@ -1592,6 +1592,10 @@ control-plane view for one task:
       "checkpointId": "checkpoint-system-1",
       "stageId": "continuation_handoff",
       "workflowShape": "converge",
+      "sourceMessageId": "message-system-1",
+      "sourceTurnId": "turn-system-1",
+      "sourceLaneId": "lane-system-1",
+      "sourceAssistantTurnId": "assistant-turn-system-1",
       "continuationSource": "workflow_recommendation",
       "reviewRequired": true,
       "blockedReason": "anti_ping_pong",
@@ -1663,6 +1667,11 @@ Semantics:
   callers do not have to stitch them together themselves, including the
   normalized replay `blockedReason` when the continuation was persisted from a
   guard-blocked room step,
+- `workflowContinuation.sourceMessageId`, `sourceTurnId`, `sourceLaneId`, and
+  `sourceAssistantTurnId` expose the preserved continuation source identity so
+  recovery/control-plane consumers can correlate replayed handoffs back to the
+  canonical turn/lane/assistant-turn records without scraping raw task
+  metadata,
 - `runtimeDeliveryIntent` is the normalized delivery-policy contract for
   operator automation; it lifts the effective delivery policy and runtime
   delivery manifest into one task-scoped view so callers do not have to join
@@ -2022,6 +2031,10 @@ for one task:
     },
     "workflowContinuationReplay": {
       "checkpointId": "checkpoint-123",
+      "sourceMessageId": "message-123",
+      "sourceTurnId": "turn-123",
+      "sourceLaneId": "lane-123",
+      "sourceAssistantTurnId": "assistant-turn-123",
       "workflowShape": "sequential",
       "blockedReason": "max_dispatches",
       "replayState": "failed"
@@ -2055,6 +2068,11 @@ Semantics:
 
 - these routes stay recovery-owned read models; they do not replace the
   existing `/api/core/approvals` or `/api/core/operator-actions` write seams
+- `workflowContinuationReplay.sourceMessageId`, `sourceTurnId`, `sourceLaneId`,
+  and `sourceAssistantTurnId` surface the preserved continuation source
+  identity so recovery consumers can trace replay candidates back to the
+  canonical turn/lane/assistant-turn records that seeded the retryable
+  handoff,
 - `GET /api/core/recovery/tasks` supports additive filters for:
   - `conversationId`
   - `taskStatus`

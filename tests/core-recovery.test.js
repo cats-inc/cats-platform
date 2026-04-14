@@ -82,6 +82,9 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
           channelId: 'channel-recovery',
           checkpointId: 'checkpoint-recovery',
           sourceMessageId: 'message-recovery',
+          sourceTurnId: 'turn-recovery',
+          sourceLaneId: 'lane-recovery',
+          sourceAssistantTurnId: 'assistant-turn-recovery',
           sourceParticipant: {
             participantKind: 'cat',
             participantId: 'cat-inline',
@@ -158,6 +161,13 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   assert.equal(recovery.dispatchReplay?.sourceMessageId, 'message-recovery');
   assert.equal(recovery.dispatchReplay?.replayState, 'ready');
   assert.equal(recovery.workflowContinuationReplay?.checkpointId, 'checkpoint-recovery');
+  assert.equal(recovery.workflowContinuationReplay?.sourceMessageId, 'message-recovery');
+  assert.equal(recovery.workflowContinuationReplay?.sourceTurnId, 'turn-recovery');
+  assert.equal(recovery.workflowContinuationReplay?.sourceLaneId, 'lane-recovery');
+  assert.equal(
+    recovery.workflowContinuationReplay?.sourceAssistantTurnId,
+    'assistant-turn-recovery',
+  );
   assert.equal(recovery.workflowContinuationReplay?.reviewRequired, true);
   assert.equal(recovery.workflowContinuationReplay?.blockedReason, 'max_dispatches');
   assert.equal(recovery.context?.deliveryMode, 'commit_only');
@@ -632,4 +642,3 @@ test('queryCoreTaskRecoveryViews filters by replay states and summarizes replay-
   assert.equal(workflowResult.recoveries[0]?.context?.workflowReviewRequired, true);
   assert.equal(workflowResult.recoveries[0]?.context?.workflowConvergeTargetId, 'cat-followup');
 });
-

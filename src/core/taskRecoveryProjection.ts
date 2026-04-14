@@ -177,6 +177,9 @@ export function buildWorkflowContinuationReplayView(
     checkpointId: snapshot.checkpointId,
     recordedAt: snapshot.recordedAt,
     sourceMessageId: snapshot.sourceMessageId,
+    sourceTurnId: snapshot.sourceTurnId,
+    sourceLaneId: snapshot.sourceLaneId,
+    sourceAssistantTurnId: snapshot.sourceAssistantTurnId,
     sourceParticipant: snapshot.sourceParticipant
       ? {
           participantKind: snapshot.sourceParticipant.participantKind,

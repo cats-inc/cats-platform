@@ -4120,6 +4120,9 @@ test('core recovery routes expose normalized orchestrator replay state without l
         channelId: 'channel-recovery-routes',
         checkpointId: 'checkpoint-recovery-routes',
         sourceMessageId: 'message-recovery-routes',
+        sourceTurnId: 'turn-recovery-routes',
+        sourceLaneId: 'lane-recovery-routes',
+        sourceAssistantTurnId: 'assistant-turn-recovery-routes',
         sourceParticipant: {
           participantKind: 'cat',
           participantId: 'cat-inline',
@@ -4286,6 +4289,22 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(detailPayload.recovery.dispatchReplay.sourceMessageId, 'message-recovery-routes');
     assert.equal(detailPayload.recovery.dispatchReplay.replayState, 'ready');
     assert.equal(detailPayload.recovery.workflowContinuationReplay.checkpointId, 'checkpoint-recovery-routes');
+    assert.equal(
+      detailPayload.recovery.workflowContinuationReplay.sourceMessageId,
+      'message-recovery-routes',
+    );
+    assert.equal(
+      detailPayload.recovery.workflowContinuationReplay.sourceTurnId,
+      'turn-recovery-routes',
+    );
+    assert.equal(
+      detailPayload.recovery.workflowContinuationReplay.sourceLaneId,
+      'lane-recovery-routes',
+    );
+    assert.equal(
+      detailPayload.recovery.workflowContinuationReplay.sourceAssistantTurnId,
+      'assistant-turn-recovery-routes',
+    );
     assert.deepEqual(
       detailPayload.recovery.workflowContinuationReplay.targets.map((target) => target.participantName),
       ['Followup-Agent'],
@@ -5118,6 +5137,9 @@ test('core control-plane routes expose grouped operator actions and workflow att
                 channelId: 'channel-control-plane-route',
                 checkpointId: 'checkpoint-control-plane-route',
                 sourceMessageId: 'message-control-plane-route',
+                sourceTurnId: 'turn-control-plane-route',
+                sourceLaneId: 'lane-control-plane-route',
+                sourceAssistantTurnId: 'assistant-turn-control-plane-route',
                 sourceParticipant: {
                   participantKind: 'orchestrator',
                   participantId: 'actor-orchestrator-global',
@@ -5302,6 +5324,22 @@ test('core control-plane routes expose grouped operator actions and workflow att
     assert.equal(detailPayload.controlPlane.workflowContinuation.checkpointId, 'checkpoint-control-plane-route');
     assert.equal(detailPayload.controlPlane.workflowContinuation.stageId, 'continuation_handoff');
     assert.equal(detailPayload.controlPlane.workflowContinuation.workflowShape, 'converge');
+    assert.equal(
+      detailPayload.controlPlane.workflowContinuation.sourceMessageId,
+      'message-control-plane-route',
+    );
+    assert.equal(
+      detailPayload.controlPlane.workflowContinuation.sourceTurnId,
+      'turn-control-plane-route',
+    );
+    assert.equal(
+      detailPayload.controlPlane.workflowContinuation.sourceLaneId,
+      'lane-control-plane-route',
+    );
+    assert.equal(
+      detailPayload.controlPlane.workflowContinuation.sourceAssistantTurnId,
+      'assistant-turn-control-plane-route',
+    );
     assert.equal(
       detailPayload.controlPlane.workflowContinuation.continuationSource,
       'workflow_recommendation',

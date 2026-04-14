@@ -285,6 +285,10 @@ export function buildWorkflowContinuationState(input: {
   const continuationSource = input.latestWorkflowRecommendation?.continuationSource
     ?? readContinuationSource(replay?.continuationSource)
     ?? null;
+  const sourceMessageId = replay?.sourceMessageId ?? null;
+  const sourceTurnId = replay?.sourceTurnId ?? null;
+  const sourceLaneId = replay?.sourceLaneId ?? null;
+  const sourceAssistantTurnId = replay?.sourceAssistantTurnId ?? null;
   const reviewRequired = input.latestWorkflowRecommendation?.reviewRequired
     ?? replay?.reviewRequired
     ?? input.workflowSummary?.reviewRequired
@@ -326,6 +330,10 @@ export function buildWorkflowContinuationState(input: {
     checkpointId,
     stageId,
     workflowShape,
+    sourceMessageId,
+    sourceTurnId,
+    sourceLaneId,
+    sourceAssistantTurnId,
     continuationSource,
     reviewRequired,
     convergeTargetId,
