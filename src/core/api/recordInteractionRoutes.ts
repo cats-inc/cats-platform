@@ -16,6 +16,11 @@ import {
 import { readTransportBindingListQuery } from './queryFilters.js';
 import { readSessionListQuery } from './queryFilters.js';
 import {
+  readLaneListQuery,
+  readSegmentListQuery,
+  readTurnListQuery,
+} from './queryFilters.js';
+import {
   CORE_TRANSPORT_BINDING_DIRECTIONS,
   CORE_TRANSPORT_BINDING_PLATFORMS,
   CORE_TRANSPORT_BINDING_STATUSES,
@@ -29,6 +34,7 @@ import {
 import type { CoreApiRouteContext } from './types.js';
 import { listTransportBindings } from '../transportBindingList.js';
 import { listSessions } from '../sessionList.js';
+import { listLanes, listSegments, listTurns } from '../interactionRecordLists.js';
 import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 
 async function handleCoreTransportBindings(
@@ -45,21 +51,24 @@ async function handleCoreTurns(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { turns: core.turns });
+  const query = readTurnListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { turns: listTurns(core, query) });
 }
 
 async function handleCoreLanes(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { lanes: core.lanes });
+  const query = readLaneListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { lanes: listLanes(core, query) });
 }
 
 async function handleCoreSegments(
   context: CoreApiRouteContext,
 ): Promise<void> {
   const core = await context.dependencies.coreStore.readCore();
-  sendJson(context.response, 200, { segments: core.segments });
+  const query = readSegmentListQuery(context.url.searchParams);
+  sendJson(context.response, 200, { segments: listSegments(core, query) });
 }
 
 async function handleCoreSessions(
@@ -280,7 +289,11 @@ export async function routeCoreInteractionRecordApi(
 ): Promise<boolean> {
   if (context.url.pathname === '/api/core/turns') {
     if (context.method === 'GET') {
-      await handleCoreTurns(context);
+      try {
+        await handleCoreTurns(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -293,7 +306,11 @@ export async function routeCoreInteractionRecordApi(
 
   if (context.url.pathname === '/api/core/lanes') {
     if (context.method === 'GET') {
-      await handleCoreLanes(context);
+      try {
+        await handleCoreLanes(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {
@@ -306,7 +323,11 @@ export async function routeCoreInteractionRecordApi(
 
   if (context.url.pathname === '/api/core/segments') {
     if (context.method === 'GET') {
-      await handleCoreSegments(context);
+      try {
+        await handleCoreSegments(context);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
       return true;
     }
     if (context.method === 'POST') {

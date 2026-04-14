@@ -35,6 +35,11 @@ import {
 import type { CoreTransportStateProjectionQuery } from '../transportStateProjection.js';
 import type { CoreTransportBindingListQuery } from '../transportBindingList.js';
 import type { CoreSessionListQuery } from '../sessionList.js';
+import type {
+  CoreLaneListQuery,
+  CoreSegmentListQuery,
+  CoreTurnListQuery,
+} from '../interactionRecordLists.js';
 import { CoreValidationError } from '../errors.js';
 import { CORE_TASK_VIEW_STATUSES } from '../taskViewQuery.js';
 import {
@@ -48,10 +53,15 @@ import {
   CORE_ACTOR_STATUSES,
   CORE_MISSION_STATUSES,
   CORE_RUN_STATUSES,
+  CORE_LANE_STATUSES,
+  CORE_SEGMENT_KINDS,
+  CORE_SEGMENT_STATUSES,
   CORE_SESSION_STATUSES,
   CORE_TRANSPORT_BINDING_DIRECTIONS,
   CORE_TRANSPORT_BINDING_PLATFORMS,
   CORE_TRANSPORT_BINDING_STATUSES,
+  CORE_TURN_KINDS,
+  CORE_TURN_STATUSES,
   CORE_WORK_ITEM_STATUSES,
 } from './constants.js';
 import {
@@ -512,6 +522,45 @@ export function readSessionListQuery(
     transportBindingIds: readOptionalQueryValues(searchParams, 'transportBindingId'),
     runtimeKeys: readOptionalQueryValues(searchParams, 'runtimeKey'),
     statuses: readEnumQueryValues(searchParams, 'status', CORE_SESSION_STATUSES),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readTurnListQuery(
+  searchParams: URLSearchParams,
+): CoreTurnListQuery {
+  return {
+    conversationIds: readConversationIds(searchParams),
+    sourceParticipantIds: readOptionalQueryValues(searchParams, 'sourceParticipantId'),
+    kinds: readEnumQueryValues(searchParams, 'kind', CORE_TURN_KINDS),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_TURN_STATUSES),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readLaneListQuery(
+  searchParams: URLSearchParams,
+): CoreLaneListQuery {
+  return {
+    conversationIds: readConversationIds(searchParams),
+    turnIds: readOptionalQueryValues(searchParams, 'turnId'),
+    participantIds: readOptionalQueryValues(searchParams, 'participantId'),
+    agentIds: readOptionalQueryValues(searchParams, 'agentId'),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_LANE_STATUSES),
+    limit: readPositiveIntegerQuery(searchParams, 'limit'),
+  };
+}
+
+export function readSegmentListQuery(
+  searchParams: URLSearchParams,
+): CoreSegmentListQuery {
+  return {
+    conversationIds: readConversationIds(searchParams),
+    turnIds: readOptionalQueryValues(searchParams, 'turnId'),
+    laneIds: readOptionalQueryValues(searchParams, 'laneId'),
+    sessionIds: readOptionalQueryValues(searchParams, 'sessionId'),
+    kinds: readEnumQueryValues(searchParams, 'kind', CORE_SEGMENT_KINDS),
+    statuses: readEnumQueryValues(searchParams, 'status', CORE_SEGMENT_STATUSES),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }

@@ -9,9 +9,12 @@ import { createServer } from '../build/server/app/server/index.js';
 import { MemoryCoreStore } from '../build/server/core/store.js';
 import {
   createDefaultCoreState,
+  upsertCoreLane,
+  upsertCoreSegment,
   upsertCoreConversation,
   upsertCoreSession,
   upsertCoreTransportBinding,
+  upsertCoreTurn,
 } from '../build/server/core/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
@@ -101,6 +104,60 @@ function createInteractionCoreState() {
     new Date('2026-04-15T03:21:00.000Z'),
   ).core;
 
+  core = upsertCoreTurn(
+    core,
+    {
+      id: 'turn-1',
+      conversationId: 'conversation-1',
+      kind: 'user',
+      status: 'active',
+      sourceParticipantId: 'participant-owner',
+      createdAt: '2026-04-15T03:21:30.000Z',
+    },
+    new Date('2026-04-15T03:21:30.000Z'),
+  ).core;
+
+  core = upsertCoreTurn(
+    core,
+    {
+      id: 'turn-2',
+      conversationId: 'conversation-2',
+      kind: 'agent',
+      status: 'completed',
+      sourceParticipantId: 'participant-2',
+      createdAt: '2026-04-15T03:21:31.000Z',
+    },
+    new Date('2026-04-15T03:21:31.000Z'),
+  ).core;
+
+  core = upsertCoreLane(
+    core,
+    {
+      id: 'lane-1',
+      turnId: 'turn-1',
+      conversationId: 'conversation-1',
+      participantId: 'participant-1',
+      agentId: 'actor-agent-1',
+      status: 'streaming',
+      createdAt: '2026-04-15T03:21:32.000Z',
+    },
+    new Date('2026-04-15T03:21:32.000Z'),
+  ).core;
+
+  core = upsertCoreLane(
+    core,
+    {
+      id: 'lane-2',
+      turnId: 'turn-2',
+      conversationId: 'conversation-2',
+      participantId: 'participant-2',
+      agentId: 'actor-agent-2',
+      status: 'failed',
+      createdAt: '2026-04-15T03:21:33.000Z',
+    },
+    new Date('2026-04-15T03:21:33.000Z'),
+  ).core;
+
   core = upsertCoreTransportBinding(
     core,
     {
@@ -168,6 +225,38 @@ function createInteractionCoreState() {
       completedAt: '2026-04-15T03:26:00.000Z',
     },
     new Date('2026-04-15T03:26:00.000Z'),
+  ).core;
+
+  core = upsertCoreSegment(
+    core,
+    {
+      id: 'segment-1',
+      laneId: 'lane-1',
+      turnId: 'turn-1',
+      conversationId: 'conversation-1',
+      sessionId: 'session-1',
+      kind: 'text',
+      status: 'streaming',
+      content: 'hello',
+      createdAt: '2026-04-15T03:26:30.000Z',
+    },
+    new Date('2026-04-15T03:26:30.000Z'),
+  ).core;
+
+  core = upsertCoreSegment(
+    core,
+    {
+      id: 'segment-2',
+      laneId: 'lane-2',
+      turnId: 'turn-2',
+      conversationId: 'conversation-2',
+      sessionId: 'session-2',
+      kind: 'tool',
+      status: 'failed',
+      content: null,
+      createdAt: '2026-04-15T03:26:31.000Z',
+    },
+    new Date('2026-04-15T03:26:31.000Z'),
   ).core;
 
   return core;
@@ -259,5 +348,55 @@ test('core interaction routes reject invalid session filters with structured 400
     const payload = await response.json();
     assert.equal(payload.error.code, 'bad_request');
     assert.match(payload.error.message, /status must be one of/i);
+  });
+});
+
+test('core interaction routes support filtered turn, lane, and segment queries', async () => {
+  await withServer(async (baseUrl) => {
+    const turnsResponse = await fetch(
+      `${baseUrl}/api/core/turns?conversationId=conversation-1&sourceParticipantId=participant-owner&kind=user&status=active`,
+    );
+    assert.equal(turnsResponse.status, 200);
+    const turnsPayload = await turnsResponse.json();
+    assert.equal(turnsPayload.turns.length, 1);
+    assert.equal(turnsPayload.turns[0].id, 'turn-1');
+
+    const lanesResponse = await fetch(
+      `${baseUrl}/api/core/lanes?conversationId=conversation-1&turnId=turn-1&participantId=participant-1&agentId=actor-agent-1&status=streaming`,
+    );
+    assert.equal(lanesResponse.status, 200);
+    const lanesPayload = await lanesResponse.json();
+    assert.equal(lanesPayload.lanes.length, 1);
+    assert.equal(lanesPayload.lanes[0].id, 'lane-1');
+
+    const segmentsResponse = await fetch(
+      `${baseUrl}/api/core/segments?conversationId=conversation-1&turnId=turn-1&laneId=lane-1&sessionId=session-1&kind=text&status=streaming`,
+    );
+    assert.equal(segmentsResponse.status, 200);
+    const segmentsPayload = await segmentsResponse.json();
+    assert.equal(segmentsPayload.segments.length, 1);
+    assert.equal(segmentsPayload.segments[0].id, 'segment-1');
+  });
+});
+
+test('core interaction routes reject invalid turn, lane, and segment filters with structured 400 responses', async () => {
+  await withServer(async (baseUrl) => {
+    const turnResponse = await fetch(`${baseUrl}/api/core/turns?kind=comment`);
+    assert.equal(turnResponse.status, 400);
+    const turnPayload = await turnResponse.json();
+    assert.equal(turnPayload.error.code, 'bad_request');
+    assert.match(turnPayload.error.message, /kind must be one of/i);
+
+    const laneResponse = await fetch(`${baseUrl}/api/core/lanes?status=paused`);
+    assert.equal(laneResponse.status, 400);
+    const lanePayload = await laneResponse.json();
+    assert.equal(lanePayload.error.code, 'bad_request');
+    assert.match(lanePayload.error.message, /status must be one of/i);
+
+    const segmentResponse = await fetch(`${baseUrl}/api/core/segments?kind=voice`);
+    assert.equal(segmentResponse.status, 400);
+    const segmentPayload = await segmentResponse.json();
+    assert.equal(segmentPayload.error.code, 'bad_request');
+    assert.match(segmentPayload.error.message, /kind must be one of/i);
   });
 });
