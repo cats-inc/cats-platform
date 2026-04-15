@@ -54,7 +54,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 | [PLAN-052](./PLAN-052-guide-cat-optional-surface-assist-capability.md) | Guide Cat Optional Surface-Assist Capability | Draft | [SPEC-060](../specs/SPEC-060-guide-cat-optional-surface-assist-capability.md), [ADR-061](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md) |
 | [PLAN-051](./PLAN-051-heterogeneous-runtime-delivery-normalization.md) | Heterogeneous Runtime Delivery Normalization | Draft | [SPEC-059](../specs/SPEC-059-heterogeneous-runtime-delivery-normalization.md), [ADR-060](../decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md) |
 | [PLAN-050](./PLAN-050-interaction-core-and-domain-materialization.md) | Interaction Core and Domain Materialization | Draft | [SPEC-058](../specs/SPEC-058-interaction-core-and-domain-materialization.md), [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md) |
-| [PLAN-049](./PLAN-049-unified-conversation-turn-lane-engine.md) | Unified Conversation-Turn-Lane Engine | Draft | [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md) |
+| [PLAN-049](./PLAN-049-unified-conversation-turn-lane-engine.md) | Unified Conversation-Turn-Lane Engine | Completed | [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md) |
 | [PLAN-048](./PLAN-048-concurrent-group-lane-native-live-transcript.md) | Concurrent Group Lane-Native Live Transcript | Draft | [SPEC-057](../specs/SPEC-057-concurrent-group-lane-native-live-transcript.md), [ADR-058](../decisions/058-adopt-lane-native-concurrent-group-transcript-delivery.md) |
 | [PLAN-047](./PLAN-047-segment-native-assistant-transcript-delivery.md) | Segment-Native Assistant Transcript Delivery | Draft | [SPEC-056](../specs/SPEC-056-segment-native-assistant-transcript-delivery.md), [ADR-057](../decisions/057-adopt-segment-native-assistant-transcript-delivery.md) |
 | [PLAN-046](./PLAN-046-shared-audience-participant-builder.md) | Shared Audience-Participant Builder | Draft | [SPEC-055](../specs/SPEC-055-shared-audience-participant-builder.md), [ADR-056](../decisions/056-use-a-shared-audience-participant-builder-for-all-composer-surfaces.md) |
@@ -111,6 +111,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-14*
+*Last updated: 2026-04-16*
 
 *See also: [specs/](../specs/) for feature specifications*

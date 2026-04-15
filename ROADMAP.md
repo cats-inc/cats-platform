@@ -71,52 +71,41 @@ contracts.
 
 ### Phase 4: Cats Chat Launch Track
 
-- [ ] Complete the `Cats Core v1` chat-runtime migration onto the unified
+- [x] Complete the `Cats Core v1` chat-runtime migration onto the unified
       `Container -> Conversation -> Turn -> Lane -> Segment -> Session`
       engine, including removal of remaining mode-driven dispatch
       assumptions and legacy chat-only interaction writes
-- [ ] Finish sequential frontier propagation so later sequential lanes inherit
+- [x] Finish sequential frontier propagation so later sequential lanes inherit
       prior completed lane outputs as canonical input frontier instead of only
       the originating user message
-- [ ] Promote replay, repair, and recovery to rebuild from canonical
+- [x] Promote replay, repair, and recovery to rebuild from canonical
       interaction records plus transport bindings instead of heuristic
       transcript/session inference
-      Progress: canonical fallback now rebuilds replay handoffs from full
-      assistant turns, restores replay context from canonical history when the
-      transcript drifts, preserves terminal turns across workflow drift, and
-      allows retry/choice-response/session-repair paths to recover missing
-      source and target identity from canonical interaction/session records;
-      the remaining work is to make canonical records the primary recovery
-      source end to end instead of a fallback beside legacy workflow heuristics.
-- [ ] Land concurrent group transcript delivery on stable lane identity,
+      Completed: canonical interaction records plus transport bindings now
+      drive replay, repair, retry, and startup recovery end to end.
+- [x] Land concurrent group transcript delivery on stable lane identity,
       cluster-ready text barriers, and runtime multiplex semantics so
       concurrent UI shape no longer depends on connection timing
-      Progress: backend stream-target foundations now expose all concurrent
-      workflow targets plus the subset that are session-ready; the remaining
-      work is to consume that in SSE attach/multiplex delivery, lane-aware
-      live-indicator payloads, and cluster-ready release logic. Stream attach
-      lifecycle now keys concurrent/sequential attaches by lane+session
-      generation, so replacement runtime sessions can reattach to an existing
-      active lane after recovery instead of being suppressed as already-finished
-      old attaches.
-- [ ] Normalize heterogeneous runtime delivery into one product-owned event
+      Completed: concurrent stream attach, same-lane session reattach, hidden
+      participant identity, and cluster-ready text barriers now all resolve by
+      lane-native engine identity instead of connection timing.
+- [x] Normalize heterogeneous runtime delivery into one product-owned event
       contract so block-streaming CLIs, text-only CLIs, and final-result-only
       runtimes can all feed the same lane/segment engine
-      Progress: nested runtime result segments and content-array result payloads
-      now normalize into the product envelope, but mixed-granularity runtime
-      outputs still need to converge on one fully canonical lane/segment
-      delivery contract.
-- [ ] Finish end-to-end transport binding adoption for external entrypoints
+      Completed: runtime and live consumers now normalize nested tool-result
+      content arrays, tool-use aliases, and mixed delivery payloads into the
+      canonical lane/segment event contract.
+- [x] Finish end-to-end transport binding adoption for external entrypoints
       and direct lanes so Telegram/bot threads, product conversations, and
       runtime sessions stop sharing overloaded identity semantics
-      Progress: Telegram transport-binding ids now persist into runtime context,
-      session-start events, and canonical session projection, but the same
-      transport identity still needs to govern recovery, close/reconnect, and
-      non-Telegram external entrypoints end to end.
+      Completed: `transportBindingId` now persists through canonical writes,
+      retry/recovery, stream events, close/reconnect notices, and direct-lane
+      rebuild paths, so transport identity is no longer overloaded onto
+      session/transcript inference.
 - [ ] Offline transcript normalization and ingestion handoff hooks
 - [ ] Split-view chat canvas with preview and debug surfaces
 - [ ] Operator-grade activity indicators, streaming updates, and richer channel lifecycle state
-- [ ] Carry stable `participantId` speaker identity end to end through channel
+- [x] Carry stable `participantId` speaker identity end to end through channel
       stream target selection, SSE payloads, live-indicator state, and
       transcript/live-bubble visibility gating so sequential handoff and stale
       progress suppression stop relying on `senderName` /
@@ -172,14 +161,14 @@ contracts.
       clearer confirmation and busy states for chat / parallel-group / Cat delete,
       and debug-retention messaging when
       `CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE=true`
-- [ ] Refactor `ensureTargetSession(...)` so runtime session creation, lease wake state,
+- [x] Refactor `ensureTargetSession(...)` so runtime session creation, lease wake state,
       and execution-target reconciliation stop living in one function now that
       session startup also persists runtime-sanitized model selections back into
       channel/global state
-      Progress: the wake path now splits existing lease reuse, stale-session
-      retry, and fresh session-start flows into separate helpers; the remaining
-      work is to separate execution-target reconciliation and persisted wake
-      bookkeeping from the remaining startup orchestration branches.
+      Completed: reuse, wake preparation, launch, start persistence,
+      execution-target reconciliation, task-execution context, and activation
+      result shaping now live in separated helpers instead of one orchestration
+      function.
 - [ ] Persist solo-composer model changes immediately on selector change instead of
       only committing the pending provider/model when the next message is sent
 - [ ] Add a platform-local cache for truthful runtime-backed selector reads,
@@ -560,21 +549,21 @@ contracts.
 
 ### Near-Term Migration Focus
 
-- [ ] Finish the first high-risk chat-core migration wave by moving
+- [x] Finish the first high-risk chat-core migration wave by moving
       sequential dispatch, continuation replay, and startup recovery fully onto
       the canonical interaction writer/reader path rather than dual-writing
       around legacy workflow assumptions
-- [ ] Carry stable `laneId` / `participantId` identity through concurrent
+- [x] Carry stable `laneId` / `participantId` identity through concurrent
       stream delivery, replay, retry, and repair paths so same-name speakers,
       reassigned sessions, and repaired system messages no longer rely on
       best-effort name matching
-- [ ] Replace the remaining single-target SSE attach assumptions with true
+- [x] Replace the remaining single-target SSE attach assumptions with true
       lane-aware multiplex delivery, including attach lifecycle, session-close
       recovery, and late-attach bootstrap for concurrent group turns
-- [ ] Promote canonical transport/session history into the default source for
+- [x] Promote canonical transport/session history into the default source for
       direct-lane and external-entrypoint recovery so Telegram/bot ingress can
       recover independently of transient transcript/workflow state
-- [ ] Decide the first user-facing smoke checkpoint for the high-risk migration
+- [x] Run the first user-facing smoke checkpoint for the high-risk migration
       wave, covering sequential frontier propagation, startup recovery,
       concurrent attach ordering, and transport-bound reconnect behavior before
       the old workflow path is retired

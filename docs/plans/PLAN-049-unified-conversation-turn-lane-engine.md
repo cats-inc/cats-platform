@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Completed |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -39,29 +39,32 @@ The target end state is:
 The plan is intentionally bigger than a renderer refactor. It includes server
 normalization, durable state, live projection, repair, replay, and observability.
 
+This migration is now landed. Follow-on work continues under broader launch,
+transport, and product-surface plans rather than this engine plan.
+
 ## Implementation Phases
 
 ### Phase 1: Freeze the Canonical Write Model
 
-- [ ] Task 1.1: Define the canonical record boundaries for:
+- [x] Task 1.1: Define the canonical record boundaries for:
       - `Container`
       - `Conversation`
       - `Turn`
       - `Lane`
       - `Segment`
       - `Session`
-- [ ] Task 1.2: Standardize stable ids and correlation rules:
+- [x] Task 1.2: Standardize stable ids and correlation rules:
       - `containerId`
       - `conversationId`
       - `turnId`
       - `laneId`
       - `segment ordinal`
       - `sessionId`
-- [ ] Task 1.3: Separate canonical lane identity from runtime attachment
+- [x] Task 1.3: Separate canonical lane identity from runtime attachment
       identity in all shared contracts.
-- [ ] Task 1.4: Define lane lifecycle and turn lifecycle states that can cover
+- [x] Task 1.4: Define lane lifecycle and turn lifecycle states that can cover
       direct, sequential, and concurrent flows without mode-specific branches.
-- [ ] Task 1.5: Publish one shared state vocabulary for replay, repair, and
+- [x] Task 1.5: Publish one shared state vocabulary for replay, repair, and
       renderer projection.
 
 **Deliverables**: a frozen core write model and id contract shared by server,
@@ -69,16 +72,16 @@ renderer, repair, and tests
 
 ### Phase 2: Separate Policy From Core Identity
 
-- [ ] Task 2.1: Represent topology, scheduler, sharing, and coordinator as
+- [x] Task 2.1: Represent topology, scheduler, sharing, and coordinator as
       explicit policy fields rather than implicit mode branches.
-- [ ] Task 2.2: Normalize current entry presets such as `+New chat`,
+- [x] Task 2.2: Normalize current entry presets such as `+New chat`,
       `+Group chat`, `+Parallel chat`, and direct lanes into policy bundles
       above the same engine.
-- [ ] Task 2.3: Define serial and concurrent scheduler behavior against the
+- [x] Task 2.3: Define serial and concurrent scheduler behavior against the
       same lane model.
-- [ ] Task 2.4: Define container composition for parallel flows so child
+- [x] Task 2.4: Define container composition for parallel flows so child
       conversations no longer overload room transcript semantics.
-- [ ] Task 2.5: Define Boss Cat as an optional coordinator capability that can
+- [x] Task 2.5: Define Boss Cat as an optional coordinator capability that can
       be visible or hidden without changing lane identity rules.
 
 **Deliverables**: one policy model that replaces the old chat-mode decision
@@ -86,15 +89,15 @@ tree
 
 ### Phase 3: Unify Live Projection, Repair, and Replay
 
-- [ ] Task 3.1: Rebuild live projection so transcript structure derives from
+- [x] Task 3.1: Rebuild live projection so transcript structure derives from
       canonical turn/lane state instead of `session_started` timing.
-- [ ] Task 3.2: Rework read repair and replay to rebuild projections from
+- [x] Task 3.2: Rework read repair and replay to rebuild projections from
       canonical state rather than infer missing business semantics heuristically.
-- [ ] Task 3.3: Ensure reconnect mutates existing lanes and sessions instead of
+- [x] Task 3.3: Ensure reconnect mutates existing lanes and sessions instead of
       creating ghost bubbles or same-speaker duplicates.
-- [ ] Task 3.4: Make system messages and lifecycle notices annotations only,
+- [x] Task 3.4: Make system messages and lifecycle notices annotations only,
       not the source of bubble existence or ordering.
-- [ ] Task 3.5: Align app-shell/read-model payloads with the same projection
+- [x] Task 3.5: Align app-shell/read-model payloads with the same projection
       rules used during live rendering.
 
 **Deliverables**: live, reload, and repaired transcript behavior converge on
@@ -102,15 +105,15 @@ the same model
 
 ### Phase 4: Promote Sequential Frontier Propagation
 
-- [ ] Task 4.1: Define the sequential frontier contract that later lanes must
+- [x] Task 4.1: Define the sequential frontier contract that later lanes must
       receive from earlier completed lanes in the same turn.
-- [ ] Task 4.2: Rework initial sequential audience dispatch so later lanes no
+- [x] Task 4.2: Rework initial sequential audience dispatch so later lanes no
       longer receive only the original user message as explicit source context.
-- [ ] Task 4.3: Ensure frontier propagation can carry both transcript and
+- [x] Task 4.3: Ensure frontier propagation can carry both transcript and
       structured materialization context where needed.
-- [ ] Task 4.4: Align prompt-building and runtime bridge code with the new
+- [x] Task 4.4: Align prompt-building and runtime bridge code with the new
       frontier semantics.
-- [ ] Task 4.5: Add regression coverage for initial sequential audience order,
+- [x] Task 4.5: Add regression coverage for initial sequential audience order,
       continuation handoff, and interrupted/replayed serial turns.
 
 **Deliverables**: sequential turns become true relay flows rather than ordered
@@ -118,15 +121,15 @@ copies of the same original input
 
 ### Phase 5: Migrate Surfaces to the Shared Engine
 
-- [ ] Task 5.1: Migrate direct lane and solo-thread projections onto the new
+- [x] Task 5.1: Migrate direct lane and solo-thread projections onto the new
       engine without preserving legacy direct-only special cases.
-- [ ] Task 5.2: Migrate sequential group rendering and room repair onto the
+- [x] Task 5.2: Migrate sequential group rendering and room repair onto the
       shared engine contract.
-- [ ] Task 5.3: Migrate concurrent group rendering and lane clusters onto the
+- [x] Task 5.3: Migrate concurrent group rendering and lane clusters onto the
       same shared engine contract.
-- [ ] Task 5.4: Migrate parallel containers to compose child conversations
+- [x] Task 5.4: Migrate parallel containers to compose child conversations
       instead of inventing separate transcript semantics.
-- [ ] Task 5.5: Remove obsolete mode-driven compatibility helpers once all
+- [x] Task 5.5: Remove obsolete mode-driven compatibility helpers once all
       production flows read from the new model.
 
 **Deliverables**: direct, sequential, concurrent, and parallel flows all run
@@ -134,17 +137,17 @@ through one engine
 
 ### Phase 6: Observability and Hardening
 
-- [ ] Task 6.1: Standardize trace payloads and debug logs around the canonical
+- [x] Task 6.1: Standardize trace payloads and debug logs around the canonical
       id tuple.
-- [ ] Task 6.2: Add engine-level tests for:
+- [x] Task 6.2: Add engine-level tests for:
       - direct reconnect
       - initial sequential frontier propagation
       - concurrent lane order stability
       - parallel container composition
       - repair/replay equivalence
-- [ ] Task 6.3: Add migration tests proving old room/topology presets still
+- [x] Task 6.3: Add migration tests proving old room/topology presets still
       resolve to the expected policy bundle.
-- [ ] Task 6.4: Add manual smoke checks that compare live behavior against
+- [x] Task 6.4: Add manual smoke checks that compare live behavior against
       refresh/reconnect/reload behavior.
 
 **Deliverables**: one diagnosable and regression-tested engine
@@ -216,6 +219,7 @@ through one engine
 | 2026-04-15 | Core projection sync and interaction writes now also resolve channel canonical identity through the shared helper, so the canonical write path no longer preserves a separate projection-only `channelId -> conversation/container` derivation from the runtime/read side |
 | 2026-04-15 | Core projection entity builders now also resolve canonical conversation scope through the shared helper, so participants, containers, transport bindings, and conversation/task metadata stop preserving a separate record-builder conversation-id derivation |
 | 2026-04-15 | Operator-loop and live-indicator fallback conversation resolution now also flow through the shared canonical helper, so the only remaining direct `channelId -> conversation/container` mapping lives in the helper definition itself instead of renderer/operator fallback code |
+| 2026-04-16 | The unified engine rollout is now complete: chat runtime/session orchestration is split into lane-first helpers, sequential frontier propagation and canonical source identity drive replay/repair/recovery, concurrent stream attach and cluster barriers are lane-native, transport bindings persist through canonical rebuild/reconnect paths, and runtime/live delivery now normalize into one engine-aligned lane/segment contract |
 
 ---
 
