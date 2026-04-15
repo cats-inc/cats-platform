@@ -1832,6 +1832,202 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
   }, chatStore);
 });
 
+test('GET /api/channels/:id/stream can reattach the same lane session after a segment boundary', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:11:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Boundary Cat',
+      provider: 'claude',
+      roles: ['implementer'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Same lane same session boundary',
+      topic: 'Allow the same lane session to reattach after a streamed segment completes.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  const participantId = requireChannel(state, channelId).catAssignments[0]?.participantId;
+  assert.ok(participantId);
+  await chatStore.write(state);
+
+  let streamAttachCount = 0;
+  let releaseFirstResultSeen;
+  const firstResultSeen = new Promise((resolve) => {
+    releaseFirstResultSeen = resolve;
+  });
+  let releaseSecondResultSeen;
+  const secondResultSeen = new Promise((resolve) => {
+    releaseSecondResultSeen = resolve;
+  });
+  runtime.streamSession = async (sessionId, onEvent, options) => {
+    runtime.streamedSessions.push(sessionId);
+    streamAttachCount += 1;
+    assert.equal(sessionId, 'session-live-boundary');
+
+    if (streamAttachCount === 1) {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'First streamed segment on the same lane',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseFirstResultSeen();
+      await new Promise((resolve) => {
+        if (options?.signal?.aborted) {
+          resolve();
+          return;
+        }
+        options?.signal?.addEventListener('abort', resolve, { once: true });
+      });
+      return;
+    }
+
+    if (streamAttachCount === 2) {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'Second streamed segment after reattach',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseSecondResultSeen();
+      return;
+    }
+
+    throw new Error(`Unexpected same-lane stream attach #${streamAttachCount}`);
+  };
+
+  await withServer(runtime, async (baseUrl) => {
+    const begun = await beginChannelMessageDispatch(
+      await chatStore.read(),
+      channelId,
+      {
+        body: 'Keep streaming on the same lane after one segment seals.',
+        messageMetadata: {
+          recipientParticipantIds: [participantId],
+          workflowShape: 'sequential',
+        },
+      },
+      runtime,
+      seededAt,
+    );
+    let nextState = begun.state;
+    let nextChannel = requireChannel(nextState, channelId);
+    const nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
+    const targetStateId = nextTurn.targetStatuses[0]?.id ?? null;
+    assert.ok(targetStateId);
+    const laneId = buildChatLaneId(nextTurn.id, targetStateId, participantId);
+
+    nextState = setChannelCatLease(
+      nextState,
+      channelId,
+      catId,
+      {
+        sessionId: 'session-live-boundary',
+        status: 'ready',
+        cwd: 'C:/repo/cats-platform',
+        laneId,
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
+    nextChannel = requireChannel(nextState, channelId);
+    const hydratedTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(hydratedTurn);
+    hydratedTurn.targetStatuses = [
+      {
+        id: targetStateId,
+        dispatchId: 'dispatch-live-boundary',
+        participant: {
+          participantKind: 'cat',
+          participantId,
+          participantName: 'Boundary Cat',
+        },
+        source: null,
+        sourceMessageId: hydratedTurn.sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: hydratedTurn.lastCheckpointId,
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: null,
+        laneId,
+        status: 'running',
+        queuedAt: seededAt.toISOString(),
+        startedAt: seededAt.toISOString(),
+        completedAt: null,
+        response: null,
+        error: null,
+      },
+    ];
+    hydratedTurn.updatedAt = seededAt.toISOString();
+    await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
+
+    const streamResponse = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(streamResponse.status, 200);
+    const stream = createSseCapture(streamResponse);
+
+    await firstResultSeen;
+
+    const afterFirstSegmentState = await chatStore.read();
+    const activeTurn = requireChannel(afterFirstSegmentState, channelId).roomRouting.workflow.activeTurn;
+    assert.ok(activeTurn);
+    activeTurn.updatedAt = '2026-03-11T00:11:02.000Z';
+    await chatStore.write(afterFirstSegmentState);
+    notifyStreamTargetChanged(channelId);
+
+    await secondResultSeen;
+    const streamBody = await readSseUntil(
+      stream,
+      (text) =>
+        text.includes('"text":"First streamed segment on the same lane"')
+        && text.includes('"text":"Second streamed segment after reattach"'),
+    );
+    await stream.reader.cancel();
+
+    assert.match(streamBody, new RegExp(`"laneId":"${laneId}"`, 'u'));
+    assert.match(streamBody, /First streamed segment on the same lane/u);
+    assert.match(streamBody, /Second streamed segment after reattach/u);
+    assert.deepEqual(runtime.streamedSessions, [
+      'session-live-boundary',
+      'session-live-boundary',
+    ]);
+  }, chatStore);
+});
+
 test('GET /api/channels/:id/stream reattaches a replacement session for the same active lane', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();

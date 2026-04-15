@@ -533,7 +533,7 @@ async function handleRestStreamChannel(
       return;
     }
 
-    const completedAttachKeys = new Set<string>();
+    const completedAttachSignalVersions = new Map<string, number>();
     const activeStreams = new Map<string, Promise<void>>();
     const bufferedEvents: Array<{ event: string; data: Record<string, unknown> }> = [];
     let concurrentBarrierReleased = false;
@@ -563,12 +563,19 @@ async function handleRestStreamChannel(
       }
     };
 
-    const attachReadyTargets = (targets: ChannelStreamTarget[]): void => {
+    const attachReadyTargets = (
+      targets: ChannelStreamTarget[],
+      signalVersion: number,
+    ): void => {
       for (const target of targets) {
         const attachKey = buildChannelStreamTargetAttachKey(target);
-        if (!attachKey || activeStreams.has(attachKey) || completedAttachKeys.has(attachKey)) {
+        if (!attachKey || activeStreams.has(attachKey)) {
           continue;
         }
+        if (completedAttachSignalVersions.get(attachKey) === signalVersion) {
+          continue;
+        }
+        const attachSignalVersion = signalVersion;
         const streamPromise = streamChannelTarget({
           context,
           channelId,
@@ -577,17 +584,17 @@ async function handleRestStreamChannel(
           requestAbortSignal: abortController.signal,
         }).finally(() => {
           activeStreams.delete(attachKey);
-          completedAttachKeys.add(attachKey);
+          completedAttachSignalVersions.set(attachKey, attachSignalVersion);
         });
         activeStreams.set(attachKey, streamPromise);
       }
     };
 
-    attachReadyTargets([streamTarget]);
+    attachReadyTargets([streamTarget], readStreamTargetSignalVersion(channelId));
 
     while (!abortController.signal.aborted && !context.response.writableEnded) {
       const snapshot = await readChannelReadyStreamSnapshot(context, channelId);
-      attachReadyTargets(snapshot.readyTargets);
+      attachReadyTargets(snapshot.readyTargets, snapshot.signalVersion);
       if (snapshot.concurrentBarrierReleased && !concurrentBarrierReleased) {
         concurrentBarrierReleased = true;
       }
