@@ -287,27 +287,26 @@ export function resolveLatestUserTurnPresentationState(input: {
     },
   );
   const hasDispatchedTarget = hasDispatchedWorkflowTarget(activeTurn);
+  const activeTurnOwnsLatestUserMessage =
+    activeTurn?.sourceMessageId === latestUserMessage.id
+    && (activeTurn.status === 'running' || activeTurn.status === 'pending');
   const queuedBehindActiveTurn = (
     latestUserMessageIndex > -1
     && activeTurnSourceMessageIndex > -1
     && activeTurnSourceMessageIndex < latestUserMessageIndex
     && (activeTurn?.status === 'running' || activeTurn?.status === 'pending')
-    && !hasVisibleAssistantReply
-    && !hasVisibleSessionStart
   );
 
   if (
     (
-      (
-        activeTurn?.sourceMessageId === latestUserMessage.id
-        && (activeTurn.status === 'running' || activeTurn.status === 'pending')
-        && !hasDispatchedTarget
-      )
+      (activeTurnOwnsLatestUserMessage && !hasDispatchedTarget)
       || queuedBehindActiveTurn
     )
     && !hasAssistantIdentityBubble
-    && !hasVisibleAssistantReply
-    && !hasVisibleSessionStart
+    && (
+      queuedBehindActiveTurn
+      || (!hasVisibleAssistantReply && !hasVisibleSessionStart)
+    )
   ) {
     return {
       messageId: latestUserMessage.id,
