@@ -469,7 +469,6 @@ export async function ensureTargetSession(
   }
 
   let nextState = state;
-  const channel = buildChannelView(nextState, channelId);
   const spawnCwd = spawnCwdFor(requireChannel(nextState, channelId));
   const workspaceKind = spawnCwd ? 'source' : 'sandbox';
   let targetLabelProvider: string | null = null;
@@ -477,10 +476,11 @@ export async function ensureTargetSession(
 
   try {
     nextState = markTargetWaking(nextState, channelId, attachedTarget, now, laneId);
+    const runtimeChannel = buildChannelView(nextState, channelId);
     const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
       nextState,
-      channel,
-      target,
+      runtimeChannel,
+      attachedTarget,
       options.transport,
       options.transportBindingId,
       now,
@@ -528,7 +528,7 @@ export async function ensureTargetSession(
         attachmentWorkspacePath,
         targetWorkspacePath: session.cwd,
       });
-      nextState = channel.composerMode === 'solo' && channel.pendingProvider
+      nextState = runtimeChannel.composerMode === 'solo' && runtimeChannel.pendingProvider
         ? setChannelPendingExecutionTarget(
           nextState,
           channelId,
@@ -599,7 +599,7 @@ export async function ensureTargetSession(
       };
     }
 
-    const participant = findAssignedParticipant(channel, attachedTarget.participantId);
+    const participant = findAssignedParticipant(runtimeChannel, attachedTarget.participantId);
     if (!participant) {
       const error = 'Target participant is no longer assigned to the selected chat.';
       return {
