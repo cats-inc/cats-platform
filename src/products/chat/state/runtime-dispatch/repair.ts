@@ -1293,12 +1293,12 @@ function resolveMissingSessionCwd(
   }
 
   const orchestratorAttachment = resolveOrchestratorLeaseAttachment(channel);
-  if (laneId && orchestratorAttachment?.laneId === laneId && channel.orchestratorLease.cwd) {
-    return channel.orchestratorLease.cwd;
+  if (laneId && orchestratorAttachment?.laneId === laneId && orchestratorAttachment.cwd) {
+    return orchestratorAttachment.cwd;
   }
 
-  if (orchestratorAttachment?.sessionId === sessionId && channel.orchestratorLease.cwd) {
-    return channel.orchestratorLease.cwd;
+  if (orchestratorAttachment?.sessionId === sessionId && orchestratorAttachment.cwd) {
+    return orchestratorAttachment.cwd;
   }
 
   if (targetId) {
@@ -1307,11 +1307,11 @@ function resolveMissingSessionCwd(
     const participantAttachment = participantId
       ? resolveParticipantLeaseAttachment(channel, participantId)
       : null;
-    if (laneId && participantAttachment?.laneId === laneId && assignment?.execution.lease.cwd) {
-      return assignment.execution.lease.cwd;
+    if (laneId && participantAttachment?.laneId === laneId && participantAttachment.cwd) {
+      return participantAttachment.cwd;
     }
-    if (participantAttachment?.sessionId === sessionId && assignment?.execution.lease.cwd) {
-      return assignment.execution.lease.cwd;
+    if (participantAttachment?.sessionId === sessionId && participantAttachment.cwd) {
+      return participantAttachment.cwd;
     }
   }
 

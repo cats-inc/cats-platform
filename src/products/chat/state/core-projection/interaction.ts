@@ -40,6 +40,10 @@ import {
   buildChatOrchestratorParticipantId,
   buildDirectLaneTransportBindingId,
 } from '../../../../shared/chatCoreIds.js';
+import {
+  resolveOrchestratorExecutionLease,
+  resolveParticipantExecutionLease,
+} from '../../shared/channelParticipants.js';
 
 function isChatConversationId(conversationId: string | null | undefined): boolean {
   return typeof conversationId === 'string' && conversationId.startsWith('conversation-channel-');
@@ -248,19 +252,10 @@ function resolveTargetLease(
   participant: RoomRoutingParticipantRef,
 ): ParticipantExecutionLease | null {
   if (participant.participantKind === 'orchestrator') {
-    return channel.orchestratorLease;
+    return resolveOrchestratorExecutionLease(channel);
   }
 
-  const assignment = resolveChannelAssignments(channel).find(
-    (candidate) => candidate.participantId === participant.participantId,
-  );
-
-  if (!assignment || typeof assignment !== 'object') {
-    return null;
-  }
-
-  const execution = 'execution' in assignment ? assignment.execution : null;
-  return execution?.lease ?? null;
+  return resolveParticipantExecutionLease(channel, participant.participantId);
 }
 
 function collectWorkflowTurns(channel: ChatChannelState): RoomWorkflowTurn[] {

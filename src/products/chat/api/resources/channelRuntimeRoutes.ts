@@ -12,7 +12,8 @@ import {
 } from '../../state/model/index.js';
 import {
   resolveChannelParticipantAssignments,
-  resolveParticipantExecutionLease,
+  resolveOrchestratorLeaseAttachment,
+  resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
 import {
   buildAppShellPayload,
@@ -365,11 +366,10 @@ async function handleRestDeactivateChannel(
 
       let nextState = state;
       for (const assignment of resolveChannelParticipantAssignments(channel)) {
-        const lease = resolveParticipantExecutionLease(channel, assignment.participantId);
-        if (
-          lease?.status === 'ready'
-          || lease?.status === 'initializing'
-        ) {
+        const attachment = resolveParticipantLeaseAttachment(channel, assignment.participantId, {
+          statuses: ['ready', 'initializing'],
+        });
+        if (attachment) {
           nextState = setChannelParticipantLease(
             nextState,
             channelId,
@@ -379,10 +379,9 @@ async function handleRestDeactivateChannel(
           );
         }
       }
-      if (
-        channel.orchestratorLease.status === 'ready'
-        || channel.orchestratorLease.status === 'initializing'
-      ) {
+      if (resolveOrchestratorLeaseAttachment(channel, {
+        statuses: ['ready', 'initializing'],
+      })) {
         nextState = setChannelOrchestratorLease(
           nextState,
           channelId,

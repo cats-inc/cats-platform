@@ -1,7 +1,7 @@
 import {
   collectParticipantLeaseAttachments,
   resolveParticipantCatId,
-  resolveParticipantExecutionLease,
+  resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
@@ -84,7 +84,6 @@ function buildParticipantStreamTarget(
   expectedLaneId: string | null = null,
 ): ChannelStreamTarget {
   const assignment = resolvePrimaryParticipantExecutionAssignment(channel, participantId);
-  const lease = resolveParticipantExecutionLease(channel, participantId);
   const attachment = resolveParticipantLeaseAttachment(
     channel,
     participantId,
@@ -99,10 +98,10 @@ function buildParticipantStreamTarget(
         statuses: ['ready', 'initializing'],
       })
   );
-  const sessionStartedAt = attachment?.sessionId ? lease?.startedAt ?? null : null;
+  const sessionStartedAt = attachment?.sessionId ? attachment.startedAt : null;
   return {
     sessionId: attachment?.sessionId ?? null,
-    laneId: expectedLaneId ?? attachment?.laneId ?? (lease?.laneId?.trim() || null),
+    laneId: expectedLaneId ?? attachment?.laneId ?? null,
     participantId,
     catId: assignment ? resolveParticipantCatId(assignment) : null,
     speakerLabel: normalizeVisibleSpeakerLabel(assignment?.name ?? fallbackSpeakerLabel),
@@ -122,19 +121,19 @@ function buildOrchestratorStreamTarget(
   sessionConfirmationFloorAt: string | null = null,
   expectedLaneId: string | null = null,
 ): ChannelStreamTarget {
+  const attachment = resolveOrchestratorLeaseAttachment(channel, {
+    laneId: expectedLaneId,
+    statuses: ['ready', 'initializing'],
+  });
   const speakerLabel = resolveVisibleOrchestratorLabel({
     displayName: fallbackSpeakerLabel,
     provider: channel.pendingProvider ?? channel.orchestratorLease.provider ?? null,
     instance: channel.pendingProvider ? (channel.pendingInstance ?? null) : null,
   });
-  const leaseLaneId = channel.orchestratorLease.laneId?.trim() || null;
-  const laneMatches = !expectedLaneId || leaseLaneId === expectedLaneId;
-  const sessionStartedAt = laneMatches ? channel.orchestratorLease.startedAt ?? null : null;
+  const sessionStartedAt = attachment?.sessionId ? attachment.startedAt : null;
   return {
-    sessionId: laneMatches
-      ? channel.orchestratorLease?.sessionId?.trim() || null
-      : null,
-    laneId: expectedLaneId ?? leaseLaneId,
+    sessionId: attachment?.sessionId ?? null,
+    laneId: expectedLaneId ?? attachment?.laneId ?? null,
     participantId: 'orchestrator',
     catId: null,
     speakerLabel,

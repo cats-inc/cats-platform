@@ -15,6 +15,9 @@ export interface ParticipantLeaseAttachment {
   sessionId: string | null;
   laneId: string | null;
   status: ParticipantExecutionLease['status'];
+  cwd: string | null;
+  startedAt: string | null;
+  lastError: string | null;
 }
 
 export interface OrchestratorLeaseAttachment {
@@ -22,6 +25,9 @@ export interface OrchestratorLeaseAttachment {
   sessionId: string | null;
   laneId: string | null;
   status: ParticipantExecutionLease['status'];
+  cwd: string | null;
+  startedAt: string | null;
+  lastError: string | null;
 }
 
 export type ChannelLeaseAttachment = ParticipantLeaseAttachment | OrchestratorLeaseAttachment;
@@ -183,6 +189,9 @@ export function resolveParticipantLeaseAttachment(
     sessionId: lease.sessionId?.trim() || null,
     laneId,
     status: lease.status,
+    cwd: lease.cwd?.trim() || null,
+    startedAt: lease.startedAt ?? null,
+    lastError: lease.lastError ?? null,
   };
 }
 
@@ -218,6 +227,9 @@ export function resolveOrchestratorLeaseAttachment(
     sessionId: lease.sessionId?.trim() || null,
     laneId,
     status: lease.status,
+    cwd: lease.cwd?.trim() || null,
+    startedAt: lease.startedAt ?? null,
+    lastError: lease.lastError ?? null,
   };
 }
 
