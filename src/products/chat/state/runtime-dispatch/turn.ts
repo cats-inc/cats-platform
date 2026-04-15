@@ -29,7 +29,10 @@ import {
   resolveRoomWorkflowState,
 } from '../room-routing/index.js';
 import {
+  detachRoutingTargetRuntimeAttachment,
+  detachRoutingTargetsRuntimeAttachments,
   mergeUnresolvedMentions,
+  preseedWorkflowTurnTargets,
   resolveWorkflowBranchStrategy,
   resolveWorkflowHandoffReason,
   resolveTargets,
@@ -114,7 +117,7 @@ export function prepareDispatchTurnForUserMessage(
     : null;
   let initialResolution = choiceResponseTarget
     ? {
-        targets: [choiceResponseTarget],
+        targets: [detachRoutingTargetRuntimeAttachment(choiceResponseTarget)],
         unresolved: [],
         mentionNames: [],
         trigger: 'room_default' as const,
@@ -146,7 +149,7 @@ export function prepareDispatchTurnForUserMessage(
     if (currentTurnTargets.length > 0) {
       initialResolution = {
         ...initialResolution,
-        targets: currentTurnTargets,
+        targets: detachRoutingTargetsRuntimeAttachments(currentTurnTargets),
       };
     }
   }
@@ -170,6 +173,11 @@ export function prepareDispatchTurnForUserMessage(
       ?? workflowShapeForTargets(initialResolution.targets.length),
   );
   activeTurn.id = outcome.turnId;
+  const preseededTargets = preseedWorkflowTurnTargets(activeTurn.id, initialResolution.targets);
+  initialResolution = {
+    ...initialResolution,
+    targets: preseededTargets.map(({ target }) => target),
+  };
   workflow.activeTurn = activeTurn;
   appendWorkflowEvent(
     workflow,
@@ -220,8 +228,8 @@ export function prepareDispatchTurnForUserMessage(
       })),
     },
   );
-  activeTurn.targetStatuses = initialResolution.targets.map((target) => ({
-    id: randomUUID(),
+  activeTurn.targetStatuses = preseededTargets.map(({ target, targetStateId }) => ({
+    id: targetStateId,
     dispatchId: null,
     participant: toParticipantRef(target),
     laneId: target.laneId ?? null,

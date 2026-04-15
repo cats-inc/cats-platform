@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type {
   ChatMessage,
   ChatState,
@@ -11,6 +13,7 @@ import type {
   RoomWorkflowHandoffReason,
   RoomWorkflowShape,
 } from '../../../../shared/roomRouting.js';
+import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
 import {
   resolveMentionRoute,
   type RoutingTarget,
@@ -55,6 +58,51 @@ export interface DispatchRequest extends DispatchFrame {
   handoffReason: RoomWorkflowHandoffReason | null;
 }
 
+export interface PreseededWorkflowTurnTarget {
+  targetStateId: string;
+  target: RoutingTarget;
+}
+
+export function detachRoutingTargetRuntimeAttachment(
+  target: RoutingTarget,
+): RoutingTarget {
+  return {
+    ...target,
+    laneId: null,
+    sessionId: null,
+  };
+}
+
+export function detachRoutingTargetsRuntimeAttachments(
+  targets: ReadonlyArray<RoutingTarget>,
+): RoutingTarget[] {
+  return targets.map((target) => detachRoutingTargetRuntimeAttachment(target));
+}
+
+export function preseedWorkflowTurnTargets(
+  turnId: string,
+  targets: ReadonlyArray<RoutingTarget>,
+): PreseededWorkflowTurnTarget[] {
+  return targets.map((target) => {
+    const targetStateId = randomUUID();
+    const explicitLaneId = target.laneId?.trim() || null;
+    return {
+      targetStateId,
+      target: {
+        ...target,
+        laneId: explicitLaneId ?? buildChatLaneId(
+          turnId,
+          targetStateId,
+          target.participantId,
+        ),
+        sessionId: explicitLaneId
+          ? (target.sessionId?.trim() || null)
+          : null,
+      },
+    };
+  });
+}
+
 export function resolveTargets(
   state: ChatState,
   channelId: string,
@@ -66,7 +114,7 @@ export function resolveTargets(
 ): TargetResolution {
   const result = resolveMentionRoute(state, channelId, body, options);
   return {
-    targets: result.targets,
+    targets: detachRoutingTargetsRuntimeAttachments(result.targets),
     unresolved: result.unresolvedMentions,
     mentionNames: result.parsedMentionNames,
     trigger: result.trigger,

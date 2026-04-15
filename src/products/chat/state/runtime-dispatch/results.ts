@@ -20,6 +20,7 @@ import {
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   mergeUnresolvedMentions,
+  preseedWorkflowTurnTargets,
   resolveTargets,
   resolveWorkflowBranchStrategy,
   type DispatchFrame,
@@ -791,6 +792,17 @@ export function applyDispatchExecutions(
     const recommendationBranchStrategy = continuationSource === 'workflow_recommendation'
       ? extractedWorkflowRecommendation.recommendation?.branchStrategy ?? null
       : null;
+    const preseededContinuationTargets = preseedWorkflowTurnTargets(
+      activeTurn.id,
+      continuationResolution.targets,
+    );
+    continuationResolution = {
+      ...continuationResolution,
+      targets: preseededContinuationTargets.map(({ target }) => target),
+    };
+    const continuationTargetStateIds = preseededContinuationTargets.map(
+      ({ targetStateId }) => targetStateId,
+    );
 
     if (continuationResolution.targets.length === 0) {
       if (continuationTargetsWereDeduped) {
@@ -957,6 +969,7 @@ export function applyDispatchExecutions(
       sourceAssistantTurnId: assistantTurnId,
       sourceParticipant: toParticipantRef(execution.target),
       targets: continuationResolution.targets,
+      targetStateIds: continuationTargetStateIds,
       unresolved: continuationResolution.unresolved,
       mentionNames: continuationResolution.mentionNames,
       trigger: continuationResolution.trigger,

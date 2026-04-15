@@ -38,6 +38,7 @@ import {
   resolveRoomWorkflowState,
 } from '../room-routing/index.js';
 import {
+  preseedWorkflowTurnTargets,
   type TargetResolution,
   resolveWorkflowHandoffReason,
   workflowShapeForTargets,
@@ -503,7 +504,7 @@ export async function resumeWorkflowContinuationReplay(input: {
       executionState: 'blocked',
     };
   }
-  const initialResolution = initialReplayResolution.resolution;
+  let initialResolution = initialReplayResolution.resolution;
   const nowIso = input.now.toISOString();
   const baseRoomRouting = resolveRoomRoutingState(requireChannel(state, input.request.channelId).roomRouting);
   const workflow = resolveRoomWorkflowState(baseRoomRouting.workflow);
@@ -523,6 +524,11 @@ export async function resumeWorkflowContinuationReplay(input: {
     && initialResolution.targets.length === 1
     ? initialResolution.targets[0]!.participantId
     : null;
+  const preseededTargets = preseedWorkflowTurnTargets(activeTurn.id, initialResolution.targets);
+  initialResolution = {
+    ...initialResolution,
+    targets: preseededTargets.map(({ target }) => target),
+  };
   workflow.activeTurn = activeTurn;
   const replayTargets = buildReplayResolutionSourceTargets(initialResolution);
   const replayEventMetadata = buildReplayEventMetadata({
@@ -571,8 +577,8 @@ export async function resumeWorkflowContinuationReplay(input: {
     replayTargets,
     replayCheckpointMetadata,
   );
-  activeTurn.targetStatuses = initialResolution.targets.map((target, targetIndex) => ({
-    id: randomUUID(),
+  activeTurn.targetStatuses = preseededTargets.map(({ target, targetStateId }, targetIndex) => ({
+    id: targetStateId,
     dispatchId: null,
     participant: structuredClone(replayTargets[targetIndex]!),
     laneId: target.laneId ?? null,

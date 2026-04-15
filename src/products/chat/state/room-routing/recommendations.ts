@@ -12,6 +12,7 @@ import {
   resolveOrchestratorDisplayName,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
+import { detachRoutingTargetRuntimeAttachment } from './runtime.js';
 
 export interface WorkflowRecommendationTarget {
   participantKind: 'orchestrator' | 'cat' | null;
@@ -342,7 +343,7 @@ export function resolveWorkflowRecommendationTargets(
       continue;
     }
     seen.add(key);
-    targets.push(target);
+    targets.push(detachRoutingTargetRuntimeAttachment(target));
     mentionNames.push(target.participantName);
   }
 
