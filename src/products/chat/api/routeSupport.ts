@@ -63,8 +63,10 @@ import {
   syncChannelAttachmentsToWorkspace,
 } from '../state/workspace.js';
 import {
+  appendClosedRuntimeSessionFailureMessage,
   appendFailedRuntimeSessionMessage,
   appendStartedRuntimeSessionMessage,
+  resolveChannelLifecycleCanonicalMetadata,
   resolveRuntimeEnvelopeCanonicalMetadata,
 } from '../state/runtime-session/shared.js';
 import {
@@ -513,19 +515,23 @@ export async function persistCatAssignmentUpdate(
       await context.dependencies.runtimeClient.closeSession(previousSessionId);
     } catch (closeError) {
       const cat = requireCat(nextState, input.catId);
-      nextState = appendMessage(
+      nextState = appendClosedRuntimeSessionFailureMessage(
         nextState,
         channelId,
         {
-          senderKind: 'system',
-          senderName: 'Runtime',
+          ...resolveChannelLifecycleCanonicalMetadata(nextState, channelId),
+          target: {
+            participantKind: 'cat',
+            participantId: existingAssignment?.participantId ?? input.catId,
+            participantName: cat.name,
+          },
+          sessionId: previousSessionId,
           body: `Failed to close ${cat.name}'s previous session cleanly: ${
             closeError instanceof Error ? closeError.message : 'Unknown runtime error'
           }`,
+          now,
         },
-        now,
-        { metadata: { event: 'session_close_failed', catId: input.catId } },
-      ).state;
+      );
     }
   }
 
@@ -756,19 +762,23 @@ export async function persistCatAssignmentRemoval(
         activeSessionId,
       );
     } catch (closeError) {
-      nextState = appendMessage(
+      nextState = appendClosedRuntimeSessionFailureMessage(
         nextState,
         channelId,
         {
-          senderKind: 'system',
-          senderName: 'Runtime',
+          ...resolveChannelLifecycleCanonicalMetadata(nextState, channelId),
+          target: {
+            participantKind: 'cat',
+            participantId: assignment.participantId,
+            participantName: cat.name,
+          },
+          sessionId: activeSessionId,
           body: `Failed to close ${cat.name}'s session cleanly: ${
             closeError instanceof Error ? closeError.message : 'Unknown runtime error'
           }`,
+          now,
         },
-        now,
-        { metadata: { event: 'session_close_failed', catId } },
-      ).state;
+      );
     }
   }
 

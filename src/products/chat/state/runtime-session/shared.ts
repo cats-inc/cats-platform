@@ -10,6 +10,7 @@ import {
   requireChannel,
   resolveChannelCanonicalIdentity,
 } from '../model/index.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { parseMentions } from '../mentionParsing.js';
 export { activeAssignedParticipants } from '../../shared/channelParticipants.js';
 import {
@@ -19,6 +20,7 @@ import {
 } from '../../shared/channelParticipants.js';
 import { formatSessionStartedMessage } from '../runtimeMessages.js';
 import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
+import { buildDirectLaneTransportBindingId } from '../../../../shared/chatCoreIds.js';
 
 export interface RuntimeSessionRoutingOptions {
   transport?: import('../runtimeTargeting.js').RuntimeTransportContext;
@@ -127,6 +129,21 @@ export function resolveRuntimeEnvelopeCanonicalMetadata(
   };
 }
 
+export function resolveChannelLifecycleCanonicalMetadata(
+  state: ChatState,
+  channelId: string,
+): RuntimeEnvelopeCanonicalMetadata {
+  const channel = requireChannel(state, channelId);
+  const canonicalIdentity = resolveChannelCanonicalIdentity(state, channelId);
+  return {
+    conversationId: canonicalIdentity.conversationId,
+    containerId: canonicalIdentity.containerId,
+    transportBindingId: isDirectLaneChannel(channel)
+      ? buildDirectLaneTransportBindingId(channelId)
+      : null,
+  };
+}
+
 function resolveVisibleRuntimeSessionTargetLabel(input: {
   target: RuntimeSessionLifecycleTarget;
   provider?: string | null;
@@ -230,6 +247,41 @@ export function appendFailedRuntimeSessionMessage(
         ...(input.targetStateId ? { targetStateId: input.targetStateId } : {}),
         ...(input.laneId ? { laneId: input.laneId } : {}),
         ...(input.transportBindingId ? { transportBindingId: input.transportBindingId } : {}),
+      },
+      ...(input.incrementUnread !== undefined ? { incrementUnread: input.incrementUnread } : {}),
+    },
+  ).state;
+}
+
+export function appendClosedRuntimeSessionFailureMessage(
+  state: ChatState,
+  channelId: string,
+  input: RuntimeEnvelopeCanonicalMetadata & {
+    target: RuntimeSessionLifecycleTarget;
+    body: string;
+    now: Date;
+    sessionId?: string | null;
+    incrementUnread?: boolean;
+  },
+): ChatState {
+  return appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: input.body,
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'session_close_failed',
+        ...(input.containerId ? { containerId: input.containerId } : {}),
+        ...(input.conversationId ? { conversationId: input.conversationId } : {}),
+        targetKind: input.target.participantKind,
+        targetId: input.target.participantId,
+        ...(input.transportBindingId ? { transportBindingId: input.transportBindingId } : {}),
+        ...(input.sessionId ? { sessionId: input.sessionId } : {}),
       },
       ...(input.incrementUnread !== undefined ? { incrementUnread: input.incrementUnread } : {}),
     },
