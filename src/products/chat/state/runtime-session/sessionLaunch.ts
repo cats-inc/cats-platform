@@ -19,13 +19,15 @@ import {
 import {
   createOrchestratorTargetRuntimeSession,
   createParticipantTargetRuntimeSession,
+  type RuntimeSessionExecutionTarget,
+  type TargetSessionLifecycleMetadata,
+} from './sessionStart.js';
+import {
   persistCreatedTargetExecutionTarget,
   persistFailedTargetSessionStart,
   persistStartedTargetSession,
   syncTargetSessionAttachmentWorkspace,
-  type RuntimeSessionExecutionTarget,
-  type TargetSessionLifecycleMetadata,
-} from './sessionStart.js';
+} from './sessionPersistence.js';
 import type { EnsureTargetSessionResult } from './sessionReuse.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
 
