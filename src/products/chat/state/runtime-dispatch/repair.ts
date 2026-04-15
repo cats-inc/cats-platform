@@ -46,6 +46,7 @@ import {
 import {
   buildChatConversationId,
   buildDirectLaneTransportBindingId,
+  resolveChatChannelContainerId,
 } from '../../../../shared/chatCoreIds.js';
 import {
   buildCanonicalChatMessage,
@@ -1417,6 +1418,10 @@ export function repairMissingSessionStartedMessages(
       mentions: [],
       metadata: {
         event: 'session_started',
+        containerId: resolveChatChannelContainerId({
+          channelId,
+          parallelChatGroups: nextState.parallelChatGroups,
+        }),
         conversationId: buildChatConversationId(channelId),
         targetKind,
         ...(targetId ? { targetId } : {}),

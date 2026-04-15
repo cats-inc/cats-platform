@@ -470,6 +470,9 @@ export async function ensureTargetSession(
   const workspaceKind = spawnCwd ? 'source' : 'sandbox';
   let targetLabelProvider: string | null = null;
   let targetLabelInstance: string | null = null;
+  let conversationId: string | null = buildChatConversationId(channelId);
+  let containerId: string | null = null;
+  let transportBindingId: string | null = null;
 
   try {
     nextState = markTargetWaking(nextState, channelId, attachedTarget, now, laneId);
@@ -483,15 +486,15 @@ export async function ensureTargetSession(
       now,
       options.companionStore,
     );
-    const conversationId = readInvocationContextMetadataString(
+    conversationId = readInvocationContextMetadataString(
       runtimeEnvelope.context,
       'conversationId',
     ) ?? buildChatConversationId(channelId);
-    const containerId = readInvocationContextMetadataString(
+    containerId = readInvocationContextMetadataString(
       runtimeEnvelope.context,
       'containerId',
     );
-    const transportBindingId = readInvocationContextMetadataString(
+    transportBindingId = readInvocationContextMetadataString(
       runtimeEnvelope.context,
       'transportBindingId',
     );
@@ -734,10 +737,13 @@ export async function ensureTargetSession(
       {
         metadata: {
           event: 'session_start_failed',
+          ...(containerId ? { containerId } : {}),
+          ...(conversationId ? { conversationId } : {}),
           targetKind: attachedTarget.participantKind,
           targetId: attachedTarget.participantId,
           ...(targetStateId ? { targetStateId } : {}),
           ...(laneId ? { laneId } : {}),
+          ...(transportBindingId ? { transportBindingId } : {}),
         },
       },
     ).state;

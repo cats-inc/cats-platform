@@ -2273,6 +2273,11 @@ test('direct cat chat records targetStateId on session_start_failed messages', a
   const sessionStartFailed = channel.messages.find((message) =>
     message.metadata?.event === 'session_start_failed');
   assert.ok(sessionStartFailed);
+  assert.equal(sessionStartFailed?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(
+    sessionStartFailed?.metadata?.conversationId,
+    buildChatConversationId(channelId),
+  );
   assert.equal(sessionStartFailed?.metadata?.targetStateId, targetStateId);
   assert.equal(sessionStartFailed?.metadata?.laneId, laneId);
 });

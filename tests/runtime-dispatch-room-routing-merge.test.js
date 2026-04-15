@@ -33,6 +33,7 @@ import {
 import {
   buildChatConversationId,
   buildChatLaneId,
+  CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 
 function createNoopRuntimeClient() {
@@ -1162,6 +1163,14 @@ test('repairMissingSessionStartedMessages restores missing runtime metadata befo
     assert.equal(sessionStartedIndex >= 0, true);
     assert.equal(responseIndex >= 0, true);
     assert.equal(sessionStartedIndex < responseIndex, true);
+    assert.equal(
+      repairedChannel.messages[sessionStartedIndex]?.metadata?.conversationId,
+      buildChatConversationId(channelId),
+    );
+    assert.equal(
+      repairedChannel.messages[sessionStartedIndex]?.metadata?.containerId,
+      CHAT_ROOT_CONTAINER_ID,
+    );
     assert.equal(
       repairedChannel.chatCwd,
       path.join(runtimeDataDir, 'sessions', 'session-orphan'),
