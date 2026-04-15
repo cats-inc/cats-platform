@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-04-16-packaged-desktop-cold-start-investigation](./2026-04-16-packaged-desktop-cold-start-investigation.md) | 2026-04-16 | Packaged desktop cold-start investigation | Use host spawn probes plus installed phase traces to show the dominant Windows packaged delay happens before `cats-runtime` or `cats-platform` enter JS startup, not inside onboarding or sidecar bootstrap logic |
 | [2026-04-04-self-hosted-cli-provider-port-matrix](./2026-04-04-self-hosted-cli-provider-port-matrix.md) | 2026-04-04 | Self-hosted CLI provider port matrix | Freeze which `environment-bootstrap` CLI provider lanes are now repo-owned in `cats-platform`, which never existed upstream, and which remaining gaps are product-integration rather than missing scripts |
 | [2026-03-31-packaged-startup-terminal-popup-investigation](./2026-03-31-packaged-startup-terminal-popup-investigation.md) | 2026-03-31 | Packaged startup terminal popup investigation | Trace why packaged post-onboarding startup still opened visible terminal windows, then lock the fix around persisted setup truth, lightweight runtime health, and manual-only background discovery |
 | [2026-03-29-packaged-setup-knowledge-extraction-inventory](./2026-03-29-packaged-setup-knowledge-extraction-inventory.md) | 2026-03-29 | Packaged setup knowledge extraction inventory | Freeze which setup/install knowledge is already extracted, still trapped in `environment-bootstrap`, or safe to defer before the `cats` / `cats-runtime` repo split |
@@ -39,4 +40,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-16*
