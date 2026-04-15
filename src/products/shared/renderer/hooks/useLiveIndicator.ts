@@ -149,6 +149,19 @@ export function resolveLiveIndicatorSpeakerLabel(
   );
 }
 
+function resolveWorkflowTargetLaneId(
+  turnId: string | null | undefined,
+  targetStateId: string | null | undefined,
+  participantId: string | null | undefined,
+): string | null {
+  const normalizedTurnId = turnId?.trim() || null;
+  const normalizedTargetStateId = targetStateId?.trim() || null;
+  const normalizedParticipantId = participantId?.trim() || null;
+  return normalizedTurnId && normalizedTargetStateId && normalizedParticipantId
+    ? buildChatLaneId(normalizedTurnId, normalizedTargetStateId, normalizedParticipantId)
+    : null;
+}
+
 function resolveWaitingSpeakerState(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): {
@@ -186,16 +199,11 @@ function resolveWaitingSpeakerState(
 
   return {
     sourceMessageId: activeTurn?.sourceMessageId?.trim() || null,
-    laneId:
-      activeTurn?.id?.trim()
-      && nextTarget.id?.trim()
-      && nextTarget.participant.participantId.trim()
-        ? buildChatLaneId(
-          activeTurn.id.trim(),
-          nextTarget.id.trim(),
-          nextTarget.participant.participantId.trim(),
-        )
-        : null,
+    laneId: resolveWorkflowTargetLaneId(
+      activeTurn?.id ?? null,
+      nextTarget.id ?? null,
+      nextTarget.participant.participantId,
+    ),
     targetStateId: nextTarget.id?.trim() || null,
     participantId: nextTarget.participant.participantId,
     catId: null,
@@ -262,11 +270,23 @@ export function resolveWaitingSessionState(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
   participantId: string | null,
   targetStateId: string | null = null,
+  laneId: string | null = null,
 ): WaitingSessionState {
+  const activeTurnId = readTraceString(
+    selectedChannel?.roomRouting.workflow.activeTurn?.id,
+  );
   const activeTurnStartedAt = readTraceString(
     selectedChannel?.roomRouting.workflow.activeTurn?.startedAt,
   );
   const targetStatus = selectedChannel?.roomRouting.workflow.activeTurn?.targetStatuses?.find((target) => {
+    const targetLaneId = resolveWorkflowTargetLaneId(
+      activeTurnId,
+      target.id ?? null,
+      target.participant.participantId,
+    );
+    if (laneId && targetLaneId === laneId) {
+      return true;
+    }
     if (targetStateId && target.id?.trim() === targetStateId) {
       return true;
     }
@@ -401,6 +421,7 @@ function doesLiveIndicatorIdentityMatch(
   right: LiveIndicatorState,
 ): boolean {
   return left.sourceMessageId === right.sourceMessageId
+    && left.laneId === right.laneId
     && left.targetStateId === right.targetStateId
     && left.segmentIndex === right.segmentIndex
     && left.participantId === right.participantId
@@ -411,18 +432,24 @@ function doesLiveIndicatorIdentityMatch(
 function doesLiveIndicatorLogicalIdentityMatch(
   left: Pick<
     LiveIndicatorState | LiveIndicatorSegmentState,
-    'sourceMessageId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
   >,
   right: Pick<
     LiveIndicatorState | LiveIndicatorSegmentState,
-    'sourceMessageId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
   >,
 ): boolean {
   return left.sourceMessageId === right.sourceMessageId
-    && left.targetStateId === right.targetStateId
-    && left.participantId === right.participantId
-    && left.catId === right.catId
-    && left.speakerLabel === right.speakerLabel;
+    && (
+      (left.laneId !== null && right.laneId !== null && left.laneId === right.laneId)
+      || (
+        left.laneId === right.laneId
+        && left.targetStateId === right.targetStateId
+        && left.participantId === right.participantId
+        && left.catId === right.catId
+        && left.speakerLabel === right.speakerLabel
+      )
+    );
 }
 
 function shouldAllowSameSpeakerWaitingFollowup(
@@ -445,6 +472,10 @@ function shouldAdvanceWaitingSegmentIndex(
 
   if (previousSegment.sourceMessageId !== waitingSegment.sourceMessageId) {
     return false;
+  }
+
+  if (previousSegment.laneId && waitingSegment.laneId) {
+    return previousSegment.laneId === waitingSegment.laneId;
   }
 
   if (previousSegment.targetStateId && waitingSegment.targetStateId) {
@@ -743,6 +774,15 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
     target.status === 'running' || target.status === 'pending') ?? [];
   if (activeTargets.length > 0) {
     return activeTargets.some((target) => {
+      const targetLaneId = resolveWorkflowTargetLaneId(
+        activeTurn.id ?? null,
+        target.id ?? null,
+        target.participant.participantId,
+      );
+      if (primarySegment.laneId && targetLaneId) {
+        return targetLaneId !== primarySegment.laneId;
+      }
+
       const targetStateId = target.id?.trim() || null;
       if (primarySegment.targetStateId && targetStateId) {
         return targetStateId !== primarySegment.targetStateId;
@@ -785,11 +825,15 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
 
   const knownTargetIds = new Set(
     activeTurn.targetStatuses
-      ?.map((target) => target.id?.trim() || null)
+      ?.map((target) => resolveWorkflowTargetLaneId(
+        activeTurn.id ?? null,
+        target.id ?? null,
+        target.participant.participantId,
+      ) ?? target.id?.trim() ?? null)
       .filter((targetId): targetId is string => Boolean(targetId)) ?? [],
   );
-  if (primarySegment.targetStateId) {
-    knownTargetIds.add(primarySegment.targetStateId);
+  if (primarySegment.laneId || primarySegment.targetStateId) {
+    knownTargetIds.add(primarySegment.laneId ?? primarySegment.targetStateId!);
   }
 
   return knownTargetIds.size < totalTurnTargets;
@@ -818,6 +862,10 @@ export function shouldReconnectLiveIndicatorAfterSessionClose(
 
   if (!currentSegment) {
     return true;
+  }
+
+  if (waitingSegment.laneId && currentSegment.laneId) {
+    return waitingSegment.laneId !== currentSegment.laneId;
   }
 
   if (waitingSegment.targetStateId && currentSegment.targetStateId) {
@@ -961,8 +1009,14 @@ export function useLiveIndicator<
       selectedChannel,
       waitingSpeakerState.participantId,
       waitingSpeakerState.targetStateId,
+      waitingSpeakerState.laneId,
     ),
-    [selectedChannel, waitingSpeakerState.participantId, waitingSpeakerState.targetStateId],
+    [
+      selectedChannel,
+      waitingSpeakerState.participantId,
+      waitingSpeakerState.targetStateId,
+      waitingSpeakerState.laneId,
+    ],
   );
   const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>(
     () => ({

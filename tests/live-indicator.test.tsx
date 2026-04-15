@@ -36,6 +36,9 @@ import {
   shouldRenderLiveTranscriptBlock,
   shouldShowLiveTranscriptTrailingDots,
 } from '../src/products/shared/renderer/components/chat-view/liveTranscriptBlockSupport.ts';
+import {
+  buildChatLaneId,
+} from '../src/shared/chatCoreIds.ts';
 
 test('EMPTY_LIVE_INDICATOR starts with no active cat ids', () => {
   assert.deepEqual(EMPTY_LIVE_INDICATOR.activeCatIds, []);
@@ -188,6 +191,57 @@ test('resolveWaitingSessionState uses the active target queue time as the confir
     },
     'participant-gemini',
     'target-gemini',
+  );
+
+  assert.deepEqual(waitingSessionState, {
+    sessionStartedAt: '2026-04-14T12:05:00.000Z',
+    requiresSessionStartConfirmation: true,
+  });
+});
+
+test('resolveWaitingSessionState matches the active target by laneId when the targetStateId drifted', () => {
+  const laneId = buildChatLaneId('turn-1', 'target-gemini-canonical', 'participant-gemini');
+  const waitingSessionState = resolveWaitingSessionState(
+    {
+      assignedParticipants: [
+        {
+          participantId: 'participant-gemini',
+          execution: {
+            lease: {
+              sessionId: null,
+              startedAt: null,
+            },
+          },
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            id: 'turn-1',
+            status: 'running',
+            startedAt: '2026-04-14T12:00:01.000Z',
+            targetStatuses: [
+              {
+                id: 'target-gemini-canonical',
+                status: 'pending',
+                queuedAt: '2026-04-14T12:05:00.000Z',
+                startedAt: null,
+                participant: {
+                  participantId: 'participant-gemini',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    'participant-gemini',
+    'target-gemini-drifted',
+    laneId,
   );
 
   assert.deepEqual(waitingSessionState, {
@@ -476,6 +530,34 @@ test('shouldReconnectLiveIndicatorAfterSessionClose stays on when a distinct fol
   );
 });
 
+test('shouldReconnectLiveIndicatorAfterSessionClose stays off when the waiting lane matches despite targetStateId drift', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterSessionClose(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        laneId: 'lane-claude',
+        targetStateId: 'target-state-live',
+        participantId: 'participant-claude',
+        speakerLabel: 'Claude-CLI',
+      },
+      createWaitingLiveIndicatorState({
+        sourceMessageId: 'message-user',
+        laneId: 'lane-claude',
+        targetStateId: 'target-state-canonical',
+        participantId: 'participant-claude',
+        catId: null,
+        speakerLabel: 'Claude-CLI',
+        revealIdentity: true,
+        segmentIndex: 0,
+      }),
+    ),
+    false,
+  );
+});
+
 test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for a sealed speaker while the same turn keeps running', () => {
   assert.equal(
     shouldReconnectLiveIndicatorAfterOngoingWorkflow(
@@ -626,6 +708,83 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an earlier s
       },
     ),
     true,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the sealed lane still matches the active target despite targetStateId drift', () => {
+  const laneId = buildChatLaneId('turn-1', 'target-claude-canonical', 'participant-claude');
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        laneId,
+        targetStateId: 'target-claude-live',
+        participantId: 'participant-claude',
+        speakerLabel: 'Claude-CLI',
+        segmentIndex: 0,
+        segments: [
+          {
+            id: 'message-user:lane-claude:segment:0',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            laneId,
+            targetStateId: 'target-claude-live',
+            segmentIndex: 0,
+            sessionId: null,
+            participantId: 'participant-claude',
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Claude-CLI',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: 'Finalizing...',
+            progressKind: 'finalizing',
+            tools: [],
+            contentBlocks: [],
+            events: [],
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          lastOutcome: null,
+          workflow: {
+            activeTurn: {
+              id: 'turn-1',
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [
+                {
+                  id: 'target-claude-canonical',
+                  status: 'running',
+                  participant: {
+                    participantId: 'participant-claude',
+                    participantName: 'Claude-CLI',
+                  },
+                },
+              ],
+              events: [],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    false,
   );
 });
 
