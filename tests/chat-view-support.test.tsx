@@ -13,7 +13,7 @@ test('resolveChatComposerViewState treats pre-ACK prepare as a cancelable compos
   const result = resolveChatComposerViewState({
     activeRoomParticipants: [],
     directLaneCat: null,
-    busy: 'message:prepare',
+    busy: 'message:prepare:channel-1',
     isCompareGroup: false,
     selectedChannelId: 'channel-1',
     onCancelPendingSend: () => {},

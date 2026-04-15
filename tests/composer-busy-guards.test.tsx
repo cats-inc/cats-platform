@@ -61,6 +61,7 @@ test('composer busy helpers keep relay semantics distinct from dispatch and sele
 test('composer busy helpers scope ACK, dispatch, and stop states to the active channel', () => {
   assert.equal(isComposerAckBusyForChannel('message:prepare:channel-1', 'channel-1'), true);
   assert.equal(isComposerAckBusyForChannel('message:prepare:channel-1', 'channel-2'), false);
+  assert.equal(isComposerAckBusyForChannel('message:prepare', 'channel-1'), false);
   assert.equal(isComposerAckBusyForChannel('message:ack:channel-1', 'channel-1'), true);
   assert.equal(isComposerBusyForChannel('message:send:channel-1', 'channel-1'), true);
   assert.equal(isComposerBusyForChannel('message:send:channel-1', 'channel-2'), false);
@@ -82,6 +83,7 @@ test('composer busy helpers keep draft ACK states local to draft surfaces', () =
 test('composer route blocking only applies to the busy channel instead of all rooms', () => {
   assert.equal(doesComposerSelectionBlockChannelRoute('message:ack:channel-1', 'channel-1'), true);
   assert.equal(doesComposerSelectionBlockChannelRoute('message:ack:channel-1', 'channel-2'), false);
+  assert.equal(doesComposerSelectionBlockChannelRoute('message:prepare', 'channel-1'), false);
   assert.equal(doesComposerSelectionBlockChannelRoute('parallelChat:ack', 'channel-2'), false);
   assert.equal(
     doesComposerSelectionBlockChannelRoute(`message:prepare:${DRAFT_COMPOSER_BUSY_SCOPE}`, 'channel-1'),
