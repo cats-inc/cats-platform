@@ -629,6 +629,11 @@ Known follow-ups:
   now also resolve `containerId` / `conversationId` through the shared
   canonical helper, so outer runtime-error metadata stops maintaining
   transport-specific channel-identity derivations
+- runtime targeting session context and derived memory layers now also resolve
+  `containerId` / `conversationId` through that shared helper, and solo
+  bootstrap gating now prefers `laneId` over reused `sessionId`, so prompt/
+  memory hot paths stop keeping their own channel-identity derivations while
+  stale same-session replies no longer suppress lane-local bootstrap context
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

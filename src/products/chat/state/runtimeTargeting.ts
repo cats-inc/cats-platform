@@ -24,9 +24,7 @@ import {
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import {
-  buildChatConversationId,
   buildDirectLaneTransportBindingId,
-  resolveChatChannelContainerId,
 } from '../../../shared/chatCoreIds.js';
 import {
   resolveTranscriptOrCanonicalConversationMessages,
@@ -37,6 +35,7 @@ import {
   buildChannelView,
   requireChannel,
   requireCat,
+  resolveChannelCanonicalIdentity,
   resolveOrchestratorDisplayName,
 } from './model/index.js';
 import type { RoutingTarget } from './mentionRouter.js';
@@ -191,7 +190,7 @@ function resolveCanonicalChoiceResponseTarget(
   sourceMessageId: string,
   core: CatsCoreState,
 ): RoutingTarget | null {
-  const conversationId = buildChatConversationId(channel.id);
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channel.id);
   const segment = core.segments
     .filter((candidate) =>
       candidate.conversationId === conversationId
@@ -246,11 +245,7 @@ function buildSessionContextForTarget(
   metadata: Record<string, unknown>;
 } {
   const resolvedTransport = resolveTransportContext(channel, transport);
-  const conversationId = buildChatConversationId(channel.id);
-  const containerId = resolveChatChannelContainerId({
-    channelId: channel.id,
-    parallelChatGroups: state.parallelChatGroups,
-  });
+  const { conversationId, containerId } = resolveChannelCanonicalIdentity(state, channel.id);
   const explicitTransportBindingId = typeof transportBindingIdOverride === 'string'
     && transportBindingIdOverride.trim().length > 0
     ? transportBindingIdOverride.trim()
@@ -458,29 +453,24 @@ function readMessageMetadataString(message: ChatMessage, key: string): string | 
     : null;
 }
 
-function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): boolean {
+function messageMatchesTargetAttachment(message: ChatMessage, target: RoutingTarget): boolean {
   const targetLaneId = target.laneId?.trim() || null;
   const targetSessionId = target.sessionId?.trim() || null;
   const messageLaneId = readMessageMetadataString(message, 'laneId');
   const messageSessionId = readMessageMetadataString(message, 'sessionId');
   if (targetLaneId) {
-    if (messageLaneId !== targetLaneId && messageSessionId !== targetSessionId) {
-      return false;
+    if (messageLaneId) {
+      return messageLaneId === targetLaneId;
     }
+    return targetSessionId !== null && messageSessionId === targetSessionId;
+  }
 
-    if (target.participantKind === 'orchestrator') {
-      return message.senderKind === 'orchestrator'
-        && (
-          message.senderName === target.participantName
-          || message.metadata.targetKind === 'orchestrator'
-        );
-    }
+  return targetSessionId === null || messageSessionId === targetSessionId;
+}
 
-    return message.senderKind === 'agent'
-      && (
-        message.senderName === target.participantName
-        || message.metadata.targetId === target.participantId
-      );
+function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): boolean {
+  if (!messageMatchesTargetAttachment(message, target)) {
+    return false;
   }
 
   if (target.participantKind === 'orchestrator') {
@@ -557,9 +547,6 @@ function hasVisibleResponseFromCurrentTargetIdentity(
   target: RoutingTarget,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): boolean {
-  const targetLaneId = target.laneId?.trim() || null;
-  const targetSessionId = target.sessionId?.trim() || null;
-
   return messagesBeforeSource(messages, sourceMessage).some((message) => {
     if (message.senderKind === 'system') {
       return false;
@@ -569,11 +556,7 @@ function hasVisibleResponseFromCurrentTargetIdentity(
       return false;
     }
 
-    const messageLaneId = readMessageMetadataString(message, 'laneId');
-    const messageSessionId = readMessageMetadataString(message, 'sessionId');
-    const matchesLane = targetLaneId !== null && messageLaneId === targetLaneId;
-    const matchesSession = targetSessionId !== null && messageSessionId === targetSessionId;
-    if (!matchesLane && !matchesSession) {
+    if (!messageMatchesTargetAttachment(message, target)) {
       return false;
     }
 

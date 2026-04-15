@@ -210,6 +210,7 @@ through one engine
 | 2026-04-15 | Route-support cat wake-up and runtime-session wake now both resolve channel canonical identity through the same helper, so runtime lifecycle metadata stops carrying duplicated `channelId -> conversation/container` derivations across separate hot paths |
 | 2026-04-15 | Channel stream routes now also resolve `containerId` / `conversationId` through that same canonical helper, so stream-target tracing and SSE speaker envelopes no longer preserve a separate stream-only identity derivation path |
 | 2026-04-15 | Runtime dispatch failure notices and Telegram bridge runtime-error fallbacks now also resolve channel canonical identity through the shared helper, so outer runtime-error metadata no longer preserves transport-specific `channelId -> conversation/container` derivations |
+| 2026-04-15 | Runtime targeting session context and derived memory layers now also resolve channel canonical identity through the shared helper, and solo bootstrap gating now prefers `laneId` over reused `sessionId`, so prompt/memory hot paths stop preserving separate channel-identity derivations while stale same-session replies no longer suppress lane-local bootstrap context |
 
 ---
 

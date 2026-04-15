@@ -6,10 +6,7 @@ import type {
   ChatState,
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
-import {
-  buildChatConversationId,
-  resolveChatChannelContainerId,
-} from '../../../shared/chatCoreIds.js';
+import { resolveChannelCanonicalIdentity } from './model/index.js';
 
 function normalizeText(value: string, maxLength = 160): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
@@ -163,13 +160,10 @@ export function refreshDerivedMemoryLayers(
     return nextState;
   }
 
+  const canonicalIdentity = resolveChannelCanonicalIdentity(nextState, channelId);
   const channelView: ChatChannelView = {
     ...structuredClone(channel),
-    containerId: resolveChatChannelContainerId({
-      channelId,
-      parallelChatGroups: nextState.parallelChatGroups,
-    }),
-    conversationId: buildChatConversationId(channelId),
+    ...canonicalIdentity,
     assignedCats: channel.catAssignments
       .filter((assignment) => assignment.status === 'active')
       .map((assignment) => {
