@@ -27,6 +27,11 @@ export const WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS = [
 export type WorkflowContinuationReplayBlockedReason =
   typeof WORKFLOW_CONTINUATION_REPLAY_BLOCKED_REASONS[number];
 
+export interface WorkflowContinuationReplayTarget extends RoomRoutingParticipantRef {
+  laneId: string | null;
+  sessionId: string | null;
+}
+
 export interface WorkflowContinuationReplayRequest {
   channelId: string;
   checkpointId: string;
@@ -35,7 +40,7 @@ export interface WorkflowContinuationReplayRequest {
   sourceLaneId: string | null;
   sourceAssistantTurnId: string | null;
   sourceParticipant: RoomRoutingParticipantRef | null;
-  targets: RoomRoutingParticipantRef[];
+  targets: WorkflowContinuationReplayTarget[];
   mentionNames: string[];
   trigger: RoomRoutingTrigger;
   branchStrategy: RoomWorkflowBranchStrategy | null;
@@ -173,11 +178,25 @@ function readParticipantRef(value: unknown): RoomRoutingParticipantRef | null {
   };
 }
 
-function readParticipantRefArray(value: unknown): RoomRoutingParticipantRef[] {
+function readReplayTarget(value: unknown): WorkflowContinuationReplayTarget | null {
+  const participant = readParticipantRef(value);
+  const record = asRecord(value);
+  if (!participant || !record) {
+    return null;
+  }
+
+  return {
+    ...participant,
+    laneId: readNullableString(record.laneId),
+    sessionId: readNullableString(record.sessionId),
+  };
+}
+
+function readReplayTargetArray(value: unknown): WorkflowContinuationReplayTarget[] {
   return Array.isArray(value)
     ? value
-        .map((item) => readParticipantRef(item))
-        .filter((item): item is RoomRoutingParticipantRef => item !== null)
+        .map((item) => readReplayTarget(item))
+        .filter((item): item is WorkflowContinuationReplayTarget => item !== null)
     : [];
 }
 
@@ -195,7 +214,7 @@ export function buildWorkflowContinuationReplayRequest(input: {
   sourceLaneId?: string | null;
   sourceAssistantTurnId?: string | null;
   sourceParticipant: RoomRoutingParticipantRef | null;
-  targets: RoomRoutingParticipantRef[];
+  targets: WorkflowContinuationReplayTarget[];
   mentionNames?: string[];
   trigger?: RoomRoutingTrigger;
   branchStrategy?: RoomWorkflowBranchStrategy | null;
@@ -255,7 +274,7 @@ export function readWorkflowContinuationReplay(
   const sourceParticipant = record.sourceParticipant === null
     ? null
     : readParticipantRef(record.sourceParticipant);
-  const targets = readParticipantRefArray(record.targets);
+  const targets = readReplayTargetArray(record.targets);
   const trigger = readTrigger(record.trigger);
   const workflowShape = readWorkflowShape(record.workflowShape);
   const workflowRecommendation = asRecord(record.workflowRecommendation);

@@ -183,6 +183,12 @@ export interface CoreTaskRecoveryParticipantView {
   participantName: string;
 }
 
+export interface CoreTaskRecoveryWorkflowContinuationTargetView
+  extends CoreTaskRecoveryParticipantView {
+  laneId: string | null;
+  sessionId: string | null;
+}
+
 export interface CoreTaskWorkflowContinuationRecoveryView {
   channelId: string;
   checkpointId: string;
@@ -192,7 +198,7 @@ export interface CoreTaskWorkflowContinuationRecoveryView {
   sourceLaneId: string | null;
   sourceAssistantTurnId: string | null;
   sourceParticipant: CoreTaskRecoveryParticipantView | null;
-  targets: CoreTaskRecoveryParticipantView[];
+  targets: CoreTaskRecoveryWorkflowContinuationTargetView[];
   mentionNames: string[];
   trigger: string;
   branchStrategy: string | null;

@@ -191,6 +191,8 @@ export function buildWorkflowContinuationReplayView(
       participantKind: target.participantKind,
       participantId: target.participantId,
       participantName: target.participantName,
+      laneId: target.laneId,
+      sessionId: target.sessionId,
     })),
     mentionNames: [...snapshot.mentionNames],
     trigger: snapshot.trigger,

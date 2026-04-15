@@ -15,6 +15,7 @@ import type {
   WorkflowContinuationReplayBlockedReason,
   WorkflowContinuationReplayResult,
   WorkflowContinuationReplaySnapshot,
+  WorkflowContinuationReplayTarget,
 } from '../../../../platform/orchestration/workflowContinuationReplay.js';
 import {
   readWorkflowContinuationReplay,
@@ -90,17 +91,26 @@ function uniqueStrings(values: string[]): string[] {
 function resolveReplayTarget(
   state: ChatState,
   channelId: string,
-  participant: RoomRoutingParticipantRef,
+  participant: WorkflowContinuationReplayTarget,
 ) {
   const channel = buildChannelView(state, channelId);
   if (participant.participantKind === 'orchestrator') {
-    return buildOrchestratorTarget(state, channel);
+    const target = buildOrchestratorTarget(state, channel);
+    return {
+      ...target,
+      laneId: participant.laneId ?? target.laneId,
+    };
   }
 
   const channelParticipant = findAssignedParticipant(channel, participant.participantId);
-  return channelParticipant?.status === 'active'
-    ? buildCatTarget(channelParticipant)
-    : null;
+  if (channelParticipant?.status !== 'active') {
+    return null;
+  }
+  const target = buildCatTarget(channelParticipant);
+  return {
+    ...target,
+    laneId: participant.laneId ?? target.laneId,
+  };
 }
 
 function resolveReplayTargets(
@@ -117,8 +127,7 @@ function sameParticipantRef(
   right: RoomRoutingParticipantRef,
 ): boolean {
   return left.participantKind === right.participantKind
-    && left.participantId === right.participantId
-    && left.participantName === right.participantName;
+    && left.participantId === right.participantId;
 }
 
 function readMissingConcreteReplayTargets(

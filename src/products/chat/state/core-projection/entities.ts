@@ -33,6 +33,7 @@ import {
 import {
   buildWorkflowContinuationReplayRequest,
   readWorkflowContinuationReplay,
+  type WorkflowContinuationReplayTarget,
   writeWorkflowContinuationReplayMetadata,
 } from '../../../../platform/orchestration/workflowContinuationReplay.js';
 import type {
@@ -166,6 +167,67 @@ function findLatestContinuationReplayEvent(turn: RoomWorkflowTurn | null) {
   }) ?? null;
 }
 
+function readWorkflowEventTargetIdentities(
+  metadata: CoreRecordMetadata | null | undefined,
+): Array<{
+  participantKind: RoomRoutingParticipantRef['participantKind'];
+  participantId: string;
+  laneId: string | null;
+  sessionId: string | null;
+}> {
+  const rawTargetIdentities = metadata?.targetIdentities;
+  if (!Array.isArray(rawTargetIdentities)) {
+    return [];
+  }
+
+  return rawTargetIdentities.flatMap((value) => {
+    const record = readMetadataRecord(value);
+    if (!record) {
+      return [];
+    }
+    const participantKind = record.participantKind === 'orchestrator' || record.participantKind === 'cat'
+      ? record.participantKind
+      : null;
+    const participantId = readMetadataString(record, 'participantId');
+    if (!participantKind || !participantId) {
+      return [];
+    }
+
+    return [{
+      participantKind,
+      participantId,
+      laneId: readMetadataString(record, 'laneId'),
+      sessionId: readMetadataString(record, 'sessionId'),
+    }];
+  });
+}
+
+function mergeReplayTargetsWithEventIdentities(
+  targets: RoomRoutingParticipantRef[],
+  metadata: CoreRecordMetadata | null | undefined,
+): WorkflowContinuationReplayTarget[] {
+  const targetIdentities = readWorkflowEventTargetIdentities(metadata);
+  return targets.map((target, targetIndex) => {
+    const indexedIdentity = targetIdentities[targetIndex] ?? null;
+    const matchingIdentity = (
+      indexedIdentity?.participantKind === target.participantKind
+      && indexedIdentity.participantId === target.participantId
+    )
+      ? indexedIdentity
+      : targetIdentities.find((candidate) =>
+        candidate.participantKind === target.participantKind
+        && candidate.participantId === target.participantId)
+        ?? null;
+    return {
+      participantKind: target.participantKind,
+      participantId: target.participantId,
+      participantName: target.participantName,
+      laneId: matchingIdentity?.laneId ?? null,
+      sessionId: matchingIdentity?.sessionId ?? null,
+    };
+  });
+}
+
 function readRecoveredStartupContinuationReplayRequest(
   turn: RoomWorkflowTurn | null,
   event: NonNullable<ReturnType<typeof findLatestContinuationReplayEvent>>,
@@ -175,7 +237,7 @@ function readRecoveredStartupContinuationReplayRequest(
   sourceTurnId: string | null;
   sourceLaneId: string | null;
   sourceAssistantTurnId: string | null;
-  targets: RoomRoutingParticipantRef[];
+  targets: WorkflowContinuationReplayTarget[];
   mentionNames: string[];
   branchStrategy: 'fork_if_possible' | 'transplant_context' | 'fresh_no_parent' | null;
   trigger: 'room_default' | 'explicit_mention' | 'continuation_mention';
@@ -253,8 +315,14 @@ function readRecoveredStartupContinuationReplayRequest(
   }
 
   let replayTargets = startupRecoveredInitialSequential
-    ? interruptedTargets.map((target) => structuredClone(target))
-    : interruptedTargetStates.map((target) => structuredClone(target.participant));
+    ? mergeReplayTargetsWithEventIdentities(interruptedTargets, metadata)
+    : interruptedTargetStates.map((target) => ({
+      participantKind: target.participant.participantKind,
+      participantId: target.participant.participantId,
+      participantName: target.participant.participantName,
+      laneId: target.laneId,
+      sessionId: target.sessionId,
+    }));
   const continuationContext = readLatestWorkflowContinuationContext(turn, {
     excludeEventId: event.id,
   });
@@ -265,7 +333,10 @@ function readRecoveredStartupContinuationReplayRequest(
   ) {
     const turnStartedEvent = turn.events.find((candidate) => candidate.kind === 'turn_started') ?? null;
     if (turnStartedEvent?.targets.length) {
-      replayTargets = readParticipantRefs(turnStartedEvent.targets);
+      replayTargets = mergeReplayTargetsWithEventIdentities(
+        readParticipantRefs(turnStartedEvent.targets),
+        readMetadataRecord(turnStartedEvent.metadata),
+      );
       branchStrategy = null;
     }
   } else if (
@@ -274,7 +345,17 @@ function readRecoveredStartupContinuationReplayRequest(
     && interruptedTargetStates.every((target) =>
       continuationContext.targets.some((participant) => sameParticipantRef(participant, target.participant)))
   ) {
-    replayTargets = continuationContext.targets;
+    replayTargets = continuationContext.targets.map((target) => {
+      const targetState = interruptedTargetStates.find((candidate) =>
+        sameParticipantRef(candidate.participant, target));
+      return {
+        participantKind: target.participantKind,
+        participantId: target.participantId,
+        participantName: target.participantName,
+        laneId: targetState?.laneId ?? null,
+        sessionId: targetState?.sessionId ?? null,
+      };
+    });
   }
 
   const continuationMetadata = continuationContext?.metadata ?? null;
