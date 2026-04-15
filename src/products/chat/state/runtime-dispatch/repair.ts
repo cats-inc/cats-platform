@@ -1162,6 +1162,7 @@ interface StartupRecoverySourceBoundary {
   sourceTurnId: string | null;
   sourceLaneId: string | null;
   sourceAssistantTurnId: string | null;
+  transportBindingId: string | null;
 }
 
 function resolveStartupRecoverySourceBoundaryFromMessage(
@@ -1173,7 +1174,48 @@ function resolveStartupRecoverySourceBoundaryFromMessage(
     sourceTurnId: readMessageMetadataString(message, 'turnId'),
     sourceLaneId: readMessageMetadataString(message, 'laneId'),
     sourceAssistantTurnId: readMessageMetadataString(message, 'assistantTurnId'),
+    transportBindingId: readMessageMetadataString(message, 'transportBindingId'),
   };
+}
+
+function resolveStartupRecoveryCanonicalTransportBindingId(
+  core: CatsCoreState | undefined,
+  channelId: string,
+  candidate: StartupRecoverySourceIdentityCandidate,
+): string | null {
+  if (!core) {
+    return null;
+  }
+
+  const canonicalLane = resolveCanonicalLaneRecord(core, channelId, {
+    laneId: candidate.sourceLaneId,
+    turnId: candidate.sourceTurnId,
+    assistantTurnId: candidate.sourceAssistantTurnId,
+  });
+  if (canonicalLane) {
+    const laneSegment = core.segments
+      .filter((segment) => segment.laneId === canonicalLane.id)
+      .sort(compareChatCoreSegmentsDescending)
+      .find((segment) => readChatCoreMetadataString(segment.metadata, 'transportBindingId'))
+      ?? null;
+    const laneTransportBindingId = readChatCoreMetadataString(
+      laneSegment?.metadata ?? null,
+      'transportBindingId',
+    );
+    if (laneTransportBindingId) {
+      return laneTransportBindingId;
+    }
+  }
+
+  const sourceTurnId = candidate.sourceTurnId?.trim() || null;
+  if (!sourceTurnId) {
+    return null;
+  }
+
+  const { conversationId } = resolveChannelCanonicalIdentity(null, channelId);
+  const canonicalTurn = core.turns.find((turn) =>
+    turn.id === sourceTurnId && turn.conversationId === conversationId) ?? null;
+  return readChatCoreMetadataString(canonicalTurn?.metadata ?? null, 'transportBindingId');
 }
 
 function resolveStartupRecoverySourceBoundary(
@@ -1212,6 +1254,13 @@ function resolveStartupRecoverySourceBoundary(
           sourceLaneId: candidate.sourceLaneId ?? readMessageMetadataString(message, 'laneId'),
           sourceAssistantTurnId:
             candidate.sourceAssistantTurnId ?? readMessageMetadataString(message, 'assistantTurnId'),
+          transportBindingId:
+            readMessageMetadataString(message, 'transportBindingId')
+            ?? resolveStartupRecoveryCanonicalTransportBindingId(
+              options.core,
+              options.channelId,
+              candidate,
+            ),
         } satisfies StartupRecoverySourceBoundary;
       })
       .filter(isNonNull)
@@ -1237,6 +1286,7 @@ function resolveStartupRecoverySourceBoundary(
               sourceTurnId: candidate.sourceTurnId,
               sourceLaneId: candidate.sourceLaneId,
               sourceAssistantTurnId: candidate.sourceAssistantTurnId,
+              transportBindingId: null,
             } satisfies StartupRecoverySourceBoundary
           : null;
       })
@@ -1256,6 +1306,7 @@ function resolveStartupRecoverySourceBoundary(
               sourceTurnId: null,
               sourceLaneId: null,
               sourceAssistantTurnId: null,
+              transportBindingId: null,
             } satisfies StartupRecoverySourceBoundary
           : null;
       })();
@@ -1275,6 +1326,7 @@ function resolveStartupRecoverySourceBoundary(
         sourceTurnId: null,
         sourceLaneId: null,
         sourceAssistantTurnId: null,
+        transportBindingId: null,
       } satisfies StartupRecoverySourceBoundary
     : null;
   if (eventBoundary) {
@@ -1291,6 +1343,7 @@ function resolveStartupRecoverySourceBoundary(
     sourceTurnId: null,
     sourceLaneId: null,
     sourceAssistantTurnId: null,
+    transportBindingId: null,
   };
 }
 
@@ -1776,6 +1829,9 @@ export function repairMissingStartupRecoveryNotice(
         ...(sourceBoundary.sourceLaneId ? { sourceLaneId: sourceBoundary.sourceLaneId } : {}),
         ...(sourceBoundary.sourceAssistantTurnId
           ? { sourceAssistantTurnId: sourceBoundary.sourceAssistantTurnId }
+          : {}),
+        ...(sourceBoundary.transportBindingId
+          ? { transportBindingId: sourceBoundary.transportBindingId }
           : {}),
         repairSource: 'missing_startup_recovery_notice',
         recoverySource: 'server_restart',

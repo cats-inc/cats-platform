@@ -2715,6 +2715,7 @@ test('repairMissingStartupRecoveryNotice prefers source identity when startup re
         targetStateId: 'target-later-sequential-source-identity',
         terminal: true,
         turnId: 'turn-later-sequential-source-identity',
+        transportBindingId: 'transport-binding-source-identity',
         targetKind: 'cat',
         targetId: 'participant-agent-1',
         routingTrigger: 'continuation_mention',
@@ -2872,4 +2873,5 @@ test('repairMissingStartupRecoveryNotice prefers source identity when startup re
     notice?.metadata?.sourceAssistantTurnId,
     'assistant-turn-later-sequential-source-identity',
   );
+  assert.equal(notice?.metadata?.transportBindingId, 'transport-binding-source-identity');
 });
