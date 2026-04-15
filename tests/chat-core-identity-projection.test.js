@@ -85,6 +85,7 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
     now,
   );
   const parallelGroupId = state.parallelChatGroups[0]?.id ?? null;
+  const parallelGroupChannelIds = state.parallelChatGroups[0]?.memberChannelIds ?? [];
 
   await store.write(state);
   const core = await store.readCore();
@@ -141,6 +142,24 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
   assert.ok(parallelContainer);
   assert.equal(parallelContainer.kind, 'parallel_group');
   assert.equal(parallelContainer.parentContainerId, CHAT_ROOT_CONTAINER_ID);
+  assert.deepEqual(
+    parallelGroupChannelIds.map((channelId) =>
+      core.conversations.find((conversation) => conversation.id === buildChatConversationId(channelId))?.containerId,
+    ),
+    parallelGroupChannelIds.map(() => parallelContainer.id),
+  );
+  assert.deepEqual(
+    parallelGroupChannelIds.map((channelId) =>
+      core.tasks.find((task) => task.id === `task-channel-${channelId}`)?.metadata.containerId,
+    ),
+    parallelGroupChannelIds.map(() => parallelContainer.id),
+  );
+  assert.deepEqual(
+    parallelGroupChannelIds.map((channelId) =>
+      core.workItems.find((workItem) => workItem.id === `work-item-chat-channel-${channelId}`)?.metadata.containerId,
+    ),
+    parallelGroupChannelIds.map(() => parallelContainer.id),
+  );
 
   assert.ok(
     core.transportBindings.some((binding) =>

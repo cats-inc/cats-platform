@@ -6,12 +6,19 @@ import { ASSISTANT_TURN_SEGMENT_EVENT } from '../build/server/products/chat/stat
 import { recordDispatchExecutionInteraction } from '../build/server/products/chat/state/runtime-dispatch/canonicalInteraction.js';
 import {
   buildChatAssignedParticipantId,
+  buildChatParallelGroupContainerId,
   buildDirectLaneTransportBindingId,
 } from '../build/server/shared/chatCoreIds.js';
 
 test('recordDispatchExecutionInteraction projects persisted assistant messages into canonical interaction records', () => {
   const core = createDefaultCoreState();
   const state = {
+    parallelChatGroups: [
+      {
+        id: 'group-1',
+        memberChannelIds: ['channel-1'],
+      },
+    ],
     channels: [
       {
         id: 'channel-1',
@@ -126,6 +133,18 @@ test('recordDispatchExecutionInteraction projects persisted assistant messages i
     nextCore.sessions[0].transportBindingId,
     buildDirectLaneTransportBindingId('channel-1'),
   );
+  assert.equal(
+    nextCore.turns[0].metadata.containerId,
+    buildChatParallelGroupContainerId('group-1'),
+  );
+  assert.equal(
+    nextCore.lanes[0].metadata.containerId,
+    buildChatParallelGroupContainerId('group-1'),
+  );
+  assert.equal(
+    nextCore.sessions[0].metadata.containerId,
+    buildChatParallelGroupContainerId('group-1'),
+  );
   assert.equal(nextCore.lanes[0].agentId, 'actor-cat-claude');
   assert.deepEqual(
     nextCore.segments.map((segment) => ({
@@ -150,6 +169,13 @@ test('recordDispatchExecutionInteraction projects persisted assistant messages i
         laneId: 'lane-turn-1-target-state-1',
         sessionId: 'session-1',
       },
+    ],
+  );
+  assert.deepEqual(
+    nextCore.segments.map((segment) => segment.metadata.containerId),
+    [
+      buildChatParallelGroupContainerId('group-1'),
+      buildChatParallelGroupContainerId('group-1'),
     ],
   );
 });

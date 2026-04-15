@@ -35,6 +35,7 @@ export interface DispatchExecution extends DispatchRequest {
   responseSegments: RuntimeMessageSegment[] | null;
   usage: MessageUsageSummary | null;
   error: string | null;
+  containerId?: string | null;
   transportBindingId?: string | null;
   leasePatch?: DispatchLeasePatch;
   channelChatCwd?: string;
@@ -88,6 +89,10 @@ export async function executeDispatch(
     const resolvedTransportBindingId = readRuntimeEnvelopeMetadataString(
       runtimeEnvelope,
       'transportBindingId',
+    );
+    const resolvedContainerId = readRuntimeEnvelopeMetadataString(
+      runtimeEnvelope,
+      'containerId',
     );
     const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request);
     const runtimeResult = await runtimeClient.sendMessage(
@@ -149,6 +154,7 @@ export async function executeDispatch(
       responseSegments,
       usage,
       error: null,
+      containerId: resolvedContainerId,
       transportBindingId: resolvedTransportBindingId,
     };
   } catch (error) {

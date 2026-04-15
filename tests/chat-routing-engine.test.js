@@ -25,6 +25,7 @@ import {
   buildChatLaneId,
   buildChatWorkItemId,
   buildDirectLaneTransportBindingId,
+  CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 
 function createRuntimeStub(responder) {
@@ -1947,12 +1948,20 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
     buildChatConversationId(channelId),
   );
   assert.equal(
+    runtimeClient.createdSessions[0]?.context?.metadata?.containerId,
+    CHAT_ROOT_CONTAINER_ID,
+  );
+  assert.equal(
     runtimeClient.createdSessions[0]?.context?.metadata?.transportBindingId,
     buildDirectLaneTransportBindingId(channelId),
   );
   assert.equal(
     runtimeClient.sentMessages[0]?.input?.context?.metadata?.conversationId,
     buildChatConversationId(channelId),
+  );
+  assert.equal(
+    runtimeClient.sentMessages[0]?.input?.context?.metadata?.containerId,
+    CHAT_ROOT_CONTAINER_ID,
   );
   assert.equal(
     runtimeClient.sentMessages[0]?.input?.context?.metadata?.transportBindingId,
@@ -1967,12 +1976,20 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
     buildChatConversationId(channelId),
   );
   assert.equal(
+    sessionStarted.metadata?.containerId,
+    CHAT_ROOT_CONTAINER_ID,
+  );
+  assert.equal(
     sessionStarted.metadata?.transportBindingId,
     buildDirectLaneTransportBindingId(channelId),
   );
   const assistantReply = channel.messages.find((message) =>
     message.senderKind === 'agent'
     && message.metadata?.event === 'assistant_turn_segment');
+  assert.equal(
+    assistantReply?.metadata?.containerId,
+    CHAT_ROOT_CONTAINER_ID,
+  );
   assert.equal(
     assistantReply?.metadata?.transportBindingId,
     buildDirectLaneTransportBindingId(channelId),

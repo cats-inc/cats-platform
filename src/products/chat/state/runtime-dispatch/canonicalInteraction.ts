@@ -141,6 +141,7 @@ export function recordDispatchExecutionInteraction(
         metadata: {
           event: 'session_started',
           sessionId: input.execution.target.sessionId,
+          ...(input.execution.containerId ? { containerId: input.execution.containerId } : {}),
           ...(input.execution.transportBindingId
             ? { transportBindingId: input.execution.transportBindingId }
             : {}),

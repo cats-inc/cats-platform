@@ -10,13 +10,13 @@ import {
 } from '../../../../core/actors.js';
 import type { ChatState } from '../../api/contracts.js';
 import {
-  buildChatParallelGroupContainerId,
   buildChatArchiveId,
   buildChatConversationId,
   buildChatTaskId,
   buildChatWorkItemId,
-  CHAT_ROOT_CONTAINER_ID,
+  resolveChatChannelContainerId,
   resolveChatConversationActorIds,
+  resolveChatChannelParallelGroupId,
 } from '../../../../shared/chatCoreIds.js';
 import {
   createArchiveMetadata,
@@ -80,17 +80,13 @@ export function syncCoreStateWithChatState(
   const preservedConversations = preserveCoreOwnedConversations(
     existingCore.conversations ?? [],
   );
-  const channelContainerIds = new Map(
-    chat.parallelChatGroups.flatMap((group) =>
-      group.memberChannelIds.map((channelId) => [
-        channelId,
-        buildChatParallelGroupContainerId(group.id),
-      ] as const)),
-  );
   const conversations = chat.channels.map((channel) =>
     createConversationFromChannel(
       channel,
-      channelContainerIds.get(channel.id) ?? CHAT_ROOT_CONTAINER_ID,
+      resolveChatChannelContainerId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
       resolveChatConversationActorIds({
         channelId: channel.id,
         channelKind: channel.channelKind,
@@ -109,6 +105,14 @@ export function syncCoreStateWithChatState(
       channel,
       ownerProfile.actorId,
       buildChatConversationId(channel.id),
+      resolveChatChannelContainerId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
+      resolveChatChannelParallelGroupId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
       existingTasks.get(buildChatTaskId(channel.id)) as CoreTaskRecord | null ?? null,
     ),
   );
@@ -117,6 +121,14 @@ export function syncCoreStateWithChatState(
       channel,
       ownerProfile.actorId,
       buildChatConversationId(channel.id),
+      resolveChatChannelContainerId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
+      resolveChatChannelParallelGroupId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
       existingWorkItems.get(buildChatWorkItemId(channel.id)) as CoreWorkItemRecord | null ?? null,
     ),
   );
@@ -143,26 +155,73 @@ export function syncCoreStateWithChatState(
     collectWorkflowTurns(channel).map((turn) => ({ channel, turn })),
   );
   const workflowRuns = workflowTurns.map(({ channel, turn }) =>
-    createWorkflowRun(channel, turn),
+    createWorkflowRun(
+      channel,
+      turn,
+      resolveChatChannelContainerId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
+    ),
   );
   const workflowMissions = workflowTurns.flatMap(({ channel, turn }) =>
-    turn.targetStatuses.map((target) => createWorkflowMission(channel, turn, target)),
+    turn.targetStatuses.map((target) => createWorkflowMission(
+      channel,
+      turn,
+      target,
+      resolveChatChannelContainerId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
+    )),
   );
   const workflowTraces = workflowTurns.flatMap(({ channel, turn }) =>
-    turn.events.map((event) => createWorkflowTrace(channel, turn, event)),
+    turn.events.map((event) => createWorkflowTrace(
+      channel,
+      turn,
+      event,
+      resolveChatChannelContainerId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
+    )),
   );
   const workflowCheckpoints = workflowTurns.flatMap(({ channel, turn }) =>
     turn.events
       .filter((event) => event.kind === 'checkpoint')
-      .map((event) => createWorkflowCheckpoint(channel, turn, event)),
+      .map((event) => createWorkflowCheckpoint(
+        channel,
+        turn,
+        event,
+        resolveChatChannelContainerId({
+          channelId: channel.id,
+          parallelChatGroups: chat.parallelChatGroups,
+        }),
+      )),
   );
   const workflowOutcomes = workflowTurns.flatMap(({ channel, turn }) =>
     turn.events
       .filter((event) => event.kind === 'outcome')
-      .map((event) => createWorkflowOutcome(channel, turn, event)),
+      .map((event) => createWorkflowOutcome(
+        channel,
+        turn,
+        event,
+        resolveChatChannelContainerId({
+          channelId: channel.id,
+          parallelChatGroups: chat.parallelChatGroups,
+        }),
+      )),
   );
   const workflowActivities = workflowTurns.flatMap(({ channel, turn }) =>
-    turn.events.map((event) => createWorkflowActivity(channel, turn, event)),
+    turn.events.map((event) => createWorkflowActivity(
+      channel,
+      turn,
+      event,
+      resolveChatChannelContainerId({
+        channelId: channel.id,
+        parallelChatGroups: chat.parallelChatGroups,
+      }),
+    )),
   );
   const botBindings = syncBotBindings(chat, existingCore.botBindings ?? []);
   const transportBindings = [

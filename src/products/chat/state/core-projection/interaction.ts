@@ -39,6 +39,7 @@ import {
   buildChatOwnerParticipantId,
   buildChatOrchestratorParticipantId,
   buildDirectLaneTransportBindingId,
+  resolveChatChannelContainerId,
 } from '../../../../shared/chatCoreIds.js';
 import {
   resolveExecutionLeaseSnapshot,
@@ -676,6 +677,10 @@ export function projectChatChannelInteractionToCore(
 ): CatsCoreState {
   const channel = requireChannel(state, channelId);
   const conversationId = buildChatConversationId(channelId);
+  const containerId = resolveChatChannelContainerId({
+    channelId,
+    parallelChatGroups: state.parallelChatGroups,
+  });
   const turns = collectWorkflowTurns(channel);
   let nextCore = core;
 
@@ -697,6 +702,7 @@ export function projectChatChannelInteractionToCore(
         completedAt: turn.completedAt,
         metadata: {
           channelId,
+          containerId,
           sourceMessageId: turn.sourceMessageId,
           sourceSenderKind: turn.sourceSenderKind,
           sourceSenderName: turn.sourceSenderName,
@@ -744,6 +750,7 @@ export function projectChatChannelInteractionToCore(
           completedAt: target.completedAt,
           metadata: {
             channelId,
+            containerId,
             targetStateId: target.id,
             sourceMessageId: target.sourceMessageId,
             participantKind: target.participant.participantKind,
@@ -787,6 +794,7 @@ export function projectChatChannelInteractionToCore(
             completedAt: target.completedAt,
             metadata: {
               channelId,
+              containerId,
               targetStateId: target.id,
               leaseStatus: lease?.status ?? null,
               leaseProvider: lease?.provider ?? null,
@@ -820,6 +828,7 @@ export function projectChatChannelInteractionToCore(
             completedAt: message.createdAt,
             metadata: {
               channelId,
+              containerId,
               chatMessageId: message.id,
               assistantTurnId,
               targetStateId: target.id,

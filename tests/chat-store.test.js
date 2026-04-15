@@ -24,7 +24,7 @@ import {
 import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
 import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
-import { buildChatWorkItemId } from '../build/server/shared/chatCoreIds.js';
+import { buildChatWorkItemId, CHAT_ROOT_CONTAINER_ID } from '../build/server/shared/chatCoreIds.js';
 import { FileChatStore } from '../build/server/products/chat/state/store.js';
 
 test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
@@ -956,6 +956,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.ok(projectedTask);
   assert.equal(projectedTask.metadata.effectiveDeliveryMode, 'artifact_only');
   assert.equal(projectedTask.metadata.effectiveBudgetAlertLevel, 'normal');
+  assert.equal(projectedTask.metadata.containerId, CHAT_ROOT_CONTAINER_ID);
   assert.deepEqual(
     projectedTask.metadata.runtimeDeliveryManifest?.requestedActions,
     ['prepare_artifact'],
@@ -963,6 +964,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.equal(projectedTask.metadata.governanceSummary?.approval.pending, false);
   assert.equal(projectedTask.metadata.workflowSummary?.shape, 'sequential');
   assert.ok(projectedRun);
+  assert.equal(projectedRun.metadata.containerId, CHAT_ROOT_CONTAINER_ID);
   assert.equal(projectedRun.metadata.workflowSummary?.shape, 'sequential');
   assert.equal(projectedRun.metadata.workflowSummary?.dispatchCount, 2);
   assert.equal(projectedRun.metadata.workflowSummary?.branchStatusCounts.completed, 2);
@@ -973,10 +975,13 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.equal(projectedMission.status, 'completed');
   assert.equal(projectedMission.sourceTurnId, projectedRun.metadata.turnId);
   assert.equal(projectedMission.managedWorkId, buildChatWorkItemId(channelId));
+  assert.equal(projectedMission.metadata.containerId, CHAT_ROOT_CONTAINER_ID);
   assert.equal(projectedMission.metadata.runId, projectedRun.id);
   assert.ok(projectedCheckpoint);
+  assert.equal(projectedCheckpoint.metadata.containerId, CHAT_ROOT_CONTAINER_ID);
   assert.equal(projectedCheckpoint.metadata.workflowSummary?.stageId, 'continuation_handoff');
   assert.ok(projectedOutcome);
+  assert.equal(projectedOutcome.metadata.containerId, CHAT_ROOT_CONTAINER_ID);
   assert.equal(projectedOutcome.metadata.workflowSummary?.runStatus, 'completed');
 });
 

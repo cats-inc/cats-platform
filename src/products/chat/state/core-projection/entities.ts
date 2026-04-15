@@ -489,6 +489,8 @@ function mergeWorkflowContinuationReplayMetadata(
 
 function buildChannelTaskMetadata(
   channel: ChatChannelState,
+  containerId: string | null,
+  parallelGroupId: string | null,
   existingTask: CoreTaskRecord | null,
   approval: CoreApprovalRecord,
 ): CoreRecordMetadata {
@@ -562,6 +564,8 @@ function buildChannelTaskMetadata(
     ...structuredClone(existingTask?.metadata ?? {}),
     source: 'chat-channel',
     channelId: channel.id,
+    containerId,
+    parallelGroupId,
     roomRoutingMode: roomRouting?.mode ?? 'boss_chat',
     workflowStageId: latestTurn?.stageId ?? null,
     workflowShape: latestTurn?.workflowShape ?? null,
@@ -600,6 +604,8 @@ function buildChannelTaskMetadata(
 
 function buildChannelWorkItemMetadata(
   channel: ChatChannelState,
+  containerId: string | null,
+  parallelGroupId: string | null,
   existingWorkItem: CoreWorkItemRecord | null,
 ): CoreRecordMetadata {
   const latestTurn = latestWorkflowTurn(channel);
@@ -609,6 +615,8 @@ function buildChannelWorkItemMetadata(
     ...structuredClone(existingWorkItem?.metadata ?? {}),
     source: 'chat-channel',
     channelId: channel.id,
+    containerId,
+    parallelGroupId,
     roomRoutingMode: roomRouting?.mode ?? 'boss_chat',
     workflowStageId: latestTurn?.stageId ?? null,
     workflowShape: latestTurn?.workflowShape ?? null,
@@ -950,6 +958,8 @@ export function createTaskFromChannel(
   channel: ChatChannelState,
   ownerActorId: string,
   conversationId: string,
+  containerId: string | null,
+  parallelGroupId: string | null,
   existingTask: CoreTaskRecord | null,
 ): CoreTaskRecord {
   const derivedStatus = mapChannelStatusToTaskStatus(channel);
@@ -982,7 +992,13 @@ export function createTaskFromChannel(
     approval,
     createdAt: channel.createdAt,
     updatedAt: channel.updatedAt,
-    metadata: buildChannelTaskMetadata(channel, existingTask, approval),
+    metadata: buildChannelTaskMetadata(
+      channel,
+      containerId,
+      parallelGroupId,
+      existingTask,
+      approval,
+    ),
   };
 }
 
@@ -990,6 +1006,8 @@ export function createWorkItemFromChannel(
   channel: ChatChannelState,
   ownerActorId: string,
   conversationId: string,
+  containerId: string | null,
+  parallelGroupId: string | null,
   existingWorkItem: CoreWorkItemRecord | null,
 ): CoreWorkItemRecord {
   const derivedStatus = mapChannelStatusToWorkItemStatus(channel);
@@ -1015,7 +1033,12 @@ export function createWorkItemFromChannel(
     summary: channel.topic,
     createdAt: channel.createdAt,
     updatedAt: channel.updatedAt,
-    metadata: buildChannelWorkItemMetadata(channel, existingWorkItem),
+    metadata: buildChannelWorkItemMetadata(
+      channel,
+      containerId,
+      parallelGroupId,
+      existingWorkItem,
+    ),
   };
 }
 

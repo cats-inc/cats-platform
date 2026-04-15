@@ -487,6 +487,10 @@ export async function ensureTargetSession(
       runtimeEnvelope.context,
       'conversationId',
     ) ?? buildChatConversationId(channelId);
+    const containerId = readInvocationContextMetadataString(
+      runtimeEnvelope.context,
+      'containerId',
+    );
     const transportBindingId = readInvocationContextMetadataString(
       runtimeEnvelope.context,
       'transportBindingId',
@@ -576,6 +580,7 @@ export async function ensureTargetSession(
         {
           metadata: {
             event: 'session_started',
+            ...(containerId ? { containerId } : {}),
             conversationId,
             targetKind: 'orchestrator',
             ...(targetStateId ? { targetStateId } : {}),
@@ -682,6 +687,7 @@ export async function ensureTargetSession(
       {
         metadata: {
           event: 'session_started',
+          ...(containerId ? { containerId } : {}),
           conversationId,
           targetKind: 'cat',
           targetId: attachedTarget.participantId,

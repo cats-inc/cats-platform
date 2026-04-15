@@ -26,6 +26,7 @@ import { isDirectLaneChannel } from '../shared/channelTopology.js';
 import {
   buildChatConversationId,
   buildDirectLaneTransportBindingId,
+  resolveChatChannelContainerId,
 } from '../../../shared/chatCoreIds.js';
 import {
   resolveTranscriptOrCanonicalConversationMessages,
@@ -233,6 +234,7 @@ function resolveTransportContext(
 }
 
 function buildSessionContextForTarget(
+  state: ChatState,
   channel: ChatChannelView,
   target: RoutingTarget,
   transport?: RuntimeTransportContext,
@@ -245,6 +247,10 @@ function buildSessionContextForTarget(
 } {
   const resolvedTransport = resolveTransportContext(channel, transport);
   const conversationId = buildChatConversationId(channel.id);
+  const containerId = resolveChatChannelContainerId({
+    channelId: channel.id,
+    parallelChatGroups: state.parallelChatGroups,
+  });
   const explicitTransportBindingId = typeof transportBindingIdOverride === 'string'
     && transportBindingIdOverride.trim().length > 0
     ? transportBindingIdOverride.trim()
@@ -266,6 +272,7 @@ function buildSessionContextForTarget(
     ],
     metadata: {
       channelId: channel.id,
+      containerId,
       conversationId,
       channelTitle: channel.title,
       channelKind: channel.channelKind ?? 'boss_thread',
@@ -415,6 +422,7 @@ export async function resolveRuntimeEnvelopeForTarget(
   companionStore?: CompanionBoxStore,
 ) {
   const baseContext = buildSessionContextForTarget(
+    state,
     channel,
     target,
     transport,

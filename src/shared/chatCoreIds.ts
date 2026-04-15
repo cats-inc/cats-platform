@@ -14,6 +14,7 @@ import type {
 import type {
   ChannelParticipantAssignment,
   ChatChannelKind,
+  ParallelChatGroupState,
 } from '../products/chat/api/contracts.js';
 
 export const CHAT_ROOT_CONTAINER_ID = 'container-chat-root';
@@ -36,6 +37,30 @@ export function buildChatArchiveId(channelId: string): string {
 
 export function buildChatParallelGroupContainerId(groupId: string): ContainerId {
   return `container-parallel-group-${groupId}`;
+}
+
+export function resolveChatChannelParallelGroupId(input: {
+  channelId: string;
+  parallelChatGroups:
+    | ReadonlyArray<Pick<ParallelChatGroupState, 'id' | 'memberChannelIds'>>
+    | null
+    | undefined;
+}): string | null {
+  return input.parallelChatGroups?.find((group) =>
+    group.memberChannelIds.includes(input.channelId))?.id ?? null;
+}
+
+export function resolveChatChannelContainerId(input: {
+  channelId: string;
+  parallelChatGroups:
+    | ReadonlyArray<Pick<ParallelChatGroupState, 'id' | 'memberChannelIds'>>
+    | null
+    | undefined;
+}): ContainerId {
+  const parallelGroupId = resolveChatChannelParallelGroupId(input);
+  return parallelGroupId
+    ? buildChatParallelGroupContainerId(parallelGroupId)
+    : CHAT_ROOT_CONTAINER_ID;
 }
 
 export function buildDirectLaneTransportBindingId(channelId: string): string {

@@ -182,6 +182,7 @@ function toCoreOutcomeStatus(
 export function createWorkflowRun(
   channel: ChatChannelState,
   turn: RoomWorkflowTurn,
+  containerId: string | null,
 ): CoreRunRecord {
   const traceId = `trace-room-routing-${turn.id}`;
   const summary = turn.events[turn.events.length - 1]?.message
@@ -204,6 +205,7 @@ export function createWorkflowRun(
     metadata: {
       source: 'chat-room-workflow',
       channelId: channel.id,
+      containerId,
       turnId: turn.id,
       guard: turn.guard,
       workflowStageId: turn.stageId,
@@ -237,6 +239,7 @@ export function createWorkflowMission(
   channel: ChatChannelState,
   turn: RoomWorkflowTurn,
   target: RoomWorkflowTargetState,
+  containerId: string | null,
 ): MissionRecord {
   const sourceLaneId = target.laneId?.trim() || buildChatLaneId(
     turn.id,
@@ -258,6 +261,7 @@ export function createWorkflowMission(
     metadata: {
       source: 'chat-room-workflow',
       channelId: channel.id,
+      containerId,
       turnId: turn.id,
       targetStateId: target.id,
       runId: buildRoomWorkflowRunId(channel.id, turn.id),
@@ -305,6 +309,7 @@ export function createWorkflowTrace(
   channel: ChatChannelState,
   turn: RoomWorkflowTurn,
   event: RoomWorkflowEvent,
+  containerId: string | null,
 ): CoreTraceRecord {
   const runId = buildRoomWorkflowRunId(channel.id, turn.id);
   return {
@@ -320,6 +325,7 @@ export function createWorkflowTrace(
     metadata: {
       source: 'chat-room-workflow',
       channelId: channel.id,
+      containerId,
       turnId: turn.id,
       eventKind: event.kind,
       eventStatus: event.status,
@@ -333,6 +339,7 @@ export function createWorkflowCheckpoint(
   channel: ChatChannelState,
   turn: RoomWorkflowTurn,
   event: RoomWorkflowEvent,
+  containerId: string | null,
 ): CoreCheckpointRecord {
   const workflowStageId = typeof event.metadata.workflowStageId === 'string'
     ? event.metadata.workflowStageId
@@ -355,6 +362,7 @@ export function createWorkflowCheckpoint(
     metadata: {
       source: 'chat-room-workflow',
       channelId: channel.id,
+      containerId,
       turnId: turn.id,
       eventKind: event.kind,
       checkpointKind: event.metadata.checkpointKind ?? null,
@@ -381,6 +389,7 @@ export function createWorkflowOutcome(
   channel: ChatChannelState,
   turn: RoomWorkflowTurn,
   event: RoomWorkflowEvent,
+  containerId: string | null,
 ): CoreOrchestrationOutcomeRecord {
   return {
     id: `outcome-room-routing-${event.outcomeId ?? event.id}`,
@@ -395,6 +404,7 @@ export function createWorkflowOutcome(
     metadata: {
       source: 'chat-room-workflow',
       channelId: channel.id,
+      containerId,
       turnId: turn.id,
       eventStatus: event.status,
       guard: turn.guard,
@@ -445,6 +455,7 @@ export function createWorkflowActivity(
   channel: ChatChannelState,
   turn: RoomWorkflowTurn,
   event: RoomWorkflowEvent,
+  containerId: string | null,
 ): CoreActivityRecord {
   return {
     id: `activity-room-routing-${event.id}`,
@@ -461,6 +472,7 @@ export function createWorkflowActivity(
     metadata: {
       source: 'chat-room-workflow',
       channelId: channel.id,
+      containerId,
       turnId: turn.id,
       eventKind: event.kind,
       eventStatus: event.status,
