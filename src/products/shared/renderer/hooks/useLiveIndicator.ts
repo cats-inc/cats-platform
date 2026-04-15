@@ -33,6 +33,7 @@ const LIVE_INDICATOR_RETRY_LIMIT = 8;
 export interface LiveIndicatorSelectedChannelLike {
   orchestratorLease?: {
     sessionId?: string | null;
+    status?: string | null;
     startedAt?: string | null;
   } | null;
   assignedParticipants?: Array<{
@@ -40,6 +41,7 @@ export interface LiveIndicatorSelectedChannelLike {
     execution?: {
       lease?: {
         sessionId?: string | null;
+        status?: string | null;
         startedAt?: string | null;
       } | null;
     } | null;
@@ -192,6 +194,12 @@ interface WaitingSessionState {
   requiresSessionStartConfirmation: boolean;
 }
 
+function hasLiveLeaseStatus(
+  status: string | null | undefined,
+): boolean {
+  return status === 'ready' || status === 'initializing';
+}
+
 function resolveTargetLease(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
   participantId: string | null,
@@ -204,6 +212,13 @@ function resolveTargetLease(
   }
 
   if (participantId === 'orchestrator') {
+    const leaseStatus = readTraceString(selectedChannel.orchestratorLease?.status);
+    if (leaseStatus && !hasLiveLeaseStatus(leaseStatus)) {
+      return {
+        sessionId: null,
+        startedAt: null,
+      };
+    }
     return {
       sessionId: readTraceString(selectedChannel.orchestratorLease?.sessionId),
       startedAt: readTraceString(selectedChannel.orchestratorLease?.startedAt),
@@ -214,6 +229,13 @@ function resolveTargetLease(
     selectedChannel.assignedParticipants?.find((participant) => participant.participantId === participantId)
       ?.execution?.lease
     ?? null;
+  const leaseStatus = readTraceString(participantLease?.status);
+  if (leaseStatus && !hasLiveLeaseStatus(leaseStatus)) {
+    return {
+      sessionId: null,
+      startedAt: null,
+    };
+  }
 
   return {
     sessionId: readTraceString(participantLease?.sessionId),

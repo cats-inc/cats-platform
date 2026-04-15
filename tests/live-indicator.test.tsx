@@ -244,6 +244,55 @@ test('resolveWaitingSessionState does not require a new session start for a warm
   });
 });
 
+test('resolveWaitingSessionState ignores a closed participant lease while a new target is pending', () => {
+  const waitingSessionState = resolveWaitingSessionState(
+    {
+      assignedParticipants: [
+        {
+          participantId: 'participant-gemini',
+          execution: {
+            lease: {
+              sessionId: 'session-gemini-old',
+              status: 'closed',
+              startedAt: '2026-04-14T12:03:00.000Z',
+            },
+          },
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            startedAt: '2026-04-14T12:00:01.000Z',
+            targetStatuses: [
+              {
+                id: 'target-gemini',
+                status: 'pending',
+                queuedAt: '2026-04-14T12:05:00.000Z',
+                startedAt: null,
+                participant: {
+                  participantId: 'participant-gemini',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    'participant-gemini',
+    'target-gemini',
+  );
+
+  assert.deepEqual(waitingSessionState, {
+    sessionStartedAt: '2026-04-14T12:05:00.000Z',
+    requiresSessionStartConfirmation: true,
+  });
+});
+
 test('shouldRetryLiveIndicatorSessionClose reconnects when a streamed session closes during an active send', () => {
   assert.equal(
     shouldRetryLiveIndicatorSessionClose({
