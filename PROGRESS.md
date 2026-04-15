@@ -645,6 +645,10 @@ Known follow-ups:
   `containerId` / `conversationId` through the shared helper, so the canonical
   write path no longer preserves a separate projection-only identity
   derivation from the runtime/read side
+- core projection entity builders now also resolve canonical conversation scope
+  through that same helper, so chat participants, containers, transport
+  bindings, and conversation/task metadata all share one conversation-id
+  source instead of keeping a parallel record-builder derivation
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

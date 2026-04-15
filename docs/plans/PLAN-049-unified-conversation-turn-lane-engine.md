@@ -214,6 +214,7 @@ through one engine
 | 2026-04-15 | Channel retry/read-repair paths now also resolve canonical identity through the shared helper, so canonical rebuild, drift repair, and synthetic `session_started` metadata stop preserving separate read-side `channelId -> conversation/container` derivations |
 | 2026-04-15 | `chatCoreInterop` now also resolves canonical conversation scope through the shared helper, so transcript/core rebuild seams stop preserving a separate conversation-id derivation path from the rest of the chat runtime |
 | 2026-04-15 | Core projection sync and interaction writes now also resolve channel canonical identity through the shared helper, so the canonical write path no longer preserves a separate projection-only `channelId -> conversation/container` derivation from the runtime/read side |
+| 2026-04-15 | Core projection entity builders now also resolve canonical conversation scope through the shared helper, so participants, containers, transport bindings, and conversation/task metadata stop preserving a separate record-builder conversation-id derivation |
 
 ---
 

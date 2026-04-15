@@ -48,6 +48,7 @@ import type {
   RoomWorkflowShape,
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
+import { resolveChannelCanonicalIdentity } from '../model/index.js';
 import {
   isReplayableContinuationGuardReason,
 } from '../room-routing/continuationReplay.js';
@@ -70,7 +71,6 @@ import {
   buildChatArchiveId,
   buildChatAssignedParticipantId,
   buildChatLaneId,
-  buildChatConversationId,
   buildDirectLaneTransportBindingId,
   buildChatOrchestratorParticipantId,
   buildChatOwnerParticipantId,
@@ -487,6 +487,10 @@ function mergeWorkflowContinuationReplayMetadata(
   );
 }
 
+function resolveCanonicalConversationId(channelId: string): string {
+  return resolveChannelCanonicalIdentity(null, channelId).conversationId;
+}
+
 function buildChannelTaskMetadata(
   channel: ChatChannelState,
   containerId: string | null,
@@ -537,7 +541,7 @@ function buildChannelTaskMetadata(
     deliveryGates: effectiveDeliveryPolicy.gates,
     channelId: channel.id,
     containerId,
-    conversationId: buildChatConversationId(channel.id),
+    conversationId: resolveCanonicalConversationId(channel.id),
     taskId: buildChatTaskId(channel.id),
     roomMode: roomRouting?.mode ?? 'boss_chat',
     transport: null,
@@ -769,7 +773,7 @@ function buildParticipantRole(assignment: ChannelParticipantAssignment): string 
 export function createChatConversationParticipants(
   channel: ChatChannelState,
 ): ParticipantRecord[] {
-  const conversationId = buildChatConversationId(channel.id);
+  const conversationId = resolveCanonicalConversationId(channel.id);
   const assignments = channel.participantAssignments ?? [];
   const participants: ParticipantRecord[] = [
     {
@@ -847,7 +851,7 @@ export function createChatRootContainer(chat: ChatState): ContainerRecord {
     updatedAt: latestUpdatedAt,
     metadata: {
       channelIds: chat.channels.map((channel) => channel.id),
-      conversationIds: chat.channels.map((channel) => buildChatConversationId(channel.id)),
+      conversationIds: chat.channels.map((channel) => resolveCanonicalConversationId(channel.id)),
       parallelGroupIds: chat.parallelChatGroups.map((group) => group.id),
     },
   };
@@ -869,7 +873,7 @@ export function createParallelGroupContainer(
       mode: group.mode,
       memberChannelIds: structuredClone(group.memberChannelIds),
       memberConversationIds: group.memberChannelIds.map((channelId) =>
-        buildChatConversationId(channelId)),
+        resolveCanonicalConversationId(channelId)),
       lastMessageAt: group.lastMessageAt,
     },
   };
@@ -881,7 +885,7 @@ export function createDirectLaneTransportBindings(
   return chat.channels
     .filter((channel) => channel.channelKind === 'direct_lane')
     .map((channel) => {
-      const conversationId = buildChatConversationId(channel.id);
+      const conversationId = resolveCanonicalConversationId(channel.id);
       const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
       const recipientAssignment = (channel.participantAssignments ?? []).find((assignment) =>
         assignment.participantId === defaultRecipientId) ?? null;
@@ -940,7 +944,7 @@ export function createConversationFromChannel(
   participantActorIds: string[],
 ): CoreConversationRecord {
   return {
-    id: buildChatConversationId(channel.id),
+    id: resolveCanonicalConversationId(channel.id),
     title: channel.title,
     kind: resolveChatConversationKind(channel.channelKind),
     status: mapChannelStatusToConversationStatus(channel),
