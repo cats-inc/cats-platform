@@ -10,6 +10,9 @@ function createPayload(): AppShellPayload {
     chat: {
       bossCatId: null,
       cats: [],
+      capabilities: {
+        maxAudienceParticipants: 3,
+      },
     },
   } as unknown as AppShellPayload;
 }
@@ -50,6 +53,10 @@ test('chat composer keeps solo implicit recipient controls on the active audienc
       composerStackParticipants={[]}
       isDirectLane={false}
       isSoloComposer
+      activeWorkflowShape="sequential"
+      onToggleActiveWorkflowShape={() => {}}
+      activeAudienceKeys={null}
+      onSetActiveAudienceKeys={() => {}}
       compareSendScope="all_members"
       showCancelComposerAction={false}
       showStopComposerAction={false}
@@ -136,6 +143,10 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
       ]}
       isDirectLane
       isSoloComposer={false}
+      activeWorkflowShape="sequential"
+      onToggleActiveWorkflowShape={() => {}}
+      activeAudienceKeys={null}
+      onSetActiveAudienceKeys={() => {}}
       compareSendScope="all_members"
       showCancelComposerAction={false}
       showStopComposerAction={false}
@@ -217,6 +228,10 @@ test('chat composer renders a multi-audience chip for group chats', () => {
       ]}
       isDirectLane={false}
       isSoloComposer={false}
+      activeWorkflowShape="sequential"
+      onToggleActiveWorkflowShape={() => {}}
+      activeAudienceKeys={null}
+      onSetActiveAudienceKeys={() => {}}
       compareSendScope="all_members"
       showCancelComposerAction={false}
       showStopComposerAction={false}

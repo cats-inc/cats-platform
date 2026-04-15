@@ -17,6 +17,7 @@ import {
   ManagedServiceSupervisor,
   prepareManagedServiceLog,
   seedBundledRuntimeConfigTemplates,
+  shouldRefreshManagedSeedTemplate,
 } from '../build/desktop/processSupervisor.js';
 
 class FakeChildProcess extends EventEmitter {
@@ -235,6 +236,136 @@ test('packaged desktop host seeds bundled runtime config templates into cats hom
     assert.equal(
       await readFile(config.paths.runtimeCuratedModelCatalogPath, 'utf8'),
       'schema_version: 1\ncatalogs: []\n',
+    );
+  } finally {
+    await rm(resourcesRoot, { recursive: true, force: true });
+    await rm(userDataDir, { recursive: true, force: true });
+  }
+});
+
+test('shouldRefreshManagedSeedTemplate only refreshes managed curated copies', () => {
+  assert.equal(
+    shouldRefreshManagedSeedTemplate({
+      allowManagedRefresh: true,
+      currentHash: 'legacy-hash',
+      sourceHash: 'current-hash',
+      recordedSourceHash: null,
+      legacyManagedSourceHashes: ['legacy-hash'],
+    }),
+    true,
+  );
+  assert.equal(
+    shouldRefreshManagedSeedTemplate({
+      allowManagedRefresh: true,
+      currentHash: 'seeded-hash',
+      sourceHash: 'current-hash',
+      recordedSourceHash: 'seeded-hash',
+    }),
+    true,
+  );
+  assert.equal(
+    shouldRefreshManagedSeedTemplate({
+      allowManagedRefresh: false,
+      currentHash: 'legacy-hash',
+      sourceHash: 'current-hash',
+      recordedSourceHash: 'legacy-hash',
+      legacyManagedSourceHashes: ['legacy-hash'],
+    }),
+    false,
+  );
+  assert.equal(
+    shouldRefreshManagedSeedTemplate({
+      allowManagedRefresh: true,
+      currentHash: 'user-edited-hash',
+      sourceHash: 'current-hash',
+      recordedSourceHash: null,
+      legacyManagedSourceHashes: ['legacy-hash'],
+    }),
+    false,
+  );
+});
+
+test('packaged desktop host refreshes unchanged curated template copies that were previously auto-seeded', async () => {
+  const resourcesRoot = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-refresh-resources-'));
+  const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-refresh-userdata-'));
+  const catsHomeDir = join(userDataDir, 'cats-home');
+  const managementExample = join(resourcesRoot, 'cats-runtime', 'config', 'management.yaml.example');
+  const curatedExample = join(resourcesRoot, 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example');
+
+  try {
+    await mkdir(join(resourcesRoot, 'cats-runtime', 'config'), { recursive: true });
+    await writeFile(managementExample, 'version: 1\nadapters: {}\n', 'utf8');
+    await writeFile(curatedExample, 'schema_version: 1\ncatalogs: []\n', 'utf8');
+
+    const config = resolveDesktopHostConfig({
+      env: {},
+      userDataDir,
+      catsHomeDir,
+      packaged: true,
+      resourcesPath: resourcesRoot,
+    });
+
+    await seedBundledRuntimeConfigTemplates(config);
+    assert.equal(
+      await readFile(config.paths.runtimeCuratedModelCatalogPath, 'utf8'),
+      'schema_version: 1\ncatalogs: []\n',
+    );
+
+    await writeFile(
+      curatedExample,
+      'schema_version: 1\ncatalogs:\n  - cli: Claude\n',
+      'utf8',
+    );
+
+    await seedBundledRuntimeConfigTemplates(config);
+
+    assert.equal(
+      await readFile(config.paths.runtimeCuratedModelCatalogPath, 'utf8'),
+      'schema_version: 1\ncatalogs:\n  - cli: Claude\n',
+    );
+  } finally {
+    await rm(resourcesRoot, { recursive: true, force: true });
+    await rm(userDataDir, { recursive: true, force: true });
+  }
+});
+
+test('packaged desktop host preserves curated copies once the user edits them after seeding', async () => {
+  const resourcesRoot = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-user-edits-resources-'));
+  const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-user-edits-userdata-'));
+  const catsHomeDir = join(userDataDir, 'cats-home');
+  const managementExample = join(resourcesRoot, 'cats-runtime', 'config', 'management.yaml.example');
+  const curatedExample = join(resourcesRoot, 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example');
+
+  try {
+    await mkdir(join(resourcesRoot, 'cats-runtime', 'config'), { recursive: true });
+    await writeFile(managementExample, 'version: 1\nadapters: {}\n', 'utf8');
+    await writeFile(curatedExample, 'schema_version: 1\ncatalogs: []\n', 'utf8');
+
+    const config = resolveDesktopHostConfig({
+      env: {},
+      userDataDir,
+      catsHomeDir,
+      packaged: true,
+      resourcesPath: resourcesRoot,
+    });
+
+    await seedBundledRuntimeConfigTemplates(config);
+    await writeFile(
+      config.paths.runtimeCuratedModelCatalogPath,
+      'schema_version: 1\ncatalogs:\n  - cli: User Override\n',
+      'utf8',
+    );
+    await writeFile(
+      curatedExample,
+      'schema_version: 1\ncatalogs:\n  - cli: Bundled Update\n',
+      'utf8',
+    );
+
+    await seedBundledRuntimeConfigTemplates(config);
+
+    assert.equal(
+      await readFile(config.paths.runtimeCuratedModelCatalogPath, 'utf8'),
+      'schema_version: 1\ncatalogs:\n  - cli: User Override\n',
     );
   } finally {
     await rm(resourcesRoot, { recursive: true, force: true });

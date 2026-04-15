@@ -37,6 +37,21 @@ test('buildExecutionLabel falls back to the product default instance when state 
   );
 });
 
+test('buildExecutionLabel treats runtime canonical default instances as backend aliases', () => {
+  assert.equal(
+    buildExecutionLabel('claude', 'default', 'claude-opus-4-6'),
+    'Claude-CLI · Opus 4.6 with 1M context',
+  );
+  assert.equal(
+    buildExecutionLabel('kiro', 'default', 'claude-opus-4.6'),
+    'Kiro-CLI · claude-opus-4.6',
+  );
+  assert.equal(
+    buildExecutionLabel('openclaw', 'default', 'openclaw-coder'),
+    'OpenClaw-AGENT · openclaw-coder',
+  );
+});
+
 test('buildExecutionLabel does not render raw instance identifiers in the chip label', () => {
   assert.doesNotMatch(
     buildExecutionLabel('claude', 'cli/native', 'claude-opus-4-6'),

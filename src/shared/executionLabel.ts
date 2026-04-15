@@ -1,10 +1,22 @@
 import {
+  getDefaultProviderBackend,
   getDefaultProviderInstance,
   getProviderDisplayName,
   getProviderInstances,
   getProviderModels,
   normalizeProductProviderModelId,
 } from './providerCatalog.js';
+
+function resolveBackendSuffixFromBackend(
+  backend: string | null | undefined,
+): string {
+  const normalized = backend?.toLowerCase();
+  if (normalized === 'cli') return '-CLI';
+  if (normalized === 'agent') return '-AGENT';
+  if (normalized === 'api') return '-API';
+  if (normalized === 'local') return '-LOCAL';
+  return '';
+}
 
 function resolveBackendSuffix(
   provider: string,
@@ -16,13 +28,13 @@ function resolveBackendSuffix(
   if (normalized.startsWith('agent/') || normalized === 'agent') return '-AGENT';
   if (normalized.startsWith('api/') || normalized === 'api') return '-API';
   if (normalized.startsWith('local/') || normalized === 'local') return '-LOCAL';
+  if (normalized === 'default') {
+    return resolveBackendSuffixFromBackend(getDefaultProviderBackend(provider));
+  }
 
   const descriptor = getProviderInstances(provider).find((candidate) => candidate.id === instance);
-  const backend = descriptor?.backend?.toLowerCase();
-  if (backend === 'cli') return '-CLI';
-  if (backend === 'agent') return '-AGENT';
-  if (backend === 'api') return '-API';
-  if (backend === 'local') return '-LOCAL';
+  const backendSuffix = resolveBackendSuffixFromBackend(descriptor?.backend);
+  if (backendSuffix) return backendSuffix;
 
   const target = descriptor?.target?.toLowerCase();
   if (target?.startsWith('cli/')) return '-CLI';
