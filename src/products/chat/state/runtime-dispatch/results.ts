@@ -119,16 +119,69 @@ interface BlockedDispatchResolution {
   note: string;
 }
 
+function hasSourceIdentity(input: {
+  sourceTurnId?: string | null;
+  sourceLaneId?: string | null;
+  sourceAssistantTurnId?: string | null;
+}): boolean {
+  return Boolean(
+    input.sourceTurnId?.trim()
+    || input.sourceLaneId?.trim()
+    || input.sourceAssistantTurnId?.trim(),
+  );
+}
+
+function matchesSourceIdentity(
+  left: {
+    sourceTurnId?: string | null;
+    sourceLaneId?: string | null;
+    sourceAssistantTurnId?: string | null;
+  },
+  right: {
+    sourceTurnId?: string | null;
+    sourceLaneId?: string | null;
+    sourceAssistantTurnId?: string | null;
+  },
+): boolean {
+  const sharedIdentityPairs = [
+    [left.sourceTurnId, right.sourceTurnId],
+    [left.sourceLaneId, right.sourceLaneId],
+    [left.sourceAssistantTurnId, right.sourceAssistantTurnId],
+  ].filter((pair): pair is [string, string] => Boolean(pair[0] && pair[1]));
+
+  return sharedIdentityPairs.length > 0
+    && sharedIdentityPairs.every(([leftValue, rightValue]) => leftValue === rightValue);
+}
+
 function filterQueuedContinuationTargets(
   targets: DispatchFrame['targets'],
   activeTurn: RoomWorkflowTurn,
   queue: DispatchFrame[],
+  sourceIdentity: {
+    sourceTurnId?: string | null;
+    sourceLaneId?: string | null;
+    sourceAssistantTurnId?: string | null;
+  },
 ): DispatchFrame['targets'] {
   const occupiedParticipantKeys = new Set<string>();
   const pinConcurrentInitialAudience = activeTurn.workflowShape === 'concurrent';
+  const sourceIdentityAvailable = hasSourceIdentity(sourceIdentity);
 
   for (const targetStatus of activeTurn.targetStatuses) {
-    if (targetStatus.sourceMessageId !== activeTurn.sourceMessageId || targetStatus.depth !== 0) {
+    if (targetStatus.depth !== 0) {
+      continue;
+    }
+    if (
+      sourceIdentityAvailable
+      && hasSourceIdentity(targetStatus)
+      && !matchesSourceIdentity(targetStatus, sourceIdentity)
+    ) {
+      continue;
+    }
+    if (
+      !hasSourceIdentity(targetStatus)
+      && targetStatus.sourceMessageId !== activeTurn.sourceMessageId
+    ) {
       continue;
     }
     if (
@@ -144,7 +197,20 @@ function filterQueuedContinuationTargets(
   }
 
   for (const frame of queue) {
-    if (frame.sourceMessage.id !== activeTurn.sourceMessageId || frame.depth !== 0) {
+    if (frame.depth !== 0) {
+      continue;
+    }
+    if (
+      sourceIdentityAvailable
+      && hasSourceIdentity(frame)
+      && !matchesSourceIdentity(frame, sourceIdentity)
+    ) {
+      continue;
+    }
+    if (
+      !hasSourceIdentity(frame)
+      && frame.sourceMessage.id !== activeTurn.sourceMessageId
+    ) {
       continue;
     }
     for (const target of frame.targets) {
@@ -794,6 +860,11 @@ export function applyDispatchExecutions(
       continuationResolution.targets,
       activeTurn,
       queue,
+      {
+        sourceTurnId: activeTurn.id,
+        sourceLaneId,
+        sourceAssistantTurnId: assistantTurnId,
+      },
     );
     const continuationTargetsWereDeduped =
       dedupedContinuationTargets.length !== continuationResolution.targets.length;

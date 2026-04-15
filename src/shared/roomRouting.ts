@@ -210,6 +210,9 @@ export interface RoomWorkflowTargetState {
   sessionId: string | null;
   source: RoomRoutingParticipantRef | null;
   sourceMessageId: string;
+  sourceTurnId?: string | null;
+  sourceLaneId?: string | null;
+  sourceAssistantTurnId?: string | null;
   trigger: RoomRoutingTrigger;
   mentionNames: string[];
   depth: number;

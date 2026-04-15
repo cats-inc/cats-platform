@@ -210,6 +210,9 @@ export function queueWorkflowTarget(
     existingTargetStatus.sessionId = request.target.sessionId;
     existingTargetStatus.source = request.sourceParticipant;
     existingTargetStatus.sourceMessageId = request.sourceMessage.id;
+    existingTargetStatus.sourceTurnId = request.sourceTurnId ?? null;
+    existingTargetStatus.sourceLaneId = request.sourceLaneId ?? null;
+    existingTargetStatus.sourceAssistantTurnId = request.sourceAssistantTurnId ?? null;
     existingTargetStatus.trigger = request.trigger;
     existingTargetStatus.mentionNames = structuredClone(request.mentionNames);
     existingTargetStatus.depth = request.depth;
@@ -231,6 +234,9 @@ export function queueWorkflowTarget(
     sessionId: request.target.sessionId,
     source: request.sourceParticipant,
     sourceMessageId: request.sourceMessage.id,
+    sourceTurnId: request.sourceTurnId ?? null,
+    sourceLaneId: request.sourceLaneId ?? null,
+    sourceAssistantTurnId: request.sourceAssistantTurnId ?? null,
     trigger: request.trigger,
     mentionNames: structuredClone(request.mentionNames),
     depth: request.depth,
@@ -278,6 +284,15 @@ export function updateWorkflowTarget(
   }
   if (update.sourceMessageId !== undefined) {
     targetStatus.sourceMessageId = update.sourceMessageId;
+  }
+  if (update.sourceTurnId !== undefined) {
+    targetStatus.sourceTurnId = update.sourceTurnId;
+  }
+  if (update.sourceLaneId !== undefined) {
+    targetStatus.sourceLaneId = update.sourceLaneId;
+  }
+  if (update.sourceAssistantTurnId !== undefined) {
+    targetStatus.sourceAssistantTurnId = update.sourceAssistantTurnId;
   }
   if (update.trigger !== undefined) {
     targetStatus.trigger = update.trigger;
