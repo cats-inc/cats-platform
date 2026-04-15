@@ -32,6 +32,7 @@ export interface LiveIndicatorSegmentState {
   targetStateId: string | null;
   segmentIndex: number;
   sessionId: string | null;
+  identityParticipantId: string | null;
   participantId: string | null;
   catId: string | null;
   activeCatIds: string[];
@@ -54,6 +55,7 @@ export interface LiveIndicatorState {
   targetStateId: string | null;
   segmentIndex: number;
   sessionId: string | null;
+  identityParticipantId: string | null;
   participantId: string | null;
   catId: string | null;
   activeCatIds: string[];
@@ -90,6 +92,7 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   targetStateId: null,
   segmentIndex: 0,
   sessionId: null,
+  identityParticipantId: null,
   participantId: null,
   catId: null,
   activeCatIds: [],
@@ -110,6 +113,7 @@ function buildLiveIndicatorSegmentId(input: {
   laneId?: string | null;
   targetStateId: string | null;
   sessionId?: string | null;
+  identityParticipantId?: string | null;
   participantId: string | null;
   catId: string | null;
   speakerLabel: string | null;
@@ -119,6 +123,7 @@ function buildLiveIndicatorSegmentId(input: {
   const identity = readString(input.laneId)
     ?? input.targetStateId
     ?? readString(input.sessionId)
+    ?? input.identityParticipantId
     ?? input.participantId
     ?? input.catId
     ?? readString(input.speakerLabel)
@@ -133,6 +138,7 @@ export function createLiveIndicatorSegmentState(input: {
   targetStateId?: string | null;
   segmentIndex?: number;
   sessionId?: string | null;
+  identityParticipantId?: string | null;
   participantId?: string | null;
   catId?: string | null;
   activeCatIds?: string[];
@@ -157,6 +163,7 @@ export function createLiveIndicatorSegmentState(input: {
       laneId: input.laneId ?? null,
       targetStateId: input.targetStateId ?? null,
       sessionId: input.sessionId ?? null,
+      identityParticipantId: input.identityParticipantId ?? input.participantId ?? null,
       participantId: input.participantId ?? null,
       catId,
       speakerLabel: input.speakerLabel ?? null,
@@ -168,6 +175,7 @@ export function createLiveIndicatorSegmentState(input: {
     targetStateId: input.targetStateId ?? null,
     segmentIndex,
     sessionId: input.sessionId ?? null,
+    identityParticipantId: input.identityParticipantId ?? input.participantId ?? null,
     participantId: input.participantId ?? null,
     catId,
     activeCatIds,
@@ -217,6 +225,7 @@ export function resolveLiveIndicatorSegments(
       laneId: liveIndicator.laneId,
       segmentIndex: liveIndicator.segmentIndex,
       sessionId: liveIndicator.sessionId,
+      identityParticipantId: liveIndicator.identityParticipantId,
       participantId: liveIndicator.participantId,
       catId: liveIndicator.catId,
       activeCatIds: liveIndicator.activeCatIds,
@@ -251,6 +260,7 @@ export function projectLiveIndicatorStateFromSegments(
     targetStateId: primary.targetStateId,
     segmentIndex: primary.segmentIndex,
     sessionId: primary.sessionId,
+    identityParticipantId: primary.identityParticipantId,
     participantId: primary.participantId,
     catId: primary.catId,
     activeCatIds: primary.activeCatIds,
@@ -304,11 +314,24 @@ function appendLiveIndicatorSegment(
   ]);
 }
 
+function resolveLogicalParticipantId(input: {
+  identityParticipantId?: string | null;
+  participantId?: string | null;
+}): string | null {
+  return input.identityParticipantId ?? input.participantId ?? null;
+}
+
 function isSameLiveIndicatorTimelineIdentity(
   previousSegment: LiveIndicatorSegmentState | null,
   nextSpeakerState: Pick<
     LiveIndicatorSegmentState,
-    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    'sourceMessageId'
+    | 'laneId'
+    | 'targetStateId'
+    | 'identityParticipantId'
+    | 'participantId'
+    | 'catId'
+    | 'speakerLabel'
   >,
 ): boolean {
   if (!previousSegment) {
@@ -329,8 +352,10 @@ function isSameLiveIndicatorTimelineIdentity(
     return false;
   }
 
-  if (previousSegment.participantId && nextSpeakerState.participantId) {
-    return previousSegment.participantId === nextSpeakerState.participantId;
+  const previousParticipantId = resolveLogicalParticipantId(previousSegment);
+  const nextParticipantId = resolveLogicalParticipantId(nextSpeakerState);
+  if (previousParticipantId && nextParticipantId) {
+    return previousParticipantId === nextParticipantId;
   }
 
   if (previousSegment.catId && nextSpeakerState.catId) {
@@ -347,11 +372,23 @@ function isSameLiveIndicatorTimelineIdentity(
 function doesLiveIndicatorLogicalIdentityMatch(
   left: Pick<
     LiveIndicatorSegmentState,
-    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    'sourceMessageId'
+    | 'laneId'
+    | 'targetStateId'
+    | 'identityParticipantId'
+    | 'participantId'
+    | 'catId'
+    | 'speakerLabel'
   >,
   right: Pick<
     LiveIndicatorSegmentState,
-    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    'sourceMessageId'
+    | 'laneId'
+    | 'targetStateId'
+    | 'identityParticipantId'
+    | 'participantId'
+    | 'catId'
+    | 'speakerLabel'
   >,
 ): boolean {
   const leftSourceMessageId = left.sourceMessageId ?? null;
@@ -360,8 +397,8 @@ function doesLiveIndicatorLogicalIdentityMatch(
   const rightLaneId = right.laneId ?? null;
   const leftTargetStateId = left.targetStateId ?? null;
   const rightTargetStateId = right.targetStateId ?? null;
-  const leftParticipantId = left.participantId ?? null;
-  const rightParticipantId = right.participantId ?? null;
+  const leftParticipantId = resolveLogicalParticipantId(left);
+  const rightParticipantId = resolveLogicalParticipantId(right);
   const leftCatId = left.catId ?? null;
   const rightCatId = right.catId ?? null;
   const leftSpeakerLabel = left.speakerLabel ?? null;
@@ -600,6 +637,7 @@ export function createWaitingLiveIndicatorState(input: {
       targetStateId: input.targetStateId ?? null,
       segmentIndex: input.segmentIndex ?? 0,
       sessionId: input.sessionId ?? null,
+      identityParticipantId: input.participantId ?? null,
       participantId: revealIdentity ? input.participantId ?? null : null,
       catId: revealIdentity ? input.catId : null,
       speakerLabel: revealIdentity ? input.speakerLabel : null,
@@ -614,7 +652,14 @@ export function resolveLiveIndicatorSpeakerState(
   data: Record<string, unknown>,
 ): Pick<
   LiveIndicatorSegmentState,
-  'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel'
+  | 'sourceMessageId'
+  | 'laneId'
+  | 'targetStateId'
+  | 'identityParticipantId'
+  | 'participantId'
+  | 'catId'
+  | 'activeCatIds'
+  | 'speakerLabel'
 > {
   const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
   const previousSourceMessageId = previousSegment?.sourceMessageId ?? previous.sourceMessageId;
@@ -626,9 +671,14 @@ export function resolveLiveIndicatorSpeakerState(
   const hasCatId = Object.prototype.hasOwnProperty.call(data, 'catId');
   const hasSpeakerLabel = Object.prototype.hasOwnProperty.call(data, 'speakerLabel');
   const hasTargetStateId = Object.prototype.hasOwnProperty.call(data, 'targetStateId');
+  const previousIdentityParticipantId = previousSegment?.identityParticipantId
+    ?? previous.identityParticipantId;
   const nextParticipantId = hasParticipantId
     ? readNullableString(data.participantId)
     : previousSegment?.participantId ?? previous.participantId;
+  const nextIdentityParticipantId = hasParticipantId
+    ? readNullableString(data.participantId)
+    : previousIdentityParticipantId;
   const nextCatId = hasCatId
     ? readNullableString(data.catId)
     : previousSegment?.catId ?? previous.catId;
@@ -646,6 +696,7 @@ export function resolveLiveIndicatorSpeakerState(
     targetStateId: hasTargetStateId
       ? (readNullableString(data.targetStateId) ?? previousTargetStateId)
       : previousTargetStateId,
+    identityParticipantId: nextIdentityParticipantId,
     participantId: nextParticipantId,
     catId: nextCatId,
     activeCatIds: nextCatId ? [nextCatId] : [],
@@ -721,7 +772,13 @@ function shouldStartNewSegmentForEvent(
   previousSegment: LiveIndicatorSegmentState | null,
   nextSpeakerState: Pick<
     LiveIndicatorSegmentState,
-    'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel' | 'sourceMessageId'
+    | 'laneId'
+    | 'targetStateId'
+    | 'identityParticipantId'
+    | 'participantId'
+    | 'catId'
+    | 'speakerLabel'
+    | 'sourceMessageId'
   >,
   eventType: string,
   data: Record<string, unknown>,
@@ -787,7 +844,14 @@ function createNextLiveIndicatorSegment(
   previousSegment: LiveIndicatorSegmentState | null,
   nextSpeakerState: Pick<
     LiveIndicatorSegmentState,
-    'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel' | 'sourceMessageId'
+    | 'laneId'
+    | 'targetStateId'
+    | 'identityParticipantId'
+    | 'participantId'
+    | 'catId'
+    | 'activeCatIds'
+    | 'speakerLabel'
+    | 'sourceMessageId'
   >,
   nextSessionState: Pick<
     LiveIndicatorSegmentState,
@@ -805,6 +869,7 @@ function createNextLiveIndicatorSegment(
       ? previousSegment.segmentIndex + 1
       : 0,
     sessionId: nextSessionState.sessionId,
+    identityParticipantId: nextSpeakerState.identityParticipantId,
     participantId: nextSpeakerState.participantId,
     catId: nextSpeakerState.catId,
     activeCatIds: nextSpeakerState.activeCatIds,
@@ -857,6 +922,7 @@ function prepareLiveIndicatorStateForEvent(
       laneId: nextSpeakerState.laneId,
       targetStateId: nextSpeakerState.targetStateId,
       sessionId: nextSessionState.sessionId,
+      identityParticipantId: nextSpeakerState.identityParticipantId,
       participantId: nextSpeakerState.participantId,
       catId: nextSpeakerState.catId,
       speakerLabel: nextSpeakerState.speakerLabel,
@@ -884,6 +950,7 @@ export function buildLiveIndicatorScrollKey(
         segment.targetStateId ?? '',
         String(segment.segmentIndex),
         segment.sessionId ?? '',
+        segment.identityParticipantId ?? '',
         segment.participantId ?? '',
         segment.activeCatIds.join('|'),
         segment.catId ?? '',
@@ -1644,7 +1711,8 @@ function doesMessageMatchLiveIndicatorSpeaker(
   }
 
   const messageTargetId = readMessageTargetId(message);
-  const liveTargetId = readString(liveIndicator.participantId)
+  const liveTargetId = readString(liveIndicator.identityParticipantId)
+    ?? readString(liveIndicator.participantId)
     ?? liveIndicator.catId
     ?? liveIndicator.activeCatIds.find((id) => id.trim().length > 0)
     ?? null;
@@ -1718,7 +1786,8 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
       matchesIdentity = Boolean(messageSessionId && messageSessionId === liveSessionId);
     }
 
-    const liveParticipantId = readString(liveIndicator.participantId);
+    const liveParticipantId = readString(liveIndicator.identityParticipantId)
+      ?? readString(liveIndicator.participantId);
     if (liveParticipantId) {
       if (liveParticipantId === 'orchestrator') {
         if (readMessageTargetKind(message) !== 'orchestrator') {
@@ -1789,6 +1858,7 @@ function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMe
       input.liveIndicator.targetStateId ?? '',
       input.liveIndicator.sourceMessageId ?? '',
       input.liveIndicator.sessionId ?? '',
+      input.liveIndicator.identityParticipantId ?? '',
       input.liveIndicator.participantId ?? '',
       input.liveIndicator.speakerLabel ?? '',
       input.liveIndicator.catId ?? '',
@@ -1984,13 +2054,14 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
       && readMessageSegmentIndex(message) === persistedSegmentIndex);
   }
 
-  if (segment.phase === 'sealed' && segment.participantId && sourceMessageId) {
+  const segmentParticipantId = resolveLogicalParticipantId(segment);
+  if (segment.phase === 'sealed' && segmentParticipantId && sourceMessageId) {
     return messages.some((message) =>
       isVisibleAssistantReply(message)
       && readMessageEvent(message) === 'assistant_turn_segment'
       && readMessageSourceMessageId(message) === sourceMessageId
       && readMessageSegmentIndex(message) === persistedSegmentIndex
-      && readMessageTargetId(message) === segment.participantId);
+      && readMessageTargetId(message) === segmentParticipantId);
   }
 
   let lastUserIndex = -1;

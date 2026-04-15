@@ -2045,6 +2045,98 @@ test('resolveWaitingIndicatorStateTransition preserves an existing waiting segme
   assert.equal(next.segments[1]?.id, 'message-user-current:participant-codex:segment:3');
 });
 
+test('resolveWaitingIndicatorStateTransition increments an anonymous follow-up segment for the same hidden participant', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    sourceMessageId: 'message-user-current',
+    identityParticipantId: 'participant-claude',
+    participantId: null,
+    speakerLabel: null,
+    segments: [
+      {
+        id: 'message-user-current:participant-claude:segment:0',
+        phase: 'sealed' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: null,
+        segmentIndex: 0,
+        sessionId: null,
+        identityParticipantId: 'participant-claude',
+        participantId: null,
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: null,
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text' as const,
+            status: 'complete' as const,
+            title: null,
+            text: 'First segment',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+        events: [],
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: null,
+    revealIdentity: false,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user-current',
+          senderKind: 'user',
+        },
+        {
+          id: 'message-agent-current-0',
+          senderKind: 'agent',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user-current',
+            workflowShape: 'solo',
+            targetStatuses: [],
+          },
+        },
+      },
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next.segments.length, 2);
+  assert.equal(next.segments[0]?.segmentIndex, 0);
+  assert.equal(next.segments[1]?.segmentIndex, 1);
+  assert.equal(next.segments[1]?.identityParticipantId, 'participant-claude');
+});
+
 test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment index for a different participant with the same label', () => {
   const previous = {
     ...EMPTY_LIVE_INDICATOR,
@@ -2126,6 +2218,94 @@ test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment
   assert.equal(next.segmentIndex, 0);
   assert.equal(next.segments.length, 1);
   assert.equal(next.segments[0]?.participantId, 'participant-codex');
+  assert.equal(next.segments[0]?.segmentIndex, 0);
+});
+
+test('resolveWaitingIndicatorStateTransition does not preserve an anonymous waiting segment index for a different hidden participant', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting' as const,
+    sourceMessageId: 'message-user-current',
+    identityParticipantId: 'participant-claude',
+    participantId: null,
+    speakerLabel: null,
+    segmentIndex: 3,
+    segments: [
+      {
+        id: 'message-user-current:participant-claude:segment:3',
+        phase: 'waiting' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: null,
+        segmentIndex: 3,
+        sessionId: null,
+        identityParticipantId: 'participant-claude',
+        participantId: null,
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: null,
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [],
+        events: [],
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-codex',
+    catId: null,
+    speakerLabel: null,
+    revealIdentity: false,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user-current',
+          senderKind: 'user',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user-current',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                status: 'pending',
+                participant: {
+                  participantId: 'participant-codex',
+                  participantName: 'Codex-CLI',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next.phase, 'waiting');
+  assert.equal(next.identityParticipantId, 'participant-codex');
+  assert.equal(next.participantId, null);
+  assert.equal(next.segmentIndex, 0);
+  assert.equal(next.segments.length, 1);
+  assert.equal(next.segments[0]?.identityParticipantId, 'participant-codex');
   assert.equal(next.segments[0]?.segmentIndex, 0);
 });
 
@@ -3952,10 +4132,12 @@ test('shared live indicator effect reconnects on EventSource termination without
   assert.match(source, /eventsource_terminated_running_workflow/u);
   assert.match(source, /traceBrowser\('stream_source_error_ignored'/u);
   assert.match(source, /traceBrowser\('indicator_pin_pending_reply'/u);
+  assert.match(source, /participantId:\s*current\.participantId,/u);
   assert.match(source, /activeTurn/u);
   assert.match(source, /selectedChannel\?\.messages/u);
   assert.match(source, /function updateIndicatorState\(/u);
   assert.doesNotMatch(source, /startTransition\(/u);
+  assert.doesNotMatch(source, /participantId:\s*current\.revealIdentity\s*\?\s*current\.participantId\s*:\s*null,/u);
   assert.doesNotMatch(waitingResetSection, /streamCursorRef\.current = null;/u);
   assert.match(source, /if \(previousChannelId !== channelId\)\s*\{\s*streamCursorRef\.current = null;\s*\}/u);
   assert.match(source, /\[\s*busy,\s*channelId,\s*debugTraceEnabled,\s*routingStatus,\s*shouldConnectStream,\s*shouldShowWaitingIndicator,\s*\]/u);

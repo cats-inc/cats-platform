@@ -461,11 +461,23 @@ function doesLiveIndicatorIdentityMatch(
 function doesLiveIndicatorLogicalIdentityMatch(
   left: Pick<
     LiveIndicatorState | LiveIndicatorSegmentState,
-    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    | 'sourceMessageId'
+    | 'laneId'
+    | 'targetStateId'
+    | 'identityParticipantId'
+    | 'participantId'
+    | 'catId'
+    | 'speakerLabel'
   >,
   right: Pick<
     LiveIndicatorState | LiveIndicatorSegmentState,
-    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    | 'sourceMessageId'
+    | 'laneId'
+    | 'targetStateId'
+    | 'identityParticipantId'
+    | 'participantId'
+    | 'catId'
+    | 'speakerLabel'
   >,
 ): boolean {
   const leftSourceMessageId = left.sourceMessageId ?? null;
@@ -474,8 +486,8 @@ function doesLiveIndicatorLogicalIdentityMatch(
   const rightLaneId = right.laneId ?? null;
   const leftTargetStateId = left.targetStateId ?? null;
   const rightTargetStateId = right.targetStateId ?? null;
-  const leftParticipantId = left.participantId ?? null;
-  const rightParticipantId = right.participantId ?? null;
+  const leftParticipantId = resolveLogicalSegmentParticipantId(left);
+  const rightParticipantId = resolveLogicalSegmentParticipantId(right);
   const leftCatId = left.catId ?? null;
   const rightCatId = right.catId ?? null;
   const leftSpeakerLabel = left.speakerLabel ?? null;
@@ -511,6 +523,12 @@ function doesWaitingIndicatorLogicalIdentityMatch(
   );
 }
 
+function resolveLogicalSegmentParticipantId(
+  segment: Pick<LiveIndicatorState | LiveIndicatorSegmentState, 'identityParticipantId' | 'participantId'>,
+): string | null {
+  return segment.identityParticipantId ?? segment.participantId ?? null;
+}
+
 function shouldAllowSameSpeakerWaitingFollowup(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): boolean {
@@ -541,8 +559,10 @@ function shouldAdvanceWaitingSegmentIndex(
     return false;
   }
 
-  if (previousSegment.participantId && waitingSegment.participantId) {
-    return previousSegment.participantId === waitingSegment.participantId;
+  const previousParticipantId = resolveLogicalSegmentParticipantId(previousSegment);
+  const waitingParticipantId = resolveLogicalSegmentParticipantId(waitingSegment);
+  if (previousParticipantId && waitingParticipantId) {
+    return previousParticipantId === waitingParticipantId;
   }
 
   if (previousSegment.catId && waitingSegment.catId) {
@@ -550,8 +570,8 @@ function shouldAdvanceWaitingSegmentIndex(
   }
 
   if (
-    previousSegment.participantId != null
-    || waitingSegment.participantId != null
+    previousParticipantId != null
+    || waitingParticipantId != null
     || previousSegment.catId != null
     || waitingSegment.catId != null
   ) {
@@ -614,9 +634,10 @@ function resolveSequentialTurnTargetIndex(
   orderedTargets: SequentialTurnTargetIdentity[],
   segment: LiveIndicatorSegmentState,
 ): number {
-  if (segment.participantId) {
+  const logicalParticipantId = resolveLogicalSegmentParticipantId(segment);
+  if (logicalParticipantId) {
     const participantIndex = orderedTargets.findIndex((target) =>
-      target.participantId === segment.participantId);
+      target.participantId === logicalParticipantId);
     if (participantIndex >= 0) {
       return participantIndex;
     }
@@ -650,7 +671,7 @@ function reindexWaitingSegment(
     sourceMessageId: waitingSegment.sourceMessageId,
     laneId: waitingSegment.laneId,
     targetStateId: waitingSegment.targetStateId,
-    participantId: waitingSegment.participantId,
+    participantId: resolveLogicalSegmentParticipantId(waitingSegment),
     catId: waitingSegment.catId,
     speakerLabel: waitingSegment.speakerLabel,
     revealIdentity: true,
@@ -853,9 +874,10 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
         return targetStateId !== primarySegment.targetStateId;
       }
 
+      const primaryParticipantId = resolveLogicalSegmentParticipantId(primarySegment);
       const participantId = target.participant.participantId?.trim() || null;
-      if (primarySegment.participantId && participantId) {
-        return participantId !== primarySegment.participantId;
+      if (primaryParticipantId && participantId) {
+        return participantId !== primaryParticipantId;
       }
 
       const participantName = target.participant.participantName?.trim() || null;
@@ -865,7 +887,11 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
       return true;
     }
 
-    if (primarySegment.laneId || primarySegment.targetStateId || primarySegment.participantId) {
+    if (
+      primarySegment.laneId
+      || primarySegment.targetStateId
+      || resolveLogicalSegmentParticipantId(primarySegment)
+    ) {
       return false;
     }
 
@@ -874,7 +900,7 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
       return activeTargets.length > 0;
     }
 
-    const matchingLabelCount = activeTargets.filter((target) =>
+    const matchingLabelCount = (activeTurn.targetStatuses ?? activeTargets).filter((target) =>
       (target.participant.participantName?.trim() || null) === primarySpeakerLabel).length;
     return matchingLabelCount > 1;
   }
@@ -1135,7 +1161,7 @@ export function useLiveIndicator<
       sourceMessageId: current.sourceMessageId,
       laneId: current.laneId,
       targetStateId: current.targetStateId,
-      participantId: current.revealIdentity ? current.participantId : null,
+      participantId: current.participantId,
       catId: current.revealIdentity ? current.catId : current.defaultRecipientCatId,
       speakerLabel: current.revealIdentity ? current.speakerLabel : current.fallbackSpeakerLabel,
       revealIdentity: current.revealIdentity,
