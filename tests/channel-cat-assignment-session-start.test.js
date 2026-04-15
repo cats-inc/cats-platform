@@ -8,6 +8,7 @@ import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   buildChatConversationId,
+  buildDirectLaneTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 
@@ -190,6 +191,80 @@ test('assigning a cat emits session_started metadata keyed by participantId', as
     assert.equal(
       sessionStartedMessage.body,
       'Agent-Spawn connected to cats-runtime session session-1.\n(cwd: C:/repo/cats-platform)',
+    );
+  });
+});
+
+test('assigning a cat keeps direct-lane transport binding on session_start_failed metadata', async () => {
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.createSession = async () => {
+    throw new Error('runtime create failed');
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Agent-Spawn',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Spawn target direct failure',
+        topic: 'Keep direct-lane binding on session_start_failed messages.',
+        roomMode: 'direct_cat_chat',
+        defaultRecipientId: catId,
+        repoPath: 'C:/repo/cats-platform',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const assignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(assignResponse.status, 201);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+    const assignmentParticipantId = channelPayload.channel.catAssignments?.[0]?.participantId;
+    assert.equal(typeof assignmentParticipantId, 'string');
+    const sessionStartFailedMessage = channelPayload.channel.messages.find(
+      (message) => message.metadata?.event === 'session_start_failed',
+    );
+    assert.ok(sessionStartFailedMessage);
+    assert.equal(sessionStartFailedMessage.metadata?.targetId, assignmentParticipantId);
+    assert.equal(
+      sessionStartFailedMessage.metadata?.conversationId,
+      buildChatConversationId(channelId),
+    );
+    assert.equal(sessionStartFailedMessage.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+    assert.equal(
+      sessionStartFailedMessage.metadata?.transportBindingId,
+      buildDirectLaneTransportBindingId(channelId),
     );
   });
 });
