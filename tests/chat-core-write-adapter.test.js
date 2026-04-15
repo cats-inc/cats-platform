@@ -597,6 +597,75 @@ test('chatStore.write projects ready participant leases that start with the acti
   assert.equal(sessions[0]?.metadata.targetStateId, targetStateId);
 });
 
+test('chatStore.write projects a single-target reply even when transcript targetStateId drifted', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-15T00:05:52.000Z');
+  const responseAt = new Date('2026-04-15T00:05:58.000Z');
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Single-target reply drift',
+      topic: 'Project canonical reply records when transcript target ids drift.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Recover this reply from a drifted target state id.' },
+    runtimeClient,
+    seededAt,
+  );
+  const activeTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+
+  const repliedState = appendMessage(
+    begun.state,
+    channelId,
+    {
+      senderKind: 'orchestrator',
+      senderName: 'Chat',
+      body: 'Recovered from a drifted target id.',
+    },
+    responseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-single-target-drift',
+        targetStateId: 'target-orchestrator-drifted',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'orchestrator',
+        targetId: 'orchestrator',
+        sessionId: 'session-single-target-drift',
+        routingTrigger: 'room_default',
+        dispatchDepth: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  await store.write(repliedState);
+  const core = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const projectedTurn = core.turns.find((turn) =>
+    turn.conversationId === conversationId && turn.id === activeTurn.id);
+  assert.ok(projectedTurn);
+
+  const lanes = readOrderedTurnLanes(core, activeTurn.id);
+  assert.equal(lanes.length, 1);
+  assert.equal(lanes[0]?.status, 'completed');
+  const sessions = core.sessions.filter((session) => session.turnId === activeTurn.id);
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0]?.id, 'session-single-target-drift');
+  assert.equal(sessions[0]?.status, 'completed');
+  assert.equal(readTurnSegments(core, activeTurn.id)[0]?.content, 'Recovered from a drifted target id.');
+});
+
 test('chatStore.write derives startup recovery replay for initial sequential queues from persisted handoff checkpoints', async () => {
   let { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const seededAt = new Date('2026-04-15T00:06:00.000Z');

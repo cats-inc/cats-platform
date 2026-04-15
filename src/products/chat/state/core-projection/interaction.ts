@@ -563,6 +563,11 @@ function mapLaneStatus(
   responseMessages: ChatMessage[],
   sessionId: string | null,
 ): LaneRecordStatus {
+  const hasTerminalResponse = responseMessages.some((message) => message.metadata?.terminal === true);
+  if (hasTerminalResponse) {
+    return 'completed';
+  }
+
   switch (target.status) {
     case 'completed':
       return 'completed';
@@ -588,7 +593,11 @@ function mapLaneStatus(
 function mapSessionStatus(
   target: RoomWorkflowTargetState,
   lease: ParticipantExecutionLease | null,
+  responseMessages: ChatMessage[],
 ): SessionRecordStatus {
+  if (responseMessages.some((message) => message.metadata?.terminal === true)) {
+    return 'completed';
+  }
   if (target.status === 'failed' || target.status === 'blocked') {
     return 'failed';
   }
@@ -752,7 +761,7 @@ export function projectChatChannelInteractionToCore(
               laneId,
             ),
             runtimeKey: target.participant.participantName,
-            status: mapSessionStatus(target, lease),
+            status: mapSessionStatus(target, lease, responseMessages),
             createdAt: lease?.startedAt ?? turn.startedAt,
             startedAt: target.startedAt ?? lease?.startedAt ?? turn.startedAt,
             completedAt: target.completedAt,
