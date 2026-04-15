@@ -622,6 +622,9 @@ Known follow-ups:
   channel `containerId` / `conversationId` through one shared canonical helper,
   so runtime lifecycle metadata and repair fallbacks no longer maintain
   separate ad-hoc channel-identity derivations
+- channel stream routes now also resolve `containerId` / `conversationId`
+  through that same canonical helper, so server-side live trace / SSE speaker
+  payloads no longer keep a separate stream-only channel-identity derivation
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

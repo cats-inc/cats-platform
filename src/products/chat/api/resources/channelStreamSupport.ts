@@ -8,16 +8,17 @@ import {
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
-import { requireChannel } from '../../state/model/index.js';
+import {
+  requireChannel,
+  resolveChannelCanonicalIdentity,
+} from '../../state/model/index.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 import {
   awaitNextStreamTarget,
   readStreamTargetSignalVersion,
 } from './streamTargetSignal.js';
 import {
-  buildChatConversationId,
   buildChatLaneId,
-  resolveChatChannelContainerId,
 } from '../../../../shared/chatCoreIds.js';
 
 export interface ChannelStreamTarget {
@@ -428,16 +429,13 @@ export async function waitForChannelStreamTarget(
       const activeTurn = resolveActiveTurn(channel);
       const turnId = activeTurn?.id?.trim() || null;
       const sourceMessageId = activeTurn?.sourceMessageId?.trim() || null;
-      const containerId = resolveChatChannelContainerId({
-        channelId,
-        parallelChatGroups: state.parallelChatGroups,
-      });
+      const canonicalIdentity = resolveChannelCanonicalIdentity(state, channelId);
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
           event: 'stream_target_ready',
           channelId,
-          containerId,
-          conversationId: buildChatConversationId(channelId),
+          containerId: canonicalIdentity.containerId,
+          conversationId: canonicalIdentity.conversationId,
           turnId,
           laneId: streamTarget.laneId,
           sourceMessageId,
@@ -478,16 +476,13 @@ export async function waitForNextChannelStreamTarget(
       const activeTurn = resolveActiveTurn(channel);
       const turnId = activeTurn?.id?.trim() || null;
       const sourceMessageId = activeTurn?.sourceMessageId?.trim() || null;
-      const containerId = resolveChatChannelContainerId({
-        channelId,
-        parallelChatGroups: state.parallelChatGroups,
-      });
+      const canonicalIdentity = resolveChannelCanonicalIdentity(state, channelId);
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
           event: 'stream_target_ready',
           channelId,
-          containerId,
-          conversationId: buildChatConversationId(channelId),
+          containerId: canonicalIdentity.containerId,
+          conversationId: canonicalIdentity.conversationId,
           turnId,
           laneId: streamTarget.laneId,
           sourceMessageId,

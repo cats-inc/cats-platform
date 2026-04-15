@@ -1,15 +1,12 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import {
-  buildChatConversationId,
-  resolveChatChannelContainerId,
-} from '../../../../shared/chatCoreIds.js';
-import {
   buildRuntimeDeliveryContentBlocksFromResultPayload,
 } from '../../../../platform/orchestration/index.js';
 import { normalizeRuntimeContentBlock } from '../../../../shared/runtimeContentBlocks.js';
 import { activateChannelSessions } from '../../state/runtimeActions.js';
 import {
+  resolveChannelCanonicalIdentity,
   requireChannel,
   setChannelOrchestratorLease,
   setChannelParticipantLease,
@@ -180,11 +177,8 @@ async function streamChannelTarget(input: {
   const streamState = await context.dependencies.chatStore.read();
   const streamChannel = requireChannel(streamState, channelId);
   const activeTurn = streamChannel.roomRouting?.workflow?.activeTurn ?? null;
-  const containerId = resolveChatChannelContainerId({
-    channelId,
-    parallelChatGroups: streamState.parallelChatGroups,
-  });
-  const conversationId = buildChatConversationId(channelId);
+  const canonicalIdentity = resolveChannelCanonicalIdentity(streamState, channelId);
+  const { containerId, conversationId } = canonicalIdentity;
   const turnId = typeof activeTurn?.id === 'string' && activeTurn.id.trim().length > 0
     ? activeTurn.id.trim()
     : null;
@@ -510,16 +504,14 @@ async function handleRestStreamChannel(
 
     if (!streamTarget?.sessionId) {
       const settledState = await context.dependencies.chatStore.read();
-      const containerId = resolveChatChannelContainerId({
-        channelId,
-        parallelChatGroups: settledState.parallelChatGroups,
-      });
+      const canonicalIdentity = resolveChannelCanonicalIdentity(settledState, channelId);
+      const { containerId, conversationId } = canonicalIdentity;
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
           event: 'stream_attach_closed',
           channelId,
           containerId,
-          conversationId: buildChatConversationId(channelId),
+          conversationId,
           turnId: null,
           laneId: streamTarget?.laneId ?? null,
           sourceMessageId: null,
@@ -535,7 +527,7 @@ async function handleRestStreamChannel(
         ...buildStreamSpeakerPayload({
           ...(streamTarget ?? {}),
           containerId,
-          conversationId: buildChatConversationId(channelId),
+          conversationId,
         }),
       });
       context.response.end();
