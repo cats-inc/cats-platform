@@ -649,6 +649,10 @@ Known follow-ups:
   through that same helper, so chat participants, containers, transport
   bindings, and conversation/task metadata all share one conversation-id
   source instead of keeping a parallel record-builder derivation
+- operator-loop and live-indicator fallback conversation resolution now also go
+  through the shared canonical helper, so the only remaining direct
+  `channelId -> conversation/container` mapping lives in the helper definition
+  itself instead of lingering in renderer/operator fallback code
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

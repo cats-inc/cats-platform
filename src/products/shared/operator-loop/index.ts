@@ -17,7 +17,7 @@ import {
   resolveGuardReason,
   resolveLatestWorkflowRecommendation,
 } from './metadata.js';
-import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
+import { resolveChannelCanonicalIdentity } from '../../chat/state/model/index.js';
 import type {
   ChatOperatorChannelIdentity,
   ChatOperatorSnapshot,
@@ -40,7 +40,7 @@ export type {
 } from './types.js';
 
 export function resolveChatConversationId(channelId: string): string {
-  return buildChatConversationId(channelId);
+  return resolveChannelCanonicalIdentity(null, channelId).conversationId;
 }
 
 function readChatOperatorChannelIdentity(
