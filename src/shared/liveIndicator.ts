@@ -2,6 +2,7 @@ import {
   normalizeRuntimeContentBlock,
   type LiveIndicatorContentBlock,
 } from './runtimeContentBlocks.js';
+import { buildChatConversationId } from './chatCoreIds.js';
 import { isBrowserLiveTraceEnabled, pushBrowserLiveTrace } from './liveTrace.js';
 export type { LiveIndicatorContentBlock } from './runtimeContentBlocks.js';
 
@@ -1745,9 +1746,16 @@ function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMe
   }
 
   const lastMessage = input.messages.at(-1);
+  const channelId = lastMessage?.channelId ?? null;
   pushBrowserLiveTrace({
     event: 'visibility_decision',
-    channelId: lastMessage?.channelId ?? null,
+    channelId,
+    conversationId: channelId ? buildChatConversationId(channelId) : null,
+    turnId: readMessageTurnId(lastMessage ?? null),
+    laneId: input.liveIndicator.laneId,
+    sourceMessageId: input.liveIndicator.sourceMessageId,
+    targetStateId: input.liveIndicator.targetStateId,
+    sessionId: input.liveIndicator.sessionId,
     speakerLabel: input.liveIndicator.speakerLabel,
     participantId: input.liveIndicator.participantId,
     catId: input.liveIndicator.catId,
@@ -1764,6 +1772,9 @@ function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMe
     },
     signature: [
       input.liveIndicator.phase,
+      input.liveIndicator.laneId ?? '',
+      input.liveIndicator.targetStateId ?? '',
+      input.liveIndicator.sourceMessageId ?? '',
       input.liveIndicator.sessionId ?? '',
       input.liveIndicator.participantId ?? '',
       input.liveIndicator.speakerLabel ?? '',
@@ -1832,6 +1843,16 @@ function readMessageSourceMessageId(
 ): string | null {
   const metadata = asRecord(message.metadata);
   return readString(metadata?.sourceMessageId);
+}
+
+function readMessageTurnId(
+  message: LiveIndicatorTranscriptMessageLike | null | undefined,
+): string | null {
+  if (!message) {
+    return null;
+  }
+  const metadata = asRecord(message.metadata);
+  return readString(metadata?.turnId);
 }
 
 function readMessageSegmentIndex(

@@ -1466,6 +1466,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
 
     const streamBody = await streamBodyPromise;
     assert.match(streamBody, /"speakerLabel":"First Cat"/u);
+    assert.match(streamBody, new RegExp(`"turnId":"${begunTurn.id}"`, 'u'));
     assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
     assert.match(streamBody, new RegExp(`"targetStateId":"${firstTargetStateId}"`, 'u'));
     assert.match(streamBody, /"text":"First speaker is thinking"/u);
@@ -2051,6 +2052,7 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
     await stream.reader.cancel();
 
     assert.match(streamBody, /"speakerLabel":"Claude Cat"/u);
+    assert.match(streamBody, new RegExp(`"turnId":"${begunTurn.id}"`, 'u'));
     assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
     assert.match(streamBody, new RegExp(`"laneId":"${firstLaneId}"`, 'u'));
     assert.match(streamBody, /"targetStateId":"target-state-concurrent-1"/u);

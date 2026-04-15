@@ -27,6 +27,11 @@ test('routeChatDebugResourceApi returns live trace entries when enabled', async 
   pushServerLiveTrace({
     event: 'stream_target_ready',
     channelId: 'channel-1',
+    conversationId: 'conversation-channel-1',
+    turnId: 'turn-1',
+    laneId: 'lane-1',
+    sourceMessageId: 'message-1',
+    targetStateId: 'target-1',
     reason: 'active_workflow_running_target',
     signature: 'enabled-trace',
   });
@@ -49,6 +54,11 @@ test('routeChatDebugResourceApi returns live trace entries when enabled', async 
   assert.equal(payload.enabled, true);
   assert.equal(payload.entries.length, 1);
   assert.equal(payload.entries[0].event, 'stream_target_ready');
+  assert.equal(payload.entries[0].conversationId, 'conversation-channel-1');
+  assert.equal(payload.entries[0].turnId, 'turn-1');
+  assert.equal(payload.entries[0].laneId, 'lane-1');
+  assert.equal(payload.entries[0].sourceMessageId, 'message-1');
+  assert.equal(payload.entries[0].targetStateId, 'target-1');
 });
 
 test('routeChatDebugResourceApi reports disabled tracing when the env flag is off', async () => {

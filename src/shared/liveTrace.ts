@@ -4,6 +4,11 @@ export interface LiveTraceEntry {
   origin: 'browser' | 'server';
   event: string;
   channelId: string | null;
+  conversationId: string | null;
+  turnId: string | null;
+  laneId: string | null;
+  sourceMessageId: string | null;
+  targetStateId: string | null;
   sessionId: string | null;
   participantId: string | null;
   catId: string | null;
@@ -24,6 +29,11 @@ interface BrowserLiveTraceStore {
 export interface PushLiveTraceInput {
   event: string;
   channelId?: string | null;
+  conversationId?: string | null;
+  turnId?: string | null;
+  laneId?: string | null;
+  sourceMessageId?: string | null;
+  targetStateId?: string | null;
   sessionId?: string | null;
   participantId?: string | null;
   catId?: string | null;
@@ -151,6 +161,11 @@ function buildTraceEntry(
     origin,
     event: input.event,
     channelId: input.channelId ?? null,
+    conversationId: input.conversationId ?? null,
+    turnId: input.turnId ?? null,
+    laneId: input.laneId ?? null,
+    sourceMessageId: input.sourceMessageId ?? null,
+    targetStateId: input.targetStateId ?? null,
     sessionId: input.sessionId ?? null,
     participantId: input.participantId ?? null,
     catId: input.catId ?? null,
@@ -173,6 +188,11 @@ function buildTraceSignature(input: PushLiveTraceInput): string {
   return [
     input.event,
     input.channelId ?? '',
+    input.conversationId ?? '',
+    input.turnId ?? '',
+    input.laneId ?? '',
+    input.sourceMessageId ?? '',
+    input.targetStateId ?? '',
     input.sessionId ?? '',
     input.participantId ?? '',
     input.catId ?? '',

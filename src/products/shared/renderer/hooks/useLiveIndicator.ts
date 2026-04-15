@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
+import {
+  buildChatConversationId,
+  buildChatLaneId,
+} from '../../../../shared/chatCoreIds.js';
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import {
   applyLiveIndicatorEvent,
@@ -1094,6 +1097,10 @@ export function useLiveIndicator<
   }
 
   function traceBrowser(event: string, input: {
+    turnId?: string | null;
+    laneId?: string | null;
+    sourceMessageId?: string | null;
+    targetStateId?: string | null;
     sessionId?: string | null;
     participantId?: string | null;
     catId?: string | null;
@@ -1106,9 +1113,22 @@ export function useLiveIndicator<
       return;
     }
 
+    const activeTurnId = readTraceString(selectedChannelRef.current?.roomRouting.workflow.activeTurn?.id);
+    const primarySegment = resolvePrimaryLiveIndicatorSegment(stateRef.current);
     pushBrowserLiveTrace({
       event,
       channelId,
+      conversationId: channelId ? buildChatConversationId(channelId) : null,
+      turnId: readTraceString(input.turnId) ?? activeTurnId,
+      laneId: readTraceString(input.laneId) ?? primarySegment?.laneId ?? stateRef.current.laneId,
+      sourceMessageId:
+        readTraceString(input.sourceMessageId)
+        ?? primarySegment?.sourceMessageId
+        ?? stateRef.current.sourceMessageId,
+      targetStateId:
+        readTraceString(input.targetStateId)
+        ?? primarySegment?.targetStateId
+        ?? stateRef.current.targetStateId,
       sessionId: readTraceString(input.sessionId),
       participantId: readTraceString(input.participantId),
       catId: readTraceString(input.catId),
@@ -1201,6 +1221,10 @@ export function useLiveIndicator<
       );
       if (!streamCursorDecision.accept) {
         traceBrowser('stream_event_deduped', {
+          turnId: readTraceString(data.turnId),
+          laneId: readTraceString(data.laneId),
+          sourceMessageId: readTraceString(data.sourceMessageId),
+          targetStateId: readTraceString(data.targetStateId),
           sessionId: readTraceString(data.sessionId),
           participantId: readTraceString(data.participantId),
           catId: readTraceString(data.catId),
@@ -1237,6 +1261,10 @@ export function useLiveIndicator<
         && !shouldReconnectOngoingWorkflow;
 
       traceBrowser('stream_event', {
+        turnId: readTraceString(data.turnId),
+        laneId: readTraceString(data.laneId),
+        sourceMessageId: readTraceString(data.sourceMessageId),
+        targetStateId: readTraceString(data.targetStateId),
         sessionId: readTraceString(data.sessionId),
         participantId: readTraceString(data.participantId),
         catId: readTraceString(data.catId),
@@ -1256,6 +1284,10 @@ export function useLiveIndicator<
         if (shouldRetrySessionClose) {
           if (shouldIgnoreSealedBoundary) {
             traceBrowser('stream_session_close_ignored', {
+              turnId: readTraceString(data.turnId),
+              laneId: previous.laneId,
+              sourceMessageId: previous.sourceMessageId,
+              targetStateId: previous.targetStateId,
               participantId: previous.participantId,
               catId: previous.catId,
               speakerLabel: previous.speakerLabel,
@@ -1265,6 +1297,10 @@ export function useLiveIndicator<
           }
           if (shouldPinReplyCommit) {
             traceBrowser('stream_reply_commit_pending', {
+              turnId: readTraceString(data.turnId),
+              laneId: previous.laneId,
+              sourceMessageId: previous.sourceMessageId,
+              targetStateId: previous.targetStateId,
               participantId: previous.participantId,
               catId: previous.catId,
               speakerLabel: previous.speakerLabel,
@@ -1274,6 +1310,10 @@ export function useLiveIndicator<
           }
           if (!shouldReconnectFollowupTarget && !shouldReconnectOngoingWorkflow) {
             traceBrowser('stream_session_close_no_followup', {
+              turnId: readTraceString(data.turnId),
+              laneId: previous.laneId,
+              sourceMessageId: previous.sourceMessageId,
+              targetStateId: previous.targetStateId,
               participantId: previous.participantId,
               catId: previous.catId,
               speakerLabel: previous.speakerLabel,
@@ -1283,6 +1323,10 @@ export function useLiveIndicator<
           }
           if (!shouldReconnectFollowupTarget) {
             traceBrowser('stream_session_close_reconnect', {
+              turnId: readTraceString(data.turnId),
+              laneId: previous.laneId,
+              sourceMessageId: previous.sourceMessageId,
+              targetStateId: previous.targetStateId,
               participantId: previous.participantId,
               catId: previous.catId,
               speakerLabel: previous.speakerLabel,
@@ -1292,6 +1336,10 @@ export function useLiveIndicator<
           }
           const nextSpeakerState = resolveLiveIndicatorSpeakerState(waitingState, data);
           traceBrowser('stream_waiting_restart', {
+            turnId: readTraceString(data.turnId),
+            laneId: nextSpeakerState.laneId,
+            sourceMessageId: nextSpeakerState.sourceMessageId,
+            targetStateId: nextSpeakerState.targetStateId,
             participantId: readTraceString(data.participantId),
             catId: nextSpeakerState.catId,
             speakerLabel: nextSpeakerState.speakerLabel,
@@ -1320,6 +1368,10 @@ export function useLiveIndicator<
       const source = new EventSource(`/api/channels/${channelId}/stream`);
       sourceRef.current = source;
       traceBrowser('stream_connect', {
+        turnId: activeTurn?.id ?? null,
+        laneId: waitingIndicatorInputsRef.current.laneId,
+        sourceMessageId: waitingIndicatorInputsRef.current.sourceMessageId,
+        targetStateId: waitingIndicatorInputsRef.current.targetStateId,
         reason: 'open_source',
         details: {
           busy,
@@ -1356,6 +1408,10 @@ export function useLiveIndicator<
           );
         if (!shouldReconnectAfterSourceTermination) {
           traceBrowser('stream_source_error_ignored', {
+            turnId: selectedChannelRef.current?.roomRouting.workflow.activeTurn?.id ?? null,
+            laneId: stateRef.current.laneId,
+            sourceMessageId: stateRef.current.sourceMessageId,
+            targetStateId: stateRef.current.targetStateId,
             participantId: stateRef.current.participantId,
             catId: stateRef.current.catId,
             speakerLabel: stateRef.current.speakerLabel,
@@ -1371,6 +1427,16 @@ export function useLiveIndicator<
           updateIndicatorState((previous) => mergeWaitingIndicatorTimelineState(previous, waitingState));
         }
         traceBrowser('stream_source_error', {
+          turnId: selectedChannelRef.current?.roomRouting.workflow.activeTurn?.id ?? null,
+          laneId: shouldReconnectFollowupTarget
+            ? waitingIndicatorInputsRef.current.laneId
+            : stateRef.current.laneId,
+          sourceMessageId: shouldReconnectFollowupTarget
+            ? waitingIndicatorInputsRef.current.sourceMessageId
+            : stateRef.current.sourceMessageId,
+          targetStateId: shouldReconnectFollowupTarget
+            ? waitingIndicatorInputsRef.current.targetStateId
+            : stateRef.current.targetStateId,
           reason: shouldReconnectFollowupTarget
             ? 'eventsource_terminated_followup_handoff'
             : shouldReconnectOngoingWorkflow
@@ -1391,6 +1457,10 @@ export function useLiveIndicator<
       closeSource();
       if (shouldPinLiveIndicatorUntilPersistedReply(stateRef.current, selectedChannelRef.current)) {
         traceBrowser('indicator_pin_pending_reply', {
+          turnId: selectedChannelRef.current?.roomRouting.workflow.activeTurn?.id ?? null,
+          laneId: stateRef.current.laneId,
+          sourceMessageId: stateRef.current.sourceMessageId,
+          targetStateId: stateRef.current.targetStateId,
           participantId: stateRef.current.participantId,
           catId: stateRef.current.catId,
           speakerLabel: stateRef.current.speakerLabel,
@@ -1402,6 +1472,10 @@ export function useLiveIndicator<
         return undefined;
       }
       traceBrowser('indicator_reset', {
+        turnId: activeTurn?.id ?? null,
+        laneId: waitingIndicatorInputsRef.current.laneId,
+        sourceMessageId: waitingIndicatorInputsRef.current.sourceMessageId,
+        targetStateId: waitingIndicatorInputsRef.current.targetStateId,
         reason: 'waiting_not_needed',
         details: {
           busy,
@@ -1430,6 +1504,10 @@ export function useLiveIndicator<
       return next;
     });
     traceBrowser('waiting_started', {
+      turnId: activeTurn?.id ?? null,
+      laneId: waitingIndicatorInputs.laneId,
+      sourceMessageId: waitingIndicatorInputs.sourceMessageId,
+      targetStateId: waitingIndicatorInputs.targetStateId,
       participantId: waitingIndicatorInputs.revealIdentity
         ? waitingIndicatorInputs.participantId
         : null,

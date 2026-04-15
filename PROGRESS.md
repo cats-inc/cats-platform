@@ -340,6 +340,10 @@ Known follow-ups:
   `conversationId`, so chat canonical writes preserve the full
   `container/conversation/turn/lane/session` tuple even for parallel-group
   member channels and repaired lifecycle messages
+- live trace/debug entries plus stream speaker payloads now also carry
+  canonical `conversationId` / `turnId` / `laneId` / `sourceMessageId` /
+  `targetStateId`, so engine debugging no longer has to reconstruct lane
+  identity from `sessionId` and ad hoc trace details alone
 - core runtime-delivery manifests, control-plane views, recovery views, and
   operator inbox items now also surface `containerId`, and the shared
   task-view query/filter seam accepts `containerId`, so automation can facet

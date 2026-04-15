@@ -17,12 +17,22 @@ test('server live trace keeps a bounded deduplicated buffer', () => {
   pushServerLiveTrace({
     event: 'stream_target_ready',
     channelId: 'channel-1',
+    conversationId: 'conversation-channel-1',
+    turnId: 'turn-1',
+    laneId: 'lane-1',
+    sourceMessageId: 'message-1',
+    targetStateId: 'target-1',
     reason: 'active_workflow_running_target',
     signature: 'duplicate-entry',
   });
   pushServerLiveTrace({
     event: 'stream_target_ready',
     channelId: 'channel-1',
+    conversationId: 'conversation-channel-1',
+    turnId: 'turn-1',
+    laneId: 'lane-1',
+    sourceMessageId: 'message-1',
+    targetStateId: 'target-1',
     reason: 'active_workflow_running_target',
     signature: 'duplicate-entry',
   });
@@ -60,11 +70,21 @@ test('browser live trace respects the enabled flag and records entries once enab
   pushBrowserLiveTrace({
     event: 'stream_connect',
     channelId: 'channel-enabled',
+    conversationId: 'conversation-channel-enabled',
+    turnId: 'turn-enabled',
+    laneId: 'lane-enabled',
+    sourceMessageId: 'message-enabled',
+    targetStateId: 'target-enabled',
     reason: 'open_source',
     signature: 'enabled-entry',
   });
 
   const entries = readBrowserLiveTrace();
   assert.equal(entries.at(-1)?.channelId, 'channel-enabled');
+  assert.equal(entries.at(-1)?.conversationId, 'conversation-channel-enabled');
+  assert.equal(entries.at(-1)?.turnId, 'turn-enabled');
+  assert.equal(entries.at(-1)?.laneId, 'lane-enabled');
+  assert.equal(entries.at(-1)?.sourceMessageId, 'message-enabled');
+  assert.equal(entries.at(-1)?.targetStateId, 'target-enabled');
   assert.equal(entries.at(-1)?.reason, 'open_source');
 });

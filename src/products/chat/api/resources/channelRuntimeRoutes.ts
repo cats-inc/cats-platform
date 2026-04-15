@@ -1,5 +1,6 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
+import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import {
   buildRuntimeDeliveryContentBlocksFromResultPayload,
 } from '../../../../platform/orchestration/index.js';
@@ -48,6 +49,8 @@ import {
 import { publishRoomMutation } from '../transportEventPublisher.js';
 
 function buildStreamSpeakerPayload(input: {
+  conversationId?: string | null;
+  turnId?: string | null;
   sessionId?: string | null;
   laneId?: string | null;
   sourceMessageId?: string | null;
@@ -59,6 +62,8 @@ function buildStreamSpeakerPayload(input: {
   targetStateId?: string | null;
 }): Record<string, unknown> {
   return {
+    conversationId: input.conversationId ?? null,
+    turnId: input.turnId ?? null,
     sessionId: input.sessionId ?? null,
     laneId: input.laneId ?? null,
     ...(input.sourceMessageId != null ? { sourceMessageId: input.sourceMessageId } : {}),
@@ -170,6 +175,10 @@ async function streamChannelTarget(input: {
   const streamState = await context.dependencies.chatStore.read();
   const streamChannel = requireChannel(streamState, channelId);
   const activeTurn = streamChannel.roomRouting?.workflow?.activeTurn ?? null;
+  const conversationId = buildChatConversationId(channelId);
+  const turnId = typeof activeTurn?.id === 'string' && activeTurn.id.trim().length > 0
+    ? activeTurn.id.trim()
+    : null;
   const sourceMessageId = typeof activeTurn?.sourceMessageId === 'string'
     && activeTurn.sourceMessageId.trim().length > 0
     ? activeTurn.sourceMessageId.trim()
@@ -180,15 +189,16 @@ async function streamChannelTarget(input: {
       pushServerLiveTrace({
         event: 'stream_attach_open',
         channelId,
+        conversationId,
+        turnId,
+        laneId: target.laneId,
+        sourceMessageId,
+        targetStateId: target.targetStateId,
         sessionId: target.sessionId,
         participantId: target.participantId,
         catId: target.catId,
         speakerLabel: target.speakerLabel,
         reason: 'attach_ready_session',
-        details: {
-          laneId: target.laneId,
-          targetStateId: target.targetStateId,
-        },
       });
     }
     publishStreamAttachMutationEvents(context, channelId);
@@ -200,6 +210,8 @@ async function streamChannelTarget(input: {
       },
       ...buildStreamSpeakerPayload({
         ...target,
+        conversationId,
+        turnId,
         sourceMessageId,
       }),
     });
@@ -237,6 +249,8 @@ async function streamChannelTarget(input: {
                 synthesizedFromResult: true,
                 ...buildStreamSpeakerPayload({
                   ...target,
+                  conversationId,
+                  turnId,
                   sourceMessageId,
                 }),
               });
@@ -250,6 +264,8 @@ async function streamChannelTarget(input: {
             ...event.data,
             ...buildStreamSpeakerPayload({
               ...target,
+              conversationId,
+              turnId,
               sourceMessageId,
             }),
           });
@@ -287,22 +303,25 @@ async function streamChannelTarget(input: {
         pushServerLiveTrace({
           event: 'stream_attach_error',
           channelId,
+          conversationId,
+          turnId,
+          laneId: target.laneId,
+          sourceMessageId,
+          targetStateId: target.targetStateId,
           sessionId: target.sessionId,
           participantId: target.participantId,
           catId: target.catId,
           speakerLabel: target.speakerLabel,
           reason: 'runtime_stream_unavailable',
-        details: {
-          laneId: target.laneId,
-          targetStateId: target.targetStateId,
-        },
-      });
+        });
       }
       emitEvent('error', {
         type: 'error',
         text: 'Runtime stream unavailable',
         ...buildStreamSpeakerPayload({
           ...target,
+          conversationId,
+          turnId,
           sourceMessageId,
         }),
       });
@@ -479,6 +498,11 @@ async function handleRestStreamChannel(
         pushServerLiveTrace({
           event: 'stream_attach_closed',
           channelId,
+          conversationId: buildChatConversationId(channelId),
+          turnId: null,
+          laneId: streamTarget?.laneId ?? null,
+          sourceMessageId: null,
+          targetStateId: streamTarget?.targetStateId ?? null,
           participantId: streamTarget?.participantId ?? null,
           catId: streamTarget?.catId ?? null,
           speakerLabel: streamTarget?.speakerLabel ?? null,

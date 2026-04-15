@@ -14,7 +14,10 @@ import {
   awaitNextStreamTarget,
   readStreamTargetSignalVersion,
 } from './streamTargetSignal.js';
-import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
+import {
+  buildChatConversationId,
+  buildChatLaneId,
+} from '../../../../shared/chatCoreIds.js';
 
 export interface ChannelStreamTarget {
   sessionId: string | null;
@@ -421,18 +424,23 @@ export async function waitForChannelStreamTarget(
     const resolvedStreamTarget = resolveChannelStreamTargetWithReason(channel);
     const streamTarget = resolvedStreamTarget.target;
     if (streamTarget?.sessionId) {
+      const activeTurn = resolveActiveTurn(channel);
+      const turnId = activeTurn?.id?.trim() || null;
+      const sourceMessageId = activeTurn?.sourceMessageId?.trim() || null;
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
           event: 'stream_target_ready',
           channelId,
+          conversationId: buildChatConversationId(channelId),
+          turnId,
+          laneId: streamTarget.laneId,
+          sourceMessageId,
+          targetStateId: streamTarget.targetStateId,
           sessionId: streamTarget.sessionId,
           participantId: streamTarget.participantId,
           catId: streamTarget.catId,
           speakerLabel: streamTarget.speakerLabel,
           reason: resolvedStreamTarget.reason,
-          details: {
-            laneId: streamTarget.laneId,
-          },
         });
       }
       return streamTarget;
@@ -461,18 +469,24 @@ export async function waitForNextChannelStreamTarget(
     const resolvedStreamTarget = resolveWorkflowStreamTargetWithReason(channel);
     const streamTarget = resolvedStreamTarget.target;
     if (streamTarget && streamTarget.targetStateId !== previousTargetStateId && streamTarget.sessionId) {
+      const activeTurn = resolveActiveTurn(channel);
+      const turnId = activeTurn?.id?.trim() || null;
+      const sourceMessageId = activeTurn?.sourceMessageId?.trim() || null;
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
           event: 'stream_target_ready',
           channelId,
+          conversationId: buildChatConversationId(channelId),
+          turnId,
+          laneId: streamTarget.laneId,
+          sourceMessageId,
+          targetStateId: streamTarget.targetStateId,
           sessionId: streamTarget.sessionId,
           participantId: streamTarget.participantId,
           catId: streamTarget.catId,
           speakerLabel: streamTarget.speakerLabel,
           reason: resolvedStreamTarget.reason,
           details: {
-            laneId: streamTarget.laneId,
-            targetStateId: streamTarget.targetStateId,
             previousTargetStateId,
           },
         });
