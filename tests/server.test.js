@@ -2897,6 +2897,357 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
   }, chatStore);
 });
 
+test('GET /api/channels/:id/stream keeps concurrent text buffered until every ready lane emits a renderable event', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:12:00.000Z');
+  const secondReadyAt = new Date('2026-03-11T00:12:02.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Claude Cat',
+      provider: 'claude',
+      roles: ['researcher'],
+    },
+    seededAt,
+  );
+  const firstCatId = state.cats[0].id;
+  state = createCat(
+    state,
+    {
+      name: 'Codex Cat',
+      provider: 'codex',
+      roles: ['reviewer'],
+    },
+    seededAt,
+  );
+  const secondCatId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Concurrent text barrier room',
+      topic: 'Hold text until every ready concurrent lane has emitted at least one renderable event.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId: firstCatId }, seededAt);
+  state = assignCatToChannel(state, channelId, { catId: secondCatId }, seededAt);
+  const seededChannel = requireChannel(state, channelId);
+  const firstParticipantId = seededChannel.catAssignments.find(
+    (assignment) => assignment.catId === firstCatId,
+  )?.participantId;
+  const secondParticipantId = seededChannel.catAssignments.find(
+    (assignment) => assignment.catId === secondCatId,
+  )?.participantId;
+  assert.ok(firstParticipantId);
+  assert.ok(secondParticipantId);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    firstCatId,
+    {
+      sessionId: 'session-live-text-barrier-1',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  let releaseFirstResultSeen;
+  const firstResultSeen = new Promise((resolve) => {
+    releaseFirstResultSeen = resolve;
+  });
+  let releaseSecondRenderable;
+  const secondRenderableReleased = new Promise((resolve) => {
+    releaseSecondRenderable = resolve;
+  });
+  let releaseSecondResultSeen;
+  const secondResultSeen = new Promise((resolve) => {
+    releaseSecondResultSeen = resolve;
+  });
+  runtime.streamSession = async (sessionId, onEvent) => {
+    runtime.streamedSessions.push(sessionId);
+    if (sessionId === 'session-live-text-barrier-1') {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'Claude Cat text should stay buffered until Codex speaks.',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseFirstResultSeen();
+      return;
+    }
+
+    if (sessionId === 'session-live-text-barrier-2') {
+      await secondRenderableReleased;
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'Codex Cat opens the concurrent text barrier.',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseSecondResultSeen();
+      return;
+    }
+
+    throw new Error(`Unexpected streamed session ${sessionId}`);
+  };
+
+  await withServer(runtime, async (baseUrl) => {
+    const begun = await beginChannelMessageDispatch(
+      await chatStore.read(),
+      channelId,
+      {
+        body: 'Hold concurrent text until both lanes are genuinely renderable.',
+        messageMetadata: {
+          recipientParticipantIds: [firstParticipantId, secondParticipantId],
+          workflowShape: 'concurrent',
+        },
+      },
+      runtime,
+      seededAt,
+    );
+    let begunState = begun.state;
+    const begunChannel = requireChannel(begunState, channelId);
+    const begunTurn = begunChannel.roomRouting.workflow.activeTurn;
+    assert.ok(begunTurn);
+    const firstTargetStateId = 'target-state-text-barrier-1';
+    const secondTargetStateId = 'target-state-text-barrier-2';
+    const firstLaneId = buildChatLaneId(
+      begunTurn.id,
+      firstTargetStateId,
+      firstParticipantId,
+    );
+    const secondLaneId = buildChatLaneId(
+      begunTurn.id,
+      secondTargetStateId,
+      secondParticipantId,
+    );
+    begunTurn.targetStatuses = [
+      {
+        id: firstTargetStateId,
+        dispatchId: 'dispatch-text-barrier-1',
+        participant: {
+          participantKind: 'cat',
+          participantId: firstParticipantId,
+          participantName: 'Claude Cat',
+        },
+        source: null,
+        sourceMessageId: begunTurn.sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: begunTurn.lastCheckpointId,
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: null,
+        status: 'running',
+        laneId: firstLaneId,
+        sessionId: 'session-live-text-barrier-1',
+        queuedAt: seededAt.toISOString(),
+        startedAt: seededAt.toISOString(),
+        completedAt: null,
+        response: null,
+        error: null,
+      },
+      {
+        id: secondTargetStateId,
+        dispatchId: 'dispatch-text-barrier-2',
+        participant: {
+          participantKind: 'cat',
+          participantId: secondParticipantId,
+          participantName: 'Codex Cat',
+        },
+        source: null,
+        sourceMessageId: begunTurn.sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: begunTurn.lastCheckpointId,
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: null,
+        status: 'pending',
+        laneId: secondLaneId,
+        queuedAt: seededAt.toISOString(),
+        startedAt: null,
+        completedAt: null,
+        response: null,
+        error: null,
+      },
+    ];
+    begunState = setChannelCatLease(
+      begunState,
+      channelId,
+      firstCatId,
+      {
+        sessionId: 'session-live-text-barrier-1',
+        status: 'ready',
+        laneId: firstLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
+    begunState = appendMessage(
+      begunState,
+      channelId,
+      {
+        senderKind: 'system',
+        senderName: 'Runtime',
+        body: 'Claude Cat connected to cats-runtime session session-live-text-barrier-1.\n(cwd: C:/repo/cats-platform)',
+      },
+      seededAt,
+      {
+        metadata: {
+          event: 'session_started',
+          targetKind: 'cat',
+          targetId: firstParticipantId,
+          targetStateId: firstTargetStateId,
+          laneId: firstLaneId,
+          sessionId: 'session-live-text-barrier-1',
+          verbosity: 'verbose',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    await chatStore.write(begunState);
+    notifyStreamTargetChanged(channelId);
+
+    const streamResponse = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(streamResponse.status, 200);
+    const stream = createSseCapture(streamResponse);
+
+    await readSseUntil(
+      stream,
+      (text) =>
+        text.includes('"sessionId":"session-live-text-barrier-1"')
+        && text.includes('"speakerLabel":"Claude Cat"'),
+    );
+    await firstResultSeen;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.doesNotMatch(
+      stream.text,
+      /Claude Cat text should stay buffered until Codex speaks\./u,
+    );
+
+    let nextState = await chatStore.read();
+    nextState = setChannelCatLease(
+      nextState,
+      channelId,
+      secondCatId,
+      {
+        sessionId: 'session-live-text-barrier-2',
+        status: 'ready',
+        laneId: secondLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'codex',
+        model: 'gpt-5.4',
+        startedAt: secondReadyAt.toISOString(),
+        lastUsedAt: secondReadyAt.toISOString(),
+      },
+      secondReadyAt,
+    );
+    const nextChannel = requireChannel(nextState, channelId);
+    const nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
+    nextTurn.targetStatuses = nextTurn.targetStatuses.map((target) =>
+      target.id === secondTargetStateId
+        ? {
+            ...target,
+            status: 'running',
+            laneId: secondLaneId,
+            sessionId: 'session-live-text-barrier-2',
+            startedAt: secondReadyAt.toISOString(),
+          }
+        : target);
+    nextState = appendMessage(
+      nextState,
+      channelId,
+      {
+        senderKind: 'system',
+        senderName: 'Runtime',
+        body: 'Codex Cat connected to cats-runtime session session-live-text-barrier-2.\n(cwd: C:/repo/cats-platform)',
+      },
+      secondReadyAt,
+      {
+        metadata: {
+          event: 'session_started',
+          targetKind: 'cat',
+          targetId: secondParticipantId,
+          targetStateId: secondTargetStateId,
+          laneId: secondLaneId,
+          sessionId: 'session-live-text-barrier-2',
+          verbosity: 'verbose',
+        },
+        incrementUnread: false,
+      },
+    ).state;
+    await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
+
+    await readSseUntil(
+      stream,
+      (text) =>
+        text.includes('"sessionId":"session-live-text-barrier-2"')
+        && text.includes('"speakerLabel":"Codex Cat"'),
+    );
+    await waitForCondition(
+      () => runtime.streamedSessions.includes('session-live-text-barrier-2'),
+      { timeoutMs: 1_000, intervalMs: 25 },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 75));
+    assert.doesNotMatch(
+      stream.text,
+      /Claude Cat text should stay buffered until Codex speaks\./u,
+    );
+
+    releaseSecondRenderable();
+    await Promise.all([firstResultSeen, secondResultSeen]);
+    const streamBody = await readSseUntil(
+      stream,
+      (text) =>
+        text.includes('Claude Cat text should stay buffered until Codex speaks.')
+        && text.includes('Codex Cat opens the concurrent text barrier.'),
+    );
+    await stream.reader.cancel();
+
+    assert.match(streamBody, /Claude Cat text should stay buffered until Codex speaks\./u);
+    assert.match(streamBody, /Codex Cat opens the concurrent text barrier\./u);
+    assert.ok(runtime.streamedSessions.includes('session-live-text-barrier-1'));
+    assert.ok(runtime.streamedSessions.includes('session-live-text-barrier-2'));
+  }, chatStore);
+});
+
 test('GET /api/channels/:id/stream waits through the sequential handoff gap before the next target is persisted', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();

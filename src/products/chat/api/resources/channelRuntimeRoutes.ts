@@ -167,7 +167,11 @@ async function readChannelReadyStreamSnapshot(
 async function streamChannelTarget(input: {
   context: ChatApiRouteContext;
   channelId: string;
-  emitEvent: (event: string, data: Record<string, unknown>) => void;
+  emitEvent: (
+    target: ChannelStreamTarget,
+    event: string,
+    data: Record<string, unknown>,
+  ) => void;
   target: ChannelStreamTarget;
   requestAbortSignal: AbortSignal;
 }): Promise<void> {
@@ -212,7 +216,7 @@ async function streamChannelTarget(input: {
       });
     }
     publishStreamAttachMutationEvents(context, channelId);
-    emitEvent('progress', {
+    input.emitEvent(target, 'progress', {
       type: 'progress',
       text: '',
       metadata: {
@@ -255,7 +259,7 @@ async function streamChannelTarget(input: {
                   : synthesizedBlocks.filter((block) => block.kind === 'text'))
               : synthesizedBlocks;
             for (const block of blocksToEmit) {
-              emitEvent('content_block', {
+              input.emitEvent(target, 'content_block', {
                 type: 'content_block',
                 block,
                 synthesizedFromResult: true,
@@ -274,7 +278,7 @@ async function streamChannelTarget(input: {
               }
             }
           }
-          emitEvent(event.event, {
+          input.emitEvent(target, event.event, {
             ...event.data,
             ...buildStreamSpeakerPayload({
               ...target,
@@ -332,7 +336,7 @@ async function streamChannelTarget(input: {
           reason: 'runtime_stream_unavailable',
         });
       }
-      emitEvent('error', {
+      input.emitEvent(target, 'error', {
         type: 'error',
         text: 'Runtime stream unavailable',
         ...buildStreamSpeakerPayload({
@@ -555,9 +559,30 @@ async function handleRestStreamChannel(
     const completedAttachSignalVersions = new Map<string, number>();
     const activeStreams = new Map<string, Promise<void>>();
     const bufferedEvents: Array<{ event: string; data: Record<string, unknown> }> = [];
+    const concurrentBarrierReadyEventKeys = new Set<string>();
+    let concurrentBarrierRequiredAttachKeys: string[] = [];
     let concurrentBarrierReleased = false;
 
-    const emitStreamEvent = (event: string, data: Record<string, unknown>): void => {
+    const maybeReleaseConcurrentBarrier = (): void => {
+      if (concurrentBarrierReleased) {
+        return;
+      }
+      if (concurrentBarrierRequiredAttachKeys.length === 0) {
+        return;
+      }
+      if (!concurrentBarrierRequiredAttachKeys.every((key) =>
+        concurrentBarrierReadyEventKeys.has(key))) {
+        return;
+      }
+      concurrentBarrierReleased = true;
+      flushBufferedEvents();
+    };
+
+    const emitStreamEvent = (
+      target: ChannelStreamTarget,
+      event: string,
+      data: Record<string, unknown>,
+    ): void => {
       const isSessionGateProgress =
         event === 'progress'
         && typeof data.text === 'string'
@@ -565,6 +590,13 @@ async function handleRestStreamChannel(
         && typeof data.metadata === 'object'
         && data.metadata !== null
         && (data.metadata as { kind?: unknown }).kind === 'session';
+      if (!isSessionGateProgress) {
+        const attachKey = buildChannelStreamTargetAttachKey(target);
+        if (attachKey) {
+          concurrentBarrierReadyEventKeys.add(attachKey);
+          maybeReleaseConcurrentBarrier();
+        }
+      }
       if (!concurrentBarrierReleased && !isSessionGateProgress) {
         bufferedEvents.push({ event, data });
         return;
@@ -615,7 +647,14 @@ async function handleRestStreamChannel(
       const snapshot = await readChannelReadyStreamSnapshot(context, channelId);
       attachReadyTargets(snapshot.readyTargets, snapshot.signalVersion);
       if (snapshot.concurrentBarrierReleased && !concurrentBarrierReleased) {
-        concurrentBarrierReleased = true;
+        concurrentBarrierRequiredAttachKeys = snapshot.readyTargets
+          .map((target) => buildChannelStreamTargetAttachKey(target))
+          .filter((attachKey): attachKey is string => attachKey != null);
+        if (concurrentBarrierRequiredAttachKeys.length <= 1) {
+          concurrentBarrierReleased = true;
+        } else {
+          maybeReleaseConcurrentBarrier();
+        }
       }
       if (concurrentBarrierReleased) {
         flushBufferedEvents();
