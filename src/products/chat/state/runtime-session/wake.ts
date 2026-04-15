@@ -341,6 +341,14 @@ interface CreatedTargetRuntimeSession {
   executionTarget: RuntimeSessionExecutionTarget;
 }
 
+interface PreparedTargetSessionWake {
+  attachedTarget: RoutingTarget;
+  targetStateId: string | null;
+  laneId: string | null;
+  taskExecutionContext: EnsureTargetSessionTaskExecutionContext;
+  recordTargetWake: EnsureTargetWakeRecorder;
+}
+
 async function resolveTargetRuntimeEnvelope(input: {
   state: ChatState;
   channelId: string;
@@ -639,6 +647,68 @@ function applyLeaseLaneAttachmentToTarget(
     );
 }
 
+async function prepareTargetSessionWake(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  nowIso: string;
+  options: EnsureTargetSessionOptions;
+  wakeTrigger: RoomWakeTrigger;
+  wakeReason: RoomWakeReason;
+  sourceMessageId: string | null;
+}): Promise<PreparedTargetSessionWake> {
+  const targetStateId = readDispatchContextMetadataString(
+    input.options.dispatchContextMetadata,
+    'targetStateId',
+  );
+  const laneId = readDispatchContextMetadataString(
+    input.options.dispatchContextMetadata,
+    'laneId',
+  ) ?? (input.target.laneId?.trim() || null);
+  const targetAttachment = resolveTargetLeaseAttachment(
+    input.state,
+    input.channelId,
+    input.target,
+    {
+      preferredLaneId: laneId,
+      allowLeaseSessionReuse: input.options.ignoreLeaseSessionAttachment !== true,
+    },
+  );
+  const attachedTarget: RoutingTarget = {
+    ...input.target,
+    ...targetAttachment,
+    laneId: targetAttachment.laneId,
+  };
+  const participant = toParticipantRef(attachedTarget);
+  const taskExecutionContext = input.options.resolvedTaskExecutionContext !== undefined
+    ? input.options.resolvedTaskExecutionContext
+    : await resolveChannelTaskExecutionRequest(
+      input.options.chatStore,
+      input.channelId,
+      attachedTarget,
+    );
+
+  return {
+    attachedTarget,
+    targetStateId,
+    laneId,
+    taskExecutionContext: taskExecutionContext ?? undefined,
+    recordTargetWake: (
+      status: RoomWakeRequest['status'],
+      error: string | null = null,
+    ) => createRecordedWakeRequest(
+      input.options.roomRouting,
+      participant,
+      input.wakeTrigger,
+      input.wakeReason,
+      input.sourceMessageId,
+      input.nowIso,
+      status,
+      error,
+    ),
+  };
+}
+
 async function resolveExistingTargetSessionOutcome(
   state: ChatState,
   channelId: string,
@@ -867,55 +937,26 @@ export async function ensureTargetSession(
   const wakeTrigger = options.wakeTrigger ?? 'route_target';
   const wakeReason = options.wakeReason ?? 'room_default';
   const sourceMessageId = options.sourceMessageId ?? null;
-  const targetStateId = readDispatchContextMetadataString(
-    options.dispatchContextMetadata,
-    'targetStateId',
-  );
-  const laneId = readDispatchContextMetadataString(
-    options.dispatchContextMetadata,
-    'laneId',
-  ) ?? (target.laneId?.trim() || null);
-  const targetAttachment = resolveTargetLeaseAttachment(state, channelId, target, {
-    preferredLaneId: laneId,
-    allowLeaseSessionReuse: options.ignoreLeaseSessionAttachment !== true,
-  });
-  const attachedTarget: RoutingTarget = {
-    ...target,
-    ...targetAttachment,
-    laneId: targetAttachment.laneId,
-  };
-  const participant = toParticipantRef(attachedTarget);
-  const taskExecutionContext = options.resolvedTaskExecutionContext !== undefined
-    ? options.resolvedTaskExecutionContext
-    : await resolveChannelTaskExecutionRequest(
-      options.chatStore,
-      channelId,
-      attachedTarget,
-    );
-  const normalizedTaskExecutionContext = taskExecutionContext ?? undefined;
-  const recordTargetWake = (
-    status: RoomWakeRequest['status'],
-    error: string | null = null,
-  ) => createRecordedWakeRequest(
-    options.roomRouting,
-    participant,
+  const preparedWake = await prepareTargetSessionWake({
+    state,
+    channelId,
+    target,
+    nowIso,
+    options,
     wakeTrigger,
     wakeReason,
     sourceMessageId,
-    nowIso,
-    status,
-    error,
-  );
+  });
   const existingSessionOutcome = await resolveExistingTargetSessionOutcome(
     state,
     channelId,
-    attachedTarget,
+    preparedWake.attachedTarget,
     runtimeClient,
     now,
     options,
-    laneId,
-    recordTargetWake,
-    normalizedTaskExecutionContext,
+    preparedWake.laneId,
+    preparedWake.recordTargetWake,
+    preparedWake.taskExecutionContext,
   );
   if (existingSessionOutcome.kind === 'retry') {
     return ensureTargetSession(
@@ -926,7 +967,7 @@ export async function ensureTargetSession(
       now,
       {
         ...options,
-        resolvedTaskExecutionContext: taskExecutionContext ?? null,
+        resolvedTaskExecutionContext: preparedWake.taskExecutionContext ?? null,
       },
     );
   }
@@ -937,14 +978,14 @@ export async function ensureTargetSession(
   return startAttachedTargetSession(
     state,
     channelId,
-    attachedTarget,
+    preparedWake.attachedTarget,
     runtimeClient,
     now,
     options,
-    targetStateId,
-    laneId,
-    recordTargetWake,
-    normalizedTaskExecutionContext,
+    preparedWake.targetStateId,
+    preparedWake.laneId,
+    preparedWake.recordTargetWake,
+    preparedWake.taskExecutionContext,
   );
 }
 
