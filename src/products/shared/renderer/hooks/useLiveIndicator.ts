@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import {
   applyLiveIndicatorEvent,
@@ -106,6 +107,7 @@ export interface SequencedLiveIndicatorStreamCursor {
 
 interface WaitingIndicatorInputs {
   sourceMessageId: string | null;
+  laneId: string | null;
   targetStateId: string | null;
   participantId: string | null;
   catId: string | null;
@@ -151,6 +153,7 @@ function resolveWaitingSpeakerState(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): {
   sourceMessageId: string | null;
+  laneId: string | null;
   targetStateId: string | null;
   participantId: string | null;
   catId: string | null;
@@ -164,6 +167,7 @@ function resolveWaitingSpeakerState(
   if (!nextTarget) {
     return {
       sourceMessageId: activeTurn?.sourceMessageId?.trim() || null,
+      laneId: null,
       targetStateId: null,
       participantId: null,
       catId: null,
@@ -182,6 +186,16 @@ function resolveWaitingSpeakerState(
 
   return {
     sourceMessageId: activeTurn?.sourceMessageId?.trim() || null,
+    laneId:
+      activeTurn?.id?.trim()
+      && nextTarget.id?.trim()
+      && nextTarget.participant.participantId.trim()
+        ? buildChatLaneId(
+          activeTurn.id.trim(),
+          nextTarget.id.trim(),
+          nextTarget.participant.participantId.trim(),
+        )
+        : null,
     targetStateId: nextTarget.id?.trim() || null,
     participantId: nextTarget.participant.participantId,
     catId: null,
@@ -530,6 +544,7 @@ function reindexWaitingSegment(
 
   return resolvePrimaryLiveIndicatorSegment(createWaitingLiveIndicatorState({
     sourceMessageId: waitingSegment.sourceMessageId,
+    laneId: waitingSegment.laneId,
     targetStateId: waitingSegment.targetStateId,
     participantId: waitingSegment.participantId,
     catId: waitingSegment.catId,
@@ -952,6 +967,7 @@ export function useLiveIndicator<
   const waitingIndicatorInputs = useMemo<WaitingIndicatorInputs>(
     () => ({
       sourceMessageId: waitingSpeakerState.sourceMessageId,
+      laneId: waitingSpeakerState.laneId,
       targetStateId: waitingSpeakerState.targetStateId,
       participantId: waitingSpeakerState.participantId,
       catId: waitingSpeakerState.catId,
@@ -964,6 +980,7 @@ export function useLiveIndicator<
     }),
     [
       waitingSpeakerState.sourceMessageId,
+      waitingSpeakerState.laneId,
       defaultRecipientCatId,
       speakerLabel,
       waitingSpeakerState.catId,
@@ -981,6 +998,7 @@ export function useLiveIndicator<
     const current = waitingIndicatorInputsRef.current;
     return createWaitingLiveIndicatorState({
       sourceMessageId: current.sourceMessageId,
+      laneId: current.laneId,
       targetStateId: current.targetStateId,
       participantId: current.revealIdentity ? current.participantId : null,
       catId: current.revealIdentity ? current.catId : current.defaultRecipientCatId,

@@ -2819,6 +2819,27 @@ test('createLiveIndicatorSegmentState gives reconnect sessions distinct ids even
   assert.notEqual(firstSegment.id, secondSegment.id);
 });
 
+test('createLiveIndicatorSegmentState prefers laneId over drifted targetStateId when building segment ids', () => {
+  const firstSegment = createLiveIndicatorSegmentState({
+    phase: 'sealed',
+    sourceMessageId: 'message-user',
+    laneId: 'lane-1',
+    targetStateId: 'target-live',
+    sessionId: 'session-1',
+    segmentIndex: 0,
+  });
+  const secondSegment = createLiveIndicatorSegmentState({
+    phase: 'streaming',
+    sourceMessageId: 'message-user',
+    laneId: 'lane-1',
+    targetStateId: 'target-canonical',
+    sessionId: 'session-1',
+    segmentIndex: 0,
+  });
+
+  assert.equal(firstSegment.id, secondSegment.id);
+});
+
 test('applyLiveIndicatorEvent synthesizes text content blocks from text events', () => {
   let state = { ...EMPTY_LIVE_INDICATOR, active: true, phase: 'streaming' as const };
   state = applyLiveIndicatorEvent(state, 'text', { text: 'Hello' });
@@ -3121,6 +3142,24 @@ test('resolveLiveIndicatorSpeakerState preserves targetStateId when stream event
   assert.equal(nextSpeaker.targetStateId, 'target-state-abc');
 });
 
+test('resolveLiveIndicatorSpeakerState preserves laneId when stream event carries explicit null', () => {
+  const previous = createWaitingLiveIndicatorState({
+    laneId: 'lane-abc',
+    targetStateId: 'target-state-abc',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+  });
+
+  const nextSpeaker = resolveLiveIndicatorSpeakerState(previous, {
+    participantId: 'orchestrator',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    laneId: null,
+  });
+
+  assert.equal(nextSpeaker.laneId, 'lane-abc');
+});
+
 test('resolveLiveIndicatorSpeakerState updates targetStateId when stream event carries a non-null value', () => {
   const previous = createWaitingLiveIndicatorState({
     targetStateId: 'target-state-abc',
@@ -3136,6 +3175,24 @@ test('resolveLiveIndicatorSpeakerState updates targetStateId when stream event c
   });
 
   assert.equal(nextSpeaker.targetStateId, 'target-state-def');
+});
+
+test('resolveLiveIndicatorSpeakerState updates laneId when stream event carries a non-null value', () => {
+  const previous = createWaitingLiveIndicatorState({
+    laneId: 'lane-abc',
+    targetStateId: 'target-state-abc',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+  });
+
+  const nextSpeaker = resolveLiveIndicatorSpeakerState(previous, {
+    participantId: 'participant-2',
+    catId: null,
+    speakerLabel: 'Codex-CLI',
+    laneId: 'lane-def',
+  });
+
+  assert.equal(nextSpeaker.laneId, 'lane-def');
 });
 
 test('resolveVisibleLiveIndicator hides sealed segments with null targetStateId via participantId fallback', () => {

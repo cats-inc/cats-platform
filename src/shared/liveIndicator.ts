@@ -27,6 +27,7 @@ export interface LiveIndicatorSegmentState {
   id: string;
   phase: LiveIndicatorSegmentPhase;
   sourceMessageId: string | null;
+  laneId: string | null;
   targetStateId: string | null;
   segmentIndex: number;
   sessionId: string | null;
@@ -48,6 +49,7 @@ export interface LiveIndicatorState {
   active: boolean;
   phase: 'idle' | LiveIndicatorSegmentPhase;
   sourceMessageId: string | null;
+  laneId: string | null;
   targetStateId: string | null;
   segmentIndex: number;
   sessionId: string | null;
@@ -83,6 +85,7 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   active: false,
   phase: 'idle',
   sourceMessageId: null,
+  laneId: null,
   targetStateId: null,
   segmentIndex: 0,
   sessionId: null,
@@ -103,6 +106,7 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
 
 function buildLiveIndicatorSegmentId(input: {
   sourceMessageId?: string | null;
+  laneId?: string | null;
   targetStateId: string | null;
   sessionId?: string | null;
   participantId: string | null;
@@ -111,7 +115,8 @@ function buildLiveIndicatorSegmentId(input: {
   segmentIndex: number;
 }): string {
   const sourceMessageId = readString(input.sourceMessageId) ?? 'no-source';
-  const identity = input.targetStateId
+  const identity = readString(input.laneId)
+    ?? input.targetStateId
     ?? readString(input.sessionId)
     ?? input.participantId
     ?? input.catId
@@ -123,6 +128,7 @@ function buildLiveIndicatorSegmentId(input: {
 export function createLiveIndicatorSegmentState(input: {
   phase: LiveIndicatorSegmentPhase;
   sourceMessageId?: string | null;
+  laneId?: string | null;
   targetStateId?: string | null;
   segmentIndex?: number;
   sessionId?: string | null;
@@ -147,6 +153,7 @@ export function createLiveIndicatorSegmentState(input: {
   return {
     id: input.id?.trim() || buildLiveIndicatorSegmentId({
       sourceMessageId: input.sourceMessageId ?? null,
+      laneId: input.laneId ?? null,
       targetStateId: input.targetStateId ?? null,
       sessionId: input.sessionId ?? null,
       participantId: input.participantId ?? null,
@@ -156,6 +163,7 @@ export function createLiveIndicatorSegmentState(input: {
     }),
     phase: input.phase,
     sourceMessageId: input.sourceMessageId ?? null,
+    laneId: input.laneId ?? null,
     targetStateId: input.targetStateId ?? null,
     segmentIndex,
     sessionId: input.sessionId ?? null,
@@ -205,6 +213,7 @@ export function resolveLiveIndicatorSegments(
       phase: liveIndicator.phase,
       targetStateId: liveIndicator.targetStateId,
       sourceMessageId: liveIndicator.sourceMessageId,
+      laneId: liveIndicator.laneId,
       segmentIndex: liveIndicator.segmentIndex,
       sessionId: liveIndicator.sessionId,
       participantId: liveIndicator.participantId,
@@ -237,6 +246,7 @@ export function projectLiveIndicatorStateFromSegments(
     active: true,
     phase: primary.phase,
     sourceMessageId: primary.sourceMessageId,
+    laneId: primary.laneId,
     targetStateId: primary.targetStateId,
     segmentIndex: primary.segmentIndex,
     sessionId: primary.sessionId,
@@ -297,7 +307,7 @@ function isSameLiveIndicatorTimelineIdentity(
   previousSegment: LiveIndicatorSegmentState | null,
   nextSpeakerState: Pick<
     LiveIndicatorSegmentState,
-    'sourceMessageId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
   >,
 ): boolean {
   if (!previousSegment) {
@@ -308,6 +318,10 @@ function isSameLiveIndicatorTimelineIdentity(
   const nextSourceMessageId = readString(nextSpeakerState.sourceMessageId);
   if (!previousSourceMessageId || !nextSourceMessageId || previousSourceMessageId !== nextSourceMessageId) {
     return false;
+  }
+
+  if (previousSegment.laneId && nextSpeakerState.laneId) {
+    return previousSegment.laneId === nextSpeakerState.laneId;
   }
 
   if (previousSegment.targetStateId && nextSpeakerState.targetStateId) {
@@ -352,6 +366,7 @@ function projectLogicalLiveIndicatorSegments(
         ...segment,
         id: buildLiveIndicatorSegmentId({
           sourceMessageId: segment.sourceMessageId,
+          laneId: segment.laneId,
           targetStateId: segment.targetStateId,
           sessionId: segment.sessionId,
           participantId: segment.participantId,
@@ -500,6 +515,7 @@ export function hasVisibleLiveIndicatorSegmentActivity(
 
 export function createWaitingLiveIndicatorState(input: {
   sourceMessageId?: string | null;
+  laneId?: string | null;
   participantId?: string | null;
   catId: string | null;
   speakerLabel: string | null;
@@ -518,6 +534,7 @@ export function createWaitingLiveIndicatorState(input: {
       // Keep it even for anonymous waiting bubbles so persisted segments can retire
       // the correct live segment once the reply lands.
       sourceMessageId: input.sourceMessageId ?? null,
+      laneId: input.laneId ?? null,
       targetStateId: input.targetStateId ?? null,
       segmentIndex: input.segmentIndex ?? 0,
       sessionId: input.sessionId ?? null,
@@ -535,12 +552,14 @@ export function resolveLiveIndicatorSpeakerState(
   data: Record<string, unknown>,
 ): Pick<
   LiveIndicatorSegmentState,
-  'sourceMessageId' | 'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel'
+  'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel'
 > {
   const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
   const previousSourceMessageId = previousSegment?.sourceMessageId ?? previous.sourceMessageId;
+  const previousLaneId = previousSegment?.laneId ?? previous.laneId;
   const previousTargetStateId = previousSegment?.targetStateId ?? previous.targetStateId;
   const hasSourceMessageId = Object.prototype.hasOwnProperty.call(data, 'sourceMessageId');
+  const hasLaneId = Object.prototype.hasOwnProperty.call(data, 'laneId');
   const hasParticipantId = Object.prototype.hasOwnProperty.call(data, 'participantId');
   const hasCatId = Object.prototype.hasOwnProperty.call(data, 'catId');
   const hasSpeakerLabel = Object.prototype.hasOwnProperty.call(data, 'speakerLabel');
@@ -559,6 +578,9 @@ export function resolveLiveIndicatorSpeakerState(
     sourceMessageId: hasSourceMessageId
       ? (readNullableString(data.sourceMessageId) ?? previousSourceMessageId)
       : previousSourceMessageId,
+    laneId: hasLaneId
+      ? (readNullableString(data.laneId) ?? previousLaneId)
+      : previousLaneId,
     targetStateId: hasTargetStateId
       ? (readNullableString(data.targetStateId) ?? previousTargetStateId)
       : previousTargetStateId,
@@ -637,7 +659,7 @@ function shouldStartNewSegmentForEvent(
   previousSegment: LiveIndicatorSegmentState | null,
   nextSpeakerState: Pick<
     LiveIndicatorSegmentState,
-    'targetStateId' | 'participantId' | 'catId' | 'speakerLabel' | 'sourceMessageId'
+    'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel' | 'sourceMessageId'
   >,
   eventType: string,
   data: Record<string, unknown>,
@@ -648,6 +670,7 @@ function shouldStartNewSegmentForEvent(
 
   const identityChanged =
     previousSegment.sourceMessageId !== nextSpeakerState.sourceMessageId
+    || previousSegment.laneId !== nextSpeakerState.laneId
     || previousSegment.targetStateId !== nextSpeakerState.targetStateId
     || previousSegment.participantId !== nextSpeakerState.participantId
     || previousSegment.catId !== nextSpeakerState.catId
@@ -708,7 +731,7 @@ function createNextLiveIndicatorSegment(
   previousSegment: LiveIndicatorSegmentState | null,
   nextSpeakerState: Pick<
     LiveIndicatorSegmentState,
-    'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel' | 'sourceMessageId'
+    'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'activeCatIds' | 'speakerLabel' | 'sourceMessageId'
   >,
   nextSessionState: Pick<
     LiveIndicatorSegmentState,
@@ -720,6 +743,7 @@ function createNextLiveIndicatorSegment(
   return createLiveIndicatorSegmentState({
     phase,
     sourceMessageId: nextSpeakerState.sourceMessageId,
+    laneId: nextSpeakerState.laneId,
     targetStateId: nextSpeakerState.targetStateId,
     segmentIndex: sameTimeline && previousSegment
       ? previousSegment.segmentIndex + 1
@@ -774,6 +798,7 @@ function prepareLiveIndicatorStateForEvent(
     ...nextSessionState,
     id: buildLiveIndicatorSegmentId({
       sourceMessageId: nextSpeakerState.sourceMessageId,
+      laneId: nextSpeakerState.laneId,
       targetStateId: nextSpeakerState.targetStateId,
       sessionId: nextSessionState.sessionId,
       participantId: nextSpeakerState.participantId,
@@ -799,6 +824,7 @@ export function buildLiveIndicatorScrollKey(
         segment.id,
         segment.phase,
         segment.sourceMessageId ?? '',
+        segment.laneId ?? '',
         segment.targetStateId ?? '',
         String(segment.segmentIndex),
         segment.sessionId ?? '',
