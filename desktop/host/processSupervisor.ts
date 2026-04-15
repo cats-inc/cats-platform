@@ -558,7 +558,7 @@ export function buildManagedServiceSpecs(
   return [
     {
       name: 'cats-runtime',
-      command: env.CATS_DESKTOP_NODE_LAUNCHER?.trim() || process.execPath,
+      command: process.execPath,
       args: [
         config.paths.runtimeEntryScript,
         '--startup-mode=app-managed',
@@ -578,7 +578,7 @@ export function buildManagedServiceSpecs(
     },
     {
       name: 'cats-platform',
-      command: env.CATS_DESKTOP_NODE_LAUNCHER?.trim() || process.execPath,
+      command: process.execPath,
       args: [
         config.paths.appEntryScript,
         '--startup-mode=app-managed',
@@ -744,17 +744,6 @@ export class ManagedServiceSupervisor {
       `\n[${this.now().toISOString()}] [host] starting ${spec.name} (${spec.command} ${spec.args.join(' ')})\n`,
     );
     const startupMeasurementStartedAtMs = this.now().getTime();
-
-    const envFingerprint = {
-      ELECTRON_RUN_AS_NODE: spec.env.ELECTRON_RUN_AS_NODE,
-      CATS_RUNTIME_DIR: spec.env.CATS_RUNTIME_DIR,
-      CATS_PLATFORM_DIR: spec.env.CATS_PLATFORM_DIR,
-    };
-    this.queueLogWrite(
-      spec.name,
-      spec.logPath,
-      `[${this.now().toISOString()}] [host] spawning ${spec.name} with command=${spec.command} args=[${spec.args.join(', ')}] cwd=${spec.cwd} envFingerprint=${JSON.stringify(envFingerprint)}\n`,
-    );
 
     const child = this.spawnImpl(spec.command, spec.args, {
       cwd: spec.cwd,
