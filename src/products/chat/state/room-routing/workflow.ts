@@ -304,6 +304,8 @@ export function createPendingDispatch(
     sourceMessageId: request.sourceMessage.id,
     source: request.sourceParticipant,
     target: toParticipantRef(request.target),
+    laneId: request.target.laneId,
+    sessionId: request.target.sessionId,
     trigger: request.trigger,
     status: 'pending',
     mentionNames: structuredClone(request.mentionNames),
@@ -332,6 +334,12 @@ export function updateDispatch(
   }
   if (update.target !== undefined) {
     dispatch.target = update.target;
+  }
+  if (update.laneId !== undefined) {
+    dispatch.laneId = update.laneId;
+  }
+  if (update.sessionId !== undefined) {
+    dispatch.sessionId = update.sessionId;
   }
   if (update.trigger !== undefined) {
     dispatch.trigger = update.trigger;

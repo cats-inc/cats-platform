@@ -152,6 +152,8 @@ export interface RoomRoutingDispatch {
   sourceMessageId: string;
   source: RoomRoutingParticipantRef | null;
   target: RoomRoutingParticipantRef;
+  laneId: string | null;
+  sessionId: string | null;
   trigger: RoomRoutingTrigger;
   status: RoomRoutingDispatchStatus;
   mentionNames: string[];

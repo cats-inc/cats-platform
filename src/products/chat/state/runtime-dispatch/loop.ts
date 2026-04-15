@@ -316,6 +316,8 @@ export async function processDispatchQueue(
       if ((targetVisitCounts.get(targetKey) ?? 0) >= maxTargetVisits) {
         const blockedError = `${target.participantName} already reached the per-turn revisit limit.`;
         updateDispatch(outcome, request.dispatchId, {
+          laneId: request.target.laneId,
+          sessionId: request.target.sessionId,
           status: 'blocked',
           completedAt: nowIso,
           error: blockedError,
@@ -407,6 +409,8 @@ export async function processDispatchQueue(
       ) {
         const blockedError = `Blocked a routing ping-pong between ${frame.sourceParticipant.participantName} and ${target.participantName}.`;
         updateDispatch(outcome, request.dispatchId, {
+          laneId: request.target.laneId,
+          sessionId: request.target.sessionId,
           status: 'blocked',
           completedAt: nowIso,
           error: blockedError,

@@ -677,6 +677,11 @@ function ensureCompletedTargetStatus(
     return null;
   }
 
+  const responseLaneId = typeof responseMessage.metadata?.laneId === 'string'
+    && responseMessage.metadata.laneId.trim().length > 0
+    ? responseMessage.metadata.laneId.trim()
+    : null;
+  const responseSessionId = readMessageSessionId(responseMessage);
   const completedAt = responseMessage.createdAt;
   const existing = (targetStateId
     ? turn.targetStatuses.find((target) => target.id === targetStateId)
@@ -688,6 +693,8 @@ function ensureCompletedTargetStatus(
 
   if (existing) {
     existing.participant = structuredClone(participant);
+    existing.laneId = existing.laneId ?? responseLaneId;
+    existing.sessionId = existing.sessionId ?? responseSessionId;
     if (recoveredMetadata?.sourceParticipant) {
       existing.source = structuredClone(recoveredMetadata.sourceParticipant);
     }
@@ -716,6 +723,8 @@ function ensureCompletedTargetStatus(
     id: targetStateId ?? randomUUID(),
     dispatchId: randomUUID(),
     participant: structuredClone(participant),
+    laneId: responseLaneId,
+    sessionId: responseSessionId,
     source: recoveredMetadata?.sourceParticipant
       ? structuredClone(recoveredMetadata.sourceParticipant)
       : null,
@@ -771,6 +780,8 @@ function ensureCompletedDispatch(
     if (targetStatus?.trigger) {
       existing.trigger = targetStatus.trigger;
     }
+    existing.laneId = targetStatus?.laneId ?? existing.laneId;
+    existing.sessionId = targetStatus?.sessionId ?? existing.sessionId;
     existing.target = structuredClone(participant);
     existing.status = 'completed';
     existing.completedAt = existing.completedAt ?? completedAt;
@@ -784,6 +795,8 @@ function ensureCompletedDispatch(
     sourceMessageId: targetStatus?.sourceMessageId ?? outcome.sourceMessageId,
     source: targetStatus?.source ? structuredClone(targetStatus.source) : null,
     target: structuredClone(participant),
+    laneId: targetStatus?.laneId ?? null,
+    sessionId: targetStatus?.sessionId ?? null,
     trigger: targetStatus?.trigger ?? 'room_default',
     status: 'completed',
     mentionNames: [],

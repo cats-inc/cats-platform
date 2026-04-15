@@ -57,6 +57,7 @@ function finalizeInterruptedDispatches(
 ): void {
   for (const dispatch of outcome.dispatches) {
     if (dispatch.status === 'pending' || dispatch.status === 'running') {
+      dispatch.sessionId = null;
       dispatch.status = 'blocked';
       dispatch.completedAt = dispatch.completedAt ?? nowIso;
       dispatch.error = dispatch.error ?? INTERRUPTED_WORKFLOW_ERROR;

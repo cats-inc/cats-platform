@@ -128,6 +128,8 @@ export async function prepareReadyRequests(
     nextState = ensured.state;
     if (ensured.error) {
       updateDispatch(outcome, request.dispatchId, {
+        laneId: ensured.target.laneId ?? request.target.laneId ?? null,
+        sessionId: null,
         status: 'error',
         completedAt: nowIso,
         error: ensured.error,
@@ -205,6 +207,8 @@ export async function prepareReadyRequests(
       target: ensured.target,
     });
     updateDispatch(outcome, request.dispatchId, {
+      laneId: ensured.target.laneId ?? request.target.laneId ?? null,
+      sessionId: ensured.target.sessionId ?? null,
       status: 'running',
       startedAt: nowIso,
     });

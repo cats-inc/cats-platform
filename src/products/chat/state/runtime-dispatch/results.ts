@@ -465,6 +465,8 @@ export function applyDispatchExecutions(
         },
       ).state;
       updateDispatch(outcome, execution.dispatchId, {
+        laneId: execution.target.laneId ?? null,
+        sessionId: execution.target.sessionId ?? null,
         status: 'error',
         completedAt: nowIso,
         error: execution.error,
@@ -676,6 +678,8 @@ export function applyDispatchExecutions(
     const response = buildAssistantTurnDelivery(assistantTurnId, responseMessages);
     nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
     updateDispatch(outcome, execution.dispatchId, {
+      laneId: execution.target.laneId ?? null,
+      sessionId: execution.target.sessionId ?? null,
       status: 'completed',
       response,
       completedAt: nowIso,
