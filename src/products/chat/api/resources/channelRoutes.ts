@@ -8,6 +8,7 @@ import {
 import {
   buildChannelView,
   requireChannel,
+  resolveChannelCanonicalIdentity,
   setChannelPendingExecutionTarget,
   toChannelSummary,
 } from '../../state/model/index.js';
@@ -40,7 +41,6 @@ import { publishRoomMutation } from '../transportEventPublisher.js';
 import { routeChatChannelAttachmentResourceApi } from './channelAttachmentRoutes.js';
 import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
-import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import {
   buildCanonicalChatUserMessage,
   readChatCoreTurnMetadataString,
@@ -135,7 +135,7 @@ function findLatestCanonicalUserTurn(
   core: CatsCoreState,
   channelId: string,
 ): TurnRecord | null {
-  const conversationId = buildChatConversationId(channelId);
+  const { conversationId } = resolveChannelCanonicalIdentity(null, channelId);
   return core.turns
     .filter((turn) =>
       turn.conversationId === conversationId

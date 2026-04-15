@@ -25,7 +25,11 @@ import type {
   RoomWorkflowTurn,
 } from '../../../../shared/roomRouting.js';
 import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
-import { ORCHESTRATOR_NAME, requireChannel } from '../model/index.js';
+import {
+  ORCHESTRATOR_NAME,
+  requireChannel,
+  resolveChannelCanonicalIdentity,
+} from '../model/index.js';
 import {
   appendWorkflowEvent,
   createWorkflowEvent,
@@ -44,9 +48,7 @@ import {
   readAssistantTurnTargetStateId,
 } from '../assistantTurnSegments.js';
 import {
-  buildChatConversationId,
   buildDirectLaneTransportBindingId,
-  resolveChatChannelContainerId,
 } from '../../../../shared/chatCoreIds.js';
 import {
   buildCanonicalChatMessage,
@@ -155,7 +157,7 @@ function buildCanonicalRuntimeResponseForTurn(
   message: ChatMessage;
   response: RoomAssistantTurnDelivery;
 } | null {
-  const conversationId = buildChatConversationId(channelId);
+  const { conversationId } = resolveChannelCanonicalIdentity(null, channelId);
   const relevantLanes = core.lanes.filter((lane) =>
     lane.conversationId === conversationId && lane.turnId === turnId);
   if (relevantLanes.length === 0) {
@@ -418,7 +420,7 @@ function resolveCanonicalRecoveredTargetMetadata(
     return null;
   }
 
-  const conversationId = buildChatConversationId(channelId);
+  const { conversationId } = resolveChannelCanonicalIdentity(null, channelId);
   const lane = core.lanes.find((candidate) =>
     candidate.conversationId === conversationId
     && candidate.turnId === turnId
@@ -621,7 +623,7 @@ function hasOutstandingCanonicalLanesBeyondRecoveredResponse(
     return false;
   }
 
-  const conversationId = buildChatConversationId(channelId);
+  const { conversationId } = resolveChannelCanonicalIdentity(null, channelId);
   const relevantLanes = core.lanes.filter((lane) =>
     lane.conversationId === conversationId && lane.turnId === turnId);
 
@@ -1049,7 +1051,7 @@ function resolveStartupRecoverySourceBoundaryCreatedAt(
 
   return options.core?.turns.find((candidate) =>
     candidate.id === turn.id
-    && candidate.conversationId === buildChatConversationId(options.channelId))?.createdAt
+    && candidate.conversationId === resolveChannelCanonicalIdentity(null, options.channelId).conversationId)?.createdAt
     ?? turn.startedAt;
 }
 
@@ -1068,7 +1070,7 @@ function resolveCanonicalSessionRecord(
     return null;
   }
 
-  const conversationId = buildChatConversationId(channelId);
+  const { conversationId } = resolveChannelCanonicalIdentity(null, channelId);
   return core.sessions.find((session) =>
     session.id === sessionId && session.conversationId === conversationId) ?? null;
 }
@@ -1090,7 +1092,7 @@ function resolveCanonicalLaneRecord(
   const laneId = typeof options.laneId === 'string' && options.laneId.trim().length > 0
     ? options.laneId.trim()
     : null;
-  const conversationId = buildChatConversationId(channelId);
+  const { conversationId } = resolveChannelCanonicalIdentity(null, channelId);
   if (laneId) {
     return core.lanes.find((lane) =>
       lane.id === laneId && lane.conversationId === conversationId) ?? null;
@@ -1233,7 +1235,10 @@ function resolveMissingSessionTargetId(
   const canonicalParticipantId = canonicalSession?.participantId
     ?? resolveCanonicalLaneRecordForResponseMessage(core, channelId, responseMessage)?.participantId
     ?? null;
-  return resolveRawChatParticipantId(canonicalParticipantId, buildChatConversationId(channelId));
+  return resolveRawChatParticipantId(
+    canonicalParticipantId,
+    resolveChannelCanonicalIdentity(null, channelId).conversationId,
+  );
 }
 
 function resolveMissingSessionLaneId(
@@ -1427,11 +1432,7 @@ export function repairMissingSessionStartedMessages(
       mentions: [],
       metadata: {
         event: 'session_started',
-        containerId: resolveChatChannelContainerId({
-          channelId,
-          parallelChatGroups: nextState.parallelChatGroups,
-        }),
-        conversationId: buildChatConversationId(channelId),
+        ...resolveChannelCanonicalIdentity(nextState, channelId),
         targetKind,
         ...(targetId ? { targetId } : {}),
         ...(targetStateId ? { targetStateId } : {}),
