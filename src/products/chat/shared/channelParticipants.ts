@@ -164,16 +164,30 @@ export function resolveParticipantExecutionLease(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
   participantId: string,
 ): ParticipantExecutionLease | null {
-  return resolvePrimaryParticipantExecutionAssignment(
+  const assignment = resolvePrimaryParticipantExecutionAssignment(
     channel,
     participantId,
-  )?.execution.lease ?? null;
+  );
+  return assignment?.execution?.lease ?? null;
 }
 
 export function resolveOrchestratorExecutionLease(
   channel: Pick<ChatChannelState, 'orchestratorLease'>,
 ): ParticipantExecutionLease {
   return channel.orchestratorLease;
+}
+
+export function resolveExecutionLeaseSnapshot(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments' | 'orchestratorLease'>,
+  target: {
+    participantKind: 'orchestrator' | 'cat';
+    participantId: string;
+  },
+): ParticipantExecutionLease | null {
+  const lease = target.participantKind === 'orchestrator'
+    ? resolveOrchestratorExecutionLease(channel)
+    : resolveParticipantExecutionLease(channel, target.participantId);
+  return lease ? structuredClone(lease) : null;
 }
 
 export function resolveParticipantLeaseAttachment(

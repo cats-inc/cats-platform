@@ -41,8 +41,7 @@ import {
   buildDirectLaneTransportBindingId,
 } from '../../../../shared/chatCoreIds.js';
 import {
-  resolveOrchestratorExecutionLease,
-  resolveParticipantExecutionLease,
+  resolveExecutionLeaseSnapshot,
 } from '../../shared/channelParticipants.js';
 
 function isChatConversationId(conversationId: string | null | undefined): boolean {
@@ -251,11 +250,7 @@ function resolveTargetLease(
   channel: ChatChannelState,
   participant: RoomRoutingParticipantRef,
 ): ParticipantExecutionLease | null {
-  if (participant.participantKind === 'orchestrator') {
-    return resolveOrchestratorExecutionLease(channel);
-  }
-
-  return resolveParticipantExecutionLease(channel, participant.participantId);
+  return resolveExecutionLeaseSnapshot(channel, participant);
 }
 
 function collectWorkflowTurns(channel: ChatChannelState): RoomWorkflowTurn[] {

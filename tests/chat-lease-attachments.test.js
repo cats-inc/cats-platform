@@ -13,6 +13,7 @@ import {
 import {
   collectChannelLeaseAttachments,
   collectChannelSessionIds,
+  resolveExecutionLeaseSnapshot,
   resolveOrchestratorExecutionLease,
   resolveOrchestratorLeaseAttachment,
   resolveParticipantExecutionLease,
@@ -228,6 +229,16 @@ test('channel lease attachment helpers merge participant and orchestrator attach
     lastUsedAt: '2026-04-15T10:00:00.000Z',
   });
 
+  const participantSnapshot = resolveExecutionLeaseSnapshot(channel, {
+    participantKind: 'cat',
+    participantId: 'participant-inline',
+  });
+  assert.ok(participantSnapshot);
+  participantSnapshot.sessionId = 'mutated-session';
+  participantSnapshot.lastError = 'mutated-error';
+  assert.equal(resolveParticipantExecutionLease(channel, 'participant-inline')?.sessionId, 'session-inline');
+  assert.equal(resolveParticipantExecutionLease(channel, 'participant-inline')?.lastError, null);
+
   assert.deepEqual(resolveOrchestratorExecutionLease(channel), channel.orchestratorLease);
 });
 
@@ -279,6 +290,27 @@ test('route session collectors follow attachment-based channel session identitie
   assert.deepEqual(
     collectCatSessionIds(state, 'cat-1'),
     ['session-cat-active', 'session-cat-closed'],
+  );
+});
+
+test('resolveParticipantExecutionLease tolerates sparse assignment fixtures without execution state', () => {
+  const channel = {
+    participantAssignments: [],
+    catAssignments: [
+      {
+        participantId: 'participant-cat',
+        catId: 'cat-1',
+      },
+    ],
+  };
+
+  assert.equal(resolveParticipantExecutionLease(channel, 'participant-cat'), null);
+  assert.equal(
+    resolveExecutionLeaseSnapshot(channel, {
+      participantKind: 'cat',
+      participantId: 'participant-cat',
+    }),
+    null,
   );
 });
 
