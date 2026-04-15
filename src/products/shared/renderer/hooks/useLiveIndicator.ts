@@ -35,6 +35,7 @@ const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
 const LIVE_INDICATOR_RETRY_LIMIT = 8;
 
 export interface LiveIndicatorSelectedChannelLike {
+  containerId?: string | null;
   conversationId?: string | null;
   orchestratorLease?: {
     sessionId?: string | null;
@@ -1111,6 +1112,7 @@ export function useLiveIndicator<
 
   function traceBrowser(event: string, input: {
     turnId?: string | null;
+    containerId?: string | null;
     laneId?: string | null;
     sourceMessageId?: string | null;
     targetStateId?: string | null;
@@ -1131,6 +1133,9 @@ export function useLiveIndicator<
     pushBrowserLiveTrace({
       event,
       channelId,
+      containerId:
+        readTraceString(input.containerId)
+        ?? readTraceString(selectedChannelRef.current?.containerId),
       conversationId: resolveLiveIndicatorConversationId(selectedChannelRef.current, channelId),
       turnId: readTraceString(input.turnId) ?? activeTurnId,
       laneId: readTraceString(input.laneId) ?? primarySegment?.laneId ?? stateRef.current.laneId,

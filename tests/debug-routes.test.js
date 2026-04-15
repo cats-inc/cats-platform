@@ -27,6 +27,7 @@ test('routeChatDebugResourceApi returns live trace entries when enabled', async 
   pushServerLiveTrace({
     event: 'stream_target_ready',
     channelId: 'channel-1',
+    containerId: 'container-chat-root',
     conversationId: 'conversation-channel-1',
     turnId: 'turn-1',
     laneId: 'lane-1',
@@ -54,6 +55,7 @@ test('routeChatDebugResourceApi returns live trace entries when enabled', async 
   assert.equal(payload.enabled, true);
   assert.equal(payload.entries.length, 1);
   assert.equal(payload.entries[0].event, 'stream_target_ready');
+  assert.equal(payload.entries[0].containerId, 'container-chat-root');
   assert.equal(payload.entries[0].conversationId, 'conversation-channel-1');
   assert.equal(payload.entries[0].turnId, 'turn-1');
   assert.equal(payload.entries[0].laneId, 'lane-1');

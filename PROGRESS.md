@@ -614,6 +614,10 @@ Known follow-ups:
   canonical `conversationId`, so renderer debug traces stay aligned with the
   app-shell/read-model tuple instead of rebuilding conversation scope from
   `channelId` when that canonical identity is already present
+- live trace/debug entries plus stream speaker envelopes now also carry
+  canonical `containerId`, so browser/server trace inspection can see the full
+  container/conversation/turn/lane tuple instead of stopping one hop short of
+  the shared engine identity
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

@@ -4,6 +4,7 @@ export interface LiveTraceEntry {
   origin: 'browser' | 'server';
   event: string;
   channelId: string | null;
+  containerId: string | null;
   conversationId: string | null;
   turnId: string | null;
   laneId: string | null;
@@ -29,6 +30,7 @@ interface BrowserLiveTraceStore {
 export interface PushLiveTraceInput {
   event: string;
   channelId?: string | null;
+  containerId?: string | null;
   conversationId?: string | null;
   turnId?: string | null;
   laneId?: string | null;
@@ -161,6 +163,7 @@ function buildTraceEntry(
     origin,
     event: input.event,
     channelId: input.channelId ?? null,
+    containerId: input.containerId ?? null,
     conversationId: input.conversationId ?? null,
     turnId: input.turnId ?? null,
     laneId: input.laneId ?? null,
@@ -188,6 +191,7 @@ function buildTraceSignature(input: PushLiveTraceInput): string {
   return [
     input.event,
     input.channelId ?? '',
+    input.containerId ?? '',
     input.conversationId ?? '',
     input.turnId ?? '',
     input.laneId ?? '',

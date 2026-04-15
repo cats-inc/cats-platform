@@ -17,6 +17,7 @@ import {
 import {
   buildChatConversationId,
   buildChatLaneId,
+  resolveChatChannelContainerId,
 } from '../../../../shared/chatCoreIds.js';
 
 export interface ChannelStreamTarget {
@@ -427,10 +428,15 @@ export async function waitForChannelStreamTarget(
       const activeTurn = resolveActiveTurn(channel);
       const turnId = activeTurn?.id?.trim() || null;
       const sourceMessageId = activeTurn?.sourceMessageId?.trim() || null;
+      const containerId = resolveChatChannelContainerId({
+        channelId,
+        parallelChatGroups: state.parallelChatGroups,
+      });
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
           event: 'stream_target_ready',
           channelId,
+          containerId,
           conversationId: buildChatConversationId(channelId),
           turnId,
           laneId: streamTarget.laneId,
@@ -472,10 +478,15 @@ export async function waitForNextChannelStreamTarget(
       const activeTurn = resolveActiveTurn(channel);
       const turnId = activeTurn?.id?.trim() || null;
       const sourceMessageId = activeTurn?.sourceMessageId?.trim() || null;
+      const containerId = resolveChatChannelContainerId({
+        channelId,
+        parallelChatGroups: state.parallelChatGroups,
+      });
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
           event: 'stream_target_ready',
           channelId,
+          containerId,
           conversationId: buildChatConversationId(channelId),
           turnId,
           laneId: streamTarget.laneId,

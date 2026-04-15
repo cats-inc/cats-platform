@@ -17,6 +17,7 @@ test('server live trace keeps a bounded deduplicated buffer', () => {
   pushServerLiveTrace({
     event: 'stream_target_ready',
     channelId: 'channel-1',
+    containerId: 'container-chat-root',
     conversationId: 'conversation-channel-1',
     turnId: 'turn-1',
     laneId: 'lane-1',
@@ -28,6 +29,7 @@ test('server live trace keeps a bounded deduplicated buffer', () => {
   pushServerLiveTrace({
     event: 'stream_target_ready',
     channelId: 'channel-1',
+    containerId: 'container-chat-root',
     conversationId: 'conversation-channel-1',
     turnId: 'turn-1',
     laneId: 'lane-1',
@@ -70,6 +72,7 @@ test('browser live trace respects the enabled flag and records entries once enab
   pushBrowserLiveTrace({
     event: 'stream_connect',
     channelId: 'channel-enabled',
+    containerId: 'container-chat-root',
     conversationId: 'conversation-channel-enabled',
     turnId: 'turn-enabled',
     laneId: 'lane-enabled',
@@ -81,6 +84,7 @@ test('browser live trace respects the enabled flag and records entries once enab
 
   const entries = readBrowserLiveTrace();
   assert.equal(entries.at(-1)?.channelId, 'channel-enabled');
+  assert.equal(entries.at(-1)?.containerId, 'container-chat-root');
   assert.equal(entries.at(-1)?.conversationId, 'conversation-channel-enabled');
   assert.equal(entries.at(-1)?.turnId, 'turn-enabled');
   assert.equal(entries.at(-1)?.laneId, 'lane-enabled');
