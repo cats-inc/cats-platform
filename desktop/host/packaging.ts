@@ -314,14 +314,14 @@ const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
     label: 'Kiro CLI',
     pack: 'native_cli_pack',
     helperIds: [
-      'windows-kiro-wsl-installer',
+      'windows-kiro-native-installer',
       'linux-kiro-native-installer',
       'macos-kiro-native-installer',
     ],
-    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-Kiro{WslCli.ps1,-Cli.sh}',
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-Kiro{Cli.ps1,-Cli.sh}',
     targetHome: 'cats-platform packaged-host provider assets',
     notes: [
-      'Windows keeps the WSL-backed Kiro flow, while macOS/Linux use the repo-owned native packaged helper path.',
+      'Repo-owned packaged helper coverage now spans Windows, macOS, and Linux hosts.',
     ],
   },
   {

@@ -65,7 +65,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroWslCli.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroCli.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
@@ -149,7 +149,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
         && provider.platform === 'cross_platform'
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
-        && provider.helperIds.includes('windows-kiro-wsl-installer')
+        && provider.helperIds.includes('windows-kiro-native-installer')
         && provider.helperIds.includes('linux-kiro-native-installer')
         && provider.helperIds.includes('macos-kiro-native-installer'),
     ),
@@ -260,9 +260,9 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.helperCatalog.some(
-      (helper) => helper.id === 'windows-kiro-wsl-installer'
-        && helper.assetId === 'windows-kiro-wsl-installer-script'
-        && helper.platform === 'windows_wsl'
+      (helper) => helper.id === 'windows-kiro-native-installer'
+        && helper.assetId === 'windows-kiro-native-installer-script'
+        && helper.platform === 'windows'
         && helper.supportsForce === true,
     ),
     true,
@@ -342,7 +342,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'windows-kiro-wsl-installer' && asset.status === 'ported',
+      (asset) => asset.id === 'windows-kiro-native-installer' && asset.status === 'ported',
     ),
     true,
   );
@@ -429,7 +429,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     windowsTarget?.artifacts.some(
-      (artifact) => artifact.id === 'windows-kiro-wsl-installer-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'windows-kiro-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -689,7 +689,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Junie\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Check-WslPrerequisites\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-WslUbuntuEnvironment\.ps1/);
-  assert.match(script, /desktop\\setup-assets\\windows\\Install-KiroWslCli\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-KiroCli\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-DockerDesktop\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Ollama\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Check-WindowsSetupReadiness\.ps1/);
@@ -903,7 +903,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Junie.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WslPrerequisites.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-WslUbuntuEnvironment.ps1'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-KiroWslCli.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-KiroCli.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-DockerDesktop.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Ollama.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WindowsSetupReadiness.ps1'));
@@ -1048,9 +1048,9 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
-      (helper) => helper.id === 'windows-kiro-wsl-installer'
-        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-KiroWslCli.ps1'
-        && helper.platform === 'windows_wsl',
+      (helper) => helper.id === 'windows-kiro-native-installer'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-KiroCli.ps1'
+        && helper.platform === 'windows',
     ),
     true,
   );
@@ -1180,7 +1180,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.artifacts.some(
-      (artifact) => artifact.id === 'windows-kiro-wsl-installer-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'windows-kiro-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );

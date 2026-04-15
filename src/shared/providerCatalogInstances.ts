@@ -42,7 +42,7 @@ export const PRODUCT_PROVIDER_INSTANCES: Record<ProductProviderId, ProductProvid
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],
   kiro: [
-    { id: 'ubuntu', label: 'cli/ubuntu', target: 'cli/ubuntu', backend: 'cli', default: true },
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],
   ollama: [
     { id: 'local', label: 'local/local', target: 'local/local', backend: 'local', default: true },
