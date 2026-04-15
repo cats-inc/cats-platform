@@ -1465,6 +1465,42 @@ test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage only matches the current s
   );
 });
 
+test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage requires lane identity when the live bubble already has a targetStateId', () => {
+  assert.equal(
+    hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
+      [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          senderName: 'Kenny',
+          metadata: {},
+          createdAt: '2026-04-13T12:00:00.000Z',
+        },
+        {
+          id: 'message-agent-1',
+          senderKind: 'agent',
+          senderName: 'Agent-1',
+          metadata: {
+            targetKind: 'cat',
+            targetId: 'participant-agent-1',
+          },
+          createdAt: '2026-04-13T12:00:03.000Z',
+        },
+      ],
+      'message-user',
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'streaming',
+        targetStateId: 'target-agent-1',
+        participantId: 'participant-agent-1',
+        speakerLabel: 'Agent-1',
+      },
+    ),
+    false,
+  );
+});
+
 test('shouldPromoteStreamingBubbleToWaitingSpeaker hands off to a named follow-up speaker after the prior reply persists', () => {
   const waitingState = createWaitingLiveIndicatorState({
     participantId: 'participant-agent-2',

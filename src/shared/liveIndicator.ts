@@ -1514,6 +1514,12 @@ function doesMessageMatchLiveIndicatorSpeaker(
     if (messageTargetStateId) {
       return messageTargetStateId === liveTargetStateId;
     }
+    const liveSessionId = readString(liveIndicator.sessionId);
+    if (!liveSessionId) {
+      return false;
+    }
+    const messageSessionId = readMessageSessionId(message);
+    return messageSessionId === liveSessionId;
   }
 
   const messageTargetId = readMessageTargetId(message);
