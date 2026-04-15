@@ -460,7 +460,13 @@ function messageMatchesTargetAttachment(message: ChatMessage, target: RoutingTar
   const messageSessionId = readMessageMetadataString(message, 'sessionId');
   if (targetLaneId) {
     if (messageLaneId) {
-      return messageLaneId === targetLaneId;
+      if (messageLaneId === targetLaneId) {
+        return true;
+      }
+      if (targetSessionId !== null && messageSessionId === targetSessionId) {
+        return true;
+      }
+      return targetSessionId === null;
     }
     return targetSessionId !== null && messageSessionId === targetSessionId;
   }
@@ -506,7 +512,7 @@ function sliceRecentContextForTarget(
     }
   }
 
-  const startIndex = Math.max(lastOwnReplyIndex + 1, 0);
+  const startIndex = Math.max(lastOwnReplyIndex, 0);
   const relevantMessages = messages.slice(startIndex, boundedSourceIndex + 1);
   return relevantMessages.slice(-MAX_RECENT_CONTEXT_MESSAGES);
 }
