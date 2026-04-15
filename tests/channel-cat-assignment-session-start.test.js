@@ -6,6 +6,10 @@ import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import {
+  buildChatConversationId,
+  CHAT_ROOT_CONTAINER_ID,
+} from '../build/server/shared/chatCoreIds.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -178,6 +182,11 @@ test('assigning a cat emits session_started metadata keyed by participantId', as
     );
     assert.ok(sessionStartedMessage);
     assert.equal(sessionStartedMessage.metadata?.targetId, assignmentParticipantId);
+    assert.equal(
+      sessionStartedMessage.metadata?.conversationId,
+      buildChatConversationId(channelId),
+    );
+    assert.equal(sessionStartedMessage.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
     assert.equal(
       sessionStartedMessage.body,
       'Agent-Spawn connected to cats-runtime session session-1.\n(cwd: C:/repo/cats-platform)',

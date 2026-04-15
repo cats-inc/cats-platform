@@ -16,6 +16,10 @@ import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
 import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
+import {
+  buildChatConversationId,
+  resolveChatChannelContainerId,
+} from '../../../shared/chatCoreIds.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import {
   appendMessage,
@@ -137,6 +141,16 @@ export const DEFAULT_CHAT_SCOPE_ID = 'default';
 
 export function nowFrom(dependencies: ChatApiDependencies): Date {
   return dependencies.now?.() ?? new Date();
+}
+
+function readInvocationContextMetadataString(
+  context: { metadata?: Record<string, unknown> } | null | undefined,
+  key: string,
+): string | null {
+  const value = context?.metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
 }
 
 export async function reconcileTelegramTransportAfterBindingMutation(
@@ -584,6 +598,21 @@ export async function persistCatAssignmentUpdate(
         now,
         context.dependencies.companionStore,
       );
+      const conversationId = readInvocationContextMetadataString(
+        runtimeEnvelope.context,
+        'conversationId',
+      ) ?? buildChatConversationId(channelId);
+      const containerId = readInvocationContextMetadataString(
+        runtimeEnvelope.context,
+        'containerId',
+      ) ?? resolveChatChannelContainerId({
+        channelId,
+        parallelChatGroups: nextState.parallelChatGroups,
+      });
+      const transportBindingId = readInvocationContextMetadataString(
+        runtimeEnvelope.context,
+        'transportBindingId',
+      );
       const session = await context.dependencies.runtimeClient.createSession({
         provider: updatedCat.execution.target.provider,
         instance: updatedCat.execution.target.instance,
@@ -635,8 +664,11 @@ export async function persistCatAssignmentUpdate(
         {
           metadata: {
             event: 'session_started',
+            containerId,
+            conversationId,
             targetKind: 'cat',
             targetId: assignmentTargetId,
+            ...(transportBindingId ? { transportBindingId } : {}),
             sessionId: session.id,
             verbosity: 'verbose',
           },
@@ -649,6 +681,10 @@ export async function persistCatAssignmentUpdate(
         lastError: errorMessage,
       }, now);
       const cat = requireCat(nextState, input.catId);
+      const containerId = resolveChatChannelContainerId({
+        channelId,
+        parallelChatGroups: nextState.parallelChatGroups,
+      });
       nextState = appendMessage(
         nextState,
         channelId,
@@ -661,6 +697,8 @@ export async function persistCatAssignmentUpdate(
         {
           metadata: {
             event: 'session_start_failed',
+            containerId,
+            conversationId: buildChatConversationId(channelId),
             targetKind: 'cat',
             targetId: assignmentTargetId,
           },

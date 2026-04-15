@@ -5,6 +5,10 @@ import test from 'node:test';
 
 import { persistCatAssignmentUpdate } from '../build/server/products/chat/api/routeSupport.js';
 import {
+  buildChatConversationId,
+  CHAT_ROOT_CONTAINER_ID,
+} from '../build/server/shared/chatCoreIds.js';
+import {
   createCat,
   createChannel,
   setChannelOrchestratorLease,
@@ -116,4 +120,10 @@ test('persistCatAssignmentUpdate starts new cat sessions from the orchestrator a
   assert.ok(catAssignment);
   assert.equal(catAssignment.execution.lease.sessionId, 'session-new-cat');
   assert.equal(catAssignment.execution.lease.cwd, orchestratorWorkspace);
+  const sessionStarted = channel.messages.find((message) =>
+    message.metadata?.event === 'session_started'
+    && message.metadata?.sessionId === 'session-new-cat');
+  assert.ok(sessionStarted);
+  assert.equal(sessionStarted.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(sessionStarted.metadata?.conversationId, buildChatConversationId(channelId));
 });
