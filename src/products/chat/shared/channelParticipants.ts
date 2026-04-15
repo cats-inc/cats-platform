@@ -114,6 +114,12 @@ export function resolveParticipantCatId(
     : null;
 }
 
+export function resolveResolvedParticipantExecutionStatus(
+  participant: Pick<ResolvedChannelParticipant, 'execution'>,
+): ParticipantExecutionLease['status'] {
+  return participant.execution.lease.status;
+}
+
 export function resolveParticipantExecutionAssignments(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
   participantId: string,

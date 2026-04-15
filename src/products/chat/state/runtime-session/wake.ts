@@ -418,7 +418,7 @@ export async function ensureTargetSession(
     if (attachedTarget.participantKind === 'orchestrator') {
       const channelState = requireChannel(state, channelId);
       const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
-      const orchestratorLease = channelState.orchestratorLease;
+      const orchestratorLease = resolveOrchestratorExecutionLease(channelState);
       const shouldRestartSoloSession = channelState.composerMode === 'solo'
         && (
           orchestratorLease.provider !== executionTarget.provider

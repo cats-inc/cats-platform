@@ -22,7 +22,11 @@ import {
   resolveChannelKind,
   resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
-import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
+import {
+  resolveChannelParticipantAssignments,
+  resolveOrchestratorExecutionLease,
+  resolveParticipantExecutionLease,
+} from '../../shared/channelParticipants.js';
 import {
   resolveChatLifecycleState,
   type ChatLifecycleState,
@@ -133,7 +137,9 @@ function resolveLeadParticipantLeaseStatus(
   const assignment = participantAssignments.find(
     (candidate) => candidate.participantId === leadId && candidate.status === 'active',
   );
-  return assignment?.execution.lease.status ?? null;
+  return assignment
+    ? resolveParticipantExecutionLease(channel, assignment.participantId)?.status ?? null
+    : null;
 }
 
 export function resolveOrchestratorDisplayName(state: ChatState): string {
@@ -230,7 +236,7 @@ export function resolveChannelEntryParticipant(
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
     participantName: resolveOrchestratorDisplayName(state),
-    lifecycleState: resolveParticipantLifecycleState(channel.orchestratorLease),
+    lifecycleState: resolveParticipantLifecycleState(resolveOrchestratorExecutionLease(channel)),
   };
 }
 

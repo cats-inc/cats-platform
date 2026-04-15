@@ -70,6 +70,7 @@ import {
 } from './routeStateSupport.js';
 import {
   collectChannelLeaseAttachments,
+  resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
 } from '../shared/channelParticipants.js';
 export { mapChannelCat } from './routeStateSupport.js';
@@ -542,11 +543,12 @@ export async function persistCatAssignmentUpdate(
   );
   const assignmentTargetId = updatedCat?.participantId ?? input.catId;
   const resolvedChannel = requireChannel(nextState, channelId);
+  const orchestratorAttachment = resolveOrchestratorLeaseAttachment(resolvedChannel);
   const spawnCwd = (
     resolveChannelSpawnCwd(resolvedChannel.repoPath, resolvedChannel.chatCwd)
     ?? (
-      isRuntimeSessionWorkspacePath(resolvedChannel.orchestratorLease.cwd)
-        ? resolvedChannel.orchestratorLease.cwd
+      isRuntimeSessionWorkspacePath(orchestratorAttachment?.cwd)
+        ? orchestratorAttachment?.cwd ?? null
         : null
     )
     ?? null
