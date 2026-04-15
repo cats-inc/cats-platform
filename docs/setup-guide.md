@@ -254,6 +254,8 @@ Current interruption truth in the packaged host:
 - the same Windows readiness audit can now also optionally surface Ollama
   local-model follow-through when the runtime is installed but its local API is
   not ready
+- set `CATS_DESKTOP_SETUP_AUDIT_PARALLEL=false` when you need startup audits
+  to collect serially for debugging instead of using background fan-out
 
 ### Self-Hosted npm Package Smoke
 
@@ -324,7 +326,10 @@ Coverage in this slice:
 - npm CLI pack install and upgrade for Codex, Gemini, Copilot, OpenCode,
   Kilo, Auggie, and Pi
 - self-hosted audit output for the same provider baseline, plus optional
-  Ollama coverage when you pass `--include-local-models`
+  Ollama coverage when you pass `--include-local-models`, or serial collection
+  when you pass `--serial`
+- OpenClaw is not part of this local host audit because the catalog treats it
+  as an `agent/gateway` backend rather than a host-local CLI/local-model target
 
 These helpers are shipped as part of the npm package so self-hosted operators
 can use them after `npm install` or `npx`. They are not yet consumed by the

@@ -38,6 +38,10 @@ export interface DesktopHostBackgroundConfig {
   closeBehavior: 'quit' | 'minimize_to_tray';
 }
 
+export interface DesktopHostSetupAuditConfig {
+  parallel: boolean;
+}
+
 export interface DesktopHostConfig {
   packaged: boolean;
   packageRoot: string;
@@ -54,6 +58,7 @@ export interface DesktopHostConfig {
   readinessPollIntervalMs: number;
   gracefulShutdownMs: number;
   background: DesktopHostBackgroundConfig;
+  setupAudit: DesktopHostSetupAuditConfig;
   update: DesktopUpdateConfig;
   paths: DesktopHostPaths;
 }
@@ -76,6 +81,7 @@ const DEFAULT_DESKTOP_TRAY_ENABLED = true;
 const DEFAULT_KEEP_SERVICES_RUNNING = true;
 const DEFAULT_CLOSE_BEHAVIOR = 'minimize_to_tray';
 const DEFAULT_FORCE_QUIT_ON_CLOSE = false;
+const DEFAULT_SETUP_AUDIT_PARALLEL = true;
 export const DESKTOP_USER_DATA_DIR_NAME = 'Cats';
 
 function isWindowsAbsolutePath(value: string | undefined): boolean {
@@ -239,6 +245,12 @@ export function resolveDesktopHostConfig(
     keepServicesRunning: forceQuitOnClose ? false : DEFAULT_KEEP_SERVICES_RUNNING,
     closeBehavior: forceQuitOnClose ? 'quit' : DEFAULT_CLOSE_BEHAVIOR,
   };
+  const setupAudit: DesktopHostSetupAuditConfig = {
+    parallel: parseDesktopBoolean(
+      env.CATS_DESKTOP_SETUP_AUDIT_PARALLEL,
+      DEFAULT_SETUP_AUDIT_PARALLEL,
+    ),
+  };
   const update = resolveDesktopUpdateConfig(env);
 
   return {
@@ -257,6 +269,7 @@ export function resolveDesktopHostConfig(
     readinessPollIntervalMs,
     gracefulShutdownMs,
     background,
+    setupAudit,
     update,
     paths: {
       platformDir,

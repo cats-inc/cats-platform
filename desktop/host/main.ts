@@ -61,6 +61,7 @@ import {
   runDesktopSetupHelper,
   shouldAutoRunSetupAudit,
 } from './setupBridge.js';
+import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   createDesktopTrayController,
   type DesktopTrayController,
@@ -86,6 +87,7 @@ import {
   type DesktopStartupLaunchContext,
   type DesktopStartupPreferences,
 } from './desktopStartup.js';
+import { loadDesktopEnvFile } from './env.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -741,33 +743,6 @@ function buildHostPackagingPlan(
   });
 }
 
-function resolveDefaultSetupAuditAction(
-  platform: NodeJS.Platform = process.platform,
-): {
-  helperId: string;
-  extraArguments?: string[];
-} | null {
-  switch (platform) {
-    case 'win32':
-      return {
-        helperId: 'windows-install-readiness-audit',
-        extraArguments: ['-IncludeWsl:$false', '-IncludeLocalModels:$true'],
-      };
-    case 'darwin':
-      return {
-        helperId: 'macos-install-readiness-audit',
-        extraArguments: ['--include-local-models'],
-      };
-    case 'linux':
-      return {
-        helperId: 'linux-install-readiness-audit',
-        extraArguments: ['--include-local-models'],
-      };
-    default:
-      return null;
-  }
-}
-
 function resolveCurrentPackagingPlan(config: DesktopHostConfig): DesktopPackagingPlan {
   return packagingState ?? buildHostPackagingPlan(config);
 }
@@ -1086,7 +1061,7 @@ async function maybePrimeSetupAudit(
   })) {
     return;
   }
-  const setupAuditAction = resolveDefaultSetupAuditAction();
+  const setupAuditAction = resolveDefaultSetupAuditAction(hostConfig);
   if (!setupAuditAction) {
     return;
   }
@@ -1180,6 +1155,8 @@ async function shutdownHost(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  loadDesktopEnvFile();
+
   const gotLock = app.requestSingleInstanceLock();
   if (!gotLock) {
     app.quit();

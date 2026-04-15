@@ -60,6 +60,11 @@
     Disabled by default because the first packaged baseline remains the API
     path, not a required local-model install.
 
+.PARAMETER Parallel
+    Run independent helper checks in parallel. Enabled by default. Pass
+    `$false` to force serial collection for debugging or deterministic audit
+    tracing.
+
 .PARAMETER DockerState
     Override Docker Desktop detection for deterministic tests.
 
@@ -102,6 +107,7 @@ param(
   [string]$IncludeNativeProviders = 'true',
   [string]$IncludeDocker = 'false',
   [string]$IncludeLocalModels = 'false',
+  [string]$Parallel = 'true',
   [switch]$SkipNodeCheck,
   [string]$InstalledPackagesJson = '',
   [string]$OutdatedPackagesJson = '',
@@ -169,6 +175,7 @@ $includeWslEnabled = Resolve-BoolArgument -Name 'IncludeWsl' -Value $IncludeWsl
 $includeNativeProvidersEnabled = Resolve-BoolArgument -Name 'IncludeNativeProviders' -Value $IncludeNativeProviders
 $includeDockerEnabled = Resolve-BoolArgument -Name 'IncludeDocker' -Value $IncludeDocker
 $includeLocalModelsEnabled = Resolve-BoolArgument -Name 'IncludeLocalModels' -Value $IncludeLocalModels
+$parallelChecksEnabled = Resolve-BoolArgument -Name 'Parallel' -Value $Parallel
 
 function Write-StructuredResult {
   param(
@@ -179,6 +186,7 @@ function Write-StructuredResult {
     $Result | ConvertTo-Json -Depth 10
   } else {
     Write-Host "Status: $($Result.status)"
+    Write-Host "Collection mode: $($Result.collectionMode)"
     Write-Host "Native CLI pack: $($Result.nativeCliPack.status)"
     if ($null -ne $Result.wsl) {
       Write-Host "WSL prerequisites: $($Result.wsl.status)"
@@ -202,6 +210,25 @@ function Invoke-HelperJson {
   $allArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ScriptPath) + $Arguments
   $result = Invoke-HiddenCommand -FileName 'powershell.exe' -ArgumentList $allArgs
   return $result.Output | ConvertFrom-Json
+}
+
+function Invoke-HelperJsonSequence {
+  param(
+    [object[]]$Helpers
+  )
+
+  $results = @{}
+  if ($null -eq $Helpers -or $Helpers.Count -eq 0) {
+    return $results
+  }
+
+  foreach ($helper in $Helpers) {
+    $results[[string]$helper.Key] = Invoke-HelperJson -ScriptPath ([string]$helper.ScriptPath) -Arguments @(
+      $helper.Arguments | Where-Object { $null -ne $_ } | ForEach-Object { [string]$_ }
+    )
+  }
+
+  return $results
 }
 
 function Invoke-HelperJsonBatch {
@@ -440,10 +467,14 @@ if ($includeLocalModelsEnabled) {
       Key = 'ollama'
       ScriptPath = $ollamaHelperPath
       Arguments = $ollamaArguments
-    })
+  })
 }
 
-$helperResults = Invoke-HelperJsonBatch -Helpers $helperInvocations.ToArray()
+$helperResults = if ($parallelChecksEnabled) {
+  Invoke-HelperJsonBatch -Helpers $helperInvocations.ToArray()
+} else {
+  Invoke-HelperJsonSequence -Helpers $helperInvocations.ToArray()
+}
 $nativeCliPack = $helperResults['nativeCliPack']
 $prefixHelper = $helperResults['prefixHelper']
 $wslResult = if ($helperResults.ContainsKey('wsl')) { $helperResults['wsl'] } else { $null }
@@ -653,6 +684,7 @@ $overallStatus = if ($statuses -contains 'failed') {
 
 $result = [pscustomobject]@{
   helper = 'windows-setup-readiness-audit'
+  collectionMode = if ($parallelChecksEnabled) { 'parallel' } else { 'serial' }
   status = $overallStatus
   plannedActions = $plannedActions.ToArray()
   warnings = $warnings.ToArray()

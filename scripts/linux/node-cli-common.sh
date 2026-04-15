@@ -621,6 +621,7 @@ run_self_hosted_installation_check() {
   local emit_json='false'
   local strict='false'
   local include_local_models='false'
+  local collection_mode='parallel'
   local total_present=0
   local total_missing=0
   local checks_json=''
@@ -668,9 +669,12 @@ run_self_hosted_installation_check() {
       --include-local-models)
         include_local_models='true'
         ;;
+      --serial)
+        collection_mode='serial'
+        ;;
       -h|--help)
         cat <<EOF
-Usage: $(basename "$0") [--json] [--strict] [--include-local-models] [--help]
+Usage: $(basename "$0") [--json] [--strict] [--include-local-models] [--serial] [--help]
 
 Audits the self-hosted provider baseline needed to run cats-platform with
 cats-runtime on ${platform}.
@@ -679,6 +683,7 @@ Options:
   --json    Emit a machine-readable summary.
   --strict  Exit non-zero when any audited item is missing.
   --include-local-models  Include the optional Ollama local-model check.
+  --serial  Disable background fan-out and collect checks serially.
   --help    Show this help text.
 EOF
         return 0
@@ -756,6 +761,30 @@ EOF
     append_check_json "$check_id" "$check_label" "$check_present" "$check_kind" "$check_scope" "$check_status"
   }
 
+  handle_audited_check_result() {
+    local check_id="$1"
+    local check_label="$2"
+    local check_present="$3"
+    local check_kind="$4"
+    local check_scope="$5"
+    local check_status="$6"
+
+    append_check_row "$check_id" "$check_label" "$check_present" "$check_kind" "$check_scope" "$check_status"
+    case "$check_kind:$check_status" in
+      native:changes_required)
+        planned_actions+=("provider:install_${check_id}_native")
+        ;;
+      local_model:not_installed)
+        planned_actions+=('local_model:install_ollama_local_model')
+        manual_steps+=('Install Ollama when you want local models on this host, then rerun the packaged setup check.')
+        ;;
+      local_model:changes_required)
+        planned_actions+=('local_model:start_ollama_local_model')
+        manual_steps+=('Start Ollama or run `ollama serve`, then rerun the packaged setup check.')
+        ;;
+    esac
+  }
+
   if command -v node >/dev/null 2>&1; then
     append_check_row 'node' 'Node.js' 'true' 'core' 'host' 'ready'
   else
@@ -781,82 +810,104 @@ EOF
     planned_actions+=('repair_npm_prefix')
   fi
 
-  for provider in claude cursor goose junie kiro; do
-    async_file="$(mktemp)"
-    async_files+=("$async_file")
-    (
+  if [ "$collection_mode" = 'serial' ]; then
+    for provider in claude cursor goose junie kiro; do
       if command_path="$(detect_provider_command "$platform" "$provider")"; then
-        printf '%s|%s|true|native|host|ready\n' "$provider" "$(provider_display_name "$provider")"
+        handle_audited_check_result "$provider" "$(provider_display_name "$provider")" 'true' 'native' 'host' 'ready'
         unset command_path
       else
-        printf '%s|%s|false|native|host|changes_required\n' "$provider" "$(provider_display_name "$provider")"
+        handle_audited_check_result "$provider" "$(provider_display_name "$provider")" 'false' 'native' 'host' 'changes_required'
       fi
-    ) >"$async_file" 2>/dev/null &
-    async_pids+=($!)
-  done
+    done
 
-  while IFS='|' read -r id command_name package_name display_name; do
-    [ -n "$id" ] || continue
-    async_file="$(mktemp)"
-    async_files+=("$async_file")
-    (
+    while IFS='|' read -r id command_name package_name display_name; do
+      [ -n "$id" ] || continue
       if command -v "$command_name" >/dev/null 2>&1; then
-        printf '%s|%s|true|node|host|ready\n' "$id" "$display_name"
+        handle_audited_check_result "$id" "$display_name" 'true' 'node' 'host' 'ready'
       else
-        printf '%s|%s|false|node|host|changes_required\n' "$id" "$display_name"
+        handle_audited_check_result "$id" "$display_name" 'false' 'node' 'host' 'changes_required'
       fi
-    ) >"$async_file" 2>/dev/null &
-    async_pids+=($!)
-  done <<EOF
+    done <<EOF
 $(node_cli_package_rows)
 EOF
 
-  if [ "$include_local_models" = 'true' ]; then
-    async_file="$(mktemp)"
-    async_files+=("$async_file")
-    (
+    if [ "$include_local_models" = 'true' ]; then
       if ollama_command="$(detect_ollama_command "$platform")"; then
         if ollama_api_ready; then
-          printf 'ollama|Ollama|true|local_model|host|ready\n'
+          handle_audited_check_result 'ollama' 'Ollama' 'true' 'local_model' 'host' 'ready'
         else
-          printf 'ollama|Ollama|false|local_model|host|changes_required\n'
+          handle_audited_check_result 'ollama' 'Ollama' 'false' 'local_model' 'host' 'changes_required'
         fi
         unset ollama_command
       else
-        printf 'ollama|Ollama|false|local_model|host|not_installed\n'
+        handle_audited_check_result 'ollama' 'Ollama' 'false' 'local_model' 'host' 'not_installed'
       fi
-    ) >"$async_file" 2>/dev/null &
-    async_pids+=($!)
+    fi
+  else
+    for provider in claude cursor goose junie kiro; do
+      async_file="$(mktemp)"
+      async_files+=("$async_file")
+      (
+        if command_path="$(detect_provider_command "$platform" "$provider")"; then
+          printf '%s|%s|true|native|host|ready\n' "$provider" "$(provider_display_name "$provider")"
+          unset command_path
+        else
+          printf '%s|%s|false|native|host|changes_required\n' "$provider" "$(provider_display_name "$provider")"
+        fi
+      ) >"$async_file" 2>/dev/null &
+      async_pids+=($!)
+    done
+
+    while IFS='|' read -r id command_name package_name display_name; do
+      [ -n "$id" ] || continue
+      async_file="$(mktemp)"
+      async_files+=("$async_file")
+      (
+        if command -v "$command_name" >/dev/null 2>&1; then
+          printf '%s|%s|true|node|host|ready\n' "$id" "$display_name"
+        else
+          printf '%s|%s|false|node|host|changes_required\n' "$id" "$display_name"
+        fi
+      ) >"$async_file" 2>/dev/null &
+      async_pids+=($!)
+    done <<EOF
+$(node_cli_package_rows)
+EOF
+
+    if [ "$include_local_models" = 'true' ]; then
+      async_file="$(mktemp)"
+      async_files+=("$async_file")
+      (
+        if ollama_command="$(detect_ollama_command "$platform")"; then
+          if ollama_api_ready; then
+            printf 'ollama|Ollama|true|local_model|host|ready\n'
+          else
+            printf 'ollama|Ollama|false|local_model|host|changes_required\n'
+          fi
+          unset ollama_command
+        else
+          printf 'ollama|Ollama|false|local_model|host|not_installed\n'
+        fi
+      ) >"$async_file" 2>/dev/null &
+      async_pids+=($!)
+    fi
+
+    for async_pid in "${async_pids[@]}"; do
+      if ! wait "$async_pid"; then
+        for async_file in "${async_files[@]}"; do
+          rm -f "$async_file"
+        done
+        return 1
+      fi
+    done
+
+    for async_file in "${async_files[@]}"; do
+      if IFS='|' read -r id label present kind scope status < "$async_file"; then
+        handle_audited_check_result "$id" "$label" "$present" "$kind" "$scope" "$status"
+      fi
+      rm -f "$async_file"
+    done
   fi
-
-  for async_pid in "${async_pids[@]}"; do
-    if ! wait "$async_pid"; then
-      for async_file in "${async_files[@]}"; do
-        rm -f "$async_file"
-      done
-      return 1
-    fi
-  done
-
-  for async_file in "${async_files[@]}"; do
-    if IFS='|' read -r id label present kind scope status < "$async_file"; then
-      append_check_row "$id" "$label" "$present" "$kind" "$scope" "$status"
-      case "$kind:$status" in
-        native:changes_required)
-          planned_actions+=("provider:install_${id}_native")
-          ;;
-        local_model:not_installed)
-          planned_actions+=('local_model:install_ollama_local_model')
-          manual_steps+=('Install Ollama when you want local models on this host, then rerun the packaged setup check.')
-          ;;
-        local_model:changes_required)
-          planned_actions+=('local_model:start_ollama_local_model')
-          manual_steps+=('Start Ollama or run `ollama serve`, then rerun the packaged setup check.')
-          ;;
-      esac
-    fi
-    rm -f "$async_file"
-  done
 
   if [ $node_pack_missing -gt 0 ]; then
     planned_actions+=('repair_native_cli_pack')
@@ -867,8 +918,9 @@ EOF
   fi
 
   if [ "$emit_json" = 'true' ]; then
-    printf '{"helper":"self-hosted-cli-check","platform":"%s","status":"%s","ready":%s,"present":%s,"missing":%s,"plannedActions":' \
+    printf '{"helper":"self-hosted-cli-check","platform":"%s","collectionMode":"%s","status":"%s","ready":%s,"present":%s,"missing":%s,"plannedActions":' \
       "$platform" \
+      "$collection_mode" \
       "$overall_status" \
       "$( [ $total_missing -eq 0 ] && printf 'true' || printf 'false' )" \
       "$total_present" \
@@ -896,6 +948,7 @@ EOF
     printf '],"warnings":[]}\n'
   else
     printf 'Status: %s\n' "$overall_status"
+    printf 'Collection mode: %s\n' "$collection_mode"
     printf 'Core prerequisites: %s (present=%s missing=%s)\n' "$(phase_status "$core_missing")" "$core_present" "$core_missing"
     printf 'Native provider pack: %s (present=%s missing=%s)\n' "$(phase_status "$native_missing")" "$native_present" "$native_missing"
     printf 'Node CLI pack: %s (present=%s missing=%s)\n' "$(phase_status "$node_pack_missing")" "$node_pack_present" "$node_pack_missing"

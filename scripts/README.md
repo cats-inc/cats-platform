@@ -213,6 +213,12 @@ Claude Code, Junie, Goose, and the other in-distro providers.
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
 helpers into one host-readable audit for the npm CLI pack, the native Windows
 provider helpers including Kiro, and the optional local-model/Ollama follow-up.
+Set `CATS_DESKTOP_SETUP_AUDIT_PARALLEL=false` when you need the packaged host
+to force that audit into serial collection for debugging.
+
+OpenClaw is intentionally not part of this local readiness audit because the
+provider catalog models it as an `agent/gateway` backend, not a repo-owned
+host-local CLI or local-model install target.
 
 Together these let the host treat packaged setup helpers as structured assets
 instead of raw bootstrap dependencies.
@@ -332,3 +338,4 @@ from the packaged setup wizard/bootstrap flow for now.
 
 Pass `--include-local-models` to the Unix `check-installation.sh` helpers when
 you also want the optional Ollama local-model check in the audit output.
+Pass `--serial` when you need those Unix audits to avoid background fan-out.

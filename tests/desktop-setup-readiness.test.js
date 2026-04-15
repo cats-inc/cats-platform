@@ -75,6 +75,7 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
 
   const result = JSON.parse(stdout);
   assert.equal(result.helper, 'windows-setup-readiness-audit');
+  assert.equal(result.collectionMode, 'parallel');
   assert.equal(result.status, 'ready');
   assert.equal(result.nativeCliPack.status, 'ready');
   assert.equal(result.wsl.status, 'ready');
@@ -341,4 +342,54 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
   assert.equal(result.status, 'changes_required');
   assert.equal(result.localModels.ollama.status, 'changes_required');
   assert.equal(result.plannedActions.includes('local_model:start_ollama_local_model'), true);
+});
+
+test('Check-WindowsSetupReadiness can force serial collection for deterministic debugging', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-serial-'));
+  const desiredPrefix = join(workingDir, '.npm-global');
+  await mkdir(desiredPrefix, { recursive: true });
+
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-Json',
+    '-Parallel:$false',
+    '-SkipNodeCheck',
+    '-DesiredPrefix',
+    desiredPrefix,
+    '-CurrentPrefix',
+    desiredPrefix,
+    '-CurrentUserPath',
+    `${desiredPrefix};C:\\Windows\\System32`,
+    '-InstalledPackagesJson',
+    nativeCliPackages,
+    '-WindowsBuild',
+    '22621',
+    '-IncludeWsl:$false',
+    '-ClaudeInstallState',
+    'installed',
+    '-ClaudeAuthState',
+    'authenticated',
+    '-CursorInstallState',
+    'installed',
+    '-CursorAuthState',
+    'authenticated',
+    '-GooseInstallState',
+    'installed',
+    '-GooseAuthState',
+    'authenticated',
+    '-JunieInstallState',
+    'installed',
+    '-JunieAuthState',
+    'authenticated',
+    '-KiroInstallState',
+    'installed',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.collectionMode, 'serial');
+  assert.equal(result.status, 'ready');
 });

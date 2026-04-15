@@ -92,6 +92,7 @@ test('Unix self-hosted provider audits expose the shared JSON audit core', async
 
     assert.equal(summary.helper, 'self-hosted-cli-check');
     assert.equal(summary.platform, platform);
+    assert.equal(summary.collectionMode, 'parallel');
     assert.equal(typeof summary.ready, 'boolean');
     assert.match(summary.status, /^(ready|changes_required)$/u);
     assert.equal(Array.isArray(summary.plannedActions), true);
@@ -133,11 +134,25 @@ test('Unix self-hosted provider audits can include 5 native providers, 7 npm too
     );
 
     assert.equal(summary.phases.length, 4);
+    assert.equal(summary.collectionMode, 'parallel');
     assert.equal(summary.checks.length, expectedCheckIds.length);
     assert.equal(summary.present + summary.missing, expectedCheckIds.length);
     assert.equal(summary.phases.some((phase) => phase.id === 'local_model_pack'), true);
     for (const checkId of expectedCheckIds) {
       assert.equal(summary.checks.some((entry) => entry.id === checkId), true);
     }
+  }
+});
+
+test('Unix self-hosted provider audits can switch to serial collection mode', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const summary = await readJsonSummary(
+      join(rootDir, 'scripts', platform, 'check-installation.sh'),
+      ['--serial', '--include-local-models'],
+    );
+
+    assert.equal(summary.collectionMode, 'serial');
+    assert.equal(Array.isArray(summary.checks), true);
+    assert.equal(summary.checks.length > 0, true);
   }
 });
