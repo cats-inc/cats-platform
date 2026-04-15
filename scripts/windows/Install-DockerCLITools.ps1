@@ -163,7 +163,7 @@ $providerCatalog = @(
 $allProviderIds = @($providerCatalog | ForEach-Object { $_.id })
 
 function Resolve-TargetProviders {
-  if ($Provider.Count -eq 0) {
+  if ($null -eq $Provider -or $Provider.Count -eq 0) {
     return $allProviderIds
   }
 

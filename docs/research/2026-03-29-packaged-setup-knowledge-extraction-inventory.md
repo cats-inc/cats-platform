@@ -132,7 +132,7 @@ ports a product-owned host asset layer.
 | Windows WSL prerequisite preflight | `Install-WSL2-Admin.ps1` + `Install-WSLUbuntu.ps1` knowledge | `cats-platform/scripts/windows/Check-WslPrerequisites.ps1` | packaged-host prerequisite helpers in `cats-platform` | Ported | Structured preflight only; stays as the read-only readiness surface before mutation |
 | Windows setup readiness audit | `environment-bootstrap/platform/windows/Check-Installation.ps1` | `cats-platform/scripts/windows/Check-WindowsSetupReadiness.ps1` | host-side readiness/recovery helpers in `cats-platform` | Ported | Structured audit only; composes the repo-owned prefix, native CLI pack, and WSL preflight helpers instead of copying the old bootstrap-wide report verbatim |
 | Windows WSL substrate + Ubuntu installer | `environment-bootstrap/platform/windows/Install-WSL2-Admin.ps1` + `environment-bootstrap/platform/windows/Install-WSLUbuntu.ps1` | `cats-platform/scripts/windows/Install-WslUbuntuEnvironment.ps1` | packaged-host prerequisite helpers in `cats-platform` | Ported | Repo-owned mutation helper for WSL substrate enablement, WSL2 default-version setup, and Ubuntu registration; keeps in-distro Ubuntu package upgrades as later manual follow-through |
-| Windows WSL Kiro installer | `environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1` | `cats-platform/scripts/windows/Install-KiroWslCli.ps1` | packaged-host provider assets in `cats-platform` | Ported | Repo-owned WSL Kiro installer now carries dependency checks, PATH cleanup, `kc` alias repair, and post-install sign-in guidance |
+| Windows WSL Kiro installer | `environment-bootstrap/platform/windows/Install-WSLKiroCLI.ps1` | `cats-platform/scripts/windows/Install-KiroWslCli.ps1` (later removed; superseded by the generic `Install-WSLCLITools.ps1` Kiro path) | packaged-host provider assets in `cats-platform` | Ported | Original port carried dependency checks, PATH cleanup, `kc` alias repair, and post-install sign-in guidance before Kiro was normalized onto the shared WSL provider loop |
 | Windows readiness/auth inspection follow-through | remaining `Check-Installation.ps1` coverage | `environment-bootstrap` only | host-side readiness/recovery helpers in `cats-platform` plus `cats-runtime` diagnostics consumption | Port selectively | Do not replace runtime diagnostics; expand the repo-owned audit incrementally instead of copying the old bootstrap-wide report verbatim |
 | Docker Desktop install + warm-state knowledge | `Install-Docker-Admin.ps1` | `cats-platform/scripts/windows/Install-DockerDesktop.ps1` | packaged-host capability-pack assets in `cats-platform` plus current `Check-WindowsSetupReadiness.ps1` | Ported | Repo-owned helper now owns Docker Desktop install, upgrade, elevation-required recovery, and engine warm-state follow-through while the readiness audit consumes its structured check output |
 | Ollama local-model runtime follow-through | official Ollama Windows install guidance plus repo-local packaged setup knowledge | `cats-platform/scripts/windows/Install-Ollama.ps1` | packaged-host capability-pack assets in `cats-platform` plus current `Check-WindowsSetupReadiness.ps1` | Ported | Repo-owned helper now owns user-scoped Ollama install, upgrade, and local API warm-state follow-through while the readiness audit can consume its structured check output |
@@ -159,14 +159,16 @@ ports a product-owned host asset layer.
      `cats-platform/scripts/windows/Install-WslUbuntuEnvironment.ps1`.
    - The host-side readiness audit is now repo-owned in
      `cats-platform/scripts/windows/Check-WindowsSetupReadiness.ps1`.
-   - The first repo-owned WSL-backed provider installer is now landed as
-     `cats-platform/scripts/windows/Install-KiroWslCli.ps1`.
+   - The first repo-owned WSL-backed provider installer originally landed as
+     `cats-platform/scripts/windows/Install-KiroWslCli.ps1`, then was later
+     removed when Kiro was folded into the shared `Install-WSLCLITools.ps1`
+     provider loop.
    - Selective auth/readiness follow-through is now landed.
    - The first packaged path is now explicitly frozen around Claude, Cursor,
      Goose, Junie, and Kiro rather than leaving Goose/Junie as implied future
      work.
 
-2. Expand host bridge and resume semantics after the first native + WSL-backed
+2. Expand host bridge and resume semantics after the first native + shared WSL
    provider installer set.
    - Claude, Cursor, and Kiro now give the packaged setup flow concrete
      native-plus-WSL provider targets.

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -73,4 +74,13 @@ test('Install-WSLCLITools preserves restart-required substrate follow-through', 
   assert.equal(result.status, 'restart_required');
   assert.equal(result.wslEnvironment.status, 'restart_required');
   assert.equal(result.interruptions.some((entry) => entry.kind === 'restart_required'), true);
+});
+
+test('Install-WSLCLITools keeps Kiro on the generic WSL provider path', async () => {
+  const script = await readFile(helperPath, 'utf8');
+
+  assert.match(script, /id = 'kiro'/u);
+  assert.match(script, /kind = 'native'/u);
+  assert.doesNotMatch(script, /Install-KiroWslCli\.ps1/u);
+  assert.doesNotMatch(script, /wsl-helper/u);
 });

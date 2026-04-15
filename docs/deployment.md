@@ -173,7 +173,7 @@ npm run desktop:icons -- --shape square
   - verify the bundled Windows native Junie installer asset
   - verify the bundled Windows WSL prerequisite preflight asset
   - verify the bundled Windows WSL substrate and Ubuntu installer asset
-  - verify the bundled Windows WSL Kiro installer asset
+  - verify the bundled Windows native Kiro installer asset
   - verify the bundled Windows Docker Desktop installer asset
   - verify the bundled Windows setup readiness audit asset
   - verify packaged `desktop-package-plan.json` keeps the Windows NSIS target

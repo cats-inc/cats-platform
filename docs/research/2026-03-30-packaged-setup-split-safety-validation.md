@@ -47,7 +47,7 @@ node --test --test-isolation=none tests/desktop-packaging.test.js tests/desktop-
   - `scripts/windows/Install-CursorAgent.ps1`
   - `scripts/windows/Check-WslPrerequisites.ps1`
   - `scripts/windows/Install-WslUbuntuEnvironment.ps1`
-  - `scripts/windows/Install-KiroWslCli.ps1`
+  - `scripts/windows/Install-KiroWslCli.ps1` (later removed after Kiro was folded into the generic WSL provider loop)
   - `scripts/windows/Check-WindowsSetupReadiness.ps1`
 - `electron/packaging.ts` now points every ported first-wave asset's
   `currentHome` at `cats-platform/scripts/windows/*`, while still keeping

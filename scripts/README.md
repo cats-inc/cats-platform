@@ -148,7 +148,7 @@ packaging and installer flows.
 - `scripts/windows/Install-CursorAgent.ps1`
 - `scripts/windows/Check-WslPrerequisites.ps1`
 - `scripts/windows/Install-WslUbuntuEnvironment.ps1`
-- `scripts/windows/Install-KiroWslCli.ps1`
+- `scripts/windows/Install-KiroCli.ps1`
 - `scripts/windows/Check-WindowsSetupReadiness.ps1`
 
 These helpers rewrite the stable Windows npm-prefix/PATH preparation and
@@ -196,8 +196,8 @@ shipped dependency. When substrate changes are applied it intentionally returns
 `restart_required` so the packaged host can resume distro install cleanly after
 reboot.
 
-`Install-KiroWslCli.ps1` adds the first repo-owned WSL-backed provider
-installer contract:
+`Install-KiroCli.ps1` adds the repo-owned native Windows Kiro installer
+contract for packaged setup:
 
 - `-CheckOnly`
 - `-Apply`
@@ -205,9 +205,10 @@ installer contract:
 - `-Force`
 - `-Json`
 
-It keeps the Kiro-specific WSL knowledge inside `cats`, including dependency
-checks, `.bashrc` PATH cleanup, `kc` alias repair, and the post-install
-sign-in follow-through.
+It keeps Kiro on the Windows-native packaged setup path instead of routing it
+through a dedicated WSL helper. WSL-target Kiro installs now flow through
+`Install-WSLCLITools.ps1` with the same aggregate provider loop used for
+Claude Code, Junie, Goose, and the other in-distro providers.
 
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
 helpers into one host-readable audit for native CLI pack readiness and WSL

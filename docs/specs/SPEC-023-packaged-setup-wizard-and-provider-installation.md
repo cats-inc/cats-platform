@@ -139,7 +139,6 @@ host-operations depth around that first slice:
    - `API Baseline (Recommended)` for API-key-backed Claude, OpenAI, and Gemini
    - `Native CLI Pack` for the current repo-owned packaged path across
      Windows/macOS/Linux: Claude Code, Cursor Agent, Goose, Junie, and Kiro
-     (with the Windows Kiro path still WSL-backed)
    - additional packs such as local-model or future expert-only host
      prerequisites may remain later-path only
 8. The setup flow shall perform a local provider scan before offering installs
@@ -323,7 +322,7 @@ Settings or an equivalent product-owned management surface so users can:
   - Cursor Agent
   - Goose
   - Junie
-  - Kiro CLI through the current Windows WSL-backed packaged helper path
+  - Kiro CLI on the same native packaged helper path used on each host OS
 - `Local Model Pack`
   - Docker Desktop prerequisite + engine warm-state helper
   - Ollama runtime installer + local API follow-through
@@ -437,11 +436,10 @@ teaching the renderer or the user about the underlying script topology.
   first WSL mutation chain even though in-distro Ubuntu package upgrades remain
   a later manual follow-through.
 - The seventh repo-owned packaged setup helper slice is now landed:
-  `scripts/windows/Install-KiroWslCli.ps1` rewrites the first WSL-backed
-  provider installer into a packaged-host asset, carrying forward the Kiro
-  dependency checks, `.bashrc` PATH cleanup, `kc` alias repair, and the
-  required post-install sign-in guidance without shelling out to
-  `environment-bootstrap`.
+  `scripts/windows/Install-KiroCli.ps1` keeps Kiro on the Windows-native
+  packaged-host path, while Windows WSL installs now flow through
+  `scripts/windows/Install-WSLCLITools.ps1` with the same in-distro provider
+  loop used for Claude Code, Goose, Junie, and the other WSL-target CLIs.
 - The eighth repo-owned packaged setup helper slice is now landed:
   `scripts/windows/Install-ClaudeCode.ps1` rewrites the native Windows Claude
   Code installer into a packaged-host asset, removes legacy npm Claude shims

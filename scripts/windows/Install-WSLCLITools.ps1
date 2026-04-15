@@ -8,8 +8,8 @@
     packaged bootstrap/setup wizard flow, but exposes the same provider family
     as a repo-owned operational helper:
 
-    - native-in-WSL installers for Claude Code, Cursor Agent, Goose, and Junie
-    - the existing repo-owned Kiro WSL helper
+    - native-in-WSL installers for Claude Code, Cursor Agent, Goose, Junie,
+      and Kiro
     - npm CLI pack installation in the target distro for Codex, Gemini,
       Copilot, OpenCode, Kilo, Auggie, and Pi
 
@@ -183,9 +183,9 @@ $providerCatalog = @(
   },
   [pscustomobject]@{
     id = 'kiro'
-    kind = 'wsl-helper'
+    kind = 'native'
     binary = 'kiro-cli'
-    installCommand = ''
+    installCommand = 'rm -f ~/.local/bin/kiro-cli ~/.local/bin/kiro-cli-chat ~/.local/bin/kiro-cli-term && rm -rf ~/.local/share/kiro-cli && curl -fsSL https://cli.kiro.dev/install | bash'
     authStep = 'Run kiro-cli inside WSL to complete sign-in.'
   },
   [pscustomobject]@{
@@ -249,7 +249,7 @@ $providerCatalog = @(
 $allProviderIds = @($providerCatalog | ForEach-Object { $_.id })
 
 function Resolve-TargetProviders {
-  if ($Provider.Count -eq 0) {
+  if ($null -eq $Provider -or $Provider.Count -eq 0) {
     return $allProviderIds
   }
 
@@ -307,48 +307,6 @@ function Invoke-WslEnvironmentHelper {
   $result = Invoke-HiddenCommand -FileName 'powershell.exe' -ArgumentList $arguments
   if ([string]::IsNullOrWhiteSpace($result.Output)) {
     throw 'WSL environment helper returned no JSON payload.'
-  }
-  return $result.Output | ConvertFrom-Json
-}
-
-function Invoke-KiroHelper {
-  param(
-    [ValidateSet('check', 'apply', 'upgrade', 'force')]
-    [string]$Mode
-  )
-
-  $helperPath = Join-Path $PSScriptRoot 'Install-KiroWslCli.ps1'
-  if (-not (Test-Path -LiteralPath $helperPath -PathType Leaf)) {
-    throw "Missing Kiro WSL helper at $helperPath"
-  }
-
-  $arguments = @(
-    '-NoProfile',
-    '-ExecutionPolicy', 'Bypass',
-    '-File', $helperPath,
-    '-Json',
-    '-Distro', $Distro
-  )
-  switch ($Mode) {
-    'check' { $arguments += '-CheckOnly' }
-    'apply' { $arguments += '-Apply' }
-    'upgrade' { $arguments += '-Upgrade' }
-    'force' { $arguments += '-Force' }
-  }
-  if ($WslState -ne 'auto') {
-    $arguments += @('-WslState', $WslState)
-  }
-  if (-not [string]::IsNullOrWhiteSpace($InstalledDistrosJson)) {
-    $arguments += @('-InstalledDistrosJson', $InstalledDistrosJson)
-  }
-  if ($SkipProviderInstall) {
-    $arguments += '-SkipInstaller'
-    $arguments += '-SkipProfileRepair'
-  }
-
-  $result = Invoke-HiddenCommand -FileName 'powershell.exe' -ArgumentList $arguments
-  if ([string]::IsNullOrWhiteSpace($result.Output)) {
-    throw 'Kiro WSL helper returned no JSON payload.'
   }
   return $result.Output | ConvertFrom-Json
 }
@@ -562,52 +520,6 @@ foreach ($providerEntry in $providerCatalog) {
   if ($plannedAction -ne 'skip') {
     $changesRequired = $true
     $plannedActions.Add("provider:$($providerEntry.id):$plannedAction")
-  }
-
-  if ($providerEntry.id -eq 'kiro') {
-    $kiroMode = if ($CheckOnly) {
-      'check'
-    } elseif ($Force) {
-      'force'
-    } elseif ($Upgrade) {
-      'upgrade'
-    } else {
-      'apply'
-    }
-    $kiroResult = Invoke-KiroHelper -Mode $kiroMode
-
-    foreach ($change in @($kiroResult.appliedChanges)) {
-      if (-not [string]::IsNullOrWhiteSpace($change)) {
-        $appliedChanges.Add("provider:kiro:$change")
-      }
-    }
-    foreach ($warning in @($kiroResult.warnings)) {
-      if (-not [string]::IsNullOrWhiteSpace($warning)) {
-        $warnings.Add($warning)
-      }
-    }
-    foreach ($step in @($kiroResult.manualSteps)) {
-      if (-not [string]::IsNullOrWhiteSpace($step)) {
-        $manualSteps.Add($step)
-      }
-    }
-    foreach ($interruption in @($kiroResult.interruptions)) {
-      $interruptions.Add($interruption)
-    }
-
-    $providerResults.Add([pscustomobject]@{
-      id = 'kiro'
-      installKind = 'wsl-helper'
-      installed = [bool]$kiroResult.installed
-      plannedAction = $plannedAction
-      status = $kiroResult.status
-      manualSteps = @($kiroResult.manualSteps)
-    })
-
-    if ($kiroResult.status -eq 'failed') {
-      $anyFailures = $true
-    }
-    continue
   }
 
   if (-not $CheckOnly -and $plannedAction -ne 'skip') {
