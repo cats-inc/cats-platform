@@ -22,7 +22,7 @@ export function buildDispatchRuntimeContextMetadata(
     dispatchId: request.dispatchId,
     turnId: request.turnId,
     targetStateId: request.targetStateId,
-    laneId: buildChatLaneId(
+    laneId: request.target.laneId?.trim() || buildChatLaneId(
       request.turnId,
       request.targetStateId,
       request.target.participantId,

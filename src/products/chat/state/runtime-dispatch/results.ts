@@ -571,7 +571,7 @@ export function applyDispatchExecutions(
     const senderName = hiddenSoloReply ? 'Orchestrator' : execution.target.participantName;
     const executionMeta = resolveExecutionMetadataForTarget(nextState, channelId, execution.target);
     const assistantTurnId = randomUUID();
-    const sourceLaneId = buildChatLaneId(
+    const sourceLaneId = execution.target.laneId?.trim() || buildChatLaneId(
       activeTurn.id,
       execution.targetStateId,
       execution.target.participantId,
