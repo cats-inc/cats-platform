@@ -62,6 +62,7 @@ import {
   finalizeWorkflowTurn,
 } from '../room-routing/workflow.js';
 import { applyRoomRoutingSnapshot } from '../runtime-session/state.js';
+import { resolveOrchestratorLeaseAttachment } from '../../shared/channelParticipants.js';
 
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
@@ -193,21 +194,23 @@ export async function beginChannelMessageDispatch(
         nextPendingModelSelection,
       )
     );
+  const orchestratorSessionAttachment = resolveOrchestratorLeaseAttachment(channelBeforeMessage);
+  const orchestratorSessionId = orchestratorSessionAttachment?.sessionId ?? null;
 
   if (
     pendingTargetChanged
-    && channelBeforeMessage.orchestratorLease.sessionId
+    && orchestratorSessionId
   ) {
     await bestEffortFlushRuntimeSessionMemory({
       runtimeClient,
-      sessionId: channelBeforeMessage.orchestratorLease.sessionId,
+      sessionId: orchestratorSessionId,
       requestedPhase: 'pre_reset',
       memoryService: options.memoryService,
       companionStore: options.companionStore,
       coreStore: options.chatStore,
       now,
     });
-    await runtimeClient.closeSession(channelBeforeMessage.orchestratorLease.sessionId);
+    await runtimeClient.closeSession(orchestratorSessionId);
     nextState = setChannelOrchestratorLease(
       nextState,
       channelId,

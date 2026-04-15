@@ -5,7 +5,10 @@ import type {
 import type { RuntimeSessionInfo } from '../../../../platform/runtime/client.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
 import type { RoutingTarget } from '../mentionRouter.js';
-import { resolvePrimaryParticipantExecutionAssignment } from '../../shared/channelParticipants.js';
+import {
+  resolveOrchestratorExecutionLease,
+  resolveParticipantExecutionLease,
+} from '../../shared/channelParticipants.js';
 import {
   requireChannel,
   setChannelParticipantLease,
@@ -104,17 +107,17 @@ export function extractTargetLeasePatchFromState(
   const channel = requireChannel(state, channelId);
 
   if (target.participantKind === 'cat') {
-    const assignment = resolvePrimaryParticipantExecutionAssignment(
+    const lease = resolveParticipantExecutionLease(
       channel,
       target.participantId,
     );
-    if (!assignment) {
+    if (!lease) {
       throw new Error(`Channel participant assignment not found: ${target.participantId}`);
     }
-    return structuredClone(assignment.execution.lease);
+    return structuredClone(lease);
   }
 
-  return structuredClone(channel.orchestratorLease);
+  return structuredClone(resolveOrchestratorExecutionLease(channel));
 }
 
 export function applyDispatchLeasePatch(

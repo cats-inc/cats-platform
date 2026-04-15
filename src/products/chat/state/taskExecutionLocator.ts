@@ -3,6 +3,10 @@ import {
   createCatActorId,
 } from '../../../core/actors.js';
 import type { TaskExecutionLocator } from '../../../core/taskExecutionLocator.js';
+import {
+  resolveOrchestratorLeaseAttachment,
+  resolveParticipantLeaseAttachment,
+} from '../shared/channelParticipants.js';
 import type { ChatStore } from './store.js';
 
 export function createChatTaskExecutionLocator(
@@ -25,16 +29,20 @@ export function createChatTaskExecutionLocator(
         return null;
       }
 
+      const orchestratorAttachment = resolveOrchestratorLeaseAttachment(channel);
       return {
         orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
-        orchestratorLaneId: channel.orchestratorLease.laneId,
-        orchestratorSessionId: channel.orchestratorLease.sessionId,
-        participants: channel.catAssignments.map((assignment) => ({
-          actorId: createCatActorId(assignment.catId),
-          status: assignment.status,
-          laneId: assignment.execution.lease.laneId,
-          sessionId: assignment.execution.lease.sessionId,
-        })),
+        orchestratorLaneId: orchestratorAttachment?.laneId ?? null,
+        orchestratorSessionId: orchestratorAttachment?.sessionId ?? null,
+        participants: channel.catAssignments.map((assignment) => {
+          const attachment = resolveParticipantLeaseAttachment(channel, assignment.participantId);
+          return {
+            actorId: createCatActorId(assignment.catId),
+            status: assignment.status,
+            laneId: attachment?.laneId ?? null,
+            sessionId: attachment?.sessionId ?? null,
+          };
+        }),
       };
     },
   };

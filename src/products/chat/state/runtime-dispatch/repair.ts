@@ -61,6 +61,11 @@ import {
 import {
   readLatestWorkflowContinuationContext,
 } from '../room-routing/continuationContext.js';
+import {
+  resolveOrchestratorLeaseAttachment,
+  resolveParticipantLeaseAttachment,
+  resolvePrimaryParticipantExecutionAssignment,
+} from '../../shared/channelParticipants.js';
 
 function describeGuardReason(): string {
   return 'a routing guard';
@@ -1287,23 +1292,25 @@ function resolveMissingSessionCwd(
     }
   }
 
-  if (laneId && channel.orchestratorLease.laneId === laneId && channel.orchestratorLease.cwd) {
+  const orchestratorAttachment = resolveOrchestratorLeaseAttachment(channel);
+  if (laneId && orchestratorAttachment?.laneId === laneId && channel.orchestratorLease.cwd) {
     return channel.orchestratorLease.cwd;
   }
 
-  if (channel.orchestratorLease.sessionId === sessionId && channel.orchestratorLease.cwd) {
+  if (orchestratorAttachment?.sessionId === sessionId && channel.orchestratorLease.cwd) {
     return channel.orchestratorLease.cwd;
   }
 
   if (targetId) {
-    const assignment = (channel.participantAssignments ?? []).find((candidate) =>
-      candidate.participantId === targetId)
-      ?? channel.catAssignments.find((candidate) =>
-        candidate.participantId === targetId || candidate.catId === targetId);
-    if (laneId && assignment?.execution.lease.laneId === laneId && assignment.execution.lease.cwd) {
+    const assignment = resolvePrimaryParticipantExecutionAssignment(channel, targetId);
+    const participantId = assignment?.participantId ?? null;
+    const participantAttachment = participantId
+      ? resolveParticipantLeaseAttachment(channel, participantId)
+      : null;
+    if (laneId && participantAttachment?.laneId === laneId && assignment?.execution.lease.cwd) {
       return assignment.execution.lease.cwd;
     }
-    if (assignment?.execution.lease.sessionId === sessionId && assignment.execution.lease.cwd) {
+    if (participantAttachment?.sessionId === sessionId && assignment?.execution.lease.cwd) {
       return assignment.execution.lease.cwd;
     }
   }

@@ -50,8 +50,10 @@ import {
 } from '../runtime-dispatch/context.js';
 import {
   findAssignedParticipant,
+  resolveOrchestratorExecutionLease,
+  resolveOrchestratorLeaseAttachment,
   resolveParticipantExecutionLease,
-  resolvePrimaryParticipantExecutionAssignment,
+  resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
 import {
   ensureChannelAttachmentWorkspace,
@@ -131,8 +133,8 @@ async function shouldReviveExistingTargetSession(
 
   const channel = requireChannel(state, channelId);
   const lease = target.participantKind === 'cat'
-    ? resolvePrimaryParticipantExecutionAssignment(channel, target.participantId)?.execution.lease ?? null
-    : channel.orchestratorLease;
+    ? resolveParticipantExecutionLease(channel, target.participantId)
+    : resolveOrchestratorExecutionLease(channel);
 
   if (!lease) {
     return false;
@@ -279,11 +281,11 @@ function resolveTargetLeaseAttachment(
   sessionId: string | null;
 } {
   const channel = requireChannel(state, channelId);
-  const lease = target.participantKind === 'cat'
-    ? resolveParticipantExecutionLease(channel, target.participantId)
-    : channel.orchestratorLease;
-  const leaseLaneId = lease?.laneId?.trim() || null;
-  const leaseSessionId = lease?.sessionId?.trim() || null;
+  const attachment = target.participantKind === 'cat'
+    ? resolveParticipantLeaseAttachment(channel, target.participantId)
+    : resolveOrchestratorLeaseAttachment(channel);
+  const leaseLaneId = attachment?.laneId ?? null;
+  const leaseSessionId = attachment?.sessionId ?? null;
   const targetLaneId = target.laneId?.trim() || null;
   const targetSessionId = target.sessionId?.trim() || null;
   const laneId = options.preferredLaneId ?? targetLaneId ?? leaseLaneId;

@@ -152,6 +152,12 @@ export function resolveParticipantExecutionLease(
   )?.execution.lease ?? null;
 }
 
+export function resolveOrchestratorExecutionLease(
+  channel: Pick<ChatChannelState, 'orchestratorLease'>,
+): ParticipantExecutionLease {
+  return channel.orchestratorLease;
+}
+
 export function resolveParticipantLeaseAttachment(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
   participantId: string,
