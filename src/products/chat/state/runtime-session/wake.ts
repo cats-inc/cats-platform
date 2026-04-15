@@ -346,6 +346,24 @@ interface RuntimeEnvelopeCanonicalMetadata {
   transportBindingId: string | null;
 }
 
+interface ResolvedTargetRuntimeEnvelope {
+  runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
+  canonicalMetadata: RuntimeEnvelopeCanonicalMetadata;
+}
+
+interface TargetSessionLifecycleMetadata extends RuntimeEnvelopeCanonicalMetadata {
+  targetStateId: string | null;
+  laneId: string | null;
+  now: Date;
+}
+
+interface CreatedTargetRuntimeSession {
+  state: ChatState;
+  session: Awaited<ReturnType<RuntimeClient['createSession']>>;
+  targetLabelProvider: string | null;
+  targetLabelInstance: string | null;
+}
+
 function resolveRuntimeEnvelopeCanonicalMetadata(
   state: ChatState,
   channelId: string,
@@ -364,6 +382,34 @@ function resolveRuntimeEnvelopeCanonicalMetadata(
     transportBindingId: readInvocationContextMetadataString(
       runtimeContext,
       'transportBindingId',
+    ),
+  };
+}
+
+async function resolveTargetRuntimeEnvelope(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  options: EnsureTargetSessionOptions;
+  now: Date;
+}): Promise<ResolvedTargetRuntimeEnvelope> {
+  const runtimeChannel = buildChannelView(input.state, input.channelId);
+  const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
+    input.state,
+    runtimeChannel,
+    input.target,
+    input.options.transport,
+    input.options.transportBindingId,
+    input.now,
+    input.options.companionStore,
+  );
+
+  return {
+    runtimeEnvelope,
+    canonicalMetadata: resolveRuntimeEnvelopeCanonicalMetadata(
+      input.state,
+      input.channelId,
+      runtimeEnvelope.context,
     ),
   };
 }
@@ -484,6 +530,230 @@ function appendFailedTargetSessionMessage(
       },
     },
   ).state;
+}
+
+async function createOrchestratorTargetRuntimeSession(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  spawnCwd: string | null;
+  workspaceKind: 'source' | 'sandbox';
+  runtimeClient: RuntimeClient;
+  options: EnsureTargetSessionOptions;
+  taskExecutionContext: EnsureTargetSessionTaskExecutionContext;
+  runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
+  now: Date;
+}): Promise<CreatedTargetRuntimeSession> {
+  const sessionTarget = resolveOrchestratorExecutionTarget(
+    input.state,
+    requireChannel(input.state, input.channelId),
+  );
+  const session = await input.runtimeClient.createSession({
+    provider: sessionTarget.provider,
+    instance: sessionTarget.instance,
+    model: sessionTarget.model,
+    modelSelection:
+      sessionTarget.modelSelection
+      ?? createExplicitProviderModelSelection(sessionTarget.model),
+    cwd: input.spawnCwd,
+    workspaceKind: input.workspaceKind,
+    workspaceAccess: 'read_write',
+    context: mergeRuntimeInvocationContextMetadata(
+      input.runtimeEnvelope.context,
+      input.options.dispatchContextMetadata ?? {},
+    ),
+    skills: input.runtimeEnvelope.skills,
+    ...(input.taskExecutionContext?.executionRequest ?? {}),
+  });
+
+  const runtimeChannel = requireChannel(input.state, input.channelId);
+  const nextState = runtimeChannel.composerMode === 'solo' && runtimeChannel.pendingProvider
+    ? setChannelPendingExecutionTarget(
+      input.state,
+      input.channelId,
+      {
+        provider: session.provider,
+        instance: sessionTarget.instance,
+        model: session.model ?? sessionTarget.model,
+        modelSelection:
+          session.modelSelection
+          ?? sessionTarget.modelSelection
+          ?? null,
+      },
+      input.now,
+    )
+    : setGlobalOrchestratorExecutionTarget(
+      input.state,
+      {
+        provider: session.provider,
+        instance: sessionTarget.instance,
+        model: session.model ?? sessionTarget.model,
+        modelSelection:
+          session.modelSelection
+          ?? sessionTarget.modelSelection
+          ?? null,
+      },
+      input.now,
+    );
+
+  return {
+    state: nextState,
+    session,
+    targetLabelProvider: session.provider,
+    targetLabelInstance: sessionTarget.instance ?? null,
+  };
+}
+
+async function createParticipantTargetRuntimeSession(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  spawnCwd: string | null;
+  workspaceKind: 'source' | 'sandbox';
+  runtimeClient: RuntimeClient;
+  options: EnsureTargetSessionOptions;
+  taskExecutionContext: EnsureTargetSessionTaskExecutionContext;
+  runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
+  now: Date;
+}): Promise<CreatedTargetRuntimeSession> {
+  const participant = findAssignedParticipant(
+    buildChannelView(input.state, input.channelId),
+    input.target.participantId,
+  );
+  if (!participant) {
+    throw new Error('Target participant is no longer assigned to the selected chat.');
+  }
+
+  const session = await input.runtimeClient.createSession({
+    provider: participant.execution.target.provider,
+    instance: participant.execution.target.instance,
+    model: participant.execution.target.model,
+    modelSelection:
+      participant.execution.modelSelection
+      ?? createExplicitProviderModelSelection(participant.execution.target.model),
+    cwd: input.spawnCwd,
+    workspaceKind: input.workspaceKind,
+    workspaceAccess: 'read_write',
+    context: mergeRuntimeInvocationContextMetadata(
+      input.runtimeEnvelope.context,
+      input.options.dispatchContextMetadata ?? {},
+    ),
+    skills: input.runtimeEnvelope.skills,
+    ...(input.taskExecutionContext?.executionRequest ?? {}),
+  });
+
+  const nextState = setChannelParticipantExecutionTarget(
+    input.state,
+    input.channelId,
+    input.target.participantId,
+    {
+      provider: session.provider,
+      instance: participant.execution.target.instance,
+      model: session.model ?? participant.execution.target.model,
+      modelSelection:
+        session.modelSelection
+        ?? participant.execution.modelSelection
+        ?? null,
+    },
+    input.now,
+  );
+
+  return {
+    state: nextState,
+    session,
+    targetLabelProvider: session.provider,
+    targetLabelInstance: participant.execution.target.instance ?? null,
+  };
+}
+
+function persistStartedTargetSession(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  session: Awaited<ReturnType<RuntimeClient['createSession']>>;
+  targetLabelProvider: string | null;
+  targetLabelInstance: string | null;
+  spawnCwd: string | null;
+  metadata: TargetSessionLifecycleMetadata;
+}): ChatState {
+  let nextState = setStartedSession(
+    input.state,
+    input.channelId,
+    input.target.participantKind === 'cat'
+      ? { participantId: input.target.participantId }
+      : 'orchestrator',
+    input.session,
+    input.metadata.now,
+    input.metadata.laneId,
+  );
+  if (!input.spawnCwd && input.session.cwd) {
+    nextState = setChannelChatCwd(
+      nextState,
+      input.channelId,
+      input.session.cwd,
+      input.metadata.now,
+    );
+  }
+
+  return appendStartedTargetSessionMessage(
+    nextState,
+    input.channelId,
+    {
+      target: input.target,
+      provider: input.targetLabelProvider,
+      instance: input.targetLabelInstance,
+      session: input.session,
+      now: input.metadata.now,
+      targetStateId: input.metadata.targetStateId,
+      laneId: input.metadata.laneId,
+      conversationId: input.metadata.conversationId,
+      containerId: input.metadata.containerId,
+      transportBindingId: input.metadata.transportBindingId,
+    },
+  );
+}
+
+function persistFailedTargetSessionStart(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  error: string;
+  targetLabelProvider: string | null;
+  targetLabelInstance: string | null;
+  metadata: TargetSessionLifecycleMetadata;
+}): ChatState {
+  const erroredState = input.target.participantKind === 'cat'
+    ? setErroredSession(
+      input.state,
+      input.channelId,
+      { participantId: input.target.participantId },
+      input.error,
+      input.metadata.now,
+    )
+    : setErroredSession(
+      input.state,
+      input.channelId,
+      'orchestrator',
+      input.error,
+      input.metadata.now,
+    );
+
+  return appendFailedTargetSessionMessage(
+    erroredState,
+    input.channelId,
+    {
+      target: input.target,
+      provider: input.targetLabelProvider,
+      instance: input.targetLabelInstance,
+      error: input.error,
+      now: input.metadata.now,
+      targetStateId: input.metadata.targetStateId,
+      laneId: input.metadata.laneId,
+      conversationId: input.metadata.conversationId,
+      containerId: input.metadata.containerId,
+      transportBindingId: input.metadata.transportBindingId,
+    },
+  );
 }
 
 function applyLeaseLaneAttachmentToTarget(
@@ -623,232 +893,99 @@ async function startAttachedTargetSession(
   const workspaceKind = spawnCwd ? 'source' : 'sandbox';
   let targetLabelProvider: string | null = null;
   let targetLabelInstance: string | null = null;
-  let conversationId: string | null = null;
-  let containerId: string | null = null;
-  let transportBindingId: string | null = null;
+  const sessionLifecycleMetadata: TargetSessionLifecycleMetadata = {
+    targetStateId,
+    laneId,
+    conversationId: null,
+    containerId: null,
+    transportBindingId: null,
+    now,
+  };
 
   try {
     nextState = markTargetWaking(nextState, channelId, attachedTarget, now, laneId);
-    const runtimeChannel = buildChannelView(nextState, channelId);
-    const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
-      nextState,
-      runtimeChannel,
-      attachedTarget,
-      options.transport,
-      options.transportBindingId,
-      now,
-      options.companionStore,
-    );
-    ({
-      conversationId,
-      containerId,
-      transportBindingId,
-    } = resolveRuntimeEnvelopeCanonicalMetadata(
-      nextState,
+    const {
+      runtimeEnvelope,
+      canonicalMetadata,
+    } = await resolveTargetRuntimeEnvelope({
+      state: nextState,
       channelId,
-      runtimeEnvelope.context,
-    ));
+      target: attachedTarget,
+      options,
+      now,
+    });
+    sessionLifecycleMetadata.conversationId = canonicalMetadata.conversationId;
+    sessionLifecycleMetadata.containerId = canonicalMetadata.containerId;
+    sessionLifecycleMetadata.transportBindingId = canonicalMetadata.transportBindingId;
 
-    if (attachedTarget.participantKind === 'orchestrator') {
-      const sessionTarget = resolveOrchestratorExecutionTarget(
-        nextState,
-        requireChannel(nextState, channelId),
-      );
-      targetLabelProvider = sessionTarget.provider;
-      targetLabelInstance = sessionTarget.instance ?? null;
-      const session = await runtimeClient.createSession({
-        provider: sessionTarget.provider,
-        instance: sessionTarget.instance,
-        model: sessionTarget.model,
-        modelSelection:
-          sessionTarget.modelSelection
-          ?? createExplicitProviderModelSelection(sessionTarget.model),
-        cwd: spawnCwd,
-        workspaceKind,
-        workspaceAccess: 'read_write',
-        context: mergeRuntimeInvocationContextMetadata(
-          runtimeEnvelope.context,
-          options.dispatchContextMetadata ?? {},
-        ),
-        skills: runtimeEnvelope.skills,
-        ...(taskExecutionContext?.executionRequest ?? {}),
-      });
-      await syncTargetSessionAttachmentWorkspace({
-        channelId,
+    const createdTargetSession = attachedTarget.participantKind === 'orchestrator'
+      ? await createOrchestratorTargetRuntimeSession({
         state: nextState,
-        runtimeDataDir: options.runtimeDataDir,
-        targetWorkspacePath: session.cwd,
-      });
-      nextState = runtimeChannel.composerMode === 'solo' && runtimeChannel.pendingProvider
-        ? setChannelPendingExecutionTarget(
-          nextState,
-          channelId,
-          {
-            provider: session.provider,
-            instance: sessionTarget.instance,
-            model: session.model ?? sessionTarget.model,
-            modelSelection:
-              session.modelSelection
-              ?? sessionTarget.modelSelection
-              ?? null,
-          },
-          now,
-        )
-        : setGlobalOrchestratorExecutionTarget(
-          nextState,
-          {
-            provider: session.provider,
-            instance: sessionTarget.instance,
-            model: session.model ?? sessionTarget.model,
-            modelSelection:
-              session.modelSelection
-              ?? sessionTarget.modelSelection
-              ?? null,
-          },
-          now,
-        );
-      nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now, laneId);
-      if (!spawnCwd && session.cwd) {
-        nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
-      }
-      nextState = appendStartedTargetSessionMessage(
-        nextState,
         channelId,
-        {
-          target: attachedTarget,
-          provider: session.provider,
-          instance: sessionTarget.instance ?? null,
-          session,
-          now,
-          targetStateId,
-          laneId,
-          conversationId,
-          containerId,
-          transportBindingId,
-        },
-      );
-      return {
-        state: nextState,
-        target: { ...attachedTarget, laneId, sessionId: session.id },
-        error: null,
-        wakeRequest: recordTargetWake('completed'),
-        taskExecutionContext,
-      };
-    }
-
-    const participant = findAssignedParticipant(buildChannelView(nextState, channelId), attachedTarget.participantId);
-    if (!participant) {
-      const error = 'Target participant is no longer assigned to the selected chat.';
-      return {
-        state,
         target: attachedTarget,
-        error,
-        wakeRequest: recordTargetWake('failed', error),
+        spawnCwd,
+        workspaceKind,
+        runtimeClient,
+        options,
         taskExecutionContext,
-      };
-    }
-    targetLabelProvider = participant.execution.target.provider;
-    targetLabelInstance = participant.execution.target.instance ?? null;
-
-    const session = await runtimeClient.createSession({
-      provider: participant.execution.target.provider,
-      instance: participant.execution.target.instance,
-      model: participant.execution.target.model,
-      modelSelection:
-        participant.execution.modelSelection
-        ?? createExplicitProviderModelSelection(participant.execution.target.model),
-      cwd: spawnCwd,
-      workspaceKind,
-      workspaceAccess: 'read_write',
-      context: mergeRuntimeInvocationContextMetadata(
-        runtimeEnvelope.context,
-        options.dispatchContextMetadata ?? {},
-        ),
-        skills: runtimeEnvelope.skills,
-        ...(taskExecutionContext?.executionRequest ?? {}),
+        runtimeEnvelope,
+        now,
+      })
+      : await createParticipantTargetRuntimeSession({
+        state: nextState,
+        channelId,
+        target: attachedTarget,
+        spawnCwd,
+        workspaceKind,
+        runtimeClient,
+        options,
+        taskExecutionContext,
+        runtimeEnvelope,
+        now,
       });
+    targetLabelProvider = createdTargetSession.targetLabelProvider;
+    targetLabelInstance = createdTargetSession.targetLabelInstance;
+
     await syncTargetSessionAttachmentWorkspace({
       channelId,
       state: nextState,
       runtimeDataDir: options.runtimeDataDir,
-      targetWorkspacePath: session.cwd,
+      targetWorkspacePath: createdTargetSession.session.cwd,
     });
-    nextState = setChannelParticipantExecutionTarget(
-      nextState,
+    nextState = persistStartedTargetSession({
+      state: createdTargetSession.state,
       channelId,
-      attachedTarget.participantId,
-      {
-        provider: session.provider,
-        instance: participant.execution.target.instance,
-        model: session.model ?? participant.execution.target.model,
-        modelSelection:
-          session.modelSelection
-          ?? participant.execution.modelSelection
-          ?? null,
-      },
-      now,
-    );
-    nextState = setStartedSession(
-      nextState,
-      channelId,
-      { participantId: attachedTarget.participantId },
-      session,
-      now,
-      laneId,
-    );
-    if (!spawnCwd && session.cwd) {
-      nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
-    }
-    nextState = appendStartedTargetSessionMessage(
-      nextState,
-      channelId,
-      {
-        target: attachedTarget,
-        provider: session.provider,
-        instance: participant.execution.target.instance ?? null,
-        session,
-        now,
-        targetStateId,
-        laneId,
-        conversationId,
-        containerId,
-        transportBindingId,
-      },
-    );
+      target: attachedTarget,
+      session: createdTargetSession.session,
+      targetLabelProvider,
+      targetLabelInstance,
+      spawnCwd,
+      metadata: sessionLifecycleMetadata,
+    });
+
     return {
       state: nextState,
-      target: { ...attachedTarget, laneId, sessionId: session.id },
+      target: {
+        ...attachedTarget,
+        laneId,
+        sessionId: createdTargetSession.session.id,
+      },
       error: null,
       wakeRequest: recordTargetWake('completed'),
       taskExecutionContext,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown runtime error';
-    nextState = attachedTarget.participantKind === 'cat'
-      ? setErroredSession(
-        nextState,
-        channelId,
-        { participantId: attachedTarget.participantId },
-        message,
-        now,
-      )
-      : setErroredSession(nextState, channelId, 'orchestrator', message, now);
-    nextState = appendFailedTargetSessionMessage(
-      nextState,
+    nextState = persistFailedTargetSessionStart({
+      state: nextState,
       channelId,
-      {
-        target: attachedTarget,
-        provider: targetLabelProvider,
-        instance: targetLabelInstance,
-        error: message,
-        now,
-        targetStateId,
-        laneId,
-        conversationId,
-        containerId,
-        transportBindingId,
-      },
-    );
+      target: attachedTarget,
+      error: message,
+      targetLabelProvider,
+      targetLabelInstance,
+      metadata: sessionLifecycleMetadata,
+    });
+
     return {
       state: nextState,
       target: attachedTarget,
