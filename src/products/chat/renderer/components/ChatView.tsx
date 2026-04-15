@@ -27,6 +27,7 @@ import type {
 import {
   resolveTranscriptFollowState,
 } from '../../../../shared/liveIndicator.js';
+import { isBrowserLiveTraceEnabled } from '../../../../shared/liveTrace.js';
 import { SidePanel } from '../../../../design/components/SidePanel';
 import {
   resolveLayoutMetrics,
@@ -75,6 +76,8 @@ import {
   resolveChatViewTopBarTitle,
   resolveShowRosterAvatars,
 } from './chat-view/chatViewSupport';
+
+let _lastLiveIndicatorLogSignature: string | null = null;
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -643,30 +646,34 @@ export function ChatView({
               onRetryMessage={onRetryMessage}
               onRelayMessage={onRelayMessage}
               liveIndicator={(() => {
-                if (visibleLiveIndicator?.active) {
+                if (visibleLiveIndicator?.active && isBrowserLiveTraceEnabled()) {
                   const ss = visibleLiveIndicator.segments?.length
                     ? visibleLiveIndicator.segments
                     : [visibleLiveIndicator];
-                  console.log('[CV] li ph=' + visibleLiveIndicator.phase + ' segs=' + ss.length + ' detail=' + JSON.stringify(
-                    ss.map((s) => {
-                      const blockDetail = s.contentBlocks
-                        .map((b) => b.kind + '#' + b.index + ':' + b.status)
-                        .join('|');
-                      const metaDetail = [
-                        s.targetStateId ? 'ts:' + s.targetStateId : null,
-                        s.sessionId ? 'sid:' + s.sessionId : null,
-                        s.participantId ? 'pid:' + s.participantId : null,
-                        s.speakerLabel ? 'sp:' + s.speakerLabel : null,
-                        s.progressKind ? 'pk:' + s.progressKind : null,
-                        s.progressText ? 'pt:' + s.progressText : null,
-                        s.tools.length > 0 ? 'tools:' + s.tools.map((tool) => `${tool.toolName}:${tool.done ? 'done' : 'pending'}`).join(',') : null,
-                        s.events.length > 0 ? 'events:' + s.events.map((event) => event.eventType).join(',') : null,
-                      ]
-                        .filter((detail): detail is string => detail != null && detail.length > 0)
-                        .join('|');
-                      return `${s.phase}:si${s.segmentIndex}:${blockDetail || metaDetail || 'empty'}`;
-                    }),
-                  ) + ' nb=' + (isNearBottom ? '1' : '0'));
+                  const sig = visibleLiveIndicator.phase + ':' + ss.length + ':' + ss.map((s) => {
+                    const blockDetail = s.contentBlocks
+                      .map((b) => b.kind + '#' + b.index + ':' + b.status)
+                      .join('|');
+                    const metaDetail = [
+                      s.targetStateId ? 'ts:' + s.targetStateId : null,
+                      s.sessionId ? 'sid:' + s.sessionId : null,
+                      s.participantId ? 'pid:' + s.participantId : null,
+                      s.speakerLabel ? 'sp:' + s.speakerLabel : null,
+                      s.progressKind ? 'pk:' + s.progressKind : null,
+                      s.progressText ? 'pt:' + s.progressText : null,
+                      s.tools.length > 0 ? 'tools:' + s.tools.map((tool) => `${tool.toolName}:${tool.done ? 'done' : 'pending'}`).join(',') : null,
+                      s.events.length > 0 ? 'events:' + s.events.map((event) => event.eventType).join(',') : null,
+                    ]
+                      .filter((detail): detail is string => detail != null && detail.length > 0)
+                      .join('|');
+                    return `${s.phase}:si${s.segmentIndex}:${blockDetail || metaDetail || 'empty'}`;
+                  }).join(';');
+                  if (sig !== _lastLiveIndicatorLogSignature) {
+                    _lastLiveIndicatorLogSignature = sig;
+                    console.log('[CV] li ph=' + visibleLiveIndicator.phase + ' segs=' + ss.length + ' detail=' + JSON.stringify(
+                      sig.split(';'),
+                    ) + ' nb=' + (isNearBottom ? '1' : '0'));
+                  }
                 }
                 return visibleLiveIndicator ?? undefined;
               })()}
