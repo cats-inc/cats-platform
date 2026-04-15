@@ -73,6 +73,11 @@ export function createParallelChatBusyState(
   return { kind: 'parallel-chat', phase };
 }
 
+export function createChannelBusyState(action: 'resume'): WorkspaceBusyState;
+export function createChannelBusyState(
+  action: 'rename' | 'delete',
+  channelId: string,
+): WorkspaceBusyState;
 export function createChannelBusyState(
   action: 'resume' | 'rename' | 'delete',
   channelId?: string,
@@ -99,6 +104,22 @@ export function createConcurrentGroupBusyState(
   return { kind: 'concurrent-group', action, groupId };
 }
 
+export function createCatBusyState(
+  action: 'create' | 'create-assign',
+): WorkspaceBusyState;
+export function createCatBusyState(
+  action:
+    | 'archive'
+    | 'delete'
+    | 'assign'
+    | 'remove'
+    | 'rename'
+    | 'products'
+    | 'makeBoss'
+    | 'skill'
+    | 'unarchive',
+  catId: string,
+): WorkspaceBusyState;
 export function createCatBusyState(
   action:
     | 'archive'
@@ -150,6 +171,8 @@ export function createOperatorActionBusyState(
   return { kind: 'operator-action', action, busyKey };
 }
 
+export function createBotBusyState(action: 'create'): WorkspaceBusyState;
+export function createBotBusyState(action: 'delete', bindingId: string): WorkspaceBusyState;
 export function createBotBusyState(
   action: 'create' | 'delete',
   bindingId?: string,
@@ -165,6 +188,8 @@ export function createBotBusyState(
   return { kind: 'bot', action, bindingId };
 }
 
+export function createMemoryBusyState(action: 'create'): WorkspaceBusyState;
+export function createMemoryBusyState(action: 'delete', recordId: string): WorkspaceBusyState;
 export function createMemoryBusyState(
   action: 'create' | 'delete',
   recordId?: string,

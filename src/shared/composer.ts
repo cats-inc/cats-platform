@@ -1,12 +1,9 @@
 import {
   createDraftComposerBusyScope,
-  isBusyActive,
   isParallelChatBusy,
   type ComposerBusyScope,
   type WorkspaceBusyState,
 } from './workspaceBusy.js';
-
-export type { ComposerBusyScope, WorkspaceBusyState } from './workspaceBusy.js';
 
 export interface ComposerKeyDecisionInput {
   key: string;
@@ -29,7 +26,7 @@ export function shouldSubmitComposerOnKeyDown(input: ComposerKeyDecisionInput): 
 }
 
 export function isComposerBusy(busy: WorkspaceBusyState | null | undefined): boolean {
-  return (busy?.kind === 'composer' || isParallelChatBusy(busy)) && isBusyActive(busy);
+  return busy?.kind === 'composer' || isParallelChatBusy(busy);
 }
 
 export function isComposerAckBusy(busy: WorkspaceBusyState | null | undefined): boolean {
