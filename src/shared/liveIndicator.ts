@@ -1651,6 +1651,9 @@ function doesMessageMatchLiveIndicatorSpeaker(
   if (messageTargetId && liveTargetId && messageTargetId === liveTargetId) {
     return true;
   }
+  if (liveTargetId) {
+    return false;
+  }
 
   const liveSpeakerLabel = readString(liveIndicator.speakerLabel);
   if (!liveSpeakerLabel) {
@@ -1669,6 +1672,7 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
   const liveLaneId = readString(liveIndicator.laneId);
   const liveTargetStateId = readString(liveIndicator.targetStateId);
   const liveSessionId = readString(liveIndicator.sessionId);
+  const requiresTargetScopedConfirmation = Boolean(liveLaneId || liveTargetStateId);
   const sessionStartFloorTimestamp = (() => {
     if (!sessionStartedAt) {
       return null;
@@ -1716,19 +1720,19 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
 
     const liveParticipantId = readString(liveIndicator.participantId);
     if (liveParticipantId) {
-      const messageTargetId = readMessageTargetId(message);
-      if (messageTargetId) {
-        if (messageTargetId !== liveParticipantId) {
-          return false;
-        }
-        return true;
-      }
-
       if (liveParticipantId === 'orchestrator') {
         if (readMessageTargetKind(message) !== 'orchestrator') {
           return false;
         }
         return true;
+      }
+
+      const messageTargetId = readMessageTargetId(message);
+      if (messageTargetId) {
+        if (messageTargetId !== liveParticipantId) {
+          return false;
+        }
+        return requiresTargetScopedConfirmation ? matchesIdentity : true;
       }
 
       return matchesIdentity;

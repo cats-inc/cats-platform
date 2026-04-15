@@ -814,6 +814,76 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an earlier s
   );
 });
 
+test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on when a later sequential target shares the same label', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        participantId: 'participant-claude',
+        speakerLabel: 'Shared-CLI',
+        segmentIndex: 0,
+        segments: [
+          {
+            id: 'message-user:participant-claude:segment:0',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            segmentIndex: 0,
+            participantId: 'participant-claude',
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Shared-CLI',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: 'Finalizing...',
+            progressKind: 'finalizing',
+            tools: [],
+            contentBlocks: [],
+            events: [],
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          lastOutcome: {
+            turnId: 'turn-1',
+            resolvedTargets: [
+              {
+                participantId: 'participant-codex',
+                participantName: 'Shared-CLI',
+              },
+            ],
+          },
+          workflow: {
+            activeTurn: {
+              id: 'turn-1',
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [],
+              events: [],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    true,
+  );
+});
+
 test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the sealed lane still matches the active target despite targetStateId drift', () => {
   const laneId = buildChatLaneId('turn-1', 'target-claude-canonical', 'participant-claude');
   assert.equal(
@@ -1897,6 +1967,90 @@ test('resolveWaitingIndicatorStateTransition preserves an existing waiting segme
   assert.equal(next.segments[1]?.id, 'message-user-current:participant-codex:segment:3');
 });
 
+test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment index for a different participant with the same label', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting' as const,
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Shared-CLI',
+    segmentIndex: 3,
+    segments: [
+      {
+        id: 'message-user-current:participant-claude:segment:3',
+        phase: 'waiting' as const,
+        sourceMessageId: 'message-user-current',
+        targetStateId: null,
+        segmentIndex: 3,
+        participantId: 'participant-claude',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Shared-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [],
+        events: [],
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-codex',
+    catId: null,
+    speakerLabel: 'Shared-CLI',
+    revealIdentity: true,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user-current',
+          senderKind: 'user',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user-current',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                status: 'pending',
+                participant: {
+                  participantId: 'participant-codex',
+                  participantName: 'Shared-CLI',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next.phase, 'waiting');
+  assert.equal(next.participantId, 'participant-codex');
+  assert.equal(next.segmentIndex, 0);
+  assert.equal(next.segments.length, 1);
+  assert.equal(next.segments[0]?.participantId, 'participant-codex');
+  assert.equal(next.segments[0]?.segmentIndex, 0);
+});
+
 test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage only matches the current streaming speaker', () => {
   assert.equal(
     hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
@@ -2040,6 +2194,40 @@ test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage matches a lane-scoped repl
       },
     ),
     true,
+  );
+});
+
+test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage ignores label-only replies when a participant identity is active', () => {
+  assert.equal(
+    hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
+      [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          senderName: 'Kenny',
+          metadata: {},
+          createdAt: '2026-04-13T12:00:00.000Z',
+        },
+        {
+          id: 'message-agent-other',
+          senderKind: 'agent',
+          senderName: 'Shared-CLI',
+          metadata: {
+            executionLabelSnapshot: 'Shared-CLI',
+          },
+          createdAt: '2026-04-13T12:00:03.000Z',
+        },
+      ],
+      'message-user',
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'streaming',
+        participantId: 'participant-agent-1',
+        speakerLabel: 'Shared-CLI',
+      },
+    ),
+    false,
   );
 });
 

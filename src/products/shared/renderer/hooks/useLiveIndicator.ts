@@ -549,6 +549,15 @@ function shouldAdvanceWaitingSegmentIndex(
     return previousSegment.catId === waitingSegment.catId;
   }
 
+  if (
+    previousSegment.participantId != null
+    || waitingSegment.participantId != null
+    || previousSegment.catId != null
+    || waitingSegment.catId != null
+  ) {
+    return false;
+  }
+
   return previousSegment.speakerLabel != null
     && waitingSegment.speakerLabel != null
     && previousSegment.speakerLabel === waitingSegment.speakerLabel;
@@ -611,6 +620,8 @@ function resolveSequentialTurnTargetIndex(
     if (participantIndex >= 0) {
       return participantIndex;
     }
+
+    return -1;
   }
 
   if (segment.speakerLabel) {
