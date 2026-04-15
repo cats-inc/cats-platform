@@ -1015,6 +1015,81 @@ function resolveCanonicalSessionRecord(
     session.id === sessionId && session.conversationId === conversationId) ?? null;
 }
 
+function resolveCanonicalLaneRecord(
+  core: CatsCoreState | undefined,
+  channelId: string,
+  options: {
+    laneId?: string | null;
+    turnId?: string | null;
+    assistantTurnId?: string | null;
+    targetStateId?: string | null;
+  },
+): LaneRecord | null {
+  if (!core) {
+    return null;
+  }
+
+  const laneId = typeof options.laneId === 'string' && options.laneId.trim().length > 0
+    ? options.laneId.trim()
+    : null;
+  const conversationId = buildChatConversationId(channelId);
+  if (laneId) {
+    return core.lanes.find((lane) =>
+      lane.id === laneId && lane.conversationId === conversationId) ?? null;
+  }
+
+  const turnId = typeof options.turnId === 'string' && options.turnId.trim().length > 0
+    ? options.turnId.trim()
+    : null;
+  const assistantTurnId = typeof options.assistantTurnId === 'string'
+    && options.assistantTurnId.trim().length > 0
+    ? options.assistantTurnId.trim()
+    : null;
+  const targetStateId = typeof options.targetStateId === 'string'
+    && options.targetStateId.trim().length > 0
+    ? options.targetStateId.trim()
+    : null;
+  if (!assistantTurnId && !targetStateId) {
+    return null;
+  }
+
+  return core.lanes.find((lane) =>
+    lane.conversationId === conversationId
+    && (!turnId || lane.turnId === turnId)
+    && (
+      (targetStateId !== null
+        && readChatCoreMetadataString(lane.metadata, 'targetStateId') === targetStateId)
+      || (assistantTurnId !== null
+        && readChatCoreMetadataString(lane.metadata, 'responseAssistantTurnId') === assistantTurnId)
+    )) ?? null;
+}
+
+function resolveCanonicalLaneRecordForResponseMessage(
+  core: CatsCoreState | undefined,
+  channelId: string,
+  responseMessage: ChatMessage,
+): LaneRecord | null {
+  const responseLaneId = typeof responseMessage.metadata?.laneId === 'string'
+    && responseMessage.metadata.laneId.trim().length > 0
+    ? responseMessage.metadata.laneId.trim()
+    : null;
+  const canonicalSessionLaneId = resolveCanonicalSessionRecord(
+    core,
+    channelId,
+    readMessageSessionId(responseMessage),
+  )?.laneId ?? null;
+
+  return resolveCanonicalLaneRecord(core, channelId, {
+    laneId: responseLaneId ?? canonicalSessionLaneId,
+    turnId: typeof responseMessage.metadata?.turnId === 'string'
+      && responseMessage.metadata.turnId.trim().length > 0
+      ? responseMessage.metadata.turnId.trim()
+      : null,
+    assistantTurnId: readAssistantTurnId(responseMessage),
+    targetStateId: readAssistantTurnTargetStateId(responseMessage),
+  });
+}
+
 function resolveMissingSessionTransportBindingId(
   channel: ChatChannelState,
   sessionId: string,
@@ -1063,14 +1138,14 @@ function resolveMissingSessionParticipantName(
     }
   }
 
-  const canonicalSession = resolveCanonicalSessionRecord(core, channel.id, readMessageSessionId(responseMessage));
-  if (canonicalSession?.laneId) {
-    const canonicalLane = core?.lanes.find((lane) =>
-      lane.id === canonicalSession.laneId && lane.conversationId === canonicalSession.conversationId) ?? null;
-    const canonicalSpeakerLabel = readChatCoreMetadataString(canonicalLane?.metadata, 'speakerLabel');
-    if (canonicalSpeakerLabel) {
-      return canonicalSpeakerLabel;
-    }
+  const canonicalLane = resolveCanonicalLaneRecordForResponseMessage(
+    core,
+    channel.id,
+    responseMessage,
+  );
+  const canonicalSpeakerLabel = readChatCoreMetadataString(canonicalLane?.metadata, 'speakerLabel');
+  if (canonicalSpeakerLabel) {
+    return canonicalSpeakerLabel;
   }
 
   return responseMessage.senderName;
@@ -1097,10 +1172,10 @@ function resolveMissingSessionTargetId(
     channelId,
     readMessageSessionId(responseMessage),
   );
-  return resolveRawChatParticipantId(
-    canonicalSession?.participantId ?? null,
-    buildChatConversationId(channelId),
-  );
+  const canonicalParticipantId = canonicalSession?.participantId
+    ?? resolveCanonicalLaneRecordForResponseMessage(core, channelId, responseMessage)?.participantId
+    ?? null;
+  return resolveRawChatParticipantId(canonicalParticipantId, buildChatConversationId(channelId));
 }
 
 function resolveMissingSessionLaneId(
@@ -1120,7 +1195,9 @@ function resolveMissingSessionLaneId(
     core,
     channelId,
     readMessageSessionId(responseMessage),
-  )?.laneId ?? null;
+  )?.laneId
+    ?? resolveCanonicalLaneRecordForResponseMessage(core, channelId, responseMessage)?.id
+    ?? null;
 }
 
 function resolveMissingSessionTargetStateId(
@@ -1136,14 +1213,7 @@ function resolveMissingSessionTargetStateId(
     return targetStateId;
   }
 
-  const laneId = resolveMissingSessionLaneId(responseMessage, channelId, core);
-  if (!laneId) {
-    return null;
-  }
-
-  const conversationId = buildChatConversationId(channelId);
-  const canonicalLane = core?.lanes.find((lane) =>
-    lane.id === laneId && lane.conversationId === conversationId) ?? null;
+  const canonicalLane = resolveCanonicalLaneRecordForResponseMessage(core, channelId, responseMessage);
   return readChatCoreMetadataString(canonicalLane?.metadata, 'targetStateId');
 }
 

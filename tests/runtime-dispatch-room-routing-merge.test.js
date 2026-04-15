@@ -1387,6 +1387,93 @@ test('repairMissingSessionStartedMessages restores a missing cat targetId from c
   assert.match(sessionStarted.body, /Canonical Agent/u);
 });
 
+test('repairMissingSessionStartedMessages restores missing cat session identity from canonical lane records', async () => {
+  const chatStore = new MemoryChatStore();
+  const seededAt = new Date('2026-04-09T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Canonical lane target fallback',
+      topic: 'Restore missing session target ids directly from canonical lane records.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const conversationId = buildChatConversationId(channelId);
+
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: 'First question',
+    },
+    new Date('2026-04-09T12:00:01.000Z'),
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Fallback Agent',
+      body: 'Recovered answer',
+    },
+    new Date('2026-04-09T12:00:02.000Z'),
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-canonical-lane-target-fallback',
+        terminal: true,
+        turnId: 'turn-canonical-lane-target-fallback',
+        targetKind: 'cat',
+        sessionId: 'session-canonical-lane-target-fallback',
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  let core = createDefaultCoreState();
+  core = upsertCoreLane(
+    core,
+    {
+      id: 'lane-canonical-lane-target-fallback',
+      turnId: 'turn-canonical-lane-target-fallback',
+      conversationId,
+      participantId: 'participant-inline-record',
+      agentId: 'agent-inline',
+      orderIndex: 0,
+      status: 'completed',
+      createdAt: '2026-04-09T12:00:01.500Z',
+      metadata: {
+        speakerLabel: 'Canonical Lane Agent',
+        targetStateId: 'target-canonical-lane-target-fallback',
+        responseAssistantTurnId: 'assistant-turn-canonical-lane-target-fallback',
+      },
+    },
+    new Date('2026-04-09T12:00:01.500Z'),
+  ).core;
+
+  const repaired = repairMissingSessionStartedMessages(state, channelId, {
+    core,
+    now: new Date('2026-04-09T12:05:00.000Z'),
+  });
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const sessionStarted = repairedChannel.messages.find((message) =>
+    message.metadata?.event === 'session_started'
+    && message.metadata?.sessionId === 'session-canonical-lane-target-fallback');
+  assert.ok(sessionStarted);
+  assert.equal(sessionStarted.metadata?.conversationId, conversationId);
+  assert.equal(sessionStarted.metadata?.targetId, 'participant-inline-record');
+  assert.equal(sessionStarted.metadata?.targetStateId, 'target-canonical-lane-target-fallback');
+  assert.equal(sessionStarted.metadata?.laneId, 'lane-canonical-lane-target-fallback');
+  assert.match(sessionStarted.body, /Canonical Lane Agent/u);
+});
+
 test('repairMissingStartupRecoveryNotice inserts an interrupted-turn note before the next user message', async () => {
   const chatStore = new MemoryChatStore();
   const seededAt = new Date('2026-04-09T12:00:00.000Z');
