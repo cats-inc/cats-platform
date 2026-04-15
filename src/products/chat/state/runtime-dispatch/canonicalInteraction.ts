@@ -1,6 +1,7 @@
 import type { CatsCoreState } from '../../../../core/types.js';
 import type { ChatState } from '../../api/contracts.js';
 import type { RoomWorkflowTurn } from '../../../../shared/roomRouting.js';
+import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
 import {
   projectChatChannelInteractionToCore,
 } from '../core-projection/interaction.js';
@@ -16,6 +17,20 @@ export interface RecordDispatchExecutionInteractionInput {
   now: Date;
 }
 
+function buildSyntheticSessionStartedMessageId(input: {
+  workflowTurnId: string;
+  targetStateId: string;
+  participantId: string;
+  laneId?: string | null;
+}): string {
+  const laneId = input.laneId?.trim() || buildChatLaneId(
+    input.workflowTurnId,
+    input.targetStateId,
+    input.participantId,
+  );
+  return `session-started-${laneId}`;
+}
+
 export function recordDispatchExecutionInteraction(
   input: RecordDispatchExecutionInteractionInput,
 ): CatsCoreState {
@@ -29,8 +44,18 @@ export function recordDispatchExecutionInteraction(
     const nextState = structuredClone(input.state);
     const nextChannel = requireChannel(nextState, input.channelId);
     const defaultRecipientId = nextChannel.roomRouting?.defaultRecipientId ?? null;
+    const laneId = input.execution.target.laneId?.trim() || buildChatLaneId(
+      input.workflowTurn.id,
+      input.execution.targetStateId,
+      input.execution.target.participantId,
+    );
     const syntheticSessionMessageId = input.execution.target.sessionId
-      ? `session-started-${input.workflowTurn.id}-${input.execution.targetStateId}`
+      ? buildSyntheticSessionStartedMessageId({
+        workflowTurnId: input.workflowTurn.id,
+        targetStateId: input.execution.targetStateId,
+        participantId: input.execution.target.participantId,
+        laneId,
+      })
       : null;
     nextChannel.roomRouting = {
       mode: nextChannel.channelKind === 'direct_lane' ? 'direct_cat_chat' : 'boss_chat',
@@ -124,6 +149,7 @@ export function recordDispatchExecutionInteraction(
               : input.execution.target.participantId,
           turnId: input.workflowTurn.id,
           targetStateId: input.execution.targetStateId,
+          laneId,
         },
         usage: null,
         executionProvider: null,

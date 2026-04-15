@@ -155,11 +155,12 @@ export function resolveParticipantLeaseAttachment(
   if (!lease) {
     return null;
   }
+  const expectedLaneId = options.laneId?.trim() || null;
   if (options.statuses && !options.statuses.includes(lease.status)) {
     return null;
   }
   const laneId = lease.laneId?.trim() || null;
-  if (options.laneId && laneId && laneId !== options.laneId) {
+  if (expectedLaneId && laneId !== expectedLaneId) {
     return null;
   }
   return {

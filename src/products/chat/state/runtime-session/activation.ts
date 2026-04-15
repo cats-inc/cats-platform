@@ -30,27 +30,33 @@ function toActivationResult(input: {
       targetKind: target.participantKind,
       targetId: target.participantId,
       targetName: target.participantName,
+      laneId: ensured.target.laneId ?? target.laneId ?? null,
       status: 'error',
       sessionId: null,
       error: ensured.error,
     };
   }
 
+  const laneMatchedSkip = Boolean(
+    ensured.wakeRequest?.status === 'skipped'
+    && target.laneId
+    && target.laneId === ensured.target.laneId,
+  );
+  const reusedSessionWithoutLane = Boolean(
+    ensured.wakeRequest?.status === 'skipped'
+    && !target.laneId
+    && target.sessionId
+    && target.sessionId === ensured.target.sessionId,
+  );
+
   return {
     targetKind: target.participantKind,
     targetId: target.participantId,
     targetName: target.participantName,
-    status:
-      (
-        (target.sessionId && target.sessionId === ensured.target.sessionId)
-        || (
-          target.laneId
-          && target.laneId === ensured.target.laneId
-          && ensured.wakeRequest?.status === 'skipped'
-        )
-      )
-        ? 'already_started'
-        : 'started',
+    laneId: ensured.target.laneId,
+    status: laneMatchedSkip || reusedSessionWithoutLane
+      ? 'already_started'
+      : 'started',
     sessionId: ensured.target.sessionId,
   };
 }

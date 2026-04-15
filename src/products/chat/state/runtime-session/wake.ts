@@ -287,12 +287,20 @@ function resolveTargetLeaseAttachment(
   const targetLaneId = target.laneId?.trim() || null;
   const targetSessionId = target.sessionId?.trim() || null;
   const laneId = options.preferredLaneId ?? targetLaneId ?? leaseLaneId;
+  const hasCanonicalLane = laneId != null;
+  const leaseSessionMatchesLane = leaseSessionId != null
+    && (!hasCanonicalLane || leaseLaneId === laneId);
+  const targetSessionMatchesLane = targetSessionId != null
+    && (!hasCanonicalLane || targetLaneId === laneId);
 
   return {
     laneId: laneId ?? leaseLaneId ?? targetLaneId,
     sessionId: options.allowLeaseSessionReuse === false
-      ? targetSessionId
-      : (leaseSessionId ?? targetSessionId),
+      ? (targetSessionMatchesLane ? targetSessionId : null)
+      : (
+          (leaseSessionMatchesLane ? leaseSessionId : null)
+          ?? (targetSessionMatchesLane ? targetSessionId : null)
+        ),
   };
 }
 
@@ -775,6 +783,7 @@ export async function wakeChannelEntryParticipant(
             targetKind: defaultTarget.participant.participantKind,
             targetId: defaultTarget.participant.participantId,
             targetName: defaultTarget.participant.participantName,
+            laneId: null,
             status: 'error',
             sessionId: null,
             error: defaultTarget.note ?? 'No room entry participant could be woken.',
@@ -800,6 +809,7 @@ export async function wakeChannelEntryParticipant(
         targetKind: target.participantKind,
         targetId: target.participantId,
         targetName: target.participantName,
+        laneId: existingAttachment.laneId,
         status: 'already_started',
         sessionId: existingAttachment.sessionId,
       },
@@ -831,6 +841,7 @@ export async function wakeChannelEntryParticipant(
         targetKind: target.participantKind,
         targetId: target.participantId,
         targetName: target.participantName,
+        laneId: ensured.target.laneId,
         status: 'error',
         sessionId: null,
         error: ensured.error,
@@ -845,6 +856,7 @@ export async function wakeChannelEntryParticipant(
       targetKind: ensured.target.participantKind,
       targetId: ensured.target.participantId,
       targetName: ensured.target.participantName,
+      laneId: ensured.target.laneId,
       status: ensured.wakeRequest?.status === 'skipped' ? 'already_started' : 'started',
       sessionId: ensured.target.sessionId,
     },

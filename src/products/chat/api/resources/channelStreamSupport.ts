@@ -128,7 +128,7 @@ function buildOrchestratorStreamTarget(
     instance: channel.pendingProvider ? (channel.pendingInstance ?? null) : null,
   });
   const leaseLaneId = channel.orchestratorLease.laneId?.trim() || null;
-  const laneMatches = !expectedLaneId || !leaseLaneId || leaseLaneId === expectedLaneId;
+  const laneMatches = !expectedLaneId || leaseLaneId === expectedLaneId;
   const sessionStartedAt = laneMatches ? channel.orchestratorLease.startedAt ?? null : null;
   return {
     sessionId: laneMatches

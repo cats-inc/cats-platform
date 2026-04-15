@@ -40,6 +40,16 @@ export interface DispatchExecution extends DispatchRequest {
   recoveredMessages?: ChatMessage[];
 }
 
+function requireDispatchSessionId(target: RoutingTarget): string {
+  const sessionId = target.sessionId?.trim() || null;
+  if (sessionId) {
+    return sessionId;
+  }
+
+  const laneLabel = target.laneId?.trim() || `${target.participantKind}:${target.participantId}`;
+  throw new Error(`No runtime session attached to dispatch target lane: ${laneLabel}`);
+}
+
 export async function executeDispatch(
   state: ChatState,
   channelId: string,
@@ -52,6 +62,7 @@ export async function executeDispatch(
   core?: CatsCoreState,
 ): Promise<DispatchExecution> {
   try {
+    const sessionId = requireDispatchSessionId(request.target);
     const dispatchPrompt = buildPromptForTarget(state, channelId, request, transport, core);
     const channel = buildChannelView(state, channelId);
     const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
@@ -65,7 +76,7 @@ export async function executeDispatch(
     );
     const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request);
     const runtimeResult = await runtimeClient.sendMessage(
-      request.target.sessionId ?? '',
+      sessionId,
       dispatchPrompt.message,
       {
         instructions: dispatchPrompt.instructions?.trim() || undefined,
@@ -96,7 +107,7 @@ export async function executeDispatch(
     ) {
       try {
         const rewrite = await runtimeClient.sendMessage(
-          request.target.sessionId ?? '',
+          sessionId,
           buildOrchestratorRewritePrompt(
             channel,
             request.sourceMessage,

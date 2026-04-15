@@ -262,6 +262,7 @@ function buildSessionContextForTarget(
       `room-mode:${channel.roomRouting?.mode ?? 'boss_chat'}`,
       `transport:${resolvedTransport}`,
       `target:${target.participantKind}:${target.participantId}`,
+      ...(target.laneId ? [`lane:${target.laneId}`] : []),
     ],
     metadata: {
       channelId: channel.id,
@@ -274,6 +275,7 @@ function buildSessionContextForTarget(
       transportBindingId,
       targetKind: target.participantKind,
       targetId: target.participantId,
+      laneId: target.laneId ?? null,
     },
   };
 }
@@ -448,25 +450,35 @@ function readMessageMetadataString(message: ChatMessage, key: string): string | 
     : null;
 }
 
-function messageMatchesTargetLane(message: ChatMessage, target: RoutingTarget): boolean {
-  return target.laneId != null
-    && readMessageMetadataString(message, 'laneId') === target.laneId;
-}
-
 function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): boolean {
-  if (target.participantKind === 'orchestrator') {
-    if (message.senderKind === 'orchestrator' && messageMatchesTargetLane(message, target)) {
-      return true;
+  const targetLaneId = target.laneId?.trim() || null;
+  const messageLaneId = readMessageMetadataString(message, 'laneId');
+  if (targetLaneId) {
+    if (messageLaneId !== targetLaneId) {
+      return false;
     }
+
+    if (target.participantKind === 'orchestrator') {
+      return message.senderKind === 'orchestrator'
+        && (
+          message.senderName === target.participantName
+          || message.metadata.targetKind === 'orchestrator'
+        );
+    }
+
+    return message.senderKind === 'agent'
+      && (
+        message.senderName === target.participantName
+        || message.metadata.targetId === target.participantId
+      );
+  }
+
+  if (target.participantKind === 'orchestrator') {
     return message.senderKind === 'orchestrator'
       && (
         message.senderName === target.participantName
         || message.metadata.targetKind === 'orchestrator'
       );
-  }
-
-  if (message.senderKind === 'agent' && messageMatchesTargetLane(message, target)) {
-    return true;
   }
 
   return message.senderKind === 'agent'
