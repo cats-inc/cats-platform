@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { loadConfig } from './config.js';
-import { loadProjectEnvFile } from './shared/loadProjectEnvFile.js';
+import { loadProjectEnvFiles } from './shared/loadProjectEnvFile.js';
 import { createServer } from './app/server/index.js';
 import { createAppStartupTrace } from './app/server/startupTrace.js';
 import {
@@ -26,7 +26,7 @@ import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
 let startup = createAppStartupState();
 
 async function main(): Promise<void> {
-  loadProjectEnvFile();
+  loadProjectEnvFiles();
   const startupTrace = createAppStartupTrace();
   startupTrace.trace('main.entered', {
     argv: process.argv.slice(2),

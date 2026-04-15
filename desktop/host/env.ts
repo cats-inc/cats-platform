@@ -1,9 +1,16 @@
 import fs from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 
 type ProcessWithLoadEnvFile = NodeJS.Process & {
   loadEnvFile?: (path?: string) => void;
 };
+
+interface DesktopEnvLoadOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  desktopDir?: string;
+}
 
 export function parseDesktopBoolean(
   rawValue: string | undefined,
@@ -74,4 +81,39 @@ export function loadDesktopEnvFile(
 
   applyEnvFileFallback(envFilePath, env);
   return envFilePath;
+}
+
+function resolveDesktopEnvFilePaths(
+  options: DesktopEnvLoadOptions = {},
+): string[] {
+  const cwd = options.cwd ?? process.cwd();
+  const env = options.env ?? process.env;
+  const desktopDir = options.desktopDir
+    ?? env.CATS_DESKTOP_DIR?.trim()
+    ?? path.join(homedir(), '.cats', 'desktop');
+
+  return [
+    path.join(cwd, '.env'),
+    path.join(desktopDir, '.env'),
+  ];
+}
+
+export function loadDesktopEnvFiles(
+  options: DesktopEnvLoadOptions = {},
+): string[] {
+  const env = options.env ?? process.env;
+  const loaded: string[] = [];
+
+  for (const envFilePath of resolveDesktopEnvFilePaths(options)) {
+    if (!fs.existsSync(envFilePath)) {
+      continue;
+    }
+
+    const loadedPath = loadDesktopEnvFile(path.dirname(envFilePath), env);
+    if (loadedPath) {
+      loaded.push(loadedPath);
+    }
+  }
+
+  return loaded;
 }

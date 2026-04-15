@@ -92,7 +92,7 @@ import {
   type DesktopStartupLaunchContext,
   type DesktopStartupPreferences,
 } from './desktopStartup.js';
-import { loadDesktopEnvFile } from './env.js';
+import { loadDesktopEnvFiles } from './env.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -1200,7 +1200,7 @@ async function shutdownHost(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  loadDesktopEnvFile();
+  loadDesktopEnvFiles();
 
   const gotLock = app.requestSingleInstanceLock();
   if (!gotLock) {

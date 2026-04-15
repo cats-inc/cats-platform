@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
-import { loadDesktopEnvFile } from '../build/desktop/env.js';
+import { loadDesktopEnvFile, loadDesktopEnvFiles } from '../build/desktop/env.js';
 import { resolveDefaultSetupAuditAction } from '../build/desktop/setupAudit.js';
 
 const WINDOWS_USER_DATA_DIR = 'C:/Users/test/AppData/Roaming/Cats';
@@ -26,6 +26,27 @@ test('loadDesktopEnvFile loads .env values without overriding explicit env vars'
   const loadedPath = loadDesktopEnvFile(tempDir, env);
   assert.equal(loadedPath, join(tempDir, '.env'));
   assert.equal(env.CATS_PORT, '8181');
+  assert.equal(env.CATS_DESKTOP_SETUP_AUDIT_PARALLEL, 'false');
+});
+
+test('loadDesktopEnvFiles also loads packaged desktop env from cats home', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'cats-desktop-env-home-'));
+  const desktopDir = join(tempDir, '.cats', 'desktop');
+  await mkdir(desktopDir, { recursive: true });
+  await writeFile(
+    join(desktopDir, '.env'),
+    'CATS_DESKTOP_SETUP_AUDIT_PARALLEL=false\n',
+    'utf8',
+  );
+
+  const env = {};
+  const loadedPaths = loadDesktopEnvFiles({
+    cwd: tempDir,
+    env,
+    desktopDir,
+  });
+
+  assert.deepEqual(loadedPaths, [join(desktopDir, '.env')]);
   assert.equal(env.CATS_DESKTOP_SETUP_AUDIT_PARALLEL, 'false');
 });
 

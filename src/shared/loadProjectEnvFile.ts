@@ -1,9 +1,16 @@
 import fs from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 
 type ProcessWithLoadEnvFile = NodeJS.Process & {
   loadEnvFile?: (path?: string) => void;
 };
+
+interface ProjectEnvLoadOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  platformConfigDir?: string;
+}
 
 function applyEnvFileFallback(
   envFilePath: string,
@@ -38,18 +45,58 @@ function applyEnvFileFallback(
   }
 }
 
-export function loadProjectEnvFile(cwd: string = process.cwd()): string | null {
+export function loadProjectEnvFile(
+  cwd: string = process.cwd(),
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
   const envFilePath = path.join(cwd, '.env');
   if (!fs.existsSync(envFilePath)) {
     return null;
   }
 
   const processWithLoadEnvFile = process as ProcessWithLoadEnvFile;
-  if (typeof processWithLoadEnvFile.loadEnvFile === 'function') {
+  if (env === process.env && typeof processWithLoadEnvFile.loadEnvFile === 'function') {
     processWithLoadEnvFile.loadEnvFile(envFilePath);
     return envFilePath;
   }
 
-  applyEnvFileFallback(envFilePath, process.env);
+  applyEnvFileFallback(envFilePath, env);
   return envFilePath;
+}
+
+function resolveProjectEnvFilePaths(
+  options: ProjectEnvLoadOptions = {},
+): string[] {
+  const cwd = options.cwd ?? process.cwd();
+  const env = options.env ?? process.env;
+  const platformConfigDir = options.platformConfigDir
+    ?? path.join(
+      env.CATS_PLATFORM_DIR?.trim() || path.join(homedir(), '.cats', 'platform'),
+      'config',
+    );
+
+  return [
+    path.join(cwd, '.env'),
+    path.join(platformConfigDir, '.env'),
+  ];
+}
+
+export function loadProjectEnvFiles(
+  options: ProjectEnvLoadOptions = {},
+): string[] {
+  const env = options.env ?? process.env;
+  const loaded: string[] = [];
+
+  for (const envFilePath of resolveProjectEnvFilePaths(options)) {
+    if (!fs.existsSync(envFilePath)) {
+      continue;
+    }
+
+    const loadedPath = loadProjectEnvFile(path.dirname(envFilePath), env);
+    if (loadedPath) {
+      loaded.push(loadedPath);
+    }
+  }
+
+  return loaded;
 }
