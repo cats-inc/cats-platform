@@ -1438,6 +1438,7 @@ export function hasVisibleSessionStartAfterMessage<TMessage extends LiveIndicato
   messages: ReadonlyArray<TMessage>,
   messageId: string,
   options: {
+    laneIds?: ReadonlyArray<string | null | undefined>;
     targetStateIds?: ReadonlyArray<string | null | undefined>;
     participantIds?: ReadonlyArray<string | null | undefined>;
   } = {},
@@ -1449,6 +1450,11 @@ export function hasVisibleSessionStartAfterMessage<TMessage extends LiveIndicato
 
   const targetStateIds = new Set(
     (options.targetStateIds ?? [])
+      .map((value) => readString(value))
+      .filter((value): value is string => value !== null),
+  );
+  const laneIds = new Set(
+    (options.laneIds ?? [])
       .map((value) => readString(value))
       .filter((value): value is string => value !== null),
   );
@@ -1466,6 +1472,13 @@ export function hasVisibleSessionStartAfterMessage<TMessage extends LiveIndicato
     const metadata = asRecord(message.metadata);
     if (readString(metadata?.event) !== 'session_started') {
       return false;
+    }
+
+    if (laneIds.size > 0) {
+      const laneId = readMessageLaneId(message);
+      if (laneId) {
+        return laneIds.has(laneId);
+      }
     }
 
     if (targetStateIds.size > 0) {

@@ -12,6 +12,7 @@ import {
   hasVisibleAssistantReplyAfterMessage,
   hasVisibleSessionStartAfterMessage,
 } from '../../../../../shared/liveIndicator.js';
+import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { buildImplicitRecipient, buildNamedRecipient, buildRecipientFromCat, type RecipientChipTarget } from '../ComposerRecipientChip.js';
 import type { ModelSelectorValue } from '../ModelSelector.js';
@@ -275,6 +276,14 @@ export function resolveLatestUserTurnPresentationState(input: {
   const activeTurnTargetStateIds = activeTurn?.targetStatuses
     ?.map((target) => target.id ?? null)
     ?? [];
+  const activeTurnLaneIds = activeTurn?.targetStatuses
+    ?.map((target) => {
+      if (!activeTurn.id || !target.id) {
+        return null;
+      }
+      return buildChatLaneId(activeTurn.id, target.id, target.participant.participantId);
+    })
+    ?? [];
   const activeTurnParticipantIds = activeTurn?.targetStatuses
     ?.map((target) => target.participant.participantId ?? null)
     ?? [];
@@ -282,6 +291,7 @@ export function resolveLatestUserTurnPresentationState(input: {
     input.selectedChannel.messages,
     latestUserMessage.id,
     {
+      laneIds: activeTurnLaneIds,
       targetStateIds: activeTurnTargetStateIds,
       participantIds: activeTurnParticipantIds,
     },

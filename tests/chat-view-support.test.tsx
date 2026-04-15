@@ -7,6 +7,7 @@ import {
   resolveLatestUserTurnPresentationState,
 } from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
+import { buildChatLaneId } from '../src/shared/chatCoreIds.ts';
 
 test('resolveChatComposerViewState treats pre-ACK prepare as a cancelable composer busy state', () => {
   const result = resolveChatComposerViewState({
@@ -464,6 +465,61 @@ test('resolveLatestUserTurnPresentationState keeps processing when session start
   assert.deepEqual(result, {
     messageId: 'message-user',
     status: 'processing',
+  });
+});
+
+test('resolveLatestUserTurnPresentationState stops processing when session startup matches the active laneId even if the targetStateId drifted', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+        {
+          id: 'message-session-same-lane',
+          senderKind: 'system',
+          metadata: {
+            event: 'session_started',
+            laneId: buildChatLaneId(
+              'turn-1',
+              'target-state-claude-canonical',
+              'participant-claude',
+            ),
+            targetId: 'participant-claude',
+            targetStateId: 'target-state-claude-drifted',
+          },
+          createdAt: '2026-04-11T00:00:01.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            id: 'turn-1',
+            sourceMessageId: 'message-user',
+            status: 'running',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                id: 'target-state-claude-canonical',
+                status: 'running',
+                participant: {
+                  participantId: 'participant-claude',
+                },
+              },
+            ],
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: null,
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'idle',
   });
 });
 
