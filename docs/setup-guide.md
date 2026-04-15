@@ -246,8 +246,8 @@ Current interruption truth in the packaged host:
   follow-through are now explicit host-owned setup states
 - the setup recovery panel and bootstrap action bar can surface
   `Resume Packaged Setup` when the last helper run is resumable
-- the Windows readiness audit now also audits native Claude/Cursor
-  auth-required follow-through plus WSL first-boot readiness
+- the Windows readiness audit now also audits native Claude/Cursor/Goose/Junie
+  auth-required follow-through plus native Kiro install readiness
 - the same Windows readiness audit can now optionally surface
   `docker_warm_up_required` for Docker-requiring packaged paths when Docker
   Desktop is installed but its engine is not ready yet
@@ -323,7 +323,8 @@ Coverage in this slice:
 - npm global-prefix/PATH repair for user-scoped installs
 - npm CLI pack install and upgrade for Codex, Gemini, Copilot, OpenCode,
   Kilo, Auggie, and Pi
-- self-hosted audit output for the same provider baseline
+- self-hosted audit output for the same provider baseline, plus optional
+  Ollama coverage when you pass `--include-local-models`
 
 These helpers are shipped as part of the npm package so self-hosted operators
 can use them after `npm install` or `npx`. They are not yet consumed by the
@@ -424,8 +425,7 @@ local-provider rollout:
 
 - current packaged path: Claude Code, Cursor Agent, Goose, Junie, and the
   repo-owned Kiro path across Windows/macOS/Linux
-- Windows keeps the WSL-backed Kiro helper and the bundled Ollama local-model
-  runtime helper
+- Windows keeps the bundled Ollama local-model runtime helper
 
 This is intentionally a staging layer, not the final signed-installer
 publication step.

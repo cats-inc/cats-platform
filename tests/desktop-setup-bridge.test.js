@@ -434,6 +434,43 @@ test('runDesktopSetupHelper forwards extra audit arguments when requested by the
   assert.deepEqual(record.plannedActions, ['local_model:install_ollama_local_model']);
 });
 
+test('runDesktopSetupHelper forwards Unix audit arguments when requested by the host', async () => {
+  const config = await createDesktopConfig();
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-03-30T11:06:00.000Z'),
+  });
+
+  const record = await runDesktopSetupHelper({
+    config,
+    packaging,
+    action: {
+      helperId: 'linux-install-readiness-audit',
+      mode: 'check',
+      extraArguments: ['--include-local-models'],
+    },
+  }, {
+    platform: 'linux',
+    pathExists: async () => true,
+    execFile: async (_file, args) => {
+      assert.equal(args.includes('--include-local-models'), true);
+      return {
+        stdout: JSON.stringify({
+          helper: 'self-hosted-cli-check',
+          platform: 'linux',
+          status: 'changes_required',
+          warnings: [],
+          plannedActions: ['local_model:install_ollama_local_model'],
+          manualSteps: [],
+          interruptions: [],
+        }),
+        stderr: '',
+      };
+    },
+  });
+
+  assert.deepEqual(record.plannedActions, ['local_model:install_ollama_local_model']);
+});
+
 test('runDesktopSetupHelper preserves docker warm-up interruptions from helper output', async () => {
   const config = await createDesktopConfig();
   const packaging = createDesktopPackagingPlan(config, {

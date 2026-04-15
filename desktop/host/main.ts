@@ -756,10 +756,12 @@ function resolveDefaultSetupAuditAction(
     case 'darwin':
       return {
         helperId: 'macos-install-readiness-audit',
+        extraArguments: ['--include-local-models'],
       };
     case 'linux':
       return {
         helperId: 'linux-install-readiness-audit',
+        extraArguments: ['--include-local-models'],
       };
     default:
       return null;

@@ -47,8 +47,9 @@
     Override whether the target WSL distro has completed first-user bootstrap.
 
 .PARAMETER IncludeNativeProviders
-    Include native Claude/Cursor/Goose/Junie readiness and auth checks.
-    Enabled by default.
+    Include native Claude/Cursor/Goose/Junie/Kiro readiness checks plus
+    authentication follow-through where the provider requires it. Enabled by
+    default.
 
 .PARAMETER IncludeDocker
     Include Docker Desktop warm-state checks. Disabled by default because the
@@ -91,6 +92,9 @@
 
 .PARAMETER JunieAuthState
     Override Junie authentication detection for deterministic tests.
+
+.PARAMETER KiroInstallState
+    Override Kiro CLI installation detection for deterministic tests.
 #>
 param(
   [switch]$Json,
@@ -126,6 +130,8 @@ param(
   [string]$JunieInstallState = 'auto',
   [ValidateSet('auto', 'authenticated', 'auth_required')]
   [string]$JunieAuthState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$KiroInstallState = 'auto',
   [ValidateSet('auto', 'missing', 'installed_engine_stopped', 'ready')]
   [string]$DockerState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
@@ -198,6 +204,88 @@ function Invoke-HelperJson {
   return $result.Output | ConvertFrom-Json
 }
 
+function Invoke-HelperJsonBatch {
+  param(
+    [object[]]$Helpers
+  )
+
+  $results = @{}
+  if ($null -eq $Helpers -or $Helpers.Count -eq 0) {
+    return $results
+  }
+
+  $processes = [System.Collections.Generic.List[object]]::new()
+  try {
+    foreach ($helper in $Helpers) {
+      $key = [string]$helper.Key
+      $scriptPath = [string]$helper.ScriptPath
+      $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $scriptPath) + @(
+        $helper.Arguments | Where-Object { $null -ne $_ } | ForEach-Object { [string]$_ }
+      )
+
+      if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+        throw "Missing helper at $scriptPath"
+      }
+
+      $psi = New-Object System.Diagnostics.ProcessStartInfo
+      $psi.FileName = 'powershell.exe'
+      $psi.UseShellExecute = $false
+      $psi.CreateNoWindow = $true
+      $psi.RedirectStandardOutput = $true
+      $psi.RedirectStandardError = $true
+      if ($arguments.Count -gt 0) {
+        $psi.Arguments = ($arguments | ForEach-Object {
+          if ($_ -match '[\s"]') {
+            '"{0}"' -f ($_ -replace '"', '\"')
+          } else {
+            $_
+          }
+        }) -join ' '
+      }
+
+      $process = [System.Diagnostics.Process]::Start($psi)
+      if ($null -eq $process) {
+        throw "Failed to start helper process for $key."
+      }
+
+      $processes.Add([pscustomobject]@{
+          Key = $key
+          Process = $process
+          OutputTask = $process.StandardOutput.ReadToEndAsync()
+          ErrorTask = $process.StandardError.ReadToEndAsync()
+        })
+    }
+
+    foreach ($entry in $processes) {
+      $entry.Process.WaitForExit()
+      $output = $entry.OutputTask.GetAwaiter().GetResult().Trim()
+      $errorOutput = $entry.ErrorTask.GetAwaiter().GetResult().Trim()
+      if ($entry.Process.ExitCode -ne 0) {
+        $segments = [System.Collections.Generic.List[string]]::new()
+        if (-not [string]::IsNullOrWhiteSpace($output)) {
+          $segments.Add($output)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($errorOutput)) {
+          $segments.Add($errorOutput)
+        }
+        throw "Helper $($entry.Key) failed with exit code $($entry.Process.ExitCode). Output: $($segments -join [System.Environment]::NewLine)"
+      }
+      if ([string]::IsNullOrWhiteSpace($output)) {
+        throw "Helper $($entry.Key) did not emit structured output."
+      }
+      $results[[string]$entry.Key] = $output | ConvertFrom-Json
+    }
+  } finally {
+    foreach ($entry in $processes) {
+      if ($null -ne $entry.Process) {
+        $entry.Process.Dispose()
+      }
+    }
+  }
+
+  return $results
+}
+
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
 $nativeCliPackPath = Join-Path $PSScriptRoot 'Install-NodeCliPack.ps1'
 $wslPreflightPath = Join-Path $PSScriptRoot 'Check-WslPrerequisites.ps1'
@@ -205,6 +293,7 @@ $claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
 $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
 $gooseHelperPath = Join-Path $PSScriptRoot 'Install-Goose.ps1'
 $junieHelperPath = Join-Path $PSScriptRoot 'Install-Junie.ps1'
+$kiroHelperPath = Join-Path $PSScriptRoot 'Install-KiroCli.ps1'
 $dockerHelperPath = Join-Path $PSScriptRoot 'Install-DockerDesktop.ps1'
 $ollamaHelperPath = Join-Path $PSScriptRoot 'Install-Ollama.ps1'
 
@@ -219,7 +308,6 @@ if (-not [string]::IsNullOrWhiteSpace($OutdatedPackagesJson)) {
   $nativeCliArguments += @('-OutdatedPackagesJson', $OutdatedPackagesJson)
 }
 
-$nativeCliPack = Invoke-HelperJson -ScriptPath $nativeCliPackPath -Arguments $nativeCliArguments
 $prefixHelperArguments = @('-CheckOnly', '-Json')
 if ($SkipNodeCheck) {
   $prefixHelperArguments += '-SkipNodeCheck'
@@ -233,9 +321,18 @@ if (-not [string]::IsNullOrWhiteSpace($CurrentPrefix)) {
 if (-not [string]::IsNullOrWhiteSpace($CurrentUserPath)) {
   $prefixHelperArguments += @('-CurrentUserPath', $CurrentUserPath)
 }
-$prefixHelper = Invoke-HelperJson -ScriptPath $prefixHelperPath -Arguments $prefixHelperArguments
+$helperInvocations = [System.Collections.Generic.List[object]]::new()
+$helperInvocations.Add([pscustomobject]@{
+    Key = 'nativeCliPack'
+    ScriptPath = $nativeCliPackPath
+    Arguments = $nativeCliArguments
+  })
+$helperInvocations.Add([pscustomobject]@{
+    Key = 'prefixHelper'
+    ScriptPath = $prefixHelperPath
+    Arguments = $prefixHelperArguments
+  })
 
-$wslResult = $null
 if ($includeWslEnabled) {
   $wslArguments = @('-Json')
   if ($WindowsBuild -gt 0) {
@@ -250,15 +347,13 @@ if ($includeWslEnabled) {
   if ($WslUserBootstrapState -ne 'auto') {
     $wslArguments += @('-WslUserBootstrapState', $WslUserBootstrapState)
   }
-  $wslResult = Invoke-HelperJson -ScriptPath $wslPreflightPath -Arguments $wslArguments
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'wsl'
+      ScriptPath = $wslPreflightPath
+      Arguments = $wslArguments
+    })
 }
 
-$claudeResult = $null
-$cursorResult = $null
-$gooseResult = $null
-$junieResult = $null
-$dockerResult = $null
-$ollamaResult = $null
 if ($includeNativeProvidersEnabled) {
   $claudeArguments = @('-CheckOnly', '-Json')
   if ($ClaudeInstallState -ne 'auto') {
@@ -267,7 +362,11 @@ if ($includeNativeProvidersEnabled) {
   if ($ClaudeAuthState -ne 'auto') {
     $claudeArguments += @('-AuthState', $ClaudeAuthState)
   }
-  $claudeResult = Invoke-HelperJson -ScriptPath $claudeHelperPath -Arguments $claudeArguments
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'claude'
+      ScriptPath = $claudeHelperPath
+      Arguments = $claudeArguments
+    })
 
   $cursorArguments = @('-CheckOnly', '-Json')
   if ($CursorInstallState -ne 'auto') {
@@ -276,7 +375,11 @@ if ($includeNativeProvidersEnabled) {
   if ($CursorAuthState -ne 'auto') {
     $cursorArguments += @('-AuthState', $CursorAuthState)
   }
-  $cursorResult = Invoke-HelperJson -ScriptPath $cursorHelperPath -Arguments $cursorArguments
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'cursor'
+      ScriptPath = $cursorHelperPath
+      Arguments = $cursorArguments
+    })
 
   $gooseArguments = @('-CheckOnly', '-Json')
   if ($GooseInstallState -ne 'auto') {
@@ -285,7 +388,11 @@ if ($includeNativeProvidersEnabled) {
   if ($GooseAuthState -ne 'auto') {
     $gooseArguments += @('-AuthState', $GooseAuthState)
   }
-  $gooseResult = Invoke-HelperJson -ScriptPath $gooseHelperPath -Arguments $gooseArguments
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'goose'
+      ScriptPath = $gooseHelperPath
+      Arguments = $gooseArguments
+    })
 
   $junieArguments = @('-CheckOnly', '-Json')
   if ($JunieInstallState -ne 'auto') {
@@ -294,14 +401,32 @@ if ($includeNativeProvidersEnabled) {
   if ($JunieAuthState -ne 'auto') {
     $junieArguments += @('-AuthState', $JunieAuthState)
   }
-  $junieResult = Invoke-HelperJson -ScriptPath $junieHelperPath -Arguments $junieArguments
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'junie'
+      ScriptPath = $junieHelperPath
+      Arguments = $junieArguments
+    })
+
+  $kiroArguments = @('-CheckOnly', '-Json')
+  if ($KiroInstallState -ne 'auto') {
+    $kiroArguments += @('-InstallState', $KiroInstallState)
+  }
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'kiro'
+      ScriptPath = $kiroHelperPath
+      Arguments = $kiroArguments
+    })
 }
 if ($includeDockerEnabled) {
   $dockerArguments = @('-CheckOnly', '-Json')
   if ($DockerState -ne 'auto') {
     $dockerArguments += @('-DockerState', $DockerState)
   }
-  $dockerResult = Invoke-HelperJson -ScriptPath $dockerHelperPath -Arguments $dockerArguments
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'docker'
+      ScriptPath = $dockerHelperPath
+      Arguments = $dockerArguments
+    })
 }
 if ($includeLocalModelsEnabled) {
   $ollamaArguments = @('-CheckOnly', '-Json')
@@ -311,8 +436,24 @@ if ($includeLocalModelsEnabled) {
   if ($OllamaApiState -ne 'auto') {
     $ollamaArguments += @('-ApiState', $OllamaApiState)
   }
-  $ollamaResult = Invoke-HelperJson -ScriptPath $ollamaHelperPath -Arguments $ollamaArguments
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'ollama'
+      ScriptPath = $ollamaHelperPath
+      Arguments = $ollamaArguments
+    })
 }
+
+$helperResults = Invoke-HelperJsonBatch -Helpers $helperInvocations.ToArray()
+$nativeCliPack = $helperResults['nativeCliPack']
+$prefixHelper = $helperResults['prefixHelper']
+$wslResult = if ($helperResults.ContainsKey('wsl')) { $helperResults['wsl'] } else { $null }
+$claudeResult = if ($helperResults.ContainsKey('claude')) { $helperResults['claude'] } else { $null }
+$cursorResult = if ($helperResults.ContainsKey('cursor')) { $helperResults['cursor'] } else { $null }
+$gooseResult = if ($helperResults.ContainsKey('goose')) { $helperResults['goose'] } else { $null }
+$junieResult = if ($helperResults.ContainsKey('junie')) { $helperResults['junie'] } else { $null }
+$kiroResult = if ($helperResults.ContainsKey('kiro')) { $helperResults['kiro'] } else { $null }
+$dockerResult = if ($helperResults.ContainsKey('docker')) { $helperResults['docker'] } else { $null }
+$ollamaResult = if ($helperResults.ContainsKey('ollama')) { $helperResults['ollama'] } else { $null }
 
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
@@ -332,6 +473,9 @@ if ($null -ne $gooseResult) {
 }
 if ($null -ne $junieResult) {
   $statuses += $junieResult.status
+}
+if ($null -ne $kiroResult) {
+  $statuses += $kiroResult.status
 }
 if ($null -ne $dockerResult) {
   $statuses += $dockerResult.status
@@ -381,6 +525,9 @@ if ($null -ne $junieResult) {
     $plannedActions.Add('provider:authenticate_junie')
   }
 }
+if ($null -ne $kiroResult -and $kiroResult.status -eq 'not_installed') {
+  $plannedActions.Add('provider:install_kiro_native')
+}
 if ($null -ne $dockerResult) {
   foreach ($action in $dockerResult.plannedActions) {
     $plannedActions.Add("docker:$action")
@@ -420,6 +567,11 @@ if ($null -ne $gooseResult) {
 }
 if ($null -ne $junieResult) {
   foreach ($warning in $junieResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
+if ($null -ne $kiroResult) {
+  foreach ($warning in $kiroResult.warnings) {
     $warnings.Add([string]$warning)
   }
 }
@@ -463,6 +615,7 @@ Add-InterruptionsFromResult -HelperResult $claudeResult
 Add-InterruptionsFromResult -HelperResult $cursorResult
 Add-InterruptionsFromResult -HelperResult $gooseResult
 Add-InterruptionsFromResult -HelperResult $junieResult
+Add-InterruptionsFromResult -HelperResult $kiroResult
 Add-InterruptionsFromResult -HelperResult $dockerResult
 Add-InterruptionsFromResult -HelperResult $ollamaResult
 
@@ -512,6 +665,7 @@ $result = [pscustomobject]@{
     cursor = $cursorResult
     goose = $gooseResult
     junie = $junieResult
+    kiro = $kiroResult
   }
   docker = $dockerResult
   localModels = [pscustomobject]@{

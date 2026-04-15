@@ -69,6 +69,8 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
     'installed',
     '-JunieAuthState',
     'authenticated',
+    '-KiroInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -80,6 +82,7 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
   assert.equal(result.nativeProviders.cursor.status, 'ready');
   assert.equal(result.nativeProviders.goose.status, 'ready');
   assert.equal(result.nativeProviders.junie.status, 'ready');
+  assert.equal(result.nativeProviders.kiro.status, 'ready');
   assert.deepEqual(result.plannedActions, []);
 });
 
@@ -161,6 +164,8 @@ test('Check-WindowsSetupReadiness reports auth-required when native providers ar
     'installed',
     '-JunieAuthState',
     'authenticated',
+    '-KiroInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -168,6 +173,59 @@ test('Check-WindowsSetupReadiness reports auth-required when native providers ar
   assert.equal(result.nativeProviders.goose.status, 'auth_required');
   assert.equal(result.plannedActions.includes('provider:authenticate_goose'), true);
   assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
+});
+
+test('Check-WindowsSetupReadiness reports install follow-through when Kiro is missing', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-kiro-'));
+  const desiredPrefix = join(workingDir, '.npm-global');
+  await mkdir(desiredPrefix, { recursive: true });
+
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-Json',
+    '-SkipNodeCheck',
+    '-DesiredPrefix',
+    desiredPrefix,
+    '-CurrentPrefix',
+    desiredPrefix,
+    '-CurrentUserPath',
+    `${desiredPrefix};C:\\Windows\\System32`,
+    '-InstalledPackagesJson',
+    nativeCliPackages,
+    '-WindowsBuild',
+    '22621',
+    '-WslState',
+    'ready',
+    '-WslUserBootstrapState',
+    'completed',
+    '-ClaudeInstallState',
+    'installed',
+    '-ClaudeAuthState',
+    'authenticated',
+    '-CursorInstallState',
+    'installed',
+    '-CursorAuthState',
+    'authenticated',
+    '-GooseInstallState',
+    'installed',
+    '-GooseAuthState',
+    'authenticated',
+    '-JunieInstallState',
+    'installed',
+    '-JunieAuthState',
+    'authenticated',
+    '-KiroInstallState',
+    'missing',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'not_installed');
+  assert.equal(result.nativeProviders.kiro.status, 'not_installed');
+  assert.equal(result.plannedActions.includes('provider:install_kiro_native'), true);
 });
 
 test('Check-WindowsSetupReadiness reports docker warm-up when Docker Desktop is installed but the engine is not ready', skipUnlessWindows(), async () => {
@@ -213,6 +271,8 @@ test('Check-WindowsSetupReadiness reports docker warm-up when Docker Desktop is 
     'installed',
     '-JunieAuthState',
     'authenticated',
+    '-KiroInstallState',
+    'installed',
     '-IncludeDocker:$true',
     '-DockerState',
     'installed_engine_stopped',
@@ -268,6 +328,8 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
     'installed',
     '-JunieAuthState',
     'authenticated',
+    '-KiroInstallState',
+    'installed',
     '-IncludeLocalModels:$true',
     '-OllamaInstallState',
     'installed',

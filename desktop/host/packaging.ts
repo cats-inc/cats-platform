@@ -482,7 +482,7 @@ function buildInstallerContract(
           requiresLocalInstall: true,
           notes: [
             'Repo-owned packaged helper coverage now spans Windows, macOS, and Linux hosts.',
-            'Combines npm-global Node CLI tools, native Unix installers, native Windows installers, and the current WSL-backed Kiro path on Windows.',
+            'Combines npm-global Node CLI tools with native Unix and native Windows installers, including Kiro on the same host-native path.',
           ],
         },
         {

@@ -572,12 +572,55 @@ EOF
   printf 'npm CLI pack complete. changed=%s installed=%s missing=%s\n' "$changed_count" "$installed_count" "$missing_count"
 }
 
+ollama_binary_candidates() {
+  local platform="$1"
+
+  printf '%s\n' "$HOME/.local/bin/ollama"
+  printf '%s\n' '/usr/local/bin/ollama'
+  printf '%s\n' '/usr/bin/ollama'
+  if [ "$platform" = 'macos' ]; then
+    printf '%s\n' '/opt/homebrew/bin/ollama'
+    printf '%s\n' '/Applications/Ollama.app/Contents/Resources/ollama'
+  fi
+}
+
+detect_ollama_command() {
+  local platform="$1"
+  local candidate
+
+  if command -v ollama >/dev/null 2>&1; then
+    command -v ollama
+    return 0
+  fi
+
+  while IFS= read -r candidate; do
+    if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+      prepend_path_if_missing "$(dirname "$candidate")"
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done <<EOF
+$(ollama_binary_candidates "$platform")
+EOF
+
+  return 1
+}
+
+ollama_api_ready() {
+  if ! command -v curl >/dev/null 2>&1; then
+    return 1
+  fi
+
+  curl -fsS --max-time 2 'http://127.0.0.1:11434/api/tags' >/dev/null 2>&1
+}
+
 run_self_hosted_installation_check() {
   local platform="$1"
   shift
 
   local emit_json='false'
   local strict='false'
+  local include_local_models='false'
   local total_present=0
   local total_missing=0
   local checks_json=''
@@ -590,13 +633,27 @@ run_self_hosted_installation_check() {
   local native_missing=0
   local node_pack_present=0
   local node_pack_missing=0
+  local local_model_present=0
+  local local_model_missing=0
   local command_path=''
+  local ollama_command=''
   local provider=''
   local row=''
   local id=''
+  local label=''
+  local present=''
+  local kind=''
+  local scope=''
+  local status=''
   local command_name=''
   local package_name=''
   local display_name=''
+  local async_file=''
+  local async_pid=''
+  local -a async_files=()
+  local -a async_pids=()
+  local -a planned_actions=()
+  local -a manual_steps=()
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -608,9 +665,12 @@ run_self_hosted_installation_check() {
       --strict)
         strict='true'
         ;;
+      --include-local-models)
+        include_local_models='true'
+        ;;
       -h|--help)
         cat <<EOF
-Usage: $(basename "$0") [--json] [--strict] [--help]
+Usage: $(basename "$0") [--json] [--strict] [--include-local-models] [--help]
 
 Audits the self-hosted provider baseline needed to run cats-platform with
 cats-runtime on ${platform}.
@@ -618,6 +678,7 @@ cats-runtime on ${platform}.
 Options:
   --json    Emit a machine-readable summary.
   --strict  Exit non-zero when any audited item is missing.
+  --include-local-models  Include the optional Ollama local-model check.
   --help    Show this help text.
 EOF
         return 0
@@ -665,95 +726,157 @@ EOF
     fi
   }
 
+  append_check_row() {
+    local check_id="$1"
+    local check_label="$2"
+    local check_present="$3"
+    local check_kind="$4"
+    local check_scope="$5"
+    local check_status="$6"
+
+    if [ "$check_present" = 'true' ]; then
+      total_present=$((total_present + 1))
+      case "$check_kind" in
+        core) core_present=$((core_present + 1)) ;;
+        native) native_present=$((native_present + 1)) ;;
+        node) node_pack_present=$((node_pack_present + 1)) ;;
+        local_model) local_model_present=$((local_model_present + 1)) ;;
+      esac
+    else
+      total_missing=$((total_missing + 1))
+      case "$check_kind" in
+        core) core_missing=$((core_missing + 1)) ;;
+        native) native_missing=$((native_missing + 1)) ;;
+        node) node_pack_missing=$((node_pack_missing + 1)) ;;
+        local_model) local_model_missing=$((local_model_missing + 1)) ;;
+      esac
+    fi
+
+    [ "$emit_json" = 'false' ] && printf '%s: %s\n' "$check_label" "$( [ "$check_present" = 'true' ] && printf 'present' || printf 'missing' )"
+    append_check_json "$check_id" "$check_label" "$check_present" "$check_kind" "$check_scope" "$check_status"
+  }
+
   if command -v node >/dev/null 2>&1; then
-    total_present=$((total_present + 1))
-    core_present=$((core_present + 1))
-    [ "$emit_json" = 'false' ] && printf 'Node.js: present\n'
-    append_check_json 'node' 'Node.js' 'true' 'core' 'host' 'ready'
+    append_check_row 'node' 'Node.js' 'true' 'core' 'host' 'ready'
   else
-    total_missing=$((total_missing + 1))
-    core_missing=$((core_missing + 1))
-    [ "$emit_json" = 'false' ] && printf 'Node.js: missing\n'
-    append_check_json 'node' 'Node.js' 'false' 'core' 'host' 'changes_required'
+    append_check_row 'node' 'Node.js' 'false' 'core' 'host' 'changes_required'
   fi
 
   if command -v npm >/dev/null 2>&1; then
-    total_present=$((total_present + 1))
-    core_present=$((core_present + 1))
-    [ "$emit_json" = 'false' ] && printf 'npm: present\n'
-    append_check_json 'npm' 'npm' 'true' 'core' 'host' 'ready'
+    append_check_row 'npm' 'npm' 'true' 'core' 'host' 'ready'
   else
-    total_missing=$((total_missing + 1))
-    core_missing=$((core_missing + 1))
-    [ "$emit_json" = 'false' ] && printf 'npm: missing\n'
-    append_check_json 'npm' 'npm' 'false' 'core' 'host' 'changes_required'
+    append_check_row 'npm' 'npm' 'false' 'core' 'host' 'changes_required'
   fi
 
   if command -v docker >/dev/null 2>&1; then
-    total_present=$((total_present + 1))
-    core_present=$((core_present + 1))
-    [ "$emit_json" = 'false' ] && printf 'Docker: present\n'
-    append_check_json 'docker' 'Docker' 'true' 'core' 'host' 'ready'
+    append_check_row 'docker' 'Docker' 'true' 'core' 'host' 'ready'
   else
-    total_missing=$((total_missing + 1))
-    core_missing=$((core_missing + 1))
-    [ "$emit_json" = 'false' ] && printf 'Docker: missing\n'
-    append_check_json 'docker' 'Docker' 'false' 'core' 'host' 'changes_required'
+    append_check_row 'docker' 'Docker' 'false' 'core' 'host' 'changes_required'
   fi
 
   if [ "$prefix_status" = 'ready' ]; then
-    total_present=$((total_present + 1))
-    core_present=$((core_present + 1))
-    append_check_json 'node_prefix' 'npm global prefix' 'true' 'core' 'host' 'ready'
+    append_check_row 'node_prefix' 'npm global prefix' 'true' 'core' 'host' 'ready'
   else
-    total_missing=$((total_missing + 1))
-    core_missing=$((core_missing + 1))
-    append_check_json 'node_prefix' 'npm global prefix' 'false' 'core' 'host' 'changes_required'
+    append_check_row 'node_prefix' 'npm global prefix' 'false' 'core' 'host' 'changes_required'
+    planned_actions+=('repair_npm_prefix')
   fi
 
   for provider in claude cursor goose junie kiro; do
-    if command_path="$(detect_provider_command "$platform" "$provider")"; then
-      total_present=$((total_present + 1))
-      native_present=$((native_present + 1))
-      [ "$emit_json" = 'false' ] && printf '%s: present\n' "$(provider_display_name "$provider")"
-      append_check_json "$provider" "$(provider_display_name "$provider")" 'true' 'native' 'host' 'ready'
-      unset command_path
-    else
-      total_missing=$((total_missing + 1))
-      native_missing=$((native_missing + 1))
-      [ "$emit_json" = 'false' ] && printf '%s: missing\n' "$(provider_display_name "$provider")"
-      append_check_json "$provider" "$(provider_display_name "$provider")" 'false' 'native' 'host' 'changes_required'
-    fi
+    async_file="$(mktemp)"
+    async_files+=("$async_file")
+    (
+      if command_path="$(detect_provider_command "$platform" "$provider")"; then
+        printf '%s|%s|true|native|host|ready\n' "$provider" "$(provider_display_name "$provider")"
+        unset command_path
+      else
+        printf '%s|%s|false|native|host|changes_required\n' "$provider" "$(provider_display_name "$provider")"
+      fi
+    ) >"$async_file" 2>/dev/null &
+    async_pids+=($!)
   done
 
   while IFS='|' read -r id command_name package_name display_name; do
     [ -n "$id" ] || continue
-    if command -v "$command_name" >/dev/null 2>&1; then
-      total_present=$((total_present + 1))
-      node_pack_present=$((node_pack_present + 1))
-      [ "$emit_json" = 'false' ] && printf '%s: present\n' "$display_name"
-      append_check_json "$id" "$display_name" 'true' 'node' 'host' 'ready'
-    else
-      total_missing=$((total_missing + 1))
-      node_pack_missing=$((node_pack_missing + 1))
-      [ "$emit_json" = 'false' ] && printf '%s: missing\n' "$display_name"
-      append_check_json "$id" "$display_name" 'false' 'node' 'host' 'changes_required'
-    fi
+    async_file="$(mktemp)"
+    async_files+=("$async_file")
+    (
+      if command -v "$command_name" >/dev/null 2>&1; then
+        printf '%s|%s|true|node|host|ready\n' "$id" "$display_name"
+      else
+        printf '%s|%s|false|node|host|changes_required\n' "$id" "$display_name"
+      fi
+    ) >"$async_file" 2>/dev/null &
+    async_pids+=($!)
   done <<EOF
 $(node_cli_package_rows)
 EOF
+
+  if [ "$include_local_models" = 'true' ]; then
+    async_file="$(mktemp)"
+    async_files+=("$async_file")
+    (
+      if ollama_command="$(detect_ollama_command "$platform")"; then
+        if ollama_api_ready; then
+          printf 'ollama|Ollama|true|local_model|host|ready\n'
+        else
+          printf 'ollama|Ollama|false|local_model|host|changes_required\n'
+        fi
+        unset ollama_command
+      else
+        printf 'ollama|Ollama|false|local_model|host|not_installed\n'
+      fi
+    ) >"$async_file" 2>/dev/null &
+    async_pids+=($!)
+  fi
+
+  for async_pid in "${async_pids[@]}"; do
+    if ! wait "$async_pid"; then
+      for async_file in "${async_files[@]}"; do
+        rm -f "$async_file"
+      done
+      return 1
+    fi
+  done
+
+  for async_file in "${async_files[@]}"; do
+    if IFS='|' read -r id label present kind scope status < "$async_file"; then
+      append_check_row "$id" "$label" "$present" "$kind" "$scope" "$status"
+      case "$kind:$status" in
+        native:changes_required)
+          planned_actions+=("provider:install_${id}_native")
+          ;;
+        local_model:not_installed)
+          planned_actions+=('local_model:install_ollama_local_model')
+          manual_steps+=('Install Ollama when you want local models on this host, then rerun the packaged setup check.')
+          ;;
+        local_model:changes_required)
+          planned_actions+=('local_model:start_ollama_local_model')
+          manual_steps+=('Start Ollama or run `ollama serve`, then rerun the packaged setup check.')
+          ;;
+      esac
+    fi
+    rm -f "$async_file"
+  done
+
+  if [ $node_pack_missing -gt 0 ]; then
+    planned_actions+=('repair_native_cli_pack')
+  fi
 
   if [ "$total_missing" -gt 0 ]; then
     overall_status='changes_required'
   fi
 
   if [ "$emit_json" = 'true' ]; then
-    printf '{"helper":"self-hosted-cli-check","platform":"%s","status":"%s","ready":%s,"present":%s,"missing":%s,"checks":[%s],"phases":[{"id":"core","label":"Core prerequisites","status":"%s","present":%s,"missing":%s},{"id":"native_provider_pack","label":"Native provider pack","status":"%s","present":%s,"missing":%s},{"id":"node_cli_pack","label":"Node CLI pack","status":"%s","present":%s,"missing":%s}],"warnings":[]}\n' \
+    printf '{"helper":"self-hosted-cli-check","platform":"%s","status":"%s","ready":%s,"present":%s,"missing":%s,"plannedActions":' \
       "$platform" \
       "$overall_status" \
       "$( [ $total_missing -eq 0 ] && printf 'true' || printf 'false' )" \
       "$total_present" \
-      "$total_missing" \
+      "$total_missing"
+    json_string_array "${planned_actions[@]}"
+    printf ',"manualSteps":'
+    json_string_array "${manual_steps[@]}"
+    printf ',"interruptions":[],"checks":[%s],"phases":[{"id":"core","label":"Core prerequisites","status":"%s","present":%s,"missing":%s},{"id":"native_provider_pack","label":"Native provider pack","status":"%s","present":%s,"missing":%s},{"id":"node_cli_pack","label":"Node CLI pack","status":"%s","present":%s,"missing":%s}' \
       "$checks_json" \
       "$(phase_status "$core_missing")" \
       "$core_present" \
@@ -764,11 +887,21 @@ EOF
       "$(phase_status "$node_pack_missing")" \
       "$node_pack_present" \
       "$node_pack_missing"
+    if [ "$include_local_models" = 'true' ]; then
+      printf ',{"id":"local_model_pack","label":"Local model pack","status":"%s","present":%s,"missing":%s}' \
+        "$(phase_status "$local_model_missing")" \
+        "$local_model_present" \
+        "$local_model_missing"
+    fi
+    printf '],"warnings":[]}\n'
   else
     printf 'Status: %s\n' "$overall_status"
     printf 'Core prerequisites: %s (present=%s missing=%s)\n' "$(phase_status "$core_missing")" "$core_present" "$core_missing"
     printf 'Native provider pack: %s (present=%s missing=%s)\n' "$(phase_status "$native_missing")" "$native_present" "$native_missing"
     printf 'Node CLI pack: %s (present=%s missing=%s)\n' "$(phase_status "$node_pack_missing")" "$node_pack_present" "$node_pack_missing"
+    if [ "$include_local_models" = 'true' ]; then
+      printf 'Local model pack: %s (present=%s missing=%s)\n' "$(phase_status "$local_model_missing")" "$local_model_present" "$local_model_missing"
+    fi
     printf 'Summary: present=%s missing=%s\n' "$total_present" "$total_missing"
   fi
 

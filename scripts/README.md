@@ -211,8 +211,8 @@ through a dedicated WSL helper. WSL-target Kiro installs now flow through
 Claude Code, Junie, Goose, and the other in-distro providers.
 
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
-helpers into one host-readable audit for native CLI pack readiness and WSL
-prerequisite readiness.
+helpers into one host-readable audit for the npm CLI pack, the native Windows
+provider helpers including Kiro, and the optional local-model/Ollama follow-up.
 
 Together these let the host treat packaged setup helpers as structured assets
 instead of raw bootstrap dependencies.
@@ -329,3 +329,6 @@ Representative usage:
 
 These are operational helper surfaces only. They are intentionally separate
 from the packaged setup wizard/bootstrap flow for now.
+
+Pass `--include-local-models` to the Unix `check-installation.sh` helpers when
+you also want the optional Ollama local-model check in the audit output.
