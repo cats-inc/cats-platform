@@ -396,13 +396,11 @@ function resolveLatestSessionStartedMessage(
   } = {},
 ): ChatMessage | null {
   let participantMatch: ChatMessage | null = null;
-  let sessionMatch: ChatMessage | null = null;
   for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
     const message = channel.messages[index]!;
-    if (!matchesSessionStartedParticipant(message, participant)) {
+    if (readMessageMetadataString(message, 'event') !== 'session_started') {
       continue;
     }
-    participantMatch ??= message;
 
     if (
       options.targetStateId
@@ -413,21 +411,19 @@ function resolveLatestSessionStartedMessage(
     if (options.laneId && readMessageMetadataString(message, 'laneId') === options.laneId) {
       return message;
     }
-    if (
-      !sessionMatch
-      && options.sessionId
-      && readMessageMetadataString(message, 'sessionId') === options.sessionId
-    ) {
-      sessionMatch = message;
+    if (options.sessionId && readMessageMetadataString(message, 'sessionId') === options.sessionId) {
+      return message;
     }
+
+    if (!matchesSessionStartedParticipant(message, participant)) {
+      continue;
+    }
+    participantMatch ??= message;
   }
 
-  return sessionMatch
-    ?? (
-      !options.targetStateId && !options.laneId && !options.sessionId
-        ? participantMatch
-        : null
-    );
+  return !options.targetStateId && !options.laneId && !options.sessionId
+    ? participantMatch
+    : null;
 }
 
 function resolveTargetSessionId(

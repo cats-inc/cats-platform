@@ -397,6 +397,66 @@ test('chatStore.write ignores stale session_started messages when preseeded lane
   assert.equal(core.sessions.filter((session) => session.turnId === projectedTurn.id).length, 0);
 });
 
+test('chatStore.write projects a preseeded lane session from lane metadata even when targetId is missing', async () => {
+  let { state, channelId, agent1Id } = await createGroupChannelState();
+  const seededAt = new Date('2026-04-15T00:05:40.000Z');
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Pick this up next.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    createNoopRuntimeClient(),
+    seededAt,
+  );
+
+  const activeTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+  const targetStateId = activeTurn.targetStatuses[0]?.id ?? null;
+  assert.ok(targetStateId);
+  const laneId = buildChatLaneId(activeTurn.id, targetStateId, agent1Id);
+  state = appendMessage(
+    begun.state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: 'Agent-1 connected to cats-runtime session session-lane-only.',
+    },
+    new Date('2026-04-15T00:05:41.000Z'),
+    {
+      metadata: {
+        event: 'session_started',
+        conversationId: buildChatConversationId(channelId),
+        targetKind: 'cat',
+        targetStateId,
+        laneId,
+        sessionId: 'session-lane-only',
+        verbosity: 'verbose',
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  const store = new MemoryChatStore();
+  await store.write(state);
+  const core = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const projectedTurn = core.turns.find((turn) =>
+    turn.conversationId === conversationId && turn.status === 'active');
+  assert.ok(projectedTurn);
+
+  const sessions = core.sessions.filter((session) => session.turnId === projectedTurn.id);
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0]?.id, 'session-lane-only');
+  assert.equal(sessions[0]?.laneId, laneId);
+  assert.equal(sessions[0]?.metadata.targetStateId, targetStateId);
+});
+
 test('chatStore.write ignores closed participant leases when a new lane is only preseeded', async () => {
   let { state, channelId, agent1Id } = await createGroupChannelState();
   const seededAt = new Date('2026-04-15T00:05:45.000Z');
