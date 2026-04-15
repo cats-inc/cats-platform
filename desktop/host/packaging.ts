@@ -7,6 +7,8 @@ import type {
   DesktopInstallerContract,
   DesktopPackagingPlan,
   DesktopPackagingPlatform,
+  DesktopSidecarLayout,
+  DesktopSidecarLayoutSelection,
   DesktopPackagingTarget,
   DesktopUpdateChannel,
 } from './contracts.js';
@@ -20,6 +22,7 @@ interface DesktopPackagingPlanOptions {
   generatedAt?: Date;
   outputRoot?: string;
   platforms?: DesktopPackagingPlatform[] | null;
+  sidecarLayout?: DesktopSidecarLayout | null;
 }
 
 interface RuntimePackageManifest {
@@ -30,6 +33,13 @@ interface RuntimeSidecarAsset {
   sourceRelativePath: string;
   targetRelativePath: string;
   directory: boolean;
+}
+
+interface DesktopStagedSidecarOutput {
+  layout: DesktopSidecarLayout;
+  sourceEntryPath: string;
+  sourceMapPath: string | null;
+  sourceDirectoryPath: string | null;
 }
 
 type DesktopHelperCatalogEntry = DesktopInstallerContract['providerSetup']['helperCatalog'][number];
@@ -93,11 +103,6 @@ const RUNTIME_PUBLIC_FILES = [
 
 const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
   {
-    sourceRelativePath: join('build', 'runtime'),
-    targetRelativePath: join('shared', 'cats-runtime', 'build', 'runtime'),
-    directory: true,
-  },
-  {
     sourceRelativePath: 'public',
     targetRelativePath: join('shared', 'cats-runtime', 'public'),
     directory: true,
@@ -138,6 +143,28 @@ function defaultOutputRoot(config: DesktopHostConfig): string {
   return resolve(join(config.packageRoot, 'build', 'desktop-packaging'));
 }
 
+function resolveRequestedSidecarLayout(
+  value: DesktopPackagingPlanOptions['sidecarLayout'] | string | undefined,
+): DesktopSidecarLayout {
+  if (value === undefined || value === null || value === '') {
+    return 'split';
+  }
+  if (value === 'split' || value === 'bundle') {
+    return value;
+  }
+  throw new Error(`Unsupported desktop sidecar layout: ${value}`);
+}
+
+function resolveSidecarLayoutSelection(
+  value: DesktopPackagingPlanOptions['sidecarLayout'] | string | undefined,
+): DesktopSidecarLayoutSelection {
+  const layout = resolveRequestedSidecarLayout(value);
+  return {
+    app: layout,
+    runtime: layout,
+  };
+}
+
 function runtimeDependencyPackagePath(packageName: string): string {
   return join('node_modules', ...packageName.split('/'), 'package.json');
 }
@@ -166,6 +193,78 @@ async function ensureBundledRuntimeAssets(runtimePackageRoot: string): Promise<s
 
   await Promise.all(requiredPaths.map((path) => ensureRequiredFile(path)));
   return dependencyPackagePaths;
+}
+
+async function resolveAppServerStageSource(
+  config: DesktopHostConfig,
+  layout: DesktopSidecarLayout,
+): Promise<DesktopStagedSidecarOutput> {
+  if (layout === 'bundle') {
+    const sourceEntryPath = join(config.packageRoot, 'build', 'server-bundle', 'index.js');
+    const sourceMapPath = join(config.packageRoot, 'build', 'server-bundle', 'index.js.map');
+    await ensureRequiredFile(sourceEntryPath);
+    await ensureRequiredFile(sourceMapPath);
+    return {
+      layout,
+      sourceEntryPath,
+      sourceMapPath,
+      sourceDirectoryPath: null,
+    };
+  }
+
+  const sourceDirectoryPath = join(config.packageRoot, 'build', 'server');
+  const sourceEntryPath = join(sourceDirectoryPath, 'index.js');
+  await ensureRequiredFile(sourceEntryPath);
+  return {
+    layout,
+    sourceEntryPath,
+    sourceMapPath: null,
+    sourceDirectoryPath,
+  };
+}
+
+async function resolveRuntimeStageSource(
+  runtimePackageRoot: string,
+  layout: DesktopSidecarLayout,
+): Promise<DesktopStagedSidecarOutput> {
+  if (layout === 'bundle') {
+    const sourceEntryPath = join(runtimePackageRoot, 'build', 'runtime-bundle', 'index.js');
+    const sourceMapPath = join(runtimePackageRoot, 'build', 'runtime-bundle', 'index.js.map');
+    await ensureRequiredFile(sourceEntryPath);
+    await ensureRequiredFile(sourceMapPath);
+    return {
+      layout,
+      sourceEntryPath,
+      sourceMapPath,
+      sourceDirectoryPath: null,
+    };
+  }
+
+  const sourceDirectoryPath = join(runtimePackageRoot, 'build', 'runtime');
+  const sourceEntryPath = join(sourceDirectoryPath, 'index.js');
+  await ensureRequiredFile(sourceEntryPath);
+  return {
+    layout,
+    sourceEntryPath,
+    sourceMapPath: null,
+    sourceDirectoryPath,
+  };
+}
+
+async function stageSidecarOutput(
+  output: DesktopStagedSidecarOutput,
+  targetDirectory: string,
+): Promise<void> {
+  if (output.layout === 'split' && output.sourceDirectoryPath) {
+    await copyDirectory(output.sourceDirectoryPath, targetDirectory);
+    return;
+  }
+
+  await mkdir(targetDirectory, { recursive: true });
+  await copyFile(output.sourceEntryPath, join(targetDirectory, 'index.js'));
+  if (output.sourceMapPath) {
+    await copyFile(output.sourceMapPath, join(targetDirectory, 'index.js.map'));
+  }
 }
 
 function filterSetupAssetsForPlatforms<T extends { targetPlatforms: DesktopPackagingPlatform[] }>(
@@ -642,6 +741,7 @@ export function createDesktopPackagingPlan(
 ): DesktopPackagingPlan {
   const generatedAt = options.generatedAt ?? new Date();
   const outputRoot = resolve(options.outputRoot ?? defaultOutputRoot(config));
+  const sidecarLayout = resolveSidecarLayoutSelection(options.sidecarLayout);
   const allowedPlatforms = options.platforms && options.platforms.length > 0
     ? new Set(options.platforms)
     : null;
@@ -650,6 +750,7 @@ export function createDesktopPackagingPlan(
     strategy: 'electron-sidecar-bundle',
     generatedAt: generatedAt.toISOString(),
     outputRoot,
+    sidecarLayout,
     selfHostedNpmCompatible: true,
     targets: PACKAGING_TARGETS
       .filter((target) => allowedPlatforms === null || allowedPlatforms.has(target.platform))
@@ -666,15 +767,6 @@ export function createDesktopPackagingPlan(
 
 async function ensureRequiredFile(path: string): Promise<void> {
   await access(path);
-}
-
-async function hasServerBundle(config: DesktopHostConfig): Promise<boolean> {
-  try {
-    await access(join(config.packageRoot, 'build', 'server-bundle', 'index.js'));
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 async function ensureBuiltAssets(config: DesktopHostConfig): Promise<void> {
@@ -716,6 +808,7 @@ async function writeInstallerManifest(
       artifactBaseName: target.artifactBaseName,
     },
     strategy: plan.strategy,
+    sidecarLayout: plan.sidecarLayout,
     installer,
     updates: plan.updates,
     artifacts: target.artifacts,
@@ -728,10 +821,12 @@ export async function stageDesktopPackagingOutputs(
 ): Promise<DesktopPackagingPlan> {
   const generatedAt = options.generatedAt ?? new Date();
   const outputRoot = resolve(options.outputRoot ?? defaultOutputRoot(config));
+  const sidecarLayout = resolveSidecarLayoutSelection(options.sidecarLayout);
   const plan = createDesktopPackagingPlan(config, {
     generatedAt,
     outputRoot,
     platforms: options.platforms,
+    sidecarLayout: sidecarLayout.app,
   });
   const allowedPlatforms = new Set(plan.targets.map((target) => target.platform));
 
@@ -739,20 +834,11 @@ export async function stageDesktopPackagingOutputs(
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(join(outputRoot, 'shared'), { recursive: true });
 
-  const useBundle = await hasServerBundle(config);
-  if (useBundle) {
-    await mkdir(join(outputRoot, 'shared', 'build', 'server'), { recursive: true });
-    await copyFile(
-      join(config.packageRoot, 'build', 'server-bundle', 'index.js'),
-      join(outputRoot, 'shared', 'build', 'server', 'index.js'),
-    );
-    await copyFile(
-      join(config.packageRoot, 'build', 'server-bundle', 'index.js.map'),
-      join(outputRoot, 'shared', 'build', 'server', 'index.js.map'),
-    );
-  } else {
-    await copyDirectory(join(config.packageRoot, 'build', 'server'), join(outputRoot, 'shared', 'build', 'server'));
-  }
+  const appServerStageSource = await resolveAppServerStageSource(config, sidecarLayout.app);
+  await stageSidecarOutput(
+    appServerStageSource,
+    join(outputRoot, 'shared', 'build', 'server'),
+  );
   await copyDirectory(join(config.packageRoot, 'build', 'renderer'), join(outputRoot, 'shared', 'build', 'renderer'));
   await copyDirectory(join(config.packageRoot, 'build', 'desktop'), join(outputRoot, 'shared', 'build', 'desktop'));
   await copyFile(join(config.packageRoot, 'package.json'), join(outputRoot, 'shared', 'app-sidecar', 'package.json'));
@@ -768,8 +854,17 @@ export async function stageDesktopPackagingOutputs(
   );
 
   let runtimeDependencyPackagePaths: string[] = [];
+  let runtimeStageSource: DesktopStagedSidecarOutput | null = null;
   try {
     runtimeDependencyPackagePaths = await ensureBundledRuntimeAssets(config.runtimePackageRoot);
+    runtimeStageSource = await resolveRuntimeStageSource(
+      config.runtimePackageRoot,
+      sidecarLayout.runtime,
+    );
+    await stageSidecarOutput(
+      runtimeStageSource,
+      join(outputRoot, 'shared', 'cats-runtime', 'build', 'runtime'),
+    );
     for (const asset of RUNTIME_OPTIONAL_ASSETS) {
       const sourcePath = join(config.runtimePackageRoot, asset.sourceRelativePath);
       const targetPath = join(outputRoot, asset.targetRelativePath);
@@ -781,8 +876,10 @@ export async function stageDesktopPackagingOutputs(
     }
   } catch (error) {
     throw new Error(
-      `Desktop packaging requires the full bundled cats-runtime sidecar under ${config.runtimePackageRoot}. `
-      + `Build cats-runtime and install its runtime dependencies before staging or packaging the desktop host. `
+      `Desktop packaging requires the requested cats-runtime sidecar layout `
+      + `(${sidecarLayout.runtime}) under ${config.runtimePackageRoot}. `
+      + `Build cats-runtime with the same sidecar layout and install its runtime dependencies `
+      + `before staging or packaging the desktop host. `
       + `Root cause: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     );
@@ -791,13 +888,14 @@ export async function stageDesktopPackagingOutputs(
   await writeFile(join(outputRoot, 'desktop-package-plan.json'), JSON.stringify(plan, null, 2));
   await writeFile(join(outputRoot, 'shared', 'asset-map.json'), JSON.stringify({
     copiedAt: generatedAt.toISOString(),
+    sidecarLayout,
     roots: {
       app: '.',
       runtime: '../cats-runtime',
     },
     assets: [
       {
-        source: relative(outputRoot, config.paths.appEntryScript),
+        source: relative(outputRoot, appServerStageSource.sourceEntryPath),
         target: 'shared/build/server/index.js',
       },
       {
@@ -817,7 +915,7 @@ export async function stageDesktopPackagingOutputs(
         target: 'shared/build/desktop/preload.cjs',
       },
       {
-        source: relative(outputRoot, join(config.runtimePackageRoot, 'build', 'runtime', 'index.js')),
+        source: relative(outputRoot, runtimeStageSource?.sourceEntryPath ?? join(config.runtimePackageRoot, 'build', 'runtime', 'index.js')),
         target: 'shared/cats-runtime/build/runtime/index.js',
       },
       {

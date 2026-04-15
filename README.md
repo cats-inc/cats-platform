@@ -201,16 +201,22 @@ For a real Windows installer:
 
 ```bash
 npm run desktop:package:windows
+npm run desktop:package:windows -- --sidecar-layout bundle
+npm run desktop:package:windows -- --sidecar-layout split
 ```
 
-That command builds `cats-runtime`, builds `cats`, stages bundled sidecars, and
-produces an NSIS installer under `release/`.
+Those commands build `cats-runtime`, build `cats`, and produce an NSIS installer
+under `release/`. `--sidecar-layout bundle` forces both sidecars into single-file
+bundles for the packaged app, while `--sidecar-layout split` keeps the original
+multi-file layout.
 
 For macOS/Linux unsigned or test packages:
 
 ```bash
 npm run desktop:package:macos
 npm run desktop:package:linux
+node scripts/build-desktop-installer.mjs --target macos --arch x64 --format dmg --sidecar-layout split
+node scripts/build-desktop-installer.mjs --target linux --arch arm64 --format deb --sidecar-layout bundle
 ```
 
 For unpacked validation on Unix targets:

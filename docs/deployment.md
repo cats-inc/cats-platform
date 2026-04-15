@@ -109,6 +109,8 @@ npm run desktop:stage
 
 ```bash
 npm run desktop:package:windows
+npm run desktop:package:windows -- --sidecar-layout bundle
+npm run desktop:package:windows -- --sidecar-layout split
 ```
 
 ```powershell
@@ -120,7 +122,18 @@ npm run desktop:package:windows
 ```bash
 npm run desktop:package:macos
 npm run desktop:package:linux
+node scripts/build-desktop-installer.mjs --target macos --arch x64 --format dmg --sidecar-layout split
+node scripts/build-desktop-installer.mjs --target linux --arch arm64 --format deb --sidecar-layout bundle
 ```
+
+- sidecar layout contract:
+  - `--sidecar-layout split` keeps the original multi-file `cats` and
+    `cats-runtime` sidecar outputs
+  - `--sidecar-layout bundle` builds both sidecars as single-file packaged
+    bundles while leaving dev/server workflows unchanged
+  - the same flag flows through `build-desktop-installer.mjs`,
+    `package-desktop.mjs`, `cats-platform`, and `cats-runtime` so the packaged
+    app never mixes app/runtime layouts by accident
 
 - refresh the packaged/tray icon set from `assets/app-icon-silhouette.svg`:
 

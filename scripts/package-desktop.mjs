@@ -34,18 +34,30 @@ function printHelp() {
 Options:
   --platform <all|windows|macos|linux>  Filter staged target manifests
   --output-dir <path>                   Override packaging output root
+  --sidecar-layout <split|bundle>       Choose loose-file or bundled sidecars for both app/runtime
   --help                                Show this help text
 `);
 }
 
-export function parseArgs(argv) {
+function resolveSidecarLayout(value) {
+  if (value === undefined || value === null || value === '') {
+    return 'split';
+  }
+  if (value === 'split' || value === 'bundle') {
+    return value;
+  }
+  throw new Error(`Unsupported sidecar layout: ${value}`);
+}
+
+export function parseArgs(argv, env = process.env) {
   let platform = 'all';
   let outputDir = null;
+  let sidecarLayout = resolveSidecarLayout(env.CATS_DESKTOP_SIDECAR_LAYOUT);
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, platform, outputDir };
+      return { help: true, platform, outputDir, sidecarLayout };
     }
     if (value === '--platform') {
       platform = argv[index + 1] ?? 'all';
@@ -57,10 +69,15 @@ export function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (value === '--sidecar-layout') {
+      sidecarLayout = resolveSidecarLayout(argv[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, platform, outputDir };
+  return { help: false, platform, outputDir, sidecarLayout };
 }
 
 export function resolveRequiredDesktopIconPaths(projectRoot = PROJECT_ROOT) {
@@ -109,10 +126,12 @@ async function main() {
   const plan = await stageDesktopPackagingOutputs(config, {
     outputRoot: parsed.outputDir ? resolve(PROJECT_ROOT, parsed.outputDir) : undefined,
     platforms: allowedPlatforms,
+    sidecarLayout: parsed.sidecarLayout,
   });
 
   process.stdout.write(JSON.stringify({
     outputRoot: plan.outputRoot,
+    sidecarLayout: plan.sidecarLayout,
     targets: plan.targets.map((target) => ({
       id: target.id,
       platform: target.platform,

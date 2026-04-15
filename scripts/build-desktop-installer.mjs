@@ -18,21 +18,33 @@ Options:
   --arch <x64|arm64|universal>            Override the configured target architectures.
   --format <nsis|dmg|pkg|zip|AppImage|deb|tar.gz>
                                          Override the configured installer formats.
+  --sidecar-layout <split|bundle>         Choose loose-file or bundled sidecars for both app/runtime.
   --help                                  Show this help text.
 
 Without --arch/--format, the electron-builder target matrix from package.json is preserved.
 `);
 }
 
-export function parseArgs(argv) {
+function resolveSidecarLayout(value) {
+  if (value === undefined || value === null || value === '') {
+    return 'split';
+  }
+  if (value === 'split' || value === 'bundle') {
+    return value;
+  }
+  throw new Error(`Unsupported sidecar layout: ${value}`);
+}
+
+export function parseArgs(argv, env = process.env) {
   let target = 'current';
   let arch = null;
   let format = null;
+  let sidecarLayout = resolveSidecarLayout(env.CATS_DESKTOP_SIDECAR_LAYOUT);
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, target, arch, format };
+      return { help: true, target, arch, format, sidecarLayout };
     }
     if (value === '--target') {
       target = argv[index + 1] ?? 'current';
@@ -49,10 +61,15 @@ export function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (value === '--sidecar-layout') {
+      sidecarLayout = resolveSidecarLayout(argv[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, target, arch, format };
+  return { help: false, target, arch, format, sidecarLayout };
 }
 
 async function resolveNodeCliScript(command) {
@@ -112,12 +129,15 @@ export function buildInstallerEnvironment(baseEnv = process.env) {
   return env;
 }
 
-async function runCommand(command, args, cwd) {
+async function runCommand(command, args, cwd, envOverrides = {}) {
   const invocation = await resolveCommandInvocation(command, args);
   return new Promise((resolvePromise, reject) => {
     const child = spawn(invocation.command, invocation.args, {
       cwd,
-      env: buildInstallerEnvironment(process.env),
+      env: buildInstallerEnvironment({
+        ...process.env,
+        ...envOverrides,
+      }),
       stdio: 'inherit',
       shell: false,
     });
@@ -222,12 +242,22 @@ async function main() {
   }
 
   const resolvedTarget = resolveBuilderTarget(parsed.target);
-  await runCommand('npm', ['run', 'build'], RUNTIME_ROOT);
-  await runCommand('npm', ['run', 'build'], PROJECT_ROOT);
+  const sidecarBuildEnv = {
+    CATS_DESKTOP_SIDECAR_LAYOUT: parsed.sidecarLayout,
+  };
+  await runCommand('npm', ['run', 'build'], RUNTIME_ROOT, sidecarBuildEnv);
+  await runCommand('npm', ['run', 'build'], PROJECT_ROOT, sidecarBuildEnv);
   await runCommand(
     'node',
-    ['scripts/package-desktop.mjs', '--platform', resolvedTarget],
+    [
+      'scripts/package-desktop.mjs',
+      '--platform',
+      resolvedTarget,
+      '--sidecar-layout',
+      parsed.sidecarLayout,
+    ],
     PROJECT_ROOT,
+    sidecarBuildEnv,
   );
   await runCommand('npx', electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format), PROJECT_ROOT);
 }

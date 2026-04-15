@@ -55,6 +55,16 @@ async function seedRuntimeSidecar(runtimeRoot) {
   await seedFile(join(runtimeRoot, 'node_modules', 'yaml', 'package.json'), '{"name":"yaml"}');
 }
 
+async function seedPlatformServerBundle(packageRoot, contents = 'export const layout = "bundle";') {
+  await seedFile(join(packageRoot, 'build', 'server-bundle', 'index.js'), contents);
+  await seedFile(join(packageRoot, 'build', 'server-bundle', 'index.js.map'), '{"version":3}');
+}
+
+async function seedRuntimeBundle(runtimeRoot, contents = 'export const layout = "bundle";') {
+  await seedFile(join(runtimeRoot, 'build', 'runtime-bundle', 'index.js'), contents);
+  await seedFile(join(runtimeRoot, 'build', 'runtime-bundle', 'index.js.map'), '{"version":3}');
+}
+
 async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', '_HiddenProcess.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
@@ -100,6 +110,10 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   });
 
   assert.equal(plan.strategy, 'electron-sidecar-bundle');
+  assert.deepEqual(plan.sidecarLayout, {
+    app: 'split',
+    runtime: 'split',
+  });
   assert.equal(plan.selfHostedNpmCompatible, true);
   assert.equal(plan.targets.some((target) => target.platform === 'windows'), true);
   assert.equal(plan.targets.some((target) => target.platform === 'macos'), true);
@@ -524,6 +538,8 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
 
   assert.equal(packageJson.main, 'build/desktop/main.js');
   assert.equal(Object.hasOwn(packageJson, 'types'), false);
+  assert.equal(packageJson.scripts.build, 'npm run clean:build && node scripts/build-server-artifacts.mjs && npm run build:web && npm run build:host');
+  assert.equal(packageJson.scripts['build:server-bundle'], 'node scripts/bundle-server.mjs');
   assert.equal(packageJson.scripts['desktop:package:linux'], 'node scripts/build-desktop-installer.mjs --target linux');
   assert.equal(packageJson.scripts['desktop:package:macos'], 'node scripts/build-desktop-installer.mjs --target macos');
   assert.equal(packageJson.scripts['desktop:package:windows'], 'node scripts/build-desktop-installer.mjs --target windows');
@@ -745,6 +761,7 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /<current\|windows\|macos\|linux>/);
   assert.match(script, /--arch <x64\|arm64\|universal>/);
   assert.match(script, /--format <nsis\|dmg\|pkg\|zip\|AppImage\|deb\|tar\.gz>/);
+  assert.match(script, /--sidecar-layout <split\|bundle>/);
   assert.match(script, /Without --arch\/--format, the electron-builder target matrix from package\.json is preserved\./);
   assert.match(script, /case 'darwin':/);
   assert.match(script, /case 'linux':/);
@@ -761,7 +778,10 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /typeof value !== 'string' \|\| value\.trim\(\) === ''/);
   assert.match(script, /delete env\[key\]/);
   assert.match(script, /shell: false/);
-  assert.match(script, /scripts\/package-desktop\.mjs', '--platform', resolvedTarget/);
+  assert.match(script, /scripts\/package-desktop\.mjs'/);
+  assert.match(script, /'--platform'/);
+  assert.match(script, /resolvedTarget/);
+  assert.match(script, /'--sidecar-layout',\s*parsed\.sidecarLayout/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
   assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);
 });
@@ -805,11 +825,19 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
     help: false,
     platform: 'all',
     outputDir: null,
+    sidecarLayout: 'split',
   });
   assert.deepEqual(parsePackageDesktopArgs(['--platform', 'windows']), {
     help: false,
     platform: 'windows',
     outputDir: null,
+    sidecarLayout: 'split',
+  });
+  assert.deepEqual(parsePackageDesktopArgs(['--platform', 'windows', '--sidecar-layout', 'bundle']), {
+    help: false,
+    platform: 'windows',
+    outputDir: null,
+    sidecarLayout: 'bundle',
   });
 
   assert.deepEqual(parseBuildDesktopInstallerArgs([]), {
@@ -817,14 +845,26 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
     target: 'current',
     arch: null,
     format: null,
+    sidecarLayout: 'split',
   });
   assert.deepEqual(
-    parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb']),
+    parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb', '--sidecar-layout', 'bundle']),
     {
       help: false,
       target: 'linux',
       arch: 'arm64',
       format: 'deb',
+      sidecarLayout: 'bundle',
+    },
+  );
+  assert.deepEqual(
+    parseBuildDesktopInstallerArgs([], { CATS_DESKTOP_SIDECAR_LAYOUT: 'bundle' }),
+    {
+      help: false,
+      target: 'current',
+      arch: null,
+      format: null,
+      sidecarLayout: 'bundle',
     },
   );
 });
@@ -880,6 +920,10 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     platforms: ['windows', 'linux'],
   });
 
+  assert.deepEqual(plan.sidecarLayout, {
+    app: 'split',
+    runtime: 'split',
+  });
   assert.equal(plan.targets.every((target) => target.platform !== 'macos'), true);
   await access(join(plan.outputRoot, 'desktop-package-plan.json'));
   await access(join(plan.outputRoot, 'shared', 'build', 'server', 'index.js'));
@@ -922,6 +966,29 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'));
   await access(join(plan.outputRoot, 'targets', 'linux-x64', 'installer-manifest.json'));
 
+  const assetMap = JSON.parse(await readFile(
+    join(plan.outputRoot, 'shared', 'asset-map.json'),
+    'utf8',
+  ));
+  assert.deepEqual(assetMap.sidecarLayout, {
+    app: 'split',
+    runtime: 'split',
+  });
+  assert.equal(
+    assetMap.assets.some(
+      (asset) => asset.target === 'shared/build/server/index.js'
+        && asset.source.replace(/\\/g, '/').endsWith('/server/index.js'),
+    ),
+    true,
+  );
+  assert.equal(
+    assetMap.assets.some(
+      (asset) => asset.target === 'shared/cats-runtime/build/runtime/index.js'
+        && asset.source.replace(/\\/g, '/').endsWith('cats-runtime/build/runtime/index.js'),
+    ),
+    true,
+  );
+
   const targetManifest = JSON.parse(await readFile(
     join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'),
     'utf8',
@@ -931,6 +998,10 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     'utf8',
   ));
   assert.equal(targetManifest.target.platform, 'windows');
+  assert.deepEqual(targetManifest.sidecarLayout, {
+    app: 'split',
+    runtime: 'split',
+  });
   assert.equal(linuxTargetManifest.target.platform, 'linux');
   assert.equal(targetManifest.updates.channel, config.update.channel);
   assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
@@ -1275,6 +1346,88 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
 });
 
+test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime sidecars', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-desktop-package-bundle-'));
+  const packageRoot = join(workingDir, 'cats');
+  const runtimeRoot = join(workingDir, 'cats-runtime');
+  const outputRoot = join(workingDir, 'desktop-packaging');
+
+  await seedFile(join(packageRoot, 'build', 'server', 'index.js'), 'export const layout = "split-app";');
+  await seedPlatformServerBundle(packageRoot, 'export const layout = "bundle-app";');
+  await seedFile(join(packageRoot, 'build', 'renderer', 'index.html'), '<!doctype html>');
+  await seedFile(join(packageRoot, 'build', 'desktop', 'main.js'), 'export {};');
+  await seedFile(join(packageRoot, 'build', 'desktop', 'preload.cjs'), 'module.exports = {};');
+  await seedFile(join(packageRoot, 'package.json'), JSON.stringify({
+    name: '@cats-inc/cats-platform',
+    version: '0.1.0',
+    type: 'module',
+  }, null, 2));
+  await seedWindowsSetupAssets(packageRoot);
+  await seedRuntimeSidecar(runtimeRoot);
+  await seedFile(join(runtimeRoot, 'build', 'runtime', 'index.js'), 'export const layout = "split-runtime";');
+  await seedRuntimeBundle(runtimeRoot, 'export const layout = "bundle-runtime";');
+
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_APP_ENTRY: join(packageRoot, 'build', 'server', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(runtimeRoot, 'build', 'runtime', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ROOT: runtimeRoot,
+      CATS_DESKTOP_PACKAGING_OUTPUT_ROOT: outputRoot,
+    },
+    userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
+  });
+  const plan = await stageDesktopPackagingOutputs(config, {
+    generatedAt: new Date('2026-03-24T12:05:00.000Z'),
+    platforms: ['windows'],
+    sidecarLayout: 'bundle',
+  });
+
+  assert.deepEqual(plan.sidecarLayout, {
+    app: 'bundle',
+    runtime: 'bundle',
+  });
+  assert.equal(
+    await readFile(join(plan.outputRoot, 'shared', 'build', 'server', 'index.js'), 'utf8'),
+    'export const layout = "bundle-app";',
+  );
+  assert.equal(
+    await readFile(join(plan.outputRoot, 'shared', 'cats-runtime', 'build', 'runtime', 'index.js'), 'utf8'),
+    'export const layout = "bundle-runtime";',
+  );
+
+  const assetMap = JSON.parse(await readFile(
+    join(plan.outputRoot, 'shared', 'asset-map.json'),
+    'utf8',
+  ));
+  const targetManifest = JSON.parse(await readFile(
+    join(plan.outputRoot, 'targets', 'windows-x64', 'installer-manifest.json'),
+    'utf8',
+  ));
+  assert.deepEqual(targetManifest.sidecarLayout, {
+    app: 'bundle',
+    runtime: 'bundle',
+  });
+  assert.deepEqual(assetMap.sidecarLayout, {
+    app: 'bundle',
+    runtime: 'bundle',
+  });
+  assert.equal(
+    assetMap.assets.some(
+      (asset) => asset.target === 'shared/build/server/index.js'
+        && asset.source.replace(/\\/g, '/').endsWith('/server-bundle/index.js'),
+    ),
+    true,
+  );
+  assert.equal(
+    assetMap.assets.some(
+      (asset) => asset.target === 'shared/cats-runtime/build/runtime/index.js'
+        && asset.source.replace(/\\/g, '/').endsWith('cats-runtime/build/runtime-bundle/index.js'),
+    ),
+    true,
+  );
+});
+
 test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is missing', async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-desktop-package-missing-runtime-'));
   const packageRoot = join(workingDir, 'cats');
@@ -1309,7 +1462,7 @@ test('stageDesktopPackagingOutputs fails when cats-runtime sidecar build is miss
       generatedAt: new Date('2026-03-24T12:05:00.000Z'),
       platforms: ['windows'],
     }),
-    /requires the full bundled cats-runtime sidecar/,
+    /requires the requested cats-runtime sidecar layout \(split\)/,
   );
 });
 

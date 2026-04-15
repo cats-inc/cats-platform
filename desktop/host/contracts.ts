@@ -384,6 +384,13 @@ export interface DesktopPackagingTarget {
   artifacts: DesktopPackagingArtifact[];
 }
 
+export type DesktopSidecarLayout = 'split' | 'bundle';
+
+export interface DesktopSidecarLayoutSelection {
+  app: DesktopSidecarLayout;
+  runtime: DesktopSidecarLayout;
+}
+
 export interface DesktopInstallerContract {
   prerequisiteChecks: Array<{
     id: string;
@@ -473,6 +480,7 @@ export interface DesktopPackagingPlan {
   strategy: 'electron-sidecar-bundle';
   generatedAt: string;
   outputRoot: string;
+  sidecarLayout: DesktopSidecarLayoutSelection;
   selfHostedNpmCompatible: boolean;
   targets: DesktopPackagingTarget[];
   installer: DesktopInstallerContract;

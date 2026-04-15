@@ -103,6 +103,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   ]);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_PORT, '43110');
   assert.equal(runtimeSpec.env.CATS_RUNTIME_DIR, 'C:\\Users\\test\\.cats\\runtime');
+  assert.equal(runtimeSpec.env.CATS_RUNTIME_PACKAGE_ROOT, 'C:\\repo\\cats-runtime');
   assert.equal(runtimeSpec.env.CATS_RUNTIME_WSL_DISCOVERY_POLICY, undefined);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_DOCKER_DISCOVERY_POLICY, undefined);
   assert.equal(runtimeSpec.env.CATS_RUNTIME_NATIVE_DISCOVERY_INTERVAL_MS, undefined);
@@ -625,6 +626,8 @@ test('startService logs spawn timing and first output milestones for managed ser
     await supervisor.logQueues.get('cats-platform');
 
     const logText = await readFile(appSpec.logPath, 'utf8');
+    assert.match(logText, /\[host\] spawning cats-platform with command=/);
+    assert.match(logText, /envFingerprint=\{/);
     assert.match(logText, /\[host\] spawned cats-platform pid=9876 after \d+ms/);
     assert.match(logText, /\[host\] first stdout from cats-platform after \d+ms/);
     assert.match(logText, /\[host\] cats-platform ready via lifecycle after \d+ms/);
