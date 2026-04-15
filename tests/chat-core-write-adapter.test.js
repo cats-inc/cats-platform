@@ -38,6 +38,7 @@ import {
   buildChatConversationId,
   buildChatLaneId,
   buildChatTaskId,
+  buildDirectLaneTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 
@@ -1678,6 +1679,68 @@ test('buildCanonicalChatMessage preserves assistant metadata when rebuilding fro
   );
 });
 
+test('buildCanonicalChatMessage preserves direct-lane transport bindings on canonical rebuilds', async () => {
+  const store = new MemoryChatStore();
+  const now = new Date('2026-04-15T00:22:00.000Z');
+  let state = await store.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Direct canonical rebuild',
+      topic: 'Preserve direct-lane transport bindings when rebuilding from canonical segments.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Companion')) {
+      return usage('Companion preserved the direct-lane canonical metadata.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Handle the direct-lane canonical rebuild.' },
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const sourceMessage = requireChannel(dispatched.state, channelId).messages.findLast((message) =>
+    message.senderName === 'Companion'
+    && message.metadata?.event === 'assistant_turn_segment'
+    && message.metadata?.terminal === true);
+  assert.ok(sourceMessage);
+
+  const core = await store.readCore();
+  const rebuilt = buildCanonicalChatMessage(core, channelId, sourceMessage.id);
+  assert.ok(rebuilt);
+  assert.equal(rebuilt?.metadata?.event, 'assistant_turn_segment');
+  assert.equal(rebuilt?.metadata?.conversationId, buildChatConversationId(channelId));
+  assert.equal(rebuilt?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(
+    rebuilt?.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
+  );
+});
+
 test('chatStore.write preserves canonical turn and segment history when transcript messages disappear', async () => {
   const { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const store = new MemoryChatStore();
@@ -2242,6 +2305,7 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
         targetKind: 'orchestrator',
         targetId: 'orchestrator',
         sessionId: 'session-canonical-fallback',
+        transportBindingId: 'transport-binding-canonical-fallback',
         routingTrigger: 'room_default',
         dispatchDepth: 0,
       },
@@ -2369,6 +2433,10 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
   assert.equal(repairedResponse?.body, 'Recovered from canonical core.');
   assert.equal(repairedResponse?.metadata?.conversationId, buildChatConversationId(channelId));
   assert.equal(repairedResponse?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(
+    repairedResponse?.metadata?.transportBindingId,
+    'transport-binding-canonical-fallback',
+  );
   assert.equal(repairedResponse?.metadata?.repairSource, 'canonical_segment_fallback');
   assert.equal(repairedChannel.roomRouting.workflow.activeTurn, null);
   assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'completed');
