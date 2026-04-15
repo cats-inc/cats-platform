@@ -214,13 +214,28 @@ function buildCanonicalChatSegmentMessageFromAssistantTurn(input: {
   sourceAssistantTurnId: string;
 }): ChatMessage | null {
   const conversationId = resolveCanonicalConversationId(input.channelId);
-  const terminalSegment = pickPreferredCanonicalTextSegment(input.core.segments
-    .filter((candidate) =>
-      candidate.conversationId === conversationId
-      && candidate.kind === 'text'
-      && readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === input.sourceAssistantTurnId
-      && (input.sourceTurnId ? candidate.turnId === input.sourceTurnId : true)
-      && (input.sourceLaneId ? candidate.laneId === input.sourceLaneId : true)));
+  const matchingSegments = input.core.segments.filter((candidate) =>
+    candidate.conversationId === conversationId
+    && candidate.kind === 'text'
+    && readChatCoreMetadataString(candidate.metadata, 'assistantTurnId') === input.sourceAssistantTurnId);
+  const terminalSegment = pickPreferredCanonicalTextSegment(
+    (input.sourceTurnId && input.sourceLaneId
+      ? matchingSegments.filter((candidate) =>
+        candidate.turnId === input.sourceTurnId && candidate.laneId === input.sourceLaneId)
+      : [])
+    ?? [],
+  )
+    ?? pickPreferredCanonicalTextSegment(
+      input.sourceTurnId
+        ? matchingSegments.filter((candidate) => candidate.turnId === input.sourceTurnId)
+        : [],
+    )
+    ?? pickPreferredCanonicalTextSegment(
+      input.sourceLaneId
+        ? matchingSegments.filter((candidate) => candidate.laneId === input.sourceLaneId)
+        : [],
+    )
+    ?? pickPreferredCanonicalTextSegment(matchingSegments);
   const sourceMessageId = readChatCoreMetadataString(terminalSegment?.metadata, 'chatMessageId');
   return sourceMessageId
     ? buildCanonicalChatSegmentMessage(input.core, input.channelId, sourceMessageId)
@@ -659,9 +674,6 @@ export function resolveTranscriptOrCanonicalChatMessage(input: {
   const transcriptMessage = input.transcriptMessages.find(
     (message) => message.id === input.sourceMessageId,
   ) ?? null;
-  const canonicalMessage = input.core
-    ? buildCanonicalChatMessage(input.core, input.channelId, input.sourceMessageId)
-    : null;
   if (transcriptMessage && !isAssistantTurnSegmentMessage(transcriptMessage)) {
     return transcriptMessage;
   }
@@ -674,5 +686,8 @@ export function resolveTranscriptOrCanonicalChatMessage(input: {
       sourceAssistantTurnId: input.sourceAssistantTurnId,
     })
     : null;
-  return canonicalMessage ?? identityMessage ?? transcriptMessage;
+  const canonicalMessage = input.core
+    ? buildCanonicalChatMessage(input.core, input.channelId, input.sourceMessageId)
+    : null;
+  return identityMessage ?? canonicalMessage ?? transcriptMessage;
 }

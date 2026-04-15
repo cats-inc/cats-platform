@@ -57,8 +57,10 @@ import {
   readChatCoreMetadataNumber,
   readChatCoreMetadataString,
   resolveRawChatParticipantId,
+  resolveTranscriptOrCanonicalChatMessage,
 } from '../chatCoreInterop.js';
 import {
+  readMetadataString,
   sameParticipantRef,
 } from '../core-projection/entityMetadata.js';
 import {
@@ -1013,6 +1015,75 @@ function readStartupRecoveryInterruptMessage(turn: RoomWorkflowTurn): string {
   return 'Previous room turn was interrupted because Cats server restarted before room workflow cleanup completed.';
 }
 
+interface StartupRecoverySourceIdentityCandidate {
+  sourceTurnId: string | null;
+  sourceLaneId: string | null;
+  sourceAssistantTurnId: string | null;
+}
+
+function collectStartupRecoverySourceIdentityCandidates(
+  turn: RoomWorkflowTurn,
+): StartupRecoverySourceIdentityCandidate[] {
+  const continuationContext = readLatestWorkflowContinuationContext(turn);
+  const candidates: StartupRecoverySourceIdentityCandidate[] = [];
+  const seen = new Set<string>();
+  const pushCandidate = (
+    sourceTurnId: string | null | undefined,
+    sourceLaneId: string | null | undefined,
+    sourceAssistantTurnId: string | null | undefined,
+  ): void => {
+    const normalizedCandidate = {
+      sourceTurnId: sourceTurnId ?? null,
+      sourceLaneId: sourceLaneId ?? null,
+      sourceAssistantTurnId: sourceAssistantTurnId ?? null,
+    };
+    if (
+      !normalizedCandidate.sourceTurnId
+      && !normalizedCandidate.sourceLaneId
+      && !normalizedCandidate.sourceAssistantTurnId
+    ) {
+      return;
+    }
+
+    const candidateKey = [
+      normalizedCandidate.sourceTurnId ?? '',
+      normalizedCandidate.sourceLaneId ?? '',
+      normalizedCandidate.sourceAssistantTurnId ?? '',
+    ].join('::');
+    if (seen.has(candidateKey)) {
+      return;
+    }
+
+    seen.add(candidateKey);
+    candidates.push(normalizedCandidate);
+  };
+
+  pushCandidate(
+    readMetadataString(continuationContext?.metadata, 'continuationSourceTurnId'),
+    readMetadataString(continuationContext?.metadata, 'continuationSourceLaneId'),
+    readMetadataString(continuationContext?.metadata, 'continuationSourceAssistantTurnId'),
+  );
+  for (const target of turn.targetStatuses) {
+    pushCandidate(target.sourceTurnId, target.sourceLaneId, target.sourceAssistantTurnId);
+  }
+
+  return candidates;
+}
+
+function matchesStartupRecoverySourceIdentity(
+  target: RoomWorkflowTargetState,
+  candidate: StartupRecoverySourceIdentityCandidate,
+): boolean {
+  const sharedIdentityPairs = [
+    [target.sourceTurnId ?? null, candidate.sourceTurnId],
+    [target.sourceLaneId ?? null, candidate.sourceLaneId],
+    [target.sourceAssistantTurnId ?? null, candidate.sourceAssistantTurnId],
+  ].filter((pair): pair is [string, string] => Boolean(pair[0] && pair[1]));
+
+  return sharedIdentityPairs.length > 0
+    && sharedIdentityPairs.every(([left, right]) => left === right);
+}
+
 function resolveStartupRecoverySourceBoundaryCreatedAt(
   turn: RoomWorkflowTurn,
   options: {
@@ -1020,24 +1091,45 @@ function resolveStartupRecoverySourceBoundaryCreatedAt(
     channelId: string;
   },
 ): string {
-  const canonicalSourceMessage = options.core
-    ? buildCanonicalChatMessage(options.core, options.channelId, turn.sourceMessageId)
+  const sourceIdentityCandidates = collectStartupRecoverySourceIdentityCandidates(turn);
+  const canonicalSourceBoundary = options.core
+    ? sourceIdentityCandidates
+      .map((candidate) => resolveTranscriptOrCanonicalChatMessage({
+        core: options.core,
+        channelId: options.channelId,
+        transcriptMessages: [],
+        sourceMessageId: turn.sourceMessageId,
+        sourceTurnId: candidate.sourceTurnId,
+        sourceLaneId: candidate.sourceLaneId,
+        sourceAssistantTurnId: candidate.sourceAssistantTurnId,
+      }))
+      .filter((message): message is ChatMessage => Boolean(message?.createdAt))
+      .filter((message) =>
+        message.senderKind === 'user'
+        || message.metadata?.event === 'assistant_turn_segment')
+      .map((message) => message.createdAt)
+      .sort((left, right) => left.localeCompare(right))
+      .at(-1) ?? null
     : null;
-  if (
-    canonicalSourceMessage?.createdAt
-    && (
-      canonicalSourceMessage.senderKind === 'user'
-      || canonicalSourceMessage.metadata?.event === 'assistant_turn_segment'
-    )
-  ) {
-    return canonicalSourceMessage.createdAt;
+  if (canonicalSourceBoundary) {
+    return canonicalSourceBoundary;
   }
 
-  const targetBoundary = turn.targetStatuses
-    .filter((target) => target.sourceMessageId === turn.sourceMessageId)
-    .flatMap((target) => [target.queuedAt, target.startedAt, target.completedAt ?? null])
-    .filter((value): value is string => typeof value === 'string' && value.length > 0)
-    .sort((left, right) => left.localeCompare(right))[0] ?? null;
+  const targetBoundary = sourceIdentityCandidates.length > 0
+    ? sourceIdentityCandidates
+      .map((candidate) => turn.targetStatuses
+        .filter((target) => matchesStartupRecoverySourceIdentity(target, candidate))
+        .flatMap((target) => [target.queuedAt, target.startedAt, target.completedAt ?? null])
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .sort((left, right) => left.localeCompare(right))[0] ?? null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .sort((left, right) => left.localeCompare(right))
+      .at(-1) ?? null
+    : turn.targetStatuses
+      .filter((target) => target.sourceMessageId === turn.sourceMessageId)
+      .flatMap((target) => [target.queuedAt, target.startedAt, target.completedAt ?? null])
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .sort((left, right) => left.localeCompare(right))[0] ?? null;
   if (targetBoundary) {
     return targetBoundary;
   }
