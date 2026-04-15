@@ -24,9 +24,34 @@ function readRuntimeToolId(record: Record<string, unknown>): string | null {
     ?? readString(record.id);
 }
 
+function readRuntimeContentArrayText(value: unknown): string {
+  if (!Array.isArray(value)) {
+    return '';
+  }
+
+  return readOutputContentCandidates(value)
+    .flatMap((candidate) => {
+      if (typeof candidate === 'string') {
+        return candidate.length > 0 ? [candidate] : [];
+      }
+
+      const record = asRecord(candidate);
+      if (!record) {
+        return [];
+      }
+
+      const text = readString(record.text)
+        ?? readString(record.content)
+        ?? '';
+      return text.length > 0 ? [text] : [];
+    })
+    .join('');
+}
+
 function readRuntimeSegmentText(record: Record<string, unknown>): string {
   return readString(record.text)
     ?? readString(record.content)
+    ?? readRuntimeContentArrayText(record.content)
     ?? '';
 }
 

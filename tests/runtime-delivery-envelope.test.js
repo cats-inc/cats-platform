@@ -368,6 +368,38 @@ test('buildRuntimeDeliveryContentBlocksFromResultPayload expands Claude-style co
   ]);
 });
 
+test('buildRuntimeDeliveryContentBlocksFromResultPayload expands tool_result entries with nested output_text arrays', () => {
+  const blocks = buildRuntimeDeliveryContentBlocksFromResultPayload({
+    result: [
+      {
+        kind: 'tool_result',
+        toolName: 'read_file',
+        toolId: 'tool-nested-1',
+        content: [
+          { type: 'output_text', text: 'Nested tool result text.' },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(blocks, [
+    {
+      id: 'result-block-0',
+      index: 0,
+      kind: 'tool',
+      status: 'complete',
+      title: 'read_file',
+      text: 'Nested tool result text.',
+      toolName: 'read_file',
+      toolId: 'tool-nested-1',
+      metadata: {
+        source: 'runtime_result',
+        segmentKind: 'tool_result',
+      },
+    },
+  ]);
+});
+
 test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands nested result segment payloads into canonical content blocks before the result', () => {
   const normalized = buildNormalizedRuntimeDeliveryEventsFromStreamEvent({
     conversationId: 'conversation-3d',
@@ -398,6 +430,41 @@ test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands nested result 
   assert.equal(normalized[1]?.contentBlock?.text, 'Nested result payload.');
   assert.equal(normalized[2]?.kind, 'result');
   assert.equal(normalized[2]?.sequence.segmentIndex, 2);
+});
+
+test('buildNormalizedRuntimeDeliveryEventsFromStreamEvent expands nested tool_result output_text arrays before the result', () => {
+  const normalized = buildNormalizedRuntimeDeliveryEventsFromStreamEvent({
+    conversationId: 'conversation-3e',
+    turnId: 'turn-3e',
+    laneId: 'lane-3e',
+    sessionId: 'session-3e',
+    eventIndex: 7,
+    emittedAt: '2026-04-14T20:13:30.000Z',
+    event: {
+      event: 'result',
+      data: {
+        result: [
+          {
+            kind: 'tool_result',
+            toolName: 'read_file',
+            toolId: 'tool-nested-2',
+            content: [
+              { type: 'output_text', text: 'Nested array tool result.' },
+            ],
+          },
+        ],
+      },
+    },
+  });
+
+  assert.equal(normalized.length, 2);
+  assert.equal(normalized[0]?.kind, 'content_block');
+  assert.equal(normalized[0]?.contentBlock?.kind, 'tool');
+  assert.equal(normalized[0]?.contentBlock?.toolName, 'read_file');
+  assert.equal(normalized[0]?.contentBlock?.toolId, 'tool-nested-2');
+  assert.equal(normalized[0]?.contentBlock?.text, 'Nested array tool result.');
+  assert.equal(normalized[1]?.kind, 'result');
+  assert.equal(normalized[1]?.sequence.segmentIndex, 1);
 });
 
 test('buildRuntimeDeliveryContentBlocksFromResultPayload synthesizes a text block for coarse final-only payloads', () => {
