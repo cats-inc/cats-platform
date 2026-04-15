@@ -94,7 +94,11 @@ contracts.
       Progress: backend stream-target foundations now expose all concurrent
       workflow targets plus the subset that are session-ready; the remaining
       work is to consume that in SSE attach/multiplex delivery, lane-aware
-      live-indicator payloads, and cluster-ready release logic.
+      live-indicator payloads, and cluster-ready release logic. Stream attach
+      lifecycle now keys concurrent/sequential attaches by lane+session
+      generation, so replacement runtime sessions can reattach to an existing
+      active lane after recovery instead of being suppressed as already-finished
+      old attaches.
 - [ ] Normalize heterogeneous runtime delivery into one product-owned event
       contract so block-streaming CLIs, text-only CLIs, and final-result-only
       runtimes can all feed the same lane/segment engine
@@ -172,6 +176,10 @@ contracts.
       and execution-target reconciliation stop living in one function now that
       session startup also persists runtime-sanitized model selections back into
       channel/global state
+      Progress: the wake path now splits existing lease reuse, stale-session
+      retry, and fresh session-start flows into separate helpers; the remaining
+      work is to separate execution-target reconciliation and persisted wake
+      bookkeeping from the remaining startup orchestration branches.
 - [ ] Persist solo-composer model changes immediately on selector change instead of
       only committing the pending provider/model when the next message is sent
 - [ ] Add a platform-local cache for truthful runtime-backed selector reads,

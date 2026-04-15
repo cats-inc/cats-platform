@@ -344,6 +344,14 @@ Known follow-ups:
   canonical `conversationId` / `turnId` / `laneId` / `sourceMessageId` /
   `targetStateId`, so engine debugging no longer has to reconstruct lane
   identity from `sessionId` and ad hoc trace details alone
+- `ensureTargetSession(...)` now splits existing lease reuse, stale-session
+  retry, and fresh session-start flows into separate wake helpers, so runtime
+  session reuse and startup logic no longer hide inside one recursive wake
+  branch
+- runtime targeting now also keeps same-participant prompt history visible
+  across preseeded lane churn, so stable solo threads and anti-ping-pong
+  follow-ups no longer lose their canonical frontier just because the next
+  dispatch starts with a fresh `laneId`
 - chat read-model summaries/views now also expose canonical `containerId` and
   `conversationId`, so app-shell and non-UI channel routes can consume the
   shared engine tuple directly instead of re-deriving conversation identity
@@ -618,6 +626,10 @@ Known follow-ups:
   canonical `containerId`, so browser/server trace inspection can see the full
   container/conversation/turn/lane tuple instead of stopping one hop short of
   the shared engine identity
+- stream attach lifecycle now keys ready-session attaches by
+  `laneId + sessionId` generation instead of lane alone, so a replacement
+  runtime session can reattach to the same active lane after recovery without
+  being suppressed as an already-completed old stream attach
 - route-support cat wake-up and runtime-session wake paths now both resolve
   channel `containerId` / `conversationId` through one shared canonical helper,
   so runtime lifecycle metadata and repair fallbacks no longer maintain
