@@ -685,6 +685,11 @@ export function applyDispatchExecutions(
             ...(execution.transportBindingId ? { transportBindingId: execution.transportBindingId } : {}),
             turnId: outcome.turnId,
             sourceMessageId: execution.sourceMessage.id,
+            ...(execution.sourceTurnId ? { sourceTurnId: execution.sourceTurnId } : {}),
+            ...(execution.sourceLaneId ? { sourceLaneId: execution.sourceLaneId } : {}),
+            ...(execution.sourceAssistantTurnId
+              ? { sourceAssistantTurnId: execution.sourceAssistantTurnId }
+              : {}),
             routingTrigger: execution.trigger,
             dispatchDepth: execution.depth,
             segmentIndex: segment.segmentIndex,
@@ -730,6 +735,11 @@ export function applyDispatchExecutions(
             ...(execution.transportBindingId ? { transportBindingId: execution.transportBindingId } : {}),
             turnId: outcome.turnId,
             sourceMessageId: execution.sourceMessage.id,
+            ...(execution.sourceTurnId ? { sourceTurnId: execution.sourceTurnId } : {}),
+            ...(execution.sourceLaneId ? { sourceLaneId: execution.sourceLaneId } : {}),
+            ...(execution.sourceAssistantTurnId
+              ? { sourceAssistantTurnId: execution.sourceAssistantTurnId }
+              : {}),
             routingTrigger: execution.trigger,
             dispatchDepth: execution.depth,
             segmentIndex: 0,

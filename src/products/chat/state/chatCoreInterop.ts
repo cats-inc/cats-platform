@@ -169,6 +169,15 @@ function buildCanonicalChatSegmentMessage(
         : {}),
       ...(segment.sessionId ? { sessionId: segment.sessionId } : {}),
       ...(segment.turnId ? { turnId: segment.turnId } : {}),
+      ...(readChatCoreMetadataString(segment.metadata, 'sourceTurnId')
+        ? { sourceTurnId: readChatCoreMetadataString(segment.metadata, 'sourceTurnId') }
+        : {}),
+      ...(readChatCoreMetadataString(segment.metadata, 'sourceLaneId')
+        ? { sourceLaneId: readChatCoreMetadataString(segment.metadata, 'sourceLaneId') }
+        : {}),
+      ...(readChatCoreMetadataString(segment.metadata, 'sourceAssistantTurnId')
+        ? { sourceAssistantTurnId: readChatCoreMetadataString(segment.metadata, 'sourceAssistantTurnId') }
+        : {}),
       ...(readChatCoreMetadataString(segment.metadata, 'transportBindingId')
         ? { transportBindingId: readChatCoreMetadataString(segment.metadata, 'transportBindingId') }
         : {}),

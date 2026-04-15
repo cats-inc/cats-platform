@@ -412,6 +412,27 @@ interface CanonicalRecoveredTargetMetadata {
   handoffReason: RoomWorkflowHandoffReason | null;
 }
 
+function readCanonicalSourceParticipantFromMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): RoomRoutingParticipantRef | null {
+  const participantKind = readChatCoreMetadataString(metadata, 'sourceParticipantKind');
+  const participantId = readChatCoreMetadataString(metadata, 'sourceParticipantId');
+  const participantName = readChatCoreMetadataString(metadata, 'sourceParticipantName');
+  if (
+    (participantKind === 'cat' || participantKind === 'orchestrator')
+    && participantId
+    && participantName
+  ) {
+    return {
+      participantKind,
+      participantId,
+      participantName,
+    };
+  }
+
+  return null;
+}
+
 function resolveCanonicalRecoveredTargetMetadata(
   core: CatsCoreState | undefined,
   channelId: string,
@@ -437,11 +458,27 @@ function resolveCanonicalRecoveredTargetMetadata(
   }
 
   const sourceMessageId = readChatCoreMetadataString(lane.metadata, 'sourceMessageId');
+  const sourceTurnId = readChatCoreMetadataString(lane.metadata, 'sourceTurnId');
+  const sourceLaneId = readChatCoreMetadataString(lane.metadata, 'sourceLaneId');
+  const sourceAssistantTurnId = readChatCoreMetadataString(
+    lane.metadata,
+    'sourceAssistantTurnId',
+  );
   return {
     orderIndex: lane.orderIndex,
     targetStateId: readChatCoreMetadataString(lane.metadata, 'targetStateId'),
     sourceMessageId,
-    sourceParticipant: resolveCanonicalSourceParticipant(core, conversationId, turnId, sourceMessageId),
+    sourceParticipant: readCanonicalSourceParticipantFromMetadata(lane.metadata)
+      ?? resolveCanonicalSourceParticipant(
+        core,
+        channelId,
+        conversationId,
+        turnId,
+        sourceMessageId,
+        sourceTurnId,
+        sourceLaneId,
+        sourceAssistantTurnId,
+      ),
     trigger: normalizeCanonicalRoutingTrigger(readChatCoreMetadataString(lane.metadata, 'trigger')),
     branchStrategy: normalizeCanonicalBranchStrategy(
       readChatCoreMetadataString(lane.metadata, 'branchStrategy'),
@@ -454,16 +491,39 @@ function resolveCanonicalRecoveredTargetMetadata(
 
 function resolveCanonicalSourceParticipant(
   core: CatsCoreState,
+  channelId: string,
   conversationId: string,
   turnId: string,
   sourceMessageId: string | null,
+  sourceTurnId: string | null,
+  sourceLaneId: string | null,
+  sourceAssistantTurnId: string | null,
 ): RoomRoutingParticipantRef | null {
+  if (sourceMessageId || sourceTurnId || sourceLaneId || sourceAssistantTurnId) {
+    const sourceMessage = resolveTranscriptOrCanonicalChatMessage({
+      core,
+      channelId,
+      transcriptMessages: [],
+      sourceMessageId: sourceMessageId ?? '__missing-canonical-source-message__',
+      sourceTurnId,
+      sourceLaneId,
+      sourceAssistantTurnId,
+    });
+    const sourceParticipant = sourceMessage
+      ? buildParticipantRefFromResponse(sourceMessage)
+      : null;
+    if (sourceParticipant) {
+      return sourceParticipant;
+    }
+  }
+
   if (!sourceMessageId) {
     return null;
   }
 
   const turn = core.turns.find((candidate) =>
-    candidate.conversationId === conversationId && candidate.id === turnId) ?? null;
+    candidate.conversationId === conversationId
+    && candidate.id === (sourceTurnId ?? turnId)) ?? null;
   if (turn && readChatCoreMetadataString(turn.metadata, 'sourceMessageId') === sourceMessageId) {
     const sourceSenderKind = readChatCoreMetadataString(turn.metadata, 'sourceSenderKind');
     const sourceSenderName = readChatCoreMetadataString(turn.metadata, 'sourceSenderName') ?? '';

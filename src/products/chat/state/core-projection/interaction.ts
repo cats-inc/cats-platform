@@ -747,6 +747,12 @@ export function projectChatChannelInteractionToCore(
             containerId,
             targetStateId: target.id,
             sourceMessageId: target.sourceMessageId,
+            sourceTurnId: target.sourceTurnId ?? null,
+            sourceLaneId: target.sourceLaneId ?? null,
+            sourceAssistantTurnId: target.sourceAssistantTurnId ?? null,
+            sourceParticipantId: target.source?.participantId ?? null,
+            sourceParticipantKind: target.source?.participantKind ?? null,
+            sourceParticipantName: target.source?.participantName ?? null,
             participantKind: target.participant.participantKind,
             speakerLabel: target.participant.participantName,
             trigger: target.trigger,
@@ -827,6 +833,18 @@ export function projectChatChannelInteractionToCore(
               assistantTurnId,
               targetStateId: target.id,
               sourceMessageId: target.sourceMessageId,
+              sourceTurnId: readMessageMetadataString(message, 'sourceTurnId')
+                ?? target.sourceTurnId
+                ?? null,
+              sourceLaneId: readMessageMetadataString(message, 'sourceLaneId')
+                ?? target.sourceLaneId
+                ?? null,
+              sourceAssistantTurnId: readMessageMetadataString(message, 'sourceAssistantTurnId')
+                ?? target.sourceAssistantTurnId
+                ?? null,
+              sourceParticipantId: target.source?.participantId ?? null,
+              sourceParticipantKind: target.source?.participantKind ?? null,
+              sourceParticipantName: target.source?.participantName ?? null,
               terminal: message.metadata?.terminal === true,
               executionProvider: message.executionProvider ?? null,
               executionModel: message.executionModel ?? null,

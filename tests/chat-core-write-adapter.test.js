@@ -3237,12 +3237,25 @@ test('repairOrphanedCompletedDispatchTurn restores final sequential target metad
   assert.ok(turn);
   const lanes = readOrderedTurnLanes(canonicalCore, turn.id);
   assert.equal(lanes.length, 2);
+  const sourceLane = lanes[0];
   const repairedLane = lanes[1];
+  assert.ok(sourceLane);
   assert.ok(repairedLane);
   assert.equal(repairedLane?.metadata.trigger, 'continuation_mention');
   assert.equal(repairedLane?.metadata.branchStrategy, 'transplant_context');
   assert.ok(typeof repairedLane?.metadata.sourceMessageId === 'string');
+  assert.equal(repairedLane?.metadata.sourceTurnId, sourceLane?.turnId ?? null);
+  assert.equal(repairedLane?.metadata.sourceLaneId, sourceLane?.id ?? null);
+  assert.equal(
+    repairedLane?.metadata.sourceAssistantTurnId,
+    sourceLane?.metadata.responseAssistantTurnId ?? null,
+  );
   assert.equal(repairedLane?.metadata.handoffReason, 'workflow_continuation');
+
+  const repairCore = structuredClone(canonicalCore);
+  const driftedRepairLane = repairCore.lanes.find((lane) => lane.id === repairedLane?.id) ?? null;
+  assert.ok(driftedRepairLane);
+  driftedRepairLane.metadata.sourceMessageId = 'message-drifted-sequential-source';
 
   const corruptedState = structuredClone(dispatched.state);
   const corruptedChannel = requireChannel(corruptedState, channelId);
@@ -3331,7 +3344,7 @@ test('repairOrphanedCompletedDispatchTurn restores final sequential target metad
     corruptedState,
     channelId,
     new Date('2026-04-15T00:41:00.000Z'),
-    canonicalCore,
+    repairCore,
   );
 
   assert.equal(repaired.repaired, true);
@@ -3343,13 +3356,13 @@ test('repairOrphanedCompletedDispatchTurn restores final sequential target metad
   assert.ok(repairedTarget);
   assert.equal(repairedTarget.participant.participantName, 'Agent-2');
   assert.equal(repairedTarget.source?.participantName, 'Agent-1');
-  assert.equal(repairedTarget.sourceMessageId, repairedLane?.metadata.sourceMessageId);
+  assert.equal(repairedTarget.sourceMessageId, 'message-drifted-sequential-source');
   assert.equal(repairedTarget.branchStrategy, repairedLane?.metadata.branchStrategy);
   assert.equal(repairedTarget.handoffReason, repairedLane?.metadata.handoffReason);
   const repairedDispatch = repairedChannel.roomRouting.lastOutcome?.dispatches[0];
   assert.ok(repairedDispatch);
   assert.equal(repairedDispatch?.source?.participantName, 'Agent-1');
-  assert.equal(repairedDispatch?.sourceMessageId, repairedLane?.metadata.sourceMessageId);
+  assert.equal(repairedDispatch?.sourceMessageId, 'message-drifted-sequential-source');
   assert.equal(repairedDispatch?.trigger, repairedLane?.metadata.trigger);
 });
 
