@@ -1,5 +1,4 @@
 import type {
-  ChannelActivationResult,
   ChatState,
 } from '../../api/contracts.js';
 import type {
@@ -28,11 +27,9 @@ import {
   setChannelChatCwd,
   setChannelOrchestratorLease,
   setChannelPendingExecutionTarget,
-  setChannelRoomRouting,
   setGlobalOrchestratorExecutionTarget,
 } from '../model/index.js';
-import { resolveRoomDefaultRoutingTarget, type RoutingTarget } from '../mentionRouter.js';
-import { resolveRoomRoutingState } from '../room-routing/index.js';
+import type { RoutingTarget } from '../mentionRouter.js';
 import { createRecordedWakeRequest } from '../room-routing/wake.js';
 import {
   resolveOrchestratorExecutionTarget,
@@ -67,8 +64,8 @@ import {
 import {
   appendFailedRuntimeSessionMessage,
   appendStartedRuntimeSessionMessage,
-  buildChannelActivationResult,
   readInvocationContextMetadataString,
+  resolveTargetLeaseAttachment,
   resolveRuntimeEnvelopeCanonicalMetadata,
   type RuntimeEnvelopeCanonicalMetadata,
   type RuntimeSessionRoutingOptions,
@@ -243,41 +240,6 @@ function readDispatchContextMetadataString(
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim()
     : null;
-}
-
-function resolveTargetLeaseAttachment(
-  state: ChatState,
-  channelId: string,
-  target: RoutingTarget,
-  options: {
-    preferredLaneId?: string | null;
-    allowLeaseSessionReuse?: boolean;
-  } = {},
-): {
-  laneId: string | null;
-  sessionId: string | null;
-} {
-  const channel = requireChannel(state, channelId);
-  const attachment = target.participantKind === 'cat'
-    ? resolveParticipantLeaseAttachment(channel, target.participantId)
-    : resolveOrchestratorLeaseAttachment(channel);
-  const leaseLaneId = attachment?.laneId ?? null;
-  const leaseSessionId = attachment?.sessionId ?? null;
-  const targetLaneId = target.laneId?.trim() || null;
-  const targetSessionId = target.sessionId?.trim() || null;
-  const laneId = options.preferredLaneId ?? targetLaneId ?? leaseLaneId;
-  const targetSessionMatchesLane = targetSessionId != null
-    && (laneId == null || targetLaneId === laneId);
-
-  return {
-    laneId: laneId ?? leaseLaneId ?? targetLaneId,
-    sessionId: options.allowLeaseSessionReuse === false
-      ? (targetSessionMatchesLane ? targetSessionId : null)
-      : (
-          leaseSessionId
-          ?? (targetSessionMatchesLane ? targetSessionId : null)
-        ),
-  };
 }
 
 type EnsureTargetSessionTaskExecutionContext =
@@ -988,110 +950,4 @@ export async function ensureTargetSession(
     preparedWake.recordTargetWake,
     preparedWake.taskExecutionContext,
   );
-}
-
-export async function wakeChannelEntryParticipant(
-  state: ChatState,
-  channelId: string,
-  runtimeClient: RuntimeClient,
-  now: Date = new Date(),
-  options: RuntimeSessionRoutingOptions = {},
-): Promise<{
-  state: ChatState;
-  result: ChannelActivationResult | null;
-}> {
-  let nextState = state;
-  const roomRouting = resolveRoomRoutingState(requireChannel(nextState, channelId).roomRouting);
-  const defaultTarget = resolveRoomDefaultRoutingTarget(nextState, channelId);
-
-  if (!defaultTarget.target) {
-    if (defaultTarget.participant) {
-      createRecordedWakeRequest(
-        roomRouting,
-        defaultTarget.participant,
-        'room_entry',
-        'room_entry',
-        null,
-        now.toISOString(),
-        'failed',
-        defaultTarget.note ?? `No ${ORCHESTRATOR_NAME} room entry participant could be woken.`,
-      );
-      nextState = setChannelRoomRouting(nextState, channelId, roomRouting, now);
-    }
-    return {
-      state: nextState,
-      result: defaultTarget.participant
-        ? {
-            targetKind: defaultTarget.participant.participantKind,
-            targetId: defaultTarget.participant.participantId,
-            targetName: defaultTarget.participant.participantName,
-            laneId: null,
-            status: 'error',
-            sessionId: null,
-            error: defaultTarget.note ?? 'No room entry participant could be woken.',
-          }
-        : null,
-    };
-  }
-
-  const target = defaultTarget.target;
-  const existingAttachment = resolveTargetLeaseAttachment(
-    nextState,
-    channelId,
-    target,
-    {
-      preferredLaneId: target.laneId?.trim() || null,
-    },
-  );
-  if (existingAttachment.sessionId) {
-    nextState = ensureChannelMarkedActive(nextState, channelId, now);
-    return {
-      state: nextState,
-      result: {
-        targetKind: target.participantKind,
-        targetId: target.participantId,
-        targetName: target.participantName,
-        laneId: existingAttachment.laneId,
-        status: 'already_started',
-        sessionId: existingAttachment.sessionId,
-      },
-    };
-  }
-
-  const ensured = await ensureTargetSession(
-    nextState,
-    channelId,
-    target,
-    runtimeClient,
-    now,
-    {
-      companionStore: options.companionStore,
-      memoryService: options.memoryService,
-      forceReviveClosedSessions: options.forceReviveClosedSessions,
-      roomRouting,
-      wakeTrigger: 'room_entry',
-      wakeReason: 'room_entry',
-    },
-  );
-  nextState = ensured.state;
-  nextState = setChannelRoomRouting(nextState, channelId, roomRouting, now);
-
-  if (ensured.error) {
-    return {
-      state: nextState,
-      result: buildChannelActivationResult({
-        target,
-        ensured,
-      }),
-    };
-  }
-
-  nextState = ensureChannelMarkedActive(nextState, channelId, now);
-  return {
-    state: nextState,
-    result: buildChannelActivationResult({
-      target,
-      ensured,
-    }),
-  };
 }

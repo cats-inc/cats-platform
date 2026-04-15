@@ -6,6 +6,8 @@ export {
 export {
   ensureTargetSession,
   maybeAutoCheckoutChannelTask,
-  wakeChannelEntryParticipant,
 } from './wake.js';
-export { activateChannelSessions } from './activation.js';
+export {
+  activateChannelSessions,
+  wakeChannelEntryParticipant,
+} from './activation.js';

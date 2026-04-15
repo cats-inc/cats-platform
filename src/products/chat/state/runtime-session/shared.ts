@@ -3,14 +3,20 @@ import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
 import type { RuntimeSessionInfo } from '../../../../platform/runtime/client.js';
+import type { RoutingTarget } from '../mentionRouter.js';
 import {
   appendMessage,
   ORCHESTRATOR_NAME,
+  requireChannel,
   resolveChannelCanonicalIdentity,
 } from '../model/index.js';
 import { parseMentions } from '../mentionParsing.js';
 export { activeAssignedParticipants } from '../../shared/channelParticipants.js';
-import { activeAssignedParticipants } from '../../shared/channelParticipants.js';
+import {
+  activeAssignedParticipants,
+  resolveOrchestratorLeaseAttachment,
+  resolveParticipantLeaseAttachment,
+} from '../../shared/channelParticipants.js';
 import { formatSessionStartedMessage } from '../runtimeMessages.js';
 import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 
@@ -52,6 +58,41 @@ export interface RuntimeSessionActivationOutcome {
   wakeRequest: {
     status: 'pending' | 'completed' | 'failed' | 'skipped';
   } | null;
+}
+
+export function resolveTargetLeaseAttachment(
+  state: ChatState,
+  channelId: string,
+  target: RoutingTarget,
+  options: {
+    preferredLaneId?: string | null;
+    allowLeaseSessionReuse?: boolean;
+  } = {},
+): {
+  laneId: string | null;
+  sessionId: string | null;
+} {
+  const channel = requireChannel(state, channelId);
+  const attachment = target.participantKind === 'cat'
+    ? resolveParticipantLeaseAttachment(channel, target.participantId)
+    : resolveOrchestratorLeaseAttachment(channel);
+  const leaseLaneId = attachment?.laneId ?? null;
+  const leaseSessionId = attachment?.sessionId ?? null;
+  const targetLaneId = target.laneId?.trim() || null;
+  const targetSessionId = target.sessionId?.trim() || null;
+  const laneId = options.preferredLaneId ?? targetLaneId ?? leaseLaneId;
+  const targetSessionMatchesLane = targetSessionId != null
+    && (laneId == null || targetLaneId === laneId);
+
+  return {
+    laneId: laneId ?? leaseLaneId ?? targetLaneId,
+    sessionId: options.allowLeaseSessionReuse === false
+      ? (targetSessionMatchesLane ? targetSessionId : null)
+      : (
+          leaseSessionId
+          ?? (targetSessionMatchesLane ? targetSessionId : null)
+        ),
+  };
 }
 
 export function readInvocationContextMetadataString(
