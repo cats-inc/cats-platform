@@ -2223,6 +2223,88 @@ test('ensureTargetSession reuses a lane-attached lease even when the routing tar
   );
 });
 
+test('ensureTargetSession only resolves channel task execution context once across a stale-session retry', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion retry lane',
+      topic: 'Retry stale sessions without rereading core task execution context.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const laneId = 'lane-turn-retry-target-companion';
+  state = setChannelCatLease(
+    state,
+    channelId,
+    companionId,
+    {
+      sessionId: 'session-stale',
+      status: 'error',
+      cwd: path.join(tmpdir(), '.cats', 'runtime', 'sessions', 'session-stale'),
+      lastError: 'Runtime session is closed.',
+      laneId,
+      provider: 'claude',
+      model: 'claude-sonnet',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+
+  let coreReadCount = 0;
+  const taskExecutionStore = {
+    async readCore() {
+      coreReadCount += 1;
+      return { tasks: [] };
+    },
+  };
+  const runtimeClient = createRuntimeStub(async () => usage('unused'));
+
+  const ensured = await ensureTargetSession(
+    state,
+    channelId,
+    {
+      participantKind: 'cat',
+      participantId: companionId,
+      participantName: 'Companion',
+      laneId,
+      sessionId: 'session-stale',
+    },
+    runtimeClient,
+    now,
+    {
+      chatStore: taskExecutionStore,
+      forceReviveClosedSessions: true,
+    },
+  );
+
+  assert.equal(ensured.error, null);
+  assert.equal(coreReadCount, 1);
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.notEqual(ensured.target.sessionId, 'session-stale');
+});
+
 test('direct cat chat records targetStateId on session_start_failed messages', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();

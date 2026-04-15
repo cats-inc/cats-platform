@@ -348,6 +348,9 @@ Known follow-ups:
   retry, and fresh session-start flows into separate wake helpers, so runtime
   session reuse and startup logic no longer hide inside one recursive wake
   branch
+- stale-session wake retries now also reuse the already-resolved
+  task-execution context instead of rereading `Cats Core` on each recursive
+  retry branch, tightening the task-aware session wake hot path
 - runtime targeting now also keeps same-participant prompt history visible
   across preseeded lane churn, so stable solo threads and anti-ping-pong
   follow-ups no longer lose their canonical frontier just because the next

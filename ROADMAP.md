@@ -521,9 +521,9 @@ contracts.
       Progress: routed wake paths now precompute one task-execution context and
       reuse it across runtime session creation plus auto-checkout, so the same
       room dispatch no longer re-reads `Cats Core` just to rebuild identical
-      execution metadata before checkout.
-      checkout flows by threading an already-loaded core snapshot through the
-      Chat runtime-session bridge where correctness allows
+      execution metadata before checkout, and stale-session wake retries now
+      also carry the already-resolved task execution context instead of
+      rereading `Cats Core` on each retry branch.
 - [ ] Revisit a limited Chat mobile companion only after the desktop Chat
       surface is stable
 

@@ -310,6 +310,7 @@ type EnsureTargetSessionOptions = RuntimeSessionRoutingOptions & {
   wakeReason?: RoomWakeReason;
   sourceMessageId?: string | null;
   ignoreLeaseSessionAttachment?: boolean;
+  resolvedTaskExecutionContext?: EnsureTargetSessionTaskExecutionContext | null;
 };
 
 type EnsureTargetWakeRecorder = (
@@ -888,11 +889,14 @@ export async function ensureTargetSession(
     laneId: targetAttachment.laneId,
   };
   const participant = toParticipantRef(attachedTarget);
-  const taskExecutionContext = await resolveChannelTaskExecutionRequest(
-    options.chatStore,
-    channelId,
-    attachedTarget,
-  );
+  const taskExecutionContext = options.resolvedTaskExecutionContext !== undefined
+    ? options.resolvedTaskExecutionContext
+    : await resolveChannelTaskExecutionRequest(
+      options.chatStore,
+      channelId,
+      attachedTarget,
+    );
+  const normalizedTaskExecutionContext = taskExecutionContext ?? undefined;
   const recordTargetWake = (
     status: RoomWakeRequest['status'],
     error: string | null = null,
@@ -915,7 +919,7 @@ export async function ensureTargetSession(
     options,
     laneId,
     recordTargetWake,
-    taskExecutionContext,
+    normalizedTaskExecutionContext,
   );
   if (existingSessionOutcome.kind === 'retry') {
     return ensureTargetSession(
@@ -924,7 +928,10 @@ export async function ensureTargetSession(
       existingSessionOutcome.target,
       runtimeClient,
       now,
-      options,
+      {
+        ...options,
+        resolvedTaskExecutionContext: taskExecutionContext ?? null,
+      },
     );
   }
   if (existingSessionOutcome.kind === 'resolved') {
@@ -941,7 +948,7 @@ export async function ensureTargetSession(
     targetStateId,
     laneId,
     recordTargetWake,
-    taskExecutionContext,
+    normalizedTaskExecutionContext,
   );
 }
 
