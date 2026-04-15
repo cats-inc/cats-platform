@@ -429,6 +429,15 @@ function resolveChannelStreamTargetWithReason(
     : { target: null, reason: 'no_stream_target' };
 }
 
+function shouldCloseDirectLaneStreamImmediately(
+  channel: ReturnType<typeof requireChannel>,
+  resolvedStreamTarget: ResolvedChannelStreamTarget,
+): boolean {
+  return isDirectLaneChannel(channel)
+    && !hasActiveWorkflowTurn(channel)
+    && !resolvedStreamTarget.target?.sessionId;
+}
+
 export function resolveChannelStreamSessionId(
   channel: ReturnType<typeof requireChannel>,
 ): string | null {
@@ -469,6 +478,10 @@ export async function waitForChannelStreamTarget(
           reason: resolvedStreamTarget.reason,
         });
       }
+      return streamTarget;
+    }
+
+    if (shouldCloseDirectLaneStreamImmediately(channel, resolvedStreamTarget)) {
       return streamTarget;
     }
 

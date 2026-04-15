@@ -41,6 +41,7 @@ import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   buildChatConversationId,
   buildChatLaneId,
+  buildDirectLaneTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 import { waitForCondition } from './testUtils.js';
@@ -3294,6 +3295,10 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat ses
 
     const body = await response.text();
     assert.match(body, /event: session_closed/u);
+    assert.match(
+      body,
+      new RegExp(`"transportBindingId":"${buildDirectLaneTransportBindingId(channelId)}"`),
+    );
     assert.deepEqual(runtime.streamedSessions, []);
   }, chatStore);
 });
@@ -3374,6 +3379,10 @@ test('GET /api/channels/:id/stream exposes the direct-lane lease laneId when no 
     assert.match(body, /event: progress/u);
     assert.match(body, /"laneId":"lane-direct-idle"/u);
     assert.match(body, /"sessionId":"session-direct-lane"/u);
+    assert.match(
+      body,
+      new RegExp(`"transportBindingId":"${buildDirectLaneTransportBindingId(channelId)}"`),
+    );
     assert.deepEqual(runtime.streamedSessions, ['session-direct-lane']);
   }, chatStore);
 });

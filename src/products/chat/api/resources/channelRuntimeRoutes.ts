@@ -31,6 +31,7 @@ import {
   waitForCancelledChannelTurns,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
+import { resolveChannelLifecycleCanonicalMetadata } from '../../state/runtime-session/shared.js';
 import {
   channelDispatchCancellationRegistry,
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
@@ -52,6 +53,7 @@ import { publishRoomMutation } from '../transportEventPublisher.js';
 function buildStreamSpeakerPayload(input: {
   containerId?: string | null;
   conversationId?: string | null;
+  transportBindingId?: string | null;
   turnId?: string | null;
   sessionId?: string | null;
   laneId?: string | null;
@@ -67,6 +69,7 @@ function buildStreamSpeakerPayload(input: {
   return {
     containerId: input.containerId ?? null,
     conversationId: input.conversationId ?? null,
+    transportBindingId: input.transportBindingId ?? null,
     turnId: input.turnId ?? null,
     sessionId: input.sessionId ?? null,
     laneId: input.laneId ?? null,
@@ -176,8 +179,12 @@ async function streamChannelTarget(input: {
   const streamState = await context.dependencies.chatStore.read();
   const streamChannel = requireChannel(streamState, channelId);
   const activeTurn = streamChannel.roomRouting?.workflow?.activeTurn ?? null;
-  const canonicalIdentity = resolveChannelCanonicalIdentity(streamState, channelId);
-  const { containerId, conversationId } = canonicalIdentity;
+  const lifecycleCanonicalMetadata = resolveChannelLifecycleCanonicalMetadata(streamState, channelId);
+  const {
+    containerId,
+    conversationId,
+    transportBindingId,
+  } = lifecycleCanonicalMetadata;
   const turnId = typeof activeTurn?.id === 'string' && activeTurn.id.trim().length > 0
     ? activeTurn.id.trim()
     : null;
@@ -215,6 +222,7 @@ async function streamChannelTarget(input: {
         ...target,
         containerId,
         conversationId,
+        transportBindingId,
         turnId,
         sourceMessageId,
       }),
@@ -255,6 +263,7 @@ async function streamChannelTarget(input: {
                   ...target,
                   containerId,
                   conversationId,
+                  transportBindingId,
                   turnId,
                   sourceMessageId,
                 }),
@@ -271,6 +280,7 @@ async function streamChannelTarget(input: {
               ...target,
               containerId,
               conversationId,
+              transportBindingId,
               turnId,
               sourceMessageId,
             }),
@@ -329,6 +339,7 @@ async function streamChannelTarget(input: {
           ...target,
           containerId,
           conversationId,
+          transportBindingId,
           turnId,
           sourceMessageId,
         }),
@@ -503,8 +514,15 @@ async function handleRestStreamChannel(
 
     if (!streamTarget?.sessionId) {
       const settledState = await context.dependencies.chatStore.read();
-      const canonicalIdentity = resolveChannelCanonicalIdentity(settledState, channelId);
-      const { containerId, conversationId } = canonicalIdentity;
+      const lifecycleCanonicalMetadata = resolveChannelLifecycleCanonicalMetadata(
+        settledState,
+        channelId,
+      );
+      const {
+        containerId,
+        conversationId,
+        transportBindingId,
+      } = lifecycleCanonicalMetadata;
       if (context.dependencies.config.debugLiveTrace) {
         pushServerLiveTrace({
           event: 'stream_attach_closed',
@@ -527,6 +545,7 @@ async function handleRestStreamChannel(
           ...(streamTarget ?? {}),
           containerId,
           conversationId,
+          transportBindingId,
         }),
       });
       context.response.end();
