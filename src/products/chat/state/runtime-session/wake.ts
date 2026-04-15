@@ -8,28 +8,16 @@ import type {
   RoomWakeTrigger,
 } from '../../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import {
   buildChannelView,
   requireChannel,
-  setChannelParticipantLease,
-  setChannelOrchestratorLease,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import { createRecordedWakeRequest } from '../room-routing/wake.js';
 import {
-  resolveOrchestratorExecutionTarget,
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
 import {
-  classifyRuntimeDispatchRecoveryError,
-} from '../runtime-dispatch/recovery.js';
-import {
-  resolveOrchestratorLeaseAttachment,
-  resolveParticipantLeaseAttachment,
-} from '../../shared/channelParticipants.js';
-import {
-  clearTargetSessionLease,
   ensureChannelMarkedActive,
   markTargetWaking,
   spawnCwdFor,
@@ -57,86 +45,11 @@ import {
   type RuntimeSessionExecutionTarget,
   type TargetSessionLifecycleMetadata,
 } from './sessionStart.js';
-
-const MANUALLY_REVIVABLE_SESSION_STATES = new Set([
-  'closed',
-  'closing',
-  'terminated',
-  'terminated_with_error',
-  'error',
-]);
-
-function readObservedSessionState(
-  observed: Awaited<ReturnType<RuntimeClient['observeSession']>>,
-): string | null {
-  const session = observed.session;
-  if (!session || typeof session !== 'object') {
-    return null;
-  }
-
-  const directStatus = (session as Record<string, unknown>).status;
-  if (typeof directStatus === 'string' && directStatus.trim()) {
-    return directStatus.trim().toLowerCase();
-  }
-
-  const inspection = (session as Record<string, unknown>).inspection;
-  if (!inspection || typeof inspection !== 'object') {
-    return null;
-  }
-
-  const inspectionState = (inspection as Record<string, unknown>).state;
-  return typeof inspectionState === 'string' && inspectionState.trim()
-    ? inspectionState.trim().toLowerCase()
-    : null;
-}
-
-async function shouldReviveExistingTargetSession(
-  state: ChatState,
-  channelId: string,
-  target: RoutingTarget,
-  sessionId: string | null,
-  runtimeClient: RuntimeClient,
-  forceReviveClosedSessions: boolean,
-): Promise<boolean> {
-  if (!sessionId) {
-    return false;
-  }
-
-  const channel = requireChannel(state, channelId);
-  const lease = target.participantKind === 'cat'
-    ? resolveParticipantLeaseAttachment(channel, target.participantId)
-    : resolveOrchestratorLeaseAttachment(channel);
-
-  if (!lease) {
-    return false;
-  }
-
-  if (lease.status === 'closed') {
-    return true;
-  }
-
-  if (
-    forceReviveClosedSessions
-    && lease.status === 'error'
-    && typeof lease.lastError === 'string'
-    && classifyRuntimeDispatchRecoveryError(lease.lastError)?.reason === 'stale_session'
-  ) {
-    return true;
-  }
-
-  if (!forceReviveClosedSessions) {
-    return false;
-  }
-
-  try {
-    const observed = await runtimeClient.observeSession(sessionId);
-    const observedState = readObservedSessionState(observed);
-    return observedState ? MANUALLY_REVIVABLE_SESSION_STATES.has(observedState) : false;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    return classifyRuntimeDispatchRecoveryError(message)?.reason === 'stale_session';
-  }
-}
+import {
+  resolveExistingTargetSessionOutcome,
+  type EnsureTargetSessionResult,
+  type ExistingTargetSessionOutcome,
+} from './sessionReuse.js';
 
 function readDispatchContextMetadataString(
   metadata: Record<string, unknown> | undefined,
@@ -164,28 +77,6 @@ type EnsureTargetWakeRecorder = (
   status: RoomWakeRequest['status'],
   error?: string | null,
 ) => RoomWakeRequest | null;
-
-interface EnsureTargetSessionResult {
-  state: ChatState;
-  target: RoutingTarget;
-  error: string | null;
-  wakeRequest: RoomWakeRequest | null;
-  taskExecutionContext: EnsureTargetSessionTaskExecutionContext;
-}
-
-type ExistingTargetSessionOutcome =
-  | {
-      kind: 'continue';
-    }
-  | {
-      kind: 'retry';
-      state: ChatState;
-      target: RoutingTarget;
-    }
-  | {
-      kind: 'resolved';
-      result: EnsureTargetSessionResult;
-    };
 
 interface ResolvedTargetRuntimeEnvelope {
   runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
@@ -226,33 +117,6 @@ async function resolveTargetRuntimeEnvelope(input: {
         runtimeEnvelope.context,
       ),
   };
-}
-
-function applyLeaseLaneAttachmentToTarget(
-  state: ChatState,
-  channelId: string,
-  target: RoutingTarget,
-  laneId: string | null,
-  now: Date,
-): ChatState {
-  if (!laneId) {
-    return state;
-  }
-
-  return target.participantKind === 'cat'
-    ? setChannelParticipantLease(
-      state,
-      channelId,
-      target.participantId,
-      { laneId },
-      now,
-    )
-    : setChannelOrchestratorLease(
-      state,
-      channelId,
-      { laneId },
-      now,
-    );
 }
 
 async function prepareTargetSessionWake(input: {
@@ -314,99 +178,6 @@ async function prepareTargetSessionWake(input: {
       status,
       error,
     ),
-  };
-}
-
-async function resolveExistingTargetSessionOutcome(
-  state: ChatState,
-  channelId: string,
-  attachedTarget: RoutingTarget,
-  runtimeClient: RuntimeClient,
-  now: Date,
-  options: EnsureTargetSessionOptions,
-  laneId: string | null,
-  recordTargetWake: EnsureTargetWakeRecorder,
-  taskExecutionContext: EnsureTargetSessionTaskExecutionContext,
-): Promise<ExistingTargetSessionOutcome> {
-  if (!attachedTarget.sessionId) {
-    return { kind: 'continue' };
-  }
-
-  if (await shouldReviveExistingTargetSession(
-    state,
-    channelId,
-    attachedTarget,
-    attachedTarget.sessionId,
-    runtimeClient,
-    options.forceReviveClosedSessions ?? false,
-  )) {
-    const resetState = clearTargetSessionLease(
-      state,
-      channelId,
-      attachedTarget.participantKind === 'cat'
-        ? { participantId: attachedTarget.participantId }
-        : 'orchestrator',
-      now,
-    );
-    return {
-      kind: 'retry',
-      state: resetState,
-      target: { ...attachedTarget, sessionId: null },
-    };
-  }
-
-  if (attachedTarget.participantKind === 'orchestrator') {
-    const channelState = requireChannel(state, channelId);
-    const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
-    const orchestratorLease = resolveOrchestratorLeaseAttachment(channelState);
-    const shouldRestartSoloSession = channelState.composerMode === 'solo'
-      && (
-        orchestratorLease?.provider !== executionTarget.provider
-        || orchestratorLease?.model !== executionTarget.model
-      );
-
-    if (shouldRestartSoloSession) {
-      await bestEffortFlushRuntimeSessionMemory({
-        runtimeClient,
-        sessionId: attachedTarget.sessionId,
-        requestedPhase: 'pre_reset',
-        memoryService: options.memoryService,
-        companionStore: options.companionStore,
-        coreStore: options.chatStore,
-        now,
-      });
-      await runtimeClient.closeSession(attachedTarget.sessionId);
-      const resetState = setChannelOrchestratorLease(
-        state,
-        channelId,
-        {
-          sessionId: null,
-          status: 'not_started',
-          lastError: null,
-          provider: executionTarget.provider,
-          model: executionTarget.model,
-          startedAt: null,
-          lastUsedAt: orchestratorLease?.lastUsedAt ?? null,
-        },
-        now,
-      );
-      return {
-        kind: 'retry',
-        state: resetState,
-        target: { ...attachedTarget, sessionId: null },
-      };
-    }
-  }
-
-  return {
-    kind: 'resolved',
-    result: {
-      state: applyLeaseLaneAttachmentToTarget(state, channelId, attachedTarget, laneId, now),
-      target: attachedTarget,
-      error: null,
-      wakeRequest: recordTargetWake('skipped'),
-      taskExecutionContext,
-    },
   };
 }
 
@@ -554,17 +325,22 @@ export async function ensureTargetSession(
     wakeReason,
     sourceMessageId,
   });
-  const existingSessionOutcome = await resolveExistingTargetSessionOutcome(
+  const existingSessionOutcome = await resolveExistingTargetSessionOutcome({
     state,
     channelId,
-    preparedWake.attachedTarget,
+    attachedTarget: preparedWake.attachedTarget,
     runtimeClient,
     now,
-    options,
-    preparedWake.laneId,
-    preparedWake.recordTargetWake,
-    preparedWake.taskExecutionContext,
-  );
+    laneId: preparedWake.laneId,
+    recordTargetWake: preparedWake.recordTargetWake,
+    taskExecutionContext: preparedWake.taskExecutionContext,
+    forceReviveClosedSessions: options.forceReviveClosedSessions ?? false,
+    routingOptions: {
+      memoryService: options.memoryService,
+      companionStore: options.companionStore,
+      chatStore: options.chatStore,
+    },
+  });
   if (existingSessionOutcome.kind === 'retry') {
     return ensureTargetSession(
       existingSessionOutcome.state,
