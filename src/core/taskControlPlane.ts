@@ -195,6 +195,14 @@ export interface CoreTaskControlPlaneWorkflowRecommendationTargetView {
   participantName: string | null;
 }
 
+export interface CoreTaskControlPlaneWorkflowContinuationTargetView {
+  participantKind: 'orchestrator' | 'cat' | null;
+  participantId: string | null;
+  participantName: string | null;
+  laneId: string | null;
+  sessionId: string | null;
+}
+
 export interface CoreTaskControlPlaneWorkflowRecommendationView {
   source: 'checkpoint' | 'boss_replan' | 'system_inference' | null;
   workflowShape: 'sequential' | 'concurrent' | 'converge' | null;
@@ -218,6 +226,7 @@ export interface CoreTaskControlPlaneWorkflowContinuationView {
   reviewRequired: boolean;
   convergeTargetId: string | null;
   blockedReason: WorkflowContinuationReplayBlockedReason | null;
+  targets: CoreTaskControlPlaneWorkflowContinuationTargetView[];
   targetCount: number;
   targetNames: string[];
   unresolvedTargets: string[];

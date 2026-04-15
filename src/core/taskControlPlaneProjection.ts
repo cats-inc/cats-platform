@@ -263,16 +263,33 @@ export function buildWorkflowContinuationState(input: {
 }): CoreTaskControlPlaneWorkflowContinuationView | null {
   const replay = input.recovery.workflowContinuationReplay;
   const candidateTargetNames = input.latestWorkflowRecommendation?.candidateTargets
+    .map((target) => ({
+      participantKind: target.participantKind,
+      participantId: target.participantId,
+      participantName: target.participantName,
+      laneId: null,
+      sessionId: null,
+    }))
+    ?? [];
+  const candidateTargetIdentityNames = candidateTargetNames
     .map((target) => target.participantName)
     .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
     ?? [];
-  const replayTargetNames = replay?.targets
-    .map((target) => target.participantName)
-    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+  const replayTargets = replay?.targets
+    .map((target) => ({
+      participantKind: target.participantKind,
+      participantId: target.participantId,
+      participantName: target.participantName,
+      laneId: target.laneId,
+      sessionId: target.sessionId,
+    }))
     ?? [];
-  const targetNames = candidateTargetNames.length > 0
-    ? candidateTargetNames
-    : replayTargetNames;
+  const targets = candidateTargetNames.length > 0 ? candidateTargetNames : replayTargets;
+  const targetNames = (
+    candidateTargetNames.length > 0 ? candidateTargetIdentityNames : replayTargets
+      .map((target) => target.participantName)
+      .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+  );
   const unresolvedTargets = input.latestWorkflowRecommendation?.unresolvedTargets.length
     ? [...input.latestWorkflowRecommendation.unresolvedTargets]
     : replay?.unresolvedTargets
@@ -338,7 +355,8 @@ export function buildWorkflowContinuationState(input: {
     reviewRequired,
     convergeTargetId,
     blockedReason: replay?.blockedReason ?? null,
-    targetCount: targetNames.length,
+    targets,
+    targetCount: targets.length,
     targetNames: [...targetNames],
     unresolvedTargets,
     replayState: readWorkflowContinuationReplayState(replay?.replayState),

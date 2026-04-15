@@ -81,6 +81,14 @@ export interface ChatWorkflowRecommendationView {
   unresolvedTargets: string[];
 }
 
+export interface ChatWorkflowContinuationTargetView {
+  participantKind: 'orchestrator' | 'cat' | null;
+  participantId: string | null;
+  participantName: string | null;
+  laneId: string | null;
+  sessionId: string | null;
+}
+
 export interface ChatWorkflowContinuationView {
   checkpointId: string | null;
   stageId: string | null;
@@ -93,6 +101,7 @@ export interface ChatWorkflowContinuationView {
   reviewRequired: boolean;
   convergeTargetId: string | null;
   blockedReason: WorkflowContinuationReplayBlockedReason | null;
+  targets: ChatWorkflowContinuationTargetView[];
   targetCount: number;
   targetNames: string[];
   unresolvedTargets: string[];

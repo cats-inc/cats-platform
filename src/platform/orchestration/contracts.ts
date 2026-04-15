@@ -217,6 +217,14 @@ export interface OrchestratorWorkflowRecommendationView {
   unresolvedTargets: string[];
 }
 
+export interface OrchestratorWorkflowContinuationTargetView {
+  participantKind: 'orchestrator' | 'cat' | null;
+  participantId: string | null;
+  participantName: string | null;
+  laneId: string | null;
+  sessionId: string | null;
+}
+
 export interface OrchestratorWorkflowContinuationView {
   checkpointId: string | null;
   stageId: string | null;
@@ -229,6 +237,7 @@ export interface OrchestratorWorkflowContinuationView {
   reviewRequired: boolean;
   convergeTargetId: string | null;
   blockedReason: WorkflowContinuationReplayBlockedReason | null;
+  targets: OrchestratorWorkflowContinuationTargetView[];
   targetCount: number;
   targetNames: string[];
   unresolvedTargets: string[];
