@@ -1028,6 +1028,85 @@ test('shouldPinLiveIndicatorUntilPersistedReply stays pinned when another lane r
   );
 });
 
+test('shouldPinLiveIndicatorUntilPersistedReply releases a sealed bubble when the persisted reply keeps the session but the targetStateId drifted', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    sourceMessageId: 'message-user',
+    targetStateId: 'target-agent-1-live',
+    sessionId: 'session-agent-1',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'First answer',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  assert.equal(
+    shouldPinLiveIndicatorUntilPersistedReply(previous, {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          senderName: 'Kenny',
+          metadata: {},
+          createdAt: '2026-04-15T01:00:00.000Z',
+        },
+        {
+          id: 'message-agent-1',
+          senderKind: 'agent',
+          senderName: 'Agent-1',
+          metadata: {
+            event: 'assistant_turn_segment',
+            sourceMessageId: 'message-user',
+            targetKind: 'cat',
+            targetId: 'participant-agent-1',
+            targetStateId: 'target-agent-1-canonical',
+            sessionId: 'session-agent-1',
+            segmentIndex: 0,
+          },
+          createdAt: '2026-04-15T01:00:03.000Z',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                id: 'target-agent-1-live',
+                status: 'completed',
+                participant: {
+                  participantId: 'participant-agent-1',
+                  participantName: 'Agent-1',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    }),
+    false,
+  );
+});
+
 test('resolveWaitingIndicatorStateTransition keeps the current speaker bubble pinned until the persisted reply lands', () => {
   const previous = {
     ...EMPTY_LIVE_INDICATOR,
@@ -2296,6 +2375,63 @@ test('resolveVisibleLiveIndicator hides a sealed targeted segment once the same 
   assert.equal(visible, null);
 });
 
+test('resolveVisibleLiveIndicator hides a sealed targeted segment when the persisted reply keeps the session but the targetStateId drifted', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    sourceMessageId: 'message-user',
+    targetStateId: 'target-state-live',
+    sessionId: 'session-agent-1',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'Done.',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-1',
+        senderKind: 'agent',
+        senderName: 'Agent-1',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-user',
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+          targetStateId: 'target-state-canonical',
+          sessionId: 'session-agent-1',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-09T12:00:03.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, null);
+});
+
 test('resolveVisibleLiveIndicator downgrades pre-session assistant progress into an anonymous waiting bubble', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
@@ -2446,6 +2582,50 @@ test('resolveVisibleLiveIndicator accepts a matching targetStateId for session s
           targetKind: 'cat',
           targetId: 'participant-agent-1',
           targetStateId: 'target-state-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:02.500Z',
+      },
+    ],
+    '2026-04-09T12:00:05.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
+});
+
+test('resolveVisibleLiveIndicator accepts a matching sessionId for session startup confirmation even when the targetStateId drifted', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    targetStateId: 'target-state-agent-live',
+    sessionId: 'session-agent-1',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    sessionStartedAt: '2026-04-09T12:00:02.500Z',
+    requiresSessionStartConfirmation: true,
+    progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-session-agent-1',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          sessionId: 'session-agent-1',
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+          targetStateId: 'target-state-agent-canonical',
         },
         createdAt: '2026-04-09T12:00:02.500Z',
       },
