@@ -294,7 +294,7 @@ async function handleRestListChannels(
     requireValidChatScopeId(chatScopeId);
     const state = await context.dependencies.chatStore.read();
     sendJson(context.response, 200, {
-      channels: state.channels.map((channel) => toChannelSummary(channel)),
+      channels: state.channels.map((channel) => toChannelSummary(channel, state)),
     });
   } catch (error) {
     handleRestError(context, error);
@@ -383,7 +383,7 @@ async function handleRestPatchChannel(
       }
 
       sendJson(context.response, 200, {
-        channel: toChannelSummary(requireChannel(persisted, channelId)),
+        channel: toChannelSummary(requireChannel(persisted, channelId), persisted),
       });
     });
   } catch (error) {

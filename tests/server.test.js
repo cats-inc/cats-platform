@@ -38,6 +38,10 @@ import {
 import { writeTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 import { createChatMemorySurface } from '../build/server/products/chat/state/memoryAdapter.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import {
+  buildChatConversationId,
+  CHAT_ROOT_CONTAINER_ID,
+} from '../build/server/shared/chatCoreIds.js';
 import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
@@ -3234,6 +3238,16 @@ test('GET /api/app-shell repairs an orphaned completed room turn before renderin
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.chat.selectedChannel.id, channelId);
+    assert.equal(payload.chat.selectedChannel.containerId, CHAT_ROOT_CONTAINER_ID);
+    assert.equal(
+      payload.chat.selectedChannel.conversationId,
+      buildChatConversationId(channelId),
+    );
+    assert.equal(payload.chat.channels[0]?.containerId, CHAT_ROOT_CONTAINER_ID);
+    assert.equal(
+      payload.chat.channels[0]?.conversationId,
+      buildChatConversationId(channelId),
+    );
     assert.equal(payload.chat.selectedChannel.roomRouting.workflow.activeTurn, null);
     assert.equal(payload.chat.selectedChannel.roomRouting.lastOutcome?.status, 'completed');
   }, chatStore);

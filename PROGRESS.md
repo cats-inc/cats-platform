@@ -344,6 +344,10 @@ Known follow-ups:
   canonical `conversationId` / `turnId` / `laneId` / `sourceMessageId` /
   `targetStateId`, so engine debugging no longer has to reconstruct lane
   identity from `sessionId` and ad hoc trace details alone
+- chat read-model summaries/views now also expose canonical `containerId` and
+  `conversationId`, so app-shell and non-UI channel routes can consume the
+  shared engine tuple directly instead of re-deriving conversation identity
+  from `channelId`
 - core runtime-delivery manifests, control-plane views, recovery views, and
   operator inbox items now also surface `containerId`, and the shared
   task-view query/filter seam accepts `containerId`, so automation can facet

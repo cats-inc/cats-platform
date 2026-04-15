@@ -10,6 +10,10 @@ import {
   createChannel,
   toChannelSummary,
 } from '../build/server/products/chat/state/model/index.js';
+import {
+  buildChatConversationId,
+  CHAT_ROOT_CONTAINER_ID,
+} from '../build/server/shared/chatCoreIds.js';
 import { FileChatStore } from '../build/server/products/chat/state/store.js';
 
 test('createChannel keeps channel-only temporary participants outside cat assignments', () => {
@@ -51,13 +55,17 @@ test('createChannel keeps channel-only temporary participants outside cat assign
   assert.equal(persistedChannel.roomRouting?.defaultRecipientId, 'participant-lead');
 
   const channelView = buildChannelView(state, channelId);
+  assert.equal(channelView.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(channelView.conversationId, buildChatConversationId(channelId));
   assert.equal(channelView.assignedParticipants?.length, 2);
   assert.equal(channelView.assignedCats.length, 0);
   assert.equal(channelView.assignedParticipants?.[0]?.participantId, 'participant-lead');
   assert.equal(channelView.assignedParticipants?.[0]?.sourceKind, 'adhoc');
   assert.equal(channelView.assignedParticipants?.[0]?.roleHint, 'Lead');
 
-  const summary = toChannelSummary(persistedChannel);
+  const summary = toChannelSummary(persistedChannel, state);
+  assert.equal(summary.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(summary.conversationId, buildChatConversationId(channelId));
   assert.equal(summary.channelKind, 'multi_cat_room');
   assert.equal(summary.catCount, 2);
   assert.equal(summary.activeCatCount, 2);

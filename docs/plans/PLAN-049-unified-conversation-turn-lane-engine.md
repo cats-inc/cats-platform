@@ -203,6 +203,7 @@ through one engine
 | 2026-04-14 | Plan created for the unified conversation-turn-lane engine rollout |
 | 2026-04-15 | Canonical chat writes now persist `transportBindingId`, `containerId`, and `conversationId` through runtime dispatch, lifecycle notices, repair, and core projection, and core task/read-model seams now expose/filter `containerId` as part of the shared engine tuple |
 | 2026-04-15 | Live trace/debug payloads plus SSE speaker envelopes now carry canonical `conversationId`, `turnId`, `laneId`, `sourceMessageId`, and `targetStateId`, so lane-native stream/debug inspection no longer has to reconstruct the active engine tuple from `sessionId`-only traces |
+| 2026-04-15 | Chat channel summaries/views now expose canonical `containerId` and `conversationId`, so app-shell/read-model consumers can read the shared engine tuple directly instead of re-deriving conversation identity from `channelId` |
 
 ---
 

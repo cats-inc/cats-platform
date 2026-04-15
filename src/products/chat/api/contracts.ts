@@ -304,12 +304,16 @@ export interface ChatChannelState {
 }
 
 export interface ChatChannelView extends ChatChannelState {
+  containerId: string;
+  conversationId: string;
   assignedParticipants?: ChatChannelParticipant[];
   assignedCats: ChatChannelCat[];
 }
 
 export interface ChatChannelSummary {
   id: string;
+  containerId: string;
+  conversationId: string;
   title: string;
   topic: string;
   channelKind?: ChatChannelKind;

@@ -6,6 +6,10 @@ import type {
   ChatState,
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
+import {
+  buildChatConversationId,
+  resolveChatChannelContainerId,
+} from '../../../shared/chatCoreIds.js';
 
 function normalizeText(value: string, maxLength = 160): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
@@ -161,6 +165,11 @@ export function refreshDerivedMemoryLayers(
 
   const channelView: ChatChannelView = {
     ...structuredClone(channel),
+    containerId: resolveChatChannelContainerId({
+      channelId,
+      parallelChatGroups: nextState.parallelChatGroups,
+    }),
+    conversationId: buildChatConversationId(channelId),
     assignedCats: channel.catAssignments
       .filter((assignment) => assignment.status === 'active')
       .map((assignment) => {

@@ -14,6 +14,10 @@ import type {
   ParticipantExecutionLease,
 } from '../../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
+import {
+  buildChatConversationId,
+  resolveChatChannelContainerId,
+} from '../../../../shared/chatCoreIds.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
 import { buildParallelChatMemberLabel } from '../../shared/parallelChats.js';
 import {
@@ -156,6 +160,22 @@ export function resolveParticipantLifecycleState(
   return resolveChatLifecycleState(lease.status);
 }
 
+function resolveChannelCanonicalIdentity(
+  state: Pick<ChatState, 'parallelChatGroups'> | null | undefined,
+  channelId: string,
+): {
+  containerId: string;
+  conversationId: string;
+} {
+  return {
+    containerId: resolveChatChannelContainerId({
+      channelId,
+      parallelChatGroups: state?.parallelChatGroups ?? null,
+    }),
+    conversationId: buildChatConversationId(channelId),
+  };
+}
+
 export function buildChannelView(
   state: ChatState,
   channelOrId: ChatChannelState | string,
@@ -191,9 +211,11 @@ export function buildChannelView(
 
   const assignedParticipants = normalizedParticipantAssignments.map((assignment) =>
     hydrateChannelParticipant(state, assignment));
+  const canonicalIdentity = resolveChannelCanonicalIdentity(state, clonedChannel.id);
 
   return {
     ...clonedChannel,
+    ...canonicalIdentity,
     roomRouting: roomRouting ?? createDefaultRoomRoutingState(),
     assignedParticipants,
     assignedCats: assignedParticipants
@@ -242,7 +264,10 @@ export function resolveChannelEntryParticipant(
   };
 }
 
-export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary {
+export function toChannelSummary(
+  channel: ChatChannelState,
+  state?: Pick<ChatState, 'parallelChatGroups'> | null,
+): ChatChannelSummary {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   const normalizedParticipantAssignments = normalizeChannelAssignmentsForRoomMode(
     resolveChannelParticipantAssignments(channel, { clone: true }),
@@ -267,8 +292,10 @@ export function toChannelSummary(channel: ChatChannelState): ChatChannelSummary 
     : workflowStatus === 'failed'
       ? 'error'
       : workflowStatus;
+  const canonicalIdentity = resolveChannelCanonicalIdentity(state, channel.id);
   return {
     id: channel.id,
+    ...canonicalIdentity,
     title: channel.title,
     topic: channel.topic,
     channelKind: resolveChannelKind({
@@ -387,7 +414,7 @@ export function summarizeState(state: ChatState): {
 
   return {
     cats: structuredClone(state.cats),
-    channels: state.channels.map((channel) => toChannelSummary(channel)),
+    channels: state.channels.map((channel) => toChannelSummary(channel, state)),
     parallelChatGroups: summarizeParallelChatGroups(state),
     selectedChannel: selectedChannelState ? buildChannelView(state, selectedChannelState) : null,
     globalOrchestrator: structuredClone(state.globalOrchestrator),
