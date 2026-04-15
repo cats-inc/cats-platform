@@ -258,6 +258,31 @@ Codex MUST treat the following as hard guardrails when refactoring `cats`.
   - ongoing group room composer avatar stack
   - sidebar overflow menu placement
   - transcript bubble spacing/actions
+
+#### 8. Browser-safe helpers must stay separate from state/model server code
+
+- Codex has already caused the same regression more than once: importing
+  browser-reachable code from `src/products/chat/state/model/*` pulled
+  `node:crypto.randomUUID` from `state/model/shared.ts` into the Vite client
+  bundle and crashed the renderer.
+- **MUST NOT** import `src/products/chat/state/model/index.ts` or other
+  state/model modules from renderer/shared client code unless the full import
+  chain has been verified browser-safe.
+- If renderer/operator/live-indicator code only needs canonical channel
+  identity helpers such as `channelId -> conversationId/containerId`, **MUST**
+  place that helper in a browser-safe shared module under
+  `src/products/chat/shared/` instead of reaching into state/model.
+- When moving or re-exporting helpers across the client/server boundary,
+  **MUST** verify both:
+  - `npm run build:web`
+  - `npm run build:server`
+- If a helper is relocated out of `readModels.ts` or another state/model file,
+  **MUST** also verify that server-side re-exports still exist so
+  `dev:server` does not fail on missing named exports.
+- For any refactor that changes imports used by renderer/shared code, treat
+  `node:crypto`, `node:fs`, `node:path`, and runtime-session/state-store
+  modules as contamination signals. If any of them become reachable from
+  client code, the boundary is wrong.
   - post-send route switching
   - compare footer left/right switching
   - transcript scroll to bottom on thread switch

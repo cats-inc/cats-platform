@@ -77,12 +77,12 @@ import {
 } from '../room-routing/index.js';
 
 export type { ChatLifecycleState } from '../../shared/lifecycle.js';
+export { resolveChannelCanonicalIdentity } from '../../shared/channelCanonicalIdentity.js';
 export {
   ORCHESTRATOR_NAME,
   buildChannelExportFilename,
   buildChannelView,
   exportChannel,
-  resolveChannelCanonicalIdentity,
   resolveChannelEntryParticipant,
   resolveOrchestratorDisplayName,
   resolveParticipantLifecycleState,

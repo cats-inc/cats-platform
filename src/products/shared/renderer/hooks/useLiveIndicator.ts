@@ -19,7 +19,7 @@ import {
 } from '../../../../shared/liveIndicator.js';
 import { pushBrowserLiveTrace } from '../../../../shared/liveTrace.js';
 import { isComposerDispatchBusy } from '../../../../shared/composer.js';
-import { resolveChannelCanonicalIdentity } from '../../../chat/state/model/index.js';
+import { resolveChannelCanonicalIdentity } from '../../../chat/shared/channelCanonicalIdentity.js';
 import { isOptimisticDraftChannelId } from '../../channelPaths.js';
 
 export type {

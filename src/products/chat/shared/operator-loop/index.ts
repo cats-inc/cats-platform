@@ -18,7 +18,7 @@ import {
   resolveGuardReason,
   resolveLatestWorkflowRecommendation,
 } from './metadata.js';
-import { resolveChannelCanonicalIdentity } from '../../state/model/index.js';
+import { resolveChannelCanonicalIdentity } from '../channelCanonicalIdentity.js';
 import type {
   ChatNextActionView,
   ChatOperatorAttentionView,

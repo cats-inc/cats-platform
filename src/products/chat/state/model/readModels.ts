@@ -14,10 +14,7 @@ import type {
   ParticipantExecutionLease,
 } from '../../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
-import {
-  buildChatConversationId,
-  resolveChatChannelContainerId,
-} from '../../../../shared/chatCoreIds.js';
+import { resolveChannelCanonicalIdentity } from '../../shared/channelCanonicalIdentity.js';
 import { createChannelExportFilename } from '../../shared/channelPaths.js';
 import { buildParallelChatMemberLabel } from '../../shared/parallelChats.js';
 import {
@@ -158,22 +155,6 @@ export function resolveParticipantLifecycleState(
   lease: ParticipantExecutionLease,
 ): ChatLifecycleState {
   return resolveChatLifecycleState(lease.status);
-}
-
-export function resolveChannelCanonicalIdentity(
-  state: Pick<ChatState, 'parallelChatGroups'> | null | undefined,
-  channelId: string,
-): {
-  containerId: string;
-  conversationId: string;
-} {
-  return {
-    containerId: resolveChatChannelContainerId({
-      channelId,
-      parallelChatGroups: state?.parallelChatGroups ?? null,
-    }),
-    conversationId: buildChatConversationId(channelId),
-  };
 }
 
 export function buildChannelView(
