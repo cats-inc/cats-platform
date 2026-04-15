@@ -3407,6 +3407,7 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   let decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    laneId: 'lane-1',
     targetStateId: 'target-1',
     sourceMessageId: 'message-1',
     streamSeq: 4,
@@ -3417,6 +3418,7 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    laneId: 'lane-1',
     targetStateId: 'target-1',
     sourceMessageId: 'message-1',
     streamSeq: 4,
@@ -3427,6 +3429,7 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    laneId: 'lane-1',
     targetStateId: 'target-1',
     sourceMessageId: 'message-1',
     streamSeq: 4,
@@ -3436,6 +3439,7 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    laneId: 'lane-1',
     targetStateId: 'target-1',
     sourceMessageId: 'message-1',
     streamSeq: 3,
@@ -3445,6 +3449,7 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    laneId: 'lane-2',
     targetStateId: 'target-2',
     sourceMessageId: 'message-1',
     streamSeq: 1,
@@ -3455,6 +3460,7 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-1',
+    laneId: null,
     targetStateId: null,
     sourceMessageId: 'message-2',
     streamSeq: 1,
@@ -3465,8 +3471,54 @@ test('advanceSequencedLiveIndicatorStreamCursor accepts monotonic replay keys an
 
   decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
     sessionId: 'session-2',
+    laneId: null,
     targetStateId: null,
     sourceMessageId: 'message-2',
+    streamSeq: 1,
+    streamSeqIndex: 0,
+  });
+  assert.equal(decision.accept, true);
+});
+
+test('advanceSequencedLiveIndicatorStreamCursor rejects stale replays by lane when targetStateId drifts on a reused session', () => {
+  let decision = advanceSequencedLiveIndicatorStreamCursor(null, {
+    sessionId: 'session-reused',
+    laneId: 'lane-reused-1',
+    targetStateId: 'target-live',
+    sourceMessageId: 'message-user',
+    streamSeq: 2,
+    streamSeqIndex: 0,
+  });
+  assert.equal(decision.accept, true);
+
+  let cursor = decision.cursor;
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-reused',
+    laneId: 'lane-reused-1',
+    targetStateId: 'target-canonical',
+    sourceMessageId: 'message-user',
+    streamSeq: 2,
+    streamSeqIndex: 1,
+  });
+  assert.equal(decision.accept, true);
+  cursor = decision.cursor;
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-reused',
+    laneId: 'lane-reused-1',
+    targetStateId: 'target-live',
+    sourceMessageId: 'message-user',
+    streamSeq: 2,
+    streamSeqIndex: 0,
+  });
+  assert.equal(decision.accept, false);
+
+  decision = advanceSequencedLiveIndicatorStreamCursor(cursor, {
+    sessionId: 'session-reused',
+    laneId: 'lane-reused-2',
+    targetStateId: null,
+    sourceMessageId: 'message-user',
     streamSeq: 1,
     streamSeqIndex: 0,
   });

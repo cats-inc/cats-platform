@@ -97,6 +97,7 @@ export interface LiveIndicatorStreamDecisionInput {
 
 export interface SequencedLiveIndicatorStreamCursor {
   sessionId: string;
+  laneId: string | null;
   targetStateId: string | null;
   sourceMessageId: string | null;
   streamSeq: number;
@@ -835,6 +836,7 @@ export function advanceSequencedLiveIndicatorStreamCursor(
   cursor: SequencedLiveIndicatorStreamCursor | null;
 } {
   const sessionId = readTraceString(data.sessionId);
+  const laneId = readTraceString(data.laneId);
   const targetStateId = readTraceString(data.targetStateId);
   const sourceMessageId = readTraceString(data.sourceMessageId);
   const streamSeq = typeof data.streamSeq === 'number' && Number.isFinite(data.streamSeq)
@@ -854,8 +856,11 @@ export function advanceSequencedLiveIndicatorStreamCursor(
   if (
     previous
     && previous.sessionId === sessionId
-    && previous.targetStateId === targetStateId
     && previous.sourceMessageId === sourceMessageId
+    && doesSequencedStreamCursorTargetMatch(previous, {
+      laneId,
+      targetStateId,
+    })
     && (
       streamSeq < previous.streamSeq
       || (streamSeq === previous.streamSeq && streamSeqIndex <= previous.streamSeqIndex)
@@ -871,12 +876,32 @@ export function advanceSequencedLiveIndicatorStreamCursor(
     accept: true,
     cursor: {
       sessionId,
+      laneId,
       targetStateId,
       sourceMessageId,
       streamSeq,
       streamSeqIndex,
     },
   };
+}
+
+function doesSequencedStreamCursorTargetMatch(
+  previous: SequencedLiveIndicatorStreamCursor,
+  next: {
+    laneId: string | null;
+    targetStateId: string | null;
+  },
+): boolean {
+  if (previous.laneId && next.laneId) {
+    return previous.laneId === next.laneId;
+  }
+
+  if (previous.targetStateId && next.targetStateId) {
+    return previous.targetStateId === next.targetStateId;
+  }
+
+  return previous.laneId === next.laneId
+    && previous.targetStateId === next.targetStateId;
 }
 
 export function useLiveIndicator<
