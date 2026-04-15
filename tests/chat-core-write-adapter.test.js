@@ -2012,6 +2012,10 @@ test('beginChannelMessageRetryDispatch can rebuild a missing user source from ca
   brokenChannel.messages = brokenChannel.messages.filter((message) =>
     message.id !== originalUserMessage.id);
   await store.write(brokenState);
+  const core = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const sourceTurn = readLatestConversationTurn(core, conversationId);
+  assert.ok(sourceTurn);
 
   const begun = await beginChannelMessageRetryDispatch(
     await store.read(),
@@ -2026,9 +2030,88 @@ test('beginChannelMessageRetryDispatch can rebuild a missing user source from ca
 
   assert.equal(begun.userMessage.id, originalUserMessage.id);
   assert.equal(begun.userMessage.body, '@Agent-1 create a retryable result.');
+  assert.equal(begun.userMessage.metadata?.turnId, sourceTurn?.id ?? null);
   assert.deepEqual(
     begun.preparedTurn?.initialResolution.targets.map((target) => target.participantName),
     ['Agent-1'],
+  );
+});
+
+test('beginChannelMessageRetryDispatch preserves direct-lane transport bindings when rebuilding a missing user source', async () => {
+  const store = new MemoryChatStore();
+  const now = new Date('2026-04-15T00:21:00.000Z');
+  let state = await store.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Direct retry canonical source',
+      topic: 'Preserve direct-lane transport binding metadata on retry source rebuild.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ content }) => {
+    if (content.includes('You are Companion')) {
+      return usage('Companion completed the retryable direct-lane turn.');
+    }
+    throw new Error(`Unexpected prompt:\n${content}`);
+  });
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Retry the direct-lane request after transcript drift.' },
+    runtimeClient,
+    now,
+    { chatStore: store },
+  );
+  await store.write(dispatched.state);
+
+  const originalUserMessage = requireChannel(dispatched.state, channelId).messages.find((message) =>
+    message.senderKind === 'user'
+    && message.body === 'Retry the direct-lane request after transcript drift.');
+  assert.ok(originalUserMessage);
+
+  const brokenState = structuredClone(dispatched.state);
+  const brokenChannel = requireChannel(brokenState, channelId);
+  brokenChannel.messages = brokenChannel.messages.filter((message) =>
+    message.id !== originalUserMessage.id);
+  await store.write(brokenState);
+  const core = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const sourceTurn = readLatestConversationTurn(core, conversationId);
+  assert.ok(sourceTurn);
+
+  const begun = await beginChannelMessageRetryDispatch(
+    await store.read(),
+    channelId,
+    originalUserMessage.id,
+    createNoopRuntimeClient(),
+    new Date('2026-04-15T00:21:30.000Z'),
+    {
+      chatStore: store,
+    },
+  );
+
+  assert.equal(begun.userMessage.id, originalUserMessage.id);
+  assert.equal(begun.userMessage.metadata?.turnId, sourceTurn?.id ?? null);
+  assert.equal(
+    begun.userMessage.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
   );
 });
 

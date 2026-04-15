@@ -70,6 +70,14 @@ function buildCanonicalChatTurnMessage(
     body,
     mentions: [],
     metadata: {
+      conversationId,
+      ...(readChatCoreTurnMetadataString(turn, 'containerId')
+        ? { containerId: readChatCoreTurnMetadataString(turn, 'containerId') }
+        : {}),
+      turnId: turn.id,
+      ...(readChatCoreTurnMetadataString(turn, 'transportBindingId')
+        ? { transportBindingId: readChatCoreTurnMetadataString(turn, 'transportBindingId') }
+        : {}),
       ...(recipientParticipantIds.length > 0
         ? {
             recipientParticipantIds,

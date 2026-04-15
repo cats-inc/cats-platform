@@ -352,6 +352,29 @@ function resolveSourceMessageBody(
   return buildAssistantTurnSourceMessage(assistantTurnMessages)?.body ?? sourceMessage.body;
 }
 
+function resolveSourceMessageTransportBindingId(
+  channel: ChatChannelState,
+  sourceMessageId: string | null,
+): string | null {
+  if (!sourceMessageId) {
+    return channel.channelKind === 'direct_lane'
+      ? buildDirectLaneTransportBindingId(channel.id)
+      : null;
+  }
+
+  const sourceMessage = channel.messages.find((message) => message.id === sourceMessageId) ?? null;
+  if (!sourceMessage) {
+    return channel.channelKind === 'direct_lane'
+      ? buildDirectLaneTransportBindingId(channel.id)
+      : null;
+  }
+
+  return readMessageMetadataString(sourceMessage, 'transportBindingId')
+    ?? (channel.channelKind === 'direct_lane'
+      ? buildDirectLaneTransportBindingId(channel.id)
+      : null);
+}
+
 function preserveExistingTurnProjection(
   nextCore: CatsCoreState,
   core: CatsCoreState,
@@ -698,6 +721,9 @@ export function projectChatChannelInteractionToCore(
           channelId,
           containerId,
           sourceMessageId: turn.sourceMessageId,
+          transportBindingId:
+            resolveSourceMessageTransportBindingId(channel, turn.sourceMessageId)
+            ?? readRecordMetadataString(existingTurn, 'transportBindingId'),
           sourceSenderKind: turn.sourceSenderKind,
           sourceSenderName: turn.sourceSenderName,
           sourceMessageBody:
