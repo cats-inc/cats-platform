@@ -45,12 +45,30 @@ function resolveProductEntryPath(surface: string): string {
   return route ? route.routePrefix : '/';
 }
 
+function resolvePlatformSurfaceLabel(surface: PlatformSurfaceId): string {
+  switch (surface) {
+    case 'code':
+      return 'Code';
+    case 'work':
+      return 'Work';
+    case 'chat':
+    default:
+      return 'Chat';
+  }
+}
+
+function resolveLoadingTitleForPath(pathname: string): string {
+  const surface = resolvePlatformSurfaceForPath(pathname);
+  return surface ? `Loading ${resolvePlatformSurfaceLabel(surface)}` : 'Loading';
+}
+
 function ProductSurfaceFallback({ surface }: { surface: PlatformSurfaceId }) {
+  const surfaceLabel = resolvePlatformSurfaceLabel(surface);
   return (
     <div className="screen screenCentered">
       <div className="loadingPanel">
-        <p className="eyebrow">Cats</p>
-        <h1>Loading {surface}</h1>
+        <p className="eyebrow">CATS INC</p>
+        <h1>Loading {surfaceLabel}</h1>
       </div>
     </div>
   );
@@ -375,8 +393,8 @@ export default function PlatformApp() {
     return (
       <div className="screen screenCentered">
         <div className="loadingPanel">
-          <p className="eyebrow">Cats</p>
-          <h1>Loading&hellip;</h1>
+          <p className="eyebrow">CATS INC</p>
+          <h1>{resolveLoadingTitleForPath(location.pathname)}</h1>
         </div>
       </div>
     );
