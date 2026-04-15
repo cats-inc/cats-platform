@@ -453,6 +453,11 @@ function resolveTargetSessionId(
   responseMessages: ChatMessage[],
   laneId: string,
 ): string | null {
+  const targetSessionId = target.sessionId?.trim() || null;
+  if (targetSessionId) {
+    return targetSessionId;
+  }
+
   for (let index = responseMessages.length - 1; index >= 0; index -= 1) {
     const sessionId = readMessageMetadataString(responseMessages[index]!, 'sessionId');
     if (sessionId) {
@@ -705,7 +710,11 @@ export function projectChatChannelInteractionToCore(
       const target = turn.targetStatuses[index]!;
       const responseMessages = resolveExecutionResponseMessages(channel, turn, target);
       const lease = resolveTargetLease(channel, target.participant);
-      const laneId = buildChatLaneId(turn.id, target.id, target.participant.participantId);
+      const laneId = target.laneId?.trim() || buildChatLaneId(
+        turn.id,
+        target.id,
+        target.participant.participantId,
+      );
       const sessionId = resolveTargetSessionId(channel, target, responseMessages, laneId);
       const canonicalParticipantId = resolveCanonicalParticipantId(channelId, target.participant);
       const agentId = resolveTargetAgentId(channel, target.participant);

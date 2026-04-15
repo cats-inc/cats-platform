@@ -177,6 +177,7 @@ function buildWorkflowTargetStreamTarget(
   turnId: string,
   targetStatus: {
     id: string;
+    laneId?: string | null;
     queuedAt?: string | null;
     startedAt?: string | null;
     participant: {
@@ -188,7 +189,11 @@ function buildWorkflowTargetStreamTarget(
 ): ChannelStreamTarget {
   const participant = targetStatus.participant;
   const sessionConfirmationFloorAt = targetStatus.startedAt ?? targetStatus.queuedAt ?? null;
-  const laneId = buildChatLaneId(turnId, targetStatus.id, participant.participantId);
+  const laneId = targetStatus.laneId?.trim() || buildChatLaneId(
+    turnId,
+    targetStatus.id,
+    participant.participantId,
+  );
   const target = participant.participantKind === 'orchestrator'
     ? buildOrchestratorStreamTarget(
         channel,

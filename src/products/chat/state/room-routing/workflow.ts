@@ -178,6 +178,8 @@ export function queueWorkflowTarget(
   if (existingTargetStatus) {
     existingTargetStatus.dispatchId = request.dispatchId;
     existingTargetStatus.participant = toParticipantRef(request.target);
+    existingTargetStatus.laneId = request.target.laneId;
+    existingTargetStatus.sessionId = request.target.sessionId;
     existingTargetStatus.source = request.sourceParticipant;
     existingTargetStatus.sourceMessageId = request.sourceMessage.id;
     existingTargetStatus.trigger = request.trigger;
@@ -197,6 +199,8 @@ export function queueWorkflowTarget(
     id: request.targetStateId,
     dispatchId: request.dispatchId,
     participant: toParticipantRef(request.target),
+    laneId: request.target.laneId,
+    sessionId: request.target.sessionId,
     source: request.sourceParticipant,
     sourceMessageId: request.sourceMessage.id,
     trigger: request.trigger,
@@ -234,6 +238,12 @@ export function updateWorkflowTarget(
   }
   if (update.participant !== undefined) {
     targetStatus.participant = update.participant;
+  }
+  if (update.laneId !== undefined) {
+    targetStatus.laneId = update.laneId;
+  }
+  if (update.sessionId !== undefined) {
+    targetStatus.sessionId = update.sessionId;
   }
   if (update.source !== undefined) {
     targetStatus.source = update.source;

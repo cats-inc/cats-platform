@@ -181,6 +181,7 @@ function recoverChannelWorkflowTurn(
       continue;
     }
 
+    target.sessionId = null;
     target.status = 'blocked';
     target.completedAt = target.completedAt ?? nowIso;
     target.error = target.error ?? INTERRUPTED_WORKFLOW_ERROR;

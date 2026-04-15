@@ -103,6 +103,8 @@ export function recordDispatchExecutionInteraction(
             participantId: input.execution.target.participantId,
             participantName: input.execution.target.participantName,
           },
+          laneId,
+          sessionId: input.execution.target.sessionId,
           source: input.execution.sourceParticipant ?? null,
           sourceMessageId: input.execution.sourceMessage.id,
           trigger: input.execution.trigger ?? 'room_default',

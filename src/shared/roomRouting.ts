@@ -204,6 +204,8 @@ export interface RoomWorkflowTargetState {
   id: string;
   dispatchId: string | null;
   participant: RoomRoutingParticipantRef;
+  laneId: string | null;
+  sessionId: string | null;
   source: RoomRoutingParticipantRef | null;
   sourceMessageId: string;
   trigger: RoomRoutingTrigger;

@@ -470,6 +470,8 @@ export function applyDispatchExecutions(
         error: execution.error,
       });
       updateWorkflowTarget(activeTurn, execution.targetStateId, nowIso, {
+        laneId: execution.target.laneId ?? null,
+        sessionId: execution.target.sessionId ?? null,
         status: 'failed',
         completedAt: nowIso,
         error: execution.error,
@@ -680,6 +682,8 @@ export function applyDispatchExecutions(
       error: null,
     });
     updateWorkflowTarget(activeTurn, execution.targetStateId, nowIso, {
+      laneId: execution.target.laneId ?? null,
+      sessionId: execution.target.sessionId ?? null,
       status: 'completed',
       completedAt: nowIso,
       response,

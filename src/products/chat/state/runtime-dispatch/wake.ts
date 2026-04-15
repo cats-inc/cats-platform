@@ -133,6 +133,8 @@ export async function prepareReadyRequests(
         error: ensured.error,
       });
       updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
+        laneId: ensured.target.laneId ?? request.target.laneId ?? null,
+        sessionId: null,
         wakeRequestId: ensured.wakeRequest?.id ?? null,
         status: 'failed',
         completedAt: nowIso,
@@ -207,6 +209,8 @@ export async function prepareReadyRequests(
       startedAt: nowIso,
     });
     updateWorkflowTarget(activeTurn, request.targetStateId, nowIso, {
+      laneId: ensured.target.laneId ?? request.target.laneId ?? null,
+      sessionId: ensured.target.sessionId ?? null,
       wakeRequestId: ensured.wakeRequest?.id ?? null,
       status: 'running',
       startedAt: nowIso,
