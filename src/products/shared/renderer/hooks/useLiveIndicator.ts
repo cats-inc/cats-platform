@@ -35,6 +35,7 @@ const LIVE_INDICATOR_RETRY_DELAY_MS = 150;
 const LIVE_INDICATOR_RETRY_LIMIT = 8;
 
 export interface LiveIndicatorSelectedChannelLike {
+  conversationId?: string | null;
   orchestratorLease?: {
     sessionId?: string | null;
     laneId?: string | null;
@@ -152,6 +153,18 @@ export function resolveLiveIndicatorSpeakerLabel(
     selectedChannel.pendingInstance,
     null,
   );
+}
+
+export function resolveLiveIndicatorConversationId(
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+  channelId: string | null,
+): string | null {
+  const canonicalConversationId = readTraceString(selectedChannel?.conversationId);
+  if (canonicalConversationId) {
+    return canonicalConversationId;
+  }
+
+  return channelId ? buildChatConversationId(channelId) : null;
 }
 
 function resolveWorkflowTargetLaneId(
@@ -1118,7 +1131,7 @@ export function useLiveIndicator<
     pushBrowserLiveTrace({
       event,
       channelId,
-      conversationId: channelId ? buildChatConversationId(channelId) : null,
+      conversationId: resolveLiveIndicatorConversationId(selectedChannelRef.current, channelId),
       turnId: readTraceString(input.turnId) ?? activeTurnId,
       laneId: readTraceString(input.laneId) ?? primarySegment?.laneId ?? stateRef.current.laneId,
       sourceMessageId:

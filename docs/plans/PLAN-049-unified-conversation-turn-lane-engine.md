@@ -205,6 +205,7 @@ through one engine
 | 2026-04-15 | Live trace/debug payloads plus SSE speaker envelopes now carry canonical `conversationId`, `turnId`, `laneId`, `sourceMessageId`, and `targetStateId`, so lane-native stream/debug inspection no longer has to reconstruct the active engine tuple from `sessionId`-only traces |
 | 2026-04-15 | Chat channel summaries/views now expose canonical `containerId` and `conversationId`, so app-shell/read-model consumers can read the shared engine tuple directly instead of re-deriving conversation identity from `channelId` |
 | 2026-04-15 | Chat/work/code operator-loop consumers now accept caller-supplied canonical `conversationId`, so transcript-adjacent operator inspection no longer has to rebuild conversation scope from `channelId` once app-shell/read-model payloads already carry the shared engine tuple |
+| 2026-04-15 | Shared live-indicator browser tracing now prefers `selectedChannel.conversationId` over rebuilding from `channelId`, so renderer-side debug traces and replay diagnostics stay aligned with the canonical app-shell tuple |
 
 ---
 

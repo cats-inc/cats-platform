@@ -610,6 +610,10 @@ Known follow-ups:
   `conversationId`, so chat/work/code renderer surfaces can consume the
   read-model identity tuple directly instead of re-deriving conversation scope
   from `channelId` inside operator consumers
+- shared live-indicator browser tracing now also prefers the selected-channel
+  canonical `conversationId`, so renderer debug traces stay aligned with the
+  app-shell/read-model tuple instead of rebuilding conversation scope from
+  `channelId` when that canonical identity is already present
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

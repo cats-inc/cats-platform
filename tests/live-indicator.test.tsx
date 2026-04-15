@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   advanceSequencedLiveIndicatorStreamCursor,
   EMPTY_LIVE_INDICATOR,
+  resolveLiveIndicatorConversationId,
   resolveWaitingIndicatorStateTransition,
   resolveLiveIndicatorSpeakerLabel,
   shouldPromoteStreamingBubbleToWaitingSpeaker,
@@ -296,6 +297,25 @@ test('resolveWaitingSessionState does not require a new session start for a warm
     sessionStartedAt: '2026-04-14T12:03:00.000Z',
     requiresSessionStartConfirmation: false,
   });
+});
+
+test('resolveLiveIndicatorConversationId prefers the selected channel canonical identity', () => {
+  assert.equal(
+    resolveLiveIndicatorConversationId(
+      {
+        conversationId: 'conversation-canonical-room-1',
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow: {},
+        },
+        composerMode: 'solo',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+      'room-1',
+    ),
+    'conversation-canonical-room-1',
+  );
 });
 
 test('resolveWaitingSessionState ignores a closed participant lease while a new target is pending', () => {

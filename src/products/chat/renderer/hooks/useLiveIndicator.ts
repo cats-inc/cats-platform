@@ -5,6 +5,7 @@ import {
 import {
   advanceSequencedLiveIndicatorStreamCursor,
   EMPTY_LIVE_INDICATOR,
+  resolveLiveIndicatorConversationId,
   resolveWaitingIndicatorStateTransition,
   resolveWaitingSessionState,
   resolveLiveIndicatorSpeakerLabel,
@@ -121,6 +122,7 @@ export function useLiveIndicator(options: {
 
 export {
   advanceSequencedLiveIndicatorStreamCursor,
+  resolveLiveIndicatorConversationId,
   resolveLiveIndicatorSpeakerLabel,
   resolveWaitingIndicatorStateTransition,
   resolveWaitingSessionState,
