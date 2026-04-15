@@ -430,7 +430,8 @@ async function handleRestActivateChannel(
       await context.dependencies.chatStore.write(activation.state);
       notifyStreamTargetChanged(channelId);
       if (activation.results.some((result) =>
-        result.targetKind === 'orchestrator' && result.status === 'started')) {
+        result.targetKind === 'orchestrator'
+        && (result.status === 'started' || result.status === 'already_started'))) {
         await maybeAutoResumeRecoveredOrchestratorContinuation(context, channelId, now);
       }
       sendJson(context.response, 200, {

@@ -4,7 +4,7 @@ import {
 import {
   readWorkflowContinuationReplay,
 } from '../../../platform/orchestration/workflowContinuationReplay.js';
-import { buildChannelView, resolveOrchestratorDisplayName } from '../state/model/index.js';
+import { resolveOrchestratorDisplayName } from '../state/model/index.js';
 import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorAdapter.js';
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
 import type { ChatStore } from '../state/store.js';
@@ -205,11 +205,6 @@ export async function maybeAutoResumeRecoveredOrchestratorContinuation(
   now: Date,
 ): Promise<void> {
   const state = await context.dependencies.chatStore.read();
-  const channel = buildChannelView(state, channelId);
-  if (!channel.orchestratorLease.sessionId) {
-    return;
-  }
-
   await maybeAutoResumeRecoveredContinuationForParticipant(
     context,
     channelId,
