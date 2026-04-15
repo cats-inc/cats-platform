@@ -2282,6 +2282,10 @@ test('direct cat chat records targetStateId on session_start_failed messages', a
     sessionStartFailed?.metadata?.conversationId,
     buildChatConversationId(channelId),
   );
+  assert.equal(
+    sessionStartFailed?.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
+  );
   assert.equal(sessionStartFailed?.metadata?.targetStateId, targetStateId);
   assert.equal(sessionStartFailed?.metadata?.laneId, laneId);
 });
