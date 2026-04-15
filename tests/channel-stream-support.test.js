@@ -70,8 +70,8 @@ test('resolveChannelStreamSessionId follows the currently running workflow targe
     },
     catAssignments: [],
     participantAssignments: [
-      buildParticipantAssignment('participant-1', 'session-1'),
-      buildParticipantAssignment('participant-2', 'session-2'),
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'participant-1', null, 'lane-turn-running-target-target-1'),
+      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'participant-2', null, 'lane-turn-running-target-target-2'),
     ],
   };
 
@@ -105,8 +105,8 @@ test('resolveChannelStreamTargets lists all concurrent workflow targets in stabl
     },
     catAssignments: [],
     participantAssignments: [
-      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
-      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'Codex-CLI'),
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI', null, 'lane-turn-running-target-target-1'),
+      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'Codex-CLI', null, 'lane-turn-running-target-target-2'),
     ],
   };
 
@@ -161,8 +161,8 @@ test('resolveChannelReadyStreamTargets keeps only attachable concurrent workflow
     },
     catAssignments: [],
     participantAssignments: [
-      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
-      buildParticipantAssignment('participant-2', null, 'initializing', 'Codex-CLI'),
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI', null, 'lane-turn-ready-targets-target-1'),
+      buildParticipantAssignment('participant-2', null, 'initializing', 'Codex-CLI', null, 'lane-turn-ready-targets-target-2'),
     ],
   };
 
@@ -208,8 +208,8 @@ test('resolveChannelReadyStreamTargets only attaches the first ready pending tar
     },
     catAssignments: [],
     participantAssignments: [
-      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
-      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'Codex-CLI'),
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI', null, 'lane-turn-sequential-ready-target-1'),
+      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'Codex-CLI', null, 'lane-turn-sequential-ready-target-2'),
     ],
   };
 
@@ -389,6 +389,7 @@ test('resolveChannelStreamTarget uses target-local queue time for workflow sessi
         'ready',
         'Gemini-CLI',
         '2026-04-14T12:03:00.000Z',
+        'lane-turn-target-local-floor-target-gemini',
       ),
     ],
   };
@@ -588,6 +589,7 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
     orchestratorLease: {
       status: 'ready',
       sessionId: 'session-orchestrator',
+      laneId: 'lane-turn-solo-orchestrator-target-orchestrator',
       provider: 'claude',
       model: 'claude-sonnet',
     },
@@ -635,6 +637,7 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
     orchestratorLease: {
       status: 'ready',
       sessionId: 'session-orchestrator',
+      laneId: 'lane-turn-solo-orchestrator-target-orchestrator',
       provider: 'gemini',
       model: 'gemini-3.1-pro-preview',
     },
@@ -668,6 +671,56 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
     participantId: 'orchestrator',
     catId: null,
     speakerLabel: 'Gemini-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
+    targetStateId: 'target-orchestrator',
+  });
+});
+
+test('resolveChannelStreamTarget ignores stale orchestrator lease sessions from a different active workflow lane', () => {
+  const channel = {
+    composerMode: 'solo',
+    pendingProvider: 'claude',
+    pendingInstance: 'cli/native',
+    orchestratorLease: {
+      status: 'ready',
+      sessionId: 'session-orchestrator-stale',
+      laneId: 'lane-turn-old-target-orchestrator',
+      provider: 'claude',
+      model: 'claude-sonnet',
+      startedAt: '2026-04-15T12:00:00.000Z',
+    },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          id: 'turn-current',
+          status: 'running',
+          targetStatuses: [
+            {
+              id: 'target-orchestrator',
+              status: 'running',
+              participant: {
+                participantKind: 'orchestrator',
+                participantId: 'orchestrator',
+                participantName: 'Orchestrator',
+              },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [],
+  };
+
+  assert.deepEqual(resolveChannelReadyStreamTargets(channel), []);
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: null,
+    laneId: 'lane-turn-current-target-orchestrator',
+    participantId: 'orchestrator',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
     targetStateId: 'target-orchestrator',

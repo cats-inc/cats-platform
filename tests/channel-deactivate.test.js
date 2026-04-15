@@ -10,6 +10,7 @@ import {
   assignCatToChannel,
   createCat,
   createChannel,
+  setChannelOrchestratorLease,
   setChannelCatLease,
   setChannelParticipantLease,
 } from '../build/server/products/chat/state/model/index.js';
@@ -213,6 +214,45 @@ test('POST /api/channels/:id/deactivate closes runtime sessions for temporary pa
     assert.ok(updatedChannel);
     assert.equal(updatedChannel.participantAssignments?.[0]?.execution.lease.status, 'closed');
     assert.equal(updatedChannel.participantAssignments?.[0]?.execution.lease.sessionId, null);
+  }, chatStore);
+});
+
+test('POST /api/channels/:id/deactivate closes the orchestrator runtime session for active leases', async () => {
+  const runtime = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-03-29T12:00:00.000Z');
+  let state = await chatStore.read();
+  state = createChannel(state, {
+    title: 'Solo room',
+    topic: 'deactivate orchestrator session',
+    composerMode: 'solo',
+    pendingProvider: 'claude',
+    skipBossCatGreeting: true,
+  }, now);
+  const channelId = state.selectedChannelId;
+  state = setChannelOrchestratorLease(state, channelId, {
+    status: 'ready',
+    sessionId: 'orchestrator-session-1',
+    provider: 'claude',
+    model: 'claude-default',
+  }, now);
+  await chatStore.write(state);
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}/deactivate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.deactivation.closedSessionCount, 1);
+    assert.deepEqual(runtime.closedSessions, ['orchestrator-session-1']);
+
+    const updatedState = await chatStore.read();
+    const updatedChannel = updatedState.channels.find((channel) => channel.id === channelId);
+    assert.ok(updatedChannel);
+    assert.equal(updatedChannel.orchestratorLease.status, 'closed');
+    assert.equal(updatedChannel.orchestratorLease.sessionId, null);
   }, chatStore);
 });
 
