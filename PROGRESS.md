@@ -641,6 +641,10 @@ Known follow-ups:
 - `chatCoreInterop` now also resolves canonical conversation scope through that
   shared helper, so transcript/core rebuild seams stop maintaining a separate
   conversation-id derivation path from the rest of the chat runtime
+- core projection sync and interaction writes now also resolve channel
+  `containerId` / `conversationId` through the shared helper, so the canonical
+  write path no longer preserves a separate projection-only identity
+  derivation from the runtime/read side
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

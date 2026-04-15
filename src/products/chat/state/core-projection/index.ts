@@ -11,13 +11,12 @@ import {
 import type { ChatState } from '../../api/contracts.js';
 import {
   buildChatArchiveId,
-  buildChatConversationId,
   buildChatTaskId,
   buildChatWorkItemId,
-  resolveChatChannelContainerId,
   resolveChatConversationActorIds,
   resolveChatChannelParallelGroupId,
 } from '../../../../shared/chatCoreIds.js';
+import { resolveChannelCanonicalIdentity } from '../model/index.js';
 import {
   createArchiveMetadata,
   createCatActor,
@@ -80,13 +79,19 @@ export function syncCoreStateWithChatState(
   const preservedConversations = preserveCoreOwnedConversations(
     existingCore.conversations ?? [],
   );
+  const channelCanonicalIdentityById = new Map(
+    chat.channels.map((channel) => [
+      channel.id,
+      resolveChannelCanonicalIdentity(chat, channel.id),
+    ]),
+  );
+  const readChannelCanonicalIdentity = (channelId: string) =>
+    channelCanonicalIdentityById.get(channelId)
+    ?? resolveChannelCanonicalIdentity(chat, channelId);
   const conversations = chat.channels.map((channel) =>
     createConversationFromChannel(
       channel,
-      resolveChatChannelContainerId({
-        channelId: channel.id,
-        parallelChatGroups: chat.parallelChatGroups,
-      }),
+      readChannelCanonicalIdentity(channel.id).containerId,
       resolveChatConversationActorIds({
         channelId: channel.id,
         channelKind: channel.channelKind,
@@ -104,11 +109,8 @@ export function syncCoreStateWithChatState(
     createTaskFromChannel(
       channel,
       ownerProfile.actorId,
-      buildChatConversationId(channel.id),
-      resolveChatChannelContainerId({
-        channelId: channel.id,
-        parallelChatGroups: chat.parallelChatGroups,
-      }),
+      readChannelCanonicalIdentity(channel.id).conversationId,
+      readChannelCanonicalIdentity(channel.id).containerId,
       resolveChatChannelParallelGroupId({
         channelId: channel.id,
         parallelChatGroups: chat.parallelChatGroups,
@@ -120,11 +122,8 @@ export function syncCoreStateWithChatState(
     createWorkItemFromChannel(
       channel,
       ownerProfile.actorId,
-      buildChatConversationId(channel.id),
-      resolveChatChannelContainerId({
-        channelId: channel.id,
-        parallelChatGroups: chat.parallelChatGroups,
-      }),
+      readChannelCanonicalIdentity(channel.id).conversationId,
+      readChannelCanonicalIdentity(channel.id).containerId,
       resolveChatChannelParallelGroupId({
         channelId: channel.id,
         parallelChatGroups: chat.parallelChatGroups,
@@ -147,7 +146,7 @@ export function syncCoreStateWithChatState(
   const archives = chat.channels.map((channel) =>
     createArchiveMetadata(
       channel,
-      buildChatConversationId(channel.id),
+      readChannelCanonicalIdentity(channel.id).conversationId,
       existingArchives.get(buildChatArchiveId(channel.id)) ?? null,
     ),
   );
@@ -158,10 +157,7 @@ export function syncCoreStateWithChatState(
     createWorkflowRun(
       channel,
       turn,
-      resolveChatChannelContainerId({
-        channelId: channel.id,
-        parallelChatGroups: chat.parallelChatGroups,
-      }),
+      readChannelCanonicalIdentity(channel.id).containerId,
     ),
   );
   const workflowMissions = workflowTurns.flatMap(({ channel, turn }) =>
@@ -169,10 +165,7 @@ export function syncCoreStateWithChatState(
       channel,
       turn,
       target,
-      resolveChatChannelContainerId({
-        channelId: channel.id,
-        parallelChatGroups: chat.parallelChatGroups,
-      }),
+      readChannelCanonicalIdentity(channel.id).containerId,
     )),
   );
   const workflowTraces = workflowTurns.flatMap(({ channel, turn }) =>
@@ -180,10 +173,7 @@ export function syncCoreStateWithChatState(
       channel,
       turn,
       event,
-      resolveChatChannelContainerId({
-        channelId: channel.id,
-        parallelChatGroups: chat.parallelChatGroups,
-      }),
+      readChannelCanonicalIdentity(channel.id).containerId,
     )),
   );
   const workflowCheckpoints = workflowTurns.flatMap(({ channel, turn }) =>
@@ -193,10 +183,7 @@ export function syncCoreStateWithChatState(
         channel,
         turn,
         event,
-        resolveChatChannelContainerId({
-          channelId: channel.id,
-          parallelChatGroups: chat.parallelChatGroups,
-        }),
+        readChannelCanonicalIdentity(channel.id).containerId,
       )),
   );
   const workflowOutcomes = workflowTurns.flatMap(({ channel, turn }) =>
@@ -206,10 +193,7 @@ export function syncCoreStateWithChatState(
         channel,
         turn,
         event,
-        resolveChatChannelContainerId({
-          channelId: channel.id,
-          parallelChatGroups: chat.parallelChatGroups,
-        }),
+        readChannelCanonicalIdentity(channel.id).containerId,
       )),
   );
   const workflowActivities = workflowTurns.flatMap(({ channel, turn }) =>
@@ -217,10 +201,7 @@ export function syncCoreStateWithChatState(
       channel,
       turn,
       event,
-      resolveChatChannelContainerId({
-        channelId: channel.id,
-        parallelChatGroups: chat.parallelChatGroups,
-      }),
+      readChannelCanonicalIdentity(channel.id).containerId,
     )),
   );
   const botBindings = syncBotBindings(chat, existingCore.botBindings ?? []);

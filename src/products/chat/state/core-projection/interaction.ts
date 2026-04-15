@@ -31,15 +31,13 @@ import {
   ASSISTANT_TURN_SEGMENT_EVENT,
   buildAssistantTurnSourceMessage,
 } from '../assistantTurnSegments.js';
-import { requireChannel } from '../model/index.js';
+import { requireChannel, resolveChannelCanonicalIdentity } from '../model/index.js';
 import {
   buildChatAssignedParticipantId,
-  buildChatConversationId,
   buildChatLaneId,
   buildChatOwnerParticipantId,
   buildChatOrchestratorParticipantId,
   buildDirectLaneTransportBindingId,
-  resolveChatChannelContainerId,
 } from '../../../../shared/chatCoreIds.js';
 import {
   resolveExecutionLeaseSnapshot,
@@ -676,11 +674,7 @@ export function projectChatChannelInteractionToCore(
   existingCore: CatsCoreState = core,
 ): CatsCoreState {
   const channel = requireChannel(state, channelId);
-  const conversationId = buildChatConversationId(channelId);
-  const containerId = resolveChatChannelContainerId({
-    channelId,
-    parallelChatGroups: state.parallelChatGroups,
-  });
+  const { conversationId, containerId } = resolveChannelCanonicalIdentity(state, channelId);
   const turns = collectWorkflowTurns(channel);
   let nextCore = core;
 

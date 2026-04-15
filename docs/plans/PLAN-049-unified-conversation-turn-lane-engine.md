@@ -213,6 +213,7 @@ through one engine
 | 2026-04-15 | Runtime targeting session context and derived memory layers now also resolve channel canonical identity through the shared helper, and solo bootstrap gating now prefers `laneId` over reused `sessionId`, so prompt/memory hot paths stop preserving separate channel-identity derivations while stale same-session replies no longer suppress lane-local bootstrap context |
 | 2026-04-15 | Channel retry/read-repair paths now also resolve canonical identity through the shared helper, so canonical rebuild, drift repair, and synthetic `session_started` metadata stop preserving separate read-side `channelId -> conversation/container` derivations |
 | 2026-04-15 | `chatCoreInterop` now also resolves canonical conversation scope through the shared helper, so transcript/core rebuild seams stop preserving a separate conversation-id derivation path from the rest of the chat runtime |
+| 2026-04-15 | Core projection sync and interaction writes now also resolve channel canonical identity through the shared helper, so the canonical write path no longer preserves a separate projection-only `channelId -> conversation/container` derivation from the runtime/read side |
 
 ---
 
