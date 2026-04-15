@@ -625,7 +625,10 @@ function resolveSequentialTurnTargetIndex(
   }
 
   if (segment.speakerLabel) {
-    return orderedTargets.findIndex((target) => target.participantName === segment.speakerLabel);
+    const matchingTargetIndexes = orderedTargets
+      .map((target, index) => target.participantName === segment.speakerLabel ? index : -1)
+      .filter((index) => index >= 0);
+    return matchingTargetIndexes.length === 1 ? matchingTargetIndexes[0]! : -1;
   }
 
   return -1;
@@ -835,7 +838,7 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
   const activeTargets = activeTurn.targetStatuses?.filter((target) =>
     target.status === 'running' || target.status === 'pending') ?? [];
   if (activeTargets.length > 0) {
-    return activeTargets.some((target) => {
+    const hasDistinctTargetIdentity = activeTargets.some((target) => {
       const targetLaneId = resolveWorkflowTargetLaneId(
         activeTurn.id ?? null,
         target.id ?? null,
@@ -858,6 +861,22 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
       const participantName = target.participant.participantName?.trim() || null;
       return participantName !== (primarySegment.speakerLabel ?? null);
     });
+    if (hasDistinctTargetIdentity) {
+      return true;
+    }
+
+    if (primarySegment.laneId || primarySegment.targetStateId || primarySegment.participantId) {
+      return false;
+    }
+
+    const primarySpeakerLabel = primarySegment.speakerLabel?.trim() || null;
+    if (!primarySpeakerLabel) {
+      return activeTargets.length > 0;
+    }
+
+    const matchingLabelCount = activeTargets.filter((target) =>
+      (target.participant.participantName?.trim() || null) === primarySpeakerLabel).length;
+    return matchingLabelCount > 1;
   }
 
   if (activeTurn.workflowShape !== 'sequential') {

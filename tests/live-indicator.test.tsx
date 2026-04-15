@@ -884,6 +884,84 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on when a later seq
   );
 });
 
+test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an anonymous sealed speaker when active targets share the same label', () => {
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        speakerLabel: 'Shared-CLI',
+        segmentIndex: 0,
+        segments: [
+          {
+            id: 'message-user:shared-cli:segment:0',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            segmentIndex: 0,
+            participantId: null,
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Shared-CLI',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: 'Finalizing...',
+            progressKind: 'finalizing',
+            tools: [],
+            contentBlocks: [],
+            events: [],
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          lastOutcome: null,
+          workflow: {
+            activeTurn: {
+              id: 'turn-1',
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [
+                {
+                  id: 'target-claude',
+                  status: 'completed',
+                  participant: {
+                    participantId: 'participant-claude',
+                    participantName: 'Shared-CLI',
+                  },
+                },
+                {
+                  id: 'target-codex',
+                  status: 'running',
+                  participant: {
+                    participantId: 'participant-codex',
+                    participantName: 'Shared-CLI',
+                  },
+                },
+              ],
+              events: [],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    true,
+  );
+});
+
 test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the sealed lane still matches the active target despite targetStateId drift', () => {
   const laneId = buildChatLaneId('turn-1', 'target-claude-canonical', 'participant-claude');
   assert.equal(
