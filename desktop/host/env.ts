@@ -26,6 +26,8 @@ function applyEnvFileFallback(
   envFilePath: string,
   env: NodeJS.ProcessEnv,
 ): void {
+  // Keep the fallback deliberately narrow: simple KEY=value lines only.
+  // Advanced dotenv features stay owned by Node's native loadEnvFile().
   const contents = fs.readFileSync(envFilePath, 'utf8');
   for (const rawLine of contents.split(/\r?\n/u)) {
     const trimmed = rawLine.trim();

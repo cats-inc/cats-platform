@@ -467,7 +467,7 @@ if ($includeLocalModelsEnabled) {
       Key = 'ollama'
       ScriptPath = $ollamaHelperPath
       Arguments = $ollamaArguments
-  })
+    })
 }
 
 $helperResults = if ($parallelChecksEnabled) {

@@ -152,6 +152,10 @@ contracts.
       read plus one bulk runtime availability read, so setup step 2 and product
       provider pickers stop paying N sequential provider checks just to decide
       what is selectable
+- [ ] Split host-local readiness audits from agent/gateway backend audits so
+      local CLI and local-model setup checks stay focused on host installability,
+      while providers such as OpenClaw get a separate fast gateway/backend
+      reachability contract instead of being omitted from setup health entirely
 - [ ] Add Guide-Cat-backed entry suggestions with deterministic static
       fallbacks so `+New chat` and later `+Group chat` empty states can be
       prepared dynamically without depending on a permanently awake helper
@@ -230,6 +234,10 @@ contracts.
       and for Windows self-hosted WSL/Docker/check/upgrade orchestration; the
       remaining gap is productizing those helper surfaces through release-grade
       wizard/remediation UX instead of only shipping them as operational scripts.
+- [ ] Deduplicate the shared Unix self-hosted install and readiness substrate
+      between `scripts/linux/node-cli-common.sh` and
+      `scripts/macos/node-cli-common.sh` so future provider-pack, parallel-audit,
+      and serial-debug changes do not require two 900+ line edits that can drift
 - [ ] Extend the packaged setup/runtime-bootstrap contract beyond the current
       first slice so API-backed, local-model, and agent-backed runtime targets
       also converge on runtime-owned apply instead of only supporting provider
@@ -583,4 +591,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-15*
+*Last updated: 2026-04-16*
