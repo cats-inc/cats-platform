@@ -329,11 +329,16 @@ interface TargetSessionLifecycleMetadata extends RuntimeEnvelopeCanonicalMetadat
   now: Date;
 }
 
+interface RuntimeSessionExecutionTarget {
+  provider: string;
+  instance: string | null;
+  model: string | null;
+  modelSelection: Awaited<ReturnType<RuntimeClient['createSession']>>['modelSelection'] | null;
+}
+
 interface CreatedTargetRuntimeSession {
-  state: ChatState;
   session: Awaited<ReturnType<RuntimeClient['createSession']>>;
-  targetLabelProvider: string | null;
-  targetLabelInstance: string | null;
+  executionTarget: RuntimeSessionExecutionTarget;
 }
 
 async function resolveTargetRuntimeEnvelope(input: {
@@ -396,7 +401,6 @@ async function createOrchestratorTargetRuntimeSession(input: {
   options: EnsureTargetSessionOptions;
   taskExecutionContext: EnsureTargetSessionTaskExecutionContext;
   runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
-  now: Date;
 }): Promise<CreatedTargetRuntimeSession> {
   const sessionTarget = resolveOrchestratorExecutionTarget(
     input.state,
@@ -420,41 +424,17 @@ async function createOrchestratorTargetRuntimeSession(input: {
     ...(input.taskExecutionContext?.executionRequest ?? {}),
   });
 
-  const runtimeChannel = requireChannel(input.state, input.channelId);
-  const nextState = runtimeChannel.composerMode === 'solo' && runtimeChannel.pendingProvider
-    ? setChannelPendingExecutionTarget(
-      input.state,
-      input.channelId,
-      {
-        provider: session.provider,
-        instance: sessionTarget.instance,
-        model: session.model ?? sessionTarget.model,
-        modelSelection:
-          session.modelSelection
-          ?? sessionTarget.modelSelection
-          ?? null,
-      },
-      input.now,
-    )
-    : setGlobalOrchestratorExecutionTarget(
-      input.state,
-      {
-        provider: session.provider,
-        instance: sessionTarget.instance,
-        model: session.model ?? sessionTarget.model,
-        modelSelection:
-          session.modelSelection
-          ?? sessionTarget.modelSelection
-          ?? null,
-      },
-      input.now,
-    );
-
   return {
-    state: nextState,
     session,
-    targetLabelProvider: session.provider,
-    targetLabelInstance: sessionTarget.instance ?? null,
+    executionTarget: {
+      provider: session.provider,
+      instance: sessionTarget.instance ?? null,
+      model: session.model ?? sessionTarget.model,
+      modelSelection:
+        session.modelSelection
+        ?? sessionTarget.modelSelection
+        ?? null,
+    },
   };
 }
 
@@ -468,7 +448,6 @@ async function createParticipantTargetRuntimeSession(input: {
   options: EnsureTargetSessionOptions;
   taskExecutionContext: EnsureTargetSessionTaskExecutionContext;
   runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
-  now: Date;
 }): Promise<CreatedTargetRuntimeSession> {
   const participant = findAssignedParticipant(
     buildChannelView(input.state, input.channelId),
@@ -496,28 +475,50 @@ async function createParticipantTargetRuntimeSession(input: {
     ...(input.taskExecutionContext?.executionRequest ?? {}),
   });
 
-  const nextState = setChannelParticipantExecutionTarget(
-    input.state,
-    input.channelId,
-    input.target.participantId,
-    {
+  return {
+    session,
+    executionTarget: {
       provider: session.provider,
-      instance: participant.execution.target.instance,
+      instance: participant.execution.target.instance ?? null,
       model: session.model ?? participant.execution.target.model,
       modelSelection:
         session.modelSelection
         ?? participant.execution.modelSelection
         ?? null,
     },
+  };
+}
+
+function persistCreatedTargetExecutionTarget(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  executionTarget: RuntimeSessionExecutionTarget;
+  now: Date;
+}): ChatState {
+  if (input.target.participantKind === 'orchestrator') {
+    const runtimeChannel = requireChannel(input.state, input.channelId);
+    return runtimeChannel.composerMode === 'solo' && runtimeChannel.pendingProvider
+      ? setChannelPendingExecutionTarget(
+        input.state,
+        input.channelId,
+        input.executionTarget,
+        input.now,
+      )
+      : setGlobalOrchestratorExecutionTarget(
+        input.state,
+        input.executionTarget,
+        input.now,
+      );
+  }
+
+  return setChannelParticipantExecutionTarget(
+    input.state,
+    input.channelId,
+    input.target.participantId,
+    input.executionTarget,
     input.now,
   );
-
-  return {
-    state: nextState,
-    session,
-    targetLabelProvider: session.provider,
-    targetLabelInstance: participant.execution.target.instance ?? null,
-  };
 }
 
 function persistStartedTargetSession(input: {
@@ -746,8 +747,7 @@ async function startAttachedTargetSession(
   let nextState = state;
   const spawnCwd = spawnCwdFor(requireChannel(nextState, channelId));
   const workspaceKind = spawnCwd ? 'source' : 'sandbox';
-  let targetLabelProvider: string | null = null;
-  let targetLabelInstance: string | null = null;
+  let createdExecutionTarget: RuntimeSessionExecutionTarget | null = null;
   const sessionLifecycleMetadata: TargetSessionLifecycleMetadata = {
     targetStateId,
     laneId,
@@ -784,7 +784,6 @@ async function startAttachedTargetSession(
         options,
         taskExecutionContext,
         runtimeEnvelope,
-        now,
       })
       : await createParticipantTargetRuntimeSession({
         state: nextState,
@@ -796,10 +795,15 @@ async function startAttachedTargetSession(
         options,
         taskExecutionContext,
         runtimeEnvelope,
-        now,
       });
-    targetLabelProvider = createdTargetSession.targetLabelProvider;
-    targetLabelInstance = createdTargetSession.targetLabelInstance;
+    createdExecutionTarget = createdTargetSession.executionTarget;
+    nextState = persistCreatedTargetExecutionTarget({
+      state: nextState,
+      channelId,
+      target: attachedTarget,
+      executionTarget: createdExecutionTarget,
+      now,
+    });
 
     await syncTargetSessionAttachmentWorkspace({
       channelId,
@@ -808,12 +812,12 @@ async function startAttachedTargetSession(
       targetWorkspacePath: createdTargetSession.session.cwd,
     });
     nextState = persistStartedTargetSession({
-      state: createdTargetSession.state,
+      state: nextState,
       channelId,
       target: attachedTarget,
       session: createdTargetSession.session,
-      targetLabelProvider,
-      targetLabelInstance,
+      targetLabelProvider: createdExecutionTarget.provider,
+      targetLabelInstance: createdExecutionTarget.instance,
       spawnCwd,
       metadata: sessionLifecycleMetadata,
     });
@@ -836,8 +840,8 @@ async function startAttachedTargetSession(
       channelId,
       target: attachedTarget,
       error: message,
-      targetLabelProvider,
-      targetLabelInstance,
+      targetLabelProvider: createdExecutionTarget?.provider ?? null,
+      targetLabelInstance: createdExecutionTarget?.instance ?? null,
       metadata: sessionLifecycleMetadata,
     });
 

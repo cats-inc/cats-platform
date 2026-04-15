@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -2370,6 +2371,92 @@ test('direct cat chat records targetStateId on session_start_failed messages', a
   );
   assert.equal(sessionStartFailed?.metadata?.targetStateId, targetStateId);
   assert.equal(sessionStartFailed?.metadata?.laneId, laneId);
+});
+
+test('ensureTargetSession preserves sanitized participant execution targets when workspace sync fails', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Preserve sanitized execution targets when workspace sync fails.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeDataDir = path.join(tmpdir(), `cats-runtime-data-${Date.now()}`);
+  const attachmentSourcePath = path.join(runtimeDataDir, 'channels', channelId, '.cats-attachments');
+  await mkdir(attachmentSourcePath, { recursive: true });
+  await writeFile(path.join(attachmentSourcePath, 'note.txt'), 'attachment seed');
+
+  const invalidWorkspacePath = path.join(tmpdir(), `cats-invalid-workspace-${Date.now()}.txt`);
+  await writeFile(invalidWorkspacePath, 'not a directory');
+
+  const runtimeClient = createRuntimeStub(async () => usage('unused'));
+  runtimeClient.createSession = async (input) => {
+    const sessionId = `session-${runtimeClient.createdSessions.length + 1}`;
+    runtimeClient.createdSessions.push({ ...input, id: sessionId });
+    return {
+      id: sessionId,
+      provider: input.provider,
+      model: 'claude-runtime-sanitized',
+      modelSelection: {
+        entryMode: 'explicit',
+        entryId: 'claude-runtime-sanitized',
+      },
+      status: 'ready',
+      cwd: invalidWorkspacePath,
+    };
+  };
+
+  const ensured = await ensureTargetSession(
+    state,
+    channelId,
+    {
+      participantKind: 'cat',
+      participantId: companionId,
+      participantName: 'Companion',
+      laneId: 'lane-turn-sync-failure',
+      sessionId: null,
+    },
+    runtimeClient,
+    now,
+    {
+      runtimeDataDir,
+    },
+  );
+
+  assert.ok(ensured.error);
+  assert.equal(
+    requireChannel(ensured.state, channelId).catAssignments[0]?.execution.target.model,
+    'claude-runtime-sanitized',
+  );
+  assert.deepEqual(
+    requireChannel(ensured.state, channelId).catAssignments[0]?.execution.modelSelection,
+    {
+      entryMode: 'explicit',
+      entryId: 'claude-runtime-sanitized',
+    },
+  );
 });
 
 test('direct cat chat treats lead-cat mentions as plain text and stays on the lane', async () => {
