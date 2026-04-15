@@ -499,6 +499,104 @@ test('chatStore.write ignores closed participant leases when a new lane is only 
   assert.equal(core.sessions.filter((session) => session.turnId === projectedTurn.id).length, 0);
 });
 
+test('chatStore.write ignores ready participant leases that predate a new preseeded lane', async () => {
+  let { state, channelId, agent1Id } = await createGroupChannelState();
+  const seededAt = new Date('2026-04-15T00:05:47.000Z');
+  const channel = requireChannel(state, channelId);
+  const assignment = channel.catAssignments.find((candidate) => candidate.catId === agent1Id);
+  assert.ok(assignment);
+  assignment.execution.lease.sessionId = 'session-ready-stale';
+  assignment.execution.lease.status = 'ready';
+  assignment.execution.lease.startedAt = '2026-04-15T00:05:20.000Z';
+  assignment.execution.lease.lastUsedAt = '2026-04-15T00:05:21.000Z';
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Pick this up next.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    createNoopRuntimeClient(),
+    seededAt,
+  );
+
+  const activeTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+  const targetStateId = activeTurn.targetStatuses[0]?.id ?? null;
+  assert.ok(targetStateId);
+
+  const store = new MemoryChatStore();
+  await store.write(begun.state);
+  const core = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const projectedTurn = core.turns.find((turn) =>
+    turn.conversationId === conversationId && turn.status === 'active');
+  assert.ok(projectedTurn);
+
+  const lanes = readOrderedTurnLanes(core, projectedTurn.id);
+  assert.equal(lanes.length, 1);
+  assert.equal(lanes[0]?.id, buildChatLaneId(projectedTurn.id, targetStateId, agent1Id));
+  assert.equal(core.sessions.filter((session) => session.turnId === projectedTurn.id).length, 0);
+});
+
+test('chatStore.write projects ready participant leases that start with the active lane', async () => {
+  let { state, channelId, agent1Id } = await createGroupChannelState();
+  const seededAt = new Date('2026-04-15T00:05:49.000Z');
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Pick this up next.',
+      messageMetadata: {
+        recipientParticipantIds: [agent1Id],
+        workflowShape: 'sequential',
+      },
+    },
+    createNoopRuntimeClient(),
+    seededAt,
+  );
+
+  const begunChannel = requireChannel(begun.state, channelId);
+  const assignment = begunChannel.catAssignments.find((candidate) => candidate.catId === agent1Id);
+  assert.ok(assignment);
+  const participantAssignment = begunChannel.participantAssignments?.find((candidate) =>
+    candidate.participantId === assignment.participantId) ?? null;
+  assignment.execution.lease.sessionId = 'session-ready-current';
+  assignment.execution.lease.status = 'ready';
+  assignment.execution.lease.startedAt = '2026-04-15T00:05:50.000Z';
+  assignment.execution.lease.lastUsedAt = '2026-04-15T00:05:50.000Z';
+  if (participantAssignment) {
+    participantAssignment.execution.lease.sessionId = 'session-ready-current';
+    participantAssignment.execution.lease.status = 'ready';
+    participantAssignment.execution.lease.startedAt = '2026-04-15T00:05:50.000Z';
+    participantAssignment.execution.lease.lastUsedAt = '2026-04-15T00:05:50.000Z';
+  }
+
+  const activeTurn = begunChannel.roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+  const targetStateId = activeTurn.targetStatuses[0]?.id ?? null;
+  assert.ok(targetStateId);
+  const laneId = buildChatLaneId(activeTurn.id, targetStateId, agent1Id);
+
+  const store = new MemoryChatStore();
+  await store.write(begun.state);
+  const core = await store.readCore();
+  const conversationId = buildChatConversationId(channelId);
+  const projectedTurn = core.turns.find((turn) =>
+    turn.conversationId === conversationId && turn.status === 'active');
+  assert.ok(projectedTurn);
+
+  const sessions = core.sessions.filter((session) => session.turnId === projectedTurn.id);
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0]?.id, 'session-ready-current');
+  assert.equal(sessions[0]?.laneId, laneId);
+  assert.equal(sessions[0]?.metadata.targetStateId, targetStateId);
+});
+
 test('chatStore.write derives startup recovery replay for initial sequential queues from persisted handoff checkpoints', async () => {
   let { state, channelId, agent1Id, agent2Id } = await createGroupChannelState();
   const seededAt = new Date('2026-04-15T00:06:00.000Z');

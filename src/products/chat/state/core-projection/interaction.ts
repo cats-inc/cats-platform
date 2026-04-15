@@ -284,20 +284,18 @@ function collectWorkflowTurns(channel: ChatChannelState): RoomWorkflowTurn[] {
 
 function resolveExecutionResponseMessages(
   channel: ChatChannelState,
-  turnId: string,
-  targetStateId: string,
+  turn: RoomWorkflowTurn,
+  target: RoomWorkflowTargetState,
 ): ChatMessage[] {
-  return channel.messages
+  const turnMessages = channel.messages
     .filter((message) => {
       if (readMessageMetadataString(message, 'event') !== ASSISTANT_TURN_SEGMENT_EVENT) {
         return false;
       }
-      if (readMessageMetadataString(message, 'targetStateId') !== targetStateId) {
-        return false;
-      }
       const messageTurnId = readMessageMetadataString(message, 'turnId');
-      return !messageTurnId || messageTurnId === turnId;
-    })
+      return !messageTurnId || messageTurnId === turn.id;
+    });
+  const sortResponses = (messages: ChatMessage[]) => messages
     .sort((left, right) => {
       const leftIndex = readMessageMetadataNumber(left, 'segmentIndex') ?? 0;
       const rightIndex = readMessageMetadataNumber(right, 'segmentIndex') ?? 0;
@@ -306,6 +304,29 @@ function resolveExecutionResponseMessages(
       }
       return left.createdAt.localeCompare(right.createdAt);
     });
+
+  const exactMatches = turnMessages.filter((message) =>
+    readMessageMetadataString(message, 'targetStateId') === target.id);
+  if (exactMatches.length > 0) {
+    return sortResponses(exactMatches);
+  }
+  if (turn.targetStatuses.length !== 1) {
+    return [];
+  }
+
+  const participantMatches = turnMessages.filter((message) => {
+    const messageTargetKind = readMessageMetadataString(message, 'targetKind');
+    const messageTargetId = readMessageMetadataString(message, 'targetId');
+    if (target.participant.participantKind === 'orchestrator') {
+      return messageTargetKind === 'orchestrator'
+        || messageTargetId === 'orchestrator'
+        || message.senderKind === 'orchestrator';
+    }
+
+    return messageTargetKind === 'cat'
+      && messageTargetId === target.participant.participantId;
+  });
+  return sortResponses(participantMatches);
 }
 
 function resolveSourceMessageBody(
@@ -455,15 +476,44 @@ function resolveTargetSessionId(
   }
 
   const lease = resolveTargetLease(channel, target.participant);
-  if (
-    lease?.sessionId
-    && (lease.status === 'ready' || lease.status === 'initializing')
-    && (target.status === 'pending' || target.status === 'running' || target.status === 'waiting_for_converge')
-  ) {
+  if (shouldProjectTargetLeaseSession(lease, target)) {
     return lease.sessionId;
   }
 
   return null;
+}
+
+function shouldProjectTargetLeaseSession(
+  lease: ReturnType<typeof resolveTargetLease>,
+  target: RoomWorkflowTargetState,
+): lease is NonNullable<ReturnType<typeof resolveTargetLease>> {
+  if (
+    !lease?.sessionId
+    || (lease.status !== 'ready' && lease.status !== 'initializing')
+    || (
+      target.status !== 'pending'
+      && target.status !== 'running'
+      && target.status !== 'waiting_for_converge'
+    )
+  ) {
+    return false;
+  }
+
+  const targetFloorAt = target.startedAt ?? target.queuedAt ?? null;
+  if (!targetFloorAt) {
+    return true;
+  }
+  if (!lease.startedAt) {
+    return false;
+  }
+
+  const leaseStartedAt = Date.parse(lease.startedAt);
+  const targetFloorTimestamp = Date.parse(targetFloorAt);
+  if (Number.isNaN(leaseStartedAt) || Number.isNaN(targetFloorTimestamp)) {
+    return false;
+  }
+
+  return leaseStartedAt >= targetFloorTimestamp;
 }
 
 function mapTurnStatus(status: RoomWorkflowTurn['status']): TurnRecordStatus {
@@ -644,7 +694,7 @@ export function projectChatChannelInteractionToCore(
 
     for (let index = 0; index < turn.targetStatuses.length; index += 1) {
       const target = turn.targetStatuses[index]!;
-      const responseMessages = resolveExecutionResponseMessages(channel, turn.id, target.id);
+      const responseMessages = resolveExecutionResponseMessages(channel, turn, target);
       const lease = resolveTargetLease(channel, target.participant);
       const laneId = buildChatLaneId(turn.id, target.id, target.participant.participantId);
       const sessionId = resolveTargetSessionId(channel, target, responseMessages, laneId);

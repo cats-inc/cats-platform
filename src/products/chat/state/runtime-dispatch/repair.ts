@@ -319,12 +319,25 @@ function doesTargetStatusMatchRecoveredResponse(
   return targetStateId !== null && target.id === targetStateId;
 }
 
+function sameParticipantIdentity(
+  left: RoomRoutingParticipantRef | null | undefined,
+  right: RoomRoutingParticipantRef | null | undefined,
+): boolean {
+  return Boolean(
+    left
+    && right
+    && left.participantKind === right.participantKind
+    && left.participantId === right.participantId,
+  );
+}
+
 function hasOutstandingTargetsBeyondRecoveredResponse(
   turn: RoomWorkflowTurn,
   assistantTurnId: string,
   targetStateId: string | null,
+  participant: RoomRoutingParticipantRef | null,
 ): boolean {
-  return turn.targetStatuses.some((target) => {
+  const activeTargets = turn.targetStatuses.filter((target) => {
     if (
       target.status !== 'pending'
       && target.status !== 'running'
@@ -333,8 +346,19 @@ function hasOutstandingTargetsBeyondRecoveredResponse(
       return false;
     }
 
-    return !doesTargetStatusMatchRecoveredResponse(target, assistantTurnId, targetStateId);
+    return true;
   });
+  if (
+    turn.targetStatuses.length === 1
+    && activeTargets.length === 1
+    && participant
+    && sameParticipantIdentity(activeTargets[0]!.participant, participant)
+  ) {
+    return false;
+  }
+
+  return activeTargets.some((target) =>
+    !doesTargetStatusMatchRecoveredResponse(target, assistantTurnId, targetStateId));
 }
 
 function resolveExpectedTurnTargetCount(turn: RoomWorkflowTurn): number {
@@ -1489,7 +1513,10 @@ export function repairOrphanedCompletedDispatchTurn(
 
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   const workflow = resolveRoomWorkflowState(roomRouting.workflow);
-  const activeTurn = workflow.activeTurn?.status === 'running'
+  const activeTurn = (
+    workflow.activeTurn?.status === 'running'
+    || workflow.activeTurn?.status === 'pending'
+  )
     ? workflow.activeTurn
     : null;
   const recoveredTurn = !activeTurn
@@ -1525,7 +1552,12 @@ export function repairOrphanedCompletedDispatchTurn(
   if (
     candidateTurn
     && (
-      hasOutstandingTargetsBeyondRecoveredResponse(candidateTurn, assistantTurnId, targetStateId)
+      hasOutstandingTargetsBeyondRecoveredResponse(
+        candidateTurn,
+        assistantTurnId,
+        targetStateId,
+        participant,
+      )
       || hasOutstandingCanonicalLanesBeyondRecoveredResponse(
         core,
         channelId,
@@ -1547,7 +1579,10 @@ export function repairOrphanedCompletedDispatchTurn(
   const nextChannel = requireChannel(nextState, channelId);
   const nextRoomRouting = resolveRoomRoutingState(nextChannel.roomRouting);
   const nextWorkflow = resolveRoomWorkflowState(nextRoomRouting.workflow);
-  let nextActiveTurn = nextWorkflow.activeTurn?.status === 'running'
+  let nextActiveTurn = (
+    nextWorkflow.activeTurn?.status === 'running'
+    || nextWorkflow.activeTurn?.status === 'pending'
+  )
     ? nextWorkflow.activeTurn
     : null;
   if (!nextActiveTurn) {
