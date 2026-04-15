@@ -543,6 +543,8 @@ async function handleRestStreamChannel(
       }
     };
 
+    attachReadyTargets([streamTarget]);
+
     while (!abortController.signal.aborted && !context.response.writableEnded) {
       const snapshot = await readChannelReadyStreamSnapshot(context, channelId);
       attachReadyTargets(snapshot.readyTargets);

@@ -81,16 +81,21 @@ function buildParticipantStreamTarget(
   participantId: string,
   fallbackSpeakerLabel: string | null = null,
   sessionConfirmationFloorAt: string | null = null,
+  expectedLaneId: string | null = null,
 ): ChannelStreamTarget {
   const assignment = resolvePrimaryParticipantExecutionAssignment(channel, participantId);
   const lease = resolveParticipantExecutionLease(channel, participantId);
-  const sessionStartedAt = lease?.startedAt ?? null;
+  const leaseLaneId = lease?.laneId?.trim() || null;
+  const laneConflicts = Boolean(expectedLaneId && leaseLaneId && leaseLaneId !== expectedLaneId);
+  const sessionStartedAt = laneConflicts ? null : lease?.startedAt ?? null;
   return {
-    sessionId: resolveParticipantSessionId(
-      channel,
-      participantId,
-      { statuses: ['ready', 'initializing'] },
-    ),
+    sessionId: laneConflicts
+      ? null
+      : resolveParticipantSessionId(
+        channel,
+        participantId,
+        { statuses: ['ready', 'initializing'] },
+      ),
     laneId: null,
     participantId,
     catId: assignment ? resolveParticipantCatId(assignment) : null,
@@ -109,22 +114,28 @@ function buildOrchestratorStreamTarget(
   channel: ReturnType<typeof requireChannel>,
   fallbackSpeakerLabel: string | null = null,
   sessionConfirmationFloorAt: string | null = null,
+  expectedLaneId: string | null = null,
 ): ChannelStreamTarget {
   const speakerLabel = resolveVisibleOrchestratorLabel({
     displayName: fallbackSpeakerLabel,
     provider: channel.pendingProvider ?? channel.orchestratorLease.provider ?? null,
     instance: channel.pendingProvider ? (channel.pendingInstance ?? null) : null,
   });
+  const leaseLaneId = channel.orchestratorLease.laneId?.trim() || null;
+  const laneConflicts = Boolean(expectedLaneId && leaseLaneId && leaseLaneId !== expectedLaneId);
+  const sessionStartedAt = laneConflicts ? null : channel.orchestratorLease.startedAt ?? null;
   return {
-    sessionId: channel.orchestratorLease?.sessionId?.trim() || null,
+    sessionId: laneConflicts
+      ? null
+      : channel.orchestratorLease?.sessionId?.trim() || null,
     laneId: null,
     participantId: 'orchestrator',
     catId: null,
     speakerLabel,
-    sessionStartedAt: channel.orchestratorLease.startedAt ?? null,
+    sessionStartedAt,
     requiresSessionStartConfirmation: shouldRequireSessionStartConfirmation(
       channel,
-      channel.orchestratorLease.startedAt ?? null,
+      sessionStartedAt,
       sessionConfirmationFloorAt,
     ),
     targetStateId: null,
@@ -171,21 +182,24 @@ function buildWorkflowTargetStreamTarget(
 ): ChannelStreamTarget {
   const participant = targetStatus.participant;
   const sessionConfirmationFloorAt = targetStatus.startedAt ?? targetStatus.queuedAt ?? null;
+  const laneId = buildChatLaneId(turnId, targetStatus.id, participant.participantId);
   const target = participant.participantKind === 'orchestrator'
     ? buildOrchestratorStreamTarget(
         channel,
         participant.participantName,
         sessionConfirmationFloorAt,
+        laneId,
       )
     : buildParticipantStreamTarget(
         channel,
         participant.participantId,
         participant.participantName,
         sessionConfirmationFloorAt,
+        laneId,
       );
   return {
     ...target,
-    laneId: buildChatLaneId(turnId, targetStatus.id, participant.participantId),
+    laneId,
     targetStateId: targetStatus.id,
   };
 }
@@ -267,10 +281,16 @@ function resolveWorkflowStreamTargets(
     return [];
   }
 
-  return [
-    ...activeTurn.targetStatuses.filter((target) => target.status === 'running'),
-    ...activeTurn.targetStatuses.filter((target) => target.status === 'pending'),
-  ].map((targetStatus) => buildWorkflowTargetStreamTarget(channel, activeTurn.id, targetStatus));
+  const runningTargets = activeTurn.targetStatuses.filter((target) => target.status === 'running');
+  const pendingTargets = activeTurn.targetStatuses.filter((target) => target.status === 'pending');
+  const attachableTargets = activeTurn.workflowShape === 'concurrent'
+    ? [...runningTargets, ...pendingTargets]
+    : runningTargets.length > 0
+      ? runningTargets
+      : pendingTargets.slice(0, 1);
+
+  return attachableTargets.map((targetStatus) =>
+    buildWorkflowTargetStreamTarget(channel, activeTurn.id, targetStatus));
 }
 
 export function resolveChannelStreamTarget(

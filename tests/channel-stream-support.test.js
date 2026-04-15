@@ -14,6 +14,7 @@ function buildParticipantAssignment(
   status = 'ready',
   name = participantId,
   startedAt = null,
+  laneId = null,
 ) {
   return {
     participantId,
@@ -34,6 +35,7 @@ function buildParticipantAssignment(
         status,
         sessionId,
         cwd: null,
+        laneId,
         startedAt,
         lastUsedAt: startedAt ?? '2026-04-11T00:00:00.000Z',
       },
@@ -178,6 +180,53 @@ test('resolveChannelReadyStreamTargets keeps only attachable concurrent workflow
   ]);
 });
 
+test('resolveChannelReadyStreamTargets only attaches the first ready pending target during sequential handoff', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          id: 'turn-sequential-ready',
+          status: 'running',
+          workflowShape: 'sequential',
+          targetStatuses: [
+            {
+              id: 'target-1',
+              status: 'pending',
+              participant: { participantId: 'participant-1', participantName: 'Claude-CLI' },
+            },
+            {
+              id: 'target-2',
+              status: 'pending',
+              participant: { participantId: 'participant-2', participantName: 'Codex-CLI' },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
+      buildParticipantAssignment('participant-2', 'session-2', 'ready', 'Codex-CLI'),
+    ],
+  };
+
+  assert.deepEqual(resolveChannelReadyStreamTargets(channel), [
+    {
+      sessionId: 'session-1',
+      laneId: 'lane-turn-sequential-ready-target-1',
+      participantId: 'participant-1',
+      catId: null,
+      speakerLabel: 'Claude-CLI',
+      sessionStartedAt: null,
+      requiresSessionStartConfirmation: false,
+      targetStateId: 'target-1',
+    },
+  ]);
+});
+
 test('resolveChannelStreamSessionId waits for the next sequential target instead of falling back to a completed target session', () => {
   const channel = {
     roomMode: 'group',
@@ -254,6 +303,55 @@ test('resolveChannelStreamTarget keeps the next sequential speaker label availab
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
     targetStateId: 'target-2',
+  });
+});
+
+test('resolveChannelStreamTarget ignores ready leases that belong to a different active workflow lane', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null, laneId: null },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          id: 'turn-current',
+          status: 'running',
+          targetStatuses: [
+            {
+              id: 'target-current',
+              status: 'running',
+              participant: {
+                participantId: 'participant-2',
+                participantName: 'Codex-CLI',
+              },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment(
+        'participant-2',
+        'session-stale-lane',
+        'ready',
+        'Codex-CLI',
+        '2026-04-14T12:03:00.000Z',
+        'lane-turn-old-target-old',
+      ),
+    ],
+  };
+
+  assert.deepEqual(resolveChannelReadyStreamTargets(channel), []);
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: null,
+    laneId: 'lane-turn-current-target-current',
+    participantId: 'participant-2',
+    catId: null,
+    speakerLabel: 'Codex-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
+    targetStateId: 'target-current',
   });
 });
 

@@ -1304,8 +1304,12 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
       seededAt,
     );
     await chatStore.write(begun.state);
-    const begunSourceMessageId = requireChannel(begun.state, channelId)
-      .roomRouting.workflow.activeTurn?.sourceMessageId;
+    const begunTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+    const begunSourceMessageId = begunTurn?.sourceMessageId;
+    const firstTargetStateId = begunTurn?.targetStatuses[0]?.id ?? null;
+    const secondTargetStateId = begunTurn?.targetStatuses[1]?.id ?? null;
+    assert.ok(firstTargetStateId);
+    assert.ok(secondTargetStateId);
 
     const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
 
@@ -1317,7 +1321,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
     assert.ok(nextTurn);
     nextTurn.targetStatuses = [
       {
-        id: 'target-state-sequential-1',
+        id: firstTargetStateId,
         dispatchId: 'dispatch-sequential-1',
         participant: {
           participantKind: 'cat',
@@ -1362,7 +1366,7 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
         completedAt: firstReplyAt.toISOString(),
       },
       {
-        id: 'target-state-sequential-2',
+        id: secondTargetStateId,
         dispatchId: 'dispatch-sequential-2',
         participant: {
           participantKind: 'cat',
@@ -1463,11 +1467,11 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
     const streamBody = await streamBodyPromise;
     assert.match(streamBody, /"speakerLabel":"First Cat"/u);
     assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
-    assert.match(streamBody, /"targetStateId":"target-state-sequential-1"/u);
+    assert.match(streamBody, new RegExp(`"targetStateId":"${firstTargetStateId}"`, 'u'));
     assert.match(streamBody, /"text":"First speaker is thinking"/u);
     assert.match(streamBody, /"speakerLabel":"Second Cat"/u);
     assert.match(streamBody, new RegExp(`"sourceMessageId":"${begunSourceMessageId}"`, 'u'));
-    assert.match(streamBody, /"targetStateId":"target-state-sequential-2"/u);
+    assert.match(streamBody, new RegExp(`"targetStateId":"${secondTargetStateId}"`, 'u'));
     assert.match(
       streamBody,
       new RegExp(`"speakerLabel":"Second Cat"[\\s\\S]*"sessionStartedAt":"${secondLeaseStartedAt.toISOString()}"`, 'u'),
@@ -1482,11 +1486,11 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
       'session-live-sequential-2',
     ]);
     assert.deepEqual(streamedTargetIds, [
-      ['target-state-sequential-1'],
-      ['target-state-sequential-2'],
+      [firstTargetStateId, secondTargetStateId],
+      [secondTargetStateId],
     ]);
   }, chatStore);
-});
+  });
 
 test('GET /api/channels/:id/stream reattaches a reused warm session for a new sequential target', async () => {
   const chatStore = new MemoryChatStore();
@@ -2510,6 +2514,11 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
       seededAt,
     );
     await chatStore.write(begun.state);
+    const begunTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+    const firstTargetStateId = begunTurn?.targetStatuses[0]?.id ?? null;
+    const secondTargetStateId = begunTurn?.targetStatuses[1]?.id ?? null;
+    assert.ok(firstTargetStateId);
+    assert.ok(secondTargetStateId);
 
     const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -2518,11 +2527,11 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
     let nextChannel = requireChannel(nextState, channelId);
     let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
     assert.ok(nextTurn);
-    const firstLaneId = `lane-${nextTurn.id}-target-state-gap-1`;
-    const secondLaneId = `lane-${nextTurn.id}-target-state-gap-2`;
+    const firstLaneId = `lane-${nextTurn.id}-${firstTargetStateId}`;
+    const secondLaneId = `lane-${nextTurn.id}-${secondTargetStateId}`;
     nextTurn.targetStatuses = [
       {
-        id: 'target-state-gap-1',
+        id: firstTargetStateId,
         dispatchId: 'dispatch-gap-1',
         participant: {
           participantKind: 'cat',
@@ -2568,7 +2577,7 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
         completedAt: firstReplyAt.toISOString(),
       },
       {
-        id: 'target-state-gap-2',
+        id: secondTargetStateId,
         dispatchId: 'dispatch-gap-2',
         participant: {
           participantKind: 'cat',
@@ -2669,10 +2678,10 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
     const streamBody = await streamBodyPromise;
     assert.match(streamBody, /"speakerLabel":"First Cat"/u);
     assert.match(streamBody, new RegExp(`"laneId":"${firstLaneId}"`, 'u'));
-    assert.match(streamBody, /"targetStateId":"target-state-gap-1"/u);
+    assert.match(streamBody, new RegExp(`"targetStateId":"${firstTargetStateId}"`, 'u'));
     assert.match(streamBody, /"speakerLabel":"Second Cat"/u);
     assert.match(streamBody, new RegExp(`"laneId":"${secondLaneId}"`, 'u'));
-    assert.match(streamBody, /"targetStateId":"target-state-gap-2"/u);
+    assert.match(streamBody, new RegExp(`"targetStateId":"${secondTargetStateId}"`, 'u'));
     assert.match(streamBody, /"text":"Second speaker picked up after the gap"/u);
     assert.deepEqual(runtime.streamedSessions, [
       'session-live-gap-1',
