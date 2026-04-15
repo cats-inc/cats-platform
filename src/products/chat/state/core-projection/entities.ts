@@ -286,7 +286,7 @@ function readRecoveredStartupContinuationReplayRequest(
     ?? readMetadataString(continuationMetadata, 'continuationSourceLaneId')
     ?? (
       latestCompletedTargetState
-        ? buildChatLaneId(
+        ? latestCompletedTargetState.laneId?.trim() || buildChatLaneId(
           turn.id,
           latestCompletedTargetState.id,
           latestCompletedTargetState.participant.participantId,

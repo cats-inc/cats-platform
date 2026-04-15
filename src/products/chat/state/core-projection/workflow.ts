@@ -238,12 +238,17 @@ export function createWorkflowMission(
   turn: RoomWorkflowTurn,
   target: RoomWorkflowTargetState,
 ): MissionRecord {
+  const sourceLaneId = target.laneId?.trim() || buildChatLaneId(
+    turn.id,
+    target.id,
+    target.participant.participantId,
+  );
   return {
     id: buildRoomWorkflowMissionId(channel.id, turn.id, target.id),
     managedWorkId: buildChatWorkItemId(channel.id),
     conversationId: `conversation-channel-${channel.id}`,
     sourceTurnId: turn.id,
-    sourceLaneId: buildChatLaneId(turn.id, target.id, target.participant.participantId),
+    sourceLaneId,
     assignedAgentId: actorIdForParticipant(target.participant),
     title: `${channel.title} -> ${target.participant.participantName}`,
     status: toMissionStatus(target.status),
@@ -260,6 +265,8 @@ export function createWorkflowMission(
       participantKind: target.participant.participantKind,
       participantName: target.participant.participantName,
       dispatchId: target.dispatchId,
+      laneId: sourceLaneId,
+      sessionId: target.sessionId,
       trigger: target.trigger,
       mentionNames: structuredClone(target.mentionNames),
       depth: target.depth,
