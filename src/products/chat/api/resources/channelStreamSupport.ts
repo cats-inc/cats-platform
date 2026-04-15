@@ -334,6 +334,28 @@ export function resolveChannelReadyStreamTargets(
     .filter((target) => Boolean(target.sessionId));
 }
 
+export function buildChannelStreamTargetAttachKey(
+  target: Pick<ChannelStreamTarget, 'laneId' | 'sessionId' | 'targetStateId'> | null,
+): string | null {
+  if (!target) {
+    return null;
+  }
+
+  const laneId = target.laneId?.trim() || null;
+  const sessionId = target.sessionId?.trim() || null;
+  const targetStateId = target.targetStateId?.trim() || null;
+  if (laneId && sessionId) {
+    return `${laneId}::${sessionId}`;
+  }
+  if (laneId) {
+    return laneId;
+  }
+  if (targetStateId && sessionId) {
+    return `${targetStateId}::${sessionId}`;
+  }
+  return targetStateId ?? sessionId;
+}
+
 function resolveChannelStreamTargetWithReason(
   channel: ReturnType<typeof requireChannel>,
 ): ResolvedChannelStreamTarget {
@@ -459,9 +481,10 @@ export async function waitForChannelStreamTarget(
 export async function waitForNextChannelStreamTarget(
   context: ChatApiRouteContext,
   channelId: string,
-  previousTargetStateId: string | null,
+  previousTarget: Pick<ChannelStreamTarget, 'laneId' | 'sessionId' | 'targetStateId'> | null,
   signal: AbortSignal,
 ): Promise<ChannelStreamTarget | null> {
+  const previousAttachKey = buildChannelStreamTargetAttachKey(previousTarget);
   while (!signal.aborted) {
     const observedSignalVersion = readStreamTargetSignalVersion(channelId);
     const state = await context.dependencies.chatStore.read();
@@ -472,7 +495,8 @@ export async function waitForNextChannelStreamTarget(
 
     const resolvedStreamTarget = resolveWorkflowStreamTargetWithReason(channel);
     const streamTarget = resolvedStreamTarget.target;
-    if (streamTarget && streamTarget.targetStateId !== previousTargetStateId && streamTarget.sessionId) {
+    const nextAttachKey = buildChannelStreamTargetAttachKey(streamTarget);
+    if (streamTarget && streamTarget.sessionId && nextAttachKey !== previousAttachKey) {
       const activeTurn = resolveActiveTurn(channel);
       const turnId = activeTurn?.id?.trim() || null;
       const sourceMessageId = activeTurn?.sourceMessageId?.trim() || null;
@@ -493,7 +517,7 @@ export async function waitForNextChannelStreamTarget(
           speakerLabel: streamTarget.speakerLabel,
           reason: resolvedStreamTarget.reason,
           details: {
-            previousTargetStateId,
+            previousAttachKey,
           },
         });
       }

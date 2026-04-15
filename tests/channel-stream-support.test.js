@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildChannelStreamTargetAttachKey,
   resolveChannelReadyStreamTargets,
   resolveChannelStreamSessionId,
   resolveChannelStreamTargets,
@@ -178,6 +179,44 @@ test('resolveChannelReadyStreamTargets keeps only attachable concurrent workflow
       targetStateId: 'target-1',
     },
   ]);
+});
+
+test('buildChannelStreamTargetAttachKey keys replacement sessions by lane and session generation', () => {
+  assert.equal(
+    buildChannelStreamTargetAttachKey({
+      laneId: 'lane-same',
+      sessionId: 'session-1',
+      targetStateId: 'target-old',
+    }),
+    'lane-same::session-1',
+  );
+  assert.equal(
+    buildChannelStreamTargetAttachKey({
+      laneId: 'lane-same',
+      sessionId: 'session-2',
+      targetStateId: 'target-drifted',
+    }),
+    'lane-same::session-2',
+  );
+});
+
+test('buildChannelStreamTargetAttachKey prefers lane identity before drifted target-state fallback', () => {
+  assert.equal(
+    buildChannelStreamTargetAttachKey({
+      laneId: 'lane-canonical',
+      sessionId: null,
+      targetStateId: 'target-live',
+    }),
+    'lane-canonical',
+  );
+  assert.equal(
+    buildChannelStreamTargetAttachKey({
+      laneId: null,
+      sessionId: 'session-live',
+      targetStateId: 'target-live',
+    }),
+    'target-live::session-live',
+  );
 });
 
 test('resolveChannelReadyStreamTargets only attaches the first ready pending target during sequential handoff', () => {

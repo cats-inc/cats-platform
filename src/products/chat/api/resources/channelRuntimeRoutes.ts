@@ -36,6 +36,7 @@ import {
   DEFAULT_CHANNEL_DISPATCH_CANCELLATION_NOTE,
 } from '../../state/runtime-dispatch/cancellation.js';
 import {
+  buildChannelStreamTargetAttachKey,
   resolveChannelReadyStreamTargets,
   type ChannelStreamTarget,
   waitForChannelStreamTarget,
@@ -158,15 +159,6 @@ async function readChannelReadyStreamSnapshot(
       || activeConcurrentTargets.every((target) => readyTargetStateIds.has(target.id)),
     signalVersion,
   };
-}
-
-function buildStreamAttachKey(target: ChannelStreamTarget): string | null {
-  const laneId = target.laneId?.trim() || null;
-  const sessionId = target.sessionId?.trim() || null;
-  if (laneId && sessionId) {
-    return `${laneId}::${sessionId}`;
-  }
-  return laneId ?? sessionId;
 }
 
 async function streamChannelTarget(input: {
@@ -573,7 +565,7 @@ async function handleRestStreamChannel(
 
     const attachReadyTargets = (targets: ChannelStreamTarget[]): void => {
       for (const target of targets) {
-        const attachKey = buildStreamAttachKey(target);
+        const attachKey = buildChannelStreamTargetAttachKey(target);
         if (!attachKey || activeStreams.has(attachKey) || completedAttachKeys.has(attachKey)) {
           continue;
         }
