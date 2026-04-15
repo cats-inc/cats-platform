@@ -4,7 +4,10 @@ import {
 import {
   readWorkflowContinuationReplay,
 } from '../../../platform/orchestration/workflowContinuationReplay.js';
-import { resolveOrchestratorDisplayName } from '../state/model/index.js';
+import {
+  buildChannelView,
+  resolveOrchestratorDisplayName,
+} from '../state/model/index.js';
 import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorAdapter.js';
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
 import type { ChatStore } from '../state/store.js';
