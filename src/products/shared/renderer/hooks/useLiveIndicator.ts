@@ -34,6 +34,7 @@ const LIVE_INDICATOR_RETRY_LIMIT = 8;
 export interface LiveIndicatorSelectedChannelLike {
   orchestratorLease?: {
     sessionId?: string | null;
+    laneId?: string | null;
     status?: string | null;
     startedAt?: string | null;
   } | null;
@@ -42,6 +43,7 @@ export interface LiveIndicatorSelectedChannelLike {
     execution?: {
       lease?: {
         sessionId?: string | null;
+        laneId?: string | null;
         status?: string | null;
         startedAt?: string | null;
       } | null;
@@ -226,6 +228,7 @@ function hasLiveLeaseStatus(
 function resolveTargetLease(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
   participantId: string | null,
+  laneId: string | null = null,
 ): {
   sessionId: string | null;
   startedAt: string | null;
@@ -236,7 +239,14 @@ function resolveTargetLease(
 
   if (participantId === 'orchestrator') {
     const leaseStatus = readTraceString(selectedChannel.orchestratorLease?.status);
+    const leaseLaneId = readTraceString(selectedChannel.orchestratorLease?.laneId);
     if (leaseStatus && !hasLiveLeaseStatus(leaseStatus)) {
+      return {
+        sessionId: null,
+        startedAt: null,
+      };
+    }
+    if (laneId && leaseLaneId && leaseLaneId !== laneId) {
       return {
         sessionId: null,
         startedAt: null,
@@ -253,7 +263,14 @@ function resolveTargetLease(
       ?.execution?.lease
     ?? null;
   const leaseStatus = readTraceString(participantLease?.status);
+  const leaseLaneId = readTraceString(participantLease?.laneId);
   if (leaseStatus && !hasLiveLeaseStatus(leaseStatus)) {
+    return {
+      sessionId: null,
+      startedAt: null,
+    };
+  }
+  if (laneId && leaseLaneId && leaseLaneId !== laneId) {
     return {
       sessionId: null,
       startedAt: null,
@@ -302,7 +319,7 @@ export function resolveWaitingSessionState(
     };
   }
 
-  const lease = resolveTargetLease(selectedChannel, participantId);
+  const lease = resolveTargetLease(selectedChannel, participantId, laneId);
   const sessionId = lease?.sessionId ?? null;
   const sessionStartedAt = lease?.startedAt ?? null;
   if (!sessionId || !sessionStartedAt) {

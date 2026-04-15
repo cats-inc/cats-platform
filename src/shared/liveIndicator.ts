@@ -1861,8 +1861,11 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
           sourceMessageId,
         })
         || (
+          segment.targetStateId
+          && (
           (!sourceMessageId || readMessageSourceMessageId(message) === sourceMessageId)
           && readMessageTargetStateId(message) === segment.targetStateId
+          )
         )
         || doesMessageMatchSessionScopedIdentity(message, {
           sessionId: segment.sessionId,
