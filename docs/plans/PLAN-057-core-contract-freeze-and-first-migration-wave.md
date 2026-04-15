@@ -155,6 +155,7 @@ conversation records.
 | Date | Update |
 |------|--------|
 | 2026-04-14 | Plan created |
+| 2026-04-15 | First migration-wave chat slices now persist `transportBindingId`, `containerId`, and `conversationId` through canonical writes and expose `containerId` in delivery intent, recovery/control-plane/operator read models, and task-view filters |
 
 ---
 

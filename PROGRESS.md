@@ -331,6 +331,24 @@ Known follow-ups:
   messages now also carry `laneId`, so the write path itself preserves
   canonical lane identity instead of leaving downstream consumers to infer it
   from `sessionId` reuse
+- those same runtime dispatch receipts plus synthetic runtime lifecycle writes
+  now also persist `transportBindingId`, so canonical session projection can
+  recover transport attachment from the write path itself instead of reopening
+  `session_started` scans first
+- runtime targeting, dispatch receipts, session lifecycle notices, and core
+  interaction/workflow projection now also carry `containerId` plus
+  `conversationId`, so chat canonical writes preserve the full
+  `container/conversation/turn/lane/session` tuple even for parallel-group
+  member channels and repaired lifecycle messages
+- core runtime-delivery manifests, control-plane views, recovery views, and
+  operator inbox items now also surface `containerId`, and the shared
+  task-view query/filter seam accepts `containerId`, so automation can facet
+  work by canonical container identity without reopening nested delivery
+  manifests
+- prewarmed cat-session assignment writes, `session_start_failed` notices, and
+  repaired synthetic `session_started` messages now also stamp canonical
+  `containerId` / `conversationId` metadata, so session lifecycle annotations
+  no longer fall back to session-only identity during warm starts or repair
 - solo-chat bootstrap suppression now prefers canonical `laneId` over reused
   `sessionId`, so older replies from a drifted/reused runtime session no
   longer hide bootstrap context for the current lane
@@ -594,4 +612,4 @@ Known follow-ups:
 
 ---
 
-*Last updated: 2026-04-09*
+*Last updated: 2026-04-15*

@@ -201,6 +201,7 @@ through one engine
 | Date | Update |
 |------|--------|
 | 2026-04-14 | Plan created for the unified conversation-turn-lane engine rollout |
+| 2026-04-15 | Canonical chat writes now persist `transportBindingId`, `containerId`, and `conversationId` through runtime dispatch, lifecycle notices, repair, and core projection, and core task/read-model seams now expose/filter `containerId` as part of the shared engine tuple |
 
 ---
 
