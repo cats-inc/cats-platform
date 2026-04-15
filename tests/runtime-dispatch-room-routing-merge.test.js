@@ -2859,7 +2859,17 @@ test('repairMissingStartupRecoveryNotice prefers source identity when startup re
   const noticeIndex = repairedChannel.messages.findIndex((message) =>
     message.metadata?.event === 'workflow_interrupted'
     && message.metadata?.turnId === 'turn-later-sequential-source-identity');
+  const notice = noticeIndex >= 0 ? repairedChannel.messages[noticeIndex] : null;
 
   assert.ok(queuedUserIndex >= 0);
   assert.ok(noticeIndex > queuedUserIndex);
+  assert.equal(notice?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(notice?.metadata?.conversationId, buildChatConversationId(channelId));
+  assert.equal(notice?.metadata?.sourceMessageId, sourceAssistantMessageId);
+  assert.equal(notice?.metadata?.sourceTurnId, 'turn-later-sequential-source-identity');
+  assert.equal(notice?.metadata?.sourceLaneId, 'lane-later-sequential-source-identity');
+  assert.equal(
+    notice?.metadata?.sourceAssistantTurnId,
+    'assistant-turn-later-sequential-source-identity',
+  );
 });

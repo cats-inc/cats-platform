@@ -76,6 +76,18 @@ function describeGuardReason(): string {
   return 'a routing guard';
 }
 
+function readMessageMetadataString(
+  message: Pick<ChatMessage, 'metadata'> | null | undefined,
+  key: string,
+): string | null {
+  const value = message?.metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function isNonNull<T>(value: T | null): value is T {
+  return value !== null;
+}
+
 function readRuntimeResponseForTurn(
   channel: ChatChannelState,
   channelId: string,
@@ -1144,31 +1156,66 @@ function matchesStartupRecoverySourceIdentity(
     && sharedIdentityPairs.every(([left, right]) => left === right);
 }
 
-function resolveStartupRecoverySourceBoundaryCreatedAt(
+interface StartupRecoverySourceBoundary {
+  createdAt: string;
+  sourceMessageId: string | null;
+  sourceTurnId: string | null;
+  sourceLaneId: string | null;
+  sourceAssistantTurnId: string | null;
+}
+
+function resolveStartupRecoverySourceBoundaryFromMessage(
+  message: ChatMessage,
+): StartupRecoverySourceBoundary {
+  return {
+    createdAt: message.createdAt,
+    sourceMessageId: message.id,
+    sourceTurnId: readMessageMetadataString(message, 'turnId'),
+    sourceLaneId: readMessageMetadataString(message, 'laneId'),
+    sourceAssistantTurnId: readMessageMetadataString(message, 'assistantTurnId'),
+  };
+}
+
+function resolveStartupRecoverySourceBoundary(
   turn: RoomWorkflowTurn,
   options: {
     core?: CatsCoreState;
     channelId: string;
   },
-): string {
+): StartupRecoverySourceBoundary {
   const sourceIdentityCandidates = collectStartupRecoverySourceIdentityCandidates(turn);
   const canonicalSourceBoundary = options.core
     ? sourceIdentityCandidates
-      .map((candidate) => resolveTranscriptOrCanonicalChatMessage({
-        core: options.core,
-        channelId: options.channelId,
-        transcriptMessages: [],
-        sourceMessageId: turn.sourceMessageId,
-        sourceTurnId: candidate.sourceTurnId,
-        sourceLaneId: candidate.sourceLaneId,
-        sourceAssistantTurnId: candidate.sourceAssistantTurnId,
-      }))
-      .filter((message): message is ChatMessage => Boolean(message?.createdAt))
-      .filter((message) =>
-        message.senderKind === 'user'
-        || message.metadata?.event === 'assistant_turn_segment')
-      .map((message) => message.createdAt)
-      .sort((left, right) => left.localeCompare(right))
+      .map((candidate) => {
+        const message = resolveTranscriptOrCanonicalChatMessage({
+          core: options.core,
+          channelId: options.channelId,
+          transcriptMessages: [],
+          sourceMessageId: turn.sourceMessageId,
+          sourceTurnId: candidate.sourceTurnId,
+          sourceLaneId: candidate.sourceLaneId,
+          sourceAssistantTurnId: candidate.sourceAssistantTurnId,
+        });
+        if (
+          !message?.createdAt
+          || (
+            message.senderKind !== 'user'
+            && message.metadata?.event !== 'assistant_turn_segment'
+          )
+        ) {
+          return null;
+        }
+        return {
+          createdAt: message.createdAt,
+          sourceMessageId: message.id,
+          sourceTurnId: candidate.sourceTurnId ?? readMessageMetadataString(message, 'turnId'),
+          sourceLaneId: candidate.sourceLaneId ?? readMessageMetadataString(message, 'laneId'),
+          sourceAssistantTurnId:
+            candidate.sourceAssistantTurnId ?? readMessageMetadataString(message, 'assistantTurnId'),
+        } satisfies StartupRecoverySourceBoundary;
+      })
+      .filter(isNonNull)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
       .at(-1) ?? null
     : null;
   if (canonicalSourceBoundary) {
@@ -1177,36 +1224,74 @@ function resolveStartupRecoverySourceBoundaryCreatedAt(
 
   const targetBoundary = sourceIdentityCandidates.length > 0
     ? sourceIdentityCandidates
-      .map((candidate) => turn.targetStatuses
-        .filter((target) => matchesStartupRecoverySourceIdentity(target, candidate))
-        .flatMap((target) => [target.queuedAt, target.startedAt, target.completedAt ?? null])
-        .filter((value): value is string => typeof value === 'string' && value.length > 0)
-        .sort((left, right) => left.localeCompare(right))[0] ?? null)
-      .filter((value): value is string => typeof value === 'string' && value.length > 0)
-      .sort((left, right) => left.localeCompare(right))
+      .map((candidate) => {
+        const createdAt = turn.targetStatuses
+          .filter((target) => matchesStartupRecoverySourceIdentity(target, candidate))
+          .flatMap((target) => [target.queuedAt, target.startedAt, target.completedAt ?? null])
+          .filter((value): value is string => typeof value === 'string' && value.length > 0)
+          .sort((left, right) => left.localeCompare(right))[0] ?? null;
+        return createdAt
+          ? {
+              createdAt,
+              sourceMessageId: turn.sourceMessageId,
+              sourceTurnId: candidate.sourceTurnId,
+              sourceLaneId: candidate.sourceLaneId,
+              sourceAssistantTurnId: candidate.sourceAssistantTurnId,
+            } satisfies StartupRecoverySourceBoundary
+          : null;
+      })
+      .filter(isNonNull)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
       .at(-1) ?? null
-    : turn.targetStatuses
-      .filter((target) => target.sourceMessageId === turn.sourceMessageId)
-      .flatMap((target) => [target.queuedAt, target.startedAt, target.completedAt ?? null])
-      .filter((value): value is string => typeof value === 'string' && value.length > 0)
-      .sort((left, right) => left.localeCompare(right))[0] ?? null;
+    : (() => {
+        const createdAt = turn.targetStatuses
+          .filter((target) => target.sourceMessageId === turn.sourceMessageId)
+          .flatMap((target) => [target.queuedAt, target.startedAt, target.completedAt ?? null])
+          .filter((value): value is string => typeof value === 'string' && value.length > 0)
+          .sort((left, right) => left.localeCompare(right))[0] ?? null;
+        return createdAt
+          ? {
+              createdAt,
+              sourceMessageId: turn.sourceMessageId,
+              sourceTurnId: null,
+              sourceLaneId: null,
+              sourceAssistantTurnId: null,
+            } satisfies StartupRecoverySourceBoundary
+          : null;
+      })();
   if (targetBoundary) {
     return targetBoundary;
   }
 
-  const eventBoundary = turn.events
+  const eventBoundaryCreatedAt = turn.events
     .filter((event) => event.sourceMessageId === turn.sourceMessageId)
     .map((event) => event.createdAt)
     .filter((value) => value.length > 0)
     .sort((left, right) => left.localeCompare(right))[0] ?? null;
+  const eventBoundary = eventBoundaryCreatedAt
+    ? {
+        createdAt: eventBoundaryCreatedAt,
+        sourceMessageId: turn.sourceMessageId,
+        sourceTurnId: null,
+        sourceLaneId: null,
+        sourceAssistantTurnId: null,
+      } satisfies StartupRecoverySourceBoundary
+    : null;
   if (eventBoundary) {
     return eventBoundary;
   }
 
-  return options.core?.turns.find((candidate) =>
-    candidate.id === turn.id
-    && candidate.conversationId === resolveChannelCanonicalIdentity(null, options.channelId).conversationId)?.createdAt
-    ?? turn.startedAt;
+  return {
+    createdAt:
+      options.core?.turns.find((candidate) =>
+        candidate.id === turn.id
+        && candidate.conversationId === resolveChannelCanonicalIdentity(null, options.channelId).conversationId)?.createdAt
+      ?? turn.startedAt,
+    sourceMessageId: turn.sourceMessageId,
+    sourceTurnId: null,
+    sourceLaneId: null,
+    sourceAssistantTurnId: null,
+  };
 }
 
 function readMessageSessionId(message: ChatMessage): string | null {
@@ -1649,16 +1734,16 @@ export function repairMissingStartupRecoveryNotice(
 
     const sourceMessageIndex = nextChannel.messages.findIndex((message) =>
       message.id === turn.sourceMessageId);
-    const sourceBoundaryCreatedAt = sourceMessageIndex >= 0
-      ? nextChannel.messages[sourceMessageIndex]!.createdAt
-      : resolveStartupRecoverySourceBoundaryCreatedAt(turn, {
+    const sourceBoundary = sourceMessageIndex >= 0
+      ? resolveStartupRecoverySourceBoundaryFromMessage(nextChannel.messages[sourceMessageIndex]!)
+      : resolveStartupRecoverySourceBoundary(turn, {
         core: options.core,
         channelId,
       });
     const isAfterSourceBoundary = (message: ChatMessage, index: number): boolean => (
       sourceMessageIndex >= 0
         ? index > sourceMessageIndex
-        : message.createdAt.localeCompare(sourceBoundaryCreatedAt) > 0
+        : message.createdAt.localeCompare(sourceBoundary.createdAt) > 0
     );
 
     const nextUserMessageIndex = nextChannel.messages.findIndex((message, index) =>
@@ -1683,8 +1768,15 @@ export function repairMissingStartupRecoveryNotice(
       mentions: [],
       metadata: {
         event: 'workflow_interrupted',
+        ...resolveChannelCanonicalIdentity(nextState, channelId),
         blockedReason: 'startup_recovery',
         turnId: turn.id,
+        ...(sourceBoundary.sourceMessageId ? { sourceMessageId: sourceBoundary.sourceMessageId } : {}),
+        ...(sourceBoundary.sourceTurnId ? { sourceTurnId: sourceBoundary.sourceTurnId } : {}),
+        ...(sourceBoundary.sourceLaneId ? { sourceLaneId: sourceBoundary.sourceLaneId } : {}),
+        ...(sourceBoundary.sourceAssistantTurnId
+          ? { sourceAssistantTurnId: sourceBoundary.sourceAssistantTurnId }
+          : {}),
         repairSource: 'missing_startup_recovery_notice',
         recoverySource: 'server_restart',
       },
