@@ -24,6 +24,7 @@ export function createEmptyExecutionLease(): ParticipantExecutionLease {
     status: 'not_started',
     cwd: null,
     lastError: null,
+    laneId: null,
     provider: null,
     model: null,
     startedAt: null,

@@ -68,6 +68,7 @@ export function setStartedSession(
   target: 'orchestrator' | { participantId: string },
   session: RuntimeSessionInfo,
   now: Date,
+  laneId: string | null = null,
 ): ChatState {
   const timestamp = now.toISOString();
   if (typeof target !== 'string') {
@@ -80,6 +81,7 @@ export function setStartedSession(
         status: normalizeRuntimeStatus(session.status),
         cwd: session.cwd,
         lastError: null,
+        laneId,
         provider: session.provider,
         model: session.model,
         startedAt: timestamp,
@@ -97,6 +99,7 @@ export function setStartedSession(
       status: normalizeRuntimeStatus(session.status),
       cwd: session.cwd,
       lastError: null,
+      laneId,
       provider: session.provider,
       model: session.model,
       startedAt: timestamp,
@@ -142,13 +145,18 @@ export function markTargetWaking(
   channelId: string,
   target: RoutingTarget,
   now: Date,
+  laneId: string | null = null,
 ): ChatState {
   if (target.participantKind === 'cat') {
     return setChannelParticipantLease(
       state,
       channelId,
       target.participantId,
-      { status: 'initializing', lastError: null },
+      {
+        status: 'initializing',
+        lastError: null,
+        ...(laneId ? { laneId } : {}),
+      },
       now,
     );
   }
@@ -156,7 +164,11 @@ export function markTargetWaking(
   return setChannelOrchestratorLease(
     state,
     channelId,
-    { status: 'initializing', lastError: null },
+    {
+      status: 'initializing',
+      lastError: null,
+      ...(laneId ? { laneId } : {}),
+    },
     now,
   );
 }
@@ -207,6 +219,7 @@ export function clearTargetSessionLease(
     cwd: null,
     status: 'not_started' as const,
     lastError: null,
+    laneId: null,
     startedAt: null,
   };
 

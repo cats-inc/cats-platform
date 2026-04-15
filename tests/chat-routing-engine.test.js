@@ -530,8 +530,17 @@ test('initial sequential audience persists continuation checkpoints as the promp
   );
   const begunChannel = requireChannel(begun.state, channelId);
   const begunTargetStatuses = begunChannel.roomRouting.workflow.activeTurn?.targetStatuses ?? [];
-  assert.equal(begunTargetStatuses.length, 1);
-  assert.equal(begunTargetStatuses[0]?.status, 'pending');
+  assert.equal(begunTargetStatuses.length, 2);
+  assert.deepEqual(
+    begunTargetStatuses.map((target) => ({
+      participantId: target.participant.participantId,
+      status: target.status,
+    })),
+    [
+      { participantId: agent2Id, status: 'pending' },
+      { participantId: agent1Id, status: 'pending' },
+    ],
+  );
   const begunTargetStateId = begunTargetStatuses[0]?.id ?? null;
   assert.ok(begunTargetStateId);
   const dispatchPromise = continueBegunChannelMessageDispatch(
@@ -2025,6 +2034,84 @@ test('direct cat chat records targetStateId on real session_started messages', a
   assert.ok(sessionStarted);
   assert.equal(sessionStarted?.metadata?.targetStateId, targetStateId);
   assert.equal(sessionStarted?.metadata?.laneId, laneId);
+});
+
+test('direct cat chat updates the reused lease laneId when the same runtime session serves a new turn', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const startedAt = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    startedAt,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Reuse the same runtime session across turns but keep the lease lane current.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    startedAt,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`Companion answered on ${sessionId}.`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    { body: 'Answer the first turn.' },
+    runtimeClient,
+    startedAt,
+  );
+  const firstChannel = requireChannel(firstDispatch.state, channelId);
+  const firstUserMessage = [...firstChannel.messages].reverse().find((message) =>
+    message.senderKind === 'user' && message.body === 'Answer the first turn.');
+  const firstTurn = firstChannel.roomRouting.workflow.turnHistory.find((turn) =>
+    turn.sourceMessageId === firstUserMessage?.id);
+  assert.ok(firstTurn);
+  const firstTargetStateId = firstTurn?.targetStatuses[0]?.id;
+  assert.equal(typeof firstTargetStateId, 'string');
+  const firstLaneId = buildChatLaneId(firstTurn.id, firstTargetStateId, companionId);
+  assert.equal(firstChannel.catAssignments[0]?.execution.lease.laneId, firstLaneId);
+
+  const secondDispatch = await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    { body: 'Answer the second turn on the same session.' },
+    runtimeClient,
+    new Date('2026-03-21T00:01:00.000Z'),
+  );
+  const secondChannel = requireChannel(secondDispatch.state, channelId);
+  const secondUserMessage = [...secondChannel.messages].reverse().find((message) =>
+    message.senderKind === 'user' && message.body === 'Answer the second turn on the same session.');
+  const secondTurn = secondChannel.roomRouting.workflow.turnHistory.find((turn) =>
+    turn.sourceMessageId === secondUserMessage?.id);
+  assert.ok(secondTurn);
+  const secondTargetStateId = secondTurn?.targetStatuses[0]?.id;
+  assert.equal(typeof secondTargetStateId, 'string');
+  const secondLaneId = buildChatLaneId(secondTurn.id, secondTargetStateId, companionId);
+
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.deepEqual(
+    runtimeClient.sentMessages.map((message) => message.sessionId),
+    ['session-1', 'session-1'],
+  );
+  assert.equal(secondChannel.catAssignments[0]?.execution.lease.sessionId, 'session-1');
+  assert.equal(secondChannel.catAssignments[0]?.execution.lease.laneId, secondLaneId);
+  assert.notEqual(secondLaneId, firstLaneId);
 });
 
 test('direct cat chat records targetStateId on session_start_failed messages', async () => {

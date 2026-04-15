@@ -68,6 +68,7 @@ export function createDispatchRecoveryErrorLeasePatch(
       ? {
           sessionId: null,
           cwd: null,
+          laneId: null,
           startedAt: null,
         }
       : {}),

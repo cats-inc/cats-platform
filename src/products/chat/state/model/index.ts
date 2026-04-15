@@ -558,6 +558,7 @@ export function removeCatFromChannel(
     status: 'removed',
     cwd: null,
     lastError: null,
+    laneId: null,
     provider: null,
     model: null,
     startedAt: null,

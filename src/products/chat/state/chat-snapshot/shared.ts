@@ -84,6 +84,7 @@ export function normalizeExecutionLease(
     status,
     cwd: readNullableString(leaseRecord?.cwd),
     lastError: readNullableString(leaseRecord?.lastError),
+    laneId: readNullableString(leaseRecord?.laneId),
     provider: readNullableString(leaseRecord?.provider) ?? fallbackTarget.provider,
     model: readNullableString(leaseRecord?.model) ?? fallbackTarget.model,
     startedAt: readNullableString(leaseRecord?.startedAt),

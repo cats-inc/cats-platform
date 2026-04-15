@@ -132,6 +132,8 @@ export function updateExecutionLease(
     cwd: input.cwd === undefined ? current.cwd : input.cwd,
     lastError:
       input.lastError === undefined ? current.lastError : input.lastError,
+    laneId:
+      input.laneId === undefined ? current.laneId : normalizeOptionalText(input.laneId),
     provider:
       input.provider === undefined ? current.provider : normalizeOptionalText(input.provider),
     model:

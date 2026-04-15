@@ -25,6 +25,7 @@ import {
   appendMessage,
   buildChannelView,
   requireChannel,
+  setChannelParticipantLease,
   setChannelParticipantExecutionTarget,
   setChannelChatCwd,
   setChannelOrchestratorLease,
@@ -313,6 +314,27 @@ export async function ensureTargetSession(
     status,
     error,
   );
+  const applyLeaseLaneAttachment = (
+    inputState: ChatState,
+  ): ChatState => {
+    if (!laneId) {
+      return inputState;
+    }
+    return target.participantKind === 'cat'
+      ? setChannelParticipantLease(
+        inputState,
+        channelId,
+        target.participantId,
+        { laneId },
+        now,
+      )
+      : setChannelOrchestratorLease(
+        inputState,
+        channelId,
+        { laneId },
+        now,
+      );
+  };
 
   if (target.sessionId) {
     if (await shouldReviveExistingTargetSession(
@@ -385,7 +407,7 @@ export async function ensureTargetSession(
     }
 
     return {
-      state,
+      state: applyLeaseLaneAttachment(state),
       target,
       error: null,
       wakeRequest: recordTargetWake('skipped'),
@@ -401,7 +423,7 @@ export async function ensureTargetSession(
   let targetLabelInstance: string | null = null;
 
   try {
-    nextState = markTargetWaking(nextState, channelId, target, now);
+    nextState = markTargetWaking(nextState, channelId, target, now, laneId);
     const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
       nextState,
       channel,
@@ -481,7 +503,7 @@ export async function ensureTargetSession(
           },
           now,
         );
-      nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now);
+      nextState = setStartedSession(nextState, channelId, 'orchestrator', session, now, laneId);
       if (!spawnCwd && session.cwd) {
         nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
@@ -586,6 +608,7 @@ export async function ensureTargetSession(
       { participantId: target.participantId },
       session,
       now,
+      laneId,
     );
     if (!spawnCwd && session.cwd) {
       nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
