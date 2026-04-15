@@ -96,7 +96,7 @@ function buildParticipantStreamTarget(
         participantId,
         { statuses: ['ready', 'initializing'] },
       ),
-    laneId: null,
+    laneId: expectedLaneId ?? leaseLaneId,
     participantId,
     catId: assignment ? resolveParticipantCatId(assignment) : null,
     speakerLabel: normalizeVisibleSpeakerLabel(assignment?.name ?? fallbackSpeakerLabel),
@@ -128,7 +128,7 @@ function buildOrchestratorStreamTarget(
     sessionId: laneConflicts
       ? null
       : channel.orchestratorLease?.sessionId?.trim() || null,
-    laneId: null,
+    laneId: expectedLaneId ?? leaseLaneId,
     participantId: 'orchestrator',
     catId: null,
     speakerLabel,

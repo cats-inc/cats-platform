@@ -487,15 +487,56 @@ test('resolveChannelStreamTarget falls back to the default recipient while a sin
     },
     catAssignments: [],
     participantAssignments: [
-      buildParticipantAssignment('participant-1', 'session-1', 'ready', 'Claude-CLI'),
+      buildParticipantAssignment(
+        'participant-1',
+        'session-1',
+        'ready',
+        'Claude-CLI',
+        null,
+        'lane-direct-fallback',
+      ),
     ],
   };
 
   assert.equal(resolveChannelStreamSessionId(channel), 'session-1');
   assert.deepEqual(resolveChannelStreamTarget(channel), {
     sessionId: 'session-1',
-    laneId: null,
+    laneId: 'lane-direct-fallback',
     participantId: 'participant-1',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
+    targetStateId: null,
+  });
+});
+
+test('resolveChannelStreamTarget carries the orchestrator lease lane id outside an active workflow turn', () => {
+  const channel = {
+    composerMode: 'solo',
+    pendingProvider: 'claude',
+    pendingInstance: 'cli/native',
+    orchestratorLease: {
+      status: 'ready',
+      sessionId: 'session-orchestrator-idle',
+      laneId: 'lane-orchestrator-idle',
+      provider: 'claude',
+      model: 'claude-sonnet',
+    },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: null,
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [],
+  };
+
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: 'session-orchestrator-idle',
+    laneId: 'lane-orchestrator-idle',
+    participantId: 'orchestrator',
     catId: null,
     speakerLabel: 'Claude-CLI',
     sessionStartedAt: null,
