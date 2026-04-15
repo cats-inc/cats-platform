@@ -118,6 +118,17 @@ export function finalizeDispatchTurn(
       outcome.resolvedTargets,
       {
         outcomeId: randomUUID(),
+        targetIdentities: outcome.resolvedTargets.map((target) => {
+          const targetStatus = activeTurn.targetStatuses.find((candidate) =>
+            candidate.participant.participantKind === target.participantKind
+            && candidate.participant.participantId === target.participantId);
+          return {
+            participantKind: target.participantKind,
+            participantId: target.participantId,
+            laneId: targetStatus?.laneId ?? null,
+            sessionId: targetStatus?.sessionId ?? null,
+          };
+        }),
         metadata: {
           guard: guardReason,
           workflowStageId: activeTurn.stageId,

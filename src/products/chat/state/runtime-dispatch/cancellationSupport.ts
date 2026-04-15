@@ -84,6 +84,12 @@ export function cancelInFlightWorkflowTargets(options: {
         [targetStatus.participant],
         {
           dispatchId: targetStatus.dispatchId,
+          targetIdentities: [{
+            participantKind: targetStatus.participant.participantKind,
+            participantId: targetStatus.participant.participantId,
+            laneId: targetStatus.laneId,
+            sessionId: targetStatus.sessionId,
+          }],
           metadata: {
             checkpointKind: 'completed',
             blockedReason: 'user_cancelled',

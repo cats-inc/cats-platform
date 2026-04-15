@@ -36,6 +36,30 @@ function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
   };
 }
 
+interface WorkflowEventTargetIdentity {
+  participantKind: RoomRoutingParticipantRef['participantKind'];
+  participantId: string;
+  laneId: string | null;
+  sessionId: string | null;
+}
+
+function buildWorkflowEventTargetIdentityMetadata(
+  targetIdentities: ReadonlyArray<WorkflowEventTargetIdentity> | undefined,
+): Record<string, unknown> {
+  if (!targetIdentities || targetIdentities.length === 0) {
+    return {};
+  }
+
+  return {
+    targetIdentities: targetIdentities.map((identity) => ({
+      participantKind: identity.participantKind,
+      participantId: identity.participantId,
+      laneId: identity.laneId ?? null,
+      sessionId: identity.sessionId ?? null,
+    })),
+  };
+}
+
 export function createRoutingOutcome(
   channel: ChatChannelView,
   sourceMessage: ChatMessage,
@@ -126,6 +150,7 @@ export function createWorkflowEvent(
     checkpointId?: string | null;
     outcomeId?: string | null;
     metadata?: Record<string, unknown>;
+    targetIdentities?: ReadonlyArray<WorkflowEventTargetIdentity>;
   } = {},
 ): RoomWorkflowEvent {
   return {
@@ -141,7 +166,10 @@ export function createWorkflowEvent(
     checkpointId: options.checkpointId ?? null,
     outcomeId: options.outcomeId ?? null,
     createdAt: nowIso,
-    metadata: options.metadata ? structuredClone(options.metadata) : {},
+    metadata: {
+      ...buildWorkflowEventTargetIdentityMetadata(options.targetIdentities),
+      ...(options.metadata ? structuredClone(options.metadata) : {}),
+    },
   };
 }
 

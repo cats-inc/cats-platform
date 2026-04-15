@@ -878,6 +878,12 @@ function appendRecoveredTargetCompletedEvent(
       [structuredClone(participant)],
       {
         dispatchId: dispatch.id,
+        targetIdentities: [{
+          participantKind: participant.participantKind,
+          participantId: participant.participantId,
+          laneId: dispatch.laneId,
+          sessionId: dispatch.sessionId,
+        }],
         metadata: {
           response,
           recoveryPhase: 'orphaned_completed_turn_repair',

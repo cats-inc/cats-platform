@@ -156,6 +156,12 @@ export async function prepareReadyRequests(
           [toParticipantRef(request.target)],
           {
             dispatchId: request.dispatchId,
+            targetIdentities: [{
+              participantKind: request.target.participantKind,
+              participantId: request.target.participantId,
+              laneId: ensured.target.laneId ?? request.target.laneId ?? null,
+              sessionId: null,
+            }],
             metadata: {
               phase: 'wake',
               parentCheckpointId: request.parentCheckpointId,
@@ -233,6 +239,12 @@ export async function prepareReadyRequests(
         [toParticipantRef(ensured.target)],
         {
           dispatchId: request.dispatchId,
+          targetIdentities: [{
+            participantKind: ensured.target.participantKind,
+            participantId: ensured.target.participantId,
+            laneId: ensured.target.laneId ?? null,
+            sessionId: ensured.target.sessionId ?? null,
+          }],
           metadata: {
             depth: request.depth,
             trigger: request.trigger,

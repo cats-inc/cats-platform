@@ -184,6 +184,12 @@ export function prepareDispatchTurnForUserMessage(
       userMessage.id,
       initialResolution.targets.map((target) => toParticipantRef(target)),
       {
+        targetIdentities: initialResolution.targets.map((target) => ({
+          participantKind: target.participantKind,
+          participantId: target.participantId,
+          laneId: target.laneId ?? null,
+          sessionId: target.sessionId ?? null,
+        })),
         metadata: {
           trigger: initialResolution.trigger,
           workflowStageId: activeTurn.stageId,
@@ -210,6 +216,8 @@ export function prepareDispatchTurnForUserMessage(
     id: randomUUID(),
     dispatchId: null,
     participant: toParticipantRef(target),
+    laneId: target.laneId ?? null,
+    sessionId: target.sessionId ?? null,
     source: null,
     sourceMessageId: userMessage.id,
     trigger: initialResolution.trigger,
@@ -300,6 +308,12 @@ export function prepareDispatchTurnForUserMessage(
         blockedTargets,
         {
           outcomeId: randomUUID(),
+          targetIdentities: initialResolution.targets.map((target) => ({
+            participantKind: target.participantKind,
+            participantId: target.participantId,
+            laneId: target.laneId ?? null,
+            sessionId: target.sessionId ?? null,
+          })),
           metadata: {
             workflowStageId: activeTurn.stageId,
             workflowShape: activeTurn.workflowShape,

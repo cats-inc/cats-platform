@@ -33,6 +33,50 @@ interface ExecutionSelection {
   turnId?: string | null;
 }
 
+function readEventTargetIdentities(
+  event: RoomWorkflowEvent,
+): Array<{
+  participantKind: 'orchestrator' | 'cat';
+  participantId: string;
+  laneId: string | null;
+  sessionId: string | null;
+}> {
+  const rawTargetIdentities = event.metadata.targetIdentities;
+  if (!Array.isArray(rawTargetIdentities)) {
+    return [];
+  }
+
+  return rawTargetIdentities.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      return [];
+    }
+
+    const record = entry as Record<string, unknown>;
+    const participantKind = record.participantKind === 'orchestrator'
+      || record.participantKind === 'cat'
+      ? record.participantKind
+      : null;
+    const participantId = typeof record.participantId === 'string'
+      && record.participantId.trim().length > 0
+      ? record.participantId.trim()
+      : null;
+    if (!participantKind || !participantId) {
+      return [];
+    }
+
+    return [{
+      participantKind,
+      participantId,
+      laneId: typeof record.laneId === 'string' && record.laneId.trim().length > 0
+        ? record.laneId.trim()
+        : null,
+      sessionId: typeof record.sessionId === 'string' && record.sessionId.trim().length > 0
+        ? record.sessionId.trim()
+        : null,
+    }];
+  });
+}
+
 function resolveWorkflowTurn(
   channel: OrchestratorChannelView,
   selection: ExecutionSelection = {},
@@ -148,14 +192,25 @@ function buildEventStep(
   const stageId = typeof event.metadata.workflowStageId === 'string'
     ? event.metadata.workflowStageId
     : turn.stageId;
-  const eventTargets = event.targets.map((target) => {
+  const eventTargetIdentities = readEventTargetIdentities(event);
+  const eventTargets = event.targets.map((target, targetIndex) => {
     const lease = resolveParticipantExecutionLease(channel, target);
+    const indexedIdentity = eventTargetIdentities[targetIndex] ?? null;
+    const targetIdentity = (
+      indexedIdentity?.participantKind === target.participantKind
+      && indexedIdentity.participantId === target.participantId
+    )
+      ? indexedIdentity
+      : eventTargetIdentities.find((candidate) =>
+      candidate.participantKind === target.participantKind
+      && candidate.participantId === target.participantId,
+    ) ?? null;
     return {
       participantKind: target.participantKind,
       participantId: target.participantId,
       participantName: target.participantName,
-      laneId: lease?.laneId ?? null,
-      sessionId: lease?.sessionId ?? null,
+      laneId: targetIdentity?.laneId ?? lease?.laneId ?? null,
+      sessionId: targetIdentity?.sessionId ?? lease?.sessionId ?? null,
       trigger: null,
       plannedDepth: 0,
       dispatchId: event.dispatchId,

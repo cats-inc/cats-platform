@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { ChannelDispatchResult, ChatMessage, ChatState } from '../../api/contracts.js';
 import type {
   RoomRoutingCheckpoint,
@@ -36,6 +38,7 @@ import {
 } from '../room-routing/index.js';
 import {
   type TargetResolution,
+  resolveWorkflowHandoffReason,
   workflowShapeForTargets,
 } from '../room-routing/runtime.js';
 import {
@@ -532,6 +535,12 @@ export async function resumeWorkflowContinuationReplay(input: {
       sourceMessage.id,
       replayTargets,
       {
+        targetIdentities: initialResolution.targets.map((target) => ({
+          participantKind: target.participantKind,
+          participantId: target.participantId,
+          laneId: target.laneId ?? null,
+          sessionId: target.sessionId ?? null,
+        })),
         metadata: replayEventMetadata,
       },
     ),
@@ -553,6 +562,28 @@ export async function resumeWorkflowContinuationReplay(input: {
     replayTargets,
     replayCheckpointMetadata,
   );
+  activeTurn.targetStatuses = initialResolution.targets.map((target, targetIndex) => ({
+    id: randomUUID(),
+    dispatchId: null,
+    participant: structuredClone(replayTargets[targetIndex]!),
+    laneId: target.laneId ?? null,
+    sessionId: target.sessionId ?? null,
+    source: input.request.sourceParticipant ? structuredClone(input.request.sourceParticipant) : null,
+    sourceMessageId: sourceMessage.id,
+    trigger: initialResolution.trigger,
+    mentionNames: structuredClone(initialResolution.mentionNames),
+    depth: 0,
+    parentCheckpointId: latestCheckpoint?.id ?? null,
+    branchStrategy: input.request.branchStrategy,
+    handoffReason: resolveWorkflowHandoffReason(initialResolution.trigger),
+    wakeRequestId: null,
+    status: 'pending',
+    queuedAt: nowIso,
+    startedAt: null,
+    completedAt: null,
+    response: null,
+    error: null,
+  }));
 
   let nextState = materializeInFlightDispatchState(
     state,

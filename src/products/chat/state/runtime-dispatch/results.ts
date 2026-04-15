@@ -492,6 +492,12 @@ export function applyDispatchExecutions(
           [toParticipantRef(execution.target)],
           {
             dispatchId: execution.dispatchId,
+            targetIdentities: [{
+              participantKind: execution.target.participantKind,
+              participantId: execution.target.participantId,
+              laneId: execution.target.laneId ?? null,
+              sessionId: execution.target.sessionId ?? null,
+            }],
             metadata: {
               phase: 'dispatch',
               parentCheckpointId: execution.parentCheckpointId,
@@ -707,6 +713,12 @@ export function applyDispatchExecutions(
         [toParticipantRef(execution.target)],
         {
           dispatchId: execution.dispatchId,
+          targetIdentities: [{
+            participantKind: execution.target.participantKind,
+            participantId: execution.target.participantId,
+            laneId: execution.target.laneId ?? null,
+            sessionId: execution.target.sessionId ?? null,
+          }],
           metadata: {
             response,
             parentCheckpointId: execution.parentCheckpointId,

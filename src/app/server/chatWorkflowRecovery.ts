@@ -226,6 +226,17 @@ function recoverChannelWorkflowTurn(
       activeTurn.sourceMessageId,
       interruptedTargets,
       {
+        targetIdentities: interruptedTargets.map((target) => {
+          const targetStatus = activeTurn.targetStatuses.find((candidate) =>
+            candidate.participant.participantKind === target.participantKind
+            && candidate.participant.participantId === target.participantId);
+          return {
+            participantKind: target.participantKind,
+            participantId: target.participantId,
+            laneId: targetStatus?.laneId ?? null,
+            sessionId: targetStatus?.sessionId ?? null,
+          };
+        }),
         metadata: {
           recoveryPhase: 'startup_recovered',
           recoverySource: 'server_restart',

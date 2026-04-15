@@ -296,6 +296,12 @@ export async function processDispatchQueue(
           [toParticipantRef(target)],
           {
             dispatchId: request.dispatchId,
+            targetIdentities: [{
+              participantKind: request.target.participantKind,
+              participantId: request.target.participantId,
+              laneId: request.target.laneId ?? null,
+              sessionId: request.target.sessionId ?? null,
+            }],
             metadata: {
               depth: frame.depth,
               trigger: frame.trigger,
@@ -341,6 +347,12 @@ export async function processDispatchQueue(
             [toParticipantRef(target)],
             {
               dispatchId: request.dispatchId,
+              targetIdentities: [{
+                participantKind: request.target.participantKind,
+                participantId: request.target.participantId,
+                laneId: request.target.laneId ?? null,
+                sessionId: request.target.sessionId ?? null,
+              }],
               metadata: {
                 reason: 'max_target_visits',
                 parentCheckpointId: request.parentCheckpointId,
@@ -434,6 +446,12 @@ export async function processDispatchQueue(
             [toParticipantRef(target)],
             {
               dispatchId: request.dispatchId,
+              targetIdentities: [{
+                participantKind: request.target.participantKind,
+                participantId: request.target.participantId,
+                laneId: request.target.laneId ?? null,
+                sessionId: request.target.sessionId ?? null,
+              }],
               metadata: {
                 reason: 'anti_ping_pong',
                 parentCheckpointId: request.parentCheckpointId,
@@ -525,6 +543,12 @@ export async function processDispatchQueue(
           effectiveSourceMessage.id,
           allowedRequests.map((request) => toParticipantRef(request.target)),
           {
+            targetIdentities: allowedRequests.map((request) => ({
+              participantKind: request.target.participantKind,
+              participantId: request.target.participantId,
+              laneId: request.target.laneId ?? null,
+              sessionId: request.target.sessionId ?? null,
+            })),
             metadata: {
               branchCount: allowedRequests.length,
               workflowStageId: activeTurn.stageId,
