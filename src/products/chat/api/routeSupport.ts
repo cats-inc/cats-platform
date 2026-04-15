@@ -581,6 +581,12 @@ export async function persistCatAssignmentUpdate(
     && Boolean(spawnCwd);
 
   if (needsSession) {
+    let conversationId = buildChatConversationId(channelId);
+    let containerId = resolveChatChannelContainerId({
+      channelId,
+      parallelChatGroups: nextState.parallelChatGroups,
+    });
+    let transportBindingId: string | null = null;
     try {
       const resolvedChannelView = buildChannelView(nextState, channelId);
       const resolvedCat = resolvedChannelView.assignedCats.find(
@@ -598,18 +604,18 @@ export async function persistCatAssignmentUpdate(
         now,
         context.dependencies.companionStore,
       );
-      const conversationId = readInvocationContextMetadataString(
+      conversationId = readInvocationContextMetadataString(
         runtimeEnvelope.context,
         'conversationId',
       ) ?? buildChatConversationId(channelId);
-      const containerId = readInvocationContextMetadataString(
+      containerId = readInvocationContextMetadataString(
         runtimeEnvelope.context,
         'containerId',
       ) ?? resolveChatChannelContainerId({
         channelId,
         parallelChatGroups: nextState.parallelChatGroups,
       });
-      const transportBindingId = readInvocationContextMetadataString(
+      transportBindingId = readInvocationContextMetadataString(
         runtimeEnvelope.context,
         'transportBindingId',
       );
@@ -681,10 +687,6 @@ export async function persistCatAssignmentUpdate(
         lastError: errorMessage,
       }, now);
       const cat = requireCat(nextState, input.catId);
-      const containerId = resolveChatChannelContainerId({
-        channelId,
-        parallelChatGroups: nextState.parallelChatGroups,
-      });
       nextState = appendMessage(
         nextState,
         channelId,
@@ -698,9 +700,10 @@ export async function persistCatAssignmentUpdate(
           metadata: {
             event: 'session_start_failed',
             containerId,
-            conversationId: buildChatConversationId(channelId),
+            conversationId,
             targetKind: 'cat',
             targetId: assignmentTargetId,
+            ...(transportBindingId ? { transportBindingId } : {}),
           },
         },
       ).state;

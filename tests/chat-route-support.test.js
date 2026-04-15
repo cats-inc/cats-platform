@@ -6,6 +6,7 @@ import test from 'node:test';
 import { persistCatAssignmentUpdate } from '../build/server/products/chat/api/routeSupport.js';
 import {
   buildChatConversationId,
+  buildDirectLaneTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 import {
@@ -126,4 +127,85 @@ test('persistCatAssignmentUpdate starts new cat sessions from the orchestrator a
   assert.ok(sessionStarted);
   assert.equal(sessionStarted.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
   assert.equal(sessionStarted.metadata?.conversationId, buildChatConversationId(channelId));
+});
+
+test('persistCatAssignmentUpdate keeps direct-lane transport binding on session_start_failed metadata', async () => {
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-04-15T14:05:00.000Z');
+  const runtimeClient = {
+    async createSession() {
+      throw new Error('runtime create failed');
+    },
+    async closeSession() {},
+    async getHealth() {
+      return {
+        baseUrl: 'http://127.0.0.1:3110',
+        reachable: true,
+        status: 'ok',
+        service: 'cats-runtime',
+      };
+    },
+    async getProviderConfig() {
+      return {};
+    },
+    async getProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: `${provider}-default`,
+        source: 'config',
+        cache: null,
+        models: [{ id: `${provider}-default`, label: `${provider} default`, default: true }],
+        warnings: [],
+      };
+    },
+  };
+
+  let state = await chatStore.read();
+  state = createCat(state, { name: 'Companion', provider: 'claude' }, now);
+  const catId = state.cats[0].id;
+  state = createChannel(state, {
+    title: 'Route support direct lane failure',
+    topic: 'keep direct-lane transport binding on session_start_failed metadata',
+    roomMode: 'direct_cat_chat',
+    repoPath: 'C:/repo/cats-platform',
+    defaultRecipientId: catId,
+    skipBossCatGreeting: true,
+  }, now);
+  const channelId = state.selectedChannelId;
+  await chatStore.write(state);
+
+  const { persisted } = await persistCatAssignmentUpdate(
+    {
+      dependencies: {
+        config: {
+          runtimeDataDir: path.join(os.tmpdir(), 'cats-route-support-runtime-data'),
+        },
+        runtimeClient,
+        chatStore,
+        companionStore: undefined,
+        memoryService: undefined,
+        now: () => now,
+      },
+    },
+    channelId,
+    {
+      catId,
+      provider: 'claude',
+      roles: ['helper'],
+    },
+  );
+
+  const channel = persisted.channels.find((candidate) => candidate.id === channelId);
+  assert.ok(channel);
+  const sessionStartFailed = channel.messages.find((message) =>
+    message.metadata?.event === 'session_start_failed');
+  assert.ok(sessionStartFailed);
+  assert.equal(sessionStartFailed.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(sessionStartFailed.metadata?.conversationId, buildChatConversationId(channelId));
+  assert.equal(
+    sessionStartFailed.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
+  );
 });
