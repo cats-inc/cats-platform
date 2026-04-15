@@ -1266,6 +1266,70 @@ test('shouldPinLiveIndicatorUntilPersistedReply releases a sealed bubble when th
   );
 });
 
+test('shouldPinLiveIndicatorUntilPersistedReply keeps a lane-scoped bubble pinned even when another lane already replied', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    sourceMessageId: 'message-user',
+    laneId: 'lane-agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'First answer',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  assert.equal(
+    shouldPinLiveIndicatorUntilPersistedReply(previous, {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          senderName: 'Kenny',
+          metadata: {},
+          createdAt: '2026-04-15T01:00:00.000Z',
+        },
+        {
+          id: 'message-agent-other-lane',
+          senderKind: 'agent',
+          senderName: 'Agent-2',
+          metadata: {
+            event: 'assistant_turn_segment',
+            sourceMessageId: 'message-user',
+            laneId: 'lane-agent-2',
+            segmentIndex: 0,
+          },
+          createdAt: '2026-04-15T01:00:03.000Z',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user',
+            workflowShape: 'sequential',
+            targetStatuses: [],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    }),
+    true,
+  );
+});
+
 test('resolveWaitingIndicatorStateTransition keeps the current speaker bubble pinned until the persisted reply lands', () => {
   const previous = {
     ...EMPTY_LIVE_INDICATOR,
@@ -2521,6 +2585,45 @@ test('resolveVisibleLiveIndicator hides stale streaming progress once the same s
   );
 
   assert.equal(visible, null);
+});
+
+test('resolveVisibleLiveIndicator keeps a lane-scoped bubble visible even when another lane already replied', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    sourceMessageId: 'message-user',
+    laneId: 'lane-agent-1',
+    progressText: 'Thinking...',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-other-lane',
+        senderKind: 'agent',
+        senderName: 'Agent-2',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-user',
+          laneId: 'lane-agent-2',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-09T12:00:04.000Z',
+      },
+    ],
+    '2026-04-09T12:00:02.000Z',
+  );
+
+  assert.equal(visible, liveIndicator);
 });
 
 test('resolveVisibleLiveIndicator hides a sealed targeted segment once the same speaker persisted reply is visible', () => {

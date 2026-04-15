@@ -362,7 +362,7 @@ export function shouldPinLiveIndicatorUntilPersistedReply(
     return false;
   }
 
-  if (hasLiveIndicatorIdentity(previous) || previous.targetStateId) {
+  if (hasLiveIndicatorIdentity(previous) || previous.laneId || previous.targetStateId) {
     return !hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
       selectedChannel?.messages ?? [],
       activeTurnSourceMessageId,

@@ -954,7 +954,7 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   }
 
   const primarySegment = resolvePrimaryLiveIndicatorSegment(normalizedVisibleIndicator);
-  if (primarySegment?.targetStateId && primarySegment.phase !== 'sealed') {
+  if ((primarySegment?.laneId || primarySegment?.targetStateId) && primarySegment.phase !== 'sealed') {
     traceLiveIndicatorVisibility({
       liveIndicator: normalizedVisibleIndicator,
       messages,
