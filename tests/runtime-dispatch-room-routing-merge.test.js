@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   appendMessage,
+  createCat,
   createChannel,
   requireChannel,
 } from '../build/server/products/chat/state/model/index.js';
@@ -32,6 +33,7 @@ import {
 } from '../build/server/products/chat/state/runtime-dispatch/repair.js';
 import {
   buildChatConversationId,
+  buildDirectLaneTransportBindingId,
   buildChatLaneId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
@@ -172,6 +174,62 @@ test('settleBegunChannelMessageDispatchFailure preserves a newer room-routing wo
     && /Injected runtime failure/u.test(message.body));
   assert.equal(runtimeError?.metadata?.conversationId, buildChatConversationId(channelId));
   assert.equal(runtimeError?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+});
+
+test('settleBegunChannelMessageDispatchFailure keeps direct-lane transport bindings on runtime_error messages', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-15T12:00:00.000Z');
+  const failureAt = new Date('2026-04-15T12:00:05.000Z');
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const companionId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Direct lane settle failure',
+      topic: 'Keep implicit direct-lane bindings on outer runtime_error notices.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Trigger an outer dispatch failure.' },
+    runtimeClient,
+    seededAt,
+  );
+  const settled = await settleBegunChannelMessageDispatchFailure(
+    begun,
+    channelId,
+    new Error('Injected direct-lane failure'),
+    failureAt,
+  );
+  const settledChannel = requireChannel(settled.state, channelId);
+  const runtimeError = settledChannel.messages.find((message) =>
+    message.metadata?.event === 'runtime_error'
+    && /Injected direct-lane failure/u.test(message.body));
+  assert.ok(runtimeError);
+  assert.equal(runtimeError?.metadata?.conversationId, buildChatConversationId(channelId));
+  assert.equal(runtimeError?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(
+    runtimeError?.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
+  );
 });
 
 test('mergeCompletedDispatchState treats overlapping workflow mutations as latest-wins', async () => {

@@ -34,6 +34,7 @@ import {
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import {
   buildChatConversationId,
+  buildDirectLaneTransportBindingId,
   resolveChatChannelContainerId,
 } from '../../../../shared/chatCoreIds.js';
 import {
@@ -456,11 +457,16 @@ export async function settleBegunChannelMessageDispatchFailure(
   const nowIso = now.toISOString();
 
   const latestState = options.latestState ?? begun.state;
+  const latestChannel = requireChannel(latestState, channelId);
   const conversationId = buildChatConversationId(channelId);
   const containerId = resolveChatChannelContainerId({
     channelId,
     parallelChatGroups: latestState.parallelChatGroups,
   });
+  const transportBindingId = options.transportBindingId
+    ?? (latestChannel.channelKind === 'direct_lane'
+      ? buildDirectLaneTransportBindingId(channelId)
+      : null);
   let nextState = appendMessage(
     latestState,
     channelId,
@@ -476,7 +482,7 @@ export async function settleBegunChannelMessageDispatchFailure(
         phase: 'dispatch_continue',
         conversationId,
         containerId,
-        ...(options.transportBindingId ? { transportBindingId: options.transportBindingId } : {}),
+        ...(transportBindingId ? { transportBindingId } : {}),
       },
     },
   ).state;
