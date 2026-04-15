@@ -24,8 +24,8 @@ import {
 } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
-  resolveOrchestratorExecutionLease,
-  resolveParticipantExecutionLease,
+  resolveOrchestratorLeaseAttachment,
+  resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
 import {
   resolveChatLifecycleState,
@@ -138,7 +138,7 @@ function resolveLeadParticipantLeaseStatus(
     (candidate) => candidate.participantId === leadId && candidate.status === 'active',
   );
   return assignment
-    ? resolveParticipantExecutionLease(channel, assignment.participantId)?.status ?? null
+    ? resolveParticipantLeaseAttachment(channel, assignment.participantId)?.status ?? null
     : null;
 }
 
@@ -236,7 +236,9 @@ export function resolveChannelEntryParticipant(
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
     participantName: resolveOrchestratorDisplayName(state),
-    lifecycleState: resolveParticipantLifecycleState(resolveOrchestratorExecutionLease(channel)),
+    lifecycleState: resolveChatLifecycleState(
+      resolveOrchestratorLeaseAttachment(channel)?.status ?? 'not_started',
+    ),
   };
 }
 

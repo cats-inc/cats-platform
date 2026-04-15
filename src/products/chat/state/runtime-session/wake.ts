@@ -50,9 +50,7 @@ import {
 } from '../runtime-dispatch/context.js';
 import {
   findAssignedParticipant,
-  resolveOrchestratorExecutionLease,
   resolveOrchestratorLeaseAttachment,
-  resolveParticipantExecutionLease,
   resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
 import {
@@ -133,8 +131,8 @@ async function shouldReviveExistingTargetSession(
 
   const channel = requireChannel(state, channelId);
   const lease = target.participantKind === 'cat'
-    ? resolveParticipantExecutionLease(channel, target.participantId)
-    : resolveOrchestratorExecutionLease(channel);
+    ? resolveParticipantLeaseAttachment(channel, target.participantId)
+    : resolveOrchestratorLeaseAttachment(channel);
 
   if (!lease) {
     return false;
@@ -289,18 +287,15 @@ function resolveTargetLeaseAttachment(
   const targetLaneId = target.laneId?.trim() || null;
   const targetSessionId = target.sessionId?.trim() || null;
   const laneId = options.preferredLaneId ?? targetLaneId ?? leaseLaneId;
-  const hasCanonicalLane = laneId != null;
-  const leaseSessionMatchesLane = leaseSessionId != null
-    && (!hasCanonicalLane || leaseLaneId === laneId);
   const targetSessionMatchesLane = targetSessionId != null
-    && (!hasCanonicalLane || targetLaneId === laneId);
+    && (laneId == null || targetLaneId === laneId);
 
   return {
     laneId: laneId ?? leaseLaneId ?? targetLaneId,
     sessionId: options.allowLeaseSessionReuse === false
       ? (targetSessionMatchesLane ? targetSessionId : null)
       : (
-          (leaseSessionMatchesLane ? leaseSessionId : null)
+          leaseSessionId
           ?? (targetSessionMatchesLane ? targetSessionId : null)
         ),
   };
@@ -418,11 +413,11 @@ export async function ensureTargetSession(
     if (attachedTarget.participantKind === 'orchestrator') {
       const channelState = requireChannel(state, channelId);
       const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
-      const orchestratorLease = resolveOrchestratorExecutionLease(channelState);
+      const orchestratorLease = resolveOrchestratorLeaseAttachment(channelState);
       const shouldRestartSoloSession = channelState.composerMode === 'solo'
         && (
-          orchestratorLease.provider !== executionTarget.provider
-          || orchestratorLease.model !== executionTarget.model
+          orchestratorLease?.provider !== executionTarget.provider
+          || orchestratorLease?.model !== executionTarget.model
         );
 
       if (shouldRestartSoloSession) {
@@ -446,7 +441,7 @@ export async function ensureTargetSession(
             provider: executionTarget.provider,
             model: executionTarget.model,
             startedAt: null,
-            lastUsedAt: orchestratorLease.lastUsedAt,
+            lastUsedAt: orchestratorLease?.lastUsedAt ?? null,
           },
           now,
         );

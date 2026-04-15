@@ -452,9 +452,11 @@ function readMessageMetadataString(message: ChatMessage, key: string): string | 
 
 function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): boolean {
   const targetLaneId = target.laneId?.trim() || null;
+  const targetSessionId = target.sessionId?.trim() || null;
   const messageLaneId = readMessageMetadataString(message, 'laneId');
+  const messageSessionId = readMessageMetadataString(message, 'sessionId');
   if (targetLaneId) {
-    if (messageLaneId !== targetLaneId) {
+    if (messageLaneId !== targetLaneId && messageSessionId !== targetSessionId) {
       return false;
     }
 
@@ -548,9 +550,7 @@ function hasVisibleResponseFromCurrentTargetIdentity(
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): boolean {
   const targetLaneId = target.laneId?.trim() || null;
-  if (!targetLaneId) {
-    return false;
-  }
+  const targetSessionId = target.sessionId?.trim() || null;
 
   return messagesBeforeSource(messages, sourceMessage).some((message) => {
     if (message.senderKind === 'system') {
@@ -562,7 +562,10 @@ function hasVisibleResponseFromCurrentTargetIdentity(
     }
 
     const messageLaneId = readMessageMetadataString(message, 'laneId');
-    if (messageLaneId !== targetLaneId) {
+    const messageSessionId = readMessageMetadataString(message, 'sessionId');
+    const matchesLane = targetLaneId !== null && messageLaneId === targetLaneId;
+    const matchesSession = targetSessionId !== null && messageSessionId === targetSessionId;
+    if (!matchesLane && !matchesSession) {
       return false;
     }
 

@@ -3,7 +3,7 @@ import type { RoomRoutingState } from '../../../shared/roomRouting.js';
 import { isDirectLaneChannel } from './channelTopology.js';
 import {
   findAssignedParticipant,
-  resolveOrchestratorExecutionLease,
+  resolveOrchestratorLeaseAttachment,
   resolveResolvedParticipantExecutionStatus,
 } from './channelParticipants.js';
 import { resolveRoomRoutingState } from '../../../core/roomRoutingState.js';
@@ -53,7 +53,9 @@ export function resolveSelectedChannelEntryLifecycle(
     return resolveChatLifecycleState(resolveResolvedParticipantExecutionStatus(leadCat));
   }
 
-  return resolveChatLifecycleState(resolveOrchestratorExecutionLease(selectedChannel).status);
+  return resolveChatLifecycleState(
+    resolveOrchestratorLeaseAttachment(selectedChannel)?.status ?? 'not_started',
+  );
 }
 
 export function shouldWakeRouteChannelOnEntry(input: {

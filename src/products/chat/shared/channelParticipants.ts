@@ -16,7 +16,10 @@ export interface ParticipantLeaseAttachment {
   laneId: string | null;
   status: ParticipantExecutionLease['status'];
   cwd: string | null;
+  provider: string | null;
+  model: string | null;
   startedAt: string | null;
+  lastUsedAt: string | null;
   lastError: string | null;
 }
 
@@ -26,7 +29,10 @@ export interface OrchestratorLeaseAttachment {
   laneId: string | null;
   status: ParticipantExecutionLease['status'];
   cwd: string | null;
+  provider: string | null;
+  model: string | null;
   startedAt: string | null;
+  lastUsedAt: string | null;
   lastError: string | null;
 }
 
@@ -196,7 +202,10 @@ export function resolveParticipantLeaseAttachment(
     laneId,
     status: lease.status,
     cwd: lease.cwd?.trim() || null,
+    provider: lease.provider?.trim() || null,
+    model: lease.model?.trim() || null,
     startedAt: lease.startedAt ?? null,
+    lastUsedAt: lease.lastUsedAt ?? null,
     lastError: lease.lastError ?? null,
   };
 }
@@ -234,7 +243,10 @@ export function resolveOrchestratorLeaseAttachment(
     laneId,
     status: lease.status,
     cwd: lease.cwd?.trim() || null,
+    provider: lease.provider?.trim() || null,
+    model: lease.model?.trim() || null,
     startedAt: lease.startedAt ?? null,
+    lastUsedAt: lease.lastUsedAt ?? null,
     lastError: lease.lastError ?? null,
   };
 }

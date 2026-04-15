@@ -1,7 +1,6 @@
 import {
   collectParticipantLeaseAttachments,
   resolveParticipantCatId,
-  resolveOrchestratorExecutionLease,
   resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
@@ -126,10 +125,10 @@ function buildOrchestratorStreamTarget(
     laneId: expectedLaneId,
     statuses: ['ready', 'initializing'],
   });
-  const orchestratorLease = resolveOrchestratorExecutionLease(channel);
+  const labelAttachment = attachment ?? resolveOrchestratorLeaseAttachment(channel);
   const speakerLabel = resolveVisibleOrchestratorLabel({
     displayName: fallbackSpeakerLabel,
-    provider: channel.pendingProvider ?? orchestratorLease.provider ?? null,
+    provider: channel.pendingProvider ?? labelAttachment?.provider ?? null,
     instance: channel.pendingProvider ? (channel.pendingInstance ?? null) : null,
   });
   const sessionStartedAt = attachment?.sessionId ? attachment.startedAt : null;

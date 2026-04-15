@@ -726,3 +726,55 @@ test('resolveChannelStreamTarget ignores stale orchestrator lease sessions from 
     targetStateId: 'target-orchestrator',
   });
 });
+
+test('resolveChannelStreamTarget keeps the orchestrator label from lease attachment metadata when no pending provider is set', () => {
+  const channel = {
+    composerMode: 'solo',
+    pendingProvider: null,
+    pendingInstance: null,
+    orchestratorLease: {
+      status: 'closed',
+      sessionId: 'session-orchestrator-closed',
+      laneId: 'lane-turn-old-target-orchestrator',
+      provider: 'gemini',
+      model: 'gemini-3.1-pro-preview',
+      startedAt: '2026-04-15T12:00:00.000Z',
+      lastUsedAt: '2026-04-15T12:00:00.000Z',
+      cwd: null,
+      lastError: null,
+    },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          id: 'turn-current',
+          status: 'running',
+          targetStatuses: [
+            {
+              id: 'target-orchestrator',
+              status: 'running',
+              participant: {
+                participantKind: 'orchestrator',
+                participantId: 'orchestrator',
+                participantName: 'Orchestrator',
+              },
+            },
+          ],
+        },
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [],
+  };
+
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: null,
+    laneId: 'lane-turn-current-target-orchestrator',
+    participantId: 'orchestrator',
+    catId: null,
+    speakerLabel: 'Gemini-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
+    targetStateId: 'target-orchestrator',
+  });
+});
