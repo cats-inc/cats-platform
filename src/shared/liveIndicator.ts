@@ -1786,11 +1786,17 @@ function doesMessageMatchTargetStateOrSession(
   }
 
   const messageTargetStateId = readMessageTargetStateId(message);
-  if (messageTargetStateId === targetStateId) {
+  if (!messageTargetStateId || messageTargetStateId !== targetStateId) {
+    return false;
+  }
+
+  const sourceMessageId = readString(options.sourceMessageId);
+  if (!sourceMessageId) {
     return true;
   }
 
-  return doesMessageMatchSessionScopedIdentity(message, options);
+  const messageSourceMessageId = readMessageSourceMessageId(message);
+  return !messageSourceMessageId || messageSourceMessageId === sourceMessageId;
 }
 
 function doesMessageMatchLaneScopedIdentity(
@@ -1867,10 +1873,6 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
           && readMessageTargetStateId(message) === segment.targetStateId
           )
         )
-        || doesMessageMatchSessionScopedIdentity(message, {
-          sessionId: segment.sessionId,
-          sourceMessageId,
-        })
       )
       && readMessageSegmentIndex(message) === persistedSegmentIndex);
   }
