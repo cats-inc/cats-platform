@@ -1968,7 +1968,7 @@ test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage matches a lane-scoped repl
           senderName: 'Agent-1',
           metadata: {
             event: 'assistant_turn_segment',
-            sourceMessageId: 'message-user',
+            sourceMessageId: 'message-agent-0',
             targetKind: 'cat',
             targetId: 'participant-agent-1',
             targetStateId: 'target-agent-1-canonical',
@@ -1991,6 +1991,98 @@ test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage matches a lane-scoped repl
     ),
     true,
   );
+});
+
+test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when the lane stays fixed but the source drifts', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting' as const,
+    sourceMessageId: 'message-user-current',
+    laneId: 'lane-gemini',
+    targetStateId: 'target-gemini',
+    participantId: 'participant-gemini',
+    speakerLabel: 'Gemini-CLI',
+    segmentIndex: 3,
+    segments: [
+      {
+        id: 'message-user-current:target-gemini:segment:3',
+        phase: 'waiting' as const,
+        sourceMessageId: 'message-user-current',
+        laneId: 'lane-gemini',
+        targetStateId: 'target-gemini',
+        segmentIndex: 3,
+        participantId: 'participant-gemini',
+        catId: null,
+        activeCatIds: [],
+        catName: null,
+        speakerLabel: 'Gemini-CLI',
+        sessionStartedAt: null,
+        requiresSessionStartConfirmation: false,
+        progressText: '',
+        progressKind: null,
+        tools: [],
+        contentBlocks: [],
+        events: [],
+      },
+    ],
+  };
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-codex-reply',
+    laneId: 'lane-gemini',
+    targetStateId: 'target-gemini',
+    participantId: 'participant-gemini',
+    catId: null,
+    speakerLabel: 'Gemini-CLI',
+    revealIdentity: true,
+  });
+
+  const next = resolveWaitingIndicatorStateTransition({
+    previous,
+    waitingState,
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user-current',
+          senderKind: 'user',
+        },
+        {
+          id: 'message-codex-reply',
+          senderKind: 'agent',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user-current',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                id: 'target-gemini',
+                status: 'pending',
+                participant: {
+                  participantId: 'participant-gemini',
+                  participantName: 'Gemini-CLI',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    previousChannelId: 'channel-1',
+    channelId: 'channel-1',
+  });
+
+  assert.equal(next.phase, 'waiting');
+  assert.equal(next.segments.length, 1);
+  assert.equal(next.segments[0]?.segmentIndex, 3);
+  assert.equal(next.segments[0]?.id, 'message-user-current:target-gemini:segment:3');
 });
 
 test('shouldPromoteStreamingBubbleToWaitingSpeaker hands off to a named follow-up speaker after the prior reply persists', () => {
@@ -2846,6 +2938,129 @@ test('resolveVisibleLiveIndicator hides a sealed targeted segment when the persi
   );
 
   assert.equal(visible, null);
+});
+
+test('resolveVisibleLiveIndicator drops a persisted sealed sequential speaker before the next waiting target', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting' as const,
+    segments: [
+      createLiveIndicatorSegmentState({
+        phase: 'sealed',
+        sourceMessageId: 'message-user-sequential',
+        laneId: 'lane-codex',
+        targetStateId: 'target-state-codex',
+        segmentIndex: 0,
+        sessionId: 'session-codex',
+        participantId: 'participant-codex',
+        speakerLabel: 'Codex-CLI',
+        contentBlocks: [
+          {
+            id: 'status:0',
+            index: 0,
+            kind: 'status' as const,
+            status: 'complete' as const,
+            title: 'Session',
+            text: '',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+          {
+            id: 'status:1',
+            index: 1,
+            kind: 'status' as const,
+            status: 'complete' as const,
+            title: 'Session',
+            text: '',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+          {
+            id: 'text:2',
+            index: 2,
+            kind: 'text' as const,
+            status: 'complete' as const,
+            title: null,
+            text: 'Codex completed the first pass.',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+      }),
+      createLiveIndicatorSegmentState({
+        phase: 'sealed',
+        sourceMessageId: 'message-user-sequential',
+        laneId: 'lane-codex',
+        targetStateId: 'target-state-codex',
+        segmentIndex: 1,
+        sessionId: 'session-codex',
+        participantId: 'participant-codex',
+        speakerLabel: 'Codex-CLI',
+        contentBlocks: [
+          {
+            id: 'status:3',
+            index: 3,
+            kind: 'status' as const,
+            status: 'complete' as const,
+            title: 'Session',
+            text: '',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+      }),
+      createLiveIndicatorSegmentState({
+        phase: 'waiting',
+        sourceMessageId: 'message-user-sequential',
+        laneId: 'lane-gemini',
+        targetStateId: 'target-state-gemini',
+        segmentIndex: 2,
+        sessionId: 'session-gemini',
+        participantId: 'participant-gemini',
+        speakerLabel: 'Gemini-CLI',
+      }),
+    ],
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user-sequential',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-15T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-codex',
+        senderKind: 'agent',
+        senderName: 'Codex-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-claude-reply',
+          laneId: 'lane-codex',
+          targetKind: 'cat',
+          targetId: 'participant-codex',
+          targetStateId: 'target-state-codex',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-15T12:00:03.000Z',
+      },
+    ],
+    '2026-04-15T12:00:04.000Z',
+  );
+
+  assert.ok(visible);
+  assert.equal(visible.segments.length, 1);
+  assert.equal(visible.segments[0]?.phase, 'waiting');
+  assert.equal(visible.segments[0]?.targetStateId, 'target-state-gemini');
+  assert.equal(visible.segments[0]?.speakerLabel, 'Gemini-CLI');
 });
 
 test('resolveVisibleLiveIndicator downgrades pre-session assistant progress into an anonymous waiting bubble', () => {

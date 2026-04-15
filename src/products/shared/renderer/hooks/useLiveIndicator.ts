@@ -433,13 +433,8 @@ function doesLiveIndicatorIdentityMatch(
   left: LiveIndicatorState,
   right: LiveIndicatorState,
 ): boolean {
-  return (left.sourceMessageId ?? null) === (right.sourceMessageId ?? null)
-    && (left.laneId ?? null) === (right.laneId ?? null)
-    && (left.targetStateId ?? null) === (right.targetStateId ?? null)
-    && left.segmentIndex === right.segmentIndex
-    && (left.participantId ?? null) === (right.participantId ?? null)
-    && (left.catId ?? null) === (right.catId ?? null)
-    && (left.speakerLabel ?? null) === (right.speakerLabel ?? null);
+  return left.segmentIndex === right.segmentIndex
+    && doesLiveIndicatorLogicalIdentityMatch(left, right);
 }
 
 function doesLiveIndicatorLogicalIdentityMatch(
@@ -465,17 +460,18 @@ function doesLiveIndicatorLogicalIdentityMatch(
   const leftSpeakerLabel = left.speakerLabel ?? null;
   const rightSpeakerLabel = right.speakerLabel ?? null;
 
+  if (leftLaneId !== null && rightLaneId !== null) {
+    return leftLaneId === rightLaneId;
+  }
+
+  if (leftTargetStateId !== null && rightTargetStateId !== null) {
+    return leftTargetStateId === rightTargetStateId;
+  }
+
   return leftSourceMessageId === rightSourceMessageId
-    && (
-      (leftLaneId !== null && rightLaneId !== null && leftLaneId === rightLaneId)
-      || (
-        leftLaneId === rightLaneId
-        && leftTargetStateId === rightTargetStateId
-        && leftParticipantId === rightParticipantId
-        && leftCatId === rightCatId
-        && leftSpeakerLabel === rightSpeakerLabel
-      )
-    );
+    && leftParticipantId === rightParticipantId
+    && leftCatId === rightCatId
+    && leftSpeakerLabel === rightSpeakerLabel;
 }
 
 function doesWaitingIndicatorLogicalIdentityMatch(
@@ -508,20 +504,20 @@ function shouldAdvanceWaitingSegmentIndex(
     return false;
   }
 
-  if (!previousSegment.sourceMessageId || !waitingSegment.sourceMessageId) {
-    return false;
-  }
-
-  if (previousSegment.sourceMessageId !== waitingSegment.sourceMessageId) {
-    return false;
-  }
-
   if (previousSegment.laneId && waitingSegment.laneId) {
     return previousSegment.laneId === waitingSegment.laneId;
   }
 
   if (previousSegment.targetStateId && waitingSegment.targetStateId) {
     return previousSegment.targetStateId === waitingSegment.targetStateId;
+  }
+
+  if (!previousSegment.sourceMessageId || !waitingSegment.sourceMessageId) {
+    return false;
+  }
+
+  if (previousSegment.sourceMessageId !== waitingSegment.sourceMessageId) {
+    return false;
   }
 
   if (previousSegment.participantId && waitingSegment.participantId) {

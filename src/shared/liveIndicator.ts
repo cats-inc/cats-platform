@@ -314,18 +314,18 @@ function isSameLiveIndicatorTimelineIdentity(
     return false;
   }
 
-  const previousSourceMessageId = readString(previousSegment.sourceMessageId);
-  const nextSourceMessageId = readString(nextSpeakerState.sourceMessageId);
-  if (!previousSourceMessageId || !nextSourceMessageId || previousSourceMessageId !== nextSourceMessageId) {
-    return false;
-  }
-
   if (previousSegment.laneId && nextSpeakerState.laneId) {
     return previousSegment.laneId === nextSpeakerState.laneId;
   }
 
   if (previousSegment.targetStateId && nextSpeakerState.targetStateId) {
     return previousSegment.targetStateId === nextSpeakerState.targetStateId;
+  }
+
+  const previousSourceMessageId = readString(previousSegment.sourceMessageId);
+  const nextSourceMessageId = readString(nextSpeakerState.sourceMessageId);
+  if (!previousSourceMessageId || !nextSourceMessageId || previousSourceMessageId !== nextSourceMessageId) {
+    return false;
   }
 
   if (previousSegment.participantId && nextSpeakerState.participantId) {
@@ -341,6 +341,43 @@ function isSameLiveIndicatorTimelineIdentity(
   return previousSpeakerLabel != null
     && nextSpeakerLabel != null
     && previousSpeakerLabel === nextSpeakerLabel;
+}
+
+function doesLiveIndicatorLogicalIdentityMatch(
+  left: Pick<
+    LiveIndicatorSegmentState,
+    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+  >,
+  right: Pick<
+    LiveIndicatorSegmentState,
+    'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
+  >,
+): boolean {
+  const leftSourceMessageId = left.sourceMessageId ?? null;
+  const rightSourceMessageId = right.sourceMessageId ?? null;
+  const leftLaneId = left.laneId ?? null;
+  const rightLaneId = right.laneId ?? null;
+  const leftTargetStateId = left.targetStateId ?? null;
+  const rightTargetStateId = right.targetStateId ?? null;
+  const leftParticipantId = left.participantId ?? null;
+  const rightParticipantId = right.participantId ?? null;
+  const leftCatId = left.catId ?? null;
+  const rightCatId = right.catId ?? null;
+  const leftSpeakerLabel = left.speakerLabel ?? null;
+  const rightSpeakerLabel = right.speakerLabel ?? null;
+
+  if (leftLaneId !== null && rightLaneId !== null) {
+    return leftLaneId === rightLaneId;
+  }
+
+  if (leftTargetStateId !== null && rightTargetStateId !== null) {
+    return leftTargetStateId === rightTargetStateId;
+  }
+
+  return leftSourceMessageId === rightSourceMessageId
+    && leftParticipantId === rightParticipantId
+    && leftCatId === rightCatId
+    && leftSpeakerLabel === rightSpeakerLabel;
 }
 
 function projectLogicalLiveIndicatorSegments(
@@ -497,6 +534,30 @@ function segmentHasMaterializedContent(
     || segment.progressText.trim().length > 0
     || segment.events.length > 0
     || segment.tools.length > 0;
+}
+
+function segmentHasRenderableTranscriptContent(
+  segment: Pick<
+    LiveIndicatorSegmentState,
+    'contentBlocks' | 'progressText' | 'events' | 'tools'
+  >,
+): boolean {
+  if (segment.progressText.trim().length > 0 || segment.events.length > 0 || segment.tools.length > 0) {
+    return true;
+  }
+
+  return segment.contentBlocks.some((block) => {
+    if (block.kind === 'text') {
+      return block.text.trim().length > 0;
+    }
+    if (block.kind === 'tool') {
+      return true;
+    }
+    if (block.kind === 'status') {
+      return block.text.trim().length > 0;
+    }
+    return false;
+  });
 }
 
 export function hasVisibleLiveIndicatorSegmentActivity(
@@ -668,13 +729,7 @@ function shouldStartNewSegmentForEvent(
     return false;
   }
 
-  const identityChanged =
-    previousSegment.sourceMessageId !== nextSpeakerState.sourceMessageId
-    || previousSegment.laneId !== nextSpeakerState.laneId
-    || previousSegment.targetStateId !== nextSpeakerState.targetStateId
-    || previousSegment.participantId !== nextSpeakerState.participantId
-    || previousSegment.catId !== nextSpeakerState.catId
-    || previousSegment.speakerLabel !== nextSpeakerState.speakerLabel;
+  const identityChanged = !doesLiveIndicatorLogicalIdentityMatch(previousSegment, nextSpeakerState);
   if (previousSegment.phase === 'sealed') {
     if (eventType === 'content_block') {
       const block = normalizeRuntimeContentBlock(data);
@@ -913,6 +968,9 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     anonymizeLiveIndicatorSegmentIfSessionUnconfirmed(segment, sessionMessages),
   );
   const visibleSegments = gatedSegments.filter((segment, index) => {
+    const hasLaterDistinctLogicalSegment = gatedSegments
+      .slice(index + 1)
+      .some((candidate) => !doesLiveIndicatorLogicalIdentityMatch(segment, candidate));
     const persistedSegmentIndex =
       resolveProjectedTextSegmentOrdinal(projectedSourceSegments, index) ?? segment.segmentIndex;
     if (
@@ -921,6 +979,26 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
         segment,
         persistedSegmentIndex,
       )
+    ) {
+      return false;
+    }
+    if (
+      segment.phase === 'sealed'
+      && hasLaterDistinctLogicalSegment
+      && readString(segment.sourceMessageId)
+      && segmentHasTextContent(segment)
+      && hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
+        messages,
+        segment.sourceMessageId!,
+        projectLiveIndicatorStateFromSegments([segment]),
+      )
+    ) {
+      return false;
+    }
+    if (
+      segment.phase === 'sealed'
+      && hasLaterDistinctLogicalSegment
+      && !segmentHasRenderableTranscriptContent(segment)
     ) {
       return false;
     }
@@ -1781,22 +1859,23 @@ function doesMessageMatchTargetStateOrSession(
   },
 ): boolean {
   const targetStateId = readString(options.targetStateId);
-  if (!targetStateId) {
-    return false;
-  }
-
-  const messageTargetStateId = readMessageTargetStateId(message);
-  if (!messageTargetStateId || messageTargetStateId !== targetStateId) {
-    return false;
-  }
-
   const sourceMessageId = readString(options.sourceMessageId);
-  if (!sourceMessageId) {
-    return true;
+  if (targetStateId) {
+    const messageTargetStateId = readMessageTargetStateId(message);
+    if (messageTargetStateId && messageTargetStateId === targetStateId) {
+      if (!sourceMessageId) {
+        return true;
+      }
+
+      const messageSourceMessageId = readMessageSourceMessageId(message);
+      return !messageSourceMessageId || messageSourceMessageId === sourceMessageId;
+    }
   }
 
-  const messageSourceMessageId = readMessageSourceMessageId(message);
-  return !messageSourceMessageId || messageSourceMessageId === sourceMessageId;
+  return doesMessageMatchSessionScopedIdentity(message, {
+    sessionId: options.sessionId,
+    sourceMessageId,
+  });
 }
 
 function doesMessageMatchLaneScopedIdentity(
@@ -1816,13 +1895,7 @@ function doesMessageMatchLaneScopedIdentity(
     return false;
   }
 
-  const sourceMessageId = readString(options.sourceMessageId);
-  if (!sourceMessageId) {
-    return true;
-  }
-
-  const messageSourceMessageId = readMessageSourceMessageId(message);
-  return !messageSourceMessageId || messageSourceMessageId === sourceMessageId;
+  return true;
 }
 
 function doesMessageMatchSessionScopedIdentity(
