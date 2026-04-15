@@ -339,6 +339,152 @@ type ExistingTargetSessionOutcome =
       result: EnsureTargetSessionResult;
     };
 
+interface RuntimeEnvelopeCanonicalMetadata {
+  conversationId: string | null;
+  containerId: string | null;
+  transportBindingId: string | null;
+}
+
+function resolveRuntimeEnvelopeCanonicalMetadata(
+  state: ChatState,
+  channelId: string,
+  runtimeContext: { metadata?: Record<string, unknown> } | undefined,
+): RuntimeEnvelopeCanonicalMetadata {
+  const canonicalIdentity = resolveChannelCanonicalIdentity(state, channelId);
+  return {
+    conversationId: readInvocationContextMetadataString(
+      runtimeContext,
+      'conversationId',
+    ) ?? canonicalIdentity.conversationId,
+    containerId: readInvocationContextMetadataString(
+      runtimeContext,
+      'containerId',
+    ) ?? canonicalIdentity.containerId,
+    transportBindingId: readInvocationContextMetadataString(
+      runtimeContext,
+      'transportBindingId',
+    ),
+  };
+}
+
+async function syncTargetSessionAttachmentWorkspace(input: {
+  channelId: string;
+  state: ChatState;
+  runtimeDataDir: string | undefined;
+  targetWorkspacePath: string | null;
+}): Promise<void> {
+  if (!input.targetWorkspacePath) {
+    return;
+  }
+
+  const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
+    channelId: input.channelId,
+    repoPath: requireChannel(input.state, input.channelId).repoPath,
+    chatCwd: requireChannel(input.state, input.channelId).chatCwd,
+    runtimeDataDir: input.runtimeDataDir,
+  });
+  await syncChannelAttachmentsToWorkspace({
+    attachmentWorkspacePath,
+    targetWorkspacePath: input.targetWorkspacePath,
+  });
+}
+
+function appendStartedTargetSessionMessage(
+  state: ChatState,
+  channelId: string,
+  input: {
+    target: RoutingTarget;
+    provider: string | null;
+    instance: string | null;
+    session: Awaited<ReturnType<RuntimeClient['createSession']>>;
+    now: Date;
+    targetStateId: string | null;
+    laneId: string | null;
+    conversationId: string | null;
+    containerId: string | null;
+    transportBindingId: string | null;
+  },
+): ChatState {
+  return appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: formatSessionStartedMessage(
+        resolveVisibleWakeTargetLabel({
+          target: input.target,
+          provider: input.provider,
+          instance: input.instance,
+        }),
+        input.session,
+      ),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'session_started',
+        ...(input.containerId ? { containerId: input.containerId } : {}),
+        ...(input.conversationId ? { conversationId: input.conversationId } : {}),
+        targetKind: input.target.participantKind,
+        ...(input.target.participantKind === 'cat'
+          ? { targetId: input.target.participantId }
+          : {}),
+        ...(input.targetStateId ? { targetStateId: input.targetStateId } : {}),
+        ...(input.laneId ? { laneId: input.laneId } : {}),
+        ...(input.transportBindingId ? { transportBindingId: input.transportBindingId } : {}),
+        sessionId: input.session.id,
+        verbosity: 'verbose',
+      },
+      incrementUnread: false,
+    },
+  ).state;
+}
+
+function appendFailedTargetSessionMessage(
+  state: ChatState,
+  channelId: string,
+  input: {
+    target: RoutingTarget;
+    provider: string | null;
+    instance: string | null;
+    error: string;
+    now: Date;
+    targetStateId: string | null;
+    laneId: string | null;
+    conversationId: string | null;
+    containerId: string | null;
+    transportBindingId: string | null;
+  },
+): ChatState {
+  return appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: `Failed to start ${resolveVisibleWakeTargetLabel({
+        target: input.target,
+        provider: input.provider,
+        instance: input.instance,
+      })}: ${input.error}`,
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'session_start_failed',
+        ...(input.containerId ? { containerId: input.containerId } : {}),
+        ...(input.conversationId ? { conversationId: input.conversationId } : {}),
+        targetKind: input.target.participantKind,
+        targetId: input.target.participantId,
+        ...(input.targetStateId ? { targetStateId: input.targetStateId } : {}),
+        ...(input.laneId ? { laneId: input.laneId } : {}),
+        ...(input.transportBindingId ? { transportBindingId: input.transportBindingId } : {}),
+      },
+    },
+  ).state;
+}
+
 function applyLeaseLaneAttachmentToTarget(
   state: ChatState,
   channelId: string,
@@ -476,9 +622,8 @@ async function startAttachedTargetSession(
   const workspaceKind = spawnCwd ? 'source' : 'sandbox';
   let targetLabelProvider: string | null = null;
   let targetLabelInstance: string | null = null;
-  const canonicalIdentity = resolveChannelCanonicalIdentity(nextState, channelId);
-  let conversationId: string | null = canonicalIdentity.conversationId;
-  let containerId: string | null = canonicalIdentity.containerId;
+  let conversationId: string | null = null;
+  let containerId: string | null = null;
   let transportBindingId: string | null = null;
 
   try {
@@ -493,18 +638,15 @@ async function startAttachedTargetSession(
       now,
       options.companionStore,
     );
-    conversationId = readInvocationContextMetadataString(
+    ({
+      conversationId,
+      containerId,
+      transportBindingId,
+    } = resolveRuntimeEnvelopeCanonicalMetadata(
+      nextState,
+      channelId,
       runtimeEnvelope.context,
-      'conversationId',
-    ) ?? canonicalIdentity.conversationId;
-    containerId = readInvocationContextMetadataString(
-      runtimeEnvelope.context,
-      'containerId',
-    ) ?? canonicalIdentity.containerId;
-    transportBindingId = readInvocationContextMetadataString(
-      runtimeEnvelope.context,
-      'transportBindingId',
-    );
+    ));
 
     if (attachedTarget.participantKind === 'orchestrator') {
       const sessionTarget = resolveOrchestratorExecutionTarget(
@@ -530,14 +672,10 @@ async function startAttachedTargetSession(
         skills: runtimeEnvelope.skills,
         ...(taskExecutionContext?.executionRequest ?? {}),
       });
-      const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
+      await syncTargetSessionAttachmentWorkspace({
         channelId,
-        repoPath: requireChannel(nextState, channelId).repoPath,
-        chatCwd: requireChannel(nextState, channelId).chatCwd,
+        state: nextState,
         runtimeDataDir: options.runtimeDataDir,
-      });
-      await syncChannelAttachmentsToWorkspace({
-        attachmentWorkspacePath,
         targetWorkspacePath: session.cwd,
       });
       nextState = runtimeChannel.composerMode === 'solo' && runtimeChannel.pendingProvider
@@ -572,37 +710,22 @@ async function startAttachedTargetSession(
       if (!spawnCwd && session.cwd) {
         nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
-      nextState = appendMessage(
+      nextState = appendStartedTargetSessionMessage(
         nextState,
         channelId,
         {
-          senderKind: 'system',
-          senderName: 'Runtime',
-          body: formatSessionStartedMessage(
-            resolveVisibleWakeTargetLabel({
-              target: attachedTarget,
-              provider: session.provider,
-              instance: sessionTarget.instance,
-            }),
-            session,
-          ),
+          target: attachedTarget,
+          provider: session.provider,
+          instance: sessionTarget.instance ?? null,
+          session,
+          now,
+          targetStateId,
+          laneId,
+          conversationId,
+          containerId,
+          transportBindingId,
         },
-        now,
-        {
-          metadata: {
-            event: 'session_started',
-            ...(containerId ? { containerId } : {}),
-            conversationId,
-            targetKind: 'orchestrator',
-            ...(targetStateId ? { targetStateId } : {}),
-            ...(laneId ? { laneId } : {}),
-            ...(transportBindingId ? { transportBindingId } : {}),
-            sessionId: session.id,
-            verbosity: 'verbose',
-          },
-          incrementUnread: false,
-        },
-      ).state;
+      );
       return {
         state: nextState,
         target: { ...attachedTarget, laneId, sessionId: session.id },
@@ -639,18 +762,14 @@ async function startAttachedTargetSession(
       context: mergeRuntimeInvocationContextMetadata(
         runtimeEnvelope.context,
         options.dispatchContextMetadata ?? {},
-      ),
-      skills: runtimeEnvelope.skills,
-      ...(taskExecutionContext?.executionRequest ?? {}),
-    });
-    const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
+        ),
+        skills: runtimeEnvelope.skills,
+        ...(taskExecutionContext?.executionRequest ?? {}),
+      });
+    await syncTargetSessionAttachmentWorkspace({
       channelId,
-      repoPath: requireChannel(nextState, channelId).repoPath,
-      chatCwd: requireChannel(nextState, channelId).chatCwd,
+      state: nextState,
       runtimeDataDir: options.runtimeDataDir,
-    });
-    await syncChannelAttachmentsToWorkspace({
-      attachmentWorkspacePath,
       targetWorkspacePath: session.cwd,
     });
     nextState = setChannelParticipantExecutionTarget(
@@ -679,38 +798,22 @@ async function startAttachedTargetSession(
     if (!spawnCwd && session.cwd) {
       nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
     }
-    nextState = appendMessage(
+    nextState = appendStartedTargetSessionMessage(
       nextState,
       channelId,
       {
-        senderKind: 'system',
-        senderName: 'Runtime',
-        body: formatSessionStartedMessage(
-          resolveVisibleWakeTargetLabel({
-            target: attachedTarget,
-            provider: session.provider,
-            instance: participant.execution.target.instance,
-          }),
-          session,
-        ),
+        target: attachedTarget,
+        provider: session.provider,
+        instance: participant.execution.target.instance ?? null,
+        session,
+        now,
+        targetStateId,
+        laneId,
+        conversationId,
+        containerId,
+        transportBindingId,
       },
-      now,
-      {
-        metadata: {
-          event: 'session_started',
-          ...(containerId ? { containerId } : {}),
-          conversationId,
-          targetKind: 'cat',
-          targetId: attachedTarget.participantId,
-          ...(targetStateId ? { targetStateId } : {}),
-          ...(laneId ? { laneId } : {}),
-          ...(transportBindingId ? { transportBindingId } : {}),
-          sessionId: session.id,
-          verbosity: 'verbose',
-        },
-        incrementUnread: false,
-      },
-    ).state;
+    );
     return {
       state: nextState,
       target: { ...attachedTarget, laneId, sessionId: session.id },
@@ -729,32 +832,22 @@ async function startAttachedTargetSession(
         now,
       )
       : setErroredSession(nextState, channelId, 'orchestrator', message, now);
-    nextState = appendMessage(
+    nextState = appendFailedTargetSessionMessage(
       nextState,
       channelId,
       {
-        senderKind: 'system',
-        senderName: 'Runtime',
-        body: `Failed to start ${resolveVisibleWakeTargetLabel({
-          target: attachedTarget,
-          provider: targetLabelProvider,
-          instance: targetLabelInstance,
-        })}: ${message}`,
+        target: attachedTarget,
+        provider: targetLabelProvider,
+        instance: targetLabelInstance,
+        error: message,
+        now,
+        targetStateId,
+        laneId,
+        conversationId,
+        containerId,
+        transportBindingId,
       },
-      now,
-      {
-        metadata: {
-          event: 'session_start_failed',
-          ...(containerId ? { containerId } : {}),
-          ...(conversationId ? { conversationId } : {}),
-          targetKind: attachedTarget.participantKind,
-          targetId: attachedTarget.participantId,
-          ...(targetStateId ? { targetStateId } : {}),
-          ...(laneId ? { laneId } : {}),
-          ...(transportBindingId ? { transportBindingId } : {}),
-        },
-      },
-    ).state;
+    );
     return {
       state: nextState,
       target: attachedTarget,
