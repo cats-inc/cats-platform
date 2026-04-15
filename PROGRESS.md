@@ -625,6 +625,10 @@ Known follow-ups:
 - channel stream routes now also resolve `containerId` / `conversationId`
   through that same canonical helper, so server-side live trace / SSE speaker
   payloads no longer keep a separate stream-only channel-identity derivation
+- runtime dispatch failure notices and Telegram bridge runtime-error fallbacks
+  now also resolve `containerId` / `conversationId` through the shared
+  canonical helper, so outer runtime-error metadata stops maintaining
+  transport-specific channel-identity derivations
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

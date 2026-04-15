@@ -23,6 +23,7 @@ import type {
 import {
   appendMessage,
   requireChannel,
+  resolveChannelCanonicalIdentity,
   setChannelPendingExecutionTarget,
   setChannelOrchestratorLease,
 } from '../model/index.js';
@@ -33,9 +34,7 @@ import {
 } from '../../../../shared/providerSelection.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import {
-  buildChatConversationId,
   buildDirectLaneTransportBindingId,
-  resolveChatChannelContainerId,
 } from '../../../../shared/chatCoreIds.js';
 import {
   buildCanonicalChatUserMessage,
@@ -484,11 +483,8 @@ export async function settleBegunChannelMessageDispatchFailure(
 
   const latestState = options.latestState ?? begun.state;
   const latestChannel = requireChannel(latestState, channelId);
-  const conversationId = buildChatConversationId(channelId);
-  const containerId = resolveChatChannelContainerId({
-    channelId,
-    parallelChatGroups: latestState.parallelChatGroups,
-  });
+  const canonicalIdentity = resolveChannelCanonicalIdentity(latestState, channelId);
+  const { conversationId, containerId } = canonicalIdentity;
   const transportBindingId = options.transportBindingId
     ?? (latestChannel.channelKind === 'direct_lane'
       ? buildDirectLaneTransportBindingId(channelId)
