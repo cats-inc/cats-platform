@@ -1570,6 +1570,238 @@ test('repairOrphanedCompletedDispatchTurn keeps later same-speaker re-entry targ
   );
 });
 
+test('repairOrphanedCompletedDispatchTurn restores a drifted same-speaker re-entry target from canonical metadata', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-09T12:20:00.000Z');
+  const firstResponseAt = new Date('2026-04-09T12:20:06.000Z');
+  const secondResponseAt = new Date('2026-04-09T12:20:09.000Z');
+  const thirdResponseAt = new Date('2026-04-09T12:20:12.000Z');
+  const stateStore = new MemoryChatStore();
+  let state = await stateStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Same speaker re-entry drifted target',
+      topic: 'Recover the later same-speaker target when transcript targetStateId drifts.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Claude should speak, then Codex, then Claude again.' },
+    runtimeClient,
+    seededAt,
+  );
+  const canonicalState = structuredClone(begun.state);
+  const canonicalChannel = requireChannel(canonicalState, channelId);
+  const activeTurn = canonicalChannel.roomRouting.workflow.activeTurn;
+  assert.ok(activeTurn);
+
+  activeTurn.workflowShape = 'sequential';
+  activeTurn.targetStatuses = [
+    {
+      id: 'target-claude-first',
+      dispatchId: 'dispatch-claude-first',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-claude',
+        participantName: 'Claude-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'explicit_mention',
+      mentionNames: ['Claude-CLI', 'Codex-CLI', 'Claude-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'explicit_mention',
+      wakeRequestId: null,
+      status: 'completed',
+      queuedAt: seededAt.toISOString(),
+      startedAt: seededAt.toISOString(),
+      completedAt: firstResponseAt.toISOString(),
+      response: {
+        assistantTurnId: 'assistant-turn-claude-first',
+        messageIds: ['message-claude-first'],
+        fullText: 'Hello from the first Claude turn.',
+        segmentCount: 1,
+      },
+      error: null,
+    },
+    {
+      id: 'target-codex',
+      dispatchId: 'dispatch-codex',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-codex',
+        participantName: 'Codex-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'continuation_mention',
+      mentionNames: ['Codex-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'workflow_continuation',
+      wakeRequestId: null,
+      status: 'completed',
+      queuedAt: firstResponseAt.toISOString(),
+      startedAt: firstResponseAt.toISOString(),
+      completedAt: secondResponseAt.toISOString(),
+      response: {
+        assistantTurnId: 'assistant-turn-codex',
+        messageIds: ['message-codex'],
+        fullText: 'Codex already responded.',
+        segmentCount: 1,
+      },
+      error: null,
+    },
+    {
+      id: 'target-claude-second',
+      dispatchId: 'dispatch-claude-second',
+      participant: {
+        participantKind: 'cat',
+        participantId: 'participant-claude',
+        participantName: 'Claude-CLI',
+      },
+      source: null,
+      sourceMessageId: activeTurn.sourceMessageId,
+      trigger: 'continuation_mention',
+      mentionNames: ['Claude-CLI'],
+      depth: 0,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'workflow_continuation',
+      wakeRequestId: null,
+      status: 'completed',
+      queuedAt: secondResponseAt.toISOString(),
+      startedAt: secondResponseAt.toISOString(),
+      completedAt: thirdResponseAt.toISOString(),
+      response: {
+        assistantTurnId: 'assistant-turn-claude-second',
+        messageIds: ['message-claude-second'],
+        fullText: 'Hello from the second Claude turn.',
+        segmentCount: 1,
+      },
+      error: null,
+    },
+  ];
+
+  let materializedState = appendMessage(
+    canonicalState,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Claude-CLI',
+      body: 'Hello from the first Claude turn.',
+    },
+    firstResponseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-claude-first',
+        targetStateId: 'target-claude-first',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'cat',
+        targetId: 'participant-claude',
+        routingTrigger: 'explicit_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+  materializedState = appendMessage(
+    materializedState,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Codex-CLI',
+      body: 'Codex already responded.',
+    },
+    secondResponseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-codex',
+        targetStateId: 'target-codex',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'cat',
+        targetId: 'participant-codex',
+        routingTrigger: 'continuation_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+  materializedState = appendMessage(
+    materializedState,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: 'Claude-CLI',
+      body: 'Hello from the second Claude turn.',
+    },
+    thirdResponseAt,
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-claude-second',
+        targetStateId: 'target-claude-second',
+        terminal: true,
+        turnId: activeTurn.id,
+        targetKind: 'cat',
+        targetId: 'participant-claude',
+        routingTrigger: 'continuation_mention',
+        dispatchDepth: 0,
+        segmentIndex: 0,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+
+  await stateStore.write(materializedState);
+  const core = await stateStore.readCore();
+
+  const driftedState = structuredClone(materializedState);
+  const driftedChannel = requireChannel(driftedState, channelId);
+  const driftedTurn = driftedChannel.roomRouting.workflow.activeTurn;
+  assert.ok(driftedTurn);
+  const driftedTarget = driftedTurn.targetStatuses.find((target) => target.id === 'target-claude-second');
+  assert.ok(driftedTarget);
+  driftedTarget.status = 'pending';
+  driftedTarget.startedAt = null;
+  driftedTarget.completedAt = null;
+  driftedTarget.response = null;
+
+  const finalMessage = driftedChannel.messages.find((message) =>
+    message.metadata?.assistantTurnId === 'assistant-turn-claude-second');
+  assert.ok(finalMessage);
+  delete finalMessage.metadata.targetStateId;
+
+  const repaired = repairOrphanedCompletedDispatchTurn(
+    driftedState,
+    channelId,
+    new Date('2026-04-09T12:30:00.000Z'),
+    core,
+  );
+
+  assert.equal(repaired.repaired, true);
+  const repairedChannel = requireChannel(repaired.state, channelId);
+  const repairedTurn = repairedChannel.roomRouting.workflow.turnHistory[0];
+  assert.ok(repairedTurn);
+  const repairedTarget = repairedTurn.targetStatuses.find((target) => target.id === 'target-claude-second');
+  assert.equal(repairedTarget?.status, 'completed');
+  assert.equal(repairedTarget?.response?.assistantTurnId, 'assistant-turn-claude-second');
+});
+
 test('repairMissingSessionStartedMessages restores missing runtime metadata before the response', async () => {
   const chatStore = new MemoryChatStore();
   const seededAt = new Date('2026-04-09T12:00:00.000Z');

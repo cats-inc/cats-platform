@@ -402,6 +402,7 @@ function hasUnmaterializedSequentialTargets(turn: RoomWorkflowTurn): boolean {
 
 interface CanonicalRecoveredTargetMetadata {
   orderIndex: number | null;
+  targetStateId: string | null;
   sourceMessageId: string | null;
   sourceParticipant: RoomRoutingParticipantRef | null;
   trigger: RoomRoutingTrigger | null;
@@ -436,6 +437,7 @@ function resolveCanonicalRecoveredTargetMetadata(
   const sourceMessageId = readChatCoreMetadataString(lane.metadata, 'sourceMessageId');
   return {
     orderIndex: lane.orderIndex,
+    targetStateId: readChatCoreMetadataString(lane.metadata, 'targetStateId'),
     sourceMessageId,
     sourceParticipant: resolveCanonicalSourceParticipant(core, conversationId, turnId, sourceMessageId),
     trigger: normalizeCanonicalRoutingTrigger(readChatCoreMetadataString(lane.metadata, 'trigger')),
@@ -1592,15 +1594,16 @@ export function repairOrphanedCompletedDispatchTurn(
   if (!assistantTurnId) {
     return { repaired: false, state };
   }
-  const targetStateId = readAssistantTurnTargetStateId(responseMessage);
+  const responseTargetStateId = readAssistantTurnTargetStateId(responseMessage);
   const participant = buildParticipantRefFromResponse(responseMessage);
   const canonicalRecoveredTarget = resolveCanonicalRecoveredTargetMetadata(
     core,
     channelId,
     repairTurnId,
     assistantTurnId,
-    targetStateId,
+    responseTargetStateId,
   );
+  const targetStateId = responseTargetStateId ?? canonicalRecoveredTarget?.targetStateId ?? null;
   const candidateTurn = activeTurn ?? recoveredTurn;
   if (
     candidateTurn
