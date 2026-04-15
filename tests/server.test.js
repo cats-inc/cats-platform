@@ -40,6 +40,7 @@ import { createChatMemorySurface } from '../build/server/products/chat/state/mem
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   buildChatConversationId,
+  buildChatLaneId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 import { waitForCondition } from './testUtils.js';
@@ -2189,8 +2190,16 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
     const begunTurn = begunChannel.roomRouting.workflow.activeTurn;
     assert.ok(begunTurn);
     const begunSourceMessageId = begunTurn.sourceMessageId;
-    const firstLaneId = `lane-${begunTurn.id}-target-state-concurrent-1`;
-    const secondLaneId = `lane-${begunTurn.id}-target-state-concurrent-2`;
+    const firstLaneId = buildChatLaneId(
+      begunTurn.id,
+      'target-state-concurrent-1',
+      firstParticipantId,
+    );
+    const secondLaneId = buildChatLaneId(
+      begunTurn.id,
+      'target-state-concurrent-2',
+      secondParticipantId,
+    );
     begunTurn.targetStatuses = [
       {
         id: 'target-state-concurrent-1',
@@ -2210,6 +2219,8 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
         handoffReason: 'room_default',
         wakeRequestId: null,
         status: 'running',
+        laneId: firstLaneId,
+        sessionId: 'session-live-concurrent-1',
         queuedAt: seededAt.toISOString(),
         startedAt: seededAt.toISOString(),
         completedAt: null,
@@ -2234,6 +2245,8 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
         handoffReason: 'room_default',
         wakeRequestId: null,
         status: 'running',
+        laneId: secondLaneId,
+        sessionId: 'session-live-concurrent-2',
         queuedAt: seededAt.toISOString(),
         startedAt: seededAt.toISOString(),
         completedAt: null,
@@ -2241,6 +2254,40 @@ test('GET /api/channels/:id/stream multiplexes concurrent ready targets in one S
         error: null,
       },
     ];
+    begunState = setChannelCatLease(
+      begunState,
+      channelId,
+      firstCatId,
+      {
+        sessionId: 'session-live-concurrent-1',
+        status: 'ready',
+        laneId: firstLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
+    begunState = setChannelCatLease(
+      begunState,
+      channelId,
+      secondCatId,
+      {
+        sessionId: 'session-live-concurrent-2',
+        status: 'ready',
+        laneId: secondLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'codex',
+        model: 'gpt-5.4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
     begunState = appendMessage(
       begunState,
       channelId,
@@ -2456,6 +2503,16 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
     const begunChannel = requireChannel(begunState, channelId);
     const begunTurn = begunChannel.roomRouting.workflow.activeTurn;
     assert.ok(begunTurn);
+    const firstLaneId = buildChatLaneId(
+      begunTurn.id,
+      'target-state-barrier-1',
+      firstParticipantId,
+    );
+    const secondLaneId = buildChatLaneId(
+      begunTurn.id,
+      'target-state-barrier-2',
+      secondParticipantId,
+    );
     begunTurn.targetStatuses = [
       {
         id: 'target-state-barrier-1',
@@ -2475,6 +2532,8 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
         handoffReason: 'room_default',
         wakeRequestId: null,
         status: 'running',
+        laneId: firstLaneId,
+        sessionId: 'session-live-barrier-1',
         queuedAt: seededAt.toISOString(),
         startedAt: seededAt.toISOString(),
         completedAt: null,
@@ -2499,6 +2558,7 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
         handoffReason: 'room_default',
         wakeRequestId: null,
         status: 'pending',
+        laneId: secondLaneId,
         queuedAt: seededAt.toISOString(),
         startedAt: null,
         completedAt: null,
@@ -2506,6 +2566,23 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
         error: null,
       },
     ];
+    begunState = setChannelCatLease(
+      begunState,
+      channelId,
+      firstCatId,
+      {
+        sessionId: 'session-live-barrier-1',
+        status: 'ready',
+        laneId: firstLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
     begunState = appendMessage(
       begunState,
       channelId,
@@ -2556,6 +2633,7 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
       {
         sessionId: 'session-live-barrier-2',
         status: 'ready',
+        laneId: secondLaneId,
         cwd: 'C:/repo/cats-platform',
         lastError: null,
         provider: 'codex',
@@ -2573,6 +2651,8 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
         ? {
             ...target,
             status: 'running',
+            laneId: secondLaneId,
+            sessionId: 'session-live-barrier-2',
             startedAt: secondReadyAt.toISOString(),
           }
         : target);
