@@ -4702,6 +4702,28 @@ test('live indicator normalizes nested tool_result content arrays into tool comp
   assert.equal(state.events.at(-1)?.text, 'Completed read_file: nested output payload');
 });
 
+test('live indicator normalizes tool_use alias fields into pending tool entries', () => {
+  let state = createWaitingLiveIndicatorState({
+    catId: 'cat-1',
+    speakerLabel: null,
+  });
+
+  state = applyLiveIndicatorEvent(state, 'tool_use', {
+    id: 'tool-alias-1',
+    name: 'search_repo',
+  });
+
+  assert.deepEqual(state.tools, [
+    {
+      toolId: 'tool-alias-1',
+      toolName: 'search_repo',
+      done: false,
+    },
+  ]);
+  assert.equal(state.events.at(-1)?.eventType, 'tool_use');
+  assert.equal(state.events.at(-1)?.text, 'Started search_repo');
+});
+
 test('live indicator merges consecutive text chunks into one tape entry', () => {
   let state = createWaitingLiveIndicatorState({
     catId: null,

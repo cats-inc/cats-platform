@@ -1295,8 +1295,16 @@ function applyToolUseEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
 ): LiveIndicatorState {
-  const toolName = readString(data.toolName) || 'tool';
-  const toolId = readString(data.toolId);
+  const normalizedSegment = normalizeRuntimeMessageSegmentEntry({
+    type: 'tool_use',
+    ...data,
+  });
+  const toolName = (normalizedSegment?.kind === 'tool_use'
+    ? normalizedSegment.toolName
+    : readString(data.toolName)) || 'tool';
+  const toolId = normalizedSegment?.kind === 'tool_use'
+    ? normalizedSegment.toolId
+    : readString(data.toolId);
   return updatePrimaryLiveIndicatorSegment(previous, (segment) => {
     const nextTools = appendPendingTool(segment.tools, {
       toolName,
