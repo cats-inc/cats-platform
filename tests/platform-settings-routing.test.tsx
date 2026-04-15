@@ -5,6 +5,7 @@ import { Navigate, Route } from 'react-router-dom';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { PlatformSettingsRoutes } from '../src/app/renderer/settings/PlatformSettingsRoutes.tsx';
+import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 interface RouteDescriptor {
   path: string;
@@ -176,7 +177,7 @@ test('PlatformSettingsRoutes owns canonical platform settings routes', () => {
       payload: createPayload(),
       onPayloadUpdate: () => {},
       feedback: '',
-      busy: '',
+      busy: clearBusyState(),
       onFeedback: () => {},
       onBusy: () => {},
       onResetSetup: () => {},

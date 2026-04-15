@@ -40,6 +40,12 @@ import {
 import {
   buildChatLaneId,
 } from '../src/shared/chatCoreIds.ts';
+import {
+  clearBusyState,
+  createChannelComposerBusyScope,
+  createComposerBusyState,
+  createParallelChatBusyState,
+} from '../src/shared/workspaceBusy.ts';
 
 test('EMPTY_LIVE_INDICATOR starts with no active cat ids', () => {
   assert.deepEqual(EMPTY_LIVE_INDICATOR.activeCatIds, []);
@@ -47,26 +53,47 @@ test('EMPTY_LIVE_INDICATOR starts with no active cat ids', () => {
 });
 
 test('shouldConnectLiveIndicatorStream skips optimistic draft channels', () => {
-  assert.equal(shouldConnectLiveIndicatorStream('draft-123', 'message:send'), false);
+  assert.equal(
+    shouldConnectLiveIndicatorStream(
+      'draft-123',
+      createComposerBusyState('send', createChannelComposerBusyScope('draft-123')),
+    ),
+    false,
+  );
 });
 
 test('shouldConnectLiveIndicatorStream requires an active send on a real channel', () => {
   const channelId = '12345678-1234-4234-8234-123456789abc';
   assert.equal(
-    shouldConnectLiveIndicatorStream(channelId, 'message:prepare'),
+    shouldConnectLiveIndicatorStream(
+      channelId,
+      createComposerBusyState('prepare', createChannelComposerBusyScope(channelId)),
+    ),
     false,
   );
-  assert.equal(shouldConnectLiveIndicatorStream(channelId, ''), false);
-  assert.equal(shouldConnectLiveIndicatorStream(null, 'message:send'), false);
+  assert.equal(shouldConnectLiveIndicatorStream(channelId, clearBusyState()), false);
   assert.equal(
-    shouldConnectLiveIndicatorStream(channelId, `message:send:${channelId}`),
+    shouldConnectLiveIndicatorStream(
+      null,
+      createComposerBusyState('send', createChannelComposerBusyScope(channelId)),
+    ),
+    false,
+  );
+  assert.equal(
+    shouldConnectLiveIndicatorStream(
+      channelId,
+      createComposerBusyState('send', createChannelComposerBusyScope(channelId)),
+    ),
     true,
   );
 });
 
 test('shouldConnectLiveIndicatorStream ignores parallel relay busy state on the source channel', () => {
   assert.equal(
-    shouldConnectLiveIndicatorStream('12345678-1234-4234-8234-123456789abc', 'parallelChat:relay'),
+    shouldConnectLiveIndicatorStream(
+      '12345678-1234-4234-8234-123456789abc',
+      createParallelChatBusyState('relay'),
+    ),
     false,
   );
 });
@@ -74,15 +101,15 @@ test('shouldConnectLiveIndicatorStream ignores parallel relay busy state on the 
 test('shouldConnectLiveIndicatorStream only follows concurrent dispatch for running member channels', () => {
   const channelId = '12345678-1234-4234-8234-123456789abc';
   assert.equal(
-    shouldConnectLiveIndicatorStream(channelId, 'parallelChat:dispatch'),
+    shouldConnectLiveIndicatorStream(channelId, createParallelChatBusyState('dispatch')),
     false,
   );
   assert.equal(
-    shouldConnectLiveIndicatorStream(channelId, 'parallelChat:dispatch', 'idle'),
+    shouldConnectLiveIndicatorStream(channelId, createParallelChatBusyState('dispatch'), 'idle'),
     false,
   );
   assert.equal(
-    shouldConnectLiveIndicatorStream(channelId, 'parallelChat:dispatch', 'running'),
+    shouldConnectLiveIndicatorStream(channelId, createParallelChatBusyState('dispatch'), 'running'),
     true,
   );
 });
@@ -425,7 +452,10 @@ test('shouldRetryLiveIndicatorSessionClose reconnects when a streamed session cl
     shouldRetryLiveIndicatorSessionClose({
       eventType: 'session_closed',
       channelId: '12345678-1234-4234-8234-123456789abc',
-      busy: 'message:send:12345678-1234-4234-8234-123456789abc',
+      busy: createComposerBusyState(
+        'send',
+        createChannelComposerBusyScope('12345678-1234-4234-8234-123456789abc'),
+      ),
       routingStatus: 'running',
     }),
     true,
@@ -437,7 +467,7 @@ test('shouldRetryLiveIndicatorSessionClose stays off once the channel is no long
     shouldRetryLiveIndicatorSessionClose({
       eventType: 'session_closed',
       channelId: '12345678-1234-4234-8234-123456789abc',
-      busy: '',
+      busy: clearBusyState(),
       routingStatus: null,
     }),
     false,

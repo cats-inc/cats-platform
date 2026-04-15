@@ -9,6 +9,11 @@ import {
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
+  clearBusyState,
+  createCatBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
+import {
   assignCatToChannelApi as assignWorkspaceCatToChannelApi,
   createGlobalCat as createWorkspaceGlobalCat,
   removeCatFromChannelApi as removeWorkspaceCatFromChannelApi,
@@ -63,7 +68,7 @@ export function useWorkspaceCatAssignmentActions<
     catForm: CatFormState;
     emptyCatForm: () => CatFormState;
     setCatForm: Dispatch<SetStateAction<CatFormState>>;
-    setBusy: Dispatch<SetStateAction<string>>;
+    setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
     setFeedback: Dispatch<SetStateAction<string>>;
     setAddCatOpen: Dispatch<SetStateAction<boolean>>;
     setDraftCatIds: Dispatch<SetStateAction<string[]>>;
@@ -128,7 +133,7 @@ export function useWorkspaceCatAssignmentActions<
       return;
     }
 
-    setBusy('cat:create-assign');
+    setBusy(createCatBusyState('create-assign'));
     try {
       const trimmedName = catForm.name.trim();
       const previousIds = new Set(state.payload.chat.cats.map((participant) => participant.id));
@@ -145,7 +150,7 @@ export function useWorkspaceCatAssignmentActions<
       if (!newCat) {
         setCatForm(emptyCatForm());
         setFeedback('Cat created. Open "Choose existing" to assign it.');
-        setBusy('');
+        setBusy(clearBusyState());
         return;
       }
 
@@ -165,7 +170,7 @@ export function useWorkspaceCatAssignmentActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [
     catForm.instance,
@@ -192,7 +197,7 @@ export function useWorkspaceCatAssignmentActions<
       return;
     }
 
-    setBusy(`cat:assign:${cat.id}`);
+    setBusy(createCatBusyState('assign', cat.id));
     try {
       const payload = await assignCatToChannelApi(channelId, {
         catId: cat.id,
@@ -208,7 +213,7 @@ export function useWorkspaceCatAssignmentActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to assign cat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [setBusy, setFeedback, setState, state]);
 
@@ -222,7 +227,7 @@ export function useWorkspaceCatAssignmentActions<
       return;
     }
 
-    setBusy(`cat:remove:${cat.id}`);
+    setBusy(createCatBusyState('remove', cat.id));
     try {
       const payload = await removeCatFromChannelApi(channelId, cat.id);
       startTransition(() => {
@@ -232,7 +237,7 @@ export function useWorkspaceCatAssignmentActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to remove cat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [setBusy, setFeedback, setState, state]);
 
@@ -248,7 +253,7 @@ export function useWorkspaceCatAssignmentActions<
       return;
     }
 
-    setBusy('cat:create-assign');
+    setBusy(createCatBusyState('create-assign'));
     try {
       const previousIds = new Set(state.payload.chat.cats.map((participant) => participant.id));
       const created = await createGlobalCat({
@@ -269,7 +274,7 @@ export function useWorkspaceCatAssignmentActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [
     catForm.instance,
@@ -301,7 +306,7 @@ export function useCatAssignmentActions(options: {
   setState: Dispatch<SetStateAction<LoadStateLike<AppShellPayload>>>;
   catForm: CatFormState;
   setCatForm: Dispatch<SetStateAction<CatFormState>>;
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   setAddCatOpen: Dispatch<SetStateAction<boolean>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;

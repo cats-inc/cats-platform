@@ -19,6 +19,10 @@ import {
 } from '../../../../shared/liveIndicator.js';
 import { pushBrowserLiveTrace } from '../../../../shared/liveTrace.js';
 import { isComposerDispatchBusy } from '../../../../shared/composer.js';
+import {
+  describeBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 import { resolveChannelCanonicalIdentity } from '../../../chat/shared/channelCanonicalIdentity.js';
 import { isOptimisticDraftChannelId } from '../../channelPaths.js';
 
@@ -99,7 +103,7 @@ export interface LiveIndicatorSelectedChannelLike {
 
 export interface LiveIndicatorStreamDecisionInput {
   channelId: string | null;
-  busy: string;
+  busy: WorkspaceBusyState;
   routingStatus?: string | null;
 }
 
@@ -128,7 +132,7 @@ interface WaitingIndicatorInputs {
 
 export function shouldConnectLiveIndicatorStream(
   channelId: string | null,
-  busy: string,
+  busy: WorkspaceBusyState,
   _routingStatus?: string | null,
 ): boolean {
   if (!isComposerDispatchBusy(busy) || !channelId) {
@@ -1018,7 +1022,7 @@ export function useLiveIndicator<
   TSelectedChannel extends LiveIndicatorSelectedChannelLike = LiveIndicatorSelectedChannelLike,
 >(options: {
   channelId: string | null;
-  busy: string;
+  busy: WorkspaceBusyState;
   selectedChannel: TSelectedChannel | null;
   debugTraceEnabled?: boolean;
   resolveRoutingStatus?: (selectedChannel: TSelectedChannel | null) => string | null;
@@ -1499,7 +1503,7 @@ export function useLiveIndicator<
           busy,
           routingStatus,
         },
-        signature: `indicator_reset::${channelId ?? ''}::${busy}::${routingStatus ?? ''}`,
+        signature: `indicator_reset::${channelId ?? ''}::${describeBusyState(busy)}::${routingStatus ?? ''}`,
       });
       stateRef.current = EMPTY_LIVE_INDICATOR;
       setState(EMPTY_LIVE_INDICATOR);

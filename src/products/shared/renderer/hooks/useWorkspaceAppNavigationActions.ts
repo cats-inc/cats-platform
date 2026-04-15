@@ -21,6 +21,13 @@ import {
   resetSetup as resetWorkspaceSetup,
 } from '../api/index.js';
 import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
+import {
+  clearBusyState,
+  createCatBusyState,
+  createChannelBusyState,
+  createSetupBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 
 export interface WorkspaceNavigationChannelRef {
   id: string;
@@ -90,7 +97,7 @@ export interface UseWorkspaceAppNavigationActionsOptions<
   setState: Dispatch<SetStateAction<WorkspaceNavigationLoadState<TPayload>>>;
   navigate: NavigateFunction;
   platformShellSurface: 'chat' | 'work' | 'code';
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   setComposerDraft: Dispatch<SetStateAction<string>>;
   setAccountMenuOpen: Dispatch<SetStateAction<boolean>>;
@@ -187,7 +194,7 @@ export function useWorkspaceAppNavigationActions<
   ]);
 
   const onRenameChannel = useCallback(async (channelId: string, title: string): Promise<void> => {
-    setBusy(`channel:rename:${channelId}`);
+    setBusy(createChannelBusyState('rename', channelId));
     try {
       const payload = await navigationApi.renameChatChannel(channelId, title);
       startTransition(() => {
@@ -197,12 +204,12 @@ export function useWorkspaceAppNavigationActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to rename chat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [navigationApi, setBusy, setFeedback, setState]);
 
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
-    setBusy(`channel:delete:${channelId}`);
+    setBusy(createChannelBusyState('delete', channelId));
     try {
       const payload = await navigationApi.deleteChatChannel(channelId);
       startTransition(() => {
@@ -214,7 +221,7 @@ export function useWorkspaceAppNavigationActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [chatPrefix, navigate, navigationApi, setAddCatOpen, setBusy, setFeedback, setState]);
 
@@ -223,14 +230,14 @@ export function useWorkspaceAppNavigationActions<
       ? await confirmDialog({ title: 'Delete cat', message: 'Delete this cat? This cannot be undone.' })
       : true;
     if (!confirmed) return;
-    setBusy(`cat:delete:${catId}`);
+    setBusy(createCatBusyState('delete', catId));
     try {
       const payload = await navigationApi.deleteGlobalCat(catId);
       startTransition(() => setState({ status: 'ready', payload }));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete cat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [confirmDialog, navigationApi, setBusy, setFeedback, setState]);
 
@@ -264,7 +271,7 @@ export function useWorkspaceAppNavigationActions<
       : true;
     if (!confirmed) return;
 
-    setBusy('setup:reset');
+    setBusy(createSetupBusyState());
     try {
       const payload = await navigationApi.resetSetup();
       await syncDesktopHostPlatformShellState({
@@ -275,7 +282,7 @@ export function useWorkspaceAppNavigationActions<
       window.location.href = '/';
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [confirmDialog, navigationApi, setBusy, setFeedback]);
 

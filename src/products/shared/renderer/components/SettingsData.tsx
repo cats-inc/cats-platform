@@ -1,8 +1,12 @@
 import { SettingsShell } from './SettingsShell.js';
+import {
+  isSetupResetBusy,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 
 export interface SettingsDataProps {
   feedback: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   onResetSetup: () => void;
 }
 
@@ -12,6 +16,7 @@ export function SettingsData({
   onResetSetup,
 }: SettingsDataProps) {
   void feedback;
+  const resetBusy = isSetupResetBusy(busy);
 
   return (
     <SettingsShell section="data" title="Data">
@@ -23,10 +28,10 @@ export function SettingsData({
         <button
           className="dangerButton"
           type="button"
-          disabled={busy === 'setup:reset'}
+          disabled={resetBusy}
           onClick={onResetSetup}
         >
-          {busy === 'setup:reset' ? 'Resetting...' : 'Reset all data'}
+          {resetBusy ? 'Resetting...' : 'Reset all data'}
         </button>
       </div>
     </SettingsShell>

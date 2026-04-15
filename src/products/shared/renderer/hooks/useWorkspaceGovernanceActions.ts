@@ -15,6 +15,13 @@ import {
   writeCoreApprovalDecision,
   writeCoreOperatorAction,
 } from '../api/index.js';
+import {
+  clearBusyState,
+  createApprovalBusyState,
+  createChoiceBusyState,
+  createOperatorActionBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 
 export interface WorkspaceGovernancePayloadLike {
   ownerDisplayName: string;
@@ -48,7 +55,7 @@ export function useWorkspaceGovernanceActions<
   setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
   operatorState: OperatorStateLike;
   setOperatorState: Dispatch<SetStateAction<OperatorStateLike>>;
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   sendChatMessage?: (channelId: string, input: {
     body: string;
@@ -78,7 +85,7 @@ export function useWorkspaceGovernanceActions<
       return;
     }
 
-    setBusy(`approval:${taskId}:${action}`);
+    setBusy(createApprovalBusyState(taskId, action));
     try {
       const snapshot = await writeCoreApprovalDecision({
         taskId,
@@ -97,7 +104,7 @@ export function useWorkspaceGovernanceActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to update approval.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [operatorState.snapshot, setBusy, setFeedback, setOperatorState]);
 
@@ -113,7 +120,7 @@ export function useWorkspaceGovernanceActions<
       return;
     }
 
-    setBusy(`choice:${input.choiceResponse.sourceMessageId}:${input.choiceResponse.status}`);
+    setBusy(createChoiceBusyState(input.choiceResponse.sourceMessageId, input.choiceResponse.status));
     try {
       const dispatch = await sendChatMessage(channelId, {
         body: input.body,
@@ -127,7 +134,7 @@ export function useWorkspaceGovernanceActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to submit choice response.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [setBusy, setFeedback, setState, state]);
 
@@ -143,7 +150,7 @@ export function useWorkspaceGovernanceActions<
     }
 
     const busyKey = input.runId ?? input.taskId ?? input.checkpointId ?? input.outcomeId ?? 'global';
-    setBusy(`operator-action:${input.action}:${busyKey}`);
+    setBusy(createOperatorActionBusyState(input.action, busyKey));
     try {
       const snapshot = await writeCoreOperatorAction({
         ...input,
@@ -160,7 +167,7 @@ export function useWorkspaceGovernanceActions<
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to record operator action.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [operatorState.snapshot, setBusy, setFeedback, setOperatorState]);
 

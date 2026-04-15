@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { PlatformSettingsRoutes } from '../../../app/renderer/settings/PlatformSettingsRoutes.js';
 import type { ConfirmDialogOptions } from '../../../design/components/ConfirmDialog.js';
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../api/workspaceContracts.js';
@@ -13,12 +14,12 @@ export interface ProductReadyShellProps<
   sidebar: ReactNode;
   settingsMode: boolean;
   feedback: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   appContent: ReactNode;
   confirmDialog: { options: ConfirmDialogOptions } | null;
   onPayloadUpdate: (payload: TPayload) => void;
   onFeedback: (message: string) => void;
-  onBusy: (key: string) => void;
+  onBusy: (busy: WorkspaceBusyState) => void;
   onResetSetup: () => void;
   onConfirmClose: (confirmed: boolean) => void;
 }

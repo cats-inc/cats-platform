@@ -17,6 +17,11 @@ import {
   getDefaultModel,
   getDefaultProviderInstance,
 } from '../../../../shared/providerCatalog.js';
+import {
+  clearBusyState,
+  createParallelChatBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 import type { ModelSelectorValue } from '../components/ModelSelector.js';
 import type { SelectedChannelView } from '../../shared/channelEntry.js';
 import { relayParallelChatMessage } from '../api/index.js';
@@ -101,7 +106,7 @@ export function useParallelChatDraft(options: {
   selectedChannel: SelectedChannelView | null;
   draftModel: ModelSelectorValue;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
 }) {
   const {
@@ -192,7 +197,7 @@ export function useParallelChatDraft(options: {
       return;
     }
 
-    setBusy('parallelChat:relay');
+    setBusy(createParallelChatBusyState('relay'));
     setFeedback('');
     try {
       const dispatch = await relayParallelChatMessage(selectedParallelChatGroup.id, {
@@ -215,7 +220,7 @@ export function useParallelChatDraft(options: {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to relay compare message.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [
     selectedChannel,

@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { pickDraftGreeting } from '../src/products/chat/renderer/chatUtils.tsx';
 import { NewChatDraft, type NewChatDraftProps } from '../src/products/chat/renderer/components/NewChatDraft.tsx';
+import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -41,7 +42,7 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   return {
     payload: createPayload(),
     composerDraft: '',
-    busy: '',
+    busy: clearBusyState(),
     greeting: 'Meow. Ready when you are.',
     draftFiles: [],
     draftCwd: null,

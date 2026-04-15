@@ -9,6 +9,12 @@ import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMe
 import type { BotFormState } from '../../hooks/settingsCatsRegistryActions.js';
 import { buildProductSurfaceToggleStates } from '../../../../../design/components/productSurfaceToggles.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../../shared/platformSurfaces.js';
+import {
+  isBotBusy,
+  isCatBusy,
+  isMemoryBusy,
+  type WorkspaceBusyState,
+} from '../../../../../shared/workspaceBusy.js';
 import { MEMORY_CATEGORIES, SKILL_PROFILES, formatTransportTimestamp } from './viewSupport.js';
 
 export interface SettingsCatsDetailPanelRegistryController {
@@ -25,7 +31,7 @@ export interface SettingsCatsDetailPanelRegistryController {
 }
 
 export interface SettingsCatsDetailPanelContentProps {
-  busy: string;
+  busy: WorkspaceBusyState;
   botBindings: NonNullable<AppShellPayload['chat']['botBindings']>;
   cat: AppShellPayload['chat']['cats'][number];
   isBossCat: boolean;
@@ -80,7 +86,7 @@ export function SettingsCatsDetailPanelContent({
     selected: cat.products,
     enabledSurfaces,
     requiredSurfaces: isBossCat ? ['chat'] : [],
-    disabled: busy === `cat:products:${cat.id}`,
+    disabled: isCatBusy(busy, 'products', cat.id),
   });
   const canBindTelegramBot = cat.status === 'active'
     && hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() });
@@ -103,11 +109,11 @@ export function SettingsCatsDetailPanelContent({
             disabled={
               !renameValue.trim()
               || renameValue.trim() === cat.name
-              || busy === `cat:rename:${cat.id}`
+              || isCatBusy(busy, 'rename', cat.id)
             }
             onClick={() => void onRenameCat(cat.id)}
           >
-            {busy === `cat:rename:${cat.id}` ? 'Saving...' : 'Save'}
+            {isCatBusy(busy, 'rename', cat.id) ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
@@ -148,7 +154,7 @@ export function SettingsCatsDetailPanelContent({
           <button
             className="primaryButton"
             type="button"
-            disabled={busy === `cat:makeBoss:${cat.id}`}
+            disabled={isCatBusy(busy, 'makeBoss', cat.id)}
             onClick={async () => {
               const confirmed = confirmDialog
                 ? await confirmDialog({ title: 'Change Boss Cat', message: `Make ${cat.name} the Boss Cat? This will change the default recipient for new chats.`, confirmLabel: 'Confirm' })
@@ -158,7 +164,7 @@ export function SettingsCatsDetailPanelContent({
               }
             }}
           >
-            {busy === `cat:makeBoss:${cat.id}` ? 'Setting...' : `Make ${cat.name} the Boss Cat`}
+            {isCatBusy(busy, 'makeBoss', cat.id) ? 'Setting...' : `Make ${cat.name} the Boss Cat`}
           </button>
         </div>
       ) : null}
@@ -175,7 +181,7 @@ export function SettingsCatsDetailPanelContent({
                   : 'draftLeadPill'
               }
               type="button"
-              disabled={busy === `cat:skill:${cat.id}`}
+              disabled={isCatBusy(busy, 'skill', cat.id)}
               onClick={() => void onSkillChange(cat.id, profile.value)}
             >
               {profile.label}
@@ -230,7 +236,7 @@ export function SettingsCatsDetailPanelContent({
                   <button
                     className="chromeButton"
                     type="button"
-                    disabled={busy === `bot:delete:${binding.id}`}
+                    disabled={isBotBusy(busy, 'delete', binding.id)}
                     onClick={() => void onDeleteBinding(binding.id)}
                   >
                     &#x2715;
@@ -292,10 +298,10 @@ export function SettingsCatsDetailPanelContent({
             <button
               className="primaryButton"
               type="button"
-              disabled={!botForm.botName.trim() || busy === 'bot:create' || !canBindTelegramBot}
+              disabled={!botForm.botName.trim() || isBotBusy(busy, 'create') || !canBindTelegramBot}
               onClick={() => void onCreateBinding(cat.id)}
             >
-              {busy === 'bot:create'
+              {isBotBusy(busy, 'create')
                 ? 'Creating...'
                 : canBindTelegramBot
                   ? 'Add Telegram Bot'
@@ -349,10 +355,10 @@ export function SettingsCatsDetailPanelContent({
           <button
             className="primaryButton"
             type="button"
-            disabled={!memoryForm.content.trim() || busy === 'memory:create'}
+            disabled={!memoryForm.content.trim() || isMemoryBusy(busy, 'create')}
             onClick={() => void addMemory(cat.id)}
           >
-            {busy === 'memory:create' ? 'Saving...' : 'Add Memory'}
+            {isMemoryBusy(busy, 'create') ? 'Saving...' : 'Add Memory'}
           </button>
         </div>
       </div>
@@ -365,7 +371,7 @@ function SettingsCatsMemoryRow({
   memoryRecord,
   onDelete,
 }: {
-  busy: string;
+  busy: WorkspaceBusyState;
   memoryRecord: DurableMemoryItem;
   onDelete: () => void;
 }) {
@@ -381,7 +387,7 @@ function SettingsCatsMemoryRow({
       <button
         className="chromeButton"
         type="button"
-        disabled={busy === `memory:delete:${memoryRecord.id}`}
+        disabled={isMemoryBusy(busy, 'delete', memoryRecord.id)}
         onClick={onDelete}
       >
         &#x2715;

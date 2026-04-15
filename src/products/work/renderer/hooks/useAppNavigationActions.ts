@@ -6,6 +6,11 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts.js';
+import {
+  clearBusyState,
+  createCatBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 import type { ModelSelectorValue } from '../components/ModelSelector.js';
 import {
   updateCatProfile,
@@ -21,7 +26,7 @@ export function useAppNavigationActions(options: {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   setComposerDraft: Dispatch<SetStateAction<string>>;
   setAccountMenuOpen: Dispatch<SetStateAction<boolean>>;
@@ -61,14 +66,14 @@ export function useAppNavigationActions(options: {
         })
       : true;
     if (!confirmed) return;
-    setBusy(`cat:archive:${catId}`);
+    setBusy(createCatBusyState('archive', catId));
     try {
       const payload = await updateCatProfile(catId, { archive: true });
       setState({ status: 'ready', payload });
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to archive cat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [confirmDialog, setBusy, setFeedback, setState, state]);
 

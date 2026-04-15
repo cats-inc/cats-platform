@@ -2,6 +2,12 @@ import type { Dispatch, FormEvent, SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
+  clearBusyState,
+  createBotBusyState,
+  createCatBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
+import {
   createBotBindingApi,
   createGlobalCat,
   deleteBotBindingApi,
@@ -29,7 +35,7 @@ export function emptyBotForm(): BotFormState {
 export interface SettingsCatsRegistryActionsContext {
   expandedCatId: string | null;
   setExpandedCatId: Dispatch<SetStateAction<string | null>>;
-  onBusy: (key: string) => void;
+  onBusy: (busy: WorkspaceBusyState) => void;
   onFeedback: (message: string) => void;
   onPayloadUpdate: (payload: AppShellPayload) => void;
   catForm: CatFormState;
@@ -46,7 +52,7 @@ export function createSettingsCatsRegistryActions(
 ) {
   async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    context.onBusy('cat:create');
+    context.onBusy(createCatBusyState('create'));
     try {
       const result = await createGlobalCat({
         name: context.catForm.name,
@@ -63,7 +69,7 @@ export function createSettingsCatsRegistryActions(
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to save cat.');
     } finally {
-      context.onBusy('');
+      context.onBusy(clearBusyState());
     }
   }
 
@@ -73,7 +79,7 @@ export function createSettingsCatsRegistryActions(
       return;
     }
 
-    context.onBusy(`cat:rename:${catId}`);
+    context.onBusy(createCatBusyState('rename', catId));
     try {
       const result = await updateCatProfile(catId, { name: trimmed });
       context.onPayloadUpdate(result);
@@ -82,12 +88,12 @@ export function createSettingsCatsRegistryActions(
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to rename cat.');
     } finally {
-      context.onBusy('');
+      context.onBusy(clearBusyState());
     }
   }
 
   async function onDeleteCat(catId: string, catName: string): Promise<void> {
-    context.onBusy(`cat:delete:${catId}`);
+    context.onBusy(createCatBusyState('delete', catId));
     context.onFeedback('');
     try {
       const next = await deleteGlobalCat(catId);
@@ -99,12 +105,12 @@ export function createSettingsCatsRegistryActions(
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to delete cat');
     } finally {
-      context.onBusy('');
+      context.onBusy(clearBusyState());
     }
   }
 
   async function onMakeBossCat(catId: string): Promise<void> {
-    context.onBusy(`cat:makeBoss:${catId}`);
+    context.onBusy(createCatBusyState('makeBoss', catId));
     try {
       const result = await updateCatProfile(catId, { makeBoss: true });
       context.onPayloadUpdate(result);
@@ -112,12 +118,12 @@ export function createSettingsCatsRegistryActions(
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to set Boss Cat.');
     } finally {
-      context.onBusy('');
+      context.onBusy(clearBusyState());
     }
   }
 
   async function onSkillChange(catId: string, skillProfile: string): Promise<void> {
-    context.onBusy(`cat:skill:${catId}`);
+    context.onBusy(createCatBusyState('skill', catId));
     try {
       const result = await updateCatProfile(catId, {
         skillProfile: skillProfile === 'chat-default' ? null : skillProfile,
@@ -126,19 +132,19 @@ export function createSettingsCatsRegistryActions(
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to update skill.');
     } finally {
-      context.onBusy('');
+      context.onBusy(clearBusyState());
     }
   }
 
   async function onUpdateProducts(catId: string, products: string[]): Promise<void> {
-    context.onBusy(`cat:products:${catId}`);
+    context.onBusy(createCatBusyState('products', catId));
     try {
       const result = await updateCatProfile(catId, { products });
       context.onPayloadUpdate(result);
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to update products.');
     } finally {
-      context.onBusy('');
+      context.onBusy(clearBusyState());
     }
   }
 
@@ -147,7 +153,7 @@ export function createSettingsCatsRegistryActions(
       return;
     }
 
-    context.onBusy('bot:create');
+    context.onBusy(createBotBusyState('create'));
     try {
       const result = await createBotBindingApi({
         botName: context.botForm.botName.trim(),
@@ -165,12 +171,12 @@ export function createSettingsCatsRegistryActions(
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to create binding.');
     } finally {
-      context.onBusy('');
+      context.onBusy(clearBusyState());
     }
   }
 
   async function onDeleteBinding(bindingId: string): Promise<void> {
-    context.onBusy(`bot:delete:${bindingId}`);
+    context.onBusy(createBotBusyState('delete', bindingId));
     try {
       const result = await deleteBotBindingApi(bindingId);
       context.onPayloadUpdate(result);
@@ -178,7 +184,7 @@ export function createSettingsCatsRegistryActions(
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to remove binding.');
     } finally {
-      context.onBusy('');
+      context.onBusy(clearBusyState());
     }
   }
 

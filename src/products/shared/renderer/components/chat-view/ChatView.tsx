@@ -10,6 +10,8 @@ import {
 
 import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
+import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
+import { isChannelBusy } from '../../../../../shared/workspaceBusy.js';
 import {
   resolveLayoutMetrics,
   type ChatLayoutMode,
@@ -50,7 +52,7 @@ export interface ChatViewProps {
   operatorLoading: boolean;
   operatorError: string;
   composerDraft: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   feedback: string;
   greeting: string;
   channelFiles: File[];
@@ -279,7 +281,7 @@ export function ChatView({
     [operatorView, inspectedRunId],
   );
   const composerBusy = isComposerBusyForChannel(busy, selectedChannel.id);
-  const resumeBusy = busy === 'channel:resume';
+  const resumeBusy = isChannelBusy(busy, 'resume');
   const canResumeChannel = !composerBusy && !resumeBusy;
   const composerWorkspacePath = resolveComposerWorkspacePath(
     selectedChannel.repoPath,

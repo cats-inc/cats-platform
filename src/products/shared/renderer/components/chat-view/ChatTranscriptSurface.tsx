@@ -12,6 +12,10 @@ import {
   hasVisibleLiveIndicatorSegmentActivity,
   resolveLiveIndicatorSegments,
 } from '../../../../../shared/liveIndicator.js';
+import {
+  isChoiceBusy,
+  type WorkspaceBusyState,
+} from '../../../../../shared/workspaceBusy.js';
 import { MessageBody } from '../MessageBody.js';
 import {
   MessageChoices,
@@ -27,7 +31,7 @@ export interface ChatTranscriptSurfaceProps {
   hasConversationStarted: boolean;
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
-  busy: string;
+  busy: WorkspaceBusyState;
   greeting: string;
   liveIndicator?: LiveIndicatorState;
   directLaneExcludedMentionNames: string[];
@@ -116,7 +120,7 @@ export function ChatTranscriptSurface({
                   messageId={message.id}
                   choices={message.choices}
                   existingResponse={choiceResponsesBySource.get(message.id) ?? null}
-                  busy={busy.startsWith(`choice:${message.id}:`)}
+                  busy={isChoiceBusy(busy, message.id)}
                   onSubmit={onChoiceSubmit}
                 />
               ) : null}

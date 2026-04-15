@@ -16,6 +16,8 @@ import type {
   ParallelChatGroupSummary,
   ParallelChatRelayCommandKind,
 } from '../../api/contracts';
+import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
+import { isParallelChatBusy } from '../../../../shared/workspaceBusy.js';
 import { resolveCatStatusIndicator } from '../../shared/catStatusResolution';
 import { CatStatusRow } from './CatStatusRow';
 import type {
@@ -82,7 +84,7 @@ export interface ChatViewProps {
   operatorLoading: boolean;
   operatorError: string;
   composerDraft: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   feedback: string;
   greeting: string;
   channelFiles: File[];
@@ -466,7 +468,7 @@ export function ChatView({
     ],
   );
   const canResumeChannel = !composerBusy && !resumeBusy;
-  const stopBusy = busy.startsWith('message:stop:') || busy === 'parallelChat:stop';
+  const stopBusy = isParallelChatBusy(busy, 'stop');
   const { transcriptListRef, composerCardRef, bottomSentinelRef, isNearBottom, scrollToBottom } = useTranscriptAutoScroll({
     channelId: selectedChannel.id,
     scrollKey: transcriptScrollKey,

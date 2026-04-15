@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  DRAFT_COMPOSER_BUSY_SCOPE,
   doesComposerSelectionBlockChannelRoute,
   getComposerBusyScope,
   getComposerBusyChannelId,
@@ -18,13 +17,18 @@ import {
   isComposerSelectionBlocked,
   isComposerStopBusy,
   isComposerStopBusyForChannel,
-  normalizeComposerBusy,
 } from '../src/shared/composer.ts';
+import {
+  clearBusyState,
+  createChannelComposerBusyScope,
+  createComposerBusyState,
+  createDraftComposerBusyScope,
+  createParallelChatBusyState,
+} from '../src/shared/workspaceBusy.ts';
 
 test('composer busy helpers treat missing busy state as idle instead of throwing', () => {
-  assert.equal(normalizeComposerBusy(undefined), '');
   assert.equal(isComposerBusy(undefined), false);
-  assert.equal(isComposerBusy(''), false);
+  assert.equal(isComposerBusy(clearBusyState()), false);
   assert.equal(isComposerAckBusy(undefined), false);
   assert.equal(isComposerDispatchBusy(undefined), false);
   assert.equal(isComposerStopBusy(undefined), false);
@@ -35,58 +39,80 @@ test('composer busy helpers treat missing busy state as idle instead of throwing
 });
 
 test('composer busy helpers still recognize active ACK, dispatch, and stop states', () => {
-  assert.equal(isComposerBusy('message:ack:channel-1'), true);
-  assert.equal(isComposerBusy('parallelChat:ack'), true);
-  assert.equal(isComposerBusy('parallelChat:dispatch'), true);
-  assert.equal(isComposerBusy('parallelChat:relay'), true);
-  assert.equal(isComposerAckBusy('message:ack:channel-1'), true);
-  assert.equal(isComposerDispatchBusy('message:send:channel-1'), true);
-  assert.equal(isComposerStopBusy('message:stop:channel-1'), true);
-  assert.equal(isComposerSelectionBlocked('parallelChat:stop'), true);
-  assert.equal(getComposerBusyScope('message:send:channel-1'), 'channel-1');
-  assert.equal(getComposerBusyChannelId('message:send:channel-1'), 'channel-1');
-  assert.equal(getComposerDispatchChannelId('message:send:channel-1'), 'channel-1');
+  const channelScope = createChannelComposerBusyScope('channel-1');
+
+  assert.equal(isComposerBusy(createComposerBusyState('ack', channelScope)), true);
+  assert.equal(isComposerBusy(createParallelChatBusyState('ack')), true);
+  assert.equal(isComposerBusy(createParallelChatBusyState('dispatch')), true);
+  assert.equal(isComposerBusy(createParallelChatBusyState('relay')), true);
+  assert.equal(isComposerAckBusy(createComposerBusyState('ack', channelScope)), true);
+  assert.equal(isComposerDispatchBusy(createComposerBusyState('send', channelScope)), true);
+  assert.equal(isComposerStopBusy(createComposerBusyState('stop', channelScope)), true);
+  assert.equal(isComposerSelectionBlocked(createParallelChatBusyState('stop')), true);
+  assert.deepEqual(getComposerBusyScope(createComposerBusyState('send', channelScope)), channelScope);
+  assert.equal(getComposerBusyChannelId(createComposerBusyState('send', channelScope)), 'channel-1');
+  assert.equal(getComposerDispatchChannelId(createComposerBusyState('send', channelScope)), 'channel-1');
 });
 
 test('composer busy helpers keep relay semantics distinct from dispatch and selection blocking', () => {
-  assert.equal(isComposerBusy('parallelChat:relay'), true);
-  assert.equal(isComposerAckBusy('parallelChat:relay'), false);
-  assert.equal(isComposerDispatchBusy('parallelChat:relay'), false);
-  assert.equal(isComposerSelectionBlocked('parallelChat:relay'), false);
-  assert.equal(isComposerStopBusy('parallelChat:relay'), false);
-  assert.equal(getComposerBusyChannelId('parallelChat:relay'), null);
-  assert.equal(getComposerDispatchChannelId('parallelChat:relay'), null);
+  const relayBusy = createParallelChatBusyState('relay');
+
+  assert.equal(isComposerBusy(relayBusy), true);
+  assert.equal(isComposerAckBusy(relayBusy), false);
+  assert.equal(isComposerDispatchBusy(relayBusy), false);
+  assert.equal(isComposerSelectionBlocked(relayBusy), false);
+  assert.equal(isComposerStopBusy(relayBusy), false);
+  assert.equal(getComposerBusyChannelId(relayBusy), null);
+  assert.equal(getComposerDispatchChannelId(relayBusy), null);
 });
 
 test('composer busy helpers scope ACK, dispatch, and stop states to the active channel', () => {
-  assert.equal(isComposerAckBusyForChannel('message:prepare:channel-1', 'channel-1'), true);
-  assert.equal(isComposerAckBusyForChannel('message:prepare:channel-1', 'channel-2'), false);
-  assert.equal(isComposerAckBusyForChannel('message:prepare', 'channel-1'), false);
-  assert.equal(isComposerAckBusyForChannel('message:ack:channel-1', 'channel-1'), true);
-  assert.equal(isComposerBusyForChannel('message:send:channel-1', 'channel-1'), true);
-  assert.equal(isComposerBusyForChannel('message:send:channel-1', 'channel-2'), false);
-  assert.equal(isComposerDispatchBusyForChannel('message:send:channel-1', 'channel-1'), true);
-  assert.equal(isComposerDispatchBusyForChannel('message:send:channel-1', 'channel-2'), false);
-  assert.equal(isComposerStopBusyForChannel('message:stop:channel-1', 'channel-1'), true);
-  assert.equal(isComposerStopBusyForChannel('message:stop:channel-1', 'channel-2'), false);
+  const channel1Scope = createChannelComposerBusyScope('channel-1');
+
+  assert.equal(isComposerAckBusyForChannel(createComposerBusyState('prepare', channel1Scope), 'channel-1'), true);
+  assert.equal(isComposerAckBusyForChannel(createComposerBusyState('prepare', channel1Scope), 'channel-2'), false);
+  assert.equal(isComposerAckBusyForChannel(clearBusyState(), 'channel-1'), false);
+  assert.equal(isComposerAckBusyForChannel(createComposerBusyState('ack', channel1Scope), 'channel-1'), true);
+  assert.equal(isComposerBusyForChannel(createComposerBusyState('send', channel1Scope), 'channel-1'), true);
+  assert.equal(isComposerBusyForChannel(createComposerBusyState('send', channel1Scope), 'channel-2'), false);
+  assert.equal(isComposerDispatchBusyForChannel(createComposerBusyState('send', channel1Scope), 'channel-1'), true);
+  assert.equal(isComposerDispatchBusyForChannel(createComposerBusyState('send', channel1Scope), 'channel-2'), false);
+  assert.equal(isComposerStopBusyForChannel(createComposerBusyState('stop', channel1Scope), 'channel-1'), true);
+  assert.equal(isComposerStopBusyForChannel(createComposerBusyState('stop', channel1Scope), 'channel-2'), false);
 });
 
 test('composer busy helpers keep draft ACK states local to draft surfaces', () => {
-  const draftBusy = `message:prepare:${DRAFT_COMPOSER_BUSY_SCOPE}`;
-  assert.equal(isComposerAckBusyForDraft(draftBusy), true);
-  assert.equal(isComposerBusyForDraft(`message:ack:${DRAFT_COMPOSER_BUSY_SCOPE}`), true);
-  assert.equal(isComposerBusyForChannel(`message:ack:${DRAFT_COMPOSER_BUSY_SCOPE}`, 'channel-1'), false);
-  assert.equal(getComposerBusyScope(draftBusy), DRAFT_COMPOSER_BUSY_SCOPE);
-  assert.equal(getComposerBusyChannelId(draftBusy), null);
+  const draftScope = createDraftComposerBusyScope();
+  const draftPrepareBusy = createComposerBusyState('prepare', draftScope);
+
+  assert.equal(isComposerAckBusyForDraft(draftPrepareBusy), true);
+  assert.equal(isComposerBusyForDraft(createComposerBusyState('ack', draftScope)), true);
+  assert.equal(isComposerBusyForChannel(createComposerBusyState('ack', draftScope), 'channel-1'), false);
+  assert.deepEqual(getComposerBusyScope(draftPrepareBusy), draftScope);
+  assert.equal(getComposerBusyChannelId(draftPrepareBusy), null);
 });
 
 test('composer route blocking only applies to the busy channel instead of all rooms', () => {
-  assert.equal(doesComposerSelectionBlockChannelRoute('message:ack:channel-1', 'channel-1'), true);
-  assert.equal(doesComposerSelectionBlockChannelRoute('message:ack:channel-1', 'channel-2'), false);
-  assert.equal(doesComposerSelectionBlockChannelRoute('message:prepare', 'channel-1'), false);
-  assert.equal(doesComposerSelectionBlockChannelRoute('parallelChat:ack', 'channel-2'), false);
+  const channel1Scope = createChannelComposerBusyScope('channel-1');
+
   assert.equal(
-    doesComposerSelectionBlockChannelRoute(`message:prepare:${DRAFT_COMPOSER_BUSY_SCOPE}`, 'channel-1'),
+    doesComposerSelectionBlockChannelRoute(createComposerBusyState('ack', channel1Scope), 'channel-1'),
+    true,
+  );
+  assert.equal(
+    doesComposerSelectionBlockChannelRoute(createComposerBusyState('ack', channel1Scope), 'channel-2'),
+    false,
+  );
+  assert.equal(doesComposerSelectionBlockChannelRoute(clearBusyState(), 'channel-1'), false);
+  assert.equal(
+    doesComposerSelectionBlockChannelRoute(createParallelChatBusyState('ack'), 'channel-2'),
+    false,
+  );
+  assert.equal(
+    doesComposerSelectionBlockChannelRoute(
+      createComposerBusyState('prepare', createDraftComposerBusyScope()),
+      'channel-1',
+    ),
     false,
   );
 });

@@ -1,4 +1,9 @@
 import { useRef, type ReactNode } from 'react';
+import {
+  isChannelBusy,
+  isConcurrentGroupBusy,
+  type WorkspaceBusyState,
+} from '../../../shared/workspaceBusy.js';
 
 import {
   type ConversationSidebarCat,
@@ -59,7 +64,7 @@ function ChannelItem<
   payload: ConversationSidebarPayload<TCat, TChannel>;
   helpers: ConversationSidebarHelpers<TCat, TChannel, TDot>;
   isSelected: boolean;
-  busy: string;
+  busy: WorkspaceBusyState;
   overflowOpen: boolean;
   onSelect: () => void;
   onRename: (title: string) => void;
@@ -179,10 +184,10 @@ function ChannelItem<
           ) : null}
           <button
             type="button"
-            disabled={busy === `channel:delete:${channel.id}`}
+            disabled={isChannelBusy(busy, 'delete', channel.id)}
             onClick={onDelete}
           >
-            {busy === `channel:delete:${channel.id}` ? 'Deleting...' : 'Delete'}
+            {isChannelBusy(busy, 'delete', channel.id) ? 'Deleting...' : 'Delete'}
           </button>
         </SidebarFloatingMenuPortal>
       ) : null}
@@ -206,7 +211,7 @@ function GroupHeaderItem({
 }: {
   title: string;
   isSelected: boolean;
-  busy: string;
+  busy: WorkspaceBusyState;
   overflowOpen: boolean;
   onSelect: () => void;
   onRename?: (title: string) => void;
@@ -224,9 +229,16 @@ function GroupHeaderItem({
     overflowMenuRef,
     overflowOpen,
   );
-  const renameBusy = renameBusyKey ? busy === renameBusyKey : false;
-  const ungroupBusy = ungroupBusyKey ? busy === ungroupBusyKey : false;
-  const deleteBusy = deleteBusyKey ? busy === deleteBusyKey : false;
+  const groupIdFromBusyKey = (busyKey?: string): string | undefined => busyKey?.split(':').at(-1);
+  const renameBusy = renameBusyKey
+    ? isConcurrentGroupBusy(busy, 'rename', groupIdFromBusyKey(renameBusyKey))
+    : false;
+  const ungroupBusy = ungroupBusyKey
+    ? isConcurrentGroupBusy(busy, 'ungroup', groupIdFromBusyKey(ungroupBusyKey))
+    : false;
+  const deleteBusy = deleteBusyKey
+    ? isConcurrentGroupBusy(busy, 'delete', groupIdFromBusyKey(deleteBusyKey))
+    : false;
   const {
     renaming,
     renameValue,
@@ -372,7 +384,7 @@ export function ConversationSidebarRecentsSection<
   payload: ConversationSidebarPayload<TCat, TChannel>;
   helpers: ConversationSidebarHelpers<TCat, TChannel, TDot>;
   routeChannelId: string | null;
-  busy: string;
+  busy: WorkspaceBusyState;
   overflowMenuOpenId: string | null;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;

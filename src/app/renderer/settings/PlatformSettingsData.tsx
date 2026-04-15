@@ -1,10 +1,14 @@
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import {
+  isSetupResetBusy,
+  type WorkspaceBusyState,
+} from '../../../shared/workspaceBusy.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsDataProps {
   payload: AppShellPayload;
   feedback: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   onResetSetup: () => void;
 }
 
@@ -14,6 +18,7 @@ export function PlatformSettingsData({
   busy,
   onResetSetup,
 }: PlatformSettingsDataProps) {
+  const resetBusy = isSetupResetBusy(busy);
   return (
     <PlatformSettingsShell
       section="data"
@@ -29,10 +34,10 @@ export function PlatformSettingsData({
         <button
           className="dangerButton"
           type="button"
-          disabled={busy === 'setup:reset'}
+          disabled={resetBusy}
           onClick={onResetSetup}
         >
-          {busy === 'setup:reset' ? 'Resetting...' : 'Reset all data'}
+          {resetBusy ? 'Resetting...' : 'Reset all data'}
         </button>
       </div>
       {feedback ? <p className="feedbackText">{feedback}</p> : null}

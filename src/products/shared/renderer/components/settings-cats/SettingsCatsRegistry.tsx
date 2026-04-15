@@ -1,6 +1,10 @@
 import { useState, type ComponentType, type Dispatch, type SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
+import {
+  isCatBusy,
+  type WorkspaceBusyState,
+} from '../../../../../shared/workspaceBusy.js';
 import type { TelegramTransportDiagnostics } from '../../api/index.js';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory.js';
 import type { BotFormState } from '../../hooks/settingsCatsRegistryActions.js';
@@ -9,7 +13,7 @@ import type { SettingsCatsRegistryController } from './SettingsCats.js';
 import { SettingsCatsDetailPanel } from './SettingsCatsDetailPanel.js';
 
 export interface SharedSettingsCatsRegistryDetailPanelProps {
-  busy: string;
+  busy: WorkspaceBusyState;
   botBindings: NonNullable<AppShellPayload['chat']['botBindings']>;
   cat: AppShellPayload['chat']['cats'][number];
   isBossCat: boolean;
@@ -24,7 +28,7 @@ export interface SharedSettingsCatsRegistryDetailPanelProps {
 
 export interface SharedSettingsCatsRegistryProps {
   botBindings: NonNullable<AppShellPayload['chat']['botBindings']>;
-  busy: string;
+  busy: WorkspaceBusyState;
   expandedCatId: string | null;
   memoryController: SettingsCatsMemoryController;
   payload: AppShellPayload;
@@ -135,8 +139,8 @@ export function WorkspaceSettingsCatsRegistry({
                           className="chromeButton"
                           type="button"
                           disabled={
-                            busy === `cat:unarchive:${cat.id}`
-                            || busy === `cat:delete:${cat.id}`
+                            isCatBusy(busy, 'unarchive', cat.id)
+                            || isCatBusy(busy, 'delete', cat.id)
                           }
                           onClick={(event) => {
                             event.stopPropagation();
@@ -149,7 +153,7 @@ export function WorkspaceSettingsCatsRegistry({
                         <button
                           className="chromeButton"
                           type="button"
-                          disabled={busy === `cat:delete:${cat.id}`}
+                          disabled={isCatBusy(busy, 'delete', cat.id)}
                           onClick={(event) => {
                             event.stopPropagation();
                             void registryController.onDeleteCat(cat.id, cat.name);
@@ -163,7 +167,7 @@ export function WorkspaceSettingsCatsRegistry({
                       <button
                         className="chromeButton"
                         type="button"
-                        disabled={busy === `cat:archive:${cat.id}`}
+                        disabled={isCatBusy(busy, 'archive', cat.id)}
                         onClick={(event) => {
                           event.stopPropagation();
                           void registryController.onArchiveCat(cat.id, cat.name);

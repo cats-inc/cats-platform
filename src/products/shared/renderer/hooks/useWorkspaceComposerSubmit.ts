@@ -9,9 +9,15 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import {
-  DRAFT_COMPOSER_BUSY_SCOPE,
   shouldSubmitComposerOnKeyDown,
 } from '../../../../shared/composer.js';
+import {
+  clearBusyState,
+  createChannelComposerBusyScope,
+  createComposerBusyState,
+  createDraftComposerBusyScope,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
@@ -81,8 +87,8 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceMode
   draftModel: ModelValue;
   soloChannelModel: ModelValue;
   selectedChannel: SelectedChannelView | null;
-  busy: string;
-  setBusy: Dispatch<SetStateAction<string>>;
+  busy: WorkspaceBusyState;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
 }
 
@@ -189,10 +195,12 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       );
 
     setFeedback('');
-    const prepareBusyScope = channelId || DRAFT_COMPOSER_BUSY_SCOPE;
+    const prepareBusyScope = channelId
+      ? createChannelComposerBusyScope(channelId)
+      : createDraftComposerBusyScope();
     const { id: submitId, controller: ackController } = beginAckRequest();
     let keepBusyAfterReturn = false;
-    setBusy(`message:prepare:${prepareBusyScope}`);
+    setBusy(createComposerBusyState('prepare', prepareBusyScope));
     captureManagedComposerLocation(managedNavigationLocationRef);
     try {
       const preparedSendContext = await prepareWorkspaceSendContext({
@@ -241,7 +249,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       setDraftFiles([]);
       setChannelFiles([]);
       navigateWithinManagedFlow(rollbackPath);
-      setBusy(`message:ack:${channelId}`);
+      setBusy(createComposerBusyState('ack', createChannelComposerBusyScope(channelId)));
 
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
@@ -255,7 +263,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
           kind: 'channel',
           channelId,
         });
-        setBusy(`message:send:${channelId}`);
+        setBusy(createComposerBusyState('send', createChannelComposerBusyScope(channelId)));
         keepBusyAfterReturn = true;
       } else {
         setActiveDispatchRequest(null);
@@ -302,7 +310,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       if (!keepBusyAfterReturn) {
         clearAckRequestIfCurrent(submitId);
         clearDispatchRequestIfCurrent(submitId);
-        setBusy('');
+        setBusy(clearBusyState());
       }
       clearManagedComposerLocation(managedNavigationLocationRef);
     }

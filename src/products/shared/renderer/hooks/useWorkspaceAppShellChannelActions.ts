@@ -6,6 +6,11 @@ import {
 } from 'react';
 
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
+import {
+  clearBusyState,
+  createChannelBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 
 export interface WorkspaceDirectLaneModelValueLike {
   provider: string;
@@ -58,7 +63,7 @@ export interface UseWorkspaceResumeChannelOptions<TPayload> {
     channelId: string,
   ) => Promise<WorkspaceChannelActivationResultLike<TPayload>>;
   publishReadyPayload: (payload: TPayload) => void;
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
 }
 
@@ -70,7 +75,7 @@ export function useWorkspaceResumeChannel<TPayload>({
 }: UseWorkspaceResumeChannelOptions<TPayload>) {
   return useCallback(
     async (channelId: string): Promise<void> => {
-      setBusy('channel:resume');
+      setBusy(createChannelBusyState('resume'));
       setFeedback('');
       try {
         const activation = await activateChatChannel(channelId);
@@ -95,7 +100,7 @@ export function useWorkspaceResumeChannel<TPayload>({
             : 'Failed to resume chat session.',
         );
       } finally {
-        setBusy('');
+        setBusy(clearBusyState());
       }
     },
     [activateChatChannel, publishReadyPayload, setBusy, setFeedback],

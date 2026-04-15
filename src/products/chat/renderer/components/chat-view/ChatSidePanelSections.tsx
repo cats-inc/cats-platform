@@ -24,11 +24,12 @@ import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
 import { ChatParticipantsSection } from './ChatParticipantsSection.js';
+import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 
 export interface BuildChatSidePanelSectionsOptions {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
-  busy: string;
+  busy: WorkspaceBusyState;
   operatorView: ChatOperatorView | null;
   operatorLoading: boolean;
   operatorError: string;

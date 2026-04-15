@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { WorkspaceSettingsCatsCanvas } from '../../../products/shared/renderer/components/settings-cats/SettingsCats.js';
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
@@ -19,9 +20,9 @@ export interface PlatformSettingsRoutesProps<
   payload: TPayload;
   onPayloadUpdate: (payload: TPayload) => void;
   feedback: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   onFeedback: (message: string) => void;
-  onBusy: (key: string) => void;
+  onBusy: (busy: WorkspaceBusyState) => void;
   onResetSetup: () => void;
 }
 

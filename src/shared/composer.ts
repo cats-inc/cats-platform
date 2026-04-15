@@ -1,3 +1,13 @@
+import {
+  createDraftComposerBusyScope,
+  isBusyActive,
+  isParallelChatBusy,
+  type ComposerBusyScope,
+  type WorkspaceBusyState,
+} from './workspaceBusy.js';
+
+export type { ComposerBusyScope, WorkspaceBusyState } from './workspaceBusy.js';
+
 export interface ComposerKeyDecisionInput {
   key: string;
   shiftKey?: boolean;
@@ -5,30 +15,6 @@ export interface ComposerKeyDecisionInput {
   metaKey?: boolean;
   altKey?: boolean;
   isComposing?: boolean;
-}
-
-export function normalizeComposerBusy(busy: string | null | undefined): string {
-  return typeof busy === 'string' ? busy : '';
-}
-
-export const DRAFT_COMPOSER_BUSY_SCOPE = 'draft';
-
-const MESSAGE_PREPARE_PREFIX = 'message:prepare';
-const MESSAGE_ACK_PREFIX = 'message:ack';
-const MESSAGE_SEND_PREFIX = 'message:send';
-const MESSAGE_STOP_PREFIX = 'message:stop';
-
-function hasScopedBusyPrefix(normalizedBusy: string, prefix: string): boolean {
-  return normalizedBusy === prefix || normalizedBusy.startsWith(`${prefix}:`);
-}
-
-function readScopedBusyValue(normalizedBusy: string, prefix: string): string | null {
-  if (!normalizedBusy.startsWith(`${prefix}:`)) {
-    return null;
-  }
-
-  const scope = normalizedBusy.slice(prefix.length + 1).trim();
-  return scope.length > 0 ? scope : null;
 }
 
 export function shouldSubmitComposerOnKeyDown(input: ComposerKeyDecisionInput): boolean {
@@ -42,110 +28,87 @@ export function shouldSubmitComposerOnKeyDown(input: ComposerKeyDecisionInput): 
   );
 }
 
-export function isComposerBusy(busy: string | null | undefined): boolean {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  return (
-    hasScopedBusyPrefix(normalizedBusy, MESSAGE_PREPARE_PREFIX)
-    || hasScopedBusyPrefix(normalizedBusy, MESSAGE_ACK_PREFIX)
-    || normalizedBusy === 'parallelChat:ack'
-    || hasScopedBusyPrefix(normalizedBusy, MESSAGE_SEND_PREFIX)
-    || normalizedBusy === 'parallelChat:dispatch'
-    || normalizedBusy === 'parallelChat:relay'
-    || hasScopedBusyPrefix(normalizedBusy, MESSAGE_STOP_PREFIX)
-    || normalizedBusy === 'parallelChat:stop'
-  );
+export function isComposerBusy(busy: WorkspaceBusyState | null | undefined): boolean {
+  return (busy?.kind === 'composer' || isParallelChatBusy(busy)) && isBusyActive(busy);
 }
 
-export function isComposerAckBusy(busy: string | null | undefined): boolean {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  return (
-    hasScopedBusyPrefix(normalizedBusy, MESSAGE_PREPARE_PREFIX)
-    || hasScopedBusyPrefix(normalizedBusy, MESSAGE_ACK_PREFIX)
-    || normalizedBusy === 'parallelChat:ack'
-  );
+export function isComposerAckBusy(busy: WorkspaceBusyState | null | undefined): boolean {
+  return (busy?.kind === 'composer' && (busy.phase === 'prepare' || busy.phase === 'ack'))
+    || isParallelChatBusy(busy, 'ack');
 }
 
-export function isComposerDispatchBusy(busy: string | null | undefined): boolean {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  return hasScopedBusyPrefix(normalizedBusy, MESSAGE_SEND_PREFIX)
-    || normalizedBusy === 'parallelChat:dispatch';
+export function isComposerDispatchBusy(busy: WorkspaceBusyState | null | undefined): boolean {
+  return (busy?.kind === 'composer' && busy.phase === 'send')
+    || isParallelChatBusy(busy, 'dispatch');
 }
 
-export function isComposerStopBusy(busy: string | null | undefined): boolean {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  return hasScopedBusyPrefix(normalizedBusy, MESSAGE_STOP_PREFIX)
-    || normalizedBusy === 'parallelChat:stop';
+export function isComposerStopBusy(busy: WorkspaceBusyState | null | undefined): boolean {
+  return (busy?.kind === 'composer' && busy.phase === 'stop')
+    || isParallelChatBusy(busy, 'stop');
 }
 
-export function isComposerSelectionBlocked(busy: string | null | undefined): boolean {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  return (
-    hasScopedBusyPrefix(normalizedBusy, MESSAGE_PREPARE_PREFIX)
-    || hasScopedBusyPrefix(normalizedBusy, MESSAGE_ACK_PREFIX)
-    || normalizedBusy === 'parallelChat:ack'
-    || hasScopedBusyPrefix(normalizedBusy, MESSAGE_STOP_PREFIX)
-    || normalizedBusy === 'parallelChat:stop'
-  );
+export function isComposerSelectionBlocked(busy: WorkspaceBusyState | null | undefined): boolean {
+  return isComposerAckBusy(busy) || isComposerStopBusy(busy);
 }
 
-export function getComposerBusyScope(busy: string | null | undefined): string | null {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  return (
-    readScopedBusyValue(normalizedBusy, MESSAGE_PREPARE_PREFIX)
-    ?? readScopedBusyValue(normalizedBusy, MESSAGE_ACK_PREFIX)
-    ?? readScopedBusyValue(normalizedBusy, MESSAGE_SEND_PREFIX)
-    ?? readScopedBusyValue(normalizedBusy, MESSAGE_STOP_PREFIX)
-  );
+export function createDraftComposerScope(): ComposerBusyScope {
+  return createDraftComposerBusyScope();
 }
 
-export function getComposerBusyChannelId(busy: string | null | undefined): string | null {
-  const scope = getComposerBusyScope(busy);
-  return scope && scope !== DRAFT_COMPOSER_BUSY_SCOPE ? scope : null;
+export function getComposerBusyScope(
+  busy: WorkspaceBusyState | null | undefined,
+): ComposerBusyScope | null {
+  return busy?.kind === 'composer' ? busy.scope : null;
 }
 
-export function getComposerDispatchChannelId(busy: string | null | undefined): string | null {
-  const scope = readScopedBusyValue(normalizeComposerBusy(busy), MESSAGE_SEND_PREFIX);
-  return scope && scope !== DRAFT_COMPOSER_BUSY_SCOPE ? scope : null;
+export function getComposerBusyChannelId(
+  busy: WorkspaceBusyState | null | undefined,
+): string | null {
+  return busy?.kind === 'composer' && busy.scope.kind === 'channel'
+    ? busy.scope.channelId
+    : null;
 }
 
-function isComposerScopedBusy(
-  normalizedBusy: string,
-  prefix: string,
-  scope: string | null | undefined,
-): boolean {
-  const normalizedScope = scope?.trim() || null;
-  if (!normalizedScope) {
-    return false;
-  }
-
-  return normalizedBusy === `${prefix}:${normalizedScope}`;
+export function getComposerDispatchChannelId(
+  busy: WorkspaceBusyState | null | undefined,
+): string | null {
+  return busy?.kind === 'composer' && busy.phase === 'send' && busy.scope.kind === 'channel'
+    ? busy.scope.channelId
+    : null;
 }
 
 export function isComposerAckBusyForChannel(
-  busy: string | null | undefined,
+  busy: WorkspaceBusyState | null | undefined,
   channelId: string | null | undefined,
 ): boolean {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  return isComposerScopedBusy(normalizedBusy, MESSAGE_PREPARE_PREFIX, channelId)
-    || isComposerScopedBusy(normalizedBusy, MESSAGE_ACK_PREFIX, channelId);
+  return busy?.kind === 'composer'
+    && (busy.phase === 'prepare' || busy.phase === 'ack')
+    && busy.scope.kind === 'channel'
+    && busy.scope.channelId === channelId;
 }
 
 export function isComposerDispatchBusyForChannel(
-  busy: string | null | undefined,
+  busy: WorkspaceBusyState | null | undefined,
   channelId: string | null | undefined,
 ): boolean {
-  return isComposerScopedBusy(normalizeComposerBusy(busy), MESSAGE_SEND_PREFIX, channelId);
+  return busy?.kind === 'composer'
+    && busy.phase === 'send'
+    && busy.scope.kind === 'channel'
+    && busy.scope.channelId === channelId;
 }
 
 export function isComposerStopBusyForChannel(
-  busy: string | null | undefined,
+  busy: WorkspaceBusyState | null | undefined,
   channelId: string | null | undefined,
 ): boolean {
-  return isComposerScopedBusy(normalizeComposerBusy(busy), MESSAGE_STOP_PREFIX, channelId);
+  return busy?.kind === 'composer'
+    && busy.phase === 'stop'
+    && busy.scope.kind === 'channel'
+    && busy.scope.channelId === channelId;
 }
 
 export function isComposerBusyForChannel(
-  busy: string | null | undefined,
+  busy: WorkspaceBusyState | null | undefined,
   channelId: string | null | undefined,
 ): boolean {
   return isComposerAckBusyForChannel(busy, channelId)
@@ -153,24 +116,25 @@ export function isComposerBusyForChannel(
     || isComposerStopBusyForChannel(busy, channelId);
 }
 
-export function isComposerAckBusyForDraft(busy: string | null | undefined): boolean {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  return isComposerScopedBusy(normalizedBusy, MESSAGE_PREPARE_PREFIX, DRAFT_COMPOSER_BUSY_SCOPE)
-    || isComposerScopedBusy(normalizedBusy, MESSAGE_ACK_PREFIX, DRAFT_COMPOSER_BUSY_SCOPE);
+export function isComposerAckBusyForDraft(
+  busy: WorkspaceBusyState | null | undefined,
+): boolean {
+  return busy?.kind === 'composer'
+    && (busy.phase === 'prepare' || busy.phase === 'ack')
+    && busy.scope.kind === 'draft';
 }
 
-export function isComposerBusyForDraft(busy: string | null | undefined): boolean {
+export function isComposerBusyForDraft(busy: WorkspaceBusyState | null | undefined): boolean {
   return isComposerAckBusyForDraft(busy);
 }
 
 export function doesComposerSelectionBlockChannelRoute(
-  busy: string | null | undefined,
+  busy: WorkspaceBusyState | null | undefined,
   channelId: string | null | undefined,
 ): boolean {
-  const normalizedBusy = normalizeComposerBusy(busy);
-  if (!channelId || !isComposerSelectionBlocked(normalizedBusy)) {
-    return false;
-  }
-
-  return getComposerBusyChannelId(normalizedBusy) === channelId;
+  return Boolean(channelId)
+    && (
+      isComposerAckBusyForChannel(busy, channelId)
+      || isComposerStopBusyForChannel(busy, channelId)
+    );
 }

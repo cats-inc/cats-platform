@@ -6,6 +6,7 @@ import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/a
 import type { ParticipantSessionStatus } from '../src/shared/roomRouting.ts';
 import { buildMyCatPath } from '../src/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
+import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 import {
   findDirectLaneForCat,
   resolveMyCatNavigationTarget,
@@ -248,7 +249,7 @@ function createSidebarTree(
     sidebarOpen: true,
     accountMenuOpen: false,
     overflowMenuOpenId: null,
-    busy: '',
+    busy: clearBusyState(),
     surface: 'chats',
     routeChannelId: null,
     accountMenuRef: { current: null } as RefObject<HTMLDivElement | null>,

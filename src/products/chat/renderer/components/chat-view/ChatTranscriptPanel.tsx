@@ -23,6 +23,11 @@ import type {
 import {
   resolveLiveIndicatorSegments,
 } from '../../../../../shared/liveIndicator.js';
+import {
+  isBusyActive,
+  isChoiceBusy,
+  type WorkspaceBusyState,
+} from '../../../../../shared/workspaceBusy.js';
 import { TranscriptMessageItem } from './TranscriptMessageItem.js';
 import { LiveTranscriptIndicator } from './LiveTranscriptIndicator.js';
 
@@ -36,7 +41,7 @@ export interface ChatTranscriptPanelProps {
   bossCatId: string | null;
   selectedChannelId: string;
   disabledMentionNames: string[];
-  busy: string;
+  busy: WorkspaceBusyState;
   compareBusy: boolean;
   isCompareGroup: boolean;
   choiceResponsesBySource: Map<string, ChatMessageChoiceResponse>;
@@ -162,7 +167,7 @@ export function ChatTranscriptPanel({
               selectedChannelId={selectedChannelId}
               disabledMentionNames={disabledMentionNames}
               compareBusy={compareBusy}
-              choiceBusy={busy.startsWith(`choice:${message.id}:`)}
+              choiceBusy={isChoiceBusy(busy, message.id)}
               isCompareGroup={isCompareGroup}
               relayMenuOpen={openRelayMenuId === message.id}
               userTurnStatus={
@@ -170,7 +175,7 @@ export function ChatTranscriptPanel({
                   ? latestUserTurnStatus
                   : 'idle'
               }
-              retryBusy={busy.length > 0}
+              retryBusy={isBusyActive(busy)}
               existingChoiceResponse={choiceResponsesBySource.get(message.id) ?? null}
               onChoiceSubmit={onChoiceSubmit}
               onRetryMessage={onRetryMessage}

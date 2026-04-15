@@ -9,9 +9,16 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import {
-  DRAFT_COMPOSER_BUSY_SCOPE,
   shouldSubmitComposerOnKeyDown,
 } from '../../../../shared/composer';
+import {
+  clearBusyState,
+  createChannelComposerBusyScope,
+  createComposerBusyState,
+  createDraftComposerBusyScope,
+  createParallelChatBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 import type { AppShellPayload } from '../../api/contracts';
 import {
   buildChannelPath,
@@ -116,8 +123,8 @@ export function useComposerSubmit(options: {
   compareGroupId: string | null;
   compareSendScope: 'all_members' | 'active_only';
   selectedChannel: SelectedChannelView | null;
-  busy: string;
-  setBusy: Dispatch<SetStateAction<string>>;
+  busy: WorkspaceBusyState;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
 }) {
   const {
@@ -241,7 +248,7 @@ export function useComposerSubmit(options: {
     captureManagedComposerLocation(managedNavigationLocationRef);
     try {
       if (showingParallelChatDraft && wasDraftingNewChat) {
-        setBusy('parallelChat:ack');
+        setBusy(createParallelChatBusyState('ack'));
         const dispatch = await submitNewParallelChatDraft({
           body,
           payload: initialPayload,
@@ -267,7 +274,7 @@ export function useComposerSubmit(options: {
             id: submitId,
             ...dispatch.dispatchRequest,
           });
-          setBusy('parallelChat:dispatch');
+          setBusy(createParallelChatBusyState('dispatch'));
           keepBusyAfterReturn = true;
         } else {
           setActiveDispatchRequest(null);
@@ -296,7 +303,7 @@ export function useComposerSubmit(options: {
         rollbackPath = currentPathname;
         setComposerDraft('');
         setChannelFiles([]);
-        setBusy('parallelChat:ack');
+        setBusy(createParallelChatBusyState('ack'));
         const dispatch = await submitParallelCompareMessage({
           body,
           payload: initialPayload,
@@ -313,7 +320,7 @@ export function useComposerSubmit(options: {
             id: submitId,
             ...dispatch.dispatchRequest,
           });
-          setBusy('parallelChat:dispatch');
+          setBusy(createParallelChatBusyState('dispatch'));
           keepBusyAfterReturn = true;
         } else {
           setActiveDispatchRequest(null);
@@ -322,7 +329,12 @@ export function useComposerSubmit(options: {
         return;
       }
 
-        setBusy(`message:prepare:${channelId || DRAFT_COMPOSER_BUSY_SCOPE}`);
+        setBusy(createComposerBusyState(
+          'prepare',
+          channelId
+            ? createChannelComposerBusyScope(channelId)
+            : createDraftComposerBusyScope(),
+        ));
 
       const preparedSendContext = await prepareWorkspaceSendContext({
         initialPayload,
@@ -401,7 +413,7 @@ export function useComposerSubmit(options: {
       setDraftFiles([]);
       setChannelFiles([]);
       navigateWithinManagedFlow(rollbackPath);
-      setBusy(`message:ack:${channelId}`);
+      setBusy(createComposerBusyState('ack', createChannelComposerBusyScope(channelId)));
 
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
@@ -421,7 +433,7 @@ export function useComposerSubmit(options: {
           kind: 'channel',
           channelId,
         });
-        setBusy(`message:send:${channelId}`);
+        setBusy(createComposerBusyState('send', createChannelComposerBusyScope(channelId)));
         keepBusyAfterReturn = true;
       } else {
         setActiveDispatchRequest(null);
@@ -476,7 +488,7 @@ export function useComposerSubmit(options: {
         clearDispatchRequestIfCurrent(submitId);
       }
       if (!keepBusyAfterReturn) {
-        setBusy('');
+        setBusy(clearBusyState());
       }
       clearManagedComposerLocation(managedNavigationLocationRef);
     }
@@ -541,7 +553,7 @@ export function useComposerSubmit(options: {
     let keepBusyAfterReturn = false;
 
     try {
-      setBusy(`message:ack:${channelId}`);
+      setBusy(createComposerBusyState('ack', createChannelComposerBusyScope(channelId)));
       const dispatch = await retryChatMessage(
         channelId,
         messageId,
@@ -555,7 +567,7 @@ export function useComposerSubmit(options: {
           kind: 'channel',
           channelId,
         });
-        setBusy(`message:send:${channelId}`);
+        setBusy(createComposerBusyState('send', createChannelComposerBusyScope(channelId)));
         keepBusyAfterReturn = true;
       } else {
         setActiveDispatchRequest(null);
@@ -575,7 +587,7 @@ export function useComposerSubmit(options: {
       if (!keepBusyAfterReturn) {
         clearAckRequestIfCurrent(submitId);
         clearDispatchRequestIfCurrent(submitId);
-        setBusy('');
+        setBusy(clearBusyState());
       }
     }
   }, [

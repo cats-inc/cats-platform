@@ -7,9 +7,13 @@ import {
   fetchProviderRegistry,
 } from '../../api/index.js';
 import { type CatFormState } from '../../workspaceChatUtils.js';
+import {
+  isCatBusy,
+  type WorkspaceBusyState,
+} from '../../../../../shared/workspaceBusy.js';
 
 export interface SettingsCatsCreateFormProps {
-  busy: string;
+  busy: WorkspaceBusyState;
   catForm: CatFormState;
   onCatFormChange: (value: CatFormState) => void;
   onCreateCat: (event: FormEvent<HTMLFormElement>) => void;
@@ -70,7 +74,7 @@ export function SettingsCatsCreateForm({
           disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim() || atCatLimit}
           type="submit"
         >
-          {busy === 'cat:create' ? 'Saving...' : 'Save Cat'}
+          {isCatBusy(busy, 'create') ? 'Saving...' : 'Save Cat'}
         </button>
       </form>
     </section>

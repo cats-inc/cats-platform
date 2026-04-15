@@ -18,6 +18,11 @@ import {
 } from "../../../design/components/ConfirmDialog";
 import type { PlatformSurfaceId } from "../../../shared/platform-contract.js";
 import { platformSurfaceRoutePrefix } from "../../../core/platformSurface.js";
+import {
+  clearBusyState,
+  createCatBusyState,
+  type WorkspaceBusyState,
+} from "../../../shared/workspaceBusy.js";
 import type { AppShellPayload } from "../api/workspaceContracts.js";
 import type { AddCatPanelProps } from "./components/AddCatPanel.js";
 import type { FolderBrowserContentProps } from "./components/FolderBrowser.js";
@@ -87,7 +92,7 @@ export interface WorkspaceProductAppRoutesProps {
   directLaneChannel: SelectedChannelView | null;
   showDirectLaneBoot: boolean;
   feedback: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   addCatOpen: boolean;
   chatSurfaceProps: ChatSurfaceProps;
   draftSurfaceProps: DraftSurfaceProps;
@@ -103,7 +108,7 @@ export interface WorkspaceProductSidebarProps {
   sidebarOpen: boolean;
   accountMenuOpen: boolean;
   overflowMenuOpenId: string | null;
-  busy: string;
+  busy: WorkspaceBusyState;
   surface: Surface;
   shellSurface: WorkspaceProductShellSurface;
   routeChannelId: string | null;
@@ -319,7 +324,7 @@ export function createWorkspaceProductApp({
           return;
         }
 
-        setBusy(`cat:archive:${catId}`);
+        setBusy(createCatBusyState('archive', catId));
         try {
           const payload = await updateCatProfile(catId, { archive: true });
           setState({ status: "ready", payload });
@@ -328,7 +333,7 @@ export function createWorkspaceProductApp({
             error instanceof Error ? error.message : "Failed to archive cat.",
           );
         } finally {
-          setBusy("");
+          setBusy(clearBusyState());
         }
       },
       [appConfirm, state],

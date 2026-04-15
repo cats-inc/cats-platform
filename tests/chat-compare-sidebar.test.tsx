@@ -10,6 +10,7 @@ import {
   readNewChatMode,
 } from '../src/products/chat/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
+import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function textContent(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
@@ -317,7 +318,7 @@ test('Sidebar groups parallel chats and shows member labels in Recents', () => {
     sidebarOpen: true,
     accountMenuOpen: false,
     overflowMenuOpenId: null,
-    busy: '',
+    busy: clearBusyState(),
     surface: 'chats',
     routeChannelId: 'compare-1',
     accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
@@ -358,7 +359,7 @@ test('Sidebar exposes a dedicated Group chat primary action', () => {
     sidebarOpen: true,
     accountMenuOpen: false,
     overflowMenuOpenId: null,
-    busy: '',
+    busy: clearBusyState(),
     surface: 'chats',
     routeChannelId: 'compare-1',
     accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
@@ -399,7 +400,7 @@ test('Sidebar wires the shared account identity menu to the runtime root', () =>
     sidebarOpen: true,
     accountMenuOpen: true,
     overflowMenuOpenId: null,
-    busy: '',
+    busy: clearBusyState(),
     surface: 'chats',
     routeChannelId: 'compare-1',
     accountMenuRef: { current: null } as RefObject<HTMLDivElement>,

@@ -1,6 +1,7 @@
 import { type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
+import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import { SidePanel } from '../../../../design/components/SidePanel.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { type NewChatMode } from '../draftStarterSuggestionContext.js';
@@ -31,7 +32,7 @@ import { AudienceChip } from './AudienceChip.js';
 export interface NewChatDraftProps {
   payload: AppShellPayload;
   composerDraft: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   greeting?: string | null;
   greetingPool?: ReadonlyArray<string> | null;
   draftFiles: File[];

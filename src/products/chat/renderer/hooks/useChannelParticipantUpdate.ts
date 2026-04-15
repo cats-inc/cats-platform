@@ -1,6 +1,11 @@
 import { startTransition, useCallback } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts.js';
+import {
+  clearBusyState,
+  createChannelParticipantBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 
 export function useChannelParticipantUpdate(input: {
   updateChannelParticipantApi: (
@@ -8,7 +13,7 @@ export function useChannelParticipantUpdate(input: {
     participantId: string,
     update: { name?: string; roleHint?: string | null },
   ) => Promise<AppShellPayload>;
-  setBusy: (value: string) => void;
+  setBusy: (value: WorkspaceBusyState) => void;
   setFeedback: (value: string) => void;
   setState: (value: { status: 'ready'; payload: AppShellPayload }) => void;
 }) {
@@ -18,7 +23,7 @@ export function useChannelParticipantUpdate(input: {
     participantId: string,
     update: { name?: string; roleHint?: string | null },
   ) => {
-    setBusy(`channel:participant:update:${participantId}`);
+    setBusy(createChannelParticipantBusyState(participantId));
     try {
       const payload = await updateChannelParticipantApi(channelId, participantId, update);
       startTransition(() => {
@@ -28,7 +33,7 @@ export function useChannelParticipantUpdate(input: {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to update participant.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [setBusy, setFeedback, setState, updateChannelParticipantApi]);
 }

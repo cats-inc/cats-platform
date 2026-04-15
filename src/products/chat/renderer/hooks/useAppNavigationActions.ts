@@ -30,6 +30,12 @@ import {
   useWorkspaceAppNavigationActions,
   type WorkspaceNavigationLoadState,
 } from '../../../shared/renderer/hooks/useWorkspaceAppNavigationActions.js';
+import {
+  clearBusyState,
+  createCatBusyState,
+  createConcurrentGroupBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 
 type LoadStateLike = WorkspaceNavigationLoadState<AppShellPayload>;
 
@@ -37,7 +43,7 @@ export function useAppNavigationActions(options: {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   setComposerDraft: Dispatch<SetStateAction<string>>;
   setAccountMenuOpen: Dispatch<SetStateAction<boolean>>;
@@ -133,7 +139,7 @@ export function useAppNavigationActions(options: {
     groupId: string,
     title: string,
   ): Promise<void> => {
-    setBusy(`concurrent-group:rename:${groupId}`);
+    setBusy(createConcurrentGroupBusyState('rename', groupId));
     try {
       const payload = await renameParallelChatGroup(groupId, { title });
       startTransition(() => {
@@ -143,12 +149,12 @@ export function useAppNavigationActions(options: {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to rename parallel chat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [setBusy, setFeedback, setState]);
 
   const onUngroupParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
-    setBusy(`concurrent-group:ungroup:${groupId}`);
+    setBusy(createConcurrentGroupBusyState('ungroup', groupId));
     try {
       const payload = await ungroupParallelChatGroup(groupId);
       startTransition(() => {
@@ -158,7 +164,7 @@ export function useAppNavigationActions(options: {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to ungroup parallel chat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [setBusy, setFeedback, setState]);
 
@@ -175,7 +181,7 @@ export function useAppNavigationActions(options: {
       : true;
     if (!confirmed) return;
 
-    setBusy(`concurrent-group:delete:${groupId}`);
+    setBusy(createConcurrentGroupBusyState('delete', groupId));
     try {
       const payload = await deleteParallelChatGroup(groupId);
       startTransition(() => {
@@ -187,7 +193,7 @@ export function useAppNavigationActions(options: {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete all chats.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [confirmDialog, navigate, setAddCatOpen, setBusy, setFeedback, setState, state]);
 
@@ -203,14 +209,14 @@ export function useAppNavigationActions(options: {
         })
       : true;
     if (!confirmed) return;
-    setBusy(`cat:archive:${catId}`);
+    setBusy(createCatBusyState('archive', catId));
     try {
       const payload = await updateCatProfile(catId, { archive: true });
       startTransition(() => setState({ status: 'ready', payload }));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to archive cat.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [confirmDialog, setBusy, setFeedback, setState, state]);
 

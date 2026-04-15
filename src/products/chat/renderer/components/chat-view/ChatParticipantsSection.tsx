@@ -2,6 +2,10 @@ import type { ChatCat } from '../../../api/contracts.js';
 import { buildDraftParticipantExecutionLabel } from '../../chatUtils.js';
 import { CatAvatarRow } from '../CatAvatarRow.js';
 import type { ResolvedChannelParticipant } from '../../../shared/channelParticipants.js';
+import {
+  isChannelParticipantBusy,
+  type WorkspaceBusyState,
+} from '../../../../../shared/workspaceBusy.js';
 
 export interface ChatParticipantsSectionProps {
   assignedCatRecords: ChatCat[];
@@ -10,7 +14,7 @@ export interface ChatParticipantsSectionProps {
   defaultRecipientCatId: string | null;
   editingParticipantId: string | null;
   editingParticipantName: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   canRenameParticipants: boolean;
   showAddCatButton: boolean;
   onEditingParticipantNameChange: (value: string) => void;
@@ -38,6 +42,9 @@ export function ChatParticipantsSection({
   onOpenAddCat,
   onCloseSidePanel,
 }: ChatParticipantsSectionProps) {
+  const isBusyForParticipant = (participantId: string): boolean =>
+    isChannelParticipantBusy(busy, participantId);
+
   return (
     <div className="sidePanelSectionStack">
       {assignedCatRecords.length > 0 ? (
@@ -81,7 +88,7 @@ export function ChatParticipantsSection({
                         className="chromeInput"
                         value={editingParticipantName}
                         onChange={(event) => onEditingParticipantNameChange(event.target.value)}
-                        disabled={busy === `channel:participant:update:${participant.participantId}`}
+                        disabled={isBusyForParticipant(participant.participantId)}
                       />
                     </label>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -90,7 +97,7 @@ export function ChatParticipantsSection({
                         className="addCatAssignButton"
                         disabled={
                           !editingParticipantName.trim()
-                          || busy === `channel:participant:update:${participant.participantId}`
+                          || isBusyForParticipant(participant.participantId)
                         }
                       >
                         Save name
@@ -99,7 +106,7 @@ export function ChatParticipantsSection({
                         type="button"
                         className="addCatAssignButton"
                         onClick={onCancelParticipantRename}
-                        disabled={busy === `channel:participant:update:${participant.participantId}`}
+                        disabled={isBusyForParticipant(participant.participantId)}
                       >
                         Cancel
                       </button>
@@ -112,7 +119,7 @@ export function ChatParticipantsSection({
                   <button
                     type="button"
                     className="addCatAssignButton"
-                    disabled={busy === `channel:participant:update:${participant.participantId}`}
+                    disabled={isBusyForParticipant(participant.participantId)}
                     onClick={() => onBeginParticipantRename(participant)}
                   >
                     Rename

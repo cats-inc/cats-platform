@@ -21,6 +21,7 @@ import type { ModelSelectorValue } from '../ModelSelector.js';
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
+import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 
 export interface ChatViewSidePanelProps {
   sidePanelOpen: boolean;
@@ -28,7 +29,7 @@ export interface ChatViewSidePanelProps {
   sidePanelPosition: 'side' | 'bottom';
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
-  busy: string;
+  busy: WorkspaceBusyState;
   operatorView: ChatOperatorView | null;
   operatorLoading: boolean;
   operatorError: string;

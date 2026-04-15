@@ -8,12 +8,16 @@ import {
 } from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import { buildChatLaneId } from '../src/shared/chatCoreIds.ts';
+import {
+  createChannelComposerBusyScope,
+  createComposerBusyState,
+} from '../src/shared/workspaceBusy.ts';
 
 test('resolveChatComposerViewState treats pre-ACK prepare as a cancelable composer busy state', () => {
   const result = resolveChatComposerViewState({
     activeRoomParticipants: [],
     directLaneCat: null,
-    busy: 'message:prepare:channel-1',
+    busy: createComposerBusyState('prepare', createChannelComposerBusyScope('channel-1')),
     isCompareGroup: false,
     selectedChannelId: 'channel-1',
     onCancelPendingSend: () => {},
@@ -32,7 +36,7 @@ test('resolveChatComposerViewState surfaces cancel-send for ACK on the active ch
   const result = resolveChatComposerViewState({
     activeRoomParticipants: [],
     directLaneCat: null,
-    busy: 'message:ack:channel-1',
+    busy: createComposerBusyState('ack', createChannelComposerBusyScope('channel-1')),
     isCompareGroup: false,
     selectedChannelId: 'channel-1',
     onCancelPendingSend: () => {},
@@ -51,7 +55,7 @@ test('resolveChatComposerViewState does not leak ACK cancel state into other cha
   const result = resolveChatComposerViewState({
     activeRoomParticipants: [],
     directLaneCat: null,
-    busy: 'message:ack:channel-1',
+    busy: createComposerBusyState('ack', createChannelComposerBusyScope('channel-1')),
     isCompareGroup: false,
     selectedChannelId: 'channel-2',
     onCancelPendingSend: () => {},
@@ -68,7 +72,7 @@ test('resolveChatComposerViewState scopes prepare busy to the active channel', (
   const result = resolveChatComposerViewState({
     activeRoomParticipants: [],
     directLaneCat: null,
-    busy: 'message:prepare:channel-1',
+    busy: createComposerBusyState('prepare', createChannelComposerBusyScope('channel-1')),
     isCompareGroup: false,
     selectedChannelId: 'channel-2',
     onCancelPendingSend: () => {},
@@ -86,7 +90,7 @@ test('resolveChatComposerViewState does not leak dispatch busy into other channe
   const result = resolveChatComposerViewState({
     activeRoomParticipants: [],
     directLaneCat: null,
-    busy: 'message:send:channel-1',
+    busy: createComposerBusyState('send', createChannelComposerBusyScope('channel-1')),
     isCompareGroup: false,
     selectedChannelId: 'channel-2',
     onCancelPendingSend: () => {},

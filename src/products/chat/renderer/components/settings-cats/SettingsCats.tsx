@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../../api/contracts.js';
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../../shared/api/workspaceContracts.js';
+import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import {
   SettingsCatsCanvas as SharedSettingsCatsCanvas,
   type SettingsCatsCanvasProps,
@@ -26,7 +27,7 @@ export { type SettingsCatsCanvasProps };
 function useChatSettingsCatsRegistryActions(options: {
   expandedCatId: string | null;
   setExpandedCatId: Dispatch<SetStateAction<string | null>>;
-  onBusy: (key: string) => void;
+  onBusy: (busy: WorkspaceBusyState) => void;
   onFeedback: (message: string) => void;
   onPayloadUpdate: (payload: WorkspaceAppShellPayload) => void;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;

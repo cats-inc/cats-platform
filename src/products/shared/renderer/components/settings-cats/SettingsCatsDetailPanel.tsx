@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
+import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDialog.js';
 import { updateCatProfile } from '../../api/index.js';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory.js';
@@ -11,7 +12,7 @@ import {
 } from './SettingsCatsDetailPanelContent.js';
 
 export interface SettingsCatsDetailPanelProps {
-  busy: string;
+  busy: WorkspaceBusyState;
   botBindings: NonNullable<AppShellPayload['chat']['botBindings']>;
   cat: AppShellPayload['chat']['cats'][number];
   isBossCat: boolean;

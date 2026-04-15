@@ -3,6 +3,10 @@ import {
   isComposerDispatchBusy,
 } from '../../../../shared/composer.js';
 import {
+  isParallelChatBusy,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
+import {
   advanceSequencedLiveIndicatorStreamCursor,
   EMPTY_LIVE_INDICATOR,
   resolveLiveIndicatorConversationId,
@@ -36,7 +40,7 @@ export { EMPTY_LIVE_INDICATOR } from '../../../shared/renderer/hooks/useLiveIndi
 
 function isDispatchBusyForCurrentChannel(
   channelId: string | null,
-  busy: string,
+  busy: WorkspaceBusyState,
   routingStatus?: string | null,
 ): boolean {
   if (!channelId || !isComposerDispatchBusy(busy)) {
@@ -48,12 +52,12 @@ function isDispatchBusyForCurrentChannel(
     return targetedChannelId === channelId;
   }
 
-  return busy === 'parallelChat:dispatch' && routingStatus === 'running';
+  return isParallelChatBusy(busy, 'dispatch') && routingStatus === 'running';
 }
 
 export function shouldConnectLiveIndicatorStream(
   channelId: string | null,
-  busy: string,
+  busy: WorkspaceBusyState,
   routingStatus?: string | null,
 ): boolean {
   if (!channelId) {
@@ -108,7 +112,7 @@ function shouldConnectChatLiveIndicatorStream(
 
 export function useLiveIndicator(options: {
   channelId: string | null;
-  busy: string;
+  busy: WorkspaceBusyState;
   selectedChannel: SelectedChannelView | null;
   debugTraceEnabled?: boolean;
 }): LiveIndicatorState {

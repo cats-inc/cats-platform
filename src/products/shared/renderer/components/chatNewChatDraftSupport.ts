@@ -20,6 +20,7 @@ import {
   isComposerAckBusyForDraft,
   isComposerBusyForDraft,
 } from '../../../../shared/composer.js';
+import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import {
   buildAudienceParticipantFromCat,
   buildAudienceParticipantFromTemporaryParticipant,
@@ -50,7 +51,7 @@ export function resolveChatNewChatDraftViewState(input: {
   draftHighlightedCatId: string | null;
   draftCatModelOverrides: Map<string, ModelSelectorValue>;
   selectedModel?: ModelSelectorValue | undefined;
-  busy: string;
+  busy: WorkspaceBusyState;
 }) {
   const chatCats = input.payload.chat.cats.filter(isChatCat);
   const assistantPresets = input.payload.assistantPresets ?? [];

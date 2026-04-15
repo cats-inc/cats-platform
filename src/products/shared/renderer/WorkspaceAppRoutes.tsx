@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import type { SelectedChannelView } from './workspaceChatUtils.js';
 
@@ -12,7 +13,7 @@ export interface WorkspaceAppRoutesProps {
   directLaneChannel: SelectedChannelView | null;
   showDirectLaneBoot: boolean;
   feedback: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   addCatOpen: boolean;
   entryPath: string;
   chatsPath: string;
@@ -31,7 +32,7 @@ export interface WorkspaceAppRoutesProps {
     allowAddCat: boolean;
   }) => ReactNode;
   renderAddCatPanel: (options: {
-    busy: string;
+    busy: WorkspaceBusyState;
     feedback: string;
   }) => ReactNode;
   onToggleAddCat: () => void;

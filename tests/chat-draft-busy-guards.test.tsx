@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { resolveChatNewChatDraftViewState } from '../src/products/shared/renderer/components/chatNewChatDraftSupport.ts';
+import {
+  createChannelComposerBusyScope,
+  createComposerBusyState,
+  createDraftComposerBusyScope,
+} from '../src/shared/workspaceBusy.ts';
 
 function createPayload() {
   return {
@@ -46,7 +51,7 @@ test('resolveChatNewChatDraftViewState keeps unrelated active-channel busy state
     draftHighlightedCatId: null,
     draftCatModelOverrides: new Map(),
     selectedModel: null,
-    busy: 'message:send:channel-1',
+    busy: createComposerBusyState('send', createChannelComposerBusyScope('channel-1')),
   });
 
   assert.equal(result.isAckPending, false);
@@ -68,7 +73,7 @@ test('resolveChatNewChatDraftViewState keeps draft send busy local to the active
     draftHighlightedCatId: null,
     draftCatModelOverrides: new Map(),
     selectedModel: null,
-    busy: 'message:ack:draft',
+    busy: createComposerBusyState('ack', createDraftComposerBusyScope()),
   });
 
   assert.equal(result.isAckPending, true);

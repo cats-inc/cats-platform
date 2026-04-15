@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
+import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import type { AppShellPayload } from '../api/contracts.js';
 import {
   resolveAppEntryPath,
@@ -41,7 +42,7 @@ export interface AppRoutesProps {
   directLaneChannel: SelectedChannelView | null;
   showDirectLaneBoot: boolean;
   feedback: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   chatSurfaceProps: ChatSurfaceProps;
   draftSurfaceProps: DraftSurfaceProps;
   addCatOpen: boolean;

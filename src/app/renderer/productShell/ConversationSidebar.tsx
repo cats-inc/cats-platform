@@ -10,6 +10,7 @@ import type {
   RoomRoutingMode,
 } from '../../../shared/roomRouting.js';
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
+import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { ConversationSidebarFooter } from './ConversationSidebarFooter.js';
 import { ConversationSidebarMyCatsSection } from './ConversationSidebarMyCats.js';
 import { ConversationSidebarNavigation } from './ConversationSidebarNavigation.js';
@@ -144,7 +145,7 @@ export interface ConversationSidebarProps<
   sidebarOpen: boolean;
   accountMenuOpen: boolean;
   overflowMenuOpenId: string | null;
-  busy: string;
+  busy: WorkspaceBusyState;
   surface: string;
   shellSurface?: PlatformSurfaceId;
   routeChannelId: string | null;

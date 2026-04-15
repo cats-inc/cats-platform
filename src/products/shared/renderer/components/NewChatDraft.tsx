@@ -2,6 +2,7 @@ import { useState, type ComponentType, type FormEvent, type KeyboardEvent, type 
 
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
+import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
@@ -73,7 +74,7 @@ interface DraftTargetSlotProps {
 export interface WorkspaceNewChatDraftProps {
   payload: AppShellPayload;
   composerDraft: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   greeting: string;
   draftFiles: File[];
   draftCwd: string | null;

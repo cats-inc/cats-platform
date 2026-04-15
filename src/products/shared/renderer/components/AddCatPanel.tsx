@@ -8,6 +8,10 @@ import type {
   ProviderModelSelection,
   ProviderTargetSelection,
 } from '../../../../shared/providerSelection.js';
+import {
+  isCatBusy,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 import type { ChatCat } from '../../api/workspaceContracts.js';
 import {
   executionLabel,
@@ -28,7 +32,7 @@ export interface WorkspaceAddCatPanelProps {
   selectableCats: ChatCat[];
   assignableCatCount: number;
   addCatTab: 'existing' | 'new';
-  busy: string;
+  busy: WorkspaceBusyState;
   feedback: string;
   showingNewChatDraft: boolean;
   draftCatIdSet: Set<string>;
@@ -110,8 +114,8 @@ export function WorkspaceAddCatPanel({
                   const included = showingNewChatDraft
                     ? draftCatIdSet.has(cat.id)
                     : assignedCatIds.has(cat.id);
-                  const isAdding = busy === `cat:assign:${cat.id}`;
-                  const isRemoving = busy === `cat:remove:${cat.id}`;
+                  const isAdding = isCatBusy(busy, 'assign', cat.id);
+                  const isRemoving = isCatBusy(busy, 'remove', cat.id);
                   return (
                     <button
                       className={included ? 'addCatAssignButton addCatRemoveButton' : 'addCatAssignButton'}
@@ -179,7 +183,7 @@ export function WorkspaceAddCatPanel({
               disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim()}
               type="submit"
             >
-              {busy === 'cat:create' || busy === 'cat:create-assign'
+              {isCatBusy(busy, 'create') || isCatBusy(busy, 'create-assign')
                 ? 'Saving...'
                 : showingNewChatDraft
                   ? 'Create & Add'

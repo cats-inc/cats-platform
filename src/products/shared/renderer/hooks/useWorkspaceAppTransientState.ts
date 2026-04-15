@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { clearBusyState, type WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
+
 export function useWorkspaceAppTransientState<TState, TCatForm>(input: {
   initialState: TState;
   createEmptyCatForm: () => TCatForm;
@@ -8,7 +10,7 @@ export function useWorkspaceAppTransientState<TState, TCatForm>(input: {
   const [state, setState] = useState<TState>(input.initialState);
   const [composerDraft, setComposerDraft] = useState('');
   const [catForm, setCatForm] = useState<TCatForm>(input.createEmptyCatForm);
-  const [busy, setBusy] = useState('');
+  const [busy, setBusy] = useState<WorkspaceBusyState>(clearBusyState());
   const [feedback, setFeedback] = useState('');
   const [addCatTab, setAddCatTab] = useState<'existing' | 'new'>('existing');
   const [greeting] = useState(input.pickGreeting);

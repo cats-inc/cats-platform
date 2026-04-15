@@ -2,6 +2,11 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
+  clearBusyState,
+  createCatBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
+import {
   createSettingsCatsRegistryActions,
   emptyBotForm,
   type BotFormState,
@@ -14,7 +19,7 @@ export type { BotFormState } from './settingsCatsRegistryActions.js';
 export function useSettingsCatsRegistryActions(options: {
   expandedCatId: string | null;
   setExpandedCatId: Dispatch<SetStateAction<string | null>>;
-  onBusy: (key: string) => void;
+  onBusy: (busy: WorkspaceBusyState) => void;
   onFeedback: (message: string) => void;
   onPayloadUpdate: (payload: AppShellPayload) => void;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
@@ -63,7 +68,7 @@ export function useSettingsCatsRegistryActions(options: {
         })
       : true;
     if (!confirmed) return;
-    onBusy(`cat:archive:${catId}`);
+    onBusy(createCatBusyState('archive', catId));
     onFeedback('');
     try {
       const next = await updateCatProfile(catId, { archive: true });
@@ -75,7 +80,7 @@ export function useSettingsCatsRegistryActions(options: {
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : 'Failed to archive cat');
     } finally {
-      onBusy('');
+      onBusy(clearBusyState());
     }
   }
 
@@ -88,7 +93,7 @@ export function useSettingsCatsRegistryActions(options: {
         })
       : true;
     if (!confirmed) return;
-    onBusy(`cat:unarchive:${catId}`);
+    onBusy(createCatBusyState('unarchive', catId));
     onFeedback('');
     try {
       const next = await updateCatProfile(catId, { unarchive: true });
@@ -97,7 +102,7 @@ export function useSettingsCatsRegistryActions(options: {
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : 'Failed to recover cat');
     } finally {
-      onBusy('');
+      onBusy(clearBusyState());
     }
   }
 

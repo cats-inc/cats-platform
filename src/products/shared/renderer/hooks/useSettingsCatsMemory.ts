@@ -1,6 +1,11 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
 import {
+  clearBusyState,
+  createMemoryBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
+import {
   createCatMemory,
   deleteCatMemory,
   listCatMemory,
@@ -24,7 +29,7 @@ export interface SettingsCatsMemoryController {
 
 export function useSettingsCatsMemory(input: {
   expandedCatId: string | null;
-  onBusy: (key: string) => void;
+  onBusy: (busy: WorkspaceBusyState) => void;
   onFeedback: (message: string) => void;
 }): SettingsCatsMemoryController {
   const [memoryForm, setMemoryForm] = useState({ category: 'fact', content: '' });
@@ -66,7 +71,7 @@ export function useSettingsCatsMemory(input: {
       return;
     }
 
-    input.onBusy('memory:create');
+    input.onBusy(createMemoryBusyState('create'));
     try {
       const item = await createCatMemory(catId, {
         category: memoryForm.category,
@@ -77,19 +82,19 @@ export function useSettingsCatsMemory(input: {
     } catch (error) {
       input.onFeedback(error instanceof Error ? error.message : 'Failed to save memory.');
     } finally {
-      input.onBusy('');
+      input.onBusy(clearBusyState());
     }
   }
 
   async function deleteMemory(catId: string, memoryId: string): Promise<void> {
-    input.onBusy(`memory:delete:${memoryId}`);
+    input.onBusy(createMemoryBusyState('delete', memoryId));
     try {
       await deleteCatMemory(catId, memoryId);
       setCatMemory((prev) => prev.filter((memoryRecord) => memoryRecord.id !== memoryId));
     } catch (error) {
       input.onFeedback(error instanceof Error ? error.message : 'Failed to delete memory.');
     } finally {
-      input.onBusy('');
+      input.onBusy(clearBusyState());
     }
   }
 

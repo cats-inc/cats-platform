@@ -1,10 +1,14 @@
 import type { CoreApprovalQueueItem } from '../../../../core/types';
 import { formatOperatorTimestamp } from '../../../../design/operatorFormatting';
+import {
+  isApprovalBusy,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 
 export interface ApprovalQueuePanelProps {
   approvals: CoreApprovalQueueItem[];
   actorNameById: Record<string, string>;
-  busy: string;
+  busy: WorkspaceBusyState;
   onDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
 }
 
@@ -30,7 +34,7 @@ export function ApprovalQueuePanel({
       ) : (
         <div className="operatorStack">
           {approvals.map((approval) => {
-            const isBusy = busy.startsWith(`approval:${approval.taskId}:`);
+            const isBusy = isApprovalBusy(busy, approval.taskId);
             const requestedBy = approval.requestedByActorId
               ? actorNameById[approval.requestedByActorId] ?? 'Orchestrator'
               : 'Orchestrator';

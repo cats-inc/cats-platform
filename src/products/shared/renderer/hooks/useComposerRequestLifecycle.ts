@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
-import { isComposerStopBusy, normalizeComposerBusy } from '../../../../shared/composer.js';
+import { getComposerDispatchChannelId, isComposerStopBusy } from '../../../../shared/composer.js';
+import {
+  clearBusyState,
+  isParallelChatBusy,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 
 type LoadStateLike<TPayload> =
   | { status: 'loading' }
@@ -33,16 +38,21 @@ function isDispatchRequestRunning<TPayload>(
   return isChannelDispatchRunning(payload, request.channelId);
 }
 
-function expectedDispatchBusy(request: ActiveSubmitRequest): string {
-  return request.kind === 'concurrent'
-    ? 'parallelChat:dispatch'
-    : `message:send:${request.channelId}`;
+function matchesExpectedDispatchBusy(
+  busy: WorkspaceBusyState,
+  request: ActiveSubmitRequest,
+): boolean {
+  if (request.kind === 'concurrent') {
+    return isParallelChatBusy(busy, 'dispatch');
+  }
+
+  return getComposerDispatchChannelId(busy) === request.channelId;
 }
 
 export function useComposerRequestLifecycle<TPayload>(options: {
   state: LoadStateLike<TPayload>;
-  busy: string;
-  setBusy: Dispatch<SetStateAction<string>>;
+  busy: WorkspaceBusyState;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
   fetchPayload: () => Promise<TPayload>;
   isChannelDispatchRunning: (payload: TPayload, channelId: string) => boolean;
@@ -63,9 +73,8 @@ export function useComposerRequestLifecycle<TPayload>(options: {
       return;
     }
 
-    const normalizedBusy = normalizeComposerBusy(busy);
     const activeRequest = activeDispatchRequestRef.current;
-    if (!activeRequest || isComposerStopBusy(normalizedBusy)) {
+    if (!activeRequest || isComposerStopBusy(busy)) {
       return;
     }
 
@@ -73,9 +82,9 @@ export function useComposerRequestLifecycle<TPayload>(options: {
       return;
     }
 
-    if (normalizedBusy === expectedDispatchBusy(activeRequest)) {
+    if (matchesExpectedDispatchBusy(busy, activeRequest)) {
       activeDispatchRequestRef.current = null;
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [busy, isChannelDispatchRunning, setBusy, state]);
 
@@ -85,7 +94,7 @@ export function useComposerRequestLifecycle<TPayload>(options: {
       return;
     }
 
-    if (normalizeComposerBusy(busy) !== expectedDispatchBusy(activeRequest)) {
+    if (!matchesExpectedDispatchBusy(busy, activeRequest)) {
       return;
     }
 
@@ -111,7 +120,7 @@ export function useComposerRequestLifecycle<TPayload>(options: {
 
         if (!isDispatchRequestRunning(payload, currentRequest, isChannelDispatchRunning)) {
           activeDispatchRequestRef.current = null;
-          setBusy('');
+          setBusy(clearBusyState());
         }
       } catch {
         // Keep the existing SSE-driven path as primary; this only prevents indefinite busy lockups.

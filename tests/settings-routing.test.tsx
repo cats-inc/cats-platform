@@ -5,6 +5,7 @@ import { Navigate, Route } from 'react-router-dom';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { AppRoutes, type AppRoutesProps } from '../src/products/chat/renderer/AppRoutes.tsx';
+import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 interface RouteDescriptor {
   path: string;
@@ -44,7 +45,7 @@ function createProps(): AppRoutesProps {
     directLaneChannel: null,
     showDirectLaneBoot: false,
     feedback: '',
-    busy: '',
+    busy: clearBusyState(),
     chatSurfaceProps: {} as AppRoutesProps['chatSurfaceProps'],
     draftSurfaceProps: {} as AppRoutesProps['draftSurfaceProps'],
     addCatOpen: false,

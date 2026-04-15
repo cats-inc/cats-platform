@@ -4,6 +4,7 @@ import type {
 } from 'react';
 
 import type { AppShellPayload } from '../../api/contracts.js';
+import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import {
   useWorkspaceCatAssignmentActions,
 } from '../../../shared/renderer/hooks/useWorkspaceCatAssignmentActions.js';
@@ -27,7 +28,7 @@ export function useCatAssignmentActions(options: {
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   catForm: CatFormState;
   setCatForm: Dispatch<SetStateAction<CatFormState>>;
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   setAddCatOpen: Dispatch<SetStateAction<boolean>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;

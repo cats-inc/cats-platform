@@ -4,6 +4,7 @@ import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog.js';
 import { ToastContainer, useToast } from '../../../../../design/components/Toast.js';
 import { ALL_PLATFORM_SURFACES } from '../../../../../shared/platformSurfaces.js';
+import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import type { CatFormState } from '../../workspaceChatUtils.js';
 import { useSettingsCatsMemory } from '../../hooks/useSettingsCatsMemory.js';
 import {
@@ -40,7 +41,7 @@ export interface SettingsCatsRegistryActionsHookResult<TBotForm>
 
 export interface SettingsCatsRegistryComponentProps<TBotForm> {
   botBindings: NonNullable<AppShellPayload['chat']['botBindings']>;
-  busy: string;
+  busy: WorkspaceBusyState;
   expandedCatId: string | null;
   memoryController: ReturnType<typeof useSettingsCatsMemory>;
   payload: AppShellPayload;
@@ -56,17 +57,17 @@ export interface SettingsCatsRegistryComponentProps<TBotForm> {
 export interface SettingsCatsCanvasProps {
   payload: AppShellPayload;
   feedback: string;
-  busy: string;
+  busy: WorkspaceBusyState;
   onPayloadUpdate: (payload: AppShellPayload) => void;
   onFeedback: (message: string) => void;
-  onBusy: (key: string) => void;
+  onBusy: (busy: WorkspaceBusyState) => void;
 }
 
 export interface SharedSettingsCatsCanvasProps<TBotForm> extends SettingsCatsCanvasProps {
   useSettingsCatsRegistryActionsHook: (options: {
     expandedCatId: string | null;
     setExpandedCatId: Dispatch<SetStateAction<string | null>>;
-    onBusy: (key: string) => void;
+    onBusy: (busy: WorkspaceBusyState) => void;
     onFeedback: (message: string) => void;
     onPayloadUpdate: (payload: AppShellPayload) => void;
     confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;

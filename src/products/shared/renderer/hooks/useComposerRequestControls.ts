@@ -5,6 +5,13 @@ import {
   type SetStateAction,
 } from 'react';
 
+import {
+  clearBusyState,
+  createChannelComposerBusyScope,
+  createComposerBusyState,
+  createParallelChatBusyState,
+  type WorkspaceBusyState,
+} from '../../../../shared/workspaceBusy.js';
 import type {
   ActiveAckRequest,
   ActiveSubmitRequest,
@@ -23,7 +30,7 @@ export interface UseComposerRequestControlsOptions<TPayload> {
     groupId: string,
     input: { activeChannelId: string },
   ) => Promise<{ appShell: TPayload }>;
-  setBusy: Dispatch<SetStateAction<string>>;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
 }
@@ -47,8 +54,8 @@ export function useComposerRequestControls<TPayload>({
     setFeedback('');
     setBusy(
       activeRequest.kind === 'concurrent'
-        ? 'parallelChat:stop'
-        : `message:stop:${activeRequest.channelId}`,
+        ? createParallelChatBusyState('stop')
+        : createComposerBusyState('stop', createChannelComposerBusyScope(activeRequest.channelId)),
     );
 
     try {
@@ -61,7 +68,7 @@ export function useComposerRequestControls<TPayload>({
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to stop response.');
     } finally {
-      setBusy('');
+      setBusy(clearBusyState());
     }
   }, [
     activeDispatchRequestRef,

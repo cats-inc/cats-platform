@@ -21,13 +21,14 @@ import {
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
   sidebarOpen: boolean;
   accountMenuOpen: boolean;
   overflowMenuOpenId: string | null;
-  busy: string;
+  busy: WorkspaceBusyState;
   surface: Surface;
   shellSurface?: PlatformSurfaceId;
   routeChannelId: string | null;

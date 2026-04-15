@@ -8,6 +8,11 @@ import {
   isComposerDispatchBusyForChannel,
 } from '../../../../../shared/composer.js';
 import {
+  isChannelBusy,
+  isParallelChatBusy,
+  type WorkspaceBusyState,
+} from '../../../../../shared/workspaceBusy.js';
+import {
   hasLiveIndicatorIdentity,
   hasVisibleAssistantReplyAfterMessage,
   hasVisibleSessionStartAfterMessage,
@@ -73,7 +78,7 @@ export function resolveChatViewCompareState(input: {
   channels: AppShellPayload['chat']['channels'];
   routeChannelId: string | null;
   selectedChannelId: string;
-  busy: string;
+  busy: WorkspaceBusyState;
 }): ChatViewCompareState {
   const compareMembers = input.compareGroup?.members ?? [];
   const isCompareGroup = compareMembers.length > 1;
@@ -89,11 +94,7 @@ export function resolveChatViewCompareState(input: {
     .map((member) =>
       input.channels.find((channel) => channel.id === member.channelId) ?? null)
     .filter((channel): channel is AppShellPayload['chat']['channels'][number] => channel != null);
-  const compareDispatchBusy =
-    input.busy === 'parallelChat:ack'
-    || input.busy === 'parallelChat:dispatch'
-    || input.busy === 'parallelChat:relay'
-    || input.busy === 'parallelChat:stop';
+  const compareDispatchBusy = isParallelChatBusy(input.busy);
   const compareRoutingBusy = compareGroupChannels.some((channel) =>
     channel.routingStatus === 'running',
   );
@@ -479,7 +480,7 @@ export interface ChatComposerViewState {
 export function resolveChatComposerViewState(input: {
   activeRoomParticipants: ResolvedChannelParticipant[];
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
-  busy: string;
+  busy: WorkspaceBusyState;
   isCompareGroup: boolean;
   selectedChannelId: string;
   onCancelPendingSend?: (() => void) | null;
@@ -488,13 +489,9 @@ export function resolveChatComposerViewState(input: {
   chatCwd?: string | null;
 }): ChatComposerViewState {
   const composerAckBusy =
-    input.busy === 'parallelChat:ack'
+    isParallelChatBusy(input.busy, 'ack')
     || isComposerAckBusyForChannel(input.busy, input.selectedChannelId);
-  const compareBusy =
-    input.busy === 'parallelChat:ack'
-    || input.busy === 'parallelChat:dispatch'
-    || input.busy === 'parallelChat:relay'
-    || input.busy === 'parallelChat:stop';
+  const compareBusy = isParallelChatBusy(input.busy);
   const composerDispatchBusy = isComposerDispatchBusyForChannel(
     input.busy,
     input.selectedChannelId,
@@ -502,7 +499,7 @@ export function resolveChatComposerViewState(input: {
   const composerBusy =
     composerAckBusy
     || composerDispatchBusy
-    || input.busy === 'channel:resume'
+    || isChannelBusy(input.busy, 'resume')
     || compareBusy;
   const showCancelComposerAction = composerAckBusy && input.onCancelPendingSend != null;
   const canStopSingleChat =
@@ -513,8 +510,8 @@ export function resolveChatComposerViewState(input: {
     input.isCompareGroup
     && input.onStopMessage != null
     && (
-      input.busy === 'parallelChat:dispatch'
-      || input.busy === 'parallelChat:stop'
+      isParallelChatBusy(input.busy, 'dispatch')
+      || isParallelChatBusy(input.busy, 'stop')
     );
 
   return {
@@ -533,7 +530,7 @@ export function resolveChatComposerViewState(input: {
       input.directLaneCat?.name ? [input.directLaneCat.name] : [],
     composerBusy,
     composerAckBusy,
-    resumeBusy: input.busy === 'channel:resume',
+    resumeBusy: isChannelBusy(input.busy, 'resume'),
     showCancelComposerAction,
     showStopComposerAction:
       !showCancelComposerAction && (canStopSingleChat || canStopParallelChat),

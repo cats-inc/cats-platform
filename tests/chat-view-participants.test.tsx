@@ -12,6 +12,7 @@ import type {
 import { ChatView, type ChatViewProps } from '../src/products/chat/renderer/components/ChatView.tsx';
 import { buildDraftParticipantExecutionLabel } from '../src/products/chat/renderer/chatUtils.tsx';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
+import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -252,7 +253,7 @@ function createProps(overrides: Partial<ChatViewProps> = {}): ChatViewProps {
     operatorLoading: false,
     operatorError: '',
     composerDraft: '',
-    busy: '',
+    busy: clearBusyState(),
     feedback: '',
     greeting: 'Ready.',
     channelFiles: [],
