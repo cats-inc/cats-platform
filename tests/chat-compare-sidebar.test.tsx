@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isValidElement, type ReactNode, type RefObject } from 'react';
+import { isValidElement, type ComponentProps, type ReactNode, type RefObject } from 'react';
 
 import { AccountIdentityMenu } from '../src/design/components/AccountIdentityMenu.tsx';
+import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
+import { ConversationSidebarNavigation } from '../src/app/renderer/productShell/ConversationSidebarNavigation.tsx';
+import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
 import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
 import {
   buildNewGroupChatPath,
@@ -12,159 +15,46 @@ import {
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
-function textContent(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-
-  if (Array.isArray(node)) {
-    return node.map((child) => textContent(child)).join(' ');
-  }
-
-  if (isValidElement(node)) {
-    return textContent(node.props.children);
-  }
-
-  return '';
-}
-
-function collectRecentLabels(node: ReactNode): string[] {
-  const labels: string[] = [];
-  (function walk(current: ReactNode) {
-    if (!current) {
-      return;
-    }
-    if (Array.isArray(current)) {
-      current.forEach(walk);
-      return;
-    }
-    if (!isValidElement(current)) {
-      return;
-    }
-
-    if (current.props.channel && typeof current.props.channel === 'object') {
-      labels.push(String(current.props.titleOverride ?? current.props.channel.title));
-      return;
-    }
-
-    walk(current.props.children);
-  })(node);
-  return labels;
-}
-
-function collectGroupTitles(node: ReactNode): string[] {
-  const titles: string[] = [];
-  (function walk(current: ReactNode) {
-    if (!current) {
-      return;
-    }
-    if (Array.isArray(current)) {
-      current.forEach(walk);
-      return;
-    }
-    if (!isValidElement(current)) {
-      return;
-    }
-
-    if (
-      typeof current.props.title === 'string'
-      && typeof current.props.onUngroup === 'function'
-      && typeof current.props.onDelete === 'function'
-    ) {
-      titles.push(current.props.title);
-      return;
-    }
-
-    walk(current.props.children);
-  })(node);
-  return titles;
-}
-
-function findButtonByLabel(
+function findElementByType<TProps>(
   node: ReactNode,
-  label: string,
-): { props: { onClick?: () => void } } {
+  componentType: unknown,
+): { props: TProps } {
   if (Array.isArray(node)) {
     for (const child of node) {
-      const match = findButtonByLabel(child, label);
-      if (match) {
-        return match;
+      try {
+        return findElementByType<TProps>(child, componentType);
+      } catch {
+        continue;
       }
     }
-    throw new Error(`Button "${label}" not found.`);
+    throw new Error('Component not found.');
   }
 
   if (!isValidElement(node)) {
-    throw new Error(`Button "${label}" not found.`);
+    throw new Error('Component not found.');
   }
 
-  if (
-    node.type === 'button'
-    && typeof node.props.className === 'string'
-    && node.props.className.includes('navItem')
-    && textContent(node.props.children).includes(label)
-  ) {
-    return node as { props: { onClick?: () => void } };
+  if (node.type === componentType) {
+    return node as { props: TProps };
   }
 
   const children = node.props.children;
   if (!children) {
-    throw new Error(`Button "${label}" not found.`);
+    throw new Error('Component not found.');
   }
 
   if (Array.isArray(children)) {
     for (const child of children) {
       try {
-        return findButtonByLabel(child, label);
+        return findElementByType<TProps>(child, componentType);
       } catch {
         continue;
       }
     }
-    throw new Error(`Button "${label}" not found.`);
+    throw new Error('Component not found.');
   }
 
-  return findButtonByLabel(children, label);
-}
-
-function findAccountIdentityMenu(
-  node: ReactNode,
-): { props: { open?: boolean; menuWidth?: string } } {
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      try {
-        return findAccountIdentityMenu(child);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error('AccountIdentityMenu not found.');
-  }
-
-  if (!isValidElement(node)) {
-    throw new Error('AccountIdentityMenu not found.');
-  }
-
-  if (node.type === AccountIdentityMenu) {
-    return node as { props: { open?: boolean; menuWidth?: string } };
-  }
-
-  const children = node.props.children;
-  if (!children) {
-    throw new Error('AccountIdentityMenu not found.');
-  }
-
-  if (Array.isArray(children)) {
-    for (const child of children) {
-      try {
-        return findAccountIdentityMenu(child);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error('AccountIdentityMenu not found.');
-  }
-
-  return findAccountIdentityMenu(children);
+  return findElementByType<TProps>(children, componentType);
 }
 
 function createChannel(
@@ -343,11 +233,36 @@ test('Sidebar groups parallel chats and shows member labels in Recents', () => {
     onDirectChatCat: () => {},
   });
 
-  const text = textContent(tree);
-  const labels = collectRecentLabels(tree);
-  const groupTitles = collectGroupTitles(tree);
-  assert.match(text, /Group chat/i);
-  assert.match(text, /Parallel chat/i);
+  const navigation = findElementByType<{
+    primaryActions: Array<{ label: string }>;
+  }>(tree, ConversationSidebarNavigation);
+  const recents = findElementByType<{
+    entries: Array<
+      | {
+          kind: 'channel';
+          channel: ChatChannelSummary;
+          titleOverride?: string;
+        }
+      | {
+          kind: 'group';
+          title: string;
+          channels: Array<{ channel: ChatChannelSummary; titleOverride?: string }>;
+        }
+    >;
+  }>(tree, ConversationSidebarRecentsSection);
+  const labels = recents.props.entries.flatMap((entry) =>
+    entry.kind === 'group'
+      ? entry.channels.map((channel) => channel.titleOverride ?? channel.channel.title)
+      : [entry.titleOverride ?? entry.channel.title],
+  );
+  const groupTitles = recents.props.entries
+    .filter((entry): entry is Extract<typeof entry, { kind: 'group' }> => entry.kind === 'group')
+    .map((entry) => entry.title);
+
+  assert.deepEqual(
+    navigation.props.primaryActions.map((action) => action.label),
+    ['New chat', 'Group chat', 'Parallel chat'],
+  );
   assert.deepEqual(groupTitles, ['Parallel chat 1']);
   assert.deepEqual(labels, ['Claude Sonnet 4', 'GPT-5']);
 });
@@ -390,7 +305,10 @@ test('Sidebar exposes a dedicated Group chat primary action', () => {
     onDirectChatCat: () => {},
   });
 
-  findButtonByLabel(tree, 'Group chat').props.onClick?.();
+  const navigation = findElementByType<{
+    primaryActions: Array<{ label: string; onClick: () => void }>;
+  }>(tree, ConversationSidebarNavigation);
+  navigation.props.primaryActions.find((action) => action.label === 'Group chat')?.onClick();
   assert.deepEqual(actions, ['group']);
 });
 
@@ -425,7 +343,15 @@ test('Sidebar wires the shared account identity menu to the runtime root', () =>
     onDirectChatCat: () => {},
   });
 
-  const accountMenu = findAccountIdentityMenu(tree);
+  const footer = findElementByType<ComponentProps<typeof ConversationSidebarFooter>>(
+    tree,
+    ConversationSidebarFooter,
+  );
+  const footerTree = ConversationSidebarFooter(footer.props);
+  const accountMenu = findElementByType<{
+    open?: boolean;
+    menuWidth?: string;
+  }>(footerTree, AccountIdentityMenu);
   assert.equal(accountMenu.props.open, true);
   assert.equal(accountMenu.props.menuWidth, 'trigger');
 });

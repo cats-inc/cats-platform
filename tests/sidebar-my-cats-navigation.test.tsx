@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isValidElement, type ReactNode, type RefObject } from 'react';
+import { isValidElement, type ComponentProps, type ReactNode, type RefObject } from 'react';
 
+import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
+import { ConversationSidebarMyCatsSection } from '../src/app/renderer/productShell/ConversationSidebarMyCats.tsx';
+import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
 import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
 import type { ParticipantSessionStatus } from '../src/shared/roomRouting.ts';
 import { buildMyCatPath } from '../src/shared/channelPaths.ts';
@@ -27,6 +30,48 @@ function textContent(node: ReactNode): string {
   }
 
   return '';
+}
+
+function findElementByType<TProps>(
+  node: ReactNode,
+  componentType: unknown,
+): { props: TProps } {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      try {
+        return findElementByType<TProps>(child, componentType);
+      } catch {
+        continue;
+      }
+    }
+    throw new Error('Component not found.');
+  }
+
+  if (!isValidElement(node)) {
+    throw new Error('Component not found.');
+  }
+
+  if (node.type === componentType) {
+    return node as { props: TProps };
+  }
+
+  const children = node.props.children;
+  if (!children) {
+    throw new Error('Component not found.');
+  }
+
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      try {
+        return findElementByType<TProps>(child, componentType);
+      } catch {
+        continue;
+      }
+    }
+    throw new Error('Component not found.');
+  }
+
+  return findElementByType<TProps>(children, componentType);
 }
 
 function findMyCatButton(node: ReactNode, catName: string): { props: { onClick?: () => void } } {
@@ -83,23 +128,6 @@ function findMyCatButton(node: ReactNode, catName: string): { props: { onClick?:
   }
 
   return findMyCatButton(children, catName);
-}
-
-function collectChannelProps(node: ReactNode): Array<{ id: string; title: string }> {
-  const result: Array<{ id: string; title: string }> = [];
-  (function walk(n: ReactNode) {
-    if (!n) return;
-    if (Array.isArray(n)) { n.forEach(walk); return; }
-    if (!isValidElement(n)) return;
-    if (n.props.channel && typeof n.props.channel === 'object' && 'id' in n.props.channel) {
-      result.push({ id: n.props.channel.id, title: n.props.channel.title });
-      return;
-    }
-    const ch = n.props.children;
-    if (Array.isArray(ch)) ch.forEach(walk);
-    else if (ch) walk(ch);
-  })(node);
-  return result;
 }
 
 function createChannel(
@@ -275,6 +303,36 @@ function createSidebarTree(
   });
 }
 
+function createMyCatsTree(tree: ReactNode): ReactNode {
+  const section = findElementByType<ComponentProps<typeof ConversationSidebarMyCatsSection>>(
+    tree,
+    ConversationSidebarMyCatsSection,
+  );
+  return ConversationSidebarMyCatsSection(section.props);
+}
+
+function readRecentChannels(tree: ReactNode): Array<{ id: string; title: string }> {
+  const section = findElementByType<{
+    entries: Array<
+      | { kind: 'channel'; channel: ChatChannelSummary }
+      | { kind: 'group'; channels: Array<{ channel: ChatChannelSummary }> }
+    >;
+  }>(tree, ConversationSidebarRecentsSection);
+  return section.props.entries.flatMap((entry) =>
+    entry.kind === 'group'
+      ? entry.channels.map((channel) => ({ id: channel.channel.id, title: channel.channel.title }))
+      : [{ id: entry.channel.id, title: entry.channel.title }],
+  );
+}
+
+function readRuntimeFooterLabel(tree: ReactNode): string {
+  const footer = findElementByType<ComponentProps<typeof ConversationSidebarFooter>>(
+    tree,
+    ConversationSidebarFooter,
+  );
+  return footer.props.runtimeFooterLabel;
+}
+
 test('clicking a My Cats entry without an existing direct lane opens that Cat lane in place', () => {
   const payload = createPayload([]);
   const actions: Array<{ kind: 'navigate'; path: string }> = [];
@@ -283,8 +341,9 @@ test('clicking a My Cats entry without an existing direct lane opens that Cat la
     const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
     actions.push({ kind: 'navigate', path: target.path });
   });
+  const myCatsTree = createMyCatsTree(tree);
 
-  const companionButton = findMyCatButton(tree, 'Companion');
+  const companionButton = findMyCatButton(myCatsTree, 'Companion');
   companionButton.props.onClick?.();
 
   assert.deepEqual(actions, [
@@ -308,8 +367,9 @@ test('clicking a My Cats entry with an existing hidden direct lane stays on the 
     const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
     actions.push({ kind: 'navigate', path: target.path });
   });
+  const myCatsTree = createMyCatsTree(tree);
 
-  const companionButton = findMyCatButton(tree, 'Companion');
+  const companionButton = findMyCatButton(myCatsTree, 'Companion');
   companionButton.props.onClick?.();
 
   assert.deepEqual(actions, [
@@ -344,7 +404,7 @@ test('direct_cat_chat channels are excluded from the Recents list', () => {
   ]);
 
   const tree = createSidebarTree(payload, () => {});
-  const rendered = collectChannelProps(tree);
+  const rendered = readRecentChannels(tree);
 
   assert.ok(
     rendered.some((ch) => ch.id === 'boss-thread'),
@@ -426,47 +486,15 @@ test('clicking My Cats row still preserves existing navigation behavior with sta
     const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
     actions.push({ kind: 'navigate', path: target.path });
   });
+  const myCatsTree = createMyCatsTree(tree);
 
-  const companionButton = findMyCatButton(tree, 'Companion');
+  const companionButton = findMyCatButton(myCatsTree, 'Companion');
   companionButton.props.onClick?.();
 
   assert.deepEqual(actions, [{ kind: 'navigate', path: buildMyCatPath('companion-cat') }]);
 });
 
 // --- Runtime Footer Status Dot Tests ---
-
-function findRuntimeDotTitle(node: ReactNode): string | null {
-  if (!node) return null;
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      const found = findRuntimeDotTitle(child);
-      if (found) return found;
-    }
-    return null;
-  }
-  if (!isValidElement(node)) return null;
-  if (
-    'statusIndicator' in node.props
-    && 'runtimeBaseUrl' in node.props
-  ) {
-    return findRuntimeDotTitle(node.props.statusIndicator);
-  }
-  const cls = typeof node.props.className === 'string' ? node.props.className : '';
-  const tooltip = node.props['data-tooltip'] ?? node.props.title;
-  if (cls.includes('runtimeStatusDot') && typeof tooltip === 'string') {
-    return tooltip;
-  }
-  const ch = node.props.children;
-  if (Array.isArray(ch)) {
-    for (const child of ch) {
-      const found = findRuntimeDotTitle(child);
-      if (found) return found;
-    }
-  } else if (ch) {
-    return findRuntimeDotTitle(ch);
-  }
-  return null;
-}
 
 test('no runtime health yet shows gray dot with unknown tooltip', () => {
   const payload = createPayload([], {
@@ -476,26 +504,25 @@ test('no runtime health yet shows gray dot with unknown tooltip', () => {
     service: 'cats-runtime',
   });
   const tree = createSidebarTree(payload, () => {});
-  const title = findRuntimeDotTitle(tree);
-  assert.equal(title, 'Checking Cats Runtime status…');
+  assert.equal(readRuntimeFooterLabel(tree), 'Checking Cats Runtime status…');
 });
 
 test('reachable healthy runtime shows green dot', () => {
   const payload = createPayload([], createRuntime(true, 'ok'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is connected');
+  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is connected');
 });
 
 test('reachable degraded runtime shows yellow dot', () => {
   const payload = createPayload([], createRuntime(true, 'degraded'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is starting up');
+  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is starting up');
 });
 
 test('unreachable runtime shows red dot', () => {
   const payload = createPayload([], createRuntime(false, 'error'));
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is offline');
+  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is offline');
 });
 
 test('changing selected chat does not affect footer runtime dot', () => {
@@ -504,7 +531,7 @@ test('changing selected chat does not affect footer runtime dot', () => {
     createRuntime(true, 'ok'),
   );
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is connected');
+  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is connected');
 });
 
 test('My Cats status dots and footer runtime dot coexist', () => {
@@ -516,5 +543,5 @@ test('My Cats status dots and footer runtime dot coexist', () => {
     createRuntime(true, 'ok'),
   );
   const tree = createSidebarTree(payload, () => {});
-  assert.equal(findRuntimeDotTitle(tree), 'Cats Runtime is connected');
+  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is connected');
 });

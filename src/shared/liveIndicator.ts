@@ -1694,39 +1694,48 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
       return false;
     }
 
+    let matchesIdentity = false;
     if (liveLaneId) {
-      if (!doesMessageMatchLaneScopedIdentity(message, {
+      matchesIdentity = doesMessageMatchLaneScopedIdentity(message, {
         laneId: liveLaneId,
         sourceMessageId: liveIndicator.sourceMessageId,
-      })) {
-        return false;
-      }
-    } else if (liveTargetStateId) {
-      if (!doesMessageMatchTargetStateOrSession(message, {
+      });
+    }
+
+    if (!matchesIdentity && liveTargetStateId) {
+      matchesIdentity = doesMessageMatchTargetStateOrSession(message, {
         targetStateId: liveTargetStateId,
         sessionId: liveSessionId,
-      })) {
-        return false;
-      }
-    } else if (liveSessionId) {
+      });
+    }
+
+    if (!matchesIdentity && liveSessionId) {
       const messageSessionId = readMessageSessionId(message);
-      if (!messageSessionId || messageSessionId !== liveSessionId) {
-        return false;
-      }
+      matchesIdentity = Boolean(messageSessionId && messageSessionId === liveSessionId);
     }
 
     const liveParticipantId = readString(liveIndicator.participantId);
     if (liveParticipantId) {
       const messageTargetId = readMessageTargetId(message);
       if (messageTargetId) {
-        return messageTargetId === liveParticipantId;
+        if (messageTargetId !== liveParticipantId) {
+          return false;
+        }
+        return true;
       }
 
       if (liveParticipantId === 'orchestrator') {
-        return readMessageTargetKind(message) === 'orchestrator';
+        if (readMessageTargetKind(message) !== 'orchestrator') {
+          return false;
+        }
+        return true;
       }
 
-      return false;
+      return matchesIdentity;
+    }
+
+    if (matchesIdentity) {
+      return true;
     }
 
     return readMessageTargetKind(message) === 'orchestrator';
