@@ -2,6 +2,7 @@ import {
   normalizeRuntimeContentBlock,
   type LiveIndicatorContentBlock,
 } from './runtimeContentBlocks.js';
+import { normalizeRuntimeMessageSegmentEntry } from '../runtime/messageSegments.js';
 import { buildChatConversationId } from './chatCoreIds.js';
 import { isBrowserLiveTraceEnabled, pushBrowserLiveTrace } from './liveTrace.js';
 export type { LiveIndicatorContentBlock } from './runtimeContentBlocks.js';
@@ -1323,12 +1324,22 @@ function applyToolResultEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
 ): LiveIndicatorState {
-  const toolId = readString(data.toolId);
+  const normalizedSegment = normalizeRuntimeMessageSegmentEntry({
+    type: 'tool_result',
+    ...data,
+  });
+  const toolId = normalizedSegment?.kind === 'tool_result'
+    ? normalizedSegment.toolId
+    : readString(data.toolId);
   const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
-  const toolName = readString(data.toolName)
+  const toolName = (normalizedSegment?.kind === 'tool_result'
+    ? normalizedSegment.toolName
+    : readString(data.toolName))
     || findToolName(previousSegment?.tools ?? [], toolId)
     || 'tool';
-  const resultText = summarizeEventText(data.text);
+  const resultText = summarizeEventText(
+    normalizedSegment?.kind === 'tool_result' ? normalizedSegment.text : data.text,
+  );
   const isError = data.isError === true;
   const text = resultText
     ? `${isError ? 'Failed' : 'Completed'} ${toolName}: ${resultText}`

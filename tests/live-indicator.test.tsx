@@ -4676,6 +4676,32 @@ test('live indicator accumulates a bounded event tape and pending tools', () => 
   );
 });
 
+test('live indicator normalizes nested tool_result content arrays into tool completion text', () => {
+  let state = createWaitingLiveIndicatorState({
+    catId: 'cat-1',
+    speakerLabel: null,
+  });
+
+  state = applyLiveIndicatorEvent(state, 'tool_use', {
+    toolName: 'read_file',
+    toolId: 'tool-2',
+  });
+  state = applyLiveIndicatorEvent(state, 'tool_result', {
+    toolId: 'tool-2',
+    content: [{ type: 'output_text', text: 'nested output payload' }],
+  });
+
+  assert.deepEqual(state.tools, [
+    {
+      toolId: 'tool-2',
+      toolName: 'read_file',
+      done: true,
+    },
+  ]);
+  assert.equal(state.events.at(-1)?.eventType, 'tool_result');
+  assert.equal(state.events.at(-1)?.text, 'Completed read_file: nested output payload');
+});
+
 test('live indicator merges consecutive text chunks into one tape entry', () => {
   let state = createWaitingLiveIndicatorState({
     catId: null,
