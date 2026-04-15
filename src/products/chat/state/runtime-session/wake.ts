@@ -19,13 +19,10 @@ import {
   checkoutTaskExecution,
   startTaskRunWatcher,
 } from '../../../../core/taskLifecycle.js';
-import { resolveVisibleOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import {
   ORCHESTRATOR_NAME,
-  appendMessage,
   buildChannelView,
   requireChannel,
-  resolveChannelCanonicalIdentity,
   setChannelParticipantLease,
   setChannelParticipantExecutionTarget,
   setChannelChatCwd,
@@ -37,7 +34,6 @@ import {
 import { resolveRoomDefaultRoutingTarget, type RoutingTarget } from '../mentionRouter.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createRecordedWakeRequest } from '../room-routing/wake.js';
-import { formatSessionStartedMessage } from '../runtimeMessages.js';
 import {
   resolveOrchestratorExecutionTarget,
   resolveRuntimeEnvelopeForTarget,
@@ -68,22 +64,14 @@ import {
   spawnCwdFor,
   toParticipantRef,
 } from './state.js';
-
-function resolveVisibleWakeTargetLabel(input: {
-  target: RoutingTarget;
-  provider?: string | null;
-  instance?: string | null;
-}): string {
-  if (input.target.participantKind !== 'orchestrator') {
-    return input.target.participantName;
-  }
-  return resolveVisibleOrchestratorLabel({
-    displayName: input.target.participantName,
-    provider: input.provider,
-    instance: input.instance,
-  }) ?? ORCHESTRATOR_NAME;
-}
-import type { RuntimeSessionRoutingOptions } from './shared.js';
+import {
+  appendFailedRuntimeSessionMessage,
+  appendStartedRuntimeSessionMessage,
+  readInvocationContextMetadataString,
+  resolveRuntimeEnvelopeCanonicalMetadata,
+  type RuntimeEnvelopeCanonicalMetadata,
+  type RuntimeSessionRoutingOptions,
+} from './shared.js';
 
 const MANUALLY_REVIVABLE_SESSION_STATES = new Set([
   'closed',
@@ -246,16 +234,6 @@ export async function maybeAutoCheckoutChannelTask(
   });
 }
 
-function readInvocationContextMetadataString(
-  context: { metadata?: Record<string, unknown> } | undefined,
-  key: string,
-): string | null {
-  const value = context?.metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0
-    ? value.trim()
-    : null;
-}
-
 function readDispatchContextMetadataString(
   metadata: Record<string, unknown> | undefined,
   key: string,
@@ -340,12 +318,6 @@ type ExistingTargetSessionOutcome =
       result: EnsureTargetSessionResult;
     };
 
-interface RuntimeEnvelopeCanonicalMetadata {
-  conversationId: string | null;
-  containerId: string | null;
-  transportBindingId: string | null;
-}
-
 interface ResolvedTargetRuntimeEnvelope {
   runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
   canonicalMetadata: RuntimeEnvelopeCanonicalMetadata;
@@ -362,28 +334,6 @@ interface CreatedTargetRuntimeSession {
   session: Awaited<ReturnType<RuntimeClient['createSession']>>;
   targetLabelProvider: string | null;
   targetLabelInstance: string | null;
-}
-
-function resolveRuntimeEnvelopeCanonicalMetadata(
-  state: ChatState,
-  channelId: string,
-  runtimeContext: { metadata?: Record<string, unknown> } | undefined,
-): RuntimeEnvelopeCanonicalMetadata {
-  const canonicalIdentity = resolveChannelCanonicalIdentity(state, channelId);
-  return {
-    conversationId: readInvocationContextMetadataString(
-      runtimeContext,
-      'conversationId',
-    ) ?? canonicalIdentity.conversationId,
-    containerId: readInvocationContextMetadataString(
-      runtimeContext,
-      'containerId',
-    ) ?? canonicalIdentity.containerId,
-    transportBindingId: readInvocationContextMetadataString(
-      runtimeContext,
-      'transportBindingId',
-    ),
-  };
 }
 
 async function resolveTargetRuntimeEnvelope(input: {
@@ -406,11 +356,11 @@ async function resolveTargetRuntimeEnvelope(input: {
 
   return {
     runtimeEnvelope,
-    canonicalMetadata: resolveRuntimeEnvelopeCanonicalMetadata(
-      input.state,
-      input.channelId,
-      runtimeEnvelope.context,
-    ),
+      canonicalMetadata: resolveRuntimeEnvelopeCanonicalMetadata(
+        input.state,
+        input.channelId,
+        runtimeEnvelope.context,
+      ),
   };
 }
 
@@ -434,102 +384,6 @@ async function syncTargetSessionAttachmentWorkspace(input: {
     attachmentWorkspacePath,
     targetWorkspacePath: input.targetWorkspacePath,
   });
-}
-
-function appendStartedTargetSessionMessage(
-  state: ChatState,
-  channelId: string,
-  input: {
-    target: RoutingTarget;
-    provider: string | null;
-    instance: string | null;
-    session: Awaited<ReturnType<RuntimeClient['createSession']>>;
-    now: Date;
-    targetStateId: string | null;
-    laneId: string | null;
-    conversationId: string | null;
-    containerId: string | null;
-    transportBindingId: string | null;
-  },
-): ChatState {
-  return appendMessage(
-    state,
-    channelId,
-    {
-      senderKind: 'system',
-      senderName: 'Runtime',
-      body: formatSessionStartedMessage(
-        resolveVisibleWakeTargetLabel({
-          target: input.target,
-          provider: input.provider,
-          instance: input.instance,
-        }),
-        input.session,
-      ),
-    },
-    input.now,
-    {
-      metadata: {
-        event: 'session_started',
-        ...(input.containerId ? { containerId: input.containerId } : {}),
-        ...(input.conversationId ? { conversationId: input.conversationId } : {}),
-        targetKind: input.target.participantKind,
-        ...(input.target.participantKind === 'cat'
-          ? { targetId: input.target.participantId }
-          : {}),
-        ...(input.targetStateId ? { targetStateId: input.targetStateId } : {}),
-        ...(input.laneId ? { laneId: input.laneId } : {}),
-        ...(input.transportBindingId ? { transportBindingId: input.transportBindingId } : {}),
-        sessionId: input.session.id,
-        verbosity: 'verbose',
-      },
-      incrementUnread: false,
-    },
-  ).state;
-}
-
-function appendFailedTargetSessionMessage(
-  state: ChatState,
-  channelId: string,
-  input: {
-    target: RoutingTarget;
-    provider: string | null;
-    instance: string | null;
-    error: string;
-    now: Date;
-    targetStateId: string | null;
-    laneId: string | null;
-    conversationId: string | null;
-    containerId: string | null;
-    transportBindingId: string | null;
-  },
-): ChatState {
-  return appendMessage(
-    state,
-    channelId,
-    {
-      senderKind: 'system',
-      senderName: 'Runtime',
-      body: `Failed to start ${resolveVisibleWakeTargetLabel({
-        target: input.target,
-        provider: input.provider,
-        instance: input.instance,
-      })}: ${input.error}`,
-    },
-    input.now,
-    {
-      metadata: {
-        event: 'session_start_failed',
-        ...(input.containerId ? { containerId: input.containerId } : {}),
-        ...(input.conversationId ? { conversationId: input.conversationId } : {}),
-        targetKind: input.target.participantKind,
-        targetId: input.target.participantId,
-        ...(input.targetStateId ? { targetStateId: input.targetStateId } : {}),
-        ...(input.laneId ? { laneId: input.laneId } : {}),
-        ...(input.transportBindingId ? { transportBindingId: input.transportBindingId } : {}),
-      },
-    },
-  ).state;
 }
 
 async function createOrchestratorTargetRuntimeSession(input: {
@@ -695,7 +549,7 @@ function persistStartedTargetSession(input: {
     );
   }
 
-  return appendStartedTargetSessionMessage(
+  return appendStartedRuntimeSessionMessage(
     nextState,
     input.channelId,
     {
@@ -709,6 +563,7 @@ function persistStartedTargetSession(input: {
       conversationId: input.metadata.conversationId,
       containerId: input.metadata.containerId,
       transportBindingId: input.metadata.transportBindingId,
+      incrementUnread: false,
     },
   );
 }
@@ -738,7 +593,7 @@ function persistFailedTargetSessionStart(input: {
       input.metadata.now,
     );
 
-  return appendFailedTargetSessionMessage(
+  return appendFailedRuntimeSessionMessage(
     erroredState,
     input.channelId,
     {

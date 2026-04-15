@@ -46,7 +46,6 @@ import {
 import {
   channelDispatchCancellationRegistry,
 } from '../state/runtime-dispatch/cancellation.js';
-import { formatSessionStartedMessage } from '../state/runtimeMessages.js';
 import { repairChannelReadState } from './channelRepair.js';
 import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
@@ -63,6 +62,11 @@ import {
   resolveChannelSpawnCwd,
   syncChannelAttachmentsToWorkspace,
 } from '../state/workspace.js';
+import {
+  appendFailedRuntimeSessionMessage,
+  appendStartedRuntimeSessionMessage,
+  resolveRuntimeEnvelopeCanonicalMetadata,
+} from '../state/runtime-session/shared.js';
 import {
   catParticipatesInChat,
   collectCatSessionIds,
@@ -138,16 +142,6 @@ export const DEFAULT_CHAT_SCOPE_ID = 'default';
 
 export function nowFrom(dependencies: ChatApiDependencies): Date {
   return dependencies.now?.() ?? new Date();
-}
-
-function readInvocationContextMetadataString(
-  context: { metadata?: Record<string, unknown> } | null | undefined,
-  key: string,
-): string | null {
-  const value = context?.metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0
-    ? value.trim()
-    : null;
 }
 
 export async function reconcileTelegramTransportAfterBindingMutation(
@@ -579,8 +573,8 @@ export async function persistCatAssignmentUpdate(
 
   if (needsSession) {
     const canonicalIdentity = resolveChannelCanonicalIdentity(nextState, channelId);
-    let conversationId = canonicalIdentity.conversationId;
-    let containerId = canonicalIdentity.containerId;
+    let conversationId: string | null = canonicalIdentity.conversationId;
+    let containerId: string | null = canonicalIdentity.containerId;
     let transportBindingId: string | null = null;
     try {
       const resolvedChannelView = buildChannelView(nextState, channelId);
@@ -599,18 +593,15 @@ export async function persistCatAssignmentUpdate(
         now,
         context.dependencies.companionStore,
       );
-      conversationId = readInvocationContextMetadataString(
+      ({
+        conversationId,
+        containerId,
+        transportBindingId,
+      } = resolveRuntimeEnvelopeCanonicalMetadata(
+        nextState,
+        channelId,
         runtimeEnvelope.context,
-        'conversationId',
-      ) ?? canonicalIdentity.conversationId;
-      containerId = readInvocationContextMetadataString(
-        runtimeEnvelope.context,
-        'containerId',
-      ) ?? canonicalIdentity.containerId;
-      transportBindingId = readInvocationContextMetadataString(
-        runtimeEnvelope.context,
-        'transportBindingId',
-      );
+      ));
       const session = await context.dependencies.runtimeClient.createSession({
         provider: updatedCat.execution.target.provider,
         instance: updatedCat.execution.target.instance,
@@ -650,28 +641,24 @@ export async function persistCatAssignmentUpdate(
       }
       nextState = setChannelStatus(nextState, channelId, 'active', now);
       const cat = requireCat(nextState, input.catId);
-      nextState = appendMessage(
+      nextState = appendStartedRuntimeSessionMessage(
         nextState,
         channelId,
         {
-          senderKind: 'system',
-          senderName: 'Runtime',
-          body: formatSessionStartedMessage(cat.name, session),
-        },
-        now,
-        {
-          metadata: {
-            event: 'session_started',
-            containerId,
-            conversationId,
-            targetKind: 'cat',
-            targetId: assignmentTargetId,
-            ...(transportBindingId ? { transportBindingId } : {}),
-            sessionId: session.id,
-            verbosity: 'verbose',
+          target: {
+            participantKind: 'cat',
+            participantId: assignmentTargetId,
+            participantName: cat.name,
           },
+          provider: session.provider,
+          instance: updatedCat.execution.target.instance ?? null,
+          session,
+          now,
+          containerId,
+          conversationId,
+          transportBindingId,
         },
-      ).state;
+      );
     } catch (sessionError) {
       const errorMessage = sessionError instanceof Error ? sessionError.message : 'Unknown runtime error';
       nextState = setChannelCatLease(nextState, channelId, input.catId, {
@@ -679,26 +666,24 @@ export async function persistCatAssignmentUpdate(
         lastError: errorMessage,
       }, now);
       const cat = requireCat(nextState, input.catId);
-      nextState = appendMessage(
+      nextState = appendFailedRuntimeSessionMessage(
         nextState,
         channelId,
         {
-          senderKind: 'system',
-          senderName: 'Runtime',
-          body: `Failed to start ${cat.name}: ${errorMessage}`,
-        },
-        now,
-        {
-          metadata: {
-            event: 'session_start_failed',
-            containerId,
-            conversationId,
-            targetKind: 'cat',
-            targetId: assignmentTargetId,
-            ...(transportBindingId ? { transportBindingId } : {}),
+          target: {
+            participantKind: 'cat',
+            participantId: assignmentTargetId,
+            participantName: cat.name,
           },
+          provider: updatedCat.execution.target.provider,
+          instance: updatedCat.execution.target.instance ?? null,
+          error: errorMessage,
+          now,
+          containerId,
+          conversationId,
+          transportBindingId,
         },
-      ).state;
+      );
     }
   }
 
