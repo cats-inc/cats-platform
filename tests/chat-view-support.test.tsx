@@ -419,6 +419,54 @@ test('resolveLatestUserTurnPresentationState ignores unrelated session startup f
   });
 });
 
+test('resolveLatestUserTurnPresentationState keeps processing when session startup omits the active targetStateId', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+        {
+          id: 'message-session-same-participant',
+          senderKind: 'system',
+          metadata: {
+            event: 'session_started',
+            targetId: 'participant-claude',
+          },
+          createdAt: '2026-04-11T00:00:01.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            sourceMessageId: 'message-user',
+            status: 'running',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                id: 'target-state-claude',
+                status: 'running',
+                participant: {
+                  participantId: 'participant-claude',
+                },
+              },
+            ],
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: null,
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'processing',
+  });
+});
+
 test('resolveLatestUserTurnPresentationState keeps the latest queued user bubble processing while a prior turn is still streaming', () => {
   const result = resolveLatestUserTurnPresentationState({
     selectedChannel: {

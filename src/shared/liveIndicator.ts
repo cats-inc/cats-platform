@@ -1444,9 +1444,10 @@ export function hasVisibleSessionStartAfterMessage<TMessage extends LiveIndicato
 
     if (targetStateIds.size > 0) {
       const targetStateId = readMessageTargetStateId(message);
-      if (targetStateId) {
-        return targetStateIds.has(targetStateId);
+      if (!targetStateId) {
+        return false;
       }
+      return targetStateIds.has(targetStateId);
     }
 
     if (participantIds.size > 0) {
@@ -1569,6 +1570,9 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
       const messageTargetStateId = readMessageTargetStateId(message);
       if (messageTargetStateId) {
         return messageTargetStateId === liveTargetStateId;
+      }
+      if (!liveSessionId) {
+        return false;
       }
     }
 

@@ -2233,6 +2233,50 @@ test('resolveVisibleLiveIndicator accepts a matching targetStateId for session s
   assert.equal(visible, liveIndicator);
 });
 
+test('resolveVisibleLiveIndicator keeps a targeted bubble anonymous when session startup omits the active targetStateId', () => {
+  const liveIndicator = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'streaming',
+    targetStateId: 'target-state-agent-1',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    sessionStartedAt: '2026-04-09T12:00:02.500Z',
+    requiresSessionStartConfirmation: true,
+    progressKind: 'session',
+  };
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-09T12:00:00.000Z',
+      },
+      {
+        id: 'message-session-agent-1',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        metadata: {
+          event: 'session_started',
+          targetKind: 'cat',
+          targetId: 'participant-agent-1',
+        },
+        createdAt: '2026-04-09T12:00:02.500Z',
+      },
+    ],
+    '2026-04-09T12:00:05.000Z',
+  );
+
+  assert.ok(visible);
+  assert.equal(visible.phase, 'waiting');
+  assert.equal(visible.participantId, null);
+  assert.equal(visible.speakerLabel, null);
+});
+
 test('resolveVisibleLiveIndicator accepts orchestrator session_started messages that only declare targetKind', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
