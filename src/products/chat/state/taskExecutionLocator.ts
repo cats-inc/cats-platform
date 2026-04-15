@@ -27,10 +27,12 @@ export function createChatTaskExecutionLocator(
 
       return {
         orchestratorActorId: GLOBAL_ORCHESTRATOR_ACTOR_ID,
+        orchestratorLaneId: channel.orchestratorLease.laneId,
         orchestratorSessionId: channel.orchestratorLease.sessionId,
         participants: channel.catAssignments.map((assignment) => ({
           actorId: createCatActorId(assignment.catId),
           status: assignment.status,
+          laneId: assignment.execution.lease.laneId,
           sessionId: assignment.execution.lease.sessionId,
         })),
       };

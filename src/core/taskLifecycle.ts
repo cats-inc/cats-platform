@@ -18,7 +18,7 @@ import type {
   RuntimeWakeupCreateResult,
 } from '../platform/runtime/client.js';
 import {
-  resolveTaskConversationSessionId,
+  resolveTaskConversationAttachment,
   type TaskExecutionLocator,
 } from './taskExecutionLocator.js';
 import {
@@ -103,7 +103,8 @@ export async function applyTaskAssignmentLifecycle(
   const wakeupSummaries: Array<Record<string, unknown>> = [];
 
   for (const actorId of actorsToWake) {
-    const sessionId = resolveTaskConversationSessionId(conversation, actorId);
+    const attachment = resolveTaskConversationAttachment(conversation, actorId);
+    const sessionId = attachment?.sessionId ?? null;
     if (!sessionId) {
       continue;
     }
@@ -118,6 +119,7 @@ export async function applyTaskAssignmentLifecycle(
         taskId: nextTask.id,
         assignedActorId: actorId,
         conversationId: nextTask.conversationId,
+        laneId: attachment?.laneId ?? null,
       },
       ...executionRequest,
     });
@@ -125,6 +127,7 @@ export async function applyTaskAssignmentLifecycle(
     wakeupSummaries.push({
       requestId: created.request.id,
       sessionId,
+      laneId: attachment?.laneId ?? null,
       assignedActorId: actorId,
       coalesced: created.coalesced,
       scheduledAt: created.request.scheduleAt ?? nowIso,
@@ -144,6 +147,7 @@ export async function applyTaskAssignmentLifecycle(
           source: 'task-lifecycle',
           assignedActorId: actorId,
           sessionId,
+          laneId: attachment?.laneId ?? null,
           wakeupRequestId: created.request.id,
           coalesced: created.coalesced,
         },
