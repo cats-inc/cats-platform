@@ -279,6 +279,10 @@ export function resolveLatestUserTurnPresentationState(input: {
     ?? [];
   const activeTurnLaneIds = activeTurn?.targetStatuses
     ?.map((target) => {
+      const persistedLaneId = target.laneId?.trim() || null;
+      if (persistedLaneId) {
+        return persistedLaneId;
+      }
       if (!activeTurn.id || !target.id) {
         return null;
       }

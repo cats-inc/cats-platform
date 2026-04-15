@@ -562,6 +562,58 @@ test('resolveLatestUserTurnPresentationState stops processing when session start
   });
 });
 
+test('resolveLatestUserTurnPresentationState stops processing when session startup matches a persisted target laneId', () => {
+  const result = resolveLatestUserTurnPresentationState({
+    selectedChannel: {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          createdAt: '2026-04-11T00:00:00.000Z',
+        },
+        {
+          id: 'message-session-same-persisted-lane',
+          senderKind: 'system',
+          metadata: {
+            event: 'session_started',
+            laneId: 'lane-persisted-canonical',
+            targetId: 'participant-claude',
+            targetStateId: 'target-state-claude-drifted',
+          },
+          createdAt: '2026-04-11T00:00:01.000Z',
+        },
+      ],
+      roomRouting: {
+        lastOutcome: null,
+        workflow: {
+          activeTurn: {
+            id: 'turn-1',
+            sourceMessageId: 'message-user',
+            status: 'running',
+            workflowShape: 'sequential',
+            targetStatuses: [
+              {
+                id: 'target-state-claude-canonical',
+                laneId: 'lane-persisted-canonical',
+                status: 'running',
+                participant: {
+                  participantId: 'participant-claude',
+                },
+              },
+            ],
+          },
+        },
+      },
+    } as never,
+    visibleLiveIndicator: null,
+  });
+
+  assert.deepEqual(result, {
+    messageId: 'message-user',
+    status: 'idle',
+  });
+});
+
 test('resolveLatestUserTurnPresentationState keeps the latest queued user bubble processing while a prior turn is still streaming', () => {
   const result = resolveLatestUserTurnPresentationState({
     selectedChannel: {
