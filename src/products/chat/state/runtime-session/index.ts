@@ -5,8 +5,8 @@ export {
 } from './shared.js';
 export {
   ensureTargetSession,
-  maybeAutoCheckoutChannelTask,
 } from './wake.js';
+export { maybeAutoCheckoutChannelTask } from './taskExecution.js';
 export {
   activateChannelSessions,
   wakeChannelEntryParticipant,
