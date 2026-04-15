@@ -1647,6 +1647,26 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
     let nextChannel = requireChannel(nextState, channelId);
     let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
     assert.ok(nextTurn);
+    nextState = setChannelCatLease(
+      nextState,
+      channelId,
+      firstCatId,
+      {
+        sessionId: 'session-live-reused',
+        status: 'ready',
+        cwd: 'C:/repo/cats-platform',
+        laneId: 'lane-reused-phase-1',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
+    nextChannel = requireChannel(nextState, channelId);
+    nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
     nextTurn.targetStatuses = [
       {
         id: 'target-state-reused-1',
@@ -1665,6 +1685,7 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
         branchStrategy: 'fresh_no_parent',
         handoffReason: 'room_default',
         wakeRequestId: null,
+        laneId: 'lane-reused-phase-1',
         status: 'running',
         queuedAt: seededAt.toISOString(),
         startedAt: seededAt.toISOString(),
@@ -1692,6 +1713,7 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
     nextTurn.targetStatuses = [
       {
         ...nextTurn.targetStatuses[0],
+        laneId: 'lane-reused-phase-1',
         status: 'completed',
         completedAt: firstReplyAt.toISOString(),
       },
@@ -1712,6 +1734,7 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
         branchStrategy: 'fresh_no_parent',
         handoffReason: 'room_default',
         wakeRequestId: null,
+        laneId: 'lane-reused-phase-2',
         status: 'running',
         queuedAt: secondStartAt.toISOString(),
         startedAt: secondStartAt.toISOString(),
@@ -1721,6 +1744,23 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
       },
     ];
     nextTurn.updatedAt = secondStartAt.toISOString();
+    nextState = setChannelCatLease(
+      nextState,
+      channelId,
+      firstCatId,
+      {
+        sessionId: 'session-live-reused',
+        status: 'ready',
+        cwd: 'C:/repo/cats-platform',
+        laneId: 'lane-reused-phase-2',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: secondStartAt.toISOString(),
+      },
+      secondStartAt,
+    );
     nextState = appendMessage(
       nextState,
       channelId,
@@ -1786,6 +1826,216 @@ test('GET /api/channels/:id/stream reattaches a reused warm session for a new se
     assert.deepEqual(streamedTargetIds, [
       ['target-state-reused-1'],
       ['target-state-reused-2'],
+    ]);
+  }, chatStore);
+});
+
+test('GET /api/channels/:id/stream reattaches a replacement session for the same active lane', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:12:00.000Z');
+  const replacementStartedAt = new Date('2026-03-11T00:12:03.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Recovery Cat',
+      provider: 'claude',
+      roles: ['reviewer'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Same lane session recovery',
+      topic: 'Reattach a new runtime session without changing the active lane.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = assignCatToChannel(state, channelId, { catId }, seededAt);
+  const seededChannel = requireChannel(state, channelId);
+  const participantId = seededChannel.catAssignments.find((assignment) => assignment.catId === catId)?.participantId;
+  assert.ok(participantId);
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-live-original',
+      status: 'ready',
+      cwd: 'C:/repo/cats-platform',
+      laneId: 'lane-live-recovery',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  let releaseFirstResultSeen;
+  const firstResultSeen = new Promise((resolve) => {
+    releaseFirstResultSeen = resolve;
+  });
+  let releaseSecondResultSeen;
+  const secondResultSeen = new Promise((resolve) => {
+    releaseSecondResultSeen = resolve;
+  });
+
+  runtime.streamSession = async (sessionId, onEvent, options) => {
+    runtime.streamedSessions.push(sessionId);
+    if (sessionId === 'session-live-original') {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'Original session streamed before recovery.',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseFirstResultSeen();
+      await new Promise((resolve) => {
+        if (options?.signal?.aborted) {
+          resolve();
+          return;
+        }
+        options?.signal?.addEventListener('abort', resolve, { once: true });
+      });
+      return;
+    }
+
+    if (sessionId === 'session-live-replacement') {
+      await onEvent({
+        event: 'progress',
+        data: {
+          type: 'progress',
+          text: 'Replacement session resumed the same lane.',
+        },
+      });
+      await onEvent({
+        event: 'result',
+        data: {
+          type: 'result',
+        },
+      });
+      releaseSecondResultSeen();
+      return;
+    }
+
+    throw new Error(`Unexpected streamed session ${sessionId}`);
+  };
+
+  await withServer(runtime, async (baseUrl) => {
+    const begun = await beginChannelMessageDispatch(
+      await chatStore.read(),
+      channelId,
+      {
+        body: 'Keep streaming through the same lane after session recovery.',
+        messageMetadata: {
+          recipientParticipantIds: [participantId],
+        },
+      },
+      runtime,
+      seededAt,
+    );
+    let nextState = begun.state;
+    let nextChannel = requireChannel(nextState, channelId);
+    let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
+    nextTurn.targetStatuses = [
+      {
+        id: 'target-state-recovery',
+        dispatchId: 'dispatch-recovery',
+        participant: {
+          participantKind: 'cat',
+          participantId,
+          participantName: 'Recovery Cat',
+        },
+        source: null,
+        sourceMessageId: nextTurn.sourceMessageId,
+        trigger: 'room_default',
+        mentionNames: [],
+        depth: 0,
+        parentCheckpointId: nextTurn.lastCheckpointId,
+        branchStrategy: 'fresh_no_parent',
+        handoffReason: 'room_default',
+        wakeRequestId: null,
+        laneId: 'lane-live-recovery',
+        sessionId: 'session-live-original',
+        status: 'running',
+        queuedAt: seededAt.toISOString(),
+        startedAt: seededAt.toISOString(),
+        completedAt: null,
+        response: null,
+        error: null,
+      },
+    ];
+    nextTurn.updatedAt = seededAt.toISOString();
+    await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
+
+    const streamResponse = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(streamResponse.status, 200);
+    const streamBodyPromise = streamResponse.text();
+
+    await firstResultSeen;
+
+    nextState = await chatStore.read();
+    nextState = setChannelCatLease(
+      nextState,
+      channelId,
+      catId,
+      {
+        sessionId: 'session-live-replacement',
+        status: 'ready',
+        cwd: 'C:/repo/cats-platform',
+        laneId: 'lane-live-recovery',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: replacementStartedAt.toISOString(),
+        lastUsedAt: replacementStartedAt.toISOString(),
+      },
+      replacementStartedAt,
+    );
+    nextChannel = requireChannel(nextState, channelId);
+    nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    assert.ok(nextTurn);
+    nextTurn.targetStatuses[0] = {
+      ...nextTurn.targetStatuses[0],
+      laneId: 'lane-live-recovery',
+      sessionId: 'session-live-replacement',
+      startedAt: replacementStartedAt.toISOString(),
+    };
+    await chatStore.write(nextState);
+    notifyStreamTargetChanged(channelId);
+
+    await secondResultSeen;
+
+    const finalState = await chatStore.read();
+    const finalChannel = requireChannel(finalState, channelId);
+    finalChannel.roomRouting.workflow.activeTurn = null;
+    await chatStore.write(finalState);
+    notifyStreamTargetChanged(channelId);
+
+    const streamBody = await streamBodyPromise;
+    assert.match(streamBody, /"text":"Original session streamed before recovery\."/u);
+    assert.match(streamBody, /"text":"Replacement session resumed the same lane\."/u);
+    assert.deepEqual(runtime.streamedSessions, [
+      'session-live-original',
+      'session-live-replacement',
     ]);
   }, chatStore);
 });

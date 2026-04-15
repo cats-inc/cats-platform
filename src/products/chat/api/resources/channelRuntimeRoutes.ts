@@ -159,7 +159,12 @@ async function readChannelReadyStreamSnapshot(
 }
 
 function buildStreamAttachKey(target: ChannelStreamTarget): string | null {
-  return target.laneId ?? target.sessionId ?? null;
+  const laneId = target.laneId?.trim() || null;
+  const sessionId = target.sessionId?.trim() || null;
+  if (laneId && sessionId) {
+    return `${laneId}::${sessionId}`;
+  }
+  return laneId ?? sessionId;
 }
 
 async function streamChannelTarget(input: {
