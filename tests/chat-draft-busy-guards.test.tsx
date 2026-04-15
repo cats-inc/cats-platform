@@ -1,0 +1,76 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { resolveChatNewChatDraftViewState } from '../src/products/shared/renderer/components/chatNewChatDraftSupport.ts';
+
+function createPayload() {
+  return {
+    chat: {
+      bossCatId: null,
+      botBindings: [],
+      assistantPresets: [],
+      capabilities: {
+        maxChatParticipants: 6,
+      },
+      cats: [
+        {
+          id: 'cat-1',
+          name: 'Claude',
+          status: 'active',
+          avatarColor: '#f97316',
+          avatarUrl: null,
+          defaultExecutionTarget: {
+            provider: 'claude',
+            instance: 'cli',
+            model: 'sonnet',
+          },
+          defaultModelSelection: null,
+        },
+      ],
+    },
+  } as never;
+}
+
+test('resolveChatNewChatDraftViewState keeps unrelated active-channel busy state out of draft composers', () => {
+  const result = resolveChatNewChatDraftViewState({
+    payload: createPayload(),
+    draftDefaultRecipientCatId: null,
+    draftCatIds: [],
+    draftTemporaryParticipants: [],
+    allowAddCat: true,
+    entryMode: 'default',
+    parallelTargets: undefined,
+    starterSuggestions: null,
+    greeting: null,
+    greetingPool: null,
+    draftHighlightedCatId: null,
+    draftCatModelOverrides: new Map(),
+    selectedModel: null,
+    busy: 'message:send:channel-1',
+  });
+
+  assert.equal(result.isAckPending, false);
+  assert.equal(result.isSubmittingFirstTurn, false);
+});
+
+test('resolveChatNewChatDraftViewState keeps draft send busy local to the active draft route', () => {
+  const result = resolveChatNewChatDraftViewState({
+    payload: createPayload(),
+    draftDefaultRecipientCatId: null,
+    draftCatIds: [],
+    draftTemporaryParticipants: [],
+    allowAddCat: true,
+    entryMode: 'default',
+    parallelTargets: undefined,
+    starterSuggestions: null,
+    greeting: null,
+    greetingPool: null,
+    draftHighlightedCatId: null,
+    draftCatModelOverrides: new Map(),
+    selectedModel: null,
+    busy: 'message:ack:draft',
+  });
+
+  assert.equal(result.isAckPending, true);
+  assert.equal(result.isSubmittingFirstTurn, true);
+});

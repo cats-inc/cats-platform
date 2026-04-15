@@ -1,4 +1,4 @@
-import { isComposerSelectionBlocked } from '../../../../shared/composer.js';
+import { doesComposerSelectionBlockChannelRoute } from '../../../../shared/composer.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import {
   useWorkspaceAppShellRouting,
@@ -27,7 +27,7 @@ export function useAppShellRouting(
     chatPrefix: CHAT_PREFIX,
     fetchAppShell,
     updateSelectedChannel,
-    isRouteSelectionBlocked: isComposerSelectionBlocked,
+    isRouteSelectionBlocked: doesComposerSelectionBlockChannelRoute,
     resolveMissingDraftDefaultRecipientPath: ({
       channels,
       selectedChannelId,

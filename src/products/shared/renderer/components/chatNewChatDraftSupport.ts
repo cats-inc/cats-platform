@@ -16,7 +16,10 @@ import {
   type RecipientChipTarget,
 } from './ComposerRecipientChip.js';
 import type { ModelSelectorValue } from './ModelSelector.js';
-import { isComposerAckBusy, isComposerBusy } from '../../../../shared/composer.js';
+import {
+  isComposerAckBusyForDraft,
+  isComposerBusyForDraft,
+} from '../../../../shared/composer.js';
 import {
   buildAudienceParticipantFromCat,
   buildAudienceParticipantFromTemporaryParticipant,
@@ -128,8 +131,8 @@ export function resolveChatNewChatDraftViewState(input: {
             modelSelection: highlightedCat.defaultModelSelection ?? null,
           })
         : input.selectedModel ?? null;
-  const isAckPending = isComposerAckBusy(input.busy);
-  const isSubmittingFirstTurn = isComposerBusy(input.busy) || isAckPending;
+  const isAckPending = isComposerAckBusyForDraft(input.busy);
+  const isSubmittingFirstTurn = isComposerBusyForDraft(input.busy) || isAckPending;
   const draftComposerRecipients: RecipientChipTarget[] = (() => {
     if (effectiveDefaultRecipientCat) {
       return [buildRecipientFromCat(effectiveDefaultRecipientCat, input.payload.chat.bossCatId)];

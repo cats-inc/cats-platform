@@ -76,8 +76,8 @@ test('chat composer surfaces cancel-send during ACK and stop during dispatch', a
     'utf8',
   );
 
-  assert.match(chatViewSupportSource, /isComposerAckBusy/u);
-  assert.match(chatViewSupportSource, /input\.busy === 'message:prepare'/u);
+  assert.match(chatViewSupportSource, /isComposerAckBusyForChannel/u);
+  assert.match(chatViewSupportSource, /isComposerDispatchBusyForChannel/u);
   assert.match(chatViewSource, /onCancelPendingSend\?: \(\) => void;/u);
   assert.match(chatViewSupportSource, /showCancelComposerAction = composerAckBusy && input\.onCancelPendingSend != null/u);
   assert.match(chatViewSource, /aria-label="Cancel send"/u);

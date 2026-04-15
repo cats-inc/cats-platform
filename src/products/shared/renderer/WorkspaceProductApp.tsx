@@ -401,6 +401,7 @@ export function createWorkspaceProductApp({
       draftModel,
       soloChannelModel,
       selectedChannel,
+      busy,
       setBusy,
       setFeedback,
     });

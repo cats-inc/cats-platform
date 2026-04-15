@@ -4,8 +4,8 @@ import type {
 } from '../../../api/contracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
 import {
-  getComposerDispatchChannelId,
-  isComposerAckBusy,
+  isComposerAckBusyForChannel,
+  isComposerDispatchBusyForChannel,
 } from '../../../../../shared/composer.js';
 import {
   hasLiveIndicatorIdentity,
@@ -488,28 +488,26 @@ export function resolveChatComposerViewState(input: {
   chatCwd?: string | null;
 }): ChatComposerViewState {
   const composerAckBusy =
-    input.busy === 'message:prepare'
-    || input.busy === 'parallelChat:ack'
-    || (
-      isComposerAckBusy(input.busy)
-      && input.busy.startsWith('message:ack:')
-      && input.busy.slice('message:ack:'.length) === input.selectedChannelId
-    );
-  const composerDispatchChannelId = getComposerDispatchChannelId(input.busy);
+    input.busy === 'parallelChat:ack'
+    || isComposerAckBusyForChannel(input.busy, input.selectedChannelId);
   const compareBusy =
     input.busy === 'parallelChat:ack'
     || input.busy === 'parallelChat:dispatch'
     || input.busy === 'parallelChat:relay'
     || input.busy === 'parallelChat:stop';
+  const composerDispatchBusy = isComposerDispatchBusyForChannel(
+    input.busy,
+    input.selectedChannelId,
+  );
   const composerBusy =
     composerAckBusy
-    || composerDispatchChannelId != null
+    || composerDispatchBusy
     || input.busy === 'channel:resume'
     || compareBusy;
   const showCancelComposerAction = composerAckBusy && input.onCancelPendingSend != null;
   const canStopSingleChat =
     !input.isCompareGroup
-    && composerDispatchChannelId === input.selectedChannelId
+    && composerDispatchBusy
     && input.onStopMessage != null;
   const canStopParallelChat =
     input.isCompareGroup

@@ -1,7 +1,7 @@
 import { useState, type ComponentType, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
-import { isComposerBusy } from '../../../../shared/composer.js';
+import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
@@ -232,7 +232,7 @@ export function WorkspaceNewChatDraft({
         })
       : selectedModel ?? null;
   const chipLabel = selectedModel ? buildModelSelectorLabel(selectedModel) : '';
-  const isSubmittingFirstTurn = isComposerBusy(busy);
+  const isSubmittingFirstTurn = isComposerBusyForDraft(busy);
 
   return (
     <div className="viewShell viewShellDraft">

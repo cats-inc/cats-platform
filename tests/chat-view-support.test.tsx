@@ -64,6 +64,41 @@ test('resolveChatComposerViewState does not leak ACK cancel state into other cha
   assert.equal(result.showCancelComposerAction, false);
 });
 
+test('resolveChatComposerViewState scopes prepare busy to the active channel', () => {
+  const result = resolveChatComposerViewState({
+    activeRoomParticipants: [],
+    directLaneCat: null,
+    busy: 'message:prepare:channel-1',
+    isCompareGroup: false,
+    selectedChannelId: 'channel-2',
+    onCancelPendingSend: () => {},
+    onStopMessage: () => {},
+    repoPath: null,
+    chatCwd: null,
+  });
+
+  assert.equal(result.composerAckBusy, false);
+  assert.equal(result.composerBusy, false);
+  assert.equal(result.showCancelComposerAction, false);
+});
+
+test('resolveChatComposerViewState does not leak dispatch busy into other channels', () => {
+  const result = resolveChatComposerViewState({
+    activeRoomParticipants: [],
+    directLaneCat: null,
+    busy: 'message:send:channel-1',
+    isCompareGroup: false,
+    selectedChannelId: 'channel-2',
+    onCancelPendingSend: () => {},
+    onStopMessage: () => {},
+    repoPath: null,
+    chatCwd: null,
+  });
+
+  assert.equal(result.composerBusy, false);
+  assert.equal(result.showStopComposerAction, false);
+});
+
 test('buildChatComposerRecipients preserves solo model-selection controls for active chats', () => {
   const recipients = buildChatComposerRecipients({
     isDirectLane: false,

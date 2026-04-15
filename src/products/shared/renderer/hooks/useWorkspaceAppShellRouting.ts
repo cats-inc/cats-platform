@@ -7,7 +7,7 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import {
-  isComposerBusy,
+  doesComposerSelectionBlockChannelRoute,
 } from '../../../../shared/composer.js';
 import type { AppShellPayload, ChatChannelSummary } from '../../api/workspaceContracts.js';
 import {
@@ -68,7 +68,10 @@ export interface WorkspaceAppShellRoutingOptions<
   readySelectedChannel: SelectedChannelView | null;
   fetchAppShell?: (signal: AbortSignal) => Promise<TPayload>;
   updateSelectedChannel?: (channelId: string, signal: AbortSignal) => Promise<TPayload>;
-  isRouteSelectionBlocked?: (busy: string | null | undefined) => boolean;
+  isRouteSelectionBlocked?: (
+    busy: string | null | undefined,
+    routeChannelId: string | null,
+  ) => boolean;
   resolveMissingDraftDefaultRecipientPath?: (input: {
     channels: ReadonlyArray<RoutingChannelLike>;
     selectedChannelId: string | null;
@@ -101,7 +104,7 @@ export function useWorkspaceAppShellRouting<
       channelId: string,
       signal: AbortSignal,
     ) => Promise<TPayload>,
-    isRouteSelectionBlocked = isComposerBusy,
+    isRouteSelectionBlocked = doesComposerSelectionBlockChannelRoute,
     resolveMissingDraftDefaultRecipientPath,
   } = options;
   const readyPayload = state.status === 'ready' ? state.payload : null;
@@ -262,7 +265,7 @@ export function useWorkspaceAppShellRouting<
       return;
     }
 
-    if (isRouteSelectionBlocked(busy)) {
+    if (isRouteSelectionBlocked(busy, routeChannelId)) {
       return;
     }
 

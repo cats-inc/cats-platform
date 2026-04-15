@@ -28,7 +28,7 @@ import {
 } from '../../../operator-loop/index.js';
 import { type ModelSelectorValue } from '../ModelSelector.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
-import { isComposerBusy } from '../../../../../shared/composer.js';
+import { isComposerBusyForChannel } from '../../../../../shared/composer.js';
 import {
   isDirectConversationMode,
   isSoloThreadConversationMode,
@@ -278,7 +278,7 @@ export function ChatView({
     () => buildRunInspectorView(operatorView, inspectedRunId),
     [operatorView, inspectedRunId],
   );
-  const composerBusy = isComposerBusy(busy);
+  const composerBusy = isComposerBusyForChannel(busy, selectedChannel.id);
   const resumeBusy = busy === 'channel:resume';
   const canResumeChannel = !composerBusy && !resumeBusy;
   const composerWorkspacePath = resolveComposerWorkspacePath(

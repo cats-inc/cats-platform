@@ -8,7 +8,10 @@ import {
 } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 
-import { shouldSubmitComposerOnKeyDown } from '../../../../shared/composer.js';
+import {
+  DRAFT_COMPOSER_BUSY_SCOPE,
+  shouldSubmitComposerOnKeyDown,
+} from '../../../../shared/composer.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
@@ -23,6 +26,7 @@ import {
 } from '../composerDispatch.js';
 import {
   createChatChannel,
+  fetchAppShell,
   sendChatMessage,
   updateSelectedChannel,
   uploadChannelAttachments,
@@ -38,6 +42,7 @@ import {
   navigateWithinManagedComposerFlow,
 } from '../composerNavigation.js';
 import { resetComposerDraftState } from '../composerDraftState.js';
+import { useComposerRequestLifecycle } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
 
 type LoadStateLike =
@@ -76,8 +81,21 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceMode
   draftModel: ModelValue;
   soloChannelModel: ModelValue;
   selectedChannel: SelectedChannelView | null;
+  busy: string;
   setBusy: Dispatch<SetStateAction<string>>;
   setFeedback: Dispatch<SetStateAction<string>>;
+}
+
+function isChannelDispatchRunning(
+  payload: AppShellPayload,
+  channelId: string,
+): boolean {
+  return payload.chat.channels.some((channel) =>
+    channel.id === channelId && channel.routingStatus === 'running');
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
 }
 
 export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSelectorValue>(
@@ -107,10 +125,25 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     draftModel,
     soloChannelModel,
     selectedChannel,
+    busy,
     setBusy,
     setFeedback,
   } = options;
   const managedNavigationLocationRef = useRef<string | null>(null);
+  const {
+    activeDispatchRequestRef,
+    beginAckRequest,
+    clearAckRequestIfCurrent,
+    clearDispatchRequestIfCurrent,
+    setActiveDispatchRequest,
+  } = useComposerRequestLifecycle({
+    state,
+    busy,
+    setBusy,
+    setState,
+    fetchPayload: fetchAppShell,
+    isChannelDispatchRunning,
+  });
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
     if (state.status !== 'ready') {
@@ -155,8 +188,11 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         nextPath,
       );
 
-    setBusy('message:prepare');
     setFeedback('');
+    const prepareBusyScope = channelId || DRAFT_COMPOSER_BUSY_SCOPE;
+    const { id: submitId, controller: ackController } = beginAckRequest();
+    let keepBusyAfterReturn = false;
+    setBusy(`message:prepare:${prepareBusyScope}`);
     captureManagedComposerLocation(managedNavigationLocationRef);
     try {
       const preparedSendContext = await prepareWorkspaceSendContext({
@@ -187,6 +223,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
           buildWorkspaceChannelPath(chatPrefix, createdChannelId),
         updateSelectedChannel,
         uploadChannelAttachments,
+        signal: ackController.signal,
       });
       payload = preparedSendContext.payload;
       rollbackPayload = preparedSendContext.rollbackPayload;
@@ -204,13 +241,25 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       setDraftFiles([]);
       setChannelFiles([]);
       navigateWithinManagedFlow(rollbackPath);
-      setBusy('message:send');
+      setBusy(`message:ack:${channelId}`);
 
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
-      });
+      }, ackController.signal);
+      clearAckRequestIfCurrent(submitId);
       setState({ status: 'ready', payload: dispatch.appShell });
+      if (isChannelDispatchRunning(dispatch.appShell, channelId)) {
+        setActiveDispatchRequest({
+          id: submitId,
+          kind: 'channel',
+          channelId,
+        });
+        setBusy(`message:send:${channelId}`);
+        keepBusyAfterReturn = true;
+      } else {
+        setActiveDispatchRequest(null);
+      }
       setComposerDraft('');
       setFeedback('');
       navigateWithinManagedFlow(rollbackPath);
@@ -236,18 +285,34 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         setChannelFiles([]);
       }
     } catch (error) {
+      clearAckRequestIfCurrent(submitId);
+      if (activeDispatchRequestRef.current?.id === submitId) {
+        setActiveDispatchRequest(null);
+      }
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);
       restoreFiles();
-      setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
+      if (isAbortError(error)) {
+        setFeedback('');
+      } else {
+        setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
+      }
       navigateWithinManagedFlow(rollbackPath);
     } finally {
-      setBusy('');
+      if (!keepBusyAfterReturn) {
+        clearAckRequestIfCurrent(submitId);
+        clearDispatchRequestIfCurrent(submitId);
+        setBusy('');
+      }
       clearManagedComposerLocation(managedNavigationLocationRef);
     }
   }, [
+    activeDispatchRequestRef,
+    beginAckRequest,
     channelFiles,
     chatPrefix,
+    clearAckRequestIfCurrent,
+    clearDispatchRequestIfCurrent,
     composerDraft,
     currentPathname,
     draftCatIds,
@@ -260,6 +325,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     draftModel.provider,
     navigate,
     selectedChannel,
+    setActiveDispatchRequest,
     setBusy,
     setChannelFiles,
     setComposerDraft,

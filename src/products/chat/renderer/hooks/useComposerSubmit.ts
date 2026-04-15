@@ -9,6 +9,7 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import {
+  DRAFT_COMPOSER_BUSY_SCOPE,
   shouldSubmitComposerOnKeyDown,
 } from '../../../../shared/composer';
 import type { AppShellPayload } from '../../api/contracts';
@@ -321,7 +322,7 @@ export function useComposerSubmit(options: {
         return;
       }
 
-        setBusy('message:prepare');
+        setBusy(`message:prepare:${channelId || DRAFT_COMPOSER_BUSY_SCOPE}`);
 
       const preparedSendContext = await prepareWorkspaceSendContext({
         initialPayload,
