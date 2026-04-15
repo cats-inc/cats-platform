@@ -1,4 +1,4 @@
-import type { ChatChannelView, ChatState } from '../../api/contracts.js';
+import type { ChannelActivationResult, ChatChannelView, ChatState } from '../../api/contracts.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
 import type { ChatStore } from '../store.js';
 import type { CatsMemoryService } from '../../../../platform/memory/index.js';
@@ -36,6 +36,22 @@ export interface RuntimeSessionLifecycleTarget {
   participantKind: 'orchestrator' | 'cat';
   participantId: string;
   participantName: string;
+}
+
+export interface RuntimeSessionActivationTarget extends RuntimeSessionLifecycleTarget {
+  laneId: string | null;
+  sessionId: string | null;
+}
+
+export interface RuntimeSessionActivationOutcome {
+  error: string | null;
+  target: {
+    laneId: string | null;
+    sessionId: string | null;
+  };
+  wakeRequest: {
+    status: 'pending' | 'completed' | 'failed' | 'skipped';
+  } | null;
 }
 
 export function readInvocationContextMetadataString(
@@ -177,6 +193,33 @@ export function appendFailedRuntimeSessionMessage(
       ...(input.incrementUnread !== undefined ? { incrementUnread: input.incrementUnread } : {}),
     },
   ).state;
+}
+
+export function buildChannelActivationResult(input: {
+  target: RuntimeSessionActivationTarget;
+  ensured: RuntimeSessionActivationOutcome;
+}): ChannelActivationResult {
+  const { ensured, target } = input;
+  if (ensured.error) {
+    return {
+      targetKind: target.participantKind,
+      targetId: target.participantId,
+      targetName: target.participantName,
+      laneId: ensured.target.laneId ?? target.laneId ?? null,
+      status: 'error',
+      sessionId: null,
+      error: ensured.error,
+    };
+  }
+
+  return {
+    targetKind: target.participantKind,
+    targetId: target.participantId,
+    targetName: target.participantName,
+    laneId: ensured.target.laneId,
+    status: ensured.wakeRequest?.status === 'skipped' ? 'already_started' : 'started',
+    sessionId: ensured.target.sessionId,
+  };
 }
 
 export function shouldRewriteOrchestratorReply(

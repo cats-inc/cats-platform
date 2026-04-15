@@ -67,6 +67,7 @@ import {
 import {
   appendFailedRuntimeSessionMessage,
   appendStartedRuntimeSessionMessage,
+  buildChannelActivationResult,
   readInvocationContextMetadataString,
   resolveRuntimeEnvelopeCanonicalMetadata,
   type RuntimeEnvelopeCanonicalMetadata,
@@ -1078,28 +1079,19 @@ export async function wakeChannelEntryParticipant(
   if (ensured.error) {
     return {
       state: nextState,
-      result: {
-        targetKind: target.participantKind,
-        targetId: target.participantId,
-        targetName: target.participantName,
-        laneId: ensured.target.laneId,
-        status: 'error',
-        sessionId: null,
-        error: ensured.error,
-      },
+      result: buildChannelActivationResult({
+        target,
+        ensured,
+      }),
     };
   }
 
   nextState = ensureChannelMarkedActive(nextState, channelId, now);
   return {
     state: nextState,
-    result: {
-      targetKind: ensured.target.participantKind,
-      targetId: ensured.target.participantId,
-      targetName: ensured.target.participantName,
-      laneId: ensured.target.laneId,
-      status: ensured.wakeRequest?.status === 'skipped' ? 'already_started' : 'started',
-      sessionId: ensured.target.sessionId,
-    },
+    result: buildChannelActivationResult({
+      target,
+      ensured,
+    }),
   };
 }

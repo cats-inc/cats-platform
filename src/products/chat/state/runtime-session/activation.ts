@@ -11,41 +11,9 @@ import { buildCatTarget, buildOrchestratorTarget } from '../runtimeTargeting.js'
 import { ensureTargetSession } from './wake.js';
 import {
   activeAssignedParticipants,
+  buildChannelActivationResult,
   type RuntimeSessionRoutingOptions,
 } from './shared.js';
-
-function toActivationResult(input: {
-  target: {
-    participantKind: 'orchestrator' | 'cat';
-    participantId: string;
-    participantName: string;
-    laneId: string | null;
-    sessionId: string | null;
-  };
-  ensured: Awaited<ReturnType<typeof ensureTargetSession>>;
-}): ChannelActivationResult {
-  const { ensured, target } = input;
-  if (ensured.error) {
-    return {
-      targetKind: target.participantKind,
-      targetId: target.participantId,
-      targetName: target.participantName,
-      laneId: ensured.target.laneId ?? target.laneId ?? null,
-      status: 'error',
-      sessionId: null,
-      error: ensured.error,
-    };
-  }
-
-  return {
-    targetKind: target.participantKind,
-    targetId: target.participantId,
-    targetName: target.participantName,
-    laneId: ensured.target.laneId,
-    status: ensured.wakeRequest?.status === 'skipped' ? 'already_started' : 'started',
-    sessionId: ensured.target.sessionId,
-  };
-}
 
 export async function activateChannelSessions(
   state: ChatState,
@@ -80,7 +48,7 @@ export async function activateChannelSessions(
       },
     );
     nextState = ensured.state;
-    results.push(toActivationResult({
+    results.push(buildChannelActivationResult({
       target,
       ensured,
     }));
