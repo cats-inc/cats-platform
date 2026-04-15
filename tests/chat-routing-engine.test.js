@@ -1987,6 +1987,10 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
     message.senderKind === 'agent'
     && message.metadata?.event === 'assistant_turn_segment');
   assert.equal(
+    assistantReply?.metadata?.conversationId,
+    buildChatConversationId(channelId),
+  );
+  assert.equal(
     assistantReply?.metadata?.containerId,
     CHAT_ROOT_CONTAINER_ID,
   );

@@ -839,6 +839,7 @@ export function projectChatChannelInteractionToCore(
               executionInstance: message.executionInstance ?? null,
               routingTrigger: readMessageMetadataString(message, 'routingTrigger'),
               dispatchDepth: readMessageMetadataNumber(message, 'dispatchDepth'),
+              transportBindingId: readMessageMetadataString(message, 'transportBindingId'),
               ...(readMessageToolMetadataArray(message, 'precedingTools').length > 0
                 ? { precedingTools: readMessageToolMetadataArray(message, 'precedingTools') }
                 : {}),

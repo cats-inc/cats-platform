@@ -149,14 +149,25 @@ function buildCanonicalChatSegmentMessage(
     mentions: [],
     metadata: {
       event: 'assistant_turn_segment',
+      conversationId,
       ...(assistantTurnId ? { assistantTurnId } : {}),
       ...(readChatCoreMetadataString(segment.metadata, 'targetStateId')
         ? { targetStateId: readChatCoreMetadataString(segment.metadata, 'targetStateId') }
         : {}),
       ...(targetKind ? { targetKind } : {}),
       ...(targetId ? { targetId } : {}),
+      ...(readChatCoreMetadataString(segment.metadata, 'containerId')
+        || readChatCoreMetadataString(lane?.metadata ?? null, 'containerId')
+        ? {
+            containerId: readChatCoreMetadataString(segment.metadata, 'containerId')
+              ?? readChatCoreMetadataString(lane?.metadata ?? null, 'containerId')
+          }
+        : {}),
       ...(segment.sessionId ? { sessionId: segment.sessionId } : {}),
       ...(segment.turnId ? { turnId: segment.turnId } : {}),
+      ...(readChatCoreMetadataString(segment.metadata, 'transportBindingId')
+        ? { transportBindingId: readChatCoreMetadataString(segment.metadata, 'transportBindingId') }
+        : {}),
       ...(readChatCoreMetadataBoolean(segment.metadata, 'terminal') === true
         || readChatCoreMetadataBoolean(terminalSegment.metadata, 'terminal') === true
         ? { terminal: true }

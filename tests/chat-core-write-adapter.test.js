@@ -38,6 +38,7 @@ import {
   buildChatConversationId,
   buildChatLaneId,
   buildChatTaskId,
+  CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 
 function createDeferred() {
@@ -1661,6 +1662,8 @@ test('buildCanonicalChatMessage preserves assistant metadata when rebuilding fro
   assert.match(rebuilt?.body ?? '', /Agent-1 explored the repo\./u);
   assert.match(rebuilt?.body ?? '', /Continue with the next specialist\./u);
   assert.equal(rebuilt?.metadata?.event, 'assistant_turn_segment');
+  assert.equal(rebuilt?.metadata?.conversationId, buildChatConversationId(channelId));
+  assert.equal(rebuilt?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
   assert.equal(rebuilt?.metadata?.terminal, true);
   assert.equal(rebuilt?.metadata?.routingTrigger, 'explicit_mention');
   assert.equal(rebuilt?.metadata?.dispatchDepth, 0);

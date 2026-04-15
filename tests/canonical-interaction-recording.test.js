@@ -263,4 +263,8 @@ test('recordDispatchExecutionInteraction prefers assistant segment transport bin
   });
 
   assert.equal(nextCore.sessions[0]?.transportBindingId, 'transport-binding-custom');
+  assert.equal(
+    nextCore.segments[0]?.metadata?.transportBindingId,
+    'transport-binding-custom',
+  );
 });
