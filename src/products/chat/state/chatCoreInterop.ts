@@ -5,7 +5,7 @@ import type {
   TurnRecord,
 } from '../../../core/types.js';
 import type { ChatMessage } from '../api/contracts.js';
-import { buildChatConversationId } from '../../../shared/chatCoreIds.js';
+import { resolveChannelCanonicalIdentity } from './model/index.js';
 import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
 
 export type CanonicalChatUserMessage = ChatMessage & { senderKind: 'user' };
@@ -13,6 +13,10 @@ export type CanonicalChatUserMessage = ChatMessage & { senderKind: 'user' };
 interface CanonicalToolMetadata {
   toolName: string | null;
   toolId: string | null;
+}
+
+function resolveCanonicalConversationId(channelId: string): string {
+  return resolveChannelCanonicalIdentity(null, channelId).conversationId;
 }
 
 function readTurnSourceSenderKind(
@@ -34,7 +38,7 @@ function buildCanonicalChatTurnMessage(
   channelId: string,
   sourceMessageId: string,
 ): ChatMessage | null {
-  const conversationId = buildChatConversationId(channelId);
+  const conversationId = resolveCanonicalConversationId(channelId);
   const turn = core.turns
     .filter((candidate) =>
       candidate.conversationId === conversationId
@@ -90,7 +94,7 @@ function buildCanonicalChatSegmentMessage(
   channelId: string,
   sourceMessageId: string,
 ): ChatMessage | null {
-  const conversationId = buildChatConversationId(channelId);
+  const conversationId = resolveCanonicalConversationId(channelId);
   const segment = core.segments
     .filter((candidate) =>
       candidate.conversationId === conversationId
@@ -209,7 +213,7 @@ function buildCanonicalChatSegmentMessageFromAssistantTurn(input: {
   sourceLaneId?: string | null;
   sourceAssistantTurnId: string;
 }): ChatMessage | null {
-  const conversationId = buildChatConversationId(input.channelId);
+  const conversationId = resolveCanonicalConversationId(input.channelId);
   const terminalSegment = pickPreferredCanonicalTextSegment(input.core.segments
     .filter((candidate) =>
       candidate.conversationId === conversationId
@@ -229,7 +233,7 @@ function buildCanonicalChatSegmentMessageFromLane(input: {
   sourceTurnId?: string | null;
   sourceLaneId: string;
 }): ChatMessage | null {
-  const conversationId = buildChatConversationId(input.channelId);
+  const conversationId = resolveCanonicalConversationId(input.channelId);
   const lane = input.core.lanes.find((candidate) =>
     candidate.conversationId === conversationId
     && candidate.id === input.sourceLaneId
@@ -272,7 +276,7 @@ function buildCanonicalChatTurnMessageFromTurnId(
   channelId: string,
   sourceTurnId: string,
 ): ChatMessage | null {
-  const conversationId = buildChatConversationId(channelId);
+  const conversationId = resolveCanonicalConversationId(channelId);
   const turn = core.turns.find((candidate) =>
     candidate.conversationId === conversationId && candidate.id === sourceTurnId) ?? null;
   const sourceMessageId = readChatCoreTurnMetadataString(turn, 'sourceMessageId');
@@ -488,7 +492,7 @@ function buildCanonicalConversationTurnMessages(
   core: CatsCoreState,
   channelId: string,
 ): ChatMessage[] {
-  const conversationId = buildChatConversationId(channelId);
+  const conversationId = resolveCanonicalConversationId(channelId);
   return core.turns
     .filter((turn) =>
       turn.conversationId === conversationId
@@ -509,7 +513,7 @@ function buildCanonicalConversationAssistantMessages(
   core: CatsCoreState,
   channelId: string,
 ): ChatMessage[] {
-  const conversationId = buildChatConversationId(channelId);
+  const conversationId = resolveCanonicalConversationId(channelId);
   const assistantMessageIds = new Set<string>();
 
   for (const segment of core.segments) {

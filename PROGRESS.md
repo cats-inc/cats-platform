@@ -638,6 +638,9 @@ Known follow-ups:
   container identity through the shared helper, so canonical rebuild,
   drift-repair, and synthetic `session_started` metadata stop preserving their
   own read-side `channelId -> conversation/container` derivations
+- `chatCoreInterop` now also resolves canonical conversation scope through that
+  shared helper, so transcript/core rebuild seams stop maintaining a separate
+  conversation-id derivation path from the rest of the chat runtime
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a
