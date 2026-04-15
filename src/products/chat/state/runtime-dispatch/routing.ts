@@ -137,6 +137,27 @@ function buildRetrySendPayload(message: ChatMessage): SendChannelMessageInput {
   };
 }
 
+function restoreMissingTranscriptMessage(
+  state: ChatState,
+  channelId: string,
+  message: ChatMessage,
+  now: Date,
+): ChatState {
+  const existingChannel = requireChannel(state, channelId);
+  if (existingChannel.messages.some((candidate) => candidate.id === message.id)) {
+    return state;
+  }
+
+  const nextState = structuredClone(state);
+  const nextChannel = requireChannel(nextState, channelId);
+  const insertIndex = nextChannel.messages.findIndex((candidate) =>
+    candidate.createdAt.localeCompare(message.createdAt) > 0);
+  const nextIndex = insertIndex >= 0 ? insertIndex : nextChannel.messages.length;
+  nextChannel.messages.splice(nextIndex, 0, structuredClone(message));
+  nextChannel.lastMessageAt = nextChannel.messages.at(-1)?.createdAt ?? nextChannel.lastMessageAt;
+  return refreshDerivedMemoryLayers(nextState, channelId, now);
+}
+
 function normalizePendingTargetValue(value: string | null | undefined): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;
@@ -304,9 +325,11 @@ export async function beginChannelMessageRetryDispatch(
   now: Date = new Date(),
   options: RouteChannelMessageOptions = {},
 ): Promise<BegunChannelMessageDispatch> {
-  const channel = requireChannel(state, channelId);
+  let nextState = state;
+  const channel = requireChannel(nextState, channelId);
   let core: CatsCoreState | undefined;
   let sourceMessage = channel.messages.find((message) => message.id === sourceMessageId) ?? null;
+  const sourceWasMissingFromTranscript = !sourceMessage;
   if (!sourceMessage && options.chatStore) {
     core = await options.chatStore.readCore();
     sourceMessage = buildCanonicalChatUserMessage(core, channelId, sourceMessageId);
@@ -321,15 +344,18 @@ export async function beginChannelMessageRetryDispatch(
   const choiceResponseCore = sourceMessage.choiceResponse && options.chatStore
     ? (core ?? await options.chatStore.readCore())
     : core;
+  if (sourceWasMissingFromTranscript) {
+    nextState = restoreMissingTranscriptMessage(nextState, channelId, sourceMessage, now);
+  }
   const preparedTurn = prepareDispatchTurnForExistingUserMessage(
-    state,
+    nextState,
     channelId,
     buildRetrySendPayload(sourceMessage),
     sourceMessageId,
     now,
     choiceResponseCore,
   );
-  const nextState = await persistInFlightDispatchState(
+  nextState = await persistInFlightDispatchState(
     options.chatStore,
     materializeInFlightDispatchState(
       preparedTurn.state,

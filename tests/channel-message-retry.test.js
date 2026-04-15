@@ -6,8 +6,14 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
-import { createChannel, requireChannel } from '../build/server/products/chat/state/model/index.js';
+import {
+  assignCatToChannel,
+  createCat,
+  createChannel,
+  requireChannel,
+} from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { buildDirectLaneTransportBindingId } from '../build/server/shared/chatCoreIds.js';
 import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
@@ -273,6 +279,9 @@ test('POST /api/channels/:id/messages/:messageId/retry rebuilds a missing user s
       intervalMs: 25,
     });
 
+    const userMessages = completedChannel.messages.filter((message) => message.senderKind === 'user');
+    assert.equal(userMessages.length, 1);
+    assert.equal(userMessages[0].id, sourceMessageId);
     assert.ok(
       completedChannel.messages.some((message) =>
         message.senderKind === 'agent'
@@ -424,5 +433,101 @@ test('POST /api/channels/:id/messages/:messageId/retry rejects retry when the la
     assert.equal(retryResponse.status, 409);
     const retryPayload = await retryResponse.json();
     assert.equal(retryPayload.error.code, 'message_retry_not_available');
+  }, chatStore);
+});
+
+test('POST /api/channels/:id/messages/:messageId/retry restores a drifted direct-lane turn with transport binding intact', async () => {
+  const runtimeClient = createRetryRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-04-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(state, {
+    name: 'Companion',
+    provider: 'claude',
+  }, now);
+  const catId = state.cats[0].id;
+  state = createChannel(state, {
+    title: 'Retry direct-lane canonical turn',
+    topic: 'Verify retry restores a drifted direct-lane turn from canonical history.',
+    roomMode: 'direct_cat_chat',
+    defaultRecipientId: catId,
+    repoPath: 'C:/repo/cats-platform',
+    skipBossCatGreeting: true,
+  }, now);
+  const channelId = state.selectedChannelId;
+  state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
+  await chatStore.write(state);
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const firstSendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        body: 'Please recover this direct-lane response after drift.',
+      }),
+    });
+    assert.equal(firstSendResponse.status, 200);
+    const firstSendPayload = await firstSendResponse.json();
+    const sourceMessageId = firstSendPayload.message.id;
+
+    await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      return payload.channel.roomRouting.lastOutcome?.status === 'error'
+        ? payload.channel
+        : null;
+    }, {
+      timeoutMs: 2_000,
+      intervalMs: 25,
+    });
+
+    const driftedState = await chatStore.read();
+    const driftedChannel = requireChannel(driftedState, channelId);
+    driftedChannel.messages = driftedChannel.messages.filter((message) => message.id !== sourceMessageId);
+    await chatStore.write(driftedState);
+
+    const retryResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/messages/${sourceMessageId}/retry`,
+      {
+        method: 'POST',
+      },
+    );
+    assert.equal(retryResponse.status, 200);
+    const retryPayload = await retryResponse.json();
+    assert.equal(retryPayload.phase, 'acknowledged');
+    assert.equal(retryPayload.message.id, sourceMessageId);
+    assert.equal(
+      retryPayload.message.body,
+      'Please recover this direct-lane response after drift.',
+    );
+
+    const completedChannel = await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const payload = await channelResponse.json();
+      return payload.channel.roomRouting.workflow.turnHistory[0]?.status === 'completed'
+        ? payload.channel
+        : null;
+    }, {
+      timeoutMs: 2_000,
+      intervalMs: 25,
+    });
+
+    const userMessages = completedChannel.messages.filter((message) => message.senderKind === 'user');
+    assert.equal(userMessages.length, 1);
+    assert.equal(userMessages[0].id, sourceMessageId);
+    const assistantReply = completedChannel.messages.find((message) =>
+      message.senderKind === 'agent'
+      && message.body === 'Recovered response from retry.'
+      && message.metadata?.event === 'assistant_turn_segment');
+    assert.ok(assistantReply);
+    assert.equal(
+      assistantReply.metadata?.transportBindingId,
+      buildDirectLaneTransportBindingId(channelId),
+    );
   }, chatStore);
 });
