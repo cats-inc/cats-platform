@@ -182,13 +182,25 @@ function advanceQueuedSequentialPromptFrontier(
     frame.workflowShapeOverride === 'sequential'
     && frame.depth === execution.depth
     && (
-      (frame.promptSourceMessage ?? frame.sourceMessage).id === execution.sourceMessage.id
-      || (
-        executionSourceParticipantKey === null
-          ? frame.sourceParticipant === null
-          : frame.sourceParticipant !== null
-            && participantKey(frame.sourceParticipant) === executionSourceParticipantKey
-      )
+      (() => {
+        const sharedIdentityPairs = [
+          [frame.sourceTurnId, execution.sourceTurnId],
+          [frame.sourceLaneId, execution.sourceLaneId],
+          [frame.sourceAssistantTurnId, execution.sourceAssistantTurnId],
+        ].filter((pair): pair is [string, string] => Boolean(pair[0] && pair[1]));
+
+        if (sharedIdentityPairs.length > 0) {
+          return sharedIdentityPairs.every(([left, right]) => left === right);
+        }
+
+        return (frame.promptSourceMessage ?? frame.sourceMessage).id === execution.sourceMessage.id
+          || (
+            executionSourceParticipantKey === null
+              ? frame.sourceParticipant === null
+              : frame.sourceParticipant !== null
+                && participantKey(frame.sourceParticipant) === executionSourceParticipantKey
+          );
+      })()
     )
     && frame.targets.length > 0);
 

@@ -27,6 +27,9 @@ import {
   mergeCompletedDispatchState,
 } from '../build/server/products/chat/state/runtime-dispatch/merge.js';
 import {
+  applyDispatchExecutions,
+} from '../build/server/products/chat/state/runtime-dispatch/results.js';
+import {
   repairMissingSessionStartedMessages,
   repairMissingStartupRecoveryNotice,
   repairOrphanedCompletedDispatchTurn,
@@ -43,6 +46,200 @@ function createNoopRuntimeClient() {
     async closeSession() {},
   };
 }
+
+test('applyDispatchExecutions advances sequential queued frames by canonical source identity before participant fallback', async () => {
+  const runtimeClient = createNoopRuntimeClient();
+  const seededAt = new Date('2026-04-12T09:00:00.000Z');
+  const completedAt = new Date('2026-04-12T09:00:05.000Z');
+  const chatStore = new MemoryChatStore();
+  let state = await chatStore.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Sequential frontier identity',
+      topic: 'Advance the correct queued frame when the same participant owns multiple frontiers.',
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.selectedChannelId;
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Start a workflow turn.' },
+    runtimeClient,
+    seededAt,
+  );
+  const workingState = structuredClone(begun.state);
+  const channel = requireChannel(workingState, channelId);
+  const workflow = channel.roomRouting.workflow;
+  const activeTurn = workflow.activeTurn;
+  assert.ok(activeTurn);
+  const sourceMessage = channel.messages.find((message) => message.id === activeTurn.sourceMessageId);
+  assert.ok(sourceMessage);
+
+  const sourceParticipant = {
+    participantKind: 'cat',
+    participantId: 'participant-source',
+    participantName: 'Source Cat',
+  };
+  const executionTarget = {
+    participantKind: 'orchestrator',
+    participantId: 'orchestrator',
+    participantName: 'Chat',
+    laneId: 'lane-current-frontier',
+    sessionId: 'session-current-frontier',
+  };
+
+  activeTurn.workflowShape = 'sequential';
+  activeTurn.targetStatuses = [
+    {
+      id: 'target-current-frontier',
+      dispatchId: 'dispatch-current-frontier',
+      participant: sourceParticipant,
+      laneId: executionTarget.laneId,
+      sessionId: executionTarget.sessionId,
+      source: sourceParticipant,
+      sourceMessageId: sourceMessage.id,
+      trigger: 'continuation_mention',
+      mentionNames: ['Chat'],
+      depth: 1,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'workflow_continuation',
+      wakeRequestId: null,
+      status: 'running',
+      queuedAt: seededAt.toISOString(),
+      startedAt: seededAt.toISOString(),
+      completedAt: null,
+      response: null,
+      error: null,
+    },
+  ];
+
+  const outcome = {
+    turnId: activeTurn.id,
+    mode: channel.roomRouting.mode,
+    sourceMessageId: activeTurn.sourceMessageId,
+    sourceSenderKind: activeTurn.sourceSenderKind,
+    sourceSenderName: activeTurn.sourceSenderName,
+    status: 'active',
+    resolution: structuredClone(channel.roomRouting.lastOutcome?.resolution ?? {
+      routingMode: 'room_default',
+      selectionKind: 'default_target',
+      defaultTarget: {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Chat',
+      },
+      defaultTargetReason: 'boss_chat_default',
+      fallbackTarget: null,
+      blockedReason: null,
+      note: null,
+    }),
+    resolvedTargets: structuredClone(channel.roomRouting.lastOutcome?.resolvedTargets ?? []),
+    unresolvedMentions: [],
+    dispatches: [],
+    checkpoints: structuredClone(channel.roomRouting.lastOutcome?.checkpoints ?? []),
+    continuationCount: 0,
+    totalDispatchCount: 0,
+    guard: null,
+    startedAt: seededAt.toISOString(),
+    completedAt: null,
+  };
+  const queue = [
+    {
+      sourceMessage: { ...sourceMessage, id: 'source-frontier-a' },
+      sourceTurnId: 'turn-shared-frontier',
+      sourceLaneId: 'lane-frontier-a',
+      sourceAssistantTurnId: 'assistant-frontier-a',
+      sourceParticipant,
+      targets: [{
+        participantKind: 'cat',
+        participantId: 'participant-a',
+        participantName: 'Agent A',
+        laneId: null,
+        sessionId: null,
+      }],
+      unresolved: [],
+      mentionNames: ['Agent A'],
+      trigger: 'continuation_mention',
+      depth: 1,
+      workflowShapeOverride: 'sequential',
+      workflowStageId: 'continuation_handoff',
+      reviewRequired: false,
+    },
+    {
+      sourceMessage: { ...sourceMessage, id: 'source-frontier-b' },
+      sourceTurnId: 'turn-shared-frontier',
+      sourceLaneId: 'lane-frontier-b',
+      sourceAssistantTurnId: 'assistant-frontier-b',
+      sourceParticipant,
+      targets: [{
+        participantKind: 'cat',
+        participantId: 'participant-b',
+        participantName: 'Agent B',
+        laneId: null,
+        sessionId: null,
+      }],
+      unresolved: [],
+      mentionNames: ['Agent B'],
+      trigger: 'continuation_mention',
+      depth: 1,
+      workflowShapeOverride: 'sequential',
+      workflowStageId: 'continuation_handoff',
+      reviewRequired: false,
+    },
+  ];
+
+  const result = applyDispatchExecutions(
+    workingState,
+    channelId,
+    [{
+      turnId: activeTurn.id,
+      dispatchId: 'dispatch-current-frontier',
+      targetStateId: 'target-current-frontier',
+      target: executionTarget,
+      sourceMessage,
+      sourceTurnId: 'turn-shared-frontier',
+      sourceLaneId: 'lane-frontier-b',
+      sourceAssistantTurnId: 'assistant-frontier-b',
+      sourceParticipant,
+      targets: [executionTarget],
+      unresolved: [],
+      mentionNames: ['Chat'],
+      trigger: 'continuation_mention',
+      depth: 1,
+      parentCheckpointId: activeTurn.lastCheckpointId,
+      branchStrategy: 'transplant_context',
+      handoffReason: 'workflow_continuation',
+      responseSegments: [{ kind: 'text', text: 'Handled the queued frontier.', toolName: null, toolId: null }],
+      usage: null,
+      error: null,
+      recoveredMessages: [],
+    }],
+    completedAt,
+    {
+      nowIso: completedAt.toISOString(),
+      workflow,
+      activeTurn,
+      outcome,
+      latestCheckpoint: channel.roomRouting.lastCheckpoint,
+      maxContinuations: 4,
+      results: [],
+      targetVisitCounts: new Map(),
+      queue,
+      describeGuardReason: (reason) => reason,
+    },
+  );
+
+  assert.equal(result.guardReason, null);
+  assert.equal(queue[0].promptSourceMessage, undefined);
+  assert.equal(queue[0].sourceLaneId, 'lane-frontier-a');
+  assert.equal(queue[1].promptSourceMessage?.body, 'Handled the queued frontier.');
+  assert.equal(queue[1].sourceTurnId, activeTurn.id);
+  assert.equal(queue[1].sourceLaneId, 'lane-current-frontier');
+});
 
 test('mergeCompletedDispatchState preserves newer room-routing config while applying dispatch workflow updates', async () => {
   const chatStore = new MemoryChatStore();
