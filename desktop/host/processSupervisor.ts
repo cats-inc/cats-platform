@@ -743,6 +743,7 @@ export class ManagedServiceSupervisor {
       spec.logPath,
       `\n[${this.now().toISOString()}] [host] starting ${spec.name} (${spec.command} ${spec.args.join(' ')})\n`,
     );
+    const startupMeasurementStartedAtMs = this.now().getTime();
 
     const child = this.spawnImpl(spec.command, spec.args, {
       cwd: spec.cwd,
@@ -762,8 +763,36 @@ export class ManagedServiceSupervisor {
     this.updateSnapshot(spec.name, {
       pid: child.pid ?? null,
     });
+    this.queueLogWrite(
+      spec.name,
+      spec.logPath,
+      `[${this.now().toISOString()}] [host] spawned ${spec.name} pid=${child.pid ?? 'unknown'} `
+        + `after ${Math.max(0, this.now().getTime() - startupMeasurementStartedAtMs)}ms\n`,
+    );
+
+    let firstStdoutObserved = false;
+    let firstStderrObserved = false;
+
+    const recordFirstStream = (stream: 'stdout' | 'stderr') => {
+      const firstObserved = stream === 'stdout' ? firstStdoutObserved : firstStderrObserved;
+      if (firstObserved) {
+        return;
+      }
+      if (stream === 'stdout') {
+        firstStdoutObserved = true;
+      } else {
+        firstStderrObserved = true;
+      }
+      this.queueLogWrite(
+        spec.name,
+        spec.logPath,
+        `[${this.now().toISOString()}] [host] first ${stream} from ${spec.name} `
+          + `after ${Math.max(0, this.now().getTime() - startupMeasurementStartedAtMs)}ms\n`,
+      );
+    };
 
     child.stdout.on('data', (chunk) => {
+      recordFirstStream('stdout');
       const text = (chunk as Buffer).toString('utf8');
       writeTaggedOutput(process.stdout, spec.name, chunk as Buffer);
       this.recordServiceOutput(spec.name, spec.logPath, text, 'stdout');
@@ -788,6 +817,7 @@ export class ManagedServiceSupervisor {
       }
     });
     child.stderr.on('data', (chunk) => {
+      recordFirstStream('stderr');
       writeTaggedOutput(process.stderr, spec.name, chunk as Buffer);
       this.recordServiceOutput(spec.name, spec.logPath, (chunk as Buffer).toString('utf8'), 'stderr');
     });
@@ -836,13 +866,23 @@ export class ManagedServiceSupervisor {
       this.platform,
     );
     const startupDeadline = createStartupDeadlinePromise(spec.name, startupTimeoutMs);
+    const readinessOutcomePromise = Promise.any([
+      readinessPromise.then(() => 'health' as const),
+      lifecycleReady.then(() => 'lifecycle' as const),
+    ]);
 
     try {
-      await Promise.race([
-        Promise.any([readinessPromise, lifecycleReady]),
+      const readinessSource = await Promise.race([
+        readinessOutcomePromise,
         exitBeforeReady,
         startupDeadline.promise,
       ]);
+      this.queueLogWrite(
+        spec.name,
+        spec.logPath,
+        `[${this.now().toISOString()}] [host] ${spec.name} ready via ${readinessSource} `
+          + `after ${Math.max(0, this.now().getTime() - startupMeasurementStartedAtMs)}ms\n`,
+      );
       this.updateSnapshot(spec.name, {
         status: 'ready',
         ready: true,

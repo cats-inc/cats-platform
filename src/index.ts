@@ -3,6 +3,7 @@
 import { loadConfig } from './config.js';
 import { loadProjectEnvFile } from './shared/loadProjectEnvFile.js';
 import { createServer } from './app/server/index.js';
+import { createAppStartupTrace } from './app/server/startupTrace.js';
 import {
   createAppStartupState,
   formatAppReadyMessage,
@@ -26,6 +27,10 @@ let startup = createAppStartupState();
 
 async function main(): Promise<void> {
   loadProjectEnvFile();
+  const startupTrace = createAppStartupTrace();
+  startupTrace.trace('main.entered', {
+    argv: process.argv.slice(2),
+  });
   const cliOptions = parseAppCliOptions(process.argv.slice(2));
   if (cliOptions.help) {
     process.stdout.write(`${getAppHelpText()}\n`);
@@ -33,16 +38,31 @@ async function main(): Promise<void> {
   }
 
   startup = resolveAppStartupState(cliOptions, process.env);
+  startupTrace.trace('startup.resolved', {
+    mode: startup.mode,
+    managedBy: startup.managedBy ?? null,
+    readyOutput: startup.readyOutput,
+  });
 
   const config = loadConfig();
+  startupTrace.trace('config.loaded', {
+    host: config.host,
+    port: config.port,
+    runtimeBaseUrl: config.runtimeBaseUrl,
+  });
   const runtimeClient = new CatsRuntimeClient(config.runtimeBaseUrl, {
     apiKey: config.runtimeApiKey,
   });
+  startupTrace.trace('runtime.client.created');
   const chatStore = new FileChatStore(config.chatStatePath);
+  startupTrace.trace('chat.store.created', {
+    chatStatePath: config.chatStatePath,
+  });
   const server = createServer({
     shared: { config, runtimeClient, startup },
     chat: { chatStore },
   });
+  startupTrace.trace('server.created');
   let shutdownPromise: Promise<void> | null = null;
 
   const writeLifecycle = (line: string | null) => {
@@ -95,12 +115,20 @@ async function main(): Promise<void> {
     });
   }
 
+  startupTrace.trace('server.listen.begin', {
+    host: config.host,
+    port: config.port,
+  });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(config.port, config.host, () => {
       server.off('error', reject);
       resolve();
     });
+  });
+  startupTrace.trace('server.listen.ready', {
+    host: config.host,
+    port: config.port,
   });
 
   const address = server.address();
@@ -114,6 +142,10 @@ async function main(): Promise<void> {
     healthUrl: `http://${config.host}:${address.port}/health`,
   };
   markAppReady(startup, listeningAddress);
+  startupTrace.trace('ready.message.emitted', {
+    host: listeningAddress.host,
+    port: listeningAddress.port,
+  });
   writeLifecycle(
     formatAppReadyMessage(startup, listeningAddress),
   );
@@ -121,6 +153,9 @@ async function main(): Promise<void> {
 
 if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
   main().catch((error) => {
+    createAppStartupTrace().trace('main.error', {
+      message: error instanceof Error ? error.message : String(error),
+    });
     process.stderr.write(formatAppStartupError(startup, error));
     process.exitCode = 1;
     process.exit(1);

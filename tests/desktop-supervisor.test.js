@@ -585,6 +585,54 @@ test('startService accepts app-managed ready lifecycle events before health poll
   }
 });
 
+test('startService logs spawn timing and first output milestones for managed services', async () => {
+  const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-supervisor-trace-'));
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_READINESS_TIMEOUT_MS: '5',
+    },
+    userDataDir,
+    catsHomeDir: join(userDataDir, '..', 'cats-home'),
+  });
+  const child = new FakeChildProcess();
+  child.pid = 9876;
+  const supervisor = new ManagedServiceSupervisor(config, {
+    spawn: () => child,
+    waitForServiceReadiness: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      throw new Error('fetch failed');
+    },
+  });
+  const [, appSpec] = buildManagedServiceSpecs(config);
+
+  try {
+    const startPromise = supervisor.startService(appSpec);
+    setTimeout(() => {
+      child.stdout.write(
+        `${JSON.stringify({
+          event: 'app.ready',
+          service: 'cats-platform',
+          phase: 'ready',
+          ready: true,
+          host: '127.0.0.1',
+          port: 8181,
+          healthUrl: 'http://127.0.0.1:8181/health',
+        })}\n`,
+      );
+    }, 10);
+
+    await startPromise;
+    await supervisor.logQueues.get('cats-platform');
+
+    const logText = await readFile(appSpec.logPath, 'utf8');
+    assert.match(logText, /\[host\] spawned cats-platform pid=9876 after \d+ms/);
+    assert.match(logText, /\[host\] first stdout from cats-platform after \d+ms/);
+    assert.match(logText, /\[host\] cats-platform ready via lifecycle after \d+ms/);
+  } finally {
+    await rm(userDataDir, { recursive: true, force: true });
+  }
+});
+
 test('Windows runtime startup tolerates slower late-ready lifecycle events', async () => {
   const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-supervisor-runtime-ready-'));
   const config = resolveDesktopHostConfig({
