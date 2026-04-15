@@ -160,6 +160,11 @@ export function resolvePrimaryParticipantExecutionAssignment(
   return participantAssignment ?? catAssignment;
 }
 
+/**
+ * @deprecated Prefer `resolveParticipantLeaseAttachment()` for lane/session-aware
+ * runtime consumers, or `resolveExecutionLeaseSnapshot()` when a full cloned
+ * execution lease is required.
+ */
 export function resolveParticipantExecutionLease(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
   participantId: string,
@@ -171,6 +176,11 @@ export function resolveParticipantExecutionLease(
   return assignment?.execution?.lease ?? null;
 }
 
+/**
+ * @deprecated Prefer `resolveOrchestratorLeaseAttachment()` for lane/session-aware
+ * runtime consumers, or `resolveExecutionLeaseSnapshot()` when a full cloned
+ * execution lease is required.
+ */
 export function resolveOrchestratorExecutionLease(
   channel: Pick<ChatChannelState, 'orchestratorLease'>,
 ): ParticipantExecutionLease {
