@@ -278,6 +278,58 @@ test('resolveWaitingSessionState matches the active target by laneId when the ta
   });
 });
 
+test('resolveWaitingSessionState prefers the persisted target laneId over a recomputed workflow lane id', () => {
+  const laneId = 'lane-gemini-persisted';
+  const waitingSessionState = resolveWaitingSessionState(
+    {
+      assignedParticipants: [
+        {
+          participantId: 'participant-gemini',
+          execution: {
+            lease: {
+              sessionId: null,
+              startedAt: null,
+            },
+          },
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            id: 'turn-1',
+            status: 'running',
+            startedAt: '2026-04-14T12:00:01.000Z',
+            targetStatuses: [
+              {
+                id: 'target-gemini-canonical',
+                laneId,
+                status: 'pending',
+                queuedAt: '2026-04-14T12:05:00.000Z',
+                startedAt: null,
+                participant: {
+                  participantId: 'participant-gemini',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    },
+    'participant-gemini',
+    'target-gemini-drifted',
+    laneId,
+  );
+
+  assert.deepEqual(waitingSessionState, {
+    sessionStartedAt: '2026-04-14T12:05:00.000Z',
+    requiresSessionStartConfirmation: true,
+  });
+});
+
 test('resolveWaitingSessionState does not require a new session start for a warm session that predates the active target', () => {
   const waitingSessionState = resolveWaitingSessionState(
     {
@@ -1019,6 +1071,84 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the sealed
               targetStatuses: [
                 {
                   id: 'target-claude-canonical',
+                  status: 'running',
+                  participant: {
+                    participantId: 'participant-claude',
+                    participantName: 'Claude-CLI',
+                  },
+                },
+              ],
+              events: [],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    false,
+  );
+});
+
+test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the active target exposes a persisted laneId that matches the sealed lane', () => {
+  const laneId = 'lane-claude-persisted';
+  assert.equal(
+    shouldReconnectLiveIndicatorAfterOngoingWorkflow(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        laneId,
+        targetStateId: 'target-claude-live',
+        participantId: 'participant-claude',
+        speakerLabel: 'Claude-CLI',
+        segmentIndex: 0,
+        segments: [
+          {
+            id: 'message-user:lane-claude-persisted:segment:0',
+            phase: 'sealed',
+            sourceMessageId: 'message-user',
+            laneId,
+            targetStateId: 'target-claude-live',
+            segmentIndex: 0,
+            sessionId: null,
+            participantId: 'participant-claude',
+            catId: null,
+            activeCatIds: [],
+            catName: null,
+            speakerLabel: 'Claude-CLI',
+            sessionStartedAt: null,
+            requiresSessionStartConfirmation: false,
+            progressText: 'Finalizing...',
+            progressKind: 'finalizing',
+            tools: [],
+            contentBlocks: [],
+            events: [],
+          },
+        ],
+      },
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          lastOutcome: null,
+          workflow: {
+            activeTurn: {
+              id: 'turn-1',
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [
+                {
+                  id: 'target-claude-canonical',
+                  laneId,
                   status: 'running',
                   participant: {
                     participantId: 'participant-claude',

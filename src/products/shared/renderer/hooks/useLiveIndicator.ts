@@ -81,6 +81,7 @@ export interface LiveIndicatorSelectedChannelLike {
         targetStatuses?: Array<{
         status: string | null;
         id?: string | null;
+        laneId?: string | null;
         queuedAt?: string | null;
         startedAt?: string | null;
         participant: {
@@ -176,7 +177,12 @@ function resolveWorkflowTargetLaneId(
   turnId: string | null | undefined,
   targetStateId: string | null | undefined,
   participantId: string | null | undefined,
+  persistedLaneId: string | null | undefined = null,
 ): string | null {
+  const normalizedPersistedLaneId = persistedLaneId?.trim() || null;
+  if (normalizedPersistedLaneId) {
+    return normalizedPersistedLaneId;
+  }
   const normalizedTurnId = turnId?.trim() || null;
   const normalizedTargetStateId = targetStateId?.trim() || null;
   const normalizedParticipantId = participantId?.trim() || null;
@@ -226,6 +232,7 @@ function resolveWaitingSpeakerState(
       activeTurn?.id ?? null,
       nextTarget.id ?? null,
       nextTarget.participant.participantId,
+      nextTarget.laneId ?? null,
     ),
     targetStateId: nextTarget.id?.trim() || null,
     participantId: nextTarget.participant.participantId,
@@ -321,6 +328,7 @@ export function resolveWaitingSessionState(
       activeTurnId,
       target.id ?? null,
       target.participant.participantId,
+      target.laneId ?? null,
     );
     if (laneId && targetLaneId === laneId) {
       return true;
@@ -864,6 +872,7 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
         activeTurn.id ?? null,
         target.id ?? null,
         target.participant.participantId,
+        target.laneId ?? null,
       );
       if (primarySegment.laneId && targetLaneId) {
         return targetLaneId !== primarySegment.laneId;
@@ -936,6 +945,7 @@ export function shouldReconnectLiveIndicatorAfterOngoingWorkflow(
         activeTurn.id ?? null,
         target.id ?? null,
         target.participant.participantId,
+        target.laneId ?? null,
       ) ?? target.id?.trim() ?? null)
       .filter((targetId): targetId is string => Boolean(targetId)) ?? [],
   );
