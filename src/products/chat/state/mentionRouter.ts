@@ -74,8 +74,8 @@ function buildOrchestratorTarget(state: ChatState, channel: ChatChannelView): Ro
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
     participantName: isSoloChatChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
-    laneId: channel.orchestratorLease.laneId,
-    sessionId: channel.orchestratorLease.sessionId,
+    laneId: null,
+    sessionId: null,
   };
 }
 
@@ -84,8 +84,8 @@ function buildCatTarget(cat: AssignedParticipant): RoutingTarget {
     participantKind: 'cat',
     participantId: cat.participantId,
     participantName: cat.name,
-    laneId: cat.execution.lease.laneId,
-    sessionId: cat.execution.lease.sessionId,
+    laneId: null,
+    sessionId: null,
   };
 }
 

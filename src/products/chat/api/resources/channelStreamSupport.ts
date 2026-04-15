@@ -438,15 +438,6 @@ export async function waitForChannelStreamTarget(
       return streamTarget;
     }
 
-    const suppressedDirectLaneFallback =
-      !hasActiveWorkflowTurn(channel)
-      && isDirectLaneChannel(channel)
-      && resolvedStreamTarget.reason === 'direct_lane_default_recipient_waiting_for_session'
-      && Boolean(channel.orchestratorLease.sessionId?.trim());
-    if (suppressedDirectLaneFallback) {
-      return null;
-    }
-
     await awaitNextStreamTarget(channelId, observedSignalVersion, signal);
   }
 
