@@ -563,14 +563,16 @@ function hasVisibleResponseFromCurrentTargetIdentity(
     }
 
     const messageLaneId = readMessageMetadataString(message, 'laneId');
-    const sameLane = targetLaneId != null
-      && messageLaneId === targetLaneId;
-    const sameSession = !sameLane
-      && targetSessionId != null
-      && (!targetLaneId || !messageLaneId)
-      && readMessageMetadataString(message, 'sessionId') === targetSessionId;
-    if (!sameLane && !sameSession) {
-      return false;
+    if (targetLaneId) {
+      if (messageLaneId !== targetLaneId) {
+        return false;
+      }
+    } else {
+      const sameSession = targetSessionId != null
+        && readMessageMetadataString(message, 'sessionId') === targetSessionId;
+      if (!sameSession) {
+        return false;
+      }
     }
 
     if (target.participantKind === 'orchestrator') {

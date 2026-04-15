@@ -346,7 +346,10 @@ function resolveChannelStreamTargetWithReason(
     if (leadTarget.sessionId) {
       return { target: leadTarget, reason: 'direct_lane_default_recipient' };
     }
-    return { target: null, reason: 'direct_lane_default_recipient_without_session' };
+    return {
+      target: leadTarget,
+      reason: 'direct_lane_default_recipient_waiting_for_session',
+    };
   }
 
   if (defaultRecipientId) {
@@ -354,12 +357,16 @@ function resolveChannelStreamTargetWithReason(
     if (leadTarget.sessionId) {
       return { target: leadTarget, reason: 'room_default_recipient' };
     }
+    return {
+      target: leadTarget,
+      reason: 'room_default_recipient_waiting_for_session',
+    };
   }
 
   const participantAttachment = collectParticipantLeaseAttachments(channel, {
     statuses: ['ready', 'initializing'],
   })[0] ?? null;
-  if (participantAttachment?.sessionId) {
+  if (participantAttachment) {
     const target = buildParticipantStreamTarget(
       channel,
       participantAttachment.participantId,
@@ -380,17 +387,12 @@ function resolveChannelStreamTargetWithReason(
       };
     }
     return {
-      target: {
-        sessionId: participantAttachment.sessionId,
-        laneId: participantAttachment.laneId,
-        participantId: participantAttachment.participantId,
-        catId: assignment ? resolveParticipantCatId(assignment) : null,
-        speakerLabel: normalizeVisibleSpeakerLabel(assignment?.name ?? null),
-        sessionStartedAt: null,
-        requiresSessionStartConfirmation: false,
-        targetStateId: null,
-      },
-      reason: 'participant_lease_fallback_unknown_assignment',
+      target,
+      reason: assignment?.sourceKind === 'cat'
+        ? 'participant_lease_fallback_cat_waiting_for_session'
+        : assignment
+          ? 'participant_lease_fallback_waiting_for_session'
+          : 'participant_lease_fallback_unknown_assignment',
     };
   }
 
@@ -439,7 +441,7 @@ export async function waitForChannelStreamTarget(
     const suppressedDirectLaneFallback =
       !hasActiveWorkflowTurn(channel)
       && isDirectLaneChannel(channel)
-      && resolvedStreamTarget.reason === 'direct_lane_default_recipient_without_session'
+      && resolvedStreamTarget.reason === 'direct_lane_default_recipient_waiting_for_session'
       && Boolean(channel.orchestratorLease.sessionId?.trim());
     if (suppressedDirectLaneFallback) {
       return null;
