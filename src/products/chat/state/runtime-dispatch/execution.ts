@@ -35,9 +35,20 @@ export interface DispatchExecution extends DispatchRequest {
   responseSegments: RuntimeMessageSegment[] | null;
   usage: MessageUsageSummary | null;
   error: string | null;
+  transportBindingId?: string | null;
   leasePatch?: DispatchLeasePatch;
   channelChatCwd?: string;
   recoveredMessages?: ChatMessage[];
+}
+
+function readRuntimeEnvelopeMetadataString(
+  envelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>,
+  key: string,
+): string | null {
+  const value = envelope.context.metadata?.[key];
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
 }
 
 function requireDispatchSessionId(target: RoutingTarget): string {
@@ -73,6 +84,10 @@ export async function executeDispatch(
       transportBindingId,
       now,
       companionStore,
+    );
+    const resolvedTransportBindingId = readRuntimeEnvelopeMetadataString(
+      runtimeEnvelope,
+      'transportBindingId',
     );
     const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request);
     const runtimeResult = await runtimeClient.sendMessage(
@@ -134,6 +149,7 @@ export async function executeDispatch(
       responseSegments,
       usage,
       error: null,
+      transportBindingId: resolvedTransportBindingId,
     };
   } catch (error) {
     return {

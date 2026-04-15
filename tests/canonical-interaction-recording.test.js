@@ -153,3 +153,88 @@ test('recordDispatchExecutionInteraction projects persisted assistant messages i
     ],
   );
 });
+
+test('recordDispatchExecutionInteraction prefers assistant segment transport bindings over session-start scans', () => {
+  const core = createDefaultCoreState();
+  const state = {
+    channels: [
+      {
+        id: 'channel-transport',
+        channelKind: 'multi_cat_room',
+        roomRouting: {
+          defaultRecipientId: null,
+        },
+        catAssignments: [
+          {
+            participantId: 'participant-cat-1',
+            catId: 'claude',
+          },
+        ],
+        messages: [
+          {
+            id: 'message-user-1',
+            body: 'hi',
+            createdAt: '2026-04-14T21:31:00.000Z',
+            metadata: {},
+          },
+          {
+            id: 'message-agent-1',
+            body: 'Bound reply',
+            createdAt: '2026-04-14T21:31:02.000Z',
+            executionProvider: 'claude',
+            executionModel: 'sonnet',
+            executionInstance: 'cli',
+            metadata: {
+              event: ASSISTANT_TURN_SEGMENT_EVENT,
+              assistantTurnId: 'assistant-turn-transport',
+              targetStateId: 'target-state-transport',
+              sourceMessageId: 'message-user-1',
+              turnId: 'turn-transport',
+              segmentIndex: 0,
+              transportBindingId: 'transport-binding-custom',
+            },
+          },
+        ],
+      },
+    ],
+  };
+  const workflowTurn = {
+    id: 'turn-transport',
+    sourceMessageId: 'message-user-1',
+    sourceSenderKind: 'user',
+    workflowShape: 'sequential',
+    reviewRequired: false,
+    startedAt: '2026-04-14T21:31:00.000Z',
+    completedAt: null,
+    targetStatuses: [
+      {
+        targetStateId: 'target-state-transport',
+      },
+    ],
+  };
+  const execution = {
+    targetStateId: 'target-state-transport',
+    sourceMessage: {
+      id: 'message-user-1',
+    },
+    sourceParticipant: null,
+    target: {
+      participantKind: 'cat',
+      participantId: 'participant-cat-1',
+      participantName: 'Claude-CLI',
+      sessionId: 'session-transport',
+    },
+    error: null,
+  };
+
+  const nextCore = recordDispatchExecutionInteraction({
+    core,
+    state,
+    channelId: 'channel-transport',
+    workflowTurn,
+    execution,
+    now: new Date('2026-04-14T21:31:05.000Z'),
+  });
+
+  assert.equal(nextCore.sessions[0]?.transportBindingId, 'transport-binding-custom');
+});

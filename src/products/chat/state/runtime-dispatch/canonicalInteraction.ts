@@ -141,6 +141,9 @@ export function recordDispatchExecutionInteraction(
         metadata: {
           event: 'session_started',
           sessionId: input.execution.target.sessionId,
+          ...(input.execution.transportBindingId
+            ? { transportBindingId: input.execution.transportBindingId }
+            : {}),
           targetKind:
             input.execution.target.participantKind === 'orchestrator'
               ? 'orchestrator'

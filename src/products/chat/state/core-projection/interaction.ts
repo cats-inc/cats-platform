@@ -478,6 +478,21 @@ function resolveTargetSessionId(
   return null;
 }
 
+function resolveResponseTransportBindingId(
+  responseMessages: ReadonlyArray<ChatMessage>,
+): string | null {
+  for (let index = responseMessages.length - 1; index >= 0; index -= 1) {
+    const transportBindingId = readMessageMetadataString(
+      responseMessages[index]!,
+      'transportBindingId',
+    );
+    if (transportBindingId) {
+      return transportBindingId;
+    }
+  }
+  return null;
+}
+
 function shouldProjectTargetLeaseSession(
   lease: ReturnType<typeof resolveTargetLease>,
   target: RoomWorkflowTargetState,
@@ -624,7 +639,12 @@ function resolveSessionTransportBindingId(
   sessionId: string | null,
   targetStateId: string,
   laneId: string,
+  responseMessages: ReadonlyArray<ChatMessage>,
 ): string | null {
+  const responseTransportBindingId = resolveResponseTransportBindingId(responseMessages);
+  if (responseTransportBindingId) {
+    return responseTransportBindingId;
+  }
   const sessionStartedMessage = resolveLatestSessionStartedMessage(
     channel,
     participant,
@@ -758,6 +778,7 @@ export function projectChatChannelInteractionToCore(
               sessionId,
               target.id,
               laneId,
+              responseMessages,
             ),
             runtimeKey: target.participant.participantName,
             status: mapSessionStatus(target, lease, responseMessages),
