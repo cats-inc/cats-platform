@@ -17,6 +17,15 @@ export interface ParticipantLeaseAttachment {
   status: ParticipantExecutionLease['status'];
 }
 
+export interface OrchestratorLeaseAttachment {
+  participantId: 'orchestrator';
+  sessionId: string | null;
+  laneId: string | null;
+  status: ParticipantExecutionLease['status'];
+}
+
+export type ChannelLeaseAttachment = ParticipantLeaseAttachment | OrchestratorLeaseAttachment;
+
 function pushUniqueNonEmpty(target: Set<string>, value: string | null | undefined): void {
   const normalized = value?.trim();
   if (normalized) {
@@ -182,6 +191,30 @@ export function resolveParticipantSessionId(
   return resolveParticipantLeaseAttachment(channel, participantId, options)?.sessionId ?? null;
 }
 
+export function resolveOrchestratorLeaseAttachment(
+  channel: Pick<ChatChannelState, 'orchestratorLease'>,
+  options: {
+    laneId?: string | null;
+    statuses?: ReadonlyArray<ParticipantExecutionLease['status']>;
+  } = {},
+): OrchestratorLeaseAttachment | null {
+  const lease = channel.orchestratorLease;
+  const expectedLaneId = options.laneId?.trim() || null;
+  if (options.statuses && !options.statuses.includes(lease.status)) {
+    return null;
+  }
+  const laneId = lease.laneId?.trim() || null;
+  if (expectedLaneId && laneId !== expectedLaneId) {
+    return null;
+  }
+  return {
+    participantId: 'orchestrator',
+    sessionId: lease.sessionId?.trim() || null,
+    laneId,
+    status: lease.status,
+  };
+}
+
 export function collectParticipantLeaseAttachments(
   channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments'>,
   options: {
@@ -217,6 +250,45 @@ export function collectParticipantSessionIds(
 ): string[] {
   const sessionIds = new Set<string>();
   for (const attachment of collectParticipantLeaseAttachments(channel, options)) {
+    pushUniqueNonEmpty(sessionIds, attachment.sessionId);
+  }
+  return [...sessionIds];
+}
+
+export function collectChannelLeaseAttachments(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments' | 'orchestratorLease'>,
+  options: {
+    includeOrchestrator?: boolean;
+    includeRemoved?: boolean;
+    laneId?: string | null;
+    statuses?: ReadonlyArray<ParticipantExecutionLease['status']>;
+  } = {},
+): ChannelLeaseAttachment[] {
+  const attachments: ChannelLeaseAttachment[] = collectParticipantLeaseAttachments(channel, options);
+  if (options.includeOrchestrator === false) {
+    return attachments;
+  }
+  const orchestratorAttachment = resolveOrchestratorLeaseAttachment(channel, {
+    laneId: options.laneId,
+    statuses: options.statuses,
+  });
+  if (orchestratorAttachment) {
+    attachments.push(orchestratorAttachment);
+  }
+  return attachments;
+}
+
+export function collectChannelSessionIds(
+  channel: Pick<ChatChannelState, 'participantAssignments' | 'catAssignments' | 'orchestratorLease'>,
+  options: {
+    includeOrchestrator?: boolean;
+    includeRemoved?: boolean;
+    laneId?: string | null;
+    statuses?: ReadonlyArray<ParticipantExecutionLease['status']>;
+  } = {},
+): string[] {
+  const sessionIds = new Set<string>();
+  for (const attachment of collectChannelLeaseAttachments(channel, options)) {
     pushUniqueNonEmpty(sessionIds, attachment.sessionId);
   }
   return [...sessionIds];

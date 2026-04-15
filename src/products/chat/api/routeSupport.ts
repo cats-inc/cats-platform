@@ -68,6 +68,10 @@ import {
   collectLinkedChannelSessionIds,
   seedBossCatGreeting,
 } from './routeStateSupport.js';
+import {
+  collectChannelLeaseAttachments,
+  resolveParticipantLeaseAttachment,
+} from '../shared/channelParticipants.js';
 export { mapChannelCat } from './routeStateSupport.js';
 import { readRuntimeSetupSummary } from '../../../runtime/setup.js';
 export {
@@ -467,7 +471,9 @@ export async function persistCatAssignmentUpdate(
   );
   const isNew = !existingAssignment;
   const reactivatedAssignment = existingAssignment?.status === 'removed';
-  const previousSessionId = existingAssignment?.execution.lease.sessionId ?? null;
+  const previousSessionId = existingAssignment
+    ? resolveParticipantLeaseAttachment(currentChannel, existingAssignment.participantId)?.sessionId ?? null
+    : null;
   const previousProvider = existingAssignment?.execution.target.provider ?? null;
   const previousInstance = existingAssignment?.execution.target.instance ?? null;
   const previousModel = existingAssignment?.execution.target.model ?? null;
@@ -546,19 +552,15 @@ export async function persistCatAssignmentUpdate(
     ?? null
   );
   const channelIsLive = refreshedChannel.status === 'active'
-    || refreshedChannel.orchestratorLease.sessionId !== null
-    || refreshedChannel.orchestratorLease.status === 'initializing'
-    || refreshedChannel.catAssignments.some((candidate) =>
-      candidate.catId !== input.catId
-      && candidate.status === 'active'
-      && (
-        candidate.execution.lease.sessionId !== null
-        || candidate.execution.lease.status === 'initializing'
-      ),
-    );
+    || collectChannelLeaseAttachments(refreshedChannel, {
+      statuses: ['ready', 'initializing'],
+    }).some((attachment) => attachment.participantId !== updatedCat?.participantId);
+  const updatedCatSessionId = updatedCat
+    ? resolveParticipantLeaseAttachment(refreshedChannel, updatedCat.participantId)?.sessionId ?? null
+    : null;
   const needsSession = updatedCat
     && updatedCat.status === 'active'
-    && !updatedCat.execution.lease.sessionId
+    && !updatedCatSessionId
     && (isNew || targetChanged || channelIsLive)
     && Boolean(spawnCwd);
 
@@ -670,7 +672,9 @@ export async function persistCatAssignmentUpdate(
   const persistedAssignment = persistedChannel.catAssignments.find(
     (candidate) => candidate.catId === input.catId,
   );
-  const recoveredSessionId = persistedAssignment?.execution.lease.sessionId ?? null;
+  const recoveredSessionId = persistedAssignment
+    ? resolveParticipantLeaseAttachment(persistedChannel, persistedAssignment.participantId)?.sessionId ?? null
+    : null;
   const shouldAttemptRecoveredContinuationAutoResume = Boolean(
     isNew
     || reactivatedAssignment
@@ -715,12 +719,13 @@ export async function persistCatAssignmentRemoval(
   const cat = requireCat(currentState, catId);
   const now = nowFrom(context.dependencies);
   let nextState = removeCatFromChannel(currentState, channelId, catId, now);
+  const activeSessionId = resolveParticipantLeaseAttachment(channel, assignment.participantId)?.sessionId ?? null;
 
-  if (assignment.execution.lease.sessionId) {
+  if (activeSessionId) {
     try {
       await bestEffortFlushRuntimeSessionMemory({
         runtimeClient: context.dependencies.runtimeClient,
-        sessionId: assignment.execution.lease.sessionId,
+        sessionId: activeSessionId,
         requestedPhase: 'pre_reset',
         memoryService: context.dependencies.memoryService,
         companionStore: context.dependencies.companionStore,
@@ -728,7 +733,7 @@ export async function persistCatAssignmentRemoval(
         now: context.dependencies.now?.(),
       });
       await context.dependencies.runtimeClient.closeSession(
-        assignment.execution.lease.sessionId,
+        activeSessionId,
       );
     } catch (closeError) {
       nextState = appendMessage(

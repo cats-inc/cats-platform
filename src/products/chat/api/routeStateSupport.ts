@@ -4,7 +4,10 @@ import {
   requireChannel,
   resolveOrchestratorDisplayName,
 } from '../state/model/index.js';
-import { collectParticipantSessionIds } from '../shared/channelParticipants.js';
+import {
+  collectChannelSessionIds,
+  resolveParticipantLeaseAttachment,
+} from '../shared/channelParticipants.js';
 import type {
   ChatChannelCat,
   ChatState,
@@ -43,24 +46,26 @@ export function seedBossCatGreeting(
 export function collectLinkedChannelSessionIds(
   channel: ReturnType<typeof requireChannel>,
 ): string[] {
-  const sessionIds = new Set(collectParticipantSessionIds(channel));
-  const orchestratorSessionId = channel.orchestratorLease.sessionId?.trim();
-  if (orchestratorSessionId) {
-    sessionIds.add(orchestratorSessionId);
-  }
-  return [...sessionIds];
+  return collectChannelSessionIds(channel);
 }
 
 export function collectCatSessionIds(
   state: ChatState,
   catId: string,
 ): string[] {
-  return state.channels.flatMap((channel) =>
-    channel.catAssignments
-      .filter((assignment) => assignment.catId === catId)
-      .map((assignment) => assignment.execution.lease.sessionId)
-      .filter((sessionId): sessionId is string => Boolean(sessionId)),
-  );
+  const sessionIds = new Set<string>();
+  for (const channel of state.channels) {
+    for (const assignment of channel.catAssignments) {
+      if (assignment.catId !== catId) {
+        continue;
+      }
+      const sessionId = resolveParticipantLeaseAttachment(channel, assignment.participantId)?.sessionId ?? null;
+      if (sessionId) {
+        sessionIds.add(sessionId);
+      }
+    }
+  }
+  return [...sessionIds];
 }
 
 export function catParticipatesInChat(products: readonly string[] | null | undefined): boolean {

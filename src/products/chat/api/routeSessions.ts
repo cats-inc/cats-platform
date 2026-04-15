@@ -1,6 +1,6 @@
 import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/runtimeMaintenance.js';
 import { RuntimeRequestError } from '../../../platform/runtime/client.js';
-import { collectParticipantSessionIds } from '../shared/channelParticipants.js';
+import { collectChannelSessionIds } from '../shared/channelParticipants.js';
 import {
   channelDispatchCancellationRegistry,
 } from '../state/runtime-dispatch/cancellation.js';
@@ -159,21 +159,9 @@ function waitForChannelCancellationPoll(): Promise<void> {
 export function collectActiveChannelSessionIds(
   channel: ReturnType<typeof requireChannel>,
 ): string[] {
-  const sessionIds = new Set(collectParticipantSessionIds(channel, {
+  return collectChannelSessionIds(channel, {
     statuses: ['ready', 'initializing'],
-  }));
-
-  if (
-    channel.orchestratorLease.status === 'ready'
-    || channel.orchestratorLease.status === 'initializing'
-  ) {
-    const sessionId = channel.orchestratorLease.sessionId?.trim();
-    if (sessionId) {
-      sessionIds.add(sessionId);
-    }
-  }
-
-  return [...sessionIds];
+  });
 }
 
 export function hasActiveChannelTurn(channel: ReturnType<typeof requireChannel>): boolean {
