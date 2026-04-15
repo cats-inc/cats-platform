@@ -10,6 +10,7 @@ import type {
   RuntimeSessionStreamEvent,
 } from '../../runtime/client.js';
 import {
+  normalizeRuntimeMessageSegmentEntry,
   readRuntimeMessageResultSegments,
   readRuntimeMessageResultText,
 } from '../../runtime/messageSegments.js';
@@ -49,18 +50,18 @@ function toRuntimeDeliveryContentBlock(
   const normalized = normalizeRuntimeContentBlock(event.data);
   if (!normalized) {
     const fallbackIndex = readFiniteIndex(event.data.segmentIndex) ?? 0;
-    if (event.event === 'text') {
-      const text = readString(event.data.text) ?? '';
-      if (text.length === 0) {
-        return null;
-      }
+    const normalizedSegment = normalizeRuntimeMessageSegmentEntry({
+      type: event.event,
+      ...event.data,
+    });
+    if (normalizedSegment?.kind === 'text') {
       return {
         id: `stream-text-${fallbackIndex}`,
         index: fallbackIndex,
         kind: 'text',
         status: 'streaming',
         title: null,
-        text,
+        text: normalizedSegment.text,
         toolName: null,
         toolId: null,
         metadata: {
@@ -69,44 +70,39 @@ function toRuntimeDeliveryContentBlock(
         },
       };
     }
-    if (event.event === 'tool_use') {
-      const toolName = readString(event.data.toolName);
-      const toolId = readString(event.data.toolId);
-      if (!toolName && !toolId) {
+    if (normalizedSegment?.kind === 'tool_use') {
+      if (!normalizedSegment.toolName && !normalizedSegment.toolId) {
         return null;
       }
       return {
-        id: toolId ?? `stream-tool-${fallbackIndex}`,
+        id: normalizedSegment.toolId ?? `stream-tool-${fallbackIndex}`,
         index: fallbackIndex,
         kind: 'tool',
         status: 'streaming',
-        title: toolName,
-        text: readString(event.data.text) ?? '',
-        toolName,
-        toolId,
+        title: normalizedSegment.toolName,
+        text: normalizedSegment.text,
+        toolName: normalizedSegment.toolName,
+        toolId: normalizedSegment.toolId,
         metadata: {
           source: 'runtime_stream',
           sourceEvent: 'tool_use',
         },
       };
     }
-    if (event.event === 'tool_result') {
-      const toolName = readString(event.data.toolName);
-      const toolId = readString(event.data.toolId);
-      const text = readString(event.data.text) ?? '';
+    if (normalizedSegment?.kind === 'tool_result') {
       const isError = event.data.isError === true;
-      if (!toolName && !toolId && text.length === 0) {
+      if (!normalizedSegment.toolName && !normalizedSegment.toolId && normalizedSegment.text.length === 0) {
         return null;
       }
       return {
-        id: toolId ?? `stream-tool-result-${fallbackIndex}`,
+        id: normalizedSegment.toolId ?? `stream-tool-result-${fallbackIndex}`,
         index: fallbackIndex,
         kind: 'status',
         status: isError ? 'error' : 'complete',
-        title: toolName ?? 'Tool',
-        text,
-        toolName,
-        toolId,
+        title: normalizedSegment.toolName ?? 'Tool',
+        text: normalizedSegment.text,
+        toolName: normalizedSegment.toolName,
+        toolId: normalizedSegment.toolId,
         metadata: {
           source: 'runtime_stream',
           sourceEvent: 'tool_result',

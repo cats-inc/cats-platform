@@ -212,6 +212,34 @@ test('buildNormalizedRuntimeDeliveryEvent normalizes raw tool_result stream even
   assert.equal(normalized.sequence.segmentIndex, 6);
 });
 
+test('buildNormalizedRuntimeDeliveryEvent normalizes raw tool_result content arrays into status content blocks', () => {
+  const normalized = buildNormalizedRuntimeDeliveryEvent({
+    conversationId: 'conversation-2da',
+    turnId: 'turn-2da',
+    laneId: 'lane-2da',
+    sessionId: 'session-2da',
+    eventIndex: 5,
+    emittedAt: '2026-04-14T20:09:30.000Z',
+    event: {
+      event: 'tool_result',
+      data: {
+        segmentIndex: 7,
+        toolName: 'read_file',
+        toolId: 'tool-7',
+        content: [{ type: 'output_text', text: 'Streamed nested tool result.' }],
+      },
+    },
+  });
+
+  assert.equal(normalized.kind, 'content_block');
+  assert.equal(normalized.contentBlock?.kind, 'status');
+  assert.equal(normalized.contentBlock?.status, 'complete');
+  assert.equal(normalized.contentBlock?.toolName, 'read_file');
+  assert.equal(normalized.contentBlock?.toolId, 'tool-7');
+  assert.equal(normalized.contentBlock?.text, 'Streamed nested tool result.');
+  assert.equal(normalized.sequence.segmentIndex, 7);
+});
+
 test('buildNormalizedRuntimeDeliveryEvent preserves result events without inventing content blocks', () => {
   const normalized = buildNormalizedRuntimeDeliveryEvent({
     conversationId: 'conversation-3',

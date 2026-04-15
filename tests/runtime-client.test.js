@@ -250,6 +250,59 @@ test('runtime client appends final result text after tool-only delivery events',
   }
 });
 
+test('runtime client normalizes streaming tool_result content arrays into tool_result segments', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      return new Response(
+        [
+          JSON.stringify({
+            type: 'tool_result',
+            toolName: 'read_file',
+            toolId: 'tool-stream-1',
+            content: [{ type: 'output_text', text: 'streamed nested tool result' }],
+          }),
+          JSON.stringify({
+            type: 'result',
+            usage: { inputTokens: 3, outputTokens: 4 },
+          }),
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const result = await client.sendMessage('session-1', 'hello');
+
+    assert.deepEqual(result, {
+      segments: [
+        {
+          kind: 'tool_result',
+          text: 'streamed nested tool result',
+          toolName: 'read_file',
+          toolId: 'tool-stream-1',
+        },
+      ],
+      inputTokens: 3,
+      outputTokens: 4,
+      tokensUsed: 7,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('runtime setup summary reads still use the standard runtime timeout budget', async () => {
   const timeoutCalls = [];
   const originalFetch = globalThis.fetch;

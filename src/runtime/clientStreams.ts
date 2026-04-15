@@ -33,31 +33,28 @@ export async function readRuntimeNdjsonResponse(response: Response): Promise<Run
     }
   }
 
-  function processEvent(event: Record<string, unknown>): void {
+function processEvent(event: Record<string, unknown>): void {
     const type = String(event.type ?? '');
+    const normalizedSegment = normalizeRuntimeMessageSegmentEntry(event);
 
     if (type === 'text') {
-      appendTextToSegments(String(event.text ?? ''));
+      if (normalizedSegment?.kind === 'text') {
+        appendTextToSegments(normalizedSegment.text);
+      }
       return;
     }
 
     if (type === 'tool_use') {
-      segments.push({
-        kind: 'tool_use',
-        text: '',
-        toolName: typeof event.toolName === 'string' ? event.toolName : null,
-        toolId: typeof event.toolId === 'string' ? event.toolId : null,
-      });
+      if (normalizedSegment?.kind === 'tool_use') {
+        segments.push(normalizedSegment);
+      }
       return;
     }
 
     if (type === 'tool_result') {
-      segments.push({
-        kind: 'tool_result',
-        text: typeof event.text === 'string' ? event.text : '',
-        toolName: typeof event.toolName === 'string' ? event.toolName : null,
-        toolId: typeof event.toolId === 'string' ? event.toolId : null,
-      });
+      if (normalizedSegment?.kind === 'tool_result') {
+        segments.push(normalizedSegment);
+      }
       return;
     }
 
