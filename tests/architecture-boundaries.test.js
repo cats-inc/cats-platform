@@ -1002,6 +1002,10 @@ test('runtime session routing composes dedicated wake and activation modules ins
     new URL('../src/products/chat/state/runtime-session/activation.ts', import.meta.url),
     'utf8',
   );
+  const sessionActivationSupportModule = await readFile(
+    new URL('../src/products/chat/state/runtime-session/activationSupport.ts', import.meta.url),
+    'utf8',
+  );
   const sessionWakeModule = await readFile(
     new URL('../src/products/chat/state/runtime-session/wake.ts', import.meta.url),
     'utf8',
@@ -1041,7 +1045,10 @@ test('runtime session routing composes dedicated wake and activation modules ins
   assert.match(sessionWakeModule, /\.\/sessionWakePreparation\.js/u);
   assert.match(sessionWakeModule, /\.\/sessionLaunch\.js/u);
   assert.doesNotMatch(sessionWakeModule, /export async function createParticipantTargetRuntimeSession\(/u);
+  assert.match(sessionActivationModule, /\.\/activationSupport\.js/u);
   assert.match(sessionTaskExecutionModule, /export async function maybeAutoCheckoutChannelTask/u);
+  assert.match(sessionActivationSupportModule, /export function resolveChannelActivationTargets/u);
+  assert.match(sessionActivationSupportModule, /export function resolveRoomEntryWakeTarget/u);
   assert.match(sessionWakePreparationModule, /export async function prepareTargetSessionWake/u);
   assert.match(sessionLaunchModule, /export async function startAttachedTargetSession/u);
   assert.match(sessionReuseModule, /export async function resolveExistingTargetSessionOutcome/u);
