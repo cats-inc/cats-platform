@@ -950,6 +950,10 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
     new URL('../src/products/chat/state/runtime-session/taskExecution.ts', import.meta.url),
     'utf8',
   );
+  const sessionLaunchModule = await readFile(
+    new URL('../src/products/chat/state/runtime-session/sessionLaunch.ts', import.meta.url),
+    'utf8',
+  );
   const sessionReuseModule = await readFile(
     new URL('../src/products/chat/state/runtime-session/sessionReuse.ts', import.meta.url),
     'utf8',
@@ -968,8 +972,11 @@ test('runtime dispatch wake consumes dedicated runtime session-routing helpers i
   assert.doesNotMatch(sessionWakeModule, /export async function maybeAutoCheckoutChannelTask/u);
   assert.doesNotMatch(sessionWakeModule, /async function resolveExistingTargetSessionOutcome\(/u);
   assert.match(sessionWakeModule, /\.\/sessionReuse\.js/u);
+  assert.doesNotMatch(sessionWakeModule, /async function startAttachedTargetSession\(/u);
+  assert.match(sessionWakeModule, /\.\/sessionLaunch\.js/u);
   assert.doesNotMatch(sessionWakeModule, /export async function createOrchestratorTargetRuntimeSession/u);
   assert.match(sessionTaskExecutionModule, /export async function maybeAutoCheckoutChannelTask/u);
+  assert.match(sessionLaunchModule, /export async function startAttachedTargetSession/u);
   assert.match(sessionReuseModule, /export async function resolveExistingTargetSessionOutcome/u);
   assert.match(sessionStartModule, /export async function createOrchestratorTargetRuntimeSession/u);
 });
@@ -989,6 +996,10 @@ test('runtime session routing composes dedicated wake and activation modules ins
   );
   const sessionTaskExecutionModule = await readFile(
     new URL('../src/products/chat/state/runtime-session/taskExecution.ts', import.meta.url),
+    'utf8',
+  );
+  const sessionLaunchModule = await readFile(
+    new URL('../src/products/chat/state/runtime-session/sessionLaunch.ts', import.meta.url),
     'utf8',
   );
   const sessionReuseModule = await readFile(
@@ -1011,8 +1022,10 @@ test('runtime session routing composes dedicated wake and activation modules ins
   assert.doesNotMatch(sessionWakeModule, /export async function wakeChannelEntryParticipant\(/u);
   assert.doesNotMatch(sessionWakeModule, /export async function maybeAutoCheckoutChannelTask\(/u);
   assert.match(sessionWakeModule, /\.\/sessionReuse\.js/u);
+  assert.match(sessionWakeModule, /\.\/sessionLaunch\.js/u);
   assert.doesNotMatch(sessionWakeModule, /export async function createParticipantTargetRuntimeSession\(/u);
   assert.match(sessionTaskExecutionModule, /export async function maybeAutoCheckoutChannelTask/u);
+  assert.match(sessionLaunchModule, /export async function startAttachedTargetSession/u);
   assert.match(sessionReuseModule, /export async function resolveExistingTargetSessionOutcome/u);
   assert.match(sessionStartModule, /export async function createParticipantTargetRuntimeSession/u);
   assert.match(sessionActivationModule, /export async function wakeChannelEntryParticipant/u);
