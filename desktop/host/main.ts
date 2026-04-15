@@ -61,6 +61,11 @@ import {
   runDesktopSetupHelper,
   shouldAutoRunSetupAudit,
 } from './setupBridge.js';
+import {
+  isDesktopBootstrapLoadingPhase,
+  resolveDesktopBootstrapError,
+  shouldAttemptDesktopLateReadyRecovery,
+} from './startupRecovery.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   createDesktopTrayController,
@@ -102,6 +107,8 @@ let latestPersistedSetupState: PersistedSetupCompletionState = {
   productSetupCompleted: false,
 };
 let bootstrapPromise: Promise<DesktopBootstrapSnapshot> | null = null;
+let latestBootstrapError: string | null = null;
+let lateReadyRecoveryPromise: Promise<void> | null = null;
 let shuttingDown = false;
 let trayController: DesktopTrayController | null = null;
 let stateStore: DesktopHostStateStore | null = null;
@@ -763,6 +770,7 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
   if (!hostConfig || !supervisor) {
     throw new Error('Desktop host is not initialized.');
   }
+  const effectiveLastError = resolveDesktopBootstrapError(latestBootstrapError, lastError);
   return buildDesktopBootstrapSnapshot({
     config: hostConfig,
     services: supervisor.getSnapshots(),
@@ -774,7 +782,7 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
     providerDiagnostics: latestProviderDiagnosticsPayload,
     persistedSetupCompleteAt: latestPersistedSetupState.setupCompleteAt,
     persistedProductSetupCompleted: latestPersistedSetupState.productSetupCompleted,
-    lastError,
+    lastError: effectiveLastError,
     background: backgroundState ?? undefined,
     updates: updateState ?? undefined,
     packaging: packagingState ?? undefined,
@@ -887,6 +895,41 @@ async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
   await showMainWindow(nextUrl);
 }
 
+async function maybeRecoverFromLateReadyStateChange(): Promise<void> {
+  if (!hostConfig || !supervisor || lateReadyRecoveryPromise) {
+    return;
+  }
+  const services = supervisor.getSnapshots();
+  if (!shouldAttemptDesktopLateReadyRecovery({
+    lastError: latestBootstrapError,
+    services,
+  })) {
+    return;
+  }
+
+  lateReadyRecoveryPromise = (async () => {
+    try {
+      const snapshot = await refreshBootstrapSnapshot();
+      if (isDesktopBootstrapLoadingPhase(snapshot.phase)) {
+        publishSnapshot(buildSnapshot());
+        return;
+      }
+
+      latestBootstrapError = null;
+      publishSnapshot(snapshot);
+      await maybeOpenApp(snapshot);
+    } catch (error) {
+      process.stderr.write(
+        `Failed to recover desktop host after late service readiness: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+    } finally {
+      lateReadyRecoveryPromise = null;
+    }
+  })();
+
+  await lateReadyRecoveryPromise;
+}
+
 async function refreshUpdateState(): Promise<DesktopUpdateState> {
   if (!hostConfig) {
     throw new Error('Desktop host is not initialized.');
@@ -917,6 +960,7 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
   }
 
   bootstrapPromise = (async () => {
+    latestBootstrapError = null;
     await ensureBootstrapPageVisible();
     const persistedSetup = hostConfig
       ? await readPersistedSetupCompletionState(hostConfig.paths.appStatePath)
@@ -949,7 +993,8 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
     return snapshot;
   })().catch((error) => {
     const message = error instanceof Error ? error.message : String(error);
-    return publishSnapshot(buildSnapshot(message));
+    latestBootstrapError = message;
+    return publishSnapshot(buildSnapshot());
   }).finally(() => {
     bootstrapPromise = null;
   });
@@ -1226,7 +1271,8 @@ async function main(): Promise<void> {
   supervisor = new ManagedServiceSupervisor(hostConfig, {
     onStateChange: () => {
       if (hostConfig && supervisor) {
-        publishSnapshot(buildSnapshot(null));
+        publishSnapshot(buildSnapshot());
+        void maybeRecoverFromLateReadyStateChange();
       }
     },
   });
