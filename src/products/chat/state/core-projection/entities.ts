@@ -536,6 +536,7 @@ function buildChannelTaskMetadata(
     deliveryMode: effectiveDeliveryPolicy.mode,
     deliveryGates: effectiveDeliveryPolicy.gates,
     channelId: channel.id,
+    containerId,
     conversationId: buildChatConversationId(channel.id),
     taskId: buildChatTaskId(channel.id),
     roomMode: roomRouting?.mode ?? 'boss_chat',

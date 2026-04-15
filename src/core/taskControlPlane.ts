@@ -246,6 +246,7 @@ export interface CoreTaskControlPlaneRuntimeDeliveryIntentView {
   requiresOwnerDecision: boolean;
   approvalPending: boolean;
   channelId: string | null;
+  containerId: string | null;
   conversationId: string | null;
   taskId: string | null;
   roomMode: string | null;

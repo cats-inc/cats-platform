@@ -961,6 +961,10 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
     projectedTask.metadata.runtimeDeliveryManifest?.requestedActions,
     ['prepare_artifact'],
   );
+  assert.equal(
+    projectedTask.metadata.runtimeDeliveryManifest?.context.containerId,
+    CHAT_ROOT_CONTAINER_ID,
+  );
   assert.equal(projectedTask.metadata.governanceSummary?.approval.pending, false);
   assert.equal(projectedTask.metadata.workflowSummary?.shape, 'sequential');
   assert.ok(projectedRun);

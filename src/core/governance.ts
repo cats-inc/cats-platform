@@ -119,6 +119,7 @@ interface RuntimeDeliveryManifestInput {
   deliveryMode: CoreDeliveryMode;
   deliveryGates: CoreDeliveryGate[];
   channelId: string | null;
+  containerId: string | null;
   conversationId: string | null;
   taskId: string | null;
   roomMode: string | null;
@@ -241,6 +242,7 @@ export function buildRuntimeDeliveryManifestSummary(
     gates: [...input.deliveryGates],
     context: {
       channelId: input.channelId,
+      containerId: input.containerId,
       conversationId: input.conversationId,
       taskId: input.taskId,
       roomMode: input.roomMode,
@@ -367,6 +369,7 @@ export function readCoreRuntimeDeliveryManifestSummary(
     ),
     context: {
       channelId: readString(asRecord(summary.context)?.channelId),
+      containerId: readString(asRecord(summary.context)?.containerId),
       conversationId: readString(asRecord(summary.context)?.conversationId),
       taskId: readString(asRecord(summary.context)?.taskId),
       roomMode: readString(asRecord(summary.context)?.roomMode),
@@ -508,6 +511,7 @@ export function deriveCoreGovernanceSummary(
           deliveryMode: delivery.mode,
           deliveryGates: delivery.gates,
           channelId: readString(task.metadata.channelId),
+          containerId: readString(task.metadata.containerId),
           conversationId: task.conversationId,
           taskId: task.id,
           roomMode: readString(task.metadata.roomRoutingMode),

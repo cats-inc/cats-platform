@@ -141,6 +141,7 @@ export function buildChatOperatorView(
         requiresOwnerDecision: controlPlane.runtimeDeliveryIntent.requiresOwnerDecision,
         approvalPending: controlPlane.runtimeDeliveryIntent.approvalPending,
         channelId: controlPlane.runtimeDeliveryIntent.channelId,
+        containerId: controlPlane.runtimeDeliveryIntent.containerId,
         conversationId: controlPlane.runtimeDeliveryIntent.conversationId,
         taskId: controlPlane.runtimeDeliveryIntent.taskId,
         roomMode: controlPlane.runtimeDeliveryIntent.roomMode,

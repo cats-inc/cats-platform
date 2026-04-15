@@ -30,6 +30,7 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
       summary: 'Wait for owner approval before dispatch.',
       createdAt: '2026-03-23T01:00:00.000Z',
       metadata: {
+        containerId: 'container-chat-root',
         effectiveDeliveryMode: 'commit_only',
         effectiveDeliveryGates: ['owner_approval_required'],
         effectiveDeliverySource: 'chat_default',
@@ -197,6 +198,7 @@ test('buildChatOperatorView narrows approvals and activity to the selected chat 
   );
   assert.equal(view.runtimeDeliveryIntent?.approvalPending, true);
   assert.equal(view.runtimeDeliveryIntent?.taskId, 'task-channel-room-1');
+  assert.equal(view.runtimeDeliveryIntent?.containerId, 'container-chat-root');
   assert.ok(view.nextActions.some((action) => action.kind === 'approve'));
   assert.ok(view.nextActions.some((action) => action.kind === 'reroute'));
   assert.ok(view.nextActions.some((action) => action.kind === 'reject'));

@@ -501,6 +501,7 @@ export interface CoreRuntimeDeliveryManifestSummary {
   gates: CoreDeliveryGate[];
   context: {
     channelId: string | null;
+    containerId: string | null;
     conversationId: string | null;
     taskId: string | null;
     roomMode: string | null;

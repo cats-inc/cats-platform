@@ -45,6 +45,7 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
                 source: 'task_override',
                 rationale: 'Owner-gated retry.',
               },
+              containerId: 'container-chat-root',
               channelId: 'channel-control-plane',
               transport: 'web',
               roomRoutingMode: 'boss_chat',
@@ -254,6 +255,7 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   assert.equal(view.runtimeDeliveryIntent?.requiresOwnerDecision, true);
   assert.equal(view.runtimeDeliveryIntent?.approvalPending, true);
   assert.equal(view.runtimeDeliveryIntent?.channelId, 'channel-control-plane');
+  assert.equal(view.runtimeDeliveryIntent?.containerId, 'container-chat-root');
   assert.equal(view.runtimeDeliveryIntent?.conversationId, 'conversation-channel-control-plane');
   assert.equal(view.runtimeDeliveryIntent?.taskId, 'task-control-plane');
   assert.equal(view.runtimeDeliveryIntent?.roomMode, 'boss_chat');

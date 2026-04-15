@@ -35,6 +35,7 @@ export function buildRecoveryContext(input: {
             ?? input.dispatchReplay?.channelId
             ?? input.pendingDispatch?.channelId
             ?? readString(input.task.metadata?.channelId),
+          containerId: readString(input.task.metadata?.containerId),
           conversationId: input.task.conversationId,
           taskId: input.task.id,
           roomMode: readString(input.task.metadata?.roomRoutingMode),

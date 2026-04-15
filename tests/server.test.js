@@ -5534,6 +5534,7 @@ test('core control-plane routes expose grouped operator actions and workflow att
                     rationale: 'Owner-gated retry.',
                   },
                   channelId: 'channel-control-plane-route',
+                  containerId: 'container-chat-root',
                   transport: 'web',
                   roomRoutingMode: 'boss_chat',
                 },
@@ -5785,6 +5786,7 @@ test('core control-plane routes expose grouped operator actions and workflow att
     assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.requiresOwnerDecision, true);
     assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.approvalPending, true);
     assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.channelId, 'channel-control-plane-route');
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.containerId, 'container-chat-root');
     assert.equal(
       detailPayload.controlPlane.runtimeDeliveryIntent.conversationId,
       'conversation-channel-control-plane-route',

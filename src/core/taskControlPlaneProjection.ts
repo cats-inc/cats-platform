@@ -387,6 +387,7 @@ export function buildRuntimeDeliveryIntent(input: {
     requiresOwnerDecision: input.governanceSummary?.approval.requiresOwnerDecision ?? false,
     approvalPending: input.governanceSummary?.approval.pending ?? false,
     channelId: manifest?.context.channelId ?? null,
+    containerId: manifest?.context.containerId ?? null,
     conversationId: manifest?.context.conversationId ?? null,
     taskId: manifest?.context.taskId ?? null,
     roomMode: manifest?.context.roomMode ?? null,
