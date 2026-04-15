@@ -548,8 +548,7 @@ function hasVisibleResponseFromCurrentTargetIdentity(
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): boolean {
   const targetLaneId = target.laneId?.trim() || null;
-  const targetSessionId = target.sessionId?.trim() || null;
-  if (!targetLaneId && !targetSessionId) {
+  if (!targetLaneId) {
     return false;
   }
 
@@ -563,16 +562,8 @@ function hasVisibleResponseFromCurrentTargetIdentity(
     }
 
     const messageLaneId = readMessageMetadataString(message, 'laneId');
-    if (targetLaneId) {
-      if (messageLaneId !== targetLaneId) {
-        return false;
-      }
-    } else {
-      const sameSession = targetSessionId != null
-        && readMessageMetadataString(message, 'sessionId') === targetSessionId;
-      if (!sameSession) {
-        return false;
-      }
+    if (messageLaneId !== targetLaneId) {
+      return false;
     }
 
     if (target.participantKind === 'orchestrator') {

@@ -1267,6 +1267,11 @@ function resolveMissingSessionCwd(
   runtimeDataDir?: string | null,
 ): string | null {
   const sessionId = readMessageSessionId(responseMessage);
+  const laneId = resolveMissingSessionLaneId(
+    responseMessage,
+    channel.id,
+    core,
+  );
   if (!sessionId) {
     return null;
   }
@@ -1282,6 +1287,10 @@ function resolveMissingSessionCwd(
     }
   }
 
+  if (laneId && channel.orchestratorLease.laneId === laneId && channel.orchestratorLease.cwd) {
+    return channel.orchestratorLease.cwd;
+  }
+
   if (channel.orchestratorLease.sessionId === sessionId && channel.orchestratorLease.cwd) {
     return channel.orchestratorLease.cwd;
   }
@@ -1291,6 +1300,9 @@ function resolveMissingSessionCwd(
       candidate.participantId === targetId)
       ?? channel.catAssignments.find((candidate) =>
         candidate.participantId === targetId || candidate.catId === targetId);
+    if (laneId && assignment?.execution.lease.laneId === laneId && assignment.execution.lease.cwd) {
+      return assignment.execution.lease.cwd;
+    }
     if (assignment?.execution.lease.sessionId === sessionId && assignment.execution.lease.cwd) {
       return assignment.execution.lease.cwd;
     }
