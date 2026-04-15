@@ -254,6 +254,7 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   assert.equal(view.runtimeDeliveryIntent?.strict, true);
   assert.equal(view.runtimeDeliveryIntent?.requiresOwnerDecision, true);
   assert.equal(view.runtimeDeliveryIntent?.approvalPending, true);
+  assert.equal(view.containerId, 'container-chat-root');
   assert.equal(view.runtimeDeliveryIntent?.channelId, 'channel-control-plane');
   assert.equal(view.runtimeDeliveryIntent?.containerId, 'container-chat-root');
   assert.equal(view.runtimeDeliveryIntent?.conversationId, 'conversation-channel-control-plane');
@@ -293,6 +294,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
                 source: 'task_override',
                 rationale: 'Retry blocked rollout with owner approval.',
               },
+              containerId: 'container-chat-root',
               channelId: 'channel-control-plane',
               transport: 'web',
               roomRoutingMode: 'boss_chat',
@@ -403,6 +405,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
   ).core;
 
   const result = queryCoreTaskControlPlaneViews(core, {
+    containerIds: ['container-chat-root'],
     executionProducts: ['work'],
     requestedStrategies: ['pdca'],
     severities: ['attention'],

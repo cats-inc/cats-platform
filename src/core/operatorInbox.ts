@@ -357,6 +357,7 @@ export function listCoreOperatorInboxItems(
 
     items.push({
       taskId: task.id,
+      containerId: controlPlane.containerId,
       conversationId: task.conversationId,
       taskTitle: task.title,
       taskStatus: task.status,

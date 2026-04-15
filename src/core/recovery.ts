@@ -244,6 +244,7 @@ export interface CoreTaskRecoveryContextView {
 export interface CoreTaskRecoveryView {
   taskId: string;
   taskStatus: CoreTaskRecord['status'];
+  containerId: string | null;
   conversationId: string | null;
   approval: CoreTaskRecoveryApprovalView;
   family: CoreTaskInspectionFamilyView;
@@ -353,6 +354,7 @@ export function buildCoreTaskRecoveryView(
   return {
     taskId: task.id,
     taskStatus: task.status,
+    containerId: readString(task.metadata?.containerId),
     conversationId: task.conversationId,
     approval: {
       status: task.approval.status,

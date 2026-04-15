@@ -257,6 +257,7 @@ export interface CoreTaskControlPlaneRuntimeDeliveryIntentView {
 
 export interface CoreTaskControlPlaneView {
   taskId: string;
+  containerId: string | null;
   conversationId: string | null;
   taskStatus: CoreTaskRecord['status'];
   lastUpdatedAt: string;
@@ -598,9 +599,14 @@ export function buildCoreTaskControlPlaneView(
     latestWorkflowRecommendation,
     family: inspection.family,
   });
+  const containerId = typeof task.metadata?.containerId === 'string'
+    && task.metadata.containerId.trim().length > 0
+    ? task.metadata.containerId
+    : runtimeDeliveryIntent?.containerId ?? null;
 
   return {
     taskId: task.id,
+    containerId,
     conversationId: task.conversationId,
     taskStatus: task.status,
     lastUpdatedAt:

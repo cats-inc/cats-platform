@@ -12,6 +12,7 @@ export const CORE_TASK_VIEW_STATUSES = [
 ] as const satisfies readonly CoreTaskStatus[];
 
 export interface CoreTaskViewCommonQuery {
+  containerIds?: string[];
   conversationIds?: string[];
   taskStatuses?: CoreTaskStatus[];
   limit?: number | null;
@@ -19,11 +20,19 @@ export interface CoreTaskViewCommonQuery {
 
 export function matchesCoreTaskViewCommonQuery(
   input: {
+    containerId: string | null;
     conversationId: string | null;
     taskStatus: CoreTaskStatus;
   },
   query: CoreTaskViewCommonQuery,
 ): boolean {
+  if (
+    query.containerIds?.length
+    && (!input.containerId || !query.containerIds.includes(input.containerId))
+  ) {
+    return false;
+  }
+
   if (
     query.conversationIds?.length
     && (!input.conversationId || !query.conversationIds.includes(input.conversationId))

@@ -202,6 +202,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
                 source: 'task_override',
                 rationale: 'Owner-approved retry.',
               },
+              containerId: 'container-chat-root',
               channelId: 'channel-inbox',
               transport: 'web',
               roomRoutingMode: 'boss_chat',
@@ -337,6 +338,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   ).core;
 
   const result = queryCoreOperatorInboxItems(core, {
+    containerIds: ['container-chat-root'],
     conversationIds: ['conversation-channel-inbox'],
     executionProducts: ['code'],
     requestedStrategies: ['reflexion'],
@@ -371,6 +373,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
   assert.deepEqual(result.tasks.map((task) => task.taskId), [
     'task-inbox-match',
   ]);
+  assert.equal(result.tasks[0]?.containerId, 'container-chat-root');
   assert.equal(result.summary.totalAvailable, 2);
   assert.equal(result.summary.matching, 1);
   assert.equal(result.summary.returned, 1);

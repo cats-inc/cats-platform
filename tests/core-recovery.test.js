@@ -302,7 +302,9 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
       conversationId: 'conversation-recovery',
       createdAt: '2026-03-26T13:00:00.000Z',
       metadata: writePendingOrchestratorDispatchMetadata(
-        {},
+        {
+          containerId: 'container-chat-root',
+        },
         buildPendingOrchestratorDispatchRequest({
           channelId: 'channel-dispatch',
           body: 'Dispatch recovery body.',
@@ -323,6 +325,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
       createdAt: '2026-03-26T13:02:00.000Z',
       metadata: writeWorkflowContinuationReplayMetadata(
         {
+          containerId: 'container-chat-root',
           effectiveDeliveryPolicy: {
             mode: 'commit_only',
             gates: ['owner_approval_required'],
@@ -380,6 +383,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   ).core;
 
   const result = queryCoreTaskRecoveryViews(core, {
+    containerIds: ['container-chat-root'],
     conversationIds: ['conversation-recovery'],
     hasWorkflowContinuationReplay: true,
     deliveryModes: ['commit_only'],
@@ -405,6 +409,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
   assert.deepEqual(result.recoveries.map((recovery) => recovery.taskId), [
     'task-recovery-workflow',
   ]);
+  assert.equal(result.recoveries[0]?.containerId, 'container-chat-root');
   assert.equal(result.summary.totalAvailable, 2);
   assert.equal(result.summary.matching, 1);
   assert.equal(result.summary.returned, 1);

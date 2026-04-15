@@ -33,6 +33,7 @@ import type {
 
 export interface CoreOperatorInboxItem {
   taskId: string;
+  containerId: string | null;
   conversationId: string | null;
   taskTitle: string;
   taskStatus: CoreTaskRecord['status'];

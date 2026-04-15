@@ -203,10 +203,18 @@ function readConversationIds(
   return values.length > 0 ? values : undefined;
 }
 
+function readContainerIds(
+  searchParams: URLSearchParams,
+): string[] | undefined {
+  const values = readQueryValues(searchParams, 'containerId');
+  return values.length > 0 ? values : undefined;
+}
+
 export function readTaskAttentionListOptions(
   searchParams: URLSearchParams,
 ): CoreTaskControlPlaneListOptions {
   return {
+    containerIds: readContainerIds(searchParams),
     conversationIds: readConversationIds(searchParams),
     taskStatuses: readEnumQueryValues(searchParams, 'taskStatus', CORE_TASK_VIEW_STATUSES),
     executionProducts: readEnumQueryValues(
@@ -299,6 +307,7 @@ export function readTaskRecoveryListOptions(
   searchParams: URLSearchParams,
 ): CoreTaskRecoveryListOptions {
   return {
+    containerIds: readContainerIds(searchParams),
     conversationIds: readConversationIds(searchParams),
     taskStatuses: readEnumQueryValues(searchParams, 'taskStatus', CORE_TASK_VIEW_STATUSES),
     canRetry: readBooleanQuery(searchParams, 'canRetry'),
