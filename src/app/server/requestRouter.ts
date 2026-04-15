@@ -3,8 +3,6 @@ import type { IncomingMessage } from 'node:http';
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routePlatformSetupApi } from './platformSetupRoutes.js';
 
@@ -23,6 +21,7 @@ import {
 } from '../../server/routes/telegram.js';
 import {
   matchRoute,
+  readJsonBody,
   sendBinary,
   sendJson,
   sendMethodNotAllowed,
@@ -37,7 +36,7 @@ import {
   getAppShutdownContract,
 } from './startup.js';
 
-const WEB_BUILD_ROOT = fileURLToPath(new URL('../../../renderer', import.meta.url));
+const WEB_BUILD_ROOT = path.resolve(path.dirname(process.argv[1]!), '..', 'renderer');
 const MIME_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -176,7 +175,6 @@ async function handleShellOpenFolder(
   response: import('node:http').ServerResponse,
 ): Promise<void> {
   try {
-    const { readJsonBody } = await import('../../shared/http.js');
     const body = await readJsonBody<{ path: string }>(request);
     const folderPath = body.path?.trim();
     if (!folderPath) {

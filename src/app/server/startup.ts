@@ -7,6 +7,7 @@ interface AppPackageJson {
 }
 
 const APP_PACKAGE_JSON_CANDIDATE_PATHS = [
+  ['..', '..', 'package.json'],
   ['..', '..', '..', 'package.json'],
   ['..', '..', '..', '..', 'package.json'],
 ] as const;

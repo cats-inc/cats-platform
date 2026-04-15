@@ -19,9 +19,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run clean:build && npm run build:server && npm run build:web && npm run build:host",
+    "build": "npm run clean:build && npm run build:server && npm run build:server-bundle && npm run build:web && npm run build:host",
     "build:host": "tsc -p tsconfig.desktop.json",
     "build:server": "tsc -p tsconfig.server.json",
+    "build:server-bundle": "node scripts/bundle-server.mjs",
     "build:web": "vite build",
     "build:test-ui": "esbuild tests/*.test.tsx --bundle --platform=node --format=esm --outdir=build/test",
     "clean:build": "node scripts/clean-build.mjs",

@@ -668,6 +668,15 @@ async function ensureRequiredFile(path: string): Promise<void> {
   await access(path);
 }
 
+async function hasServerBundle(config: DesktopHostConfig): Promise<boolean> {
+  try {
+    await access(join(config.packageRoot, 'build', 'server-bundle', 'index.js'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function ensureBuiltAssets(config: DesktopHostConfig): Promise<void> {
   await ensureRequiredFile(config.paths.appEntryScript);
   await ensureRequiredFile(join(config.packageRoot, 'build', 'renderer', 'index.html'));
@@ -730,7 +739,20 @@ export async function stageDesktopPackagingOutputs(
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(join(outputRoot, 'shared'), { recursive: true });
 
-  await copyDirectory(join(config.packageRoot, 'build', 'server'), join(outputRoot, 'shared', 'build', 'server'));
+  const useBundle = await hasServerBundle(config);
+  if (useBundle) {
+    await mkdir(join(outputRoot, 'shared', 'build', 'server'), { recursive: true });
+    await copyFile(
+      join(config.packageRoot, 'build', 'server-bundle', 'index.js'),
+      join(outputRoot, 'shared', 'build', 'server', 'index.js'),
+    );
+    await copyFile(
+      join(config.packageRoot, 'build', 'server-bundle', 'index.js.map'),
+      join(outputRoot, 'shared', 'build', 'server', 'index.js.map'),
+    );
+  } else {
+    await copyDirectory(join(config.packageRoot, 'build', 'server'), join(outputRoot, 'shared', 'build', 'server'));
+  }
   await copyDirectory(join(config.packageRoot, 'build', 'renderer'), join(outputRoot, 'shared', 'build', 'renderer'));
   await copyDirectory(join(config.packageRoot, 'build', 'desktop'), join(outputRoot, 'shared', 'build', 'desktop'));
   await copyFile(join(config.packageRoot, 'package.json'), join(outputRoot, 'shared', 'app-sidecar', 'package.json'));

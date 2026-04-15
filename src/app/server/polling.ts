@@ -1,9 +1,9 @@
 import type { ResolvedServerDependencies } from './contracts.js';
+import { readTelegramPollingContext } from '../../server/routes/telegram.js';
 
 export async function reconcilePollingOnStartup(
   dependencies: ResolvedServerDependencies,
 ): Promise<void> {
-  const { readTelegramPollingContext } = await import('../../server/routes/telegram.js');
   const pollingContext = await readTelegramPollingContext(dependencies.chat.chatStore);
   if (pollingContext.bindings.length === 0) {
     return;
