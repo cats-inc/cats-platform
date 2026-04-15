@@ -10,6 +10,7 @@ import { createServer } from '../build/server/app/server/index.js';
 import {
   buildChatConversationId,
   buildTelegramBotTransportBindingId,
+  CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
 import {
   FileChatStore,
@@ -1488,9 +1489,14 @@ test('telegram webhook returns 500 and records diagnostics when room persistence
       const inboundMessages = messagesPayload.messages.filter((message) =>
         message.senderKind === 'user' && message.body === 'hello from telegram');
       assert.equal(inboundMessages.length, 1);
-      assert.ok(messagesPayload.messages.some((message) =>
+      const runtimeError = messagesPayload.messages.find((message) =>
         message.senderKind === 'system'
-        && message.body.includes('Cats Chat could not process the room turn')));
+        && message.body.includes('Cats Chat could not process the room turn'));
+      assert.ok(runtimeError);
+      assert.equal(runtimeError.metadata?.event, 'runtime_error');
+      assert.equal(runtimeError.metadata?.transport, 'telegram');
+      assert.equal(runtimeError.metadata?.conversationId, buildChatConversationId(roomId));
+      assert.equal(runtimeError.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
     },
     chatStore,
   );

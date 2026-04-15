@@ -35,6 +35,7 @@ export interface DispatchExecution extends DispatchRequest {
   responseSegments: RuntimeMessageSegment[] | null;
   usage: MessageUsageSummary | null;
   error: string | null;
+  conversationId?: string | null;
   containerId?: string | null;
   transportBindingId?: string | null;
   leasePatch?: DispatchLeasePatch;
@@ -73,6 +74,12 @@ export async function executeDispatch(
   companionStore?: CompanionBoxStore,
   core?: CatsCoreState,
 ): Promise<DispatchExecution> {
+  let resolvedConversationId: string | null = null;
+  let resolvedContainerId: string | null = null;
+  let resolvedTransportBindingId: string | null = typeof transportBindingId === 'string'
+    && transportBindingId.trim().length > 0
+    ? transportBindingId.trim()
+    : null;
   try {
     const sessionId = requireDispatchSessionId(request.target);
     const dispatchPrompt = buildPromptForTarget(state, channelId, request, transport, core);
@@ -86,11 +93,15 @@ export async function executeDispatch(
       now,
       companionStore,
     );
-    const resolvedTransportBindingId = readRuntimeEnvelopeMetadataString(
+    resolvedConversationId = readRuntimeEnvelopeMetadataString(
+      runtimeEnvelope,
+      'conversationId',
+    );
+    resolvedTransportBindingId = readRuntimeEnvelopeMetadataString(
       runtimeEnvelope,
       'transportBindingId',
-    );
-    const resolvedContainerId = readRuntimeEnvelopeMetadataString(
+    ) ?? resolvedTransportBindingId;
+    resolvedContainerId = readRuntimeEnvelopeMetadataString(
       runtimeEnvelope,
       'containerId',
     );
@@ -154,6 +165,7 @@ export async function executeDispatch(
       responseSegments,
       usage,
       error: null,
+      conversationId: resolvedConversationId,
       containerId: resolvedContainerId,
       transportBindingId: resolvedTransportBindingId,
     };
@@ -163,6 +175,9 @@ export async function executeDispatch(
       responseSegments: null,
       usage: null,
       error: error instanceof Error ? error.message : 'Unknown runtime error',
+      conversationId: resolvedConversationId,
+      containerId: resolvedContainerId,
+      transportBindingId: resolvedTransportBindingId,
     };
   }
 }

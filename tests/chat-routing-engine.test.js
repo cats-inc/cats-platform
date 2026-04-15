@@ -2737,7 +2737,15 @@ test('session-full errors stop immediately and clear the direct lane lease inste
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, null);
   assert.equal(channel.assignedCats[0]?.execution.lease.status, 'error');
   assert.match(channel.assignedCats[0]?.execution.lease.lastError ?? '', /session full|hard limit/i);
-  assert.match(channel.messages.at(-1)?.body ?? '', /Failed to route the message to Companion/i);
+  const runtimeError = channel.messages.at(-1);
+  assert.match(runtimeError?.body ?? '', /Failed to route the message to Companion/i);
+  assert.equal(runtimeError?.metadata?.event, 'runtime_error');
+  assert.equal(runtimeError?.metadata?.conversationId, buildChatConversationId(channelId));
+  assert.equal(runtimeError?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(
+    runtimeError?.metadata?.transportBindingId,
+    buildDirectLaneTransportBindingId(channelId),
+  );
 });
 
 test('direct cat chat blocks unmentioned turns when the lead cat is no longer assigned instead of falling back to Boss Cat', async () => {

@@ -1,6 +1,10 @@
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
 import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecovery.js';
-import { buildTelegramBotTransportBindingId } from '../../../shared/chatCoreIds.js';
+import {
+  buildChatConversationId,
+  buildTelegramBotTransportBindingId,
+  resolveChatChannelContainerId,
+} from '../../../shared/chatCoreIds.js';
 import type { ChatState } from '../api/contracts.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
@@ -144,6 +148,11 @@ export function createChatTelegramRoomBridge(input: {
           metadata: {
             event: 'runtime_error',
             transport: 'telegram',
+            conversationId: buildChatConversationId(roomId),
+            containerId: resolveChatChannelContainerId({
+              channelId: roomId,
+              parallelChatGroups: recoveryState.parallelChatGroups,
+            }),
           },
           incrementUnread: false,
         },

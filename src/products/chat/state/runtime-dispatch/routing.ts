@@ -33,6 +33,10 @@ import {
 } from '../../../../shared/providerSelection.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import {
+  buildChatConversationId,
+  resolveChatChannelContainerId,
+} from '../../../../shared/chatCoreIds.js';
+import {
   buildCanonicalChatUserMessage,
 } from '../chatCoreInterop.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
@@ -452,6 +456,11 @@ export async function settleBegunChannelMessageDispatchFailure(
   const nowIso = now.toISOString();
 
   const latestState = options.latestState ?? begun.state;
+  const conversationId = buildChatConversationId(channelId);
+  const containerId = resolveChatChannelContainerId({
+    channelId,
+    parallelChatGroups: latestState.parallelChatGroups,
+  });
   let nextState = appendMessage(
     latestState,
     channelId,
@@ -465,6 +474,9 @@ export async function settleBegunChannelMessageDispatchFailure(
       metadata: {
         event: 'runtime_error',
         phase: 'dispatch_continue',
+        conversationId,
+        containerId,
+        ...(options.transportBindingId ? { transportBindingId: options.transportBindingId } : {}),
       },
     },
   ).state;

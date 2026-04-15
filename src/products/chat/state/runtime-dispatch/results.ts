@@ -460,9 +460,13 @@ export function applyDispatchExecutions(
             event: 'runtime_error',
             targetKind: execution.target.participantKind,
             targetId: execution.target.participantId,
+            ...(execution.conversationId ? { conversationId: execution.conversationId } : {}),
             ...(execution.containerId ? { containerId: execution.containerId } : {}),
             ...(execution.target.laneId ? { laneId: execution.target.laneId } : {}),
             sessionId: execution.target.sessionId,
+            ...(execution.transportBindingId
+              ? { transportBindingId: execution.transportBindingId }
+              : {}),
           },
         },
       ).state;

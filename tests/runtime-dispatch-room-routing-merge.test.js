@@ -167,6 +167,11 @@ test('settleBegunChannelMessageDispatchFailure preserves a newer room-routing wo
       message.metadata?.event === 'runtime_error'
       && /Injected runtime failure/u.test(message.body)),
   );
+  const runtimeError = settledChannel.messages.find((message) =>
+    message.metadata?.event === 'runtime_error'
+    && /Injected runtime failure/u.test(message.body));
+  assert.equal(runtimeError?.metadata?.conversationId, buildChatConversationId(channelId));
+  assert.equal(runtimeError?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
 });
 
 test('mergeCompletedDispatchState treats overlapping workflow mutations as latest-wins', async () => {
