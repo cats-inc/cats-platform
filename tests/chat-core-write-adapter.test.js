@@ -2367,6 +2367,9 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
     message.metadata?.assistantTurnId === 'assistant-turn-canonical-fallback');
   assert.ok(repairedResponse);
   assert.equal(repairedResponse?.body, 'Recovered from canonical core.');
+  assert.equal(repairedResponse?.metadata?.conversationId, buildChatConversationId(channelId));
+  assert.equal(repairedResponse?.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
+  assert.equal(repairedResponse?.metadata?.repairSource, 'canonical_segment_fallback');
   assert.equal(repairedChannel.roomRouting.workflow.activeTurn, null);
   assert.equal(repairedChannel.roomRouting.workflow.turnHistory[0]?.status, 'completed');
   assert.equal(repairedChannel.roomRouting.lastOutcome?.status, 'completed');

@@ -216,6 +216,10 @@ function buildCanonicalRuntimeResponseForTurn(
     .join('');
   const senderName = readChatCoreMetadataString(laneMetadata, 'speakerLabel')
     ?? (participantKind === 'orchestrator' ? ORCHESTRATOR_NAME : 'Agent');
+  const containerId = readChatCoreMetadataString(anchorMetadata, 'containerId')
+    ?? readChatCoreMetadataString(laneMetadata, 'containerId')
+    ?? core.conversations.find((candidate) => candidate.id === conversationId)?.containerId
+    ?? null;
 
   return {
     message: canonicalMessage
@@ -236,6 +240,7 @@ function buildCanonicalRuntimeResponseForTurn(
           mentions: [],
           metadata: {
             event: 'assistant_turn_segment',
+            conversationId,
             assistantTurnId,
             targetStateId: readChatCoreMetadataString(anchorMetadata, 'targetStateId')
               ?? readChatCoreMetadataString(laneMetadata, 'targetStateId')
@@ -244,7 +249,11 @@ function buildCanonicalRuntimeResponseForTurn(
             turnId,
             targetKind: participantKind,
             ...(targetId ? { targetId } : {}),
+            ...(containerId ? { containerId } : {}),
             ...(anchorSegment.sessionId ? { sessionId: anchorSegment.sessionId } : {}),
+            ...(readChatCoreMetadataString(anchorMetadata, 'transportBindingId')
+              ? { transportBindingId: readChatCoreMetadataString(anchorMetadata, 'transportBindingId') }
+              : {}),
             ...(readChatCoreMetadataString(anchorMetadata, 'routingTrigger')
               ? { routingTrigger: readChatCoreMetadataString(anchorMetadata, 'routingTrigger') }
               : {}),
