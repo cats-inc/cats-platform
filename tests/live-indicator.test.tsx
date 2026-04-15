@@ -943,6 +943,91 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a sealed bubble visible un
   );
 });
 
+test('shouldPinLiveIndicatorUntilPersistedReply stays pinned when another lane replies before the current lane persists', () => {
+  const previous = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'sealed' as const,
+    sourceMessageId: 'message-user',
+    targetStateId: 'target-agent-1',
+    participantId: 'participant-agent-1',
+    speakerLabel: 'Agent-1',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'First answer',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  };
+
+  assert.equal(
+    shouldPinLiveIndicatorUntilPersistedReply(previous, {
+      messages: [
+        {
+          id: 'message-user',
+          senderKind: 'user',
+          senderName: 'Kenny',
+          metadata: {},
+          createdAt: '2026-04-15T01:00:00.000Z',
+        },
+        {
+          id: 'message-agent-2',
+          senderKind: 'agent',
+          senderName: 'Agent-2',
+          metadata: {
+            event: 'assistant_turn_segment',
+            sourceMessageId: 'message-user',
+            targetKind: 'cat',
+            targetId: 'participant-agent-2',
+            targetStateId: 'target-agent-2',
+            segmentIndex: 0,
+          },
+          createdAt: '2026-04-15T01:00:03.000Z',
+        },
+      ],
+      roomRouting: {
+        defaultRecipientId: null,
+        workflow: {
+          activeTurn: {
+            status: 'running',
+            sourceMessageId: 'message-user',
+            workflowShape: 'concurrent',
+            targetStatuses: [
+              {
+                id: 'target-agent-1',
+                status: 'running',
+                participant: {
+                  participantId: 'participant-agent-1',
+                  participantName: 'Agent-1',
+                },
+              },
+              {
+                id: 'target-agent-2',
+                status: 'completed',
+                participant: {
+                  participantId: 'participant-agent-2',
+                  participantName: 'Agent-2',
+                },
+              },
+            ],
+          },
+        },
+      },
+      composerMode: 'cat_led',
+      pendingProvider: null,
+      pendingInstance: null,
+    }),
+    true,
+  );
+});
+
 test('resolveWaitingIndicatorStateTransition keeps the current speaker bubble pinned until the persisted reply lands', () => {
   const previous = {
     ...EMPTY_LIVE_INDICATOR,
@@ -1016,6 +1101,8 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,
+    sourceMessageId: 'message-user',
+    targetStateId: 'target-agent-1',
     participantId: 'participant-agent-1',
     speakerLabel: 'Agent-1',
     contentBlocks: [
@@ -1051,6 +1138,14 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
         {
           id: 'message-agent-1',
           senderKind: 'agent',
+          metadata: {
+            event: 'assistant_turn_segment',
+            sourceMessageId: 'message-user',
+            targetKind: 'cat',
+            targetId: 'participant-agent-1',
+            targetStateId: 'target-agent-1',
+            segmentIndex: 0,
+          },
         },
       ],
       roomRouting: {
@@ -1647,8 +1742,12 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker hands off once the first speaker
             senderKind: 'agent',
             senderName: 'Agent-1',
             metadata: {
+              event: 'assistant_turn_segment',
+              sourceMessageId: 'message-user',
               targetKind: 'cat',
               targetId: 'participant-agent-1',
+              targetStateId: 'target-agent-1',
+              segmentIndex: 0,
             },
             createdAt: '2026-04-14T01:00:03.000Z',
           },
@@ -1679,6 +1778,94 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker hands off once the first speaker
       },
     ),
     true,
+  );
+});
+
+test('shouldPromoteSealedBubbleToWaitingSpeaker waits for the current lane reply instead of another lane reply', () => {
+  const waitingState = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user',
+    targetStateId: 'target-agent-2',
+    participantId: 'participant-agent-2',
+    catId: null,
+    speakerLabel: 'Agent-2',
+    revealIdentity: true,
+  });
+
+  assert.equal(
+    shouldPromoteSealedBubbleToWaitingSpeaker(
+      {
+        ...EMPTY_LIVE_INDICATOR,
+        active: true,
+        phase: 'sealed',
+        sourceMessageId: 'message-user',
+        targetStateId: 'target-agent-1',
+        participantId: 'participant-agent-1',
+        speakerLabel: 'Agent-1',
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text',
+            status: 'complete',
+            title: null,
+            text: 'First reply.',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+      },
+      waitingState,
+      {
+        messages: [
+          {
+            id: 'message-user',
+            senderKind: 'user',
+            senderName: 'Kenny',
+            metadata: {},
+            createdAt: '2026-04-14T01:00:00.000Z',
+          },
+          {
+            id: 'message-agent-2',
+            senderKind: 'agent',
+            senderName: 'Agent-2',
+            metadata: {
+              event: 'assistant_turn_segment',
+              sourceMessageId: 'message-user',
+              targetKind: 'cat',
+              targetId: 'participant-agent-2',
+              targetStateId: 'target-agent-2',
+              segmentIndex: 0,
+            },
+            createdAt: '2026-04-14T01:00:03.000Z',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow: {
+            activeTurn: {
+              status: 'running',
+              sourceMessageId: 'message-user',
+              workflowShape: 'sequential',
+              targetStatuses: [
+                {
+                  id: 'target-agent-2',
+                  status: 'pending',
+                  participant: {
+                    participantId: 'participant-agent-2',
+                    participantName: 'Agent-2',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        composerMode: 'cat_led',
+        pendingProvider: null,
+        pendingInstance: null,
+      },
+    ),
+    false,
   );
 });
 

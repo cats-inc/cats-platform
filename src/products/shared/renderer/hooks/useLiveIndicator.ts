@@ -327,6 +327,14 @@ export function shouldPinLiveIndicatorUntilPersistedReply(
     return false;
   }
 
+  if (hasLiveIndicatorIdentity(previous) || previous.targetStateId) {
+    return !hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
+      selectedChannel?.messages ?? [],
+      activeTurnSourceMessageId,
+      previous,
+    );
+  }
+
   return !hasVisibleAssistantReplyAfterMessage(
     selectedChannel?.messages ?? [],
     activeTurnSourceMessageId,
@@ -672,9 +680,10 @@ export function shouldPromoteSealedBubbleToWaitingSpeaker(
     return false;
   }
 
-  return hasVisibleAssistantReplyAfterMessage(
+  return hasVisibleLiveIndicatorSpeakerReplyAfterMessage(
     selectedChannel?.messages ?? [],
     sourceMessageId,
+    previous,
   );
 }
 
