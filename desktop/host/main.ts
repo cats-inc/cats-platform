@@ -751,7 +751,7 @@ function resolveDefaultSetupAuditAction(
     case 'win32':
       return {
         helperId: 'windows-install-readiness-audit',
-        extraArguments: ['-IncludeLocalModels:$true'],
+        extraArguments: ['-IncludeWsl:$false', '-IncludeLocalModels:$true'],
       };
     case 'darwin':
       return {

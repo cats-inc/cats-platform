@@ -405,12 +405,13 @@ test('runDesktopSetupHelper forwards extra audit arguments when requested by the
     action: {
       helperId: 'windows-install-readiness-audit',
       mode: 'check',
-      extraArguments: ['-IncludeLocalModels:$true'],
+      extraArguments: ['-IncludeWsl:$false', '-IncludeLocalModels:$true'],
     },
   }, {
     platform: 'win32',
     pathExists: async () => true,
     execFile: async (_file, args) => {
+      assert.equal(args.includes('-IncludeWsl:$false'), true);
       assert.equal(args.includes('-IncludeLocalModels:$true'), true);
       return {
         stdout: JSON.stringify({
