@@ -4370,6 +4370,25 @@ test('resolveLiveIndicatorSpeakerState updates laneId when stream event carries 
   assert.equal(nextSpeaker.laneId, 'lane-def');
 });
 
+test('resolveLiveIndicatorSpeakerState accepts hidden participant identity without forcing visible speaker identity', () => {
+  const previous = createWaitingLiveIndicatorState({
+    targetStateId: 'target-state-hidden',
+    participantId: 'participant-before',
+    catId: null,
+    speakerLabel: null,
+    revealIdentity: false,
+  });
+
+  const nextSpeaker = resolveLiveIndicatorSpeakerState(previous, {
+    identityParticipantId: 'participant-hidden',
+    speakerLabel: null,
+  });
+
+  assert.equal(nextSpeaker.identityParticipantId, 'participant-hidden');
+  assert.equal(nextSpeaker.participantId, null);
+  assert.equal(nextSpeaker.targetStateId, 'target-state-hidden');
+});
+
 test('resolveVisibleLiveIndicator hides sealed segments with null targetStateId via participantId fallback', () => {
   let liveIndicator = createWaitingLiveIndicatorState({
     targetStateId: null,

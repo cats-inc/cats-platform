@@ -667,6 +667,10 @@ export function resolveLiveIndicatorSpeakerState(
   const previousTargetStateId = previousSegment?.targetStateId ?? previous.targetStateId;
   const hasSourceMessageId = Object.prototype.hasOwnProperty.call(data, 'sourceMessageId');
   const hasLaneId = Object.prototype.hasOwnProperty.call(data, 'laneId');
+  const hasIdentityParticipantId = Object.prototype.hasOwnProperty.call(
+    data,
+    'identityParticipantId',
+  );
   const hasParticipantId = Object.prototype.hasOwnProperty.call(data, 'participantId');
   const hasCatId = Object.prototype.hasOwnProperty.call(data, 'catId');
   const hasSpeakerLabel = Object.prototype.hasOwnProperty.call(data, 'speakerLabel');
@@ -676,9 +680,11 @@ export function resolveLiveIndicatorSpeakerState(
   const nextParticipantId = hasParticipantId
     ? readNullableString(data.participantId)
     : previousSegment?.participantId ?? previous.participantId;
-  const nextIdentityParticipantId = hasParticipantId
-    ? readNullableString(data.participantId)
-    : previousIdentityParticipantId;
+  const nextIdentityParticipantId = hasIdentityParticipantId
+    ? readNullableString(data.identityParticipantId)
+    : hasParticipantId
+      ? readNullableString(data.participantId)
+      : previousIdentityParticipantId;
   const nextCatId = hasCatId
     ? readNullableString(data.catId)
     : previousSegment?.catId ?? previous.catId;

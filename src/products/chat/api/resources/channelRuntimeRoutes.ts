@@ -55,6 +55,7 @@ function buildStreamSpeakerPayload(input: {
   sessionId?: string | null;
   laneId?: string | null;
   sourceMessageId?: string | null;
+  identityParticipantId?: string | null;
   participantId?: string | null;
   catId?: string | null;
   speakerLabel?: string | null;
@@ -69,6 +70,7 @@ function buildStreamSpeakerPayload(input: {
     sessionId: input.sessionId ?? null,
     laneId: input.laneId ?? null,
     ...(input.sourceMessageId != null ? { sourceMessageId: input.sourceMessageId } : {}),
+    identityParticipantId: input.identityParticipantId ?? input.participantId ?? null,
     participantId: input.participantId ?? null,
     catId: input.catId ?? null,
     speakerLabel: input.speakerLabel ?? null,
