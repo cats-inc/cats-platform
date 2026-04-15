@@ -211,6 +211,14 @@ export function prepareDispatchTurnForUserMessage(
     nowIso,
     null,
     initialResolution.targets.map((target) => toParticipantRef(target)),
+    {
+      targetIdentities: initialResolution.targets.map((target) => ({
+        participantKind: target.participantKind,
+        participantId: target.participantId,
+        laneId: target.laneId ?? null,
+        sessionId: target.sessionId ?? null,
+      })),
+    },
   );
   activeTurn.targetStatuses = initialResolution.targets.map((target) => ({
     id: randomUUID(),

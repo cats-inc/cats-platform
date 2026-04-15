@@ -248,6 +248,12 @@ export async function processDispatchQueue(
           frame.sourceParticipant,
           [toParticipantRef(target)],
           {
+            targetIdentities: [{
+              participantKind: target.participantKind,
+              participantId: target.participantId,
+              laneId: target.laneId ?? null,
+              sessionId: target.sessionId ?? null,
+            }],
             reason: 'max_dispatches',
             branchStrategy,
             ...buildContinuationReplayMetadata({
@@ -376,6 +382,12 @@ export async function processDispatchQueue(
           frame.sourceParticipant,
           [toParticipantRef(target)],
           {
+            targetIdentities: [{
+              participantKind: request.target.participantKind,
+              participantId: request.target.participantId,
+              laneId: request.target.laneId ?? null,
+              sessionId: request.target.sessionId ?? null,
+            }],
             reason: 'max_target_visits',
             branchStrategy: request.branchStrategy,
             ...buildContinuationReplayMetadata({
@@ -475,6 +487,12 @@ export async function processDispatchQueue(
           frame.sourceParticipant,
           [toParticipantRef(target)],
           {
+            targetIdentities: [{
+              participantKind: request.target.participantKind,
+              participantId: request.target.participantId,
+              laneId: request.target.laneId ?? null,
+              sessionId: request.target.sessionId ?? null,
+            }],
             reason: 'anti_ping_pong',
             branchStrategy: request.branchStrategy,
             ...buildContinuationReplayMetadata({
@@ -571,6 +589,12 @@ export async function processDispatchQueue(
         frame.sourceParticipant,
         allowedRequests.map((request) => toParticipantRef(request.target)),
         {
+          targetIdentities: allowedRequests.map((request) => ({
+            participantKind: request.target.participantKind,
+            participantId: request.target.participantId,
+            laneId: request.target.laneId ?? null,
+            sessionId: request.target.sessionId ?? null,
+          })),
           workflowStageId: activeTurn.stageId,
           workflowShape: activeTurn.workflowShape,
           continuationSource: frame.continuationSource ?? null,

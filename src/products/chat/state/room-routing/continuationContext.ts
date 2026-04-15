@@ -13,7 +13,12 @@ import {
 export interface WorkflowContinuationContext {
   event: RoomWorkflowTurn['events'][number];
   metadata: CoreRecordMetadata;
-  targets: RoomRoutingParticipantRef[];
+  targets: WorkflowContinuationContextTarget[];
+}
+
+export interface WorkflowContinuationContextTarget extends RoomRoutingParticipantRef {
+  laneId: string | null;
+  sessionId: string | null;
 }
 
 export function hasWorkflowContinuationContextMetadata(
@@ -26,6 +31,67 @@ export function hasWorkflowContinuationContextMetadata(
     || readMetadataStringArray(metadata, 'mentionNames').length > 0
     || readMetadataString(metadata, 'branchStrategy') !== null
   );
+}
+
+function readWorkflowContinuationTargetIdentities(
+  metadata: CoreRecordMetadata | null | undefined,
+): Array<{
+  participantKind: RoomRoutingParticipantRef['participantKind'];
+  participantId: string;
+  laneId: string | null;
+  sessionId: string | null;
+}> {
+  const rawTargetIdentities = metadata?.targetIdentities;
+  if (!Array.isArray(rawTargetIdentities)) {
+    return [];
+  }
+
+  return rawTargetIdentities.flatMap((value) => {
+    const record = readMetadataRecord(value);
+    if (!record) {
+      return [];
+    }
+    const participantKind = record.participantKind === 'orchestrator' || record.participantKind === 'cat'
+      ? record.participantKind
+      : null;
+    const participantId = readMetadataString(record, 'participantId');
+    if (!participantKind || !participantId) {
+      return [];
+    }
+
+    return [{
+      participantKind,
+      participantId,
+      laneId: readMetadataString(record, 'laneId'),
+      sessionId: readMetadataString(record, 'sessionId'),
+    }];
+  });
+}
+
+export function mergeWorkflowContinuationTargets(
+  targets: ReadonlyArray<RoomRoutingParticipantRef>,
+  metadata: CoreRecordMetadata | null | undefined,
+): WorkflowContinuationContextTarget[] {
+  const targetIdentities = readWorkflowContinuationTargetIdentities(metadata);
+  return targets.map((target, targetIndex) => {
+    const indexedIdentity = targetIdentities[targetIndex] ?? null;
+    const matchingIdentity = (
+      indexedIdentity?.participantKind === target.participantKind
+      && indexedIdentity.participantId === target.participantId
+    )
+      ? indexedIdentity
+      : targetIdentities.find((candidate) =>
+        candidate.participantKind === target.participantKind
+        && candidate.participantId === target.participantId)
+        ?? null;
+    return {
+      participantKind: target.participantKind,
+      participantId: target.participantId,
+      participantName: target.participantName,
+      laneId: matchingIdentity?.laneId ?? null,
+      sessionId: matchingIdentity?.sessionId ?? null,
+    };
+  });
 }
 
 export function readLatestWorkflowContinuationContext(
@@ -51,7 +117,7 @@ export function readLatestWorkflowContinuationContext(
     return {
       event,
       metadata,
-      targets: readParticipantRefs(event.targets),
+      targets: mergeWorkflowContinuationTargets(readParticipantRefs(event.targets), metadata),
     };
   }
 

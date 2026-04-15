@@ -814,6 +814,12 @@ export function applyDispatchExecutions(
           toParticipantRef(execution.target),
           [],
           {
+            targetIdentities: continuationResolution.targets.map((target) => ({
+              participantKind: target.participantKind,
+              participantId: target.participantId,
+              laneId: target.laneId ?? null,
+              sessionId: target.sessionId ?? null,
+            })),
             blockedReason: 'no_valid_targets',
             branchStrategy: recommendationBranchStrategy,
             ...buildContinuationReplayMetadata({
@@ -884,6 +890,12 @@ export function applyDispatchExecutions(
         toParticipantRef(execution.target),
         continuationResolution.targets.map((target) => toParticipantRef(target)),
         {
+          targetIdentities: continuationResolution.targets.map((target) => ({
+            participantKind: target.participantKind,
+            participantId: target.participantId,
+            laneId: target.laneId ?? null,
+            sessionId: target.sessionId ?? null,
+          })),
           reason: 'max_continuations',
           branchStrategy,
           ...buildContinuationReplayMetadata({
@@ -921,6 +933,12 @@ export function applyDispatchExecutions(
       toParticipantRef(execution.target),
       continuationResolution.targets.map((target) => toParticipantRef(target)),
       {
+        targetIdentities: continuationResolution.targets.map((target) => ({
+          participantKind: target.participantKind,
+          participantId: target.participantId,
+          laneId: target.laneId ?? null,
+          sessionId: target.sessionId ?? null,
+        })),
         mentionNames: structuredClone(continuationResolution.mentionNames),
         workflowStageId: activeTurn.stageId,
         workflowShape: activeTurn.workflowShape,

@@ -417,6 +417,15 @@ function workflowStatusForCheckpoint(
   }
 }
 
+function extractWorkflowEventTargetIdentities(
+  metadata: Record<string, unknown>,
+): ReadonlyArray<WorkflowEventTargetIdentity> | undefined {
+  const rawTargetIdentities = metadata.targetIdentities;
+  return Array.isArray(rawTargetIdentities)
+    ? rawTargetIdentities as ReadonlyArray<WorkflowEventTargetIdentity>
+    : undefined;
+}
+
 export function addWorkflowCheckpoint(
   outcome: RoomRoutingOutcome,
   workflow: RoomWorkflowState,
@@ -429,6 +438,8 @@ export function addWorkflowCheckpoint(
   metadata: Record<string, unknown> = {},
 ): RoomRoutingCheckpoint {
   const checkpoint = addCheckpoint(outcome, kind, message, nowIso, actor, targets);
+  const targetIdentities = extractWorkflowEventTargetIdentities(metadata);
+  const { targetIdentities: _ignoredTargetIdentities, ...eventMetadata } = metadata;
   appendWorkflowEvent(
     workflow,
     turn,
@@ -443,11 +454,12 @@ export function addWorkflowCheckpoint(
       targets,
       {
         checkpointId: checkpoint.id,
+        targetIdentities,
         metadata: {
           checkpointKind: kind,
           workflowStageId: turn.stageId,
           workflowShape: turn.workflowShape,
-          ...metadata,
+          ...eventMetadata,
         },
       },
     ),
