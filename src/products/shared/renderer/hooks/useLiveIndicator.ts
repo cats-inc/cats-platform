@@ -400,12 +400,8 @@ export function resolveWaitingIndicatorStateTransition(input: {
   }
 
   if (input.previous.phase === 'sealed') {
-    const previousSegment = resolvePrimaryLiveIndicatorSegment(input.previous);
-    const waitingSegment = resolvePrimaryLiveIndicatorSegment(input.waitingState);
     if (
-      previousSegment
-      && waitingSegment
-      && doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)
+      doesWaitingIndicatorLogicalIdentityMatch(input.previous, input.waitingState)
       && !shouldAllowSameSpeakerWaitingFollowup(input.selectedChannel)
     ) {
       return input.previous;
@@ -420,13 +416,13 @@ function doesLiveIndicatorIdentityMatch(
   left: LiveIndicatorState,
   right: LiveIndicatorState,
 ): boolean {
-  return left.sourceMessageId === right.sourceMessageId
-    && left.laneId === right.laneId
-    && left.targetStateId === right.targetStateId
+  return (left.sourceMessageId ?? null) === (right.sourceMessageId ?? null)
+    && (left.laneId ?? null) === (right.laneId ?? null)
+    && (left.targetStateId ?? null) === (right.targetStateId ?? null)
     && left.segmentIndex === right.segmentIndex
-    && left.participantId === right.participantId
-    && left.catId === right.catId
-    && left.speakerLabel === right.speakerLabel;
+    && (left.participantId ?? null) === (right.participantId ?? null)
+    && (left.catId ?? null) === (right.catId ?? null)
+    && (left.speakerLabel ?? null) === (right.speakerLabel ?? null);
 }
 
 function doesLiveIndicatorLogicalIdentityMatch(
@@ -439,17 +435,46 @@ function doesLiveIndicatorLogicalIdentityMatch(
     'sourceMessageId' | 'laneId' | 'targetStateId' | 'participantId' | 'catId' | 'speakerLabel'
   >,
 ): boolean {
-  return left.sourceMessageId === right.sourceMessageId
+  const leftSourceMessageId = left.sourceMessageId ?? null;
+  const rightSourceMessageId = right.sourceMessageId ?? null;
+  const leftLaneId = left.laneId ?? null;
+  const rightLaneId = right.laneId ?? null;
+  const leftTargetStateId = left.targetStateId ?? null;
+  const rightTargetStateId = right.targetStateId ?? null;
+  const leftParticipantId = left.participantId ?? null;
+  const rightParticipantId = right.participantId ?? null;
+  const leftCatId = left.catId ?? null;
+  const rightCatId = right.catId ?? null;
+  const leftSpeakerLabel = left.speakerLabel ?? null;
+  const rightSpeakerLabel = right.speakerLabel ?? null;
+
+  return leftSourceMessageId === rightSourceMessageId
     && (
-      (left.laneId !== null && right.laneId !== null && left.laneId === right.laneId)
+      (leftLaneId !== null && rightLaneId !== null && leftLaneId === rightLaneId)
       || (
-        left.laneId === right.laneId
-        && left.targetStateId === right.targetStateId
-        && left.participantId === right.participantId
-        && left.catId === right.catId
-        && left.speakerLabel === right.speakerLabel
+        leftLaneId === rightLaneId
+        && leftTargetStateId === rightTargetStateId
+        && leftParticipantId === rightParticipantId
+        && leftCatId === rightCatId
+        && leftSpeakerLabel === rightSpeakerLabel
       )
     );
+}
+
+function doesWaitingIndicatorLogicalIdentityMatch(
+  previous: LiveIndicatorState,
+  waitingState: LiveIndicatorState,
+): boolean {
+  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
+  const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
+  return (
+    (
+      previousSegment != null
+      && waitingSegment != null
+      && doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)
+    )
+    || doesLiveIndicatorLogicalIdentityMatch(previous, waitingState)
+  );
 }
 
 function shouldAllowSameSpeakerWaitingFollowup(
@@ -646,7 +671,7 @@ function replaceWaitingIndicatorTimelineIdentity(
     return previous;
   }
 
-  if (doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)) {
+  if (doesWaitingIndicatorLogicalIdentityMatch(previous, waitingState)) {
     return previous;
   }
 
@@ -672,12 +697,8 @@ export function shouldPromoteStreamingBubbleToWaitingSpeaker(
     return false;
   }
 
-  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
-  const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
   if (
-    previousSegment
-    && waitingSegment
-    && doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)
+    doesWaitingIndicatorLogicalIdentityMatch(previous, waitingState)
     && !shouldAllowSameSpeakerWaitingFollowup(selectedChannel)
   ) {
     return false;
@@ -711,12 +732,8 @@ export function shouldPromoteSealedBubbleToWaitingSpeaker(
     return false;
   }
 
-  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
-  const waitingSegment = resolvePrimaryLiveIndicatorSegment(waitingState);
   if (
-    previousSegment
-    && waitingSegment
-    && doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment)
+    doesWaitingIndicatorLogicalIdentityMatch(previous, waitingState)
     && !shouldAllowSameSpeakerWaitingFollowup(selectedChannel)
   ) {
     return false;

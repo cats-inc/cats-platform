@@ -1534,6 +1534,14 @@ function doesMessageMatchLiveIndicatorSpeaker(
   message: LiveIndicatorTranscriptMessageLike,
   liveIndicator: LiveIndicatorState,
 ): boolean {
+  const liveLaneId = readString(liveIndicator.laneId);
+  if (liveLaneId && doesMessageMatchLaneScopedIdentity(message, {
+    laneId: liveLaneId,
+    sourceMessageId: liveIndicator.sourceMessageId,
+  })) {
+    return true;
+  }
+
   const liveTargetStateId = readString(liveIndicator.targetStateId);
   if (liveTargetStateId) {
     return doesMessageMatchTargetStateOrSession(message, {
@@ -1566,6 +1574,7 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
   liveIndicator: LiveIndicatorState,
   sessionStartedAt: string | null,
 ): boolean {
+  const liveLaneId = readString(liveIndicator.laneId);
   const liveTargetStateId = readString(liveIndicator.targetStateId);
   const liveSessionId = readString(liveIndicator.sessionId);
   const sessionStartFloorTimestamp = (() => {
@@ -1593,7 +1602,14 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
       return false;
     }
 
-    if (liveTargetStateId) {
+    if (liveLaneId) {
+      if (!doesMessageMatchLaneScopedIdentity(message, {
+        laneId: liveLaneId,
+        sourceMessageId: liveIndicator.sourceMessageId,
+      })) {
+        return false;
+      }
+    } else if (liveTargetStateId) {
       if (!doesMessageMatchTargetStateOrSession(message, {
         targetStateId: liveTargetStateId,
         sessionId: liveSessionId,
@@ -1692,6 +1708,13 @@ function readMessageSessionId(
   return readString(metadata?.sessionId);
 }
 
+function readMessageLaneId(
+  message: LiveIndicatorTranscriptMessageLike,
+): string | null {
+  const metadata = asRecord(message.metadata);
+  return readString(metadata?.laneId);
+}
+
 function readMessageTargetStateId(
   message: LiveIndicatorTranscriptMessageLike,
 ): string | null {
@@ -1757,6 +1780,32 @@ function doesMessageMatchTargetStateOrSession(
   return doesMessageMatchSessionScopedIdentity(message, options);
 }
 
+function doesMessageMatchLaneScopedIdentity(
+  message: LiveIndicatorTranscriptMessageLike,
+  options: {
+    laneId?: string | null;
+    sourceMessageId?: string | null;
+  },
+): boolean {
+  const laneId = readString(options.laneId);
+  if (!laneId) {
+    return false;
+  }
+
+  const messageLaneId = readMessageLaneId(message);
+  if (!messageLaneId || messageLaneId !== laneId) {
+    return false;
+  }
+
+  const sourceMessageId = readString(options.sourceMessageId);
+  if (!sourceMessageId) {
+    return true;
+  }
+
+  const messageSourceMessageId = readMessageSourceMessageId(message);
+  return !messageSourceMessageId || messageSourceMessageId === sourceMessageId;
+}
+
 function doesMessageMatchSessionScopedIdentity(
   message: LiveIndicatorTranscriptMessageLike,
   options: {
@@ -1789,12 +1838,16 @@ function hasVisiblePersistedSegment<TMessage extends LiveIndicatorTranscriptMess
   persistedSegmentIndex: number,
 ): boolean {
   const sourceMessageId = readString(segment.sourceMessageId);
-  if (segment.targetStateId) {
+  if (segment.laneId || segment.targetStateId) {
     return messages.some((message) =>
       isVisibleAssistantReply(message)
       && readMessageEvent(message) === 'assistant_turn_segment'
       && (
-        (
+        doesMessageMatchLaneScopedIdentity(message, {
+          laneId: segment.laneId,
+          sourceMessageId,
+        })
+        || (
           (!sourceMessageId || readMessageSourceMessageId(message) === sourceMessageId)
           && readMessageTargetStateId(message) === segment.targetStateId
         )
