@@ -635,6 +635,7 @@ export interface ChannelDispatchResult {
   targetKind: 'orchestrator' | 'cat';
   targetId: string;
   targetName: string;
+  laneId: string | null;
   sessionId: string | null;
   status: 'sent' | 'skipped' | 'error';
   dispatchId?: string;

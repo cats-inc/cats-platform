@@ -152,20 +152,20 @@ export function buildRuntimeToolPlane(): OrchestratorRuntimeToolPlane {
   };
 }
 
-export function resolveParticipantSessionId(
+export function resolveParticipantExecutionLease(
   channel: OrchestratorChannelView,
   participant: RoomRoutingParticipantRef | null,
-): string | null {
+): OrchestratorChannelView['orchestratorLease'] | null {
   if (!participant) {
     return null;
   }
 
   if (participant.participantKind === 'orchestrator') {
-    return channel.orchestratorLease.sessionId;
+    return channel.orchestratorLease;
   }
 
   return channel.assignedCats.find((cat) => cat.catId === participant.participantId)
-    ?.execution.lease.sessionId ?? null;
+    ?.execution.lease ?? null;
 }
 
 export function mapTargetPlanToExecutionRef(
@@ -175,6 +175,7 @@ export function mapTargetPlanToExecutionRef(
     participantKind: target.targetKind,
     participantId: target.targetId,
     participantName: target.targetName,
+    laneId: target.laneId,
     sessionId: target.sessionId,
     trigger: target.trigger,
     plannedDepth: target.plannedDepth,
@@ -193,11 +194,13 @@ export function mapWorkflowTargetToExecutionRef(
   channel: OrchestratorChannelView,
   target: RoomWorkflowTargetState,
 ): OrchestratorExecutionTargetRef {
+  const lease = resolveParticipantExecutionLease(channel, target.participant);
   return {
     participantKind: target.participant.participantKind,
     participantId: target.participant.participantId,
     participantName: target.participant.participantName,
-    sessionId: resolveParticipantSessionId(channel, target.participant),
+    laneId: lease?.laneId ?? null,
+    sessionId: lease?.sessionId ?? null,
     trigger: target.trigger,
     plannedDepth: target.depth,
     dispatchId: target.dispatchId,

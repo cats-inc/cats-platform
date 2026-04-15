@@ -362,6 +362,7 @@ export interface OrchestratorMessageView {
 }
 
 export interface OrchestratorParticipantExecutionLease {
+  laneId: string | null;
   sessionId: string | null;
   status: ParticipantSessionStatus;
   cwd: string | null;
@@ -416,6 +417,7 @@ export interface OrchestratorDispatchResult {
   targetKind: 'orchestrator' | 'cat';
   targetId: string;
   targetName: string;
+  laneId: string | null;
   sessionId: string | null;
   status: 'sent' | 'skipped' | 'error';
   dispatchId?: string;
@@ -464,6 +466,7 @@ export interface OrchestratorChannelRouter<
 }
 
 export interface OrchestratorRoutingTarget extends RoomRoutingParticipantRef {
+  laneId: string | null;
   sessionId: string | null;
 }
 
@@ -522,6 +525,7 @@ export interface OrchestratorDispatchTargetPlan {
   targetKind: 'orchestrator' | 'cat';
   targetId: string;
   targetName: string;
+  laneId: string | null;
   sessionId: string | null;
   trigger: RoomRoutingTrigger;
   plannedDepth: number;
@@ -537,6 +541,7 @@ export interface OrchestratorExecutionTargetRef {
   participantKind: 'orchestrator' | 'cat';
   participantId: string;
   participantName: string;
+  laneId: string | null;
   sessionId: string | null;
   trigger: RoomRoutingTrigger | null;
   plannedDepth: number;

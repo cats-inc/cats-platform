@@ -185,7 +185,10 @@ function buildCatParticipantPlan(
 function buildInitialTargetPlan(
   channelContext: OrchestratorPlannerChannelContext,
   participants: OrchestratorParticipantPlan[],
-  target: RoomRoutingParticipantRef & { sessionId: string | null },
+  target: RoomRoutingParticipantRef & {
+    laneId: string | null;
+    sessionId: string | null;
+  },
   trigger: RoomRoutingTrigger,
 ): OrchestratorDispatchTargetPlan {
   const participant = participants.find((candidate) =>
@@ -197,6 +200,7 @@ function buildInitialTargetPlan(
     targetKind: target.participantKind,
     targetId: target.participantId,
     targetName: target.participantName,
+    laneId: target.laneId,
     sessionId: target.sessionId,
     trigger,
     plannedDepth: 0,

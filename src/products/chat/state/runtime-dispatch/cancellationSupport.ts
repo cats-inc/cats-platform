@@ -22,6 +22,7 @@ function appendCancelledDispatchResult(
     targetKind: targetStatus.participant.participantKind,
     targetId: targetStatus.participant.participantId,
     targetName: targetStatus.participant.participantName,
+    laneId: null,
     sessionId: null,
     status: 'skipped',
     dispatchId: targetStatus.dispatchId ?? undefined,

@@ -2032,9 +2032,15 @@ test('direct cat chat records targetStateId on real session_started messages', a
   const sessionStarted = channel.messages.find((message) =>
     message.metadata?.event === 'session_started'
     && message.metadata?.sessionId === 'session-1');
+  const assistantReply = channel.messages.find((message) =>
+    message.metadata?.event === 'assistant_turn_segment'
+    && message.metadata?.sessionId === 'session-1');
   assert.ok(sessionStarted);
+  assert.ok(assistantReply);
   assert.equal(sessionStarted?.metadata?.targetStateId, targetStateId);
   assert.equal(sessionStarted?.metadata?.laneId, laneId);
+  assert.equal(assistantReply?.metadata?.laneId, laneId);
+  assert.equal(dispatched.results[0]?.laneId, laneId);
 });
 
 test('direct cat chat updates the reused lease laneId when the same runtime session serves a new turn', async () => {

@@ -25,7 +25,7 @@ import {
   mapWorkflowTargetToExecutionRef,
   readCheckpointKind,
   resolveApprovalStep,
-  resolveParticipantSessionId,
+  resolveParticipantExecutionLease,
 } from './shared.js';
 
 interface ExecutionSelection {
@@ -148,22 +148,26 @@ function buildEventStep(
   const stageId = typeof event.metadata.workflowStageId === 'string'
     ? event.metadata.workflowStageId
     : turn.stageId;
-  const eventTargets = event.targets.map((target) => ({
-    participantKind: target.participantKind,
-    participantId: target.participantId,
-    participantName: target.participantName,
-    sessionId: resolveParticipantSessionId(channel, target),
-    trigger: null,
-    plannedDepth: 0,
-    dispatchId: event.dispatchId,
-    response: null,
-    branchStrategy: null,
-    handoffReason: null,
-    mentionNames: [],
-    sourceParticipant: event.actor,
-    sourceMessageId: event.sourceMessageId,
-    error: null,
-  } satisfies OrchestratorExecutionTargetRef));
+  const eventTargets = event.targets.map((target) => {
+    const lease = resolveParticipantExecutionLease(channel, target);
+    return {
+      participantKind: target.participantKind,
+      participantId: target.participantId,
+      participantName: target.participantName,
+      laneId: lease?.laneId ?? null,
+      sessionId: lease?.sessionId ?? null,
+      trigger: null,
+      plannedDepth: 0,
+      dispatchId: event.dispatchId,
+      response: null,
+      branchStrategy: null,
+      handoffReason: null,
+      mentionNames: [],
+      sourceParticipant: event.actor,
+      sourceMessageId: event.sourceMessageId,
+      error: null,
+    } satisfies OrchestratorExecutionTargetRef;
+  });
 
   let kind: OrchestratorExecutionStepKind | null = null;
   let phase: OrchestratorExecutionStep['phase'] = 'execute';

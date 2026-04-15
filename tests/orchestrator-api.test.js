@@ -279,9 +279,28 @@ async function createChannel(baseUrl, options = {}) {
 }
 
 test('POST /api/orchestrator/plan returns machine-readable plan and tool intent', async () => {
+  const chatStore = new MemoryChatStore();
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const created = await createChannel(baseUrl);
     const channelId = created.channel.id;
+    const laneId = 'lane-inline-existing';
+    let chat = await chatStore.read();
+    const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
+    assert.ok(seededChannel);
+    const inlineAssignment = seededChannel.catAssignments[0];
+    assert.ok(inlineAssignment);
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      inlineAssignment.catId,
+      {
+        status: 'ready',
+        sessionId: 'session-inline-existing',
+        laneId,
+      },
+      new Date('2026-04-15T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
 
     const response = await fetch(`${baseUrl}/api/orchestrator/plan`, {
       method: 'POST',
@@ -313,6 +332,7 @@ test('POST /api/orchestrator/plan returns machine-readable plan and tool intent'
     );
     assert.equal(payload.plan.routing.initialTargets.length, 1);
     assert.equal(payload.plan.routing.initialTargets[0].targetName, 'Inline-Agent');
+    assert.equal(payload.plan.routing.initialTargets[0].laneId, laneId);
     assert.equal(payload.plan.executionLoop.dispatchBoundary, 'direct_runtime_api');
     assert.equal(payload.plan.executionLoop.supportsReplan, true);
     assert.equal(payload.plan.execution.state, 'planned');
@@ -322,13 +342,19 @@ test('POST /api/orchestrator/plan returns machine-readable plan and tool intent'
     assert.ok(payload.plan.execution.steps.some((step) => step.kind === 'dispatch_group'));
     assert.ok(payload.plan.execution.steps.some((step) => step.kind === 'continuation_handoff'));
     assert.ok(payload.plan.execution.steps.some((step) => step.kind === 'report_outcome'));
+    assert.ok(
+      payload.plan.execution.steps.some((step) =>
+        step.kind === 'dispatch_target'
+        && step.participant?.participantId === inlineAssignment.participantId
+        && step.participant?.laneId === laneId),
+    );
     assert.deepEqual(
       payload.plan.routing.initialTargets[0].toolIntent.allowedTools,
       ['runtime_summary', 'list_sessions', 'observe_session'],
     );
     assert.ok(Array.isArray(payload.plan.routing.initialTargets[0].runtimeSkills.requestedSkills));
     assert.equal(payload.plan.routing.initialTargets[0].runtimeSkills.requestedSkills[0], 'companion');
-  });
+  }, chatStore);
 });
 
 test('POST /api/orchestrator/plan uses the injected planner surface seam', async () => {
@@ -431,6 +457,8 @@ test('POST /api/orchestrator/dispatch returns executed continuation steps from t
     assert.equal(payload.dispatch.results.length, 2);
     assert.equal(payload.dispatch.results[0].targetName, 'Inline-Agent');
     assert.equal(payload.dispatch.results[1].targetName, 'Followup-Agent');
+    assert.equal(typeof payload.dispatch.results[0].laneId, 'string');
+    assert.equal(typeof payload.dispatch.results[1].laneId, 'string');
     assert.equal(payload.plan.snapshot, 'pre_dispatch');
     assert.equal(payload.operator.approvalsPath, '/api/core/approvals');
     assert.equal(payload.operator.operatorActionsPath, '/api/core/operator-actions');

@@ -679,7 +679,9 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
 - `POST /api/orchestrator/plan` accepts `{ channelId, body, senderName?, transport? }`
   and returns a contract-first room-turn plan:
   - room-routing resolution and unresolved mentions
-  - initial dispatch targets
+  - initial dispatch targets, now including any currently attached `laneId`
+    alongside `sessionId` when the room already has a canonical lane-owned
+    runtime attachment for that participant
   - resolved runtime skill manifests
   - product-owned MCP/tool intent manifests
   - frozen runtime MCP tool-plane metadata aligned to `POST /api/runtime/mcp`
@@ -689,6 +691,9 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     - checkpoint-driven handoff loop
     - outcome-report stage
     - approval request / decision payload templates
+    - lane-aware `participant` / `targets` execution refs so downstream
+      operator consumers do not have to infer canonical lane identity from
+      `sessionId` alone
 - `POST /api/orchestrator/dispatch` accepts the same request body, reuses the
   existing `routeChannelMessage()` execution path, and returns:
   - the pre-dispatch plan
@@ -699,6 +704,10 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     - `dispatch.status` is `dispatched` or `blocked`
     - `dispatch.blockedReason` is currently `approval_pending` when a task is
       still waiting on `/api/core/approvals`
+    - each `dispatch.results[]` entry now carries `laneId` plus `sessionId`
+      when the routed participant resolved to a concrete canonical lane during
+      dispatch, so downstream consumers can key post-dispatch identity on the
+      lane instead of inferring it from runtime session reuse
     - when approval blocks dispatch, Cats also persists that pending request on
       the channel task metadata so a later owner decision can replay it without
       requiring the caller to post the same dispatch body a second time

@@ -441,13 +441,32 @@ export async function resolveRuntimeEnvelopeForTarget(
   };
 }
 
+function readMessageMetadataString(message: ChatMessage, key: string): string | null {
+  const value = message.metadata[key];
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function messageMatchesTargetLane(message: ChatMessage, target: RoutingTarget): boolean {
+  return target.laneId != null
+    && readMessageMetadataString(message, 'laneId') === target.laneId;
+}
+
 function messageMatchesTarget(message: ChatMessage, target: RoutingTarget): boolean {
   if (target.participantKind === 'orchestrator') {
+    if (message.senderKind === 'orchestrator' && messageMatchesTargetLane(message, target)) {
+      return true;
+    }
     return message.senderKind === 'orchestrator'
       && (
         message.senderName === target.participantName
         || message.metadata.targetKind === 'orchestrator'
       );
+  }
+
+  if (message.senderKind === 'agent' && messageMatchesTargetLane(message, target)) {
+    return true;
   }
 
   return message.senderKind === 'agent'
@@ -511,12 +530,14 @@ function resolveSourceBoundaryIndex(
   return -1;
 }
 
-function hasVisibleResponseFromCurrentSession(
+function hasVisibleResponseFromCurrentTargetIdentity(
   messages: ReadonlyArray<ChatMessage>,
   target: RoutingTarget,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): boolean {
-  if (!target.sessionId) {
+  const targetLaneId = target.laneId?.trim() || null;
+  const targetSessionId = target.sessionId?.trim() || null;
+  if (!targetLaneId && !targetSessionId) {
     return false;
   }
 
@@ -525,11 +546,18 @@ function hasVisibleResponseFromCurrentSession(
       return false;
     }
 
-    if (message.metadata.sessionId !== target.sessionId) {
+    if (!isAssistantTurnSegmentMessage(message)) {
       return false;
     }
 
-    if (!isAssistantTurnSegmentMessage(message)) {
+    const messageLaneId = readMessageMetadataString(message, 'laneId');
+    const sameLane = targetLaneId != null
+      && messageLaneId === targetLaneId;
+    const sameSession = !sameLane
+      && targetSessionId != null
+      && (!targetLaneId || !messageLaneId)
+      && readMessageMetadataString(message, 'sessionId') === targetSessionId;
+    if (!sameLane && !sameSession) {
       return false;
     }
 
@@ -546,7 +574,7 @@ function resolveSoloChatBootstrapInstructions(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
 ): string | null {
-  if (hasVisibleResponseFromCurrentSession(messages, request.target, request.sourceMessage)) {
+  if (hasVisibleResponseFromCurrentTargetIdentity(messages, request.target, request.sourceMessage)) {
     return null;
   }
 

@@ -322,6 +322,18 @@ Known follow-ups:
   continuity as inputs, not long-lived product truth
 - orchestrator plan/dispatch/execution-loop payloads now expose a
   checkpoint-driven execution contract derived from the real room workflow turn
+- those same orchestrator planning/execution payloads now carry lane-aware
+  participant refs (`laneId` plus `sessionId`) from mention resolution through
+  pre-dispatch and workflow execution steps, so operator/read-model consumers
+  no longer have to reconstruct canonical target identity from session reuse
+  alone
+- runtime dispatch receipts and persisted `assistant_turn_segment` transcript
+  messages now also carry `laneId`, so the write path itself preserves
+  canonical lane identity instead of leaving downstream consumers to infer it
+  from `sessionId` reuse
+- solo-chat bootstrap suppression now prefers canonical `laneId` over reused
+  `sessionId`, so older replies from a drifted/reused runtime session no
+  longer hide bootstrap context for the current lane
 - pending owner approval now pauses `/api/orchestrator/dispatch` until
   `/api/core/approvals` resolves the gate
 - approval writes now auto-resume stored approval-blocked dispatch requests on

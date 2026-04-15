@@ -175,6 +175,7 @@ export async function prepareReadyRequests(
         targetKind: request.target.participantKind,
         targetId: request.target.participantId,
         targetName: request.target.participantName,
+        laneId: ensured.target.laneId ?? request.target.laneId ?? null,
         sessionId: null,
         status: 'error',
         dispatchId: request.dispatchId,

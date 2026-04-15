@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
+import {
+  appendMessage,
+  createChannel as createChatChannel,
+  setChannelOrchestratorLease,
+} from '../build/server/products/chat/state/model/index.js';
 import {
   buildCatPrompt,
   buildOrchestratorPrompt,
   buildSoloChatBootstrapInstructions,
 } from '../build/server/products/chat/state/prompts.js';
+import { buildPromptForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
+import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
 
 function createChannel() {
   return {
@@ -138,3 +146,99 @@ test('solo chat bootstrap instructions include only earlier conversational conte
   assert.ok(!instructions.includes('Respond in English'));
 });
 
+test('solo chat bootstrap instructions ignore stale same-session replies from a different lane', () => {
+  const now = new Date('2026-04-15T00:00:00.000Z');
+  let state = createDefaultChatState();
+  state = createChatChannel(state, {
+    title: 'Solo bootstrap lane test',
+    topic: 'Keep bootstrap gated by lane identity.',
+    entryKind: 'solo',
+    roomMode: 'boss_chat',
+  }, now);
+  const channelId = state.channels[0].id;
+  const reusedSessionId = 'session-orchestrator-reused';
+  const staleLaneId = buildChatLaneId('turn-stale', 'target-stale', 'orchestrator');
+  const activeLaneId = buildChatLaneId('turn-active', 'target-active', 'orchestrator');
+
+  state = setChannelOrchestratorLease(state, channelId, {
+    status: 'ready',
+    sessionId: reusedSessionId,
+    laneId: activeLaneId,
+  }, now);
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Kenny',
+      body: 'Earlier context',
+    },
+    new Date('2026-04-15T00:00:01.000Z'),
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'orchestrator',
+      senderName: 'Orchestrator',
+      body: 'Older reply from a stale lane',
+    },
+    new Date('2026-04-15T00:00:02.000Z'),
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        sessionId: reusedSessionId,
+        laneId: staleLaneId,
+        targetKind: 'orchestrator',
+        assistantTurnId: 'assistant-turn-stale',
+        turnId: 'turn-stale',
+        terminal: true,
+      },
+    },
+  ).state;
+  const currentTurn = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Kenny',
+      body: 'Current turn',
+    },
+    new Date('2026-04-15T00:00:03.000Z'),
+  );
+  state = currentTurn.state;
+
+  const prompt = buildPromptForTarget(state, channelId, {
+    turnId: 'turn-active',
+    dispatchId: 'dispatch-active',
+    targetStateId: 'target-active',
+    parentCheckpointId: null,
+    branchStrategy: null,
+    handoffReason: null,
+    sourceMessage: currentTurn.message,
+    sourceParticipant: null,
+    targets: [
+      {
+        participantKind: 'orchestrator',
+        participantId: 'orchestrator',
+        participantName: 'Orchestrator',
+        laneId: activeLaneId,
+        sessionId: reusedSessionId,
+      },
+    ],
+    unresolved: [],
+    mentionNames: [],
+    trigger: 'room_default',
+    depth: 0,
+    target: {
+      participantKind: 'orchestrator',
+      participantId: 'orchestrator',
+      participantName: 'Orchestrator',
+      laneId: activeLaneId,
+      sessionId: reusedSessionId,
+    },
+  });
+
+  assert.ok(prompt.instructions);
+  assert.match(prompt.instructions, /Earlier chat context:/u);
+});
