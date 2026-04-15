@@ -126,15 +126,20 @@ contracts.
       multi-worker or clustered app-server deployment so
       `GET /api/debug/live-trace` can aggregate stream-target and attach events
       across workers instead of reporting only the handling process
-- [ ] Freeze a shared composer busy-state contract across solo, parallel, and relay flows,
-      then centralize the current ad-hoc `message:*` / `concurrent:*` strings so
-      `isComposerBusy`, `isComposerDispatchBusy`, `isComposerSelectionBlocked`,
-      compare-surface locks, live-indicator gating, and route-entry hydration all
-      consume one explicit vocabulary instead of drifting independently
+- [x] Freeze a shared composer busy-state contract across solo, parallel, and relay flows,
+      and replace the previous ad-hoc `message:*` / `concurrent:*` string protocol
+      with one typed workspace busy-state model so `isComposerBusy`,
+      `isComposerDispatchBusy`, `isComposerSelectionBlocked`, compare-surface locks,
+      live-indicator gating, and route-entry hydration all consume one explicit
+      vocabulary instead of drifting independently
+- [ ] Replace the current single-workspace busy slot with a keyed busy registry or
+      equivalent multi-owner model so unrelated room, settings, Cat, and product
+      operations can proceed concurrently instead of remaining artificially
+      serialized behind one global `WorkspaceBusyState`
 - [ ] Add renderer behavior coverage for composer busy-state transitions beyond
       helper tests, including parallel send, compare relay, live-indicator stream
       gating, and route-selection / `updateSelectedChannel(...)` guards so
-      future lifecycle refactors cannot silently change `concurrent:*` semantics
+      future lifecycle refactors cannot silently change busy-state semantics
 - [ ] Replace the current Boss-Cat-first setup bootstrap with optional
       `Guide Cat` onboarding that captures only name plus runtime target,
       keeps setup completable without any Guide Cat, and treats Guide Cat as a
