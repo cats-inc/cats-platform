@@ -16,10 +16,6 @@ import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
 import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
-import {
-  buildChatConversationId,
-  resolveChatChannelContainerId,
-} from '../../../shared/chatCoreIds.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import {
   appendMessage,
@@ -37,6 +33,7 @@ import {
   exportChannel,
   requireChannel,
   requireCat,
+  resolveChannelCanonicalIdentity,
   removeCatFromChannel,
   resolveOrchestratorDisplayName,
   unarchiveCat,
@@ -581,11 +578,9 @@ export async function persistCatAssignmentUpdate(
     && Boolean(spawnCwd);
 
   if (needsSession) {
-    let conversationId = buildChatConversationId(channelId);
-    let containerId = resolveChatChannelContainerId({
-      channelId,
-      parallelChatGroups: nextState.parallelChatGroups,
-    });
+    const canonicalIdentity = resolveChannelCanonicalIdentity(nextState, channelId);
+    let conversationId = canonicalIdentity.conversationId;
+    let containerId = canonicalIdentity.containerId;
     let transportBindingId: string | null = null;
     try {
       const resolvedChannelView = buildChannelView(nextState, channelId);
@@ -607,14 +602,11 @@ export async function persistCatAssignmentUpdate(
       conversationId = readInvocationContextMetadataString(
         runtimeEnvelope.context,
         'conversationId',
-      ) ?? buildChatConversationId(channelId);
+      ) ?? canonicalIdentity.conversationId;
       containerId = readInvocationContextMetadataString(
         runtimeEnvelope.context,
         'containerId',
-      ) ?? resolveChatChannelContainerId({
-        channelId,
-        parallelChatGroups: nextState.parallelChatGroups,
-      });
+      ) ?? canonicalIdentity.containerId;
       transportBindingId = readInvocationContextMetadataString(
         runtimeEnvelope.context,
         'transportBindingId',

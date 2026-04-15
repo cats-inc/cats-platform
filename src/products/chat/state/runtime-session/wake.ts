@@ -25,6 +25,7 @@ import {
   appendMessage,
   buildChannelView,
   requireChannel,
+  resolveChannelCanonicalIdentity,
   setChannelParticipantLease,
   setChannelParticipantExecutionTarget,
   setChannelChatCwd,
@@ -57,7 +58,6 @@ import {
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
 } from '../workspace.js';
-import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import {
   clearTargetSessionLease,
   ensureChannelMarkedActive,
@@ -470,8 +470,9 @@ export async function ensureTargetSession(
   const workspaceKind = spawnCwd ? 'source' : 'sandbox';
   let targetLabelProvider: string | null = null;
   let targetLabelInstance: string | null = null;
-  let conversationId: string | null = buildChatConversationId(channelId);
-  let containerId: string | null = null;
+  const canonicalIdentity = resolveChannelCanonicalIdentity(nextState, channelId);
+  let conversationId: string | null = canonicalIdentity.conversationId;
+  let containerId: string | null = canonicalIdentity.containerId;
   let transportBindingId: string | null = null;
 
   try {
@@ -489,11 +490,11 @@ export async function ensureTargetSession(
     conversationId = readInvocationContextMetadataString(
       runtimeEnvelope.context,
       'conversationId',
-    ) ?? buildChatConversationId(channelId);
+    ) ?? canonicalIdentity.conversationId;
     containerId = readInvocationContextMetadataString(
       runtimeEnvelope.context,
       'containerId',
-    );
+    ) ?? canonicalIdentity.containerId;
     transportBindingId = readInvocationContextMetadataString(
       runtimeEnvelope.context,
       'transportBindingId',

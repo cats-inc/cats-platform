@@ -160,7 +160,7 @@ export function resolveParticipantLifecycleState(
   return resolveChatLifecycleState(lease.status);
 }
 
-function resolveChannelCanonicalIdentity(
+export function resolveChannelCanonicalIdentity(
   state: Pick<ChatState, 'parallelChatGroups'> | null | undefined,
   channelId: string,
 ): {

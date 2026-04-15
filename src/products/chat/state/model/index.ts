@@ -82,6 +82,7 @@ export {
   buildChannelExportFilename,
   buildChannelView,
   exportChannel,
+  resolveChannelCanonicalIdentity,
   resolveChannelEntryParticipant,
   resolveOrchestratorDisplayName,
   resolveParticipantLifecycleState,

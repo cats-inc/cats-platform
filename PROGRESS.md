@@ -618,6 +618,10 @@ Known follow-ups:
   canonical `containerId`, so browser/server trace inspection can see the full
   container/conversation/turn/lane tuple instead of stopping one hop short of
   the shared engine identity
+- route-support cat wake-up and runtime-session wake paths now both resolve
+  channel `containerId` / `conversationId` through one shared canonical helper,
+  so runtime lifecycle metadata and repair fallbacks no longer maintain
+  separate ad-hoc channel-identity derivations
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a
