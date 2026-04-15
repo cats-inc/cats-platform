@@ -35,6 +35,7 @@ import { parseMentions } from './mentionParsing.js';
 export type MentionRoutingMode = RoomRouteResolutionMode;
 
 export interface RoutingTarget extends RoomRoutingParticipantRef {
+  laneId: string | null;
   sessionId: string | null;
 }
 
@@ -73,6 +74,7 @@ function buildOrchestratorTarget(state: ChatState, channel: ChatChannelView): Ro
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
     participantName: isSoloChatChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
+    laneId: channel.orchestratorLease.laneId,
     sessionId: channel.orchestratorLease.sessionId,
   };
 }
@@ -82,6 +84,7 @@ function buildCatTarget(cat: AssignedParticipant): RoutingTarget {
     participantKind: 'cat',
     participantId: cat.participantId,
     participantName: cat.name,
+    laneId: cat.execution.lease.laneId,
     sessionId: cat.execution.lease.sessionId,
   };
 }

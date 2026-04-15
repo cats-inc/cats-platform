@@ -511,6 +511,41 @@ test('resolveChannelStreamTarget falls back to the default recipient while a sin
   });
 });
 
+test('resolveChannelStreamTarget carries lane identity through participant lease fallback outside an active workflow turn', () => {
+  const channel = {
+    roomMode: 'group',
+    orchestratorLease: { status: 'idle', sessionId: null },
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: null,
+      },
+    },
+    catAssignments: [],
+    participantAssignments: [
+      buildParticipantAssignment(
+        'participant-1',
+        'session-1',
+        'ready',
+        'Claude-CLI',
+        '2026-04-14T12:03:00.000Z',
+        'lane-idle-fallback',
+      ),
+    ],
+  };
+
+  assert.deepEqual(resolveChannelStreamTarget(channel), {
+    sessionId: 'session-1',
+    laneId: 'lane-idle-fallback',
+    participantId: 'participant-1',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    sessionStartedAt: '2026-04-14T12:03:00.000Z',
+    requiresSessionStartConfirmation: false,
+    targetStateId: null,
+  });
+});
+
 test('resolveChannelStreamTarget carries the orchestrator lease lane id outside an active workflow turn', () => {
   const channel = {
     composerMode: 'solo',

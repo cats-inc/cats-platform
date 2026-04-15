@@ -17,6 +17,7 @@ import {
   continueBegunChannelMessageDispatch,
   routeChannelMessage,
 } from '../build/server/products/chat/state/runtimeActions.js';
+import { ensureTargetSession } from '../build/server/products/chat/state/runtime-session/wake.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { patchTaskPlanningMetadata } from '../build/server/shared/taskPlanning.js';
 import {
@@ -2112,6 +2113,80 @@ test('direct cat chat updates the reused lease laneId when the same runtime sess
   assert.equal(secondChannel.catAssignments[0]?.execution.lease.sessionId, 'session-1');
   assert.equal(secondChannel.catAssignments[0]?.execution.lease.laneId, secondLaneId);
   assert.notEqual(secondLaneId, firstLaneId);
+});
+
+test('ensureTargetSession reuses a lane-attached lease even when the routing target lost its sessionId', async () => {
+  const store = new MemoryChatStore();
+  let state = await store.read();
+  const now = new Date('2026-03-21T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Reuse the lane attachment even if the routing target session id drifted out.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const laneId = 'lane-turn-drifted-target-companion';
+  state = setChannelCatLease(
+    state,
+    channelId,
+    companionId,
+    {
+      sessionId: 'session-existing',
+      status: 'ready',
+      cwd: path.join(tmpdir(), '.cats', 'runtime', 'sessions', 'session-existing'),
+      lastError: null,
+      laneId,
+      provider: 'claude',
+      model: 'claude-sonnet',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+
+  const runtimeClient = createRuntimeStub(async () => usage('This should not run.'));
+  const ensured = await ensureTargetSession(
+    state,
+    channelId,
+    {
+      participantKind: 'cat',
+      participantId: companionId,
+      participantName: 'Companion',
+      laneId,
+      sessionId: null,
+    },
+    runtimeClient,
+    now,
+  );
+
+  assert.equal(ensured.error, null);
+  assert.equal(ensured.target.sessionId, 'session-existing');
+  assert.equal(ensured.target.laneId, laneId);
+  assert.equal(runtimeClient.createdSessions.length, 0);
+  assert.equal(
+    requireChannel(ensured.state, channelId).catAssignments[0]?.execution.lease.sessionId,
+    'session-existing',
+  );
 });
 
 test('direct cat chat records targetStateId on session_start_failed messages', async () => {

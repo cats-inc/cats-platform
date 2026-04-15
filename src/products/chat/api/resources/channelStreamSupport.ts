@@ -1,8 +1,8 @@
 import {
-  collectParticipantSessionIds,
+  collectParticipantLeaseAttachments,
   resolveParticipantCatId,
   resolveParticipantExecutionLease,
-  resolveParticipantSessionId,
+  resolveParticipantLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
@@ -85,18 +85,24 @@ function buildParticipantStreamTarget(
 ): ChannelStreamTarget {
   const assignment = resolvePrimaryParticipantExecutionAssignment(channel, participantId);
   const lease = resolveParticipantExecutionLease(channel, participantId);
-  const leaseLaneId = lease?.laneId?.trim() || null;
-  const laneConflicts = Boolean(expectedLaneId && leaseLaneId && leaseLaneId !== expectedLaneId);
-  const sessionStartedAt = laneConflicts ? null : lease?.startedAt ?? null;
-  return {
-    sessionId: laneConflicts
+  const attachment = resolveParticipantLeaseAttachment(
+    channel,
+    participantId,
+    {
+      laneId: expectedLaneId,
+      statuses: ['ready', 'initializing'],
+    },
+  ) ?? (
+    expectedLaneId
       ? null
-      : resolveParticipantSessionId(
-        channel,
-        participantId,
-        { statuses: ['ready', 'initializing'] },
-      ),
-    laneId: expectedLaneId ?? leaseLaneId,
+      : resolveParticipantLeaseAttachment(channel, participantId, {
+        statuses: ['ready', 'initializing'],
+      })
+  );
+  const sessionStartedAt = attachment?.sessionId ? lease?.startedAt ?? null : null;
+  return {
+    sessionId: attachment?.sessionId ?? null,
+    laneId: expectedLaneId ?? attachment?.laneId ?? (lease?.laneId?.trim() || null),
     participantId,
     catId: assignment ? resolveParticipantCatId(assignment) : null,
     speakerLabel: normalizeVisibleSpeakerLabel(assignment?.name ?? fallbackSpeakerLabel),
@@ -122,12 +128,12 @@ function buildOrchestratorStreamTarget(
     instance: channel.pendingProvider ? (channel.pendingInstance ?? null) : null,
   });
   const leaseLaneId = channel.orchestratorLease.laneId?.trim() || null;
-  const laneConflicts = Boolean(expectedLaneId && leaseLaneId && leaseLaneId !== expectedLaneId);
-  const sessionStartedAt = laneConflicts ? null : channel.orchestratorLease.startedAt ?? null;
+  const laneMatches = !expectedLaneId || !leaseLaneId || leaseLaneId === expectedLaneId;
+  const sessionStartedAt = laneMatches ? channel.orchestratorLease.startedAt ?? null : null;
   return {
-    sessionId: laneConflicts
-      ? null
-      : channel.orchestratorLease?.sessionId?.trim() || null,
+    sessionId: laneMatches
+      ? channel.orchestratorLease?.sessionId?.trim() || null
+      : null,
     laneId: expectedLaneId ?? leaseLaneId,
     participantId: 'orchestrator',
     catId: null,
@@ -345,34 +351,41 @@ function resolveChannelStreamTargetWithReason(
     }
   }
 
-  const participantSessionId = collectParticipantSessionIds(channel, {
+  const participantAttachment = collectParticipantLeaseAttachments(channel, {
     statuses: ['ready', 'initializing'],
   })[0] ?? null;
-  if (participantSessionId) {
-    for (const assignment of channel.catAssignments) {
-      const target = buildParticipantStreamTarget(channel, assignment.participantId);
-      if (target.sessionId === participantSessionId) {
-        return { target, reason: 'participant_session_fallback_cat_assignment' };
-      }
-    }
-    for (const assignment of channel.participantAssignments ?? []) {
-      const target = buildParticipantStreamTarget(channel, assignment.participantId);
-      if (target.sessionId === participantSessionId) {
-        return { target, reason: 'participant_session_fallback_assignment' };
-      }
+  if (participantAttachment?.sessionId) {
+    const target = buildParticipantStreamTarget(
+      channel,
+      participantAttachment.participantId,
+      null,
+      null,
+      participantAttachment.laneId,
+    );
+    const assignment = resolvePrimaryParticipantExecutionAssignment(
+      channel,
+      participantAttachment.participantId,
+    );
+    if (target.sessionId) {
+      return {
+        target,
+        reason: assignment?.sourceKind === 'cat'
+          ? 'participant_lease_fallback_cat_assignment'
+          : 'participant_lease_fallback_assignment',
+      };
     }
     return {
       target: {
-        sessionId: participantSessionId,
-        laneId: null,
-        participantId: null,
-        catId: null,
-        speakerLabel: null,
+        sessionId: participantAttachment.sessionId,
+        laneId: participantAttachment.laneId,
+        participantId: participantAttachment.participantId,
+        catId: assignment ? resolveParticipantCatId(assignment) : null,
+        speakerLabel: normalizeVisibleSpeakerLabel(assignment?.name ?? null),
         sessionStartedAt: null,
         requiresSessionStartConfirmation: false,
         targetStateId: null,
       },
-      reason: 'participant_session_fallback_unknown_assignment',
+      reason: 'participant_lease_fallback_unknown_assignment',
     };
   }
 

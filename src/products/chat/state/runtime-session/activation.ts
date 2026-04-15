@@ -19,6 +19,7 @@ function toActivationResult(input: {
     participantKind: 'orchestrator' | 'cat';
     participantId: string;
     participantName: string;
+    laneId: string | null;
     sessionId: string | null;
   };
   ensured: Awaited<ReturnType<typeof ensureTargetSession>>;
@@ -40,7 +41,14 @@ function toActivationResult(input: {
     targetId: target.participantId,
     targetName: target.participantName,
     status:
-      target.sessionId && target.sessionId === ensured.target.sessionId
+      (
+        (target.sessionId && target.sessionId === ensured.target.sessionId)
+        || (
+          target.laneId
+          && target.laneId === ensured.target.laneId
+          && ensured.wakeRequest?.status === 'skipped'
+        )
+      )
         ? 'already_started'
         : 'started',
     sessionId: ensured.target.sessionId,

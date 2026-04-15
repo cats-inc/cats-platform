@@ -334,6 +334,7 @@ export async function executeDispatchWithRecovery(input: {
         chatStore: input.chatStore,
         chatStatePath: input.chatStatePath,
         runtimeDataDir: input.runtimeDataDir,
+        ignoreLeaseSessionAttachment: true,
         wakeTrigger: 'route_target',
         wakeReason: request.trigger === 'continuation_mention'
           ? 'workflow_continuation'

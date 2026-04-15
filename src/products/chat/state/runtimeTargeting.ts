@@ -68,6 +68,7 @@ export function buildOrchestratorTarget(
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
     participantName: isSoloChatChannel(channel) ? 'Orchestrator' : resolveOrchestratorDisplayName(state),
+    laneId: channel.orchestratorLease.laneId,
     sessionId: channel.orchestratorLease.sessionId,
   };
 }
@@ -136,6 +137,7 @@ export function buildCatTarget(cat: ChatChannelCat | ChatChannelParticipant): Ro
     participantKind: 'cat',
     participantId: cat.participantId,
     participantName: cat.name,
+    laneId: cat.execution.lease.laneId,
     sessionId: cat.execution.lease.sessionId,
   };
 }

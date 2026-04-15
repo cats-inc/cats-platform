@@ -264,6 +264,7 @@ function buildOrchestratorTarget(state: ChatState, channelId: string): RoutingTa
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
     participantName: isSoloChatChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
+    laneId: channel.orchestratorLease.laneId,
     sessionId: channel.orchestratorLease.sessionId,
   };
 }
@@ -317,6 +318,7 @@ export function resolveWorkflowRecommendationTargets(
         participantKind: 'cat',
         participantId: cat.catId,
         participantName: cat.name,
+        laneId: cat.execution.lease.laneId,
         sessionId: cat.execution.lease.sessionId,
       };
     } else if (normalizedName && catsByName.has(normalizedName.toLowerCase())) {
@@ -325,6 +327,7 @@ export function resolveWorkflowRecommendationTargets(
         participantKind: 'cat',
         participantId: cat.catId,
         participantName: cat.name,
+        laneId: cat.execution.lease.laneId,
         sessionId: cat.execution.lease.sessionId,
       };
     }

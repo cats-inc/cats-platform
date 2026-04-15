@@ -50,6 +50,7 @@ import {
 } from '../runtime-dispatch/context.js';
 import {
   findAssignedParticipant,
+  resolveParticipantExecutionLease,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
 import {
@@ -120,10 +121,11 @@ async function shouldReviveExistingTargetSession(
   state: ChatState,
   channelId: string,
   target: RoutingTarget,
+  sessionId: string | null,
   runtimeClient: RuntimeClient,
   forceReviveClosedSessions: boolean,
 ): Promise<boolean> {
-  if (!target.sessionId) {
+  if (!sessionId) {
     return false;
   }
 
@@ -154,7 +156,7 @@ async function shouldReviveExistingTargetSession(
   }
 
   try {
-    const observed = await runtimeClient.observeSession(target.sessionId);
+    const observed = await runtimeClient.observeSession(sessionId);
     const observedState = readObservedSessionState(observed);
     return observedState ? MANUALLY_REVIVABLE_SESSION_STATES.has(observedState) : false;
   } catch (error) {
@@ -264,6 +266,36 @@ function readDispatchContextMetadataString(
     : null;
 }
 
+function resolveTargetLeaseAttachment(
+  state: ChatState,
+  channelId: string,
+  target: RoutingTarget,
+  options: {
+    preferredLaneId?: string | null;
+    allowLeaseSessionReuse?: boolean;
+  } = {},
+): {
+  laneId: string | null;
+  sessionId: string | null;
+} {
+  const channel = requireChannel(state, channelId);
+  const lease = target.participantKind === 'cat'
+    ? resolveParticipantExecutionLease(channel, target.participantId)
+    : channel.orchestratorLease;
+  const leaseLaneId = lease?.laneId?.trim() || null;
+  const leaseSessionId = lease?.sessionId?.trim() || null;
+  const targetLaneId = target.laneId?.trim() || null;
+  const targetSessionId = target.sessionId?.trim() || null;
+  const laneId = options.preferredLaneId ?? targetLaneId ?? leaseLaneId;
+
+  return {
+    laneId: laneId ?? leaseLaneId ?? targetLaneId,
+    sessionId: options.allowLeaseSessionReuse === false
+      ? targetSessionId
+      : (leaseSessionId ?? targetSessionId),
+  };
+}
+
 export async function ensureTargetSession(
   state: ChatState,
   channelId: string,
@@ -275,6 +307,7 @@ export async function ensureTargetSession(
     wakeTrigger?: RoomWakeTrigger;
     wakeReason?: RoomWakeReason;
     sourceMessageId?: string | null;
+    ignoreLeaseSessionAttachment?: boolean;
   } = {},
 ): Promise<{
   state: ChatState;
@@ -287,7 +320,6 @@ export async function ensureTargetSession(
   const wakeTrigger = options.wakeTrigger ?? 'route_target';
   const wakeReason = options.wakeReason ?? 'room_default';
   const sourceMessageId = options.sourceMessageId ?? null;
-  const participant = toParticipantRef(target);
   const targetStateId = readDispatchContextMetadataString(
     options.dispatchContextMetadata,
     'targetStateId',
@@ -295,11 +327,21 @@ export async function ensureTargetSession(
   const laneId = readDispatchContextMetadataString(
     options.dispatchContextMetadata,
     'laneId',
-  );
+  ) ?? (target.laneId?.trim() || null);
+  const targetAttachment = resolveTargetLeaseAttachment(state, channelId, target, {
+    preferredLaneId: laneId,
+    allowLeaseSessionReuse: options.ignoreLeaseSessionAttachment !== true,
+  });
+  const attachedTarget: RoutingTarget = {
+    ...target,
+    ...targetAttachment,
+    laneId: targetAttachment.laneId,
+  };
+  const participant = toParticipantRef(attachedTarget);
   const taskExecutionContext = await resolveChannelTaskExecutionRequest(
     options.chatStore,
     channelId,
-    target,
+    attachedTarget,
   );
   const recordTargetWake = (
     status: RoomWakeRequest['status'],
@@ -320,11 +362,11 @@ export async function ensureTargetSession(
     if (!laneId) {
       return inputState;
     }
-    return target.participantKind === 'cat'
+    return attachedTarget.participantKind === 'cat'
       ? setChannelParticipantLease(
         inputState,
         channelId,
-        target.participantId,
+        attachedTarget.participantId,
         { laneId },
         now,
       )
@@ -336,31 +378,34 @@ export async function ensureTargetSession(
       );
   };
 
-  if (target.sessionId) {
+  if (attachedTarget.sessionId) {
     if (await shouldReviveExistingTargetSession(
       state,
       channelId,
-      target,
+      attachedTarget,
+      attachedTarget.sessionId,
       runtimeClient,
       options.forceReviveClosedSessions ?? false,
     )) {
       const resetState = clearTargetSessionLease(
         state,
         channelId,
-        target.participantKind === 'cat' ? { participantId: target.participantId } : 'orchestrator',
+        attachedTarget.participantKind === 'cat'
+          ? { participantId: attachedTarget.participantId }
+          : 'orchestrator',
         now,
       );
       return ensureTargetSession(
         resetState,
         channelId,
-        { ...target, sessionId: null },
+        { ...attachedTarget, sessionId: null },
         runtimeClient,
         now,
         options,
       );
     }
 
-    if (target.participantKind === 'orchestrator') {
+    if (attachedTarget.participantKind === 'orchestrator') {
       const channelState = requireChannel(state, channelId);
       const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
       const orchestratorLease = channelState.orchestratorLease;
@@ -373,14 +418,14 @@ export async function ensureTargetSession(
       if (shouldRestartSoloSession) {
         await bestEffortFlushRuntimeSessionMemory({
           runtimeClient,
-          sessionId: target.sessionId,
+          sessionId: attachedTarget.sessionId,
           requestedPhase: 'pre_reset',
           memoryService: options.memoryService,
           companionStore: options.companionStore,
           coreStore: options.chatStore,
           now,
         });
-        await runtimeClient.closeSession(target.sessionId);
+        await runtimeClient.closeSession(attachedTarget.sessionId);
         const resetState = setChannelOrchestratorLease(
           state,
           channelId,
@@ -398,7 +443,7 @@ export async function ensureTargetSession(
         return ensureTargetSession(
           resetState,
           channelId,
-          { ...target, sessionId: null },
+          { ...attachedTarget, sessionId: null },
           runtimeClient,
           now,
           options,
@@ -408,7 +453,7 @@ export async function ensureTargetSession(
 
     return {
       state: applyLeaseLaneAttachment(state),
-      target,
+      target: attachedTarget,
       error: null,
       wakeRequest: recordTargetWake('skipped'),
       taskExecutionContext,
@@ -423,7 +468,7 @@ export async function ensureTargetSession(
   let targetLabelInstance: string | null = null;
 
   try {
-    nextState = markTargetWaking(nextState, channelId, target, now, laneId);
+    nextState = markTargetWaking(nextState, channelId, attachedTarget, now, laneId);
     const runtimeEnvelope = await resolveRuntimeEnvelopeForTarget(
       nextState,
       channel,
@@ -441,7 +486,7 @@ export async function ensureTargetSession(
       runtimeEnvelope.context,
       'transportBindingId',
     );
-    if (target.participantKind === 'orchestrator') {
+    if (attachedTarget.participantKind === 'orchestrator') {
       const sessionTarget = resolveOrchestratorExecutionTarget(
         nextState,
         requireChannel(nextState, channelId),
@@ -515,7 +560,7 @@ export async function ensureTargetSession(
           senderName: 'Runtime',
           body: formatSessionStartedMessage(
             resolveVisibleWakeTargetLabel({
-              target,
+              target: attachedTarget,
               provider: session.provider,
               instance: sessionTarget.instance,
             }),
@@ -539,19 +584,19 @@ export async function ensureTargetSession(
       ).state;
       return {
         state: nextState,
-        target: { ...target, sessionId: session.id },
+        target: { ...attachedTarget, laneId, sessionId: session.id },
         error: null,
         wakeRequest: recordTargetWake('completed'),
         taskExecutionContext,
       };
     }
 
-    const participant = findAssignedParticipant(channel, target.participantId);
+    const participant = findAssignedParticipant(channel, attachedTarget.participantId);
     if (!participant) {
       const error = 'Target participant is no longer assigned to the selected chat.';
       return {
         state,
-        target,
+        target: attachedTarget,
         error,
         wakeRequest: recordTargetWake('failed', error),
         taskExecutionContext,
@@ -590,7 +635,7 @@ export async function ensureTargetSession(
     nextState = setChannelParticipantExecutionTarget(
       nextState,
       channelId,
-      target.participantId,
+      attachedTarget.participantId,
       {
         provider: session.provider,
         instance: participant.execution.target.instance,
@@ -605,7 +650,7 @@ export async function ensureTargetSession(
     nextState = setStartedSession(
       nextState,
       channelId,
-      { participantId: target.participantId },
+      { participantId: attachedTarget.participantId },
       session,
       now,
       laneId,
@@ -620,11 +665,11 @@ export async function ensureTargetSession(
         senderKind: 'system',
         senderName: 'Runtime',
         body: formatSessionStartedMessage(
-          resolveVisibleWakeTargetLabel({
-            target,
-            provider: session.provider,
-            instance: participant.execution.target.instance,
-          }),
+            resolveVisibleWakeTargetLabel({
+              target: attachedTarget,
+              provider: session.provider,
+              instance: participant.execution.target.instance,
+            }),
           session,
         ),
       },
@@ -634,7 +679,7 @@ export async function ensureTargetSession(
           event: 'session_started',
           conversationId,
           targetKind: 'cat',
-          targetId: target.participantId,
+          targetId: attachedTarget.participantId,
           ...(targetStateId ? { targetStateId } : {}),
           ...(laneId ? { laneId } : {}),
           ...(transportBindingId ? { transportBindingId } : {}),
@@ -646,15 +691,21 @@ export async function ensureTargetSession(
     ).state;
     return {
       state: nextState,
-      target: { ...target, sessionId: session.id },
+      target: { ...attachedTarget, laneId, sessionId: session.id },
       error: null,
       wakeRequest: recordTargetWake('completed'),
       taskExecutionContext,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown runtime error';
-    nextState = target.participantKind === 'cat'
-      ? setErroredSession(nextState, channelId, { participantId: target.participantId }, message, now)
+    nextState = attachedTarget.participantKind === 'cat'
+      ? setErroredSession(
+        nextState,
+        channelId,
+        { participantId: attachedTarget.participantId },
+        message,
+        now,
+      )
       : setErroredSession(nextState, channelId, 'orchestrator', message, now);
     nextState = appendMessage(
       nextState,
@@ -663,7 +714,7 @@ export async function ensureTargetSession(
         senderKind: 'system',
         senderName: 'Runtime',
         body: `Failed to start ${resolveVisibleWakeTargetLabel({
-          target,
+          target: attachedTarget,
           provider: targetLabelProvider,
           instance: targetLabelInstance,
         })}: ${message}`,
@@ -672,8 +723,8 @@ export async function ensureTargetSession(
       {
         metadata: {
           event: 'session_start_failed',
-          targetKind: target.participantKind,
-          targetId: target.participantId,
+          targetKind: attachedTarget.participantKind,
+          targetId: attachedTarget.participantId,
           ...(targetStateId ? { targetStateId } : {}),
           ...(laneId ? { laneId } : {}),
         },
@@ -681,7 +732,7 @@ export async function ensureTargetSession(
     ).state;
     return {
       state: nextState,
-      target,
+      target: attachedTarget,
       error: message,
       wakeRequest: recordTargetWake('failed', message),
       taskExecutionContext,
@@ -733,7 +784,15 @@ export async function wakeChannelEntryParticipant(
   }
 
   const target = defaultTarget.target;
-  if (target.sessionId) {
+  const existingAttachment = resolveTargetLeaseAttachment(
+    nextState,
+    channelId,
+    target,
+    {
+      preferredLaneId: target.laneId?.trim() || null,
+    },
+  );
+  if (existingAttachment.sessionId) {
     nextState = ensureChannelMarkedActive(nextState, channelId, now);
     return {
       state: nextState,
@@ -742,7 +801,7 @@ export async function wakeChannelEntryParticipant(
         targetId: target.participantId,
         targetName: target.participantName,
         status: 'already_started',
-        sessionId: target.sessionId,
+        sessionId: existingAttachment.sessionId,
       },
     };
   }
