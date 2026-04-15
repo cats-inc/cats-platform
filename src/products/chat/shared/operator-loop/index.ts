@@ -22,6 +22,7 @@ import { buildChatConversationId } from '../../../../shared/chatCoreIds.js';
 import type {
   ChatNextActionView,
   ChatOperatorAttentionView,
+  ChatOperatorChannelIdentity,
   ChatOperatorSnapshot,
   ChatOperatorView,
   ChatRunInspectorView,
@@ -50,15 +51,34 @@ export function resolveChatConversationId(channelId: string): string {
   return buildChatConversationId(channelId);
 }
 
+function readChatOperatorChannelIdentity(
+  channel: ChatOperatorChannelIdentity,
+): {
+  channelId: string;
+  conversationId: string;
+} {
+  if (typeof channel === 'string') {
+    return {
+      channelId: channel,
+      conversationId: resolveChatConversationId(channel),
+    };
+  }
+
+  return {
+    channelId: channel.id,
+    conversationId: channel.conversationId?.trim() || resolveChatConversationId(channel.id),
+  };
+}
+
 export function buildChatOperatorView(
   snapshot: ChatOperatorSnapshot | null,
-  channelId: string,
+  channel: ChatOperatorChannelIdentity,
 ): ChatOperatorView | null {
   if (!snapshot) {
     return null;
   }
 
-  const conversationId = resolveChatConversationId(channelId);
+  const { channelId, conversationId } = readChatOperatorChannelIdentity(channel);
   const taskId = `task-channel-${channelId}`;
   const actorNameById = buildActorNameById(snapshot.core);
   const task = snapshot.core.tasks.find((candidate) => candidate.id === taskId) ?? null;

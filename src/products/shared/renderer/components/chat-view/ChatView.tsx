@@ -218,8 +218,8 @@ export function ChatView({
     [directLaneCat?.name, isDirectLane],
   );
   const operatorView = useMemo(
-    () => buildChatOperatorView(operatorSnapshot, selectedChannel.id),
-    [operatorSnapshot, selectedChannel.id],
+    () => buildChatOperatorView(operatorSnapshot, selectedChannel),
+    [operatorSnapshot, selectedChannel],
   );
   const runIdsKey = useMemo(
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',

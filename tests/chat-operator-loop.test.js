@@ -309,6 +309,52 @@ test('buildChatOperatorView exposes latest workflow recommendation summaries', (
   assert.equal(inspector?.latestWorkflowRecommendation?.rationale, 'Agent-2 is the current implementer.');
 });
 
+test('buildChatOperatorView prefers provided canonical conversation identity', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-channel-room-canonical',
+      title: 'Canonical conversation task',
+      conversationId: 'conversation-canonical-room-canonical',
+      createdAt: '2026-04-15T03:00:00.000Z',
+    },
+    new Date('2026-04-15T03:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-room-canonical',
+      title: 'Canonical conversation run',
+      status: 'running',
+      conversationId: 'conversation-canonical-room-canonical',
+      taskId: 'task-channel-room-canonical',
+      traceId: 'trace-room-canonical',
+      summary: 'Uses the supplied canonical conversation id.',
+      createdAt: '2026-04-15T03:01:00.000Z',
+      metadata: {},
+    },
+    new Date('2026-04-15T03:01:00.000Z'),
+  ).core;
+
+  const view = buildChatOperatorView(
+    {
+      core,
+      approvals: buildApprovalQueue(core),
+    },
+    {
+      id: 'room-canonical',
+      conversationId: 'conversation-canonical-room-canonical',
+    },
+  );
+
+  assert.ok(view);
+  assert.equal(view.conversationId, 'conversation-canonical-room-canonical');
+  assert.equal(view.task?.id, 'task-channel-room-canonical');
+  assert.equal(view.runs[0]?.id, 'run-room-canonical');
+});
+
 test('buildChatOperatorView exposes normalized workflow continuation state', () => {
   let core = createDefaultCoreState();
 

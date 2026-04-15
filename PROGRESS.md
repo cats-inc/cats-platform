@@ -606,6 +606,10 @@ Known follow-ups:
   `/api/core/tasks/{taskId}/control-plane` and `/api/core/tasks/{taskId}/recovery`,
   so cross-product task detail consumers stay aligned on one operator/replay
   contract instead of growing product-local variants
+- chat operator-loop assembly now also accepts caller-supplied canonical
+  `conversationId`, so chat/work/code renderer surfaces can consume the
+  read-model identity tuple directly instead of re-deriving conversation scope
+  from `channelId` inside operator consumers
 - `electron/*` now also stages cross-platform packaging manifests under
   `build/desktop-packaging`, persists a host-readable bootstrap snapshot to the
   desktop user-data dir, keeps `cats-runtime` + `cats` alive behind a

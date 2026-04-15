@@ -300,8 +300,8 @@ export function ChatView({
     ],
   );
   const operatorView = useMemo(
-    () => buildChatOperatorView(operatorSnapshot, selectedChannel.id),
-    [operatorSnapshot, selectedChannel.id],
+    () => buildChatOperatorView(operatorSnapshot, selectedChannel),
+    [operatorSnapshot, selectedChannel],
   );
   const choiceResponsesBySource = useMemo(
     () => buildChoiceResponsesBySource(selectedChannel.messages),

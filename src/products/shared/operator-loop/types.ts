@@ -22,6 +22,13 @@ export interface ChatOperatorSnapshot {
   approvals: CoreApprovalQueueItem[];
 }
 
+export type ChatOperatorChannelIdentity =
+  | string
+  | {
+      id: string;
+      conversationId?: string | null;
+    };
+
 export type ChatOperatorSeverity =
   | 'muted'
   | 'progress'
