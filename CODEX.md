@@ -53,6 +53,9 @@ If assigned as Conductor in Project Roles table:
 - **MUST** follow coding conventions specified in AGENTS.md
 - **MUST** respect `.editorconfig` settings (LF line endings, final newline, trim rules)
 - **MUST NOT** use interactive rebase; always use non-interactive rebase commands only
+- **MUST NOT** run `git commit` and `git push` simultaneously or in one
+  parallelized step; finish and verify the commit first, then run a separate
+  push
 - **MUST NOT** run plain `git rebase --continue` in this Windows/PowerShell
   workspace, because Git may open an editor and block the session
 - **MUST** continue rebases with an explicit no-editor command after conflicts
@@ -385,4 +388,4 @@ working memory for Codex, not yet a ratified product spec or ADR.
 
 This file is maintained by Codex only. Other agents should not modify this file.
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
