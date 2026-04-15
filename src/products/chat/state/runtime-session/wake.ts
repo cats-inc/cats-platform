@@ -4,7 +4,6 @@ import type {
 import type {
   RoomRoutingState,
   RoomWakeReason,
-  RoomWakeRequest,
   RoomWakeTrigger,
 } from '../../../../shared/roomRouting.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
@@ -12,36 +11,23 @@ import {
   requireChannel,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
-import { createRecordedWakeRequest } from '../room-routing/wake.js';
 import {
   ensureChannelMarkedActive,
-  toParticipantRef,
 } from './state.js';
 import {
   readInvocationContextMetadataString,
-  resolveTargetLeaseAttachment,
   type RuntimeSessionRoutingOptions,
 } from './shared.js';
-import {
-  resolveChannelTaskExecutionRequest,
-  type ChannelTaskExecutionContext,
-} from './taskExecution.js';
+import type { ChannelTaskExecutionContext } from './taskExecution.js';
 import {
   resolveExistingTargetSessionOutcome,
   type EnsureTargetSessionResult,
   type ExistingTargetSessionOutcome,
 } from './sessionReuse.js';
 import { startAttachedTargetSession } from './sessionLaunch.js';
-
-function readDispatchContextMetadataString(
-  metadata: Record<string, unknown> | undefined,
-  key: string,
-): string | null {
-  const value = metadata?.[key];
-  return typeof value === 'string' && value.trim().length > 0
-    ? value.trim()
-    : null;
-}
+import {
+  prepareTargetSessionWake,
+} from './sessionWakePreparation.js';
 
 type EnsureTargetSessionTaskExecutionContext =
   ChannelTaskExecutionContext | undefined;
@@ -54,81 +40,6 @@ type EnsureTargetSessionOptions = RuntimeSessionRoutingOptions & {
   ignoreLeaseSessionAttachment?: boolean;
   resolvedTaskExecutionContext?: EnsureTargetSessionTaskExecutionContext | null;
 };
-
-type EnsureTargetWakeRecorder = (
-  status: RoomWakeRequest['status'],
-  error?: string | null,
-) => RoomWakeRequest | null;
-
-interface PreparedTargetSessionWake {
-  attachedTarget: RoutingTarget;
-  targetStateId: string | null;
-  laneId: string | null;
-  taskExecutionContext: EnsureTargetSessionTaskExecutionContext;
-  recordTargetWake: EnsureTargetWakeRecorder;
-}
-
-async function prepareTargetSessionWake(input: {
-  state: ChatState;
-  channelId: string;
-  target: RoutingTarget;
-  nowIso: string;
-  options: EnsureTargetSessionOptions;
-  wakeTrigger: RoomWakeTrigger;
-  wakeReason: RoomWakeReason;
-  sourceMessageId: string | null;
-}): Promise<PreparedTargetSessionWake> {
-  const targetStateId = readDispatchContextMetadataString(
-    input.options.dispatchContextMetadata,
-    'targetStateId',
-  );
-  const laneId = readDispatchContextMetadataString(
-    input.options.dispatchContextMetadata,
-    'laneId',
-  ) ?? (input.target.laneId?.trim() || null);
-  const targetAttachment = resolveTargetLeaseAttachment(
-    input.state,
-    input.channelId,
-    input.target,
-    {
-      preferredLaneId: laneId,
-      allowLeaseSessionReuse: input.options.ignoreLeaseSessionAttachment !== true,
-    },
-  );
-  const attachedTarget: RoutingTarget = {
-    ...input.target,
-    ...targetAttachment,
-    laneId: targetAttachment.laneId,
-  };
-  const participant = toParticipantRef(attachedTarget);
-  const taskExecutionContext = input.options.resolvedTaskExecutionContext !== undefined
-    ? input.options.resolvedTaskExecutionContext
-    : await resolveChannelTaskExecutionRequest(
-      input.options.chatStore,
-      input.channelId,
-      attachedTarget,
-    );
-
-  return {
-    attachedTarget,
-    targetStateId,
-    laneId,
-    taskExecutionContext: taskExecutionContext ?? undefined,
-    recordTargetWake: (
-      status: RoomWakeRequest['status'],
-      error: string | null = null,
-    ) => createRecordedWakeRequest(
-      input.options.roomRouting,
-      participant,
-      input.wakeTrigger,
-      input.wakeReason,
-      input.sourceMessageId,
-      input.nowIso,
-      status,
-      error,
-    ),
-  };
-}
 
 export async function ensureTargetSession(
   state: ChatState,
@@ -147,10 +58,14 @@ export async function ensureTargetSession(
     channelId,
     target,
     nowIso,
-    options,
+    roomRouting: options.roomRouting,
     wakeTrigger,
     wakeReason,
     sourceMessageId,
+    dispatchContextMetadata: options.dispatchContextMetadata,
+    ignoreLeaseSessionAttachment: options.ignoreLeaseSessionAttachment,
+    resolvedTaskExecutionContext: options.resolvedTaskExecutionContext,
+    chatStore: options.chatStore,
   });
   const existingSessionOutcome = await resolveExistingTargetSessionOutcome({
     state,
