@@ -472,6 +472,7 @@ export async function settleBegunChannelMessageDispatchFailure(
   activeTurn.stageId = 'runtime_error';
   activeTurn.completedAt = nowIso;
   activeTurn.updatedAt = nowIso;
+  const plannedTargets = activeTurn.targetStatuses.map((target) => structuredClone(target.participant));
 
   const latestCheckpoint = addWorkflowCheckpoint(
     outcome,
@@ -481,7 +482,7 @@ export async function settleBegunChannelMessageDispatchFailure(
     `Room workflow failed before completion: ${errorMessage}`,
     nowIso,
     null,
-    [],
+    plannedTargets,
     {
       error: errorMessage,
       checkpointSeed: randomUUID(),
@@ -498,10 +499,16 @@ export async function settleBegunChannelMessageDispatchFailure(
       nowIso,
       null,
       userMessage.id,
-      [],
+      plannedTargets,
       {
         outcomeId: randomUUID(),
         checkpointId: latestCheckpoint.id,
+        targetIdentities: activeTurn.targetStatuses.map((target) => ({
+          participantKind: target.participant.participantKind,
+          participantId: target.participant.participantId,
+          laneId: target.laneId,
+          sessionId: target.sessionId,
+        })),
         metadata: {
           workflowStageId: activeTurn.stageId,
           workflowShape: activeTurn.workflowShape,
