@@ -2765,6 +2765,86 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat ses
   }, chatStore);
 });
 
+test('GET /api/channels/:id/stream exposes the direct-lane lease laneId when no workflow turn is active', async () => {
+  const chatStore = new MemoryChatStore();
+  const runtime = createRuntimeStub();
+  const seededAt = new Date('2026-03-11T00:00:00.000Z');
+
+  let state = await chatStore.read();
+  state = createCat(
+    state,
+    {
+      name: 'Lead Cat',
+      provider: 'claude',
+      roles: ['companion'],
+    },
+    seededAt,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Direct lane lease identity',
+      topic: 'Expose the lease lane id through the idle direct-lane stream target.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [catId],
+      defaultRecipientId: catId,
+      skipBossCatGreeting: true,
+    },
+    seededAt,
+  );
+  const channelId = state.channels[0].id;
+  state = setChannelCatLease(
+    state,
+    channelId,
+    catId,
+    {
+      sessionId: 'session-direct-lane',
+      status: 'ready',
+      laneId: 'lane-direct-idle',
+      cwd: 'C:/repo/cats-platform',
+      lastError: null,
+      provider: 'claude',
+      model: 'claude-sonnet-4',
+      startedAt: seededAt.toISOString(),
+      lastUsedAt: seededAt.toISOString(),
+    },
+    seededAt,
+  );
+  await chatStore.write(state);
+
+  runtime.setObservedSession('session-direct-lane', {
+    session: {
+      id: 'session-direct-lane',
+    },
+    observePath: '/sessions/session-direct-lane/observe',
+    stream: {
+      path: '/sessions/session-direct-lane/stream',
+      available: true,
+      events: [
+        {
+          event: 'progress',
+          data: {
+            type: 'progress',
+            text: 'Lead cat is ready on the carried lane.',
+          },
+        },
+      ],
+    },
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/channels/${channelId}/stream`);
+    assert.equal(response.status, 200);
+
+    const body = await response.text();
+    assert.match(body, /event: progress/u);
+    assert.match(body, /"laneId":"lane-direct-idle"/u);
+    assert.match(body, /"sessionId":"session-direct-lane"/u);
+    assert.deepEqual(runtime.streamedSessions, ['session-direct-lane']);
+  }, chatStore);
+});
+
 test('GET /health reports runtime reachability', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/health`);
