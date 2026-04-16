@@ -1,7 +1,9 @@
 import { useState } from 'react';
 
-import type { LiveIndicatorSegmentState } from '../../hooks/useLiveIndicator.js';
 import {
+  buildSegmentCopyLabel,
+  copySegmentPlainTextToClipboard,
+  extractSegmentPlainText,
   resolveSegmentPresentation,
   SegmentSpeakerHeader,
   SegmentContentBody,
@@ -13,22 +15,6 @@ function phaseClassName(phase: string): string {
     case 'streaming': return 'compareCard compareCardStreaming';
     case 'sealed': return 'compareCard compareCardSealed';
     default: return 'compareCard';
-  }
-}
-
-function extractSegmentPlainText(segment: LiveIndicatorSegmentState): string {
-  return [...segment.contentBlocks]
-    .sort((a, b) => a.index - b.index)
-    .filter((block) => block.kind === 'text' && block.text.trim())
-    .map((block) => block.text)
-    .join('\n');
-}
-
-async function copyToClipboard(text: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    // Ignore clipboard failures.
   }
 }
 
@@ -111,12 +97,6 @@ function CopyButton(): JSX.Element {
   );
 }
 
-function resolveCopyLabel(name: string | null): string {
-  return name
-    ? `Copy message from ${name}`
-    : 'Copy unnamed response';
-}
-
 export function CompareCardsLayout<Participant>(
   props: ClusterLayoutProps<Participant>,
 ): JSX.Element {
@@ -194,12 +174,7 @@ export function CompareCardsLayout<Participant>(
             || presentation.speakerLabel,
           );
           const plainText = extractSegmentPlainText(segment);
-          const copyLabel = resolveCopyLabel(
-            presentation.segmentParticipantDisplayName
-            ?? presentation.segmentParticipantCat?.name
-            ?? presentation.speakerCat?.name
-            ?? presentation.speakerLabel,
-          );
+          const copyLabel = buildSegmentCopyLabel(presentation);
           return (
             <article key={segment.id} className={phaseClassName(segment.phase)}>
               <div className="compareCardHeader">
@@ -221,7 +196,7 @@ export function CompareCardsLayout<Participant>(
                     <button
                       type="button"
                       className="compareCardActionIcon"
-                      onClick={() => { void copyToClipboard(plainText); }}
+                      onClick={() => { void copySegmentPlainTextToClipboard(plainText); }}
                       aria-label={copyLabel}
                       title={copyLabel}
                     >

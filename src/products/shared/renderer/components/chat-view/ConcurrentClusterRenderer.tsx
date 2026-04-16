@@ -20,6 +20,7 @@ import {
   stripLeadingLiveTranscriptBlankLines,
 } from './liveTranscriptBlockSupport.js';
 import type { ConcurrentClusterAction } from './concurrentClusterUiState.js';
+import { TranscriptMessageActions as SharedTranscriptMessageActions } from './TranscriptMessageActions.js';
 import { CompareCardsLayout } from './CompareCardsLayout.js';
 import { FocusRailLayout } from './FocusRailLayout.js';
 
@@ -72,6 +73,26 @@ export interface ResolvedSegmentPresentation<Participant> {
   renderedBlocks: JSX.Element[];
   showTrailingDots: boolean;
   shouldRender: boolean;
+}
+
+export function extractSegmentPlainText(
+  segment: LiveIndicatorSegmentState,
+): string {
+  return [...segment.contentBlocks]
+    .sort((left, right) => left.index - right.index)
+    .filter((block) => block.kind === 'text' && block.text.trim())
+    .map((block) => block.text)
+    .join('\n');
+}
+
+export async function copySegmentPlainTextToClipboard(
+  text: string,
+): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Ignore clipboard failures.
+  }
 }
 
 export function renderContentBlockSegment(
@@ -213,6 +234,27 @@ export function resolveSegmentPresentation<Participant>(
     showTrailingDots,
     shouldRender,
   };
+}
+
+export function resolveSegmentAccessibleName<Participant>(
+  presentation: ResolvedSegmentPresentation<Participant>,
+): string {
+  return (
+    presentation.segmentParticipantDisplayName
+    ?? presentation.segmentParticipantCat?.name
+    ?? presentation.speakerCat?.name
+    ?? presentation.speakerLabel?.trim()
+    ?? 'unnamed response'
+  );
+}
+
+export function buildSegmentCopyLabel<Participant>(
+  presentation: ResolvedSegmentPresentation<Participant>,
+): string {
+  const accessibleName = resolveSegmentAccessibleName(presentation);
+  return accessibleName === 'unnamed response'
+    ? 'Copy unnamed response'
+    : `Copy message from ${accessibleName}`;
 }
 
 export function SegmentSpeakerHeader<Participant>({
@@ -408,6 +450,10 @@ function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>):
         if (!presentation.shouldRender) {
           return null;
         }
+        const sealedPlainText = segment.phase === 'sealed'
+          ? extractSegmentPlainText(segment)
+          : '';
+        const showCopyAction = sealedPlainText.trim().length > 0;
         return (
           <article
             key={segment.id}
@@ -432,6 +478,16 @@ function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>):
                 showProgressDetails={showProgressDetails}
               />
             </div>
+            <SharedTranscriptMessageActions
+              senderKind="agent"
+              showDefaultCopyAction={showCopyAction}
+              copyActionLabel={buildSegmentCopyLabel(presentation)}
+              onCopyMessage={showCopyAction
+                ? (() => {
+                  void copySegmentPlainTextToClipboard(sealedPlainText);
+                })
+                : undefined}
+            />
           </article>
         );
       })}

@@ -256,6 +256,61 @@ test('focus_rail anonymous indicator returns when header dots are unavailable', 
   );
 });
 
+test('inline_stack exposes copy actions as soon as sealed concurrent bubbles have text', () => {
+  const markup = renderConcurrentCluster('inline_stack', [
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-1',
+      targetStateId: 'target-1',
+      segmentIndex: 0,
+      speakerLabel: 'Claude-CLI',
+      contentBlocks: [
+        {
+          id: 'text-claude',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Claude answer',
+        },
+      ],
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-2',
+      targetStateId: 'target-2',
+      segmentIndex: 1,
+      speakerLabel: 'Codex-CLI',
+      contentBlocks: [
+        {
+          id: 'text-codex',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Codex answer',
+        },
+      ],
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-3',
+      targetStateId: 'target-3',
+      segmentIndex: 2,
+      speakerLabel: 'Gemini-CLI',
+    }),
+  ]);
+
+  assert.equal(
+    markup.match(/messageActions messageActionsPersistent/gu)?.length ?? 0,
+    2,
+  );
+  assert.match(markup, /aria-label="Copy message from Claude-CLI"/u);
+  assert.match(markup, /aria-label="Copy message from Codex-CLI"/u);
+  assert.doesNotMatch(markup, /aria-label="Copy message from Gemini-CLI"/u);
+});
+
 test('ConcurrentClusterRenderer renders cluster actions independently from mode-specific layout', () => {
   const markup = renderConcurrentCluster(
     'compare_cards',

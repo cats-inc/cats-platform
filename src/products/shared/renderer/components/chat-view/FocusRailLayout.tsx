@@ -1,7 +1,9 @@
 import { useState } from 'react';
 
-import type { LiveIndicatorSegmentState } from '../../hooks/useLiveIndicator.js';
 import {
+  buildSegmentCopyLabel,
+  copySegmentPlainTextToClipboard,
+  extractSegmentPlainText,
   resolveSegmentPresentation,
   SegmentSpeakerHeader,
   SegmentSpeakerInlineSummary,
@@ -9,22 +11,6 @@ import {
   type ClusterLayoutProps,
   type ResolvedSegmentPresentation,
 } from './ConcurrentClusterRenderer.js';
-
-function extractSegmentPlainText(segment: LiveIndicatorSegmentState): string {
-  return [...segment.contentBlocks]
-    .sort((a, b) => a.index - b.index)
-    .filter((block) => block.kind === 'text' && block.text.trim())
-    .map((block) => block.text)
-    .join('\n');
-}
-
-async function copyToClipboard(text: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    // Ignore clipboard failures.
-  }
-}
 
 function CopyButton(): JSX.Element {
   return (
@@ -54,32 +40,17 @@ function hasSpeakerIdentity<Participant>(
   );
 }
 
-function resolveSegmentAccessibleName<Participant>(
+function buildToggleLabel<Participant>(
   presentation: ResolvedSegmentPresentation<Participant>,
+  isExpanded: boolean,
 ): string {
-  return (
+  const accessibleName = (
     presentation.segmentParticipantDisplayName
     ?? presentation.segmentParticipantCat?.name
     ?? presentation.speakerCat?.name
     ?? presentation.speakerLabel?.trim()
     ?? 'unnamed response'
   );
-}
-
-function buildCopyLabel<Participant>(
-  presentation: ResolvedSegmentPresentation<Participant>,
-): string {
-  const accessibleName = resolveSegmentAccessibleName(presentation);
-  return accessibleName === 'unnamed response'
-    ? 'Copy unnamed response'
-    : `Copy message from ${accessibleName}`;
-}
-
-function buildToggleLabel<Participant>(
-  presentation: ResolvedSegmentPresentation<Participant>,
-  isExpanded: boolean,
-): string {
-  const accessibleName = resolveSegmentAccessibleName(presentation);
   return accessibleName === 'unnamed response'
     ? `${isExpanded ? 'Collapse' : 'Expand'} unnamed response`
     : `${isExpanded ? 'Collapse' : 'Expand'} response from ${accessibleName}`;
@@ -132,7 +103,7 @@ export function FocusRailLayout<Participant>(
     <div className="focusRailContainer">
       {primarySegment && primaryPresentation?.shouldRender ? (() => {
         const primaryPlainText = extractSegmentPlainText(primarySegment);
-        const primaryCopyLabel = buildCopyLabel(primaryPresentation);
+        const primaryCopyLabel = buildSegmentCopyLabel(primaryPresentation);
         return (
           <article className="focusRailPrimary">
             <div className="focusRailPrimaryHeader">
@@ -152,7 +123,7 @@ export function FocusRailLayout<Participant>(
                   <button
                     type="button"
                     className="focusRailActionIcon"
-                    onClick={() => { void copyToClipboard(primaryPlainText); }}
+                    onClick={() => { void copySegmentPlainTextToClipboard(primaryPlainText); }}
                     aria-label={primaryCopyLabel}
                     title={primaryCopyLabel}
                   >
@@ -193,7 +164,7 @@ export function FocusRailLayout<Participant>(
               isExpanded,
             });
             const toggleLabel = buildToggleLabel(presentation, isExpanded);
-            const copyLabel = buildCopyLabel(presentation);
+            const copyLabel = buildSegmentCopyLabel(presentation);
             return (
               <div key={segment.id} className="focusRailSecondarySlot">
                 <button
@@ -243,7 +214,7 @@ export function FocusRailLayout<Participant>(
                         <button
                           type="button"
                           className="focusRailActionIcon"
-                          onClick={() => { void copyToClipboard(secondaryPlainText); }}
+                          onClick={() => { void copySegmentPlainTextToClipboard(secondaryPlainText); }}
                           aria-label={copyLabel}
                           title={copyLabel}
                         >
