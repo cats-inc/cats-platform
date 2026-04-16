@@ -576,6 +576,132 @@ function doesWaitingIndicatorLogicalIdentityMatch(
   );
 }
 
+function areStringArraysEqual(
+  left: ReadonlyArray<string>,
+  right: ReadonlyArray<string>,
+): boolean {
+  return left.length === right.length
+    && left.every((value, index) => value === right[index]);
+}
+
+function areContentBlocksEquivalent(
+  left: LiveIndicatorSegmentState['contentBlocks'],
+  right: LiveIndicatorSegmentState['contentBlocks'],
+): boolean {
+  return left.length === right.length
+    && left.every((block, index) => {
+      const candidate = right[index];
+      return candidate != null
+        && block.id === candidate.id
+        && block.kind === candidate.kind
+        && block.index === candidate.index
+        && block.status === candidate.status
+        && block.text === candidate.text
+        && block.title === candidate.title
+        && block.toolName === candidate.toolName;
+    });
+}
+
+function areToolEntriesEquivalent(
+  left: LiveIndicatorSegmentState['tools'],
+  right: LiveIndicatorSegmentState['tools'],
+): boolean {
+  return left.length === right.length
+    && left.every((tool, index) => {
+      const candidate = right[index];
+      return candidate != null
+        && tool.toolName === candidate.toolName
+        && tool.toolId === candidate.toolId
+        && tool.done === candidate.done;
+    });
+}
+
+function areEventEntriesEquivalent(
+  left: LiveIndicatorSegmentState['events'],
+  right: LiveIndicatorSegmentState['events'],
+): boolean {
+  return left.length === right.length
+    && left.every((event, index) => {
+      const candidate = right[index];
+      return candidate != null
+        && event.eventType === candidate.eventType
+        && event.label === candidate.label
+        && event.text === candidate.text
+        && event.tone === candidate.tone
+        && event.kind === candidate.kind
+        && event.toolName === candidate.toolName
+        && event.toolId === candidate.toolId;
+    });
+}
+
+function areLiveIndicatorSegmentsEquivalent(
+  left: LiveIndicatorSegmentState,
+  right: LiveIndicatorSegmentState,
+): boolean {
+  return left.id === right.id
+    && left.phase === right.phase
+    && left.sourceMessageId === right.sourceMessageId
+    && left.laneId === right.laneId
+    && left.targetStateId === right.targetStateId
+    && left.segmentIndex === right.segmentIndex
+    && left.sessionId === right.sessionId
+    && left.identityParticipantId === right.identityParticipantId
+    && left.participantId === right.participantId
+    && left.catId === right.catId
+    && left.catName === right.catName
+    && left.speakerLabel === right.speakerLabel
+    && left.sessionStartedAt === right.sessionStartedAt
+    && left.requiresSessionStartConfirmation === right.requiresSessionStartConfirmation
+    && left.progressText === right.progressText
+    && left.progressKind === right.progressKind
+    && areStringArraysEqual(left.activeCatIds, right.activeCatIds)
+    && areToolEntriesEquivalent(left.tools, right.tools)
+    && areContentBlocksEquivalent(left.contentBlocks, right.contentBlocks)
+    && areEventEntriesEquivalent(left.events, right.events);
+}
+
+function areLiveIndicatorStatesEquivalent(
+  left: LiveIndicatorState,
+  right: LiveIndicatorState,
+): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (
+    left.active !== right.active
+    || left.phase !== right.phase
+    || left.sourceMessageId !== right.sourceMessageId
+    || left.laneId !== right.laneId
+    || left.targetStateId !== right.targetStateId
+    || left.segmentIndex !== right.segmentIndex
+    || left.sessionId !== right.sessionId
+    || left.identityParticipantId !== right.identityParticipantId
+    || left.participantId !== right.participantId
+    || left.catId !== right.catId
+    || left.catName !== right.catName
+    || left.speakerLabel !== right.speakerLabel
+    || left.sessionStartedAt !== right.sessionStartedAt
+    || left.requiresSessionStartConfirmation !== right.requiresSessionStartConfirmation
+    || left.progressText !== right.progressText
+    || left.progressKind !== right.progressKind
+    || !areStringArraysEqual(left.activeCatIds, right.activeCatIds)
+    || !areToolEntriesEquivalent(left.tools, right.tools)
+    || !areContentBlocksEquivalent(left.contentBlocks, right.contentBlocks)
+    || !areEventEntriesEquivalent(left.events, right.events)
+  ) {
+    return false;
+  }
+
+  const leftSegments = resolveLiveIndicatorSegments(left);
+  const rightSegments = resolveLiveIndicatorSegments(right);
+  return leftSegments.length === rightSegments.length
+    && leftSegments.every((segment, index) => {
+      const candidate = rightSegments[index];
+      return candidate != null
+        && areLiveIndicatorSegmentsEquivalent(segment, candidate);
+    });
+}
+
 function resolveLogicalSegmentParticipantId(
   segment: Pick<LiveIndicatorState | LiveIndicatorSegmentState, 'identityParticipantId' | 'participantId'>,
 ): string | null {
@@ -1139,7 +1265,7 @@ function hasMaterializedSegmentContent(
     || segment.tools.length > 0;
 }
 
-function mergeConcurrentWaitingIndicatorState(
+export function mergeConcurrentWaitingIndicatorState(
   previous: LiveIndicatorState,
   waitingState: LiveIndicatorState,
 ): LiveIndicatorState {
@@ -1206,7 +1332,8 @@ function mergeConcurrentWaitingIndicatorState(
     }
   });
 
-  return projectLiveIndicatorStateFromSegments(nextSegments);
+  const next = projectLiveIndicatorStateFromSegments(nextSegments);
+  return areLiveIndicatorStatesEquivalent(previous, next) ? previous : next;
 }
 
 export function useLiveIndicator<

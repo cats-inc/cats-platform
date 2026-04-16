@@ -19,6 +19,7 @@ import {
   shouldReconnectLiveIndicatorAfterOngoingWorkflow,
   shouldReconnectLiveIndicatorAfterSessionClose,
   shouldReconnectLiveIndicatorAfterSourceError,
+  mergeConcurrentWaitingIndicatorState,
   resolveConcurrentWaitingSegments,
   resolveWaitingSessionState,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
@@ -566,6 +567,63 @@ test('resolveConcurrentWaitingSegments materializes every active concurrent targ
   assert.equal(segments[1]?.participantId, 'participant-codex');
   assert.equal(segments[1]?.speakerLabel, 'Codex-CLI');
   assert.equal(segments[1]?.requiresSessionStartConfirmation, true);
+});
+
+test('mergeConcurrentWaitingIndicatorState preserves the previous reference when concurrent waiting lanes are unchanged', () => {
+  const previous = projectLiveIndicatorStateFromSegments([
+    createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-1',
+      targetStateId: 'target-1',
+      segmentIndex: 0,
+      participantId: 'participant-1',
+      identityParticipantId: 'participant-1',
+      speakerLabel: 'Claude-CLI',
+      sessionStartedAt: '2026-04-16T12:00:00.000Z',
+      requiresSessionStartConfirmation: true,
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-2',
+      targetStateId: 'target-2',
+      segmentIndex: 0,
+      participantId: 'participant-2',
+      identityParticipantId: 'participant-2',
+      speakerLabel: 'Codex-CLI',
+      sessionStartedAt: '2026-04-16T12:00:01.000Z',
+      requiresSessionStartConfirmation: true,
+    }),
+  ]);
+  const waitingState = projectLiveIndicatorStateFromSegments([
+    createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-1',
+      targetStateId: 'target-1',
+      segmentIndex: 0,
+      participantId: 'participant-1',
+      identityParticipantId: 'participant-1',
+      speakerLabel: 'Claude-CLI',
+      sessionStartedAt: '2026-04-16T12:00:00.000Z',
+      requiresSessionStartConfirmation: true,
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-2',
+      targetStateId: 'target-2',
+      segmentIndex: 0,
+      participantId: 'participant-2',
+      identityParticipantId: 'participant-2',
+      speakerLabel: 'Codex-CLI',
+      sessionStartedAt: '2026-04-16T12:00:01.000Z',
+      requiresSessionStartConfirmation: true,
+    }),
+  ]);
+
+  assert.equal(mergeConcurrentWaitingIndicatorState(previous, waitingState), previous);
 });
 
 test('shouldRetryLiveIndicatorSessionClose reconnects when a streamed session closes during an active send', () => {

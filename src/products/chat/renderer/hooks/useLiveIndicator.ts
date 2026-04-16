@@ -9,6 +9,7 @@ import {
 import {
   advanceSequencedLiveIndicatorStreamCursor,
   EMPTY_LIVE_INDICATOR,
+  mergeConcurrentWaitingIndicatorState,
   resolveConcurrentWaitingSegments,
   resolveLiveIndicatorConversationId,
   resolveWaitingIndicatorStateTransition,
@@ -38,6 +39,7 @@ export type {
   LiveToolEntry,
 } from '../../../../shared/liveIndicator.js';
 export { EMPTY_LIVE_INDICATOR } from '../../../shared/renderer/hooks/useLiveIndicator.js';
+export { mergeConcurrentWaitingIndicatorState } from '../../../shared/renderer/hooks/useLiveIndicator.js';
 
 function isDispatchBusyForCurrentChannel(
   channelId: string | null,
