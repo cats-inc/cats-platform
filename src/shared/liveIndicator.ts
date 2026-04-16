@@ -192,6 +192,27 @@ export function createLiveIndicatorSegmentState(input: {
   };
 }
 
+function dedupeLiveIndicatorSegmentsById(
+  segments: ReadonlyArray<LiveIndicatorSegmentState>,
+): LiveIndicatorSegmentState[] {
+  if (segments.length <= 1) {
+    return [...segments];
+  }
+
+  const seen = new Set<string>();
+  const deduped: LiveIndicatorSegmentState[] = [];
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    const segment = segments[index]!;
+    if (seen.has(segment.id)) {
+      continue;
+    }
+    seen.add(segment.id);
+    deduped.push(segment);
+  }
+
+  return deduped.reverse();
+}
+
 export function resolvePrimaryLiveIndicatorSegment(
   liveIndicator: LiveIndicatorState | null | undefined,
 ): LiveIndicatorSegmentState | null {
@@ -211,7 +232,7 @@ export function resolveLiveIndicatorSegments(
   }
 
   if (liveIndicator.segments.length > 0) {
-    return liveIndicator.segments;
+    return dedupeLiveIndicatorSegmentsById(liveIndicator.segments);
   }
 
   if (liveIndicator.phase === 'idle') {
@@ -247,7 +268,7 @@ export function projectLiveIndicatorStateFromSegments(
   segments: ReadonlyArray<LiveIndicatorSegmentState>,
   active = segments.length > 0,
 ): LiveIndicatorState {
-  const normalizedSegments = [...segments];
+  const normalizedSegments = dedupeLiveIndicatorSegmentsById(segments);
   const primary = normalizedSegments.at(-1) ?? null;
   if (!primary || !active) {
     return EMPTY_LIVE_INDICATOR;
@@ -339,35 +360,7 @@ function isSameLiveIndicatorTimelineIdentity(
     return false;
   }
 
-  if (previousSegment.laneId && nextSpeakerState.laneId) {
-    return previousSegment.laneId === nextSpeakerState.laneId;
-  }
-
-  if (previousSegment.targetStateId && nextSpeakerState.targetStateId) {
-    return previousSegment.targetStateId === nextSpeakerState.targetStateId;
-  }
-
-  const previousSourceMessageId = readString(previousSegment.sourceMessageId);
-  const nextSourceMessageId = readString(nextSpeakerState.sourceMessageId);
-  if (!previousSourceMessageId || !nextSourceMessageId || previousSourceMessageId !== nextSourceMessageId) {
-    return false;
-  }
-
-  const previousParticipantId = resolveLogicalParticipantId(previousSegment);
-  const nextParticipantId = resolveLogicalParticipantId(nextSpeakerState);
-  if (previousParticipantId && nextParticipantId) {
-    return previousParticipantId === nextParticipantId;
-  }
-
-  if (previousSegment.catId && nextSpeakerState.catId) {
-    return previousSegment.catId === nextSpeakerState.catId;
-  }
-
-  const previousSpeakerLabel = readString(previousSegment.speakerLabel);
-  const nextSpeakerLabel = readString(nextSpeakerState.speakerLabel);
-  return previousSpeakerLabel != null
-    && nextSpeakerLabel != null
-    && previousSpeakerLabel === nextSpeakerLabel;
+  return doesLiveIndicatorLogicalIdentityMatch(previousSegment, nextSpeakerState);
 }
 
 function doesLiveIndicatorLogicalIdentityMatch(
@@ -499,6 +492,23 @@ function updatePrimaryLiveIndicatorSegment(
   return replacePrimaryLiveIndicatorSegment(previous, updater(primary));
 }
 
+function updateLiveIndicatorSegmentAt(
+  previous: LiveIndicatorState,
+  segmentIndex: number,
+  updater: (segment: LiveIndicatorSegmentState) => LiveIndicatorSegmentState,
+): LiveIndicatorState {
+  const segments = resolveLiveIndicatorSegments(previous);
+  const targetSegment = segments[segmentIndex];
+  if (!targetSegment) {
+    return previous;
+  }
+
+  return projectLiveIndicatorStateFromSegments(
+    segments.map((segment, index) =>
+      index === segmentIndex ? updater(segment) : segment),
+  );
+}
+
 function updateMatchingLiveIndicatorSegment(
   previous: LiveIndicatorState,
   matcher: (segment: LiveIndicatorSegmentState) => boolean,
@@ -513,6 +523,92 @@ function updateMatchingLiveIndicatorSegment(
   const nextSegments = segments.map((segment, index) =>
     index === matchIndex ? updater(segment) : segment);
   return projectLiveIndicatorStateFromSegments(nextSegments);
+}
+
+function findMatchingLiveIndicatorSegmentIndex(
+  previous: LiveIndicatorState,
+  nextSpeakerState: Pick<
+    LiveIndicatorSegmentState,
+    | 'sourceMessageId'
+    | 'laneId'
+    | 'targetStateId'
+    | 'identityParticipantId'
+    | 'participantId'
+    | 'catId'
+    | 'speakerLabel'
+  >,
+): number {
+  const segments = resolveLiveIndicatorSegments(previous);
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    if (doesLiveIndicatorLogicalIdentityMatch(segments[index]!, nextSpeakerState)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function resolveLiveIndicatorEventTargetSegment(
+  previous: LiveIndicatorState,
+  data: Record<string, unknown>,
+): {
+  segmentIndex: number;
+  segment: LiveIndicatorSegmentState | null;
+} {
+  const nextSpeakerState = resolveLiveIndicatorSpeakerState(previous, data);
+  const segmentIndex = findMatchingLiveIndicatorSegmentIndex(previous, nextSpeakerState);
+  if (segmentIndex >= 0) {
+    const segments = resolveLiveIndicatorSegments(previous);
+    return {
+      segmentIndex,
+      segment: segments[segmentIndex] ?? null,
+    };
+  }
+
+  const primary = resolvePrimaryLiveIndicatorSegment(previous);
+  return {
+    segmentIndex: primary ? resolveLiveIndicatorSegments(previous).length - 1 : -1,
+    segment: primary,
+  };
+}
+
+function updateLiveIndicatorEventSegment(
+  previous: LiveIndicatorState,
+  data: Record<string, unknown>,
+  updater: (segment: LiveIndicatorSegmentState) => LiveIndicatorSegmentState,
+): LiveIndicatorState {
+  const target = resolveLiveIndicatorEventTargetSegment(previous, data);
+  if (target.segmentIndex < 0 || !target.segment) {
+    return previous;
+  }
+
+  return updateLiveIndicatorSegmentAt(previous, target.segmentIndex, updater);
+}
+
+function appendLiveIndicatorSegmentAfterIndex(
+  previous: LiveIndicatorState,
+  segmentIndex: number,
+  nextSegment: LiveIndicatorSegmentState,
+): LiveIndicatorState {
+  const segments = resolveLiveIndicatorSegments(previous);
+  const targetSegment = segments[segmentIndex];
+  if (!targetSegment) {
+    return appendLiveIndicatorSegment(previous, nextSegment);
+  }
+
+  const sealedTarget = targetSegment.phase === 'sealed'
+    ? targetSegment
+    : {
+        ...targetSegment,
+        phase: 'sealed' as const,
+      };
+
+  return projectLiveIndicatorStateFromSegments([
+    ...segments.slice(0, segmentIndex),
+    sealedTarget,
+    nextSegment,
+    ...segments.slice(segmentIndex + 1),
+  ]);
 }
 
 function segmentHasTextContent(
@@ -763,10 +859,10 @@ export function applyLiveIndicatorEvent(
     case 'content_block':
       return applyContentBlockEvent(nextState, data);
     case 'result':
-      return applyResultEvent(nextState);
+      return applyResultEvent(nextState, data);
     case 'session_closed': {
-      const currentSegment = resolvePrimaryLiveIndicatorSegment(nextState);
-      return currentSegment?.phase === 'waiting' ? nextState : applyResultEvent(nextState);
+      const currentSegment = resolveLiveIndicatorEventTargetSegment(nextState, data).segment;
+      return currentSegment?.phase === 'waiting' ? nextState : applyResultEvent(nextState, data);
     }
     case 'error':
       return applyErrorEvent(nextState, data);
@@ -891,9 +987,13 @@ function prepareLiveIndicatorStateForEvent(
   eventType: string,
   data: Record<string, unknown>,
 ): LiveIndicatorState {
-  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
   const nextSpeakerState = resolveLiveIndicatorSpeakerState(previous, data);
   const nextSessionState = resolveLiveIndicatorSessionState(previous, data);
+  const segments = resolveLiveIndicatorSegments(previous);
+  const previousSegmentIndex = findMatchingLiveIndicatorSegmentIndex(previous, nextSpeakerState);
+  const previousSegment = previousSegmentIndex >= 0
+    ? segments[previousSegmentIndex] ?? null
+    : resolvePrimaryLiveIndicatorSegment(previous);
 
   if (
     shouldStartNewSegmentForEvent(
@@ -903,15 +1003,16 @@ function prepareLiveIndicatorStateForEvent(
       data,
     )
   ) {
-    return appendLiveIndicatorSegment(
-      previous,
-      createNextLiveIndicatorSegment(
-        previousSegment,
-        nextSpeakerState,
-        nextSessionState,
-        eventType === 'session_closed' ? 'waiting' : 'streaming',
-      ),
+    const nextSegment = createNextLiveIndicatorSegment(
+      previousSegment,
+      nextSpeakerState,
+      nextSessionState,
+      eventType === 'session_closed' ? 'waiting' : 'streaming',
     );
+    if (previousSegmentIndex >= 0 && previousSegmentIndex < segments.length - 1) {
+      return appendLiveIndicatorSegmentAfterIndex(previous, previousSegmentIndex, nextSegment);
+    }
+    return appendLiveIndicatorSegment(previous, nextSegment);
   }
 
   if (!previousSegment) {
@@ -920,7 +1021,7 @@ function prepareLiveIndicatorStateForEvent(
     ]);
   }
 
-  return updatePrimaryLiveIndicatorSegment(previous, (segment) => ({
+  const updateSegment = (segment: LiveIndicatorSegmentState) => ({
     ...segment,
     ...nextSpeakerState,
     ...nextSessionState,
@@ -935,7 +1036,11 @@ function prepareLiveIndicatorStateForEvent(
       speakerLabel: nextSpeakerState.speakerLabel,
       segmentIndex: segment.segmentIndex,
     }),
-  }));
+  });
+
+  return previousSegmentIndex >= 0
+    ? updateLiveIndicatorSegmentAt(previous, previousSegmentIndex, updateSegment)
+    : updatePrimaryLiveIndicatorSegment(previous, updateSegment);
 }
 
 export function buildLiveIndicatorScrollKey(
@@ -1185,14 +1290,14 @@ function applyProgressEvent(
   const metadata = asRecord(data.metadata);
   const kind = typeof metadata?.kind === 'string' ? metadata.kind : null;
   if (!text) {
-    return updatePrimaryLiveIndicatorSegment(previous, (segment) => ({
+    return updateLiveIndicatorEventSegment(previous, data, (segment) => ({
       ...segment,
       phase: 'streaming',
       ...(kind ? { progressKind: kind } : {}),
     }));
   }
 
-  return updatePrimaryLiveIndicatorSegment(previous, (segment) => ({
+  return updateLiveIndicatorEventSegment(previous, data, (segment) => ({
     ...segment,
     phase: 'streaming',
     progressText: text,
@@ -1216,13 +1321,13 @@ function applyTextEvent(
   const textChunk = typeof data.text === 'string' ? data.text : '';
   const summarizedText = summarizeEventText(data.text);
   if (!textChunk && !summarizedText) {
-    return updatePrimaryLiveIndicatorSegment(previous, (segment) => ({
+    return updateLiveIndicatorEventSegment(previous, data, (segment) => ({
       ...segment,
       phase: 'streaming',
     }));
   }
 
-  return updatePrimaryLiveIndicatorSegment(previous, (segment) => ({
+  return updateLiveIndicatorEventSegment(previous, data, (segment) => ({
     ...segment,
     phase: 'streaming',
     progressText: '',
@@ -1305,7 +1410,7 @@ function applyToolUseEvent(
   const toolId = normalizedSegment?.kind === 'tool_use'
     ? normalizedSegment.toolId
     : readString(data.toolId);
-  return updatePrimaryLiveIndicatorSegment(previous, (segment) => {
+  return updateLiveIndicatorEventSegment(previous, data, (segment) => {
     const nextTools = appendPendingTool(segment.tools, {
       toolName,
       toolId: toolId || toolName,
@@ -1339,7 +1444,7 @@ function applyToolResultEvent(
   const toolId = normalizedSegment?.kind === 'tool_result'
     ? normalizedSegment.toolId
     : readString(data.toolId);
-  const previousSegment = resolvePrimaryLiveIndicatorSegment(previous);
+  const previousSegment = resolveLiveIndicatorEventTargetSegment(previous, data).segment;
   const toolName = (normalizedSegment?.kind === 'tool_result'
     ? normalizedSegment.toolName
     : readString(data.toolName))
@@ -1353,7 +1458,7 @@ function applyToolResultEvent(
     ? `${isError ? 'Failed' : 'Completed'} ${toolName}: ${resultText}`
     : `${isError ? 'Failed' : 'Completed'} ${toolName}`;
 
-  return updatePrimaryLiveIndicatorSegment(previous, (segment) => ({
+  return updateLiveIndicatorEventSegment(previous, data, (segment) => ({
     ...segment,
     phase: 'streaming',
     tools: markToolDone(segment.tools, toolId, toolName),
@@ -1369,27 +1474,31 @@ function applyToolResultEvent(
   }));
 }
 
-function applyResultEvent(previous: LiveIndicatorState): LiveIndicatorState {
-  const primary = resolvePrimaryLiveIndicatorSegment(previous);
-  const hasTextContent = primary
-    ? primary.contentBlocks.some((block) => block.kind === 'text' && block.text.trim().length > 0)
-    : false;
-  const text = hasTextContent ? '' : (previous.progressText || 'Finalizing...');
-  return updatePrimaryLiveIndicatorSegment(previous, (segment) => ({
-    ...segment,
-    phase: 'sealed',
-    progressKind: hasTextContent ? null : 'finalizing',
-    progressText: text,
-    events: appendLiveIndicatorEvent(segment.events, {
-      eventType: 'result',
-      label: 'Result',
-      text: 'Turn completed.',
-      tone: 'success',
-      kind: 'finalizing',
-      toolName: null,
-      toolId: null,
-    }),
-  }));
+function applyResultEvent(
+  previous: LiveIndicatorState,
+  data: Record<string, unknown> = {},
+): LiveIndicatorState {
+  return updateLiveIndicatorEventSegment(previous, data, (segment) => {
+    const hasTextContent = segment.contentBlocks.some(
+      (block) => block.kind === 'text' && block.text.trim().length > 0,
+    );
+    const text = hasTextContent ? '' : (segment.progressText || 'Finalizing...');
+    return {
+      ...segment,
+      phase: 'sealed',
+      progressKind: hasTextContent ? null : 'finalizing',
+      progressText: text,
+      events: appendLiveIndicatorEvent(segment.events, {
+        eventType: 'result',
+        label: 'Result',
+        text: 'Turn completed.',
+        tone: 'success',
+        kind: 'finalizing',
+        toolName: null,
+        toolId: null,
+      }),
+    };
+  });
 }
 
 function applyContentBlockEvent(
@@ -1430,7 +1539,7 @@ function applyContentBlockEvent(
     return nextState;
   }
 
-  return updatePrimaryLiveIndicatorSegment(previous, applyBlockUpdate);
+  return updateLiveIndicatorEventSegment(previous, data, applyBlockUpdate);
 }
 
 function applyErrorEvent(
@@ -1438,7 +1547,7 @@ function applyErrorEvent(
   data: Record<string, unknown>,
 ): LiveIndicatorState {
   const text = summarizeEventText(data.text) || 'Finishing...';
-  return updatePrimaryLiveIndicatorSegment(previous, (segment) => ({
+  return updateLiveIndicatorEventSegment(previous, data, (segment) => ({
     ...segment,
     phase: 'sealed',
     progressKind: 'error',

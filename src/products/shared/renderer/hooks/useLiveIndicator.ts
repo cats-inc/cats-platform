@@ -6,12 +6,14 @@ import {
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
 import {
   applyLiveIndicatorEvent,
+  createLiveIndicatorSegmentState,
   createWaitingLiveIndicatorState,
   EMPTY_LIVE_INDICATOR,
   hasLiveIndicatorIdentity,
   hasVisibleAssistantReplyAfterMessage,
   hasVisibleLiveIndicatorSpeakerReplyAfterMessage,
   projectLiveIndicatorStateFromSegments,
+  resolveLiveIndicatorSegments,
   resolveLiveIndicatorSpeakerState,
   resolvePrimaryLiveIndicatorSegment,
   type LiveIndicatorSegmentState,
@@ -240,6 +242,49 @@ function resolveWaitingSpeakerState(
     speakerLabel: nextTarget.participant.participantName?.trim() || null,
     revealIdentity,
   };
+}
+
+export function resolveConcurrentWaitingSegments(
+  selectedChannel: LiveIndicatorSelectedChannelLike | null,
+): LiveIndicatorSegmentState[] {
+  const activeTurn = selectedChannel?.roomRouting.workflow.activeTurn ?? null;
+  if (activeTurn?.workflowShape !== 'concurrent') {
+    return [];
+  }
+
+  const activeTargets = activeTurn.targetStatuses?.filter((target) =>
+    target.status === 'running' || target.status === 'pending') ?? [];
+  if (activeTargets.length <= 1) {
+    return [];
+  }
+
+  return activeTargets.map((target) => {
+    const sourceMessageId = activeTurn.sourceMessageId?.trim() || null;
+    const laneId = resolveWorkflowTargetLaneId(
+      activeTurn.id ?? null,
+      target.id ?? null,
+      target.participant.participantId,
+      target.laneId ?? null,
+    );
+    const sessionState = resolveWaitingSessionState(
+      selectedChannel,
+      target.participant.participantId,
+      target.id?.trim() || null,
+      laneId,
+    );
+
+    return createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId,
+      laneId,
+      targetStateId: target.id?.trim() || null,
+      participantId: target.participant.participantId,
+      identityParticipantId: target.participant.participantId,
+      speakerLabel: target.participant.participantName?.trim() || null,
+      sessionStartedAt: sessionState.sessionStartedAt,
+      requiresSessionStartConfirmation: sessionState.requiresSessionStartConfirmation,
+    });
+  });
 }
 
 interface WaitingSessionState {
@@ -1084,6 +1129,86 @@ function doesSequencedStreamCursorTargetMatch(
     && previous.targetStateId === next.targetStateId;
 }
 
+function hasMaterializedSegmentContent(
+  segment: LiveIndicatorSegmentState,
+): boolean {
+  return segment.phase !== 'waiting'
+    || segment.contentBlocks.length > 0
+    || segment.progressText.trim().length > 0
+    || segment.events.length > 0
+    || segment.tools.length > 0;
+}
+
+function mergeConcurrentWaitingIndicatorState(
+  previous: LiveIndicatorState,
+  waitingState: LiveIndicatorState,
+): LiveIndicatorState {
+  const waitingSegments = resolveLiveIndicatorSegments(waitingState);
+  if (waitingSegments.length <= 1) {
+    return mergeWaitingIndicatorTimelineState(previous, waitingState);
+  }
+
+  const previousSegments = resolveLiveIndicatorSegments(previous);
+  if (previousSegments.length === 0) {
+    return waitingState;
+  }
+
+  const consumedPreviousIndexes = new Set<number>();
+  const handledWaitingIndexes = new Set<number>();
+  const nextSegments: LiveIndicatorSegmentState[] = [];
+
+  for (let previousIndex = 0; previousIndex < previousSegments.length; previousIndex += 1) {
+    if (consumedPreviousIndexes.has(previousIndex)) {
+      continue;
+    }
+
+    const previousSegment = previousSegments[previousIndex]!;
+    const waitingIndex = waitingSegments.findIndex((waitingSegment) =>
+      doesLiveIndicatorLogicalIdentityMatch(previousSegment, waitingSegment));
+    if (waitingIndex < 0) {
+      nextSegments.push(previousSegment);
+      continue;
+    }
+
+    handledWaitingIndexes.add(waitingIndex);
+    const matchingWaitingSegment = waitingSegments[waitingIndex]!;
+    const matchingPreviousSegments: LiveIndicatorSegmentState[] = [];
+
+    for (
+      let candidateIndex = previousIndex;
+      candidateIndex < previousSegments.length;
+      candidateIndex += 1
+    ) {
+      if (consumedPreviousIndexes.has(candidateIndex)) {
+        continue;
+      }
+
+      const candidate = previousSegments[candidateIndex]!;
+      if (!doesLiveIndicatorLogicalIdentityMatch(candidate, matchingWaitingSegment)) {
+        continue;
+      }
+
+      consumedPreviousIndexes.add(candidateIndex);
+      matchingPreviousSegments.push(candidate);
+    }
+
+    if (matchingPreviousSegments.some(hasMaterializedSegmentContent)) {
+      nextSegments.push(...matchingPreviousSegments);
+      continue;
+    }
+
+    nextSegments.push(matchingWaitingSegment);
+  }
+
+  waitingSegments.forEach((waitingSegment, waitingIndex) => {
+    if (!handledWaitingIndexes.has(waitingIndex)) {
+      nextSegments.push(waitingSegment);
+    }
+  });
+
+  return projectLiveIndicatorStateFromSegments(nextSegments);
+}
+
 export function useLiveIndicator<
   TSelectedChannel extends LiveIndicatorSelectedChannelLike = LiveIndicatorSelectedChannelLike,
 >(options: {
@@ -1166,6 +1291,11 @@ export function useLiveIndicator<
   const waitingIndicatorInputsRef = useRef<WaitingIndicatorInputs>(waitingIndicatorInputs);
 
   function createCurrentWaitingState(): LiveIndicatorState {
+    const concurrentWaitingSegments = resolveConcurrentWaitingSegments(selectedChannelRef.current);
+    if (concurrentWaitingSegments.length > 1) {
+      return projectLiveIndicatorStateFromSegments(concurrentWaitingSegments);
+    }
+
     const current = waitingIndicatorInputsRef.current;
     return createWaitingLiveIndicatorState({
       sourceMessageId: current.sourceMessageId,
@@ -1433,7 +1563,9 @@ export function useLiveIndicator<
             speakerLabel: nextSpeakerState.speakerLabel,
             reason: 'session_close_reconnect',
           });
-          return mergeWaitingIndicatorTimelineState(previous, waitingState);
+          return resolveLiveIndicatorSegments(waitingState).length > 1
+            ? mergeConcurrentWaitingIndicatorState(previous, waitingState)
+            : mergeWaitingIndicatorTimelineState(previous, waitingState);
         }
         return applyLiveIndicatorEvent(previous, eventType, data);
       });
@@ -1512,7 +1644,10 @@ export function useLiveIndicator<
           return;
         }
         if (shouldReconnectFollowupTarget) {
-          updateIndicatorState((previous) => mergeWaitingIndicatorTimelineState(previous, waitingState));
+          updateIndicatorState((previous) =>
+            resolveLiveIndicatorSegments(waitingState).length > 1
+              ? mergeConcurrentWaitingIndicatorState(previous, waitingState)
+              : mergeWaitingIndicatorTimelineState(previous, waitingState));
         }
         traceBrowser('stream_source_error', {
           turnId: selectedChannelRef.current?.roomRouting.workflow.activeTurn?.id ?? null,
@@ -1581,13 +1716,15 @@ export function useLiveIndicator<
       streamCursorRef.current = null;
     }
     setState((previous) => {
-      const next = resolveWaitingIndicatorStateTransition({
-        previous,
-        waitingState,
-        selectedChannel: selectedChannelRef.current,
-        previousChannelId,
-        channelId,
-      });
+      const next = resolveLiveIndicatorSegments(waitingState).length > 1
+        ? mergeConcurrentWaitingIndicatorState(previous, waitingState)
+        : resolveWaitingIndicatorStateTransition({
+          previous,
+          waitingState,
+          selectedChannel: selectedChannelRef.current,
+          previousChannelId,
+          channelId,
+        });
       stateRef.current = next;
       return next;
     });
@@ -1648,6 +1785,12 @@ export function useLiveIndicator<
 
     const waitingState = createCurrentWaitingState();
     setState((previous) => {
+      if (resolveLiveIndicatorSegments(waitingState).length > 1) {
+        const next = mergeConcurrentWaitingIndicatorState(previous, waitingState);
+        stateRef.current = next;
+        return next;
+      }
+
       if (
         shouldPromoteStreamingBubbleToWaitingSpeaker(
           previous,

@@ -19,6 +19,7 @@ import {
   shouldReconnectLiveIndicatorAfterOngoingWorkflow,
   shouldReconnectLiveIndicatorAfterSessionClose,
   shouldReconnectLiveIndicatorAfterSourceError,
+  resolveConcurrentWaitingSegments,
   resolveWaitingSessionState,
 } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {
@@ -26,6 +27,7 @@ import {
   createLiveIndicatorSegmentState,
   createWaitingLiveIndicatorState,
   hasVisibleLiveIndicatorSpeakerReplyAfterMessage,
+  projectLiveIndicatorStateFromSegments,
   resolveTranscriptFollowState,
   resolveLiveIndicatorSpeakerState,
   resolveVisibleLiveIndicator,
@@ -497,6 +499,73 @@ test('resolveWaitingSessionState ignores a live participant lease from a differe
     sessionStartedAt: '2026-04-14T12:05:00.000Z',
     requiresSessionStartConfirmation: true,
   });
+});
+
+test('resolveConcurrentWaitingSegments materializes every active concurrent target in target order', () => {
+  const segments = resolveConcurrentWaitingSegments({
+    roomRouting: {
+      defaultRecipientId: null,
+      workflow: {
+        activeTurn: {
+          id: 'turn-concurrent',
+          sourceMessageId: 'message-user-concurrent',
+          workflowShape: 'concurrent',
+          targetStatuses: [
+            {
+              id: 'target-claude',
+              status: 'pending',
+              queuedAt: '2026-04-14T12:05:00.000Z',
+              participant: {
+                participantId: 'participant-claude',
+                participantName: 'Claude-CLI',
+              },
+            },
+            {
+              id: 'target-codex',
+              laneId: 'lane-codex-persisted',
+              status: 'running',
+              startedAt: '2026-04-14T12:05:01.000Z',
+              participant: {
+                participantId: 'participant-codex',
+                participantName: 'Codex-CLI',
+              },
+            },
+          ],
+        },
+      },
+    },
+    assignedParticipants: [
+      {
+        participantId: 'participant-codex',
+        execution: {
+          lease: {
+            sessionId: 'session-codex',
+            laneId: 'lane-codex-persisted',
+            status: 'ready',
+            startedAt: '2026-04-14T12:05:01.000Z',
+          },
+        },
+      },
+    ],
+    composerMode: 'cat_led',
+    pendingProvider: null,
+    pendingInstance: null,
+  });
+
+  assert.equal(segments.length, 2);
+  assert.equal(segments[0]?.targetStateId, 'target-claude');
+  assert.equal(
+    segments[0]?.laneId,
+    buildChatLaneId('turn-concurrent', 'target-claude', 'participant-claude'),
+  );
+  assert.equal(segments[0]?.participantId, 'participant-claude');
+  assert.equal(segments[0]?.speakerLabel, 'Claude-CLI');
+  assert.equal(segments[0]?.phase, 'waiting');
+  assert.equal(segments[1]?.targetStateId, 'target-codex');
+  assert.equal(segments[1]?.laneId, 'lane-codex-persisted');
+  assert.equal(segments[1]?.participantId, 'participant-codex');
+  assert.equal(segments[1]?.speakerLabel, 'Codex-CLI');
+  assert.equal(segments[1]?.requiresSessionStartConfirmation, true);
 });
 
 test('shouldRetryLiveIndicatorSessionClose reconnects when a streamed session closes during an active send', () => {
@@ -4141,6 +4210,94 @@ test('createLiveIndicatorSegmentState prefers laneId over drifted targetStateId 
   });
 
   assert.equal(firstSegment.id, secondSegment.id);
+});
+
+test('projectLiveIndicatorStateFromSegments drops duplicate segment ids and keeps the last copy', () => {
+  const duplicateId = 'message-user:lane-claude:segment:0';
+  const state = {
+    ...EMPTY_LIVE_INDICATOR,
+    active: true,
+    phase: 'waiting' as const,
+    segments: [
+      createLiveIndicatorSegmentState({
+        id: duplicateId,
+        phase: 'waiting',
+        sourceMessageId: 'message-user',
+        laneId: 'lane-claude',
+        targetStateId: 'target-claude',
+        participantId: 'participant-claude',
+        speakerLabel: 'Claude-CLI',
+      }),
+      createLiveIndicatorSegmentState({
+        id: duplicateId,
+        phase: 'streaming',
+        sourceMessageId: 'message-user',
+        laneId: 'lane-claude',
+        targetStateId: 'target-claude',
+        participantId: 'participant-claude',
+        speakerLabel: 'Claude-CLI',
+        contentBlocks: [
+          {
+            id: 'text:0',
+            index: 0,
+            kind: 'text',
+            status: 'streaming',
+            title: null,
+            text: 'Latest Claude chunk',
+            toolName: null,
+            toolId: null,
+            metadata: null,
+          },
+        ],
+      }),
+    ],
+  };
+
+  const segments = resolveVisibleLiveIndicator(state, [], null)?.segments ?? [];
+  assert.equal(segments.length, 1);
+  assert.equal(segments[0]?.phase, 'streaming');
+  assert.equal(segments[0]?.contentBlocks[0]?.text, 'Latest Claude chunk');
+});
+
+test('applyLiveIndicatorEvent updates a matching concurrent lane in place instead of appending a duplicate segment', () => {
+  let state = projectLiveIndicatorStateFromSegments([
+    createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: 'message-user',
+      laneId: 'lane-codex',
+      targetStateId: 'target-codex',
+      participantId: 'participant-codex',
+      speakerLabel: 'Codex-CLI',
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: 'message-user',
+      laneId: 'lane-claude',
+      targetStateId: 'target-claude',
+      participantId: 'participant-claude',
+      speakerLabel: 'Claude-CLI',
+    }),
+  ]);
+
+  state = applyLiveIndicatorEvent(state, 'progress', {
+    sourceMessageId: 'message-user',
+    laneId: 'lane-codex',
+    targetStateId: 'target-codex',
+    participantId: 'participant-codex',
+    speakerLabel: 'Codex-CLI',
+    metadata: {
+      kind: 'session',
+    },
+    text: 'Codex session ready',
+  });
+
+  assert.equal(state.segments.length, 2);
+  assert.equal(state.segments[0]?.laneId, 'lane-codex');
+  assert.equal(state.segments[0]?.phase, 'streaming');
+  assert.equal(state.segments[0]?.events.at(-1)?.text, 'Codex session ready');
+  assert.equal(state.segments[1]?.laneId, 'lane-claude');
+  assert.equal(state.segments[1]?.phase, 'waiting');
+  assert.equal(new Set(state.segments.map((segment) => segment.id)).size, 2);
 });
 
 test('applyLiveIndicatorEvent synthesizes text content blocks from text events', () => {
