@@ -153,6 +153,10 @@ export interface ConversationSidebarProps<
   primaryActions: readonly ConversationSidebarAction[];
   extraActionGroups?: readonly ConversationSidebarActionGroup[];
   recentEntries?: readonly ConversationSidebarRecentEntry<TChannel>[];
+  recentEmptyStateLabel?: string;
+  myCatsSectionLabel?: string;
+  forceShowMyCatsSection?: boolean;
+  myCatsSectionCats?: readonly TCat[];
   helpers: ConversationSidebarHelpers<TCat, TChannel, TDot>;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -187,6 +191,10 @@ export function ConversationSidebar<
   primaryActions,
   extraActionGroups = [],
   recentEntries,
+  recentEmptyStateLabel,
+  myCatsSectionLabel,
+  forceShowMyCatsSection = false,
+  myCatsSectionCats,
   helpers,
   onToggleSidebar,
   onCollapsedSidebarClick,
@@ -219,6 +227,8 @@ export function ConversationSidebar<
     shellSurface,
     currentPath,
   });
+  const resolvedMyCatsSectionCats = myCatsSectionCats ?? visibleCats;
+  const showMyCatsSection = forceShowMyCatsSection || resolvedMyCatsSectionCats.length > 0;
 
   return (
     <aside
@@ -264,9 +274,10 @@ export function ConversationSidebar<
             </nav>
           ))}
 
-          {showMyCats ? (
+          {showMyCatsSection ? (
             <ConversationSidebarMyCatsSection
-              cats={visibleCats}
+              label={myCatsSectionLabel}
+              cats={resolvedMyCatsSectionCats}
               bossCatId={payload.chat.bossCatId}
               payloadChannels={payload.chat.channels}
               activeMyCatId={activeMyCatId}
@@ -281,6 +292,7 @@ export function ConversationSidebar<
 
           <ConversationSidebarRecentsSection
             entries={resolvedRecentEntries}
+            emptyStateLabel={recentEmptyStateLabel}
             payload={payload}
             helpers={helpers}
             routeChannelId={routeChannelId}

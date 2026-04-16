@@ -118,6 +118,7 @@ export function ConversationSidebarMyCatsSection<
   TChannel extends ConversationSidebarChannel,
   TDot extends string,
 >({
+  label = 'My Cats',
   cats,
   bossCatId,
   payloadChannels,
@@ -129,6 +130,7 @@ export function ConversationSidebarMyCatsSection<
   onDirectChatCat,
   onArchiveCat,
 }: {
+  label?: string;
   cats: readonly TCat[];
   bossCatId: string | null;
   payloadChannels: readonly TChannel[];
@@ -142,7 +144,7 @@ export function ConversationSidebarMyCatsSection<
 }) {
   return (
     <section className="myCatsSection">
-      <p className="sectionLabel">My Cats</p>
+      <p className="sectionLabel">{label}</p>
       <div className="myCatsList">
         {helpers.sortCatsForDisplay(
           cats.filter((cat) => cat.status === 'active'),

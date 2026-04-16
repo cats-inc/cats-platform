@@ -5,7 +5,9 @@ import { isValidElement, type ReactNode, type RefObject } from 'react';
 import { AccountIdentityMenu } from '../src/design/components/AccountIdentityMenu.tsx';
 import { PlatformSurfaceSwitcher } from '../src/design/components/PlatformSurfaceSwitcher.tsx';
 import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
+import { ConversationSidebarMyCatsSection } from '../src/app/renderer/productShell/ConversationSidebarMyCats.tsx';
 import { ConversationSidebarNavigation } from '../src/app/renderer/productShell/ConversationSidebarNavigation.tsx';
+import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
 import { Sidebar as WorkSidebar } from '../src/products/work/renderer/components/Sidebar.tsx';
 import { Sidebar as CodeSidebar } from '../src/products/code/renderer/components/Sidebar.tsx';
 import type { AppShellPayload as WorkAppShellPayload } from '../src/products/work/api/contracts.ts';
@@ -533,6 +535,77 @@ test('Code sidebar exposes New Code, Team Code, and Peer Code actions', () => {
   primaryActions[1]?.onClick();
   primaryActions[2]?.onClick();
   assert.deepEqual(clicks, ['new', 'group', 'parallel']);
+});
+
+test('Code sidebar hides My Clowders until clowder groups are available', () => {
+  const tree = CodeSidebar({
+    payload: createPayload() as unknown as CodeAppShellPayload,
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    shellSurface: 'code',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+    onOpenBuild: () => {},
+    onOpenRelay: () => {},
+  });
+
+  const myPridesSection = findElementByComponent(tree, ConversationSidebarMyCatsSection);
+  assert.equal(myPridesSection, null);
+});
+
+test('Code sidebar clears chat recents and shows No codes yet', () => {
+  const tree = CodeSidebar({
+    payload: createPayload() as unknown as CodeAppShellPayload,
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    shellSurface: 'code',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+    onOpenBuild: () => {},
+    onOpenRelay: () => {},
+  });
+
+  const recentsSection = findElementByComponent(tree, ConversationSidebarRecentsSection);
+  if (!recentsSection) {
+    throw new Error('ConversationSidebarRecentsSection not found.');
+  }
+
+  assert.deepEqual(recentsSection.props.entries, []);
+  assert.equal(recentsSection.props.emptyStateLabel, 'No codes yet');
 });
 
 test('Work and Code sidebars keep the shared environment account menu wiring', () => {

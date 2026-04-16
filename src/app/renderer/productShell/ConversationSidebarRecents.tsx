@@ -370,6 +370,7 @@ export function ConversationSidebarRecentsSection<
   TDot extends string,
 >({
   entries,
+  emptyStateLabel = 'No chats yet',
   payload,
   helpers,
   routeChannelId,
@@ -381,6 +382,7 @@ export function ConversationSidebarRecentsSection<
   onOverflowMenuToggle,
 }: {
   entries: readonly ConversationSidebarRecentEntry<TChannel>[];
+  emptyStateLabel?: string;
   payload: ConversationSidebarPayload<TCat, TChannel>;
   helpers: ConversationSidebarHelpers<TCat, TChannel, TDot>;
   routeChannelId: string | null;
@@ -425,7 +427,7 @@ export function ConversationSidebarRecentsSection<
     if (entries.length === 0) {
       return (
         <div className="recentEmpty">
-          <p>No chats yet</p>
+          <p>{emptyStateLabel}</p>
         </div>
       );
     }
