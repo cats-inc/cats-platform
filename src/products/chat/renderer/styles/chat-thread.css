@@ -373,11 +373,17 @@
   line-height: 1.4;
 }
 
-/* ── Compare cards ── */
+/* ── Compare cards carousel ── */
+
+.compareCardsCarousel {
+  position: relative;
+  overflow: visible;
+  width: 100%;
+}
 
 .compareCardsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   width: 100%;
 }
@@ -410,26 +416,96 @@
   min-height: 28px;
 }
 
-.compareCardStatus {
-  margin-left: auto;
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  flex-shrink: 0;
-}
-
-.compareCardStatusStreaming {
-  color: var(--accent);
-}
-
-.compareCardStatusSealed {
-  color: var(--ready-text);
-}
-
 .compareCardBody {
   font-size: 0.92rem;
   line-height: 1.5;
   min-height: 1.5em;
+}
+
+.compareCardFooter {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.compareCardCopyButton {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.compareCardCopyButton:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+/* Floating nav buttons */
+
+.compareCardsNavButton {
+  position: absolute;
+  top: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.compareCardsNavButton:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.compareCardsNavPrev {
+  left: -44px;
+}
+
+.compareCardsNavNext {
+  right: -44px;
+}
+
+/* Pagination dots */
+
+.compareCardsPagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0 0;
+}
+
+.compareCardsPaginationDot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--muted-soft);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.compareCardsPaginationDot:hover {
+  background: var(--muted);
+}
+
+.compareCardsPaginationDotActive {
+  background: var(--text);
+}
+
+.compareCardsPaginationDotActive:hover {
+  background: var(--text);
 }
 
 @media (max-width: 720px) {
