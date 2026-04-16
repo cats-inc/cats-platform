@@ -1,48 +1,53 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
-for (const product of ['chat', 'work', 'code']) {
-  test(`${product} general settings can remove the owner avatar`, async () => {
-    const source = await readFile(
-      path.join(
-        process.cwd(),
-        'src',
-        'products',
-        product,
-        'renderer',
-        'components',
-        'SettingsGeneral.tsx',
-      ),
-      'utf8',
+test('platform general settings can remove the owner avatar', async () => {
+  const source = await readFile(
+    path.join(
+      process.cwd(),
+      'src',
+      'app',
+      'renderer',
+      'settings',
+      'PlatformSettingsGeneral.tsx',
+    ),
+    'utf8',
+  );
+
+  assert.match(source, /async function updateOwnerAvatar\(/u);
+  assert.match(source, /ownerAvatarUrl: nextAvatarUrl/u);
+  assert.match(source, /onClick=\{\(\) => void updateOwnerAvatar\(null, 'Failed to remove avatar'\)\}/u);
+  assert.match(source, /className="secondaryButton"/u);
+  assert.match(source, />\s*Remove avatar\s*</u);
+});
+
+test('product renderer settings wrappers for general and data pages were removed', async () => {
+  const removedPaths = [
+    'src/products/chat/renderer/components/SettingsGeneral.tsx',
+    'src/products/chat/renderer/components/SettingsData.tsx',
+    'src/products/chat/renderer/components/SettingsShell.tsx',
+    'src/products/code/renderer/components/SettingsGeneral.tsx',
+    'src/products/code/renderer/components/SettingsData.tsx',
+    'src/products/code/renderer/components/SettingsShell.tsx',
+    'src/products/work/renderer/components/SettingsGeneral.tsx',
+    'src/products/work/renderer/components/SettingsData.tsx',
+    'src/products/work/renderer/components/SettingsShell.tsx',
+    'src/products/shared/renderer/components/SettingsGeneral.tsx',
+    'src/products/shared/renderer/components/SettingsData.tsx',
+    'src/products/shared/renderer/components/SettingsShell.tsx',
+  ];
+
+  await Promise.all(removedPaths.map(async (relativePath) => {
+    await assert.rejects(
+      access(path.join(process.cwd(), relativePath)),
+      (error) => Boolean(error && typeof error === 'object' && error.code === 'ENOENT'),
     );
-    const implementationSource = source.includes("shared/renderer/components/SettingsGeneral.js")
-      ? await readFile(
-        path.join(
-          process.cwd(),
-          'src',
-          'products',
-          'shared',
-          'renderer',
-          'components',
-          'SettingsGeneral.tsx',
-        ),
-        'utf8',
-      )
-      : source;
+  }));
+});
 
-    if (implementationSource !== source) {
-      assert.match(source, /shared\/renderer\/components\/SettingsGeneral\.js/u);
-    }
-
-    assert.match(implementationSource, /async function handleAvatarRemove\(\): Promise<void> \{/u);
-    assert.match(implementationSource, /avatarUrl: nextAvatarUrl/u);
-    assert.match(implementationSource, /await updateOwnerAvatar\(null, 'Failed to remove avatar'\)/u);
-    assert.match(implementationSource, /className="secondaryButton"/u);
-    assert.match(implementationSource, />\s*Remove avatar\s*</u);
-  });
-
+for (const product of ['chat', 'work', 'code']) {
   test(`${product} cat settings can remove uploaded cat avatars`, async () => {
     const source = await readFile(
       path.join(
