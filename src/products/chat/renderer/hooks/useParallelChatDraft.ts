@@ -140,12 +140,7 @@ export function useParallelChatDraft(options: {
 
   const resetDraftParallelChatTargets = useCallback(() => {
     setDraftParallelChatTargets(createInitialCompareTargets(draftModel));
-  }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
-  ]);
+  }, [draftModel]);
 
   useEffect(() => {
     setCompareSendScope('all_members');
@@ -154,12 +149,7 @@ export function useParallelChatDraft(options: {
   useEffect(() => {
     setDraftParallelChatTargets((currentTargets) =>
       syncLeadCompareTarget(currentTargets, draftModel));
-  }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
-  ]);
+  }, [draftModel]);
 
   const onDraftParallelChatTargetChange = useCallback((index: number, value: ModelSelectorValue) => {
     setDraftParallelChatTargets((prev) =>
@@ -173,10 +163,7 @@ export function useParallelChatDraft(options: {
       createNextCompareTarget(prev, draftModel),
     ]);
   }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
+    draftModel,
   ]);
 
   const onRemoveDraftParallelChatTarget = useCallback((index: number) => {

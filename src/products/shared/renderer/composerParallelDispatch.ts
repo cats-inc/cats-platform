@@ -8,7 +8,7 @@ import type { WorkspaceModelSelectorValue } from './hooks/useWorkspaceComposerSu
 import { createDraftChannelTitle } from './workspaceChatUtils.js';
 
 export interface ParallelDispatchRequestState {
-  kind: 'concurrent';
+  kind: 'parallel';
   channelId: string;
   groupId: string;
   channelIds: string[];
@@ -95,7 +95,7 @@ export async function submitNewParallelChatDraft({
       created.group.memberChannelIds,
     )
       ? {
-          kind: 'concurrent',
+          kind: 'parallel',
           channelId: activeChannelId,
           groupId: created.group.id,
           channelIds: created.group.memberChannelIds,

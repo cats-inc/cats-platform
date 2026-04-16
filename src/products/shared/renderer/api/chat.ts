@@ -13,6 +13,18 @@ import { fetchAppShell, refetchAfterMutation } from './appShell.js';
 import { expectJson } from './http.js';
 import { normalizeSelectedChannelView } from '../../channelEntry.js';
 
+const PARALLEL_CHAT_GROUPS_API_BASE = '/api/parallel-chat-groups';
+
+function encodeBytesToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  const binaryChunks: string[] = [];
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binaryChunks.push(String.fromCharCode(...chunk));
+  }
+  return btoa(binaryChunks.join(''));
+}
+
 export async function deleteGlobalCat(
   catId: string,
   signal?: AbortSignal,
@@ -194,11 +206,7 @@ export async function uploadChannelAttachments(
     files.map(async (file) => {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let index = 0; index < bytes.length; index++) {
-        binary += String.fromCharCode(bytes[index]);
-      }
-      return { name: file.name, data: btoa(binary) };
+      return { name: file.name, data: encodeBytesToBase64(bytes) };
     }),
   );
 
@@ -283,11 +291,7 @@ export async function encodeAttachmentFiles(
     files.map(async (file) => {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let index = 0; index < bytes.length; index++) {
-        binary += String.fromCharCode(bytes[index]);
-      }
-      return { name: file.name, data: btoa(binary) };
+      return { name: file.name, data: encodeBytesToBase64(bytes) };
     }),
   );
 }
@@ -296,7 +300,7 @@ export async function createParallelChatGroup(
   input: CreateParallelChatGroupInput,
   signal?: AbortSignal,
 ): Promise<CreateParallelChatGroupResponse> {
-  const response = await fetch('/api/concurrent-groups', {
+  const response = await fetch(PARALLEL_CHAT_GROUPS_API_BASE, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -317,15 +321,18 @@ export async function sendParallelChatMessage(
   input: SendParallelChatMessageInput,
   signal?: AbortSignal,
 ): Promise<ParallelChatDispatchResponse> {
-  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/messages`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+      signal,
     },
-    body: JSON.stringify(input),
-    signal,
-  });
+  );
 
   return expectJson<ParallelChatDispatchResponse>(
     response,

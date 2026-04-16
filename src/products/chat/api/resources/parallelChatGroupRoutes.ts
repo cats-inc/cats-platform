@@ -387,7 +387,10 @@ async function handleRelayParallelChatGroupMessage(
 export async function routeParallelChatGroupResourceApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
-  if (context.url.pathname === '/api/concurrent-groups') {
+  if (
+    context.url.pathname === '/api/parallel-chat-groups'
+    || context.url.pathname === '/api/concurrent-groups'
+  ) {
     if (context.method === 'POST') {
       await handleCreateParallelChatGroup(context);
       return true;
@@ -398,7 +401,7 @@ export async function routeParallelChatGroupResourceApi(
 
   const parallelChatGroupDetailMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/concurrent-groups\/([^/]+)$/u,
+    /^\/api\/(?:parallel-chat-groups|concurrent-groups)\/([^/]+)$/u,
   );
   if (parallelChatGroupDetailMatch) {
     if (context.method === 'PATCH') {
@@ -415,7 +418,7 @@ export async function routeParallelChatGroupResourceApi(
 
   const parallelChatGroupMessagesMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/concurrent-groups\/([^/]+)\/messages$/u,
+    /^\/api\/(?:parallel-chat-groups|concurrent-groups)\/([^/]+)\/messages$/u,
   );
   if (parallelChatGroupMessagesMatch) {
     if (context.method === 'POST') {
@@ -428,7 +431,7 @@ export async function routeParallelChatGroupResourceApi(
 
   const parallelChatGroupCancelMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/concurrent-groups\/([^/]+)\/cancel$/u,
+    /^\/api\/(?:parallel-chat-groups|concurrent-groups)\/([^/]+)\/cancel$/u,
   );
   if (parallelChatGroupCancelMatch) {
     if (context.method === 'POST') {
@@ -441,7 +444,7 @@ export async function routeParallelChatGroupResourceApi(
 
   const parallelChatGroupRelayMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/concurrent-groups\/([^/]+)\/relay$/u,
+    /^\/api\/(?:parallel-chat-groups|concurrent-groups)\/([^/]+)\/relay$/u,
   );
   if (parallelChatGroupRelayMatch) {
     if (context.method === 'POST') {
@@ -454,7 +457,7 @@ export async function routeParallelChatGroupResourceApi(
 
   const parallelChatGroupUngroupMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/concurrent-groups\/([^/]+)\/ungroup$/u,
+    /^\/api\/(?:parallel-chat-groups|concurrent-groups)\/([^/]+)\/ungroup$/u,
   );
   if (parallelChatGroupUngroupMatch) {
     if (context.method === 'POST') {

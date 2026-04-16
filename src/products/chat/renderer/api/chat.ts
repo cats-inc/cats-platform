@@ -26,6 +26,7 @@ import {
   createGlobalCat as createWorkspaceGlobalCat,
   deleteChatChannel as deleteWorkspaceChatChannel,
   deleteGlobalCat as deleteWorkspaceGlobalCat,
+  encodeAttachmentFiles as encodeWorkspaceAttachmentFiles,
   removeCatFromChannelApi as removeWorkspaceCatFromChannelApi,
   renameChatChannel as renameWorkspaceChatChannel,
   sendChatMessage as sendWorkspaceChatMessage,
@@ -34,6 +35,8 @@ import {
 } from '../../../shared/renderer/api/chat.js';
 import { refetchAfterMutation } from './appShell.js';
 import { expectJson } from './http.js';
+
+const PARALLEL_CHAT_GROUPS_API_BASE = '/api/parallel-chat-groups';
 
 export async function deleteGlobalCat(
   catId: string,
@@ -131,17 +134,7 @@ export async function uploadChannelAttachments(
 export async function encodeAttachmentFiles(
   files: File[],
 ): Promise<NonNullable<SendParallelChatMessageInput['attachments']>> {
-  return Promise.all(
-    files.map(async (file) => {
-      const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let index = 0; index < bytes.length; index++) {
-        binary += String.fromCharCode(bytes[index]);
-      }
-      return { name: file.name, data: btoa(binary) };
-    }),
-  );
+  return encodeWorkspaceAttachmentFiles(files);
 }
 
 export async function sendChatMessage(
@@ -196,7 +189,7 @@ export async function createParallelChatGroup(
   input: CreateParallelChatGroupInput,
   signal?: AbortSignal,
 ): Promise<CreateParallelChatGroupResponse> {
-  const response = await fetch('/api/concurrent-groups', {
+  const response = await fetch(PARALLEL_CHAT_GROUPS_API_BASE, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -217,15 +210,18 @@ export async function sendParallelChatMessage(
   input: SendParallelChatMessageInput,
   signal?: AbortSignal,
 ): Promise<ParallelChatDispatchResponse> {
-  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/messages`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+      signal,
     },
-    body: JSON.stringify(input),
-    signal,
-  });
+  );
 
   return expectJson<ParallelChatDispatchResponse>(
     response,
@@ -238,15 +234,18 @@ export async function relayParallelChatMessage(
   input: RelayParallelChatMessageInput,
   signal?: AbortSignal,
 ): Promise<ParallelChatDispatchResponse> {
-  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/relay`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}/relay`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+      signal,
     },
-    body: JSON.stringify(input),
-    signal,
-  });
+  );
 
   return expectJson<ParallelChatDispatchResponse>(
     response,
@@ -259,15 +258,18 @@ export async function cancelParallelChatGroup(
   input: CancelParallelChatGroupInput,
   signal?: AbortSignal,
 ): Promise<CancelParallelChatGroupResponse> {
-  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/cancel`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}/cancel`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+      signal,
     },
-    body: JSON.stringify(input),
-    signal,
-  });
+  );
 
   return expectJson<CancelParallelChatGroupResponse>(
     response,
@@ -280,15 +282,18 @@ export async function renameParallelChatGroup(
   input: UpdateParallelChatGroupInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}`, {
-    method: 'PATCH',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+      signal,
     },
-    body: JSON.stringify(input),
-    signal,
-  });
+  );
 
   return refetchAfterMutation(
     response,
@@ -301,13 +306,16 @@ export async function ungroupParallelChatGroup(
   groupId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/ungroup`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}/ungroup`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal,
     },
-    signal,
-  });
+  );
 
   return refetchAfterMutation(
     response,
@@ -320,13 +328,16 @@ export async function deleteParallelChatGroup(
   groupId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}`, {
-    method: 'DELETE',
-    headers: {
-      Accept: 'application/json',
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal,
     },
-    signal,
-  });
+  );
 
   return refetchAfterMutation(
     response,

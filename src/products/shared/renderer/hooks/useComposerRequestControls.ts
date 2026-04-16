@@ -53,13 +53,13 @@ export function useComposerRequestControls<TPayload>({
     activeDispatchRequestRef.current = null;
     setFeedback('');
     setBusy(
-      activeRequest.kind === 'concurrent'
+      activeRequest.kind === 'parallel'
         ? createParallelChatBusyState('stop')
         : createComposerBusyState('stop', createChannelComposerBusyScope(activeRequest.channelId)),
     );
 
     try {
-      const cancellation = activeRequest.kind === 'concurrent'
+      const cancellation = activeRequest.kind === 'parallel'
         ? await cancelConcurrentGroup(activeRequest.groupId ?? '', {
             activeChannelId: activeRequest.channelId,
           })

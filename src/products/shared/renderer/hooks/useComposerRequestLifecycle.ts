@@ -19,7 +19,7 @@ export interface ActiveAckRequest {
 
 export interface ActiveSubmitRequest {
   id: number;
-  kind: 'channel' | 'concurrent';
+  kind: 'channel' | 'parallel';
   channelId: string;
   groupId?: string;
   channelIds?: string[];
@@ -30,7 +30,7 @@ function isDispatchRequestRunning<TPayload>(
   request: ActiveSubmitRequest,
   isChannelDispatchRunning: (payload: TPayload, channelId: string) => boolean,
 ): boolean {
-  if (request.kind === 'concurrent') {
+  if (request.kind === 'parallel') {
     return (request.channelIds ?? [request.channelId]).some((channelId) =>
       isChannelDispatchRunning(payload, channelId));
   }
@@ -42,7 +42,7 @@ function matchesExpectedDispatchBusy(
   busy: WorkspaceBusyState,
   request: ActiveSubmitRequest,
 ): boolean {
-  if (request.kind === 'concurrent') {
+  if (request.kind === 'parallel') {
     return isParallelChatBusy(busy, 'dispatch');
   }
 

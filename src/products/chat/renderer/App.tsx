@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import {
@@ -434,10 +435,13 @@ export default function App() {
     setDraftTemporaryParticipants,
     state,
   ]);
-  const draftParticipantKeys = [
-    ...draftParticipants.participantCatIds.map((catId) => `cat:${catId}`),
-    ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
-  ];
+  const draftParticipantKeys = useMemo(
+    () => [
+      ...draftParticipants.participantCatIds.map((catId) => `cat:${catId}`),
+      ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
+    ],
+    [draftParticipants.participantCatIds, draftTemporaryParticipants],
+  );
   const onToggleDraftCatWithAudienceSync = useCallback((catId: string) => {
     const isRemoving = draftParticipants.participantCatIds.includes(catId);
     onToggleDraftCat(catId);

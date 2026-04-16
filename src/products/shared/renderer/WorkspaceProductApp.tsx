@@ -2,6 +2,7 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type ComponentType,
   type MouseEvent as ReactMouseEvent,
@@ -425,10 +426,13 @@ export function createWorkspaceProductApp({
         maxDraftGroupParticipants,
       ],
     );
-    const draftParticipantKeys = [
-      ...draftParticipants.participantCatIds.map((catId) => `cat:${catId}`),
-      ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
-    ];
+    const draftParticipantKeys = useMemo(
+      () => [
+        ...draftParticipants.participantCatIds.map((catId) => `cat:${catId}`),
+        ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
+      ],
+      [draftParticipants.participantCatIds, draftTemporaryParticipants],
+    );
     const onQuickAddDraftTemporaryParticipant = useCallback(() => {
       if (!supportsStructuredDraftModes || state.status !== "ready") {
         return;
@@ -842,7 +846,7 @@ export function createWorkspaceProductApp({
           setDraftModel(value);
         }
       },
-      [onDraftParallelChatTargetChange],
+      [onDraftParallelChatTargetChange, setDraftModel],
     );
 
     const onResumeChannel = useWorkspaceResumeChannel<AppShellPayload>({

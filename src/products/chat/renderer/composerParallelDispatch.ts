@@ -9,7 +9,7 @@ import { createDraftChannelTitle } from './chatUtils.js';
 import { buildChannelPath } from '../shared/channelPaths.js';
 
 export interface ParallelDispatchRequestState {
-  kind: 'concurrent';
+  kind: 'parallel';
   channelId: string;
   groupId: string;
   channelIds: string[];
@@ -94,7 +94,7 @@ export async function submitNewParallelChatDraft({
       created.group.memberChannelIds,
     )
       ? {
-          kind: 'concurrent',
+          kind: 'parallel',
           channelId: activeChannelId,
           groupId: created.group.id,
           channelIds: created.group.memberChannelIds,
@@ -140,7 +140,7 @@ export async function submitParallelCompareMessage({
     dispatchAppShell: dispatch.appShell,
     dispatchRequest: isAnyParallelChatDispatchRunning(dispatch.appShell, activeGroupChannelIds)
       ? {
-          kind: 'concurrent',
+          kind: 'parallel',
           channelId,
           groupId: compareGroupId,
           channelIds: activeGroupChannelIds,

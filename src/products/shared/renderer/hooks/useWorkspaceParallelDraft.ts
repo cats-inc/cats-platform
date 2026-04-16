@@ -27,22 +27,12 @@ export function useWorkspaceParallelDraft(options: {
 
   const resetDraftParallelChatTargets = useCallback(() => {
     setDraftParallelChatTargets(createInitialParallelTargets(draftModel));
-  }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
-  ]);
+  }, [draftModel]);
 
   useEffect(() => {
     setDraftParallelChatTargets((currentTargets) =>
       syncLeadParallelTarget(currentTargets, draftModel));
-  }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
-  ]);
+  }, [draftModel]);
 
   const onDraftParallelChatTargetChange = useCallback((index: number, value: WorkspaceModelSelectorValue) => {
     setDraftParallelChatTargets((prev) =>
@@ -62,10 +52,7 @@ export function useWorkspaceParallelDraft(options: {
       ];
     });
   }, [
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
+    draftModel,
     maxParallelChats,
   ]);
 
