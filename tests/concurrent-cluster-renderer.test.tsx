@@ -8,6 +8,7 @@ import {
   type ConcurrentClusterRendererProps,
 } from '../src/products/shared/renderer/components/chat-view/ConcurrentClusterRenderer.tsx';
 import { resolveCompareCardsWindow } from '../src/products/shared/renderer/components/chat-view/CompareCardsLayout.tsx';
+import { shouldShowFocusRailSecondaryAnonymousIndicator } from '../src/products/shared/renderer/components/chat-view/FocusRailLayout.tsx';
 import type { ResolvedChannelParticipant } from '../src/products/chat/shared/channelParticipants.js';
 
 function createParticipant(
@@ -194,6 +195,65 @@ test('focus_rail keeps anonymous sealed secondaries visible and labels controls 
   assert.match(markup, /class="focusRailSecondaryAnonymousIndicator"/u);
   assert.match(markup, /aria-label="Expand unnamed response"/u);
   assert.match(markup, /aria-expanded="false"/u);
+});
+
+test('focus_rail hides anonymous secondary indicator while header dots are visible', () => {
+  const markup = renderConcurrentCluster('focus_rail', [
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-1',
+      targetStateId: 'target-1',
+      segmentIndex: 0,
+      speakerLabel: 'Claude-CLI',
+      contentBlocks: [
+        {
+          id: 'text-primary',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Primary answer',
+        },
+      ],
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-2',
+      targetStateId: 'target-2',
+      segmentIndex: 1,
+    }),
+  ]);
+
+  assert.doesNotMatch(markup, /class="focusRailSecondaryAnonymousIndicator"/u);
+  assert.match(markup, /class="focusRailSecondaryDots"/u);
+});
+
+test('focus_rail anonymous indicator returns when header dots are unavailable', () => {
+  assert.equal(
+    shouldShowFocusRailSecondaryAnonymousIndicator({
+      hasSpeakerIdentity: false,
+      isActive: true,
+      isExpanded: false,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldShowFocusRailSecondaryAnonymousIndicator({
+      hasSpeakerIdentity: false,
+      isActive: true,
+      isExpanded: true,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldShowFocusRailSecondaryAnonymousIndicator({
+      hasSpeakerIdentity: false,
+      isActive: false,
+      isExpanded: false,
+    }),
+    true,
+  );
 });
 
 test('ConcurrentClusterRenderer renders cluster actions independently from mode-specific layout', () => {

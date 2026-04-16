@@ -93,6 +93,18 @@ function AnonymousSecondarySummary(): JSX.Element {
   );
 }
 
+export function shouldShowFocusRailSecondaryAnonymousIndicator({
+  hasSpeakerIdentity,
+  isActive,
+  isExpanded,
+}: {
+  hasSpeakerIdentity: boolean;
+  isActive: boolean;
+  isExpanded: boolean;
+}): boolean {
+  return !hasSpeakerIdentity && (!isActive || isExpanded);
+}
+
 export function FocusRailLayout<Participant>(
   props: ClusterLayoutProps<Participant>,
 ): JSX.Element {
@@ -174,6 +186,12 @@ export function FocusRailLayout<Participant>(
             const isExpanded = expandedId === segment.id;
             const isActive = segment.phase === 'streaming' || segment.phase === 'waiting';
             const hasSpeaker = hasSpeakerIdentity(presentation);
+            const showActivityDots = isActive && !isExpanded;
+            const showAnonymousIndicator = shouldShowFocusRailSecondaryAnonymousIndicator({
+              hasSpeakerIdentity: hasSpeaker,
+              isActive,
+              isExpanded,
+            });
             const toggleLabel = buildToggleLabel(presentation, isExpanded);
             const copyLabel = buildCopyLabel(presentation);
             return (
@@ -198,8 +216,8 @@ export function FocusRailLayout<Participant>(
                       resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
                       resolveParticipantDisplayName={resolveParticipantDisplayName}
                     />
-                  ) : <AnonymousSecondarySummary />}
-                  {isActive && !isExpanded ? (
+                  ) : showAnonymousIndicator ? <AnonymousSecondarySummary /> : null}
+                  {showActivityDots ? (
                     <span className="focusRailSecondaryDots">
                       <span className="typingDots"><span /><span /><span /></span>
                     </span>
