@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveConcurrentPresentationMode } from '../src/products/chat/renderer/components/chat-view/concurrentModeResolver.js';
+import { resolveConcurrentPresentationMode } from '../src/products/shared/renderer/components/chat-view/concurrentModeResolver.js';
 
 const base = {
   explicitOverride: null,

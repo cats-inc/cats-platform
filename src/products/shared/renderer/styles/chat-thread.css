@@ -1,1 +1,392 @@
 @import './chat-thread-base.css';
+
+/* ── Compare cards ── */
+
+.compareCardsCarousel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.compareCardsGrid {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compareCardsGridSingle {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.compareCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  animation: typingFadeIn 0.2s ease;
+}
+
+.compareCardStreaming {
+  border-color: color-mix(in srgb, var(--accent) 18%, var(--border) 82%);
+  background: color-mix(in srgb, var(--panel) 94%, var(--accent-soft) 6%);
+}
+
+.compareCardSealed {
+  background: color-mix(in srgb, var(--panel) 98%, white 2%);
+}
+
+.compareCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compareCardHeader .transcriptMessageTop {
+  margin-bottom: 0;
+}
+
+.compareCardActions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.compareCardActionIcon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.compareCardActionIcon:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.compareCardBody {
+  min-width: 0;
+}
+
+.compareCardsCarouselNavVisible {
+  padding-inline: 44px;
+}
+
+.compareCardsNavButton {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white 8%);
+  color: var(--muted);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.compareCardsNavButton:hover {
+  color: var(--text);
+  background: var(--panel-hover);
+}
+
+.compareCardsNavPrev {
+  left: -44px;
+}
+
+.compareCardsNavNext {
+  right: -44px;
+}
+
+.compareCardsPagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.compareCardsPaginationDot {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.compareCardsPaginationDot:hover {
+  background: var(--muted);
+}
+
+.compareCardsPaginationDotActive {
+  background: var(--text);
+}
+
+.compareCardsPaginationDotActive:hover {
+  background: var(--text);
+}
+
+@media (max-width: 720px) {
+  .compareCardsCarousel.compareCardsCarouselNavVisible {
+    padding-inline: 40px;
+  }
+
+  .compareCardsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .compareCardsNavPrev {
+    left: 6px;
+  }
+
+  .compareCardsNavNext {
+    right: 6px;
+  }
+}
+
+/* ── Focus rail ── */
+
+.focusRailContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.focusRailPrimary {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  animation: typingFadeIn 0.2s ease;
+}
+
+.focusRailPrimaryHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.focusRailPrimaryHeader .transcriptMessageTop {
+  margin-bottom: 0;
+}
+
+.focusRailPrimaryActions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.focusRailActionIcon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.focusRailActionIcon:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.focusRailSecondaryFooter {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+
+.focusRailSecondaries {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+}
+
+.focusRailSecondarySlot {
+  border-radius: 12px;
+  background: var(--panel-subtle);
+  overflow: hidden;
+}
+
+.focusRailSecondaryHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.focusRailSecondaryIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.focusRailSecondaryAnonymousIndicator {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.focusRailSecondaryAnonymousDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.focusRailSecondaryName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: inherit;
+}
+
+.focusRailSecondaryHeader:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.focusRailSecondaryChip {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted-soft);
+}
+
+.focusRailSecondaryDots {
+  display: inline-flex;
+  align-items: center;
+  transform: scale(0.7);
+  transform-origin: left center;
+}
+
+.focusRailExpandIcon {
+  margin-left: auto;
+  font-size: 0.85rem;
+  transition: transform 0.15s ease;
+}
+
+.focusRailExpandIconOpen {
+  transform: rotate(90deg);
+}
+
+.focusRailSecondaryBody {
+  padding: 8px 12px 12px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  animation: typingFadeIn 0.15s ease;
+}
+
+/* ── Convergence policy overlays (stub) ── */
+
+.convergenceAdoptedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.convergenceSynthesizedBlock {
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border) 75%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent-soft) 8%);
+  font-size: 0.88rem;
+}
+
+.convergencePromotedIndicator {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+/* ── Cluster action bar ── */
+
+.clusterActionBarWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.clusterActionBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.clusterActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.clusterActionButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--border) 60%, var(--text) 40%);
+}
+
+.clusterActionButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

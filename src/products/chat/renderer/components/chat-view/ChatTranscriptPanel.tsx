@@ -30,14 +30,14 @@ import {
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
 import { TranscriptMessageItem } from './TranscriptMessageItem.js';
-import { ConcurrentClusterRenderer } from './ConcurrentClusterRenderer.js';
-import { buildConcurrentTranscriptRenderItems } from './concurrentTranscriptProjection.js';
+import { ConcurrentClusterRenderer } from '../../../../shared/renderer/components/chat-view/ConcurrentClusterRenderer.js';
+import { buildConcurrentTranscriptRenderItems } from '../../../../shared/renderer/components/chat-view/concurrentTranscriptProjection.js';
 import type {
   ConcurrentClusterAction,
   ConcurrentClusterActionContext,
   ConcurrentClusterContext,
-} from './concurrentClusterUiState.js';
-import { LiveTranscriptIndicator } from './LiveTranscriptIndicator.js';
+} from '../../../../shared/renderer/components/chat-view/concurrentClusterUiState.js';
+import { LiveTranscriptIndicator } from '../../../../shared/renderer/components/chat-view/LiveTranscriptIndicator.js';
 
 export interface ChatTranscriptPanelProps {
   hasConversationStarted: boolean;

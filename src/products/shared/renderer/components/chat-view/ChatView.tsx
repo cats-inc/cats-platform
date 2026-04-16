@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -44,6 +45,13 @@ import { ChatViewFrame } from './ChatViewFrame.js';
 import { ChatViewTopBar } from './ChatViewTopBar.js';
 import { ChatViewSidePanel } from './ChatViewSidePanel.js';
 import { ChatTranscriptSurface } from './ChatTranscriptSurface.js';
+import {
+  dismissConcurrentClusterUiState,
+  resolveConcurrentClusterPresentationMode,
+  type ConcurrentClusterActionContext,
+  type ConcurrentClusterContext,
+  type ConcurrentClusterUiStateMap,
+} from './concurrentClusterUiState.js';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -152,6 +160,48 @@ export function ChatView({
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
+  );
+  const [concurrentClusterUiStateByKey, setConcurrentClusterUiStateByKey] =
+    useState<ConcurrentClusterUiStateMap>({});
+  const resolveConcurrentClusterMode = useCallback(
+    (context: ConcurrentClusterContext) =>
+      resolveConcurrentClusterPresentationMode({
+        channelId: selectedChannel.id,
+        turnId: context.turnId,
+        userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
+        segmentCount: context.segmentCount,
+        viewportWidth,
+        workflowRecommendation: null,
+        uiStateByKey: concurrentClusterUiStateByKey,
+      }),
+    [
+      concurrentClusterUiStateByKey,
+      payload.chat.concurrentPresentationMode,
+      selectedChannel.id,
+      viewportWidth,
+    ],
+  );
+  const buildConcurrentClusterActions = useCallback(
+    (context: ConcurrentClusterActionContext) => {
+      if (context.resolvedMode === 'inline_stack') {
+        return [];
+      }
+      return [
+        {
+          key: `dismiss:${context.turnId}`,
+          label: 'Dismiss',
+          title: 'Dismiss layout',
+          onSelect: () => {
+            setConcurrentClusterUiStateByKey((previous) =>
+              dismissConcurrentClusterUiState(previous, {
+                channelId: selectedChannel.id,
+                turnId: context.turnId,
+              }));
+          },
+        },
+      ];
+    },
+    [selectedChannel.id],
   );
 
   function openSidePanelTo(section: string): void {
@@ -364,6 +414,8 @@ export function ChatView({
         transcriptListRef={transcriptListRef}
         bottomSentinelRef={bottomSentinelRef}
         onChoiceSubmit={onChoiceSubmit}
+        resolveConcurrentClusterPresentationMode={resolveConcurrentClusterMode}
+        buildConcurrentClusterActions={buildConcurrentClusterActions}
       />
       <ChatComposerSurface
         hasConversationStarted={hasConversationStarted}

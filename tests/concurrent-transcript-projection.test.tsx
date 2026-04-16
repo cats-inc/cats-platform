@@ -5,10 +5,11 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { IDLE_BUSY_STATE } from '../src/shared/workspaceBusy.ts';
 import { ChatTranscriptPanel } from '../src/products/chat/renderer/components/chat-view/ChatTranscriptPanel.tsx';
+import { ChatTranscriptSurface } from '../src/products/shared/renderer/components/chat-view/ChatTranscriptSurface.tsx';
 import {
   buildConcurrentTranscriptRenderItems,
   resolveDurableConcurrentClusterMaxSegmentCount,
-} from '../src/products/chat/renderer/components/chat-view/concurrentTranscriptProjection.ts';
+} from '../src/products/shared/renderer/components/chat-view/concurrentTranscriptProjection.ts';
 import type { ResolvedChannelParticipant } from '../src/products/chat/shared/channelParticipants.js';
 
 function createParticipant(
@@ -328,6 +329,48 @@ test('ChatTranscriptPanel falls back to raw transcript bubbles when a durable cl
 
   assert.doesNotMatch(markup, /compareCardsGrid/u);
   assert.equal((markup.match(/messageActionIcon/gu) ?? []).length, 3);
+  assert.match(markup, /Claude-CLI/u);
+  assert.match(markup, /Codex-CLI/u);
+  assert.match(markup, /Claude answer\./u);
+  assert.match(markup, /Codex answer\./u);
+});
+
+test('shared ChatTranscriptSurface keeps compare_cards layout for completed concurrent turns', () => {
+  const { visibleMessages, workflow } = createCompletedConcurrentTurnFixture();
+
+  const markup = renderToStaticMarkup(
+    <ChatTranscriptSurface
+      hasConversationStarted
+      greeting="Hello"
+      payload={{
+        chat: {
+          cats: [],
+          bossCatId: null,
+          showVerboseMessages: true,
+          showLiveProgressDetails: false,
+        },
+      } as Parameters<typeof ChatTranscriptSurface>[0]['payload']}
+      selectedChannel={{
+        id: 'channel-1',
+        title: 'Team Code',
+        messages: [...visibleMessages],
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow,
+        },
+      } as Parameters<typeof ChatTranscriptSurface>[0]['selectedChannel']}
+      busy={IDLE_BUSY_STATE}
+      liveIndicator={undefined}
+      directLaneExcludedMentionNames={[]}
+      transcriptListRef={() => {}}
+      bottomSentinelRef={() => {}}
+      onChoiceSubmit={() => {}}
+      resolveConcurrentClusterPresentationMode={() => 'compare_cards'}
+      buildConcurrentClusterActions={() => []}
+    />,
+  );
+
+  assert.match(markup, /compareCardsGrid/u);
   assert.match(markup, /Claude-CLI/u);
   assert.match(markup, /Codex-CLI/u);
   assert.match(markup, /Claude answer\./u);

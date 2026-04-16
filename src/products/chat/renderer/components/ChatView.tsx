@@ -71,7 +71,7 @@ import {
   type ConcurrentClusterActionContext,
   type ConcurrentClusterContext,
   type ConcurrentClusterUiStateMap,
-} from './chat-view/concurrentClusterUiState';
+} from '../../../shared/renderer/components/chat-view/concurrentClusterUiState.js';
 import {
   buildChatComposerRecipients,
   buildChatComposerStackParticipants,

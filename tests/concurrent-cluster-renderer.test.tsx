@@ -3,8 +3,11 @@ import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { createLiveIndicatorSegmentState } from '../src/shared/liveIndicator.ts';
-import { ConcurrentClusterRenderer } from '../src/products/chat/renderer/components/chat-view/ConcurrentClusterRenderer.tsx';
-import { resolveCompareCardsWindow } from '../src/products/chat/renderer/components/chat-view/CompareCardsLayout.tsx';
+import {
+  ConcurrentClusterRenderer,
+  type ConcurrentClusterRendererProps,
+} from '../src/products/shared/renderer/components/chat-view/ConcurrentClusterRenderer.tsx';
+import { resolveCompareCardsWindow } from '../src/products/shared/renderer/components/chat-view/CompareCardsLayout.tsx';
 import type { ResolvedChannelParticipant } from '../src/products/chat/shared/channelParticipants.js';
 
 function createParticipant(
@@ -54,8 +57,8 @@ function createParticipant(
 
 function renderConcurrentCluster(
   mode: 'inline_stack' | 'compare_cards' | 'focus_rail' | 'adaptive',
-  segments: Parameters<typeof ConcurrentClusterRenderer>[0]['segments'],
-  actions: Parameters<typeof ConcurrentClusterRenderer>[0]['actions'] = [],
+  segments: ConcurrentClusterRendererProps<ResolvedChannelParticipant>['segments'],
+  actions: ConcurrentClusterRendererProps<ResolvedChannelParticipant>['actions'] = [],
 ): string {
   const liveSpeakerParticipant = createParticipant('participant-latest', 'Latest Speaker');
   return renderToStaticMarkup(

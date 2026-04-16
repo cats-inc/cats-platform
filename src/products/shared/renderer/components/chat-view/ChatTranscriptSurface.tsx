@@ -1,7 +1,10 @@
 import { useMemo, type RefCallback } from 'react';
 
-import type { AppShellPayload } from '../../../api/workspaceContracts.js';
-import type { LiveIndicatorContentBlock, LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
+import type {
+  AppShellPayload,
+  ConcurrentChatPresentationMode,
+} from '../../../api/workspaceContracts.js';
+import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
 import {
   catInitials,
   messageTone,
@@ -9,7 +12,6 @@ import {
   type SelectedChannelView,
 } from '../../workspaceChatUtils.js';
 import {
-  hasVisibleLiveIndicatorSegmentActivity,
   resolveLiveIndicatorSegments,
 } from '../../../../../shared/liveIndicator.js';
 import {
@@ -21,11 +23,16 @@ import {
   MessageChoices,
   type MessageChoicesSubmitInput,
 } from '../MessageChoices.js';
+import { ConcurrentClusterRenderer } from './ConcurrentClusterRenderer.js';
 import {
-  shouldRenderLiveTranscriptBlock,
-  shouldShowLiveTranscriptTrailingDots,
-  stripLeadingLiveTranscriptBlankLines,
-} from './liveTranscriptBlockSupport.js';
+  buildConcurrentTranscriptRenderItems,
+} from './concurrentTranscriptProjection.js';
+import type {
+  ConcurrentClusterAction,
+  ConcurrentClusterActionContext,
+  ConcurrentClusterContext,
+} from './concurrentClusterUiState.js';
+import { LiveTranscriptIndicator } from './LiveTranscriptIndicator.js';
 
 export interface ChatTranscriptSurfaceProps {
   hasConversationStarted: boolean;
@@ -38,6 +45,12 @@ export interface ChatTranscriptSurfaceProps {
   transcriptListRef: RefCallback<HTMLDivElement>;
   bottomSentinelRef: RefCallback<HTMLDivElement>;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
+  resolveConcurrentClusterPresentationMode: (
+    input: ConcurrentClusterContext,
+  ) => ConcurrentChatPresentationMode;
+  buildConcurrentClusterActions: (
+    input: ConcurrentClusterActionContext,
+  ) => ReadonlyArray<ConcurrentClusterAction>;
 }
 
 export function ChatTranscriptSurface({
@@ -51,8 +64,11 @@ export function ChatTranscriptSurface({
   transcriptListRef,
   bottomSentinelRef,
   onChoiceSubmit,
+  resolveConcurrentClusterPresentationMode,
+  buildConcurrentClusterActions,
 }: ChatTranscriptSurfaceProps) {
   const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
+  const showProgressDetails = payload.chat.showLiveProgressDetails === true;
   const choiceResponsesBySource = useMemo(() => {
     const responses = new Map<
       string,
@@ -74,175 +90,175 @@ export function ChatTranscriptSurface({
     );
   }
 
+  const visibleMessages = selectedChannel.messages.filter((message) =>
+    payload.chat.showVerboseMessages || message.metadata?.verbosity !== 'verbose');
+  const renderItems = buildConcurrentTranscriptRenderItems({
+    visibleMessages,
+    workflow: selectedChannel.roomRouting.workflow,
+  });
+  const liveIndicatorSegments = liveIndicator?.active
+    ? resolveLiveIndicatorSegments(liveIndicator)
+    : [];
+
+  function renderTranscriptMessage(
+    message: (typeof selectedChannel.messages)[number],
+  ): JSX.Element {
+    return (
+      <article key={message.id} className={messageTone(message.senderKind)}>
+        {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
+          const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
+          return speaker.kind === 'cat' && speaker.cat ? (() => {
+            const isBoss = speaker.cat.id === payload.chat.bossCatId;
+            const isLead = speaker.cat.id === defaultRecipientId;
+            return (
+              <div className="transcriptMessageTop">
+                <div
+                  className={isBoss
+                    ? 'catAvatar catAvatarBoss transcriptAvatar'
+                    : 'catAvatar transcriptAvatar'}
+                  style={speaker.cat.avatarUrl
+                    ? {
+                        backgroundImage: `url(${speaker.cat.avatarUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }
+                    : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
+                >
+                  {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
+                  {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
+                </div>
+                <strong>{speaker.label}</strong>
+              </div>
+            );
+          })() : speaker.label ? (
+            <div className="transcriptMessageTop">
+              <strong>{speaker.label}</strong>
+            </div>
+          ) : null;
+        })() : null}
+        {message.body ? (
+          <MessageBody
+            body={message.body}
+            cats={payload.chat.cats}
+            channelId={selectedChannel.id}
+            disabledMentionNames={directLaneExcludedMentionNames}
+          />
+        ) : null}
+        {message.choices && message.choices.length > 0 ? (
+          <MessageChoices
+            channelId={selectedChannel.id}
+            messageId={message.id}
+            choices={message.choices}
+            existingResponse={choiceResponsesBySource.get(message.id) ?? null}
+            busy={isChoiceBusy(busy, message.id)}
+            onSubmit={onChoiceSubmit}
+          />
+        ) : null}
+      </article>
+    );
+  }
+
   return (
     <section className="transcriptPanel">
       <div ref={transcriptListRef} className="transcriptList">
-        {selectedChannel.messages
-          .filter((message) => payload.chat.showVerboseMessages || message.metadata?.verbosity !== 'verbose')
-          .map((message) => (
-            <article key={message.id} className={messageTone(message.senderKind)}>
-              {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
-                const speaker = resolveTranscriptMessageSpeaker(message, payload.chat.cats);
-                return speaker.kind === 'cat' && speaker.cat ? (() => {
-                  const isBoss = speaker.cat.id === payload.chat.bossCatId;
-                  const isLead = speaker.cat.id === defaultRecipientId;
-                  return (
-                    <div className="transcriptMessageTop">
-                      <div
-                        className={isBoss ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                        style={speaker.cat.avatarUrl
-                          ? { backgroundImage: `url(${speaker.cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                          : speaker.cat.avatarColor ? { background: speaker.cat.avatarColor } : undefined}
-                      >
-                        {speaker.cat.avatarUrl ? null : catInitials(speaker.cat.name)}
-                        {isLead ? <span className="catAvatarLeadBadge">&#x2605;</span> : null}
-                      </div>
-                      <strong>{speaker.label}</strong>
-                    </div>
-                  );
-                })() : speaker.label ? (
-                  <div className="transcriptMessageTop">
-                    <strong>{speaker.label}</strong>
-                  </div>
-                ) : null;
-              })() : null}
-              {message.body ? (
-                <MessageBody
-                  body={message.body}
-                  cats={payload.chat.cats}
-                  channelId={selectedChannel.id}
-                  disabledMentionNames={directLaneExcludedMentionNames}
-                />
-              ) : null}
-              {message.choices && message.choices.length > 0 ? (
-                <MessageChoices
-                  channelId={selectedChannel.id}
-                  messageId={message.id}
-                  choices={message.choices}
-                  existingResponse={choiceResponsesBySource.get(message.id) ?? null}
-                  busy={isChoiceBusy(busy, message.id)}
-                  onSubmit={onChoiceSubmit}
-                />
-              ) : null}
-            </article>
-          ))}
-        {liveIndicator?.active ? (() => {
-          const showProgressDetails = payload.chat.showLiveProgressDetails === true;
-
-          function renderBlock(block: LiveIndicatorContentBlock): JSX.Element | null {
-            if (!shouldRenderLiveTranscriptBlock(block, showProgressDetails)) {
-              return null;
+        {renderItems.map((item) => {
+          if (item.kind === 'concurrent_cluster') {
+            const clusterContext: ConcurrentClusterContext = {
+              turnId: item.turnId,
+              sourceMessageId: item.sourceMessageId,
+              segmentCount: item.segments.length,
+              clusterKind: 'durable',
+            };
+            const resolvedMode = resolveConcurrentClusterPresentationMode(clusterContext);
+            if (resolvedMode === 'inline_stack') {
+              return item.messages.map((message) => renderTranscriptMessage(message));
             }
-            if (block.kind === 'text') {
-              const text = stripLeadingLiveTranscriptBlankLines(block.text);
-              if (!text.trim()) {
-                return null;
-              }
-              return (
-                <MessageBody
-                  key={block.id}
-                  body={text}
-                  cats={payload.chat.cats}
-                  channelId={selectedChannel.id}
-                  disabledMentionNames={directLaneExcludedMentionNames}
-                />
-              );
-            }
-            if (block.kind === 'tool') {
-              return (
-                <div key={block.id} className={block.status === 'streaming' ? 'toolSegmentChip' : 'toolSegmentChip toolSegmentChipDone'}>
-                  <span className="toolSegmentChipName">{block.toolName ?? block.title ?? 'tool'}</span>
-                  {block.text ? (
-                    <span className="toolSegmentChipDetail">{block.text}</span>
-                  ) : null}
-                </div>
-              );
-            }
-            if (block.kind === 'status' && block.text) {
-              return <p key={block.id} className="typingStatusText">{block.text}</p>;
-            }
-            return null;
+            const clusterActions = buildConcurrentClusterActions({
+              ...clusterContext,
+              resolvedMode,
+            });
+            return (
+              <ConcurrentClusterRenderer<never>
+                key={item.key}
+                mode={resolvedMode}
+                segments={item.segments}
+                cats={payload.chat.cats}
+                bossCatId={payload.chat.bossCatId}
+                selectedChannelId={selectedChannel.id}
+                disabledMentionNames={directLaneExcludedMentionNames}
+                liveSpeakerParticipant={null}
+                liveSpeakerParticipantCat={null}
+                resolveLiveIndicatorSegmentParticipant={() => null}
+                resolveParticipantCatRecord={() => null}
+                buildParticipantAvatarClassName={() => 'catAvatar transcriptAvatar'}
+                buildParticipantAvatarStyle={() => undefined}
+                resolveParticipantAvatarUrl={() => null}
+                resolveParticipantDisplayName={() => ''}
+                showProgressDetails={showProgressDetails}
+                actions={clusterActions}
+              />
+            );
           }
-
-          return (
-            <>
-              {resolveLiveIndicatorSegments(liveIndicator).map((segment) => {
-                const speakerCat = segment.catId
-                  ? payload.chat.cats.find((cat) => cat.id === segment.catId) ?? null
-                  : null;
-                const speakerLabel = speakerCat?.name ?? segment.speakerLabel;
-                const sortedBlocks = [...segment.contentBlocks].sort(
-                  (left, right) => left.index - right.index,
-                );
-                const lastBlock = sortedBlocks.at(-1);
-                const showTrailingDots = shouldShowLiveTranscriptTrailingDots(
-                  segment.phase,
-                  lastBlock,
-                );
-                const renderedBlocks = sortedBlocks
-                  .map(renderBlock)
-                  .filter((block): block is JSX.Element => block != null);
-                const hasSegmentIdentity = Boolean(
-                  segment.participantId || segment.catId || segment.speakerLabel,
-                );
-                const shouldRenderSegment =
-                  segment.phase === 'waiting'
-                  || renderedBlocks.length > 0
-                  || (showProgressDetails && segment.progressText.trim().length > 0)
-                  || (
-                    segment.phase === 'streaming'
-                    && (hasVisibleLiveIndicatorSegmentActivity(segment) || hasSegmentIdentity)
-                  )
-                  || showTrailingDots;
-
-                if (!shouldRenderSegment) {
-                  return null;
-                }
-
-                return (
-                  <article key={segment.id} className="transcriptMessage transcriptMessageAgent typingIndicator">
-                    {speakerCat ? (
-                      <div className="transcriptMessageTop">
-                        <div
-                          className={speakerCat.id === payload.chat.bossCatId ? 'catAvatar catAvatarBoss transcriptAvatar' : 'catAvatar transcriptAvatar'}
-                          style={speakerCat.avatarUrl
-                            ? { backgroundImage: `url(${speakerCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                            : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
-                        >
-                          {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
-                        </div>
-                        <strong>{speakerCat.name}</strong>
-                      </div>
-                    ) : speakerLabel ? (
-                      <div className="transcriptMessageTop">
-                        <strong>{speakerLabel}</strong>
-                      </div>
-                    ) : null}
-                    {segment.phase === 'waiting' ? (
-                      <span className="typingDots"><span /><span /><span /></span>
-                    ) : renderedBlocks.length === 0 ? (
-                      showProgressDetails && segment.progressText ? (
-                        <p className="typingStatusText">{segment.progressText}</p>
-                      ) : segment.phase === 'streaming'
-                        && hasVisibleLiveIndicatorSegmentActivity(segment) ? (
-                        <span className="typingDots"><span /><span /><span /></span>
-                      ) : showTrailingDots ? (
-                        <span className="typingDots"><span /><span /><span /></span>
-                      ) : null
-                    ) : (
-                      <>
-                        {renderedBlocks}
-                        {showTrailingDots ? (
-                          <span className="typingDots"><span /><span /><span /></span>
-                        ) : null}
-                      </>
-                    )}
-                  </article>
-                );
-              })}
-            </>
-          );
-        })() : null}
+          return renderTranscriptMessage(item.message);
+        })}
+        {liveIndicator?.active ? (
+          <LiveTranscriptIndicator<never>
+            cats={payload.chat.cats}
+            bossCatId={payload.chat.bossCatId}
+            selectedChannelId={selectedChannel.id}
+            disabledMentionNames={directLaneExcludedMentionNames}
+            liveIndicator={liveIndicator}
+            liveSpeakerParticipant={null}
+            liveSpeakerParticipantCat={null}
+            resolveLiveIndicatorSegmentParticipant={() => null}
+            resolveParticipantCatRecord={() => null}
+            buildParticipantAvatarClassName={() => 'catAvatar transcriptAvatar'}
+            buildParticipantAvatarStyle={() => undefined}
+            resolveParticipantAvatarUrl={() => null}
+            resolveParticipantDisplayName={() => ''}
+            showProgressDetails={showProgressDetails}
+            concurrentPresentationMode={(() => {
+              const liveTurnId = selectedChannel.roomRouting.workflow.activeTurn?.id;
+              if (!liveTurnId) {
+                return 'inline_stack';
+              }
+              return resolveConcurrentClusterPresentationMode({
+                turnId: liveTurnId,
+                sourceMessageId:
+                  liveIndicator.sourceMessageId
+                  ?? selectedChannel.roomRouting.workflow.activeTurn?.sourceMessageId
+                  ?? '',
+                segmentCount: liveIndicatorSegments.length,
+                clusterKind: 'live',
+              });
+            })()}
+            concurrentActions={(() => {
+              const liveTurnId = selectedChannel.roomRouting.workflow.activeTurn?.id;
+              if (!liveTurnId) {
+                return [];
+              }
+              const resolvedMode = resolveConcurrentClusterPresentationMode({
+                turnId: liveTurnId,
+                sourceMessageId:
+                  liveIndicator.sourceMessageId
+                  ?? selectedChannel.roomRouting.workflow.activeTurn?.sourceMessageId
+                  ?? '',
+                segmentCount: liveIndicatorSegments.length,
+                clusterKind: 'live',
+              });
+              return buildConcurrentClusterActions({
+                turnId: liveTurnId,
+                sourceMessageId:
+                  liveIndicator.sourceMessageId
+                  ?? selectedChannel.roomRouting.workflow.activeTurn?.sourceMessageId
+                  ?? '',
+                segmentCount: liveIndicatorSegments.length,
+                clusterKind: 'live',
+                resolvedMode,
+              });
+            })()}
+          />
+        ) : null}
         <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
       </div>
     </section>
