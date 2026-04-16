@@ -37,6 +37,8 @@ export interface SidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
+  onStartNewGroupChat?: () => void;
+  onStartNewParallelChat?: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
@@ -52,10 +54,10 @@ export interface SidebarProps {
 }
 
 function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
-  return [
+  const actions: ConversationSidebarAction[] = [
     {
       key: 'new-chat',
-      label: 'New chat',
+      label: 'New Code',
       onClick: props.onStartNewChat,
       icon: (
         <svg
@@ -74,6 +76,58 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
       ),
     },
   ];
+
+  if (props.onStartNewGroupChat) {
+    actions.push({
+      key: 'new-group-chat',
+      label: 'Team Code',
+      onClick: props.onStartNewGroupChat,
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+          <path d="M11 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+          <path d="M2.5 12c.4-1.5 1.5-2.5 2.5-2.5s2.1 1 2.5 2.5" />
+          <path d="M8.5 12c.4-1.5 1.5-2.5 2.5-2.5s2.1 1 2.5 2.5" />
+        </svg>
+      ),
+    });
+  }
+
+  if (props.onStartNewParallelChat) {
+    actions.push({
+      key: 'new-parallel-chat',
+      label: 'Peer Code',
+      onClick: props.onStartNewParallelChat,
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 13V6" />
+          <path d="M1 9l3-3 3 3" />
+          <path d="M12 13V6" />
+          <path d="M9 9l3-3 3 3" />
+        </svg>
+      ),
+    });
+  }
+
+  return actions;
 }
 
 function createExtraActionGroups(props: SidebarProps): ConversationSidebarActionGroup[] {

@@ -219,6 +219,120 @@ export async function uploadChannelAttachments(
   return result.attachments;
 }
 
+export interface ParallelChatTargetInput {
+  provider: string;
+  instance: string | null;
+  model: string | null;
+  modelSelection?: import('../../../../shared/providerSelection.js').ProviderModelSelection | null;
+}
+
+export interface CreateParallelChatGroupInput {
+  title: string;
+  repoPath?: string;
+  responseLanguage?: string;
+  targets: ParallelChatTargetInput[];
+}
+
+export interface ParallelChatGroupMemberSummary extends ParallelChatTargetInput {
+  channelId: string;
+  title: string;
+  index: number;
+  lastMessageAt: string | null;
+}
+
+export interface ParallelChatGroupSummary {
+  id: string;
+  title: string;
+  mode: 'parallel';
+  status: 'active' | 'archived';
+  memberCount: number;
+  memberChannelIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string | null;
+  members: ParallelChatGroupMemberSummary[];
+}
+
+export interface CreateParallelChatGroupResponse {
+  appShell: AppShellPayload;
+  group: ParallelChatGroupSummary;
+}
+
+export interface SendParallelChatMessageInput {
+  activeChannelId: string;
+  body: string;
+  attachments?: Array<{ name: string; data: string }>;
+}
+
+export interface ParallelChatDispatchResponse {
+  appShell: AppShellPayload;
+  groupId: string;
+  phase: 'acknowledged' | 'completed';
+  results: Array<{
+    channelId: string;
+    status: 'sent' | 'error' | 'skipped';
+    sourceMessageId?: string;
+    error?: string;
+  }>;
+}
+
+export async function encodeAttachmentFiles(
+  files: File[],
+): Promise<NonNullable<SendParallelChatMessageInput['attachments']>> {
+  return Promise.all(
+    files.map(async (file) => {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let index = 0; index < bytes.length; index++) {
+        binary += String.fromCharCode(bytes[index]);
+      }
+      return { name: file.name, data: btoa(binary) };
+    }),
+  );
+}
+
+export async function createParallelChatGroup(
+  input: CreateParallelChatGroupInput,
+  signal?: AbortSignal,
+): Promise<CreateParallelChatGroupResponse> {
+  const response = await fetch('/api/concurrent-groups', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return expectJson<CreateParallelChatGroupResponse>(
+    response,
+    `parallel chat creation returned ${response.status}`,
+  );
+}
+
+export async function sendParallelChatMessage(
+  groupId: string,
+  input: SendParallelChatMessageInput,
+  signal?: AbortSignal,
+): Promise<ParallelChatDispatchResponse> {
+  const response = await fetch(`/api/concurrent-groups/${encodeURIComponent(groupId)}/messages`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+
+  return expectJson<ParallelChatDispatchResponse>(
+    response,
+    `parallel chat dispatch returned ${response.status}`,
+  );
+}
+
 export async function sendChatMessage(
   channelId: string,
   input: SendChannelMessageInput,

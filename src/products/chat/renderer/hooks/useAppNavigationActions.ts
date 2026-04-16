@@ -88,7 +88,11 @@ export function useAppNavigationActions(options: {
     setChannelFiles,
     confirm: confirmDialog,
   } = options;
-  const sharedActions = useWorkspaceAppNavigationActions<ModelSelectorValue, AppShellPayload>({
+  const sharedActions = useWorkspaceAppNavigationActions<
+    ModelSelectorValue,
+    AppShellPayload,
+    DraftTemporaryParticipant
+  >({
     ...options,
     platformShellSurface: 'chat',
     navigationApi: {

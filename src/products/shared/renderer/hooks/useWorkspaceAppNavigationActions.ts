@@ -9,7 +9,9 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../api/workspaceContracts.js';
 import {
   buildWorkspaceChannelPath,
+  buildWorkspaceNewGroupChatPath,
   buildWorkspaceNewChatPath,
+  buildWorkspaceNewParallelChatPath,
   resolveWorkspaceVisibleChatPath,
 } from '../../channelPaths.js';
 import { resolveMyCatNavigationTargetForPrefix } from '../../../../app/renderer/productShell/myCatNavigation.js';
@@ -92,6 +94,7 @@ export type WorkspaceNavigationLoadState<
 export interface UseWorkspaceAppNavigationActionsOptions<
   TModelSelectorValue,
   TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
+  TDraftParticipant = never,
 > {
   state: WorkspaceNavigationLoadState<TPayload>;
   setState: Dispatch<SetStateAction<WorkspaceNavigationLoadState<TPayload>>>;
@@ -106,8 +109,13 @@ export interface UseWorkspaceAppNavigationActionsOptions<
   setChannelPlusMenuOpen: Dispatch<SetStateAction<boolean>>;
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+  setDraftTemporaryParticipants?: Dispatch<SetStateAction<TDraftParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, TModelSelectorValue>>>;
+  setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
+  setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
+  resetDraftParallelChatTargets?: () => void;
+  createInitialGroupParticipants?: () => TDraftParticipant[];
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   navigationApi?: WorkspaceAppNavigationApi<TPayload>;
@@ -117,8 +125,9 @@ export interface UseWorkspaceAppNavigationActionsOptions<
 export function useWorkspaceAppNavigationActions<
   TModelSelectorValue,
   TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
+  TDraftParticipant = never,
 >(
-  options: UseWorkspaceAppNavigationActionsOptions<TModelSelectorValue, TPayload>,
+  options: UseWorkspaceAppNavigationActionsOptions<TModelSelectorValue, TPayload, TDraftParticipant>,
 ) {
   const {
     state,
@@ -134,8 +143,13 @@ export function useWorkspaceAppNavigationActions<
     setChannelPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    setDraftWorkflowShape,
+    setDraftAudienceKeys,
+    resetDraftParallelChatTargets,
+    createInitialGroupParticipants,
     setDraftFiles,
     setChannelFiles,
     navigationApi: providedNavigationApi,
@@ -151,8 +165,12 @@ export function useWorkspaceAppNavigationActions<
     setPlusMenuOpen(false);
     setDraftCwd(null);
     setDraftCatIds([]);
+    setDraftTemporaryParticipants?.([]);
     setDraftHighlightedCatId(null);
     setDraftCatModelOverrides(new Map());
+    setDraftWorkflowShape?.('sequential');
+    setDraftAudienceKeys?.(null);
+    resetDraftParallelChatTargets?.();
     setDraftFiles([]);
     setChannelPlusMenuOpen(false);
     setChannelFiles([]);
@@ -161,8 +179,12 @@ export function useWorkspaceAppNavigationActions<
     setPlusMenuOpen,
     setDraftCwd,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
+    setDraftWorkflowShape,
+    setDraftAudienceKeys,
+    resetDraftParallelChatTargets,
     setDraftFiles,
     setChannelPlusMenuOpen,
     setChannelFiles,
@@ -289,26 +311,43 @@ export function useWorkspaceAppNavigationActions<
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildWorkspaceNewChatPath(chatPrefix, null));
     setComposerDraft('');
+    clearDraftRouteState();
     setFeedback('');
-    setAddCatOpen(false);
-    setPlusMenuOpen(false);
-    setDraftCwd(null);
-    setDraftCatIds([]);
-    setDraftHighlightedCatId(null);
-    setDraftCatModelOverrides(new Map());
-    setDraftFiles([]);
   }, [
     chatPrefix,
+    clearDraftRouteState,
     navigate,
     setComposerDraft,
     setFeedback,
-    setAddCatOpen,
-    setPlusMenuOpen,
-    setDraftCwd,
-    setDraftCatIds,
-    setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
-    setDraftFiles,
+  ]);
+
+  const onStartNewGroupChat = useCallback(async (): Promise<void> => {
+    navigate(buildWorkspaceNewGroupChatPath(chatPrefix));
+    setComposerDraft('');
+    clearDraftRouteState();
+    setFeedback('');
+    setDraftTemporaryParticipants?.(createInitialGroupParticipants?.() ?? []);
+  }, [
+    chatPrefix,
+    clearDraftRouteState,
+    navigate,
+    setComposerDraft,
+    setDraftTemporaryParticipants,
+    createInitialGroupParticipants,
+    setFeedback,
+  ]);
+
+  const onStartNewParallelChat = useCallback(async (): Promise<void> => {
+    navigate(buildWorkspaceNewParallelChatPath(chatPrefix));
+    setComposerDraft('');
+    clearDraftRouteState();
+    setFeedback('');
+  }, [
+    chatPrefix,
+    clearDraftRouteState,
+    navigate,
+    setComposerDraft,
+    setFeedback,
   ]);
 
   return {
@@ -321,5 +360,7 @@ export function useWorkspaceAppNavigationActions<
     onDirectChatCat,
     onResetSetup,
     onStartNewChat,
+    onStartNewGroupChat,
+    onStartNewParallelChat,
   };
 }

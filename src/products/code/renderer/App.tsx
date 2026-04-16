@@ -8,11 +8,14 @@ export default createWorkspaceProductApp({
   productName: "Code",
   chatPrefix: "/code",
   shellSurface: "code",
+  supportsStructuredDraftModes: true,
   BootShell,
   AppRoutesComponent: AppRoutes,
   renderSidebar: (props) => (
     <Sidebar
       {...props}
+      onStartNewGroupChat={props.onStartNewGroupChat}
+      onStartNewParallelChat={props.onStartNewParallelChat}
       onOpenRelay={() => props.navigate("/code/relay")}
       onOpenBuild={() => props.navigate("/code/build")}
     />

@@ -2,6 +2,7 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useState,
   type ComponentType,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
@@ -27,7 +28,7 @@ import type { AppShellPayload } from "../api/workspaceContracts.js";
 import type { AddCatPanelProps } from "./components/AddCatPanel.js";
 import type { FolderBrowserContentProps } from "./components/FolderBrowser.js";
 import type { ModelSelectorValue } from "./components/ModelSelector.js";
-import type { NewChatDraftProps } from "./components/NewChatDraft.js";
+import type { NewChatDraftProps as ChatNewChatDraftProps } from "./components/ChatNewChatDraft.js";
 import type { ChatViewProps } from "./components/chat-view/ChatView.js";
 import {
   activateChatChannel,
@@ -57,10 +58,12 @@ import { useFolderBrowser } from "./hooks/useFolderBrowser.js";
 import { useLiveIndicator } from "./hooks/useLiveIndicator.js";
 import { setBrowserLiveTraceEnabled } from "../../../shared/liveTrace.js";
 import { useWorkspaceDraftCatState } from "./hooks/useWorkspaceDraftCatState.js";
+import { useWorkspaceDraftParticipantState } from "./hooks/useWorkspaceDraftParticipantState.js";
 import { useWorkspaceAppTransientState } from "./hooks/useWorkspaceAppTransientState.js";
 import { useWorkspaceLocationState } from "./hooks/useWorkspaceLocationState.js";
 import { useWorkspaceModelSelectionState } from "./hooks/useWorkspaceModelSelectionState.js";
 import { useOnGenericDraftRouteEntry } from "./hooks/useOnGenericDraftRouteEntry.js";
+import { useWorkspaceParallelDraft } from "./hooks/useWorkspaceParallelDraft.js";
 import { useProductChannelDocumentTitle } from "./hooks/useProductChannelDocumentTitle.js";
 import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
 import {
@@ -78,13 +81,24 @@ import {
   buildFolderBrowserContentProps,
   resolveVisibleChatChannelId,
 } from "./appShellPresentation.js";
+import {
+  createInitialGroupParticipants,
+  createNextGroupTemporaryParticipant,
+  createDraftTemporaryParticipant,
+  reconcileDraftAudienceKeysAfterParticipantRemoval,
+  resolveGenericDraftTemporaryParticipants,
+  syncLeadDraftTemporaryParticipantWithTarget,
+  type DraftTemporaryParticipant,
+} from "./draftChatUtils.js";
 
 type ChatSurfaceProps = Omit<ChatViewProps, "payload" | "selectedChannel">;
 
 type DraftSurfaceProps = Omit<
-  NewChatDraftProps,
+  ChatNewChatDraftProps,
   "payload" | "onOpenAddCat" | "onDraftDefaultRecipientChange" | "allowAddCat"
->;
+> & {
+  greeting: string;
+};
 
 export interface WorkspaceProductAppRoutesProps {
   payload: AppShellPayload;
@@ -117,6 +131,8 @@ export interface WorkspaceProductSidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
+  onStartNewGroupChat?: () => void;
+  onStartNewParallelChat?: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
@@ -136,6 +152,7 @@ export interface WorkspaceProductAppConfig {
   productName: "Work" | "Code";
   chatPrefix: string;
   shellSurface: WorkspaceProductShellSurface;
+  supportsStructuredDraftModes?: boolean;
   BootShell: ComponentType;
   AppRoutesComponent: ComponentType<WorkspaceProductAppRoutesProps>;
   renderSidebar: (props: WorkspaceProductSidebarProps) => ReactNode;
@@ -145,6 +162,7 @@ export function createWorkspaceProductApp({
   productName,
   chatPrefix,
   shellSurface,
+  supportsStructuredDraftModes = false,
   BootShell,
   AppRoutesComponent,
   renderSidebar,
@@ -158,11 +176,13 @@ export function createWorkspaceProductApp({
       location,
       settingsMode,
       routeChannelId,
-      routeMyCatId,
       showingNewChatDraft,
+      newChatMode,
       draftDefaultRecipientCatId,
       showingMyCatDirectLane,
     } = useWorkspaceLocationState(chatPrefix);
+    const effectiveNewChatMode = supportsStructuredDraftModes ? newChatMode : "default";
+    const showingParallelChatDraft = effectiveNewChatMode === "parallel";
 
     const {
       state,
@@ -200,6 +220,35 @@ export function createWorkspaceProductApp({
       onDraftCatModelOverride,
       resetDraftCats,
     } = useWorkspaceDraftCatState();
+    const maxDraftGroupParticipants =
+      state.status === "ready"
+        ? (state.payload.chat.capabilities.maxChatParticipants ?? Number.POSITIVE_INFINITY)
+        : Number.POSITIVE_INFINITY;
+    const maxDraftAudienceParticipants =
+      state.status === "ready"
+        ? (state.payload.chat.capabilities.maxAudienceParticipants ?? Number.POSITIVE_INFINITY)
+        : Number.POSITIVE_INFINITY;
+    const maxParallelChats =
+      state.status === "ready"
+        ? (state.payload.chat.capabilities.maxParallelChats ?? 3)
+        : 3;
+    const [draftWorkflowShape, setDraftWorkflowShape] = useState<"sequential" | "concurrent">(
+      "sequential",
+    );
+    const [draftAudienceKeys, setDraftAudienceKeys] = useState<string[] | null>(null);
+    const {
+      draftTemporaryParticipants,
+      setDraftTemporaryParticipants,
+      draftParticipants,
+      onAddDraftTemporaryParticipant,
+      onRemoveDraftTemporaryParticipant,
+      onUpdateDraftTemporaryParticipant,
+    } = useWorkspaceDraftParticipantState({
+      state,
+      draftDefaultRecipientCatId,
+      draftCatIds,
+      maxDraftGroupParticipants,
+    });
     const {
       dialog: appDialog,
       confirm: appConfirm,
@@ -278,36 +327,6 @@ export function createWorkspaceProductApp({
       fileInputRef,
       openFolderBrowser,
     });
-    const {
-      onOpenChatsOverview,
-      onSelect,
-      onRenameChannel,
-      onDeleteChannel,
-      onDeleteCat,
-      onNavigateSettings,
-      onDirectChatCat,
-      onResetSetup,
-      onStartNewChat,
-    } = useWorkspaceAppNavigationActions<ModelSelectorValue>({
-      state,
-      setState,
-      navigate,
-      platformShellSurface: shellSurface,
-      setBusy,
-      setFeedback,
-      setComposerDraft,
-      setAccountMenuOpen,
-      setAddCatOpen,
-      setPlusMenuOpen,
-      setChannelPlusMenuOpen,
-      setDraftCwd,
-      setDraftCatIds,
-      setDraftHighlightedCatId,
-      setDraftCatModelOverrides,
-      setDraftFiles,
-      setChannelFiles,
-      confirm: appConfirm,
-    });
     const onArchiveCat = useCallback(
       async (catId: string): Promise<void> => {
         const catName =
@@ -376,6 +395,276 @@ export function createWorkspaceProductApp({
       updateNewChatDefaultsPreference,
       updateChannelPendingExecutionTarget,
     });
+    const draftEntryKind: "solo" | "group" | "direct" = showingMyCatDirectLane
+      ? "direct"
+      : supportsStructuredDraftModes
+        && (
+          effectiveNewChatMode === "group"
+          || draftParticipants.participantCatIds.length > 0
+          || draftTemporaryParticipants.length > 0
+        )
+        ? "group"
+        : "solo";
+    const {
+      draftParallelChatTargets,
+      resetDraftParallelChatTargets,
+      onDraftParallelChatTargetChange,
+      onAddDraftParallelChatTarget,
+      onRemoveDraftParallelChatTarget,
+    } = useWorkspaceParallelDraft({
+      draftModel,
+      maxParallelChats,
+    });
+    const seedDraftGroupParticipants = useCallback(
+      () => createInitialGroupParticipants(draftModel, maxDraftGroupParticipants),
+      [
+        draftModel.instance,
+        draftModel.model,
+        draftModel.modelSelection,
+        draftModel.provider,
+        maxDraftGroupParticipants,
+      ],
+    );
+    const draftParticipantKeys = [
+      ...draftParticipants.participantCatIds.map((catId) => `cat:${catId}`),
+      ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
+    ];
+    const onQuickAddDraftTemporaryParticipant = useCallback(() => {
+      if (!supportsStructuredDraftModes || state.status !== "ready") {
+        return;
+      }
+
+      const visibleCatNames = draftParticipants.participantCatIds
+        .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? "")
+        .filter((name) => name.trim().length > 0);
+      let addedParticipantId: string | null = null;
+
+      setDraftTemporaryParticipants((current) => {
+        if (draftParticipants.participantCatIds.length + current.length >= maxDraftGroupParticipants) {
+          return current;
+        }
+
+        const nextParticipant =
+          current.length === 0 && draftParticipants.participantCatIds.length === 0
+            ? createDraftTemporaryParticipant({
+                provider: draftModel.provider,
+                instance: draftModel.instance,
+                model: draftModel.model,
+                modelSelection: draftModel.modelSelection,
+                takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
+                randomUUID: () =>
+                  globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+              })
+            : createNextGroupTemporaryParticipant({
+                baseProvider: draftModel.provider,
+                existingParticipants: current,
+                takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
+                randomUUID: () =>
+                  globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+              });
+        addedParticipantId = nextParticipant.participantId;
+        return [...current, nextParticipant];
+      });
+
+      if (!addedParticipantId) {
+        return;
+      }
+
+      setDraftAudienceKeys((current) => {
+        const visibleCatKeys = draftParticipants.participantCatIds.map((catId) => `cat:${catId}`);
+        const currentParticipantKeys = [
+          ...visibleCatKeys,
+          ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
+        ];
+        const nextParticipantKey = `temp:${addedParticipantId}`;
+        const baseAudienceKeys = current ?? currentParticipantKeys;
+        const normalizedAudienceKeys = baseAudienceKeys.filter((key, index, source) =>
+          source.indexOf(key) === index && currentParticipantKeys.includes(key));
+
+        if (
+          Number.isFinite(maxDraftAudienceParticipants)
+          && normalizedAudienceKeys.length >= maxDraftAudienceParticipants
+        ) {
+          return normalizedAudienceKeys;
+        }
+
+        return [...normalizedAudienceKeys, nextParticipantKey];
+      });
+    }, [
+      draftModel.instance,
+      draftModel.model,
+      draftModel.modelSelection,
+      draftModel.provider,
+      draftParticipants.participantCatIds,
+      draftTemporaryParticipants,
+      maxDraftAudienceParticipants,
+      maxDraftGroupParticipants,
+      setDraftTemporaryParticipants,
+      state,
+      supportsStructuredDraftModes,
+    ]);
+    const onToggleDraftCatWithAudienceSync = useCallback((catId: string) => {
+      if (!supportsStructuredDraftModes) {
+        onToggleDraftCat(catId);
+        return;
+      }
+
+      const isRemoving = draftParticipants.participantCatIds.includes(catId);
+      if (
+        !isRemoving
+        && draftParticipants.participantCatIds.length + draftTemporaryParticipants.length
+          >= maxDraftGroupParticipants
+      ) {
+        return;
+      }
+      onToggleDraftCat(catId);
+
+      if (!isRemoving) {
+        const addedKey = `cat:${catId}`;
+        setDraftAudienceKeys((current) => {
+          const baseKeys = current ?? draftParticipantKeys;
+          const normalized = baseKeys.filter((key, index, source) => source.indexOf(key) === index);
+          if (
+            Number.isFinite(maxDraftAudienceParticipants)
+            && normalized.length >= maxDraftAudienceParticipants
+          ) {
+            return normalized;
+          }
+          return [...normalized, addedKey];
+        });
+        return;
+      }
+
+      const removedParticipantKey = `cat:${catId}`;
+      const nextParticipantKeys = draftParticipantKeys.filter((key) => key !== removedParticipantKey);
+      setDraftAudienceKeys((current) =>
+        reconcileDraftAudienceKeysAfterParticipantRemoval({
+          draftAudienceKeys: current,
+          previousParticipantKeys: draftParticipantKeys,
+          nextParticipantKeys,
+          removedParticipantKey,
+          maxAudienceParticipants: maxDraftAudienceParticipants,
+        }));
+    }, [
+      draftParticipantKeys,
+      draftParticipants.participantCatIds,
+      draftTemporaryParticipants.length,
+      maxDraftAudienceParticipants,
+      maxDraftGroupParticipants,
+      onToggleDraftCat,
+      supportsStructuredDraftModes,
+    ]);
+    const onRemoveDraftTemporaryParticipantWithAudienceSync = useCallback((participantId: string) => {
+      if (!supportsStructuredDraftModes) {
+        onRemoveDraftTemporaryParticipant(participantId);
+        return;
+      }
+
+      const removedParticipantKey = `temp:${participantId}`;
+      const nextParticipantKeys = draftParticipantKeys.filter((key) => key !== removedParticipantKey);
+      onRemoveDraftTemporaryParticipant(participantId);
+      setDraftAudienceKeys((current) =>
+        reconcileDraftAudienceKeysAfterParticipantRemoval({
+          draftAudienceKeys: current,
+          previousParticipantKeys: draftParticipantKeys,
+          nextParticipantKeys,
+          removedParticipantKey,
+          maxAudienceParticipants: maxDraftAudienceParticipants,
+        }));
+    }, [
+      draftParticipantKeys,
+      maxDraftAudienceParticipants,
+      onRemoveDraftTemporaryParticipant,
+      supportsStructuredDraftModes,
+    ]);
+    const onAddDraftTemporaryParticipantWithAudienceSync = useCallback((
+      participant: Omit<DraftTemporaryParticipant, "participantId"> & {
+        participantId?: string | null;
+      },
+    ) => {
+      onAddDraftTemporaryParticipant(participant);
+      if (!supportsStructuredDraftModes) {
+        return;
+      }
+
+      const isNewLeadParticipant =
+        showingNewChatDraft
+        && effectiveNewChatMode === "group"
+        && draftParticipants.participantCatIds.length === 0
+        && draftTemporaryParticipants.length === 0;
+      if (isNewLeadParticipant && participant.provider.trim()) {
+        setDraftModel({
+          provider: participant.provider.trim(),
+          model: participant.model?.trim() || null,
+          instance: participant.instance?.trim() || null,
+          modelSelection: participant.modelSelection ?? null,
+        });
+      }
+      const addedKey = `temp:${participant.participantId ?? ""}`;
+      if (!addedKey || addedKey === "temp:") {
+        return;
+      }
+      setDraftAudienceKeys((current) => {
+        const baseKeys = current ?? draftParticipantKeys;
+        const normalized = baseKeys.filter((key, index, source) => source.indexOf(key) === index);
+        if (
+          Number.isFinite(maxDraftAudienceParticipants)
+          && normalized.length >= maxDraftAudienceParticipants
+        ) {
+          return normalized;
+        }
+        return [...normalized, addedKey];
+      });
+    }, [
+      draftParticipantKeys,
+      draftParticipants.participantCatIds.length,
+      draftTemporaryParticipants.length,
+      effectiveNewChatMode,
+      maxDraftAudienceParticipants,
+      onAddDraftTemporaryParticipant,
+      setDraftModel,
+      showingNewChatDraft,
+      supportsStructuredDraftModes,
+    ]);
+    const {
+      onOpenChatsOverview,
+      onSelect,
+      onRenameChannel,
+      onDeleteChannel,
+      onDeleteCat,
+      onNavigateSettings,
+      onDirectChatCat,
+      onResetSetup,
+      onStartNewChat,
+      onStartNewGroupChat,
+      onStartNewParallelChat,
+    } = useWorkspaceAppNavigationActions<ModelSelectorValue, AppShellPayload, DraftTemporaryParticipant>({
+      state,
+      setState,
+      navigate,
+      platformShellSurface: shellSurface,
+      setBusy,
+      setFeedback,
+      setComposerDraft,
+      setAccountMenuOpen,
+      setAddCatOpen,
+      setPlusMenuOpen,
+      setChannelPlusMenuOpen,
+      setDraftCwd,
+      setDraftCatIds,
+      setDraftTemporaryParticipants,
+      setDraftHighlightedCatId,
+      setDraftCatModelOverrides,
+      setDraftWorkflowShape,
+      setDraftAudienceKeys,
+      resetDraftParallelChatTargets,
+      createInitialGroupParticipants: supportsStructuredDraftModes
+        ? seedDraftGroupParticipants
+        : undefined,
+      setDraftFiles,
+      setChannelFiles,
+      confirm: appConfirm,
+    });
     const liveIndicatorChannel = selectedChannel ?? selectedDirectLane ?? null;
     const liveIndicator = useLiveIndicator({
       channelId: liveIndicatorChannel?.id ?? null,
@@ -392,19 +681,29 @@ export function createWorkspaceProductApp({
       setComposerDraft,
       showingNewChatDraft,
       showingMyCatDirectLane,
+      draftEntryKind,
       draftDefaultRecipientCatId,
       draftCatIds,
+      draftTemporaryParticipants,
       draftCwd,
       draftFiles,
       channelFiles,
       setDraftCwd,
       setDraftCatIds,
+      setDraftTemporaryParticipants,
       setDraftHighlightedCatId,
       setDraftCatModelOverrides,
       setDraftFiles,
       setChannelFiles,
+      setDraftWorkflowShape,
+      setDraftAudienceKeys,
       draftModel,
       soloChannelModel,
+      showingParallelChatDraft: supportsStructuredDraftModes && showingParallelChatDraft,
+      draftParallelChatTargets,
+      draftWorkflowShape,
+      draftAudienceKeys,
+      resetDraftParallelChatTargets,
       selectedChannel,
       busy,
       setBusy,
@@ -415,7 +714,6 @@ export function createWorkspaceProductApp({
       onCreateAndAssignCat,
       onCreateAndDraftCat,
       onRemoveAssignedCat,
-      toggleDraftCat,
     } = useWorkspaceCatAssignmentActions<CatFormState>({
       state,
       setState,
@@ -448,8 +746,55 @@ export function createWorkspaceProductApp({
 
     useOnGenericDraftRouteEntry(
       showingNewChatDraft && !draftDefaultRecipientCatId,
-      resetDraftCats,
+      useCallback(() => {
+        resetDraftCats();
+        setDraftTemporaryParticipants((current) =>
+          supportsStructuredDraftModes
+            ? resolveGenericDraftTemporaryParticipants(
+                effectiveNewChatMode,
+                current,
+                seedDraftGroupParticipants,
+              )
+            : []);
+        setDraftWorkflowShape("sequential");
+        setDraftAudienceKeys(null);
+        resetDraftParallelChatTargets();
+      }, [
+        effectiveNewChatMode,
+        resetDraftCats,
+        resetDraftParallelChatTargets,
+        seedDraftGroupParticipants,
+        setDraftAudienceKeys,
+        setDraftTemporaryParticipants,
+        setDraftWorkflowShape,
+        supportsStructuredDraftModes,
+      ]),
     );
+
+    useEffect(() => {
+      if (
+        !supportsStructuredDraftModes
+        || !showingNewChatDraft
+        || effectiveNewChatMode !== "group"
+      ) {
+        return;
+      }
+
+      setDraftTemporaryParticipants((current) =>
+        syncLeadDraftTemporaryParticipantWithTarget({
+          participants: current,
+          target: draftModel,
+        }));
+    }, [
+      draftModel.instance,
+      draftModel.model,
+      draftModel.modelSelection,
+      draftModel.provider,
+      effectiveNewChatMode,
+      setDraftTemporaryParticipants,
+      showingNewChatDraft,
+      supportsStructuredDraftModes,
+    ]);
 
     useWorkspaceAppShellRouting({
       state,
@@ -471,8 +816,33 @@ export function createWorkspaceProductApp({
     const onDraftModelChange = useCallback(
       (nextDraftModel: ModelSelectorValue): void => {
         setDraftModel(nextDraftModel);
+        if (
+          supportsStructuredDraftModes
+          && showingNewChatDraft
+          && effectiveNewChatMode === "group"
+        ) {
+          setDraftTemporaryParticipants((current) =>
+            syncLeadDraftTemporaryParticipantWithTarget({
+              participants: current,
+              target: nextDraftModel,
+            }));
+        }
       },
-      [],
+      [
+        effectiveNewChatMode,
+        setDraftTemporaryParticipants,
+        showingNewChatDraft,
+        supportsStructuredDraftModes,
+      ],
+    );
+    const onDraftParallelChatTargetChangeWithSharedDefault = useCallback(
+      (index: number, value: ModelSelectorValue): void => {
+        onDraftParallelChatTargetChange(index, value);
+        if (index === 0) {
+          setDraftModel(value);
+        }
+      },
+      [onDraftParallelChatTargetChange],
     );
 
     const onResumeChannel = useWorkspaceResumeChannel<AppShellPayload>({
@@ -541,6 +911,12 @@ export function createWorkspaceProductApp({
                 onCollapsedSidebarClick,
                 onOpenChatsOverview,
                 onStartNewChat,
+                onStartNewGroupChat: supportsStructuredDraftModes
+                  ? onStartNewGroupChat
+                  : undefined,
+                onStartNewParallelChat: supportsStructuredDraftModes
+                  ? onStartNewParallelChat
+                  : undefined,
                 onSelect,
                 onDeleteChannel,
                 onRenameChannel,
@@ -614,6 +990,7 @@ export function createWorkspaceProductApp({
                     draftFiles,
                     draftCwd,
                     draftCatIds,
+                    draftTemporaryParticipants,
                     plusMenuOpen,
                     plusMenuRef,
                     fileInputRef,
@@ -627,9 +1004,16 @@ export function createWorkspaceProductApp({
                     onPickFolder: openDraftFolderPicker,
                     onDraftFilesChange: setDraftFiles,
                     onDraftCwdClear: () => setDraftCwd(null),
-                    onToggleDraftCat,
+                    onToggleDraftCat: onToggleDraftCatWithAudienceSync,
+                    onAddDraftTemporaryParticipant: onAddDraftTemporaryParticipantWithAudienceSync,
+                    onQuickAddDraftTemporaryParticipant: supportsStructuredDraftModes
+                      ? onQuickAddDraftTemporaryParticipant
+                      : undefined,
+                    onRemoveDraftTemporaryParticipant: onRemoveDraftTemporaryParticipantWithAudienceSync,
+                    onUpdateDraftTemporaryParticipant,
                     autoResize,
                     draftDefaultRecipientCatId,
+                    entryMode: effectiveNewChatMode,
                     selectedModel: draftModel,
                     onModelChange: onDraftModelChange,
                     draftHighlightedCatId,
@@ -637,6 +1021,32 @@ export function createWorkspaceProductApp({
                     draftCatModelOverrides,
                     onDraftCatModelOverride,
                     onDirectLaneModelChange: onDirectLaneModelSave,
+                    parallelTargets:
+                      supportsStructuredDraftModes && showingParallelChatDraft
+                        ? draftParallelChatTargets
+                        : undefined,
+                    onParallelTargetChange:
+                      supportsStructuredDraftModes && showingParallelChatDraft
+                        ? onDraftParallelChatTargetChangeWithSharedDefault
+                        : undefined,
+                    onAddParallelTarget:
+                      supportsStructuredDraftModes && showingParallelChatDraft
+                        ? onAddDraftParallelChatTarget
+                        : undefined,
+                    onRemoveParallelTarget:
+                      supportsStructuredDraftModes && showingParallelChatDraft
+                        ? onRemoveDraftParallelChatTarget
+                        : undefined,
+                    draftWorkflowShape,
+                    onToggleDraftWorkflowShape: supportsStructuredDraftModes
+                      ? () =>
+                          setDraftWorkflowShape((prev) =>
+                            prev === "concurrent" ? "sequential" : "concurrent")
+                      : undefined,
+                    draftAudienceKeys,
+                    onSetAudienceKeys: supportsStructuredDraftModes
+                      ? setDraftAudienceKeys
+                      : undefined,
                   }}
                   addCatOpen={showAddCatPanel}
                   onToggleAddCat={toggleAddCatPanel}
@@ -654,7 +1064,7 @@ export function createWorkspaceProductApp({
                     onTabChange: setAddCatTab,
                     onAssignExistingCat,
                     onRemoveAssignedCat,
-                    onToggleDraftCat: toggleDraftCat,
+                    onToggleDraftCat: onToggleDraftCatWithAudienceSync,
                     onCatFormChange: setCatForm,
                     onCreateCat: (event) => {
                       if (showingNewChatDraft && !draftDefaultRecipientCatId) {

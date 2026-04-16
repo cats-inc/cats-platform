@@ -5,7 +5,11 @@ export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 export const NEW_CHAT_CAT_QUERY_PARAM = 'cat';
+export const NEW_CHAT_MODE_QUERY_PARAM = 'mode';
+export const NEW_CHAT_MODE_GROUP = 'group';
+export const NEW_CHAT_MODE_PARALLEL = 'parallel';
 export const SETUP_PATH = '/setup';
+export type WorkspaceNewChatMode = 'default' | 'group' | 'parallel';
 
 type WorkspaceChannelSummaryRef = {
   id: string;
@@ -47,6 +51,16 @@ export function buildWorkspaceNewChatPath(
   return `${newChatPath}?${params.toString()}`;
 }
 
+export function buildWorkspaceNewGroupChatPath(chatPrefix: string): string {
+  const params = new URLSearchParams([[NEW_CHAT_MODE_QUERY_PARAM, NEW_CHAT_MODE_GROUP]]);
+  return `${resolveWorkspaceNewChatPath(chatPrefix)}?${params.toString()}`;
+}
+
+export function buildWorkspaceNewParallelChatPath(chatPrefix: string): string {
+  const params = new URLSearchParams([[NEW_CHAT_MODE_QUERY_PARAM, NEW_CHAT_MODE_PARALLEL]]);
+  return `${resolveWorkspaceNewChatPath(chatPrefix)}?${params.toString()}`;
+}
+
 export function buildWorkspaceMyCatPath(chatPrefix: string, catId: string): string {
   const normalizedCatId = normalizeRouteToken(catId);
   const myCatsPathPrefix = resolveWorkspaceMyCatsPathPrefix(chatPrefix);
@@ -60,6 +74,18 @@ export function buildWorkspaceMyCatPath(chatPrefix: string, catId: string): stri
 export function readWorkspaceNewChatLeadCatId(search: string): string | null {
   const params = new URLSearchParams(search);
   return normalizeRouteToken(params.get(NEW_CHAT_CAT_QUERY_PARAM));
+}
+
+export function readWorkspaceNewChatMode(search: string): WorkspaceNewChatMode {
+  const params = new URLSearchParams(search);
+  const mode = normalizeRouteToken(params.get(NEW_CHAT_MODE_QUERY_PARAM));
+  if (mode === NEW_CHAT_MODE_PARALLEL) {
+    return 'parallel';
+  }
+  if (mode === NEW_CHAT_MODE_GROUP) {
+    return 'group';
+  }
+  return 'default';
 }
 
 export function buildWorkspaceChannelPath(chatPrefix: string, channelId: string): string {

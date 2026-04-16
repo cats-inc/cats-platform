@@ -16,6 +16,7 @@ import {
   createChannelComposerBusyScope,
   createComposerBusyState,
   createDraftComposerBusyScope,
+  createParallelChatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
@@ -26,6 +27,11 @@ import {
   buildWorkspaceNewChatPath,
 } from '../../channelPaths.js';
 import { normalizeSelectedChannelView, type SelectedChannelView } from '../../channelEntry.js';
+import {
+  resolveDraftAudienceParticipantIds,
+  type DraftTemporaryParticipant,
+} from '../draftChatUtils.js';
+import { submitNewParallelChatDraft } from '../composerParallelDispatch.js';
 import {
   isDirectLaneSelectedForCat,
   prepareWorkspaceSendContext,
@@ -73,19 +79,29 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceMode
   setComposerDraft: Dispatch<SetStateAction<string>>;
   showingNewChatDraft: boolean;
   showingMyCatDirectLane: boolean;
+  draftEntryKind?: 'solo' | 'group' | 'direct';
   draftDefaultRecipientCatId: string | null;
   draftCatIds: string[];
+  draftTemporaryParticipants?: DraftTemporaryParticipant[];
   draftCwd: string | null;
   draftFiles: File[];
   channelFiles: File[];
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
+  setDraftTemporaryParticipants?: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
+  setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
+  setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
   draftModel: ModelValue;
   soloChannelModel: ModelValue;
+  showingParallelChatDraft?: boolean;
+  draftParallelChatTargets?: ModelValue[];
+  draftWorkflowShape?: 'sequential' | 'concurrent';
+  draftAudienceKeys?: string[] | null;
+  resetDraftParallelChatTargets?: () => void;
   selectedChannel: SelectedChannelView | null;
   busy: WorkspaceBusyState;
   setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
@@ -117,19 +133,29 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     setComposerDraft,
     showingNewChatDraft,
     showingMyCatDirectLane,
+    draftEntryKind = 'solo',
     draftDefaultRecipientCatId,
     draftCatIds,
+    draftTemporaryParticipants = [],
     draftCwd,
     draftFiles,
     channelFiles,
     setDraftCwd,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     setDraftFiles,
     setChannelFiles,
+    setDraftWorkflowShape,
+    setDraftAudienceKeys,
     draftModel,
     soloChannelModel,
+    showingParallelChatDraft = false,
+    draftParallelChatTargets = [],
+    draftWorkflowShape = 'sequential',
+    draftAudienceKeys = null,
+    resetDraftParallelChatTargets,
     selectedChannel,
     busy,
     setBusy,
@@ -195,14 +221,62 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       );
 
     setFeedback('');
-    const prepareBusyScope = channelId
-      ? createChannelComposerBusyScope(channelId)
-      : createDraftComposerBusyScope();
     const { id: submitId, controller: ackController } = beginAckRequest();
     let keepBusyAfterReturn = false;
-    setBusy(createComposerBusyState('prepare', prepareBusyScope));
     captureManagedComposerLocation(managedNavigationLocationRef);
     try {
+      if (showingParallelChatDraft && wasDraftingNewChat) {
+        setBusy(createParallelChatBusyState('ack'));
+        const dispatch = await submitNewParallelChatDraft({
+          body,
+          payload: initialPayload,
+          draftCwd,
+          draftFiles,
+          draftParallelChatTargets,
+          buildChannelPath: (createdChannelId) =>
+            buildWorkspaceChannelPath(chatPrefix, createdChannelId),
+          signal: ackController.signal,
+        });
+
+        rollbackPayload = dispatch.createdAppShell;
+        rollbackPath = dispatch.rollbackPath;
+        setComposerDraft('');
+        setDraftFiles([]);
+        navigateWithinManagedFlow(rollbackPath);
+        setState({ status: 'ready', payload: dispatch.createdAppShell });
+        restoreFiles = () => {
+          setChannelFiles(originalDraftFiles);
+        };
+        clearAckRequestIfCurrent(submitId);
+        rollbackPayload = dispatch.dispatchAppShell;
+        setState({ status: 'ready', payload: dispatch.dispatchAppShell });
+        if (dispatch.dispatchRequest) {
+          setActiveDispatchRequest({
+            id: submitId,
+            ...dispatch.dispatchRequest,
+          });
+          setBusy(createParallelChatBusyState('dispatch'));
+          keepBusyAfterReturn = true;
+        } else {
+          setActiveDispatchRequest(null);
+        }
+        setFeedback('');
+        setDraftCwd(null);
+        setDraftCatIds([]);
+        setDraftTemporaryParticipants?.([]);
+        setDraftHighlightedCatId(null);
+        setDraftCatModelOverrides(new Map());
+        setDraftFiles([]);
+        setDraftWorkflowShape?.('sequential');
+        setDraftAudienceKeys?.(null);
+        resetDraftParallelChatTargets?.();
+        return;
+      }
+
+      const prepareBusyScope = channelId
+        ? createChannelComposerBusyScope(channelId)
+        : createDraftComposerBusyScope();
+      setBusy(createComposerBusyState('prepare', prepareBusyScope));
       const preparedSendContext = await prepareWorkspaceSendContext({
         initialPayload,
         wasDraftingNewChat,
@@ -215,6 +289,8 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         draftCwd,
         draftDefaultRecipientCatId,
         participantCatIds: draftCatIds,
+        temporaryParticipants: draftTemporaryParticipants,
+        draftEntryKind,
         draftModel,
         selectedChannel,
         soloChannelModel,
@@ -239,6 +315,27 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       rollbackPath = preparedSendContext.rollbackPath;
       restoreFiles = preparedSendContext.restoreFiles;
       const { messageBody, soloDispatchTarget } = preparedSendContext;
+      const messageMetadata = wasDraftingNewChat
+        && draftEntryKind === 'group'
+        && !showingParallelChatDraft
+        ? (() => {
+            const recipientParticipantIds = resolveDraftAudienceParticipantIds({
+              draftParticipantCatIds: draftCatIds,
+              draftTemporaryParticipants,
+              draftAudienceKeys,
+              maxAudienceParticipants:
+                state.status === 'ready'
+                  ? state.payload.chat.capabilities.maxAudienceParticipants
+                  : undefined,
+            });
+            return recipientParticipantIds.length > 0
+              ? {
+                  recipientParticipantIds,
+                  workflowShape: draftWorkflowShape,
+                }
+              : null;
+          })()
+        : null;
 
       if (soloDispatchTarget) {
         payload = applyOptimisticPendingExecutionTarget(payload, channelId, soloDispatchTarget);
@@ -254,6 +351,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         ...(soloDispatchTarget ?? {}),
+        ...(messageMetadata ? { messageMetadata } : {}),
       }, ackController.signal);
       clearAckRequestIfCurrent(submitId);
       setState({ status: 'ready', payload: dispatch.appShell });
@@ -276,19 +374,26 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         resetComposerDraftState({
           setDraftCwd,
           setDraftCatIds,
+          setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
           setDraftCatModelOverrides,
           setDraftFiles,
           setChannelFiles,
+          setDraftWorkflowShape,
+          setDraftAudienceKeys,
         });
       } else if (wasDraftingNewChat) {
         resetComposerDraftState({
           setDraftCwd,
           setDraftCatIds,
+          setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
           setDraftCatModelOverrides,
           setDraftFiles,
+          setDraftWorkflowShape,
+          setDraftAudienceKeys,
         });
+        resetDraftParallelChatTargets?.();
       } else {
         setChannelFiles([]);
       }
@@ -324,8 +429,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     composerDraft,
     currentPathname,
     draftCatIds,
+    draftTemporaryParticipants,
     draftCwd,
     draftFiles,
+    draftEntryKind,
     draftDefaultRecipientCatId,
     draftModel.instance,
     draftModel.modelSelection,
@@ -338,18 +445,26 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     setChannelFiles,
     setComposerDraft,
     setDraftCatIds,
+    setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatModelOverrides,
     setDraftCwd,
     setDraftFiles,
+    setDraftAudienceKeys,
+    setDraftWorkflowShape,
     setFeedback,
     setState,
+    draftAudienceKeys,
+    draftParallelChatTargets,
+    draftWorkflowShape,
+    showingParallelChatDraft,
     showingMyCatDirectLane,
     showingNewChatDraft,
     soloChannelModel.instance,
     soloChannelModel.modelSelection,
     soloChannelModel.model,
     soloChannelModel.provider,
+    resetDraftParallelChatTargets,
     state,
   ]);
 

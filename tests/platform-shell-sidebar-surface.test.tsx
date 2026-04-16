@@ -487,6 +487,54 @@ test('Code sidebar keeps the Code product selected on platform settings routes',
   });
 });
 
+test('Code sidebar exposes New Code, Team Code, and Peer Code actions', () => {
+  const clicks: string[] = [];
+  const tree = CodeSidebar({
+    payload: createPayload() as unknown as CodeAppShellPayload,
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    shellSurface: 'code',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => { clicks.push('new'); },
+    onStartNewGroupChat: () => { clicks.push('group'); },
+    onStartNewParallelChat: () => { clicks.push('parallel'); },
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+    onOpenBuild: () => {},
+    onOpenRelay: () => {},
+  });
+
+  const navigation = findElementByComponent(tree, ConversationSidebarNavigation);
+  if (!navigation) {
+    throw new Error('ConversationSidebarNavigation not found.');
+  }
+  const primaryActions = (
+    navigation.props as Parameters<typeof ConversationSidebarNavigation>[0]
+  ).primaryActions;
+  const labels = primaryActions.map((action) => action.label);
+  assert.deepEqual(labels.slice(0, 3), ['New Code', 'Team Code', 'Peer Code']);
+
+  primaryActions[0]?.onClick();
+  primaryActions[1]?.onClick();
+  primaryActions[2]?.onClick();
+  assert.deepEqual(clicks, ['new', 'group', 'parallel']);
+});
+
 test('Work and Code sidebars keep the shared environment account menu wiring', () => {
   const workTree = WorkSidebar({
     payload: createPayload(),
