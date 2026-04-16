@@ -90,13 +90,6 @@ function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
             ],
           },
           {
-            value: 'medium',
-            label: 'Medium',
-            applicableEntryIds: [
-              'gpt-5.3-codex-spark',
-            ],
-          },
-          {
             value: 'high',
             label: 'High',
             applicableEntryIds: [
@@ -110,13 +103,6 @@ function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
             ],
           },
           {
-            value: 'high',
-            label: 'High (default)',
-            applicableEntryIds: [
-              'gpt-5.3-codex-spark',
-            ],
-          },
-          {
             value: 'xhigh',
             label: 'Extra high',
             applicableEntryIds: [
@@ -127,6 +113,20 @@ function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
               'gpt-5.2-codex',
               'gpt-5.2',
               'gpt-5.1-codex-max',
+            ],
+          },
+          {
+            value: 'medium',
+            label: 'Medium',
+            applicableEntryIds: [
+              'gpt-5.3-codex-spark',
+            ],
+          },
+          {
+            value: 'high',
+            label: 'High (default)',
+            applicableEntryIds: [
+              'gpt-5.3-codex-spark',
             ],
           },
         ],

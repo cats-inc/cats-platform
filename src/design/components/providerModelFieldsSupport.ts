@@ -175,11 +175,44 @@ function controlValueOptionAppliesToEntry(
     || option.applicableEntryIds.includes(entryId);
 }
 
+function buildControlValueOptionKey(
+  value: ProviderAdvancedControlValue,
+): string {
+  return `${typeof value}:${String(value)}`;
+}
+
 export function listApplicableControlValueOptions(
   control: ProviderAdvancedCatalogControl,
   entryId: string,
 ): NonNullable<ProviderAdvancedCatalogControl['values']> {
-  return (control.values ?? []).filter((option) => controlValueOptionAppliesToEntry(option, entryId));
+  const orderedKeys: string[] = [];
+  const applicableOptionsByKey = new Map<
+    string,
+    NonNullable<ProviderAdvancedCatalogControl['values']>[number]
+  >();
+  const merged: NonNullable<ProviderAdvancedCatalogControl['values']> = [];
+
+  for (const option of control.values ?? []) {
+    const optionKey = buildControlValueOptionKey(option.value);
+    if (!orderedKeys.includes(optionKey)) {
+      orderedKeys.push(optionKey);
+    }
+
+    if (!controlValueOptionAppliesToEntry(option, entryId)) {
+      continue;
+    }
+
+    applicableOptionsByKey.set(optionKey, option);
+  }
+
+  for (const optionKey of orderedKeys) {
+    const applicableOption = applicableOptionsByKey.get(optionKey);
+    if (applicableOption) {
+      merged.push(applicableOption);
+    }
+  }
+
+  return merged;
 }
 
 export function hasExplicitDefaultEnumOption(
