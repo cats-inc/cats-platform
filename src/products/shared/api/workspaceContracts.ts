@@ -111,6 +111,7 @@ export type ChatChannelStatus =
 export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
 export type ComposerMode = 'solo' | 'cat_led';
 export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
+// TODO: extend when branch/peer container modes land.
 export type ParallelChatMode = 'parallel';
 export type ParallelChatStatus = 'active' | 'archived';
 

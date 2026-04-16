@@ -16,7 +16,12 @@ function buildParallelChatMemberLabel(
 ): string {
   const provider = member.provider?.trim() || 'Model';
   const model = member.model?.trim();
-  return model ? `${provider} · ${model}` : provider;
+  if (provider !== 'Model') {
+    return model ? `${provider} · ${model}` : provider;
+  }
+
+  const title = member.title.trim();
+  return title || `Thread ${member.index + 1}`;
 }
 
 export function ParallelFooterBar({

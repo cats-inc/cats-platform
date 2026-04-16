@@ -290,6 +290,8 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
           throw new Error('No parallel chat is available for sending messages.');
         }
 
+        // Compare-container sends rely on the group dispatch ack to materialize
+        // member-local optimistic messages consistently across the container.
         rollbackPath = currentPathname;
         setComposerDraft('');
         setChannelFiles([]);

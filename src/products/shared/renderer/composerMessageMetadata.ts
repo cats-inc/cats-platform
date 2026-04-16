@@ -27,6 +27,9 @@ function normalizeWorkflowShape(
 function normalizeAudienceChipWorkflowShape(
   value: unknown,
 ): ActiveChannelAudienceState['workflowShape'] {
+  // The audience chip only exposes sequential vs concurrent. More specialized
+  // routing shapes such as converge/parallel collapse to sequential until the
+  // chip grows a richer workflow vocabulary.
   return value === 'concurrent' ? 'concurrent' : 'sequential';
 }
 
