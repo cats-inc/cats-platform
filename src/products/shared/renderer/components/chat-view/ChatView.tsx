@@ -52,6 +52,12 @@ import {
   type ConcurrentClusterContext,
   type ConcurrentClusterUiStateMap,
 } from './concurrentClusterUiState.js';
+import type {
+  TranscriptMessageActionContext,
+} from './ChatTranscriptSurface.js';
+import type {
+  TranscriptMessageActionDescriptor,
+} from './TranscriptMessageActions.js';
 
 export interface ChatViewProps {
   payload: AppShellPayload;
@@ -94,6 +100,9 @@ export interface ChatViewProps {
   onOpenAddCat?: () => void;
   showAddCatButton?: boolean;
   liveIndicator?: LiveIndicatorState;
+  buildTranscriptMessageActions?: (
+    input: TranscriptMessageActionContext,
+  ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
 }
 
 export function ChatView({
@@ -131,6 +140,7 @@ export function ChatView({
   onOpenAddCat,
   showAddCatButton = true,
   liveIndicator,
+  buildTranscriptMessageActions,
 }: ChatViewProps) {
   const hasConversationStarted =
     selectedChannel.messages.some((message) => message.senderKind !== 'system');
@@ -416,6 +426,7 @@ export function ChatView({
         onChoiceSubmit={onChoiceSubmit}
         resolveConcurrentClusterPresentationMode={resolveConcurrentClusterMode}
         buildConcurrentClusterActions={buildConcurrentClusterActions}
+        buildTranscriptMessageActions={buildTranscriptMessageActions}
       />
       <ChatComposerSurface
         hasConversationStarted={hasConversationStarted}

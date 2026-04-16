@@ -1,5 +1,103 @@
 @import './chat-thread-base.css';
 
+/* ── Message actions ── */
+
+.messageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-inline: 4px;
+}
+
+.messageActionIcon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.messageActionIcon:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.messageActionIcon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.messageActionsHoverOnly {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.transcriptMessageStackUser > .messageActions {
+  justify-content: flex-end;
+}
+
+.transcriptMessageStackUser:hover .messageActionsHoverOnly,
+.transcriptMessageStackUser:focus-within .messageActionsHoverOnly {
+  opacity: 1;
+}
+
+.messageActionsPersistent {
+  opacity: 1;
+}
+
+.messageActionMenu {
+  position: relative;
+}
+
+.messageActionPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  z-index: 8;
+}
+
+.messageActionPopover button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.messageActionPopover button:hover:not(:disabled) {
+  background: var(--panel-hover);
+}
+
+.messageActionPopover button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.messageActionPopoverDivider {
+  height: 1px;
+  margin: 2px 4px;
+  background: var(--border);
+}
+
 /* ── Compare cards ── */
 
 .compareCardsCarousel {

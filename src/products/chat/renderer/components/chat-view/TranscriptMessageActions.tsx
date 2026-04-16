@@ -1,4 +1,10 @@
 import type { ParallelChatRelayCommandKind } from '../../../api/contracts.js';
+import {
+  RelayActionIcon,
+  RetryActionIcon,
+  TranscriptMessageActions as SharedTranscriptMessageActions,
+  type TranscriptMessageActionDescriptor,
+} from '../../../../shared/renderer/components/chat-view/TranscriptMessageActions.js';
 
 const relayActions: Array<{
   command: ParallelChatRelayCommandKind;
@@ -43,88 +49,50 @@ export function TranscriptMessageActions({
   onCloseRelayMenu,
   onRelayMessage,
 }: TranscriptMessageActionsProps) {
-  if (senderKind === 'system') {
-    return null;
+  const extraActions: TranscriptMessageActionDescriptor[] = [];
+
+  if (senderKind === 'user' && showRetryAction && onRetryMessage) {
+    extraActions.push({
+      key: `retry:${messageId}`,
+      title: 'Retry response',
+      icon: <RetryActionIcon />,
+      disabled: retryBusy,
+      onSelect: () => {
+        void onRetryMessage(messageId);
+      },
+    });
+  }
+
+  if (isCompareGroup && senderKind !== 'user' && onRelayMessage) {
+    extraActions.push({
+      key: `relay:${messageId}`,
+      kind: 'menu',
+      title: 'Relay to others',
+      icon: <RelayActionIcon />,
+      disabled: compareBusy,
+      open: relayMenuOpen,
+      onToggle: onToggleRelayMenu,
+      items: relayActions.map((action, index) => ({
+        key: action.command,
+        label: action.label,
+        disabled: compareBusy,
+        dividerBefore: index === 2 || index === 4,
+        onSelect: () => {
+          onCloseRelayMenu();
+          void onRelayMessage(messageId, action.command);
+        },
+      })),
+    });
   }
 
   return (
-    <div
-      className={[
-        'messageActions',
-        senderKind === 'user'
-          ? 'messageActionsHoverOnly'
-          : 'messageActionsPersistent',
-      ].join(' ')}
-    >
-      {senderKind === 'user' && showRetryAction && onRetryMessage ? (
-        <button
-          className="messageActionIcon"
-          type="button"
-          disabled={retryBusy}
-          onClick={() => {
-            void onRetryMessage(messageId);
-          }}
-          title="Retry response"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M23 4v6h-6" />
-            <path d="M1 20v-6h6" />
-            <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10" />
-            <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14" />
-          </svg>
-        </button>
-      ) : null}
-      <button
-        className="messageActionIcon"
-        type="button"
-        onClick={() => {
-          void onCopyMessage(messageBody);
-        }}
-        title="Copy message"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2" />
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-        </svg>
-      </button>
-      {isCompareGroup && senderKind !== 'user' && onRelayMessage ? (
-        <div className="messageActionMenu">
-          <button
-            className="messageActionIcon"
-            type="button"
-            disabled={compareBusy}
-            title="Relay to others"
-            onClick={onToggleRelayMenu}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
-          </button>
-          {relayMenuOpen ? (
-            <div className="messageActionPopover">
-              {relayActions.map((action, index) => (
-                <div key={action.command}>
-                  {index === 2 || index === 4 ? (
-                    <div className="messageActionPopoverDivider" />
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={compareBusy}
-                    onClick={() => {
-                      onCloseRelayMenu();
-                      void onRelayMessage(messageId, action.command);
-                    }}
-                  >
-                    {action.label}
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+    <SharedTranscriptMessageActions
+      senderKind={senderKind}
+      showDefaultCopyAction={messageBody.trim().length > 0}
+      onCopyMessage={() => {
+        void onCopyMessage(messageBody);
+      }}
+      extraActions={extraActions}
+    />
   );
 }

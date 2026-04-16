@@ -33,6 +33,15 @@ import type {
   ConcurrentClusterContext,
 } from './concurrentClusterUiState.js';
 import { LiveTranscriptIndicator } from './LiveTranscriptIndicator.js';
+import {
+  TranscriptMessageActions,
+  type TranscriptMessageActionDescriptor,
+} from './TranscriptMessageActions.js';
+
+export interface TranscriptMessageActionContext {
+  message: SelectedChannelView['messages'][number];
+  selectedChannel: SelectedChannelView;
+}
 
 export interface ChatTranscriptSurfaceProps {
   hasConversationStarted: boolean;
@@ -51,6 +60,9 @@ export interface ChatTranscriptSurfaceProps {
   buildConcurrentClusterActions: (
     input: ConcurrentClusterActionContext,
   ) => ReadonlyArray<ConcurrentClusterAction>;
+  buildTranscriptMessageActions?: (
+    input: TranscriptMessageActionContext,
+  ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
 }
 
 export function ChatTranscriptSurface({
@@ -66,6 +78,7 @@ export function ChatTranscriptSurface({
   onChoiceSubmit,
   resolveConcurrentClusterPresentationMode,
   buildConcurrentClusterActions,
+  buildTranscriptMessageActions,
 }: ChatTranscriptSurfaceProps) {
   const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
   const showProgressDetails = payload.chat.showLiveProgressDetails === true;
@@ -100,9 +113,22 @@ export function ChatTranscriptSurface({
     ? resolveLiveIndicatorSegments(liveIndicator)
     : [];
 
+  async function copyMessageBody(body: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(body);
+    } catch {
+      // Ignore clipboard failures; the message stays available in the transcript.
+    }
+  }
+
   function renderTranscriptMessage(
     message: (typeof selectedChannel.messages)[number],
   ): JSX.Element {
+    const hasCopyableBody = message.body.trim().length > 0;
+    const extraActions = buildTranscriptMessageActions?.({
+      message,
+      selectedChannel,
+    }) ?? [];
     return (
       <article key={message.id} className={messageTone(message.senderKind)}>
         {message.senderKind !== 'user' && message.senderKind !== 'system' ? (() => {
@@ -144,6 +170,16 @@ export function ChatTranscriptSurface({
             disabledMentionNames={directLaneExcludedMentionNames}
           />
         ) : null}
+        <TranscriptMessageActions
+          senderKind={message.senderKind}
+          showDefaultCopyAction={hasCopyableBody}
+          onCopyMessage={hasCopyableBody
+            ? () => {
+                void copyMessageBody(message.body);
+              }
+            : undefined}
+          extraActions={extraActions}
+        />
         {message.choices && message.choices.length > 0 ? (
           <MessageChoices
             channelId={selectedChannel.id}

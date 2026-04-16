@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
+import type { JSX } from 'react';
 
 import { IDLE_BUSY_STATE } from '../src/shared/workspaceBusy.ts';
 import { ChatTranscriptPanel } from '../src/products/chat/renderer/components/chat-view/ChatTranscriptPanel.tsx';
@@ -375,4 +376,81 @@ test('shared ChatTranscriptSurface keeps compare_cards layout for completed conc
   assert.match(markup, /Codex-CLI/u);
   assert.match(markup, /Claude answer\./u);
   assert.match(markup, /Codex answer\./u);
+});
+
+test('shared ChatTranscriptSurface renders copy actions for completed assistant bubbles and accepts extra message actions', () => {
+  const markup = renderToStaticMarkup(
+    <ChatTranscriptSurface
+      hasConversationStarted
+      greeting="Hello"
+      payload={({
+        chat: {
+          cats: [],
+          bossCatId: null,
+          showVerboseMessages: true,
+          showLiveProgressDetails: false,
+        },
+      }) as Parameters<typeof ChatTranscriptSurface>[0]['payload']}
+      selectedChannel={({
+        id: 'channel-1',
+        title: 'Peer Code',
+        messages: [
+          {
+            id: 'message-user',
+            channelId: 'channel-1',
+            senderKind: 'user',
+            senderName: 'Kenneth',
+            body: 'hi',
+            mentions: [],
+            metadata: {},
+            usage: null,
+            createdAt: '2026-04-16T12:00:00.000Z',
+          },
+          {
+            id: 'message-agent',
+            channelId: 'channel-1',
+            senderKind: 'agent',
+            senderName: 'Claude-CLI',
+            body: 'Hello from Claude.',
+            mentions: [],
+            metadata: {},
+            usage: null,
+            createdAt: '2026-04-16T12:00:01.000Z',
+          },
+        ],
+        roomRouting: {
+          defaultRecipientId: null,
+          workflow: {
+            activeTurn: null,
+            turnHistory: [],
+            eventHistory: [],
+            lastCheckpointEvent: null,
+            lastOutcomeEvent: null,
+          },
+        },
+      }) as Parameters<typeof ChatTranscriptSurface>[0]['selectedChannel']}
+      busy={IDLE_BUSY_STATE}
+      liveIndicator={undefined}
+      directLaneExcludedMentionNames={[]}
+      transcriptListRef={() => {}}
+      bottomSentinelRef={() => {}}
+      onChoiceSubmit={() => {}}
+      resolveConcurrentClusterPresentationMode={() => 'inline_stack'}
+      buildConcurrentClusterActions={() => []}
+      buildTranscriptMessageActions={({ message }) =>
+        message.senderKind === 'agent'
+          ? [{
+              key: 'share',
+              title: 'Share to other chats',
+              icon: <span aria-hidden="true">+</span> as JSX.Element,
+              onSelect: () => {},
+            }]
+          : []}
+    />,
+  );
+
+  assert.match(markup, /messageActions messageActionsHoverOnly/u);
+  assert.match(markup, /messageActions messageActionsPersistent/u);
+  assert.match(markup, /aria-label="Copy message"/u);
+  assert.match(markup, /title="Share to other chats"/u);
 });
