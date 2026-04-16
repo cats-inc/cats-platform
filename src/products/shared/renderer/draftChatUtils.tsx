@@ -1,4 +1,7 @@
-import { buildExecutionLabel } from '../../../shared/executionLabel.js';
+import {
+  buildExecutionLabel,
+  resolveExecutionTargetLabel,
+} from '../../../shared/executionLabel.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import {
   PRODUCT_PROVIDER_ORDER,
@@ -53,11 +56,11 @@ export function buildDraftParticipantExecutionLabel(participant: {
   instance?: string | null;
   model?: string | null;
 }): string {
-  return buildExecutionLabel(
-    participant.provider,
-    participant.instance ?? null,
-    participant.model ?? null,
-  );
+  return resolveExecutionTargetLabel({
+    provider: participant.provider,
+    instance: participant.instance ?? null,
+    model: participant.model ?? null,
+  });
 }
 
 export function createDraftTemporaryParticipantFromAssistantPreset(

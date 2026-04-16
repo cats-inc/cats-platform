@@ -19,7 +19,7 @@ import {
 } from '../../../../../shared/liveIndicator.js';
 import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
-import { buildImplicitRecipient, buildNamedRecipient, buildRecipientFromCat, type RecipientChipTarget } from '../ComposerRecipientChip.js';
+import { buildImplicitRecipient, buildNamedRecipient, type RecipientChipTarget } from '../ComposerRecipientChip.js';
 import type { ModelSelectorValue } from '../ModelSelector.js';
 import { presentChannelTitle, type SelectedChannelView } from '../../chatUtils.js';
 import {
@@ -27,7 +27,10 @@ import {
   resolveActiveCompareChannelId,
 } from './compareNavigation.js';
 import { resolveParticipantCatId, type ResolvedChannelParticipant } from '../../../shared/channelParticipants.js';
-import { buildCatExecutionLabel, buildExecutionLabel, resolveControlDisplayLabels } from '../../../../../shared/executionLabel.js';
+import {
+  buildCatExecutionLabel,
+  buildParticipantExecutionLabel,
+} from '../../../../../shared/executionLabel.js';
 
 export interface ChatComposerStackParticipantView {
   participantId: string;
@@ -160,21 +163,10 @@ export function buildChatComposerStackParticipants(input: {
 }): ChatComposerStackParticipantView[] {
   return input.activeRoomParticipants.map((participant) => {
     const catRecord = input.resolveParticipantCatRecord(participant);
-    const executionLabel = (() => {
-      if (catRecord?.defaultExecutionTarget) {
-        return buildCatExecutionLabel(catRecord as Parameters<typeof buildCatExecutionLabel>[0]);
-      }
-      if (participant.execution?.target) {
-        const base = buildExecutionLabel(
-          participant.execution.target.provider,
-          participant.execution.target.instance ?? null,
-          participant.execution.target.model ?? null,
-        );
-        const controlLabels = resolveControlDisplayLabels(participant.execution.modelSelection?.controls);
-        return controlLabels.length > 0 ? `${base} \u00b7 ${controlLabels.join(' \u00b7 ')}` : base;
-      }
-      return null;
-    })();
+    const executionLabel = buildParticipantExecutionLabel(participant)
+      ?? (catRecord?.defaultExecutionTarget
+        ? buildCatExecutionLabel(catRecord as Parameters<typeof buildCatExecutionLabel>[0])
+        : null);
     return {
       participantId: participant.participantId,
       label: input.resolveParticipantDisplayName(participant, catRecord),
@@ -443,7 +435,30 @@ export function buildChatComposerRecipients(input: {
   ) => string;
 }): RecipientChipTarget[] {
   if (input.isDirectLane && input.directLaneCat) {
-    return [buildRecipientFromCat(input.directLaneCat, input.bossCatId)];
+    return [
+      buildNamedRecipient({
+        participantId: input.defaultRecipientParticipant?.participantId,
+        catId: input.directLaneCat.id,
+        name: input.directLaneCat.name,
+        executionLabel: input.defaultRecipientParticipant
+          ? buildParticipantExecutionLabel(input.defaultRecipientParticipant)
+          : buildCatExecutionLabel(input.directLaneCat as Parameters<typeof buildCatExecutionLabel>[0]),
+        avatarColor: input.directLaneCat.avatarColor ?? null,
+        avatarUrl: input.directLaneCat.avatarUrl ?? null,
+        provider: input.defaultRecipientParticipant?.execution.target.provider
+          ?? input.directLaneCat.defaultExecutionTarget.provider,
+        instance: input.defaultRecipientParticipant?.execution.target.instance
+          ?? input.directLaneCat.defaultExecutionTarget.instance
+          ?? null,
+        model: input.defaultRecipientParticipant?.execution.target.model
+          ?? input.directLaneCat.defaultExecutionTarget.model
+          ?? null,
+        modelSelection: input.defaultRecipientParticipant?.execution.modelSelection
+          ?? input.directLaneCat.defaultModelSelection
+          ?? null,
+        isBoss: input.directLaneCat.id === input.bossCatId,
+      }),
+    ];
   }
   if (input.isSoloComposer && input.selectedModel) {
     return [buildImplicitRecipient(input.selectedModel)];
@@ -454,13 +469,29 @@ export function buildChatComposerRecipients(input: {
 
   const participantCat = input.resolveParticipantCatRecord(input.defaultRecipientParticipant);
   if (participantCat) {
-    return [buildRecipientFromCat(participantCat, input.bossCatId)];
+    return [
+      buildNamedRecipient({
+        participantId: input.defaultRecipientParticipant.participantId,
+        catId: participantCat.id,
+        name: participantCat.name,
+        executionLabel: buildParticipantExecutionLabel(input.defaultRecipientParticipant)
+          ?? buildCatExecutionLabel(participantCat as Parameters<typeof buildCatExecutionLabel>[0]),
+        avatarColor: participantCat.avatarColor ?? null,
+        avatarUrl: participantCat.avatarUrl ?? null,
+        provider: input.defaultRecipientParticipant.execution.target.provider,
+        instance: input.defaultRecipientParticipant.execution.target.instance ?? null,
+        model: input.defaultRecipientParticipant.execution.target.model ?? null,
+        modelSelection: input.defaultRecipientParticipant.execution.modelSelection ?? null,
+        isBoss: participantCat.id === input.bossCatId,
+      }),
+    ];
   }
 
   return [
     buildNamedRecipient({
       participantId: input.defaultRecipientParticipant.participantId,
       name: input.resolveParticipantDisplayName(input.defaultRecipientParticipant, null),
+      executionLabel: buildParticipantExecutionLabel(input.defaultRecipientParticipant),
       provider: input.defaultRecipientParticipant.execution.target.provider,
       instance: input.defaultRecipientParticipant.execution.target.instance ?? null,
       model: input.defaultRecipientParticipant.execution.target.model ?? null,

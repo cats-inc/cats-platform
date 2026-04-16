@@ -129,6 +129,7 @@ export function ChatComposerTargetSlot({
           instance: implicitRecipient.instance ?? null,
           model: implicitRecipient.model ?? null,
           modelSelection: implicitRecipient.modelSelection ?? null,
+          executionLabel: implicitRecipient.executionLabel ?? implicitRecipient.name,
         })]}
         onSingleClick={() => onOpenSection('execution')}
         disabled={composerBusy}

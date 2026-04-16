@@ -32,6 +32,7 @@ export interface ProviderTargetSelection {
   model: string;
   modelSelection?: ProviderModelSelection | null;
   modelResolution?: ProviderModelResolution | null;
+  executionLabel?: string | null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

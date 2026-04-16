@@ -9,7 +9,7 @@ import type {
   NewChatEntryKind,
 } from '../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import { buildExecutionLabel } from '../../../shared/executionLabel.js';
+import { buildCatExecutionLabel } from '../../../shared/executionLabel.js';
 import {
   isInternalOrchestratorLabel,
   resolveVisibleOrchestratorLabel,
@@ -51,11 +51,7 @@ export function isChatCat(cat: ChatCat): boolean {
 }
 
 export function executionLabel(cat: ChatCat): string {
-  return buildExecutionLabel(
-    cat.defaultExecutionTarget.provider,
-    cat.defaultExecutionTarget.instance,
-    cat.defaultExecutionTarget.model,
-  );
+  return buildCatExecutionLabel(cat as Parameters<typeof buildCatExecutionLabel>[0]);
 }
 
 function normalizePinnedCatIds(

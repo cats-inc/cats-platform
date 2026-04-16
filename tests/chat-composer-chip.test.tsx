@@ -4,6 +4,10 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { ChatComposerArea } from '../src/products/chat/renderer/components/chat-view/ChatComposerArea.tsx';
+import {
+  clearRememberedExecutionLabels,
+  rememberExecutionLabel,
+} from '../src/shared/executionLabel.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -82,7 +86,84 @@ test('chat composer keeps solo implicit recipient controls on the active audienc
   assert.doesNotMatch(markup, /class="modelSelectorChip"/u);
 });
 
+test('chat composer preserves runtime-backed implicit audience labels instead of rebuilding static fallback text', () => {
+  clearRememberedExecutionLabels();
+  const markup = renderToStaticMarkup(
+    <ChatComposerArea
+      hasConversationStarted
+      isCompareGroup={false}
+      isNearBottom
+      payload={createPayload()}
+      composerDraft="hello"
+      channelFiles={[]}
+      channelPlusMenuOpen={false}
+      channelPlusMenuRef={{ current: null }}
+      channelFileInputRef={{ current: null }}
+      composerBusy={false}
+      compareBusy={false}
+      stopBusy={false}
+      composerWorkspacePath={null}
+      directLaneExcludedMentionNames={[]}
+      composerRecipients={[
+        {
+          kind: 'implicit',
+          name: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+          executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+          provider: 'claude',
+          instance: 'cli/native',
+          model: 'opus',
+          modelSelection: {
+            entryMode: 'explicit',
+            controls: {
+              'claude.reasoning_effort': 'xhigh',
+            },
+          },
+        },
+      ]}
+      defaultRecipientParticipantId={null}
+      composerStackParticipants={[]}
+      isDirectLane={false}
+      isSoloComposer
+      activeWorkflowShape="sequential"
+      onToggleActiveWorkflowShape={() => {}}
+      activeAudienceKeys={null}
+      onSetActiveAudienceKeys={() => {}}
+      compareSendScope="all_members"
+      showCancelComposerAction={false}
+      showStopComposerAction={false}
+      composerCardRef={() => {}}
+      onOpenSection={() => {}}
+      onComposerChange={() => {}}
+      onComposerKeyDown={() => {}}
+      onSendMessage={() => {}}
+      onToggleChannelPlusMenu={() => {}}
+      onChannelFileSelect={() => {}}
+      onChannelFilesChange={() => {}}
+      onScrollToBottom={() => {}}
+      autoResize={() => {}}
+    />,
+  );
+
+  assert.match(markup, /class="audienceChipLabel">Claude-CLI[^<]*Opus 4\.7 with 1M context[^<]*xHigh/u);
+  assert.match(markup, /data-tooltip="Claude-CLI[^"]*Opus 4\.7 with 1M context[^"]*xHigh/u);
+  assert.doesNotMatch(markup, /Opus 4\.6 with 1M context/u);
+  assert.doesNotMatch(markup, /Extra High/u);
+  clearRememberedExecutionLabels();
+});
+
 test('chat composer renders a cat-backed audience chip for direct lanes', () => {
+  clearRememberedExecutionLabels();
+  rememberExecutionLabel({
+    provider: 'claude',
+    instance: 'native',
+    model: 'opus',
+    modelSelection: {
+      controls: {
+        'claude.reasoning_effort': 'xhigh',
+      },
+    },
+    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+  });
   const payload = createPayload();
   payload.chat.bossCatId = 'cat-jiang';
   payload.chat.cats = [
@@ -98,7 +179,12 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
         instance: 'native',
         model: 'opus',
       },
-      defaultModelSelection: null,
+      defaultModelSelection: {
+        entryMode: 'explicit',
+        controls: {
+          'claude.reasoning_effort': 'xhigh',
+        },
+      },
     },
   ] as never;
 
@@ -166,10 +252,13 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /class="audienceChipAvatar"/u);
   assert.match(markup, /class="audienceChipLabel">將將</u);
-  assert.match(markup, /data-tooltip="將將 · Claude-CLI/u);
+  assert.match(markup, /data-tooltip="將將 · Claude-CLI[^"]*Opus 4\.7 with 1M context[^"]*xHigh/u);
+  assert.doesNotMatch(markup, /Opus 4\.6 with 1M context/u);
+  assert.doesNotMatch(markup, /Extra High/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /class="modelSelectorChip"/u);
   assert.doesNotMatch(markup, /class="composerCatStack"/u);
+  clearRememberedExecutionLabels();
 });
 
 test('chat composer renders a multi-audience chip for group chats', () => {

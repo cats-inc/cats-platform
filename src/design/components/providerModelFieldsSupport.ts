@@ -21,6 +21,11 @@ import {
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
 import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
+import {
+  buildExecutionLabel,
+  rememberExecutionLabel,
+  resolveControlDisplayLabels,
+} from '../../shared/executionLabel.js';
 
 export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 3000;
 
@@ -411,6 +416,45 @@ export function sanitizePersistentTargetSelection(input: {
     modelSelection: clonedSelection,
     modelResolution: cloneProviderModelResolution(input.target.modelResolution),
   };
+}
+
+export function resolveExecutionLabelForProviderTarget(input: {
+  provider: string;
+  instance: string | null | undefined;
+  model: string | null | undefined;
+  modelSelection?: ProviderModelSelection | null;
+  effectiveCatalog: ProviderModelCatalog;
+  effectiveAdvancedCatalog: ProviderAdvancedModelCatalog;
+}): string {
+  const entryId = input.model?.trim() || '';
+  const entryOptions = input.effectiveAdvancedCatalog.entries.length > 0
+    ? input.effectiveAdvancedCatalog.entries
+    : input.effectiveCatalog.models;
+  const modelLabel = entryOptions.find((option) => option.id === entryId)?.label ?? null;
+  const controlCatalog = entryId
+    ? listPersistentControlOptions(input.effectiveAdvancedCatalog.controls, entryId)
+    : [];
+  const controlLabels = resolveControlDisplayLabels(
+    input.modelSelection?.controls,
+    controlCatalog,
+  );
+
+  const executionLabel = buildExecutionLabel(
+    input.provider,
+    input.instance,
+    input.model,
+    null,
+    controlLabels,
+    modelLabel,
+  );
+  rememberExecutionLabel({
+    provider: input.provider,
+    instance: input.instance,
+    model: input.model,
+    modelSelection: input.modelSelection ?? null,
+    executionLabel,
+  });
+  return executionLabel;
 }
 
 export function shouldDeferCatalogTargetReconciliation(input: {

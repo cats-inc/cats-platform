@@ -102,6 +102,7 @@ export function createModelSelectorValueForProvider(
     model: getDefaultModel(provider) || null,
     instance: getDefaultProviderInstance(provider),
     modelSelection: null,
+    executionLabel: null,
   };
 }
 
@@ -122,6 +123,7 @@ export function toModelSelectorValue(
     model: defaults.model ?? (getDefaultModel(provider) || null),
     instance: defaults.instance ?? getDefaultProviderInstance(provider),
     modelSelection: defaults.modelSelection ?? null,
+    executionLabel: null,
   };
 }
 
@@ -162,6 +164,7 @@ export function toSoloChannelModelSelectorValue<
       readySelectedChannel.pendingModelSelection
       ?? readyChat.globalOrchestrator.executionModelSelection
       ?? null,
+    executionLabel: null,
   };
 }
 

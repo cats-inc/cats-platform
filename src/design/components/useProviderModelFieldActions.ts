@@ -13,6 +13,7 @@ import {
   buildSelectionForEntry,
   CUSTOM_LEGACY_MODEL_VALUE,
   filterPersistentControlValues,
+  resolveExecutionLabelForProviderTarget,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
@@ -32,6 +33,8 @@ export function useProviderModelFieldActions(input: {
   }>;
   controlValues: Record<string, ProviderAdvancedControlValue>;
   effectiveControls: ProviderAdvancedCatalogControl[];
+  effectiveCatalog: import('../../shared/providerCatalog.js').ProviderModelCatalog;
+  effectiveAdvancedCatalog: import('../../shared/providerCatalog.js').ProviderAdvancedModelCatalog;
   markManualSelection: () => void;
   markLegacyManualSelection: () => void;
   clearManualSelection: () => void;
@@ -48,6 +51,8 @@ export function useProviderModelFieldActions(input: {
     presetOptions,
     controlValues,
     effectiveControls,
+    effectiveCatalog,
+    effectiveAdvancedCatalog,
     markManualSelection,
     markLegacyManualSelection,
     clearManualSelection,
@@ -67,14 +72,25 @@ export function useProviderModelFieldActions(input: {
       next.controls,
     );
     const nextPresetId = next.presetId ?? null;
+    const nextModelSelection = buildSelectionForEntry(nextModel, nextPresetId, nextControls);
     markManualSelection();
     onTargetChange({
       provider,
       instance: next.instance ?? resolvedInstance,
       model: nextModel,
-      modelSelection: buildSelectionForEntry(nextModel, nextPresetId, nextControls),
+      modelSelection: nextModelSelection,
+      executionLabel: resolveExecutionLabelForProviderTarget({
+        provider,
+        instance: next.instance ?? resolvedInstance,
+        model: nextModel,
+        modelSelection: nextModelSelection,
+        effectiveCatalog,
+        effectiveAdvancedCatalog,
+      }),
     });
   }, [
+    effectiveAdvancedCatalog,
+    effectiveCatalog,
     effectiveControls,
     markManualSelection,
     onTargetChange,
@@ -90,8 +106,25 @@ export function useProviderModelFieldActions(input: {
       instance: nextInstance ?? resolvedInstance,
       model: nextModel,
       modelSelection: null,
+      executionLabel: nextModel
+        ? resolveExecutionLabelForProviderTarget({
+            provider,
+            instance: nextInstance ?? resolvedInstance,
+            model: nextModel,
+            modelSelection: null,
+            effectiveCatalog,
+            effectiveAdvancedCatalog,
+          })
+        : null,
     });
-  }, [markLegacyManualSelection, onTargetChange, provider, resolvedInstance]);
+  }, [
+    effectiveAdvancedCatalog,
+    effectiveCatalog,
+    markLegacyManualSelection,
+    onTargetChange,
+    provider,
+    resolvedInstance,
+  ]);
 
   const onProviderChange = useCallback((nextProviderId: string): void => {
     const nextProvider = providerOptions.find((option) => option.id === nextProviderId) ?? null;

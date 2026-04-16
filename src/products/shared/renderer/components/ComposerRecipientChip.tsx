@@ -1,6 +1,9 @@
 import type { CSSProperties } from 'react';
 
-import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import {
+  buildCatExecutionLabel,
+  resolveExecutionTargetLabel,
+} from '../../../../shared/executionLabel.js';
 import { cloneProviderModelSelection, type ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { catInitials } from '../workspaceChatUtils.js';
@@ -10,6 +13,7 @@ export interface RecipientChipTarget {
   participantId?: string;
   catId?: string;
   name: string;
+  executionLabel?: string | null;
   avatarColor?: string | null;
   avatarUrl?: string | null;
   provider?: string | null;
@@ -31,6 +35,7 @@ export function buildNamedRecipient(input: {
   name: string;
   avatarColor?: string | null;
   avatarUrl?: string | null;
+  executionLabel?: string | null;
   provider?: string | null;
   instance?: string | null;
   model?: string | null;
@@ -42,6 +47,7 @@ export function buildNamedRecipient(input: {
     participantId: input.participantId,
     catId: input.catId,
     name: input.name,
+    executionLabel: input.executionLabel ?? null,
     avatarColor: input.avatarColor ?? null,
     avatarUrl: input.avatarUrl ?? null,
     provider: input.provider ?? null,
@@ -59,6 +65,7 @@ export function buildRecipientFromCat(
   return buildNamedRecipient({
     catId: cat.id,
     name: cat.name,
+    executionLabel: buildCatExecutionLabel(cat as Parameters<typeof buildCatExecutionLabel>[0]),
     avatarColor: cat.avatarColor,
     avatarUrl: cat.avatarUrl,
     provider: cat.defaultExecutionTarget?.provider ?? null,
@@ -74,17 +81,19 @@ export function buildImplicitRecipient(input: {
   instance?: string | null;
   model?: string | null;
   modelSelection?: ProviderModelSelection | null;
+  executionLabel?: string | null;
 }): RecipientChipTarget {
-  const controlLabels = resolveControlDisplayLabels(input.modelSelection?.controls);
+  const executionLabel = resolveExecutionTargetLabel({
+    provider: input.provider,
+    instance: input.instance ?? null,
+    model: input.model ?? null,
+    modelSelection: input.modelSelection ?? null,
+    executionLabel: input.executionLabel ?? null,
+  });
   return {
     kind: 'implicit',
-    name: buildExecutionLabel(
-      input.provider,
-      input.instance ?? null,
-      input.model ?? null,
-      null,
-      controlLabels,
-    ),
+    name: executionLabel,
+    executionLabel,
     provider: input.provider,
     instance: input.instance ?? null,
     model: input.model ?? null,

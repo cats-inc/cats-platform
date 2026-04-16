@@ -5,7 +5,7 @@ import {
   type ComponentType,
 } from 'react';
 
-import { buildExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import { resolveExecutionTargetLabel } from '../../../../shared/executionLabel.js';
 import type {
   ProviderModelSelection,
   ProviderTargetSelection,
@@ -20,6 +20,7 @@ export interface ModelSelectorValue {
   model: string | null;
   instance: string | null;
   modelSelection: ProviderModelSelection | null;
+  executionLabel?: string | null;
 }
 
 export interface ModelSelectorChipProps {
@@ -49,8 +50,14 @@ export function buildModelSelectorLabel(
   catName?: string | null,
   catalogControls?: ReadonlyArray<{ key: string; values?: ReadonlyArray<{ value: string | number | boolean; label: string }> }> | null,
 ): string {
-  const controlLabels = resolveControlDisplayLabels(value.modelSelection?.controls, catalogControls);
-  const base = buildExecutionLabel(value.provider, value.instance, value.model, null, controlLabels);
+  const base = resolveExecutionTargetLabel({
+    provider: value.provider,
+    instance: value.instance,
+    model: value.model,
+    modelSelection: value.modelSelection ?? null,
+    executionLabel: value.executionLabel ?? null,
+    catalogControls,
+  });
   return catName ? `${catName} \u00b7 ${base}` : base;
 }
 
@@ -131,6 +138,7 @@ export function WorkspaceModelSelectorPanel({
       model: target.model || null,
       instance: target.instance || null,
       modelSelection: target.modelSelection ?? null,
+      executionLabel: target.executionLabel ?? null,
     });
   }
 

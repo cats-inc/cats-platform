@@ -13,6 +13,10 @@ import { ChatView, type ChatViewProps } from '../src/products/chat/renderer/comp
 import { buildDraftParticipantExecutionLabel } from '../src/products/chat/renderer/chatUtils.tsx';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {
+  clearRememberedExecutionLabels,
+  rememberExecutionLabel,
+} from '../src/shared/executionLabel.ts';
+import {
   createLiveIndicatorSegmentState,
   projectLiveIndicatorStateFromSegments,
 } from '../src/shared/liveIndicator.ts';
@@ -348,6 +352,88 @@ test('ChatView keeps Cat visuals in room stacks while the composer stack preserv
     markup,
     /audienceChipLabel">Milo \+2</u,
   );
+});
+
+test('ChatView reuses remembered runtime-backed labels for Cat avatars and participant stacks', () => {
+  clearRememberedExecutionLabels();
+  rememberExecutionLabel({
+    provider: 'claude',
+    instance: 'cli/native',
+    model: 'opus',
+    modelSelection: {
+      controls: {
+        'claude.reasoning_effort': 'xhigh',
+      },
+    },
+    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+  });
+
+  const leadCat = createChatCat({
+    defaultExecutionTarget: {
+      provider: 'claude',
+      instance: 'cli/native',
+      model: 'opus',
+    },
+    defaultModelSelection: {
+      entryMode: 'explicit',
+      controls: {
+        'claude.reasoning_effort': 'xhigh',
+      },
+    },
+  });
+  const leadParticipant = createCatParticipant(leadCat, {
+    participantId: 'participant-cat-lead',
+    execution: {
+      target: {
+        provider: 'claude',
+        instance: 'cli/native',
+        model: 'opus',
+      },
+      modelSelection: {
+        entryMode: 'explicit',
+        controls: {
+          'claude.reasoning_effort': 'xhigh',
+        },
+      },
+      lease: {
+        sessionId: null,
+        status: 'ready',
+        cwd: null,
+        lastError: null,
+        provider: null,
+        model: null,
+        startedAt: null,
+        lastUsedAt: null,
+      },
+    },
+  });
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        payload: {
+          ...createPayload(),
+          chat: {
+            ...createPayload().chat,
+            bossCatId: leadCat.id,
+            cats: [leadCat],
+          },
+        } as unknown as AppShellPayload,
+        selectedChannel: createChannel({
+          assignedParticipants: [leadParticipant],
+          assignedCats: [leadParticipant],
+          roomRouting: {
+            ...createChannel().roomRouting!,
+            defaultRecipientId: leadParticipant.participantId,
+          },
+        }),
+      })}
+    />,
+  );
+
+  assert.match(markup, /data-tooltip="Milo · Claude-CLI[^"]*Opus 4\.7 with 1M context[^"]*xHigh/u);
+  assert.doesNotMatch(markup, /Opus 4\.6 with 1M context/u);
+  assert.doesNotMatch(markup, /Extra High/u);
+  clearRememberedExecutionLabels();
 });
 
 test('ChatView renders temporary participant transcript speakers as room members', () => {

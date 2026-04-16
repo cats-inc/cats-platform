@@ -5,8 +5,7 @@ import { buildModelSelectorLabel, type ModelSelectorValue } from './components/M
 import type { DraftComposerStackParticipant } from './components/chatNewChatDraftSupport.js';
 import {
   buildCatExecutionLabel,
-  buildExecutionLabel,
-  resolveControlDisplayLabels,
+  resolveExecutionTargetLabel,
 } from '../../../shared/executionLabel.js';
 
 export interface AudienceParticipantStackInput {
@@ -42,13 +41,12 @@ export function buildAudienceParticipantFromTemporaryParticipant(
     key: `temp:${tp.participantId}`,
     name: tp.name,
     executionLabel: tp.provider
-      ? buildExecutionLabel(
-          tp.provider,
-          tp.instance ?? null,
-          tp.model ?? null,
-          null,
-          resolveControlDisplayLabels(tp.modelSelection?.controls),
-        )
+      ? resolveExecutionTargetLabel({
+          provider: tp.provider,
+          instance: tp.instance ?? null,
+          model: tp.model ?? null,
+          modelSelection: tp.modelSelection ?? null,
+        })
       : null,
     avatarColor: null,
     avatarUrl: null,
@@ -79,14 +77,14 @@ export function buildAudienceParticipantFromRecipient(
   recipient: RecipientChipTarget,
 ): DraftComposerStackParticipant {
   const execLabel = recipient.provider
-    ? buildExecutionLabel(
-        recipient.provider,
-        recipient.instance ?? null,
-        recipient.model ?? null,
-        null,
-        resolveControlDisplayLabels(recipient.modelSelection?.controls),
-      )
-    : null;
+    ? resolveExecutionTargetLabel({
+        provider: recipient.provider,
+        instance: recipient.instance ?? null,
+        model: recipient.model ?? null,
+        modelSelection: recipient.modelSelection ?? null,
+        executionLabel: recipient.executionLabel ?? null,
+      })
+    : (recipient.executionLabel?.trim() || null);
   return {
     key: recipient.catId ?? recipient.participantId ?? `recipient:${recipient.name}`,
     name: recipient.name,

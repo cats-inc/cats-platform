@@ -8,10 +8,12 @@ import type {
   ChatCat,
 } from '../../api/contracts.js';
 import {
-  buildDraftParticipantExecutionLabel,
   type SelectedChannelView,
 } from '../chatUtils.js';
-import { buildCatExecutionLabel, resolveControlDisplayLabels } from '../../../../shared/executionLabel.js';
+import {
+  buildCatExecutionLabel,
+  buildParticipantExecutionLabel,
+} from '../../../../shared/executionLabel.js';
 import { isInternalOrchestratorLabel } from '../../../../shared/orchestratorLabel.js';
 import {
   activeAssignedParticipants,
@@ -176,8 +178,9 @@ export function useChatParticipantPresentation(options: {
     }
 
     return activeRoomParticipants.find((participant) => {
-      const executionLabel = buildDraftParticipantExecutionLabel(participant.execution.target);
-      return candidateLabels.has(participant.name) || candidateLabels.has(executionLabel);
+      const executionLabel = buildParticipantExecutionLabel(participant);
+      return candidateLabels.has(participant.name)
+        || (executionLabel != null && candidateLabels.has(executionLabel));
     }) ?? null;
   }
 
@@ -208,12 +211,6 @@ export function useChatParticipantPresentation(options: {
   );
   const topBarParticipants = useMemo<TopBarParticipant[]>(() => {
     const ordered: TopBarParticipant[] = [];
-    function buildParticipantExecutionLabel(participant: ResolvedChannelParticipant): string | null {
-      if (!participant.execution?.target) return null;
-      const base = buildDraftParticipantExecutionLabel(participant.execution.target);
-      const controlLabels = resolveControlDisplayLabels(participant.execution.modelSelection?.controls);
-      return controlLabels.length > 0 ? `${base} \u00b7 ${controlLabels.join(' \u00b7 ')}` : base;
-    }
 
     if (isDirectLane) {
       if (defaultRecipientCatRecord) {

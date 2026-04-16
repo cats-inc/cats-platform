@@ -2,7 +2,7 @@ import type {
   ParallelChatRelayCommandKind,
   ParallelChatTarget,
 } from '../api/contracts.js';
-import { buildExecutionLabel } from '../../../shared/executionLabel.js';
+import { resolveExecutionTargetLabel } from '../../../shared/executionLabel.js';
 import { parseMentionsWithPositions } from '../../../core/mentionParsing.js';
 
 export interface ParallelChatRelayCommandDefinition {
@@ -52,7 +52,12 @@ export const PARALLEL_CHAT_RELAY_COMMANDS: ParallelChatRelayCommandDefinition[] 
 ];
 
 export function buildParallelChatMemberLabel(target: ParallelChatTarget): string {
-  return buildExecutionLabel(target.provider, target.instance, target.model);
+  return resolveExecutionTargetLabel({
+    provider: target.provider,
+    instance: target.instance,
+    model: target.model,
+    modelSelection: target.modelSelection ?? null,
+  });
 }
 
 export function createParallelChatTitle(existingCount: number): string {

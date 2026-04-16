@@ -10,7 +10,9 @@ import type {
 import type { NewChatMode } from '../shared/channelPaths.js';
 import type { AssistantPresetRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import { buildExecutionLabel } from '../../../shared/executionLabel.js';
+import {
+  resolveExecutionTargetLabel,
+} from '../../../shared/executionLabel.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
 import {
   PRODUCT_PROVIDER_ORDER,
@@ -360,11 +362,11 @@ export function buildDraftParticipantExecutionLabel(participant: {
   instance?: string | null;
   model?: string | null;
 }): string {
-  return buildExecutionLabel(
-    participant.provider,
-    participant.instance ?? null,
-    participant.model ?? null,
-  );
+  return resolveExecutionTargetLabel({
+    provider: participant.provider,
+    instance: participant.instance ?? null,
+    model: participant.model ?? null,
+  });
 }
 
 function applyDraftAudienceLimit(

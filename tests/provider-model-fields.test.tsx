@@ -13,6 +13,7 @@ import {
   resolveProviderRegistrySetupHref,
   resolveProviderRegistryPlaceholder,
   resolveDisplayedEnumControlValue,
+  resolveExecutionLabelForProviderTarget,
   resolveProviderModelFieldsViewState,
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
@@ -909,6 +910,72 @@ test('runtime-backed Codex Spark selectors surface High as the explicit default'
   assert.equal(
     resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'gpt-5.3-codex-spark', undefined),
     'high',
+  );
+});
+
+test('runtime-backed execution labels prefer advanced catalog entry and control labels over static fallback text', () => {
+  assert.equal(
+    resolveExecutionLabelForProviderTarget({
+      provider: 'claude',
+      instance: 'cli/native',
+      model: 'opus',
+      modelSelection: {
+        entryId: 'opus',
+        entryMode: 'explicit',
+        controls: {
+          'claude.reasoning_effort': 'xhigh',
+        },
+      },
+      effectiveCatalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'opus',
+        source: 'static',
+        cache: null,
+        models: [
+          { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
+        ],
+        warnings: [],
+      },
+      effectiveAdvancedCatalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'opus',
+        source: 'dynamic',
+        cache: null,
+        entries: [
+          { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
+        ],
+        presets: [],
+        controls: [
+          {
+            key: 'claude.reasoning_effort',
+            label: 'Reasoning effort',
+            kind: 'enum',
+            scope: 'both',
+            applicableEntryIds: ['opus'],
+            values: [
+              { value: 'xhigh', label: 'xHigh (default)', applicableEntryIds: ['opus'] },
+            ],
+          },
+        ],
+        defaultSelection: {
+          entryId: 'opus',
+          entryMode: 'explicit',
+          controls: {
+            'claude.reasoning_effort': 'xhigh',
+          },
+        },
+        support: {
+          tier: 'full',
+          notes: [],
+        },
+        warnings: [],
+      },
+    }),
+    'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
   );
 });
 
