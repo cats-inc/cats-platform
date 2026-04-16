@@ -126,11 +126,6 @@ function renderSingleSegment(
 
   const resolvedSegmentParticipant = resolveLiveIndicatorSegmentParticipant(segment);
   const resolvedSegmentParticipantCat = resolveParticipantCatRecord(resolvedSegmentParticipant);
-  const segmentParticipant = resolvedSegmentParticipant
-    ?? (isPrimarySegment ? liveSpeakerParticipant : null);
-  const segmentParticipantCat = resolvedSegmentParticipant
-    ? resolvedSegmentParticipantCat
-    : (isPrimarySegment ? liveSpeakerParticipantCat : null);
   const normalizedStreamSpeakerLabel = (() => {
     const value = segment.speakerLabel?.trim();
     if (segment.participantId === 'orchestrator') {
@@ -138,6 +133,16 @@ function renderSingleSegment(
     }
     return value || null;
   })();
+  const hasExplicitSegmentIdentity = Boolean(
+    resolvedSegmentParticipant
+    || segment.catId
+    || normalizedStreamSpeakerLabel,
+  );
+  const segmentParticipant = resolvedSegmentParticipant
+    ?? (!hasExplicitSegmentIdentity && isPrimarySegment ? liveSpeakerParticipant : null);
+  const segmentParticipantCat = resolvedSegmentParticipant
+    ? resolvedSegmentParticipantCat
+    : (!hasExplicitSegmentIdentity && isPrimarySegment ? liveSpeakerParticipantCat : null);
   const speakerCat = segment.catId
     ? cats.find((cat) => cat.id === segment.catId) ?? null
     : null;

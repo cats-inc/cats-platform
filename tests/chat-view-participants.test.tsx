@@ -12,6 +12,10 @@ import type {
 import { ChatView, type ChatViewProps } from '../src/products/chat/renderer/components/ChatView.tsx';
 import { buildDraftParticipantExecutionLabel } from '../src/products/chat/renderer/chatUtils.tsx';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
+import {
+  createLiveIndicatorSegmentState,
+  projectLiveIndicatorStateFromSegments,
+} from '../src/shared/liveIndicator.ts';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function createPayload(): AppShellPayload {
@@ -1712,6 +1716,8 @@ test('ChatView keeps the next sequential speaker bubble visible after the prior 
                 event: 'session_started',
                 targetKind: 'cat',
                 targetId: 'participant-verifier',
+                targetStateId: 'target-2',
+                sourceMessageId: 'message-user',
                 verbosity: 'verbose',
               },
               usage: null,
@@ -1886,6 +1892,8 @@ test('ChatView resolves a pending sequential follow-up bubble from the live segm
                 event: 'session_started',
                 targetKind: 'cat',
                 targetId: 'participant-verifier',
+                targetStateId: 'target-2',
+                sourceMessageId: 'message-user',
                 verbosity: 'verbose',
               },
               usage: null,
@@ -2130,6 +2138,306 @@ test('ChatView shows an anonymous waiting assistant bubble during sequential han
   assert.match(markup, /typingDots/u);
   assert.doesNotMatch(markup, /Runtime Verifier/u);
   assert.doesNotMatch(markup, /userTurnStatusProcessing/u);
+});
+
+test('ChatView keeps concurrent inline-stack waiting bubbles anonymous before session_started is visible', () => {
+  const baseChannel = createChannel({
+    assignedParticipants: [
+      createTemporaryParticipant(),
+      createTemporaryParticipant({
+        participantId: 'participant-verifier',
+        name: 'Runtime Verifier',
+        roleHint: null,
+        avatarColor: '#2B9CF0',
+      }),
+    ],
+  });
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          assignedParticipants: baseChannel.assignedParticipants,
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft together.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-user',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'concurrent',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 2,
+                targetStatuses: [
+                  {
+                    id: 'target-inline',
+                    dispatchId: 'dispatch-inline',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-inline',
+                      participantName: 'Inline Reviewer',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'pending',
+                    queuedAt: '2026-04-07T00:01:01.000Z',
+                    startedAt: null,
+                    completedAt: null,
+                    response: null,
+                    error: null,
+                  },
+                  {
+                    id: 'target-verifier',
+                    dispatchId: 'dispatch-verifier',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-verifier',
+                      participantName: 'Runtime Verifier',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'running',
+                    queuedAt: '2026-04-07T00:01:01.500Z',
+                    startedAt: '2026-04-07T00:01:02.000Z',
+                    completedAt: null,
+                    response: null,
+                    error: null,
+                  },
+                ],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:02.000Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: {
+          ...projectLiveIndicatorStateFromSegments([
+            createLiveIndicatorSegmentState({
+              phase: 'waiting',
+              sourceMessageId: 'message-user',
+              laneId: 'lane-inline',
+              targetStateId: 'target-inline',
+              participantId: 'participant-inline',
+              identityParticipantId: 'participant-inline',
+              speakerLabel: 'Inline Reviewer',
+              sessionStartedAt: '2026-04-07T00:01:01.000Z',
+              requiresSessionStartConfirmation: true,
+            }),
+            createLiveIndicatorSegmentState({
+              phase: 'waiting',
+              sourceMessageId: 'message-user',
+              laneId: 'lane-verifier',
+              targetStateId: 'target-verifier',
+              participantId: 'participant-verifier',
+              identityParticipantId: 'participant-verifier',
+              speakerLabel: 'Runtime Verifier',
+              sessionStartedAt: '2026-04-07T00:01:02.000Z',
+              requiresSessionStartConfirmation: true,
+            }),
+          ]),
+        },
+      })}
+    />,
+  );
+
+  assert.match(markup, /typingIndicator/u);
+  assert.match(markup, /typingDots/u);
+  assert.doesNotMatch(markup, /<strong>Inline Reviewer<\/strong>/u);
+  assert.doesNotMatch(markup, /<strong>Runtime Verifier<\/strong>/u);
+});
+
+test('ChatView reveals only the concurrent waiting speaker whose session_started message is visible', () => {
+  const baseChannel = createChannel({
+    assignedParticipants: [
+      createTemporaryParticipant(),
+      createTemporaryParticipant({
+        participantId: 'participant-verifier',
+        name: 'Runtime Verifier',
+        roleHint: null,
+        avatarColor: '#2B9CF0',
+      }),
+    ],
+  });
+  const markup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        selectedChannel: createChannel({
+          assignedParticipants: baseChannel.assignedParticipants,
+          messages: [
+            {
+              id: 'message-user',
+              channelId: 'channel-1',
+              senderKind: 'user',
+              senderName: 'Kenny',
+              body: 'Review this draft together.',
+              mentions: [],
+              metadata: {},
+              usage: null,
+              createdAt: '2026-04-07T00:01:00.000Z',
+            },
+            {
+              id: 'message-session-inline',
+              channelId: 'channel-1',
+              senderKind: 'system',
+              senderName: 'Runtime',
+              body: 'Inline Reviewer connected to cats-runtime session session-inline.',
+              mentions: [],
+              metadata: {
+                event: 'session_started',
+                targetKind: 'cat',
+                targetId: 'participant-inline',
+                targetStateId: 'target-inline',
+                laneId: 'lane-inline',
+                verbosity: 'verbose',
+              },
+              usage: null,
+              createdAt: '2026-04-07T00:01:03.000Z',
+            },
+          ],
+          roomRouting: {
+            ...baseChannel.roomRouting!,
+            workflow: {
+              activeTurn: {
+                id: 'turn-1',
+                status: 'running',
+                sourceMessageId: 'message-user',
+                sourceSenderKind: 'user',
+                sourceSenderName: 'Kenny',
+                guard: null,
+                stageId: 'dispatching',
+                workflowShape: 'concurrent',
+                reviewRequired: false,
+                lastCheckpointId: null,
+                convergeTargetId: null,
+                continuationCount: 0,
+                dispatchCount: 2,
+                targetStatuses: [
+                  {
+                    id: 'target-inline',
+                    dispatchId: 'dispatch-inline',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-inline',
+                      participantName: 'Inline Reviewer',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'running',
+                    queuedAt: '2026-04-07T00:01:01.000Z',
+                    startedAt: '2026-04-07T00:01:01.000Z',
+                    completedAt: null,
+                    response: null,
+                    error: null,
+                  },
+                  {
+                    id: 'target-verifier',
+                    dispatchId: 'dispatch-verifier',
+                    participant: {
+                      participantKind: 'cat',
+                      participantId: 'participant-verifier',
+                      participantName: 'Runtime Verifier',
+                    },
+                    source: null,
+                    sourceMessageId: 'message-user',
+                    trigger: 'room_default',
+                    mentionNames: [],
+                    depth: 0,
+                    parentCheckpointId: null,
+                    branchStrategy: null,
+                    handoffReason: null,
+                    wakeRequestId: null,
+                    status: 'running',
+                    queuedAt: '2026-04-07T00:01:02.000Z',
+                    startedAt: '2026-04-07T00:01:02.000Z',
+                    completedAt: null,
+                    response: null,
+                    error: null,
+                  },
+                ],
+                events: [],
+                startedAt: '2026-04-07T00:01:01.000Z',
+                updatedAt: '2026-04-07T00:01:03.000Z',
+                completedAt: null,
+              },
+              pendingContinuations: [],
+              lastOutcomeEvent: null,
+            },
+          },
+        }),
+        liveIndicator: projectLiveIndicatorStateFromSegments([
+          createLiveIndicatorSegmentState({
+            phase: 'waiting',
+            sourceMessageId: 'message-user',
+            laneId: 'lane-inline',
+            targetStateId: 'target-inline',
+            participantId: 'participant-inline',
+            identityParticipantId: 'participant-inline',
+            speakerLabel: 'Inline Reviewer',
+            sessionStartedAt: '2026-04-07T00:01:01.000Z',
+            requiresSessionStartConfirmation: true,
+          }),
+          createLiveIndicatorSegmentState({
+            phase: 'waiting',
+            sourceMessageId: 'message-user',
+            laneId: 'lane-verifier',
+            targetStateId: 'target-verifier',
+            participantId: 'participant-verifier',
+            identityParticipantId: 'participant-verifier',
+            speakerLabel: 'Runtime Verifier',
+            sessionStartedAt: '2026-04-07T00:01:02.000Z',
+            requiresSessionStartConfirmation: true,
+          }),
+        ]),
+      })}
+    />,
+  );
+
+  assert.match(markup, /Inline Reviewer/u);
+  assert.doesNotMatch(markup, /Runtime Verifier/u);
 });
 
 test('ChatView promotes a waiting next sequential speaker placeholder instead of returning to the user bubble', () => {

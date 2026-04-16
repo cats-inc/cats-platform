@@ -1949,6 +1949,19 @@ function hasConfirmedLiveIndicatorSessionStart<TMessage extends LiveIndicatorTra
   });
 }
 
+export function hasConfirmedLiveIndicatorSegmentSessionStart<
+  TMessage extends LiveIndicatorTranscriptMessageLike,
+>(
+  segment: LiveIndicatorSegmentState,
+  messages: ReadonlyArray<TMessage>,
+): boolean {
+  return hasConfirmedLiveIndicatorSessionStart(
+    messages,
+    projectLiveIndicatorStateFromSegments([segment]),
+    segment.sessionStartedAt,
+  );
+}
+
 function traceLiveIndicatorVisibility<TMessage extends LiveIndicatorTranscriptMessageLike>(input: {
   liveIndicator: LiveIndicatorState;
   messages: ReadonlyArray<TMessage>;

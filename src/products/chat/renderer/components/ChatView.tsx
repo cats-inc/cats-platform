@@ -26,6 +26,7 @@ import type {
 } from '../hooks/useLiveIndicator';
 import {
   resolveTranscriptFollowState,
+  hasConfirmedLiveIndicatorSegmentSessionStart,
 } from '../../../../shared/liveIndicator.js';
 import { isBrowserLiveTraceEnabled } from '../../../../shared/liveTrace.js';
 import { SidePanel } from '../../../../design/components/SidePanel';
@@ -65,6 +66,7 @@ import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 import { ChatTranscriptPanel } from './chat-view/ChatTranscriptPanel';
 import { resolveConcurrentPresentationMode } from './chat-view/concurrentModeResolver';
+import { resolveDurableConcurrentClusterMaxSegmentCount } from './chat-view/concurrentTranscriptProjection';
 import {
   buildChatComposerRecipients,
   buildChatComposerStackParticipants,
@@ -77,6 +79,7 @@ import {
   resolveChatViewTopBarTitle,
   resolveShowRosterAvatars,
 } from './chat-view/chatViewSupport';
+import { buildChatLaneId } from '../../../../shared/chatCoreIds.js';
 
 let _lastLiveIndicatorLogSignature: string | null = null;
 
@@ -271,15 +274,30 @@ export function ChatView({
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
+  const durableConcurrentSegmentCount = useMemo(
+    () => resolveDurableConcurrentClusterMaxSegmentCount({
+      visibleMessages,
+      workflow: selectedChannel.roomRouting.workflow,
+    }),
+    [selectedChannel.roomRouting.workflow, visibleMessages],
+  );
   const resolvedConcurrentMode = useMemo(
     () => resolveConcurrentPresentationMode({
       explicitOverride: null,
       workflowRecommendation: null,
       userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
-      segmentCount: visibleLiveIndicator?.segments?.length ?? 0,
+      segmentCount: Math.max(
+        visibleLiveIndicator?.segments?.length ?? 0,
+        durableConcurrentSegmentCount,
+      ),
       viewportWidth,
     }),
-    [payload.chat.concurrentPresentationMode, visibleLiveIndicator?.segments?.length, viewportWidth],
+    [
+      durableConcurrentSegmentCount,
+      payload.chat.concurrentPresentationMode,
+      visibleLiveIndicator?.segments?.length,
+      viewportWidth,
+    ],
   );
   function openSidePanelTo(section: string): void {
     setSidePanelOpen(true);
@@ -355,12 +373,64 @@ export function ChatView({
         }
       }
 
+      const confirmedIdentityParticipantId = (() => {
+        const identityParticipantId = segment.identityParticipantId?.trim() || null;
+        if (!identityParticipantId || identityParticipantId === segment.participantId) {
+          return null;
+        }
+        return hasConfirmedLiveIndicatorSegmentSessionStart(segment, selectedChannel.messages)
+          ? identityParticipantId
+          : null;
+      })();
+      if (confirmedIdentityParticipantId) {
+        const byIdentityParticipantId = activeRoomParticipants.find(
+          (participant) => participant.participantId === confirmedIdentityParticipantId,
+        ) ?? null;
+        if (byIdentityParticipantId) {
+          return byIdentityParticipantId;
+        }
+      }
+
       if (segment.catId) {
         const byCatId = activeRoomParticipants.find((participant) =>
           resolveParticipantCatRecord(participant)?.id === segment.catId)
           ?? null;
         if (byCatId) {
           return byCatId;
+        }
+      }
+
+      if (segment.phase === 'sealed') {
+        const workflowTurnHistory = Array.isArray(selectedChannel.roomRouting.workflow.turnHistory)
+          ? selectedChannel.roomRouting.workflow.turnHistory
+          : [];
+        const matchingWorkflowTarget = [
+          selectedChannel.roomRouting.workflow.activeTurn,
+          ...workflowTurnHistory,
+        ]
+          .filter((turn): turn is NonNullable<typeof selectedChannel.roomRouting.workflow.activeTurn> =>
+            turn != null)
+          .flatMap((turn) =>
+            turn.targetStatuses.map((target) => ({
+              participantId: target.participant.participantId,
+              targetStateId: target.id,
+              laneId: target.laneId?.trim() || buildChatLaneId(
+                turn.id,
+                target.id,
+                target.participant.participantId,
+              ),
+            })))
+          .find((target) =>
+            (segment.targetStateId != null && target.targetStateId === segment.targetStateId)
+            || (segment.laneId != null && target.laneId === segment.laneId));
+
+        if (matchingWorkflowTarget) {
+          const byWorkflowTarget = activeRoomParticipants.find(
+            (participant) => participant.participantId === matchingWorkflowTarget.participantId,
+          ) ?? null;
+          if (byWorkflowTarget) {
+            return byWorkflowTarget;
+          }
         }
       }
 
@@ -643,6 +713,7 @@ export function ChatView({
               transcriptListRef={transcriptListRef}
               bottomSentinelRef={bottomSentinelRef}
               visibleMessages={visibleMessages}
+              workflow={selectedChannel.roomRouting.workflow}
               cats={payload.chat.cats}
               bossCatId={payload.chat.bossCatId}
               selectedChannelId={selectedChannel.id}

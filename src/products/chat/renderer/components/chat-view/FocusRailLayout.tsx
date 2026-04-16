@@ -30,7 +30,7 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const primarySegment = segments.at(-1) ?? null;
+  const primarySegment = segments[0] ?? null;
   const secondarySegments = primarySegment
     ? segments.filter((segment) => segment.id !== primarySegment.id)
     : [];

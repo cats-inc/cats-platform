@@ -30,6 +30,8 @@ import {
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
 import { TranscriptMessageItem } from './TranscriptMessageItem.js';
+import { ConcurrentClusterRenderer } from './ConcurrentClusterRenderer.js';
+import { buildConcurrentTranscriptRenderItems } from './concurrentTranscriptProjection.js';
 import { LiveTranscriptIndicator } from './LiveTranscriptIndicator.js';
 
 export interface ChatTranscriptPanelProps {
@@ -38,6 +40,7 @@ export interface ChatTranscriptPanelProps {
   transcriptListRef: Ref<HTMLDivElement>;
   bottomSentinelRef: RefCallback<HTMLDivElement>;
   visibleMessages: SelectedChannelView['messages'];
+  workflow: SelectedChannelView['roomRouting']['workflow'];
   cats: ChatCat[];
   bossCatId: string | null;
   selectedChannelId: string;
@@ -90,6 +93,7 @@ export function ChatTranscriptPanel({
   transcriptListRef,
   bottomSentinelRef,
   visibleMessages,
+  workflow,
   cats,
   bossCatId,
   selectedChannelId,
@@ -156,13 +160,50 @@ export function ChatTranscriptPanel({
     liveIndicator?.active
     && resolveLiveIndicatorSegments(liveIndicator).length > 0
   );
+  const shouldRenderDurableConcurrentClusters =
+    concurrentPresentationMode === 'compare_cards' || concurrentPresentationMode === 'focus_rail';
+  const renderItems = shouldRenderDurableConcurrentClusters
+    ? buildConcurrentTranscriptRenderItems({
+      visibleMessages,
+      workflow,
+    })
+    : visibleMessages.map((message) => ({
+      kind: 'message' as const,
+      key: message.id,
+      message,
+    }));
 
   return (
     <section className="transcriptPanel">
       <div ref={transcriptListRef} className="transcriptList">
-        {visibleMessages.map((message) => (
+        {renderItems.map((item) => {
+          if (item.kind === 'concurrent_cluster') {
+            return (
+              <ConcurrentClusterRenderer
+                key={item.key}
+                mode={concurrentPresentationMode ?? 'inline_stack'}
+                segments={item.segments}
+                cats={cats}
+                bossCatId={bossCatId}
+                selectedChannelId={selectedChannelId}
+                disabledMentionNames={disabledMentionNames}
+                liveSpeakerParticipant={null}
+                liveSpeakerParticipantCat={null}
+                resolveLiveIndicatorSegmentParticipant={resolveLiveIndicatorSegmentParticipant}
+                resolveParticipantCatRecord={resolveParticipantCatRecord}
+                buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+                buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+                resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+                resolveParticipantDisplayName={resolveParticipantDisplayName}
+                showProgressDetails={showLiveProgressDetails}
+              />
+            );
+          }
+
+          const { message } = item;
+          return (
             <TranscriptMessageItem
-              key={message.id}
+              key={item.key}
               message={message}
               stackClassName={messageStackTone(message.senderKind)}
               cats={cats}
@@ -197,7 +238,8 @@ export function ChatTranscriptPanel({
               resolveParticipantDisplayName={resolveParticipantDisplayName}
               showSpeakerHeader
             />
-        ))}
+          );
+        })}
         {shouldRenderLiveTranscriptIndicator && liveIndicator ? (
           <LiveTranscriptIndicator
             cats={cats}

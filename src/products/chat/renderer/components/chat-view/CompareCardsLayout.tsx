@@ -34,7 +34,7 @@ export function CompareCardsLayout(props: ClusterLayoutProps): JSX.Element {
     resolveParticipantDisplayName,
     showProgressDetails,
   } = props;
-  const primarySegmentId = segments.at(-1)?.id ?? null;
+  const primarySegmentId = segments[0]?.id ?? null;
 
   return (
     <div className="compareCardsGrid">

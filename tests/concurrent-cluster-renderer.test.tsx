@@ -77,7 +77,7 @@ function renderConcurrentCluster(
   );
 }
 
-test('compare_cards preserves primary speaker fallback for the latest concurrent segment', () => {
+test('compare_cards applies primary-only fallback to the first concurrent segment', () => {
   const markup = renderConcurrentCluster('compare_cards', [
     createLiveIndicatorSegmentState({
       phase: 'waiting',
@@ -98,7 +98,7 @@ test('compare_cards preserves primary speaker fallback for the latest concurrent
   assert.equal(markup.match(/Latest Speaker/gu)?.length ?? 0, 1);
 });
 
-test('focus_rail treats the latest segment as primary and keeps secondary headers button-safe', () => {
+test('focus_rail treats the first segment as primary and keeps secondary headers button-safe', () => {
   const markup = renderConcurrentCluster('focus_rail', [
     createLiveIndicatorSegmentState({
       phase: 'sealed',
@@ -118,19 +118,29 @@ test('focus_rail treats the latest segment as primary and keeps secondary header
       ],
     }),
     createLiveIndicatorSegmentState({
-      phase: 'waiting',
+      phase: 'sealed',
       sourceMessageId: 'message-1',
       laneId: 'lane-2',
       targetStateId: 'target-2',
       segmentIndex: 1,
+      speakerLabel: 'Later Speaker',
+      contentBlocks: [
+        {
+          id: 'text-later',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Later reply',
+        },
+      ],
     }),
   ]);
 
   assert.match(
     markup,
-    /focusRailPrimary[\s\S]*Latest Speaker[\s\S]*focusRailSecondaries[\s\S]*Earlier Speaker/u,
+    /focusRailPrimary[\s\S]*Earlier Speaker[\s\S]*focusRailSecondaries[\s\S]*Later Speaker/u,
   );
-  assert.match(markup, /focusRailSecondaryName">Earlier Speaker/u);
+  assert.match(markup, /focusRailSecondaryName">Later Speaker/u);
   assert.doesNotMatch(
     markup,
     /<button[^>]*class="focusRailSecondaryHeader"[^>]*>\s*<div class="transcriptMessageTop"/u,
