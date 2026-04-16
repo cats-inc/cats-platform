@@ -55,6 +55,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-067](./specs/SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md)
+- [PLAN-059](./plans/PLAN-059-guide-cat-assist-content-cache-and-offline-refresh.md)
+- [ADR-066](./decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md)
 - [SPEC-066](./specs/SPEC-066-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md)
 - [PLAN-058](./plans/PLAN-058-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md)
 - [SPEC-065](./specs/SPEC-065-core-contract-freeze-and-first-migration-wave.md)
@@ -143,4 +146,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-17*

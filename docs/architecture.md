@@ -473,6 +473,21 @@ session lifecycle:
 - Guide Cat output such as starter ideas should be cacheable local product data
   so empty states do not depend on a live session
 
+That cacheable product data should follow the structured platform-storage model
+rather than ad hoc renderer constants. The current direction is:
+
+- `~/.cats/platform/config/guide-cat-assist-config.json`
+  - user- or product-owned Guide Cat assist policy and optional overrides
+- `~/.cats/platform/state/guide-cat-assist-cache.local.json`
+  - last-good assist bundles, freshness metadata, provenance, and refresh
+    failures
+
+Surfaces should read last-good bundles immediately and refresh them lazily
+after app/runtime readiness or on surface-open when stale. Future recurring
+refresh may use runtime wakeups, but the base product must not require a
+cron-style helper daemon just to render greetings, chips, recap, or feature
+guidance.
+
 ### Runtime Delivery Normalization
 
 The platform now assumes heterogeneous runtime delivery capabilities.
@@ -975,7 +990,10 @@ intentionally deferred:
   project conversational agents into Chat and operational agents into Work
 - [ADR-065](./decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md):
   keep `MY CATS` as one platform-level agent home with lens-based projections
+- [ADR-066](./decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md):
+  persist Guide Cat assist content as product-owned local cache/state rather
+  than transcript or session state
 
 ---
 
-*Last updated: 2026-04-14*
+*Last updated: 2026-04-17*

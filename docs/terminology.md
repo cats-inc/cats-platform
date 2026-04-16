@@ -105,6 +105,8 @@
 | Runtime capability profile | The normalized description of how much delivery richness a runtime/backend exposes, such as rich streaming, text streaming, or terminal-only result delivery. |
 | Normalized delivery event | A product-owned runtime event used by transcript, repair, replay, and materialization logic after adapter-specific payloads have been normalized. |
 | Guide Cat assist capability | The optional low-privilege assist layer that may generate greetings, prompt chips, helper copy, and contextual suggestions for setup, lobby, chat entry, or other surfaces, while degrading cleanly into deterministic fallback when unavailable. |
+| Guide Cat assist bundle | One locally persisted snapshot of Guide Cat assist content for a normalized surface scope. A bundle may include greeting copy, chips, recap, feature guidance, provenance, and freshness metadata. |
+| Deterministic assist baseline | The built-in surface-specific fallback content used when no fresh or cached Guide Cat assist bundle is available. |
 | Execution profile | A durable preset or binding that captures runtime-affecting inputs such as `cwd`, worktree mode, permission profile, tool/skill profile, and memory profile for a participant, lane, or child conversation. |
 | New Code | The one-person `Cats Code` entry preset that creates one primary coding conversation. |
 | Team Code | The shared-room `Cats Code` entry preset that creates one multi-participant coding conversation with workflow policy. |
@@ -142,4 +144,4 @@
 
 ---
 
-Last updated: 2026-04-14
+Last updated: 2026-04-17

@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [066-persist-guide-cat-assist-content-as-platform-owned-local-state](./066-persist-guide-cat-assist-content-as-platform-owned-local-state.md) | Persist Guide Cat assist content as platform-owned local state | Proposed | 2026-04-17 |
 | [065-keep-my-cats-as-one-platform-agent-home-with-lenses](./065-keep-my-cats-as-one-platform-agent-home-with-lenses.md) | Keep MY CATS as one platform agent home with lenses | Proposed | 2026-04-14 |
 | [064-project-conversational-agents-into-chat-and-operational-agents-into-work](./064-project-conversational-agents-into-chat-and-operational-agents-into-work.md) | Project conversational agents into Chat and operational agents into Work | Proposed | 2026-04-14 |
 | [063-agent-missions-and-transport-bindings](./063-agent-missions-and-transport-bindings.md) | Separate managed work, agent missions, execution runs, and transport bindings | Proposed | 2026-04-14 |
@@ -108,6 +109,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-14*
+*Last updated: 2026-04-17*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

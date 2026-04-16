@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-067](./SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md) | Guide Cat Assist Content Cache and Offline Refresh | Draft | [PLAN-059](../plans/PLAN-059-guide-cat-assist-content-cache-and-offline-refresh.md), [ADR-066](../decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md) |
 | [SPEC-066](./SPEC-066-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md) | Concurrent ChatView Presentation Modes and Policy-Aware Cluster Projection | Draft | [PLAN-058](../plans/PLAN-058-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md) |
 | [SPEC-065](./SPEC-065-core-contract-freeze-and-first-migration-wave.md) | Core Contract Freeze and First Migration Wave | Draft | [PLAN-057](../plans/PLAN-057-core-contract-freeze-and-first-migration-wave.md) |
 | [SPEC-064](./SPEC-064-my-cats-platform-home-and-lens-projections.md) | MY CATS Platform Home and Lens Projections | Draft | [PLAN-056](../plans/PLAN-056-my-cats-platform-home-and-lens-projections.md), [ADR-065](../decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md) |
@@ -123,6 +124,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-17*
 
 *See also: [plans/](../plans/) for implementation plans*
