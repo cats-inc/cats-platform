@@ -12,11 +12,8 @@ export {
   refetchAfterMutation,
   updateChatOrchestrator,
   updateChannelPendingExecutionTarget,
-  updateConcurrentPresentationModePreference,
-  updateLiveProgressDetailsPreference,
   updateNewChatDefaultsPreference,
   updateSelectedChannel,
-  updateVerbosePreference,
 } from './appShell.js';
 
 export {

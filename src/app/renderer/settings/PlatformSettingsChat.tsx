@@ -1,7 +1,11 @@
 import { startTransition } from 'react';
 
-import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import type {
+  AppShellPayload,
+  ConcurrentChatPresentationMode,
+} from '../../../products/shared/api/workspaceContracts.js';
 import {
+  updateConcurrentPresentationModePreference,
   updateLiveProgressDetailsPreference,
   updateVerbosePreference,
 } from '../../../products/shared/renderer/api/index.js';
@@ -58,6 +62,25 @@ export function PlatformSettingsChat({
     }
   }
 
+  async function updatePresentationMode(mode: ConcurrentChatPresentationMode): Promise<void> {
+    const previous = payload.chat.concurrentPresentationMode ?? 'inline_stack';
+    onPayloadUpdate({
+      ...payload,
+      chat: { ...payload.chat, concurrentPresentationMode: mode },
+    });
+    try {
+      const next = await updateConcurrentPresentationModePreference(mode);
+      startTransition(() => onPayloadUpdate(next));
+      onFeedback('');
+    } catch (error) {
+      onPayloadUpdate({
+        ...payload,
+        chat: { ...payload.chat, concurrentPresentationMode: previous },
+      });
+      onFeedback(error instanceof Error ? error.message : 'Failed to update preference');
+    }
+  }
+
   return (
     <PlatformSettingsShell section="chat" title="Chat" products={payload.products}>
       <div className="contentCard">
@@ -81,6 +104,21 @@ export function PlatformSettingsChat({
           <span className={payload.chat.showLiveProgressDetails === true ? 'toggleDot toggleDotOn' : 'toggleDot'} />
           <span>Show live progress details</span>
         </button>
+        <label className="fieldLabel">
+          <span>Concurrent response layout</span>
+          <select
+            className="textInput"
+            value={payload.chat.concurrentPresentationMode ?? 'inline_stack'}
+            onChange={(event) => void updatePresentationMode(
+              event.target.value as ConcurrentChatPresentationMode,
+            )}
+          >
+            <option value="inline_stack">Inline stack</option>
+            <option value="compare_cards">Compare cards</option>
+            <option value="focus_rail">Focus rail</option>
+            <option value="adaptive">Adaptive</option>
+          </select>
+        </label>
       </div>
 
       <div className="contentCard">
