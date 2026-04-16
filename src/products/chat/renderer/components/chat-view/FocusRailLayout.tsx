@@ -3,6 +3,7 @@ import { useState } from 'react';
 import {
   resolveSegmentPresentation,
   SegmentSpeakerHeader,
+  SegmentSpeakerInlineSummary,
   SegmentContentBody,
   type ClusterLayoutProps,
 } from './ConcurrentClusterRenderer.js';
@@ -29,8 +30,10 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const primarySegment = segments[0];
-  const secondarySegments = segments.slice(1);
+  const primarySegment = segments.at(-1) ?? null;
+  const secondarySegments = primarySegment
+    ? segments.filter((segment) => segment.id !== primarySegment.id)
+    : [];
   const primaryPresentation = primarySegment
     ? resolveSegmentPresentation(primarySegment, true, props)
     : null;
@@ -62,7 +65,11 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
       {secondarySegments.length > 0 ? (
         <div className="focusRailSecondaries">
           {secondarySegments.map((segment) => {
-            const presentation = resolveSegmentPresentation(segment, false, props);
+            const presentation = resolveSegmentPresentation(
+              segment,
+              false,
+              props,
+            );
             if (!presentation.shouldRender) {
               return null;
             }
@@ -74,7 +81,7 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
                   className="focusRailSecondaryHeader"
                   onClick={() => setExpandedId(isExpanded ? null : segment.id)}
                 >
-                  <SegmentSpeakerHeader
+                  <SegmentSpeakerInlineSummary
                     segmentParticipant={presentation.segmentParticipant}
                     segmentParticipantCat={presentation.segmentParticipantCat}
                     speakerCat={presentation.speakerCat}

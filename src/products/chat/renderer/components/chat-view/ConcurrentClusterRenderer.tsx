@@ -261,6 +261,74 @@ export function SegmentSpeakerHeader({
   return null;
 }
 
+export function SegmentSpeakerInlineSummary({
+  segmentParticipant,
+  segmentParticipantCat,
+  speakerCat,
+  speakerLabel,
+  bossCatId,
+  buildParticipantAvatarClassName,
+  buildParticipantAvatarStyle,
+  resolveParticipantAvatarUrl,
+  resolveParticipantDisplayName,
+}: {
+  segmentParticipant: ResolvedChannelParticipant | null;
+  segmentParticipantCat: ChatCat | null;
+  speakerCat: ChatCat | null;
+  speakerLabel: string | null;
+  bossCatId: string | null;
+  buildParticipantAvatarClassName: ConcurrentClusterRendererProps['buildParticipantAvatarClassName'];
+  buildParticipantAvatarStyle: ConcurrentClusterRendererProps['buildParticipantAvatarStyle'];
+  resolveParticipantAvatarUrl: ConcurrentClusterRendererProps['resolveParticipantAvatarUrl'];
+  resolveParticipantDisplayName: ConcurrentClusterRendererProps['resolveParticipantDisplayName'];
+}): JSX.Element | null {
+  if (segmentParticipant) {
+    return (
+      <span className="focusRailSecondaryIdentity">
+        <span
+          className={buildParticipantAvatarClassName(
+            segmentParticipant,
+            { transcript: true, catRecord: segmentParticipantCat },
+          )}
+          style={buildParticipantAvatarStyle(segmentParticipant, segmentParticipantCat)}
+        >
+          {resolveParticipantAvatarUrl(segmentParticipant, segmentParticipantCat)
+            ? null
+            : catInitials(resolveParticipantDisplayName(segmentParticipant, segmentParticipantCat))}
+        </span>
+        <span className="focusRailSecondaryName">
+          {resolveParticipantDisplayName(segmentParticipant, segmentParticipantCat)}
+        </span>
+      </span>
+    );
+  }
+  if (speakerCat) {
+    return (
+      <span className="focusRailSecondaryIdentity">
+        <span
+          className={speakerCat.id === bossCatId
+            ? 'catAvatar catAvatarBoss transcriptAvatar'
+            : 'catAvatar transcriptAvatar'}
+          style={speakerCat.avatarUrl
+            ? {
+                backgroundImage: `url(${speakerCat.avatarUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }
+            : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
+        >
+          {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
+        </span>
+        <span className="focusRailSecondaryName">{speakerCat.name}</span>
+      </span>
+    );
+  }
+  if (speakerLabel) {
+    return <span className="focusRailSecondaryName">{speakerLabel}</span>;
+  }
+  return null;
+}
+
 export function SegmentContentBody({
   segment,
   renderedBlocks,
@@ -299,10 +367,11 @@ export function SegmentContentBody({
 
 function InlineStackLayout(props: ClusterLayoutProps): JSX.Element {
   const { segments, bossCatId, buildParticipantAvatarClassName, buildParticipantAvatarStyle, resolveParticipantAvatarUrl, resolveParticipantDisplayName, showProgressDetails } = props;
+  const primarySegmentId = segments.at(-1)?.id ?? null;
   return (
     <>
-      {segments.map((segment, _index, allSegments) => {
-        const isPrimarySegment = segment.id === allSegments.at(-1)?.id;
+      {segments.map((segment) => {
+        const isPrimarySegment = segment.id === primarySegmentId;
         const presentation = resolveSegmentPresentation(segment, isPrimarySegment, props);
         if (!presentation.shouldRender) {
           return null;

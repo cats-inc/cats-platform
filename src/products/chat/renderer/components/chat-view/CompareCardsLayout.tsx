@@ -34,11 +34,16 @@ export function CompareCardsLayout(props: ClusterLayoutProps): JSX.Element {
     resolveParticipantDisplayName,
     showProgressDetails,
   } = props;
+  const primarySegmentId = segments.at(-1)?.id ?? null;
 
   return (
     <div className="compareCardsGrid">
       {segments.map((segment) => {
-        const presentation = resolveSegmentPresentation(segment, false, props);
+        const presentation = resolveSegmentPresentation(
+          segment,
+          segment.id === primarySegmentId,
+          props,
+        );
         if (!presentation.shouldRender) {
           return null;
         }

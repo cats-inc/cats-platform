@@ -490,6 +490,22 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+.focusRailSecondaryIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.focusRailSecondaryName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: inherit;
+}
+
 .focusRailSecondaryHeader:hover {
   background: var(--panel-hover);
   color: var(--text);
