@@ -217,6 +217,16 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+function unwrapCatalogEnvelope(value: unknown): Record<string, unknown> | null {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const wrappedCatalog = asRecord(record.catalog);
+  return wrappedCatalog ?? record;
+}
+
 function readNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
@@ -578,7 +588,7 @@ export function normalizeProviderModelCatalog(
   payload: unknown,
   fallbackProvider: string,
 ): ProviderModelCatalog {
-  const record = asRecord(payload) ?? {};
+  const record = unwrapCatalogEnvelope(payload) ?? {};
   const source = record.source;
   const sourceValue: ProviderCatalogSource =
     source === 'dynamic' || source === 'config' || source === 'static'
@@ -620,7 +630,7 @@ export function normalizeProviderAdvancedModelCatalog(
   payload: unknown,
   fallbackProvider: string,
 ): ProviderAdvancedModelCatalog {
-  const record = asRecord(payload) ?? {};
+  const record = unwrapCatalogEnvelope(payload) ?? {};
   const source = record.source;
   const sourceValue: ProviderCatalogSource =
     source === 'dynamic' || source === 'config' || source === 'static'

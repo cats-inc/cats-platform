@@ -69,9 +69,13 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'openai-codex/gpt-5.4', label: 'openai-codex gpt-5.4 (default)', default: true },
   ],
   junie: [
-    { value: 'gpt', label: 'gpt (default)', default: true },
-    { value: 'gpt-codex', label: 'gpt-codex' },
+    { value: 'gemini-flash', label: 'gemini-flash (default)', default: true },
+    { value: 'opus', label: 'opus' },
     { value: 'sonnet', label: 'sonnet' },
+    { value: 'gemini-pro', label: 'gemini-pro' },
+    { value: 'gpt', label: 'gpt' },
+    { value: 'gpt-codex', label: 'gpt-codex' },
+    { value: 'grok', label: 'grok' },
   ],
   cursor: [
     { value: 'auto', label: 'auto' },
