@@ -65,7 +65,10 @@ function resolveLoadingTitleForPath(pathname: string): string {
 export function shouldRenderGuideCatSidecar(input: {
   guideCat: PlatformHostEnvelope['guideCat'] | null | undefined;
   productSurfaceFallbackActive: boolean;
-}): boolean {
+}): input is {
+  guideCat: NonNullable<PlatformHostEnvelope['guideCat']>;
+  productSurfaceFallbackActive: false;
+} {
   return Boolean(
     input.guideCat
     && input.guideCat.status !== 'dismissed'
@@ -479,14 +482,15 @@ export default function PlatformApp() {
     shellSurface,
     setProductSurfaceFallbackActive,
   );
+  const guideCatSidecarInput = {
+    guideCat: readyEnvelope.guideCat,
+    productSurfaceFallbackActive,
+  };
   return (
     <>
-      {shouldRenderGuideCatSidecar({
-        guideCat: readyEnvelope.guideCat,
-        productSurfaceFallbackActive,
-      }) ? (
+      {shouldRenderGuideCatSidecar(guideCatSidecarInput) ? (
         <GuideCatSidecar
-          guideCat={readyEnvelope.guideCat}
+          guideCat={guideCatSidecarInput.guideCat}
           ownerDisplayName={readyEnvelope.ownerDisplayName}
           guideCatSidecarSeen={readyEnvelope.guideCatSidecarSeen ?? false}
           guideCatSidecarMode={readyEnvelope.guideCatSidecarMode ?? 'auto'}
