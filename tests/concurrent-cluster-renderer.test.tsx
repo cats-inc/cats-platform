@@ -150,6 +150,49 @@ test('focus_rail treats the first segment as primary and keeps secondary headers
   );
 });
 
+test('focus_rail keeps anonymous sealed secondaries visible and labels controls accessibly', () => {
+  const markup = renderConcurrentCluster('focus_rail', [
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-1',
+      targetStateId: 'target-1',
+      segmentIndex: 0,
+      speakerLabel: 'Claude-CLI',
+      contentBlocks: [
+        {
+          id: 'text-primary',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Primary answer',
+        },
+      ],
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-2',
+      targetStateId: 'target-2',
+      segmentIndex: 1,
+      contentBlocks: [
+        {
+          id: 'text-anonymous',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Anonymous answer',
+        },
+      ],
+    }),
+  ]);
+
+  assert.match(markup, /aria-label="Copy message from Claude-CLI"/u);
+  assert.match(markup, /class="focusRailSecondaryAnonymousIndicator"/u);
+  assert.match(markup, /aria-label="Expand unnamed response"/u);
+  assert.match(markup, /aria-expanded="false"/u);
+});
+
 test('ConcurrentClusterRenderer renders cluster actions independently from mode-specific layout', () => {
   const markup = renderConcurrentCluster(
     'compare_cards',

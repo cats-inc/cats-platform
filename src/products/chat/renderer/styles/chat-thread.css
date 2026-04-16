@@ -629,6 +629,21 @@
   min-width: 0;
 }
 
+.focusRailSecondaryAnonymousIndicator {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.focusRailSecondaryAnonymousDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
 .focusRailSecondaryName {
   min-width: 0;
   overflow: hidden;

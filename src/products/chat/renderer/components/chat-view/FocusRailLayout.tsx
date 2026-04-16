@@ -7,6 +7,7 @@ import {
   SegmentSpeakerInlineSummary,
   SegmentContentBody,
   type ClusterLayoutProps,
+  type ResolvedSegmentPresentation,
 } from './ConcurrentClusterRenderer.js';
 
 function extractSegmentPlainText(segment: LiveIndicatorSegmentState): string {
@@ -27,10 +28,62 @@ async function copyToClipboard(text: string): Promise<void> {
 
 function CopyButton(): JSX.Element {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
       <rect x="9" y="9" width="13" height="13" rx="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
+  );
+}
+
+function hasSpeakerIdentity(presentation: ResolvedSegmentPresentation): boolean {
+  return Boolean(
+    presentation.segmentParticipant || presentation.speakerCat || presentation.speakerLabel,
+  );
+}
+
+function resolveSegmentAccessibleName(presentation: ResolvedSegmentPresentation): string {
+  return (
+    presentation.segmentParticipant?.name
+    ?? presentation.segmentParticipantCat?.name
+    ?? presentation.speakerCat?.name
+    ?? presentation.speakerLabel?.trim()
+    ?? 'unnamed response'
+  );
+}
+
+function buildCopyLabel(presentation: ResolvedSegmentPresentation): string {
+  const accessibleName = resolveSegmentAccessibleName(presentation);
+  return accessibleName === 'unnamed response'
+    ? 'Copy unnamed response'
+    : `Copy message from ${accessibleName}`;
+}
+
+function buildToggleLabel(
+  presentation: ResolvedSegmentPresentation,
+  isExpanded: boolean,
+): string {
+  const accessibleName = resolveSegmentAccessibleName(presentation);
+  return accessibleName === 'unnamed response'
+    ? `${isExpanded ? 'Collapse' : 'Expand'} unnamed response`
+    : `${isExpanded ? 'Collapse' : 'Expand'} response from ${accessibleName}`;
+}
+
+function AnonymousSecondarySummary(): JSX.Element {
+  return (
+    <span className="focusRailSecondaryAnonymousIndicator" aria-hidden="true">
+      <span className="focusRailSecondaryAnonymousDot" />
+    </span>
   );
 }
 
@@ -59,6 +112,7 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
     <div className="focusRailContainer">
       {primarySegment && primaryPresentation?.shouldRender ? (() => {
         const primaryPlainText = extractSegmentPlainText(primarySegment);
+        const primaryCopyLabel = buildCopyLabel(primaryPresentation);
         return (
           <article className="focusRailPrimary">
             <div className="focusRailPrimaryHeader">
@@ -79,7 +133,8 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
                     type="button"
                     className="focusRailActionIcon"
                     onClick={() => { void copyToClipboard(primaryPlainText); }}
-                    title="Copy message"
+                    aria-label={primaryCopyLabel}
+                    title={primaryCopyLabel}
                   >
                     <CopyButton />
                   </button>
@@ -110,15 +165,18 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
             const secondaryPlainText = extractSegmentPlainText(segment);
             const isExpanded = expandedId === segment.id;
             const isActive = segment.phase === 'streaming' || segment.phase === 'waiting';
-            const hasSpeaker = Boolean(
-              presentation.segmentParticipant || presentation.speakerCat || presentation.speakerLabel,
-            );
+            const hasSpeaker = hasSpeakerIdentity(presentation);
+            const toggleLabel = buildToggleLabel(presentation, isExpanded);
+            const copyLabel = buildCopyLabel(presentation);
             return (
               <div key={segment.id} className="focusRailSecondarySlot">
                 <button
                   type="button"
                   className="focusRailSecondaryHeader"
                   onClick={() => setExpandedId(isExpanded ? null : segment.id)}
+                  aria-label={toggleLabel}
+                  title={toggleLabel}
+                  aria-expanded={isExpanded}
                 >
                   {hasSpeaker ? (
                     <SegmentSpeakerInlineSummary
@@ -132,7 +190,7 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
                       resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
                       resolveParticipantDisplayName={resolveParticipantDisplayName}
                     />
-                  ) : null}
+                  ) : <AnonymousSecondarySummary />}
                   {isActive && !isExpanded ? (
                     <span className="focusRailSecondaryDots">
                       <span className="typingDots"><span /><span /><span /></span>
@@ -156,7 +214,8 @@ export function FocusRailLayout(props: ClusterLayoutProps): JSX.Element {
                           type="button"
                           className="focusRailActionIcon"
                           onClick={() => { void copyToClipboard(secondaryPlainText); }}
-                          title="Copy message"
+                          aria-label={copyLabel}
+                          title={copyLabel}
                         >
                           <CopyButton />
                         </button>
