@@ -21,6 +21,7 @@ import type {
   ResolvedChannelParticipant,
 } from '../../../shared/channelParticipants.js';
 import { ConcurrentClusterRenderer } from './ConcurrentClusterRenderer.js';
+import type { ConcurrentClusterAction } from './concurrentClusterUiState.js';
 
 export interface LiveTranscriptIndicatorProps {
   cats: ChatCat[];
@@ -54,7 +55,7 @@ export interface LiveTranscriptIndicatorProps {
   ) => string;
   showProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
-  onDismissConcurrentLayout?: () => void;
+  concurrentActions?: ReadonlyArray<ConcurrentClusterAction>;
 }
 
 function renderContentBlockSegment(
@@ -266,7 +267,7 @@ export function LiveTranscriptIndicator(props: LiveTranscriptIndicatorProps) {
   const {
     liveIndicator,
     concurrentPresentationMode = 'inline_stack',
-    onDismissConcurrentLayout,
+    concurrentActions,
   } = props;
 
   const segments = resolveLiveIndicatorSegments(liveIndicator);
@@ -289,7 +290,7 @@ export function LiveTranscriptIndicator(props: LiveTranscriptIndicatorProps) {
         resolveParticipantAvatarUrl={props.resolveParticipantAvatarUrl}
         resolveParticipantDisplayName={props.resolveParticipantDisplayName}
         showProgressDetails={props.showProgressDetails ?? false}
-        onDismiss={onDismissConcurrentLayout}
+        actions={concurrentActions}
       />
     );
   }

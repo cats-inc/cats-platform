@@ -65,8 +65,13 @@ import { buildChatSidePanelSections } from './chat-view/ChatSidePanelSections';
 import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 import { ChatTranscriptPanel } from './chat-view/ChatTranscriptPanel';
-import { resolveConcurrentPresentationMode } from './chat-view/concurrentModeResolver';
-import { resolveDurableConcurrentClusterMaxSegmentCount } from './chat-view/concurrentTranscriptProjection';
+import {
+  dismissConcurrentClusterUiState,
+  resolveConcurrentClusterPresentationMode,
+  type ConcurrentClusterActionContext,
+  type ConcurrentClusterContext,
+  type ConcurrentClusterUiStateMap,
+} from './chat-view/concurrentClusterUiState';
 import {
   buildChatComposerRecipients,
   buildChatComposerStackParticipants,
@@ -274,41 +279,48 @@ export function ChatView({
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
-  const [concurrentModeOverride, setConcurrentModeOverride] = useState<
-    'inline_stack' | null
-  >(null);
-  const durableConcurrentSegmentCount = useMemo(
-    () => resolveDurableConcurrentClusterMaxSegmentCount({
-      visibleMessages,
-      workflow: selectedChannel.roomRouting.workflow,
-    }),
-    [selectedChannel.roomRouting.workflow, visibleMessages],
-  );
-  useEffect(() => {
-    setConcurrentModeOverride(null);
-  }, [selectedChannel.id]);
-  const resolvedConcurrentMode = useMemo(
-    () => resolveConcurrentPresentationMode({
-      explicitOverride: concurrentModeOverride,
-      workflowRecommendation: null,
-      userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
-      segmentCount: Math.max(
-        visibleLiveIndicator?.segments?.length ?? 0,
-        durableConcurrentSegmentCount,
-      ),
-      viewportWidth,
-    }),
+  const [concurrentClusterUiStateByKey, setConcurrentClusterUiStateByKey] =
+    useState<ConcurrentClusterUiStateMap>({});
+  const resolveConcurrentClusterMode = useCallback(
+    (context: ConcurrentClusterContext) =>
+      resolveConcurrentClusterPresentationMode({
+        channelId: selectedChannel.id,
+        turnId: context.turnId,
+        userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
+        segmentCount: context.segmentCount,
+        viewportWidth,
+        workflowRecommendation: null,
+        uiStateByKey: concurrentClusterUiStateByKey,
+      }),
     [
-      concurrentModeOverride,
-      durableConcurrentSegmentCount,
+      concurrentClusterUiStateByKey,
       payload.chat.concurrentPresentationMode,
-      visibleLiveIndicator?.segments?.length,
+      selectedChannel.id,
       viewportWidth,
     ],
   );
-  const handleDismissConcurrentLayout = useCallback(() => {
-    setConcurrentModeOverride('inline_stack');
-  }, []);
+  const buildConcurrentClusterActions = useCallback(
+    (context: ConcurrentClusterActionContext) => {
+      if (context.resolvedMode === 'inline_stack') {
+        return [];
+      }
+      return [
+        {
+          key: `dismiss:${context.turnId}`,
+          label: 'Dismiss',
+          title: 'Dismiss layout',
+          onSelect: () => {
+            setConcurrentClusterUiStateByKey((previous) =>
+              dismissConcurrentClusterUiState(previous, {
+                channelId: selectedChannel.id,
+                turnId: context.turnId,
+              }));
+          },
+        },
+      ];
+    },
+    [selectedChannel.id],
+  );
   function openSidePanelTo(section: string): void {
     setSidePanelOpen(true);
     setSidePanelSection(section);
@@ -780,8 +792,8 @@ export function ChatView({
               resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
               resolveParticipantDisplayName={resolveParticipantDisplayName}
               showLiveProgressDetails={payload.chat.showLiveProgressDetails === true}
-              concurrentPresentationMode={resolvedConcurrentMode}
-              onDismissConcurrentLayout={handleDismissConcurrentLayout}
+              resolveConcurrentClusterPresentationMode={resolveConcurrentClusterMode}
+              buildConcurrentClusterActions={buildConcurrentClusterActions}
             />
 
             <ChatComposerArea

@@ -221,6 +221,7 @@ test('buildConcurrentTranscriptRenderItems projects a completed concurrent turn 
   if (items[1]?.kind !== 'concurrent_cluster') {
     throw new Error('expected concurrent cluster render item');
   }
+  assert.equal(items[1].messages.length, 2);
   assert.deepEqual(
     items[1].segments.map((segment) => segment.speakerLabel),
     ['Claude-CLI', 'Codex-CLI'],
@@ -266,11 +267,67 @@ test('ChatTranscriptPanel keeps compare_cards layout for completed concurrent tu
       resolveParticipantAvatarUrl={() => null}
       resolveParticipantDisplayName={(participant) => participant.name}
       showLiveProgressDetails={false}
-      concurrentPresentationMode="compare_cards"
+      resolveConcurrentClusterPresentationMode={() => 'compare_cards'}
+      buildConcurrentClusterActions={() => []}
     />,
   );
 
   assert.match(markup, /compareCardsGrid/u);
+  assert.match(markup, /Claude-CLI/u);
+  assert.match(markup, /Codex-CLI/u);
+  assert.match(markup, /Claude answer\./u);
+  assert.match(markup, /Codex answer\./u);
+});
+
+test('ChatTranscriptPanel falls back to raw transcript bubbles when a durable cluster resolves to inline_stack', () => {
+  const { visibleMessages, workflow } = createCompletedConcurrentTurnFixture();
+  const participants = new Map([
+    ['participant-claude', createParticipant('participant-claude', 'Claude-CLI')],
+    ['participant-codex', createParticipant('participant-codex', 'Codex-CLI')],
+  ]);
+
+  const markup = renderToStaticMarkup(
+    <ChatTranscriptPanel
+      hasConversationStarted
+      greeting="Hello"
+      transcriptListRef={createRef<HTMLDivElement>()}
+      bottomSentinelRef={() => {}}
+      visibleMessages={[...visibleMessages]}
+      workflow={workflow}
+      cats={[]}
+      bossCatId={null}
+      selectedChannelId="channel-1"
+      disabledMentionNames={[]}
+      busy={IDLE_BUSY_STATE}
+      compareBusy={false}
+      isCompareGroup={false}
+      choiceResponsesBySource={new Map()}
+      onChoiceSubmit={() => {}}
+      latestUserTurnMessageId={null}
+      latestUserTurnStatus="idle"
+      liveIndicator={undefined}
+      liveSpeakerParticipant={null}
+      liveSpeakerParticipantCat={null}
+      resolveLiveIndicatorSegmentParticipant={(segment) =>
+        segment.participantId ? (participants.get(segment.participantId) ?? null) : null}
+      messageStackTone={(senderKind) => senderKind}
+      resolveMessageParticipant={(message) =>
+        typeof message.metadata?.targetId === 'string'
+          ? (participants.get(message.metadata.targetId) ?? null)
+          : null}
+      resolveParticipantCatRecord={() => null}
+      buildParticipantAvatarClassName={() => 'catAvatar transcriptAvatar'}
+      buildParticipantAvatarStyle={() => undefined}
+      resolveParticipantAvatarUrl={() => null}
+      resolveParticipantDisplayName={(participant) => participant.name}
+      showLiveProgressDetails={false}
+      resolveConcurrentClusterPresentationMode={() => 'inline_stack'}
+      buildConcurrentClusterActions={() => []}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /compareCardsGrid/u);
+  assert.equal((markup.match(/messageActionIcon/gu) ?? []).length, 3);
   assert.match(markup, /Claude-CLI/u);
   assert.match(markup, /Codex-CLI/u);
   assert.match(markup, /Claude answer\./u);

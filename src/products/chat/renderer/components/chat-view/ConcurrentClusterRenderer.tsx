@@ -18,6 +18,7 @@ import {
 import type {
   ResolvedChannelParticipant,
 } from '../../../shared/channelParticipants.js';
+import type { ConcurrentClusterAction } from './concurrentClusterUiState.js';
 import { CompareCardsLayout } from './CompareCardsLayout.js';
 import { FocusRailLayout } from './FocusRailLayout.js';
 
@@ -53,10 +54,10 @@ export interface ConcurrentClusterRendererProps {
     catRecord?: ChatCat | null,
   ) => string;
   showProgressDetails: boolean;
-  onDismiss?: () => void;
+  actions?: ReadonlyArray<ConcurrentClusterAction>;
 }
 
-export type ClusterLayoutProps = Omit<ConcurrentClusterRendererProps, 'mode' | 'onDismiss'>;
+export type ClusterLayoutProps = Omit<ConcurrentClusterRendererProps, 'mode' | 'actions'>;
 
 export interface ResolvedSegmentPresentation {
   segmentParticipant: ResolvedChannelParticipant | null;
@@ -410,24 +411,31 @@ function InlineStackLayout(props: ClusterLayoutProps): JSX.Element {
   );
 }
 
-function ClusterActionBar({ onDismiss }: { onDismiss: () => void }): JSX.Element {
+function ClusterActionBar({
+  actions,
+}: {
+  actions: ReadonlyArray<ConcurrentClusterAction>;
+}): JSX.Element {
   return (
     <div className="clusterActionBar">
-      <button
-        type="button"
-        className="clusterActionButton clusterActionButtonDismiss"
-        onClick={onDismiss}
-        title="Dismiss layout"
-      >
-        Dismiss
-      </button>
+      {actions.map((action) => (
+        <button
+          key={action.key}
+          type="button"
+          className="clusterActionButton"
+          onClick={action.onSelect}
+          title={action.title}
+          disabled={action.disabled === true}
+        >
+          {action.label}
+        </button>
+      ))}
     </div>
   );
 }
 
 export function ConcurrentClusterRenderer(props: ConcurrentClusterRendererProps): JSX.Element {
-  const { mode, onDismiss, ...layoutProps } = props;
-  const showActionBar = onDismiss != null && mode !== 'inline_stack';
+  const { mode, actions = [], ...layoutProps } = props;
   const layout = (() => {
     switch (mode) {
       case 'compare_cards':
@@ -440,13 +448,13 @@ export function ConcurrentClusterRenderer(props: ConcurrentClusterRendererProps)
         return <InlineStackLayout {...layoutProps} />;
     }
   })();
-  if (!showActionBar) {
+  if (actions.length === 0) {
     return layout;
   }
   return (
     <div className="clusterActionBarWrapper">
       {layout}
-      <ClusterActionBar onDismiss={onDismiss} />
+      <ClusterActionBar actions={actions} />
     </div>
   );
 }

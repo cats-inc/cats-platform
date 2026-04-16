@@ -54,6 +54,7 @@ function createParticipant(
 function renderConcurrentCluster(
   mode: 'inline_stack' | 'compare_cards' | 'focus_rail' | 'adaptive',
   segments: Parameters<typeof ConcurrentClusterRenderer>[0]['segments'],
+  actions: Parameters<typeof ConcurrentClusterRenderer>[0]['actions'] = [],
 ): string {
   const liveSpeakerParticipant = createParticipant('participant-latest', 'Latest Speaker');
   return renderToStaticMarkup(
@@ -73,6 +74,7 @@ function renderConcurrentCluster(
       resolveParticipantAvatarUrl={() => null}
       resolveParticipantDisplayName={(participant) => participant.name}
       showProgressDetails={false}
+      actions={actions}
     />,
   );
 }
@@ -145,4 +147,58 @@ test('focus_rail treats the first segment as primary and keeps secondary headers
     markup,
     /<button[^>]*class="focusRailSecondaryHeader"[^>]*>\s*<div class="transcriptMessageTop"/u,
   );
+});
+
+test('ConcurrentClusterRenderer renders cluster actions independently from mode-specific layout', () => {
+  const markup = renderConcurrentCluster(
+    'compare_cards',
+    [
+      createLiveIndicatorSegmentState({
+        phase: 'sealed',
+        sourceMessageId: 'message-1',
+        laneId: 'lane-1',
+        targetStateId: 'target-1',
+        segmentIndex: 0,
+        speakerLabel: 'Claude-CLI',
+        contentBlocks: [
+          {
+            id: 'text-claude',
+            kind: 'text',
+            index: 0,
+            status: 'complete',
+            text: 'Claude answer',
+          },
+        ],
+      }),
+      createLiveIndicatorSegmentState({
+        phase: 'sealed',
+        sourceMessageId: 'message-1',
+        laneId: 'lane-2',
+        targetStateId: 'target-2',
+        segmentIndex: 1,
+        speakerLabel: 'Codex-CLI',
+        contentBlocks: [
+          {
+            id: 'text-codex',
+            kind: 'text',
+            index: 0,
+            status: 'complete',
+            text: 'Codex answer',
+          },
+        ],
+      }),
+    ],
+    [
+      {
+        key: 'dismiss',
+        label: 'Dismiss',
+        title: 'Dismiss layout',
+        onSelect: () => {},
+      },
+    ],
+  );
+
+  assert.match(markup, /compareCardsGrid/u);
+  assert.match(markup, /clusterActionBar/u);
+  assert.match(markup, /Dismiss/u);
 });

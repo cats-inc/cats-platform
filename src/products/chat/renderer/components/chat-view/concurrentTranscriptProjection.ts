@@ -24,6 +24,7 @@ export interface ConcurrentClusterRenderItem {
   turnId: string;
   sourceMessageId: string;
   segments: LiveIndicatorSegmentState[];
+  messages: SelectedChannelView['messages'];
 }
 
 export type ChatTranscriptRenderItem =
@@ -215,6 +216,7 @@ function buildDurableClusterProjection(input: {
     return null;
   }
 
+  const clusterMessages = visibleMessages.filter((message) => visibleMessageIds.has(message.id));
   return {
     item: {
       kind: 'concurrent_cluster',
@@ -222,6 +224,7 @@ function buildDurableClusterProjection(input: {
       turnId: turn.id,
       sourceMessageId: turn.sourceMessageId,
       segments,
+      messages: clusterMessages,
     },
     firstVisibleMessageId,
     visibleMessageIds,

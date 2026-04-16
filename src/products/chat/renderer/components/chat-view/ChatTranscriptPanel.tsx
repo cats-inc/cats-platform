@@ -32,6 +32,11 @@ import {
 import { TranscriptMessageItem } from './TranscriptMessageItem.js';
 import { ConcurrentClusterRenderer } from './ConcurrentClusterRenderer.js';
 import { buildConcurrentTranscriptRenderItems } from './concurrentTranscriptProjection.js';
+import type {
+  ConcurrentClusterAction,
+  ConcurrentClusterActionContext,
+  ConcurrentClusterContext,
+} from './concurrentClusterUiState.js';
 import { LiveTranscriptIndicator } from './LiveTranscriptIndicator.js';
 
 export interface ChatTranscriptPanelProps {
@@ -84,8 +89,12 @@ export interface ChatTranscriptPanelProps {
     catRecord?: ChatCat | null,
   ) => string;
   showLiveProgressDetails?: boolean;
-  concurrentPresentationMode?: ConcurrentChatPresentationMode;
-  onDismissConcurrentLayout?: () => void;
+  resolveConcurrentClusterPresentationMode: (
+    input: ConcurrentClusterContext,
+  ) => ConcurrentChatPresentationMode;
+  buildConcurrentClusterActions?: (
+    input: ConcurrentClusterActionContext,
+  ) => ReadonlyArray<ConcurrentClusterAction>;
 }
 
 export function ChatTranscriptPanel({
@@ -120,8 +129,8 @@ export function ChatTranscriptPanel({
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
   showLiveProgressDetails = false,
-  concurrentPresentationMode,
-  onDismissConcurrentLayout,
+  resolveConcurrentClusterPresentationMode,
+  buildConcurrentClusterActions,
 }: ChatTranscriptPanelProps) {
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
 
@@ -162,28 +171,80 @@ export function ChatTranscriptPanel({
     liveIndicator?.active
     && resolveLiveIndicatorSegments(liveIndicator).length > 0
   );
-  const shouldRenderDurableConcurrentClusters =
-    concurrentPresentationMode === 'compare_cards' || concurrentPresentationMode === 'focus_rail';
-  const renderItems = shouldRenderDurableConcurrentClusters
-    ? buildConcurrentTranscriptRenderItems({
-      visibleMessages,
-      workflow,
-    })
-    : visibleMessages.map((message) => ({
-      kind: 'message' as const,
-      key: message.id,
-      message,
-    }));
+  const liveIndicatorSegments = liveIndicator?.active
+    ? resolveLiveIndicatorSegments(liveIndicator)
+    : [];
+  const renderItems = buildConcurrentTranscriptRenderItems({
+    visibleMessages,
+    workflow,
+  });
+
+  function renderTranscriptMessage(
+    message: SelectedChannelView['messages'][number],
+  ): JSX.Element {
+    return (
+      <TranscriptMessageItem
+        key={message.id}
+        message={message}
+        stackClassName={messageStackTone(message.senderKind)}
+        cats={cats}
+        bossCatId={bossCatId}
+        selectedChannelId={selectedChannelId}
+        disabledMentionNames={disabledMentionNames}
+        compareBusy={compareBusy}
+        choiceBusy={isChoiceBusy(busy, message.id)}
+        isCompareGroup={isCompareGroup}
+        relayMenuOpen={openRelayMenuId === message.id}
+        userTurnStatus={
+          message.senderKind === 'user' && message.id === latestUserTurnMessageId
+            ? latestUserTurnStatus
+            : 'idle'
+        }
+        retryBusy={isBusyActive(busy)}
+        existingChoiceResponse={choiceResponsesBySource.get(message.id) ?? null}
+        onChoiceSubmit={onChoiceSubmit}
+        onRetryMessage={onRetryMessage}
+        onCopyMessage={copyMessageBody}
+        onToggleRelayMenu={() =>
+          setOpenRelayMenuId((current) =>
+            current === message.id ? null : message.id,
+          )}
+        onCloseRelayMenu={() => setOpenRelayMenuId(null)}
+        onRelayMessage={onRelayMessage}
+        resolveMessageParticipant={resolveMessageParticipant}
+        resolveParticipantCatRecord={resolveParticipantCatRecord}
+        buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+        buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+        resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+        resolveParticipantDisplayName={resolveParticipantDisplayName}
+        showSpeakerHeader
+      />
+    );
+  }
 
   return (
     <section className="transcriptPanel">
       <div ref={transcriptListRef} className="transcriptList">
         {renderItems.map((item) => {
           if (item.kind === 'concurrent_cluster') {
+            const clusterContext: ConcurrentClusterContext = {
+              turnId: item.turnId,
+              sourceMessageId: item.sourceMessageId,
+              segmentCount: item.segments.length,
+              clusterKind: 'durable',
+            };
+            const resolvedClusterMode = resolveConcurrentClusterPresentationMode(clusterContext);
+            if (resolvedClusterMode === 'inline_stack') {
+              return item.messages.map((message) => renderTranscriptMessage(message));
+            }
+            const clusterActions = buildConcurrentClusterActions?.({
+              ...clusterContext,
+              resolvedMode: resolvedClusterMode,
+            }) ?? [];
             return (
               <ConcurrentClusterRenderer
                 key={item.key}
-                mode={concurrentPresentationMode ?? 'inline_stack'}
+                mode={resolvedClusterMode}
                 segments={item.segments}
                 cats={cats}
                 bossCatId={bossCatId}
@@ -198,50 +259,11 @@ export function ChatTranscriptPanel({
                 resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
                 resolveParticipantDisplayName={resolveParticipantDisplayName}
                 showProgressDetails={showLiveProgressDetails}
-                onDismiss={onDismissConcurrentLayout}
+                actions={clusterActions}
               />
             );
           }
-
-          const { message } = item;
-          return (
-            <TranscriptMessageItem
-              key={item.key}
-              message={message}
-              stackClassName={messageStackTone(message.senderKind)}
-              cats={cats}
-              bossCatId={bossCatId}
-              selectedChannelId={selectedChannelId}
-              disabledMentionNames={disabledMentionNames}
-              compareBusy={compareBusy}
-              choiceBusy={isChoiceBusy(busy, message.id)}
-              isCompareGroup={isCompareGroup}
-              relayMenuOpen={openRelayMenuId === message.id}
-              userTurnStatus={
-                message.senderKind === 'user' && message.id === latestUserTurnMessageId
-                  ? latestUserTurnStatus
-                  : 'idle'
-              }
-              retryBusy={isBusyActive(busy)}
-              existingChoiceResponse={choiceResponsesBySource.get(message.id) ?? null}
-              onChoiceSubmit={onChoiceSubmit}
-              onRetryMessage={onRetryMessage}
-              onCopyMessage={copyMessageBody}
-              onToggleRelayMenu={() =>
-                setOpenRelayMenuId((current) =>
-                  current === message.id ? null : message.id,
-                )}
-              onCloseRelayMenu={() => setOpenRelayMenuId(null)}
-              onRelayMessage={onRelayMessage}
-              resolveMessageParticipant={resolveMessageParticipant}
-              resolveParticipantCatRecord={resolveParticipantCatRecord}
-              buildParticipantAvatarClassName={buildParticipantAvatarClassName}
-              buildParticipantAvatarStyle={buildParticipantAvatarStyle}
-              resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
-              resolveParticipantDisplayName={resolveParticipantDisplayName}
-              showSpeakerHeader
-            />
-          );
+          return renderTranscriptMessage(item.message);
         })}
         {shouldRenderLiveTranscriptIndicator && liveIndicator ? (
           <LiveTranscriptIndicator
@@ -259,8 +281,46 @@ export function ChatTranscriptPanel({
             resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
             resolveParticipantDisplayName={resolveParticipantDisplayName}
             showProgressDetails={showLiveProgressDetails}
-            concurrentPresentationMode={concurrentPresentationMode}
-            onDismissConcurrentLayout={onDismissConcurrentLayout}
+            concurrentPresentationMode={(() => {
+              const liveTurnId = workflow.activeTurn?.id;
+              if (!liveTurnId) {
+                return 'inline_stack';
+              }
+              return resolveConcurrentClusterPresentationMode({
+                turnId: liveTurnId,
+                sourceMessageId:
+                  liveIndicator.sourceMessageId
+                  ?? workflow.activeTurn?.sourceMessageId
+                  ?? '',
+                segmentCount: liveIndicatorSegments.length,
+                clusterKind: 'live',
+              });
+            })()}
+            concurrentActions={(() => {
+              const liveTurnId = workflow.activeTurn?.id;
+              if (!liveTurnId || !buildConcurrentClusterActions) {
+                return [];
+              }
+              const resolvedMode = resolveConcurrentClusterPresentationMode({
+                turnId: liveTurnId,
+                sourceMessageId:
+                  liveIndicator.sourceMessageId
+                  ?? workflow.activeTurn?.sourceMessageId
+                  ?? '',
+                segmentCount: liveIndicatorSegments.length,
+                clusterKind: 'live',
+              });
+              return buildConcurrentClusterActions({
+                turnId: liveTurnId,
+                sourceMessageId:
+                  liveIndicator.sourceMessageId
+                  ?? workflow.activeTurn?.sourceMessageId
+                  ?? '',
+                segmentCount: liveIndicatorSegments.length,
+                clusterKind: 'live',
+                resolvedMode,
+              });
+            })()}
           />
         ) : null}
         <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />
