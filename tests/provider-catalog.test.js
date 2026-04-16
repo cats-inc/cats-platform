@@ -8,11 +8,23 @@ import {
   normalizeProviderModelCatalog,
 } from '../build/server/shared/providerCatalog.js';
 
-test('Junie static fallback matches the runtime alias catalog', () => {
-  assert.equal(getDefaultModel('junie'), 'gemini-flash');
+test('Junie static fallback matches the curated picker snapshot', () => {
+  assert.equal(getDefaultModel('junie'), 'Gemini 3 Flash');
   assert.deepEqual(
     getProviderModels('junie').map((model) => model.value),
-    ['gemini-flash', 'opus', 'sonnet', 'gemini-pro', 'gpt', 'gpt-codex', 'grok'],
+    [
+      'Gemini 3 Flash',
+      'Claude Opus 4.6',
+      'Claude Opus 4.7',
+      'Claude Sonnet 4.6',
+      'Gemini 3.1 Flash Lite',
+      'Gemini 3.1 Pro Preview',
+      'GPT-5',
+      'GPT-5.2',
+      'GPT-5.3-codex',
+      'GPT-5.4',
+      'Grok 4.1 Fast Reasoning',
+    ],
   );
 });
 
@@ -20,30 +32,30 @@ test('provider catalog normalizers accept runtime catalog envelopes', () => {
   const basicCatalog = normalizeProviderModelCatalog({
     catalog: {
       provider: 'junie',
-      defaultModel: 'gemini-flash',
+      defaultModel: 'Gemini 3 Flash',
       models: [
-        { id: 'gemini-flash', label: 'gemini-flash', default: true },
-        { id: 'opus', label: 'opus' },
+        { id: 'Gemini 3 Flash', label: 'Gemini 3 Flash', default: true },
+        { id: 'Claude Opus 4.7', label: 'Claude Opus 4.7' },
       ],
       warnings: ['honesty warning'],
     },
   }, 'junie');
 
   assert.equal(basicCatalog.provider, 'junie');
-  assert.equal(basicCatalog.defaultModel, 'gemini-flash');
+  assert.equal(basicCatalog.defaultModel, 'Gemini 3 Flash');
   assert.deepEqual(
     basicCatalog.models.map((model) => model.id),
-    ['gemini-flash', 'opus'],
+    ['Gemini 3 Flash', 'Claude Opus 4.7'],
   );
   assert.deepEqual(basicCatalog.warnings, ['honesty warning']);
 
   const advancedCatalog = normalizeProviderAdvancedModelCatalog({
     catalog: {
       provider: 'junie',
-      defaultModel: 'gemini-flash',
+      defaultModel: 'Gemini 3 Flash',
       entries: [
-        { id: 'gemini-flash', label: 'gemini-flash', default: true },
-        { id: 'opus', label: 'opus', capabilityTags: ['reasoning'] },
+        { id: 'Gemini 3 Flash', label: 'Gemini 3 Flash', default: true },
+        { id: 'Claude Opus 4.7', label: 'Claude Opus 4.7', capabilityTags: ['reasoning'] },
       ],
       support: { tier: 'entry_only', notes: [] },
       warnings: ['honesty warning'],
@@ -51,10 +63,10 @@ test('provider catalog normalizers accept runtime catalog envelopes', () => {
   }, 'junie');
 
   assert.equal(advancedCatalog.provider, 'junie');
-  assert.equal(advancedCatalog.defaultModel, 'gemini-flash');
+  assert.equal(advancedCatalog.defaultModel, 'Gemini 3 Flash');
   assert.deepEqual(
     advancedCatalog.entries.map((entry) => entry.id),
-    ['gemini-flash', 'opus'],
+    ['Gemini 3 Flash', 'Claude Opus 4.7'],
   );
   assert.deepEqual(advancedCatalog.entries[1]?.capabilityTags, ['reasoning']);
   assert.equal(advancedCatalog.support.tier, 'entry_only');
