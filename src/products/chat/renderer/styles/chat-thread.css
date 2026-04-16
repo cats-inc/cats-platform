@@ -388,6 +388,10 @@
   width: 100%;
 }
 
+.compareCardsGridSingle {
+  grid-template-columns: 1fr;
+}
+
 .compareCard {
   display: flex;
   flex-direction: column;
@@ -509,8 +513,20 @@
 }
 
 @media (max-width: 720px) {
+  .compareCardsCarousel.compareCardsCarouselNavVisible {
+    padding-inline: 40px;
+  }
+
   .compareCardsGrid {
     grid-template-columns: 1fr;
+  }
+
+  .compareCardsNavPrev {
+    left: 6px;
+  }
+
+  .compareCardsNavNext {
+    right: 6px;
   }
 }
 

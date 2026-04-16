@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { createLiveIndicatorSegmentState } from '../src/shared/liveIndicator.ts';
 import { ConcurrentClusterRenderer } from '../src/products/chat/renderer/components/chat-view/ConcurrentClusterRenderer.tsx';
+import { resolveCompareCardsWindow } from '../src/products/chat/renderer/components/chat-view/CompareCardsLayout.tsx';
 import type { ResolvedChannelParticipant } from '../src/products/chat/shared/channelParticipants.js';
 
 function createParticipant(
@@ -201,4 +202,115 @@ test('ConcurrentClusterRenderer renders cluster actions independently from mode-
   assert.match(markup, /compareCardsGrid/u);
   assert.match(markup, /clusterActionBar/u);
   assert.match(markup, /Dismiss/u);
+});
+
+test('resolveCompareCardsWindow explicitly supports last-to-first wrap-around', () => {
+  const windowState = resolveCompareCardsWindow(
+    ['lane-0', 'lane-1', 'lane-2'],
+    2,
+  );
+
+  assert.equal(windowState.showNav, true);
+  assert.equal(windowState.normalizedStartIndex, 2);
+  assert.deepEqual(windowState.visibleIndices, [2, 0]);
+  assert.deepEqual(windowState.visibleItems, ['lane-2', 'lane-0']);
+});
+
+test('compare_cards promotes a single renderable card to a full-width grid', () => {
+  const markup = renderConcurrentCluster('compare_cards', [
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-1',
+      targetStateId: 'target-1',
+      segmentIndex: 0,
+      speakerLabel: 'Claude-CLI',
+      contentBlocks: [
+        {
+          id: 'text-claude',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Claude answer',
+        },
+      ],
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-2',
+      targetStateId: 'target-2',
+      segmentIndex: 1,
+    }),
+  ]);
+
+  assert.match(markup, /compareCardsGrid compareCardsGridSingle/u);
+  assert.equal(
+    markup.match(/<article[^>]*class="compareCard(?: compareCard\w+)?"/gu)?.length ?? 0,
+    1,
+  );
+});
+
+test('compare_cards exposes nav controls and per-card dots when carousel mode is active', () => {
+  const markup = renderConcurrentCluster('compare_cards', [
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-1',
+      targetStateId: 'target-1',
+      segmentIndex: 0,
+      speakerLabel: 'Claude-CLI',
+      contentBlocks: [
+        {
+          id: 'text-claude',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Claude answer',
+        },
+      ],
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-2',
+      targetStateId: 'target-2',
+      segmentIndex: 1,
+      speakerLabel: 'Codex-CLI',
+      contentBlocks: [
+        {
+          id: 'text-codex',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Codex answer',
+        },
+      ],
+    }),
+    createLiveIndicatorSegmentState({
+      phase: 'sealed',
+      sourceMessageId: 'message-1',
+      laneId: 'lane-3',
+      targetStateId: 'target-3',
+      segmentIndex: 2,
+      speakerLabel: 'Gemini-CLI',
+      contentBlocks: [
+        {
+          id: 'text-gemini',
+          kind: 'text',
+          index: 0,
+          status: 'complete',
+          text: 'Gemini answer',
+        },
+      ],
+    }),
+  ]);
+
+  assert.match(markup, /compareCardsCarousel compareCardsCarouselNavVisible/u);
+  assert.match(markup, /aria-label="Previous card"/u);
+  assert.match(markup, /aria-label="Next card"/u);
+  assert.equal(
+    markup.match(/<button[^>]*class="compareCardsPaginationDot(?: compareCardsPaginationDotActive)?"/gu)?.length ?? 0,
+    3,
+  );
 });

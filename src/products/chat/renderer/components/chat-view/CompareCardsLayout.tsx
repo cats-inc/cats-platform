@@ -36,6 +36,61 @@ function wrapIndex(index: number, length: number): number {
   return ((index % length) + length) % length;
 }
 
+const COMPARE_CARDS_VISIBLE_COUNT = 2;
+
+export interface CompareCardsWindow<T> {
+  normalizedStartIndex: number;
+  showNav: boolean;
+  singleVisibleCard: boolean;
+  total: number;
+  visibleIndices: number[];
+  visibleItems: T[];
+}
+
+export function resolveCompareCardsWindow<T>(
+  items: ReadonlyArray<T>,
+  startIndex: number,
+): CompareCardsWindow<T> {
+  const total = items.length;
+  if (total === 0) {
+    return {
+      normalizedStartIndex: 0,
+      showNav: false,
+      singleVisibleCard: false,
+      total: 0,
+      visibleIndices: [],
+      visibleItems: [],
+    };
+  }
+
+  const normalizedStartIndex = wrapIndex(startIndex, total);
+  if (total <= COMPARE_CARDS_VISIBLE_COUNT) {
+    return {
+      normalizedStartIndex,
+      showNav: false,
+      singleVisibleCard: total === 1,
+      total,
+      visibleIndices: items.map((_, index) => index),
+      visibleItems: [...items],
+    };
+  }
+
+  return {
+    normalizedStartIndex,
+    showNav: true,
+    singleVisibleCard: false,
+    total,
+    visibleIndices: [
+      normalizedStartIndex,
+      wrapIndex(normalizedStartIndex + 1, total),
+    ],
+    visibleItems: [
+      items[normalizedStartIndex]!,
+      items[wrapIndex(normalizedStartIndex + 1, total)]!,
+    ],
+  };
+}
+
 export function CompareCardsLayout(props: ClusterLayoutProps): JSX.Element {
   const {
     segments,
@@ -48,40 +103,40 @@ export function CompareCardsLayout(props: ClusterLayoutProps): JSX.Element {
   } = props;
   const primarySegmentId = segments[0]?.id ?? null;
 
-  const renderableSegments = segments.filter((segment) => {
+  const renderableCards = segments.flatMap((segment) => {
     const presentation = resolveSegmentPresentation(
       segment,
       segment.id === primarySegmentId,
       props,
     );
-    return presentation.shouldRender;
+    if (!presentation.shouldRender) {
+      return [];
+    }
+    return [{
+      segment,
+      presentation,
+    }];
   });
-
-  const total = renderableSegments.length;
   const [startIndex, setStartIndex] = useState(0);
-  const clampedStart = total > 0 ? wrapIndex(startIndex, total) : 0;
-  if (clampedStart !== startIndex) {
-    setStartIndex(clampedStart);
-  }
-
-  const visibleSegments = total <= 2
-    ? renderableSegments
-    : [
-        renderableSegments[clampedStart],
-        renderableSegments[wrapIndex(clampedStart + 1, total)],
-      ];
-  const visibleIndices = total <= 2
-    ? renderableSegments.map((_, i) => i)
-    : [clampedStart, wrapIndex(clampedStart + 1, total)];
-  const showNav = total > 2;
+  const {
+    normalizedStartIndex,
+    showNav,
+    singleVisibleCard,
+    total,
+    visibleIndices,
+    visibleItems,
+  } = resolveCompareCardsWindow(renderableCards, startIndex);
 
   return (
-    <div className="compareCardsCarousel">
+    <div className={showNav
+      ? 'compareCardsCarousel compareCardsCarouselNavVisible'
+      : 'compareCardsCarousel'}
+    >
       {showNav ? (
         <button
           type="button"
           className="compareCardsNavButton compareCardsNavPrev"
-          onClick={() => setStartIndex(wrapIndex(clampedStart - 1, total))}
+          onClick={() => setStartIndex(wrapIndex(normalizedStartIndex - 1, total))}
           aria-label="Previous card"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -89,13 +144,11 @@ export function CompareCardsLayout(props: ClusterLayoutProps): JSX.Element {
           </svg>
         </button>
       ) : null}
-      <div className="compareCardsGrid">
-        {visibleSegments.map((segment) => {
-          const presentation = resolveSegmentPresentation(
-            segment,
-            segment.id === primarySegmentId,
-            props,
-          );
+      <div className={singleVisibleCard
+        ? 'compareCardsGrid compareCardsGridSingle'
+        : 'compareCardsGrid'}
+      >
+        {visibleItems.map(({ segment, presentation }) => {
           const hasSpeaker = Boolean(
             presentation.segmentParticipant || presentation.speakerCat || presentation.speakerLabel,
           );
@@ -148,7 +201,7 @@ export function CompareCardsLayout(props: ClusterLayoutProps): JSX.Element {
         <button
           type="button"
           className="compareCardsNavButton compareCardsNavNext"
-          onClick={() => setStartIndex(wrapIndex(clampedStart + 1, total))}
+          onClick={() => setStartIndex(wrapIndex(normalizedStartIndex + 1, total))}
           aria-label="Next card"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -158,7 +211,7 @@ export function CompareCardsLayout(props: ClusterLayoutProps): JSX.Element {
       ) : null}
       {total > 1 ? (
         <div className="compareCardsPagination">
-          {renderableSegments.map((segment, i) => (
+          {renderableCards.map(({ segment }, i) => (
             <button
               key={segment.id}
               type="button"
