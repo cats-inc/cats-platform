@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { AccountIdentityMenu } from '../../design/components/AccountIdentityMenu.js';
+import { buildCatExecutionLabel, buildCatTooltip } from '../../shared/executionLabel.js';
 import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared/platform-contract.js';
 import { executeEnvironmentRecovery } from '../../shared/environmentRecoveryAction.js';
@@ -15,6 +16,18 @@ import { buildPlatformLobbyEntries, pickLobbyGreeting } from './lobbyModel.js';
 
 function buildDirectLanePath(catId: string): string {
   return `/chat/my-cats/${encodeURIComponent(catId)}`;
+}
+
+function buildLobbyCatTooltip(cat: PlatformLobbyCatSummary): string {
+  if (!cat.defaultExecutionTarget) {
+    return buildCatTooltip(cat.name, cat.executionLabel);
+  }
+
+  return buildCatTooltip(cat.name, buildCatExecutionLabel({
+    defaultExecutionTarget: cat.defaultExecutionTarget,
+    defaultModelSelection: cat.defaultModelSelection ?? null,
+    executionLabel: cat.executionLabel,
+  }));
 }
 
 function LobbyCatRoster({
@@ -39,7 +52,7 @@ function LobbyCatRoster({
             type="button"
             className={cat.isBoss ? 'lobbyCatAvatar lobbyCatAvatarBoss' : 'lobbyCatAvatar'}
             style={style}
-            data-tooltip={cat.executionLabel ? `${cat.name} \u00b7 ${cat.executionLabel}` : cat.name}
+            data-tooltip={buildLobbyCatTooltip(cat)}
             aria-label={cat.name}
             onClick={() => onSelect(cat.id)}
           >

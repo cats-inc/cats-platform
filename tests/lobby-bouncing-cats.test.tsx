@@ -26,6 +26,8 @@ test('shouldRebuildBouncingCats rebuilds when the lobby roster membership change
       avatarColor: '#7A5B3A',
       avatarUrl: null,
       isBoss: false,
+      defaultExecutionTarget: null,
+      defaultModelSelection: null,
       executionLabel: null,
     },
   ];
@@ -50,6 +52,8 @@ test('shouldRebuildBouncingCats keeps the current animation state when the lobby
       avatarColor: '#7A5B3A',
       avatarUrl: 'https://example.com/active.png',
       isBoss: true,
+      defaultExecutionTarget: null,
+      defaultModelSelection: null,
       executionLabel: null,
     },
   ];

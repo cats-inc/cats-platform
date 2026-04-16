@@ -8,7 +8,10 @@ import type {
   PlatformLobbyPreferences,
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
-import { buildCatExecutionLabel } from '../../../shared/executionLabel.js';
+import {
+  cloneProviderModelSelection,
+  type ProviderModelSelection,
+} from '../../../shared/providerSelection.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
@@ -143,7 +146,7 @@ function buildLobbyCats(
     avatarUrl: string | null;
     status: string;
     defaultExecutionTarget?: { provider: string; instance?: string | null; model?: string | null } | null;
-    defaultModelSelection?: { controls?: Record<string, string | number | boolean> | null } | null;
+    defaultModelSelection?: ProviderModelSelection | null;
   }[],
   bossCatId: string | null,
 ): PlatformLobbyCatSummary[] {
@@ -155,8 +158,16 @@ function buildLobbyCats(
       avatarColor: cat.avatarColor,
       avatarUrl: cat.avatarUrl,
       isBoss: cat.id === bossCatId,
-      executionLabel: cat.defaultExecutionTarget
-        ? buildCatExecutionLabel(cat as { defaultExecutionTarget: { provider: string; instance?: string | null; model?: string | null }; defaultModelSelection?: { controls?: Record<string, string | number | boolean> | null } | null })
+      defaultExecutionTarget: cat.defaultExecutionTarget
+        ? {
+          provider: cat.defaultExecutionTarget.provider,
+          instance: cat.defaultExecutionTarget.instance ?? null,
+          model: cat.defaultExecutionTarget.model ?? null,
+        }
         : null,
+      defaultModelSelection: cloneProviderModelSelection(cat.defaultModelSelection ?? null),
+      // Keep lobby payloads target-shaped so renderer surfaces can reuse the
+      // shared execution-label resolver instead of inheriting a stale summary.
+      executionLabel: null,
     }));
 }
