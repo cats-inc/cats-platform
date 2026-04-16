@@ -62,8 +62,31 @@ function resolveLoadingTitleForPath(pathname: string): string {
   return surface ? `Loading ${resolvePlatformSurfaceLabel(surface)}` : 'Loading';
 }
 
-function ProductSurfaceFallback({ surface }: { surface: PlatformSurfaceId }) {
+export function shouldRenderGuideCatSidecar(input: {
+  guideCat: PlatformHostEnvelope['guideCat'] | null | undefined;
+  productSurfaceFallbackActive: boolean;
+}): boolean {
+  return Boolean(
+    input.guideCat
+    && input.guideCat.status !== 'dismissed'
+    && !input.productSurfaceFallbackActive,
+  );
+}
+
+function ProductSurfaceFallback({
+  surface,
+  onVisibilityChange,
+}: {
+  surface: PlatformSurfaceId;
+  onVisibilityChange: (visible: boolean) => void;
+}) {
   const surfaceLabel = resolvePlatformSurfaceLabel(surface);
+
+  useEffect(() => {
+    onVisibilityChange(true);
+    return () => onVisibilityChange(false);
+  }, [onVisibilityChange]);
+
   return (
     <div className="screen screenCentered">
       <div className="loadingPanel">
@@ -74,7 +97,10 @@ function ProductSurfaceFallback({ surface }: { surface: PlatformSurfaceId }) {
   );
 }
 
-function renderProductSurface(surface: PlatformSurfaceId) {
+function renderProductSurface(
+  surface: PlatformSurfaceId,
+  onFallbackVisibilityChange: (visible: boolean) => void,
+) {
   const AppComponent = surface === 'work'
     ? WorkApp
     : surface === 'code'
@@ -82,7 +108,14 @@ function renderProductSurface(surface: PlatformSurfaceId) {
       : ChatApp;
 
   return (
-    <Suspense fallback={<ProductSurfaceFallback surface={surface} />}>
+    <Suspense
+      fallback={(
+        <ProductSurfaceFallback
+          surface={surface}
+          onVisibilityChange={onFallbackVisibilityChange}
+        />
+      )}
+    >
       <AppComponent />
     </Suspense>
   );
@@ -145,6 +178,7 @@ export default function PlatformApp() {
   const location = useLocation();
   const navigate = useNavigate();
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
+  const [productSurfaceFallbackActive, setProductSurfaceFallbackActive] = useState(false);
   const lastSyncedSurface = useRef<string | null>(null);
   const previousPathnameRef = useRef(location.pathname);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
@@ -441,10 +475,16 @@ export default function PlatformApp() {
   const shellSurface = resolvePlatformShellSurface(location.pathname, preferredSurface);
   const hasStoredSurface = Boolean(readyEnvelope.lastProductSurface);
   const entryPath = hasStoredSurface ? resolveProductEntryPath(preferredSurface) : '/lobby';
-  const settingsSurfaceElement = renderProductSurface(shellSurface);
+  const settingsSurfaceElement = renderProductSurface(
+    shellSurface,
+    setProductSurfaceFallbackActive,
+  );
   return (
     <>
-      {readyEnvelope.guideCat && readyEnvelope.guideCat.status !== 'dismissed' ? (
+      {shouldRenderGuideCatSidecar({
+        guideCat: readyEnvelope.guideCat,
+        productSurfaceFallbackActive,
+      }) ? (
         <GuideCatSidecar
           guideCat={readyEnvelope.guideCat}
           ownerDisplayName={readyEnvelope.ownerDisplayName}
@@ -460,15 +500,15 @@ export default function PlatformApp() {
         <Route path="/settings/*" element={settingsSurfaceElement} />
         <Route
           path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`}
-          element={renderProductSurface('chat')}
+          element={renderProductSurface('chat', setProductSurfaceFallbackActive)}
         />
         <Route
           path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`}
-          element={renderProductSurface('work')}
+          element={renderProductSurface('work', setProductSurfaceFallbackActive)}
         />
         <Route
           path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`}
-          element={renderProductSurface('code')}
+          element={renderProductSurface('code', setProductSurfaceFallbackActive)}
         />
         <Route path="/setup" element={<Navigate to={entryPath} replace />} />
         <Route path="/" element={<Navigate to={entryPath} replace />} />

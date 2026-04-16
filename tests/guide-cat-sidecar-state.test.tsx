@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
+import { shouldRenderGuideCatSidecar } from '../src/app/renderer/App.tsx';
 import {
   collapseGuideCatSidecarState,
   resolveGuideCatSidecarPreferenceState,
@@ -110,6 +111,30 @@ test('Guide Cat sidecar uses different offsets for Lobby and product surfaces', 
     peekLeft: 316,
     panelLeft: 262,
   });
+});
+
+test('Guide Cat sidecar stays hidden while a product surface fallback is active', () => {
+  assert.equal(
+    shouldRenderGuideCatSidecar({
+      guideCat: createGuideCat(),
+      productSurfaceFallbackActive: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldRenderGuideCatSidecar({
+      guideCat: createGuideCat(),
+      productSurfaceFallbackActive: false,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldRenderGuideCatSidecar({
+      guideCat: { ...createGuideCat(), status: 'dismissed' },
+      productSurfaceFallbackActive: false,
+    }),
+    false,
+  );
 });
 
 test('Guide Cat sidecar avatar resolves from the shared guide cat asset', () => {
