@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-058](./PLAN-058-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md) | Concurrent ChatView Presentation Modes and Policy-Aware Cluster Projection | Draft | [SPEC-066](../specs/SPEC-066-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md) |
 | [PLAN-057](./PLAN-057-core-contract-freeze-and-first-migration-wave.md) | Core Contract Freeze and First Migration Wave | Draft | [SPEC-065](../specs/SPEC-065-core-contract-freeze-and-first-migration-wave.md) |
 | [PLAN-056](./PLAN-056-my-cats-platform-home-and-lens-projections.md) | MY CATS Platform Home and Lens Projections | Draft | [SPEC-064](../specs/SPEC-064-my-cats-platform-home-and-lens-projections.md), [ADR-065](../decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md) |
 | [PLAN-055](./PLAN-055-conversational-and-operational-agent-projections.md) | Conversational and Operational Agent Projections | Draft | [SPEC-063](../specs/SPEC-063-conversational-vs-operational-agents-and-surface-projections.md), [ADR-064](../decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md) |

@@ -55,6 +55,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-066](./specs/SPEC-066-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md)
+- [PLAN-058](./plans/PLAN-058-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md)
 - [SPEC-065](./specs/SPEC-065-core-contract-freeze-and-first-migration-wave.md)
 - [PLAN-057](./plans/PLAN-057-core-contract-freeze-and-first-migration-wave.md)
 - [SPEC-064](./specs/SPEC-064-my-cats-platform-home-and-lens-projections.md)
