@@ -103,3 +103,50 @@ export async function submitNewParallelChatDraft({
       : null,
   };
 }
+
+export interface SubmitParallelCompareMessageOptions {
+  body: string;
+  payload: AppShellPayload;
+  compareGroupId: string;
+  channelId: string;
+  channelFiles: File[];
+  signal?: AbortSignal;
+}
+
+export interface SubmitParallelCompareMessageResult {
+  dispatchAppShell: AppShellPayload;
+  dispatchRequest: ParallelDispatchRequestState | null;
+}
+
+export async function submitParallelCompareMessage({
+  body,
+  payload,
+  compareGroupId,
+  channelId,
+  channelFiles,
+  signal,
+}: SubmitParallelCompareMessageOptions): Promise<SubmitParallelCompareMessageResult> {
+  const activeGroupChannelIds = payload.chat.parallelChatGroups.find((group) =>
+    group.id === compareGroupId,
+  )?.memberChannelIds ?? [channelId];
+  const encodedAttachments = channelFiles.length > 0
+    ? await encodeAttachmentFiles(channelFiles)
+    : undefined;
+  const dispatch = await sendParallelChatMessage(compareGroupId, {
+    activeChannelId: channelId,
+    body,
+    attachments: encodedAttachments,
+  }, signal);
+
+  return {
+    dispatchAppShell: dispatch.appShell,
+    dispatchRequest: isAnyParallelChatDispatchRunning(dispatch.appShell, activeGroupChannelIds)
+      ? {
+          kind: 'parallel',
+          channelId,
+          groupId: compareGroupId,
+          channelIds: activeGroupChannelIds,
+        }
+      : null,
+  };
+}

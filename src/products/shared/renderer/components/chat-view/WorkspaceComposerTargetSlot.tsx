@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
 import type { SelectedChannelView } from '../../workspaceChatUtils.js';
 import {
@@ -19,6 +21,10 @@ export interface WorkspaceComposerTargetSlotProps {
   leadCatRecord: ChatCat | null;
   isDirectLane: boolean;
   isSoloComposer: boolean;
+  activeWorkflowShape?: 'sequential' | 'concurrent';
+  onToggleActiveWorkflowShape?: () => void;
+  activeAudienceKeys?: string[] | null;
+  onSetActiveAudienceKeys?: (keys: string[]) => void;
   onOpenSection: (section: string) => void;
 }
 
@@ -32,8 +38,36 @@ export function WorkspaceComposerTargetSlot({
   leadCatRecord,
   isDirectLane,
   isSoloComposer,
+  activeWorkflowShape = 'sequential',
+  onToggleActiveWorkflowShape,
+  activeAudienceKeys = null,
+  onSetActiveAudienceKeys,
   onOpenSection,
 }: WorkspaceComposerTargetSlotProps) {
+  const groupParticipants = useMemo(() => {
+    const cats = assignedCatRecords.length > 0
+      ? assignedCatRecords
+      : leadCatRecord ? [leadCatRecord] : [];
+    const seen = new Set<string>();
+    return cats
+      .filter((cat) => {
+        if (seen.has(cat.id)) {
+          return false;
+        }
+        seen.add(cat.id);
+        return true;
+      })
+      .map(buildAudienceParticipantFromCat);
+  }, [assignedCatRecords, leadCatRecord]);
+  const activeGroupParticipants = useMemo(
+    () => activeAudienceKeys && activeAudienceKeys.length > 0
+      ? activeAudienceKeys
+        .map((key) => groupParticipants.find((participant) => participant.key === key) ?? null)
+        .filter((participant): participant is (typeof groupParticipants)[number] => participant != null)
+      : groupParticipants,
+    [activeAudienceKeys, groupParticipants],
+  );
+
   if (isDirectLane && directLaneCat) {
     return (
       <AudienceChip
@@ -54,17 +88,24 @@ export function WorkspaceComposerTargetSlot({
     );
   }
 
-  if (!isSoloComposer && defaultRecipientCat) {
-    const cats = assignedCatRecords.length > 0
-      ? assignedCatRecords
-      : leadCatRecord ? [leadCatRecord] : [];
-    const participants = cats.map(buildAudienceParticipantFromCat);
-    if (participants.length === 0) return null;
+  if (!isSoloComposer && (defaultRecipientCat || groupParticipants.length > 0)) {
+    if (groupParticipants.length === 0) {
+      return null;
+    }
     return (
       <AudienceChip
-        audienceParticipants={participants}
+        audienceParticipants={
+          activeGroupParticipants.length > 0
+            ? activeGroupParticipants
+            : [groupParticipants[0]!]
+        }
+        allParticipants={groupParticipants}
+        onSetAudienceKeys={onSetActiveAudienceKeys}
         onSingleClick={composerBusy ? undefined : () => onOpenSection('execution')}
         disabled={composerBusy}
+        maxSelectedParticipants={payload.chat.capabilities.maxAudienceParticipants}
+        workflowShape={activeWorkflowShape}
+        onToggleWorkflowShape={onToggleActiveWorkflowShape}
       />
     );
   }

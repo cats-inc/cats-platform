@@ -9,10 +9,17 @@ import {
   type RefObject,
 } from 'react';
 
-import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
+import type {
+  AppShellPayload,
+  ChatCat,
+  ParallelChatGroupSummary,
+} from '../../../api/workspaceContracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
-import { isChannelBusy } from '../../../../../shared/workspaceBusy.js';
+import {
+  isChannelBusy,
+  isParallelChatBusy,
+} from '../../../../../shared/workspaceBusy.js';
 import {
   resolveLayoutMetrics,
   type ChatLayoutMode,
@@ -42,6 +49,7 @@ import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths
 import { ChatComposerSurface } from './ChatComposerSurface.js';
 import { WorkspaceComposerTargetSlot } from './WorkspaceComposerTargetSlot.js';
 import { ChatViewFrame } from './ChatViewFrame.js';
+import { ParallelFooterBar } from './ParallelFooterBar.js';
 import { ChatViewTopBar } from './ChatViewTopBar.js';
 import { ChatViewSidePanel } from './ChatViewSidePanel.js';
 import { ChatTranscriptSurface } from './ChatTranscriptSurface.js';
@@ -97,12 +105,45 @@ export interface ChatViewProps {
   selectedModel?: ModelSelectorValue;
   onModelChange?: (value: ModelSelectorValue) => void;
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  activeWorkflowShape?: 'sequential' | 'concurrent';
+  onToggleActiveWorkflowShape?: () => void;
+  activeAudienceKeys?: string[] | null;
+  onSetActiveAudienceKeys?: (keys: string[]) => void;
+  onSelect?: (channelId: string) => void;
   onOpenAddCat?: () => void;
   showAddCatButton?: boolean;
   liveIndicator?: LiveIndicatorState;
+  compareGroup?: ParallelChatGroupSummary | null;
+  compareSendScope?: 'all_members' | 'active_only';
+  onCompareSendScopeChange?: (value: 'all_members' | 'active_only') => void;
   buildTranscriptMessageActions?: (
     input: TranscriptMessageActionContext,
   ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
+}
+
+function resolveActiveCompareChannelId(
+  compareMembers: readonly ParallelChatGroupSummary['members'][number][],
+  selectedChannelId: string,
+): string {
+  if (compareMembers.some((member) => member.channelId === selectedChannelId)) {
+    return selectedChannelId;
+  }
+  return compareMembers[0]?.channelId ?? selectedChannelId;
+}
+
+function resolveCompareNeighborChannelId(
+  compareMembers: readonly ParallelChatGroupSummary['members'][number][],
+  activeChannelId: string,
+  direction: 'prev' | 'next',
+): string | null {
+  const activeIndex = compareMembers.findIndex((member) => member.channelId === activeChannelId);
+  if (activeIndex < 0 || compareMembers.length < 2) {
+    return null;
+  }
+
+  return direction === 'prev'
+    ? compareMembers[(activeIndex - 1 + compareMembers.length) % compareMembers.length]?.channelId ?? null
+    : compareMembers[(activeIndex + 1) % compareMembers.length]?.channelId ?? null;
 }
 
 export function ChatView({
@@ -137,9 +178,17 @@ export function ChatView({
   selectedModel,
   onModelChange,
   onDirectLaneModelChange,
+  activeWorkflowShape = 'sequential',
+  onToggleActiveWorkflowShape,
+  activeAudienceKeys = null,
+  onSetActiveAudienceKeys,
+  onSelect,
   onOpenAddCat,
   showAddCatButton = true,
   liveIndicator,
+  compareGroup = null,
+  compareSendScope = 'active_only',
+  onCompareSendScopeChange,
   buildTranscriptMessageActions,
 }: ChatViewProps) {
   const hasConversationStarted =
@@ -157,6 +206,20 @@ export function ChatView({
   const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
   const defaultRecipientCat = defaultRecipientId
     ? activeAssignedCats.find((c) => c.catId === defaultRecipientId)
+    : null;
+  const compareMembers = compareGroup?.members ?? [];
+  const isCompareGroup = compareMembers.length > 1;
+  const activeCompareChannelId = resolveActiveCompareChannelId(compareMembers, selectedChannel.id);
+  const compareGroupChannels = compareMembers
+    .map((member) => payload.chat.channels.find((channel) => channel.id === member.channelId) ?? null)
+    .filter((channel): channel is AppShellPayload['chat']['channels'][number] => channel != null);
+  const compareBusy = isParallelChatBusy(busy)
+    || compareGroupChannels.some((channel) => channel.routingStatus === 'running');
+  const comparePrevChannelId = isCompareGroup
+    ? resolveCompareNeighborChannelId(compareMembers, activeCompareChannelId, 'prev')
+    : null;
+  const compareNextChannelId = isCompareGroup
+    ? resolveCompareNeighborChannelId(compareMembers, activeCompareChannelId, 'next')
     : null;
   const conversationMode = resolveConversationMode(selectedChannel);
   const isSoloComposer = isSoloThreadConversationMode(conversationMode);
@@ -230,7 +293,9 @@ export function ChatView({
     : null;
   const topBarTitle = isDirectLane
     ? (directLaneCat?.name ?? leadCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
-    : presentChannelTitle(selectedChannel.title);
+    : isCompareGroup && compareGroup
+      ? presentChannelTitle(compareGroup.title)
+      : presentChannelTitle(selectedChannel.title);
   const assignedCatRecords = useMemo(
     () =>
       activeAssignedCats
@@ -340,14 +405,20 @@ export function ChatView({
     () => buildRunInspectorView(operatorView, inspectedRunId),
     [operatorView, inspectedRunId],
   );
-  const composerBusy = isComposerBusyForChannel(busy, selectedChannel.id);
+  const composerBusy = isComposerBusyForChannel(busy, selectedChannel.id) || compareBusy;
   const resumeBusy = isChannelBusy(busy, 'resume');
   const canResumeChannel = !composerBusy && !resumeBusy;
   const composerWorkspacePath = resolveComposerWorkspacePath(
     selectedChannel.repoPath,
     selectedChannel.chatCwd,
   );
-  const { transcriptListRef, composerCardRef, bottomSentinelRef } = useTranscriptAutoScroll({
+  const {
+    transcriptListRef,
+    composerCardRef,
+    bottomSentinelRef,
+    isNearBottom,
+    scrollToBottom,
+  } = useTranscriptAutoScroll({
     channelId: selectedChannel.id,
     scrollKey: transcriptScrollKey,
   });
@@ -437,6 +508,9 @@ export function ChatView({
         channelPlusMenuRef={channelPlusMenuRef}
         channelFileInputRef={channelFileInputRef}
         composerBusy={composerBusy}
+        compareBusy={compareBusy}
+        isCompareGroup={isCompareGroup}
+        compareSendScope={compareSendScope}
         composerWorkspacePath={composerWorkspacePath}
         directLaneExcludedMentionNames={directLaneExcludedMentionNames}
         composerTargetSlot={(
@@ -450,10 +524,15 @@ export function ChatView({
             leadCatRecord={leadCatRecord}
             isDirectLane={isDirectLane}
             isSoloComposer={isSoloComposer}
+            activeWorkflowShape={activeWorkflowShape}
+            onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
+            activeAudienceKeys={activeAudienceKeys}
+            onSetActiveAudienceKeys={onSetActiveAudienceKeys}
             onOpenSection={openSidePanelTo}
           />
         )}
         composerCardRef={composerCardRef}
+        isNearBottom={isNearBottom}
         onOpenSection={openSidePanelTo}
         onComposerChange={onComposerChange}
         onComposerKeyDown={onComposerKeyDown}
@@ -461,8 +540,29 @@ export function ChatView({
         onToggleChannelPlusMenu={onToggleChannelPlusMenu}
         onChannelFileSelect={onChannelFileSelect}
         onChannelFilesChange={onChannelFilesChange}
+        onScrollToBottom={scrollToBottom}
+        onCompareSendScopeChange={onCompareSendScopeChange}
         autoResize={autoResize}
       />
+      {isCompareGroup && onSelect ? (
+        <ParallelFooterBar
+          compareMembers={compareMembers}
+          selectedChannelId={activeCompareChannelId}
+          comparePrevChannelId={comparePrevChannelId}
+          compareNextChannelId={compareNextChannelId}
+          onSelect={onSelect}
+          onNavigatePrev={() => {
+            if (comparePrevChannelId) {
+              onSelect(comparePrevChannelId);
+            }
+          }}
+          onNavigateNext={() => {
+            if (compareNextChannelId) {
+              onSelect(compareNextChannelId);
+            }
+          }}
+        />
+      ) : null}
     </ChatViewFrame>
   );
 }

@@ -91,6 +91,7 @@ import {
   syncLeadDraftTemporaryParticipantWithTarget,
   type DraftTemporaryParticipant,
 } from "./draftChatUtils.js";
+import { resolveActiveChannelAudienceState } from "./composerMessageMetadata.js";
 
 type ChatSurfaceProps = Omit<ChatViewProps, "payload" | "selectedChannel">;
 
@@ -237,6 +238,13 @@ export function createWorkspaceProductApp({
       "sequential",
     );
     const [draftAudienceKeys, setDraftAudienceKeys] = useState<string[] | null>(null);
+    const [activeWorkflowShape, setActiveWorkflowShape] = useState<"sequential" | "concurrent">(
+      "sequential",
+    );
+    const [activeAudienceKeys, setActiveAudienceKeys] = useState<string[] | null>(null);
+    const [compareSendScope, setCompareSendScope] = useState<'all_members' | 'active_only'>(
+      'all_members',
+    );
     const {
       draftTemporaryParticipants,
       setDraftTemporaryParticipants,
@@ -676,6 +684,53 @@ export function createWorkspaceProductApp({
       selectedChannel: liveIndicatorChannel,
       debugTraceEnabled: readyPayload?.chat.capabilities.debugLiveTrace === true,
     });
+    const latestActiveUserMessage = selectedChannel?.messages
+      ? [...selectedChannel.messages].reverse().find((message) => message.senderKind === 'user') ?? null
+      : null;
+    const latestActiveUserRecipientIdsKey = Array.isArray(
+      latestActiveUserMessage?.metadata?.recipientParticipantIds,
+    )
+      ? latestActiveUserMessage.metadata.recipientParticipantIds
+        .filter((value): value is string => typeof value === 'string')
+        .join('|')
+      : '';
+    const latestActiveUserWorkflowShape =
+      typeof latestActiveUserMessage?.metadata?.workflowShape === 'string'
+        ? latestActiveUserMessage.metadata.workflowShape
+        : '';
+    const activeAudienceParticipantIdsKey = (selectedChannel?.assignedCats ?? [])
+      .filter((participant) => participant.status === 'active')
+      .map((participant) => participant.catId)
+      .join('|');
+    const selectedParallelChatGroup = useMemo(
+      () => readyPayload && selectedChannel
+        ? readyPayload.chat.parallelChatGroups.find((group) =>
+            group.memberChannelIds.includes(selectedChannel.id),
+          ) ?? null
+        : null,
+      [readyPayload, selectedChannel],
+    );
+
+    useEffect(() => {
+      const nextAudienceState = resolveActiveChannelAudienceState({
+        selectedChannel,
+        maxAudienceParticipants: maxDraftAudienceParticipants,
+      });
+      setActiveWorkflowShape(nextAudienceState?.workflowShape ?? 'sequential');
+      setActiveAudienceKeys(nextAudienceState?.audienceKeys ?? null);
+    }, [
+      activeAudienceParticipantIdsKey,
+      latestActiveUserMessage?.id,
+      latestActiveUserRecipientIdsKey,
+      latestActiveUserWorkflowShape,
+      maxDraftAudienceParticipants,
+      selectedChannel?.id,
+    ]);
+
+    useEffect(() => {
+      setCompareSendScope('all_members');
+    }, [selectedParallelChatGroup?.id]);
+
     const { onComposerKeyDown, onSendMessage } = useComposerSubmit({
       state,
       setState,
@@ -707,7 +762,11 @@ export function createWorkspaceProductApp({
       draftParallelChatTargets,
       draftWorkflowShape,
       draftAudienceKeys,
+      activeWorkflowShape,
+      activeAudienceKeys,
       resetDraftParallelChatTargets,
+      compareGroupId: selectedParallelChatGroup?.id ?? null,
+      compareSendScope,
       selectedChannel,
       busy,
       setBusy,
@@ -985,7 +1044,23 @@ export function createWorkspaceProductApp({
                         ? setSoloChannelModel
                         : undefined,
                     onDirectLaneModelChange: onDirectLaneModelSave,
+                    activeWorkflowShape,
+                    onToggleActiveWorkflowShape:
+                      selectedChannel?.composerMode === "cat_led"
+                        ? () =>
+                            setActiveWorkflowShape((prev) =>
+                              prev === 'concurrent' ? 'sequential' : 'concurrent')
+                        : undefined,
+                    activeAudienceKeys,
+                    onSetActiveAudienceKeys:
+                      selectedChannel?.composerMode === "cat_led"
+                        ? setActiveAudienceKeys
+                        : undefined,
+                    onSelect,
                     liveIndicator,
+                    compareGroup: selectedParallelChatGroup,
+                    compareSendScope,
+                    onCompareSendScopeChange: setCompareSendScope,
                   }}
                   draftSurfaceProps={{
                     composerDraft,

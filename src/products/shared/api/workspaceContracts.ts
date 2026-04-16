@@ -111,6 +111,8 @@ export type ChatChannelStatus =
 export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
 export type ComposerMode = 'solo' | 'cat_led';
 export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
+export type ParallelChatMode = 'parallel';
+export type ParallelChatStatus = 'active' | 'archived';
 
 export type ConcurrentChatPresentationMode =
   | 'inline_stack'
@@ -294,6 +296,44 @@ export interface ChatChannelSummary {
   lastRoutingAt?: string | null;
 }
 
+export interface ParallelChatTarget {
+  provider: string;
+  instance: string | null;
+  model: string | null;
+  modelSelection?: ProviderModelSelection | null;
+}
+
+export interface ParallelChatGroupState {
+  id: string;
+  title: string;
+  mode: ParallelChatMode;
+  status: ParallelChatStatus;
+  memberChannelIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string | null;
+}
+
+export interface ParallelChatGroupMemberSummary extends ParallelChatTarget {
+  channelId: string;
+  title: string;
+  index: number;
+  lastMessageAt: string | null;
+}
+
+export interface ParallelChatGroupSummary {
+  id: string;
+  title: string;
+  mode: ParallelChatMode;
+  status: ParallelChatStatus;
+  memberCount: number;
+  memberChannelIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string | null;
+  members: ParallelChatGroupMemberSummary[];
+}
+
 export interface GlobalOrchestratorSummary {
   mode: 'global';
   status: 'warming' | 'ready';
@@ -342,6 +382,7 @@ export interface ChatState {
   bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelState[];
+  parallelChatGroups: ParallelChatGroupState[];
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
@@ -386,6 +427,7 @@ export interface ChatShellState {
   bossCatId: string | null;
   cats: ChatCat[];
   channels: ChatChannelSummary[];
+  parallelChatGroups: ParallelChatGroupSummary[];
   selectedChannel: ChatChannelView | null;
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;

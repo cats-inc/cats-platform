@@ -19,10 +19,14 @@ export interface ChatComposerSurfaceProps {
   channelPlusMenuRef: RefObject<HTMLDivElement>;
   channelFileInputRef: RefObject<HTMLInputElement>;
   composerBusy: boolean;
+  compareBusy?: boolean;
+  isCompareGroup?: boolean;
+  compareSendScope?: 'all_members' | 'active_only';
   composerWorkspacePath: string | null;
   directLaneExcludedMentionNames: string[];
   composerTargetSlot?: ReactNode;
   composerCardRef: RefCallback<HTMLElement>;
+  isNearBottom?: boolean;
   onOpenSection: (section: string) => void;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -30,6 +34,8 @@ export interface ChatComposerSurfaceProps {
   onToggleChannelPlusMenu: () => void;
   onChannelFileSelect: () => void;
   onChannelFilesChange: (files: File[]) => void;
+  onScrollToBottom?: () => void;
+  onCompareSendScopeChange?: (value: 'all_members' | 'active_only') => void;
   autoResize: (element: HTMLTextAreaElement) => void;
 }
 
@@ -42,10 +48,14 @@ export function ChatComposerSurface({
   channelPlusMenuRef,
   channelFileInputRef,
   composerBusy,
+  compareBusy = false,
+  isCompareGroup = false,
+  compareSendScope = 'active_only',
   composerWorkspacePath,
   directLaneExcludedMentionNames,
   composerTargetSlot,
   composerCardRef,
+  isNearBottom = true,
   onOpenSection,
   onComposerChange,
   onComposerKeyDown,
@@ -53,6 +63,8 @@ export function ChatComposerSurface({
   onToggleChannelPlusMenu,
   onChannelFileSelect,
   onChannelFilesChange,
+  onScrollToBottom,
+  onCompareSendScopeChange,
   autoResize,
 }: ChatComposerSurfaceProps) {
   return (
@@ -60,11 +72,26 @@ export function ChatComposerSurface({
       ref={composerCardRef}
       className={`${
         hasConversationStarted
-          ? 'composerCard composerCardDocked'
+          ? isCompareGroup
+            ? 'composerCard composerCardDocked composerCardDockedParallel'
+            : 'composerCard composerCardDocked'
           : 'composerCard composerCardFresh'
       }${channelPlusMenuOpen ? ' composerCardMenuOpen' : ''}`}
       onSubmit={(event) => void onSendMessage(event)}
     >
+      {hasConversationStarted && !isNearBottom ? (
+        <button
+          className="scrollToBottomButton"
+          type="button"
+          aria-label="Scroll to latest"
+          onClick={onScrollToBottom}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3v10" />
+            <path d="M3 9l5 5 5-5" />
+          </svg>
+        </button>
+      ) : null}
       {channelFiles.length > 0 ? (
         <div className="composerAttachments">
           {channelFiles.map((file, index) => {
@@ -110,7 +137,13 @@ export function ChatComposerSurface({
         <textarea
           className="composerInput composerInputOverlay"
           rows={1}
-          placeholder="How can I help you today?"
+          placeholder={
+            compareBusy
+              ? 'Waiting for parallel replies...'
+              : hasConversationStarted
+                ? 'Reply...'
+                : 'How can I help you today?'
+          }
           value={composerDraft}
           disabled={composerBusy}
           onChange={(event) => {
@@ -171,18 +204,57 @@ export function ChatComposerSurface({
             );
           })()}
         </div>
-        {composerTargetSlot ?? null}
-        <button
-          className="composerSendButton"
-          disabled={!composerDraft.trim() || composerBusy}
-          type="submit"
-          aria-label="Send"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 13V3" />
-            <path d="M3 7l5-5 5 5" />
-          </svg>
-        </button>
+        <div className="composerRightGroup">
+          {composerTargetSlot ?? null}
+          {isCompareGroup ? (
+            <div className="composerSplitSend">
+              <button
+                className="composerSplitSendMain"
+                disabled={!composerDraft.trim() || composerBusy || compareBusy}
+                type="submit"
+                aria-label={compareSendScope === 'all_members' ? 'Send to all chats' : 'Send to this chat'}
+              >
+                {compareSendScope === 'all_members' ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 13V6" />
+                    <path d="M1 9l3-3 3 3" />
+                    <path d="M12 13V6" />
+                    <path d="M9 9l3-3 3 3" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 13V3" />
+                    <path d="M3 7l5-5 5 5" />
+                  </svg>
+                )}
+              </button>
+              <button
+                className="composerSplitSendToggle"
+                type="button"
+                aria-label="Switch send mode"
+                onClick={() => onCompareSendScopeChange?.(
+                  compareSendScope === 'all_members' ? 'active_only' : 'all_members',
+                )}
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 3l3 3 3-3" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <button
+              className="composerSendButton"
+              disabled={!composerDraft.trim() || composerBusy || compareBusy}
+              type="submit"
+              aria-label="Send"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 13V3" />
+                <path d="M3 7l5-5 5 5" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
       <input
         ref={channelFileInputRef}

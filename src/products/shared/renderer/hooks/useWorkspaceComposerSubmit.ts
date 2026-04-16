@@ -31,7 +31,10 @@ import {
   resolveDraftAudienceParticipantIds,
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
-import { submitNewParallelChatDraft } from '../composerParallelDispatch.js';
+import {
+  submitNewParallelChatDraft,
+  submitParallelCompareMessage,
+} from '../composerParallelDispatch.js';
 import {
   isDirectLaneSelectedForCat,
   prepareWorkspaceSendContext,
@@ -54,6 +57,7 @@ import {
   navigateWithinManagedComposerFlow,
 } from '../composerNavigation.js';
 import { resetComposerDraftState } from '../composerDraftState.js';
+import { resolveActiveChannelMessageMetadata } from '../composerMessageMetadata.js';
 import { useComposerRequestLifecycle } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
 
@@ -101,7 +105,11 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceMode
   draftParallelChatTargets?: ModelValue[];
   draftWorkflowShape?: 'sequential' | 'concurrent';
   draftAudienceKeys?: string[] | null;
+  activeWorkflowShape?: 'sequential' | 'concurrent';
+  activeAudienceKeys?: string[] | null;
   resetDraftParallelChatTargets?: () => void;
+  compareGroupId?: string | null;
+  compareSendScope?: 'all_members' | 'active_only';
   selectedChannel: SelectedChannelView | null;
   busy: WorkspaceBusyState;
   setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
@@ -155,7 +163,11 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     draftParallelChatTargets = [],
     draftWorkflowShape = 'sequential',
     draftAudienceKeys = null,
+    activeWorkflowShape = 'sequential',
+    activeAudienceKeys = null,
     resetDraftParallelChatTargets,
+    compareGroupId = null,
+    compareSendScope = 'active_only',
     selectedChannel,
     busy,
     setBusy,
@@ -273,6 +285,40 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
         return;
       }
 
+      if (compareGroupId && compareSendScope === 'all_members' && !wasDraftingNewChat) {
+        if (!channelId) {
+          throw new Error('No parallel chat is available for sending messages.');
+        }
+
+        rollbackPath = currentPathname;
+        setComposerDraft('');
+        setChannelFiles([]);
+        setBusy(createParallelChatBusyState('ack'));
+        const dispatch = await submitParallelCompareMessage({
+          body,
+          payload: initialPayload,
+          compareGroupId,
+          channelId,
+          channelFiles,
+          signal: ackController.signal,
+        });
+        clearAckRequestIfCurrent(submitId);
+        rollbackPayload = dispatch.dispatchAppShell;
+        setState({ status: 'ready', payload: dispatch.dispatchAppShell });
+        if (dispatch.dispatchRequest) {
+          setActiveDispatchRequest({
+            id: submitId,
+            ...dispatch.dispatchRequest,
+          });
+          setBusy(createParallelChatBusyState('dispatch'));
+          keepBusyAfterReturn = true;
+        } else {
+          setActiveDispatchRequest(null);
+        }
+        setFeedback('');
+        return;
+      }
+
       const prepareBusyScope = channelId
         ? createChannelComposerBusyScope(channelId)
         : createDraftComposerBusyScope();
@@ -315,7 +361,11 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
       rollbackPath = preparedSendContext.rollbackPath;
       restoreFiles = preparedSendContext.restoreFiles;
       const { messageBody, soloDispatchTarget } = preparedSendContext;
-      const messageMetadata = wasDraftingNewChat
+      const maxAudienceParticipants =
+        state.status === 'ready'
+          ? state.payload.chat.capabilities.maxAudienceParticipants
+          : undefined;
+      const draftMessageMetadata = wasDraftingNewChat
         && draftEntryKind === 'group'
         && !showingParallelChatDraft
         ? (() => {
@@ -323,10 +373,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
               draftParticipantCatIds: draftCatIds,
               draftTemporaryParticipants,
               draftAudienceKeys,
-              maxAudienceParticipants:
-                state.status === 'ready'
-                  ? state.payload.chat.capabilities.maxAudienceParticipants
-                  : undefined,
+              maxAudienceParticipants,
             });
             return recipientParticipantIds.length > 0
               ? {
@@ -336,6 +383,15 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
               : null;
           })()
         : null;
+      const activeChannelMessageMetadata = !wasDraftingNewChat
+        ? resolveActiveChannelMessageMetadata({
+            selectedChannel,
+            maxAudienceParticipants,
+            audienceKeys: activeAudienceKeys,
+            workflowShape: activeWorkflowShape,
+          })
+        : null;
+      const messageMetadata = draftMessageMetadata ?? activeChannelMessageMetadata;
 
       if (soloDispatchTarget) {
         payload = applyOptimisticPendingExecutionTarget(payload, channelId, soloDispatchTarget);
@@ -457,6 +513,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
     draftAudienceKeys,
     draftParallelChatTargets,
     draftWorkflowShape,
+    activeAudienceKeys,
+    activeWorkflowShape,
+    compareGroupId,
+    compareSendScope,
     showingParallelChatDraft,
     showingMyCatDirectLane,
     showingNewChatDraft,
