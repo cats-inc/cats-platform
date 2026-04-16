@@ -550,8 +550,46 @@
   animation: typingFadeIn 0.2s ease;
 }
 
-.focusRailPrimary .transcriptMessageTop {
+.focusRailPrimaryHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
+}
+
+.focusRailPrimaryHeader .transcriptMessageTop {
+  margin-bottom: 0;
+}
+
+.focusRailPrimaryActions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.focusRailActionIcon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.focusRailActionIcon:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.focusRailSecondaryFooter {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 4px;
 }
 
 .focusRailSecondaries {
@@ -609,6 +647,13 @@
   font-size: 0.72rem;
   font-weight: 500;
   color: var(--muted-soft);
+}
+
+.focusRailSecondaryDots {
+  display: inline-flex;
+  align-items: center;
+  transform: scale(0.7);
+  transform-origin: left center;
 }
 
 .focusRailExpandIcon {
