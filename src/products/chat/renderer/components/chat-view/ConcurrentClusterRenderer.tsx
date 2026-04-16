@@ -53,9 +53,10 @@ export interface ConcurrentClusterRendererProps {
     catRecord?: ChatCat | null,
   ) => string;
   showProgressDetails: boolean;
+  onDismiss?: () => void;
 }
 
-export type ClusterLayoutProps = Omit<ConcurrentClusterRendererProps, 'mode'>;
+export type ClusterLayoutProps = Omit<ConcurrentClusterRendererProps, 'mode' | 'onDismiss'>;
 
 export interface ResolvedSegmentPresentation {
   segmentParticipant: ResolvedChannelParticipant | null;
@@ -409,16 +410,43 @@ function InlineStackLayout(props: ClusterLayoutProps): JSX.Element {
   );
 }
 
+function ClusterActionBar({ onDismiss }: { onDismiss: () => void }): JSX.Element {
+  return (
+    <div className="clusterActionBar">
+      <button
+        type="button"
+        className="clusterActionButton clusterActionButtonDismiss"
+        onClick={onDismiss}
+        title="Dismiss layout"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
 export function ConcurrentClusterRenderer(props: ConcurrentClusterRendererProps): JSX.Element {
-  const { mode, ...layoutProps } = props;
-  switch (mode) {
-    case 'compare_cards':
-      return <CompareCardsLayout {...layoutProps} />;
-    case 'focus_rail':
-      return <FocusRailLayout {...layoutProps} />;
-    case 'adaptive':
-    case 'inline_stack':
-    default:
-      return <InlineStackLayout {...layoutProps} />;
+  const { mode, onDismiss, ...layoutProps } = props;
+  const showActionBar = onDismiss != null && mode !== 'inline_stack';
+  const layout = (() => {
+    switch (mode) {
+      case 'compare_cards':
+        return <CompareCardsLayout {...layoutProps} />;
+      case 'focus_rail':
+        return <FocusRailLayout {...layoutProps} />;
+      case 'adaptive':
+      case 'inline_stack':
+      default:
+        return <InlineStackLayout {...layoutProps} />;
+    }
+  })();
+  if (!showActionBar) {
+    return layout;
   }
+  return (
+    <div className="clusterActionBarWrapper">
+      {layout}
+      <ClusterActionBar onDismiss={onDismiss} />
+    </div>
+  );
 }

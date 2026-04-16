@@ -85,6 +85,7 @@ export interface ChatTranscriptPanelProps {
   ) => string;
   showLiveProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  onDismissConcurrentLayout?: () => void;
 }
 
 export function ChatTranscriptPanel({
@@ -120,6 +121,7 @@ export function ChatTranscriptPanel({
   resolveParticipantDisplayName,
   showLiveProgressDetails = false,
   concurrentPresentationMode,
+  onDismissConcurrentLayout,
 }: ChatTranscriptPanelProps) {
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
 
@@ -196,6 +198,7 @@ export function ChatTranscriptPanel({
                 resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
                 resolveParticipantDisplayName={resolveParticipantDisplayName}
                 showProgressDetails={showLiveProgressDetails}
+                onDismiss={onDismissConcurrentLayout}
               />
             );
           }
@@ -257,6 +260,7 @@ export function ChatTranscriptPanel({
             resolveParticipantDisplayName={resolveParticipantDisplayName}
             showProgressDetails={showLiveProgressDetails}
             concurrentPresentationMode={concurrentPresentationMode}
+            onDismissConcurrentLayout={onDismissConcurrentLayout}
           />
         ) : null}
         <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />

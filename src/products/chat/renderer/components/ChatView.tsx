@@ -274,6 +274,9 @@ export function ChatView({
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
+  const [concurrentModeOverride, setConcurrentModeOverride] = useState<
+    'inline_stack' | null
+  >(null);
   const durableConcurrentSegmentCount = useMemo(
     () => resolveDurableConcurrentClusterMaxSegmentCount({
       visibleMessages,
@@ -281,9 +284,12 @@ export function ChatView({
     }),
     [selectedChannel.roomRouting.workflow, visibleMessages],
   );
+  useEffect(() => {
+    setConcurrentModeOverride(null);
+  }, [selectedChannel.id]);
   const resolvedConcurrentMode = useMemo(
     () => resolveConcurrentPresentationMode({
-      explicitOverride: null,
+      explicitOverride: concurrentModeOverride,
       workflowRecommendation: null,
       userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
       segmentCount: Math.max(
@@ -293,12 +299,16 @@ export function ChatView({
       viewportWidth,
     }),
     [
+      concurrentModeOverride,
       durableConcurrentSegmentCount,
       payload.chat.concurrentPresentationMode,
       visibleLiveIndicator?.segments?.length,
       viewportWidth,
     ],
   );
+  const handleDismissConcurrentLayout = useCallback(() => {
+    setConcurrentModeOverride('inline_stack');
+  }, []);
   function openSidePanelTo(section: string): void {
     setSidePanelOpen(true);
     setSidePanelSection(section);
@@ -771,6 +781,7 @@ export function ChatView({
               resolveParticipantDisplayName={resolveParticipantDisplayName}
               showLiveProgressDetails={payload.chat.showLiveProgressDetails === true}
               concurrentPresentationMode={resolvedConcurrentMode}
+              onDismissConcurrentLayout={handleDismissConcurrentLayout}
             />
 
             <ChatComposerArea

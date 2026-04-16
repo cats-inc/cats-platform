@@ -54,6 +54,7 @@ export interface LiveTranscriptIndicatorProps {
   ) => string;
   showProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  onDismissConcurrentLayout?: () => void;
 }
 
 function renderContentBlockSegment(
@@ -265,6 +266,7 @@ export function LiveTranscriptIndicator(props: LiveTranscriptIndicatorProps) {
   const {
     liveIndicator,
     concurrentPresentationMode = 'inline_stack',
+    onDismissConcurrentLayout,
   } = props;
 
   const segments = resolveLiveIndicatorSegments(liveIndicator);
@@ -287,6 +289,7 @@ export function LiveTranscriptIndicator(props: LiveTranscriptIndicatorProps) {
         resolveParticipantAvatarUrl={props.resolveParticipantAvatarUrl}
         resolveParticipantDisplayName={props.resolveParticipantDisplayName}
         showProgressDetails={props.showProgressDetails ?? false}
+        onDismiss={onDismissConcurrentLayout}
       />
     );
   }

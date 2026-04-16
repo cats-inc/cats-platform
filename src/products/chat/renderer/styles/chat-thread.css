@@ -560,3 +560,47 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-soft);
 }
+
+/* ── Cluster action bar ── */
+
+.clusterActionBarWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.clusterActionBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.clusterActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.clusterActionButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--border) 60%, var(--text) 40%);
+}
+
+.clusterActionButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
