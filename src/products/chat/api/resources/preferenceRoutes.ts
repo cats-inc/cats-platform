@@ -4,6 +4,7 @@ import {
   updateNewChatDefaults,
 } from '../../state/model/index.js';
 import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { CONCURRENT_PRESENTATION_MODES } from '../contracts.js';
 import {
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
@@ -24,6 +25,7 @@ async function handleRestGetPreferences(
         selectedChannelId: state.selectedChannelId,
         showVerboseMessages: state.showVerboseMessages,
         showLiveProgressDetails: state.showLiveProgressDetails ?? false,
+        concurrentPresentationMode: state.concurrentPresentationMode ?? 'inline_stack',
         newChatDefaults: state.newChatDefaults,
       },
     });
@@ -42,6 +44,7 @@ async function handleRestUpdatePreferences(
       selectedChannelId?: string;
       showVerboseMessages?: boolean;
       showLiveProgressDetails?: boolean;
+      concurrentPresentationMode?: string;
       newChatDefaults?: {
         provider?: string;
         instance?: string | null;
@@ -74,6 +77,14 @@ async function handleRestUpdatePreferences(
             };
           }
 
+          if (typeof body.concurrentPresentationMode === 'string'
+            && (CONCURRENT_PRESENTATION_MODES as readonly string[]).includes(body.concurrentPresentationMode)) {
+            nextState = {
+              ...nextState,
+              concurrentPresentationMode: body.concurrentPresentationMode as typeof nextState.concurrentPresentationMode,
+            };
+          }
+
           if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
             nextState = updateNewChatDefaults(nextState, {
               provider: body.newChatDefaults.provider,
@@ -102,6 +113,14 @@ async function handleRestUpdatePreferences(
             };
           }
 
+          if (typeof body.concurrentPresentationMode === 'string'
+            && (CONCURRENT_PRESENTATION_MODES as readonly string[]).includes(body.concurrentPresentationMode)) {
+            nextState = {
+              ...nextState,
+              concurrentPresentationMode: body.concurrentPresentationMode as typeof nextState.concurrentPresentationMode,
+            };
+          }
+
           if (body.newChatDefaults && typeof body.newChatDefaults === 'object') {
             nextState = updateNewChatDefaults(nextState, {
               provider: body.newChatDefaults.provider,
@@ -120,6 +139,7 @@ async function handleRestUpdatePreferences(
         selectedChannelId: persisted.selectedChannelId,
         showVerboseMessages: persisted.showVerboseMessages,
         showLiveProgressDetails: persisted.showLiveProgressDetails ?? false,
+        concurrentPresentationMode: persisted.concurrentPresentationMode ?? 'inline_stack',
         newChatDefaults: persisted.newChatDefaults,
       },
     });

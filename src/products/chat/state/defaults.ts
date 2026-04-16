@@ -114,5 +114,6 @@ export function createDefaultChatState(): ChatState {
     capabilities: createCapabilities(),
     showVerboseMessages: false,
     showLiveProgressDetails: false,
+    concurrentPresentationMode: 'inline_stack' as const,
   };
 }

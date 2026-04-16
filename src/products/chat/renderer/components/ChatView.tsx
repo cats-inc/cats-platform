@@ -64,6 +64,7 @@ import { buildChatSidePanelSections } from './chat-view/ChatSidePanelSections';
 import { ChatComposerArea } from './chat-view/ChatComposerArea';
 import { ParallelFooterBar } from './chat-view/ParallelFooterBar';
 import { ChatTranscriptPanel } from './chat-view/ChatTranscriptPanel';
+import { resolveConcurrentPresentationMode } from './chat-view/concurrentModeResolver';
 import {
   buildChatComposerRecipients,
   buildChatComposerStackParticipants,
@@ -212,6 +213,15 @@ export function ChatView({
   const { visibleLiveIndicator, transcriptScrollKey } = transcriptFollowState;
 
   const conversationMode = resolveConversationMode(selectedChannel);
+  const resolvedConcurrentMode = useMemo(
+    () => resolveConcurrentPresentationMode({
+      explicitOverride: null,
+      workflowRecommendation: null,
+      userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
+      segmentCount: visibleLiveIndicator?.segments?.length ?? 0,
+    }),
+    [payload.chat.concurrentPresentationMode, visibleLiveIndicator?.segments?.length],
+  );
   const compareState = useMemo(
     () => resolveChatViewCompareState({
       compareGroup,
@@ -688,6 +698,7 @@ export function ChatView({
               resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
               resolveParticipantDisplayName={resolveParticipantDisplayName}
               showLiveProgressDetails={payload.chat.showLiveProgressDetails === true}
+              concurrentPresentationMode={resolvedConcurrentMode}
             />
 
             <ChatComposerArea

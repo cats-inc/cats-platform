@@ -110,6 +110,7 @@ export function createAppShell(
       },
       showVerboseMessages: chat.showVerboseMessages,
       showLiveProgressDetails: chat.showLiveProgressDetails ?? false,
+      concurrentPresentationMode: chat.concurrentPresentationMode ?? 'inline_stack',
       botBindings,
     },
     runtime,

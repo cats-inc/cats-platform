@@ -112,6 +112,12 @@ export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
 export type ComposerMode = 'solo' | 'cat_led';
 export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
 
+export type ConcurrentChatPresentationMode =
+  | 'inline_stack'
+  | 'compare_cards'
+  | 'focus_rail'
+  | 'adaptive';
+
 export interface MessageUsageSummary {
   inputTokens: number;
   outputTokens: number;
@@ -341,6 +347,7 @@ export interface ChatState {
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
+  concurrentPresentationMode?: ConcurrentChatPresentationMode;
 }
 
 export interface BotBindingSummary {
@@ -385,6 +392,7 @@ export interface ChatShellState {
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
+  concurrentPresentationMode?: ConcurrentChatPresentationMode;
   botBindings: ChatBotBindingSummary[];
 }
 

@@ -134,6 +134,27 @@ export async function updateLiveProgressDetailsPreference(
   );
 }
 
+export async function updateConcurrentPresentationModePreference(
+  mode: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/preferences', {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ concurrentPresentationMode: mode }),
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats concurrent presentation mode update returned ${response.status}`,
+    signal,
+  );
+}
+
 export async function updateNewChatDefaultsPreference(
   input: NewChatDefaults,
   signal?: AbortSignal,

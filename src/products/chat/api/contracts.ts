@@ -125,6 +125,15 @@ export type ParallelChatRelayCommandKind =
   | 'synthesize_this';
 export type ParallelChatRelayTargetPolicy = 'all_others' | 'single';
 
+export type ConcurrentChatPresentationMode =
+  | 'inline_stack'
+  | 'compare_cards'
+  | 'focus_rail'
+  | 'adaptive';
+export const CONCURRENT_PRESENTATION_MODES: readonly ConcurrentChatPresentationMode[] = [
+  'inline_stack', 'compare_cards', 'focus_rail', 'adaptive',
+];
+
 export interface MessageUsageSummary {
   inputTokens: number;
   outputTokens: number;
@@ -433,6 +442,7 @@ export interface ChatState {
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
+  concurrentPresentationMode?: ConcurrentChatPresentationMode;
 }
 
 export interface BotBindingSummary {
@@ -478,6 +488,7 @@ export interface ChatShellState {
   capabilities: ChatCapabilities;
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
+  concurrentPresentationMode?: ConcurrentChatPresentationMode;
   botBindings: ChatBotBindingSummary[];
 }
 

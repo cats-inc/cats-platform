@@ -12,6 +12,7 @@ export {
   refetchAfterMutation,
   updateChatOrchestrator,
   updateChannelPendingExecutionTarget,
+  updateConcurrentPresentationModePreference,
   updateLiveProgressDetailsPreference,
   updateNewChatDefaultsPreference,
   updateSelectedChannel,

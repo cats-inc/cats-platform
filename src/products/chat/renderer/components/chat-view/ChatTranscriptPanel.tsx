@@ -9,6 +9,7 @@ import {
 import type {
   ChatCat,
   ChatMessageChoiceResponse,
+  ConcurrentChatPresentationMode,
   ParallelChatRelayCommandKind,
 } from '../../../api/contracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
@@ -80,6 +81,7 @@ export interface ChatTranscriptPanelProps {
     catRecord?: ChatCat | null,
   ) => string;
   showLiveProgressDetails?: boolean;
+  concurrentPresentationMode?: ConcurrentChatPresentationMode;
 }
 
 export function ChatTranscriptPanel({
@@ -113,6 +115,7 @@ export function ChatTranscriptPanel({
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
   showLiveProgressDetails = false,
+  concurrentPresentationMode,
 }: ChatTranscriptPanelProps) {
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
 
@@ -211,6 +214,7 @@ export function ChatTranscriptPanel({
             resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
             resolveParticipantDisplayName={resolveParticipantDisplayName}
             showProgressDetails={showLiveProgressDetails}
+            concurrentPresentationMode={concurrentPresentationMode}
           />
         ) : null}
         <div ref={bottomSentinelRef} className="transcriptBottomSentinel" aria-hidden="true" />

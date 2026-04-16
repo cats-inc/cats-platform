@@ -2,7 +2,9 @@ import type {
   ChatCat,
   ChatChannelState,
   ChatState,
+  ConcurrentChatPresentationMode,
 } from '../../api/contracts.js';
+import { CONCURRENT_PRESENTATION_MODES } from '../../api/contracts.js';
 import type {
   AssistantPresetRecord,
   ArchiveMetadataRecord,
@@ -80,6 +82,16 @@ import {
 import { createDefaultCoreState } from '../../../../core/model/index.js';
 import { syncCoreStateWithChatState } from '../core-projection/index.js';
 
+function normalizeConcurrentPresentationMode(
+  value: unknown,
+): ConcurrentChatPresentationMode {
+  if (typeof value === 'string'
+    && (CONCURRENT_PRESENTATION_MODES as readonly string[]).includes(value)) {
+    return value as ConcurrentChatPresentationMode;
+  }
+  return 'inline_stack';
+}
+
 export function normalizeChatState(rawState: unknown): ChatState {
   const fallback = createDefaultChatState();
   const stateRecord = asRecord(rawState);
@@ -135,6 +147,9 @@ export function normalizeChatState(rawState: unknown): ChatState {
     capabilities: normalizeCapabilities(stateRecord.capabilities),
     showVerboseMessages: readBoolean(stateRecord.showVerboseMessages, false),
     showLiveProgressDetails: readBoolean(stateRecord.showLiveProgressDetails, false),
+    concurrentPresentationMode: normalizeConcurrentPresentationMode(
+      stateRecord.concurrentPresentationMode,
+    ),
   };
 }
 
