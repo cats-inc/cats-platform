@@ -426,12 +426,14 @@
   min-height: 1.5em;
 }
 
-.compareCardFooter {
+.compareCardActions {
   display: flex;
-  justify-content: flex-start;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
-.compareCardCopyButton {
+.compareCardActionIcon {
   display: grid;
   width: 26px;
   height: 26px;
@@ -444,7 +446,7 @@
   padding: 0;
 }
 
-.compareCardCopyButton:hover {
+.compareCardActionIcon:hover {
   background: var(--panel-hover);
   color: var(--text);
 }
