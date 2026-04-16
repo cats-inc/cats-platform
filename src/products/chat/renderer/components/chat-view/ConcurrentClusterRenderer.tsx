@@ -18,6 +18,8 @@ import {
 import type {
   ResolvedChannelParticipant,
 } from '../../../shared/channelParticipants.js';
+import { CompareCardsLayout } from './CompareCardsLayout.js';
+import { FocusRailLayout } from './FocusRailLayout.js';
 
 export interface ConcurrentClusterRendererProps {
   mode: ConcurrentChatPresentationMode;
@@ -53,7 +55,19 @@ export interface ConcurrentClusterRendererProps {
   showProgressDetails: boolean;
 }
 
-function renderContentBlockSegment(
+export type ClusterLayoutProps = Omit<ConcurrentClusterRendererProps, 'mode'>;
+
+export interface ResolvedSegmentPresentation {
+  segmentParticipant: ResolvedChannelParticipant | null;
+  segmentParticipantCat: ChatCat | null;
+  speakerCat: ChatCat | null;
+  speakerLabel: string | null;
+  renderedBlocks: JSX.Element[];
+  showTrailingDots: boolean;
+  shouldRender: boolean;
+}
+
+export function renderContentBlockSegment(
   block: LiveIndicatorContentBlock,
   cats: ChatCat[],
   channelId: string,
@@ -100,153 +114,219 @@ function renderContentBlockSegment(
   return null;
 }
 
-function InlineStackLayout({
-  segments,
-  cats,
+export function resolveSegmentPresentation(
+  segment: LiveIndicatorSegmentState,
+  isPrimarySegment: boolean,
+  props: ClusterLayoutProps,
+): ResolvedSegmentPresentation {
+  const {
+    cats,
+    liveSpeakerParticipant,
+    liveSpeakerParticipantCat,
+    resolveLiveIndicatorSegmentParticipant,
+    resolveParticipantCatRecord,
+    selectedChannelId,
+    disabledMentionNames,
+    showProgressDetails,
+  } = props;
+
+  const resolvedSegmentParticipant = resolveLiveIndicatorSegmentParticipant(segment);
+  const resolvedSegmentParticipantCat = resolveParticipantCatRecord(resolvedSegmentParticipant);
+  const segmentParticipant = resolvedSegmentParticipant
+    ?? (isPrimarySegment ? liveSpeakerParticipant : null);
+  const segmentParticipantCat = resolvedSegmentParticipant
+    ? resolvedSegmentParticipantCat
+    : (isPrimarySegment ? liveSpeakerParticipantCat : null);
+  const normalizedStreamSpeakerLabel = (() => {
+    const value = segment.speakerLabel?.trim();
+    if (segment.participantId === 'orchestrator') {
+      return normalizeVisibleOrchestratorLabel(value);
+    }
+    return value || null;
+  })();
+  const speakerCat = segment.catId
+    ? cats.find((cat) => cat.id === segment.catId) ?? null
+    : null;
+  const speakerLabel = segmentParticipant?.name
+    ?? segmentParticipantCat?.name
+    ?? speakerCat?.name
+    ?? normalizedStreamSpeakerLabel;
+  const sortedBlocks = [...segment.contentBlocks].sort(
+    (left, right) => left.index - right.index,
+  );
+  const lastBlock = sortedBlocks.at(-1);
+  const showTrailingDots = shouldShowLiveTranscriptTrailingDots(segment.phase, lastBlock);
+  const renderedBlocks = sortedBlocks
+    .map((block) =>
+      renderContentBlockSegment(
+        block,
+        cats,
+        selectedChannelId,
+        disabledMentionNames,
+        showProgressDetails,
+      ),
+    )
+    .filter((block): block is JSX.Element => block != null);
+  const hasSegmentIdentity = Boolean(
+    segment.participantId || segment.catId || segment.speakerLabel,
+  );
+  const shouldRender =
+    segment.phase === 'waiting'
+    || renderedBlocks.length > 0
+    || (showProgressDetails && segment.progressText.trim().length > 0)
+    || (
+      segment.phase === 'streaming'
+      && (hasVisibleLiveIndicatorSegmentActivity(segment) || hasSegmentIdentity)
+    )
+    || showTrailingDots;
+
+  return {
+    segmentParticipant,
+    segmentParticipantCat,
+    speakerCat,
+    speakerLabel,
+    renderedBlocks,
+    showTrailingDots,
+    shouldRender,
+  };
+}
+
+export function SegmentSpeakerHeader({
+  segmentParticipant,
+  segmentParticipantCat,
+  speakerCat,
+  speakerLabel,
   bossCatId,
-  selectedChannelId,
-  disabledMentionNames,
-  liveSpeakerParticipant,
-  liveSpeakerParticipantCat,
-  resolveLiveIndicatorSegmentParticipant,
-  resolveParticipantCatRecord,
   buildParticipantAvatarClassName,
   buildParticipantAvatarStyle,
   resolveParticipantAvatarUrl,
   resolveParticipantDisplayName,
+}: {
+  segmentParticipant: ResolvedChannelParticipant | null;
+  segmentParticipantCat: ChatCat | null;
+  speakerCat: ChatCat | null;
+  speakerLabel: string | null;
+  bossCatId: string | null;
+  buildParticipantAvatarClassName: ConcurrentClusterRendererProps['buildParticipantAvatarClassName'];
+  buildParticipantAvatarStyle: ConcurrentClusterRendererProps['buildParticipantAvatarStyle'];
+  resolveParticipantAvatarUrl: ConcurrentClusterRendererProps['resolveParticipantAvatarUrl'];
+  resolveParticipantDisplayName: ConcurrentClusterRendererProps['resolveParticipantDisplayName'];
+}): JSX.Element | null {
+  if (segmentParticipant) {
+    return (
+      <div className="transcriptMessageTop">
+        <div
+          className={buildParticipantAvatarClassName(
+            segmentParticipant,
+            { transcript: true, catRecord: segmentParticipantCat },
+          )}
+          style={buildParticipantAvatarStyle(segmentParticipant, segmentParticipantCat)}
+        >
+          {resolveParticipantAvatarUrl(segmentParticipant, segmentParticipantCat)
+            ? null
+            : catInitials(resolveParticipantDisplayName(segmentParticipant, segmentParticipantCat))}
+        </div>
+        <strong>{resolveParticipantDisplayName(segmentParticipant, segmentParticipantCat)}</strong>
+      </div>
+    );
+  }
+  if (speakerCat) {
+    return (
+      <div className="transcriptMessageTop">
+        <div
+          className={speakerCat.id === bossCatId
+            ? 'catAvatar catAvatarBoss transcriptAvatar'
+            : 'catAvatar transcriptAvatar'}
+          style={speakerCat.avatarUrl
+            ? {
+                backgroundImage: `url(${speakerCat.avatarUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }
+            : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
+        >
+          {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
+        </div>
+        <strong>{speakerCat.name}</strong>
+      </div>
+    );
+  }
+  if (speakerLabel) {
+    return (
+      <div className="transcriptMessageTop">
+        <strong>{speakerLabel}</strong>
+      </div>
+    );
+  }
+  return null;
+}
+
+export function SegmentContentBody({
+  segment,
+  renderedBlocks,
+  showTrailingDots,
   showProgressDetails,
-}: Omit<ConcurrentClusterRendererProps, 'mode'>): JSX.Element {
+}: {
+  segment: LiveIndicatorSegmentState;
+  renderedBlocks: JSX.Element[];
+  showTrailingDots: boolean;
+  showProgressDetails: boolean;
+}): JSX.Element | null {
+  if (segment.phase === 'waiting') {
+    return <span className="typingDots"><span /><span /><span /></span>;
+  }
+  if (renderedBlocks.length === 0) {
+    if (showProgressDetails && segment.progressText) {
+      return <p className="typingStatusText">{segment.progressText}</p>;
+    }
+    if (segment.phase === 'streaming' && hasVisibleLiveIndicatorSegmentActivity(segment)) {
+      return <span className="typingDots"><span /><span /><span /></span>;
+    }
+    if (showTrailingDots) {
+      return <span className="typingDots"><span /><span /><span /></span>;
+    }
+    return null;
+  }
+  return (
+    <>
+      {renderedBlocks}
+      {showTrailingDots ? (
+        <span className="typingDots"><span /><span /><span /></span>
+      ) : null}
+    </>
+  );
+}
+
+function InlineStackLayout(props: ClusterLayoutProps): JSX.Element {
+  const { segments, bossCatId, buildParticipantAvatarClassName, buildParticipantAvatarStyle, resolveParticipantAvatarUrl, resolveParticipantDisplayName, showProgressDetails } = props;
   return (
     <>
       {segments.map((segment, _index, allSegments) => {
         const isPrimarySegment = segment.id === allSegments.at(-1)?.id;
-        const resolvedSegmentParticipant = resolveLiveIndicatorSegmentParticipant(segment);
-        const resolvedSegmentParticipantCat = resolveParticipantCatRecord(resolvedSegmentParticipant);
-        const segmentParticipant = resolvedSegmentParticipant
-          ?? (isPrimarySegment ? liveSpeakerParticipant : null);
-        const segmentParticipantCat = resolvedSegmentParticipant
-          ? resolvedSegmentParticipantCat
-          : (isPrimarySegment ? liveSpeakerParticipantCat : null);
-        const normalizedStreamSpeakerLabel = (() => {
-          const value = segment.speakerLabel?.trim();
-          if (segment.participantId === 'orchestrator') {
-            return normalizeVisibleOrchestratorLabel(value);
-          }
-          return value || null;
-        })();
-        const speakerCat = segment.catId
-          ? cats.find((cat) => cat.id === segment.catId) ?? null
-          : null;
-        const speakerLabel = segmentParticipant?.name
-          ?? segmentParticipantCat?.name
-          ?? speakerCat?.name
-          ?? normalizedStreamSpeakerLabel;
-        const sortedBlocks = [...segment.contentBlocks].sort(
-          (left, right) => left.index - right.index,
-        );
-        const lastBlock = sortedBlocks.at(-1);
-        const showTrailingDots = shouldShowLiveTranscriptTrailingDots(segment.phase, lastBlock);
-        const renderedSegments = sortedBlocks
-          .map((block) =>
-            renderContentBlockSegment(
-              block,
-              cats,
-              selectedChannelId,
-              disabledMentionNames,
-              showProgressDetails,
-            ),
-          )
-          .filter((block): block is JSX.Element => block != null);
-        const hasSegmentIdentity = Boolean(
-          segment.participantId || segment.catId || segment.speakerLabel,
-        );
-        const shouldRenderSegment =
-          segment.phase === 'waiting'
-          || renderedSegments.length > 0
-          || (showProgressDetails && segment.progressText.trim().length > 0)
-          || (
-            segment.phase === 'streaming'
-            && (hasVisibleLiveIndicatorSegmentActivity(segment) || hasSegmentIdentity)
-          )
-          || showTrailingDots;
-
-        if (!shouldRenderSegment) {
+        const presentation = resolveSegmentPresentation(segment, isPrimarySegment, props);
+        if (!presentation.shouldRender) {
           return null;
         }
-
         return (
           <article key={segment.id} className="transcriptMessageStack transcriptMessageStackAgent typingIndicator">
             <div className="transcriptMessage transcriptMessageAgent">
-              {segmentParticipant ? (
-                <div className="transcriptMessageTop">
-                  <div
-                    className={buildParticipantAvatarClassName(
-                      segmentParticipant,
-                      {
-                        transcript: true,
-                        catRecord: segmentParticipantCat,
-                      },
-                    )}
-                    style={buildParticipantAvatarStyle(
-                      segmentParticipant,
-                      segmentParticipantCat,
-                    )}
-                  >
-                    {resolveParticipantAvatarUrl(
-                      segmentParticipant,
-                      segmentParticipantCat,
-                    ) ? null : catInitials(resolveParticipantDisplayName(
-                      segmentParticipant,
-                      segmentParticipantCat,
-                    ))}
-                  </div>
-                  <strong>{resolveParticipantDisplayName(
-                    segmentParticipant,
-                    segmentParticipantCat,
-                  )}</strong>
-                </div>
-              ) : speakerCat ? (
-                <div className="transcriptMessageTop">
-                  <div
-                    className={speakerCat.id === bossCatId
-                      ? 'catAvatar catAvatarBoss transcriptAvatar'
-                      : 'catAvatar transcriptAvatar'}
-                    style={speakerCat.avatarUrl
-                      ? {
-                          backgroundImage: `url(${speakerCat.avatarUrl})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }
-                      : speakerCat.avatarColor ? { background: speakerCat.avatarColor } : undefined}
-                  >
-                    {speakerCat.avatarUrl ? null : catInitials(speakerCat.name)}
-                  </div>
-                  <strong>{speakerCat.name}</strong>
-                </div>
-              ) : speakerLabel ? (
-                <div className="transcriptMessageTop">
-                  <strong>{speakerLabel}</strong>
-                </div>
-              ) : null}
-              {segment.phase === 'waiting' ? (
-                <span className="typingDots"><span /><span /><span /></span>
-              ) : renderedSegments.length === 0 ? (
-                showProgressDetails && segment.progressText ? (
-                  <p className="typingStatusText">{segment.progressText}</p>
-                ) : segment.phase === 'streaming'
-                  && hasVisibleLiveIndicatorSegmentActivity(segment) ? (
-                  <span className="typingDots"><span /><span /><span /></span>
-                ) : showTrailingDots ? (
-                  <span className="typingDots"><span /><span /><span /></span>
-                ) : null
-              ) : (
-                <>
-                  {renderedSegments}
-                  {showTrailingDots ? (
-                    <span className="typingDots"><span /><span /><span /></span>
-                  ) : null}
-                </>
-              )}
+              <SegmentSpeakerHeader
+                segmentParticipant={presentation.segmentParticipant}
+                segmentParticipantCat={presentation.segmentParticipantCat}
+                speakerCat={presentation.speakerCat}
+                speakerLabel={presentation.speakerLabel}
+                bossCatId={bossCatId}
+                buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+                buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+                resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+                resolveParticipantDisplayName={resolveParticipantDisplayName}
+              />
+              <SegmentContentBody
+                segment={segment}
+                renderedBlocks={presentation.renderedBlocks}
+                showTrailingDots={presentation.showTrailingDots}
+                showProgressDetails={showProgressDetails}
+              />
             </div>
           </article>
         );
@@ -259,9 +339,9 @@ export function ConcurrentClusterRenderer(props: ConcurrentClusterRendererProps)
   const { mode, ...layoutProps } = props;
   switch (mode) {
     case 'compare_cards':
+      return <CompareCardsLayout {...layoutProps} />;
     case 'focus_rail':
-      // Stub: fall back to inline_stack until Phase 3/4
-      return <InlineStackLayout {...layoutProps} />;
+      return <FocusRailLayout {...layoutProps} />;
     case 'adaptive':
     case 'inline_stack':
     default:

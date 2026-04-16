@@ -213,15 +213,6 @@ export function ChatView({
   const { visibleLiveIndicator, transcriptScrollKey } = transcriptFollowState;
 
   const conversationMode = resolveConversationMode(selectedChannel);
-  const resolvedConcurrentMode = useMemo(
-    () => resolveConcurrentPresentationMode({
-      explicitOverride: null,
-      workflowRecommendation: null,
-      userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
-      segmentCount: visibleLiveIndicator?.segments?.length ?? 0,
-    }),
-    [payload.chat.concurrentPresentationMode, visibleLiveIndicator?.segments?.length],
-  );
   const compareState = useMemo(
     () => resolveChatViewCompareState({
       compareGroup,
@@ -279,6 +270,16 @@ export function ChatView({
   const [editingParticipantName, setEditingParticipantName] = useState('');
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
+  );
+  const resolvedConcurrentMode = useMemo(
+    () => resolveConcurrentPresentationMode({
+      explicitOverride: null,
+      workflowRecommendation: null,
+      userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
+      segmentCount: visibleLiveIndicator?.segments?.length ?? 0,
+      viewportWidth,
+    }),
+    [payload.chat.concurrentPresentationMode, visibleLiveIndicator?.segments?.length, viewportWidth],
   );
   function openSidePanelTo(section: string): void {
     setSidePanelOpen(true);
