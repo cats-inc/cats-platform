@@ -7,7 +7,10 @@ import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { GUIDE_CAT_ASSIST_V1_SCOPE_KEYS } from '../build/server/shared/guideCatAssist.js';
-import { readGuideCatAssistCache } from '../build/server/shared/guideCatAssistStore.js';
+import {
+  readGuideCatAssistCache,
+  upsertGuideCatAssistBundle,
+} from '../build/server/shared/guideCatAssistStore.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createCat } from '../build/server/products/chat/state/model/index.js';
 
@@ -780,6 +783,156 @@ test('DELETE /api/platform/guide-cat restores deterministic lobby assist', async
     const shell = await shellResponse.json();
     assert.equal(shell.guideCat, null);
     assert.equal(shell.lobby.guideCatAssist?.renderSource, 'deterministic');
+  });
+});
+
+test('GET /api/app-shell uses last-good assist cache when runtime is offline', async () => {
+  const runtime = createRuntimeStub({ reachable: false });
+  await withServer(runtime, async (baseUrl, config) => {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+        guideCatName: 'Guide Cat',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    await upsertGuideCatAssistBundle(config.chatStatePath, {
+      bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+      scope: {
+        surfaceId: 'lobby',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Cached offline lobby greeting',
+        entryChips: [],
+      },
+      provenance: {
+        originMode: 'runtime',
+        refreshContextHash: 'gca:v1:offline-lobby',
+        missionId: 'mission-offline-lobby',
+        runId: 'run-offline-lobby',
+      },
+      freshness: {
+        generatedAt: '2026-03-24T23:59:00.000Z',
+        expiresAt: '2026-03-25T06:00:00.000Z',
+        lastRefreshStatus: 'ok',
+      },
+    });
+    await upsertGuideCatAssistBundle(config.chatStatePath, {
+      bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo,
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'solo',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Cached offline solo greeting',
+        entryChips: [
+          {
+            id: 'cached-offline-solo',
+            prompt: 'Use the cached offline solo prompt.',
+          },
+        ],
+      },
+      provenance: {
+        originMode: 'runtime',
+        refreshContextHash: 'gca:v1:offline-solo',
+        missionId: 'mission-offline-solo',
+        runId: 'run-offline-solo',
+      },
+      freshness: {
+        generatedAt: '2026-03-24T23:59:00.000Z',
+        expiresAt: '2026-03-25T06:00:00.000Z',
+        lastRefreshStatus: 'ok',
+      },
+    });
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shell = await shellResponse.json();
+
+    assert.equal(shell.runtime.reachable, false);
+    assert.equal(shell.lobby.guideCatAssist?.renderSource, 'cache');
+    assert.equal(shell.lobby.guideCatAssist?.bundle.content.greeting, 'Cached offline lobby greeting');
+    assert.equal(shell.lobby.guideCatAssist?.refreshEligible, false);
+    assert.equal(shell.chat.newChatAssist?.solo.renderSource, 'cache');
+    assert.equal(
+      shell.chat.newChatAssist?.solo.bundle.content.entryChips[0]?.prompt,
+      'Use the cached offline solo prompt.',
+    );
+  });
+});
+
+test('GET /api/app-shell serves stale assist cache first and refreshes it lazily when runtime is back', async () => {
+  const runtime = createRuntimeStub({ reachable: false });
+  await withServer(runtime, async (baseUrl, config) => {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+        guideCatName: 'Guide Cat',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    await upsertGuideCatAssistBundle(config.chatStatePath, {
+      bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+      scope: {
+        surfaceId: 'lobby',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Stale cached lobby greeting',
+        entryChips: [],
+      },
+      provenance: {
+        originMode: 'runtime',
+        refreshContextHash: 'gca:v1:stale-lobby',
+        missionId: 'mission-stale-lobby',
+        runId: 'run-stale-lobby',
+      },
+      freshness: {
+        generatedAt: '2026-03-24T12:00:00.000Z',
+        expiresAt: '2026-03-24T12:05:00.000Z',
+        lastRefreshStatus: 'ok',
+      },
+    });
+
+    runtime.state.reachable = true;
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shell = await shellResponse.json();
+
+    assert.equal(shell.runtime.reachable, true);
+    assert.equal(shell.lobby.guideCatAssist?.renderSource, 'cache');
+    assert.equal(shell.lobby.guideCatAssist?.bundle.content.greeting, 'Stale cached lobby greeting');
+    assert.equal(shell.lobby.guideCatAssist?.stale, true);
+    assert.equal(shell.lobby.guideCatAssist?.refreshEligible, true);
+
+    const deadline = Date.now() + 5_000;
+    let refreshedBundle = null;
+    while (Date.now() < deadline) {
+      const cache = await readGuideCatAssistCache(config.chatStatePath);
+      const bundle = cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault] ?? null;
+      if (bundle?.freshness.generatedAt === '2026-03-25T00:00:00.000Z') {
+        refreshedBundle = bundle;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    assert.ok(refreshedBundle);
+    assert.equal(refreshedBundle.content.greeting, 'Stale cached lobby greeting');
+    assert.equal(refreshedBundle.freshness.lastRefreshStatus, 'skipped');
   });
 });
 
