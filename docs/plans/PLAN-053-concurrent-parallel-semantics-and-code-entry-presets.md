@@ -1,4 +1,4 @@
-# PLAN-053: Concurrent, Parallel, and Code Entry Presets
+# PLAN-053: Concurrent, Parallel, Code Entry Presets, and Chat Continuity Follow-Through
 
 > Align Chat and Code implementation with one shared meaning for `concurrent`,
 > `parallel`, and the first `Cats Code` entry presets.
@@ -98,10 +98,70 @@ concurrent vs parallel.
       such as tool results, file previews, and structured references
 - [ ] Task 1B.7: Add regression tests for same-chat cross-provider retarget,
       same-provider restart, and parallel-child no-sibling-leak behavior
+- [ ] Task 1B.8: Add explicit `start fresh` / `new branch` UI semantics so
+      resetting continuity is a visible operator action rather than an implicit
+      side effect of provider/model switching
 
 **Deliverables**: first continuity implementation slice for `solo retarget`,
 plus explicit follow-through boundaries for parallel child continuity and later
 group-join modes.
+
+#### Phase 1B Acceptance Criteria
+
+**Task 1B.1**
+
+- same-chat `solo` provider/model switching preserves continuity when the
+  replacement runtime session cannot reuse compatible native continuity
+- regression coverage includes at least:
+  - same-provider different-model retarget
+  - cross-provider retarget
+
+**Task 1B.2**
+
+- same-chat continuity transplant has its own builder/delivery path
+- targeted handoff packaging has its own builder/delivery path
+- `buildSoloChatBootstrapInstructions` is no longer the semantic owner of
+  same-chat continuity
+
+**Task 1B.3**
+
+- bounded excerpt constants remain valid only for bounded formatting or scoped
+  packaging helpers
+- same-chat transplant no longer depends on `MAX_PROMPT_RECENT_MESSAGES`
+
+**Task 1B.4**
+
+- `shouldRestartSoloSession` remains a lifecycle gate only
+- restart without compatible native continuity still results in preserved
+  conversation continuity through transplant
+
+**Task 1B.5**
+
+- each parallel child conversation owns continuity independently
+- sibling child transcripts do not leak implicitly
+- any source-seed carry-over is explicit and test-covered
+
+**Task 1B.6**
+
+- the first slice explicitly decides how continuity transplant material is
+  delivered through session-scoped bootstrap material versus per-turn
+  instructions
+- non-text artifacts such as tool results, file previews, and structured
+  references have a documented first-slice packaging rule
+
+**Task 1B.7**
+
+- regression suite proves:
+  - same-chat retarget does not silently blank context
+  - excerpt-only bootstrap is not the fallback continuity contract
+  - parallel children do not inherit sibling transcript state
+
+**Task 1B.8**
+
+- Chat exposes an explicit continuity-reset action such as `Start fresh` or
+  `New branch`
+- plain provider/model switching continues the same chat by default
+- behavior tests distinguish `continue chat` from explicit reset semantics
 
 ### Phase 2: Code Entry Preset Contracts
 
@@ -174,6 +234,9 @@ notes.
   identity.
 - `buildSoloChatBootstrapInstructions` and `MAX_PROMPT_RECENT_MESSAGES` cannot
   remain the general contract for same-chat continuity.
+- first-slice continuity work must explicitly choose which material is carried
+  as session-scoped bootstrap state versus per-turn instructions; this
+  boundary must not stay implicit.
 - parallel containers do not share one hidden transcript; each child
   conversation owns continuity independently unless explicit relay/adopt policy
   says otherwise.

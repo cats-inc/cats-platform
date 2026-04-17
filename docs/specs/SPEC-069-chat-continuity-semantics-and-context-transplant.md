@@ -183,6 +183,10 @@ bless.
     - `group join`
     - `parallel child conversation`
     - explicit `start fresh`
+26. First-slice implementation shall explicitly define the delivery path for
+    continuity transplant material. Same-chat replacement-session transplant and
+    per-turn targeted handoff/join payloads shall not share an implicit
+    undifferentiated instruction path.
 
 ### Non-Functional Requirements
 
@@ -300,6 +304,9 @@ This spec implies these product-language rules:
 
 - [ ] Should the first explicit `group join` UI expose all three join modes, or
       should `task_scoped_member` remain implicit until a later surface pass?
+- [ ] Should a future slice split `same-provider different-model retarget` from
+      `cross-provider retarget` once a provider can prove native continuity
+      across model overrides?
 - [ ] Which canonical product artifact should own semantic-transplant summaries:
       product-side transcript compactor, runtime-side continuity helper, or a
       shared substrate between them?

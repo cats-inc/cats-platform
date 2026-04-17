@@ -50,7 +50,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [terminology.md](./terminology.md) | Complete | Product, engine, and protocol terms including `Container`, `Turn`, `Lane`, `Segment`, `Session`, `Mission`, `Run`, `Schedule`, `Transport Binding`, conversational/operational/hybrid agent projections, `MY CATS` lenses, Guide/Boss capability language, materialization, scheduler policy, and runtime capability profiles |
 | [a2a/](./a2a/) | Complete | Pilot-owned A2A v1.0 example set for future platform-host/orchestrator adapter work; standards-aligned docs, not a claim of a live A2A endpoint today |
 | [specs/](./specs/) | Complete | Feature specifications covering the unified conversation-turn-lane engine, interaction/materialization split, heterogeneous runtime delivery normalization, chat continuity semantics/context transplant, Guide Cat optional assist capability, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
-| [plans/](./plans/) | Complete | Implementation plans covering the unified engine rollout, interaction/materialization seam, runtime normalization, Guide Cat capability rollout, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
+| [plans/](./plans/) | Complete | Implementation plans covering the unified engine rollout, interaction/materialization seam, runtime normalization, chat continuity follow-through, Guide Cat capability rollout, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
 | [decisions/](./decisions/) | Complete | Architecture Decision Records covering the unified conversation engine, chat continuity semantics above runtime sessions, heterogeneous runtime delivery normalization, Guide Cat optional assist capability, concurrent transcript delivery, and the earlier shared platform decisions |
 
 Recent additions:
@@ -75,7 +75,7 @@ Recent additions:
 - [PLAN-054](./plans/PLAN-054-agent-missions-managed-work-and-transport-bindings.md)
 - [SPEC-061](./specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [ADR-062](./decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md)
-- [PLAN-053](./plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md)
+- [PLAN-053](./plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md) now also carries chat continuity follow-through
 - [SPEC-060](./specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
 - [ADR-061](./decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md)
 - [PLAN-052](./plans/PLAN-052-guide-cat-optional-surface-assist-capability.md)
