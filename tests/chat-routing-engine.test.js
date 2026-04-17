@@ -9,6 +9,7 @@ import {
   buildChannelView,
   createChannel,
   createCat,
+  createParallelChatGroup,
   removeCatFromChannel,
   requireChannel,
   setChannelCatLease,
@@ -1769,6 +1770,73 @@ test('solo composer mode retransplants continuity after stale-session recovery c
   );
   assert.equal(soloReplies.at(-1)?.executionProvider, 'claude');
   assert.equal(soloReplies.at(-1)?.executionModel, 'claude-default');
+});
+
+test('parallel member channels inherit solo continuity transplant rules on retarget', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createParallelChatGroup(
+    state,
+    {
+      title: 'Peer Review',
+      targets: [
+        { provider: 'claude', instance: 'native', model: 'claude-default', modelSelection: null },
+        { provider: 'codex', instance: 'native', model: 'gpt-5.4', modelSelection: null },
+      ],
+    },
+    now,
+  );
+
+  const [activeChannelId, passiveChannelId] = state.parallelChatGroups[0]?.memberChannelIds ?? [];
+  assert.ok(activeChannelId);
+  assert.ok(passiveChannelId);
+
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    activeChannelId,
+    {
+      body: 'First turn',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+  const secondDispatch = await routeChannelMessage(
+    firstDispatch.state,
+    activeChannelId,
+    {
+      body: 'Switch turn',
+      pendingProvider: 'gemini',
+      pendingInstance: 'native',
+      pendingModel: 'gemini-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+  const activeChannel = buildChannelView(secondDispatch.state, activeChannelId);
+  const passiveChannel = buildChannelView(secondDispatch.state, passiveChannelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.equal(runtimeClient.createdSessions[0]?.provider, 'claude');
+  assert.equal(runtimeClient.createdSessions[1]?.provider, 'gemini');
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /Same conversation continuity transcript:/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[user:User\] First turn/u,
+  );
+  assert.equal(activeChannel.pendingProvider, 'gemini');
+  assert.equal(passiveChannel.pendingProvider, 'codex');
+  assert.equal(passiveChannel.orchestratorLease.sessionId, null);
 });
 
 test('cat-led room routing continues across agent mentions and auto-wakes targeted participants', async () => {
