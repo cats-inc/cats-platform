@@ -61,3 +61,17 @@ export function resolvePlatformPreferencesPathFromChatState(
   const layout = resolvePlatformStorageLayout(chatStatePath);
   return path.join(layout.configDir, 'platform-preferences.json');
 }
+
+export function resolveGuideCatAssistConfigPathFromChatState(
+  chatStatePath: string,
+): string {
+  const layout = resolvePlatformStorageLayout(chatStatePath);
+  return path.join(layout.configDir, 'guide-cat-assist-config.json');
+}
+
+export function resolveGuideCatAssistCachePathFromChatState(
+  chatStatePath: string,
+): string {
+  const layout = resolvePlatformStorageLayout(chatStatePath);
+  return path.join(layout.stateDir, 'guide-cat-assist-cache.local.json');
+}
