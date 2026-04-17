@@ -140,6 +140,9 @@ test('assigning a cat emits session_started metadata keyed by participantId', as
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
+    assert.equal(createChannelPayload.channel.runtimeWorkspaceKind, 'source');
+    assert.equal(createChannelPayload.channel.runtimeWorkspaceAccess, 'read_write');
+    assert.equal(createChannelPayload.channel.runtimePermissionMode, 'skip');
 
     const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',

@@ -22,6 +22,8 @@ export function resolveChannelRuntimeSessionPolicy(
   >,
 ): ResolvedChannelRuntimeSessionPolicy {
   const spawnCwd = resolveChannelSpawnCwd(channel.repoPath, channel.chatCwd);
+  // Session-start trusts the persisted runtime policy. repoPath only decides
+  // where the runtime should spawn, not which workspace policy to infer.
   const storedPolicy = completeRuntimeSessionPolicy({
     workspaceKind: channel.runtimeWorkspaceKind ?? undefined,
     workspaceAccess: channel.runtimeWorkspaceAccess ?? undefined,

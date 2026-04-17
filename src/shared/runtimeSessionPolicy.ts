@@ -2,6 +2,10 @@ export type RuntimeWorkspaceKind = 'source' | 'sandbox' | 'worktree';
 export type RuntimeWorkspaceAccess = 'read_write' | 'read_only';
 export type RuntimePermissionMode = 'skip' | 'default' | 'whitelist';
 
+export const RUNTIME_WORKSPACE_KINDS = ['source', 'sandbox', 'worktree'] as const;
+export const RUNTIME_WORKSPACE_ACCESS_VALUES = ['read_write', 'read_only'] as const;
+export const RUNTIME_PERMISSION_MODES = ['skip', 'default', 'whitelist'] as const;
+
 export interface RuntimeSessionPolicy {
   workspaceKind: RuntimeWorkspaceKind;
   workspaceAccess: RuntimeWorkspaceAccess;
@@ -18,6 +22,21 @@ function hasRepoPath(repoPath: string | null | undefined): boolean {
   return typeof repoPath === 'string' && repoPath.trim().length > 0;
 }
 
+function mergeDefinedPolicyFields(
+  defaults: RuntimeSessionPolicy,
+  policy?: Partial<RuntimeSessionPolicy> | null,
+): RuntimeSessionPolicy {
+  if (!policy) {
+    return defaults;
+  }
+
+  return {
+    workspaceKind: policy.workspaceKind ?? defaults.workspaceKind,
+    workspaceAccess: policy.workspaceAccess ?? defaults.workspaceAccess,
+    permissionMode: policy.permissionMode ?? defaults.permissionMode,
+  };
+}
+
 export function createDefaultRuntimeSessionPolicy(): RuntimeSessionPolicy {
   return {
     workspaceKind: 'sandbox',
@@ -26,13 +45,15 @@ export function createDefaultRuntimeSessionPolicy(): RuntimeSessionPolicy {
   };
 }
 
+// Stored/runtime-facing policies should only be completed from explicit fields plus
+// global defaults. Repo-backed "source" inference belongs to create-time only.
 export function completeRuntimeSessionPolicy(
   policy?: Partial<RuntimeSessionPolicy> | null,
 ): RuntimeSessionPolicy {
-  const resolvedPolicy = {
-    ...createDefaultRuntimeSessionPolicy(),
-    ...(policy ?? {}),
-  };
+  const resolvedPolicy = mergeDefinedPolicyFields(
+    createDefaultRuntimeSessionPolicy(),
+    policy,
+  );
 
   if (resolvedPolicy.workspaceAccess === 'read_only') {
     // The runtime currently treats read-only sessions as the default permission gate.
@@ -45,15 +66,38 @@ export function completeRuntimeSessionPolicy(
   return resolvedPolicy;
 }
 
+// Create-time may lift a cwd-backed draft into the "source" workspace mode before
+// the completed policy is persisted. Later session-start paths should trust that
+// stored policy instead of re-deriving from repoPath.
 export function resolveCreateRuntimeSessionPolicy(options: {
   repoPath?: string | null;
   policy?: Partial<RuntimeSessionPolicy> | null;
 }): RuntimeSessionPolicy {
-  return completeRuntimeSessionPolicy({
-    // "source" means "cwd-backed workspace" and does not imply git is available.
-    workspaceKind: hasRepoPath(options.repoPath) ? 'source' : undefined,
-    ...(options.policy ?? {}),
-  });
+  const createDefaults = mergeDefinedPolicyFields(
+    createDefaultRuntimeSessionPolicy(),
+    {
+      // "source" means "cwd-backed workspace" and does not imply git is available.
+      workspaceKind: hasRepoPath(options.repoPath) ? 'source' : undefined,
+    },
+  );
+
+  return completeRuntimeSessionPolicy(
+    mergeDefinedPolicyFields(createDefaults, options.policy),
+  );
+}
+
+export function isRuntimeWorkspaceKind(value: unknown): value is RuntimeWorkspaceKind {
+  return typeof value === 'string' && RUNTIME_WORKSPACE_KINDS.includes(value as RuntimeWorkspaceKind);
+}
+
+export function isRuntimeWorkspaceAccess(value: unknown): value is RuntimeWorkspaceAccess {
+  return typeof value === 'string'
+    && RUNTIME_WORKSPACE_ACCESS_VALUES.includes(value as RuntimeWorkspaceAccess);
+}
+
+export function isRuntimePermissionMode(value: unknown): value is RuntimePermissionMode {
+  return typeof value === 'string'
+    && RUNTIME_PERMISSION_MODES.includes(value as RuntimePermissionMode);
 }
 
 export function resolveDraftWorkspaceModeFromRuntimeKind(

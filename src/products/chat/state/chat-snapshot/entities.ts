@@ -35,7 +35,12 @@ import {
   normalizePlatformSurface,
   normalizePlatformSurfaceList,
 } from '../../../../shared/platformSurfaces.js';
-import { resolveCreateRuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+import {
+  isRuntimePermissionMode,
+  isRuntimeWorkspaceAccess,
+  isRuntimeWorkspaceKind,
+  resolveCreateRuntimeSessionPolicy,
+} from '../../../../shared/runtimeSessionPolicy.js';
 import { normalizeRoomRouting } from '../room-routing/snapshot.js';
 import {
   asRecord,
@@ -318,23 +323,15 @@ export function normalizeChannel(
   const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath,
     policy: {
-      workspaceKind:
-        rawRuntimeWorkspaceKind === 'source'
-        || rawRuntimeWorkspaceKind === 'sandbox'
-        || rawRuntimeWorkspaceKind === 'worktree'
-          ? rawRuntimeWorkspaceKind
-          : undefined,
-      workspaceAccess:
-        rawRuntimeWorkspaceAccess === 'read_write'
-        || rawRuntimeWorkspaceAccess === 'read_only'
-          ? rawRuntimeWorkspaceAccess
-          : undefined,
-      permissionMode:
-        rawRuntimePermissionMode === 'skip'
-        || rawRuntimePermissionMode === 'default'
-        || rawRuntimePermissionMode === 'whitelist'
-          ? rawRuntimePermissionMode
-          : undefined,
+      workspaceKind: isRuntimeWorkspaceKind(rawRuntimeWorkspaceKind)
+        ? rawRuntimeWorkspaceKind
+        : undefined,
+      workspaceAccess: isRuntimeWorkspaceAccess(rawRuntimeWorkspaceAccess)
+        ? rawRuntimeWorkspaceAccess
+        : undefined,
+      permissionMode: isRuntimePermissionMode(rawRuntimePermissionMode)
+        ? rawRuntimePermissionMode
+        : undefined,
     },
   });
 
