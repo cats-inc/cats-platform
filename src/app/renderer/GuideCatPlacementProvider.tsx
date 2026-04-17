@@ -485,6 +485,12 @@ export function GuideCatPlacementProvider({
       // overflow menu, or non-pinned side panel) that follows document-level
       // outside-click semantics before the guide-cat interaction proceeds.
       dismissTransientChrome();
+      // Predict the dismissal: the safe-area state won't update until the
+      // dismissed panel actually unmounts (async React commit). Clearing the
+      // right-block now avoids the first drag frame being clamped against a
+      // panel that is already on its way out; the unmount's layout event will
+      // reconcile this value either way.
+      setWorkspaceRightBlockedLeft(null);
       const element = event.currentTarget;
       const rect = element.getBoundingClientRect();
       const basePillX = rect.left + rect.width / 2;
@@ -522,6 +528,10 @@ export function GuideCatPlacementProvider({
       event.stopPropagation();
       suppressClickRef.current = false;
       dismissTransientChrome();
+      // See onFloatingPointerDown: clear predicted right-block so the drag
+      // start doesn't read a safe area that still includes the panel we just
+      // asked to close.
+      setWorkspaceRightBlockedLeft(null);
       const element = event.currentTarget;
       const rect = element.getBoundingClientRect();
       const basePillX = rect.left + rect.width / 2;
@@ -654,8 +664,11 @@ function readSlotRect(node: HTMLElement): GuideCatSlotRect {
 }
 
 function readWorkspaceRightBlockedLeft(doc: Document): number | null {
-  const panels = Array.from(doc.querySelectorAll<HTMLElement>('.sidePanel:not(.sidePanelBottom)'));
+  const panels = Array.from(
+    doc.querySelectorAll<HTMLElement>('[data-side-panel-position="side"]'),
+  );
   const left = panels
+    .filter((panel) => isPanelEffectivelyVisible(panel))
     .map((panel) => panel.getBoundingClientRect())
     .filter((rect) => rect.width > 0 && rect.height > 0)
     .reduce<number | null>(
@@ -663,6 +676,44 @@ function readWorkspaceRightBlockedLeft(doc: Document): number | null {
       null,
     );
   return left == null ? null : Math.round(left);
+}
+
+function isPanelEffectivelyVisible(panel: HTMLElement): boolean {
+  // Prefer the native visibility check (display/visibility/opacity/content-
+  // visibility all in one call) when the runtime supports it; otherwise fall
+  // back to a manual computed-style read so the pill does not get clamped
+  // against a panel that is still in the DOM but hidden for transition or
+  // accessibility reasons.
+  const maybeCheck = (panel as unknown as {
+    checkVisibility?: (opts?: {
+      checkOpacity?: boolean;
+      checkVisibilityCSS?: boolean;
+      contentVisibilityAuto?: boolean;
+    }) => boolean;
+  }).checkVisibility;
+  if (typeof maybeCheck === 'function') {
+    try {
+      return maybeCheck.call(panel, {
+        checkOpacity: true,
+        checkVisibilityCSS: true,
+        contentVisibilityAuto: true,
+      });
+    } catch {
+      /* fall through to manual check */
+    }
+  }
+  if (typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
+    return true;
+  }
+  const style = window.getComputedStyle(panel);
+  if (style.display === 'none' || style.visibility === 'hidden') {
+    return false;
+  }
+  const opacity = Number(style.opacity);
+  if (Number.isFinite(opacity) && opacity === 0) {
+    return false;
+  }
+  return true;
 }
 
 export function persistGuideCatPlacementPreference(patch: {

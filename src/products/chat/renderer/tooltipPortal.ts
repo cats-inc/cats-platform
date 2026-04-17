@@ -34,6 +34,9 @@ export function shouldPaintDelayedTooltipTarget(
   try {
     return target.matches(':hover');
   } catch {
+    // Some older/embedded runtimes throw on `:hover`. Prefer painting over
+    // silently dropping tooltips when the hover check is unavailable — the
+    // isConnected guard above already covers the detached-target regression.
     return true;
   }
 }

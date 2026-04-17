@@ -62,18 +62,21 @@ export function SidePanel({
     };
   }, [onClose]);
 
-  useEffect(() => {
-    dispatchSidePanelLayoutEvent();
-  }, [panelClassName]);
+  const panelPosition = position === 'bottom' ? 'bottom' : 'side';
 
   useEffect(() => {
+    dispatchSidePanelLayoutEvent();
     return () => {
       dispatchSidePanelLayoutEvent();
     };
-  }, []);
+  }, [panelClassName, panelPosition]);
 
   return (
-    <aside className={panelClassName} ref={panelRef}>
+    <aside
+      className={panelClassName}
+      ref={panelRef}
+      data-side-panel-position={panelPosition}
+    >
       <div className="sidePanelHeader">
         <strong>{title}</strong>
         <button
