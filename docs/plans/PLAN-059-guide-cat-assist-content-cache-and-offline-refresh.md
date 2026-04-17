@@ -1,8 +1,9 @@
 # PLAN-059: Guide Cat Assist Content Cache and Offline Refresh
 
-> Roll out one shared storage and refresh substrate for Guide Cat greetings,
-> chips, recap, and feature guidance so entry surfaces can render immediately
-> and refresh lazily without depending on always-on runtime sessions.
+> Roll out the first executable slice of Guide Cat assist-content persistence so
+> Lobby and `+New chat` can render immediately from deterministic baseline or
+> last-good local cache, then refresh lazily without blocking entry on runtime
+> availability.
 
 ## Metadata
 
@@ -16,194 +17,244 @@
 
 - [SPEC-067: Guide Cat Assist Content Cache and Offline Refresh](../specs/SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md)
 - [SPEC-060: Guide Cat Optional Surface-Assist Capability](../specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
-- [SPEC-062: Agent Missions, Managed Work, and Transport Bindings](../specs/SPEC-062-agent-missions-and-transport-bindings.md)
 - [ADR-066: Persist Guide Cat Assist Content as Platform-Owned Local State](../decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md)
 
 ## Overview
 
-The rollout has three linked goals:
+This plan narrows `SPEC-067` into a first production slice that can land
+without waiting on recap, feature guidance, Work/Code adoption, or scheduled
+refresh.
 
-- move Guide-Cat-adjacent assist content out of hard-coded renderer arrays
-- establish one `config` plus `state` storage contract for reusable bundles
-- introduce lazy refresh that stays compatible with runtime outages and future
-  mission/run/wakeup expansion
+V1 only covers:
+
+- one shared local storage substrate for Guide Cat assist content
+- deterministic baseline plus cache resolution for adopted entry surfaces
+- one minimal stale-while-revalidate refresh path
+- one explicit last-good fallback rule when refresh fails or runtime is offline
 
 The first adopted surfaces are:
 
-- Lobby greeting and entry suggestions
-- `+New chat` greeting and starter chips
-- composer-adjacent assist chips/helper copy
-- first returning-user recap surface
+- Lobby greeting
+- `+New chat` greeting
+- `+New chat` starter chips for `solo`, `cat_led`, `direct`, `group`, and
+  `parallel`
+
+## V1 Scope Freeze
+
+### In Scope
+
+- `config/guide-cat-assist-config.json`
+- `state/guide-cat-assist-cache.local.json`
+- one shared `GuideCatAssistBundle` v1 model for:
+  - greeting copy
+  - entry chips
+- the first cache key shape:
+  - `surfaceId`
+  - `surfaceMode`
+  - `audienceState`
+- deterministic baseline mapping from today's hard-coded Lobby and
+  `+New chat` sources into frozen v1 scope keys
+- non-blocking refresh after runtime readiness and on adopted-surface open
+- last-good cache retention on refresh failure
+
+### Explicitly Out of Scope for V1
+
+- recap bundles
+- feature-guidance cards
+- composer-adjacent chips or helper copy
+- Work or Code surface adoption
+- manual refresh UI
+- periodic or wakeup-scheduled refresh
+- cross-device sync
+- aggressive in-session hot-swapping of already visible content
+
+Later slices can extend the same storage and bundle contract, but they are not
+part of this plan's implementation scope.
+
+## V1 Acceptance Criteria
+
+- Lobby can render a deterministic greeting with no Guide Cat, no cache, and no
+  runtime.
+- Lobby can render last-good cached assist content when cache exists and runtime
+  is offline.
+- `+New chat` can render greeting plus starter chips for `solo`, `cat_led`,
+  `direct`, `group`, and `parallel` using the same baseline-or-cache
+  resolution.
+- Adopted surfaces do not read local files from the renderer directly; the
+  product resolves assist state through existing product/server boundaries.
+- Runtime-backed refresh never blocks initial render for Lobby or `+New chat`.
+- Refresh failure preserves the last-good cached bundle when one exists and
+  degrades to deterministic baseline otherwise.
+- V1 ships without recap, feature-guidance, composer-assist, or scheduled
+  refresh behavior.
 
 ## Implementation Phases
 
-### Phase 1: Freeze Storage and Bundle Contracts
+### Phase 1: Freeze the V1 Contract
 
-- [ ] Task 1.1: Add path helpers for:
+- [ ] Task 1.1: Add canonical path helpers for:
       - `config/guide-cat-assist-config.json`
       - `state/guide-cat-assist-cache.local.json`
-- [ ] Task 1.2: Define the `GuideCatAssistBundle` read/write schema.
-- [ ] Task 1.3: Freeze the first-slice cache-key fields:
-      - `surfaceId`
-      - `surfaceMode`
-      - `audienceState`
-- [ ] Task 1.4: Publish a v1 legacy mapping table from current deterministic
-      sources into the new scope keys for:
-      - Lobby greeting
-      - `+New chat` greeting
-      - `solo` / `cat_led` / `direct` / `group` / `parallel` starter chips
-- [ ] Task 1.5: Define deterministic baseline provider contracts per surface.
-- [ ] Task 1.6: Define `refreshContextHash` inputs and invalidation rules.
-- [ ] Task 1.7: Add `schemaVersion` plus tolerant migration/fallback rules for
-      assist-config and assist-cache file envelopes.
-- [ ] Task 1.8: Define provenance and freshness fields, including optional
-      `missionId` / `runId`.
+- [ ] Task 1.2: Define the v1 file envelopes for assist-config and assist-cache,
+      including `schemaVersion`.
+- [ ] Task 1.3: Define the v1 `GuideCatAssistBundle` shape for greeting plus
+      entry chips only.
+- [ ] Task 1.4: Freeze the first cache-key fields and exact adopted keys:
+      - `lobby:default:default`
+      - `chat:new:solo:default`
+      - `chat:new:cat_led:default`
+      - `chat:new:direct:default`
+      - `chat:new:group:default`
+      - `chat:new:parallel:default`
+- [ ] Task 1.5: Publish the deterministic baseline mapping from current
+      renderer constants/functions into those keys.
+- [ ] Task 1.6: Freeze `refreshContextHash` inputs for v1:
+      - `schemaVersion`
+      - cache-key fields
+      - Guide Cat id/name
+      - Guide Cat execution target and `modelSelection`
+      - assist-template revision inputs
+- [ ] Task 1.7: Define tolerant migration and safe-fallback rules for unknown
+      or older file versions.
 
-**Deliverables**: one stable persistence contract plus one shared bundle model
+**Deliverables**: one frozen v1 persistence contract with exact scope keys,
+bundle fields, and invalidation inputs
 
-### Phase 2: Build Local Cache Read Path
+### Phase 2: Build the Local Store and Resolution Layer
 
-- [ ] Task 2.1: Implement assist-config loading with sane defaults.
+- [ ] Task 2.1: Implement assist-config loading with default values and no
+      renderer-owned file access.
 - [ ] Task 2.2: Implement assist-cache loading, normalization, and atomic
       writes.
-- [ ] Task 2.3: Add selectors/hooks so surfaces can resolve:
-      - deterministic baseline
-      - last-good cached bundle
-      - refresh eligibility
-- [ ] Task 2.4: Keep surface-local chrome state separate from bundle storage.
+- [ ] Task 2.3: Implement one shared resolution helper that returns:
+      - deterministic baseline bundle
+      - last-good cached bundle if present
+      - effective render source
+      - freshness / refresh eligibility
+- [ ] Task 2.4: Define the server-owned read-model boundary for adopted
+      surfaces so Lobby and `+New chat` can consume assist data through
+      existing envelope/payload flows.
+- [ ] Task 2.5: Keep view-local shell state separate from assist bundle
+      storage.
 
-**Deliverables**: surfaces can consume cacheable assist data without yet doing
-runtime refresh
+**Deliverables**: the product can resolve assist content synchronously from
+baseline or cache through one shared read path
 
-### Phase 3: Migrate Current Entry Surfaces
+### Phase 3: Migrate the First Entry Surfaces
 
-- [ ] Task 3.1: Replace Lobby hard-coded greeting selection with a deterministic
-      baseline provider plus bundle lookup.
-- [ ] Task 3.2: Replace `+New chat` hard-coded greeting selection with the same
-      baseline-plus-bundle pattern.
-- [ ] Task 3.3: Add the first shared starter-chip slot between greeting and
-      composer on adopted chat-entry surfaces.
-- [ ] Task 3.4: Ensure all migrated surfaces still work with no Guide Cat and
-      with runtime offline.
+- [ ] Task 3.1: Replace Lobby greeting ownership with the shared
+      baseline-plus-cache resolution path.
+- [ ] Task 3.2: Replace `+New chat` greeting ownership with the same shared
+      resolution path.
+- [ ] Task 3.3: Replace direct starter-suggestion ownership for
+      `solo` / `cat_led` / `direct` / `group` / `parallel` with shared
+      bundle-backed starter chips.
+- [ ] Task 3.4: Preserve today's user-visible fallback text and mode semantics
+      when no cache exists.
+- [ ] Task 3.5: Keep composer-adjacent assist and sidecar behavior out of this
+      migration slice.
 
-**Deliverables**: current greeting surfaces stop depending on local constant
-pools as the only source of truth
+**Deliverables**: Lobby and `+New chat` stop treating local constant pools as
+their only source of truth
 
-### Phase 4: Add Lazy Refresh Orchestration
+### Phase 4: Add Minimal Lazy Refresh
 
-- [ ] Task 4.1: Add one initial generation hook after setup completion when a
-      Guide Cat exists and first-entry bundles are missing or stale.
-- [ ] Task 4.2: Add one initial generation hook when a Guide Cat is newly
-      created, restored, or materially reconfigured and relevant bundles are
-      missing or stale.
-- [ ] Task 4.3: Add non-blocking stale check after desktop launch and runtime
-      readiness.
-- [ ] Task 4.4: Add on-surface-open stale/missing refresh for adopted scopes.
-- [ ] Task 4.5: Define manual invalidation or refresh entry points for future
-      UI use.
-- [ ] Task 4.6: Persist last refresh status and retain last-good bundles on
-      failure.
-- [ ] Task 4.7: Map runtime refresh attempts onto `mission` / `run` provenance
-      where available.
+- [ ] Task 4.1: Add one non-blocking refresh coordinator for adopted scopes
+      after desktop launch and runtime readiness.
+- [ ] Task 4.2: Add one non-blocking refresh check on adopted-surface open when
+      the relevant bundle is missing or stale.
+- [ ] Task 4.3: Add one regeneration trigger when Guide Cat is newly created,
+      restored, or materially reconfigured and the adopted bundles are missing
+      or stale.
+- [ ] Task 4.4: Skip refresh cleanly when no Guide Cat exists or runtime is not
+      ready.
+- [ ] Task 4.5: Persist refresh outcome metadata and retain last-good bundles
+      on failure.
+- [ ] Task 4.6: Defer manual refresh UI, scheduled refresh, and recap/guidance
+      generation to later follow-up work.
 
-**Deliverables**: stale-while-revalidate behavior with provenance-aware cache
-updates
+**Deliverables**: adopted surfaces use stale-while-revalidate without blocking
+entry or requiring always-on runtime sessions
 
-### Phase 5: Add Recap and Feature-Guidance Bundles
+### Phase 5: Verification and Handoff
 
-- [ ] Task 5.1: Define the first recap refresh-input payload placeholder from:
-      - recent conversation summaries
-      - recent managed-work references or summaries
-      - recent surface-activity summaries
-      - optional owner/profile personalization inputs
-- [ ] Task 5.2: Define the first recap content shape for returning-user entry
-      surfaces.
-- [ ] Task 5.3: Define feature-guidance card content and explicit handoff
-      actions.
-- [ ] Task 5.4: Ensure recap/guidance remains non-authoritative and does not
-      mutate work/chat truth implicitly.
-- [ ] Task 5.5: Decide which adopted surface shows recap first.
+- [ ] Task 5.1: Add unit tests for schema normalization, cache-key mapping,
+      freshness evaluation, and last-good fallback resolution.
+- [ ] Task 5.2: Add integration tests for Lobby assist resolution through the
+      chosen read-model boundary.
+- [ ] Task 5.3: Add integration tests for `+New chat` greeting and starter-chip
+      resolution across all adopted modes.
+- [ ] Task 5.4: Add integration tests for runtime-offline, cache-missing,
+      cache-stale, and refresh-failure scenarios.
+- [ ] Task 5.5: Add manual smoke coverage for:
+      - no Guide Cat configured
+      - Guide Cat configured with empty cache
+      - Guide Cat configured with stale cache and runtime available
+      - Guide Cat configured with stale cache and runtime unavailable
 
-**Deliverables**: shared bundles cover more than greetings and chips
-
-### Phase 6: Optional Scheduled Refresh Follow-Up
-
-- [ ] Task 6.1: Evaluate whether runtime wakeups should schedule selected
-      bundle refreshes.
-- [ ] Task 6.2: If needed, define coalescing keys and refresh cadence by
-      surface scope.
-- [ ] Task 6.3: Keep scheduled refresh optional and additive rather than a
-      requirement for baseline UX.
-
-**Deliverables**: future-ready scheduling path without blocking the first slice
-
-### Phase 7: Verification
-
-- [ ] Task 7.1: Add unit tests for schema normalization, freshness evaluation,
-      and fallback resolution.
-- [ ] Task 7.2: Add integration tests for Lobby and `+New chat` bundle
-      consumption.
-- [ ] Task 7.3: Add integration tests for runtime-offline, cache-missing, and
-      last-good-cache scenarios.
-- [ ] Task 7.4: Add manual smoke tests for:
-      - first run with Guide Cat
-      - returning user with recap candidate state
-      - runtime unavailable during refresh
-      - cache refresh after desktop launch
-
-**Deliverables**: stable offline-renderable assist surfaces with predictable
-refresh behavior
+**Deliverables**: v1 ships with predictable offline behavior and narrow but
+proven refresh semantics
 
 ## Files to Create/Modify
 
 | File | Action | Description |
 |------|--------|-------------|
 | `src/shared/platformPaths.ts` | Modify | Add canonical assist-config and assist-cache path helpers |
-| `src/shared/**` | Create/Modify | Bundle schema, cache store, refresh policy, and baseline provider contracts |
-| `src/app/renderer/PlatformLobby.tsx` | Modify | Consume deterministic baseline plus assist bundle |
-| `src/app/renderer/lobbyModel.ts` | Modify | Convert hard-coded greeting pool into deterministic baseline provider input |
-| `src/products/chat/renderer/chatUtils.tsx` | Modify | Replace direct greeting-pool ownership with shared assist baseline inputs |
-| `src/products/shared/renderer/**` | Modify | Integrate entry and composer assist bundle consumers |
-| `src/app/renderer/useGuideCatSidecarState.ts` | Modify | Keep shell state separate from assist content persistence where needed |
-| `tests/**` | Create/Modify | Coverage for schema, cache behavior, refresh policy, and adopted surfaces |
+| `src/shared/**` | Create/Modify | Define assist bundle schema, file envelopes, local store, and refresh/freshness helpers |
+| `src/shared/platform-contract.ts` | Modify | Add any platform-envelope assist read-model fields needed for Lobby consumption |
+| `src/products/chat/api/contracts.ts` | Modify | Add any chat-payload assist read-model fields needed for `+New chat` consumption |
+| `src/products/chat/api/**` | Modify | Resolve and expose assist bundles through existing product/server boundaries |
+| `src/app/renderer/lobbyModel.ts` | Modify | Convert Lobby greeting ownership into deterministic baseline inputs for the shared assist resolver |
+| `src/app/renderer/PlatformLobby.tsx` | Modify | Consume resolved Lobby assist content instead of direct local greeting picks |
+| `src/products/shared/renderer/draftChatUtils.tsx` | Modify | Convert draft greeting ownership into shared assist baseline inputs |
+| `src/products/shared/renderer/draftStarterSuggestions.ts` | Modify | Convert starter-suggestion ownership into shared assist baseline inputs |
+| `src/products/shared/renderer/**` | Modify | Consume resolved `+New chat` assist bundles without changing mode-specific semantics |
+| `tests/**` | Create/Modify | Cover schema, mapping, cache behavior, refresh policy, and adopted surfaces |
 
 ## Technical Decisions
 
-- Decision 1: assist content is a product-owned bundle cache, not transcript
-  state.
-- Decision 2: `config` and generated `state` stay separate from day one.
-- Decision 3: stale-while-revalidate is the default lifecycle; periodic
-  scheduling is optional follow-up work.
-- Decision 4: recap and guidance must remain non-authoritative and act only
-  through explicit product handoff.
+- Decision 1: V1 is a narrow execution slice of `SPEC-067`, not the full
+  long-term assist-content roadmap.
+- Decision 2: The first shipped bundle families are greeting copy and entry
+  chips only; recap, guidance, and composer-assist remain deferred.
+- Decision 3: Existing deterministic Lobby and `+New chat` copy stays intact as
+  the v1 baseline provider before any prompt/generation tuning.
+- Decision 4: Adopted surfaces resolve assist content through server/product
+  payloads rather than renderer-direct file reads.
+- Decision 5: Refresh is stale-while-revalidate and non-blocking by default.
+- Decision 6: V1 does not require visible mid-session content replacement when
+  a fresher bundle arrives; safe next-open or envelope-refresh adoption is
+  acceptable for the first slice.
 
 ## Testing Strategy
 
-- **Unit Tests**: bundle schema normalization, freshness checks, baseline
-  selection, cache retention on refresh failure
-- **Integration Tests**: Lobby, `+New chat`, composer-adjacent chips, recap
-  entry surface, runtime-off fallback
+- **Unit Tests**: schema normalization, key mapping, `refreshContextHash`
+  derivation, freshness checks, last-good retention, deterministic baseline
+  fallback
+- **Integration Tests**: adopted-surface payload resolution for Lobby and
+  `+New chat`, including mode-specific starter-chip coverage
 - **Manual Testing**:
-  - no Guide Cat configured
-  - Guide Cat configured with empty cache
-  - Guide Cat configured with stale cache and runtime available
-  - Guide Cat configured with stale cache and runtime unavailable
+  - start with no Guide Cat and verify Lobby and `+New chat` still render
+  - seed cache, disable runtime, and verify last-good assist content appears
+  - clear cache, keep runtime offline, and verify deterministic baseline is used
+  - restore runtime and verify stale bundles can refresh without blocking entry
 
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Assist bundles become another ad hoc per-surface schema | High | Freeze one bundle contract before migrating surfaces |
-| Runtime refresh blocks startup or route entry | High | Keep launch and surface refresh non-blocking; always render baseline/cache first |
-| Recap starts mutating product truth implicitly | High | Require explicit product handoff for any real action or state mutation |
-| UI chrome state gets mixed into bundle cache | Medium | Keep sidecar/chip visibility and "seen" state in separate preferences or view state |
-| Scheduled refresh adds complexity too early | Medium | Keep wakeups as a later additive phase only |
+| V1 scope expands back into recap, feature guidance, or composer-assist | High | Freeze greeting plus entry chips as the only shipped bundle families in this plan |
+| Assist read path leaks into renderer-owned file access | High | Resolve assist data through existing server/product payload seams only |
+| Cache-key churn invalidates too much content during the first rollout | Medium | Freeze exact v1 scope keys before surface migration |
+| Refresh wiring slows startup or route entry | High | Require baseline/cache render first and keep refresh fully non-blocking |
+| `+New chat` mode semantics regress during migration | Medium | Preserve today's deterministic fallback text/chips per mode until after v1 lands |
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
 | 2026-04-17 | Plan created for Guide Cat assist-content cache, recap, and offline refresh rollout |
+| 2026-04-17 | Narrowed the plan into an executable v1 slice focused on Lobby and `+New chat` greeting/chip persistence plus minimal lazy refresh |
 
 ---
 
