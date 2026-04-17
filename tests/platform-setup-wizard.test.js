@@ -544,6 +544,10 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
     assert.deepEqual(diagnosticsAfterResetPayload.events, []);
     assert.equal(payload.guideCat, null);
     assert.equal(payload.lobby.guideCatAssist?.renderSource, 'deterministic');
+
+    const assistCacheAfterReset = await readGuideCatAssistCache(config.chatStatePath);
+    assert.deepEqual(assistCacheAfterReset.bundles, {});
+    assert.deepEqual(assistCacheAfterReset.refreshFailures, {});
   });
 });
 
@@ -755,7 +759,7 @@ test('PATCH /api/platform/guide-cat dismissal survives later guide cat edits', a
   });
 });
 
-test('DELETE /api/platform/guide-cat restores deterministic lobby assist', async () => {
+test('DELETE /api/platform/guide-cat clears assist cache and restores deterministic lobby assist', async () => {
   await withServer(createRuntimeStub(), async (baseUrl, config) => {
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
@@ -777,6 +781,10 @@ test('DELETE /api/platform/guide-cat restores deterministic lobby assist', async
       method: 'DELETE',
     });
     assert.equal(deleteResponse.status, 200);
+
+    const assistCache = await readGuideCatAssistCache(config.chatStatePath);
+    assert.deepEqual(assistCache.bundles, {});
+    assert.deepEqual(assistCache.refreshFailures, {});
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(shellResponse.status, 200);

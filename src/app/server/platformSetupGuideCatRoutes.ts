@@ -3,6 +3,8 @@ import {
   enqueueGuideCatAssistRefreshIfRuntimeReachable,
   type ChatApiDependencies,
 } from '../../products/chat/api/routeSupport.js';
+import { waitForGuideCatAssistRefreshIdle } from '../../products/chat/api/guideCatAssist.js';
+import { clearGuideCatAssistCache } from '../../shared/guideCatAssistStore.js';
 import {
   parseGuideCatStatusUpdateBody,
   parseGuideCatUpdateBody,
@@ -14,6 +16,11 @@ import {
   upsertGuideCat,
 } from './platformSetupStateMutations.js';
 type PlatformSetupContext = RouteContext<ChatApiDependencies>;
+
+function reportGuideCatCleanupFailure(scope: string, error: unknown): void {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`[cats-platform-guide-cat] ${scope}: ${message}\n`);
+}
 
 async function handleGuideCatUpdate(
   context: PlatformSetupContext,
@@ -104,6 +111,12 @@ async function handleGuideCatDelete(
   core = clearGuideCat(core, now.toISOString());
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  try {
+    await waitForGuideCatAssistRefreshIdle(context.dependencies.config.chatStatePath);
+    await clearGuideCatAssistCache(context.dependencies.config.chatStatePath, now);
+  } catch (error) {
+    reportGuideCatCleanupFailure('delete_assist_cache', error);
+  }
   sendJson(context.response, 200, { guideCat: null });
 }
 

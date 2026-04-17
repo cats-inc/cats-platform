@@ -36,6 +36,7 @@ interface GuideCatAssistRefreshQueueInput {
 
 interface GuideCatAssistRefreshQueueEntry {
   pendingInput: GuideCatAssistRefreshQueueInput | null;
+  activePromise: Promise<void>;
 }
 
 const DEFAULT_GUIDE_CAT_ASSIST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -287,10 +288,11 @@ export function queueGuideCatAssistRefresh(input: GuideCatAssistRefreshQueueInpu
 
   const entry: GuideCatAssistRefreshQueueEntry = {
     pendingInput: null,
+    activePromise: Promise.resolve(),
   };
   guideCatAssistRefreshQueue.set(input.chatStatePath, entry);
 
-  void (async () => {
+  entry.activePromise = (async () => {
     let nextInput: GuideCatAssistRefreshQueueInput | null = input;
     while (nextInput) {
       await refreshGuideCatAssistEligibleScopes(nextInput).catch(() => {});
@@ -299,4 +301,12 @@ export function queueGuideCatAssistRefresh(input: GuideCatAssistRefreshQueueInpu
     }
     guideCatAssistRefreshQueue.delete(input.chatStatePath);
   })();
+}
+
+export async function waitForGuideCatAssistRefreshIdle(chatStatePath: string): Promise<void> {
+  const entry = guideCatAssistRefreshQueue.get(chatStatePath);
+  if (!entry) {
+    return;
+  }
+  await entry.activePromise.catch(() => {});
 }

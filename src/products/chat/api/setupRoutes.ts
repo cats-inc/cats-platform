@@ -1,5 +1,6 @@
 import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
+import { clearGuideCatAssistCache } from '../../../shared/guideCatAssistStore.js';
 import { resetPlatformOnboardingHistory } from '../../../shared/platformOnboardingHistory.js';
 import {
   readPlatformPreferences,
@@ -8,6 +9,7 @@ import {
 import { createDefaultChatState } from '../state/defaults.js';
 import { createCat } from '../state/model/index.js';
 import type { SetupCompleteInput } from './contracts.js';
+import { waitForGuideCatAssistRefreshIdle } from './guideCatAssist.js';
 import {
   buildAppShellPayload,
   handleRestError,
@@ -115,6 +117,12 @@ async function handleSetupReset(
       createDefaultChatState(),
       createDefaultCoreState(),
     );
+    try {
+      await waitForGuideCatAssistRefreshIdle(context.dependencies.config.chatStatePath);
+      await clearGuideCatAssistCache(context.dependencies.config.chatStatePath, now);
+    } catch (error) {
+      reportOwnerMemorySyncFailure('setup_reset_assist_cache', error);
+    }
     try {
       const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
       await writePlatformPreferences(context.dependencies.config.chatStatePath, {

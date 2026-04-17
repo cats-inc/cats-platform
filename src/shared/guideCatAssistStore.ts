@@ -356,6 +356,16 @@ export async function writeGuideCatAssistCache(
   return structuredClone(normalizedCache);
 }
 
+export async function clearGuideCatAssistCache(
+  chatStatePath: string,
+  now: Date = new Date(),
+): Promise<GuideCatAssistCacheFile> {
+  return writeGuideCatAssistCache(chatStatePath, {
+    ...EMPTY_GUIDE_CAT_ASSIST_CACHE,
+    updatedAt: now.toISOString(),
+  });
+}
+
 export async function readGuideCatAssistBundle(
   chatStatePath: string,
   scope:
