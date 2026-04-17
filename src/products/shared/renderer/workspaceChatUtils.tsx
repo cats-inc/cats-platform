@@ -10,7 +10,11 @@ import type {
 } from '../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
-import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
+import {
+  createDefaultRuntimeSessionPolicy,
+  resolveStoredRuntimeSessionPolicy,
+  type RuntimeSessionPolicy,
+} from '../../../shared/runtimeSessionPolicy.js';
 import { buildCatExecutionLabel } from '../../../shared/executionLabel.js';
 import {
   isInternalOrchestratorLabel,
@@ -262,6 +266,10 @@ export function buildNewChatChannelInput(options: {
   const resolvedEntryKind = entryKind
     ?? (normalizedLeadCatId || normalizedParticipantCatIds.length > 0 ? 'group' : 'solo');
   const directLeadCatId = normalizedLeadCatId ?? normalizedParticipantCatIds[0] ?? null;
+  const runtimeSessionPolicy = resolveStoredRuntimeSessionPolicy({
+    repoPath,
+    policy: draftSessionPolicy,
+  });
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount),
     topic: createDraftChannelTopic(body),
@@ -269,9 +277,9 @@ export function buildNewChatChannelInput(options: {
     entryKind: resolvedEntryKind,
     skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
-    runtimeWorkspaceKind: draftSessionPolicy?.workspaceKind,
-    runtimeWorkspaceAccess: draftSessionPolicy?.workspaceAccess,
-    runtimePermissionMode: draftSessionPolicy?.permissionMode,
+    runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
+    runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
+    runtimePermissionMode: runtimeSessionPolicy.permissionMode,
     temporaryParticipants: temporaryParticipants.length > 0
       ? temporaryParticipants.map((participant) => ({
           participantId: participant.participantId,
@@ -411,6 +419,7 @@ export function createOptimisticDraftPayload(
     pendingModel?: string | null;
     pendingInstance?: string | null;
     pendingModelSelection?: ProviderModelSelection | null;
+    runtimeSessionPolicy?: RuntimeSessionPolicy | null;
   } = {},
 ): { payload: AppShellPayload; channelId: string } {
   const createdAt = new Date().toISOString();
@@ -419,6 +428,7 @@ export function createOptimisticDraftPayload(
   const topic = createDraftChannelTopic(body);
   const message = createOptimisticUserMessage(channelId, body, payload.ownerDisplayName, createdAt);
   const composerMode = options.composerMode ?? (defaultRecipientCatId ? 'cat_led' : 'solo');
+  const runtimeSessionPolicy = options.runtimeSessionPolicy ?? createDefaultRuntimeSessionPolicy();
   const channelSummary: ChatChannelSummary = {
     id: channelId,
     title,
@@ -430,9 +440,9 @@ export function createOptimisticDraftPayload(
     activeCatCount: 0,
     repoPath: null,
     chatCwd: null,
-    runtimeWorkspaceKind: null,
-    runtimeWorkspaceAccess: null,
-    runtimePermissionMode: null,
+    runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
+    runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
+    runtimePermissionMode: runtimeSessionPolicy.permissionMode,
     lastMessageAt: createdAt,
     lastActivatedAt: null,
     composerMode,
@@ -452,9 +462,9 @@ export function createOptimisticDraftPayload(
     unreadCount: 0,
     repoPath: null,
     chatCwd: null,
-    runtimeWorkspaceKind: null,
-    runtimeWorkspaceAccess: null,
-    runtimePermissionMode: null,
+    runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
+    runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
+    runtimePermissionMode: runtimeSessionPolicy.permissionMode,
     language: null,
     responseLanguage: 'en',
     formationMode: 'manual' as const,

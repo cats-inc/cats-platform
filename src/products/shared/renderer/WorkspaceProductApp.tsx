@@ -1128,9 +1128,7 @@ export function createWorkspaceProductApp({
                         ? onRemoveDraftParallelChatTarget
                         : undefined,
                     draftWorkflowShape,
-                    draftRuntimeWorkspaceKind: draftSessionPolicy.workspaceKind,
-                    draftRuntimeWorkspaceAccess: draftSessionPolicy.workspaceAccess,
-                    draftRuntimePermissionMode: draftSessionPolicy.permissionMode,
+                    draftRuntimeSessionPolicy: draftSessionPolicy,
                     onDraftRuntimeSessionPolicyChange: setDraftSessionPolicy,
                     onToggleDraftWorkflowShape: supportsStructuredDraftModes
                       ? () =>

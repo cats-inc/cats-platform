@@ -199,6 +199,20 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
   assert.equal(input.pendingInstance, 'native');
 });
 
+test('buildNewChatChannelInput defaults repo-backed drafts to source workspace access', () => {
+  const input = buildNewChatChannelInput({
+    body: 'Inspect the current repo checkout',
+    existingCount: 0,
+    originSurface: 'code',
+    entryKind: 'solo',
+    repoPath: 'C:/repo/cats-platform',
+  });
+
+  assert.equal(input.runtimeWorkspaceKind, 'source');
+  assert.equal(input.runtimeWorkspaceAccess, 'read_write');
+  assert.equal(input.runtimePermissionMode, 'skip');
+});
+
 test('buildNewChatChannelInput marks direct drafts explicitly and preserves direct room mode', () => {
   const input = buildNewChatChannelInput({
     body: 'Wake up and check Telegram',

@@ -2,7 +2,10 @@ import type {
   Dispatch,
   SetStateAction,
 } from 'react';
-import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
+import {
+  createDefaultRuntimeSessionPolicy,
+  type RuntimeSessionPolicy,
+} from '../../../shared/runtimeSessionPolicy.js';
 
 export interface ResetComposerDraftStateOptions<ModelValue, ParticipantValue> {
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
@@ -36,11 +39,7 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftTemporaryParticipants?.([]);
   setDraftHighlightedCatId(null);
   setDraftCatExecutionTargetOverrides(new Map<string, ModelValue>());
-  setDraftRuntimeSessionPolicy?.({
-    workspaceKind: 'sandbox',
-    workspaceAccess: 'read_write',
-    permissionMode: 'skip',
-  });
+  setDraftRuntimeSessionPolicy?.(createDefaultRuntimeSessionPolicy());
   setDraftFiles([]);
   setChannelFiles?.([]);
   resetDraftParallelChatTargets?.();

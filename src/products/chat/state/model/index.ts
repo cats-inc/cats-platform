@@ -26,6 +26,7 @@ import {
   resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
 import { normalizePlatformSurface } from '../../../../shared/platformSurfaces.js';
+import { resolveStoredRuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 import {
   resolveChannelParticipantAssignments,
 } from '../../shared/channelParticipants.js';
@@ -272,11 +273,14 @@ export function createChannel(
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
   const originSurface = resolveCreateInputOriginSurface(input.originSurface);
-  const runtimeWorkspaceKind = input.runtimeWorkspaceKind
-    ?? (input.repoPath ? 'source' : 'sandbox');
-  const runtimeWorkspaceAccess = input.runtimeWorkspaceAccess ?? 'read_write';
-  const runtimePermissionMode = input.runtimePermissionMode
-    ?? (runtimeWorkspaceAccess === 'read_only' ? 'default' : 'skip');
+  const runtimeSessionPolicy = resolveStoredRuntimeSessionPolicy({
+    repoPath: input.repoPath,
+    policy: {
+      workspaceKind: input.runtimeWorkspaceKind ?? undefined,
+      workspaceAccess: input.runtimeWorkspaceAccess ?? undefined,
+      permissionMode: input.runtimePermissionMode ?? undefined,
+    },
+  });
 
   // Auto-generate title for direct cat chats when title is empty
   let title = input.title.trim();
@@ -368,9 +372,9 @@ export function createChannel(
     unreadCount: 0,
     repoPath: normalizeOptionalText(input.repoPath),
     chatCwd: null,
-    runtimeWorkspaceKind,
-    runtimeWorkspaceAccess,
-    runtimePermissionMode,
+    runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
+    runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
+    runtimePermissionMode: runtimeSessionPolicy.permissionMode,
     language: normalizeOptionalText(input.language),
     responseLanguage: normalizeOptionalText(input.responseLanguage) ?? 'en',
     formationMode: input.formationMode ?? 'manual',

@@ -19,10 +19,7 @@ import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import type {
-  RuntimePermissionMode,
   RuntimeSessionPolicy,
-  RuntimeWorkspaceAccess,
-  RuntimeWorkspaceKind,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import {
   buildAudienceParticipantFromCat,
@@ -98,9 +95,7 @@ export interface NewChatDraftProps {
   onToggleDraftWorkflowShape?: () => void;
   draftAudienceKeys?: string[] | null;
   onSetAudienceKeys?: (keys: string[]) => void;
-  draftRuntimeWorkspaceKind?: RuntimeWorkspaceKind | null;
-  draftRuntimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
-  draftRuntimePermissionMode?: RuntimePermissionMode | null;
+  draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
 }
 

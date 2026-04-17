@@ -24,6 +24,7 @@ import {
   createDefaultRuntimeSessionPolicy,
   resolveDraftPermissionModeFromRuntimeAccess,
   resolveDraftWorkspaceModeFromRuntimeKind,
+  resolveStoredRuntimeSessionPolicy,
   resolveRuntimePermissionPolicyFromDraft,
   resolveRuntimeWorkspaceKindFromDraft,
 } from '../../../../shared/runtimeSessionPolicy.js';
@@ -69,9 +70,7 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
     onToggleDraftWorkflowShape,
     draftAudienceKeys,
     onSetAudienceKeys,
-    draftRuntimeWorkspaceKind,
-    draftRuntimeWorkspaceAccess,
-    draftRuntimePermissionMode,
+    draftRuntimeSessionPolicy,
     onDraftRuntimeSessionPolicyChange,
     onCancelPendingSend,
     ...workspaceProps
@@ -103,9 +102,7 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
   void onToggleDraftWorkflowShape;
   void draftAudienceKeys;
   void onSetAudienceKeys;
-  void draftRuntimeWorkspaceKind;
-  void draftRuntimeWorkspaceAccess;
-  void draftRuntimePermissionMode;
+  void draftRuntimeSessionPolicy;
   void onDraftRuntimeSessionPolicyChange;
   void onCancelPendingSend;
 
@@ -186,12 +183,10 @@ export function NewChatDraft(props: NewChatDraftProps) {
     return <ChatNewChatDraft {...props} />;
   }
 
-  const currentSessionPolicy = {
-    ...defaultSessionPolicy,
-    workspaceKind: props.draftRuntimeWorkspaceKind ?? defaultSessionPolicy.workspaceKind,
-    workspaceAccess: props.draftRuntimeWorkspaceAccess ?? defaultSessionPolicy.workspaceAccess,
-    permissionMode: props.draftRuntimePermissionMode ?? defaultSessionPolicy.permissionMode,
-  };
+  const currentSessionPolicy = resolveStoredRuntimeSessionPolicy({
+    repoPath: props.draftCwd,
+    policy: props.draftRuntimeSessionPolicy ?? defaultSessionPolicy,
+  });
   const workspaceMode: WorkspaceMode =
     props.draftCwd
       ? resolveDraftWorkspaceModeFromRuntimeKind(currentSessionPolicy.workspaceKind)
@@ -209,6 +204,9 @@ export function NewChatDraft(props: NewChatDraftProps) {
   });
 
   useEffect(() => {
+    // +New code only exposes cwd-backed modes once a folder is selected.
+    // Keep the stored runtime policy aligned with the visible controls so
+    // downstream create/runtime layers can trust the persisted value.
     if (
       props.onDraftRuntimeSessionPolicyChange
       && currentSessionPolicy.workspaceKind !== resolvedRuntimeWorkspaceKind

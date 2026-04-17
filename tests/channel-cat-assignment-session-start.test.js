@@ -291,6 +291,9 @@ test('assigning a cat reuses the channel runtime session policy when starting a 
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
+    assert.equal(createChannelPayload.channel.runtimeWorkspaceKind, 'worktree');
+    assert.equal(createChannelPayload.channel.runtimeWorkspaceAccess, 'read_only');
+    assert.equal(createChannelPayload.channel.runtimePermissionMode, 'default');
 
     const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',

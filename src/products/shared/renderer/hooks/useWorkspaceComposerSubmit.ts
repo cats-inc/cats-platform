@@ -21,7 +21,10 @@ import {
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
-import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+import {
+  createDefaultRuntimeSessionPolicy,
+  type RuntimeSessionPolicy,
+} from '../../../../shared/runtimeSessionPolicy.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
   buildWorkspaceChannelPath,
@@ -287,11 +290,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         setDraftTemporaryParticipants?.([]);
         setDraftHighlightedCatId(null);
         setDraftCatExecutionTargetOverrides(new Map());
-        setDraftRuntimeSessionPolicy?.({
-          workspaceKind: 'sandbox',
-          workspaceAccess: 'read_write',
-          permissionMode: 'skip',
-        });
+        setDraftRuntimeSessionPolicy?.(createDefaultRuntimeSessionPolicy());
         setDraftFiles([]);
         setDraftWorkflowShape?.('sequential');
         setDraftAudienceKeys?.(null);
