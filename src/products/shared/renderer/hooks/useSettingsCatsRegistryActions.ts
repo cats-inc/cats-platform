@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from 'react';
+import { useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
@@ -35,10 +35,11 @@ export function useSettingsCatsRegistryActions(options: {
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [renameValue, setRenameValue] = useState('');
   const [botForm, setBotForm] = useState<BotFormState>(emptyBotForm);
+  const creatingCatRef = useRef(false);
   const {
     onCreateBinding,
-    onCreateCat,
-    performCreateCat,
+    onCreateCat: onCreateCatBase,
+    performCreateCat: performCreateCatBase,
     onDeleteBinding,
     onDeleteCat: onDeleteCatBase,
     onMakeBossCat,
@@ -112,6 +113,25 @@ export function useSettingsCatsRegistryActions(options: {
       : true;
     if (!confirmed) return;
     await onDeleteCatBase(catId, catName);
+  }
+
+  async function performCreateCat(): Promise<AppShellPayload | null> {
+    if (creatingCatRef.current) {
+      return null;
+    }
+    creatingCatRef.current = true;
+    try {
+      return await performCreateCatBase();
+    } finally {
+      creatingCatRef.current = false;
+    }
+  }
+
+  async function onCreateCat(
+    event: Parameters<typeof onCreateCatBase>[0],
+  ): Promise<AppShellPayload | null> {
+    event.preventDefault();
+    return performCreateCat();
   }
 
   return {

@@ -101,15 +101,12 @@ export function SettingsCatsCanvas({
   const location = useLocation();
   const navigate = useNavigate();
   const isCreateRoute = location.pathname.endsWith('/cats/new');
-  const clearedFeedbackRef = useRef(false);
 
   useEffect(() => {
-    if (clearedFeedbackRef.current) {
-      return;
-    }
-    clearedFeedbackRef.current = true;
+    // Clear any residual parent feedback once on entry so stale messages from other screens do not leak through.
     onFeedback('');
-  }, [onFeedback]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toastFeedback = useCallback((message: string) => {
     if (message) {
