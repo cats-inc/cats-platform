@@ -73,6 +73,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
           onClick={handleClick}
           aria-label={`Open guide: ${guideCat.name}`}
           data-tooltip={tooltip}
+          data-tooltip-delay="1000"
         >
           <img
             className="guideCatPillAvatar"

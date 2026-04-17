@@ -1,5 +1,6 @@
 let portal: HTMLDivElement | null = null;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
+let showTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getPortal(): HTMLDivElement {
   if (!portal) {
@@ -10,15 +11,21 @@ function getPortal(): HTMLDivElement {
   return portal;
 }
 
-function show(target: HTMLElement): void {
-  const text = target.getAttribute('data-tooltip');
-  if (!text) return;
-
-  if (hideTimer) {
-    clearTimeout(hideTimer);
-    hideTimer = null;
+function cancelPendingShow(): void {
+  if (showTimer) {
+    clearTimeout(showTimer);
+    showTimer = null;
   }
+}
 
+function resolveShowDelay(target: HTMLElement): number {
+  const attr = target.getAttribute('data-tooltip-delay');
+  if (!attr) return 0;
+  const parsed = Number(attr);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function paint(target: HTMLElement, text: string): void {
   const el = getPortal();
   el.textContent = text;
   el.classList.add('tooltipVisible');
@@ -48,13 +55,39 @@ function show(target: HTMLElement): void {
   }
 }
 
+function show(target: HTMLElement): void {
+  const text = target.getAttribute('data-tooltip');
+  if (!text) return;
+
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null;
+  }
+  cancelPendingShow();
+
+  const delay = resolveShowDelay(target);
+  if (delay > 0) {
+    showTimer = setTimeout(() => {
+      showTimer = null;
+      // Re-check the text in case it changed while we waited.
+      const liveText = target.getAttribute('data-tooltip');
+      if (liveText) paint(target, liveText);
+    }, delay);
+    return;
+  }
+
+  paint(target, text);
+}
+
 function hide(): void {
+  cancelPendingShow();
   hideTimer = setTimeout(() => {
     getPortal().classList.remove('tooltipVisible');
   }, 50);
 }
 
 function hideImmediately(): void {
+  cancelPendingShow();
   if (hideTimer) {
     clearTimeout(hideTimer);
     hideTimer = null;

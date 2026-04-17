@@ -75,6 +75,7 @@ export function CollapsedPill({
         onClick={onClick}
         aria-label={`Open guide: ${name}`}
         data-tooltip={tooltip}
+        data-tooltip-delay="1000"
       >
         <GuideCatAvatar className="guideCatPillAvatar" />
         {unreadCount > 0 ? (
@@ -161,7 +162,7 @@ function OpenPanel({
       }
       style={style}
     >
-      <div className="guideCatPanelHeader" data-tooltip={tooltip}>
+      <div className="guideCatPanelHeader" data-tooltip={tooltip} data-tooltip-delay="1000">
         <GuideCatAvatar className="guideCatPanelAvatar" />
         <span className="guideCatPanelName">{name}</span>
         <button type="button" className="guideCatPanelClose" onClick={onClose} aria-label="Close">
