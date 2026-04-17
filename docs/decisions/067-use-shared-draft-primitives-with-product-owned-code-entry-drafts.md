@@ -78,8 +78,8 @@ structured seams such as:
 The first `+New code` slices now concretely use:
 
 - a product-owned copy override bag
-- a product-owned header accessory component
-- a product-owned target-slot override
+- the shared workspace-draft composer structure by default, until later
+  Code-specific setup context earns a stronger renderer seam
 
 They should not accumulate one-off product booleans or string props for every
 minor surface difference.

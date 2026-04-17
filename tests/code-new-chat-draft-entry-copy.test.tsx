@@ -97,7 +97,7 @@ test('new code draft publishes code-specific copy overrides for the shared works
   assert.equal(NEW_CODE_DRAFT_COPY.privateSessionHeroNote, 'Single-participant coding lane.');
 });
 
-test('new code default draft renders visible workspace and execution session chips above the composer', () => {
+test('new code default draft keeps the original shared composer structure without extra header chips', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -112,19 +112,19 @@ test('new code default draft renders visible workspace and execution session chi
   );
 
   assert.match(markup, /What should this code session build, fix, or investigate\?/u);
-  assert.match(markup, /Choose workspace/u);
-  assert.match(markup, /draftHeaderAccessory.*class="modelSelectorChip"/u);
-  assert.doesNotMatch(markup, /composerBottomRow.*class="modelSelectorChip"/u);
+  assert.match(markup, /composerBottomRow[\s\S]*class="modelSelectorChip"/u);
+  assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
+  assert.doesNotMatch(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /How can I help you today\?/u);
   assert.doesNotMatch(markup, /class="audienceChip"/u);
 });
 
-test('new code default draft keeps empty execution state on-canvas when no execution target has been picked yet', () => {
+test('new code default draft does not render standalone setup chips between the greeting and composer', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps()} />);
 
-  assert.match(markup, /Choose workspace/u);
-  assert.match(markup, /Choose execution target/u);
-  assert.match(markup, /class="draftHeaderAccessory"/u);
+  assert.doesNotMatch(markup, /Choose workspace/u);
+  assert.doesNotMatch(markup, /Choose execution target/u);
+  assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
 });
 
 test('new code solo drafts without an explicit direct-lane route do not render the composer stack', () => {
