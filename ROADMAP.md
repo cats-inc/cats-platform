@@ -149,13 +149,26 @@ contracts.
       local CLI and local-model setup checks stay focused on host installability,
       while providers such as OpenClaw get a separate fast gateway/backend
       reachability contract instead of being omitted from setup health entirely
-- [ ] Add Guide-Cat-backed entry suggestions with deterministic static
-      fallbacks so `+New chat` and later `+Group chat` empty states can be
-      prepared dynamically without depending on a permanently awake helper
-- [ ] Implement `Guide Cat` as an optional surface-assist capability with
-      deterministic fallback surfaces so onboarding copy, composer helper
-      prompts, and future guidance affordances stop depending on hardcoded
-      product-only helpers
+- [x] Add Guide-Cat-backed entry suggestions with deterministic static
+      fallbacks so Lobby and `+New chat` can render useful assist content
+      without depending on a permanently awake helper
+- [x] Implement `Guide Cat` as an optional surface-assist capability with
+      deterministic fallback surfaces so onboarding copy and entry-surface
+      guidance stop depending on hardcoded product-only helpers
+- [ ] Promote the shipped Guide Cat assist v1 hydration path into true
+      runtime-backed assist generation, with distinct metadata for local
+      rehydration versus newly generated content and later mission/run
+      provenance once the shared execution shape is ready
+- [ ] Extend Guide Cat assist bundles beyond Lobby and `+New chat` greeting or
+      starter chips into recap, feature guidance, composer-adjacent helper
+      content, and later Work/Code empty-state adoption
+- [ ] Replace the current Guide Cat assist override and personalization
+      limitations with a richer product-owned contract, including partial
+      curated overrides and baseline-time recipient personalization instead of
+      renderer-side `"this Cat"` string replacement
+- [ ] Add explicit Guide Cat assist invalidation or manual refresh UX and, once
+      runtime-backed generation exists, later scheduled or wake-driven refresh
+      policies without regressing offline-first entry behavior
 - [ ] Finish destructive-delete UX above the landed runtime-session delete policy,
       including explicit renderer feedback for retained or failed runtime cleanup,
       clearer confirmation and busy states for chat / parallel-group / Cat delete,
