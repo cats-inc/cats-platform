@@ -481,15 +481,20 @@ test('old POST /api/setup/complete still works alongside new endpoint', async ()
 });
 
 test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
+  await withServer(createRuntimeStub(), async (baseUrl, config) => {
     await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
-        createGuideCat: false,
+        createGuideCat: true,
       }),
     });
+
+    await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+    );
 
     const diagnosticsBeforeReset = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
     assert.equal(diagnosticsBeforeReset.status, 200);
@@ -534,6 +539,8 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
     const diagnosticsAfterResetPayload = await diagnosticsAfterReset.json();
     assert.equal(diagnosticsAfterResetPayload.attemptId, null);
     assert.deepEqual(diagnosticsAfterResetPayload.events, []);
+    assert.equal(payload.guideCat, null);
+    assert.equal(payload.lobby.guideCatAssist?.renderSource, 'deterministic');
   });
 });
 
@@ -745,6 +752,37 @@ test('PATCH /api/platform/guide-cat dismissal survives later guide cat edits', a
   });
 });
 
+test('DELETE /api/platform/guide-cat restores deterministic lobby assist', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl, config) => {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+        guideCatName: 'Guide Cat',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+    );
+
+    const deleteResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
+      method: 'DELETE',
+    });
+    assert.equal(deleteResponse.status, 200);
+
+    const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(shellResponse.status, 200);
+    const shell = await shellResponse.json();
+    assert.equal(shell.guideCat, null);
+    assert.equal(shell.lobby.guideCatAssist?.renderSource, 'deterministic');
+  });
+});
+
 test('PUT /api/platform/guide-cat hydrates assist cache without requiring an app-shell refresh', async () => {
   await withServer(createRuntimeStub(), async (baseUrl, config) => {
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
@@ -814,13 +852,11 @@ test('PUT /api/platform/guide-cat refreshes a still-fresh assist cache when guid
     });
     assert.equal(updateResponse.status, 200);
 
-    const deadline = Date.now() + 2_000;
+    const deadline = Date.now() + 5_000;
     let refreshedBundle = firstBundle;
     while (Date.now() < deadline) {
-      refreshedBundle = await waitForGuideCatAssistBundle(
-        config.chatStatePath,
-        GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
-      );
+      const cache = await readGuideCatAssistCache(config.chatStatePath);
+      refreshedBundle = cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault] ?? firstBundle;
       if (refreshedBundle.provenance.refreshContextHash !== firstHash) {
         break;
       }

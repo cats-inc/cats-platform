@@ -199,6 +199,48 @@ test('chat guide cat assist treats refreshContextHash mismatches as stale even b
   assert.equal(readModel.lobby.refreshEligible, true);
 });
 
+test('chat guide cat assist ignores cached bundles when no Guide Cat is configured', async () => {
+  const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-guide-cat-assist-no-guide-cat-'));
+  const chatStatePath = path.join(workingDir, 'platform', 'state', 'chat-state.local.json');
+
+  await upsertGuideCatAssistBundle(chatStatePath, {
+    bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+    scope: {
+      surfaceId: 'lobby',
+      surfaceMode: 'default',
+      audienceState: 'default',
+    },
+    content: {
+      greeting: 'Cached lobby greeting that should stay hidden',
+      entryChips: [],
+    },
+    provenance: {
+      originMode: 'runtime',
+      refreshContextHash: 'gca:v1:old-guide-cat',
+      missionId: 'mission-123',
+      runId: 'run-456',
+    },
+    freshness: {
+      generatedAt: '2026-04-17T12:00:00.000Z',
+      expiresAt: '2026-04-18T12:05:00.000Z',
+      lastRefreshStatus: 'ok',
+    },
+  });
+
+  const readModel = await resolveChatGuideCatAssistReadModel({
+    chatStatePath,
+    guideCat: null,
+    runtimeReachable: false,
+  });
+
+  assert.equal(readModel.lobby.cacheHit, true);
+  assert.equal(readModel.lobby.renderSource, 'deterministic');
+  assert.notEqual(
+    readModel.lobby.bundle.content.greeting,
+    'Cached lobby greeting that should stay hidden',
+  );
+});
+
 test('guide cat assist refresh can materialize eligible scopes into the local cache', async () => {
   const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-guide-cat-assist-refresh-'));
   const chatStatePath = path.join(workingDir, 'platform', 'state', 'chat-state.local.json');

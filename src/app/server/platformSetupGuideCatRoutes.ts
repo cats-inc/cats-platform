@@ -13,7 +13,6 @@ import {
   updateGuideCatStatus,
   upsertGuideCat,
 } from './platformSetupStateMutations.js';
-
 type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
 async function handleGuideCatUpdate(

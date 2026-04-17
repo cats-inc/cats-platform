@@ -73,7 +73,8 @@ function resolveSurfaceReadModel(options: {
   const cachedBundle = options.cacheBundles[scopeKey] ?? null;
   const surfaceDisabled = options.disabledSurfaceKeys.includes(scopeKey);
   const override = options.curatedOverrides[scopeKey];
-  const selectedBundle = cachedBundle && !surfaceDisabled
+  const canRenderFromCache = options.guideCatExists && cachedBundle !== null && !surfaceDisabled;
+  const selectedBundle = canRenderFromCache
     ? cachedBundle
     : options.baselineBundle;
   const stale = cachedBundle
@@ -99,7 +100,7 @@ function resolveSurfaceReadModel(options: {
       ...selectedBundle,
       content: mergeOverrideContent(selectedBundle.content, override),
     },
-    renderSource: cachedBundle && !surfaceDisabled ? 'cache' : 'deterministic',
+    renderSource: canRenderFromCache ? 'cache' : 'deterministic',
     cacheHit: cachedBundle !== null,
     missing,
     stale,
