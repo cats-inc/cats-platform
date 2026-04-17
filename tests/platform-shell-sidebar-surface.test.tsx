@@ -30,7 +30,9 @@ function matchesComponent(
   return typeof node.type !== 'string' && node.type?.name === component.name;
 }
 
-function createPayload(): WorkAppShellPayload {
+function createPayload(
+  channels: WorkAppShellPayload['chat']['channels'] = [],
+): WorkAppShellPayload {
   return {
     app: {
       name: 'cats-platform',
@@ -98,7 +100,7 @@ function createPayload(): WorkAppShellPayload {
           memory: { summary: null, updatedAt: null },
         },
       ],
-      channels: [],
+      channels,
       selectedChannel: null,
       globalOrchestrator: {
         mode: 'global',
@@ -606,6 +608,77 @@ test('Code sidebar clears chat recents and shows No codes yet', () => {
 
   assert.deepEqual(recentsSection.props.entries, []);
   assert.equal(recentsSection.props.emptyStateLabel, 'No codes yet');
+});
+
+test('Work sidebar only shows work-origin recents by default', () => {
+  const tree = WorkSidebar({
+    payload: createPayload([
+      {
+        id: 'work-1',
+        title: 'Work recent',
+        topic: '',
+        originSurface: 'work',
+        status: 'active',
+        unreadCount: 0,
+        catCount: 0,
+        activeCatCount: 0,
+        repoPath: null,
+        chatCwd: null,
+        lastMessageAt: null,
+        lastActivatedAt: null,
+      },
+      {
+        id: 'chat-1',
+        title: 'Chat recent',
+        topic: '',
+        originSurface: 'chat',
+        status: 'active',
+        unreadCount: 0,
+        catCount: 0,
+        activeCatCount: 0,
+        repoPath: null,
+        chatCwd: null,
+        lastMessageAt: null,
+        lastActivatedAt: null,
+      },
+    ]),
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    shellSurface: 'work',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onStartWorkIntake: () => {},
+    onOpenWarRoom: () => {},
+    onOpenProjects: () => {},
+    onOpenWorkItems: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+  });
+
+  const recentsSection = findElementByComponent(tree, ConversationSidebarRecentsSection);
+  if (!recentsSection) {
+    throw new Error('ConversationSidebarRecentsSection not found.');
+  }
+
+  assert.deepEqual(
+    recentsSection.props.entries.map((entry: { channel: { title: string } }) => entry.channel.title),
+    ['Work recent'],
+  );
 });
 
 test('Work and Code sidebars keep the shared environment account menu wiring', () => {

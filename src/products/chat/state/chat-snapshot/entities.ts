@@ -32,6 +32,7 @@ import {
 import {
   defaultCatProducts,
   listEnabledPlatformSurfaces,
+  normalizePlatformSurface,
   normalizePlatformSurfaceList,
 } from '../../../../shared/platformSurfaces.js';
 import { normalizeRoomRouting } from '../room-routing/snapshot.js';
@@ -314,6 +315,7 @@ export function normalizeChannel(
     id: channelId,
     title: readString(channelRecord.title, 'Untitled chat'),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
+    originSurface: normalizePlatformSurface(channelRecord.originSurface, 'chat'),
     channelKind,
     recoverableDirectLaneCatId: readNullableString(channelRecord.recoverableDirectLaneCatId),
     status,
@@ -456,6 +458,7 @@ export function normalizeParallelChatGroup(rawGroup: unknown): ParallelChatGroup
   return {
     id: readString(groupRecord.id, randomUUID()),
     title: readString(groupRecord.title, 'Parallel chat'),
+    originSurface: normalizePlatformSurface(groupRecord.originSurface, 'chat'),
     mode: 'parallel',
     status: rawStatus === 'archived' ? 'archived' : 'active',
     memberChannelIds: readStringArray(groupRecord.memberChannelIds),

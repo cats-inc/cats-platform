@@ -5,6 +5,7 @@ import {
   type ConversationSidebarAction,
   type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
+import { resolveConversationSidebarChannelSurface } from '../../../../app/renderer/productShell/conversationSidebarViewModel.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts.js';
 import {
@@ -123,9 +124,15 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 }
 
 function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry<ChatChannelSummary>[] {
-  const recentsChannels = props.payload.chat.channels.filter((channel) => !isDirectLaneSummary(channel));
+  const activeSurface = props.shellSurface ?? 'chat';
+  const recentsChannels = props.payload.chat.channels.filter((channel) =>
+    !isDirectLaneSummary(channel)
+    && resolveConversationSidebarChannelSurface(channel.originSurface) === activeSurface,
+  );
   const activeParallelChatGroups = (props.payload.chat.parallelChatGroups ?? []).filter(
-    (group) => group.status === 'active',
+    (group) =>
+      group.status === 'active'
+      && resolveConversationSidebarChannelSurface(group.originSurface) === activeSurface,
   );
   const parallelChatGroupByChannelId = new Map<string, typeof activeParallelChatGroups[number]>();
 

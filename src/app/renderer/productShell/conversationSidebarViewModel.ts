@@ -1,5 +1,6 @@
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import { resolvePlatformSurfaceFromPath } from '../../../core/platformSurface.js';
+import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import {
   resolveRuntimePresentationStatus,
   resolveRuntimeTooltip,
@@ -16,6 +17,7 @@ interface ConversationSidebarCat {
 interface ConversationSidebarChannel {
   id: string;
   title: string;
+  originSurface?: PlatformSurfaceId | null;
   defaultRecipientCatId?: string | null;
   defaultRecipientLeaseStatus?: unknown;
   channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
@@ -85,6 +87,12 @@ interface ConversationSidebarHelpers<
   isDirectLaneSummary: (channel: TChannel) => boolean;
 }
 
+export function resolveConversationSidebarChannelSurface(
+  originSurface: unknown,
+): PlatformSurfaceId {
+  return normalizePlatformSurface(originSurface, 'chat') ?? 'chat';
+}
+
 export function buildConversationSidebarViewModel<
   TCat extends ConversationSidebarCat,
   TChannel extends ConversationSidebarChannel,
@@ -112,7 +120,9 @@ export function buildConversationSidebarViewModel<
       .filter((catId): catId is string => Boolean(catId)),
   );
   const recentsChannels = payload.chat.channels.filter(
-    (channel) => !helpers.isDirectLaneSummary(channel),
+    (channel) =>
+      !helpers.isDirectLaneSummary(channel)
+      && resolveConversationSidebarChannelSurface(channel.originSurface) === activeSurface,
   );
   const resolvedRecentEntries = recentEntries
     ?? recentsChannels.map((channel) => ({ kind: 'channel', channel } as const));

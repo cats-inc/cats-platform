@@ -25,6 +25,15 @@ export function isPlatformSurfaceId(value: string): value is PlatformSurfaceId {
   return (ALL_PLATFORM_SURFACES as readonly string[]).includes(value);
 }
 
+export function normalizePlatformSurface(
+  value: unknown,
+  fallback: PlatformSurfaceId | null = null,
+): PlatformSurfaceId | null {
+  return typeof value === 'string' && isPlatformSurfaceId(value)
+    ? value
+    : fallback;
+}
+
 function uniqueSurfaceList(
   values: readonly string[],
   allowed: readonly PlatformSurfaceId[],

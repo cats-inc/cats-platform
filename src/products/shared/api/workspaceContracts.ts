@@ -40,7 +40,10 @@ import type {
 import type {
   GuideCatAssistNewChatByMode,
 } from '../../../shared/guideCatAssist.js';
-import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
+import type {
+  PlatformHostEnvelope,
+  PlatformSurfaceId,
+} from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 
 export type { BotBindingInboundMode, ExecutionTargetSummary, MemoryCheckpointSummary } from '../../../core/types.js';
@@ -241,6 +244,7 @@ export interface ChatChannelState {
   id: string;
   title: string;
   topic: string;
+  originSurface?: PlatformSurfaceId | null;
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;
@@ -276,6 +280,7 @@ export interface ChatChannelSummary {
   id: string;
   title: string;
   topic: string;
+  originSurface?: PlatformSurfaceId | null;
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;
@@ -310,6 +315,7 @@ export interface ParallelChatTarget {
 export interface ParallelChatGroupState {
   id: string;
   title: string;
+  originSurface?: PlatformSurfaceId | null;
   mode: ParallelChatMode;
   status: ParallelChatStatus;
   memberChannelIds: string[];
@@ -328,6 +334,7 @@ export interface ParallelChatGroupMemberSummary extends ParallelChatTarget {
 export interface ParallelChatGroupSummary {
   id: string;
   title: string;
+  originSurface?: PlatformSurfaceId | null;
   mode: ParallelChatMode;
   status: ParallelChatStatus;
   memberCount: number;
@@ -491,6 +498,7 @@ export interface CreateTemporaryParticipantInput {
 export interface CreateChatChannelInput {
   title: string;
   topic: string;
+  originSurface?: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string;
   language?: string;

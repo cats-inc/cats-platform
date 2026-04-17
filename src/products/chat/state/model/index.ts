@@ -24,6 +24,7 @@ import {
   resolveChannelKind,
   resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
+import { normalizePlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   resolveChannelParticipantAssignments,
 } from '../../shared/channelParticipants.js';
@@ -126,6 +127,7 @@ export function createParallelChatGroup(
   let nextState = cloneState(state);
   const nowIso = isoAt(now);
   const memberChannelIds: string[] = [];
+  const originSurface = normalizePlatformSurface(input.originSurface, 'chat') ?? 'chat';
 
   for (const target of [...input.targets].reverse()) {
     nextState = createChannel(
@@ -133,6 +135,7 @@ export function createParallelChatGroup(
       {
         title: input.title,
         topic: input.title,
+        originSurface,
         repoPath: input.repoPath,
         responseLanguage: input.responseLanguage,
         composerMode: 'solo',
@@ -150,6 +153,7 @@ export function createParallelChatGroup(
   nextState.parallelChatGroups.unshift({
     id: createChannelId(),
     title: input.title.trim() || 'Parallel chat',
+    originSurface,
     mode: 'parallel',
     status: 'active',
     memberChannelIds,
@@ -251,6 +255,7 @@ export function createChannel(
   const createdTemporaryParticipants = resolvedTemporaryParticipants.map((participant) =>
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
+  const originSurface = normalizePlatformSurface(input.originSurface, 'chat') ?? 'chat';
 
   // Auto-generate title for direct cat chats when title is empty
   let title = input.title.trim();
@@ -332,6 +337,7 @@ export function createChannel(
     id: channelId,
     title,
     topic,
+    originSurface,
     channelKind: inferChannelKind({
       roomMode: requestedRoomMode,
       participants: normalizedParticipantAssignments,

@@ -735,6 +735,7 @@ export function createWorkspaceProductApp({
       state,
       setState,
       navigate,
+      originSurface: shellSurface,
       currentPathname: location.pathname,
       composerDraft,
       setComposerDraft,
@@ -1181,5 +1182,4 @@ export function createWorkspaceProductApp({
     );
   };
 }
-
 

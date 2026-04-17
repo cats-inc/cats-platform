@@ -35,8 +35,8 @@ Use this guide together with:
 - [SPEC-063](./specs/SPEC-063-conversational-vs-operational-agents-and-surface-projections.md)
 - [ADR-065](./decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md)
 - [SPEC-064](./specs/SPEC-064-my-cats-platform-home-and-lens-projections.md)
-- [ADR-065](./decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md)
-- [SPEC-064](./specs/SPEC-064-my-cats-platform-home-and-lens-projections.md)
+- [ADR-069](./decisions/069-scope-recents-to-channel-origin-surface-by-default.md)
+- [SPEC-070](./specs/SPEC-070-product-scoped-recents-and-channel-origin-surfaces.md)
 
 ## Foundational Integration Rules
 
@@ -61,6 +61,8 @@ All product teams must treat these as frozen architectural rules:
     when one shared agent identity supports both surfaces.
 11. `MY CATS` must remain one platform-level agent home; product-local agent
     panels are contextual subsets, not alternate registries.
+12. `RECENTS` defaults must stay product-scoped through explicit
+    `originSurface` metadata, not renderer heuristics.
 
 ## Frozen Shared Contracts
 
@@ -94,6 +96,29 @@ At the doc/architecture level, the current freeze set also includes:
 
 Products must not work around these invariants by inventing local room modes,
 local replay logic, or local materialization semantics.
+
+## Conversation Origin and Product-Scoped Recents
+
+All product teams must preserve this rule:
+
+- every new channel carries the creating product's `originSurface`
+- every new parallel/compare group carries the creating product's
+  `originSurface`
+- sidebar `RECENTS` defaults to entries whose `originSurface` matches the
+  current product surface
+
+Rules:
+
+- `originSurface` is product-ownership metadata, not routing metadata.
+- Product teams must stamp `originSurface` at create time instead of inferring
+  it later from `repoPath`, `entryKind`, `composerMode`, `roomMode`, or other
+  indirect fields.
+- If a product temporarily hides recents, it must still write
+  `originSurface` on new conversations so later recents behavior stays
+  correct.
+- Missing legacy `originSurface` values normalize to `chat` for compatibility.
+- Any future cross-product `All recents` lens must stay explicit and
+  secondary, not the default.
 
 ## MY CATS Platform Home and Product Subsets
 
@@ -345,6 +370,9 @@ Before a product team adds a new platform capability, confirm:
     surface is conversational, operational, or hybrid.
 12. If the feature surfaces agents in product-local UI, it makes explicit
     whether that UI is a contextual subset or the canonical `MY CATS` home.
+13. If the feature creates conversations or parallel groups, it stamps
+    `originSurface` and keeps product recents filtering aligned with that
+    ownership contract.
 
 ## Integration Owner Checklist
 
@@ -363,7 +391,9 @@ When converging product work into the platform host:
    and schedules.
 8. Verify transport-facing changes preserve explicit transport-binding identity
    across reconnect and reroute behavior.
+9. Verify new conversation entry points preserve product-scoped recents by
+   stamping `originSurface` and avoiding renderer-side ownership heuristics.
 
 ---
 
-*Last updated: 2026-04-14*
+*Last updated: 2026-04-17*

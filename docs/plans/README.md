@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-060](./PLAN-060-product-scoped-recents-and-origin-surface-rollout.md) | Product-Scoped Recents and Origin-Surface Rollout | In Progress | [SPEC-070](../specs/SPEC-070-product-scoped-recents-and-channel-origin-surfaces.md), [ADR-069](../decisions/069-scope-recents-to-channel-origin-surface-by-default.md) |
 | [PLAN-059](./PLAN-059-guide-cat-assist-content-cache-and-offline-refresh.md) | Guide Cat Assist Content Cache and Offline Refresh | Draft | [SPEC-067](../specs/SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md), [ADR-066](../decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md) |
 | [PLAN-058](./PLAN-058-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md) | Concurrent ChatView Presentation Modes and Policy-Aware Cluster Projection | Draft | [SPEC-066](../specs/SPEC-066-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md) |
 | [PLAN-057](./PLAN-057-core-contract-freeze-and-first-migration-wave.md) | Core Contract Freeze and First Migration Wave | Draft | [SPEC-065](../specs/SPEC-065-core-contract-freeze-and-first-migration-wave.md) |

@@ -78,6 +78,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
   chatPrefix: string;
+  originSurface: 'chat' | 'work' | 'code';
   currentPathname: string;
   composerDraft: string;
   setComposerDraft: Dispatch<SetStateAction<string>>;
@@ -136,6 +137,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setState,
     navigate,
     chatPrefix,
+    originSurface,
     currentPathname,
     composerDraft,
     setComposerDraft,
@@ -242,6 +244,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         const dispatch = await submitNewParallelChatDraft({
           body,
           payload: initialPayload,
+          originSurface,
           draftCwd,
           draftFiles,
           draftParallelChatTargets,
@@ -335,6 +338,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         body,
         existingCount: initialPayload.chat.channels.length,
         draftCwd,
+        originSurface,
         draftDefaultRecipientCatId,
         participantCatIds: draftCatIds,
         temporaryParticipants: draftTemporaryParticipants,
@@ -492,6 +496,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     draftFiles,
     draftEntryKind,
     draftDefaultRecipientCatId,
+    originSurface,
     draftExecutionTarget.instance,
     draftExecutionTarget.modelSelection,
     draftExecutionTarget.model,
@@ -552,4 +557,3 @@ export function createUseComposerSubmit<ModelValue extends WorkspaceExecutionTar
     });
   };
 }
-

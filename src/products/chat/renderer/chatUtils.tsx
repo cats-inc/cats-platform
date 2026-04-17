@@ -10,6 +10,7 @@ import type {
 import type { NewChatMode } from '../shared/channelPaths.js';
 import type { AssistantPresetRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
   resolveExecutionTargetLabel,
 } from '../../../shared/executionLabel.js';
@@ -317,6 +318,7 @@ export function buildAttachedFilesMessageBody(
 export function buildNewChatChannelInput(options: {
   body: string;
   existingCount: number;
+  originSurface?: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string | null;
   defaultRecipientCatId?: string | null;
@@ -600,4 +602,3 @@ export function BootShell() {
     </div>
   );
 }
-

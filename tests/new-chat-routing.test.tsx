@@ -171,6 +171,7 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
   const input = buildNewChatChannelInput({
     body: 'Ship the landing page',
     existingCount: 2,
+    originSurface: 'code',
     entryKind: 'solo',
     draftExecutionTarget: {
       provider: 'claude',
@@ -181,6 +182,7 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
   });
 
   assert.equal(input.entryKind, 'solo');
+  assert.equal(input.originSurface, 'code');
   assert.equal(input.roomMode, undefined);
   assert.equal(input.composerMode, 'solo');
   assert.equal(input.pendingProvider, 'claude');

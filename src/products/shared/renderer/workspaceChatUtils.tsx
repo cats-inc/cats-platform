@@ -9,6 +9,7 @@ import type {
   NewChatEntryKind,
 } from '../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import { buildCatExecutionLabel } from '../../../shared/executionLabel.js';
 import {
   isInternalOrchestratorLabel,
@@ -229,6 +230,7 @@ export function buildAttachedFilesMessageBody(
 export function buildNewChatChannelInput(options: {
   body: string;
   existingCount: number;
+  originSurface?: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string | null;
   defaultRecipientCatId?: string | null;
@@ -244,6 +246,7 @@ export function buildNewChatChannelInput(options: {
   const {
     body,
     existingCount,
+    originSurface,
     entryKind,
     repoPath,
     defaultRecipientCatId,
@@ -259,6 +262,7 @@ export function buildNewChatChannelInput(options: {
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount),
     topic: createDraftChannelTopic(body),
+    originSurface,
     entryKind: resolvedEntryKind,
     skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
@@ -395,6 +399,7 @@ export function createOptimisticDraftPayload(
   body: string,
   defaultRecipientCatId?: string | null,
   options: {
+    originSurface?: PlatformSurfaceId;
     composerMode?: 'solo' | 'cat_led';
     pendingProvider?: string | null;
     pendingModel?: string | null;
@@ -412,6 +417,7 @@ export function createOptimisticDraftPayload(
     id: channelId,
     title,
     topic,
+    originSurface: options.originSurface ?? 'chat',
     status: 'planned',
     unreadCount: 0,
     catCount: 0,
@@ -432,6 +438,7 @@ export function createOptimisticDraftPayload(
     id: channelId,
     title,
     topic,
+    originSurface: options.originSurface ?? 'chat',
     status: 'planned' as const,
     unreadCount: 0,
     repoPath: null,
@@ -579,6 +586,7 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
     id: normalizedChannel.id,
     title: normalizedChannel.title,
     topic: normalizedChannel.topic,
+    originSurface: normalizedChannel.originSurface ?? 'chat',
     channelKind: normalizedChannel.channelKind,
     status: normalizedChannel.status,
     unreadCount: normalizedChannel.unreadCount,

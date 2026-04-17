@@ -8,6 +8,7 @@ import type {
   SendChannelMessageInput,
   SendChannelMessageResponse,
 } from '../../api/workspaceContracts.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 
 import { fetchAppShell, refetchAfterMutation } from './appShell.js';
 import { expectJson } from './http.js';
@@ -236,6 +237,7 @@ export interface ParallelChatTargetInput {
 
 export interface CreateParallelChatGroupInput {
   title: string;
+  originSurface?: PlatformSurfaceId;
   repoPath?: string;
   responseLanguage?: string;
   targets: ParallelChatTargetInput[];

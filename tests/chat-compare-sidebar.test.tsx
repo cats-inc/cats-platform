@@ -64,6 +64,7 @@ function createChannel(
     id: overrides.id,
     title: overrides.title,
     topic: '',
+    originSurface: 'chat',
     status: 'active',
     unreadCount: 0,
     catCount: 0,
@@ -128,6 +129,7 @@ function createPayload(): AppShellPayload {
         {
           id: 'compare-group-1',
           title: 'Parallel chat 1',
+          originSurface: 'chat',
           mode: 'compare',
           status: 'active',
           memberCount: 2,
@@ -310,6 +312,88 @@ test('Sidebar exposes a dedicated Group chat primary action', () => {
   }>(tree, ConversationSidebarNavigation);
   navigation.props.primaryActions.find((action) => action.label === 'Group chat')?.onClick();
   assert.deepEqual(actions, ['group']);
+});
+
+test('Sidebar excludes non-chat recents and compare groups by origin surface', () => {
+  const payload = createPayload();
+  payload.chat.channels = [
+    createChannel({ id: 'chat-1', title: 'Chat recent' }),
+    createChannel({ id: 'code-1', title: 'Code recent', originSurface: 'code' }),
+    createChannel({ id: 'compare-chat-1', title: 'Compare chat A' }),
+    createChannel({ id: 'compare-chat-2', title: 'Compare chat B' }),
+    createChannel({ id: 'compare-code-1', title: 'Compare code A', originSurface: 'code' }),
+    createChannel({ id: 'compare-code-2', title: 'Compare code B', originSurface: 'code' }),
+  ];
+  payload.chat.parallelChatGroups = [
+    {
+      id: 'chat-group',
+      title: 'Chat compare',
+      originSurface: 'chat',
+      mode: 'compare',
+      status: 'active',
+      memberCount: 2,
+      memberChannelIds: ['compare-chat-1', 'compare-chat-2'],
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      lastMessageAt: '2026-04-01T00:05:00.000Z',
+      members: [],
+    },
+    {
+      id: 'code-group',
+      title: 'Code compare',
+      originSurface: 'code',
+      mode: 'compare',
+      status: 'active',
+      memberCount: 2,
+      memberChannelIds: ['compare-code-1', 'compare-code-2'],
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      lastMessageAt: '2026-04-01T00:05:00.000Z',
+      members: [],
+    },
+  ];
+
+  const tree = Sidebar({
+    payload,
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    routeChannelId: 'chat-1',
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onStartNewGroupChat: () => {},
+    onStartNewParallelChat: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onRenameParallelChatGroup: () => {},
+    onUngroupParallelChatGroup: () => {},
+    onDeleteParallelChatGroup: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+  });
+
+  const recents = findElementByType<{
+    entries: Array<
+      | { kind: 'channel'; channel: ChatChannelSummary; titleOverride?: string }
+      | { kind: 'group'; title: string; channels: Array<{ channel: ChatChannelSummary; titleOverride?: string }> }
+    >;
+  }>(tree, ConversationSidebarRecentsSection);
+
+  assert.deepEqual(
+    recents.props.entries.map((entry) => entry.kind === 'group' ? entry.title : entry.channel.title),
+    ['Chat recent', 'Chat compare'],
+  );
 });
 
 test('Sidebar wires the shared account identity menu to the runtime root', () => {

@@ -198,6 +198,7 @@ export async function prepareComposerChannelDispatch<
   body: string;
   existingCount: number;
   draftCwd: string | null;
+  originSurface?: 'chat' | 'work' | 'code';
   draftDefaultRecipientCatId: string | null;
   participantCatIds: string[];
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
@@ -229,6 +230,7 @@ export async function prepareComposerChannelDispatch<
     body,
     existingCount,
     draftCwd,
+    originSurface,
     draftDefaultRecipientCatId,
     participantCatIds,
     temporaryParticipants = [],
@@ -262,6 +264,7 @@ export async function prepareComposerChannelDispatch<
       const createdChannel = await createChatChannel(buildNewChatChannelInput({
         body,
         existingCount,
+        originSurface,
         entryKind: 'direct',
         repoPath: draftCwd,
         defaultRecipientCatId: draftDefaultRecipientCatId,
@@ -297,6 +300,7 @@ export async function prepareComposerChannelDispatch<
     const createdChannel = await createChatChannel(buildNewChatChannelInput({
       body,
       existingCount,
+      originSurface,
       entryKind: draftEntryKind,
       repoPath: draftCwd,
       defaultRecipientCatId: draftDefaultRecipientCatId,
@@ -361,6 +365,7 @@ export async function prepareWorkspaceSendContext<
   body: string;
   existingCount: number;
   draftCwd: string | null;
+  originSurface?: 'chat' | 'work' | 'code';
   draftDefaultRecipientCatId: string | null;
   participantCatIds: string[];
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
@@ -405,6 +410,7 @@ export async function prepareWorkspaceSendContext<
     body,
     existingCount,
     draftCwd,
+    originSurface,
     draftDefaultRecipientCatId,
     participantCatIds,
     temporaryParticipants,
@@ -438,6 +444,7 @@ export async function prepareWorkspaceSendContext<
     body,
     existingCount,
     draftCwd,
+    originSurface,
     draftDefaultRecipientCatId,
     participantCatIds,
     temporaryParticipants,

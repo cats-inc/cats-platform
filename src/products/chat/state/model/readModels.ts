@@ -279,6 +279,7 @@ export function toChannelSummary(
     ...canonicalIdentity,
     title: channel.title,
     topic: channel.topic,
+    originSurface: channel.originSurface ?? 'chat',
     channelKind: resolveChannelKind({
       channelKind: channel.channelKind,
       roomMode: roomRouting.mode,
@@ -367,6 +368,7 @@ function summarizeParallelChatGroups(state: ChatState): ParallelChatGroupSummary
       return {
         id: group.id,
         title: group.title,
+        originSurface: group.originSurface ?? 'chat',
         mode: group.mode,
         status: group.status,
         memberCount: members.length,
