@@ -11,6 +11,7 @@ import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { activeAssignedParticipants } from '../../shared/channelParticipants.js';
 import {
   applySoloChatContinuityBoundary,
+  hasVisibleResponseFromLogicalTarget,
   messagesBeforeSource,
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
@@ -67,9 +68,8 @@ function resolveNewSessionContinuityMetadata(input: {
   const channel = buildChannelView(input.state, input.channelId);
   const isSoloOrchestrator = input.target.participantKind === 'orchestrator'
     && channel.composerMode === 'solo';
-  const isDirectLaneParticipant = input.target.participantKind === 'cat'
-    && supportsSameChatParticipantContinuity(channel);
-  if (!isSoloOrchestrator && !isDirectLaneParticipant) {
+  const isParticipantTarget = input.target.participantKind === 'cat';
+  if (!isSoloOrchestrator && !isParticipantTarget) {
     return null;
   }
 
@@ -91,6 +91,18 @@ function resolveNewSessionContinuityMetadata(input: {
     ? applySoloChatContinuityBoundary(channel, channel.messages)
     : channel.messages;
   const sourceMessage = continuityMessages.find((message) => message.id === sourceMessageId) ?? null;
+  const hasLogicalPriorResponse = sourceMessage
+    ? hasVisibleResponseFromLogicalTarget(continuityMessages, input.target, sourceMessage)
+    : false;
+  const supportsParticipantContinuity = input.target.participantKind === 'cat'
+    && (supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse);
+  if (!isSoloOrchestrator && !supportsParticipantContinuity) {
+    return {
+      continuityMode: 'fresh_start',
+      continuityDeliveryMode: 'none',
+      continuityResetAt: null,
+    };
+  }
   const priorMessages = sourceMessage
     ? messagesBeforeSource(continuityMessages, sourceMessage)
     : [];

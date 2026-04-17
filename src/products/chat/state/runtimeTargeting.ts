@@ -593,6 +593,29 @@ function hasVisibleResponseFromCurrentTargetIdentity(
   });
 }
 
+export function hasVisibleResponseFromLogicalTarget(
+  messages: ReadonlyArray<ChatMessage>,
+  target: RoutingTarget,
+  sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
+): boolean {
+  return messagesBeforeSource(messages, sourceMessage).some((message) => {
+    if (message.senderKind === 'system') {
+      return false;
+    }
+
+    if (!isAssistantTurnSegmentMessage(message)) {
+      return false;
+    }
+
+    if (target.participantKind === 'orchestrator') {
+      return message.metadata.targetKind === 'orchestrator';
+    }
+
+    return message.metadata.targetKind === 'cat'
+      && message.metadata.targetId === target.participantId;
+  });
+}
+
 function resolveSameChatContinuityInstructions(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
@@ -678,8 +701,13 @@ export function buildPromptForTarget(
     sourceParticipantName: request.sourceParticipant?.participantName ?? null,
     transport: resolveTransportContext(channel, transport),
   };
+  const hasLogicalPriorResponse = hasVisibleResponseFromLogicalTarget(
+    promptMessages,
+    request.target,
+    request.sourceMessage,
+  );
   const participantContinuity = request.target.participantKind === 'cat'
-    && supportsSameChatParticipantContinuity(channel);
+    && (supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse);
 
   if (request.target.participantKind === 'orchestrator') {
     if (isSoloChatChannel(channel)) {

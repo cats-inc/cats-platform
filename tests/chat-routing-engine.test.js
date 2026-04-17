@@ -2140,6 +2140,111 @@ test('cat-led sessions restart when a participant model selection changes', asyn
   });
 });
 
+test('multi-cat rooms full-transplant continuity when an existing participant restarts on model selection drift', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Reviewer',
+      provider: 'codex',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'medium',
+        },
+      },
+    },
+    now,
+  );
+  const reviewerId = state.cats[0].id;
+  state = createCat(
+    state,
+    {
+      name: 'Observer',
+      provider: 'claude',
+      model: 'claude-sonnet',
+    },
+    now,
+  );
+  const observerId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Review room',
+      topic: 'Existing multi-cat participants should keep continuity when their session restarts.',
+      participantCatIds: [reviewerId, observerId],
+      defaultRecipientId: reviewerId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId, content }) => {
+    if (!content.includes('You are Reviewer')) {
+      throw new Error(`Unexpected prompt:\n${content}`);
+    }
+    return usage(`response from ${sessionId}`);
+  });
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First review turn',
+    },
+    runtimeClient,
+    now,
+  );
+  const retargetedState = setChannelCatExecutionTarget(
+    firstDispatch.state,
+    channelId,
+    reviewerId,
+    {
+      modelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'high',
+        },
+      },
+    },
+    new Date('2026-03-23T00:00:45.000Z'),
+  );
+  await routeChannelMessage(
+    retargetedState,
+    channelId,
+    {
+      body: 'Second review turn',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[user:User\] First review turn/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[agent:Reviewer\] response from session-1/u,
+  );
+});
+
 test('direct cat chat full-transplants continuity when a restarted lead-cat session changes model selection', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
