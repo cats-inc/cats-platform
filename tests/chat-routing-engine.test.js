@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  appendMessage,
   assignCatToChannel,
   buildChannelView,
   createChannel,
@@ -1426,6 +1427,82 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
   assert.match(
     runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
     /\[user:User\] Fifth turn/u,
+  );
+});
+
+test('solo composer mode full-transplants earlier user-only context on replacement sessions', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Replacement sessions should not fall back to excerpt-only user context.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  state = setChannelOrchestratorLease(
+    state,
+    channelId,
+    {
+      sessionId: 'session-existing',
+      status: 'ready',
+      provider: 'claude',
+      model: 'claude-default',
+      startedAt: now.toISOString(),
+      lastUsedAt: now.toISOString(),
+    },
+    now,
+  );
+
+  for (let index = 0; index < 10; index += 1) {
+    state = appendMessage(
+      state,
+      channelId,
+      {
+        senderKind: 'user',
+        senderName: 'User',
+        body: `Earlier user turn ${index + 1}`,
+      },
+      new Date(`2026-03-23T00:${String(index).padStart(2, '0')}:30.000Z`),
+    ).state;
+  }
+
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Switch turn',
+      pendingProvider: 'gemini',
+      pendingModel: 'gemini-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:11:00.000Z'),
+  );
+
+  assert.deepEqual(runtimeClient.closedSessions, ['session-existing']);
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /Same conversation continuity transcript:/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /\[user:User\] Earlier user turn 1/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /\[user:User\] Earlier user turn 10/u,
   );
 });
 

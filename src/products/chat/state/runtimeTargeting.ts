@@ -41,7 +41,6 @@ import {
 import type { RoutingTarget } from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,
-  buildSoloChatBootstrapInstructions,
   buildSoloChatContinuityTransplantInstructions,
   buildCatPrompt,
   MAX_PROMPT_RECENT_MESSAGES,
@@ -576,27 +575,6 @@ function hasVisibleResponseFromCurrentTargetIdentity(
   });
 }
 
-function hasVisibleSoloChatResponseBeforeSource(
-  messages: ReadonlyArray<ChatMessage>,
-  sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
-): boolean {
-  return messagesBeforeSource(messages, sourceMessage).some((message) => {
-    if (message.senderKind === 'system') {
-      return false;
-    }
-
-    if (
-      message.senderKind !== 'agent'
-      && message.senderKind !== 'orchestrator'
-    ) {
-      return false;
-    }
-
-    return message.body.trim().length > 0
-      && message.metadata.targetKind === 'orchestrator';
-  });
-}
-
 function resolveSoloChatInstructions(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
@@ -605,12 +583,7 @@ function resolveSoloChatInstructions(
   if (hasVisibleResponseFromCurrentTargetIdentity(messages, request.target, request.sourceMessage)) {
     return null;
   }
-
-  if (hasVisibleSoloChatResponseBeforeSource(messages, request.sourceMessage)) {
-    return buildSoloChatContinuityTransplantInstructions(priorMessages);
-  }
-
-  return buildSoloChatBootstrapInstructions(priorMessages);
+  return buildSoloChatContinuityTransplantInstructions(priorMessages);
 }
 
 function describeRoutingReason(
