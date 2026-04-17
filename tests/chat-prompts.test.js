@@ -11,6 +11,7 @@ import {
   buildCatPrompt,
   buildOrchestratorPrompt,
   buildSoloChatBootstrapInstructions,
+  buildSoloChatContinuityTransplantInstructions,
 } from '../build/server/products/chat/state/prompts.js';
 import { buildPromptForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
 import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
@@ -146,7 +147,28 @@ test('solo chat bootstrap instructions include only earlier conversational conte
   assert.ok(!instructions.includes('Respond in English'));
 });
 
-test('solo chat bootstrap instructions ignore stale same-session replies from a different lane', () => {
+test('solo chat continuity transplant instructions keep the full earlier conversational transcript', () => {
+  const instructions = buildSoloChatContinuityTransplantInstructions([
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: 'Started session.',
+    },
+    ...Array.from({ length: 10 }, (_value, index) => ({
+      senderKind: index % 2 === 0 ? 'user' : 'agent',
+      senderName: index % 2 === 0 ? 'Kenny' : 'Orchestrator',
+      body: `Earlier turn ${index + 1}`,
+    })),
+  ]);
+
+  assert.ok(instructions);
+  assert.match(instructions, /Same conversation continuity transcript:/u);
+  assert.match(instructions, /\[user:Kenny\] Earlier turn 1/u);
+  assert.match(instructions, /\[agent:Orchestrator\] Earlier turn 10/u);
+  assert.ok(!instructions.includes('Runtime'));
+});
+
+test('solo chat does not re-bootstrap when the same runtime session is reused across lanes', () => {
   const now = new Date('2026-04-15T00:00:00.000Z');
   let state = createDefaultChatState();
   state = createChatChannel(state, {
@@ -239,6 +261,5 @@ test('solo chat bootstrap instructions ignore stale same-session replies from a 
     },
   });
 
-  assert.ok(prompt.instructions);
-  assert.match(prompt.instructions, /Earlier chat context:/u);
+  assert.equal(prompt.instructions, null);
 });

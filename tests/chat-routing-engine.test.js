@@ -1354,31 +1354,42 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
 
   const channelId = state.selectedChannelId;
   const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}`));
+    usage(`response from ${sessionId}: ${sessionId === 'session-1' ? 'claude' : 'gemini'}`));
 
-  const firstDispatch = await routeChannelMessage(
-    state,
+  const stableTurns = [
+    'First turn',
+    'Second turn',
+    'Third turn',
+    'Fourth turn',
+    'Fifth turn',
+  ];
+  let dispatchedState = state;
+  for (let index = 0; index < stableTurns.length; index += 1) {
+    const dispatched = await routeChannelMessage(
+      dispatchedState,
+      channelId,
+      {
+        body: stableTurns[index],
+        pendingProvider: 'claude',
+        pendingModel: 'claude-default',
+      },
+      runtimeClient,
+      new Date(`2026-03-23T00:0${index}:00.000Z`),
+    );
+    dispatchedState = dispatched.state;
+  }
+  const switchedDispatch = await routeChannelMessage(
+    dispatchedState,
     channelId,
     {
-      body: 'First turn',
-      pendingProvider: 'claude',
-      pendingModel: 'claude-default',
-    },
-    runtimeClient,
-    now,
-  );
-  const secondDispatch = await routeChannelMessage(
-    firstDispatch.state,
-    channelId,
-    {
-      body: 'Second turn',
+      body: 'Switch turn',
       pendingProvider: 'gemini',
       pendingModel: 'gemini-default',
     },
     runtimeClient,
-    new Date('2026-03-23T00:01:00.000Z'),
+    new Date('2026-03-23T00:09:00.000Z'),
   );
-  const channel = buildChannelView(secondDispatch.state, channelId);
+  const channel = buildChannelView(switchedDispatch.state, channelId);
   const soloReplies = channel.messages.filter(
     (message) => message.metadata?.targetKind === 'orchestrator' && message.senderName === 'Orchestrator',
   );
@@ -1392,23 +1403,27 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
   assert.equal(soloReplies[0]?.senderKind, 'agent');
   assert.equal(soloReplies[0]?.executionProvider, 'claude');
   assert.equal(soloReplies[0]?.executionModel, 'claude-default');
-  assert.equal(soloReplies[1]?.senderKind, 'agent');
-  assert.equal(soloReplies[1]?.executionProvider, 'gemini');
-  assert.equal(soloReplies[1]?.executionModel, 'gemini-default');
+  assert.equal(soloReplies.at(-1)?.senderKind, 'agent');
+  assert.equal(soloReplies.at(-1)?.executionProvider, 'gemini');
+  assert.equal(soloReplies.at(-1)?.executionModel, 'gemini-default');
   assert.equal(runtimeClient.sentMessages[0]?.content, 'First turn');
   assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
-  assert.equal(runtimeClient.sentMessages[1]?.content, 'Second turn');
+  assert.equal(runtimeClient.sentMessages.at(-1)?.content, 'Switch turn');
   assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /Earlier chat context:/u,
+    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
+    /Same conversation continuity transcript:/u,
   );
   assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
     /\[user:User\] First turn/u,
   );
   assert.match(
-    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /\[agent:Orchestrator\] response from session-1/u,
+    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
+    /\[agent:Orchestrator\] response from session-1: claude/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
+    /\[user:User\] Fifth turn/u,
   );
 });
 

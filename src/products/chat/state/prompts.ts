@@ -17,6 +17,18 @@ export interface PromptRoutingContext {
 
 export const MAX_PROMPT_RECENT_MESSAGES = 8;
 
+function conversationalMessages(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter(
+    (message) => message.senderKind !== 'system' && message.body.trim().length > 0,
+  );
+}
+
+function formatConversationalMessages(messages: ChatMessage[]): string {
+  return messages
+    .map((message) => `[${message.senderKind}:${message.senderName}] ${message.body}`)
+    .join('\n');
+}
+
 function languageInstruction(responseLanguage: string): string {
   if (!responseLanguage || responseLanguage === 'en') {
     return 'Respond in English unless the user explicitly asks for another language.';
@@ -182,18 +194,30 @@ export function buildOrchestratorPrompt(
 export function buildSoloChatBootstrapInstructions(
   priorMessages: ChatMessage[],
 ): string | null {
-  const conversationalMessages = priorMessages
-    .filter((message) => message.senderKind !== 'system' && message.body.trim().length > 0)
+  const earlierMessages = conversationalMessages(priorMessages)
     .slice(-MAX_PROMPT_RECENT_MESSAGES);
-  if (conversationalMessages.length === 0) {
+  if (earlierMessages.length === 0) {
     return null;
   }
 
   return joinPromptSections([
     'Earlier chat context:',
-    conversationalMessages
-      .map((message) => `[${message.senderKind}:${message.senderName}] ${message.body}`)
-      .join('\n'),
+    formatConversationalMessages(earlierMessages),
+    'Current message follows separately.',
+  ]);
+}
+
+export function buildSoloChatContinuityTransplantInstructions(
+  priorMessages: ChatMessage[],
+): string | null {
+  const earlierMessages = conversationalMessages(priorMessages);
+  if (earlierMessages.length === 0) {
+    return null;
+  }
+
+  return joinPromptSections([
+    'Same conversation continuity transcript:',
+    formatConversationalMessages(earlierMessages),
     'Current message follows separately.',
   ]);
 }
