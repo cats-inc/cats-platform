@@ -1529,6 +1529,79 @@ test('solo composer mode full-transplants earlier user-only context on replaceme
   );
 });
 
+test('solo replacement-session transplants preserve prior assistant tool labels', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Carry tool context across a retargeted solo restart.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) => {
+    if (sessionId === 'session-1') {
+      return {
+        segments: [
+          {
+            kind: 'tool_use',
+            text: '',
+            toolName: 'search_repo',
+            toolId: 'tool-search',
+          },
+          {
+            kind: 'text',
+            text: 'I found the relevant files.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 9,
+        outputTokens: 6,
+        tokensUsed: 15,
+      };
+    }
+
+    return usage(`response from ${sessionId}`);
+  });
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Inspect the repo first.',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+  await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    {
+      body: 'Now switch providers and continue.',
+      pendingProvider: 'gemini',
+      pendingModel: 'gemini-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[agent:Orchestrator\] \[tools: search_repo\] I found the relevant files\./u,
+  );
+});
+
 test('explicit solo start-fresh resets continuity before the next replacement session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');

@@ -168,6 +168,34 @@ test('solo chat continuity transplant instructions keep the full earlier convers
   assert.ok(!instructions.includes('Runtime'));
 });
 
+test('solo chat continuity transplant instructions preserve preceding tool labels for assistant turns', () => {
+  const instructions = buildSoloChatContinuityTransplantInstructions([
+    {
+      senderKind: 'user',
+      senderName: 'Kenny',
+      body: 'Please inspect the repo state.',
+      metadata: {},
+    },
+    {
+      senderKind: 'agent',
+      senderName: 'Orchestrator',
+      body: 'I checked the relevant files and found the issue.',
+      metadata: {
+        precedingTools: [
+          { toolName: 'search_repo', toolId: 'tool-search' },
+          { toolName: 'read_file', toolId: 'tool-read' },
+        ],
+      },
+    },
+  ]);
+
+  assert.ok(instructions);
+  assert.match(
+    instructions,
+    /\[agent:Orchestrator\] \[tools: search_repo, read_file\] I checked the relevant files and found the issue\./u,
+  );
+});
+
 test('solo chat does not re-bootstrap when the same runtime session is reused across lanes', () => {
   const now = new Date('2026-04-15T00:00:00.000Z');
   let state = createDefaultChatState();

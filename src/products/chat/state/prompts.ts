@@ -23,9 +23,37 @@ function conversationalMessages(messages: ChatMessage[]): ChatMessage[] {
   );
 }
 
-function formatConversationalMessages(messages: ChatMessage[]): string {
+function readMessageToolLabels(message: Pick<ChatMessage, 'metadata'>): string[] {
+  const value = message.metadata?.precedingTools;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return [];
+    }
+
+    const toolName = typeof entry.toolName === 'string' && entry.toolName.trim().length > 0
+      ? entry.toolName.trim()
+      : null;
+    const toolId = typeof entry.toolId === 'string' && entry.toolId.trim().length > 0
+      ? entry.toolId.trim()
+      : null;
+    const label = toolName ?? toolId;
+    return label ? [label] : [];
+  }).filter((label, index, labels) => labels.indexOf(label) === index);
+}
+
+function formatContinuityMessages(messages: ChatMessage[]): string {
   return messages
-    .map((message) => `[${message.senderKind}:${message.senderName}] ${message.body}`)
+    .map((message) => {
+      const toolLabels = readMessageToolLabels(message);
+      const toolPrefix = toolLabels.length > 0
+        ? ` [tools: ${toolLabels.join(', ')}]`
+        : '';
+      return `[${message.senderKind}:${message.senderName}]${toolPrefix} ${message.body}`;
+    })
     .join('\n');
 }
 
@@ -202,7 +230,7 @@ export function buildSoloChatBootstrapInstructions(
 
   return joinPromptSections([
     'Earlier chat context:',
-    formatConversationalMessages(earlierMessages),
+    formatContinuityMessages(earlierMessages),
     'Current message follows separately.',
   ]);
 }
@@ -217,7 +245,7 @@ export function buildSoloChatContinuityTransplantInstructions(
 
   return joinPromptSections([
     'Same conversation continuity transcript:',
-    formatConversationalMessages(earlierMessages),
+    formatContinuityMessages(earlierMessages),
     'Current message follows separately.',
   ]);
 }
