@@ -21,9 +21,10 @@ test('completeRuntimeSessionPolicy clones defaults and ignores undefined overrid
 
 test('completeRuntimeSessionPolicy returns a fresh copy even when policy is null', () => {
   const completed = completeRuntimeSessionPolicy(null);
+  completed.workspaceKind = 'worktree';
 
-  assert.notStrictEqual(completed, createDefaultRuntimeSessionPolicy());
-  assert.deepEqual(completed, createDefaultRuntimeSessionPolicy());
+  assert.equal(createDefaultRuntimeSessionPolicy().workspaceKind, 'sandbox');
+  assert.equal(completeRuntimeSessionPolicy(null).workspaceKind, 'sandbox');
 });
 
 test('resolveCreateRuntimeSessionPolicy honors explicit overrides over repo-backed defaults', () => {

@@ -87,7 +87,6 @@ export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeCh
                 role="option"
                 aria-selected={selected}
                 className={`composerSelectChipMenuItem${selected ? ' composerSelectChipMenuItemSelected' : ''}`}
-                data-tooltip={WORKSPACE_MODE_TOOLTIPS[mode]}
                 onClick={() => {
                   onChange(mode);
                   setOpen(false);

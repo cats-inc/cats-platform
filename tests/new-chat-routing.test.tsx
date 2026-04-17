@@ -222,6 +222,25 @@ test('buildNewChatChannelInput lets explicit workspace overrides win over repo d
     repoPath: 'C:/repo/cats-platform',
     draftSessionPolicy: {
       workspaceKind: 'sandbox',
+      workspaceAccess: 'read_write',
+      permissionMode: 'whitelist',
+    },
+  });
+
+  assert.equal(input.runtimeWorkspaceKind, 'sandbox');
+  assert.equal(input.runtimeWorkspaceAccess, 'read_write');
+  assert.equal(input.runtimePermissionMode, 'whitelist');
+});
+
+test('buildNewChatChannelInput forces read-only sessions onto the default permission gate', () => {
+  const input = buildNewChatChannelInput({
+    body: 'Stay isolated even with a repo selected',
+    existingCount: 0,
+    originSurface: 'code',
+    entryKind: 'solo',
+    repoPath: 'C:/repo/cats-platform',
+    draftSessionPolicy: {
+      workspaceKind: 'sandbox',
       workspaceAccess: 'read_only',
       permissionMode: 'whitelist',
     },
@@ -229,8 +248,6 @@ test('buildNewChatChannelInput lets explicit workspace overrides win over repo d
 
   assert.equal(input.runtimeWorkspaceKind, 'sandbox');
   assert.equal(input.runtimeWorkspaceAccess, 'read_only');
-  // This currently locks the runtime-level coercion: read_only sessions collapse
-  // to the default permission gate even if an upstream caller supplied whitelist.
   assert.equal(input.runtimePermissionMode, 'default');
 });
 
