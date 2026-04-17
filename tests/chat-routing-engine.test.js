@@ -14,6 +14,7 @@ import {
   removeCatFromChannel,
   requireChannel,
   resetSoloChannelContinuity,
+  setChannelCatExecutionTarget,
   setChannelCatLease,
   setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
@@ -2019,6 +2020,104 @@ test('solo composer mode restarts orchestrator sessions when the pending model s
     runtimeClient.sentMessages[1]?.input?.instructions ?? '',
     /\[user:User\] First turn/u,
   );
+});
+
+test('cat-led sessions restart when a participant model selection changes', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Reviewer',
+      provider: 'codex',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'medium',
+        },
+      },
+    },
+    now,
+  );
+  const catId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Cat-led Room',
+      topic: 'Cat session should restart when its model selection changes.',
+      participantCatIds: [catId],
+      defaultRecipientId: catId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First turn',
+    },
+    runtimeClient,
+    now,
+  );
+  const retargetedState = setChannelCatExecutionTarget(
+    firstDispatch.state,
+    channelId,
+    catId,
+    {
+      modelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'high',
+        },
+      },
+    },
+    new Date('2026-03-23T00:00:45.000Z'),
+  );
+  const secondDispatch = await routeChannelMessage(
+    retargetedState,
+    channelId,
+    {
+      body: 'Second turn',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+  const channel = buildChannelView(secondDispatch.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.deepEqual(runtimeClient.createdSessions[0]?.modelSelection, {
+    entryId: 'gpt-5.4',
+    entryMode: 'explicit',
+    controls: {
+      'codex.reasoning_effort': 'medium',
+    },
+  });
+  assert.deepEqual(runtimeClient.createdSessions[1]?.modelSelection, {
+    entryId: 'gpt-5.4',
+    entryMode: 'explicit',
+    controls: {
+      'codex.reasoning_effort': 'high',
+    },
+  });
+  assert.equal(channel.assignedParticipants?.[0]?.execution.target.provider, 'codex');
+  assert.deepEqual(channel.assignedParticipants?.[0]?.execution.modelSelection, {
+    entryId: 'gpt-5.4',
+    entryMode: 'explicit',
+    controls: {
+      'codex.reasoning_effort': 'high',
+    },
+  });
 });
 
 test('solo composer mode sends raw user text without default instructions on a stable session', async () => {

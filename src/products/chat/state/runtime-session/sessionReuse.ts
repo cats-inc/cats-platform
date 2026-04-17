@@ -17,6 +17,7 @@ import { resolveOrchestratorExecutionTarget } from '../runtimeTargeting.js';
 import { classifyRuntimeDispatchRecoveryError } from '../runtime-dispatch/recovery.js';
 import {
   resolveOrchestratorLeaseAttachment,
+  resolvePrimaryParticipantExecutionAssignment,
   resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
 import { clearTargetSessionLease } from './state.js';
@@ -212,8 +213,9 @@ export async function resolveExistingTargetSessionOutcome(input: {
     };
   }
 
+  const channelState = requireChannel(state, channelId);
+
   if (attachedTarget.participantKind === 'orchestrator') {
-    const channelState = requireChannel(state, channelId);
     const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
     const orchestratorLease = resolveOrchestratorLeaseAttachment(channelState);
     const shouldRestartSoloSession = channelState.composerMode === 'solo'
@@ -222,7 +224,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
         || orchestratorLease?.instance !== executionTarget.instance
         || orchestratorLease?.model !== executionTarget.model
         || !providerModelSelectionsEqual(
-          channelState.pendingModelSelection ?? null,
+          orchestratorLease?.modelSelection ?? null,
           executionTarget.modelSelection ?? null,
         )
       );
@@ -248,8 +250,65 @@ export async function resolveExistingTargetSessionOutcome(input: {
           provider: executionTarget.provider,
           instance: executionTarget.instance,
           model: executionTarget.model,
+          modelSelection: executionTarget.modelSelection ?? null,
           startedAt: null,
           lastUsedAt: orchestratorLease?.lastUsedAt ?? null,
+        },
+        now,
+      );
+      return {
+        kind: 'retry',
+        state: resetState,
+        target: { ...attachedTarget, sessionId: null },
+      };
+    }
+  }
+
+  if (attachedTarget.participantKind === 'cat') {
+    const participantLease = resolveParticipantLeaseAttachment(channelState, attachedTarget.participantId);
+    const assignment = resolvePrimaryParticipantExecutionAssignment(
+      channelState,
+      attachedTarget.participantId,
+    );
+    const assignmentProvider = assignment?.execution.target.provider ?? null;
+    const assignmentInstance = assignment?.execution.target.instance ?? null;
+    const assignmentModel = assignment?.execution.target.model ?? null;
+    const shouldRestartParticipantSession = Boolean(
+      assignment
+      && participantLease?.modelSelection !== undefined
+      && !providerModelSelectionsEqual(
+        participantLease.modelSelection ?? null,
+        assignment.execution.modelSelection === undefined
+          ? participantLease.modelSelection ?? null
+          : assignment.execution.modelSelection ?? null,
+      ),
+    );
+
+    if (shouldRestartParticipantSession) {
+      await bestEffortFlushRuntimeSessionMemory({
+        runtimeClient,
+        sessionId: attachedTarget.sessionId,
+        requestedPhase: 'pre_reset',
+        memoryService: routingOptions.memoryService,
+        companionStore: routingOptions.companionStore,
+        coreStore: routingOptions.chatStore,
+        now,
+      });
+      await runtimeClient.closeSession(attachedTarget.sessionId);
+      const resetState = setChannelParticipantLease(
+        state,
+        channelId,
+        attachedTarget.participantId,
+        {
+          sessionId: null,
+          status: 'not_started',
+          lastError: null,
+          provider: assignmentProvider,
+          instance: assignmentInstance,
+          model: assignmentModel,
+          modelSelection: assignment?.execution.modelSelection ?? null,
+          startedAt: null,
+          lastUsedAt: participantLease?.lastUsedAt ?? null,
         },
         now,
       );

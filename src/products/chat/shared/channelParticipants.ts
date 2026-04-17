@@ -19,6 +19,7 @@ export interface ParticipantLeaseAttachment {
   provider: string | null;
   instance: string | null;
   model: string | null;
+  modelSelection: ParticipantExecutionLease['modelSelection'];
   startedAt: string | null;
   lastUsedAt: string | null;
   lastError: string | null;
@@ -33,6 +34,7 @@ export interface OrchestratorLeaseAttachment {
   provider: string | null;
   instance: string | null;
   model: string | null;
+  modelSelection: ParticipantExecutionLease['modelSelection'];
   startedAt: string | null;
   lastUsedAt: string | null;
   lastError: string | null;
@@ -231,6 +233,7 @@ export function resolveParticipantLeaseAttachment(
     provider: lease.provider?.trim() || null,
     instance: lease.instance?.trim() || null,
     model: lease.model?.trim() || null,
+    modelSelection: structuredClone(lease.modelSelection ?? null),
     startedAt: lease.startedAt ?? null,
     lastUsedAt: lease.lastUsedAt ?? null,
     lastError: lease.lastError ?? null,
@@ -273,6 +276,7 @@ export function resolveOrchestratorLeaseAttachment(
     provider: lease.provider?.trim() || null,
     instance: lease.instance?.trim() || null,
     model: lease.model?.trim() || null,
+    modelSelection: structuredClone(lease.modelSelection ?? null),
     startedAt: lease.startedAt ?? null,
     lastUsedAt: lease.lastUsedAt ?? null,
     lastError: lease.lastError ?? null,

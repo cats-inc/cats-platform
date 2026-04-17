@@ -26,6 +26,7 @@ import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createRoomRoutingSnapshot } from '../room-routing/wake.js';
 import type { RuntimeSessionInfo } from '../../../../platform/runtime/client.js';
 import { resolveChannelSpawnCwd } from '../workspace.js';
+import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 
 export function normalizeRuntimeStatus(status: string | undefined): ParticipantSessionStatus {
   switch (status) {
@@ -86,6 +87,7 @@ export function setStartedSession(
         provider: session.provider,
         instance,
         model: session.model,
+        modelSelection: cloneProviderModelSelection(session.modelSelection ?? null),
         startedAt: timestamp,
         lastUsedAt: timestamp,
       },
@@ -105,6 +107,7 @@ export function setStartedSession(
       provider: session.provider,
       instance,
       model: session.model,
+      modelSelection: cloneProviderModelSelection(session.modelSelection ?? null),
       startedAt: timestamp,
       lastUsedAt: timestamp,
     },

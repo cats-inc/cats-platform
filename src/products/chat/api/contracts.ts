@@ -156,6 +156,7 @@ export interface ParticipantExecutionLease extends ParticipantSessionSummary {
   provider: string | null;
   instance?: string | null;
   model: string | null;
+  modelSelection?: ProviderModelSelection | null;
   startedAt: string | null;
   lastUsedAt: string | null;
 }
