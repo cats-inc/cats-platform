@@ -171,41 +171,41 @@ Without a dedicated substrate, the platform will either:
     - explicit manual refresh only if a later slice chooses to expose it
 20. The first slice shall not require periodic background refresh or manual
     refresh UI for basic usability.
-21. The first shipped slice may satisfy lazy refresh by non-blocking local
-    hydration/rehydration of deterministic or last-good bundles.
-22. Later runtime-backed assist generation shall run through the existing
+21. Later runtime-backed assist generation shall run through the existing
     runtime boundary and may reuse a warm leased session when available.
-23. Runtime-backed refresh work, when introduced, shall be representable as
+22. Runtime-backed refresh work, when introduced, shall be representable as
     `mission` and `run` records rather than a special Guide-Cat-only
     execution type.
-24. Future periodic or delayed refresh may be layered through runtime wakeups,
+23. Future periodic or delayed refresh may be layered through runtime wakeups,
     but wakeups shall remain optional for the initial slice.
-25. Refresh requests for recap or guidance bundles shall accept a
+24. Refresh requests for recap or guidance bundles shall accept a
     product-owned input payload or references for:
     - recent conversations or conversation summaries
     - recent managed-work references or summaries
     - recent surface-activity summaries
     - optional owner/profile personalization inputs
-26. The first slice may satisfy those recap inputs with lightweight product
+25. The first slice may satisfy those recap inputs with lightweight product
     summaries rather than full cross-product aggregation.
-27. Recap bundles may summarize recent work, recent conversations, or recent
+26. Recap bundles may summarize recent work, recent conversations, or recent
     product activity, but they shall remain non-authoritative projections.
-28. Recap bundles shall not implicitly create or mutate managed work, routing
+27. Recap bundles shall not implicitly create or mutate managed work, routing
     policy, or transcript truth without an explicit product handoff.
-29. Guide Cat assist bundles may recommend actions such as opening chat, work,
+28. Guide Cat assist bundles may recommend actions such as opening chat, work,
     or code surfaces, but the actual action shall happen through explicit
     product-owned handoff wiring.
-30. Surface-local view state such as sidecar dismissal, chip dismissal, or
+29. Surface-local view state such as sidecar dismissal, chip dismissal, or
     "already seen" markers shall remain distinct from assist bundle storage.
-31. When refresh fails, the platform shall retain the last-good cached bundle
+30. When refresh fails, the platform shall retain the last-good cached bundle
     when one exists and degrade cleanly to deterministic baseline otherwise.
-32. The platform shall record enough metadata to answer:
+31. The platform shall record enough metadata to answer:
     - which bundle was shown
     - on which surface
     - whether the surface rendered deterministic baseline, cached bundle, or a
       freshly refreshed bundle
     - from which content origin
     - with which last refresh result
+32. The first shipped slice may satisfy lazy refresh by non-blocking local
+    hydration/rehydration of deterministic or last-good bundles.
 
 ### Non-Functional Requirements
 

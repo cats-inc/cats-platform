@@ -223,7 +223,7 @@ test('guide cat assist config normalizes overrides and malformed cache bundles s
   assert.deepEqual(cache.bundles, {});
 });
 
-test('guide cat assist stale check only trips when expiresAt is in the past', async () => {
+test('guide cat assist stale check treats expired or malformed cache freshness as stale but keeps deterministic baselines fresh', async () => {
   assert.equal(isGuideCatAssistBundleStale({
     freshness: {
       generatedAt: '2026-04-17T12:00:00.000Z',
@@ -244,6 +244,22 @@ test('guide cat assist stale check only trips when expiresAt is in the past', as
     freshness: {
       generatedAt: '2026-04-17T12:00:00.000Z',
       expiresAt: 'not-a-timestamp',
+      lastRefreshStatus: 'ok',
+    },
+  }, new Date('2026-04-17T18:00:00.000Z')), true);
+
+  assert.equal(isGuideCatAssistBundleStale({
+    freshness: {
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      expiresAt: null,
+      lastRefreshStatus: 'never',
+    },
+  }, new Date('2026-04-17T18:00:00.000Z')), false);
+
+  assert.equal(isGuideCatAssistBundleStale({
+    freshness: {
+      generatedAt: '2026-04-17T12:00:00.000Z',
+      expiresAt: null,
       lastRefreshStatus: 'ok',
     },
   }, new Date('2026-04-17T18:00:00.000Z')), true);

@@ -939,6 +939,7 @@ test('GET /api/app-shell serves stale assist cache first and lazily rehydrates i
     }
 
     assert.ok(refreshedBundle);
+    assert.equal(refreshedBundle.content.greeting, 'Stale cached lobby greeting');
     assert.equal(refreshedBundle.freshness.lastRefreshStatus, 'skipped');
   });
 });

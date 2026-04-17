@@ -265,7 +265,7 @@ proven refresh semantics
 |------|--------|
 | 2026-04-17 | Plan created for Guide Cat assist-content cache, recap, and offline refresh rollout |
 | 2026-04-17 | Narrowed the plan into an executable v1 slice focused on Lobby and `+New chat` greeting/chip persistence plus minimal lazy refresh |
-| 2026-04-17 | Clarified that the shipped v1 lazy-refresh slice performs local hydration/rehydration only; runtime-backed assist generation remains deferred |
+| 2026-04-17 | Clarified that the shipped v1 lazy-refresh slice performs local hydration/rehydration only, because the landed v1 implementation kept offline-first entry behavior while deferring runtime-backed assist generation and mission/run provenance |
 
 ---
 

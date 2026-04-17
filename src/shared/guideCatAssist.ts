@@ -260,7 +260,7 @@ export function isGuideCatAssistBundleStale(
   now: Date = new Date(),
 ): boolean {
   if (!bundle.freshness.expiresAt) {
-    return false;
+    return bundle.freshness.lastRefreshStatus !== 'never';
   }
 
   const expiresAtMs = Date.parse(bundle.freshness.expiresAt);

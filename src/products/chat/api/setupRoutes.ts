@@ -20,7 +20,8 @@ import {
 
 function reportSetupRouteFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`[cats-chat-setup] ${scope}: ${message}\n`);
+  // Keep the legacy prefix while setup/reset diagnostics still feed existing ops grep paths.
+  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
 }
 
 async function handleSetupComplete(
@@ -96,7 +97,7 @@ async function handleSetupComplete(
         now,
       });
     } catch (error) {
-      reportSetupRouteFailure('setup_complete_memory', error);
+      reportSetupRouteFailure('setup_complete', error);
     }
     sendJson(
       context.response,
@@ -140,7 +141,7 @@ async function handleSetupReset(
         now,
       });
     } catch (error) {
-      reportSetupRouteFailure('setup_reset_memory', error);
+      reportSetupRouteFailure('setup_reset', error);
     }
     try {
       await resetPlatformOnboardingHistory(context.dependencies.config.chatStatePath);
