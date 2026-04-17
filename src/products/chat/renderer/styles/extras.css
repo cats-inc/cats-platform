@@ -75,6 +75,47 @@
   text-overflow: ellipsis;
 }
 
+.catAvatarPlaceholder {
+  background: #d4cec8;
+  color: var(--muted, #6e655c);
+  outline: 1px dashed rgba(110, 101, 92, 0.35);
+  outline-offset: -2px;
+}
+
+.myCatPlaceholderIcon {
+  display: block;
+  pointer-events: none;
+}
+
+.myCatNamePlaceholder {
+  color: var(--muted, #8a8178);
+  font-style: italic;
+}
+
+.myCatItemPlaceholder {
+  opacity: 0.9;
+}
+
+.myCatItemPlaceholder:disabled {
+  cursor: default;
+}
+
+.myCatRowPlaceholder {
+  background: color-mix(in srgb, var(--sidebar-bg) 86%, var(--accent) 14%);
+}
+
+.myCatRowPlaceholder:hover {
+  background: color-mix(in srgb, var(--sidebar-bg) 74%, var(--accent) 26%);
+}
+
+.myCatRowPlaceholderStatic {
+  cursor: default;
+}
+
+.myCatRowPlaceholderStatic:hover {
+  background: color-mix(in srgb, var(--sidebar-bg) 86%, var(--accent) 14%);
+}
+
 .myCatTelegramIcon {
   grid-area: 1 / 1;
   display: inline-flex;

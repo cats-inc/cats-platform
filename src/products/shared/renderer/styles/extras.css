@@ -100,12 +100,20 @@
   cursor: default;
 }
 
+.myCatRowPlaceholder {
+  background: color-mix(in srgb, var(--sidebar-bg) 86%, var(--accent) 14%);
+}
+
+.myCatRowPlaceholder:hover {
+  background: color-mix(in srgb, var(--sidebar-bg) 74%, var(--accent) 26%);
+}
+
 .myCatRowPlaceholderStatic {
   cursor: default;
 }
 
 .myCatRowPlaceholderStatic:hover {
-  background: transparent;
+  background: color-mix(in srgb, var(--sidebar-bg) 86%, var(--accent) 14%);
 }
 
 .myCatTelegramIcon {
