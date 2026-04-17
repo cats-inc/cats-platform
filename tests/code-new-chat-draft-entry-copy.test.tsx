@@ -91,6 +91,8 @@ test('new code draft publishes code-specific copy overrides for the shared works
   assert.equal(NEW_CODE_DRAFT_COPY.executionActionLabel, 'Choose execution target');
   assert.equal(NEW_CODE_DRAFT_COPY.executionEmptyState, 'No execution target set yet.');
   assert.equal(NEW_CODE_DRAFT_COPY.folderSectionTitle, 'Workspace');
+  assert.equal(NEW_CODE_DRAFT_COPY.privateSessionEyebrow, 'Focused Code Session');
+  assert.equal(NEW_CODE_DRAFT_COPY.privateSessionHeroNote, 'Single-participant coding lane.');
 });
 
 test('new code default draft renders visible workspace and execution session chips above the composer', () => {
@@ -133,7 +135,10 @@ test('new code direct-lane drafts keep the participant stack in the composer row
     />,
   );
 
+  assert.match(markup, /Focused Code Session/u);
+  assert.match(markup, /Single-participant coding lane\./u);
   assert.match(markup, /class="composerCatStack"/u);
+  assert.doesNotMatch(markup, /Private Chat/u);
 });
 
 test('team code and peer code drafts continue to delegate to the shared chat draft flow', () => {

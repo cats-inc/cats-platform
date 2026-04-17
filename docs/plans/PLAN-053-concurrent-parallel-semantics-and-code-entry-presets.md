@@ -201,6 +201,8 @@ group-join modes.
       - third slice: keep the solo execution-target chip in that header row
         and reserve the lower composer target slot for direct-lane participant
         stacks only
+      - fourth slice: move direct-lane hero wording for default `+New code`
+        onto the code-owned copy seam so it stops inheriting chat phrasing
 - [ ] Task 4.3: Ensure `+Team code` exposes workflow-policy configuration
 - [ ] Task 4.4: Ensure `+Peer code` exposes branch roles and automation-policy
       configuration
@@ -285,6 +287,7 @@ notes.
 | 2026-04-17 | Added continuity follow-through under the same plan so same-chat solo retarget, parallel child continuity, and excerpt-bootstrap removal stay attached to the shared semantics work |
 | 2026-04-17 | Added a shared draft header-accessory seam so `+New code` can render visible workspace and execution chips on the draft canvas without forking chat/work primitives |
 | 2026-04-17 | Scoped the default `+New code` target slot so solo drafts stop duplicating the execution chip while direct-lane participant stacks still use the lower composer row |
+| 2026-04-17 | Extended the shared copy seam so default `+New code` direct-lane hero text no longer falls back to chat-specific wording such as `Private Chat` |
 
 ---
 

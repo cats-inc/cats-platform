@@ -76,6 +76,10 @@ export interface WorkspaceNewChatDraftCopy {
   composerPlaceholder?: string;
   sidePanelTitle?: string;
   participantsSectionTitle?: string;
+  participantsEmptyState?: string;
+  privateSessionEyebrow?: string;
+  privateSessionHeroNote?: string;
+  privateSessionBoundHeroNote?: string;
   executionSectionTitle?: string;
   executionActionLabel?: string;
   executionEmptyState?: string;
@@ -89,6 +93,10 @@ const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
   composerPlaceholder: 'How can I help you today?',
   sidePanelTitle: 'New Chat Setup',
   participantsSectionTitle: 'Cats',
+  participantsEmptyState: 'No cats are available yet.',
+  privateSessionEyebrow: 'Private Chat',
+  privateSessionHeroNote: 'Private lane for this Cat.',
+  privateSessionBoundHeroNote: 'Telegram-bound private lane.',
   executionSectionTitle: 'AI Reply',
   executionActionLabel: 'Choose AI reply',
   executionEmptyState: 'No AI reply setup yet.',
@@ -281,10 +289,12 @@ export function WorkspaceNewChatDraft({
         <div className="draftGreeting">
           {defaultRecipientCat ? (
             <>
-              <p className="eyebrow">Private Chat</p>
+              <p className="eyebrow">{resolvedCopy.privateSessionEyebrow}</p>
               <h1>{defaultRecipientCat.name}</h1>
               <p className="heroNote">
-                {hasTelegramBinding ? 'Telegram-bound private lane.' : 'Private lane for this Cat.'}
+                {hasTelegramBinding
+                  ? resolvedCopy.privateSessionBoundHeroNote
+                  : resolvedCopy.privateSessionHeroNote}
               </p>
             </>
           ) : (
@@ -492,7 +502,7 @@ export function WorkspaceNewChatDraft({
           onHighlight={(catId) => onHighlightDraftCat(catId)}
         />
       ) : (
-        <p className="operatorEmptyState">No cats are available yet.</p>
+        <p className="operatorEmptyState">{resolvedCopy.participantsEmptyState}</p>
       ),
     });
 

@@ -92,6 +92,7 @@ The platform needs a boundary where:
    least for:
    - composer placeholder
    - setup-panel title
+   - direct-lane hero framing
    - execution section title
    - workspace section title
 5. The first code-owned draft shall expose visible session-context chrome on
@@ -171,7 +172,9 @@ The first slice does not yet define the final visual language for
 worktree/permission chips, but it does introduce a code-owned chip row for the
 current workspace and execution target. In solo `+New code`, that header row
 is the primary execution-target chrome; the lower composer target slot remains
-reserved for direct-lane participant stacks.
+reserved for direct-lane participant stacks. The same copy seam also owns the
+direct-lane hero wording so Code does not fall back to chat phrasing such as
+`Private Chat`.
 
 ## Dependencies
 
