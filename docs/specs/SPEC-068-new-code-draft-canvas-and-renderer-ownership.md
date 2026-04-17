@@ -169,12 +169,12 @@ as:
 - prompt placeholder aimed at building, fixing, or investigating code
 
 The first slice does not yet define the final visual language for
-worktree/permission chips, but it does introduce a code-owned chip row for the
-current workspace and execution target. In solo `+New code`, that header row
-is the primary execution-target chrome; the lower composer target slot remains
-reserved for direct-lane participant stacks. The same copy seam also owns the
-direct-lane hero wording so Code does not fall back to chat phrasing such as
-`Private Chat`.
+worktree/access policy controls, but it does introduce a code-owned session
+policy row under the composer. In solo `+New code`, that footer row owns the
+workspace-isolation and access-policy controls, while the lower composer target
+slot remains reserved for direct-lane participant stacks. The same slice also
+requires those controls to persist into created-channel runtime defaults so the
+draft footer is not just decorative chrome.
 
 ## Dependencies
 

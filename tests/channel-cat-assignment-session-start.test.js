@@ -268,3 +268,60 @@ test('assigning a cat keeps direct-lane transport binding on session_start_faile
     );
   });
 });
+
+test('assigning a cat reuses the channel runtime session policy when starting a new session', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Policy-aware spawn',
+        topic: 'Carry code draft session policy into runtime session creation.',
+        repoPath: 'C:/repo/cats-platform',
+        runtimeWorkspaceKind: 'worktree',
+        runtimeWorkspaceAccess: 'read_only',
+        runtimePermissionMode: 'default',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Policy Cat',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+    const catId = createCatPayload.cat.id;
+
+    const assignResponse = await fetch(`${baseUrl}/api/channels/${channelId}/cats/${catId}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(assignResponse.status, 201);
+
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.createdSessions[0]?.workspaceKind, 'worktree');
+    assert.equal(runtimeClient.createdSessions[0]?.workspaceAccess, 'read_only');
+    assert.equal(runtimeClient.createdSessions[0]?.permissionMode, 'default');
+  });
+});

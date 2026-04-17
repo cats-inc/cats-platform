@@ -652,3 +652,52 @@ test('runtime client preserves the runtime-sanitized modelSelection returned fro
     ],
   });
 });
+
+test('runtime client forwards explicit workspace access and permission policy on session creation', async () => {
+  const requests = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    const body = typeof init.body === 'string'
+      ? JSON.parse(init.body)
+      : null;
+    requests.push({ url, body });
+
+    if (url.endsWith('/sessions')) {
+      return new Response(JSON.stringify({
+        id: 'session-1',
+        providerName: 'claude',
+        status: 'ready',
+        cwd: 'C:/repo/cats-platform',
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    await client.createSession({
+      provider: 'claude',
+      cwd: 'C:/repo/cats-platform',
+      workspaceKind: 'worktree',
+      workspaceAccess: 'read_only',
+      permissionMode: 'default',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(requests[0]?.body, {
+    provider: 'claude',
+    permissionMode: 'default',
+    cwd: 'C:/repo/cats-platform',
+    workspaceKind: 'worktree',
+    workspaceAccess: 'read_only',
+  });
+});

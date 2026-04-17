@@ -20,6 +20,13 @@ import {
   type WorkspaceMode,
 } from '../../../shared/renderer/components/WorkspaceModeChip.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
+import {
+  createDefaultRuntimeSessionPolicy,
+  resolveDraftPermissionModeFromRuntimeAccess,
+  resolveDraftWorkspaceModeFromRuntimeKind,
+  resolveRuntimePermissionPolicyFromDraft,
+  resolveRuntimeWorkspaceKindFromDraft,
+} from '../../../../shared/runtimeSessionPolicy.js';
 import { inspectPath } from '../api/index.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
@@ -62,6 +69,10 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
     onToggleDraftWorkflowShape,
     draftAudienceKeys,
     onSetAudienceKeys,
+    draftRuntimeWorkspaceKind,
+    draftRuntimeWorkspaceAccess,
+    draftRuntimePermissionMode,
+    onDraftRuntimeSessionPolicyChange,
     onCancelPendingSend,
     ...workspaceProps
   } = props;
@@ -92,6 +103,10 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
   void onToggleDraftWorkflowShape;
   void draftAudienceKeys;
   void onSetAudienceKeys;
+  void draftRuntimeWorkspaceKind;
+  void draftRuntimeWorkspaceAccess;
+  void draftRuntimePermissionMode;
+  void onDraftRuntimeSessionPolicyChange;
   void onCancelPendingSend;
 
   return {
@@ -165,22 +180,66 @@ function useCodeDraftRepoProbe(draftCwd: string | null): RepoProbeResult {
 
 export function NewChatDraft(props: NewChatDraftProps) {
   const { isRepo, repoRoot, branch } = useCodeDraftRepoProbe(props.draftCwd);
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(DEFAULT_WORKSPACE_MODE);
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>(DEFAULT_PERMISSION_MODE);
+  const defaultSessionPolicy = createDefaultRuntimeSessionPolicy();
 
   if (props.entryMode === 'group' || props.entryMode === 'parallel') {
     return <ChatNewChatDraft {...props} />;
   }
 
+  const currentSessionPolicy = {
+    ...defaultSessionPolicy,
+    workspaceKind: props.draftRuntimeWorkspaceKind ?? defaultSessionPolicy.workspaceKind,
+    workspaceAccess: props.draftRuntimeWorkspaceAccess ?? defaultSessionPolicy.workspaceAccess,
+    permissionMode: props.draftRuntimePermissionMode ?? defaultSessionPolicy.permissionMode,
+  };
+  const workspaceMode: WorkspaceMode =
+    props.draftCwd
+      ? resolveDraftWorkspaceModeFromRuntimeKind(currentSessionPolicy.workspaceKind)
+      : DEFAULT_WORKSPACE_MODE;
+  const permissionMode: PermissionMode =
+    resolveDraftPermissionModeFromRuntimeAccess(currentSessionPolicy.workspaceAccess);
   const workspaceProps = buildWorkspaceDraftProps(props);
   const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
   const branchLabel = branch ?? 'detached';
-  const repoReady = isRepo && repoRoot;
+  const repoReady = Boolean(isRepo && repoRoot);
+  const resolvedRuntimeWorkspaceKind = resolveRuntimeWorkspaceKindFromDraft({
+    hasCwd: Boolean(props.draftCwd),
+    isRepo: repoReady,
+    workspaceMode,
+  });
+
+  useEffect(() => {
+    if (
+      props.onDraftRuntimeSessionPolicyChange
+      && currentSessionPolicy.workspaceKind !== resolvedRuntimeWorkspaceKind
+    ) {
+      props.onDraftRuntimeSessionPolicyChange({
+        ...currentSessionPolicy,
+        workspaceKind: resolvedRuntimeWorkspaceKind,
+      });
+    }
+  }, [
+    currentSessionPolicy.permissionMode,
+    currentSessionPolicy.workspaceAccess,
+    currentSessionPolicy.workspaceKind,
+    props.onDraftRuntimeSessionPolicyChange,
+    resolvedRuntimeWorkspaceKind,
+  ]);
+
+  function updateSessionPolicy(patch: Partial<typeof currentSessionPolicy>): void {
+    props.onDraftRuntimeSessionPolicyChange?.({
+      ...currentSessionPolicy,
+      ...patch,
+    });
+  }
+
   const sessionPolicyChips = props.draftCwd ? (
     <>
       <PermissionModeChip
         value={permissionMode}
-        onChange={setPermissionMode}
+        onChange={(nextMode) => {
+          updateSessionPolicy(resolveRuntimePermissionPolicyFromDraft(nextMode));
+        }}
         disabled={isSubmittingFirstTurn}
       />
       {repoReady ? (
@@ -197,7 +256,15 @@ export function NewChatDraft(props: NewChatDraftProps) {
           </span>
           <WorkspaceModeChip
             value={workspaceMode}
-            onChange={setWorkspaceMode}
+            onChange={(nextMode) => {
+              updateSessionPolicy({
+                workspaceKind: resolveRuntimeWorkspaceKindFromDraft({
+                  hasCwd: Boolean(props.draftCwd),
+                  isRepo: Boolean(repoReady),
+                  workspaceMode: nextMode,
+                }),
+              });
+            }}
             disabled={isSubmittingFirstTurn}
           />
         </>

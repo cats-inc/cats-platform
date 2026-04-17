@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
-export type WorkspaceMode = 'current' | 'worktree';
+import {
+  DEFAULT_DRAFT_WORKSPACE_MODE,
+  type DraftWorkspaceMode,
+} from '../../../../shared/runtimeSessionPolicy.js';
 
-export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = 'current';
+export type WorkspaceMode = DraftWorkspaceMode;
+
+export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = DEFAULT_DRAFT_WORKSPACE_MODE;
 
 const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
   current: 'Current folder',

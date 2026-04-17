@@ -272,6 +272,11 @@ export function createChannel(
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
   const originSurface = resolveCreateInputOriginSurface(input.originSurface);
+  const runtimeWorkspaceKind = input.runtimeWorkspaceKind
+    ?? (input.repoPath ? 'source' : 'sandbox');
+  const runtimeWorkspaceAccess = input.runtimeWorkspaceAccess ?? 'read_write';
+  const runtimePermissionMode = input.runtimePermissionMode
+    ?? (runtimeWorkspaceAccess === 'read_only' ? 'default' : 'skip');
 
   // Auto-generate title for direct cat chats when title is empty
   let title = input.title.trim();
@@ -363,6 +368,9 @@ export function createChannel(
     unreadCount: 0,
     repoPath: normalizeOptionalText(input.repoPath),
     chatCwd: null,
+    runtimeWorkspaceKind,
+    runtimeWorkspaceAccess,
+    runtimePermissionMode,
     language: normalizeOptionalText(input.language),
     responseLanguage: normalizeOptionalText(input.responseLanguage) ?? 'en',
     formationMode: input.formationMode ?? 'manual',

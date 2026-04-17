@@ -45,6 +45,11 @@ import type {
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type {
+  RuntimePermissionMode,
+  RuntimeWorkspaceAccess,
+  RuntimeWorkspaceKind,
+} from '../../../shared/runtimeSessionPolicy.js';
 
 export type { BotBindingInboundMode, ExecutionTargetSummary, MemoryCheckpointSummary } from '../../../core/types.js';
 export type {
@@ -250,6 +255,9 @@ export interface ChatChannelState {
   unreadCount: number;
   repoPath: string | null;
   chatCwd: string | null;
+  runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
+  runtimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
+  runtimePermissionMode?: RuntimePermissionMode | null;
   language: string | null;
   responseLanguage: string;
   formationMode: ChannelFormationMode;
@@ -292,6 +300,9 @@ export interface ChatChannelSummary {
   activeCatCount: number;
   repoPath: string | null;
   chatCwd: string | null;
+  runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
+  runtimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
+  runtimePermissionMode?: RuntimePermissionMode | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   composerMode?: ComposerMode;
@@ -501,6 +512,9 @@ export interface CreateChatChannelInput {
   originSurface: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string;
+  runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
+  runtimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
+  runtimePermissionMode?: RuntimePermissionMode | null;
   language?: string;
   responseLanguage?: string;
   formationMode?: ChannelFormationMode;

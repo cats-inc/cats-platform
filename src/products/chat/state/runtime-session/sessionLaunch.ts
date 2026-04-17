@@ -19,13 +19,13 @@ import {
 } from '../runtimeTargeting.js';
 import {
   markTargetWaking,
-  spawnCwdFor,
 } from './state.js';
 import {
   resolveRuntimeEnvelopeCanonicalMetadata,
   type RuntimeEnvelopeCanonicalMetadata,
   type RuntimeSessionRoutingOptions,
 } from './shared.js';
+import { resolveChannelRuntimeSessionPolicy } from './policy.js';
 import {
   createOrchestratorTargetRuntimeSession,
   createParticipantTargetRuntimeSession,
@@ -178,8 +178,9 @@ export async function startAttachedTargetSession(input: {
     routingOptions,
   } = input;
   let nextState = state;
-  const spawnCwd = spawnCwdFor(requireChannel(nextState, channelId));
-  const workspaceKind = spawnCwd ? 'source' : 'sandbox';
+  const sessionPolicy = resolveChannelRuntimeSessionPolicy(
+    requireChannel(nextState, channelId),
+  );
   let createdExecutionTarget: RuntimeSessionExecutionTarget | null = null;
   const sessionLifecycleMetadata: TargetSessionLifecycleMetadata = {
     targetStateId,
@@ -216,8 +217,7 @@ export async function startAttachedTargetSession(input: {
       ? await createOrchestratorTargetRuntimeSession({
         state: nextState,
         channelId,
-        spawnCwd,
-        workspaceKind,
+        sessionPolicy,
         runtimeClient,
         dispatchContextMetadata: {
           ...(routingOptions.dispatchContextMetadata ?? {}),
@@ -230,8 +230,7 @@ export async function startAttachedTargetSession(input: {
         state: nextState,
         channelId,
         target: attachedTarget,
-        spawnCwd,
-        workspaceKind,
+        sessionPolicy,
         runtimeClient,
         dispatchContextMetadata: {
           ...(routingOptions.dispatchContextMetadata ?? {}),
@@ -262,7 +261,7 @@ export async function startAttachedTargetSession(input: {
       session: createdTargetSession.session,
       targetLabelProvider: createdExecutionTarget.provider,
       targetLabelInstance: createdExecutionTarget.instance,
-      spawnCwd,
+      spawnCwd: sessionPolicy.spawnCwd,
       metadata: sessionLifecycleMetadata,
     });
 

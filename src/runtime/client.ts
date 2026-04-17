@@ -16,6 +16,11 @@ import {
   type TaskExecutionCorrelation,
   type TaskRuntimeExecutionRequest,
 } from '../shared/taskExecutionBridge.js';
+import type {
+  RuntimePermissionMode,
+  RuntimeWorkspaceAccess,
+  RuntimeWorkspaceKind,
+} from '../shared/runtimeSessionPolicy.js';
 import {
   normalizeRuntimeProviderDiagnosticsPayload,
   normalizeRuntimeProviderConfigRegistry,
@@ -195,8 +200,9 @@ export interface RuntimeSessionCreateInput extends RuntimeExecutionRequestInput 
   model?: string | null;
   modelSelection?: ProviderModelSelection | null;
   cwd?: string | null;
-  workspaceKind?: 'source' | 'sandbox' | 'worktree' | null;
-  workspaceAccess?: 'read_write' | 'read_only' | null;
+  workspaceKind?: RuntimeWorkspaceKind | null;
+  workspaceAccess?: RuntimeWorkspaceAccess | null;
+  permissionMode?: RuntimePermissionMode | null;
   sharingMode?: 'shared' | 'isolated' | null;
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
@@ -512,7 +518,7 @@ export class CatsRuntimeClient implements RuntimeClient {
   async createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
     const payload: Record<string, unknown> = {
       provider: input.provider,
-      permissionMode: 'skip',
+      permissionMode: input.permissionMode ?? 'skip',
     };
 
     if (input.instance?.trim()) {

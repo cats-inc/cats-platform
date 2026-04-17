@@ -21,6 +21,7 @@ import {
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
+import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
   buildWorkspaceChannelPath,
@@ -90,6 +91,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   draftCatIds: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
   draftCwd: string | null;
+  draftSessionPolicy?: RuntimeSessionPolicy | null;
   draftFiles: File[];
   channelFiles: File[];
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
@@ -97,6 +99,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
+  setDraftRuntimeSessionPolicy?: Dispatch<SetStateAction<RuntimeSessionPolicy>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
@@ -149,6 +152,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     draftCatIds,
     draftTemporaryParticipants = [],
     draftCwd,
+    draftSessionPolicy = null,
     draftFiles,
     channelFiles,
     setDraftCwd,
@@ -156,6 +160,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftRuntimeSessionPolicy,
     setDraftFiles,
     setChannelFiles,
     setDraftWorkflowShape,
@@ -282,6 +287,11 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         setDraftTemporaryParticipants?.([]);
         setDraftHighlightedCatId(null);
         setDraftCatExecutionTargetOverrides(new Map());
+        setDraftRuntimeSessionPolicy?.({
+          workspaceKind: 'sandbox',
+          workspaceAccess: 'read_write',
+          permissionMode: 'skip',
+        });
         setDraftFiles([]);
         setDraftWorkflowShape?.('sequential');
         setDraftAudienceKeys?.(null);
@@ -339,6 +349,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         body,
         existingCount: initialPayload.chat.channels.length,
         draftCwd,
+        draftSessionPolicy,
         originSurface,
         draftDefaultRecipientCatId,
         participantCatIds: draftCatIds,
@@ -440,6 +451,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
           setDraftCatExecutionTargetOverrides,
+          setDraftRuntimeSessionPolicy,
           setDraftFiles,
           setChannelFiles,
           setDraftWorkflowShape,
@@ -452,6 +464,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
           setDraftCatExecutionTargetOverrides,
+          setDraftRuntimeSessionPolicy,
           setDraftFiles,
           setDraftWorkflowShape,
           setDraftAudienceKeys,
@@ -494,6 +507,9 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     draftCatIds,
     draftTemporaryParticipants,
     draftCwd,
+    draftSessionPolicy?.permissionMode,
+    draftSessionPolicy?.workspaceAccess,
+    draftSessionPolicy?.workspaceKind,
     draftFiles,
     draftEntryKind,
     draftDefaultRecipientCatId,
@@ -512,6 +528,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftRuntimeSessionPolicy,
     setDraftCwd,
     setDraftFiles,
     setDraftAudienceKeys,

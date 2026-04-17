@@ -1,5 +1,6 @@
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 import {
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
@@ -199,6 +200,7 @@ export async function prepareComposerChannelDispatch<
   body: string;
   existingCount: number;
   draftCwd: string | null;
+  draftSessionPolicy?: RuntimeSessionPolicy | null;
   originSurface: PlatformSurfaceId;
   draftDefaultRecipientCatId: string | null;
   participantCatIds: string[];
@@ -231,6 +233,7 @@ export async function prepareComposerChannelDispatch<
     body,
     existingCount,
     draftCwd,
+    draftSessionPolicy,
     originSurface,
     draftDefaultRecipientCatId,
     participantCatIds,
@@ -268,6 +271,7 @@ export async function prepareComposerChannelDispatch<
         originSurface,
         entryKind: 'direct',
         repoPath: draftCwd,
+        draftSessionPolicy,
         defaultRecipientCatId: draftDefaultRecipientCatId,
         participantCatIds,
         temporaryParticipants: temporaryParticipants.map((participant) => ({
@@ -304,6 +308,7 @@ export async function prepareComposerChannelDispatch<
       originSurface,
       entryKind: draftEntryKind,
       repoPath: draftCwd,
+      draftSessionPolicy,
       defaultRecipientCatId: draftDefaultRecipientCatId,
       participantCatIds,
       temporaryParticipants: temporaryParticipants.map((participant) => ({
@@ -366,6 +371,7 @@ export async function prepareWorkspaceSendContext<
   body: string;
   existingCount: number;
   draftCwd: string | null;
+  draftSessionPolicy?: RuntimeSessionPolicy | null;
   originSurface: PlatformSurfaceId;
   draftDefaultRecipientCatId: string | null;
   participantCatIds: string[];
@@ -411,6 +417,7 @@ export async function prepareWorkspaceSendContext<
     body,
     existingCount,
     draftCwd,
+    draftSessionPolicy,
     originSurface,
     draftDefaultRecipientCatId,
     participantCatIds,
@@ -445,6 +452,7 @@ export async function prepareWorkspaceSendContext<
     body,
     existingCount,
     draftCwd,
+    draftSessionPolicy,
     originSurface,
     draftDefaultRecipientCatId,
     participantCatIds,

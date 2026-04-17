@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
-export type PermissionMode = 'full' | 'read_only';
+import {
+  DEFAULT_DRAFT_PERMISSION_MODE,
+  type DraftPermissionMode,
+} from '../../../../shared/runtimeSessionPolicy.js';
 
-export const DEFAULT_PERMISSION_MODE: PermissionMode = 'full';
+export type PermissionMode = DraftPermissionMode;
+
+export const DEFAULT_PERMISSION_MODE: PermissionMode = DEFAULT_DRAFT_PERMISSION_MODE;
 
 const PERMISSION_MODE_LABELS: Record<PermissionMode, string> = {
   full: 'Full access',

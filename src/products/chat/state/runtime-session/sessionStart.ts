@@ -14,6 +14,7 @@ import {
 } from '../runtimeTargeting.js';
 import type { RuntimeEnvelopeCanonicalMetadata } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
+import type { ResolvedChannelRuntimeSessionPolicy } from './policy.js';
 
 export interface RuntimeSessionExecutionTarget {
   provider: string;
@@ -36,8 +37,7 @@ export interface TargetSessionLifecycleMetadata extends RuntimeEnvelopeCanonical
 export async function createOrchestratorTargetRuntimeSession(input: {
   state: ChatState;
   channelId: string;
-  spawnCwd: string | null;
-  workspaceKind: 'source' | 'sandbox';
+  sessionPolicy: ResolvedChannelRuntimeSessionPolicy;
   runtimeClient: RuntimeClient;
   dispatchContextMetadata?: Record<string, unknown>;
   taskExecutionContext: ChannelTaskExecutionContext | undefined;
@@ -54,9 +54,10 @@ export async function createOrchestratorTargetRuntimeSession(input: {
     modelSelection:
       sessionTarget.modelSelection
       ?? createExplicitProviderModelSelection(sessionTarget.model),
-    cwd: input.spawnCwd,
-    workspaceKind: input.workspaceKind,
-    workspaceAccess: 'read_write',
+    cwd: input.sessionPolicy.spawnCwd,
+    workspaceKind: input.sessionPolicy.workspaceKind,
+    workspaceAccess: input.sessionPolicy.workspaceAccess,
+    permissionMode: input.sessionPolicy.permissionMode,
     context: mergeRuntimeInvocationContextMetadata(
       input.runtimeEnvelope.context,
       input.dispatchContextMetadata ?? {},
@@ -83,8 +84,7 @@ export async function createParticipantTargetRuntimeSession(input: {
   state: ChatState;
   channelId: string;
   target: RoutingTarget;
-  spawnCwd: string | null;
-  workspaceKind: 'source' | 'sandbox';
+  sessionPolicy: ResolvedChannelRuntimeSessionPolicy;
   runtimeClient: RuntimeClient;
   dispatchContextMetadata?: Record<string, unknown>;
   taskExecutionContext: ChannelTaskExecutionContext | undefined;
@@ -105,9 +105,10 @@ export async function createParticipantTargetRuntimeSession(input: {
     modelSelection:
       participant.execution.modelSelection
       ?? createExplicitProviderModelSelection(participant.execution.target.model),
-    cwd: input.spawnCwd,
-    workspaceKind: input.workspaceKind,
-    workspaceAccess: 'read_write',
+    cwd: input.sessionPolicy.spawnCwd,
+    workspaceKind: input.sessionPolicy.workspaceKind,
+    workspaceAccess: input.sessionPolicy.workspaceAccess,
+    permissionMode: input.sessionPolicy.permissionMode,
     context: mergeRuntimeInvocationContextMetadata(
       input.runtimeEnvelope.context,
       input.dispatchContextMetadata ?? {},

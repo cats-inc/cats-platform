@@ -79,6 +79,10 @@ import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignm
 import { createUseComposerSubmit } from "./hooks/useWorkspaceComposerSubmit.js";
 import { useWorkspaceGovernanceActions } from "./hooks/useWorkspaceGovernanceActions.js";
 import {
+  createDefaultRuntimeSessionPolicy,
+  type RuntimeSessionPolicy,
+} from "../../../shared/runtimeSessionPolicy.js";
+import {
   buildFolderBrowserContentProps,
   resolveVisibleChatChannelId,
 } from "./appShellPresentation.js";
@@ -236,6 +240,9 @@ export function createWorkspaceProductApp({
         : 3;
     const [draftWorkflowShape, setDraftWorkflowShape] = useState<"sequential" | "concurrent">(
       "sequential",
+    );
+    const [draftSessionPolicy, setDraftSessionPolicy] = useState<RuntimeSessionPolicy>(
+      () => createDefaultRuntimeSessionPolicy(),
     );
     const [draftAudienceKeys, setDraftAudienceKeys] = useState<string[] | null>(null);
     const [activeWorkflowShape, setActiveWorkflowShape] = useState<"sequential" | "concurrent">(
@@ -668,6 +675,7 @@ export function createWorkspaceProductApp({
       setDraftHighlightedCatId,
       setDraftCatExecutionTargetOverrides,
       setDraftWorkflowShape,
+      setDraftRuntimeSessionPolicy: setDraftSessionPolicy,
       setDraftAudienceKeys,
       resetDraftParallelChatTargets,
       createInitialGroupParticipants: supportsStructuredDraftModes
@@ -746,6 +754,7 @@ export function createWorkspaceProductApp({
       draftCatIds,
       draftTemporaryParticipants,
       draftCwd,
+      draftSessionPolicy,
       draftFiles,
       channelFiles,
       setDraftCwd,
@@ -753,6 +762,7 @@ export function createWorkspaceProductApp({
       setDraftTemporaryParticipants,
       setDraftHighlightedCatId,
       setDraftCatExecutionTargetOverrides,
+      setDraftRuntimeSessionPolicy: setDraftSessionPolicy,
       setDraftFiles,
       setChannelFiles,
       setDraftWorkflowShape,
@@ -1118,6 +1128,10 @@ export function createWorkspaceProductApp({
                         ? onRemoveDraftParallelChatTarget
                         : undefined,
                     draftWorkflowShape,
+                    draftRuntimeWorkspaceKind: draftSessionPolicy.workspaceKind,
+                    draftRuntimeWorkspaceAccess: draftSessionPolicy.workspaceAccess,
+                    draftRuntimePermissionMode: draftSessionPolicy.permissionMode,
+                    onDraftRuntimeSessionPolicyChange: setDraftSessionPolicy,
                     onToggleDraftWorkflowShape: supportsStructuredDraftModes
                       ? () =>
                           setDraftWorkflowShape((prev) =>
@@ -1182,4 +1196,3 @@ export function createWorkspaceProductApp({
     );
   };
 }
-

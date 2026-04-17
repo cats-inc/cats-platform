@@ -174,6 +174,11 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
     existingCount: 2,
     originSurface: 'code',
     entryKind: 'solo',
+    draftSessionPolicy: {
+      workspaceKind: 'worktree',
+      workspaceAccess: 'read_only',
+      permissionMode: 'default',
+    },
     draftExecutionTarget: {
       provider: 'claude',
       model: 'claude-opus-4-6',
@@ -186,6 +191,9 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
   assert.equal(input.originSurface, 'code');
   assert.equal(input.roomMode, undefined);
   assert.equal(input.composerMode, 'solo');
+  assert.equal(input.runtimeWorkspaceKind, 'worktree');
+  assert.equal(input.runtimeWorkspaceAccess, 'read_only');
+  assert.equal(input.runtimePermissionMode, 'default');
   assert.equal(input.pendingProvider, 'claude');
   assert.equal(input.pendingModel, 'claude-opus-4-6');
   assert.equal(input.pendingInstance, 'native');

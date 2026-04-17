@@ -65,6 +65,7 @@ import {
   resolveChannelSpawnCwd,
   syncChannelAttachmentsToWorkspace,
 } from '../state/workspace.js';
+import { resolveChannelRuntimeSessionPolicy } from '../state/runtime-session/policy.js';
 import {
   appendClosedRuntimeSessionFailureMessage,
   appendFailedRuntimeSessionMessage,
@@ -677,6 +678,7 @@ export async function persistCatAssignmentUpdate(
         now,
         context.dependencies.companionStore,
       );
+      const sessionPolicy = resolveChannelRuntimeSessionPolicy(resolvedChannel);
       ({
         conversationId,
         containerId,
@@ -693,9 +695,10 @@ export async function persistCatAssignmentUpdate(
         modelSelection:
           updatedCat.execution.modelSelection
           ?? createExplicitProviderModelSelection(updatedCat.execution.target.model),
-        cwd: spawnCwd,
-        workspaceKind: spawnCwd ? 'source' : 'sandbox',
-        workspaceAccess: 'read_write',
+        cwd: sessionPolicy.spawnCwd,
+        workspaceKind: sessionPolicy.workspaceKind,
+        workspaceAccess: sessionPolicy.workspaceAccess,
+        permissionMode: sessionPolicy.permissionMode,
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
       });

@@ -288,6 +288,7 @@ notes.
 | 2026-04-17 | Added a shared draft header-accessory seam so `+New code` can render visible workspace and execution chips on the draft canvas without forking chat/work primitives |
 | 2026-04-17 | Scoped the default `+New code` target slot so solo drafts stop duplicating the execution chip while direct-lane participant stacks still use the lower composer row |
 | 2026-04-17 | Extended the shared copy seam so default `+New code` direct-lane hero text no longer falls back to chat-specific wording such as `Private Chat` |
+| 2026-04-18 | Wired the current `+New code` footer policy chips into create-channel payloads, persisted channel runtime defaults, and runtime session creation so workspace isolation and access policy no longer stop at renderer state |
 | 2026-04-17 | Implemented the first continuity follow-through slices: solo retarget full-transplant semantics, explicit `Start fresh`, same-participant restart transplants for cat/direct rooms, and structured choice-response packaging in continuity transcripts |
 | 2026-04-17 | Left Task 1B.6 open: preceding tool labels and structured choice responses are now carried, but tool-result/file-preview first-slice packaging still needs a final contract |
 | 2026-04-17 | Follow-up slice added token-budgeted semantic transplant fallback, explicit targeted handoff packaging, and fresh-start pre-reset memory flush; Task 1B.5 was corrected back to open because prior regressions only covered current child-local isolation, not an explicit production guard or source-seed rule |

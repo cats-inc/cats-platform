@@ -10,6 +10,7 @@ import type {
 } from '../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 import { buildCatExecutionLabel } from '../../../shared/executionLabel.js';
 import {
   isInternalOrchestratorLabel,
@@ -233,6 +234,7 @@ export function buildNewChatChannelInput(options: {
   originSurface: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string | null;
+  draftSessionPolicy?: RuntimeSessionPolicy | null;
   defaultRecipientCatId?: string | null;
   participantCatIds?: string[];
   temporaryParticipants?: CreateTemporaryParticipantInput[];
@@ -249,6 +251,7 @@ export function buildNewChatChannelInput(options: {
     originSurface,
     entryKind,
     repoPath,
+    draftSessionPolicy,
     defaultRecipientCatId,
     participantCatIds = [],
     temporaryParticipants = [],
@@ -266,6 +269,9 @@ export function buildNewChatChannelInput(options: {
     entryKind: resolvedEntryKind,
     skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
+    runtimeWorkspaceKind: draftSessionPolicy?.workspaceKind,
+    runtimeWorkspaceAccess: draftSessionPolicy?.workspaceAccess,
+    runtimePermissionMode: draftSessionPolicy?.permissionMode,
     temporaryParticipants: temporaryParticipants.length > 0
       ? temporaryParticipants.map((participant) => ({
           participantId: participant.participantId,
@@ -424,6 +430,9 @@ export function createOptimisticDraftPayload(
     activeCatCount: 0,
     repoPath: null,
     chatCwd: null,
+    runtimeWorkspaceKind: null,
+    runtimeWorkspaceAccess: null,
+    runtimePermissionMode: null,
     lastMessageAt: createdAt,
     lastActivatedAt: null,
     composerMode,
@@ -443,6 +452,9 @@ export function createOptimisticDraftPayload(
     unreadCount: 0,
     repoPath: null,
     chatCwd: null,
+    runtimeWorkspaceKind: null,
+    runtimeWorkspaceAccess: null,
+    runtimePermissionMode: null,
     language: null,
     responseLanguage: 'en',
     formationMode: 'manual' as const,
@@ -596,6 +608,9 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
     activeCatCount: normalizedChannel.assignedCats.filter((cat) => cat.status === 'active').length,
     repoPath: normalizedChannel.repoPath,
     chatCwd: normalizedChannel.chatCwd,
+    runtimeWorkspaceKind: normalizedChannel.runtimeWorkspaceKind ?? null,
+    runtimeWorkspaceAccess: normalizedChannel.runtimeWorkspaceAccess ?? null,
+    runtimePermissionMode: normalizedChannel.runtimePermissionMode ?? null,
     lastMessageAt: normalizedChannel.lastMessageAt,
     lastActivatedAt: normalizedChannel.lastActivatedAt,
     composerMode: normalizedChannel.composerMode,

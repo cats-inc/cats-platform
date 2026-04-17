@@ -2,12 +2,14 @@ import type {
   Dispatch,
   SetStateAction,
 } from 'react';
+import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 
 export interface ResetComposerDraftStateOptions<ModelValue, ParticipantValue> {
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
+  setDraftRuntimeSessionPolicy?: Dispatch<SetStateAction<RuntimeSessionPolicy>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<ParticipantValue[]>>;
   setChannelFiles?: Dispatch<SetStateAction<File[]>>;
@@ -21,6 +23,7 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftCatIds,
   setDraftHighlightedCatId,
   setDraftCatExecutionTargetOverrides,
+  setDraftRuntimeSessionPolicy,
   setDraftFiles,
   setDraftTemporaryParticipants,
   setChannelFiles,
@@ -33,6 +36,11 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftTemporaryParticipants?.([]);
   setDraftHighlightedCatId(null);
   setDraftCatExecutionTargetOverrides(new Map<string, ModelValue>());
+  setDraftRuntimeSessionPolicy?.({
+    workspaceKind: 'sandbox',
+    workspaceAccess: 'read_write',
+    permissionMode: 'skip',
+  });
   setDraftFiles([]);
   setChannelFiles?.([]);
   resetDraftParallelChatTargets?.();

@@ -31,6 +31,10 @@ import {
   createSetupBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import {
+  createDefaultRuntimeSessionPolicy,
+  type RuntimeSessionPolicy,
+} from '../../../../shared/runtimeSessionPolicy.js';
 
 export interface WorkspaceNavigationChannelRef {
   id: string;
@@ -113,6 +117,7 @@ export interface UseWorkspaceAppNavigationActionsOptions<
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<TDraftParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, TExecutionTargetValue>>>;
+  setDraftRuntimeSessionPolicy?: Dispatch<SetStateAction<RuntimeSessionPolicy>>;
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
   resetDraftParallelChatTargets?: () => void;
@@ -147,6 +152,7 @@ export function useWorkspaceAppNavigationActions<
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftRuntimeSessionPolicy,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
@@ -169,6 +175,7 @@ export function useWorkspaceAppNavigationActions<
     setDraftTemporaryParticipants?.([]);
     setDraftHighlightedCatId(null);
     setDraftCatExecutionTargetOverrides(new Map());
+    setDraftRuntimeSessionPolicy?.(createDefaultRuntimeSessionPolicy());
     setDraftWorkflowShape?.('sequential');
     setDraftAudienceKeys?.(null);
     resetDraftParallelChatTargets?.();
@@ -183,6 +190,7 @@ export function useWorkspaceAppNavigationActions<
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftRuntimeSessionPolicy,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
