@@ -76,6 +76,15 @@ interface DragState {
   startY: number;
   currentX: number;
   currentY: number;
+  /** Pill centre at drag start. Visible pill position during drag is
+      basePillX/Y + (currentX/Y - startX/Y) so a click at the pill edge does
+      not jump the pill under the pointer. */
+  basePillX: number;
+  basePillY: number;
+  /** Becomes true once the pointer moves past the drag-movement threshold.
+      Pre-activation is indistinguishable from a click (no dock slots
+      revealed, no preview, no collapse). */
+  activated: boolean;
   overSlot: GuideCatDockSlotKind | null;
   escaped: boolean;
 }
@@ -184,14 +193,16 @@ export function GuideCatPlacementProvider({
   );
 
   const projection: GuideCatProjection = useMemo(() => {
-    if (!drag) {
+    if (!drag || !drag.activated) {
       return baseProjection;
     }
+    const dx = drag.currentX - drag.startX;
+    const dy = drag.currentY - drag.startY;
     if (drag.mode === 'floating') {
       return {
         kind: 'floating',
-        x: clampToViewport(drag.currentX, viewport.width),
-        y: clampToViewport(drag.currentY, viewport.height),
+        x: clampToViewport(drag.basePillX + dx, viewport.width),
+        y: clampToViewport(drag.basePillY + dy, viewport.height),
         overrideReason: null,
       };
     }
@@ -201,8 +212,8 @@ export function GuideCatPlacementProvider({
     if (drag.mode === 'docked' && drag.escaped) {
       return {
         kind: 'floating',
-        x: clampToViewport(drag.currentX, viewport.width),
-        y: clampToViewport(drag.currentY, viewport.height),
+        x: clampToViewport(drag.basePillX + dx, viewport.width),
+        y: clampToViewport(drag.basePillY + dy, viewport.height),
         overrideReason: null,
       };
     }
@@ -212,7 +223,8 @@ export function GuideCatPlacementProvider({
   const dockSlotState: Record<GuideCatDockSlotKind, DockSlotState> = useMemo(() => {
     const activeSlot = resolveActiveDockSlot(surface);
     const dockedActive = placement === 'docked' && activeSlot != null;
-    const previewSlot = drag?.mode === 'floating' ? drag.overSlot : null;
+    const previewSlot =
+      drag?.mode === 'floating' && drag.activated ? drag.overSlot : null;
     return {
       lobby: {
         active: dockedActive && activeSlot === 'lobby',
@@ -279,15 +291,17 @@ export function GuideCatPlacementProvider({
         currentX: state.currentX,
         currentY: state.currentY,
       });
+      const pillX = state.basePillX + (state.currentX - state.startX);
+      const pillY = state.basePillY + (state.currentY - state.startY);
       if (state.mode === 'floating' && state.overSlot) {
         commitDockRelease(state.overSlot);
         suppressClickRef.current = true;
       } else if (state.mode === 'floating' && moved) {
-        commitFloatingRelease(state.currentX, state.currentY);
+        commitFloatingRelease(pillX, pillY);
         suppressClickRef.current = true;
       } else if (state.mode === 'docked' && state.escaped) {
         onCommit({ placement: 'floating' });
-        commitFloatingRelease(state.currentX, state.currentY);
+        commitFloatingRelease(pillX, pillY);
         suppressClickRef.current = true;
       }
       setDrag(null);
@@ -297,12 +311,35 @@ export function GuideCatPlacementProvider({
 
   const handleMove = useCallback(
     (event: PointerEvent, active: DragState) => {
-      refreshSlotRects();
       const nextState: DragState = {
         ...active,
         currentX: event.clientX,
         currentY: event.clientY,
       };
+
+      if (!active.activated) {
+        const crossed = hasDragMovement({
+          startX: active.startX,
+          startY: active.startY,
+          currentX: event.clientX,
+          currentY: event.clientY,
+        });
+        if (!crossed) {
+          setDrag(nextState);
+          return;
+        }
+        // First real drag motion: reveal dock slots, suppress any open
+        // guide-cat panel, hide tooltip, and read slot rects for corridor
+        // detection in the same synchronous block.
+        nextState.activated = true;
+        if (typeof document !== 'undefined') {
+          document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
+        }
+        hideGlobalTooltip();
+        presentation.collapse();
+        refreshSlotRects();
+      }
+
       if (active.mode === 'floating') {
         const target = resolveActiveDockSlot(surface);
         if (target) {
@@ -330,7 +367,7 @@ export function GuideCatPlacementProvider({
       }
       setDrag(nextState);
     },
-    [refreshSlotRects, surface],
+    [presentation, refreshSlotRects, surface],
   );
 
   const handleUp = useCallback(
@@ -369,16 +406,20 @@ export function GuideCatPlacementProvider({
     };
   }, [drag, handleMove, handleUp]);
 
+  const dragActivated = Boolean(drag?.activated);
+
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    if (drag) {
+    if (dragActivated) {
+      // handleMove already adds the class synchronously so slot rects read
+      // correctly on the first corridor check; reinforce here in case the
+      // render cycle somehow raced, and clean up when the drag ends.
       document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
-      hideGlobalTooltip();
       return () => {
         document.body.classList.remove(GUIDE_CAT_DRAGGING_BODY_CLASS);
       };
     }
-  }, [drag]);
+  }, [dragActivated]);
 
   const onFloatingPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
@@ -386,23 +427,19 @@ export function GuideCatPlacementProvider({
       event.preventDefault();
       event.stopPropagation();
       suppressClickRef.current = false;
-      hideGlobalTooltip();
-      // Collapse any open welcome-peek or panel so it does not ride along
-      // with the dragged pill.
-      presentation.collapse();
-      // Reveal the dock slots now so refreshSlotRects reads valid geometry
-      // instead of zero rects from display:none. useEffect below keeps the
-      // class in sync for the rest of the drag lifecycle.
-      if (typeof document !== 'undefined') {
-        document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
-      }
-      refreshSlotRects();
       const element = event.currentTarget;
+      const rect = element.getBoundingClientRect();
+      const basePillX = rect.left + rect.width / 2;
+      const basePillY = rect.top + rect.height / 2;
       try {
         element.setPointerCapture(event.pointerId);
       } catch {
         /* ignore */
       }
+      // Do NOT reveal dock slots, collapse the panel, or hide tooltips yet:
+      // pointerdown may turn out to be a click, in which case no drag UI
+      // should flash. Those side effects run in handleMove once movement
+      // passes the drag-movement threshold.
       setDrag({
         mode: 'floating',
         pointerId: event.pointerId,
@@ -410,11 +447,14 @@ export function GuideCatPlacementProvider({
         startY: event.clientY,
         currentX: event.clientX,
         currentY: event.clientY,
+        basePillX,
+        basePillY,
+        activated: false,
         overSlot: null,
         escaped: false,
       });
     },
-    [presentation, refreshSlotRects],
+    [],
   );
 
   const onDockedPointerDown = useCallback(
@@ -423,13 +463,10 @@ export function GuideCatPlacementProvider({
       event.preventDefault();
       event.stopPropagation();
       suppressClickRef.current = false;
-      hideGlobalTooltip();
-      presentation.collapse();
-      if (typeof document !== 'undefined') {
-        document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
-      }
-      refreshSlotRects();
       const element = event.currentTarget;
+      const rect = element.getBoundingClientRect();
+      const basePillX = rect.left + rect.width / 2;
+      const basePillY = rect.top + rect.height / 2;
       try {
         element.setPointerCapture(event.pointerId);
       } catch {
@@ -442,11 +479,14 @@ export function GuideCatPlacementProvider({
         startY: event.clientY,
         currentX: event.clientX,
         currentY: event.clientY,
+        basePillX,
+        basePillY,
+        activated: false,
         overSlot: null,
         escaped: false,
       });
     },
-    [presentation, refreshSlotRects],
+    [],
   );
 
   const consumePillClickSuppression = useCallback(() => {
@@ -466,7 +506,7 @@ export function GuideCatPlacementProvider({
       onDockedPointerDown,
       consumePillClickSuppression,
       presentation,
-      dragActive: drag !== null,
+      dragActive: dragActivated,
     }),
     [
       guideCat,
@@ -477,7 +517,7 @@ export function GuideCatPlacementProvider({
       onDockedPointerDown,
       consumePillClickSuppression,
       presentation,
-      drag,
+      dragActivated,
     ],
   );
 
