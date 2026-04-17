@@ -108,7 +108,7 @@ test('resolveEffectiveFloatingAnchor falls back to the shared default when null'
   );
 });
 
-test('isPointerOverSlotCorridor uses a 72px padding around the slot rect', () => {
+test('isPointerOverSlotCorridor uses a 24px padding around the slot rect', () => {
   const slotRect = { left: 200, top: 400, right: 260, bottom: 440 };
 
   assert.equal(
@@ -116,19 +116,19 @@ test('isPointerOverSlotCorridor uses a 72px padding around the slot rect', () =>
     true,
   );
   assert.equal(
-    isPointerOverSlotCorridor({ pointerX: 160, pointerY: 420, slotRect }),
+    isPointerOverSlotCorridor({ pointerX: 180, pointerY: 420, slotRect }),
     true,
   );
   assert.equal(
-    isPointerOverSlotCorridor({ pointerX: 128, pointerY: 420, slotRect }),
+    isPointerOverSlotCorridor({ pointerX: 176, pointerY: 420, slotRect }),
     true,
   );
   assert.equal(
-    isPointerOverSlotCorridor({ pointerX: 127, pointerY: 420, slotRect }),
+    isPointerOverSlotCorridor({ pointerX: 175, pointerY: 420, slotRect }),
     false,
   );
   assert.equal(
-    isPointerOverSlotCorridor({ pointerX: 50, pointerY: 420, slotRect }),
+    isPointerOverSlotCorridor({ pointerX: 150, pointerY: 420, slotRect }),
     false,
   );
   assert.equal(

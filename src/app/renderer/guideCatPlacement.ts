@@ -43,7 +43,10 @@ export function resolveGuideCatSurfaceClass(pathname: string): GuideCatSurfaceCl
 const SAFE_AREA_MARGIN = 16;
 const FLOATING_PILL_DIAMETER = 28;
 export const FLOATING_PILL_RADIUS_PX = FLOATING_PILL_DIAMETER / 2;
-const DOCK_CORRIDOR_PADDING = 72;
+/* Padding around the dock slot rect that counts as "close enough to commit a
+   dock on release". Keep this tight — the slot itself is only ~32-44px, so a
+   larger padding would make the preview trigger from uncomfortably far away. */
+const DOCK_CORRIDOR_PADDING = 24;
 export const GUIDE_CAT_UNDOCK_ESCAPE_THRESHOLD_PX = 24;
 export const GUIDE_CAT_DRAG_MOVEMENT_THRESHOLD_PX = 4;
 
