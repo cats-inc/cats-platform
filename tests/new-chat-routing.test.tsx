@@ -213,6 +213,25 @@ test('buildNewChatChannelInput defaults repo-backed drafts to source workspace a
   assert.equal(input.runtimePermissionMode, 'skip');
 });
 
+test('buildNewChatChannelInput lets explicit workspace overrides win over repo defaults', () => {
+  const input = buildNewChatChannelInput({
+    body: 'Stay isolated even with a repo selected',
+    existingCount: 0,
+    originSurface: 'code',
+    entryKind: 'solo',
+    repoPath: 'C:/repo/cats-platform',
+    draftSessionPolicy: {
+      workspaceKind: 'sandbox',
+      workspaceAccess: 'read_only',
+      permissionMode: 'whitelist',
+    },
+  });
+
+  assert.equal(input.runtimeWorkspaceKind, 'sandbox');
+  assert.equal(input.runtimeWorkspaceAccess, 'read_only');
+  assert.equal(input.runtimePermissionMode, 'default');
+});
+
 test('buildNewChatChannelInput marks direct drafts explicitly and preserves direct room mode', () => {
   const input = buildNewChatChannelInput({
     body: 'Wake up and check Telegram',

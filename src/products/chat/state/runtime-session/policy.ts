@@ -1,6 +1,6 @@
 import type { ChatChannelState } from '../../api/contracts.js';
 import type { RuntimeSessionCreateInput } from '../../../../runtime/client.js';
-import { resolveStoredRuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+import { completeRuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 
 import { resolveChannelSpawnCwd } from '../workspace.js';
 
@@ -22,13 +22,10 @@ export function resolveChannelRuntimeSessionPolicy(
   >,
 ): ResolvedChannelRuntimeSessionPolicy {
   const spawnCwd = resolveChannelSpawnCwd(channel.repoPath, channel.chatCwd);
-  const storedPolicy = resolveStoredRuntimeSessionPolicy({
-    repoPath: channel.repoPath,
-    policy: {
-      workspaceKind: channel.runtimeWorkspaceKind ?? undefined,
-      workspaceAccess: channel.runtimeWorkspaceAccess ?? undefined,
-      permissionMode: channel.runtimePermissionMode ?? undefined,
-    },
+  const storedPolicy = completeRuntimeSessionPolicy({
+    workspaceKind: channel.runtimeWorkspaceKind ?? undefined,
+    workspaceAccess: channel.runtimeWorkspaceAccess ?? undefined,
+    permissionMode: channel.runtimePermissionMode ?? undefined,
   });
 
   return {

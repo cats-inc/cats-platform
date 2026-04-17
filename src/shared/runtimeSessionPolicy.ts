@@ -26,21 +26,12 @@ export function createDefaultRuntimeSessionPolicy(): RuntimeSessionPolicy {
   };
 }
 
-export function resolveStoredRuntimeSessionPolicy(options: {
-  repoPath?: string | null;
-  policy?: Partial<RuntimeSessionPolicy> | null;
-}): RuntimeSessionPolicy {
-  const defaults = createDefaultRuntimeSessionPolicy();
-  const basePolicy = hasRepoPath(options.repoPath)
-    ? {
-        ...defaults,
-        // "source" means "cwd-backed workspace" and does not imply git is available.
-        workspaceKind: 'source' as const,
-      }
-    : defaults;
+export function completeRuntimeSessionPolicy(
+  policy?: Partial<RuntimeSessionPolicy> | null,
+): RuntimeSessionPolicy {
   const resolvedPolicy = {
-    ...basePolicy,
-    ...(options.policy ?? {}),
+    ...createDefaultRuntimeSessionPolicy(),
+    ...(policy ?? {}),
   };
 
   if (resolvedPolicy.workspaceAccess === 'read_only') {
@@ -52,6 +43,17 @@ export function resolveStoredRuntimeSessionPolicy(options: {
   }
 
   return resolvedPolicy;
+}
+
+export function resolveCreateRuntimeSessionPolicy(options: {
+  repoPath?: string | null;
+  policy?: Partial<RuntimeSessionPolicy> | null;
+}): RuntimeSessionPolicy {
+  return completeRuntimeSessionPolicy({
+    // "source" means "cwd-backed workspace" and does not imply git is available.
+    workspaceKind: hasRepoPath(options.repoPath) ? 'source' : undefined,
+    ...(options.policy ?? {}),
+  });
 }
 
 export function resolveDraftWorkspaceModeFromRuntimeKind(

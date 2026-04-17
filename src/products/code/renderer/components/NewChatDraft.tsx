@@ -22,9 +22,9 @@ import {
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 import {
   createDefaultRuntimeSessionPolicy,
+  resolveCreateRuntimeSessionPolicy,
   resolveDraftPermissionModeFromRuntimeAccess,
   resolveDraftWorkspaceModeFromRuntimeKind,
-  resolveStoredRuntimeSessionPolicy,
   resolveRuntimePermissionPolicyFromDraft,
   resolveRuntimeWorkspaceKindFromDraft,
 } from '../../../../shared/runtimeSessionPolicy.js';
@@ -183,7 +183,7 @@ export function NewChatDraft(props: NewChatDraftProps) {
     return <ChatNewChatDraft {...props} />;
   }
 
-  const currentSessionPolicy = resolveStoredRuntimeSessionPolicy({
+  const currentSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath: props.draftCwd,
     policy: props.draftRuntimeSessionPolicy ?? defaultSessionPolicy,
   });

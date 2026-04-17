@@ -35,6 +35,7 @@ import {
   normalizePlatformSurface,
   normalizePlatformSurfaceList,
 } from '../../../../shared/platformSurfaces.js';
+import { resolveCreateRuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 import { normalizeRoomRouting } from '../room-routing/snapshot.js';
 import {
   asRecord,
@@ -310,6 +311,32 @@ export function normalizeChannel(
           || Boolean(roomRouting.defaultRecipientId)
         ? 'cat_led'
         : 'solo';
+  const repoPath = readNullableString(channelRecord.repoPath);
+  const rawRuntimeWorkspaceKind = readNullableString(channelRecord.runtimeWorkspaceKind);
+  const rawRuntimeWorkspaceAccess = readNullableString(channelRecord.runtimeWorkspaceAccess);
+  const rawRuntimePermissionMode = readNullableString(channelRecord.runtimePermissionMode);
+  const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
+    repoPath,
+    policy: {
+      workspaceKind:
+        rawRuntimeWorkspaceKind === 'source'
+        || rawRuntimeWorkspaceKind === 'sandbox'
+        || rawRuntimeWorkspaceKind === 'worktree'
+          ? rawRuntimeWorkspaceKind
+          : undefined,
+      workspaceAccess:
+        rawRuntimeWorkspaceAccess === 'read_write'
+        || rawRuntimeWorkspaceAccess === 'read_only'
+          ? rawRuntimeWorkspaceAccess
+          : undefined,
+      permissionMode:
+        rawRuntimePermissionMode === 'skip'
+        || rawRuntimePermissionMode === 'default'
+        || rawRuntimePermissionMode === 'whitelist'
+          ? rawRuntimePermissionMode
+          : undefined,
+    },
+  });
 
   return {
     id: channelId,
@@ -320,8 +347,11 @@ export function normalizeChannel(
     recoverableDirectLaneCatId: readNullableString(channelRecord.recoverableDirectLaneCatId),
     status,
     unreadCount: readNumber(channelRecord.unreadCount),
-    repoPath: readNullableString(channelRecord.repoPath),
+    repoPath,
     chatCwd: readNullableString(channelRecord.chatCwd),
+    runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
+    runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
+    runtimePermissionMode: runtimeSessionPolicy.permissionMode,
     language: readNullableString(channelRecord.language),
     responseLanguage: readString(channelRecord.responseLanguage, 'en'),
     formationMode,

@@ -11,8 +11,7 @@ import type {
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
-  createDefaultRuntimeSessionPolicy,
-  resolveStoredRuntimeSessionPolicy,
+  resolveCreateRuntimeSessionPolicy,
   type RuntimeSessionPolicy,
 } from '../../../shared/runtimeSessionPolicy.js';
 import { buildCatExecutionLabel } from '../../../shared/executionLabel.js';
@@ -266,7 +265,7 @@ export function buildNewChatChannelInput(options: {
   const resolvedEntryKind = entryKind
     ?? (normalizedLeadCatId || normalizedParticipantCatIds.length > 0 ? 'group' : 'solo');
   const directLeadCatId = normalizedLeadCatId ?? normalizedParticipantCatIds[0] ?? null;
-  const runtimeSessionPolicy = resolveStoredRuntimeSessionPolicy({
+  const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath,
     policy: draftSessionPolicy,
   });
@@ -419,6 +418,7 @@ export function createOptimisticDraftPayload(
     pendingModel?: string | null;
     pendingInstance?: string | null;
     pendingModelSelection?: ProviderModelSelection | null;
+    repoPath?: string | null;
     runtimeSessionPolicy?: RuntimeSessionPolicy | null;
   } = {},
 ): { payload: AppShellPayload; channelId: string } {
@@ -428,7 +428,10 @@ export function createOptimisticDraftPayload(
   const topic = createDraftChannelTopic(body);
   const message = createOptimisticUserMessage(channelId, body, payload.ownerDisplayName, createdAt);
   const composerMode = options.composerMode ?? (defaultRecipientCatId ? 'cat_led' : 'solo');
-  const runtimeSessionPolicy = options.runtimeSessionPolicy ?? createDefaultRuntimeSessionPolicy();
+  const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
+    repoPath: options.repoPath,
+    policy: options.runtimeSessionPolicy,
+  });
   const channelSummary: ChatChannelSummary = {
     id: channelId,
     title,
