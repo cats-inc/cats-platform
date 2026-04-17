@@ -627,10 +627,20 @@ export function persistGuideCatPlacementPreference(patch: {
   placement?: GuideCatPlacement;
   floatingAnchor?: GuideCatFloatingAnchor | null;
 }): void {
+  // Map the internal patch keys to the server's PlatformPreferencesUpdateBody
+  // keys; without this remapping the server silently ignores the fields and
+  // the dock release never actually persists.
+  const body: Record<string, unknown> = {};
+  if (patch.placement !== undefined) {
+    body.guideCatPlacement = patch.placement;
+  }
+  if (patch.floatingAnchor !== undefined) {
+    body.guideCatFloatingAnchor = patch.floatingAnchor;
+  }
   void fetch('/api/platform/preferences', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(patch),
+    body: JSON.stringify(body),
   })
     .then((response) => {
       if (response.ok) {
