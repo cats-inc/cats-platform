@@ -72,7 +72,7 @@ structured seams such as:
 
 - copy override objects
 - header accessory components
-- section builders
+- section builders, if a later slice needs product-owned side-panel composition
 - target-slot components
 
 The first `+New code` slices now concretely use:

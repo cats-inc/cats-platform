@@ -443,6 +443,33 @@ test('direct-lane draft keeps private chat copy', () => {
   assert.doesNotMatch(markup, /Cat-led Chat/u);
 });
 
+test('direct-lane draft with an active Telegram binding keeps the bound private-lane copy', () => {
+  const payload = createPayload();
+  payload.chat.botBindings = [
+    {
+      id: 'binding-telegram',
+      platform: 'telegram',
+      status: 'active',
+      catId: 'cat-lead',
+      label: 'Telegram',
+    },
+  ] as typeof payload.chat.botBindings;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload,
+        draftDefaultRecipientCatId: 'cat-lead',
+        allowAddCat: false,
+      })}
+    />,
+  );
+
+  assert.match(markup, /Private Chat/u);
+  assert.match(markup, /Telegram-bound private lane\./u);
+  assert.doesNotMatch(markup, /Private lane for this Cat\./u);
+});
+
 test('draft uses externally supplied starter suggestions before static fallback prompts', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft

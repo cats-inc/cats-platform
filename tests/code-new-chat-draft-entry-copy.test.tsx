@@ -127,7 +127,7 @@ test('new code default draft keeps empty execution state on-canvas when no execu
   assert.match(markup, /class="draftHeaderAccessory"/u);
 });
 
-test('new code solo drafts with a selected participant but no direct-lane route do not render the composer stack', () => {
+test('new code solo drafts without an explicit direct-lane route do not render the composer stack', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({

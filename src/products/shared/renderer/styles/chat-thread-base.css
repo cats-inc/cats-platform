@@ -419,8 +419,6 @@
 }
 
 .draftHeaderAccessory {
-  display: flex;
-  justify-content: center;
   margin: 0 0 20px;
 }
 
@@ -441,14 +439,16 @@
   background: rgba(255, 255, 255, 0.72);
   color: var(--muted);
   font-size: 0.78rem;
-  white-space: nowrap;
-  max-width: 220px;
-  overflow: hidden;
+  min-width: 0;
 }
 
 .draftContextChipLabel {
+  display: block;
+  min-width: 0;
+  max-width: min(100%, 28ch);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .draftContextChipClickable {

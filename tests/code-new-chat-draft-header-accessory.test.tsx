@@ -26,7 +26,7 @@ test('new code header accessory renders a distinct empty workspace chip state wi
     <NewCodeDraftHeaderAccessory {...createProps()} />,
   );
 
-  assert.match(markup, /class="draftContextChip draftContextChipClickable draftContextChipEmpty"/u);
+  assert.match(markup, /class="[^"]*draftContextChip[^"]*draftContextChipClickable[^"]*draftContextChipEmpty/u);
   assert.match(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /data-tooltip="Choose workspace"/u);
 });
@@ -40,7 +40,7 @@ test('new code header accessory shows the selected workspace path as tooltip met
     />,
   );
 
-  assert.ok(markup.includes('data-tooltip="C:\\repo\\cats-platform"'));
+  assert.match(markup, /data-tooltip="C:\\repo\\cats-platform"/u);
   assert.doesNotMatch(markup, /draftContextChipEmpty/u);
 });
 
@@ -53,6 +53,6 @@ test('new code header accessory forwards disabled state to both draft context co
     />,
   );
 
-  assert.match(markup, /class="draftContextChip draftContextChipClickable draftContextChipEmpty" disabled=""/u);
+  assert.match(markup, /class="[^"]*draftContextChip[^"]*draftContextChipClickable[^"]*draftContextChipEmpty[^"]*" disabled=""/u);
   assert.match(markup, /class="modelSelectorChip" disabled=""/u);
 });

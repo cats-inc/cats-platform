@@ -89,11 +89,11 @@ export interface WorkspaceNewChatDraftCopy {
   folderEmptyState?: string;
 }
 
-export type WorkspaceNewChatDraftSectionId = 'cats' | 'execution' | 'cwd';
-
-function isWorkspaceNewChatDraftSectionId(value: string): value is WorkspaceNewChatDraftSectionId {
-  return value === 'cats' || value === 'execution' || value === 'cwd';
-}
+export type WorkspaceNewChatDraftSectionId =
+  | 'cats'
+  | 'execution'
+  | 'cwd'
+  | (string & {});
 
 const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
   greeting: 'Meow. Ready when you are.',
@@ -259,7 +259,7 @@ export function WorkspaceNewChatDraft({
     ? [defaultRecipientCat.id, ...draftCatIds.filter((id) => id !== defaultRecipientCat.id)]
     : draftCatIds;
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<WorkspaceNewChatDraftSectionId>('cats');
+  const [sidePanelSection, setSidePanelSection] = useState<WorkspaceNewChatDraftSectionId | null>('cats');
 
   function openSidePanelTo(section: WorkspaceNewChatDraftSectionId): void {
     setSidePanelOpen(true);
@@ -490,11 +490,7 @@ export function WorkspaceNewChatDraft({
         <SidePanel
           title={resolvedCopy.sidePanelTitle}
           activeSection={sidePanelSection}
-          onSectionToggle={isSubmittingFirstTurn ? () => {} : (sectionId) => {
-            if (isWorkspaceNewChatDraftSectionId(sectionId)) {
-              switchSection(sectionId);
-            }
-          }}
+          onSectionToggle={isSubmittingFirstTurn ? () => {} : (sectionId) => switchSection(sectionId)}
           onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
           className="chatPaneSidePanel"
           sections={buildDraftSidePanelSections()}

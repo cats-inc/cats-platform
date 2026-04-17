@@ -19,7 +19,7 @@ export function NewCodeDraftHeaderAccessory({
     : copy.executionActionLabel;
 
   return (
-    <div className="draftHeaderAccessoryRow chipRow">
+    <div className="draftHeaderAccessoryRow">
       <button
         type="button"
         className={`draftContextChip draftContextChipClickable${hasWorkspace ? '' : ' draftContextChipEmpty'}`}
