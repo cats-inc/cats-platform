@@ -198,6 +198,9 @@ group-join modes.
         shared composer/panel mechanics
       - second slice: add visible workspace/execution draft context chips via
         a shared header-accessory seam and a code-owned accessory component
+      - third slice: keep the solo execution-target chip in that header row
+        and reserve the lower composer target slot for direct-lane participant
+        stacks only
 - [ ] Task 4.3: Ensure `+Team code` exposes workflow-policy configuration
 - [ ] Task 4.4: Ensure `+Peer code` exposes branch roles and automation-policy
       configuration
@@ -281,6 +284,7 @@ notes.
 | 2026-04-17 | Reserved SPEC-068 / ADR-067 for the first `+New code` slice and started moving default Code draft ownership out of the chat-specific draft re-export path |
 | 2026-04-17 | Added continuity follow-through under the same plan so same-chat solo retarget, parallel child continuity, and excerpt-bootstrap removal stay attached to the shared semantics work |
 | 2026-04-17 | Added a shared draft header-accessory seam so `+New code` can render visible workspace and execution chips on the draft canvas without forking chat/work primitives |
+| 2026-04-17 | Scoped the default `+New code` target slot so solo drafts stop duplicating the execution chip while direct-lane participant stacks still use the lower composer row |
 
 ---
 

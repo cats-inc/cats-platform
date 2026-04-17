@@ -169,7 +169,9 @@ as:
 
 The first slice does not yet define the final visual language for
 worktree/permission chips, but it does introduce a code-owned chip row for the
-current workspace and execution target.
+current workspace and execution target. In solo `+New code`, that header row
+is the primary execution-target chrome; the lower composer target slot remains
+reserved for direct-lane participant stacks.
 
 ## Dependencies
 

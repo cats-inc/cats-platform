@@ -597,14 +597,19 @@ export interface NewChatDraftProps extends Omit<
   | 'ProviderModelFieldsComponent'
   | 'CatAvatarRowComponent'
   | 'FolderBrowserContentComponent'
-> {}
+> {
+  DraftTargetSlotComponent?: ComponentType<DraftTargetSlotProps>;
+}
 
-export function NewChatDraft(props: NewChatDraftProps) {
+export function NewChatDraft({
+  DraftTargetSlotComponent = WorkspaceNewChatDraftTargetSlot,
+  ...props
+}: NewChatDraftProps) {
   return (
     <WorkspaceNewChatDraft
       {...props}
       ComposerCatStackComponent={ComposerCatStack}
-      DraftTargetSlotComponent={WorkspaceNewChatDraftTargetSlot}
+      DraftTargetSlotComponent={DraftTargetSlotComponent}
       ModelSelectorChipComponent={ModelSelectorChip}
       ProviderModelFieldsComponent={ProviderModelFields}
       CatAvatarRowComponent={CatAvatarRow}

@@ -106,10 +106,11 @@ test('new code default draft renders visible workspace and execution session chi
       })}
     />,
   );
+  const modelChipCount = markup.match(/class="modelSelectorChip"/gu)?.length ?? 0;
 
   assert.match(markup, /What should this code session build, fix, or investigate\?/u);
   assert.match(markup, /Choose workspace/u);
-  assert.match(markup, /class="modelSelectorChip"/u);
+  assert.equal(modelChipCount, 1);
   assert.doesNotMatch(markup, /How can I help you today\?/u);
   assert.doesNotMatch(markup, /class="audienceChip"/u);
 });
@@ -120,6 +121,19 @@ test('new code default draft keeps empty execution state on-canvas when no execu
   assert.match(markup, /Choose workspace/u);
   assert.match(markup, /Choose execution target/u);
   assert.match(markup, /class="draftHeaderAccessory"/u);
+});
+
+test('new code direct-lane drafts keep the participant stack in the composer row', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        draftCatIds: ['cat-lead'],
+        draftDefaultRecipientCatId: 'cat-lead',
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="composerCatStack"/u);
 });
 
 test('team code and peer code drafts continue to delegate to the shared chat draft flow', () => {

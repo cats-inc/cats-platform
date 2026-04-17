@@ -8,6 +8,7 @@ import {
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
 import { NewCodeDraftHeaderAccessory } from './NewCodeDraftHeaderAccessory.js';
+import { NewCodeDraftTargetSlot } from './NewCodeDraftTargetSlot.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   greeting: 'Ready to code.',
@@ -85,6 +86,7 @@ export function NewChatDraft(props: NewChatDraftProps) {
   return (
     <WorkspaceNewChatDraft
       {...workspaceProps}
+      DraftTargetSlotComponent={NewCodeDraftTargetSlot}
       HeaderAccessoryComponent={NewCodeDraftHeaderAccessory}
       copy={NEW_CODE_DRAFT_COPY}
     />
