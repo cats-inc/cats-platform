@@ -218,7 +218,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
     const shouldRestartSoloSession = channelState.composerMode === 'solo'
       && (
         orchestratorLease?.provider !== executionTarget.provider
-        || (channelState.orchestratorLease.instance ?? null) !== executionTarget.instance
+        || orchestratorLease?.instance !== executionTarget.instance
         || orchestratorLease?.model !== executionTarget.model
       );
 

@@ -17,6 +17,7 @@ export interface ParticipantLeaseAttachment {
   status: ParticipantExecutionLease['status'];
   cwd: string | null;
   provider: string | null;
+  instance: string | null;
   model: string | null;
   startedAt: string | null;
   lastUsedAt: string | null;
@@ -30,6 +31,7 @@ export interface OrchestratorLeaseAttachment {
   status: ParticipantExecutionLease['status'];
   cwd: string | null;
   provider: string | null;
+  instance: string | null;
   model: string | null;
   startedAt: string | null;
   lastUsedAt: string | null;
@@ -227,6 +229,7 @@ export function resolveParticipantLeaseAttachment(
     status: lease.status,
     cwd: lease.cwd?.trim() || null,
     provider: lease.provider?.trim() || null,
+    instance: lease.instance?.trim() || null,
     model: lease.model?.trim() || null,
     startedAt: lease.startedAt ?? null,
     lastUsedAt: lease.lastUsedAt ?? null,
@@ -268,6 +271,7 @@ export function resolveOrchestratorLeaseAttachment(
     status: lease.status,
     cwd: lease.cwd?.trim() || null,
     provider: lease.provider?.trim() || null,
+    instance: lease.instance?.trim() || null,
     model: lease.model?.trim() || null,
     startedAt: lease.startedAt ?? null,
     lastUsedAt: lease.lastUsedAt ?? null,
