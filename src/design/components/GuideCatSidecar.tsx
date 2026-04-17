@@ -8,7 +8,7 @@ import {
   type Ref,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useConfirmDialog, ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog.js';
 
@@ -437,6 +437,7 @@ export function GuideCatSidecar({
   unreadCount,
   onDismissed,
 }: GuideCatSidecarProps) {
+  const location = useLocation();
   const {
     projection,
     presentation,
@@ -465,8 +466,9 @@ export function GuideCatSidecar({
   const panelStyle: CSSProperties = {
     left: `${panelOriginX}px`,
   };
-  const surfaceMode: GuideCatSidecarSurfaceMode =
-    projection.kind === 'floating' ? 'product' : 'hidden';
+  const surfaceMode: GuideCatSidecarSurfaceMode = resolveGuideCatSidecarSurfaceMode(
+    location.pathname,
+  );
 
   return createPortal(
     <SidecarContent

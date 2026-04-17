@@ -419,12 +419,12 @@ export function GuideCatPlacementProvider({
 
   const dragActivated = Boolean(drag?.activated);
 
-  /* Match the pre-refactor offsets: product/workspace panel sticks at the
-   * canvas left edge (= sidebar right edge + 2px); lobby panel starts flush
-   * at the viewport edge. */
+  /* Match the pre-refactor offsets: product/workspace panel sticks right
+   * against the sidebar right edge; lobby panel starts flush at the viewport
+   * edge. */
   const panelOriginX = useMemo(() => {
     if (surface === 'workspace' && sidebarRight != null) {
-      return Math.max(2, Math.round(sidebarRight) + 2);
+      return Math.max(0, Math.round(sidebarRight));
     }
     return 0;
   }, [surface, sidebarRight]);
