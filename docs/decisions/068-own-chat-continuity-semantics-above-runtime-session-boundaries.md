@@ -5,7 +5,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -33,7 +33,10 @@ Those are important delivery details, but they are not the right source of
 truth for continuity semantics. If the product lets continuity meaning drift
 with those mechanisms, the user-visible behavior becomes arbitrary:
 
-- same-chat solo retarget may silently lose continuity
+- same-chat solo retarget silently loses continuity today when provider/model
+  switching restarts the backing session without an equivalent continuity
+  transplant; this is a user-facing UX defect, not an acceptable product
+  semantic
 - group join may accidentally know too much or too little
 - tests end up proving transport quirks instead of product intent
 
@@ -60,7 +63,9 @@ When the same logical participant in the same chat changes execution target,
 the product will treat that as one continuing conversation unless the operator
 explicitly starts fresh.
 
-If native provider continuity cannot be resumed, the first turn into the new
+Only a truly compatible native resume path counts as preserved continuity. If
+the new execution path cannot actually resume the same intended provider-native
+session, including any cross-provider retarget, the first turn into the new
 provider session must receive a continuity transplant derived from the prior
 conversation.
 
@@ -79,6 +84,9 @@ The product will not reuse the `solo retarget` rule for all group cases.
 
 Fixed-size recent-message excerpts may still be useful as one ingredient, but
 they are not an acceptable product-level substitute for same-chat continuity.
+Current helpers such as `buildSoloChatBootstrapInstructions` and
+`MAX_PROMPT_RECENT_MESSAGES` must not remain the general continuity contract
+for same-chat `solo` retarget.
 
 The product contract should prefer:
 
@@ -157,5 +165,5 @@ changing provider, changing model, or rotating runtime sessions.
 
 ---
 
-*Proposed: 2026-04-17*
-*Proposed by: Codex*
+*Accepted: 2026-04-17*
+*Accepted by: user direction captured through Codex*

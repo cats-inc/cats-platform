@@ -34,6 +34,11 @@ This spec defines a product-owned continuity taxonomy for Chat. It separates
 system must transplant prior context into a new provider session versus when a
 targeted continuity package or no prior context is the correct behavior.
 
+Today, same-chat `solo` provider/model switching can restart the backing
+session without delivering an equivalent continuity transplant. This should be
+treated as a product defect relative to expected chat behavior, not as a valid
+semantic of "new model, new blank context".
+
 ## Goals
 
 - Define one explicit continuity model for Chat that does not depend on
@@ -67,6 +72,29 @@ targeted continuity package or no prior context is the correct behavior.
   meaning about how much prior context they should inherit.
 - As a product developer, I want continuity behavior to be testable from
   product semantics rather than reverse-engineered from runtime session churn.
+
+## Current Defect and Anti-Patterns
+
+Current implementation behavior is not yet aligned with the intended product
+contract.
+
+The main defects and anti-patterns are:
+
+- same-chat `solo` retarget currently restarts the session when provider/model
+  changes, but it does not guarantee an equivalent continuity transplant into
+  the replacement session
+- `buildSoloChatBootstrapInstructions` is being used as a thin re-entry patch
+  in cases where same-chat continuity should be a first-class semantic
+  transplant
+- `MAX_PROMPT_RECENT_MESSAGES = 8` currently constrains that bootstrap path,
+  which is acceptable for bounded recent-message formatting but not as the
+  general continuity rule
+- `shouldRestartSoloSession` currently acts as a lifecycle gate for session
+  restart, but it also effectively becomes a hidden continuity boundary because
+  continuity is not re-established at equivalent fidelity after restart
+
+This spec treats those as implementation problems to remove, not as behavior to
+bless.
 
 ## Requirements
 
@@ -134,11 +162,26 @@ targeted continuity package or no prior context is the correct behavior.
 19. Provider-native resume, when available for the same intended continuity
     scope, shall be treated as an optimization path rather than a separate
     product semantic.
-20. The product shall test continuity selection at the semantic boundary. Tests
+20. Provider-native `resume` shall count as preserved continuity only when the
+    new execution path can actually resume the same intended provider-native
+    session. Cross-provider retarget or any incompatible provider-native session
+    boundary shall be treated as loss of native continuity.
+21. A `parallel container` shall not itself be treated as one continuity unit.
+    Continuity inside parallel chat shall be evaluated per child conversation.
+22. Dispatching one operator turn to many parallel child conversations shall not
+    imply sibling transcript sharing by default.
+23. Creating or resuming one parallel child conversation shall not implicitly
+    transplant private transcript state from sibling child conversations unless
+    an explicit relay, adopt, or future continuity policy says so.
+24. The product shall define a first-slice continuity seed rule for new
+    parallel child conversations so they do not silently start from blank state
+    when the creation flow intends carry-over from a source chat or draft.
+25. The product shall test continuity selection at the semantic boundary. Tests
     should verify which continuity mode applies for:
     - `solo retarget`
     - `group handoff`
     - `group join`
+    - `parallel child conversation`
     - explicit `start fresh`
 
 ### Non-Functional Requirements
@@ -163,6 +206,7 @@ targeted continuity package or no prior context is the correct behavior.
 | `solo retarget` | Same | Same | Preserve | Full or semantically complete continuity transplant |
 | `group handoff` | Same | Different existing member | Targeted | Targeted handoff package |
 | `group join` | Same | New member | Depends on join mode | Join-mode-specific package |
+| `parallel child conversation` | Child-local | Child-local | Child-local | Explicit seed context only; no sibling transcript sharing by default |
 | `start fresh` | Same or new UI surface | Same or different | Reset intentionally | No prior continuity unless explicitly reintroduced |
 
 ### Continuity Boundary Rule
@@ -193,6 +237,10 @@ The product should think in these delivery modes:
 5. `fresh_start`
    - intentionally do not preserve prior continuity
 
+`native_resume` is only valid when the new execution path can actually reopen
+the same intended provider-native session. It does not cover cross-provider
+retarget or any incompatible native-session boundary.
+
 ### Anti-Pattern Clarification
 
 The current-style "bootstrap instructions" approach of replaying only a small
@@ -201,6 +249,29 @@ same-chat `solo retarget`.
 
 Small recent excerpts may still appear as one ingredient inside a larger
 semantic transplant, but they must not be treated as the whole continuity model.
+
+The current implementation names that embody this anti-pattern include:
+
+- `buildSoloChatBootstrapInstructions`
+- `MAX_PROMPT_RECENT_MESSAGES`
+- `shouldRestartSoloSession` when used without an equivalent transplant path
+
+They should remain bounded helpers or lifecycle gates, not the semantic source
+of truth for same-chat continuity.
+
+### Parallel Container Clarification
+
+`parallel` is a container/composition concept, not a fourth participant
+continuity mode.
+
+This spec therefore treats parallel-chat continuity as:
+
+- one continuity decision per child conversation
+- optional seed context from the source draft/chat when the creation flow says
+  so
+- no implicit sibling transcript sharing
+- future relay/adopt behavior as explicit additive policy rather than hidden
+  continuity leakage
 
 ### UI Semantics
 
@@ -236,6 +307,8 @@ This spec implies these product-language rules:
       artifacts even when transcript continuity resets?
 - [ ] How should tool results, file previews, and other non-text transcript
       artifacts be represented inside `semantic_transplant` packages?
+      First follow-through for this question is tracked under `PLAN-053`, not
+      left unowned.
 
 ## References
 
