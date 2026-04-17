@@ -80,6 +80,10 @@ export interface PlatformLobbyState extends PlatformLobbyPreferences {
   guideCatAssist?: GuideCatAssistSurfaceReadModel | null;
 }
 
+export interface PlatformGuideCatAssistState {
+  codeNewDraft?: GuideCatAssistSurfaceReadModel | null;
+}
+
 export interface PlatformOwnerContext {
   setupCompleteAt: string | null;
   ownerDisplayName: string;
@@ -97,6 +101,7 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
   products: PlatformProductDescriptor[];
   desktop: PlatformDesktopPreferences;
   lobby: PlatformLobbyState;
+  guideCatAssist?: PlatformGuideCatAssistState;
   runtime: RuntimeStatusSummary;
   runtimeSetup: RuntimeSetupSummary;
   metadata: PlatformResponseMetadata;

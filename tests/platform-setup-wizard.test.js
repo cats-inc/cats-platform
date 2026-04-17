@@ -868,6 +868,10 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
     assert.equal(shell.lobby.guideCatAssist?.renderSource, 'cache');
     assert.equal(shell.lobby.guideCatAssist?.bundle.content.greeting, 'Cached offline lobby greeting');
     assert.equal(shell.lobby.guideCatAssist?.refreshEligible, false);
+    assert.equal(
+      shell.guideCatAssist?.codeNewDraft?.scopeKey,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault,
+    );
     assert.equal(shell.chat.newChatAssist?.solo.renderSource, 'cache');
     assert.equal(
       shell.chat.newChatAssist?.solo.bundle.content.entryChips[0]?.prompt,

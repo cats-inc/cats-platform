@@ -12,6 +12,9 @@ import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function createPayload(overrides: Partial<AppShellPayload['chat']> = {}): AppShellPayload {
   return {
+    guideCatAssist: {
+      codeNewDraft: null,
+    },
     chat: {
       bossCatId: null,
       botBindings: [],
@@ -21,7 +24,6 @@ function createPayload(overrides: Partial<AppShellPayload['chat']> = {}): AppShe
         maxAudienceParticipants: 3,
         maxParallelChats: 5,
       },
-      newCodeAssist: null,
       cats: [
         {
           id: 'cat-lead',
@@ -118,6 +120,16 @@ test('new code default draft keeps the original shared composer structure withou
   assert.doesNotMatch(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /How can I help you today\?/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
+  assert.doesNotMatch(markup, /class="draftPromptChip"/u);
+});
+
+test('new code default draft does not render standalone setup chips between the greeting and composer', () => {
+  const markup = renderToStaticMarkup(<NewChatDraft {...createProps()} />);
+
+  assert.doesNotMatch(markup, /Choose workspace/u);
+  assert.doesNotMatch(markup, /Choose execution target/u);
+  assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
+  assert.doesNotMatch(markup, /class="draftPromptChip"/u);
 });
 
 test('new code default draft prefers payload-backed assist greeting and shows up to three helper chips', () => {
@@ -125,62 +137,65 @@ test('new code default draft prefers payload-backed assist greeting and shows up
     <NewChatDraft
       {...createProps({
         greeting: 'Legacy code greeting.',
-        payload: createPayload({
-          newCodeAssist: {
-            scopeKey: 'code:new:default:default',
-            renderSource: 'cache',
-            cacheHit: true,
-            missing: false,
-            stale: false,
-            refreshEligible: false,
-            surfaceDisabled: false,
-            lastFailure: null,
-            bundle: {
-              bundleId: 'code:new:default:default',
-              scope: {
-                surfaceId: 'code:new',
-                surfaceMode: 'default',
-                audienceState: 'default',
-              },
-              content: {
-                greeting: 'Pick a small coding task.',
-                entryChips: [
-                  {
-                    id: 'code-pomodoro',
-                    label: 'Pomodoro app',
-                    prompt: 'Write a small pomodoro timer app.',
-                  },
-                  {
-                    id: 'code-fix-bug',
-                    label: 'Fix a bug',
-                    prompt: 'Find and fix a bug in this codebase.',
-                  },
-                  {
-                    id: 'code-refactor',
-                    label: 'Refactor code',
-                    prompt: 'Refactor this code without changing behavior.',
-                  },
-                  {
-                    id: 'code-hidden',
-                    label: 'Hidden helper',
-                    prompt: 'This helper should not render.',
-                  },
-                ],
-              },
-              provenance: {
-                originMode: 'runtime',
-                refreshContextHash: 'gca:v1:test-code',
-                missionId: null,
-                runId: null,
-              },
-              freshness: {
-                generatedAt: '2026-04-17T12:00:00.000Z',
-                expiresAt: null,
-                lastRefreshStatus: 'ok',
+        payload: {
+          ...createPayload(),
+          guideCatAssist: {
+            codeNewDraft: {
+              scopeKey: 'code:new:default:default',
+              renderSource: 'cache',
+              cacheHit: true,
+              missing: false,
+              stale: false,
+              refreshEligible: false,
+              surfaceDisabled: false,
+              lastFailure: null,
+              bundle: {
+                bundleId: 'code:new:default:default',
+                scope: {
+                  surfaceId: 'code:new',
+                  surfaceMode: 'default',
+                  audienceState: 'default',
+                },
+                content: {
+                  greeting: 'Pick a small coding task.',
+                  entryChips: [
+                    {
+                      id: 'code-pomodoro',
+                      label: 'Pomodoro app',
+                      prompt: 'Write a small pomodoro timer app.',
+                    },
+                    {
+                      id: 'code-fix-bug',
+                      label: 'Fix a bug',
+                      prompt: 'Find and fix a bug in this codebase.',
+                    },
+                    {
+                      id: 'code-refactor',
+                      label: 'Refactor code',
+                      prompt: 'Refactor this code without changing behavior.',
+                    },
+                    {
+                      id: 'code-hidden',
+                      label: 'Hidden helper',
+                      prompt: 'This helper should not render.',
+                    },
+                  ],
+                },
+                provenance: {
+                  originMode: 'runtime',
+                  refreshContextHash: 'gca:v1:test-code',
+                  missionId: null,
+                  runId: null,
+                },
+                freshness: {
+                  generatedAt: '2026-04-17T12:00:00.000Z',
+                  expiresAt: null,
+                  lastRefreshStatus: 'ok',
+                },
               },
             },
           },
-        }),
+        } as AppShellPayload,
       })}
     />,
   );
@@ -277,4 +292,3 @@ test('team code and peer code drafts continue to delegate to the shared chat dra
   assert.match(markup, /class="audienceChip"/u);
   assert.doesNotMatch(markup, /What should this code session build, fix, or investigate\?/u);
 });
-

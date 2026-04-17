@@ -254,6 +254,9 @@ The first shipped read-model paths should be explicit:
 
 - Lobby reads resolved assist content through the platform envelope contract.
 - `+New chat` reads resolved assist content through the chat payload contract.
+- `+New code` reads resolved assist content through a Code-owned seam on the
+  platform envelope contract rather than piggybacking on the chat payload
+  slice.
 
 The renderer should not choose between competing local-store access paths.
 Assist content should be resolved on the product/server side and delivered
@@ -304,11 +307,13 @@ stable mode-to-scope mapping:
 |------|------|------|------|
 | `LOBBY_GREETING_LINES` | none | `lobby:default:default` | Lobby greeting baseline |
 | `DRAFT_GREETING_LINES` | none | `chat:new:solo:default`, `chat:new:cat_led:default`, `chat:new:direct:default`, `chat:new:group:default`, `chat:new:parallel:default` | Same greeting baseline reused across initial `+New chat` modes |
+| `CODE_DRAFT_GREETING_LINES` | none | `code:new:default:default` | `+New code` greeting baseline |
 | `resolveDraftStarterSuggestions('solo')` | `solo` | `chat:new:solo:default` | Starter chips |
 | `resolveDraftStarterSuggestions('cat_led')` | `cat_led` | `chat:new:cat_led:default` | Starter chips |
 | `resolveDraftStarterSuggestions('direct')` | `direct` | `chat:new:direct:default` | Starter chips |
 | `resolveDraftStarterSuggestions('group')` | `group` | `chat:new:group:default` | Starter chips |
 | `resolveDraftStarterSuggestions('parallel')` | `parallel` | `chat:new:parallel:default` | Starter chips |
+| `resolveNewCodeGuideCatAssistBaseline()` | `default` | `code:new:default:default` | Short helper chips for `+New code` |
 
 This mapping is intentionally narrower than the long-term bundle model. It
 freezes the first migration target so existing greeting and starter-suggestion

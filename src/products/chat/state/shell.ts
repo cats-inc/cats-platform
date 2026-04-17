@@ -68,7 +68,7 @@ export function createAppShell(
     assistantPresets?: AssistantPresetRecord[];
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
-    newCodeAssist?: AppShellPayload['chat']['newCodeAssist'];
+    codeGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -91,6 +91,9 @@ export function createAppShell(
       animationMode: setup?.lobby?.animationMode ?? 'reduced',
       cats: buildLobbyCats(summary.cats, chat.bossCatId),
       guideCatAssist: setup?.lobbyGuideCatAssist ?? null,
+    },
+    guideCatAssist: {
+      codeNewDraft: setup?.codeGuideCatAssist ?? null,
     },
     chat: {
       id: chat.id,
@@ -121,7 +124,6 @@ export function createAppShell(
       concurrentPresentationMode: chat.concurrentPresentationMode ?? 'inline_stack',
       botBindings,
       newChatAssist: structuredClone(setup?.newChatAssist ?? null),
-      newCodeAssist: structuredClone(setup?.newCodeAssist ?? null),
     },
     runtime,
     runtimeSetup: setup?.runtimeSetup ?? createUnavailableRuntimeSetupSummary(

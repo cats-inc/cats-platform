@@ -7,6 +7,7 @@ import {
   type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
+import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   greeting: 'Ready to code.',
@@ -51,9 +52,14 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
     onCancelPendingSend,
     ...workspaceProps
   } = props;
-  const codeAssist = props.payload.chat.newCodeAssist ?? null;
+  const codeAssist = props.payload.guideCatAssist?.codeNewDraft ?? null;
   const assistGreeting = codeAssist?.bundle.content.greeting?.trim() || null;
-  const helperChips = codeAssist?.bundle.content.entryChips ?? [];
+  const visibleHelperChips = !props.composerDraft.trim()
+    ? (codeAssist?.bundle.content.entryChips ?? [])
+      .filter((chip) => chip.prompt.trim().length > 0)
+      .slice(0, 3)
+    : [];
+  const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
 
   // Default +New code intentionally ignores the chat-group and parallel draft fields
   // until Team Code and Peer Code get their own product-owned draft surfaces.
@@ -78,7 +84,23 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
   return {
     ...workspaceProps,
     greeting: assistGreeting ?? greeting ?? undefined,
-    helperChips,
+    greetingAccessory: visibleHelperChips.length > 0 ? (
+      <div className="draftPromptSuggestions">
+        <div className="chipRow">
+          {visibleHelperChips.map((chip) => (
+            <button
+              key={chip.id}
+              className="promptChip draftPromptChip"
+              type="button"
+              disabled={isSubmittingFirstTurn}
+              onClick={() => props.onComposerChange(chip.prompt)}
+            >
+              {chip.label?.trim() || chip.prompt}
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : null,
   };
 }
 

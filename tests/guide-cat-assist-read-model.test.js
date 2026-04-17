@@ -147,7 +147,7 @@ test('createAppShell carries guide cat assist read models into lobby and chat pa
       ownerAvatarColor: null,
       lobbyGuideCatAssist: guideCatAssist.lobby,
       newChatAssist: guideCatAssist.newChatByMode,
-      newCodeAssist: guideCatAssist.newCode,
+      codeGuideCatAssist: guideCatAssist.newCode,
     },
   );
 
@@ -157,7 +157,7 @@ test('createAppShell carries guide cat assist read models into lobby and chat pa
     GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
   );
   assert.equal(
-    payload.chat.newCodeAssist?.scopeKey,
+    payload.guideCatAssist?.codeNewDraft?.scopeKey,
     GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault,
   );
 });

@@ -148,6 +148,11 @@ export async function resolveChatGuideCatAssistReadModel(input: {
     readGuideCatAssistConfig(input.chatStatePath),
     readGuideCatAssistCache(input.chatStatePath),
   ]);
+  const newCodeScope = {
+    surfaceId: 'code:new',
+    surfaceMode: 'default',
+    audienceState: 'default',
+  } as const;
 
   return {
     lobby: resolveSurfaceReadModel({
@@ -209,19 +214,11 @@ export async function resolveChatGuideCatAssistReadModel(input: {
         return acc;
       }, {} as GuideCatAssistNewChatByMode),
     newCode: resolveSurfaceReadModel({
-      scope: {
-        surfaceId: 'code:new',
-        surfaceMode: 'default',
-        audienceState: 'default',
-      },
+      scope: newCodeScope,
       guideCatExists: Boolean(input.guideCat),
       runtimeReachable: input.runtimeReachable,
       refreshContextHash: resolveGuideCatAssistRefreshContextHash({
-        scope: {
-          surfaceId: 'code:new',
-          surfaceMode: 'default',
-          audienceState: 'default',
-        },
+        scope: newCodeScope,
         guideCat: input.guideCat,
         ownerDisplayName: input.ownerDisplayName,
       }),
