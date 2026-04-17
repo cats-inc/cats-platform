@@ -253,6 +253,10 @@ export function Sidebar(props: SidebarProps) {
     accountMenuRef: props.accountMenuRef,
     primaryActions: createPrimaryActions(props),
     extraActionGroups: createExtraActionGroups(props),
+    recentEntries: [],
+    recentEmptyStateLabel: 'No work yet',
+    myCatsSectionLabel: 'My Catteries',
+    myCatsSectionCats: [],
     helpers: {
       catInitials,
       presentChannelTitle,

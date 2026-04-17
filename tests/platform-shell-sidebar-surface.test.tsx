@@ -572,6 +572,41 @@ test('Code sidebar hides My Clowders until clowder groups are available', () => 
   assert.equal(myPridesSection, null);
 });
 
+test('Work sidebar hides My Catteries until organization groups are available', () => {
+  const tree = WorkSidebar({
+    payload: createPayload(),
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    shellSurface: 'work',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onStartWorkIntake: () => {},
+    onOpenWarRoom: () => {},
+    onOpenProjects: () => {},
+    onOpenWorkItems: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+  });
+
+  const myCatteriesSection = findElementByComponent(tree, ConversationSidebarMyCatsSection);
+  assert.equal(myCatteriesSection, null);
+});
+
 test('Code sidebar clears chat recents and shows No codes yet', () => {
   const tree = CodeSidebar({
     payload: createPayload() as unknown as CodeAppShellPayload,
@@ -610,7 +645,7 @@ test('Code sidebar clears chat recents and shows No codes yet', () => {
   assert.equal(recentsSection.props.emptyStateLabel, 'No codes yet');
 });
 
-test('Work sidebar only shows work-origin recents by default', () => {
+test('Work sidebar clears shared recents and shows No work yet', () => {
   const tree = WorkSidebar({
     payload: createPayload([
       {
@@ -675,10 +710,8 @@ test('Work sidebar only shows work-origin recents by default', () => {
     throw new Error('ConversationSidebarRecentsSection not found.');
   }
 
-  assert.deepEqual(
-    recentsSection.props.entries.map((entry: { channel: { title: string } }) => entry.channel.title),
-    ['Work recent'],
-  );
+  assert.deepEqual(recentsSection.props.entries, []);
+  assert.equal(recentsSection.props.emptyStateLabel, 'No work yet');
 });
 
 test('Work and Code sidebars keep the shared environment account menu wiring', () => {
