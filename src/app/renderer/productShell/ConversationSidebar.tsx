@@ -11,6 +11,7 @@ import type {
 } from '../../../shared/roomRouting.js';
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
+import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { ConversationSidebarFooter } from './ConversationSidebarFooter.js';
 import {
   ConversationSidebarMyCatsSection,
@@ -316,6 +317,8 @@ export function ConversationSidebar<
           />
         </div>
       </div>
+
+      <GuideCatDockSlot slotKind="workspace" />
 
       <ConversationSidebarFooter
         payload={payload}

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress (MVP Landed) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -190,6 +190,7 @@ across Lobby and workspace surfaces after the MVP is stable
 | Date | Update |
 |------|--------|
 | 2026-04-17 | Plan created for Guide Cat floating placement and shared-chrome docking rollout |
+| 2026-04-18 | MVP slice landed: placement/anchor persisted through `PlatformPreferences`, host-owned placement engine + `GuideCatPlacementProvider`, `GuideCatDockSlot` mounted in Lobby top chrome and workspace sidebar above footer, `GuideCatSidecar` refactored to consume placement engine for the floating projection only, Settings continues to hide Guide Cat. Unit tests cover surface class resolution, safe-area and corridor computation, projection clamp + reflow override, preferences parse/clamp, and the 24px escape threshold. Follow-on polish (compact dock badge, responsive variants) deferred per Phase 5. |
 
 ---
 

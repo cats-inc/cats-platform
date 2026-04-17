@@ -21,6 +21,10 @@ import {
 } from './routeMap';
 import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
 import { PlatformLobby } from './PlatformLobby';
+import {
+  GuideCatPlacementProvider,
+  persistGuideCatPlacementPreference,
+} from './GuideCatPlacementProvider';
 import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
@@ -486,14 +490,20 @@ export default function PlatformApp() {
     guideCat: readyEnvelope.guideCat,
     productSurfaceFallbackActive,
   };
+  const guideCatVisible = shouldRenderGuideCatSidecar(guideCatSidecarInput);
   return (
-    <>
-      {shouldRenderGuideCatSidecar(guideCatSidecarInput) ? (
+    <GuideCatPlacementProvider
+      guideCat={guideCatVisible ? guideCatSidecarInput.guideCat : null}
+      placement={readyEnvelope.guideCatPlacement ?? 'floating'}
+      floatingAnchor={readyEnvelope.guideCatFloatingAnchor ?? null}
+      sidecarSeen={readyEnvelope.guideCatSidecarSeen ?? false}
+      sidecarMode={readyEnvelope.guideCatSidecarMode ?? 'auto'}
+      onCommit={persistGuideCatPlacementPreference}
+    >
+      {guideCatVisible ? (
         <GuideCatSidecar
           guideCat={guideCatSidecarInput.guideCat}
           ownerDisplayName={readyEnvelope.ownerDisplayName}
-          guideCatSidecarSeen={readyEnvelope.guideCatSidecarSeen ?? false}
-          guideCatSidecarMode={readyEnvelope.guideCatSidecarMode ?? 'auto'}
           unreadCount={0}
           onDismissed={() => void refreshEnvelope()}
         />
@@ -518,6 +528,6 @@ export default function PlatformApp() {
         <Route path="/" element={<Navigate to={entryPath} replace />} />
         <Route path="*" element={<Navigate to={entryPath} replace />} />
       </Routes>
-    </>
+    </GuideCatPlacementProvider>
   );
 }

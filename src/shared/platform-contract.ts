@@ -17,6 +17,18 @@ export type PlatformProductMaturity = 'active' | 'preview';
 export type PlatformLobbyAnimationMode = 'off' | 'reduced' | 'full';
 export type GuideCatSidecarMode = 'auto' | 'drawer' | 'bubble';
 
+export type GuideCatPlacement = 'floating' | 'docked';
+
+export interface GuideCatFloatingAnchor {
+  x: number;
+  y: number;
+}
+
+export const GUIDE_CAT_FLOATING_ANCHOR_DEFAULT: GuideCatFloatingAnchor = {
+  x: 0.03,
+  y: 0.5,
+};
+
 export interface PlatformAppDescriptor {
   name: 'cats-platform';
   stage: 'phase-2-shell';
@@ -93,6 +105,8 @@ export interface PlatformOwnerContext {
   guideCat: GuideCatRecord | null;
   guideCatSidecarSeen?: boolean;
   guideCatSidecarMode?: GuideCatSidecarMode;
+  guideCatPlacement?: GuideCatPlacement;
+  guideCatFloatingAnchor?: GuideCatFloatingAnchor | null;
   assistantPresets?: AssistantPresetRecord[];
 }
 

@@ -1,4 +1,6 @@
 import type {
+  GuideCatFloatingAnchor,
+  GuideCatPlacement,
   GuideCatSidecarMode,
   PlatformLobbyAnimationMode,
   PlatformSurfaceId,
@@ -62,6 +64,8 @@ export interface PlatformPreferencesUpdateBody {
   lobbyAnimationMode?: string;
   guideCatSidecarSeen?: boolean;
   guideCatSidecarMode?: string;
+  guideCatPlacement?: string;
+  guideCatFloatingAnchor?: { x?: unknown; y?: unknown } | null;
 }
 
 type ParseResult<T> =
@@ -78,6 +82,39 @@ function parseLobbyAnimationMode(value: unknown): PlatformLobbyAnimationMode | u
 
 function parseGuideCatSidecarMode(value: unknown): GuideCatSidecarMode | undefined {
   return value === 'auto' || value === 'drawer' || value === 'bubble' ? value : undefined;
+}
+
+function parseGuideCatPlacement(value: unknown): GuideCatPlacement | undefined {
+  return value === 'floating' || value === 'docked' ? value : undefined;
+}
+
+type FloatingAnchorParse =
+  | { ok: true; value: GuideCatFloatingAnchor | null }
+  | { ok: false; message: string };
+
+function parseGuideCatFloatingAnchorBody(value: unknown): FloatingAnchorParse {
+  if (value === null) {
+    return { ok: true, value: null };
+  }
+  if (typeof value !== 'object') {
+    return { ok: false, message: 'guideCatFloatingAnchor must be an object or null' };
+  }
+  const record = value as Record<string, unknown>;
+  const x = record.x;
+  const y = record.y;
+  if (typeof x !== 'number' || typeof y !== 'number') {
+    return { ok: false, message: 'guideCatFloatingAnchor x and y must be numbers' };
+  }
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return { ok: false, message: 'guideCatFloatingAnchor x and y must be finite numbers' };
+  }
+  return {
+    ok: true,
+    value: {
+      x: Math.min(1, Math.max(0, x)),
+      y: Math.min(1, Math.max(0, y)),
+    },
+  };
 }
 
 export function buildSetupDebugContext(input: SetupDebugContextInput): Record<string, unknown> {
@@ -147,6 +184,23 @@ export function parsePlatformPreferencesUpdate(
       message: 'guideCatSidecarMode must be auto, drawer, or bubble',
     };
   }
+  if (
+    body.guideCatPlacement !== undefined
+    && parseGuideCatPlacement(body.guideCatPlacement) === undefined
+  ) {
+    return {
+      ok: false,
+      message: 'guideCatPlacement must be floating or docked',
+    };
+  }
+  let nextFloatingAnchor: GuideCatFloatingAnchor | null | undefined;
+  if (body.guideCatFloatingAnchor !== undefined) {
+    const parsed = parseGuideCatFloatingAnchorBody(body.guideCatFloatingAnchor);
+    if (!parsed.ok) {
+      return { ok: false, message: parsed.message };
+    }
+    nextFloatingAnchor = parsed.value;
+  }
 
   return {
     ok: true,
@@ -160,6 +214,10 @@ export function parsePlatformPreferencesUpdate(
       guideCatSidecarSeen: body.guideCatSidecarSeen ?? currentPrefs.guideCatSidecarSeen,
       guideCatSidecarMode:
         parseGuideCatSidecarMode(body.guideCatSidecarMode) ?? currentPrefs.guideCatSidecarMode,
+      guideCatPlacement:
+        parseGuideCatPlacement(body.guideCatPlacement) ?? currentPrefs.guideCatPlacement,
+      guideCatFloatingAnchor:
+        nextFloatingAnchor !== undefined ? nextFloatingAnchor : currentPrefs.guideCatFloatingAnchor,
     },
   };
 }

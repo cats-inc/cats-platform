@@ -8,6 +8,7 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 20;
+  touch-action: none;
 }
 
 .guideCatPill {
@@ -70,6 +71,78 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* ── Dock slot (Lobby top chrome, workspace sidebar above footer) ── */
+
+.guideCatDockSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 28px;
+}
+
+.guideCatDockSlot--lobby {
+  padding: 0 var(--space-2, 6px);
+}
+
+.guideCatDockSlot--workspace {
+  padding: var(--space-2, 6px) 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.guideCatDockSlot[data-active='true'],
+.guideCatDockSlot[data-preview='true'] {
+  min-height: 36px;
+}
+
+.guideCatPill--docked {
+  position: static;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  opacity: 0.82;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-raised);
+  transition: box-shadow 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  touch-action: none;
+}
+
+.guideCatPill--docked:hover,
+.guideCatPill--docked:focus-visible {
+  box-shadow: var(--shadow-sheet);
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+.guideCatDockSlotGhost {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(139, 126, 116, 0.18);
+  border: 2px dashed rgba(139, 126, 116, 0.65);
+  animation: guideCatDockSlotGhostPulse 0.9s ease-in-out infinite alternate;
+}
+
+.guideCatDockSlotGhost .guideCatPillAvatar {
+  opacity: 0.4;
+}
+
+@keyframes guideCatDockSlotGhostPulse {
+  from {
+    box-shadow: 0 0 0 0 rgba(139, 126, 116, 0.25);
+  }
+  to {
+    box-shadow: 0 0 0 6px rgba(139, 126, 116, 0.05);
+  }
 }
 
 .guideCatPillBadge {

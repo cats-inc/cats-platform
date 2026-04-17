@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { AccountIdentityMenu } from '../../design/components/AccountIdentityMenu.js';
+import { GuideCatDockSlot } from '../../design/components/GuideCatDockSlot.js';
 import { buildCatExecutionLabel, buildCatTooltip } from '../../shared/executionLabel.js';
 import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared/platform-contract.js';
@@ -96,6 +97,7 @@ export function PlatformLobby({
               cats={envelope.lobby.cats}
               onSelect={(catId) => navigate(buildDirectLanePath(catId))}
             />
+            <GuideCatDockSlot slotKind="lobby" />
             <AccountIdentityMenu
               open={accountMenuOpen}
               onOpenChange={setAccountMenuOpen}

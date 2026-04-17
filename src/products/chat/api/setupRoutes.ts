@@ -131,6 +131,8 @@ async function handleSetupReset(
         lastProductSurface: null,
         guideCatSidecarSeen: false,
         guideCatSidecarMode: 'auto',
+        guideCatPlacement: 'floating',
+        guideCatFloatingAnchor: null,
       });
     } catch (error) {
       reportSetupRouteFailure('setup_reset_prefs', error);

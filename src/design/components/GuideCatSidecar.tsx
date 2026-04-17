@@ -2,33 +2,28 @@ import {
   useCallback,
   useEffect,
   useRef,
-  useState,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type Ref,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { useConfirmDialog, ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog.js';
 
 import type { GuideCatRecord } from '../../core/types.js';
-import {
-  useGuideCatSidecarState,
-  type GuideCatSidecarViewState,
-} from '../../app/renderer/useGuideCatSidecarState.js';
+import type { GuideCatSidecarViewState } from '../../app/renderer/useGuideCatSidecarState.js';
+import { useGuideCatPlacement } from '../../app/renderer/GuideCatPlacementProvider.js';
 
 import {
   buildCatTooltip,
   resolveExecutionTargetLabel,
 } from '../../shared/executionLabel.js';
-import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
 
 interface GuideCatSidecarProps {
   guideCat: GuideCatRecord;
   ownerDisplayName: string;
-  guideCatSidecarSeen: boolean;
-  guideCatSidecarMode: GuideCatSidecarMode;
   unreadCount: number;
   onDismissed: () => void;
 }
@@ -36,6 +31,8 @@ interface GuideCatSidecarProps {
 export type GuideCatSidecarSurfaceMode = 'lobby' | 'product' | 'hidden';
 export const GUIDE_CAT_AVATAR_URL = new URL('../../../assets/guide-cat-avatar.svg', import.meta.url)
   .href;
+const FLOATING_PILL_RADIUS_PX = 14;
+const FLOATING_PEEK_OFFSET_PX = 36;
 
 export function resolveGuideCatSidecarSurfaceMode(pathname: string): GuideCatSidecarSurfaceMode {
   if (pathname === '/setup' || pathname.startsWith('/settings')) {
@@ -44,148 +41,31 @@ export function resolveGuideCatSidecarSurfaceMode(pathname: string): GuideCatSid
   return pathname === '/lobby' ? 'lobby' : 'product';
 }
 
-export function resolveGuideCatSidecarAnchorSelector(pathname: string): string | null {
-  if (resolveGuideCatSidecarSurfaceMode(pathname) === 'hidden') {
-    return null;
-  }
-  if (pathname === '/lobby') {
-    return null;
-  }
-  return '.canvas';
-}
-
-export function resolveGuideCatSidecarOffsets(
-  pathname: string,
-  anchorLeft: number,
-): { pillLeft: number; peekLeft: number; panelLeft: number } {
-  if (resolveGuideCatSidecarSurfaceMode(pathname) === 'lobby') {
-    return {
-      pillLeft: 18,
-      peekLeft: 56,
-      panelLeft: 0,
-    };
-  }
-
-  const panelLeft = Math.max(2, Math.round(anchorLeft) + 2);
-  return {
-    pillLeft: panelLeft + 14,
-    peekLeft: panelLeft + 54,
-    panelLeft,
-  };
-}
-
-function useGuideCatSidecarPlacement(): {
-  anchorStyle: CSSProperties;
-  surfaceMode: GuideCatSidecarSurfaceMode;
-} {
-  const location = useLocation();
-  const [anchorLeft, setAnchorLeft] = useState(0);
-
-  useEffect(() => {
-    const selector = resolveGuideCatSidecarAnchorSelector(location.pathname);
-    if (!selector) {
-      setAnchorLeft(0);
-      return;
-    }
-
-    let frameId = 0;
-    let resizeObserver: ResizeObserver | null = null;
-    let mutationObserver: MutationObserver | null = null;
-    let observedAnchor: HTMLElement | null = null;
-
-    const bindResizeObserver = (anchor: HTMLElement | null) => {
-      if (observedAnchor === anchor) {
-        return;
-      }
-
-      resizeObserver?.disconnect();
-      observedAnchor = anchor;
-
-      if (anchor && typeof ResizeObserver === 'function') {
-        resizeObserver = new ResizeObserver(() => {
-          requestUpdate();
-        });
-        resizeObserver.observe(anchor);
-      } else {
-        resizeObserver = null;
-      }
-    };
-
-    const updateAnchor = () => {
-      frameId = 0;
-      const anchor = document.querySelector<HTMLElement>(selector);
-      bindResizeObserver(anchor);
-      const nextLeft = anchor
-        ? Math.max(0, Math.round(anchor.getBoundingClientRect().left))
-        : 0;
-      setAnchorLeft((current) => (current === nextLeft ? current : nextLeft));
-    };
-
-    const requestUpdate = () => {
-      if (frameId !== 0) {
-        return;
-      }
-      frameId = window.requestAnimationFrame(updateAnchor);
-    };
-
-    requestUpdate();
-    if (typeof MutationObserver === 'function') {
-      mutationObserver = new MutationObserver(() => {
-        requestUpdate();
-      });
-      mutationObserver.observe(document.body, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ['class', 'style'],
-      });
-    }
-
-    window.addEventListener('resize', requestUpdate);
-    document.addEventListener('scroll', requestUpdate, true);
-
-    return () => {
-      if (frameId !== 0) {
-        window.cancelAnimationFrame(frameId);
-      }
-      mutationObserver?.disconnect();
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', requestUpdate);
-      document.removeEventListener('scroll', requestUpdate, true);
-    };
-  }, [location.pathname]);
-
-  const offsets = resolveGuideCatSidecarOffsets(location.pathname, anchorLeft);
-  return {
-    anchorStyle: {
-      '--guide-cat-pill-left': `${offsets.pillLeft}px`,
-      '--guide-cat-peek-left': `${offsets.peekLeft}px`,
-      '--guide-cat-panel-left': `${offsets.panelLeft}px`,
-    } as CSSProperties,
-    surfaceMode: resolveGuideCatSidecarSurfaceMode(location.pathname),
-  };
-}
-
-function CollapsedPill({
+export function CollapsedPill({
   name,
   tooltip,
   unreadCount,
   onClick,
   onDismissClick,
+  onPointerDown,
   style,
+  className,
 }: {
   name: string;
   tooltip: string;
   unreadCount: number;
   onClick: () => void;
   onDismissClick?: () => void;
+  onPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
   style?: CSSProperties;
+  className?: string;
 }) {
   return (
-    <div className="guideCatPillWrap" style={style}>
+    <div className={className ?? 'guideCatPillWrap'} style={style}>
       <button
         type="button"
         className="guideCatPill"
+        onPointerDown={onPointerDown}
         onClick={onClick}
         aria-label={`Open guide: ${name}`}
         data-tooltip={tooltip}
@@ -324,7 +204,10 @@ export interface GuideCatSidecarViewProps {
   onCollapse: () => void;
   onDismissWelcome?: () => void;
   onDismissClick: () => void;
-  anchorStyle: CSSProperties;
+  onPillPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
+  pillStyle: CSSProperties;
+  peekStyle: CSSProperties;
+  panelStyle: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
   dialog: { options: ConfirmDialogOptions } | null;
   onDialogClose: (confirmed: boolean) => void;
@@ -341,7 +224,10 @@ export function GuideCatSidecarView({
   onCollapse,
   onDismissWelcome,
   onDismissClick,
-  anchorStyle,
+  onPillPointerDown,
+  pillStyle,
+  peekStyle,
+  panelStyle,
   surfaceMode,
   dialog,
   onDialogClose,
@@ -361,7 +247,8 @@ export function GuideCatSidecarView({
         unreadCount={unreadCount}
         onClick={onToggle}
         onDismissClick={onDismissClick}
-        style={anchorStyle}
+        onPointerDown={onPillPointerDown}
+        style={pillStyle}
       />
     );
   } else if (viewState === 'welcome-peek') {
@@ -373,13 +260,14 @@ export function GuideCatSidecarView({
           unreadCount={0}
           onClick={onToggle}
           onDismissClick={onDismissClick}
-          style={anchorStyle}
+          onPointerDown={onPillPointerDown}
+          style={pillStyle}
         />
         <WelcomePeek
           ownerDisplayName={ownerDisplayName}
           onAction={onAction}
           onDismiss={onDismissWelcome}
-          style={anchorStyle}
+          style={peekStyle}
         />
       </div>
     );
@@ -392,7 +280,7 @@ export function GuideCatSidecarView({
           ownerDisplayName={ownerDisplayName}
           onAction={onAction}
           onClose={onCollapse}
-          style={anchorStyle}
+          style={panelStyle}
           surfaceMode={surfaceMode}
         />
       </div>
@@ -427,8 +315,12 @@ function SidecarContent({
   collapse,
   dismissWelcome,
   onDismissed,
-  anchorStyle,
+  onPillPointerDown,
+  pillStyle,
+  peekStyle,
+  panelStyle,
   surfaceMode,
+  dragActive,
 }: {
   viewState: GuideCatSidecarViewState;
   guideCat: GuideCatRecord;
@@ -439,8 +331,12 @@ function SidecarContent({
   collapse: () => void;
   dismissWelcome: () => void;
   onDismissed: () => void;
-  anchorStyle: CSSProperties;
+  onPillPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
+  pillStyle: CSSProperties;
+  peekStyle: CSSProperties;
+  panelStyle: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
+  dragActive: boolean;
 }) {
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -474,8 +370,8 @@ function SidecarContent({
 
   useEffect(() => {
     if (viewState !== 'open' && viewState !== 'welcome-peek') return;
-    // System-initiated peek: user must explicitly dismiss via "Hide for now"
     if (viewState === 'welcome-peek' && proactive) return;
+    if (dragActive) return;
 
     function onClickOutside(event: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
@@ -492,7 +388,7 @@ function SidecarContent({
       document.removeEventListener('mousedown', onClickOutside);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [viewState, collapse, proactive]);
+  }, [viewState, collapse, proactive, dragActive]);
 
   return (
     <GuideCatSidecarView
@@ -505,7 +401,10 @@ function SidecarContent({
       onCollapse={collapse}
       onDismissWelcome={proactive ? dismissWelcome : undefined}
       onDismissClick={handleDismissClick}
-      anchorStyle={anchorStyle}
+      onPillPointerDown={onPillPointerDown}
+      pillStyle={pillStyle}
+      peekStyle={peekStyle}
+      panelStyle={panelStyle}
       surfaceMode={surfaceMode}
       dialog={dialog}
       onDialogClose={handleClose}
@@ -517,30 +416,51 @@ function SidecarContent({
 export function GuideCatSidecar({
   guideCat,
   ownerDisplayName,
-  guideCatSidecarSeen,
-  guideCatSidecarMode,
   unreadCount,
   onDismissed,
 }: GuideCatSidecarProps) {
-  const { viewState, proactive, toggle, collapse, dismissWelcome } = useGuideCatSidecarState(
-    guideCatSidecarSeen,
-    guideCatSidecarMode,
-  );
-  const { anchorStyle, surfaceMode } = useGuideCatSidecarPlacement();
+  const { projection, presentation, onFloatingPointerDown, dragActive } =
+    useGuideCatPlacement();
+
+  if (projection.kind !== 'floating') {
+    return null;
+  }
+
+  const pillLeft = projection.x - FLOATING_PILL_RADIUS_PX;
+  const pillTop = projection.y - FLOATING_PILL_RADIUS_PX;
+  const pillStyle: CSSProperties = {
+    left: `${pillLeft}px`,
+    top: `${pillTop}px`,
+    transform: 'none',
+  };
+  const peekStyle: CSSProperties = {
+    left: `${projection.x + FLOATING_PEEK_OFFSET_PX}px`,
+    top: `${projection.y}px`,
+    transform: 'translateY(-50%)',
+  };
+  const panelStyle: CSSProperties = {
+    left: `${Math.max(12, projection.x - 140)}px`,
+  };
+  const surfaceMode: GuideCatSidecarSurfaceMode =
+    projection.kind === 'floating' ? 'product' : 'hidden';
 
   return createPortal(
     <SidecarContent
-      viewState={viewState}
+      viewState={presentation.viewState}
       guideCat={guideCat}
       ownerDisplayName={ownerDisplayName}
       unreadCount={unreadCount}
-      proactive={proactive}
-      toggle={toggle}
-      collapse={collapse}
-      dismissWelcome={dismissWelcome}
+      proactive={presentation.proactive}
+      toggle={presentation.toggle}
+      collapse={presentation.collapse}
+      dismissWelcome={presentation.dismissWelcome}
       onDismissed={onDismissed}
-      anchorStyle={anchorStyle}
+      onPillPointerDown={onFloatingPointerDown}
+      pillStyle={pillStyle}
+      peekStyle={peekStyle}
+      panelStyle={panelStyle}
       surfaceMode={surfaceMode}
+      dragActive={dragActive}
     />,
     document.body,
   );

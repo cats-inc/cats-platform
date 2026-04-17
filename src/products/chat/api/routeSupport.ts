@@ -309,6 +309,8 @@ export async function buildAppShellPayload(
       guideCat: core.guideCat,
       guideCatSidecarSeen: platformPrefs.guideCatSidecarSeen,
       guideCatSidecarMode: platformPrefs.guideCatSidecarMode,
+      guideCatPlacement: platformPrefs.guideCatPlacement,
+      guideCatFloatingAnchor: platformPrefs.guideCatFloatingAnchor,
       assistantPresets: core.assistantPresets,
       botBindings,
       lastProductSurface: platformPrefs.lastProductSurface,
