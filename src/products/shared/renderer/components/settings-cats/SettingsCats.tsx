@@ -170,7 +170,10 @@ export function SettingsCatsCanvas({
     [archivedCats],
   );
   const atCatLimit = activeCatCount >= payload.chat.capabilities.maxCats;
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(
+    () => payload.chat.cats.filter((c) => c.status === 'active').length === 0
+      && payload.chat.cats.some((c) => c.status === 'archived'),
+  );
 
   const [selectedCatId, setSelectedCatId] = useState<string | null>(
     () => sortedActiveCats[0]?.id ?? sortedArchivedCats[0]?.id ?? null,
@@ -179,22 +182,23 @@ export function SettingsCatsCanvas({
   const effectiveMode: 'create' | 'view' = isCreateRoute || !hasAnyCat ? 'create' : 'view';
 
   useEffect(() => {
-    if (activeCatCount === 0 && sortedArchivedCats.length > 0 && !showArchived) {
-      setShowArchived(true);
-    }
-  }, [activeCatCount, showArchived, sortedArchivedCats.length]);
-
-  useEffect(() => {
     if (effectiveMode !== 'view') return;
     const current = selectedCatId
       ? payload.chat.cats.find((cat) => cat.id === selectedCatId) ?? null
       : null;
     const hiddenBecauseArchived = current?.status === 'archived' && !showArchived;
     if (!current || hiddenBecauseArchived) {
-      const fallback = sortedActiveCats[0] ?? sortedArchivedCats[0];
-      if (fallback) setSelectedCatId(fallback.id);
+      const fallback = sortedActiveCats[0] ?? (showArchived ? sortedArchivedCats[0] : null);
+      if (fallback) {
+        setSelectedCatId(fallback.id);
+      } else {
+        setSelectedCatId(null);
+        if (!location.pathname.endsWith('/cats/new')) {
+          navigate('/settings/cats/new', { replace: true });
+        }
+      }
     }
-  }, [effectiveMode, payload.chat.cats, selectedCatId, showArchived, sortedActiveCats, sortedArchivedCats]);
+  }, [effectiveMode, location.pathname, navigate, payload.chat.cats, selectedCatId, showArchived, sortedActiveCats, sortedArchivedCats]);
 
   useEffect(() => {
     if (effectiveMode === 'view' && selectedCatId) {
