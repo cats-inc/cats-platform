@@ -9,6 +9,11 @@ import {
   type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
+import {
+  DEFAULT_PERMISSION_MODE,
+  PermissionModeChip,
+  type PermissionMode,
+} from '../../../shared/renderer/components/PermissionModeChip.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 import { inspectPath } from '../api/index.js';
 
@@ -156,6 +161,7 @@ function useCodeDraftRepoProbe(draftCwd: string | null): RepoProbeResult {
 export function NewChatDraft(props: NewChatDraftProps) {
   const { isRepo, repoRoot, branch } = useCodeDraftRepoProbe(props.draftCwd);
   const [worktreeEnabled, setWorktreeEnabled] = useState(false);
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>(DEFAULT_PERMISSION_MODE);
 
   if (props.entryMode === 'group' || props.entryMode === 'parallel') {
     return <ChatNewChatDraft {...props} />;
@@ -165,35 +171,44 @@ export function NewChatDraft(props: NewChatDraftProps) {
   const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
   const branchLabel = branch ?? 'detached';
   const repoReady = isRepo && repoRoot;
-  const branchChip = repoReady ? (
-    <div className="composerBranchChipGroup">
-      <span className="composerBranchChip">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="4" cy="4" r="1.6" />
-          <circle cx="12" cy="4" r="1.6" />
-          <circle cx="4" cy="12" r="1.6" />
-          <path d="M4 5.6v4.8" />
-          <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
-        </svg>
-        <span>{branchLabel}</span>
-      </span>
-      <label className="composerWorktreeChip">
-        <input
-          type="checkbox"
-          checked={worktreeEnabled}
-          disabled={isSubmittingFirstTurn}
-          onChange={(event) => setWorktreeEnabled(event.target.checked)}
-        />
-        <span>worktree</span>
-      </label>
-    </div>
+  const sessionPolicyChips = props.draftCwd ? (
+    <>
+      <PermissionModeChip
+        value={permissionMode}
+        onChange={setPermissionMode}
+        disabled={isSubmittingFirstTurn}
+      />
+      {repoReady ? (
+        <>
+          <span className="composerBranchChip">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="4" cy="4" r="1.6" />
+              <circle cx="12" cy="4" r="1.6" />
+              <circle cx="4" cy="12" r="1.6" />
+              <path d="M4 5.6v4.8" />
+              <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
+            </svg>
+            <span>{branchLabel}</span>
+          </span>
+          <label className="composerWorktreeChip">
+            <input
+              type="checkbox"
+              checked={worktreeEnabled}
+              disabled={isSubmittingFirstTurn}
+              onChange={(event) => setWorktreeEnabled(event.target.checked)}
+            />
+            <span>worktree</span>
+          </label>
+        </>
+      ) : null}
+    </>
   ) : null;
 
   return (
     <WorkspaceNewChatDraft
       {...workspaceProps}
       copy={NEW_CODE_DRAFT_COPY}
-      composerFooterAccessory={branchChip}
+      composerFooterAccessory={sessionPolicyChips}
     />
   );
 }

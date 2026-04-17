@@ -22,6 +22,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 28px;
 }
 
 .composerSendButton {
@@ -684,7 +685,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 6px 4px 10px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 6px 0 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
@@ -721,11 +724,81 @@
   min-width: 0;
 }
 
-.composerBranchChipGroup {
+.composerPermissionChipWrapper {
+  position: relative;
   display: inline-flex;
-  align-items: stretch;
+}
+
+.composerPermissionChip {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  min-width: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.composerPermissionChip:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerPermissionChip:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.composerPermissionMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 160px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 12;
+}
+
+.composerPermissionMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.composerPermissionMenuItem:hover {
+  background: var(--panel-hover);
+}
+
+.composerPermissionMenuItemSelected {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.composerPermissionMenuItemCheck {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  color: var(--accent, currentColor);
 }
 
 .composerBranchChip {
