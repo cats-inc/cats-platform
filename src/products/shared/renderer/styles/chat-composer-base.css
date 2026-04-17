@@ -721,13 +721,20 @@
   min-width: 0;
 }
 
-.composerWorkspaceChip {
+.composerBranchChipGroup {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+.composerBranchChip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.72);
   color: var(--muted);
   font-size: 0.78rem;
@@ -736,9 +743,38 @@
   overflow: hidden;
 }
 
-.composerWorkspaceChip span {
+.composerBranchChip span {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.composerWorktreeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.composerWorktreeChip:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerWorktreeChip input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.composerWorktreeChip input[type="checkbox"]:disabled {
+  cursor: not-allowed;
 }
 
 .composerChipClose {

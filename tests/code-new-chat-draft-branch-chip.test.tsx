@@ -65,16 +65,18 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
-test('new code default draft initial render does not show the workspace chip before the repo probe resolves', () => {
+test('new code default draft initial render does not show the branch chip before the repo probe resolves', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps({ draftCwd: '/tmp/my-repo' })} />);
 
-  assert.doesNotMatch(markup, /class="composerWorkspaceChip"/u);
+  assert.doesNotMatch(markup, /class="composerBranchChip"/u);
+  assert.doesNotMatch(markup, /class="composerWorktreeChip"/u);
 });
 
-test('new code default draft without a draft cwd never renders the workspace chip', () => {
+test('new code default draft without a draft cwd never renders the branch chip', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps({ draftCwd: null })} />);
 
-  assert.doesNotMatch(markup, /class="composerWorkspaceChip"/u);
+  assert.doesNotMatch(markup, /class="composerBranchChip"/u);
+  assert.doesNotMatch(markup, /class="composerWorktreeChip"/u);
 });
 
 test('shared workspace draft renders composerFooterAccessory below the composer card when provided', () => {
@@ -82,20 +84,27 @@ test('shared workspace draft renders composerFooterAccessory below the composer 
     <WorkspaceNewChatDraft
       {...createProps({ draftCwd: '/tmp/my-repo' })}
       composerFooterAccessory={
-        <span className="composerWorkspaceChip" data-tooltip="/tmp/my-repo">
-          <span>my-repo</span>
-        </span>
+        <div className="composerBranchChipGroup">
+          <span className="composerBranchChip">
+            <span>main</span>
+          </span>
+          <label className="composerWorktreeChip">
+            <input type="checkbox" />
+            <span>worktree</span>
+          </label>
+        </div>
       }
     />,
   );
 
   assert.match(
     markup,
-    /<\/form>[\s\S]*?class="composerFooterRow"[\s\S]*?class="composerWorkspaceChip"/u,
+    /<\/form>[\s\S]*?class="composerFooterRow"[\s\S]*?class="composerBranchChipGroup"/u,
   );
-  assert.match(markup, />my-repo</u);
-  assert.doesNotMatch(
+  assert.match(
     markup,
-    /class="composerLeftGroup"[\s\S]*?class="composerWorkspaceChip"[\s\S]*?class="composerSendButton"/u,
+    /class="composerBranchChipGroup"[\s\S]*?class="composerBranchChip"[\s\S]*?class="composerWorktreeChip"/u,
   );
+  assert.match(markup, />main</u);
+  assert.match(markup, />worktree</u);
 });

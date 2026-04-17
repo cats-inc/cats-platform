@@ -35,6 +35,7 @@ export interface InspectPathResult {
   isDirectory: boolean;
   isRepo: boolean;
   repoRoot: string | null;
+  branch?: string | null;
 }
 
 export async function inspectPath(

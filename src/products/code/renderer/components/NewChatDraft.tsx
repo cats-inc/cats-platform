@@ -107,18 +107,22 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
   };
 }
 
-function useCodeDraftWorkspaceProbe(draftCwd: string | null): {
+interface RepoProbeResult {
   isRepo: boolean;
   repoRoot: string | null;
-} {
-  const [result, setResult] = useState<{ isRepo: boolean; repoRoot: string | null }>({
+  branch: string | null;
+}
+
+function useCodeDraftRepoProbe(draftCwd: string | null): RepoProbeResult {
+  const [result, setResult] = useState<RepoProbeResult>({
     isRepo: false,
     repoRoot: null,
+    branch: null,
   });
 
   useEffect(() => {
     if (!draftCwd) {
-      setResult({ isRepo: false, repoRoot: null });
+      setResult({ isRepo: false, repoRoot: null, branch: null });
       return;
     }
 
@@ -131,13 +135,14 @@ function useCodeDraftWorkspaceProbe(draftCwd: string | null): {
         setResult({
           isRepo: Boolean(info.isRepo),
           repoRoot: info.repoRoot ?? null,
+          branch: info.branch ?? null,
         });
       })
       .catch(() => {
         if (controller.signal.aborted) {
           return;
         }
-        setResult({ isRepo: false, repoRoot: null });
+        setResult({ isRepo: false, repoRoot: null, branch: null });
       });
 
     return () => {
@@ -148,41 +153,47 @@ function useCodeDraftWorkspaceProbe(draftCwd: string | null): {
   return result;
 }
 
-function resolveRepoName(repoRoot: string): string {
-  const normalized = repoRoot.replace(/[\\/]+$/u, '');
-  const segments = normalized.split(/[\\/]/u);
-  return segments[segments.length - 1] || repoRoot;
-}
-
 export function NewChatDraft(props: NewChatDraftProps) {
-  const { isRepo, repoRoot } = useCodeDraftWorkspaceProbe(props.draftCwd);
+  const { isRepo, repoRoot, branch } = useCodeDraftRepoProbe(props.draftCwd);
+  const [worktreeEnabled, setWorktreeEnabled] = useState(false);
 
   if (props.entryMode === 'group' || props.entryMode === 'parallel') {
     return <ChatNewChatDraft {...props} />;
   }
 
   const workspaceProps = buildWorkspaceDraftProps(props);
-  const workspaceChip = isRepo && repoRoot ? (
-    <span
-      className="composerWorkspaceChip"
-      data-tooltip={repoRoot}
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="4" cy="4" r="1.6" />
-        <circle cx="12" cy="4" r="1.6" />
-        <circle cx="4" cy="12" r="1.6" />
-        <path d="M4 5.6v4.8" />
-        <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
-      </svg>
-      <span>{resolveRepoName(repoRoot)}</span>
-    </span>
+  const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
+  const branchLabel = branch ?? 'detached';
+  const repoReady = isRepo && repoRoot;
+  const branchChip = repoReady ? (
+    <div className="composerBranchChipGroup">
+      <span className="composerBranchChip">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="4" cy="4" r="1.6" />
+          <circle cx="12" cy="4" r="1.6" />
+          <circle cx="4" cy="12" r="1.6" />
+          <path d="M4 5.6v4.8" />
+          <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
+        </svg>
+        <span>{branchLabel}</span>
+      </span>
+      <label className="composerWorktreeChip">
+        <input
+          type="checkbox"
+          checked={worktreeEnabled}
+          disabled={isSubmittingFirstTurn}
+          onChange={(event) => setWorktreeEnabled(event.target.checked)}
+        />
+        <span>worktree</span>
+      </label>
+    </div>
   ) : null;
 
   return (
     <WorkspaceNewChatDraft
       {...workspaceProps}
       copy={NEW_CODE_DRAFT_COPY}
-      composerFooterAccessory={workspaceChip}
+      composerFooterAccessory={branchChip}
     />
   );
 }

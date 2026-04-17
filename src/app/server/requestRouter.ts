@@ -203,11 +203,13 @@ async function handleShellInspectPath(
   }
 
   const repoRoot = await findGitRepoRoot(resolvedPath);
+  const branch = repoRoot ? await readGitBranch(repoRoot) : null;
   sendJson(response, 200, {
     path: resolvedPath,
     isDirectory: true,
     isRepo: repoRoot !== null,
     repoRoot,
+    branch,
   });
 }
 
@@ -225,6 +227,35 @@ async function findGitRepoRoot(startPath: string): Promise<string | null> {
       return null;
     }
     current = parent;
+  }
+}
+
+async function readGitBranch(repoRoot: string): Promise<string | null> {
+  try {
+    const gitPath = path.join(repoRoot, '.git');
+    const gitStats = await stat(gitPath);
+    let gitDir = gitPath;
+    if (gitStats.isFile()) {
+      // Linked worktree: `.git` is a file of the form `gitdir: <absolute-or-relative-path>`.
+      const pointer = (await readFile(gitPath, 'utf8')).trim();
+      const match = pointer.match(/^gitdir:\s*(.+)$/u);
+      if (!match) {
+        return null;
+      }
+      const pointerPath = match[1]!.trim();
+      gitDir = path.isAbsolute(pointerPath) ? pointerPath : path.resolve(repoRoot, pointerPath);
+    }
+    const head = (await readFile(path.join(gitDir, 'HEAD'), 'utf8')).trim();
+    const refMatch = head.match(/^ref:\s*refs\/heads\/(.+)$/u);
+    if (refMatch) {
+      return refMatch[1]!.trim();
+    }
+    if (/^[0-9a-f]{7,40}$/u.test(head)) {
+      return head.slice(0, 7);
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
