@@ -98,6 +98,13 @@ function hideImmediately(): void {
   }
 }
 
+/** Cancel any pending delayed show and hide the tooltip immediately. Exposed
+ *  so external UI (e.g. the guide-cat drag engine) can reliably dismiss a
+ *  tooltip that was scheduled before an interaction started. */
+export function hideTooltipPortal(): void {
+  hideImmediately();
+}
+
 export function initTooltipPortal(): () => void {
   function onOver(event: MouseEvent): void {
     const target = (event.target as HTMLElement).closest?.('[data-tooltip]') as HTMLElement | null;

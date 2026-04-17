@@ -18,6 +18,7 @@ import type {
   GuideCatPlacement,
   GuideCatSidecarMode,
 } from '../../shared/platform-contract.js';
+import { hideTooltipPortal } from '../../products/chat/renderer/tooltipPortal.js';
 import { dispatchPlatformEnvelopeRefresh } from './platformEnvelopeEvents.js';
 import {
   useGuideCatSidecarState,
@@ -438,6 +439,11 @@ export function GuideCatPlacementProvider({
       document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
       return () => {
         document.body.classList.remove(GUIDE_CAT_DRAGGING_BODY_CLASS);
+        // Drop any tooltip that got scheduled or painted while the drag was
+        // in progress (e.g. hover-delay timer that fired mid-drag). Without
+        // this the tooltip would pop back into view the moment the dragging
+        // class clears.
+        hideGlobalTooltip();
       };
     }
   }, [dragActivated]);
@@ -587,9 +593,10 @@ function clampToViewport(value: number, max: number): number {
 }
 
 function hideGlobalTooltip(): void {
-  if (typeof document === 'undefined') return;
-  const portal = document.querySelector('.tooltipPortal');
-  if (portal) portal.classList.remove('tooltipVisible');
+  // Delegate to the tooltip portal so any pending delayed show is cancelled
+  // as well — a naked DOM class removal would still let a queued showTimer
+  // fire and repaint the tooltip mid-drag or after release.
+  hideTooltipPortal();
 }
 
 /** Synthesise a `mousedown` on document.body so that any popover with a
