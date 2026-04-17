@@ -2110,6 +2110,26 @@ test('cat-led sessions restart when a participant model selection changes', asyn
       'codex.reasoning_effort': 'high',
     },
   });
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /Same conversation continuity transcript:/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[user:User\] First turn/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[agent:Reviewer\] response from session-1/u,
+  );
   assert.equal(channel.assignedParticipants?.[0]?.execution.target.provider, 'codex');
   assert.deepEqual(channel.assignedParticipants?.[0]?.execution.modelSelection, {
     entryId: 'gpt-5.4',

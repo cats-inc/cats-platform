@@ -232,6 +232,12 @@ function resolveTransportContext(
   return transport ?? 'web';
 }
 
+function supportsSameChatParticipantContinuity(
+  channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats' | 'channelKind'>,
+): boolean {
+  return isDirectLaneChannel(channel) || activeAssignedParticipants(channel).length === 1;
+}
+
 function buildSessionContextForTarget(
   state: ChatState,
   channel: ChatChannelView,
@@ -672,8 +678,8 @@ export function buildPromptForTarget(
     sourceParticipantName: request.sourceParticipant?.participantName ?? null,
     transport: resolveTransportContext(channel, transport),
   };
-  const directLaneContinuity = request.target.participantKind === 'cat'
-    && isDirectLaneChannel(channel);
+  const participantContinuity = request.target.participantKind === 'cat'
+    && supportsSameChatParticipantContinuity(channel);
 
   if (request.target.participantKind === 'orchestrator') {
     if (isSoloChatChannel(channel)) {
@@ -702,7 +708,7 @@ export function buildPromptForTarget(
     throw new Error(`Target participant is no longer assigned to the selected chat: ${request.target.participantId}`);
   }
 
-  const instructions = directLaneContinuity
+  const instructions = participantContinuity
     ? resolveSameChatContinuityInstructions(promptMessages, request)
     : null;
   return {
@@ -714,10 +720,10 @@ export function buildPromptForTarget(
       routingContext,
     ),
     instructions,
-    continuityMode: directLaneContinuity
+    continuityMode: participantContinuity
       ? resolveSameChatContinuityMode(promptMessages, request, instructions)
       : null,
-    continuityDeliveryMode: directLaneContinuity
+    continuityDeliveryMode: participantContinuity
       ? instructions ? 'turn_instructions' : 'none'
       : null,
   };

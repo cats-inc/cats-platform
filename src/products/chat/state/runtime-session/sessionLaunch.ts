@@ -8,6 +8,7 @@ import {
 import type { RoutingTarget } from '../mentionRouter.js';
 import { buildSoloChatContinuityTransplantInstructions } from '../prompts.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { activeAssignedParticipants } from '../../shared/channelParticipants.js';
 import {
   applySoloChatContinuityBoundary,
   messagesBeforeSource,
@@ -47,6 +48,12 @@ interface ResolvedTargetRuntimeEnvelope {
   canonicalMetadata: RuntimeEnvelopeCanonicalMetadata;
 }
 
+function supportsSameChatParticipantContinuity(
+  channel: Pick<ReturnType<typeof buildChannelView>, 'assignedParticipants' | 'assignedCats' | 'channelKind'>,
+): boolean {
+  return isDirectLaneChannel(channel) || activeAssignedParticipants(channel).length === 1;
+}
+
 function resolveNewSessionContinuityMetadata(input: {
   state: ChatState;
   channelId: string;
@@ -61,7 +68,7 @@ function resolveNewSessionContinuityMetadata(input: {
   const isSoloOrchestrator = input.target.participantKind === 'orchestrator'
     && channel.composerMode === 'solo';
   const isDirectLaneParticipant = input.target.participantKind === 'cat'
-    && isDirectLaneChannel(channel);
+    && supportsSameChatParticipantContinuity(channel);
   if (!isSoloOrchestrator && !isDirectLaneParticipant) {
     return null;
   }
