@@ -150,6 +150,30 @@ export function nowFrom(dependencies: ChatApiDependencies): Date {
   return dependencies.now?.() ?? new Date();
 }
 
+export async function enqueueGuideCatAssistRefreshIfRuntimeReachable(
+  dependencies: ChatApiDependencies,
+  options: {
+    guideCatExists: boolean;
+    now?: Date;
+  },
+): Promise<void> {
+  if (!options.guideCatExists) {
+    return;
+  }
+
+  try {
+    const runtime = await dependencies.runtimeClient.getHealth();
+    queueGuideCatAssistRefresh({
+      chatStatePath: dependencies.config.chatStatePath,
+      guideCatExists: true,
+      runtimeReachable: runtime.reachable,
+      now: options.now ?? nowFrom(dependencies),
+    });
+  } catch {
+    // Mutation already succeeded. Assist refresh stays best-effort.
+  }
+}
+
 export async function reconcileTelegramTransportAfterBindingMutation(
   context: ChatApiRouteContext,
   options: {

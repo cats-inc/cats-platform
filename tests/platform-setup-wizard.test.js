@@ -6,6 +6,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
+import { GUIDE_CAT_ASSIST_V1_SCOPE_KEYS } from '../build/server/shared/guideCatAssist.js';
+import { readGuideCatAssistCache } from '../build/server/shared/guideCatAssistStore.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createCat } from '../build/server/products/chat/state/model/index.js';
 
@@ -33,17 +35,21 @@ function getBaseConfig() {
   };
 }
 
-function createRuntimeStub() {
+function createRuntimeStub(options = {}) {
   let nextSession = 1;
+  const state = {
+    reachable: options.reachable ?? true,
+  };
   return {
+    state,
     createdSessions: [],
     sentMessages: [],
     closedSessions: [],
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
-        reachable: true,
-        status: 'ok',
+        reachable: state.reachable,
+        status: state.reachable ? 'ok' : 'down',
         service: 'cats-runtime',
       };
     },
@@ -92,9 +98,10 @@ function createRuntimeStub() {
 }
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+  const config = getBaseConfig();
   const server = createServer({
     shared: {
-      config: getBaseConfig(),
+      config,
       runtimeClient,
       now: () => new Date('2026-03-25T00:00:00.000Z'),
     },
@@ -112,11 +119,28 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   }
 
   try {
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(`http://127.0.0.1:${address.port}`, config);
   } finally {
     server.close();
     await once(server, 'close');
   }
+}
+
+async function waitForGuideCatAssistBundle(
+  chatStatePath,
+  scopeKey,
+  options = {},
+) {
+  const deadline = Date.now() + (options.timeoutMs ?? 2_000);
+  while (Date.now() < deadline) {
+    const cache = await readGuideCatAssistCache(chatStatePath);
+    const bundle = cache.bundles[scopeKey] ?? null;
+    if (bundle) {
+      return bundle;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Timed out waiting for assist bundle ${scopeKey}`);
 }
 
 test('GET /api/app-shell returns lastProductSurface: null before setup', async () => {
@@ -143,8 +167,8 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
       })),
       [
         { id: 'chat', group: 'home', maturity: 'active', selectable: true },
-        { id: 'work', group: 'office', maturity: 'preview', selectable: true },
         { id: 'code', group: 'office', maturity: 'preview', selectable: true },
+        { id: 'work', group: 'office', maturity: 'preview', selectable: true },
       ],
     );
   });
@@ -718,6 +742,81 @@ test('PATCH /api/platform/guide-cat dismissal survives later guide cat edits', a
     const shell = await shellResponse.json();
     assert.equal(shell.guideCat?.name, 'Resting Guide');
     assert.equal(shell.guideCat?.status, 'dismissed');
+  });
+});
+
+test('PUT /api/platform/guide-cat hydrates assist cache without requiring an app-shell refresh', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl, config) => {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: false,
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const updateResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Runtime Guide',
+        provider: 'claude',
+        model: 'claude-sonnet',
+      }),
+    });
+    assert.equal(updateResponse.status, 200);
+
+    const lobbyBundle = await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+    );
+    const soloBundle = await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo,
+    );
+
+    assert.equal(lobbyBundle.freshness.lastRefreshStatus, 'skipped');
+    assert.equal(soloBundle.freshness.lastRefreshStatus, 'skipped');
+  });
+});
+
+test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after restore', async () => {
+  const runtime = createRuntimeStub({ reachable: false });
+  await withServer(runtime, async (baseUrl, config) => {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+        guideCatName: 'Sleeping Guide',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    runtime.state.reachable = true;
+
+    const dismissResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'dismissed' }),
+    });
+    assert.equal(dismissResponse.status, 200);
+
+    const restoreResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'active' }),
+    });
+    assert.equal(restoreResponse.status, 200);
+
+    const parallelBundle = await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
+    );
+    assert.equal(parallelBundle.freshness.lastRefreshStatus, 'skipped');
   });
 });
 

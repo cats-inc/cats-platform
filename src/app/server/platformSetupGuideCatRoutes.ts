@@ -1,5 +1,8 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed, type RouteContext } from '../../shared/http.js';
-import type { ChatApiDependencies } from '../../products/chat/api/routeSupport.js';
+import {
+  enqueueGuideCatAssistRefreshIfRuntimeReachable,
+  type ChatApiDependencies,
+} from '../../products/chat/api/routeSupport.js';
 import {
   parseGuideCatStatusUpdateBody,
   parseGuideCatUpdateBody,
@@ -40,6 +43,10 @@ async function handleGuideCatUpdate(
   core = upsertGuideCat(core, guideCatUpdate, nowIso);
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  await enqueueGuideCatAssistRefreshIfRuntimeReachable(context.dependencies, {
+    guideCatExists: true,
+    now,
+  });
   sendJson(context.response, 200, { guideCat: core.guideCat });
 }
 
@@ -78,6 +85,12 @@ async function handleGuideCatStatusUpdate(
   core = nextCore;
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
+  if (core.guideCat?.status === 'active') {
+    await enqueueGuideCatAssistRefreshIfRuntimeReachable(context.dependencies, {
+      guideCatExists: true,
+      now,
+    });
+  }
   sendJson(context.response, 200, { guideCat: core.guideCat });
 }
 

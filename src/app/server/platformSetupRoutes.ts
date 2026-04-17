@@ -11,6 +11,7 @@ import {
 } from '../../runtime/setup.js';
 import {
   buildAppShellPayload,
+  enqueueGuideCatAssistRefreshIfRuntimeReachable,
   type ChatApiDependencies,
 } from '../../products/chat/api/routeSupport.js';
 import type { RouteContext } from '../../shared/http.js';
@@ -146,6 +147,10 @@ async function handlePlatformSetupComplete(
 
     // Commit chat/core as one persisted snapshot so setup cannot land in a half-written state.
     await context.dependencies.chatStore.writeSnapshot(chatState, core);
+    await enqueueGuideCatAssistRefreshIfRuntimeReachable(context.dependencies, {
+      guideCatExists: createGuideCat,
+      now,
+    });
     await recordProductEvent(context, {
       now,
       attemptId,
