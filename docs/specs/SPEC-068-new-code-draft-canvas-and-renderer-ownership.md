@@ -94,39 +94,47 @@ The platform needs a boundary where:
    - setup-panel title
    - execution section title
    - workspace section title
-4. `+New code` shall not require a fork of the entire chat draft surface just
+5. The first code-owned draft shall expose visible session-context chrome on
+   the canvas for:
+   - workspace selection
+   - execution target selection
+6. The first code-owned draft shall keep those visible session-context
+   elements product-owned while reusing shared chip and panel primitives.
+7. `+New code` shall not require a fork of the entire chat draft surface just
    to change copy or setup framing.
-5. Shared draft primitives shall keep their default chat/work copy unless a
+8. Shared draft primitives shall keep their default chat/work copy unless a
    product explicitly overrides it.
-6. `+Team code` and `+Peer code` may continue to use the current shared
+9. `+Team code` and `+Peer code` may continue to use the current shared
    chat-draft path until their own renderer semantics are ready.
 
 ### Renderer Boundary Requirements
 
-7. Shared draft primitives shall own reusable interaction mechanics such as:
+10. Shared draft primitives shall own reusable interaction mechanics such as:
    - attachment strip
    - plus-menu behavior
    - folder selection shell
    - provider/model editing shell
    - send-row layout
-8. Product-owned draft wrappers shall own:
+11. Shared draft primitives may expose a neutral header-accessory seam for
+    product-owned draft chrome without importing product semantics.
+12. Product-owned draft wrappers shall own:
    - entry-specific copy
    - which shared primitive variant is composed
    - when the draft delegates to another shared draft path
-9. Product-specific changes to `+New code` shall not require editing Chat or
+13. Product-specific changes to `+New code` shall not require editing Chat or
    Work draft copy unless the underlying primitive changed.
-10. Shared primitive bugs or styling fixes shall remain reusable across Chat,
+14. Shared primitive bugs or styling fixes shall remain reusable across Chat,
     Work, and Code without code-surface forking.
 
 ### Future Compatibility Requirements
 
-11. The first slice shall leave a clear seam for later `executionProfile`
+15. The first slice shall leave a clear seam for later `executionProfile`
     visibility such as:
     - workspace identity
     - worktree mode
     - permission profile
     - tool or memory binding
-12. The first slice shall not block later introduction of a fully code-owned
+16. The first slice shall not block later introduction of a fully code-owned
     `Team code` or `Peer code` draft surface.
 
 ## Design Overview
@@ -160,7 +168,8 @@ as:
 - prompt placeholder aimed at building, fixing, or investigating code
 
 The first slice does not yet define the final visual language for
-worktree/permission chips.
+worktree/permission chips, but it does introduce a code-owned chip row for the
+current workspace and execution target.
 
 ## Dependencies
 

@@ -88,11 +88,12 @@ test('new code draft publishes code-specific copy overrides for the shared works
   );
   assert.equal(NEW_CODE_DRAFT_COPY.sidePanelTitle, 'New Code Setup');
   assert.equal(NEW_CODE_DRAFT_COPY.executionSectionTitle, 'Execution');
+  assert.equal(NEW_CODE_DRAFT_COPY.executionActionLabel, 'Choose execution target');
   assert.equal(NEW_CODE_DRAFT_COPY.executionEmptyState, 'No execution target set yet.');
   assert.equal(NEW_CODE_DRAFT_COPY.folderSectionTitle, 'Workspace');
 });
 
-test('new code default draft renders the code-specific placeholder and shared workspace chip treatment', () => {
+test('new code default draft renders visible workspace and execution session chips above the composer', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -107,9 +108,18 @@ test('new code default draft renders the code-specific placeholder and shared wo
   );
 
   assert.match(markup, /What should this code session build, fix, or investigate\?/u);
+  assert.match(markup, /Choose workspace/u);
   assert.match(markup, /class="modelSelectorChip"/u);
   assert.doesNotMatch(markup, /How can I help you today\?/u);
   assert.doesNotMatch(markup, /class="audienceChip"/u);
+});
+
+test('new code default draft keeps empty execution state on-canvas when no execution target has been picked yet', () => {
+  const markup = renderToStaticMarkup(<NewChatDraft {...createProps()} />);
+
+  assert.match(markup, /Choose workspace/u);
+  assert.match(markup, /Choose execution target/u);
+  assert.match(markup, /class="draftHeaderAccessory"/u);
 });
 
 test('team code and peer code drafts continue to delegate to the shared chat draft flow', () => {

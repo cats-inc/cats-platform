@@ -418,6 +418,16 @@
   color: var(--text);
 }
 
+.draftHeaderAccessory {
+  display: flex;
+  justify-content: center;
+  margin: -8px 0 20px;
+}
+
+.draftHeaderAccessory .chipRow {
+  justify-content: center;
+}
+
 .recentCatAvatar {
   grid-area: 1 / 1;
   display: grid;

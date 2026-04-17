@@ -77,6 +77,7 @@ export interface WorkspaceNewChatDraftCopy {
   sidePanelTitle?: string;
   participantsSectionTitle?: string;
   executionSectionTitle?: string;
+  executionActionLabel?: string;
   executionEmptyState?: string;
   folderSectionTitle?: string;
   folderActionLabel?: string;
@@ -89,11 +90,20 @@ const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
   sidePanelTitle: 'New Chat Setup',
   participantsSectionTitle: 'Cats',
   executionSectionTitle: 'AI Reply',
+  executionActionLabel: 'Choose AI reply',
   executionEmptyState: 'No AI reply setup yet.',
   folderSectionTitle: 'Folder',
   folderActionLabel: 'Choose folder',
   folderEmptyState: 'No folder selected yet.',
 };
+
+export interface WorkspaceNewChatDraftHeaderAccessoryProps {
+  copy: Required<WorkspaceNewChatDraftCopy>;
+  draftCwd: string | null;
+  selectedModel?: ModelSelectorValue;
+  disabled: boolean;
+  onOpenSection: (section: string) => void;
+}
 
 export interface WorkspaceNewChatDraftProps {
   payload: AppShellPayload;
@@ -144,6 +154,7 @@ export interface WorkspaceNewChatDraftProps {
   CatAvatarRowComponent: ComponentType<CatAvatarRowProps>;
   FolderBrowserContentComponent: ComponentType<FolderBrowserContentProps>;
   DraftTargetSlotComponent: ComponentType<DraftTargetSlotProps>;
+  HeaderAccessoryComponent?: ComponentType<WorkspaceNewChatDraftHeaderAccessoryProps>;
   copy?: WorkspaceNewChatDraftCopy;
 }
 
@@ -196,6 +207,7 @@ export function WorkspaceNewChatDraft({
   CatAvatarRowComponent,
   FolderBrowserContentComponent,
   DraftTargetSlotComponent,
+  HeaderAccessoryComponent,
   copy,
 }: WorkspaceNewChatDraftProps) {
   void bossCatName;
@@ -279,6 +291,17 @@ export function WorkspaceNewChatDraft({
             <h1>{resolvedGreeting}</h1>
           )}
         </div>
+        {HeaderAccessoryComponent ? (
+          <div className="draftHeaderAccessory">
+            <HeaderAccessoryComponent
+              copy={resolvedCopy}
+              draftCwd={draftCwd}
+              selectedModel={selectedModel}
+              disabled={isSubmittingFirstTurn}
+              onOpenSection={openSidePanelTo}
+            />
+          </div>
+        ) : null}
         <form
           className={`composerCard composerCardFresh${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
           onSubmit={(event) => void onSendMessage(event)}

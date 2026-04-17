@@ -7,6 +7,7 @@ import {
   type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
+import { NewCodeDraftHeaderAccessory } from './NewCodeDraftHeaderAccessory.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   greeting: 'Ready to code.',
@@ -14,6 +15,7 @@ export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   sidePanelTitle: 'New Code Setup',
   participantsSectionTitle: 'Participants',
   executionSectionTitle: 'Execution',
+  executionActionLabel: 'Choose execution target',
   executionEmptyState: 'No execution target set yet.',
   folderSectionTitle: 'Workspace',
   folderActionLabel: 'Choose workspace',
@@ -83,6 +85,7 @@ export function NewChatDraft(props: NewChatDraftProps) {
   return (
     <WorkspaceNewChatDraft
       {...workspaceProps}
+      HeaderAccessoryComponent={NewCodeDraftHeaderAccessory}
       copy={NEW_CODE_DRAFT_COPY}
     />
   );
