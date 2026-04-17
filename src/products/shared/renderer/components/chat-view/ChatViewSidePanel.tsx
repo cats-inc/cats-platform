@@ -163,15 +163,16 @@ export function ChatViewSidePanel({
               instance={directLaneExecutionTarget.instance ?? ''}
               model={directLaneExecutionTarget.model ?? ''}
               modelSelection={directLaneExecutionTarget.modelSelection}
-              onTargetChange={(target: ProviderTargetSelection) => {
-                onDirectLaneExecutionTargetChange?.(directLaneCat.id, {
-                  provider: target.provider,
-                  model: target.model || null,
-                  instance: target.instance || null,
-                  modelSelection: target.modelSelection ?? null,
-                });
-              }}
-            />
+            onTargetChange={(target: ProviderTargetSelection) => {
+              onDirectLaneExecutionTargetChange?.(directLaneCat.id, {
+                provider: target.provider,
+                model: target.model || null,
+                instance: target.instance || null,
+                modelSelection: target.modelSelection ?? null,
+                executionLabel: target.executionLabel ?? null,
+              });
+            }}
+          />
           </>
         );
       }
@@ -188,6 +189,7 @@ export function ChatViewSidePanel({
                 model: target.model || null,
                 instance: target.instance || null,
                 modelSelection: target.modelSelection ?? null,
+                executionLabel: target.executionLabel ?? null,
               });
             }}
           />
@@ -316,4 +318,3 @@ export function ChatViewSidePanel({
     return sections;
   }
 }
-

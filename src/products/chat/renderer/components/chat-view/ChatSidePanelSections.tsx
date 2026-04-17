@@ -167,6 +167,7 @@ export function buildChatSidePanelSections({
                 model: target.model || null,
                 instance: target.instance || null,
                 modelSelection: target.modelSelection ?? null,
+                executionLabel: target.executionLabel ?? null,
               });
             }}
           />
@@ -187,6 +188,7 @@ export function buildChatSidePanelSections({
                 model: target.model || null,
                 instance: target.instance || null,
                 modelSelection: target.modelSelection ?? null,
+                executionLabel: target.executionLabel ?? null,
               });
             }}
           />
@@ -373,4 +375,3 @@ export function buildChatSidePanelSections({
 
   return sections;
 }
-

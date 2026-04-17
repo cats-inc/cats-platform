@@ -131,6 +131,15 @@ export function clearRememberedExecutionLabels(): void {
   executionLabelMemory.clear();
 }
 
+export function peekRememberedExecutionLabel(input: {
+  provider: string;
+  instance: string | null | undefined;
+  model: string | null | undefined;
+  modelSelection?: { controls?: ExecutionControlMap | null } | null;
+}): string | null {
+  return readRememberedExecutionLabel(input);
+}
+
 export function rememberExecutionLabel(input: {
   provider: string;
   instance: string | null | undefined;

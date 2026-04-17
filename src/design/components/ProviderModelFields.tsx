@@ -1,8 +1,11 @@
+import { useEffect } from 'react';
+
 import {
   type ProductProviderRegistryReadModel,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
+import { peekRememberedExecutionLabel } from '../../shared/executionLabel.js';
 import {
   resolveSelectedProviderInstance,
   type ProviderModelSelection,
@@ -13,6 +16,7 @@ import {
   catalogMatchesTarget,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
+  resolveExecutionLabelForProviderTarget,
   resolveProviderModelFieldsViewState,
   shouldAutoRecheckProviderRegistry,
 } from './providerModelFieldsSupport.js';
@@ -201,6 +205,48 @@ export function ProviderModelFields({
     clearManualSelection,
     onTargetChange,
   });
+
+  useEffect(() => {
+    const trimmedModel = model.trim();
+    if (!selectedProvider || !trimmedModel) {
+      return;
+    }
+
+    const rememberedExecutionLabel = peekRememberedExecutionLabel({
+      provider,
+      instance: resolvedInstance,
+      model: trimmedModel,
+      modelSelection: modelSelection ?? null,
+    });
+    const resolvedExecutionLabel = resolveExecutionLabelForProviderTarget({
+      provider,
+      instance: resolvedInstance,
+      model: trimmedModel,
+      modelSelection: modelSelection ?? null,
+      effectiveCatalog,
+      effectiveAdvancedCatalog,
+    });
+    if (rememberedExecutionLabel === resolvedExecutionLabel) {
+      return;
+    }
+
+    onTargetChange({
+      provider,
+      instance: resolvedInstance,
+      model: trimmedModel,
+      modelSelection: modelSelection ?? null,
+      executionLabel: resolvedExecutionLabel,
+    });
+  }, [
+    effectiveAdvancedCatalog,
+    effectiveCatalog,
+    model,
+    modelSelection,
+    onTargetChange,
+    provider,
+    resolvedInstance,
+    selectedProvider,
+  ]);
 
   return (
     <>

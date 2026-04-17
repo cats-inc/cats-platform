@@ -325,6 +325,7 @@ export function buildChatNewChatDraftSidePanelSections(
                 model: target.model || null,
                 instance: target.instance || null,
                 modelSelection: target.modelSelection ?? null,
+                executionLabel: target.executionLabel ?? null,
               });
             }}
           />
@@ -350,6 +351,7 @@ export function buildChatNewChatDraftSidePanelSections(
                   model: target.model || null,
                   instance: target.instance || null,
                   modelSelection: target.modelSelection ?? null,
+                  executionLabel: target.executionLabel ?? null,
                 });
               }
             }}
@@ -378,6 +380,7 @@ export function buildChatNewChatDraftSidePanelSections(
                 model: next.model || null,
                 instance: next.instance || null,
                 modelSelection: next.modelSelection ?? null,
+                executionLabel: next.executionLabel ?? null,
               });
             }}
           />
@@ -417,4 +420,3 @@ export function buildChatNewChatDraftSidePanelSections(
 
   return sections;
 }
-

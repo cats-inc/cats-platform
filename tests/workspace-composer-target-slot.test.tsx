@@ -10,6 +10,7 @@ function createPayload(): AppShellPayload {
     chat: {
       bossCatId: null,
       cats: [],
+      capabilities: {},
     },
   } as unknown as AppShellPayload;
 }
@@ -83,6 +84,38 @@ test('workspace composer renders a model-backed audience chip for solo mode', ()
   assert.match(markup, /class="audienceChipLabel">Claude-CLI/u);
   assert.doesNotMatch(markup, /class="audienceChipAvatar"/u);
   assert.doesNotMatch(markup, /class="audienceChipWorkflow"/u);
+});
+
+test('workspace composer prefers runtime-backed execution labels for solo audience chips', () => {
+  const markup = renderToStaticMarkup(
+    <WorkspaceComposerTargetSlot
+      payload={createPayload()}
+      composerBusy={false}
+      selectedExecutionTarget={{
+        provider: 'claude',
+        instance: 'native',
+        model: 'opus',
+        modelSelection: {
+          entryId: 'opus',
+          entryMode: 'explicit',
+          controls: {
+            'claude.reasoning_effort': 'xhigh',
+          },
+        },
+        executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+      }}
+      directLaneCat={null}
+      defaultRecipientCat={null}
+      assignedCatRecords={[]}
+      leadCatRecord={null}
+      isDirectLane={false}
+      isSoloComposer
+      onOpenSection={() => {}}
+    />,
+  );
+
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /Claude-CLI · Opus 4\.7 with 1M context · xHigh \(default\)/u);
 });
 
 test('workspace composer renders a multi-cat audience chip for group rooms', () => {

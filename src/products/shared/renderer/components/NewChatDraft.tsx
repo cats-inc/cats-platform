@@ -542,6 +542,7 @@ export function WorkspaceNewChatDraft({
                   model: target.model || null,
                   instance: target.instance || null,
                   modelSelection: target.modelSelection ?? null,
+                  executionLabel: target.executionLabel ?? null,
                 });
               }}
             />
@@ -563,6 +564,7 @@ export function WorkspaceNewChatDraft({
                     model: target.model || null,
                     instance: target.instance || null,
                     modelSelection: target.modelSelection ?? null,
+                    executionLabel: target.executionLabel ?? null,
                   });
                 }
               }}
@@ -635,4 +637,3 @@ export function NewChatDraft({
     />
   );
 }
-

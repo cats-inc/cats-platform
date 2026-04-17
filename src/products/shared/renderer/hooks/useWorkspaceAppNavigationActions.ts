@@ -23,6 +23,7 @@ import {
   resetSetup as resetWorkspaceSetup,
 } from '../api/index.js';
 import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
+import { clearRememberedExecutionLabels } from '../../../../shared/executionLabel.js';
 import {
   clearBusyState,
   createCatBusyState,
@@ -296,6 +297,7 @@ export function useWorkspaceAppNavigationActions<
     setBusy(createSetupBusyState());
     try {
       const payload = await navigationApi.resetSetup();
+      clearRememberedExecutionLabels();
       await syncDesktopHostPlatformShellState({
         bootstrapAttemptId: payload.bootstrapAttemptId ?? null,
         setupCompleteAt: payload.setupCompleteAt ?? null,
@@ -364,4 +366,3 @@ export function useWorkspaceAppNavigationActions<
     onStartNewParallelChat,
   };
 }
-
