@@ -60,6 +60,10 @@ export interface GuideCatPlacementContextValue {
   consumePillClickSuppression: () => boolean;
   presentation: GuideCatSidecarState;
   dragActive: boolean;
+  /** Viewport x (px) where the open-state panel should start its left edge,
+   * so it hugs the chrome (workspace sidebar right edge, or lobby left edge)
+   * rather than drifting with the pill centre. */
+  panelOriginX: number;
 }
 
 const GuideCatPlacementContext = createContext<GuideCatPlacementContextValue | null>(null);
@@ -130,7 +134,17 @@ export function GuideCatPlacementProvider({
   });
   const pillRef = useRef<HTMLElement | null>(null);
   const suppressClickRef = useRef(false);
-  const [drag, setDrag] = useState<DragState | null>(null);
+  /** Authoritative, synchronously-readable drag state. `drag` React state
+   * mirrors this ref for rendering. Handlers must write the ref BEFORE
+   * calling setDrag, and read from the ref (not closure `drag` or a stale
+   * argument) so a pointerup that lands between the last pointermove's
+   * setDrag and React's flush still sees the final overSlot / coords. */
+  const dragRef = useRef<DragState | null>(null);
+  const [drag, setDragState] = useState<DragState | null>(null);
+  const setDrag = useCallback((next: DragState | null) => {
+    dragRef.current = next;
+    setDragState(next);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -310,7 +324,9 @@ export function GuideCatPlacementProvider({
   );
 
   const handleMove = useCallback(
-    (event: PointerEvent, active: DragState) => {
+    (event: PointerEvent) => {
+      const active = dragRef.current;
+      if (!active || event.pointerId !== active.pointerId) return;
       const nextState: DragState = {
         ...active,
         currentX: event.clientX,
@@ -367,11 +383,13 @@ export function GuideCatPlacementProvider({
       }
       setDrag(nextState);
     },
-    [presentation, refreshSlotRects, surface],
+    [presentation, refreshSlotRects, setDrag, surface],
   );
 
   const handleUp = useCallback(
-    (event: PointerEvent, active: DragState) => {
+    (event: PointerEvent) => {
+      const active = dragRef.current;
+      if (!active || event.pointerId !== active.pointerId) return;
       const finalState: DragState = {
         ...active,
         currentX: event.clientX,
@@ -384,29 +402,32 @@ export function GuideCatPlacementProvider({
 
   useEffect(() => {
     if (!drag) return;
-    const onMove = (event: PointerEvent) => {
-      if (event.pointerId !== drag.pointerId) return;
-      handleMove(event, drag);
-    };
-    const onUp = (event: PointerEvent) => {
-      if (event.pointerId !== drag.pointerId) return;
-      handleUp(event, drag);
-    };
     const onCancel = (event: PointerEvent) => {
-      if (event.pointerId !== drag.pointerId) return;
+      const active = dragRef.current;
+      if (!active || event.pointerId !== active.pointerId) return;
       setDrag(null);
     };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
     window.addEventListener('pointercancel', onCancel);
     return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
       window.removeEventListener('pointercancel', onCancel);
     };
-  }, [drag, handleMove, handleUp]);
+  }, [drag, handleMove, handleUp, setDrag]);
 
   const dragActivated = Boolean(drag?.activated);
+
+  /* Match the pre-refactor offsets: product/workspace panel sticks at the
+   * canvas left edge (= sidebar right edge + 2px); lobby panel starts flush
+   * at the viewport edge. */
+  const panelOriginX = useMemo(() => {
+    if (surface === 'workspace' && sidebarRight != null) {
+      return Math.max(2, Math.round(sidebarRight) + 2);
+    }
+    return 0;
+  }, [surface, sidebarRight]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -512,6 +533,7 @@ export function GuideCatPlacementProvider({
       consumePillClickSuppression,
       presentation,
       dragActive: dragActivated,
+      panelOriginX,
     }),
     [
       guideCat,
@@ -523,6 +545,7 @@ export function GuideCatPlacementProvider({
       consumePillClickSuppression,
       presentation,
       dragActivated,
+      panelOriginX,
     ],
   );
 

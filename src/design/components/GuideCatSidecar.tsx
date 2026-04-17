@@ -443,6 +443,7 @@ export function GuideCatSidecar({
     onFloatingPointerDown,
     consumePillClickSuppression,
     dragActive,
+    panelOriginX,
   } = useGuideCatPlacement();
 
   if (projection.kind !== 'floating') {
@@ -462,7 +463,7 @@ export function GuideCatSidecar({
     transform: 'translateY(-50%)',
   };
   const panelStyle: CSSProperties = {
-    left: `${Math.max(12, projection.x - 140)}px`,
+    left: `${panelOriginX}px`,
   };
   const surfaceMode: GuideCatSidecarSurfaceMode =
     projection.kind === 'floating' ? 'product' : 'hidden';
