@@ -14,12 +14,17 @@ import {
 import {
   readGuideCatAssistCache,
   readGuideCatAssistConfig,
+  recordGuideCatAssistRefreshFailure,
+  upsertGuideCatAssistBundle,
 } from '../../../shared/guideCatAssistStore.js';
 
 export interface ChatGuideCatAssistReadModel {
   lobby: GuideCatAssistSurfaceReadModel;
   newChatByMode: Record<GuideCatAssistNewChatMode, GuideCatAssistSurfaceReadModel>;
 }
+
+const DEFAULT_GUIDE_CAT_ASSIST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const guideCatAssistRefreshQueue = new Map<string, Promise<void>>();
 
 function mergeOverrideContent(
   baseContent: GuideCatAssistContent,
@@ -131,4 +136,84 @@ export async function resolveChatGuideCatAssistReadModel(input: {
         return acc;
       }, {} as Record<GuideCatAssistNewChatMode, GuideCatAssistSurfaceReadModel>),
   };
+}
+
+export async function refreshGuideCatAssistEligibleScopes(input: {
+  chatStatePath: string;
+  guideCatExists: boolean;
+  runtimeReachable: boolean;
+  now?: Date;
+  readModel?: ChatGuideCatAssistReadModel;
+}): Promise<void> {
+  if (!input.guideCatExists || !input.runtimeReachable) {
+    return;
+  }
+
+  const [config, readModel] = await Promise.all([
+    readGuideCatAssistConfig(input.chatStatePath),
+    input.readModel
+      ? Promise.resolve(input.readModel)
+      : resolveChatGuideCatAssistReadModel({
+        chatStatePath: input.chatStatePath,
+        guideCatExists: input.guideCatExists,
+        runtimeReachable: input.runtimeReachable,
+      }),
+  ]);
+  const refreshableSurfaces = [
+    readModel.lobby,
+    ...Object.values(readModel.newChatByMode),
+  ].filter((surface) => surface.refreshEligible);
+  if (refreshableSurfaces.length === 0) {
+    return;
+  }
+
+  const now = input.now ?? new Date();
+  const generatedAt = now.toISOString();
+  const ttlMs = config.refreshPreferences.defaultTtlMs ?? DEFAULT_GUIDE_CAT_ASSIST_CACHE_TTL_MS;
+  const expiresAt = ttlMs > 0 ? new Date(now.getTime() + ttlMs).toISOString() : null;
+
+  for (const surface of refreshableSurfaces) {
+    try {
+      await upsertGuideCatAssistBundle(input.chatStatePath, {
+        ...surface.bundle,
+        freshness: {
+          ...surface.bundle.freshness,
+          generatedAt,
+          expiresAt,
+          lastRefreshStatus: surface.cacheHit
+            ? surface.bundle.freshness.lastRefreshStatus
+            : 'skipped',
+        },
+      });
+    } catch (error) {
+      await recordGuideCatAssistRefreshFailure(input.chatStatePath, {
+        scopeKey: surface.scopeKey,
+        failedAt: generatedAt,
+        message: error instanceof Error ? error.message : String(error),
+        code: error instanceof Error ? error.name : null,
+      });
+    }
+  }
+}
+
+export function queueGuideCatAssistRefresh(input: {
+  chatStatePath: string;
+  guideCatExists: boolean;
+  runtimeReachable: boolean;
+  now?: Date;
+  readModel?: ChatGuideCatAssistReadModel;
+}): void {
+  if (!input.guideCatExists || !input.runtimeReachable) {
+    return;
+  }
+  if (guideCatAssistRefreshQueue.has(input.chatStatePath)) {
+    return;
+  }
+
+  const refreshPromise = refreshGuideCatAssistEligibleScopes(input)
+    .catch(() => {})
+    .finally(() => {
+      guideCatAssistRefreshQueue.delete(input.chatStatePath);
+    });
+  guideCatAssistRefreshQueue.set(input.chatStatePath, refreshPromise);
 }

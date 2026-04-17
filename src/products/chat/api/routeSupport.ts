@@ -80,7 +80,10 @@ import {
   resolveOrchestratorLeaseAttachment,
   resolveParticipantLeaseAttachment,
 } from '../shared/channelParticipants.js';
-import { resolveChatGuideCatAssistReadModel } from './guideCatAssist.js';
+import {
+  queueGuideCatAssistRefresh,
+  resolveChatGuideCatAssistReadModel,
+} from './guideCatAssist.js';
 export { mapChannelCat } from './routeStateSupport.js';
 import { readRuntimeSetupSummary } from '../../../runtime/setup.js';
 export {
@@ -250,6 +253,13 @@ export async function buildAppShellPayload(
     chatStatePath: dependencies.config.chatStatePath,
     guideCatExists: Boolean(core.guideCat),
     runtimeReachable: runtime.reachable,
+  });
+  queueGuideCatAssistRefresh({
+    chatStatePath: dependencies.config.chatStatePath,
+    guideCatExists: Boolean(core.guideCat),
+    runtimeReachable: runtime.reachable,
+    now: nowFrom(dependencies),
+    readModel: guideCatAssist,
   });
 
   return createAppShell(

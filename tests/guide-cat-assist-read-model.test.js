@@ -10,9 +10,13 @@ import {
 } from '../build/server/shared/guideCatAssist.js';
 import {
   upsertGuideCatAssistBundle,
+  readGuideCatAssistCache,
   writeGuideCatAssistConfig,
 } from '../build/server/shared/guideCatAssistStore.js';
-import { resolveChatGuideCatAssistReadModel } from '../build/server/products/chat/api/guideCatAssist.js';
+import {
+  refreshGuideCatAssistEligibleScopes,
+  resolveChatGuideCatAssistReadModel,
+} from '../build/server/products/chat/api/guideCatAssist.js';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import { createAppShell } from '../build/server/products/chat/state/shell.js';
 
@@ -134,4 +138,27 @@ test('createAppShell carries guide cat assist read models into lobby and chat pa
     payload.chat.newChatAssist?.parallel.scopeKey,
     GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
   );
+});
+
+test('guide cat assist refresh can materialize eligible scopes into the local cache', async () => {
+  const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-guide-cat-assist-refresh-'));
+  const chatStatePath = path.join(workingDir, 'platform', 'state', 'chat-state.local.json');
+
+  await refreshGuideCatAssistEligibleScopes({
+    chatStatePath,
+    guideCatExists: true,
+    runtimeReachable: true,
+    now: new Date('2026-04-17T15:00:00.000Z'),
+  });
+
+  const cache = await readGuideCatAssistCache(chatStatePath);
+  assert.equal(
+    cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault]?.freshness.generatedAt,
+    '2026-04-17T15:00:00.000Z',
+  );
+  assert.equal(
+    cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo]?.freshness.lastRefreshStatus,
+    'skipped',
+  );
+  assert.ok(cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel]);
 });
