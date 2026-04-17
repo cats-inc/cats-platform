@@ -51,6 +51,13 @@ export interface RuntimeSessionPolicyValidationIssue {
   details?: Record<string, unknown>;
 }
 
+export class RuntimeSessionPolicyError extends Error {
+  constructor(readonly issue: RuntimeSessionPolicyValidationIssue) {
+    super(issue.message);
+    this.name = 'RuntimeSessionPolicyError';
+  }
+}
+
 // RuntimeSessionPolicy is a discriminated union over workspaceAccess. Read-only
 // sessions must run with the default permission gate; read-write sessions are
 // skip-permission by default but may opt into a whitelist. Constructing any
@@ -208,6 +215,24 @@ function applyReadOnlyInvariant(raw: RuntimeSessionPolicyFields): RuntimeSession
 
 export function createDefaultRuntimeSessionPolicy(): RuntimeSessionPolicy {
   return applyReadOnlyInvariant(createDefaultPolicyFields());
+}
+
+export function createRuntimeSessionContractInput(
+  policy: RuntimeSessionPolicy,
+): RuntimeSessionCreateContractInput {
+  if (policy.workspaceAccess === 'read_only') {
+    return {
+      runtimeWorkspaceKind: policy.workspaceKind,
+      runtimeWorkspaceAccess: 'read_only',
+      runtimePermissionMode: 'default',
+    };
+  }
+
+  return {
+    runtimeWorkspaceKind: policy.workspaceKind,
+    runtimeWorkspaceAccess: 'read_write',
+    runtimePermissionMode: policy.permissionMode,
+  };
 }
 
 // Stored/runtime-facing policies are completed from explicit fields plus global

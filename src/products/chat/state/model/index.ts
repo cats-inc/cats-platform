@@ -27,6 +27,7 @@ import {
 } from '../../shared/channelTopology.js';
 import { normalizePlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
+  RuntimeSessionPolicyError,
   resolveCreateRuntimeSessionPolicy,
   validateRuntimeSessionPolicyInput,
 } from '../../../../shared/runtimeSessionPolicy.js';
@@ -276,13 +277,16 @@ export function createChannel(
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
   const originSurface = resolveCreateInputOriginSurface(input.originSurface);
+  // Defensive guard for untyped/internal callers that bypass the stricter
+  // create-boundary contracts. HTTP routes should reject these combinations
+  // before they reach the model layer.
   const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
     workspaceKind: input.runtimeWorkspaceKind,
     workspaceAccess: input.runtimeWorkspaceAccess,
     permissionMode: input.runtimePermissionMode,
   });
   if (runtimePolicyIssue) {
-    throw new Error(runtimePolicyIssue.message);
+    throw new RuntimeSessionPolicyError(runtimePolicyIssue);
   }
   const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath: input.repoPath,

@@ -19,7 +19,10 @@ import {
 import type {
   RuntimeSessionTransportInput,
 } from '../shared/runtimeSessionPolicy.js';
-import { validateRuntimeSessionPolicyInput } from '../shared/runtimeSessionPolicy.js';
+import {
+  RuntimeSessionPolicyError,
+  validateRuntimeSessionPolicyInput,
+} from '../shared/runtimeSessionPolicy.js';
 import {
   normalizeRuntimeProviderDiagnosticsPayload,
   normalizeRuntimeProviderConfigRegistry,
@@ -516,13 +519,15 @@ export class CatsRuntimeClient implements RuntimeClient {
   }
 
   async createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
+    // Defensive guard for any untyped caller that bypasses the discriminated
+    // transport input. Boundary-owned callers should already be type-safe.
     const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
       workspaceKind: input.workspaceKind,
       workspaceAccess: input.workspaceAccess,
       permissionMode: input.permissionMode,
     });
     if (runtimePolicyIssue) {
-      throw new Error(runtimePolicyIssue.message);
+      throw new RuntimeSessionPolicyError(runtimePolicyIssue);
     }
 
     const payload: Record<string, unknown> = {

@@ -224,6 +224,10 @@ test('channel creation rejects runtime policy combinations that would otherwise 
       payload.error?.message,
       'read_write sessions may only use skip or whitelist permission modes.',
     );
+    assert.deepEqual(payload.error?.details, {
+      workspaceAccess: 'read_write',
+      permissionMode: 'default',
+    });
   });
 });
 

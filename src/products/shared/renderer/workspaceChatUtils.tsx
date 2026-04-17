@@ -11,6 +11,7 @@ import type {
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
+  createRuntimeSessionContractInput,
   resolveCreateRuntimeSessionPolicy,
   type RuntimeSessionPolicy,
 } from '../../../shared/runtimeSessionPolicy.js';
@@ -271,17 +272,6 @@ export function buildNewChatChannelInput(options: {
     repoPath,
     policy: draftSessionPolicy,
   });
-  const runtimeSessionContractFields = runtimeSessionPolicy.workspaceAccess === 'read_only'
-    ? {
-        runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
-        runtimeWorkspaceAccess: 'read_only' as const,
-        runtimePermissionMode: 'default' as const,
-      }
-    : {
-        runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
-        runtimeWorkspaceAccess: 'read_write' as const,
-        runtimePermissionMode: runtimeSessionPolicy.permissionMode,
-      };
   const baseInput: CreateChatChannelInput = {
     title: createDraftChannelTitle(body, existingCount),
     topic: createDraftChannelTopic(body),
@@ -289,7 +279,7 @@ export function buildNewChatChannelInput(options: {
     entryKind: resolvedEntryKind,
     skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
-    ...runtimeSessionContractFields,
+    ...createRuntimeSessionContractInput(runtimeSessionPolicy),
     temporaryParticipants: temporaryParticipants.length > 0
       ? temporaryParticipants.map((participant) => ({
           participantId: participant.participantId,

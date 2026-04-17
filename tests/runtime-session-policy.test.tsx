@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   completeRuntimeSessionPolicy,
+  createRuntimeSessionContractInput,
   createDefaultRuntimeSessionPolicy,
   resolveCreateRuntimeSessionPolicy,
   validateRuntimeSessionPolicyInput,
@@ -58,6 +59,85 @@ test('resolveCreateRuntimeSessionPolicy forces read-only sessions onto the defau
   assert.equal(completed.permissionMode, 'default');
 });
 
+test('createRuntimeSessionContractInput converts a read-only policy into create-boundary fields', () => {
+  assert.deepEqual(
+    createRuntimeSessionContractInput({
+      workspaceKind: 'worktree',
+      workspaceAccess: 'read_only',
+      permissionMode: 'default',
+    }),
+    {
+      runtimeWorkspaceKind: 'worktree',
+      runtimeWorkspaceAccess: 'read_only',
+      runtimePermissionMode: 'default',
+    },
+  );
+});
+
+test('validateRuntimeSessionPolicyInput accepts valid combinations', () => {
+  assert.equal(
+    validateRuntimeSessionPolicyInput({
+      workspaceKind: 'sandbox',
+      workspaceAccess: 'read_write',
+      permissionMode: 'skip',
+    }),
+    null,
+  );
+
+  assert.equal(
+    validateRuntimeSessionPolicyInput({
+      workspaceKind: 'worktree',
+      workspaceAccess: 'read_only',
+      permissionMode: 'default',
+    }),
+    null,
+  );
+});
+
+test('validateRuntimeSessionPolicyInput rejects invalid workspace kinds and access literals', () => {
+  assert.deepEqual(
+    validateRuntimeSessionPolicyInput({
+      workspaceKind: 'bogus',
+    }),
+    {
+      code: 'invalid_runtime_workspace_kind',
+      message: 'runtimeWorkspaceKind must be one of: source, sandbox, worktree.',
+      details: {
+        received: 'bogus',
+      },
+    },
+  );
+
+  assert.deepEqual(
+    validateRuntimeSessionPolicyInput({
+      workspaceAccess: 'bogus',
+    }),
+    {
+      code: 'invalid_runtime_workspace_access',
+      message: 'runtimeWorkspaceAccess must be one of: read_write, read_only.',
+      details: {
+        received: 'bogus',
+      },
+    },
+  );
+});
+
+test('validateRuntimeSessionPolicyInput rejects invalid permission literals', () => {
+  assert.deepEqual(
+    validateRuntimeSessionPolicyInput({
+      workspaceAccess: 'read_write',
+      permissionMode: 'bogus',
+    }),
+    {
+      code: 'invalid_runtime_permission_mode',
+      message: 'runtimePermissionMode must be one of: skip, default, whitelist.',
+      details: {
+        received: 'bogus',
+      },
+    },
+  );
+});
+
 test('validateRuntimeSessionPolicyInput rejects permission modes without a matching access mode', () => {
   assert.deepEqual(
     validateRuntimeSessionPolicyInput({
@@ -73,15 +153,19 @@ test('validateRuntimeSessionPolicyInput rejects permission modes without a match
       },
     },
   );
+});
 
+test('validateRuntimeSessionPolicyInput rejects read-only sessions with non-default permission modes', () => {
   assert.deepEqual(
     validateRuntimeSessionPolicyInput({
+      workspaceAccess: 'read_only',
       permissionMode: 'whitelist',
     }),
     {
       code: 'invalid_runtime_policy_combination',
-      message: 'runtimePermissionMode requires runtimeWorkspaceAccess.',
+      message: 'read_only sessions may only use the default permission gate.',
       details: {
+        workspaceAccess: 'read_only',
         permissionMode: 'whitelist',
       },
     },
