@@ -10,10 +10,10 @@ import {
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
 import {
+  attachExecutionLabelToProviderTarget,
   buildSelectionForEntry,
   CUSTOM_LEGACY_MODEL_VALUE,
   filterPersistentControlValues,
-  resolveExecutionLabelForProviderTarget,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
@@ -74,20 +74,16 @@ export function useProviderModelFieldActions(input: {
     const nextPresetId = next.presetId ?? null;
     const nextModelSelection = buildSelectionForEntry(nextModel, nextPresetId, nextControls);
     markManualSelection();
-    onTargetChange({
-      provider,
-      instance: next.instance ?? resolvedInstance,
-      model: nextModel,
-      modelSelection: nextModelSelection,
-      executionLabel: resolveExecutionLabelForProviderTarget({
+    onTargetChange(attachExecutionLabelToProviderTarget({
+      target: {
         provider,
         instance: next.instance ?? resolvedInstance,
         model: nextModel,
         modelSelection: nextModelSelection,
-        effectiveCatalog,
-        effectiveAdvancedCatalog,
-      }),
-    });
+      },
+      effectiveCatalog,
+      effectiveAdvancedCatalog,
+    }));
   }, [
     effectiveAdvancedCatalog,
     effectiveCatalog,
@@ -101,22 +97,16 @@ export function useProviderModelFieldActions(input: {
 
   const emitLegacyModel = useCallback((nextModel: string, nextInstance?: string): void => {
     markLegacyManualSelection();
-    onTargetChange({
-      provider,
-      instance: nextInstance ?? resolvedInstance,
-      model: nextModel,
-      modelSelection: null,
-      executionLabel: nextModel
-        ? resolveExecutionLabelForProviderTarget({
-            provider,
-            instance: nextInstance ?? resolvedInstance,
-            model: nextModel,
-            modelSelection: null,
-            effectiveCatalog,
-            effectiveAdvancedCatalog,
-          })
-        : null,
-    });
+    onTargetChange(attachExecutionLabelToProviderTarget({
+      target: {
+        provider,
+        instance: nextInstance ?? resolvedInstance,
+        model: nextModel,
+        modelSelection: null,
+      },
+      effectiveCatalog,
+      effectiveAdvancedCatalog,
+    }));
   }, [
     effectiveAdvancedCatalog,
     effectiveCatalog,

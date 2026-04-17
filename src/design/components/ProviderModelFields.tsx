@@ -28,6 +28,7 @@ import { useProviderRegistryState } from './useProviderRegistryState.js';
 import { useProviderTargetReconciliation } from './useProviderTargetReconciliation.js';
 
 export {
+  attachExecutionLabelToProviderTarget,
   CUSTOM_LEGACY_MODEL_VALUE,
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   catalogMatchesTarget,

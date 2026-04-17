@@ -11,6 +11,7 @@ import {
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
 import {
+  attachExecutionLabelToProviderTarget,
   sanitizePersistentTargetSelection,
   shouldDeferCatalogTargetReconciliation,
   shouldTreatPersistedTargetAsLegacyModel,
@@ -67,14 +68,20 @@ export function useProviderTargetReconciliation(input: {
       setLegacyManualTargetKey(null);
     }
     if (input.resolvedInstance && input.resolvedInstance !== input.instance) {
-      onTargetChangeRef.current({
-        provider: input.provider,
-        instance: input.resolvedInstance,
-        model: input.model,
-        modelSelection: input.modelSelection,
-      });
+      onTargetChangeRef.current(attachExecutionLabelToProviderTarget({
+        target: {
+          provider: input.provider,
+          instance: input.resolvedInstance,
+          model: input.model,
+          modelSelection: input.modelSelection,
+        },
+        effectiveCatalog: input.effectiveCatalog,
+        effectiveAdvancedCatalog: input.effectiveAdvancedCatalog,
+      }));
     }
   }, [
+    input.effectiveAdvancedCatalog,
+    input.effectiveCatalog,
     input.hasSelectedProvider,
     input.instance,
     input.model,
@@ -121,7 +128,11 @@ export function useProviderTargetReconciliation(input: {
       || sanitizedTarget.model !== input.model
       || !sameProviderModelSelection(sanitizedTarget.modelSelection, input.modelSelection)
     ) {
-      onTargetChangeRef.current(sanitizedTarget);
+      onTargetChangeRef.current(attachExecutionLabelToProviderTarget({
+        target: sanitizedTarget,
+        effectiveCatalog: input.effectiveCatalog,
+        effectiveAdvancedCatalog: input.effectiveAdvancedCatalog,
+      }));
     }
   }, [
     input.effectiveAdvancedCatalog,

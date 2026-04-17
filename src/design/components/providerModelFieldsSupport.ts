@@ -17,8 +17,8 @@ import {
   createExplicitProviderModelSelection,
   isLegacyProviderModelTarget,
   resolveSelectedProviderInstance,
-  type ProviderModelSelection,
   type ProviderTargetSelection,
+  type ProviderModelSelection,
 } from '../../shared/providerSelection.js';
 import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
 import {
@@ -455,6 +455,32 @@ export function resolveExecutionLabelForProviderTarget(input: {
     executionLabel,
   });
   return executionLabel;
+}
+
+export function attachExecutionLabelToProviderTarget(input: {
+  target: ProviderTargetSelection;
+  effectiveCatalog: ProviderModelCatalog;
+  effectiveAdvancedCatalog: ProviderAdvancedModelCatalog;
+}): ProviderTargetSelection {
+  const model = input.target.model?.trim() ?? '';
+  if (!model) {
+    return {
+      ...input.target,
+      executionLabel: null,
+    };
+  }
+
+  return {
+    ...input.target,
+    executionLabel: resolveExecutionLabelForProviderTarget({
+      provider: input.target.provider,
+      instance: input.target.instance,
+      model,
+      modelSelection: input.target.modelSelection ?? null,
+      effectiveCatalog: input.effectiveCatalog,
+      effectiveAdvancedCatalog: input.effectiveAdvancedCatalog,
+    }),
+  };
 }
 
 export function shouldDeferCatalogTargetReconciliation(input: {

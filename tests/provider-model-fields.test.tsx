@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  attachExecutionLabelToProviderTarget,
   catalogMatchesTarget,
   countRequestScopedControls,
   filterPersistentControlValues,
@@ -976,6 +977,86 @@ test('runtime-backed execution labels prefer advanced catalog entry and control 
       },
     }),
     'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+  );
+});
+
+test('auto-reconciled provider targets keep a runtime-backed execution label snapshot', () => {
+  assert.deepEqual(
+    attachExecutionLabelToProviderTarget({
+      target: {
+        provider: 'claude',
+        instance: 'native',
+        model: 'opus',
+        modelSelection: {
+          entryId: 'opus',
+          entryMode: 'explicit',
+          controls: {
+            'claude.reasoning_effort': 'max',
+          },
+        },
+      },
+      effectiveCatalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'opus',
+        source: 'static',
+        cache: null,
+        models: [
+          { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
+        ],
+        warnings: [],
+      },
+      effectiveAdvancedCatalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'opus',
+        source: 'dynamic',
+        cache: null,
+        entries: [
+          { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
+        ],
+        presets: [],
+        controls: [
+          {
+            key: 'claude.reasoning_effort',
+            label: 'Reasoning effort',
+            kind: 'enum',
+            scope: 'both',
+            applicableEntryIds: ['opus'],
+            values: [
+              { value: 'max', label: 'Max', applicableEntryIds: ['opus'] },
+            ],
+          },
+        ],
+        defaultSelection: {
+          entryId: 'opus',
+          entryMode: 'explicit',
+          controls: {
+            'claude.reasoning_effort': 'max',
+          },
+        },
+        support: {
+          tier: 'full',
+          notes: [],
+        },
+        warnings: [],
+      },
+    }),
+    {
+      provider: 'claude',
+      instance: 'native',
+      model: 'opus',
+      modelSelection: {
+        entryId: 'opus',
+        entryMode: 'explicit',
+        controls: {
+          'claude.reasoning_effort': 'max',
+        },
+      },
+      executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · Max',
+    },
   );
 });
 
