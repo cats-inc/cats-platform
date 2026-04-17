@@ -50,6 +50,7 @@ export interface SidebarProps {
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
+  onCreateNewCat: () => void;
   onSwitchProduct: (surface: PlatformSurfaceId) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
@@ -225,7 +226,7 @@ export function Sidebar(props: SidebarProps) {
     forceShowMyCatsSection: true,
     myCatsEmptyStatePlaceholder: {
       label: 'New cat',
-      onClick: props.onStartNewChat,
+      onClick: props.onCreateNewCat,
     },
     helpers: {
       catInitials,

@@ -273,6 +273,15 @@ export function useWorkspaceAppNavigationActions<
     setFeedback('');
   }, [navigate, platformShellSurface, setAccountMenuOpen, setAddCatOpen, setFeedback]);
 
+  const onCreateNewCat = useCallback((): void => {
+    navigate('/settings/cats', {
+      state: { platformShellSurface },
+    });
+    setAccountMenuOpen(false);
+    setAddCatOpen(false);
+    setFeedback('');
+  }, [navigate, platformShellSurface, setAccountMenuOpen, setAddCatOpen, setFeedback]);
+
   const onDirectChatCat = useCallback(async (catId: string): Promise<void> => {
     if (state.status !== 'ready') {
       return;
@@ -359,6 +368,7 @@ export function useWorkspaceAppNavigationActions<
     onDeleteChannel,
     onDeleteCat,
     onNavigateSettings,
+    onCreateNewCat,
     onDirectChatCat,
     onResetSetup,
     onStartNewChat,
