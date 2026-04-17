@@ -7,7 +7,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -79,26 +79,26 @@ concurrent vs parallel.
 
 ### Phase 1B: Chat Continuity Follow-Through
 
-- [ ] Task 1B.1: Fix the same-chat `solo retarget` defect so provider/model
+- [x] Task 1B.1: Fix the same-chat `solo retarget` defect so provider/model
       switching no longer silently drops continuity when a replacement runtime
       session is created
-- [ ] Task 1B.2: Split same-chat continuity transplant from targeted handoff
+- [x] Task 1B.2: Split same-chat continuity transplant from targeted handoff
       packaging instead of reusing `buildSoloChatBootstrapInstructions` as the
       general continuity path
-- [ ] Task 1B.3: Remove the coupling between same-chat continuity and
+- [x] Task 1B.3: Remove the coupling between same-chat continuity and
       `MAX_PROMPT_RECENT_MESSAGES` so excerpt budgets remain bounded helpers
       rather than the semantic contract
-- [ ] Task 1B.4: Keep `shouldRestartSoloSession` as a lifecycle/restart gate
+- [x] Task 1B.4: Keep `shouldRestartSoloSession` as a lifecycle/restart gate
       only; ensure continuity survives restart through native resume or
       transplant instead of treating restart as an implicit fresh start
-- [ ] Task 1B.5: Define parallel-child continuity rules so each child
+- [x] Task 1B.5: Define parallel-child continuity rules so each child
       conversation owns its own continuity and sibling transcripts do not leak
       by default
 - [ ] Task 1B.6: Define first-slice packaging for non-text continuity artifacts
       such as tool results, file previews, and structured references
-- [ ] Task 1B.7: Add regression tests for same-chat cross-provider retarget,
+- [x] Task 1B.7: Add regression tests for same-chat cross-provider retarget,
       same-provider restart, and parallel-child no-sibling-leak behavior
-- [ ] Task 1B.8: Add explicit `start fresh` / `new branch` UI semantics so
+- [x] Task 1B.8: Add explicit `start fresh` / `new branch` UI semantics so
       resetting continuity is a visible operator action rather than an implicit
       side effect of provider/model switching
 
@@ -288,6 +288,8 @@ notes.
 | 2026-04-17 | Added a shared draft header-accessory seam so `+New code` can render visible workspace and execution chips on the draft canvas without forking chat/work primitives |
 | 2026-04-17 | Scoped the default `+New code` target slot so solo drafts stop duplicating the execution chip while direct-lane participant stacks still use the lower composer row |
 | 2026-04-17 | Extended the shared copy seam so default `+New code` direct-lane hero text no longer falls back to chat-specific wording such as `Private Chat` |
+| 2026-04-17 | Implemented the first continuity follow-through slices: solo retarget full-transplant semantics, explicit `Start fresh`, parallel-child continuity isolation, same-participant restart transplants for cat/direct rooms, and structured choice-response packaging in continuity transcripts |
+| 2026-04-17 | Left Task 1B.6 open: preceding tool labels and structured choice responses are now carried, but tool-result/file-preview first-slice packaging still needs a final contract |
 
 ---
 
