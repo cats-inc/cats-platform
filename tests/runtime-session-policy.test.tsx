@@ -19,7 +19,29 @@ test('completeRuntimeSessionPolicy clones defaults and ignores undefined overrid
   assert.deepEqual(completed, defaults);
 });
 
+test('completeRuntimeSessionPolicy returns a fresh copy even when policy is null', () => {
+  const completed = completeRuntimeSessionPolicy(null);
+
+  assert.notStrictEqual(completed, createDefaultRuntimeSessionPolicy());
+  assert.deepEqual(completed, createDefaultRuntimeSessionPolicy());
+});
+
 test('resolveCreateRuntimeSessionPolicy honors explicit overrides over repo-backed defaults', () => {
+  const completed = resolveCreateRuntimeSessionPolicy({
+    repoPath: 'C:/repo/cats-platform',
+    policy: {
+      workspaceKind: 'sandbox',
+      workspaceAccess: 'read_write',
+      permissionMode: 'whitelist',
+    },
+  });
+
+  assert.equal(completed.workspaceKind, 'sandbox');
+  assert.equal(completed.workspaceAccess, 'read_write');
+  assert.equal(completed.permissionMode, 'whitelist');
+});
+
+test('resolveCreateRuntimeSessionPolicy forces read-only sessions onto the default permission gate', () => {
   const completed = resolveCreateRuntimeSessionPolicy({
     repoPath: 'C:/repo/cats-platform',
     policy: {

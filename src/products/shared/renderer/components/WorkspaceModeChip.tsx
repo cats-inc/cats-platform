@@ -16,8 +16,9 @@ const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
   worktree: 'Independent workspace',
 };
 
-const WORKSPACE_MODE_TOOLTIPS: Partial<Record<WorkspaceMode, string>> = {
-  worktree: 'Uses git worktree and requires a git repository.',
+const WORKSPACE_MODE_TOOLTIPS: Record<WorkspaceMode, string> = {
+  current: 'Edits files in the selected folder directly.',
+  worktree: 'Creates a parallel working directory for this repo. Requires a git repository.',
 };
 
 const WORKSPACE_MODE_ORDER: readonly WorkspaceMode[] = ['current', 'worktree'];
@@ -62,7 +63,7 @@ export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeCh
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={WORKSPACE_MODE_TOOLTIPS[value]}
+        data-tooltip={WORKSPACE_MODE_TOOLTIPS[value]}
         onClick={() => setOpen((current) => !current)}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -86,7 +87,7 @@ export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeCh
                 role="option"
                 aria-selected={selected}
                 className={`composerSelectChipMenuItem${selected ? ' composerSelectChipMenuItemSelected' : ''}`}
-                title={WORKSPACE_MODE_TOOLTIPS[mode]}
+                data-tooltip={WORKSPACE_MODE_TOOLTIPS[mode]}
                 onClick={() => {
                   onChange(mode);
                   setOpen(false);
