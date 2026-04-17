@@ -12,6 +12,7 @@ import {
   getDefaultProviderInstance,
 } from '../../../../shared/providerCatalog.js';
 import {
+  cloneProviderModelSelection,
   resolveCatalogTargetSelection,
   resolveSelectedProviderInstance,
   sameProviderModelSelection,
@@ -109,6 +110,204 @@ export interface UseWorkspaceExecutionTargetStateOptions<
   debounceMs?: number;
 }
 
+const RECONCILE_CACHE_TTL_MS = 5_000;
+
+let cachedProviderRegistry:
+  | {
+      value: Awaited<ReturnType<typeof fetchProviderRegistry>>;
+      expiresAt: number;
+    }
+  | null = null;
+let inflightProviderRegistry:
+  Promise<Awaited<ReturnType<typeof fetchProviderRegistry>>> | null = null;
+const cachedProviderCatalogBundles = new Map<
+  string,
+  {
+    value: {
+      effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
+      effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
+    };
+    expiresAt: number;
+  }
+>();
+const inflightProviderCatalogBundles = new Map<
+  string,
+  Promise<{
+    effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
+    effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
+  }>
+>();
+
+function logExecutionTargetReconcileWarning(
+  message: string,
+  error: unknown,
+): void {
+  if (typeof console === 'undefined' || typeof console.warn !== 'function') {
+    return;
+  }
+
+  console.warn(
+    `[cats-platform] ${message}`,
+    error instanceof Error ? (error.stack ?? error.message) : error,
+  );
+}
+
+function serializeExecutionTargetModelSelection(
+  selection: ProviderModelSelection | null | undefined,
+): string {
+  const clonedSelection = cloneProviderModelSelection(selection);
+  if (!clonedSelection) {
+    return 'null';
+  }
+
+  const serializedControls = clonedSelection.controls
+    ? Object.fromEntries(
+      Object.keys(clonedSelection.controls)
+        .sort()
+        .map((key) => [key, clonedSelection.controls?.[key]]),
+    )
+    : undefined;
+
+  return JSON.stringify({
+    ...(clonedSelection.entryId ? { entryId: clonedSelection.entryId } : {}),
+    entryMode: clonedSelection.entryMode,
+    ...(clonedSelection.presetId ? { presetId: clonedSelection.presetId } : {}),
+    ...(serializedControls ? { controls: serializedControls } : {}),
+  });
+}
+
+function buildExecutionTargetReconcileSignature(
+  target: ExecutionTargetValue,
+): string {
+  return JSON.stringify({
+    provider: target.provider.trim(),
+    instance: target.instance ?? null,
+    model: target.model ?? null,
+    modelSelection: serializeExecutionTargetModelSelection(target.modelSelection),
+  });
+}
+
+function shouldUseExecutionTargetCatalogCache(input: {
+  fetchProviderRegistryFn?: typeof fetchProviderRegistry;
+  fetchProviderModelsFn?: typeof fetchProviderModels;
+  fetchAdvancedProviderModelsFn?: typeof fetchAdvancedProviderModels;
+}): boolean {
+  return (input.fetchProviderRegistryFn ?? fetchProviderRegistry) === fetchProviderRegistry
+    && (input.fetchProviderModelsFn ?? fetchProviderModels) === fetchProviderModels
+    && (input.fetchAdvancedProviderModelsFn ?? fetchAdvancedProviderModels)
+      === fetchAdvancedProviderModels;
+}
+
+async function readProviderRegistryCached(
+  fetchProviderRegistryFn: typeof fetchProviderRegistry,
+): Promise<Awaited<ReturnType<typeof fetchProviderRegistry>>> {
+  const now = Date.now();
+  if (cachedProviderRegistry && cachedProviderRegistry.expiresAt > now) {
+    return cachedProviderRegistry.value;
+  }
+
+  if (inflightProviderRegistry) {
+    return inflightProviderRegistry;
+  }
+
+  inflightProviderRegistry = fetchProviderRegistryFn()
+    .then((value) => {
+      cachedProviderRegistry = {
+        value,
+        expiresAt: Date.now() + RECONCILE_CACHE_TTL_MS,
+      };
+      return value;
+    })
+    .finally(() => {
+      inflightProviderRegistry = null;
+    });
+
+  return inflightProviderRegistry;
+}
+
+async function readProviderCatalogBundleCached(input: {
+  provider: string;
+  instance: string | null;
+  fetchProviderModelsFn: typeof fetchProviderModels;
+  fetchAdvancedProviderModelsFn: typeof fetchAdvancedProviderModels;
+}): Promise<{
+  effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
+  effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
+}> {
+  const cacheKey = `${input.provider}\u0000${input.instance ?? ''}`;
+  const now = Date.now();
+  const cachedBundle = cachedProviderCatalogBundles.get(cacheKey);
+  if (cachedBundle && cachedBundle.expiresAt > now) {
+    return cachedBundle.value;
+  }
+
+  const inflightBundle = inflightProviderCatalogBundles.get(cacheKey);
+  if (inflightBundle) {
+    return inflightBundle;
+  }
+
+  const bundlePromise = Promise.allSettled([
+    input.fetchProviderModelsFn(input.provider, input.instance),
+    input.fetchAdvancedProviderModelsFn(input.provider, input.instance),
+  ]).then(([modelsResult, advancedResult]) => {
+    if (modelsResult.status !== 'fulfilled') {
+      throw modelsResult.reason;
+    }
+
+    const effectiveCatalog = modelsResult.value;
+    const effectiveAdvancedCatalog = resolveAdvancedCatalogFallback({
+      provider: input.provider,
+      instance: input.instance,
+      catalog: effectiveCatalog,
+      advancedCatalogResult: advancedResult,
+      modelsResult,
+    });
+    const value = {
+      effectiveCatalog,
+      effectiveAdvancedCatalog,
+    };
+    cachedProviderCatalogBundles.set(cacheKey, {
+      value,
+      expiresAt: Date.now() + RECONCILE_CACHE_TTL_MS,
+    });
+    return value;
+  }).finally(() => {
+    inflightProviderCatalogBundles.delete(cacheKey);
+  });
+
+  inflightProviderCatalogBundles.set(cacheKey, bundlePromise);
+  return bundlePromise;
+}
+
+async function readProviderCatalogBundle(input: {
+  provider: string;
+  instance: string | null;
+  fetchProviderModelsFn: typeof fetchProviderModels;
+  fetchAdvancedProviderModelsFn: typeof fetchAdvancedProviderModels;
+}): Promise<{
+  effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
+  effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
+}> {
+  const [modelsResult, advancedResult] = await Promise.allSettled([
+    input.fetchProviderModelsFn(input.provider, input.instance),
+    input.fetchAdvancedProviderModelsFn(input.provider, input.instance),
+  ]);
+  if (modelsResult.status !== 'fulfilled') {
+    throw modelsResult.reason;
+  }
+
+  return {
+    effectiveCatalog: modelsResult.value,
+    effectiveAdvancedCatalog: resolveAdvancedCatalogFallback({
+      provider: input.provider,
+      instance: input.instance,
+      catalog: modelsResult.value,
+      advancedCatalogResult: advancedResult,
+      modelsResult,
+    }),
+  };
+}
+
 export function createExecutionTargetValueForProvider(
   provider: string,
 ): ExecutionTargetValue {
@@ -168,7 +367,9 @@ function mergeExecutionTargetValue(
     return next;
   }
 
-  const nextExecutionLabel = next.executionLabel ?? current.executionLabel ?? null;
+  const nextExecutionLabel = next.executionLabel === null
+    ? null
+    : next.executionLabel ?? current.executionLabel ?? null;
   if ((current.executionLabel ?? null) === nextExecutionLabel) {
     return current;
   }
@@ -202,7 +403,14 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
     return input.target;
   }
 
-  const registry = await (input.fetchProviderRegistryFn ?? fetchProviderRegistry)();
+  const fetchProviderRegistryFn = input.fetchProviderRegistryFn ?? fetchProviderRegistry;
+  const fetchProviderModelsFn = input.fetchProviderModelsFn ?? fetchProviderModels;
+  const fetchAdvancedProviderModelsFn =
+    input.fetchAdvancedProviderModelsFn ?? fetchAdvancedProviderModels;
+  const shouldUseCache = shouldUseExecutionTargetCatalogCache(input);
+  const registry = shouldUseCache
+    ? await readProviderRegistryCached(fetchProviderRegistryFn)
+    : await fetchProviderRegistryFn();
   const selectedProvider = registry.providers.find((option) => option.id === provider);
   if (!selectedProvider) {
     return input.target;
@@ -212,15 +420,25 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
     selectedProvider,
     input.target.instance ?? '',
   );
-  const [modelsResult, advancedResult] = await Promise.allSettled([
-    (input.fetchProviderModelsFn ?? fetchProviderModels)(provider, resolvedInstance || null),
-    (input.fetchAdvancedProviderModelsFn ?? fetchAdvancedProviderModels)(
-      provider,
-      resolvedInstance || null,
-    ),
-  ]);
-
-  if (modelsResult.status !== 'fulfilled') {
+  let effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
+  let effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
+  try {
+    const bundle = shouldUseCache
+      ? await readProviderCatalogBundleCached({
+          provider,
+          instance: resolvedInstance || null,
+          fetchProviderModelsFn,
+          fetchAdvancedProviderModelsFn,
+        })
+      : await readProviderCatalogBundle({
+          provider,
+          instance: resolvedInstance || null,
+          fetchProviderModelsFn,
+          fetchAdvancedProviderModelsFn,
+        });
+    effectiveCatalog = bundle.effectiveCatalog;
+    effectiveAdvancedCatalog = bundle.effectiveAdvancedCatalog;
+  } catch {
     const normalizedFallbackTarget: ExecutionTargetValue = {
       ...input.target,
       instance: resolvedInstance || null,
@@ -229,15 +447,6 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
       ? input.target
       : normalizedFallbackTarget;
   }
-
-  const effectiveCatalog = modelsResult.value;
-  const effectiveAdvancedCatalog = resolveAdvancedCatalogFallback({
-    provider,
-    instance: resolvedInstance || null,
-    catalog: effectiveCatalog,
-    advancedCatalogResult: advancedResult,
-    modelsResult,
-  });
 
   let nextTarget = toProviderTargetSelection({
     ...input.target,
@@ -352,6 +561,12 @@ export function useWorkspaceExecutionTargetState<
     typeof setTimeout
   > | null>(null);
   const pendingSoloChannelExecutionTargetSaveAbort = useRef<AbortController | null>(null);
+  const draftExecutionTargetReconcileSignature = buildExecutionTargetReconcileSignature(
+    draftExecutionTarget,
+  );
+  const soloChannelExecutionTargetReconcileSignature = buildExecutionTargetReconcileSignature(
+    soloChannelExecutionTarget,
+  );
 
   useEffect(() => {
     if (!readyChat) {
@@ -446,16 +661,18 @@ export function useWorkspaceExecutionTargetState<
 
       setDraftExecutionTarget((currentDraftExecutionTarget) =>
         mergeExecutionTargetValue(currentDraftExecutionTarget, nextDraftExecutionTarget));
-    }).catch(() => {});
+    }).catch((error) => {
+      logExecutionTargetReconcileWarning(
+        `failed to reconcile draft execution target for ${draftExecutionTarget.provider}:${draftExecutionTarget.model ?? 'default'}`,
+        error,
+      );
+    });
 
     return () => {
       cancelled = true;
     };
   }, [
-    draftExecutionTarget.instance,
-    draftExecutionTarget.model,
-    draftExecutionTarget.modelSelection,
-    draftExecutionTarget.provider,
+    draftExecutionTargetReconcileSignature,
     state.status,
   ]);
 
@@ -475,17 +692,19 @@ export function useWorkspaceExecutionTargetState<
 
       setSoloChannelExecutionTarget((currentSoloChannelExecutionTarget) =>
         mergeExecutionTargetValue(currentSoloChannelExecutionTarget, nextSoloChannelExecutionTarget));
-    }).catch(() => {});
+    }).catch((error) => {
+      logExecutionTargetReconcileWarning(
+        `failed to reconcile solo execution target for ${soloChannelExecutionTarget.provider}:${soloChannelExecutionTarget.model ?? 'default'}`,
+        error,
+      );
+    });
 
     return () => {
       cancelled = true;
     };
   }, [
     readySelectedChannel?.composerMode,
-    soloChannelExecutionTarget.instance,
-    soloChannelExecutionTarget.model,
-    soloChannelExecutionTarget.modelSelection,
-    soloChannelExecutionTarget.provider,
+    soloChannelExecutionTargetReconcileSignature,
     state.status,
   ]);
 

@@ -106,7 +106,7 @@ test('runtime-backed execution target reconciliation adopts the advanced default
   );
 });
 
-test('runtime-backed execution target reconciliation sanitizes stale Claude effort controls and still exposes the default effort label', async () => {
+test('runtime-backed execution target reconciliation sanitizes stale Claude effort controls without inferring a replacement effort', async () => {
   const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
     target: {
       provider: 'claude',
@@ -181,7 +181,66 @@ test('runtime-backed execution target reconciliation sanitizes stale Claude effo
   });
   assert.equal(
     reconciled.executionLabel,
-    'Claude-CLI · Sonnet 4.6 · Medium',
+    'Claude-CLI · Sonnet 4.6',
+  );
+});
+
+test('runtime-backed execution target reconciliation normalizes legacy Claude opus ids to the current opus entry', async () => {
+  const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
+    target: {
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-opus-4-6',
+      modelSelection: null,
+      executionLabel: null,
+    },
+    fetchProviderRegistryFn: async () => createProviderRegistry(),
+    fetchProviderModelsFn: async () => ({
+      provider: 'claude',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'opus',
+      source: 'dynamic',
+      cache: null,
+      models: [
+        { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
+        { id: 'sonnet', label: 'Sonnet 4.6' },
+      ],
+      warnings: [],
+    }),
+    fetchAdvancedProviderModelsFn: async () => normalizeProviderAdvancedModelCatalog({
+      provider: 'claude',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: 'opus',
+      source: 'dynamic',
+      cache: null,
+      entries: [
+        { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
+        { id: 'sonnet', label: 'Sonnet 4.6' },
+      ],
+      presets: [],
+      controls: [],
+      defaultSelection: {
+        entryId: 'opus',
+        entryMode: 'explicit',
+      },
+      support: {
+        tier: 'full',
+        notes: [],
+      },
+      warnings: [],
+    }, 'claude'),
+  });
+
+  assert.equal(reconciled.model, 'opus');
+  assert.deepEqual(reconciled.modelSelection, {
+    entryId: 'opus',
+    entryMode: 'explicit',
+  });
+  assert.equal(
+    reconciled.executionLabel,
+    'Claude-CLI · Opus 4.7 with 1M context',
   );
 });
 

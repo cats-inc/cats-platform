@@ -413,17 +413,6 @@ function resolveExecutionLabelControlValues(input: {
     const defaultSelectionValue = defaultSelectionControls?.[control.key];
     if (defaultSelectionValue !== undefined) {
       resolvedValues[control.key] = defaultSelectionValue;
-      continue;
-    }
-
-    if (control.kind !== 'enum') {
-      continue;
-    }
-
-    const defaultOption = listApplicableControlValueOptions(control, entryId)
-      .find((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
-    if (defaultOption) {
-      resolvedValues[control.key] = defaultOption.value;
     }
   }
 

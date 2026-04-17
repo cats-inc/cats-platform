@@ -1060,6 +1060,60 @@ test('auto-reconciled provider targets keep a runtime-backed execution label sna
   );
 });
 
+test('execution labels do not infer default control values from decorated option labels alone', () => {
+  assert.equal(
+    resolveExecutionLabelForProviderTarget({
+      provider: 'claude',
+      instance: 'native',
+      model: 'opus',
+      modelSelection: null,
+      effectiveCatalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'opus',
+        source: 'static',
+        cache: null,
+        models: [
+          { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
+        ],
+        warnings: [],
+      },
+      effectiveAdvancedCatalog: {
+        provider: 'claude',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: 'opus',
+        source: 'dynamic',
+        cache: null,
+        entries: [
+          { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
+        ],
+        presets: [],
+        controls: [
+          {
+            key: 'claude.reasoning_effort',
+            label: 'Reasoning effort',
+            kind: 'enum',
+            scope: 'both',
+            applicableEntryIds: ['opus'],
+            values: [
+              { value: 'xhigh', label: 'xHigh (default)', applicableEntryIds: ['opus'] },
+            ],
+          },
+        ],
+        defaultSelection: null,
+        support: {
+          tier: 'full',
+          notes: [],
+        },
+        warnings: [],
+      },
+    }),
+    'Claude-CLI · Opus 4.7 with 1M context',
+  );
+});
+
 test('provider model field view state derives instance, entry, and catalog warnings from the resolved target', () => {
   const selectedProvider = {
     id: 'codex',

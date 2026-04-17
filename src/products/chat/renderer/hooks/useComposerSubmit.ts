@@ -90,6 +90,20 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
+function logDispatchExecutionTargetResolveWarning(
+  target: ExecutionTargetValue,
+  error: unknown,
+): void {
+  if (typeof console === 'undefined' || typeof console.warn !== 'function') {
+    return;
+  }
+
+  console.warn(
+    `[cats-platform] failed to reconcile dispatch execution target for ${target.provider}:${target.model ?? 'default'}`,
+    error instanceof Error ? (error.stack ?? error.message) : error,
+  );
+}
+
 export async function resolveDispatchExecutionTargetValue(
   target: ExecutionTargetValue,
   reconcileExecutionTargetFn: typeof reconcileRuntimeBackedExecutionTargetValue =
@@ -97,7 +111,10 @@ export async function resolveDispatchExecutionTargetValue(
 ): Promise<ExecutionTargetValue> {
   try {
     return await reconcileExecutionTargetFn({ target });
-  } catch {
+  } catch (error) {
+    if (reconcileExecutionTargetFn === reconcileRuntimeBackedExecutionTargetValue) {
+      logDispatchExecutionTargetResolveWarning(target, error);
+    }
     return target;
   }
 }
