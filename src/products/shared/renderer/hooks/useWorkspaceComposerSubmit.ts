@@ -11,6 +11,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import {
   shouldSubmitComposerOnKeyDown,
 } from '../../../../shared/composer.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import {
   clearBusyState,
   createChannelComposerBusyScope,
@@ -78,7 +79,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
   chatPrefix: string;
-  originSurface: 'chat' | 'work' | 'code';
+  originSurface: PlatformSurfaceId;
   currentPathname: string;
   composerDraft: string;
   setComposerDraft: Dispatch<SetStateAction<string>>;

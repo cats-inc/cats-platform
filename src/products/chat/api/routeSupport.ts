@@ -16,6 +16,7 @@ import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
 import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
+import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import {
@@ -329,11 +330,15 @@ export async function persistCreatedChannel(
   input: CreateChatChannelInput,
 ): Promise<ChatState> {
   const now = nowFrom(context.dependencies);
+  const originSurface = normalizePlatformSurface(input.originSurface, 'chat');
   const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat');
   const requestedComposerMode = input.composerMode ?? (input.entryKind === 'solo' ? 'solo' : null);
   let nextState = createChannel(
     await context.dependencies.chatStore.read(),
-    input,
+    {
+      ...input,
+      originSurface,
+    },
     now,
   );
 

@@ -1,4 +1,5 @@
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
@@ -198,7 +199,7 @@ export async function prepareComposerChannelDispatch<
   body: string;
   existingCount: number;
   draftCwd: string | null;
-  originSurface?: 'chat' | 'work' | 'code';
+  originSurface: PlatformSurfaceId;
   draftDefaultRecipientCatId: string | null;
   participantCatIds: string[];
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
@@ -365,7 +366,7 @@ export async function prepareWorkspaceSendContext<
   body: string;
   existingCount: number;
   draftCwd: string | null;
-  originSurface?: 'chat' | 'work' | 'code';
+  originSurface: PlatformSurfaceId;
   draftDefaultRecipientCatId: string | null;
   participantCatIds: string[];
   temporaryParticipants?: ComposerTemporaryParticipantLike[];

@@ -1,4 +1,5 @@
 import type { AppShellPayload } from '../api/workspaceContracts.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
   createParallelChatGroup,
   encodeAttachmentFiles,
@@ -32,7 +33,7 @@ function isAnyParallelChatDispatchRunning(
 export interface SubmitNewParallelChatDraftOptions {
   body: string;
   payload: AppShellPayload;
-  originSurface: 'chat' | 'work' | 'code';
+  originSurface: PlatformSurfaceId;
   draftCwd: string | null;
   draftFiles: File[];
   draftParallelChatTargets: WorkspaceExecutionTargetValue[];

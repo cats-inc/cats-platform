@@ -10,12 +10,13 @@ import {
 
 test('parallel chat client uses canonical parallel-chat-groups endpoints', async () => {
   const originalFetch = globalThis.fetch;
-  const requests: Array<{ url: string; method: string }> = [];
+  const requests: Array<{ url: string; method: string; body: unknown }> = [];
 
   globalThis.fetch = async (input, init = {}) => {
     requests.push({
       url: String(input),
       method: init.method ?? 'GET',
+      body: typeof init.body === 'string' ? JSON.parse(init.body) : null,
     });
 
     if (requests.length === 1) {
@@ -46,6 +47,7 @@ test('parallel chat client uses canonical parallel-chat-groups endpoints', async
   try {
     await createParallelChatGroup({
       title: 'Peer Code',
+      originSurface: 'code',
       targets: [
         { provider: 'claude', instance: null, model: null, modelSelection: null },
         { provider: 'codex', instance: null, model: null, modelSelection: null },
@@ -60,8 +62,26 @@ test('parallel chat client uses canonical parallel-chat-groups endpoints', async
   }
 
   assert.deepEqual(requests, [
-    { url: '/api/parallel-chat-groups', method: 'POST' },
-    { url: '/api/parallel-chat-groups/group-1/messages', method: 'POST' },
+    {
+      url: '/api/parallel-chat-groups',
+      method: 'POST',
+      body: {
+        title: 'Peer Code',
+        originSurface: 'code',
+        targets: [
+          { provider: 'claude', instance: null, model: null, modelSelection: null },
+          { provider: 'codex', instance: null, model: null, modelSelection: null },
+        ],
+      },
+    },
+    {
+      url: '/api/parallel-chat-groups/group-1/messages',
+      method: 'POST',
+      body: {
+        activeChannelId: 'channel-1',
+        body: 'hi',
+      },
+    },
   ]);
 });
 

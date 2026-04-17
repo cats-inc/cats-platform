@@ -252,6 +252,7 @@ export function useComposerSubmit(options: {
         const dispatch = await submitNewParallelChatDraft({
           body,
           payload: initialPayload,
+          originSurface: 'chat',
           draftCwd,
           draftFiles,
           draftParallelChatTargets,
@@ -346,6 +347,7 @@ export function useComposerSubmit(options: {
         body,
         existingCount: initialPayload.chat.channels.length,
         draftCwd,
+        originSurface: 'chat',
         draftDefaultRecipientCatId,
         participantCatIds: draftParticipantCatIds,
         temporaryParticipants: draftTemporaryParticipants,
@@ -612,4 +614,3 @@ export function useComposerSubmit(options: {
     submitComposerMessage,
   };
 }
-

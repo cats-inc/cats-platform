@@ -56,6 +56,7 @@ export function createChatTelegramRoomBridge(input: {
         {
           title: room.title,
           topic: room.topic,
+          originSurface: 'chat',
           roomMode: room.roomMode,
           defaultRecipientId: room.defaultRecipientId,
           participantCatIds: room.participantCatIds,

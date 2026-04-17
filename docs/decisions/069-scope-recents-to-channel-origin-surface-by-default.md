@@ -5,7 +5,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -116,5 +116,5 @@ product-scoped behavior.
 
 ---
 
-*Proposed: 2026-04-17*
-*Proposed by: Codex*
+*Accepted: 2026-04-17*
+*Decided by: Codex*

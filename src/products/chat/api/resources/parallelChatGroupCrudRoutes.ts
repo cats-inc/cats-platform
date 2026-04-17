@@ -1,4 +1,5 @@
 import { readJsonBody, sendJson } from '../../../../shared/http.js';
+import { normalizePlatformSurface } from '../../../../shared/platformSurfaces.js';
 import { createParallelChatGroup } from '../../state/model/index.js';
 import type { CreateParallelChatGroupInput } from '../contracts.js';
 import {
@@ -37,6 +38,7 @@ export async function handleCreateParallelChatGroup(
       await context.dependencies.chatStore.read(),
       {
         title,
+        originSurface: normalizePlatformSurface(body.originSurface, 'chat'),
         repoPath: body.repoPath,
         responseLanguage: body.responseLanguage,
         targets: body.targets,

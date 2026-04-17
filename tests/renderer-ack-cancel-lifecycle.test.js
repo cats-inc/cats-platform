@@ -44,11 +44,13 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
   assert.match(sharedLifecycleSource, /activeAckRequestRef = useRef<ActiveAckRequest \| null>\(null\)/u);
   assert.match(sharedLifecycleSource, /controller: new AbortController\(\)/u);
   assert.match(source, /const \{ id: submitId, controller: ackController \} = beginAckRequest\(\);/u);
+  assert.match(source, /prepareWorkspaceSendContext\(\{[\s\S]+originSurface: 'chat'/u);
   assert.match(source, /prepareWorkspaceSendContext\(\{[\s\S]+signal: ackController\.signal/u);
   assert.match(sharedDispatchSource, /export async function prepareWorkspaceSendContext/u);
   assert.match(sharedDispatchSource, /createChatChannel\(buildNewChatChannelInput\([\s\S]+\), signal\)/u);
   assert.match(source, /sendChatMessage\([\s\S]+ackController\.signal\)/u);
   assert.match(source, /submitNewParallelChatDraft\(/u);
+  assert.match(source, /submitNewParallelChatDraft\(\{[\s\S]+originSurface: 'chat'/u);
   assert.match(source, /submitParallelCompareMessage\(/u);
   assert.match(source, /useComposerRequestControls\(/u);
   assert.match(source, /navigateWithinManagedComposerFlow/u);
@@ -56,7 +58,8 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
   assert.match(source, /resetComposerDraftState/u);
   assert.match(workspaceSource, /resetComposerDraftState/u);
   assert.match(parallelDispatchSource, /export async function submitNewParallelChatDraft/u);
-  assert.match(parallelDispatchSource, /createParallelChatGroup\(/u);
+  assert.match(parallelDispatchSource, /originSurface: PlatformSurfaceId/u);
+  assert.match(parallelDispatchSource, /createParallelChatGroup\(\{[\s\S]+originSurface,/u);
   assert.match(parallelDispatchSource, /sendParallelChatMessage\(/u);
   assert.match(sharedRequestControlsSource, /export function useComposerRequestControls/u);
   assert.match(sharedRequestControlsSource, /cancelPendingAckRequest\(\)/u);

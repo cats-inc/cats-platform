@@ -230,7 +230,7 @@ export function buildAttachedFilesMessageBody(
 export function buildNewChatChannelInput(options: {
   body: string;
   existingCount: number;
-  originSurface?: PlatformSurfaceId;
+  originSurface: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string | null;
   defaultRecipientCatId?: string | null;

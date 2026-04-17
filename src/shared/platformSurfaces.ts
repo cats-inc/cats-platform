@@ -25,6 +25,11 @@ export function isPlatformSurfaceId(value: string): value is PlatformSurfaceId {
   return (ALL_PLATFORM_SURFACES as readonly string[]).includes(value);
 }
 
+export function normalizePlatformSurface(value: unknown): PlatformSurfaceId | null;
+export function normalizePlatformSurface(
+  value: unknown,
+  fallback: PlatformSurfaceId,
+): PlatformSurfaceId;
 export function normalizePlatformSurface(
   value: unknown,
   fallback: PlatformSurfaceId | null = null,

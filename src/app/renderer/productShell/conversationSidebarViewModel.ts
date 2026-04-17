@@ -88,9 +88,9 @@ interface ConversationSidebarHelpers<
 }
 
 export function resolveConversationSidebarChannelSurface(
-  originSurface: unknown,
+  originSurface: PlatformSurfaceId | null | undefined,
 ): PlatformSurfaceId {
-  return normalizePlatformSurface(originSurface, 'chat') ?? 'chat';
+  return normalizePlatformSurface(originSurface, 'chat');
 }
 
 export function buildConversationSidebarViewModel<

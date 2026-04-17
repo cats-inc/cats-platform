@@ -127,7 +127,7 @@ export function createParallelChatGroup(
   let nextState = cloneState(state);
   const nowIso = isoAt(now);
   const memberChannelIds: string[] = [];
-  const originSurface = normalizePlatformSurface(input.originSurface, 'chat') ?? 'chat';
+  const originSurface = normalizePlatformSurface(input.originSurface, 'chat');
 
   for (const target of [...input.targets].reverse()) {
     nextState = createChannel(
@@ -255,7 +255,7 @@ export function createChannel(
   const createdTemporaryParticipants = resolvedTemporaryParticipants.map((participant) =>
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
-  const originSurface = normalizePlatformSurface(input.originSurface, 'chat') ?? 'chat';
+  const originSurface = normalizePlatformSurface(input.originSurface, 'chat');
 
   // Auto-generate title for direct cat chats when title is empty
   let title = input.title.trim();

@@ -153,6 +153,7 @@ test('buildNewChatChannelInput keeps default-recipient new chats as visible thre
   const input = buildNewChatChannelInput({
     body: 'Ship the landing page',
     existingCount: 2,
+    originSurface: 'chat',
     entryKind: 'group',
     defaultRecipientCatId: 'cat-lead',
     participantCatIds: ['cat-lead', 'cat-helper'],
@@ -194,6 +195,7 @@ test('buildNewChatChannelInput marks direct drafts explicitly and preserves dire
   const input = buildNewChatChannelInput({
     body: 'Wake up and check Telegram',
     existingCount: 2,
+    originSurface: 'chat',
     entryKind: 'direct',
     defaultRecipientCatId: 'cat-lead',
     participantCatIds: ['cat-lead'],
@@ -209,6 +211,7 @@ test('buildNewChatChannelInput forwards channel-only temporary participants for 
   const input = buildNewChatChannelInput({
     body: 'Run a quick three-way review',
     existingCount: 2,
+    originSurface: 'chat',
     entryKind: 'group',
     temporaryParticipants: [
       {

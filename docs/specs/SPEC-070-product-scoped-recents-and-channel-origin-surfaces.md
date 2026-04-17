@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress (First Slice Landed) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-069](../decisions/069-scope-recents-to-channel-origin-surface-by-default.md) |

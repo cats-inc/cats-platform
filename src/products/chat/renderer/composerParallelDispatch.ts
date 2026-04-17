@@ -1,4 +1,5 @@
 import type { AppShellPayload } from '../api/contracts.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
   createParallelChatGroup,
   encodeAttachmentFiles,
@@ -33,6 +34,7 @@ function isAnyParallelChatDispatchRunning(
 export interface SubmitNewParallelChatDraftOptions {
   body: string;
   payload: AppShellPayload;
+  originSurface: PlatformSurfaceId;
   draftCwd: string | null;
   draftFiles: File[];
   draftParallelChatTargets: ExecutionTargetValue[];
@@ -49,6 +51,7 @@ export interface SubmitNewParallelChatDraftResult {
 export async function submitNewParallelChatDraft({
   body,
   payload,
+  originSurface,
   draftCwd,
   draftFiles,
   draftParallelChatTargets,
@@ -60,6 +63,7 @@ export async function submitNewParallelChatDraft({
 
   const created = await createParallelChatGroup({
     title: createDraftChannelTitle(body, payload.chat.channels.length),
+    originSurface,
     repoPath: draftCwd ?? undefined,
     targets: draftParallelChatTargets.map((target) => ({
       provider: target.provider,
@@ -148,4 +152,3 @@ export async function submitParallelCompareMessage({
       : null,
   };
 }
-
