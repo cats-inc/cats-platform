@@ -18,7 +18,10 @@
 
 .platformLobby {
   position: relative;
-  z-index: 1;
+  /* No z-index so this wrapper does not create a stacking context that would
+     trap the AccountIdentityMenu popover. Tree order already paints lobby
+     content above the earlier-rendered .lobbyBouncingCanvas (fixed, z-index 0)
+     sibling, so the stacking assurance from z-index:1 is redundant here. */
   display: grid;
   gap: var(--space-7);
   width: min(100%, 720px);

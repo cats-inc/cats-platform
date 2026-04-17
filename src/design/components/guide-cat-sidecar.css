@@ -115,6 +115,12 @@ body.guideCatDragging .guideCatDockSlot,
 .guideCatDockSlot--lobby {
   padding: 0 var(--space-2, 6px);
   margin: 0 var(--space-1, 4px);
+  /* Lobby's horizontal top bar has no vertical padding, so the natural slot
+     height is 28px ghost + 4px border = 32px. Shrink min-height from the
+     workspace default (44) so the slot never exceeds the identity menu's
+     natural height and the lobby hero/products grid never reflow downward
+     when drag-to-dock reveals the slot. */
+  min-height: 32px;
 }
 
 /* Sit above the account footer with a small gap, and keep the outlined border

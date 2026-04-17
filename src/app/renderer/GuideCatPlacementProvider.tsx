@@ -387,6 +387,9 @@ export function GuideCatPlacementProvider({
       event.stopPropagation();
       suppressClickRef.current = false;
       hideGlobalTooltip();
+      // Collapse any open welcome-peek or panel so it does not ride along
+      // with the dragged pill.
+      presentation.collapse();
       // Reveal the dock slots now so refreshSlotRects reads valid geometry
       // instead of zero rects from display:none. useEffect below keeps the
       // class in sync for the rest of the drag lifecycle.
@@ -411,7 +414,7 @@ export function GuideCatPlacementProvider({
         escaped: false,
       });
     },
-    [refreshSlotRects],
+    [presentation, refreshSlotRects],
   );
 
   const onDockedPointerDown = useCallback(
@@ -421,6 +424,7 @@ export function GuideCatPlacementProvider({
       event.stopPropagation();
       suppressClickRef.current = false;
       hideGlobalTooltip();
+      presentation.collapse();
       if (typeof document !== 'undefined') {
         document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
       }
@@ -442,7 +446,7 @@ export function GuideCatPlacementProvider({
         escaped: false,
       });
     },
-    [refreshSlotRects],
+    [presentation, refreshSlotRects],
   );
 
   const consumePillClickSuppression = useCallback(() => {
