@@ -14,8 +14,10 @@
 ## Related Spec / Dependencies
 
 - [SPEC-061: Concurrent vs Parallel Semantics and Code Entry Presets](../specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
+- [SPEC-068: New Code Draft Canvas and Renderer Ownership](../specs/SPEC-068-new-code-draft-canvas-and-renderer-ownership.md)
 - [ADR-059: Adopt a Unified Conversation-Turn-Lane Engine](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md)
 - [ADR-062: Separate Concurrent Turn Fan-Out from Parallel Container Composition](../decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md)
+- [ADR-067: Use Shared Draft Primitives with Product-Owned Code Entry Drafts](../decisions/067-use-shared-draft-primitives-with-product-owned-code-entry-drafts.md)
 - [SPEC-043: Cats Code MVP Multi-Agent Local-App Workflow](../specs/SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md)
 - [SPEC-047: Parallel Chat, Parallel Chat Groups, and Relay Actions](../specs/SPEC-047-compare-chat-concurrent-groups-and-relay.md)
 - [SPEC-057: Concurrent Group Lane-Native Live Transcript](../specs/SPEC-057-concurrent-group-lane-native-live-transcript.md)
@@ -93,6 +95,10 @@ concurrent vs parallel.
 
 - [ ] Task 4.1: Update Code sidebar/entry UX around the three presets
 - [ ] Task 4.2: Ensure `+New code` creation captures execution-profile inputs
+      - first slice: move default `+New code` draft ownership into
+        `products/code/*` while reusing shared draft primitives
+      - first slice: add code-specific draft copy overrides without forking
+        shared composer/panel mechanics
 - [ ] Task 4.3: Ensure `+Team code` exposes workflow-policy configuration
 - [ ] Task 4.4: Ensure `+Peer code` exposes branch roles and automation-policy
       configuration
@@ -159,6 +165,7 @@ notes.
 | Date | Update |
 |------|--------|
 | 2026-04-14 | Plan created to formalize concurrent vs parallel semantics and map `Cats Code` entry points onto the shared engine |
+| 2026-04-17 | Reserved SPEC-068 / ADR-067 for the first `+New code` slice and started moving default Code draft ownership out of the chat-specific draft re-export path |
 
 ---
 

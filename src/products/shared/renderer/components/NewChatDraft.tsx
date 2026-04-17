@@ -71,6 +71,28 @@ interface DraftTargetSlotProps {
   onOpenExecution: () => void;
 }
 
+export interface WorkspaceNewChatDraftCopy {
+  composerPlaceholder?: string;
+  sidePanelTitle?: string;
+  participantsSectionTitle?: string;
+  executionSectionTitle?: string;
+  executionEmptyState?: string;
+  folderSectionTitle?: string;
+  folderActionLabel?: string;
+  folderEmptyState?: string;
+}
+
+const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
+  composerPlaceholder: 'How can I help you today?',
+  sidePanelTitle: 'New Chat Setup',
+  participantsSectionTitle: 'Cats',
+  executionSectionTitle: 'AI Reply',
+  executionEmptyState: 'No AI reply setup yet.',
+  folderSectionTitle: 'Folder',
+  folderActionLabel: 'Choose folder',
+  folderEmptyState: 'No folder selected yet.',
+};
+
 export interface WorkspaceNewChatDraftProps {
   payload: AppShellPayload;
   composerDraft: string;
@@ -120,6 +142,7 @@ export interface WorkspaceNewChatDraftProps {
   CatAvatarRowComponent: ComponentType<CatAvatarRowProps>;
   FolderBrowserContentComponent: ComponentType<FolderBrowserContentProps>;
   DraftTargetSlotComponent: ComponentType<DraftTargetSlotProps>;
+  copy?: WorkspaceNewChatDraftCopy;
 }
 
 export function WorkspaceNewChatDraft({
@@ -171,9 +194,11 @@ export function WorkspaceNewChatDraft({
   CatAvatarRowComponent,
   FolderBrowserContentComponent,
   DraftTargetSlotComponent,
+  copy,
 }: WorkspaceNewChatDraftProps) {
   void bossCatName;
   void bossCatAvatarColor;
+  const resolvedCopy = { ...defaultWorkspaceNewChatDraftCopy, ...copy };
 
   const chatCats = payload.chat.cats.filter(isChatCat);
   const defaultRecipientCat = draftDefaultRecipientCatId
@@ -294,7 +319,7 @@ export function WorkspaceNewChatDraft({
           <textarea
             className="composerInput"
             rows={1}
-            placeholder="How can I help you today?"
+            placeholder={resolvedCopy.composerPlaceholder}
             value={composerDraft}
             disabled={isSubmittingFirstTurn}
             onChange={(event) => {
@@ -344,7 +369,7 @@ export function WorkspaceNewChatDraft({
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
                       </svg>
-                      Choose folder
+                      {resolvedCopy.folderActionLabel}
                     </button>
                   </div>
                 ) : null}
@@ -411,7 +436,7 @@ export function WorkspaceNewChatDraft({
       </section>
       {sidePanelOpen ? (
         <SidePanel
-          title="New Chat Setup"
+          title={resolvedCopy.sidePanelTitle}
           activeSection={sidePanelSection}
           onSectionToggle={isSubmittingFirstTurn ? () => {} : switchSection}
           onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
@@ -427,7 +452,7 @@ export function WorkspaceNewChatDraft({
 
     sections.push({
       id: 'cats',
-      title: 'Cats',
+      title: resolvedCopy.participantsSectionTitle,
       children: chatCats.filter((cat) => cat.status === 'active').length > 0 ? (
         <CatAvatarRowComponent
           cats={chatCats}
@@ -499,13 +524,17 @@ export function WorkspaceNewChatDraft({
           </div>
         );
       }
-      return <p className="operatorEmptyState">No AI reply setup yet.</p>;
+      return <p className="operatorEmptyState">{resolvedCopy.executionEmptyState}</p>;
     })();
-    sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
+    sections.push({
+      id: 'execution',
+      title: resolvedCopy.executionSectionTitle,
+      children: executionChildren,
+    });
 
     sections.push({
       id: 'cwd',
-      title: 'Folder',
+      title: resolvedCopy.folderSectionTitle,
       children: onFolderBrowsePathChange && onFolderBrowse && onFolderBrowseSelect ? (
         <FolderBrowserContentComponent
           folderBrowsePath={folderBrowsePath}
@@ -525,7 +554,7 @@ export function WorkspaceNewChatDraft({
         draftCwd ? (
           <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{draftCwd}</p>
         ) : (
-          <p className="operatorEmptyState">No folder selected yet.</p>
+          <p className="operatorEmptyState">{resolvedCopy.folderEmptyState}</p>
         )
       ),
     });
