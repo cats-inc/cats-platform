@@ -50,7 +50,7 @@ export interface SettingsCatsRegistryActionsContext {
 export function createSettingsCatsRegistryActions(
   context: SettingsCatsRegistryActionsContext,
 ) {
-  async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<void> {
+  async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<AppShellPayload | null> {
     event.preventDefault();
     context.onBusy(createCatBusyState('create'));
     try {
@@ -67,8 +67,10 @@ export function createSettingsCatsRegistryActions(
       context.onPayloadUpdate(result);
       context.setCatForm(context.emptyCatForm());
       context.onFeedback('Cat saved.');
+      return result;
     } catch (error) {
       context.onFeedback(error instanceof Error ? error.message : 'Failed to save cat.');
+      return null;
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -137,18 +139,6 @@ export function createSettingsCatsRegistryActions(
     }
   }
 
-  async function onUpdateProducts(catId: string, products: string[]): Promise<void> {
-    context.onBusy(createCatBusyState('products', catId));
-    try {
-      const result = await updateCatProfile(catId, { products });
-      context.onPayloadUpdate(result);
-    } catch (error) {
-      context.onFeedback(error instanceof Error ? error.message : 'Failed to update products.');
-    } finally {
-      context.onBusy(clearBusyState());
-    }
-  }
-
   async function onCreateBinding(catId: string): Promise<void> {
     if (!context.botForm.botName.trim()) {
       return;
@@ -197,6 +187,5 @@ export function createSettingsCatsRegistryActions(
     onMakeBossCat,
     onRenameCat,
     onSkillChange,
-    onUpdateProducts,
   };
 }

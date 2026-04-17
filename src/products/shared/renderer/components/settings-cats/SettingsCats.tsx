@@ -5,7 +5,6 @@ import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog.js';
 import { ProviderModelFields } from '../../../../../design/components/ProviderModelFields.js';
 import { ToastContainer, useToast } from '../../../../../design/components/Toast.js';
-import { ALL_PLATFORM_SURFACES } from '../../../../../shared/platformSurfaces.js';
 import type { ProviderTargetSelection } from '../../../../../shared/providerSelection.js';
 import { isCatBusy, type WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import {
@@ -26,6 +25,10 @@ import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDia
 import { SettingsCatsDetailPanelContent } from './SettingsCatsDetailPanelContent.js';
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 import { SettingsCatsTransportPanel } from './SettingsCatsTransportPanel.js';
+import {
+  findNewlyCreatedActiveCat,
+  hasModelSelectionChanged,
+} from './settingsCatsSupport.js';
 import { SKILL_PROFILES } from './viewSupport.js';
 
 export interface SettingsCatsRegistryController<TBotForm> {
@@ -41,14 +44,13 @@ export interface SettingsCatsRegistryController<TBotForm> {
   onMakeBossCat: (catId: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
-  onUpdateProducts: (catId: string, products: string[]) => Promise<void>;
 }
 
 export interface SettingsCatsRegistryActionsHookResult<TBotForm>
   extends SettingsCatsRegistryController<TBotForm> {
   catForm: CatFormState;
   setCatForm: Dispatch<SetStateAction<CatFormState>>;
-  onCreateCat: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onCreateCat: (event: FormEvent<HTMLFormElement>) => Promise<AppShellPayload | null>;
 }
 
 export interface SettingsCatsRegistryComponentProps<TBotForm> {
@@ -60,8 +62,6 @@ export interface SettingsCatsRegistryComponentProps<TBotForm> {
   registryController: SettingsCatsRegistryController<TBotForm>;
   setExpandedCatId: Dispatch<SetStateAction<string | null>>;
   telegramDiagnostics: ReturnType<typeof useSettingsCatsTelegram>['telegramDiagnostics'];
-  availableSurfaces?: string[];
-  enabledSurfaces?: string[];
   onPayloadUpdate?: (payload: AppShellPayload) => void;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
@@ -89,7 +89,6 @@ export interface SharedSettingsCatsCanvasProps extends SettingsCatsCanvasProps {
 
 export function SettingsCatsCanvas({
   payload,
-  feedback,
   busy,
   onPayloadUpdate,
   onFeedback,
@@ -103,12 +102,15 @@ export function SettingsCatsCanvas({
   const navigate = useNavigate();
   const isCreateRoute = location.pathname.endsWith('/cats/new');
 
+  useEffect(() => {
+    onFeedback('');
+  }, [onFeedback]);
+
   const toastFeedback = useCallback((message: string) => {
-    onFeedback(message);
     if (message) {
       showToast(message);
     }
-  }, [onFeedback, showToast]);
+  }, [showToast]);
 
   const actions = useSettingsCatsRegistryActionsHook({
     expandedCatId,
@@ -134,7 +136,6 @@ export function SettingsCatsCanvas({
     onUnarchiveCat,
     onRenameCat,
     onSkillChange,
-    onUpdateProducts,
   } = actions;
   const {
     botBindings,
@@ -149,8 +150,6 @@ export function SettingsCatsCanvas({
     onBusy,
     onFeedback: toastFeedback,
   });
-  const enabledSurfaces = payload.chat.capabilities.availableSurfaces;
-  const configurableSurfaces = [...ALL_PLATFORM_SURFACES];
 
   const activeCats = useMemo(
     () => payload.chat.cats.filter((cat) => cat.status === 'active'),
@@ -208,7 +207,6 @@ export function SettingsCatsCanvas({
 
   const prevActiveCatCountRef = useMemo(() => ({ current: activeCatCount }), []);
   const prevActiveCatIdsRef = useMemo(() => ({ current: new Set<string>(activeCats.map((c) => c.id)) }), []);
-  const pendingAvatarApplyRef = useRef<string | null>(null);
   useEffect(() => {
     if (activeCatCount > prevActiveCatCountRef.current) {
       const prevIds = prevActiveCatIdsRef.current;
@@ -216,13 +214,6 @@ export function SettingsCatsCanvas({
         ?? sortedActiveCats[sortedActiveCats.length - 1];
       if (newCat) {
         setSelectedCatId(newCat.id);
-        if (pendingAvatarApplyRef.current) {
-          const dataUrl = pendingAvatarApplyRef.current;
-          pendingAvatarApplyRef.current = null;
-          void updateCatProfile(newCat.id, { avatarUrl: dataUrl })
-            .then((next) => onPayloadUpdate(next))
-            .catch(() => { /* silent */ });
-        }
       }
       if (location.pathname.endsWith('/cats/new')) {
         navigate('/settings/cats', { replace: true });
@@ -242,12 +233,6 @@ export function SettingsCatsCanvas({
   const handleStartCreate = () => {
     if (atCatLimit) return;
     navigate('/settings/cats/new');
-  };
-
-  const handleCancelCreate = () => {
-    if (activeCatCount > 0 && location.pathname.endsWith('/cats/new')) {
-      navigate('/settings/cats', { replace: true });
-    }
   };
 
   const selectedCat = useMemo(
@@ -338,6 +323,7 @@ export function SettingsCatsCanvas({
   const savedProvider = selectedCat?.defaultExecutionTarget.provider ?? '';
   const savedInstance = selectedCat?.defaultExecutionTarget.instance ?? '';
   const savedModel = selectedCat?.defaultExecutionTarget.model ?? '';
+  const savedModelSelection = selectedCat?.defaultModelSelection ?? null;
   const detailDirty = Boolean(
     selectedCat && (
       nameDraft.trim() !== savedName
@@ -346,6 +332,7 @@ export function SettingsCatsCanvas({
       || providerDraft.provider !== savedProvider
       || (providerDraft.instance ?? '') !== savedInstance
       || (providerDraft.model ?? '') !== savedModel
+      || hasModelSelectionChanged(providerDraft.modelSelection, savedModelSelection)
     )
   );
   const isArchived = selectedCat?.status === 'archived';
@@ -373,7 +360,9 @@ export function SettingsCatsCanvas({
       if (providerDraft.provider !== savedProvider) patch.provider = providerDraft.provider;
       if ((providerDraft.instance ?? '') !== savedInstance) patch.instance = providerDraft.instance || null;
       if ((providerDraft.model ?? '') !== savedModel) patch.model = providerDraft.model || null;
-      patch.modelSelection = providerDraft.modelSelection ?? null;
+      if (hasModelSelectionChanged(providerDraft.modelSelection, savedModelSelection)) {
+        patch.modelSelection = providerDraft.modelSelection ?? null;
+      }
       const next = await updateCatProfile(selectedCat.id, patch);
       onPayloadUpdate(next);
       setMakeBossDraft(false);
@@ -396,6 +385,26 @@ export function SettingsCatsCanvas({
       model: selectedCat.defaultExecutionTarget.model ?? '',
       modelSelection: selectedCat.defaultModelSelection ?? null,
     });
+  };
+
+  const handleCreateCat = async () => {
+    const next = await onCreateCat({ preventDefault: () => {} } as FormEvent<HTMLFormElement>);
+    const newCat = next ? findNewlyCreatedActiveCat(activeCats, next.chat.cats) : null;
+    if (newCat) {
+      setSelectedCatId(newCat.id);
+      if (location.pathname.endsWith('/cats/new')) {
+        navigate('/settings/cats', { replace: true });
+      }
+      if (pendingCreateAvatar) {
+        try {
+          const nextWithAvatar = await updateCatProfile(newCat.id, { avatarUrl: pendingCreateAvatar });
+          onPayloadUpdate(nextWithAvatar);
+          setPendingCreateAvatar(null);
+        } catch {
+          // silent
+        }
+      }
+    }
   };
 
   return (
@@ -600,10 +609,7 @@ export function SettingsCatsCanvas({
                   type="button"
                   className="primaryButton"
                   disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim() || atCatLimit || isCatBusy(busy, 'create')}
-                  onClick={() => {
-                    pendingAvatarApplyRef.current = pendingCreateAvatar;
-                    void onCreateCat({ preventDefault: () => {} } as FormEvent<HTMLFormElement>);
-                  }}
+                  onClick={() => { void handleCreateCat(); }}
                 >
                   {isCatBusy(busy, 'create') ? 'Saving...' : 'Save'}
                 </button>
@@ -677,7 +683,10 @@ export function SettingsCatsCanvas({
                           });
                           if (!confirmed) return;
                         }
-                        setCatForm({ ...catForm, makeBoss: next });
+                        setCatForm({
+                          ...catForm,
+                          makeBoss: next,
+                        });
                       }}
                     />
                     <span>Set as Boss Cat</span>
@@ -782,7 +791,9 @@ export function SettingsCatsCanvas({
                       <input
                         type="checkbox"
                         checked={makeBossDraft}
-                        onChange={(event) => setMakeBossDraft(event.target.checked)}
+                        onChange={(event) => {
+                          setMakeBossDraft(event.target.checked);
+                        }}
                       />
                       <span>Set as Boss Cat</span>
                     </label>
@@ -847,7 +858,6 @@ export function SettingsCatsCanvas({
                     onMakeBossCat,
                     onRenameCat,
                     onSkillChange,
-                    onUpdateProducts,
                   }}
                   telegramDiagnostics={telegramDiagnostics}
                   confirm={confirm}
@@ -872,7 +882,6 @@ export function SettingsCatsCanvas({
                     onMakeBossCat,
                     onRenameCat,
                     onSkillChange,
-                    onUpdateProducts,
                   }}
                   telegramDiagnostics={telegramDiagnostics}
                   confirm={confirm}

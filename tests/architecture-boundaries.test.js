@@ -1587,7 +1587,7 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
   assert.match(sharedTransportPanelSource, /No Telegram inbox bindings have received traffic yet\./u);
 });
 
-test('settings cats composes dedicated registry and create-form components instead of rendering all cat detail UI inline', async () => {
+test('settings cats composes dedicated shared settings modules instead of keeping helper logic inline', async () => {
   const settingsCatsSource = await readFile(
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
@@ -1626,7 +1626,8 @@ test('settings cats composes dedicated registry and create-form components inste
     /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
   );
   assert.match(sharedSettingsCatsSource, /SettingsCatsRegistryComponent/u);
-  assert.match(sharedSettingsCatsSource, /SettingsCatsCreateForm/u);
+  assert.match(sharedSettingsCatsSource, /SettingsCatsDetailPanelContent/u);
+  assert.match(sharedSettingsCatsSource, /settingsCatsSupport/u);
   assert.doesNotMatch(settingsCatsSource, /className="catDetailSection"/u);
   assert.doesNotMatch(settingsCatsSource, /ProviderModelFields/u);
   assert.match(

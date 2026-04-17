@@ -43,7 +43,6 @@ export function useSettingsCatsRegistryActions(options: {
     onMakeBossCat,
     onRenameCat,
     onSkillChange,
-    onUpdateProducts,
   } = createSettingsCatsRegistryActions({
     expandedCatId,
     setExpandedCatId,
@@ -130,6 +129,5 @@ export function useSettingsCatsRegistryActions(options: {
     onRenameCat,
     onSkillChange,
     onUnarchiveCat,
-    onUpdateProducts,
   };
 }

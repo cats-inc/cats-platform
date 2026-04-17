@@ -26,7 +26,6 @@ export interface SettingsCatsDetailPanelRegistryController {
   onMakeBossCat: (catId: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
-  onUpdateProducts: (catId: string, products: string[]) => Promise<void>;
 }
 
 export type SettingsCatsDetailSectionKey =
@@ -46,8 +45,6 @@ export interface SettingsCatsDetailPanelContentProps {
   telegramDiagnostics: {
     bindings: TelegramTransportBindingDiagnostics[];
   } | null;
-  availableSurfaces?: string[];
-  enabledSurfaces?: string[];
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
   sections?: ReadonlyArray<SettingsCatsDetailSectionKey>;
 }

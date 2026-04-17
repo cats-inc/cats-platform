@@ -19,8 +19,6 @@ export interface SettingsCatsDetailPanelProps {
   memoryController: SettingsCatsMemoryController;
   registryController: SettingsCatsDetailPanelRegistryController;
   telegramDiagnostics: Parameters<typeof SettingsCatsDetailPanelContent>[0]['telegramDiagnostics'];
-  availableSurfaces?: string[];
-  enabledSurfaces?: string[];
   onPayloadUpdate?: (payload: AppShellPayload) => void;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
 }
@@ -33,8 +31,6 @@ export function SettingsCatsDetailPanel({
   memoryController,
   registryController,
   telegramDiagnostics,
-  availableSurfaces,
-  enabledSurfaces,
   onPayloadUpdate,
   confirm: confirmDialog,
 }: SettingsCatsDetailPanelProps) {
@@ -115,8 +111,6 @@ export function SettingsCatsDetailPanel({
         memoryController={memoryController}
         registryController={registryController}
         telegramDiagnostics={telegramDiagnostics}
-        availableSurfaces={availableSurfaces}
-        enabledSurfaces={enabledSurfaces}
         confirm={confirmDialog}
       />
     </div>
