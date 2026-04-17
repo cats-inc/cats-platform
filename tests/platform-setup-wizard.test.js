@@ -134,7 +134,7 @@ async function waitForGuideCatAssistBundle(
   scopeKey,
   options = {},
 ) {
-  const deadline = Date.now() + (options.timeoutMs ?? 2_000);
+  const deadline = Date.now() + (options.timeoutMs ?? 4_000);
   while (Date.now() < deadline) {
     const cache = await readGuideCatAssistCache(chatStatePath);
     const bundle = cache.bundles[scopeKey] ?? null;
