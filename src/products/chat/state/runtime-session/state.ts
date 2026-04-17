@@ -69,6 +69,7 @@ export function setStartedSession(
   session: RuntimeSessionInfo,
   now: Date,
   laneId: string | null = null,
+  instance: string | null = null,
 ): ChatState {
   const timestamp = now.toISOString();
   if (typeof target !== 'string') {
@@ -83,6 +84,7 @@ export function setStartedSession(
         lastError: null,
         laneId,
         provider: session.provider,
+        instance,
         model: session.model,
         startedAt: timestamp,
         lastUsedAt: timestamp,
@@ -101,6 +103,7 @@ export function setStartedSession(
       lastError: null,
       laneId,
       provider: session.provider,
+      instance,
       model: session.model,
       startedAt: timestamp,
       lastUsedAt: timestamp,
@@ -220,6 +223,7 @@ export function clearTargetSessionLease(
     status: 'not_started' as const,
     lastError: null,
     laneId: null,
+    instance: null,
     startedAt: null,
   };
 

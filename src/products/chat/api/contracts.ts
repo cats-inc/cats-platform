@@ -154,6 +154,7 @@ export interface ParticipantSessionSummary {
 export interface ParticipantExecutionLease extends ParticipantSessionSummary {
   laneId: string | null;
   provider: string | null;
+  instance?: string | null;
   model: string | null;
   startedAt: string | null;
   lastUsedAt: string | null;

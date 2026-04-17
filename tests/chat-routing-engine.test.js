@@ -1428,6 +1428,74 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
   );
 });
 
+test('solo composer mode restarts orchestrator sessions when the pending instance changes', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Switch runtime instances per turn.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First turn',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+  const secondDispatch = await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    {
+      body: 'Second turn',
+      pendingProvider: 'claude',
+      pendingInstance: 'agent/bridge',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+  const channel = buildChannelView(secondDispatch.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.equal(runtimeClient.createdSessions[0]?.instance, 'native');
+  assert.equal(runtimeClient.createdSessions[1]?.instance, 'agent/bridge');
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.equal(channel.pendingInstance, 'agent/bridge');
+  assert.equal(channel.orchestratorLease.instance, 'agent/bridge');
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /Same conversation continuity transcript:/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[user:User\] First turn/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[agent:Orchestrator\] response from session-1/u,
+  );
+});
+
 test('solo composer mode sends raw user text without default instructions on a stable session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');

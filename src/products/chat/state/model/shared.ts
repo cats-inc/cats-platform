@@ -125,6 +125,10 @@ export function updateExecutionLease(
   current: ParticipantExecutionLease,
   input: Partial<ParticipantExecutionLease> & { status?: ParticipantSessionStatus },
 ): ParticipantExecutionLease {
+  const nextInstance = input.instance === undefined
+    ? (current.instance === undefined ? undefined : current.instance)
+    : normalizeOptionalText(input.instance);
+
   return {
     sessionId:
       input.sessionId === undefined ? current.sessionId : input.sessionId,
@@ -136,6 +140,7 @@ export function updateExecutionLease(
       input.laneId === undefined ? current.laneId : normalizeOptionalText(input.laneId),
     provider:
       input.provider === undefined ? current.provider : normalizeOptionalText(input.provider),
+    ...(nextInstance !== undefined ? { instance: nextInstance } : {}),
     model:
       input.model === undefined ? current.model : normalizeOptionalText(input.model),
     startedAt:

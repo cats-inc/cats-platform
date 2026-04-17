@@ -100,6 +100,7 @@ export function persistStartedTargetSession(input: {
     input.session,
     input.metadata.now,
     input.metadata.laneId,
+    input.targetLabelInstance,
   );
   if (!input.spawnCwd && input.session.cwd) {
     nextState = setChannelChatCwd(

@@ -218,6 +218,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
     const shouldRestartSoloSession = channelState.composerMode === 'solo'
       && (
         orchestratorLease?.provider !== executionTarget.provider
+        || (channelState.orchestratorLease.instance ?? null) !== executionTarget.instance
         || orchestratorLease?.model !== executionTarget.model
       );
 
@@ -240,6 +241,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
           status: 'not_started',
           lastError: null,
           provider: executionTarget.provider,
+          instance: executionTarget.instance,
           model: executionTarget.model,
           startedAt: null,
           lastUsedAt: orchestratorLease?.lastUsedAt ?? null,

@@ -78,6 +78,7 @@ export function normalizeExecutionLease(
   )
     ? rawStatus
     : defaultLease.status;
+  const normalizedInstance = readNullableString(leaseRecord?.instance) ?? fallbackTarget.instance;
 
   return {
     sessionId: readNullableString(leaseRecord?.sessionId),
@@ -86,6 +87,7 @@ export function normalizeExecutionLease(
     lastError: readNullableString(leaseRecord?.lastError),
     laneId: readNullableString(leaseRecord?.laneId),
     provider: readNullableString(leaseRecord?.provider) ?? fallbackTarget.provider,
+    ...(normalizedInstance !== null ? { instance: normalizedInstance } : {}),
     model: readNullableString(leaseRecord?.model) ?? fallbackTarget.model,
     startedAt: readNullableString(leaseRecord?.startedAt),
     lastUsedAt: readNullableString(leaseRecord?.lastUsedAt),
