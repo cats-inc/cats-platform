@@ -38,6 +38,7 @@ export function useSettingsCatsRegistryActions(options: {
   const {
     onCreateBinding,
     onCreateCat,
+    performCreateCat,
     onDeleteBinding,
     onDeleteCat: onDeleteCatBase,
     onMakeBossCat,
@@ -123,6 +124,7 @@ export function useSettingsCatsRegistryActions(options: {
     onArchiveCat,
     onCreateBinding,
     onCreateCat,
+    performCreateCat,
     onDeleteBinding,
     onDeleteCat,
     onMakeBossCat,

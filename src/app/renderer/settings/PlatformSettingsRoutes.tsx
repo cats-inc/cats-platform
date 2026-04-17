@@ -45,7 +45,6 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
       <PlatformSettingsShell section="cats:my-cats" title="My Cats" products={payload.products}>
       <WorkspaceSettingsCatsCanvas
         payload={payload}
-        feedback={feedback}
         busy={busy}
         onPayloadUpdate={onWorkspacePayloadUpdate}
         onFeedback={onFeedback}

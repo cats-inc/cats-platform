@@ -1,11 +1,14 @@
-import type { ProviderModelSelection } from '../../../../../shared/providerSelection.js';
+import {
+  sameProviderModelSelection,
+  type ProviderModelSelection,
+} from '../../../../../shared/providerSelection.js';
 import type { ChatCat } from '../../../api/workspaceContracts.js';
 
 export function hasModelSelectionChanged(
   left: ProviderModelSelection | null | undefined,
   right: ProviderModelSelection | null | undefined,
 ): boolean {
-  return JSON.stringify(left ?? null) !== JSON.stringify(right ?? null);
+  return !sameProviderModelSelection(left, right);
 }
 
 export function findNewlyCreatedActiveCat(

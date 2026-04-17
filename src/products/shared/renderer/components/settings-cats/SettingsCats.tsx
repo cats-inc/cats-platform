@@ -50,6 +50,7 @@ export interface SettingsCatsRegistryActionsHookResult<TBotForm>
   extends SettingsCatsRegistryController<TBotForm> {
   catForm: CatFormState;
   setCatForm: Dispatch<SetStateAction<CatFormState>>;
+  performCreateCat: () => Promise<AppShellPayload | null>;
   onCreateCat: (event: FormEvent<HTMLFormElement>) => Promise<AppShellPayload | null>;
 }
 
@@ -68,7 +69,6 @@ export interface SettingsCatsRegistryComponentProps<TBotForm> {
 
 export interface SettingsCatsCanvasProps {
   payload: AppShellPayload;
-  feedback: string;
   busy: WorkspaceBusyState;
   onPayloadUpdate: (payload: AppShellPayload) => void;
   onFeedback: (message: string) => void;
@@ -101,8 +101,13 @@ export function SettingsCatsCanvas({
   const location = useLocation();
   const navigate = useNavigate();
   const isCreateRoute = location.pathname.endsWith('/cats/new');
+  const clearedFeedbackRef = useRef(false);
 
   useEffect(() => {
+    if (clearedFeedbackRef.current) {
+      return;
+    }
+    clearedFeedbackRef.current = true;
     onFeedback('');
   }, [onFeedback]);
 
@@ -129,6 +134,7 @@ export function SettingsCatsCanvas({
     setRenameValue,
     onCreateBinding,
     onCreateCat,
+    performCreateCat,
     onDeleteBinding,
     onDeleteCat,
     onMakeBossCat,
@@ -388,7 +394,7 @@ export function SettingsCatsCanvas({
   };
 
   const handleCreateCat = async () => {
-    const next = await onCreateCat({ preventDefault: () => {} } as FormEvent<HTMLFormElement>);
+    const next = await performCreateCat();
     const newCat = next ? findNewlyCreatedActiveCat(activeCats, next.chat.cats) : null;
     if (newCat) {
       setSelectedCatId(newCat.id);
@@ -400,8 +406,9 @@ export function SettingsCatsCanvas({
           const nextWithAvatar = await updateCatProfile(newCat.id, { avatarUrl: pendingCreateAvatar });
           onPayloadUpdate(nextWithAvatar);
           setPendingCreateAvatar(null);
-        } catch {
-          // silent
+        } catch (error) {
+          setPendingCreateAvatar(null);
+          toastFeedback(error instanceof Error ? error.message : 'Failed to save avatar.');
         }
       }
     }

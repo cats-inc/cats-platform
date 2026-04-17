@@ -50,8 +50,7 @@ export interface SettingsCatsRegistryActionsContext {
 export function createSettingsCatsRegistryActions(
   context: SettingsCatsRegistryActionsContext,
 ) {
-  async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<AppShellPayload | null> {
-    event.preventDefault();
+  async function performCreateCat(): Promise<AppShellPayload | null> {
     context.onBusy(createCatBusyState('create'));
     try {
       const result = await createGlobalCat({
@@ -74,6 +73,11 @@ export function createSettingsCatsRegistryActions(
     } finally {
       context.onBusy(clearBusyState());
     }
+  }
+
+  async function onCreateCat(event: FormEvent<HTMLFormElement>): Promise<AppShellPayload | null> {
+    event.preventDefault();
+    return performCreateCat();
   }
 
   async function onRenameCat(catId: string): Promise<void> {
@@ -182,6 +186,7 @@ export function createSettingsCatsRegistryActions(
   return {
     onCreateBinding,
     onCreateCat,
+    performCreateCat,
     onDeleteBinding,
     onDeleteCat,
     onMakeBossCat,
