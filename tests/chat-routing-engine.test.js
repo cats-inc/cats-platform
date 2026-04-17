@@ -12,6 +12,7 @@ import {
   removeCatFromChannel,
   requireChannel,
   setChannelCatLease,
+  setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
 import {
   beginChannelMessageDispatch,
@@ -1608,6 +1609,98 @@ test('solo composer mode honors pending runtime memory flush hooks before restar
       && activity.metadata?.phase === 'pre_reset'
       && activity.metadata?.channelId === channelId),
   );
+});
+
+test('solo composer mode retransplants continuity after stale-session recovery creates a new runtime session', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Recover stale sessions without losing continuity.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) => {
+    if (sessionId === 'session-stale') {
+      throw new Error('Session not found: session-stale');
+    }
+
+    return usage(`response from ${sessionId}`);
+  });
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First turn',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+
+  const staleState = setChannelOrchestratorLease(
+    firstDispatch.state,
+    channelId,
+    {
+      sessionId: 'session-stale',
+      status: 'ready',
+      lastError: null,
+    },
+    new Date('2026-03-23T00:00:30.000Z'),
+  );
+
+  const recoveredDispatch = await routeChannelMessage(
+    staleState,
+    channelId,
+    {
+      body: 'Recover the conversation',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+    {
+      runtimeRecovery: {
+        staleSessionRetryLimit: 1,
+      },
+    },
+  );
+  const channel = buildChannelView(recoveredDispatch.state, channelId);
+  const soloReplies = channel.messages.filter(
+    (message) => message.metadata?.targetKind === 'orchestrator' && message.senderName === 'Orchestrator',
+  );
+
+  assert.deepEqual(
+    runtimeClient.sentMessages.map((message) => message.sessionId),
+    ['session-1', 'session-stale', 'session-2'],
+  );
+  assert.deepEqual(runtimeClient.closedSessions, ['session-stale']);
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.match(
+    runtimeClient.sentMessages[2]?.input?.instructions ?? '',
+    /Same conversation continuity transcript:/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[2]?.input?.instructions ?? '',
+    /\[user:User\] First turn/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[2]?.input?.instructions ?? '',
+    /\[agent:Orchestrator\] response from session-1/u,
+  );
+  assert.equal(soloReplies.at(-1)?.executionProvider, 'claude');
+  assert.equal(soloReplies.at(-1)?.executionModel, 'claude-default');
 });
 
 test('cat-led room routing continues across agent mentions and auto-wakes targeted participants', async () => {
