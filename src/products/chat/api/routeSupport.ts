@@ -19,6 +19,7 @@ import { readPlatformPreferences } from '../../../shared/platformPreferences.js'
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import { validateRuntimeSessionPolicyInput } from '../../../shared/runtimeSessionPolicy.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import {
   appendMessage,
@@ -331,6 +332,20 @@ export async function persistCreatedChannel(
   context: ChatApiRouteContext,
   input: CreateChatChannelInput,
 ): Promise<ChatState> {
+  const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
+    workspaceKind: input.runtimeWorkspaceKind,
+    workspaceAccess: input.runtimeWorkspaceAccess,
+    permissionMode: input.runtimePermissionMode,
+  });
+  if (runtimePolicyIssue) {
+    throw new ChatApiError(
+      400,
+      runtimePolicyIssue.code,
+      runtimePolicyIssue.message,
+      runtimePolicyIssue.details,
+    );
+  }
+
   const now = nowFrom(context.dependencies);
   const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat');
   const requestedComposerMode = input.composerMode ?? (input.entryKind === 'solo' ? 'solo' : null);
@@ -688,6 +703,7 @@ export async function persistCatAssignmentUpdate(
         channelId,
         runtimeEnvelope.context,
       ));
+      const { spawnCwd, ...runtimePolicy } = sessionPolicy;
       const session = await context.dependencies.runtimeClient.createSession({
         provider: updatedCat.execution.target.provider,
         instance: updatedCat.execution.target.instance,
@@ -695,10 +711,8 @@ export async function persistCatAssignmentUpdate(
         modelSelection:
           updatedCat.execution.modelSelection
           ?? createExplicitProviderModelSelection(updatedCat.execution.target.model),
-        cwd: sessionPolicy.spawnCwd,
-        workspaceKind: sessionPolicy.workspaceKind,
-        workspaceAccess: sessionPolicy.workspaceAccess,
-        permissionMode: sessionPolicy.permissionMode,
+        cwd: spawnCwd,
+        ...runtimePolicy,
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
       });

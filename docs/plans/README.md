@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-062](./PLAN-062-runtime-session-policy-boundary-hardening.md) | Runtime Session Policy Boundary Hardening | In Progress (First Slice Landed) | [SPEC-072](../specs/SPEC-072-runtime-session-policy-boundary-validation.md), [ADR-071](../decisions/071-reject-invalid-runtime-session-policy-combinations-at-create-boundary.md) |
 | [PLAN-061](./PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md) | Guide Cat Placement and Shared-Chrome Docking Rollout | Draft | [SPEC-071](../specs/SPEC-071-guide-cat-placement-and-shared-chrome-docking.md), [ADR-070](../decisions/070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model.md) |
 | [PLAN-060](./PLAN-060-product-scoped-recents-and-origin-surface-rollout.md) | Product-Scoped Recents and Origin-Surface Rollout | In Progress | [SPEC-070](../specs/SPEC-070-product-scoped-recents-and-channel-origin-surfaces.md), [ADR-069](../decisions/069-scope-recents-to-channel-origin-surface-by-default.md) |
 | [PLAN-059](./PLAN-059-guide-cat-assist-content-cache-and-offline-refresh.md) | Guide Cat Assist Content Cache and Offline Refresh | Draft | [SPEC-067](../specs/SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md), [ADR-066](../decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md) |
@@ -115,6 +116,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-17*
+*Last updated: 2026-04-18*
 
 *See also: [specs/](../specs/) for feature specifications*

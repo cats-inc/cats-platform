@@ -6,6 +6,51 @@ export type RuntimeWorkspaceKind = typeof RUNTIME_WORKSPACE_KINDS[number];
 export type RuntimeWorkspaceAccess = typeof RUNTIME_WORKSPACE_ACCESS_VALUES[number];
 export type RuntimePermissionMode = typeof RUNTIME_PERMISSION_MODES[number];
 
+export type RuntimeSessionPermissionBoundaryInput =
+  | {
+      workspaceAccess?: null | undefined;
+      permissionMode?: null | undefined;
+    }
+  | {
+      workspaceAccess: 'read_only';
+      permissionMode?: 'default' | null;
+    }
+  | {
+      workspaceAccess: 'read_write';
+      permissionMode?: 'skip' | 'whitelist' | null;
+    };
+
+export type RuntimeSessionTransportInput = {
+  workspaceKind?: RuntimeWorkspaceKind | null;
+} & RuntimeSessionPermissionBoundaryInput;
+
+export type RuntimeSessionCreateContractInput = {
+  runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
+} & (
+  | {
+      runtimeWorkspaceAccess?: null | undefined;
+      runtimePermissionMode?: null | undefined;
+    }
+  | {
+      runtimeWorkspaceAccess: 'read_only';
+      runtimePermissionMode?: 'default' | null;
+    }
+  | {
+      runtimeWorkspaceAccess: 'read_write';
+      runtimePermissionMode?: 'skip' | 'whitelist' | null;
+    }
+);
+
+export interface RuntimeSessionPolicyValidationIssue {
+  code:
+    | 'invalid_runtime_workspace_kind'
+    | 'invalid_runtime_workspace_access'
+    | 'invalid_runtime_permission_mode'
+    | 'invalid_runtime_policy_combination';
+  message: string;
+  details?: Record<string, unknown>;
+}
+
 // RuntimeSessionPolicy is a discriminated union over workspaceAccess. Read-only
 // sessions must run with the default permission gate; read-write sessions are
 // skip-permission by default but may opt into a whitelist. Constructing any
@@ -72,6 +117,72 @@ function createDefaultPolicyFields(): RuntimeSessionPolicyFields {
     workspaceAccess: 'read_write',
     permissionMode: 'skip',
   };
+}
+
+export function validateRuntimeSessionPolicyInput(policy: {
+  workspaceKind?: unknown | null;
+  workspaceAccess?: unknown | null;
+  permissionMode?: unknown | null;
+}): RuntimeSessionPolicyValidationIssue | null {
+  if (policy.workspaceKind != null && !isRuntimeWorkspaceKind(policy.workspaceKind)) {
+    return {
+      code: 'invalid_runtime_workspace_kind',
+      message: 'runtimeWorkspaceKind must be one of: source, sandbox, worktree.',
+      details: { received: policy.workspaceKind },
+    };
+  }
+
+  if (policy.workspaceAccess != null && !isRuntimeWorkspaceAccess(policy.workspaceAccess)) {
+    return {
+      code: 'invalid_runtime_workspace_access',
+      message: 'runtimeWorkspaceAccess must be one of: read_write, read_only.',
+      details: { received: policy.workspaceAccess },
+    };
+  }
+
+  if (policy.permissionMode != null && !isRuntimePermissionMode(policy.permissionMode)) {
+    return {
+      code: 'invalid_runtime_permission_mode',
+      message: 'runtimePermissionMode must be one of: skip, default, whitelist.',
+      details: { received: policy.permissionMode },
+    };
+  }
+
+  if (policy.permissionMode != null && policy.workspaceAccess == null) {
+    return {
+      code: 'invalid_runtime_policy_combination',
+      message: 'runtimePermissionMode requires runtimeWorkspaceAccess.',
+      details: {
+        permissionMode: policy.permissionMode,
+      },
+    };
+  }
+
+  if (policy.workspaceAccess === 'read_only' && policy.permissionMode != null) {
+    if (policy.permissionMode !== 'default') {
+      return {
+        code: 'invalid_runtime_policy_combination',
+        message: 'read_only sessions may only use the default permission gate.',
+        details: {
+          workspaceAccess: policy.workspaceAccess,
+          permissionMode: policy.permissionMode,
+        },
+      };
+    }
+  }
+
+  if (policy.workspaceAccess === 'read_write' && policy.permissionMode === 'default') {
+    return {
+      code: 'invalid_runtime_policy_combination',
+      message: 'read_write sessions may only use skip or whitelist permission modes.',
+      details: {
+        workspaceAccess: policy.workspaceAccess,
+        permissionMode: policy.permissionMode,
+      },
+    };
+  }
+
+  return null;
 }
 
 // Single source of truth for the read-only invariant. Both create-time and

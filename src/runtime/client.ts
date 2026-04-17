@@ -17,10 +17,9 @@ import {
   type TaskRuntimeExecutionRequest,
 } from '../shared/taskExecutionBridge.js';
 import type {
-  RuntimePermissionMode,
-  RuntimeWorkspaceAccess,
-  RuntimeWorkspaceKind,
+  RuntimeSessionTransportInput,
 } from '../shared/runtimeSessionPolicy.js';
+import { validateRuntimeSessionPolicyInput } from '../shared/runtimeSessionPolicy.js';
 import {
   normalizeRuntimeProviderDiagnosticsPayload,
   normalizeRuntimeProviderConfigRegistry,
@@ -194,20 +193,21 @@ export interface RuntimeExecutionRequestInput {
   correlation?: TaskExecutionCorrelation;
 }
 
-export interface RuntimeSessionCreateInput extends RuntimeExecutionRequestInput {
+interface RuntimeSessionCreateInputBase extends RuntimeExecutionRequestInput {
   provider: string;
   instance?: string | null;
   model?: string | null;
   modelSelection?: ProviderModelSelection | null;
   cwd?: string | null;
-  workspaceKind?: RuntimeWorkspaceKind | null;
-  workspaceAccess?: RuntimeWorkspaceAccess | null;
-  permissionMode?: RuntimePermissionMode | null;
+  workspaceKind?: RuntimeSessionTransportInput['workspaceKind'];
   sharingMode?: 'shared' | 'isolated' | null;
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
   skills?: RuntimeSkillManifest;
 }
+
+export type RuntimeSessionCreateInput =
+  RuntimeSessionCreateInputBase & RuntimeSessionTransportInput;
 
 export interface RuntimeSendMessageInput extends RuntimeExecutionRequestInput {
   instructions?: string | null;
@@ -516,6 +516,15 @@ export class CatsRuntimeClient implements RuntimeClient {
   }
 
   async createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo> {
+    const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
+      workspaceKind: input.workspaceKind,
+      workspaceAccess: input.workspaceAccess,
+      permissionMode: input.permissionMode,
+    });
+    if (runtimePolicyIssue) {
+      throw new Error(runtimePolicyIssue.message);
+    }
+
     const payload: Record<string, unknown> = {
       provider: input.provider,
       permissionMode: input.permissionMode ?? 'skip',

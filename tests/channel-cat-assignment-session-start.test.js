@@ -198,6 +198,35 @@ test('assigning a cat emits session_started metadata keyed by participantId', as
   });
 });
 
+test('channel creation rejects runtime policy combinations that would otherwise be silently coerced', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Invalid runtime policy',
+        topic: 'Do not silently rewrite read_write + default.',
+        repoPath: 'C:/repo/cats-platform',
+        runtimeWorkspaceAccess: 'read_write',
+        runtimePermissionMode: 'default',
+        skipBossCatGreeting: true,
+      }),
+    });
+
+    assert.equal(createChannelResponse.status, 400);
+    const payload = await createChannelResponse.json();
+    assert.equal(payload.error?.code, 'invalid_runtime_policy_combination');
+    assert.equal(
+      payload.error?.message,
+      'read_write sessions may only use skip or whitelist permission modes.',
+    );
+  });
+});
+
 test('assigning a cat keeps direct-lane transport binding on session_start_failed metadata', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.createSession = async () => {

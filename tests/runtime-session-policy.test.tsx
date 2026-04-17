@@ -5,6 +5,7 @@ import {
   completeRuntimeSessionPolicy,
   createDefaultRuntimeSessionPolicy,
   resolveCreateRuntimeSessionPolicy,
+  validateRuntimeSessionPolicyInput,
 } from '../src/shared/runtimeSessionPolicy.ts';
 
 test('completeRuntimeSessionPolicy clones defaults and ignores undefined overrides', () => {
@@ -55,4 +56,34 @@ test('resolveCreateRuntimeSessionPolicy forces read-only sessions onto the defau
   assert.equal(completed.workspaceKind, 'sandbox');
   assert.equal(completed.workspaceAccess, 'read_only');
   assert.equal(completed.permissionMode, 'default');
+});
+
+test('validateRuntimeSessionPolicyInput rejects permission modes without a matching access mode', () => {
+  assert.deepEqual(
+    validateRuntimeSessionPolicyInput({
+      workspaceAccess: 'read_write',
+      permissionMode: 'default',
+    }),
+    {
+      code: 'invalid_runtime_policy_combination',
+      message: 'read_write sessions may only use skip or whitelist permission modes.',
+      details: {
+        workspaceAccess: 'read_write',
+        permissionMode: 'default',
+      },
+    },
+  );
+
+  assert.deepEqual(
+    validateRuntimeSessionPolicyInput({
+      permissionMode: 'whitelist',
+    }),
+    {
+      code: 'invalid_runtime_policy_combination',
+      message: 'runtimePermissionMode requires runtimeWorkspaceAccess.',
+      details: {
+        permissionMode: 'whitelist',
+      },
+    },
+  );
 });

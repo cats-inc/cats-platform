@@ -48,6 +48,7 @@ import type {
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type {
   RuntimePermissionMode,
+  RuntimeSessionCreateContractInput,
   RuntimeWorkspaceAccess,
   RuntimeWorkspaceKind,
 } from '../../../shared/runtimeSessionPolicy.js';
@@ -560,15 +561,12 @@ export interface UpdateSelectedChannelInput {
   selectedChannelId: string;
 }
 
-export interface CreateChatChannelInput {
+interface CreateChatChannelInputBase {
   title: string;
   topic: string;
   originSurface: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string;
-  runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;
-  runtimeWorkspaceAccess?: RuntimeWorkspaceAccess | null;
-  runtimePermissionMode?: RuntimePermissionMode | null;
   language?: string;
   responseLanguage?: string;
   formationMode?: ChannelFormationMode;
@@ -590,6 +588,9 @@ export interface CreateChatChannelInput {
   /** Internal UI affordance for the first user-sent turn in a newly created chat. */
   skipBossCatGreeting?: boolean;
 }
+
+export type CreateChatChannelInput =
+  CreateChatChannelInputBase & RuntimeSessionCreateContractInput;
 
 export interface CreateParallelChatGroupInput {
   title: string;

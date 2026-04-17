@@ -26,7 +26,10 @@ import {
   resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
 import { normalizePlatformSurface } from '../../../../shared/platformSurfaces.js';
-import { resolveCreateRuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+import {
+  resolveCreateRuntimeSessionPolicy,
+  validateRuntimeSessionPolicyInput,
+} from '../../../../shared/runtimeSessionPolicy.js';
 import {
   resolveChannelParticipantAssignments,
 } from '../../shared/channelParticipants.js';
@@ -273,6 +276,14 @@ export function createChannel(
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
   const originSurface = resolveCreateInputOriginSurface(input.originSurface);
+  const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
+    workspaceKind: input.runtimeWorkspaceKind,
+    workspaceAccess: input.runtimeWorkspaceAccess,
+    permissionMode: input.runtimePermissionMode,
+  });
+  if (runtimePolicyIssue) {
+    throw new Error(runtimePolicyIssue.message);
+  }
   const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath: input.repoPath,
     policy: {

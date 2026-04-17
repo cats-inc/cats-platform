@@ -47,6 +47,7 @@ export async function createOrchestratorTargetRuntimeSession(input: {
     input.state,
     requireChannel(input.state, input.channelId),
   );
+  const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
   const session = await input.runtimeClient.createSession({
     provider: sessionTarget.provider,
     instance: sessionTarget.instance,
@@ -54,10 +55,8 @@ export async function createOrchestratorTargetRuntimeSession(input: {
     modelSelection:
       sessionTarget.modelSelection
       ?? createExplicitProviderModelSelection(sessionTarget.model),
-    cwd: input.sessionPolicy.spawnCwd,
-    workspaceKind: input.sessionPolicy.workspaceKind,
-    workspaceAccess: input.sessionPolicy.workspaceAccess,
-    permissionMode: input.sessionPolicy.permissionMode,
+    cwd: spawnCwd,
+    ...runtimePolicy,
     context: mergeRuntimeInvocationContextMetadata(
       input.runtimeEnvelope.context,
       input.dispatchContextMetadata ?? {},
@@ -98,6 +97,7 @@ export async function createParticipantTargetRuntimeSession(input: {
     throw new Error('Target participant is no longer assigned to the selected chat.');
   }
 
+  const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
   const session = await input.runtimeClient.createSession({
     provider: participant.execution.target.provider,
     instance: participant.execution.target.instance,
@@ -105,10 +105,8 @@ export async function createParticipantTargetRuntimeSession(input: {
     modelSelection:
       participant.execution.modelSelection
       ?? createExplicitProviderModelSelection(participant.execution.target.model),
-    cwd: input.sessionPolicy.spawnCwd,
-    workspaceKind: input.sessionPolicy.workspaceKind,
-    workspaceAccess: input.sessionPolicy.workspaceAccess,
-    permissionMode: input.sessionPolicy.permissionMode,
+    cwd: spawnCwd,
+    ...runtimePolicy,
     context: mergeRuntimeInvocationContextMetadata(
       input.runtimeEnvelope.context,
       input.dispatchContextMetadata ?? {},
