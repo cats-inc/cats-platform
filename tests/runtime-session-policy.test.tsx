@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  RuntimeSessionPolicyError,
   completeRuntimeSessionPolicy,
   createRuntimeSessionContractInput,
   createDefaultRuntimeSessionPolicy,
+  parseRuntimeSessionPolicyCreateInput,
   resolveCreateRuntimeSessionPolicy,
   validateRuntimeSessionPolicyInput,
 } from '../src/shared/runtimeSessionPolicy.ts';
@@ -74,6 +76,36 @@ test('createRuntimeSessionContractInput converts a read-only policy into create-
   );
 });
 
+test('createRuntimeSessionContractInput carries read-write skip policies onto the create-boundary shape', () => {
+  assert.deepEqual(
+    createRuntimeSessionContractInput({
+      workspaceKind: 'source',
+      workspaceAccess: 'read_write',
+      permissionMode: 'skip',
+    }),
+    {
+      runtimeWorkspaceKind: 'source',
+      runtimeWorkspaceAccess: 'read_write',
+      runtimePermissionMode: 'skip',
+    },
+  );
+});
+
+test('createRuntimeSessionContractInput preserves an explicit whitelist opt-in', () => {
+  assert.deepEqual(
+    createRuntimeSessionContractInput({
+      workspaceKind: 'sandbox',
+      workspaceAccess: 'read_write',
+      permissionMode: 'whitelist',
+    }),
+    {
+      runtimeWorkspaceKind: 'sandbox',
+      runtimeWorkspaceAccess: 'read_write',
+      runtimePermissionMode: 'whitelist',
+    },
+  );
+});
+
 test('validateRuntimeSessionPolicyInput accepts valid combinations', () => {
   assert.equal(
     validateRuntimeSessionPolicyInput({
@@ -89,6 +121,25 @@ test('validateRuntimeSessionPolicyInput accepts valid combinations', () => {
       workspaceKind: 'worktree',
       workspaceAccess: 'read_only',
       permissionMode: 'default',
+    }),
+    null,
+  );
+
+  assert.equal(
+    validateRuntimeSessionPolicyInput({
+      workspaceKind: 'source',
+      workspaceAccess: 'read_write',
+      permissionMode: 'whitelist',
+    }),
+    null,
+  );
+});
+
+test('validateRuntimeSessionPolicyInput accepts empty input and lets callers fall back to defaults', () => {
+  assert.equal(validateRuntimeSessionPolicyInput({}), null);
+  assert.equal(
+    validateRuntimeSessionPolicyInput({
+      workspaceKind: 'worktree',
     }),
     null,
   );
@@ -170,4 +221,75 @@ test('validateRuntimeSessionPolicyInput rejects read-only sessions with non-defa
       },
     },
   );
+});
+
+test('parseRuntimeSessionPolicyCreateInput resolves valid raw input into a repo-aware narrow policy', () => {
+  const result = parseRuntimeSessionPolicyCreateInput({
+    repoPath: 'C:/repo/cats-platform',
+    policy: {
+      workspaceAccess: 'read_only',
+      permissionMode: 'default',
+    },
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(result.policy, {
+    workspaceKind: 'source',
+    workspaceAccess: 'read_only',
+    permissionMode: 'default',
+  });
+});
+
+test('parseRuntimeSessionPolicyCreateInput returns the first validation issue for invalid combinations', () => {
+  const result = parseRuntimeSessionPolicyCreateInput({
+    repoPath: 'C:/repo/cats-platform',
+    policy: {
+      workspaceAccess: 'read_write',
+      permissionMode: 'default',
+    },
+  });
+
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.issue.code, 'invalid_runtime_policy_combination');
+  assert.deepEqual(result.issue.details, {
+    workspaceAccess: 'read_write',
+    permissionMode: 'default',
+  });
+});
+
+test('parseRuntimeSessionPolicyCreateInput falls back to sandbox defaults when no repoPath is supplied', () => {
+  const result = parseRuntimeSessionPolicyCreateInput({
+    policy: {},
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(result.policy, {
+    workspaceKind: 'sandbox',
+    workspaceAccess: 'read_write',
+    permissionMode: 'skip',
+  });
+});
+
+test('RuntimeSessionPolicyError preserves the issue code in its Error.message so plain logs keep the signal', () => {
+  const error = new RuntimeSessionPolicyError({
+    code: 'invalid_runtime_policy_combination',
+    message: 'read_write sessions may only use the skip or whitelist permission modes.',
+    details: {
+      workspaceAccess: 'read_write',
+      permissionMode: 'default',
+    },
+  });
+
+  assert.ok(error instanceof Error);
+  assert.ok(error instanceof RuntimeSessionPolicyError);
+  assert.equal(error.name, 'RuntimeSessionPolicyError');
+  assert.match(error.message, /^\[invalid_runtime_policy_combination\] /);
+  assert.equal(error.issue.code, 'invalid_runtime_policy_combination');
+  assert.deepEqual(error.issue.details, {
+    workspaceAccess: 'read_write',
+    permissionMode: 'default',
+  });
 });

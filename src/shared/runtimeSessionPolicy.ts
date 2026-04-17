@@ -53,7 +53,10 @@ export interface RuntimeSessionPolicyValidationIssue {
 
 export class RuntimeSessionPolicyError extends Error {
   constructor(readonly issue: RuntimeSessionPolicyValidationIssue) {
-    super(issue.message);
+    // Keep the issue code in .message so plain logs / uncaught-exception dumps
+    // do not strip the structured signal. HTTP handlers still read .issue
+    // directly to return a typed envelope.
+    super(`[${issue.code}] ${issue.message}`);
     this.name = 'RuntimeSessionPolicyError';
   }
 }
@@ -96,6 +99,32 @@ interface RuntimeSessionPolicyFields {
   permissionMode: RuntimePermissionMode;
 }
 
+// Single runtime source of truth for valid (access, permission) pairings.
+// The discriminated type unions above restate this same invariant at the type
+// layer; they must stay in sync with this table. Shared by the validator, the
+// read-only invariant normaliser, and the create-contract input helper so they
+// cannot drift independently.
+export const VALID_PERMISSION_MODES_BY_ACCESS = {
+  read_only: ['default'],
+  read_write: ['skip', 'whitelist'],
+} as const satisfies Record<RuntimeWorkspaceAccess, readonly RuntimePermissionMode[]>;
+
+type ValidPermissionModeFor<Access extends RuntimeWorkspaceAccess> =
+  typeof VALID_PERMISSION_MODES_BY_ACCESS[Access][number];
+
+function isValidPermissionModeFor(
+  access: RuntimeWorkspaceAccess,
+  mode: RuntimePermissionMode,
+): boolean {
+  return (VALID_PERMISSION_MODES_BY_ACCESS[access] as readonly RuntimePermissionMode[]).includes(mode);
+}
+
+function defaultPermissionModeFor<Access extends RuntimeWorkspaceAccess>(
+  access: Access,
+): ValidPermissionModeFor<Access> {
+  return VALID_PERMISSION_MODES_BY_ACCESS[access][0];
+}
+
 function hasRepoPath(repoPath: string | null | undefined): boolean {
   return typeof repoPath === 'string' && repoPath.trim().length > 0;
 }
@@ -124,6 +153,14 @@ function createDefaultPolicyFields(): RuntimeSessionPolicyFields {
     workspaceAccess: 'read_write',
     permissionMode: 'skip',
   };
+}
+
+function describeAllowedPermissionModes(access: RuntimeWorkspaceAccess): string {
+  const allowed = VALID_PERMISSION_MODES_BY_ACCESS[access];
+  if (allowed.length === 1) {
+    return `the ${allowed[0]} permission gate`;
+  }
+  return `${allowed.slice(0, -1).join(', ')} or ${allowed[allowed.length - 1]} permission modes`;
 }
 
 export function validateRuntimeSessionPolicyInput(policy: {
@@ -165,23 +202,19 @@ export function validateRuntimeSessionPolicyInput(policy: {
     };
   }
 
-  if (policy.workspaceAccess === 'read_only' && policy.permissionMode != null) {
-    if (policy.permissionMode !== 'default') {
-      return {
-        code: 'invalid_runtime_policy_combination',
-        message: 'read_only sessions may only use the default permission gate.',
-        details: {
-          workspaceAccess: policy.workspaceAccess,
-          permissionMode: policy.permissionMode,
-        },
-      };
-    }
-  }
-
-  if (policy.workspaceAccess === 'read_write' && policy.permissionMode === 'default') {
+  // Combination check derived from VALID_PERMISSION_MODES_BY_ACCESS — one
+  // source of truth for which (access, mode) pairs are allowed.
+  if (
+    isRuntimeWorkspaceAccess(policy.workspaceAccess)
+    && isRuntimePermissionMode(policy.permissionMode)
+    && !isValidPermissionModeFor(policy.workspaceAccess, policy.permissionMode)
+  ) {
+    const allowedDescription = describeAllowedPermissionModes(policy.workspaceAccess);
     return {
       code: 'invalid_runtime_policy_combination',
-      message: 'read_write sessions may only use skip or whitelist permission modes.',
+      message: policy.workspaceAccess === 'read_only'
+        ? `read_only sessions may only use ${allowedDescription}.`
+        : `read_write sessions may only use ${allowedDescription}.`,
       details: {
         workspaceAccess: policy.workspaceAccess,
         permissionMode: policy.permissionMode,
@@ -192,24 +225,26 @@ export function validateRuntimeSessionPolicyInput(policy: {
   return null;
 }
 
-// Single source of truth for the read-only invariant. Both create-time and
-// session-start paths end with this normaliser so stored / runtime-facing
-// policies can only ever be one of the two valid discriminated variants.
+// Both create-time and session-start paths end with this normaliser so stored /
+// runtime-facing policies can only ever be one of the valid discriminated
+// variants declared in VALID_PERMISSION_MODES_BY_ACCESS.
 function applyReadOnlyInvariant(raw: RuntimeSessionPolicyFields): RuntimeSessionPolicy {
-  if (raw.workspaceAccess === 'read_only') {
-    // Runtime currently treats read-only sessions as the default permission gate.
+  const { workspaceKind, workspaceAccess } = raw;
+  const mode = isValidPermissionModeFor(workspaceAccess, raw.permissionMode)
+    ? raw.permissionMode
+    : defaultPermissionModeFor(workspaceAccess);
+
+  if (workspaceAccess === 'read_only') {
     return {
-      workspaceKind: raw.workspaceKind,
-      workspaceAccess: 'read_only',
-      permissionMode: 'default',
+      workspaceKind,
+      workspaceAccess,
+      permissionMode: mode as ValidPermissionModeFor<'read_only'>,
     };
   }
-  // read_write cannot carry 'default' (that belongs to read_only); coerce any
-  // stale value back to 'skip', only preserving an explicit 'whitelist' opt-in.
   return {
-    workspaceKind: raw.workspaceKind,
-    workspaceAccess: 'read_write',
-    permissionMode: raw.permissionMode === 'whitelist' ? 'whitelist' : 'skip',
+    workspaceKind,
+    workspaceAccess,
+    permissionMode: mode as ValidPermissionModeFor<'read_write'>,
   };
 }
 
@@ -220,17 +255,19 @@ export function createDefaultRuntimeSessionPolicy(): RuntimeSessionPolicy {
 export function createRuntimeSessionContractInput(
   policy: RuntimeSessionPolicy,
 ): RuntimeSessionCreateContractInput {
+  // Both branches exist because TypeScript cannot preserve the workspaceAccess
+  // discriminator across a single spread; the fields themselves come straight
+  // from policy so they stay in sync with VALID_PERMISSION_MODES_BY_ACCESS.
   if (policy.workspaceAccess === 'read_only') {
     return {
       runtimeWorkspaceKind: policy.workspaceKind,
-      runtimeWorkspaceAccess: 'read_only',
-      runtimePermissionMode: 'default',
+      runtimeWorkspaceAccess: policy.workspaceAccess,
+      runtimePermissionMode: policy.permissionMode,
     };
   }
-
   return {
     runtimeWorkspaceKind: policy.workspaceKind,
-    runtimeWorkspaceAccess: 'read_write',
+    runtimeWorkspaceAccess: policy.workspaceAccess,
     runtimePermissionMode: policy.permissionMode,
   };
 }
@@ -260,6 +297,46 @@ export function resolveCreateRuntimeSessionPolicy(options: {
   return applyReadOnlyInvariant(
     mergeDefinedPolicyFields(withRepoHint, options.policy),
   );
+}
+
+export type ParseRuntimeSessionPolicyResult =
+  | { ok: true; policy: RuntimeSessionPolicy }
+  | { ok: false; issue: RuntimeSessionPolicyValidationIssue };
+
+// Parses a raw create-boundary payload: validates the (access, mode) pairing,
+// then — if valid — resolves the full RuntimeSessionPolicy (including the
+// repoPath-driven `source` hint). Boundary callers should use this in place of
+// the validate-then-resolve two-step so the two stages cannot drift.
+export function parseRuntimeSessionPolicyCreateInput(options: {
+  repoPath?: string | null;
+  policy: {
+    workspaceKind?: unknown | null;
+    workspaceAccess?: unknown | null;
+    permissionMode?: unknown | null;
+  };
+}): ParseRuntimeSessionPolicyResult {
+  const issue = validateRuntimeSessionPolicyInput(options.policy);
+  if (issue) {
+    return { ok: false, issue };
+  }
+  const narrowed: RuntimeSessionPolicyInput = {
+    workspaceKind: isRuntimeWorkspaceKind(options.policy.workspaceKind)
+      ? options.policy.workspaceKind
+      : undefined,
+    workspaceAccess: isRuntimeWorkspaceAccess(options.policy.workspaceAccess)
+      ? options.policy.workspaceAccess
+      : undefined,
+    permissionMode: isRuntimePermissionMode(options.policy.permissionMode)
+      ? options.policy.permissionMode
+      : undefined,
+  };
+  return {
+    ok: true,
+    policy: resolveCreateRuntimeSessionPolicy({
+      repoPath: options.repoPath,
+      policy: narrowed,
+    }),
+  };
 }
 
 export function isRuntimeWorkspaceKind(value: unknown): value is RuntimeWorkspaceKind {

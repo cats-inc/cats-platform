@@ -1,4 +1,5 @@
 import { sendJson } from '../../../shared/http.js';
+import { RuntimeSessionPolicyError } from '../../../shared/runtimeSessionPolicy.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 
 export function errorStatusCode(error: unknown): number {
@@ -54,6 +55,17 @@ export function handleRestError(
       error.code,
       error.message,
       error.details,
+    );
+    return;
+  }
+
+  if (error instanceof RuntimeSessionPolicyError) {
+    sendRestError(
+      context,
+      400,
+      error.issue.code,
+      error.issue.message,
+      error.issue.details,
     );
     return;
   }

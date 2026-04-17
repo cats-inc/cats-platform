@@ -19,7 +19,7 @@ import { readPlatformPreferences } from '../../../shared/platformPreferences.js'
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
-import { validateRuntimeSessionPolicyInput } from '../../../shared/runtimeSessionPolicy.js';
+import { parseRuntimeSessionPolicyCreateInput } from '../../../shared/runtimeSessionPolicy.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import {
   appendMessage,
@@ -332,17 +332,23 @@ export async function persistCreatedChannel(
   context: ChatApiRouteContext,
   input: CreateChatChannelInput,
 ): Promise<ChatState> {
-  const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
-    workspaceKind: input.runtimeWorkspaceKind,
-    workspaceAccess: input.runtimeWorkspaceAccess,
-    permissionMode: input.runtimePermissionMode,
+  // Single parse step at the HTTP boundary: validate the raw policy payload
+  // and resolve it into a fully narrowed RuntimeSessionPolicy at the same
+  // time, instead of running validate-then-resolve as two separate stages.
+  const parsed = parseRuntimeSessionPolicyCreateInput({
+    repoPath: input.repoPath,
+    policy: {
+      workspaceKind: input.runtimeWorkspaceKind,
+      workspaceAccess: input.runtimeWorkspaceAccess,
+      permissionMode: input.runtimePermissionMode,
+    },
   });
-  if (runtimePolicyIssue) {
+  if (!parsed.ok) {
     throw new ChatApiError(
       400,
-      runtimePolicyIssue.code,
-      runtimePolicyIssue.message,
-      runtimePolicyIssue.details,
+      parsed.issue.code,
+      parsed.issue.message,
+      parsed.issue.details,
     );
   }
 
