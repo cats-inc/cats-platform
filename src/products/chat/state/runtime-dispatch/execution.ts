@@ -107,6 +107,7 @@ export async function executeDispatch(
     );
     const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request, {
       continuityMode: dispatchPrompt.continuityMode ?? null,
+      continuityDeliveryMode: dispatchPrompt.continuityDeliveryMode ?? null,
       continuityResetAt: dispatchPrompt.continuityResetAt ?? null,
     });
     const runtimeResult = await runtimeClient.sendMessage(

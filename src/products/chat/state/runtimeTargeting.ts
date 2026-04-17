@@ -639,6 +639,7 @@ export interface DispatchPrompt {
   message: string;
   instructions?: string | null;
   continuityMode?: 'fresh_start' | 'native_resume' | 'full_transplant' | null;
+  continuityDeliveryMode?: 'none' | 'turn_instructions' | null;
   continuityResetAt?: string | null;
 }
 
@@ -679,6 +680,7 @@ export function buildPromptForTarget(
         message: request.sourceMessage.body,
         instructions,
         continuityMode: resolveSoloChatContinuityMode(continuityMessages, request, instructions),
+        continuityDeliveryMode: instructions ? 'turn_instructions' : 'none',
         continuityResetAt: channel.continuityResetAt?.trim() || null,
       };
     }
