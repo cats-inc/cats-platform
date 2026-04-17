@@ -21,14 +21,17 @@ import {
 } from '../../../shared/renderer/components/WorkspaceModeChip.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 import {
+  completeRuntimeSessionPolicy,
   createDefaultRuntimeSessionPolicy,
   resolveCreateRuntimeSessionPolicy,
   resolveDraftPermissionModeFromRuntimeAccess,
   resolveDraftWorkspaceModeFromRuntimeKind,
   resolveRuntimePermissionPolicyFromDraft,
   resolveRuntimeWorkspaceKindFromDraft,
+  type RuntimeSessionPolicyInput,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import { inspectPath } from '../api/index.js';
+import { useSyncRuntimeWorkspaceKindWithCwd } from '../hooks/useSyncRuntimeWorkspaceKindWithCwd.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   greeting: 'Ready to code.',
@@ -203,32 +206,24 @@ export function NewChatDraft(props: NewChatDraftProps) {
     workspaceMode,
   });
 
-  useEffect(() => {
-    // +New code only exposes cwd-backed modes once a folder is selected.
-    // Keep the stored runtime policy aligned with the visible controls so
-    // downstream create/runtime layers can trust the persisted value.
-    if (
-      props.onDraftRuntimeSessionPolicyChange
-      && currentSessionPolicy.workspaceKind !== resolvedRuntimeWorkspaceKind
-    ) {
-      props.onDraftRuntimeSessionPolicyChange({
-        ...currentSessionPolicy,
-        workspaceKind: resolvedRuntimeWorkspaceKind,
-      });
-    }
-  }, [
-    currentSessionPolicy.permissionMode,
-    currentSessionPolicy.workspaceAccess,
-    currentSessionPolicy.workspaceKind,
-    props.onDraftRuntimeSessionPolicyChange,
+  useSyncRuntimeWorkspaceKindWithCwd({
+    currentSessionPolicy,
     resolvedRuntimeWorkspaceKind,
-  ]);
+    onChange: props.onDraftRuntimeSessionPolicyChange,
+  });
 
-  function updateSessionPolicy(patch: Partial<typeof currentSessionPolicy>): void {
-    props.onDraftRuntimeSessionPolicyChange?.({
-      ...currentSessionPolicy,
-      ...patch,
-    });
+  function updateSessionPolicy(patch: RuntimeSessionPolicyInput): void {
+    if (!props.onDraftRuntimeSessionPolicyChange) {
+      return;
+    }
+    props.onDraftRuntimeSessionPolicyChange(
+      completeRuntimeSessionPolicy({
+        workspaceKind: currentSessionPolicy.workspaceKind,
+        workspaceAccess: currentSessionPolicy.workspaceAccess,
+        permissionMode: currentSessionPolicy.permissionMode,
+        ...patch,
+      }),
+    );
   }
 
   const sessionPolicyChips = props.draftCwd ? (

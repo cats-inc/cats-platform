@@ -377,18 +377,6 @@ export function resolveBossCatName(payload: AppShellPayload): string | null {
 
 export type { SelectedChannelView } from '../channelEntry.js';
 
-export function createEmptyParticipantLease(): SelectedChannelView['orchestratorLease'] {
-  return {
-    sessionId: null,
-    status: 'not_started',
-    cwd: null,
-    lastError: null,
-    provider: null,
-    model: null,
-    startedAt: null,
-    lastUsedAt: null,
-  };
-}
 
 export function createOptimisticUserMessage(
   channelId: string,
@@ -406,110 +394,6 @@ export function createOptimisticUserMessage(
     metadata: { optimistic: true },
     usage: null,
     createdAt,
-  };
-}
-
-export function createOptimisticDraftPayload(
-  payload: AppShellPayload,
-  body: string,
-  defaultRecipientCatId?: string | null,
-  options: {
-    originSurface?: PlatformSurfaceId;
-    composerMode?: 'solo' | 'cat_led';
-    pendingProvider?: string | null;
-    pendingModel?: string | null;
-    pendingInstance?: string | null;
-    pendingModelSelection?: ProviderModelSelection | null;
-    repoPath?: string | null;
-    runtimeSessionPolicy?: RuntimeSessionPolicy | null;
-  } = {},
-): { payload: AppShellPayload; channelId: string } {
-  const createdAt = new Date().toISOString();
-  const channelId = `draft-${crypto.randomUUID()}`;
-  const title = createDraftChannelTitle(body, payload.chat.channels.length);
-  const topic = createDraftChannelTopic(body);
-  const message = createOptimisticUserMessage(channelId, body, payload.ownerDisplayName, createdAt);
-  const composerMode = options.composerMode ?? (defaultRecipientCatId ? 'cat_led' : 'solo');
-  const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
-    repoPath: options.repoPath,
-    policy: options.runtimeSessionPolicy,
-  });
-  const channelSummary: ChatChannelSummary = {
-    id: channelId,
-    title,
-    topic,
-    originSurface: options.originSurface ?? 'chat',
-    status: 'planned',
-    unreadCount: 0,
-    catCount: 0,
-    activeCatCount: 0,
-    repoPath: options.repoPath ?? null,
-    chatCwd: null,
-    runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
-    runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
-    runtimePermissionMode: runtimeSessionPolicy.permissionMode,
-    lastMessageAt: createdAt,
-    lastActivatedAt: null,
-    composerMode,
-    pendingProvider: options.pendingProvider ?? null,
-    pendingModel: options.pendingModel ?? null,
-    pendingModelSelection: options.pendingModelSelection ?? null,
-    ...(defaultRecipientCatId ? {
-      defaultRecipientCatId,
-    } : {}),
-  };
-  const selectedChannel = normalizeSelectedChannelView({
-    id: channelId,
-    title,
-    topic,
-    originSurface: options.originSurface ?? 'chat',
-    status: 'planned' as const,
-    unreadCount: 0,
-    repoPath: options.repoPath ?? null,
-    chatCwd: null,
-    runtimeWorkspaceKind: runtimeSessionPolicy.workspaceKind,
-    runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
-    runtimePermissionMode: runtimeSessionPolicy.permissionMode,
-    language: null,
-    responseLanguage: 'en',
-    formationMode: 'manual' as const,
-    skillProfile: 'chat-default',
-    mcpProfile: 'chat-memory',
-    orchestratorRoles: [] as string[],
-    composerMode,
-    pendingProvider: options.pendingProvider ?? null,
-    pendingModel: options.pendingModel ?? null,
-    pendingInstance: options.pendingInstance ?? null,
-    pendingModelSelection: options.pendingModelSelection ?? null,
-    createdAt,
-    updatedAt: createdAt,
-    lastMessageAt: createdAt,
-    lastActivatedAt: null,
-    orchestratorLease: createEmptyParticipantLease(),
-    catAssignments: [] as never[],
-    messages: [message],
-    assignedCats: [] as never[],
-  });
-
-  if (!selectedChannel) {
-    throw new Error('Failed to normalize optimistic draft channel.');
-  }
-
-  return {
-    channelId,
-    payload: {
-      ...structuredClone(payload),
-      chat: {
-        ...structuredClone(payload.chat),
-        channels: [channelSummary, ...structuredClone(payload.chat.channels)],
-        selectedChannelId: channelId,
-        selectedChannel,
-      },
-      metadata: {
-        ...structuredClone(payload.metadata),
-        generatedAt: createdAt,
-      },
-    },
   };
 }
 
