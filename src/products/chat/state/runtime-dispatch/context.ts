@@ -17,6 +17,9 @@ export function buildDispatchRuntimeContextMetadata(
     | 'handoffReason'
     | 'mentionNames'
   >,
+  options: {
+    continuityMode?: 'fresh_start' | 'native_resume' | 'full_transplant' | null;
+  } = {},
 ): Record<string, unknown> {
   return {
     dispatchId: request.dispatchId,
@@ -36,6 +39,7 @@ export function buildDispatchRuntimeContextMetadata(
     sourceParticipantKind: request.sourceParticipant?.participantKind ?? null,
     sourceParticipantId: request.sourceParticipant?.participantId ?? null,
     sourceParticipantName: request.sourceParticipant?.participantName ?? null,
+    continuityMode: options.continuityMode ?? null,
   };
 }
 

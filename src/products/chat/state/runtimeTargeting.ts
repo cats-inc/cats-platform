@@ -586,6 +586,20 @@ function resolveSoloChatInstructions(
   return buildSoloChatContinuityTransplantInstructions(priorMessages);
 }
 
+function resolveSoloChatContinuityMode(
+  messages: ReadonlyArray<ChatMessage>,
+  request: DispatchRequest,
+  instructions: string | null,
+): 'fresh_start' | 'native_resume' | 'full_transplant' {
+  if (instructions) {
+    return 'full_transplant';
+  }
+
+  return hasVisibleResponseFromCurrentTargetIdentity(messages, request.target, request.sourceMessage)
+    ? 'native_resume'
+    : 'fresh_start';
+}
+
 function describeRoutingReason(
   channel: ChatChannelView,
   sourceParticipant: RoomRoutingParticipantRef | null,
@@ -612,6 +626,7 @@ function describeRoutingReason(
 export interface DispatchPrompt {
   message: string;
   instructions?: string | null;
+  continuityMode?: 'fresh_start' | 'native_resume' | 'full_transplant' | null;
 }
 
 export function buildPromptForTarget(
@@ -642,9 +657,11 @@ export function buildPromptForTarget(
 
   if (request.target.participantKind === 'orchestrator') {
     if (isSoloChatChannel(channel)) {
+      const instructions = resolveSoloChatInstructions(promptMessages, request);
       return {
         message: request.sourceMessage.body,
-        instructions: resolveSoloChatInstructions(promptMessages, request),
+        instructions,
+        continuityMode: resolveSoloChatContinuityMode(promptMessages, request, instructions),
       };
     }
     return {

@@ -105,7 +105,9 @@ export async function executeDispatch(
       runtimeEnvelope,
       'containerId',
     );
-    const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request);
+    const dispatchContextMetadata = buildDispatchRuntimeContextMetadata(request, {
+      continuityMode: dispatchPrompt.continuityMode ?? null,
+    });
     const runtimeResult = await runtimeClient.sendMessage(
       sessionId,
       dispatchPrompt.message,

@@ -1411,10 +1411,18 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
   assert.equal(soloReplies.at(-1)?.executionModel, 'gemini-default');
   assert.equal(runtimeClient.sentMessages[0]?.content, 'First turn');
   assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
+  assert.equal(
+    runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityMode,
+    'fresh_start',
+  );
   assert.equal(runtimeClient.sentMessages.at(-1)?.content, 'Switch turn');
   assert.match(
     runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
     /Same conversation continuity transcript:/u,
+  );
+  assert.equal(
+    runtimeClient.sentMessages.at(-1)?.input?.context?.metadata?.continuityMode,
+    'full_transplant',
   );
   assert.match(
     runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
@@ -1492,6 +1500,10 @@ test('solo composer mode full-transplants earlier user-only context on replaceme
 
   assert.deepEqual(runtimeClient.closedSessions, ['session-existing']);
   assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(
+    runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
   assert.match(
     runtimeClient.sentMessages[0]?.input?.instructions ?? '',
     /Same conversation continuity transcript:/u,
@@ -1621,8 +1633,16 @@ test('solo composer mode sends raw user text without default instructions on a s
   assert.equal(runtimeClient.sentMessages.length, 2);
   assert.equal(runtimeClient.sentMessages[0]?.content, 'Hi');
   assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
+  assert.equal(
+    runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityMode,
+    'fresh_start',
+  );
   assert.equal(runtimeClient.sentMessages[1]?.content, 'Follow-up');
   assert.equal(runtimeClient.sentMessages[1]?.input?.instructions, undefined);
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode,
+    'native_resume',
+  );
 });
 
 test('solo composer mode honors pending runtime memory flush hooks before restarting the session', async () => {
@@ -1833,6 +1853,10 @@ test('solo composer mode retransplants continuity after stale-session recovery c
   );
   assert.deepEqual(runtimeClient.closedSessions, ['session-stale']);
   assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.equal(
+    runtimeClient.sentMessages[2]?.input?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
   assert.match(
     runtimeClient.sentMessages[2]?.input?.instructions ?? '',
     /Same conversation continuity transcript:/u,
