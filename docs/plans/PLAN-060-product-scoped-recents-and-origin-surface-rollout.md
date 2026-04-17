@@ -39,15 +39,19 @@ The plan intentionally does not ship an `All recents` lens in the first slice.
       create payloads
 - [x] Task 1.3: Normalize legacy missing values to `chat` at snapshot/read
       boundaries
+- [ ] Task 1.4: Harden raw create boundaries so missing `originSurface` can be
+      rejected deliberately after legacy HTTP compatibility is retired
 
 **Deliverables**: one explicit product-origin contract for channels and
-parallel groups.
+parallel groups, plus a documented path to retire raw create-time fallback.
 
 ### Phase 2: Renderer Filtering
 
 - [x] Task 2.1: Thread `originSurface` through shared Work/Code create paths
 - [x] Task 2.2: Filter shared-sidebar default recents by current surface
 - [x] Task 2.3: Filter Chat's grouped parallel recents by current surface
+- [x] Task 2.3a: Filter shared-sidebar grouped recent entries by current
+      surface when products supply grouped recents through the shared shell
 - [ ] Task 2.4: Re-enable `Cats Code` recents on top of the same product-scoped
       filter once Code wants to surface those sessions
 
@@ -110,6 +114,8 @@ optional cross-product browsing.
 | Date | Update |
 |------|--------|
 | 2026-04-17 | Plan created and first slice landed: channel/group origin metadata plus product-scoped recents filtering |
+| 2026-04-17 | Follow-up tightened typed create payloads to require `originSurface` and extended shared recents filtering to grouped entries, not only standalone channels |
+| 2026-04-17 | Follow-up clarified rollout boundaries: product-owned typed create paths now require explicit stamping, while raw legacy HTTP compatibility still defaults missing `originSurface` to `chat` until a later hardening slice retires that seam |
 
 ---
 

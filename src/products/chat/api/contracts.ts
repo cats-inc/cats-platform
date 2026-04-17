@@ -552,7 +552,7 @@ export interface UpdateSelectedChannelInput {
 export interface CreateChatChannelInput {
   title: string;
   topic: string;
-  originSurface?: PlatformSurfaceId;
+  originSurface: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string;
   language?: string;
@@ -579,7 +579,7 @@ export interface CreateChatChannelInput {
 
 export interface CreateParallelChatGroupInput {
   title: string;
-  originSurface?: PlatformSurfaceId;
+  originSurface: PlatformSurfaceId;
   repoPath?: string;
   responseLanguage?: string;
   targets: ParallelChatTarget[];

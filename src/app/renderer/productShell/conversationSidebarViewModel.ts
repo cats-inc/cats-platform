@@ -62,6 +62,7 @@ interface ConversationSidebarRecentGroupEntry<TChannel extends ConversationSideb
   kind: 'group';
   key: string;
   title: string;
+  originSurface?: PlatformSurfaceId | null;
   channels: readonly ConversationSidebarRecentChannelEntry<TChannel>[];
   overflowKey?: string;
   isSelected?: boolean;
@@ -93,6 +94,39 @@ export function resolveConversationSidebarChannelSurface(
   return normalizePlatformSurface(originSurface, 'chat');
 }
 
+function channelMatchesActiveSurface<TChannel extends ConversationSidebarChannel>(
+  channel: TChannel,
+  activeSurface: PlatformSurfaceId,
+): boolean {
+  return resolveConversationSidebarChannelSurface(channel.originSurface) === activeSurface;
+}
+
+function filterRecentEntryBySurface<TChannel extends ConversationSidebarChannel>(
+  entry: ConversationSidebarRecentEntry<TChannel>,
+  activeSurface: PlatformSurfaceId,
+): ConversationSidebarRecentEntry<TChannel> | null {
+  if (entry.kind === 'channel') {
+    return channelMatchesActiveSurface(entry.channel, activeSurface) ? entry : null;
+  }
+
+  const channels = entry.channels.filter((channelEntry) =>
+    channelMatchesActiveSurface(channelEntry.channel, activeSurface),
+  );
+  if (channels.length === 0) {
+    return null;
+  }
+
+  const groupSurface = entry.originSurface ?? channels[0]?.channel.originSurface ?? null;
+  if (resolveConversationSidebarChannelSurface(groupSurface) !== activeSurface) {
+    return null;
+  }
+
+  return {
+    ...entry,
+    channels,
+  };
+}
+
 export function buildConversationSidebarViewModel<
   TCat extends ConversationSidebarCat,
   TChannel extends ConversationSidebarChannel,
@@ -122,10 +156,13 @@ export function buildConversationSidebarViewModel<
   const recentsChannels = payload.chat.channels.filter(
     (channel) =>
       !helpers.isDirectLaneSummary(channel)
-      && resolveConversationSidebarChannelSurface(channel.originSurface) === activeSurface,
+      && channelMatchesActiveSurface(channel, activeSurface),
   );
   const resolvedRecentEntries = recentEntries
-    ?? recentsChannels.map((channel) => ({ kind: 'channel', channel } as const));
+    ? recentEntries
+      .map((entry) => filterRecentEntryBySurface(entry, activeSurface))
+      .filter((entry): entry is ConversationSidebarRecentEntry<TChannel> => entry != null)
+    : recentsChannels.map((channel) => ({ kind: 'channel', channel } as const));
   const runtimeFooterStatus = resolveRuntimePresentationStatus(resolvedRuntime);
 
   return {

@@ -39,7 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
-| [069-scope-recents-to-channel-origin-surface-by-default](./069-scope-recents-to-channel-origin-surface-by-default.md) | Scope recents to channel origin surface by default | Accepted | 2026-04-17 |
+| [069-scope-recents-to-channel-origin-surface-by-default](./069-scope-recents-to-channel-origin-surface-by-default.md) | Scope recents to channel origin surface by default | Accepted (Rollout In Progress) | 2026-04-17 |
 | [068-own-chat-continuity-semantics-above-runtime-session-boundaries](./068-own-chat-continuity-semantics-above-runtime-session-boundaries.md) | Own chat continuity semantics above runtime-session boundaries | Accepted | 2026-04-17 |
 | [066-persist-guide-cat-assist-content-as-platform-owned-local-state](./066-persist-guide-cat-assist-content-as-platform-owned-local-state.md) | Persist Guide Cat assist content as platform-owned local state | Proposed | 2026-04-17 |
 | [065-keep-my-cats-as-one-platform-agent-home-with-lenses](./065-keep-my-cats-as-one-platform-agent-home-with-lenses.md) | Keep MY CATS as one platform agent home with lenses | Proposed | 2026-04-14 |

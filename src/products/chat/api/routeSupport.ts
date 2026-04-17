@@ -18,6 +18,7 @@ import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostSt
 import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
 import {
   appendMessage,
@@ -95,7 +96,7 @@ export {
   handleRestError,
   sendRestError,
 } from './routeErrors.js';
-import { ChatApiError } from './routeErrors.js';
+import { ChatApiError, sendRestError } from './routeErrors.js';
 export {
   cancelSessionIds,
   cleanupSessionsForProductDelete,
@@ -330,15 +331,11 @@ export async function persistCreatedChannel(
   input: CreateChatChannelInput,
 ): Promise<ChatState> {
   const now = nowFrom(context.dependencies);
-  const originSurface = normalizePlatformSurface(input.originSurface, 'chat');
   const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat');
   const requestedComposerMode = input.composerMode ?? (input.entryKind === 'solo' ? 'solo' : null);
   let nextState = createChannel(
     await context.dependencies.chatStore.read(),
-    {
-      ...input,
-      originSurface,
-    },
+    input,
     now,
   );
 
@@ -351,6 +348,27 @@ export async function persistCreatedChannel(
   }
 
   return context.dependencies.chatStore.write(nextState);
+}
+
+export function resolveCreateOriginSurface(
+  originSurface: unknown,
+  options: {
+    targetNoun: string;
+  },
+): PlatformSurfaceId {
+  const explicitSurface = normalizePlatformSurface(originSurface);
+  if (explicitSurface) {
+    return explicitSurface;
+  }
+
+  process.stderr.write(
+    `[cats-chat-api] ${options.targetNoun} missing explicit originSurface; defaulting to chat for compatibility.\n`,
+  );
+  const normalized = normalizePlatformSurface(originSurface, 'chat');
+  if (normalized) {
+    return normalized;
+  }
+  throw new Error(`${options.targetNoun} originSurface must be one of: chat, work, code.`);
 }
 
 async function writeCoreWithUpdatedBindings(

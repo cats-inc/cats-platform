@@ -237,7 +237,7 @@ export interface ParallelChatTargetInput {
 
 export interface CreateParallelChatGroupInput {
   title: string;
-  originSurface?: PlatformSurfaceId;
+  originSurface: PlatformSurfaceId;
   repoPath?: string;
   responseLanguage?: string;
   targets: ParallelChatTargetInput[];

@@ -5,7 +5,7 @@
 
 ## Status
 
-Accepted
+Accepted (Rollout In Progress)
 
 ## Context
 
@@ -53,6 +53,10 @@ That applies to:
 
 Older persisted records without `originSurface` should resolve as `chat` for
 compatibility, because historical data was effectively Chat-owned.
+
+During rollout, raw legacy HTTP create callers may also be normalized to
+`chat` at the route boundary for compatibility. Product-owned typed create
+paths must not rely on that seam.
 
 ### 4. Cross-product recents are optional and secondary
 
@@ -117,4 +121,4 @@ product-scoped behavior.
 ---
 
 *Accepted: 2026-04-17*
-*Decided by: Codex*
+*Decided by: Codex under user-requested rollout direction*

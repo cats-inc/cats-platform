@@ -1,5 +1,4 @@
 import { readJsonBody, sendJson } from '../../../../shared/http.js';
-import { normalizePlatformSurface } from '../../../../shared/platformSurfaces.js';
 import { createParallelChatGroup } from '../../state/model/index.js';
 import type { CreateParallelChatGroupInput } from '../contracts.js';
 import {
@@ -9,6 +8,7 @@ import {
   persistDeletedParallelChatGroup,
   persistRenamedParallelChatGroup,
   persistUngroupedParallelChatGroup,
+  resolveCreateOriginSurface,
   sendRestError,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
@@ -33,12 +33,15 @@ export async function handleCreateParallelChatGroup(
       sendRestError(context, 400, 'title_required', 'Parallel chat title must not be empty.');
       return;
     }
+    const originSurface = resolveCreateOriginSurface(body.originSurface, {
+      targetNoun: 'Parallel chat create request',
+    });
 
     const nextState = createParallelChatGroup(
       await context.dependencies.chatStore.read(),
       {
         title,
-        originSurface: normalizePlatformSurface(body.originSurface, 'chat'),
+        originSurface,
         repoPath: body.repoPath,
         responseLanguage: body.responseLanguage,
         targets: body.targets,

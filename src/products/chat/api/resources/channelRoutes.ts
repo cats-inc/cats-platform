@@ -33,6 +33,7 @@ import {
   persistDeletedChannel,
   persistRenamedChannel,
   persistUpdatedChannelParticipant,
+  resolveCreateOriginSurface,
   requireValidChatScopeId,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
@@ -323,7 +324,13 @@ async function handleRestCreateChannel(
   try {
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<CreateChatChannelInput>(context.request);
-    const persisted = await persistCreatedChannel(context, body);
+    const originSurface = resolveCreateOriginSurface(body.originSurface, {
+      targetNoun: 'Channel create request',
+    });
+    const persisted = await persistCreatedChannel(context, {
+      ...body,
+      originSurface,
+    });
     const createdChannelId = persisted.selectedChannelId;
     if (!createdChannelId) {
       throw new Error('Failed to select created channel');

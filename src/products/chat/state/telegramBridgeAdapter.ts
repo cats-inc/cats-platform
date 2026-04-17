@@ -56,6 +56,7 @@ export function createChatTelegramRoomBridge(input: {
         {
           title: room.title,
           topic: room.topic,
+          // Telegram inbound room creation always terminates inside Cats Chat.
           originSurface: 'chat',
           roomMode: room.roomMode,
           defaultRecipientId: room.defaultRecipientId,

@@ -498,7 +498,7 @@ export interface CreateTemporaryParticipantInput {
 export interface CreateChatChannelInput {
   title: string;
   topic: string;
-  originSurface?: PlatformSurfaceId;
+  originSurface: PlatformSurfaceId;
   entryKind?: NewChatEntryKind;
   repoPath?: string;
   language?: string;

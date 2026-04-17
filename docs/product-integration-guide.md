@@ -113,6 +113,12 @@ Rules:
 - Product teams must stamp `originSurface` at create time instead of inferring
   it later from `repoPath`, `entryKind`, `composerMode`, `roomMode`, or other
   indirect fields.
+- Typed create payload contracts must require `originSurface`; do not keep it
+  optional in renderer or product-owned builders once a surface owns that
+  create path.
+- Raw legacy HTTP callers may still normalize missing `originSurface` to
+  `chat` during rollout compatibility. New product-owned create paths must not
+  rely on that seam.
 - If a product temporarily hides recents, it must still write
   `originSurface` on new conversations so later recents behavior stays
   correct.

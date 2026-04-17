@@ -120,8 +120,13 @@ The platform needs explicit conversation-origin metadata that survives:
     - parallel-group state
     - parallel-group summaries
     - create payloads
-14. App-shell normalization shall preserve `originSurface` when present and
+14. Typed create payload contracts shall require `originSurface` so product
+    entry flows cannot omit it accidentally.
+15. App-shell normalization shall preserve `originSurface` when present and
     apply the compatibility fallback only when absent.
+16. Raw legacy HTTP create requests may temporarily normalize missing
+    `originSurface` to `chat` during rollout, but this shall remain a
+    compatibility seam rather than the long-term product contract.
 
 ## Design Overview
 

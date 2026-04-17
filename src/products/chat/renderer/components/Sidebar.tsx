@@ -165,6 +165,7 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
           kind: 'group',
           key: compareGroup.id,
           title: compareGroup.title,
+          originSurface: compareGroup.originSurface,
           overflowKey: `group:${compareGroup.id}`,
           isSelected: compareGroup.memberChannelIds.includes(props.routeChannelId ?? ''),
           onSelect: () => {

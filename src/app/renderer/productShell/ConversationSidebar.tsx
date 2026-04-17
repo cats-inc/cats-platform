@@ -97,6 +97,7 @@ export interface ConversationSidebarRecentGroupEntry<
   kind: 'group';
   key: string;
   title: string;
+  originSurface?: PlatformSurfaceId | null;
   channels: readonly ConversationSidebarRecentChannelEntry<TChannel>[];
   overflowKey?: string;
   isSelected?: boolean;
