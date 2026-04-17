@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Historical / Superseded by [PLAN-061](./PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -19,6 +19,10 @@ Additional capability context:
 - [PLAN-052: Guide Cat Optional Surface-Assist Capability](./PLAN-052-guide-cat-optional-surface-assist-capability.md)
 
 ## Overview
+
+Historical note: this plan reflects the earlier fixed left-docked Guide Cat
+sidecar rollout. The active placement direction is now tracked by
+[PLAN-061](./PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md).
 
 Implement a platform-shell Guide Cat sidecar that becomes the first visible
 day-0 assist surface after setup completes with Guide Cat enabled.

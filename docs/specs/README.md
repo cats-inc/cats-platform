@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-071](./SPEC-071-guide-cat-placement-and-shared-chrome-docking.md) | Guide Cat Placement and Shared-Chrome Docking | Draft | [PLAN-061](../plans/PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md), [ADR-070](../decisions/070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model.md) |
 | [SPEC-070](./SPEC-070-product-scoped-recents-and-channel-origin-surfaces.md) | Product-Scoped Recents and Channel Origin Surfaces | In Progress (First Slice Landed) | [PLAN-060](../plans/PLAN-060-product-scoped-recents-and-origin-surface-rollout.md), [ADR-069](../decisions/069-scope-recents-to-channel-origin-surface-by-default.md) |
 | [SPEC-069](./SPEC-069-chat-continuity-semantics-and-context-transplant.md) | Chat Continuity Semantics and Context Transplant | Draft | [PLAN-053](../plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md), [ADR-068](../decisions/068-own-chat-continuity-semantics-above-runtime-session-boundaries.md) |
 | [SPEC-067](./SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md) | Guide Cat Assist Content Cache and Offline Refresh | Draft | [PLAN-059](../plans/PLAN-059-guide-cat-assist-content-cache-and-offline-refresh.md), [ADR-066](../decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md) |
@@ -66,7 +67,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-054](./SPEC-054-bootstrap-recovery-summary-and-bounded-detail-actions.md) | Bootstrap Recovery Summary and Bounded Detail Actions | Draft | [PLAN-044](../plans/PLAN-044-bootstrap-recovery-summary-and-bounded-detail-actions.md) |
 | [SPEC-053](./SPEC-053-post-setup-environment-status-and-recovery-entry.md) | Post-Setup Environment Status and Recovery Entry | Draft | [PLAN-043](../plans/PLAN-043-post-setup-environment-status-and-recovery-entry.md) |
 | [SPEC-052](./SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md) | Current-Turn Recipients, Dispatch Policy, and Parallel Chat Terminology | Approved | TBD |
-| [SPEC-051](./SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md) | Guide Cat Sidecar and Day-0 Assist Surfaces | Draft | [PLAN-041](../plans/PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md) |
+| [SPEC-051](./SPEC-051-guide-cat-sidecar-and-day-0-assist-surfaces.md) | Guide Cat Sidecar and Day-0 Assist Surfaces | Historical / Superseded by SPEC-071 | [PLAN-041](../plans/PLAN-041-guide-cat-sidecar-and-day-0-assist-rollout.md) |
 | [SPEC-050](./SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md) | Group Chat Temporary Participants and Reusable Lightweight Presets | Draft | TBD |
 | [SPEC-049](./SPEC-049-guide-cat-setup-and-generalized-participant-entry.md) | Guide Cat Setup and Generalized Participant Entry | Draft | [PLAN-038](../plans/PLAN-038-guide-cat-setup-and-participant-generalization.md) |
 | [SPEC-048](./SPEC-048-runtime-session-deletion-on-product-delete.md) | Runtime Session Deletion on Product Delete | Approved | [PLAN-037](../plans/PLAN-037-runtime-session-deletion-on-product-delete.md) |

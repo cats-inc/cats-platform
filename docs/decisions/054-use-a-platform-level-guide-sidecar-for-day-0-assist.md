@@ -5,9 +5,12 @@
 
 ## Status
 
-Proposed
+Superseded by [ADR-070](./070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model.md)
 
 ## Context
+
+This record remains for historical context on the earlier fixed left-docked
+Guide Cat sidecar direction.
 
 `cats-platform` already supports:
 

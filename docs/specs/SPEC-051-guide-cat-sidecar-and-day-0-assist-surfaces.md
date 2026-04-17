@@ -4,11 +4,16 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Historical / Superseded by [SPEC-071](./SPEC-071-guide-cat-placement-and-shared-chrome-docking.md) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
 ## Summary
+
+> Historical note: this document captures the earlier fixed left-docked Guide
+> Cat sidecar direction. The current placement direction is defined by
+> [SPEC-071](./SPEC-071-guide-cat-placement-and-shared-chrome-docking.md) and
+> [ADR-070](../decisions/070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model.md).
 
 `cats-platform` already supports optional `Guide Cat` creation during setup and
 routes setup completion into `/lobby`. What is still missing is the first

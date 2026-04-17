@@ -49,12 +49,15 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current platform-foundation context plus the same-environment CLI collaboration contract |
 | [terminology.md](./terminology.md) | Complete | Product, engine, and protocol terms including `Container`, `Turn`, `Lane`, `Segment`, `Session`, `Mission`, `Run`, `Schedule`, `Transport Binding`, conversational/operational/hybrid agent projections, `MY CATS` lenses, Guide/Boss capability language, materialization, scheduler policy, and runtime capability profiles |
 | [a2a/](./a2a/) | Complete | Pilot-owned A2A v1.0 example set for future platform-host/orchestrator adapter work; standards-aligned docs, not a claim of a live A2A endpoint today |
-| [specs/](./specs/) | Complete | Feature specifications covering the unified conversation-turn-lane engine, interaction/materialization split, heterogeneous runtime delivery normalization, chat continuity semantics/context transplant, product-scoped recents/origin-surface ownership, Guide Cat optional assist capability, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
-| [plans/](./plans/) | Complete | Implementation plans covering the unified engine rollout, interaction/materialization seam, runtime normalization, product-scoped recents/origin-surface rollout, chat continuity follow-through, Guide Cat capability rollout, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records covering the unified conversation engine, chat continuity semantics above runtime sessions, product-scoped recents/origin-surface ownership, heterogeneous runtime delivery normalization, Guide Cat optional assist capability, concurrent transcript delivery, and the earlier shared platform decisions |
+| [specs/](./specs/) | Complete | Feature specifications covering the unified conversation-turn-lane engine, interaction/materialization split, heterogeneous runtime delivery normalization, chat continuity semantics/context transplant, product-scoped recents/origin-surface ownership, Guide Cat optional assist capability, Guide Cat placement/shared-chrome docking, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
+| [plans/](./plans/) | Complete | Implementation plans covering the unified engine rollout, interaction/materialization seam, runtime normalization, product-scoped recents/origin-surface rollout, chat continuity follow-through, Guide Cat capability rollout, Guide Cat placement/shared-chrome docking, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records covering the unified conversation engine, chat continuity semantics above runtime sessions, product-scoped recents/origin-surface ownership, heterogeneous runtime delivery normalization, Guide Cat optional assist capability, Guide Cat placement/shared-chrome docking, concurrent transcript delivery, and the earlier shared platform decisions |
 
 Recent additions:
 
+- [SPEC-071](./specs/SPEC-071-guide-cat-placement-and-shared-chrome-docking.md)
+- [ADR-070](./decisions/070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model.md)
+- [PLAN-061](./plans/PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md)
 - [SPEC-070](./specs/SPEC-070-product-scoped-recents-and-channel-origin-surfaces.md)
 - [ADR-069](./decisions/069-scope-recents-to-channel-origin-surface-by-default.md)
 - [PLAN-060](./plans/PLAN-060-product-scoped-recents-and-origin-surface-rollout.md)

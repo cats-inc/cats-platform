@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model](./070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model.md) | Use a surface-safe floating and shared-chrome-docked Guide Cat placement model | Proposed | 2026-04-17 |
 | [069-scope-recents-to-channel-origin-surface-by-default](./069-scope-recents-to-channel-origin-surface-by-default.md) | Scope recents to channel origin surface by default | Accepted | 2026-04-17 |
 | [068-own-chat-continuity-semantics-above-runtime-session-boundaries](./068-own-chat-continuity-semantics-above-runtime-session-boundaries.md) | Own chat continuity semantics above runtime-session boundaries | Accepted | 2026-04-17 |
 | [066-persist-guide-cat-assist-content-as-platform-owned-local-state](./066-persist-guide-cat-assist-content-as-platform-owned-local-state.md) | Persist Guide Cat assist content as platform-owned local state | Proposed | 2026-04-17 |
@@ -53,7 +54,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [057-adopt-segment-native-assistant-transcript-delivery](./057-adopt-segment-native-assistant-transcript-delivery.md) | Adopt segment-native assistant transcript delivery | Accepted | 2026-04-12 |
 | [056-use-a-shared-audience-participant-builder-for-all-composer-surfaces](./056-use-a-shared-audience-participant-builder-for-all-composer-surfaces.md) | Use a shared audience-participant builder for all composer surfaces | Proposed | 2026-04-11 |
 | [055-retire-lead-and-separate-composer-recipients-from-dispatch-policy](./055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md) | Retire lead semantics and separate composer recipients from dispatch policy | Accepted | 2026-04-08 |
-| [054-use-a-platform-level-guide-sidecar-for-day-0-assist](./054-use-a-platform-level-guide-sidecar-for-day-0-assist.md) | Use a platform-level Guide sidecar for day-0 assist | Proposed | 2026-04-07 |
+| [054-use-a-platform-level-guide-sidecar-for-day-0-assist](./054-use-a-platform-level-guide-sidecar-for-day-0-assist.md) | Use a platform-level Guide sidecar for day-0 assist | Superseded by ADR-070 | 2026-04-07 |
 | [053-use-structured-cats-home-platform-storage](./053-use-structured-cats-home-platform-storage.md) | Use structured `~/.cats` platform storage | Accepted | 2026-04-05 |
 | [052-use-canonical-platform-settings-routes-inside-product-shells](./052-use-canonical-platform-settings-routes-inside-product-shells.md) | Use canonical platform settings routes inside product shells | Accepted | 2026-04-04 |
 | [051-generalize-participants-and-adopt-guide-cat-terminology](./051-generalize-participants-and-adopt-guide-cat-terminology.md) | Generalize participants and adopt Guide Cat terminology | Accepted | 2026-04-04 |
