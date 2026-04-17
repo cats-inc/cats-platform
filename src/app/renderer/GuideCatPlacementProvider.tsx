@@ -427,6 +427,10 @@ export function GuideCatPlacementProvider({
       event.preventDefault();
       event.stopPropagation();
       suppressClickRef.current = false;
+      // Close any popover (account menu, surface switcher, overflow menus)
+      // that was open when the user pressed on the guide cat, regardless of
+      // whether this ends up being a click or a drag.
+      dismissGlobalPopovers();
       const element = event.currentTarget;
       const rect = element.getBoundingClientRect();
       const basePillX = rect.left + rect.width / 2;
@@ -463,6 +467,7 @@ export function GuideCatPlacementProvider({
       event.preventDefault();
       event.stopPropagation();
       suppressClickRef.current = false;
+      dismissGlobalPopovers();
       const element = event.currentTarget;
       const rect = element.getBoundingClientRect();
       const basePillX = rect.left + rect.width / 2;
@@ -562,6 +567,25 @@ function hideGlobalTooltip(): void {
   if (typeof document === 'undefined') return;
   const portal = document.querySelector('.tooltipPortal');
   if (portal) portal.classList.remove('tooltipVisible');
+}
+
+/** Synthesise a `mousedown` on document.body so that any popover with a
+ * document-level click-outside listener (account menu, surface switcher,
+ * sidebar overflow menus, etc.) self-dismisses. Called on pointerdown for the
+ * guide cat pill — relying on the compatibility mousedown is unreliable
+ * because some browsers / configurations suppress it when pointerdown is
+ * cancelled. Dispatching it explicitly is safe: popover handlers only close
+ * when their root does not contain the event target, and `document.body` is
+ * always outside those popover roots. */
+function dismissGlobalPopovers(): void {
+  if (typeof document === 'undefined' || typeof MouseEvent === 'undefined') return;
+  const evt = new MouseEvent('mousedown', {
+    bubbles: true,
+    cancelable: true,
+    view: typeof window !== 'undefined' ? window : undefined,
+    button: 0,
+  });
+  document.body.dispatchEvent(evt);
 }
 
 const GUIDE_CAT_DRAGGING_BODY_CLASS = 'guideCatDragging';
