@@ -18,9 +18,9 @@ import {
   type ChatApiRouteContext,
 } from './routeSupport.js';
 
-function reportOwnerMemorySyncFailure(scope: string, error: unknown): void {
+function reportSetupRouteFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`[cats-memory-sync] ${scope}: ${message}\n`);
+  process.stderr.write(`[cats-chat-setup] ${scope}: ${message}\n`);
 }
 
 async function handleSetupComplete(
@@ -96,7 +96,7 @@ async function handleSetupComplete(
         now,
       });
     } catch (error) {
-      reportOwnerMemorySyncFailure('setup_complete', error);
+      reportSetupRouteFailure('setup_complete_memory', error);
     }
     sendJson(
       context.response,
@@ -121,7 +121,7 @@ async function handleSetupReset(
       await waitForGuideCatAssistRefreshIdle(context.dependencies.config.chatStatePath);
       await clearGuideCatAssistCache(context.dependencies.config.chatStatePath, now);
     } catch (error) {
-      reportOwnerMemorySyncFailure('setup_reset_assist_cache', error);
+      reportSetupRouteFailure('setup_reset_assist_cache', error);
     }
     try {
       const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
@@ -132,7 +132,7 @@ async function handleSetupReset(
         guideCatSidecarMode: 'auto',
       });
     } catch (error) {
-      reportOwnerMemorySyncFailure('setup_reset_prefs', error);
+      reportSetupRouteFailure('setup_reset_prefs', error);
     }
     try {
       await context.dependencies.memoryService.flushOwnerProfile({
@@ -140,12 +140,12 @@ async function handleSetupReset(
         now,
       });
     } catch (error) {
-      reportOwnerMemorySyncFailure('setup_reset', error);
+      reportSetupRouteFailure('setup_reset_memory', error);
     }
     try {
       await resetPlatformOnboardingHistory(context.dependencies.config.chatStatePath);
     } catch (error) {
-      reportOwnerMemorySyncFailure('setup_reset_history', error);
+      reportSetupRouteFailure('setup_reset_history', error);
     }
     sendJson(
       context.response,
