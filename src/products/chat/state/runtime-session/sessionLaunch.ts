@@ -6,6 +6,7 @@ import {
   requireChannel,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
+import { buildSoloChatContinuityTransplantInstructions } from '../prompts.js';
 import { resolveRuntimeEnvelopeForTarget } from '../runtimeTargeting.js';
 import {
   markTargetWaking,
@@ -39,6 +40,46 @@ type EnsureTargetWakeRecorder = (
 interface ResolvedTargetRuntimeEnvelope {
   runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
   canonicalMetadata: RuntimeEnvelopeCanonicalMetadata;
+}
+
+function resolveNewSoloSessionContinuityMetadata(input: {
+  state: ChatState;
+  channelId: string;
+  sourceMessageId?: string | null;
+}): {
+  continuityMode: 'fresh_start' | 'full_transplant';
+  continuityDeliveryMode: 'none' | 'turn_instructions';
+  continuityResetAt: string | null;
+} | null {
+  const channel = buildChannelView(input.state, input.channelId);
+  if (channel.composerMode !== 'solo') {
+    return null;
+  }
+
+  const sourceMessageId = input.sourceMessageId?.trim() || null;
+  if (!sourceMessageId) {
+    return {
+      continuityMode: 'fresh_start',
+      continuityDeliveryMode: 'none',
+      continuityResetAt: channel.continuityResetAt?.trim() || null,
+    };
+  }
+
+  const continuityResetAt = channel.continuityResetAt?.trim() || null;
+  const continuityMessages = continuityResetAt
+    ? channel.messages.filter((message) => message.createdAt.localeCompare(continuityResetAt) > 0)
+    : channel.messages;
+  const sourceIndex = continuityMessages.findIndex((message) => message.id === sourceMessageId);
+  const priorMessages = sourceIndex > 0
+    ? continuityMessages.slice(0, sourceIndex)
+    : [];
+  const instructions = buildSoloChatContinuityTransplantInstructions(priorMessages);
+
+  return {
+    continuityMode: instructions ? 'full_transplant' : 'fresh_start',
+    continuityDeliveryMode: instructions ? 'turn_instructions' : 'none',
+    continuityResetAt,
+  };
 }
 
 async function resolveTargetRuntimeEnvelope(input: {
@@ -76,6 +117,7 @@ export async function startAttachedTargetSession(input: {
   state: ChatState;
   channelId: string;
   attachedTarget: RoutingTarget;
+  sourceMessageId?: string | null;
   runtimeClient: RuntimeClient;
   now: Date;
   targetStateId: string | null;
@@ -116,6 +158,13 @@ export async function startAttachedTargetSession(input: {
 
   try {
     nextState = markTargetWaking(nextState, channelId, attachedTarget, now, laneId);
+    const soloContinuityMetadata = attachedTarget.participantKind === 'orchestrator'
+      ? resolveNewSoloSessionContinuityMetadata({
+        state: nextState,
+        channelId,
+        sourceMessageId: input.sourceMessageId ?? null,
+      })
+      : null;
     const {
       runtimeEnvelope,
       canonicalMetadata,
@@ -137,7 +186,10 @@ export async function startAttachedTargetSession(input: {
         spawnCwd,
         workspaceKind,
         runtimeClient,
-        dispatchContextMetadata: routingOptions.dispatchContextMetadata,
+        dispatchContextMetadata: {
+          ...(routingOptions.dispatchContextMetadata ?? {}),
+          ...(soloContinuityMetadata ?? {}),
+        },
         taskExecutionContext,
         runtimeEnvelope,
       })

@@ -105,6 +105,7 @@ export async function ensureTargetSession(
       state,
       channelId,
       attachedTarget: preparedWake.attachedTarget,
+      sourceMessageId,
       runtimeClient,
       now,
       targetStateId: preparedWake.targetStateId,

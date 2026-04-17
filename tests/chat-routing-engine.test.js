@@ -1400,8 +1400,24 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
 
   assert.equal(runtimeClient.createdSessions.length, 2);
   assert.equal(runtimeClient.createdSessions[0].provider, 'claude');
+  assert.equal(
+    runtimeClient.createdSessions[0]?.context?.metadata?.continuityMode,
+    'fresh_start',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[0]?.context?.metadata?.continuityDeliveryMode,
+    'none',
+  );
   assert.equal(runtimeClient.createdSessions[1].provider, 'gemini');
   assert.equal(runtimeClient.createdSessions[1]?.instructions, undefined);
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityDeliveryMode,
+    'turn_instructions',
+  );
   assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
   assert.equal(channel.pendingProvider, 'gemini');
   assert.equal(channel.pendingModel, 'gemini-default');
@@ -1655,6 +1671,14 @@ test('explicit solo start-fresh resets continuity before the next replacement se
 
   assert.deepEqual(runtimeClient.closedSessions, []);
   assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'fresh_start',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityDeliveryMode,
+    'none',
+  );
   assert.equal(runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode, 'fresh_start');
   assert.equal(runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityDeliveryMode, 'none');
   assert.equal(
@@ -1786,6 +1810,14 @@ test('solo composer mode restarts orchestrator sessions when the pending instanc
   assert.equal(runtimeClient.createdSessions[0]?.instance, 'native');
   assert.equal(runtimeClient.createdSessions[1]?.instance, 'agent/bridge');
   assert.equal(runtimeClient.createdSessions[1]?.instructions, undefined);
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityDeliveryMode,
+    'turn_instructions',
+  );
   assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
   assert.equal(channel.pendingInstance, 'agent/bridge');
   assert.equal(channel.orchestratorLease.instance, 'agent/bridge');
@@ -1850,6 +1882,14 @@ test('solo composer mode sends raw user text without default instructions on a s
   assert.equal(runtimeClient.sentMessages.length, 2);
   assert.equal(runtimeClient.sentMessages[0]?.content, 'Hi');
   assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
+  assert.equal(
+    runtimeClient.createdSessions[0]?.context?.metadata?.continuityMode,
+    'fresh_start',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[0]?.context?.metadata?.continuityDeliveryMode,
+    'none',
+  );
   assert.equal(
     runtimeClient.sentMessages[0]?.input?.context?.metadata?.continuityMode,
     'fresh_start',
@@ -2079,6 +2119,14 @@ test('solo composer mode retransplants continuity after stale-session recovery c
   assert.deepEqual(runtimeClient.closedSessions, ['session-stale']);
   assert.equal(runtimeClient.createdSessions.length, 2);
   assert.equal(runtimeClient.createdSessions[1]?.instructions, undefined);
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityDeliveryMode,
+    'turn_instructions',
+  );
   assert.equal(
     runtimeClient.sentMessages[2]?.input?.context?.metadata?.continuityMode,
     'full_transplant',
