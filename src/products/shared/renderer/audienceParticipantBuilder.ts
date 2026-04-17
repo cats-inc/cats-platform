@@ -56,13 +56,13 @@ export function buildAudienceParticipantFromTemporaryParticipant(
   };
 }
 
-export function buildAudienceParticipantFromModel(
-  target: ExecutionTargetValue,
+export function buildAudienceParticipantFromExecutionTarget(
+  executionTarget: ExecutionTargetValue,
   keyOverride?: string,
 ): DraftComposerStackParticipant {
-  const label = buildExecutionTargetLabel(target);
+  const label = buildExecutionTargetLabel(executionTarget);
   return {
-    key: keyOverride ?? 'implicit:model',
+    key: keyOverride ?? 'implicit:execution_target',
     name: label,
     executionLabel: label,
     avatarColor: null,

@@ -7,7 +7,7 @@ export interface ResetComposerDraftStateOptions<ModelValue, ParticipantValue> {
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
+  setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<ParticipantValue[]>>;
   setChannelFiles?: Dispatch<SetStateAction<File[]>>;
@@ -20,7 +20,7 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftCwd,
   setDraftCatIds,
   setDraftHighlightedCatId,
-  setDraftCatModelOverrides,
+  setDraftCatExecutionTargetOverrides,
   setDraftFiles,
   setDraftTemporaryParticipants,
   setChannelFiles,
@@ -32,7 +32,7 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftCatIds([]);
   setDraftTemporaryParticipants?.([]);
   setDraftHighlightedCatId(null);
-  setDraftCatModelOverrides(new Map<string, ModelValue>());
+  setDraftCatExecutionTargetOverrides(new Map<string, ModelValue>());
   setDraftFiles([]);
   setChannelFiles?.([]);
   resetDraftParallelChatTargets?.();

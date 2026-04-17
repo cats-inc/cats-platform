@@ -88,8 +88,8 @@ export function resolveChatNewChatDraftViewState(input: {
   greeting?: string | null;
   greetingPool?: ReadonlyArray<string> | null;
   draftHighlightedCatId: string | null;
-  draftCatModelOverrides: Map<string, ExecutionTargetValue>;
-  selectedModel?: ExecutionTargetValue | undefined;
+  draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
+  selectedExecutionTarget?: ExecutionTargetValue | undefined;
   busy: WorkspaceBusyState;
 }) {
   const chatCats = input.payload.chat.cats.filter(isChatCat);
@@ -164,7 +164,7 @@ export function resolveChatNewChatDraftViewState(input: {
   const highlightedCat = input.draftHighlightedCatId && input.draftCatIds.includes(input.draftHighlightedCatId)
     ? chatCats.find((cat) => cat.id === input.draftHighlightedCatId) ?? null
     : null;
-  const activePanelModel: ExecutionTargetValue | null =
+  const activePanelExecutionTarget: ExecutionTargetValue | null =
     draftSuggestionContext.isDirectLaneContext && defaultRecipientCat
       ? {
           provider: defaultRecipientCat.defaultExecutionTarget.provider,
@@ -173,13 +173,13 @@ export function resolveChatNewChatDraftViewState(input: {
           modelSelection: defaultRecipientCat.defaultModelSelection ?? null,
         }
       : highlightedCat
-        ? (input.draftCatModelOverrides.get(highlightedCat.id) ?? {
+        ? (input.draftCatExecutionTargetOverrides.get(highlightedCat.id) ?? {
             provider: highlightedCat.defaultExecutionTarget.provider,
             model: highlightedCat.defaultExecutionTarget.model,
             instance: highlightedCat.defaultExecutionTarget.instance,
             modelSelection: highlightedCat.defaultModelSelection ?? null,
           })
-        : input.selectedModel ?? null;
+        : input.selectedExecutionTarget ?? null;
   const isAckPending = isComposerAckBusyForDraft(input.busy);
   const isSubmittingFirstTurn = isComposerBusyForDraft(input.busy) || isAckPending;
   const draftComposerRecipients: RecipientChipTarget[] = (() => {
@@ -224,7 +224,7 @@ export function resolveChatNewChatDraftViewState(input: {
     visibleStarterSuggestions,
     resolvedGreeting,
     groupDraftSelectionLabel,
-    activePanelModel,
+    activePanelExecutionTarget,
     isAckPending,
     isSubmittingFirstTurn,
     draftComposerRecipients,

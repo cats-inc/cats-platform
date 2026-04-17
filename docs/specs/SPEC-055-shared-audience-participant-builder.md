@@ -25,8 +25,8 @@ updating every site; missing one produces an inconsistency.
 - **DraftTemporaryParticipant** — `chatNewChatDraftSupport.ts`,
   `ChatNewChatDraft.tsx` (temp participant)
 - **ExecutionTargetValue** — `ChatNewChatDraft.tsx` (parallel targets, solo
-  model), `ChatComposerTargetSlot.tsx` (implicit recipient),
-  `WorkspaceComposerTargetSlot.tsx` (solo model)
+  execution target), `ChatComposerTargetSlot.tsx` (implicit recipient),
+  `WorkspaceComposerTargetSlot.tsx` (solo execution target)
 - **RecipientChipTarget** — `ChatComposerTargetSlot.tsx`
   (`recipientToAudienceParticipant`)
 - **ComposerStackParticipant** (active-chat participants) —
@@ -56,12 +56,12 @@ Builds from `tp.name`, `tp.provider`, `tp.instance`, `tp.model`,
 `tp.modelSelection?.controls`. Sets `isCat: false`.
 
 ```ts
-buildAudienceParticipantFromModel(
-  model: ExecutionTargetValue,
+buildAudienceParticipantFromExecutionTarget(
+  executionTarget: ExecutionTargetValue,
 ): DraftComposerStackParticipant
 ```
 
-Builds from `buildExecutionTargetLabel(model)`. Sets `isCat: false`,
+Builds from `buildExecutionTargetLabel(executionTarget)`. Sets `isCat: false`,
 `executionLabel` equals the label.
 
 ```ts
@@ -90,9 +90,10 @@ Builds from `participant.label`, `participant.executionLabel`,
   `buildExecutionLabel` / `buildCatExecutionLabel` / `resolveControlDisplayLabels`
   from `shared/executionLabel.ts`.
 - `key` format: `cat:{id}` for cats, `temp:{participantId}` for temp
-  participants, `implicit:model` for model-only, `participant:{participantId}`
-  for stack participants, and for recipients preserve the current precedence of
-  `recipient.catId ?? recipient.participantId ?? recipient:{name}`.
+  participants, `implicit:execution_target` for execution-target-only
+  recipients, `participant:{participantId}` for stack participants, and for
+  recipients preserve the current precedence of `recipient.catId ??
+  recipient.participantId ?? recipient:{name}`.
 - No builder may leave `executionLabel` as `null` when the source data
   carries provider information.
 
@@ -105,7 +106,8 @@ builder:
 - `ChatNewChatDraft.tsx` — all five branches of `audienceParticipants`
 - `ChatComposerTargetSlot.tsx` — `recipientToAudienceParticipant`,
   `stackParticipantToAudienceParticipant`, directLaneCat, implicitRecipient
-- `WorkspaceComposerTargetSlot.tsx` — `catToAudienceParticipant`, solo model
+- `WorkspaceComposerTargetSlot.tsx` — `catToAudienceParticipant`, solo
+  execution target
 
 ## Intermediate Interface Cleanup
 

@@ -234,7 +234,7 @@ export function buildNewChatChannelInput(options: {
   defaultRecipientCatId?: string | null;
   participantCatIds?: string[];
   temporaryParticipants?: CreateTemporaryParticipantInput[];
-  draftModel?: {
+  draftExecutionTarget?: {
     provider: string;
     model: string | null;
     instance: string | null;
@@ -249,7 +249,7 @@ export function buildNewChatChannelInput(options: {
     defaultRecipientCatId,
     participantCatIds = [],
     temporaryParticipants = [],
-    draftModel,
+    draftExecutionTarget,
   } = options;
   const normalizedLeadCatId = defaultRecipientCatId?.trim() || null;
   const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
@@ -302,10 +302,10 @@ export function buildNewChatChannelInput(options: {
   return {
     ...baseInput,
     composerMode: 'solo',
-    pendingProvider: draftModel?.provider,
-    pendingModel: draftModel?.model ?? undefined,
-    pendingInstance: draftModel?.instance ?? undefined,
-    pendingModelSelection: draftModel?.modelSelection ?? undefined,
+    pendingProvider: draftExecutionTarget?.provider,
+    pendingModel: draftExecutionTarget?.model ?? undefined,
+    pendingInstance: draftExecutionTarget?.instance ?? undefined,
+    pendingModelSelection: draftExecutionTarget?.modelSelection ?? undefined,
   };
 }
 

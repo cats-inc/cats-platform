@@ -4,7 +4,7 @@ import {
   encodeAttachmentFiles,
   sendParallelChatMessage,
 } from './api/index.js';
-import type { ExecutionTargetValue } from './components/ExecutionTarget.js';
+import type { ExecutionTargetValue } from '../../shared/renderer/components/ExecutionTarget.js';
 import { createDraftChannelTitle } from './chatUtils.js';
 import { buildChannelPath } from '../shared/channelPaths.js';
 

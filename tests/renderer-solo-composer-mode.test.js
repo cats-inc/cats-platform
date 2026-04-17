@@ -24,7 +24,7 @@ test('persisted chat view wires the solo audience chip and suppresses visible bo
   assert.match(
     appSource,
     /selectedChannel\?\.composerMode === 'solo'/,
-    'App should pass solo-model state into the persisted chat view',
+    'App should pass solo execution-target state into the persisted chat view',
   );
   assert.match(
     chatViewSource,

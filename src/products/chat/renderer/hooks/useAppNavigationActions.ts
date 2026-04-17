@@ -7,7 +7,7 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts.js';
-import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
+import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import type { DraftTemporaryParticipant } from '../chatUtils.js';
 import {
   buildNewGroupChatPath,
@@ -55,7 +55,7 @@ export function useAppNavigationActions(options: {
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
+  setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
   setDraftWorkflowShape: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
   resetDraftParallelChatTargets: () => void;
@@ -79,7 +79,7 @@ export function useAppNavigationActions(options: {
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
+    setDraftCatExecutionTargetOverrides,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
@@ -113,7 +113,7 @@ export function useAppNavigationActions(options: {
     setDraftCatIds([]);
     setDraftTemporaryParticipants([]);
     setDraftHighlightedCatId(null);
-    setDraftCatModelOverrides(new Map());
+    setDraftCatExecutionTargetOverrides(new Map());
     setDraftWorkflowShape('sequential');
     setDraftAudienceKeys(null);
     resetDraftParallelChatTargets();
@@ -130,7 +130,7 @@ export function useAppNavigationActions(options: {
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
+    setDraftCatExecutionTargetOverrides,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,

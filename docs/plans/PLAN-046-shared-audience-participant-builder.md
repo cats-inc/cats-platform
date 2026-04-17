@@ -28,7 +28,7 @@ five typed builder functions into a shared module and rewires every site.
 - [ ] Task 1.1: Create `src/products/shared/renderer/audienceParticipantBuilder.ts`
 - [ ] Task 1.2: Implement `buildAudienceParticipantFromCat(cat)`
 - [ ] Task 1.3: Implement `buildAudienceParticipantFromTemporaryParticipant(tp)`
-- [ ] Task 1.4: Implement `buildAudienceParticipantFromModel(model)`
+- [ ] Task 1.4: Implement `buildAudienceParticipantFromExecutionTarget(executionTarget)`
 - [ ] Task 1.5: Implement `buildAudienceParticipantFromRecipient(recipient)`
 - [ ] Task 1.6: Implement `buildAudienceParticipantFromStackParticipant(participant)`
 
@@ -42,7 +42,7 @@ five typed builder functions into a shared module and rewires every site.
 - [ ] Task 2.2: Replace `ChatNewChatDraft.tsx` `audienceParticipants`
       branches (lines 207-274) with builder calls
 - [ ] Task 2.3: Replace `ChatNewChatDraft.tsx` parallel stub construction
-      (line 622-633) with `buildAudienceParticipantFromModel`
+      (line 622-633) with `buildAudienceParticipantFromExecutionTarget`
 
 **Deliverable**: draft surfaces use builders, no inline construction
 
@@ -57,8 +57,8 @@ five typed builder functions into a shared module and rewires every site.
       be eliminated by having `buildChatComposerStackParticipants` produce
       `DraftComposerStackParticipant[]` directly
 - [ ] Task 3.4: Replace `WorkspaceComposerTargetSlot.tsx` —
-      `catToAudienceParticipant` and solo-model inline construction with
-      builder calls
+      `catToAudienceParticipant` and solo execution-target inline construction
+      with builder calls
 
 **Deliverable**: active-chat and workspace surfaces use builders
 

@@ -22,7 +22,7 @@ import {
   createParallelChatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
-import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
+import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import type { SelectedChannelView } from '../../shared/channelEntry.js';
 import { relayParallelChatMessage } from '../api/index.js';
 
@@ -104,7 +104,7 @@ export function createNextCompareTarget(
 export function useParallelChatDraft(options: {
   readyPayload: AppShellPayload | null;
   selectedChannel: SelectedChannelView | null;
-  draftModel: ExecutionTargetValue;
+  draftExecutionTarget: ExecutionTargetValue;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
@@ -112,17 +112,17 @@ export function useParallelChatDraft(options: {
   const {
     readyPayload,
     selectedChannel,
-    draftModel,
+    draftExecutionTarget,
     setState,
     setBusy,
     setFeedback,
   } = options;
   const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<ExecutionTargetValue[]>(
     () => createInitialCompareTargets({
-      provider: draftModel.provider,
-      model: draftModel.model,
-      instance: draftModel.instance,
-      modelSelection: draftModel.modelSelection,
+      provider: draftExecutionTarget.provider,
+      model: draftExecutionTarget.model,
+      instance: draftExecutionTarget.instance,
+      modelSelection: draftExecutionTarget.modelSelection,
     }),
   );
   const [compareSendScope, setCompareSendScope] = useState<'all_members' | 'active_only'>(
@@ -139,8 +139,8 @@ export function useParallelChatDraft(options: {
   );
 
   const resetDraftParallelChatTargets = useCallback(() => {
-    setDraftParallelChatTargets(createInitialCompareTargets(draftModel));
-  }, [draftModel]);
+    setDraftParallelChatTargets(createInitialCompareTargets(draftExecutionTarget));
+  }, [draftExecutionTarget]);
 
   useEffect(() => {
     setCompareSendScope('all_members');
@@ -148,8 +148,8 @@ export function useParallelChatDraft(options: {
 
   useEffect(() => {
     setDraftParallelChatTargets((currentTargets) =>
-      syncLeadCompareTarget(currentTargets, draftModel));
-  }, [draftModel]);
+      syncLeadCompareTarget(currentTargets, draftExecutionTarget));
+  }, [draftExecutionTarget]);
 
   const onDraftParallelChatTargetChange = useCallback((index: number, value: ExecutionTargetValue) => {
     setDraftParallelChatTargets((prev) =>
@@ -160,10 +160,10 @@ export function useParallelChatDraft(options: {
   const onAddDraftParallelChatTarget = useCallback(() => {
     setDraftParallelChatTargets((prev) => [
       ...prev,
-      createNextCompareTarget(prev, draftModel),
+      createNextCompareTarget(prev, draftExecutionTarget),
     ]);
   }, [
-    draftModel,
+    draftExecutionTarget,
   ]);
 
   const onRemoveDraftParallelChatTarget = useCallback((index: number) => {

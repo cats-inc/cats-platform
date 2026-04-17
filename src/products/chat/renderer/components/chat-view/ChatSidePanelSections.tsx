@@ -20,7 +20,7 @@ import { openFolderInExplorer } from '../../api/index.js';
 import { catInitials, type SelectedChannelView } from '../../chatUtils.js';
 import { ActivityFeed } from '../ActivityFeed.js';
 import { ApprovalQueuePanel } from '../ApprovalQueuePanel.js';
-import type { ExecutionTargetValue } from '../ExecutionTarget.js';
+import type { ExecutionTargetValue } from '../../../../shared/renderer/components/ExecutionTarget.js';
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
@@ -39,10 +39,10 @@ export interface BuildChatSidePanelSectionsOptions {
   defaultRecipientCatId: string | null;
   defaultRecipientParticipant: ResolvedChannelParticipant | null;
   directLaneCat: ChatCat | null;
-  directLaneModelValue: ExecutionTargetValue | null;
+  directLaneExecutionTarget: ExecutionTargetValue | null;
   isDirectLane: boolean;
   isSoloComposer: boolean;
-  selectedModel?: ExecutionTargetValue;
+  selectedExecutionTarget?: ExecutionTargetValue;
   inspectedRun: ChatRunInspectorView | null;
   showAddCatButton: boolean;
   editingParticipantId: string | null;
@@ -63,9 +63,9 @@ export interface BuildChatSidePanelSectionsOptions {
     checkpointId?: string | null;
     outcomeId?: string | null;
   }) => void;
-  onModelChange?: (value: ExecutionTargetValue) => void;
+  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   onStartFresh?: () => void;
-  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   buildParticipantAvatarStyle: (
     participant: ResolvedChannelParticipant,
     catRecord?: ChatCat | null,
@@ -84,10 +84,10 @@ export function buildChatSidePanelSections({
   defaultRecipientCatId,
   defaultRecipientParticipant,
   directLaneCat,
-  directLaneModelValue,
+  directLaneExecutionTarget,
   isDirectLane,
   isSoloComposer,
-  selectedModel,
+  selectedExecutionTarget,
   inspectedRun,
   showAddCatButton,
   editingParticipantId,
@@ -102,9 +102,9 @@ export function buildChatSidePanelSections({
   onInspectRun,
   onApprovalDecision,
   onOperatorAction,
-  onModelChange,
+  onExecutionTargetChange,
   onStartFresh,
-  onDirectLaneModelChange,
+  onDirectLaneExecutionTargetChange,
   buildParticipantAvatarStyle,
 }: BuildChatSidePanelSectionsOptions): SidePanelSection[] {
   const sections: SidePanelSection[] = [];
@@ -137,7 +137,7 @@ export function buildChatSidePanelSections({
   }
 
   const executionChildren = (() => {
-    if (isDirectLane && directLaneCat && directLaneModelValue) {
+    if (isDirectLane && directLaneCat && directLaneExecutionTarget) {
       return (
         <>
           <div className="sidePanelSectionStack">
@@ -157,12 +157,12 @@ export function buildChatSidePanelSections({
             </div>
           </div>
           <ProviderModelFields
-            provider={directLaneModelValue.provider}
-            instance={directLaneModelValue.instance ?? ''}
-            model={directLaneModelValue.model ?? ''}
-            modelSelection={directLaneModelValue.modelSelection}
+            provider={directLaneExecutionTarget.provider}
+            instance={directLaneExecutionTarget.instance ?? ''}
+            model={directLaneExecutionTarget.model ?? ''}
+            modelSelection={directLaneExecutionTarget.modelSelection}
             onTargetChange={(target: ProviderTargetSelection) => {
-              onDirectLaneModelChange?.(directLaneCat.id, {
+              onDirectLaneExecutionTargetChange?.(directLaneCat.id, {
                 provider: target.provider,
                 model: target.model || null,
                 instance: target.instance || null,
@@ -173,16 +173,16 @@ export function buildChatSidePanelSections({
         </>
       );
     }
-    if (isSoloComposer && selectedModel && onModelChange) {
+    if (isSoloComposer && selectedExecutionTarget && onExecutionTargetChange) {
       return (
         <>
           <ProviderModelFields
-            provider={selectedModel.provider}
-            instance={selectedModel.instance ?? ''}
-            model={selectedModel.model ?? ''}
-            modelSelection={selectedModel.modelSelection}
+            provider={selectedExecutionTarget.provider}
+            instance={selectedExecutionTarget.instance ?? ''}
+            model={selectedExecutionTarget.model ?? ''}
+            modelSelection={selectedExecutionTarget.modelSelection}
             onTargetChange={(target: ProviderTargetSelection) => {
-              onModelChange({
+              onExecutionTargetChange({
                 provider: target.provider,
                 model: target.model || null,
                 instance: target.instance || null,

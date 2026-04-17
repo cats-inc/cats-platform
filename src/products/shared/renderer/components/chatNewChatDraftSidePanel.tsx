@@ -43,7 +43,7 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   hasReachedGroupParticipantLimit: boolean;
   isSubmittingFirstTurn: boolean;
   defaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
-  activePanelModel: ExecutionTargetValue | null;
+  activePanelExecutionTarget: ExecutionTargetValue | null;
   onToggleDraftCat: (catId: string) => void;
   onHighlightDraftCat: (catId: string | null) => void;
   onAddDraftTemporaryParticipant: (
@@ -63,9 +63,9 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   createTemporaryParticipantFormValue: () => ChatNewChatTemporaryParticipantFormState;
   onTemporaryParticipantFormOpenChange: (open: boolean) => void;
   onSubmitTemporaryParticipant: () => void;
-  selectedModel?: ExecutionTargetValue;
-  onModelChange?: (value: ExecutionTargetValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  selectedExecutionTarget?: ExecutionTargetValue;
+  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
+  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   parallelTargets?: ExecutionTargetValue[];
   onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   folderBrowsePath?: string;
@@ -301,7 +301,7 @@ export function buildChatNewChatDraftSidePanelSections(
   });
 
   const executionChildren = (() => {
-    if (input.isDirectLaneContext && input.defaultRecipientCat && input.activePanelModel) {
+    if (input.isDirectLaneContext && input.defaultRecipientCat && input.activePanelExecutionTarget) {
       return (
         <>
           <CatAvatarRow
@@ -315,12 +315,12 @@ export function buildChatNewChatDraftSidePanelSections(
             onHighlight={() => {}}
           />
           <ProviderModelFields
-            provider={input.activePanelModel.provider}
-            instance={input.activePanelModel.instance ?? ''}
-            model={input.activePanelModel.model ?? ''}
-            modelSelection={input.activePanelModel.modelSelection}
+            provider={input.activePanelExecutionTarget.provider}
+            instance={input.activePanelExecutionTarget.instance ?? ''}
+            model={input.activePanelExecutionTarget.model ?? ''}
+            modelSelection={input.activePanelExecutionTarget.modelSelection}
             onTargetChange={(target: ProviderTargetSelection) => {
-              input.onDirectLaneModelChange?.(input.defaultRecipientCat!.id, {
+              input.onDirectLaneExecutionTargetChange?.(input.defaultRecipientCat!.id, {
                 provider: target.provider,
                 model: target.model || null,
                 instance: target.instance || null,
@@ -331,7 +331,7 @@ export function buildChatNewChatDraftSidePanelSections(
         </>
       );
     }
-    if (input.activePanelModel) {
+    if (input.activePanelExecutionTarget) {
       return (
         <div
           style={input.effectiveDefaultRecipientCat && !input.isDirectLaneContext
@@ -339,13 +339,13 @@ export function buildChatNewChatDraftSidePanelSections(
             : undefined}
         >
           <ProviderModelFields
-            provider={input.activePanelModel.provider}
-            instance={input.activePanelModel.instance ?? ''}
-            model={input.activePanelModel.model ?? ''}
-            modelSelection={input.activePanelModel.modelSelection}
+            provider={input.activePanelExecutionTarget.provider}
+            instance={input.activePanelExecutionTarget.instance ?? ''}
+            model={input.activePanelExecutionTarget.model ?? ''}
+            modelSelection={input.activePanelExecutionTarget.modelSelection}
             onTargetChange={(target: ProviderTargetSelection) => {
-              if (!input.effectiveDefaultRecipientCat && input.onModelChange) {
-                input.onModelChange({
+              if (!input.effectiveDefaultRecipientCat && input.onExecutionTargetChange) {
+                input.onExecutionTargetChange({
                   provider: target.provider,
                   model: target.model || null,
                   instance: target.instance || null,

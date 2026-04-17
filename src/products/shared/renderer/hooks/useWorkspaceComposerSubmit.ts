@@ -94,13 +94,13 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
+  setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
-  draftModel: ModelValue;
-  soloChannelModel: ModelValue;
+  draftExecutionTarget: ModelValue;
+  soloChannelExecutionTarget: ModelValue;
   showingParallelChatDraft?: boolean;
   draftParallelChatTargets?: ModelValue[];
   draftWorkflowShape?: 'sequential' | 'concurrent';
@@ -152,13 +152,13 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
+    setDraftCatExecutionTargetOverrides,
     setDraftFiles,
     setChannelFiles,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
-    draftModel,
-    soloChannelModel,
+    draftExecutionTarget,
+    soloChannelExecutionTarget,
     showingParallelChatDraft = false,
     draftParallelChatTargets = [],
     draftWorkflowShape = 'sequential',
@@ -277,7 +277,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         setDraftCatIds([]);
         setDraftTemporaryParticipants?.([]);
         setDraftHighlightedCatId(null);
-        setDraftCatModelOverrides(new Map());
+        setDraftCatExecutionTargetOverrides(new Map());
         setDraftFiles([]);
         setDraftWorkflowShape?.('sequential');
         setDraftAudienceKeys?.(null);
@@ -339,9 +339,9 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         participantCatIds: draftCatIds,
         temporaryParticipants: draftTemporaryParticipants,
         draftEntryKind,
-        draftModel,
+        draftExecutionTarget,
         selectedChannel,
-        soloChannelModel,
+        soloChannelExecutionTarget,
         draftFiles,
         channelFiles,
         createChatChannel,
@@ -434,7 +434,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           setDraftCatIds,
           setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
-          setDraftCatModelOverrides,
+          setDraftCatExecutionTargetOverrides,
           setDraftFiles,
           setChannelFiles,
           setDraftWorkflowShape,
@@ -446,7 +446,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           setDraftCatIds,
           setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
-          setDraftCatModelOverrides,
+          setDraftCatExecutionTargetOverrides,
           setDraftFiles,
           setDraftWorkflowShape,
           setDraftAudienceKeys,
@@ -492,10 +492,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     draftFiles,
     draftEntryKind,
     draftDefaultRecipientCatId,
-    draftModel.instance,
-    draftModel.modelSelection,
-    draftModel.model,
-    draftModel.provider,
+    draftExecutionTarget.instance,
+    draftExecutionTarget.modelSelection,
+    draftExecutionTarget.model,
+    draftExecutionTarget.provider,
     navigate,
     selectedChannel,
     setActiveDispatchRequest,
@@ -505,7 +505,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
+    setDraftCatExecutionTargetOverrides,
     setDraftCwd,
     setDraftFiles,
     setDraftAudienceKeys,
@@ -522,10 +522,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     showingParallelChatDraft,
     showingMyCatDirectLane,
     showingNewChatDraft,
-    soloChannelModel.instance,
-    soloChannelModel.modelSelection,
-    soloChannelModel.model,
-    soloChannelModel.provider,
+    soloChannelExecutionTarget.instance,
+    soloChannelExecutionTarget.modelSelection,
+    soloChannelExecutionTarget.model,
+    soloChannelExecutionTarget.provider,
     resetDraftParallelChatTargets,
     state,
   ]);

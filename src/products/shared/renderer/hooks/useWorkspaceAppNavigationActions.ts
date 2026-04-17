@@ -111,7 +111,7 @@ export interface UseWorkspaceAppNavigationActionsOptions<
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<TDraftParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, TExecutionTargetValue>>>;
+  setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, TExecutionTargetValue>>>;
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
   resetDraftParallelChatTargets?: () => void;
@@ -145,7 +145,7 @@ export function useWorkspaceAppNavigationActions<
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
+    setDraftCatExecutionTargetOverrides,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
@@ -167,7 +167,7 @@ export function useWorkspaceAppNavigationActions<
     setDraftCatIds([]);
     setDraftTemporaryParticipants?.([]);
     setDraftHighlightedCatId(null);
-    setDraftCatModelOverrides(new Map());
+    setDraftCatExecutionTargetOverrides(new Map());
     setDraftWorkflowShape?.('sequential');
     setDraftAudienceKeys?.(null);
     resetDraftParallelChatTargets?.();
@@ -181,7 +181,7 @@ export function useWorkspaceAppNavigationActions<
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
+    setDraftCatExecutionTargetOverrides,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,

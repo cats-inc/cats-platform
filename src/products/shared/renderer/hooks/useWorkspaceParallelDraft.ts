@@ -12,27 +12,27 @@ import {
 import type { WorkspaceExecutionTargetValue } from './useWorkspaceComposerSubmit.js';
 
 export function useWorkspaceParallelDraft(options: {
-  draftModel: WorkspaceExecutionTargetValue;
+  draftExecutionTarget: WorkspaceExecutionTargetValue;
   maxParallelChats: number;
 }) {
-  const { draftModel, maxParallelChats } = options;
+  const { draftExecutionTarget, maxParallelChats } = options;
   const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<WorkspaceExecutionTargetValue[]>(
     () => createInitialParallelTargets({
-      provider: draftModel.provider,
-      model: draftModel.model,
-      instance: draftModel.instance,
-      modelSelection: draftModel.modelSelection,
+      provider: draftExecutionTarget.provider,
+      model: draftExecutionTarget.model,
+      instance: draftExecutionTarget.instance,
+      modelSelection: draftExecutionTarget.modelSelection,
     }),
   );
 
   const resetDraftParallelChatTargets = useCallback(() => {
-    setDraftParallelChatTargets(createInitialParallelTargets(draftModel));
-  }, [draftModel]);
+    setDraftParallelChatTargets(createInitialParallelTargets(draftExecutionTarget));
+  }, [draftExecutionTarget]);
 
   useEffect(() => {
     setDraftParallelChatTargets((currentTargets) =>
-      syncLeadParallelTarget(currentTargets, draftModel));
-  }, [draftModel]);
+      syncLeadParallelTarget(currentTargets, draftExecutionTarget));
+  }, [draftExecutionTarget]);
 
   const onDraftParallelChatTargetChange = useCallback((index: number, value: WorkspaceExecutionTargetValue) => {
     setDraftParallelChatTargets((prev) =>
@@ -48,11 +48,11 @@ export function useWorkspaceParallelDraft(options: {
 
       return [
         ...prev,
-        createNextParallelTarget(prev, draftModel),
+        createNextParallelTarget(prev, draftExecutionTarget),
       ];
     });
   }, [
-    draftModel,
+    draftExecutionTarget,
     maxParallelChats,
   ]);
 

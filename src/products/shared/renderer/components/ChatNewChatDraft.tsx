@@ -20,7 +20,7 @@ import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.j
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import {
   buildAudienceParticipantFromCat,
-  buildAudienceParticipantFromModel,
+  buildAudienceParticipantFromExecutionTarget,
   buildAudienceParticipantFromTemporaryParticipant,
 } from '../audienceParticipantBuilder.js';
 import { AudienceChip } from './AudienceChip.js';
@@ -68,13 +68,13 @@ export interface NewChatDraftProps {
   starterSuggestions?: ReadonlyArray<DraftStarterSuggestion> | null;
   onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
-  selectedModel?: ExecutionTargetValue;
-  onModelChange?: (value: ExecutionTargetValue) => void;
+  selectedExecutionTarget?: ExecutionTargetValue;
+  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   draftHighlightedCatId: string | null;
   onHighlightDraftCat: (catId: string | null) => void;
-  draftCatModelOverrides: Map<string, ExecutionTargetValue>;
-  onDraftCatModelOverride: (catId: string, value: ExecutionTargetValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
+  onDraftCatExecutionTargetOverride: (catId: string, value: ExecutionTargetValue) => void;
+  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   parallelTargets?: ExecutionTargetValue[];
   onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   onAddParallelTarget?: () => void;
@@ -130,13 +130,13 @@ export function NewChatDraft({
   starterSuggestions,
   onDraftDefaultRecipientChange,
   allowAddCat = true,
-  selectedModel,
-  onModelChange,
+  selectedExecutionTarget,
+  onExecutionTargetChange,
   draftHighlightedCatId,
   onHighlightDraftCat,
-  draftCatModelOverrides,
-  onDraftCatModelOverride,
-  onDirectLaneModelChange,
+  draftCatExecutionTargetOverrides,
+  onDraftCatExecutionTargetOverride,
+  onDirectLaneExecutionTargetChange,
   parallelTargets,
   onParallelTargetChange,
   onAddParallelTarget,
@@ -172,7 +172,7 @@ export function NewChatDraft({
     visibleStarterSuggestions,
     resolvedGreeting,
     groupDraftSelectionLabel,
-    activePanelModel,
+    activePanelExecutionTarget,
     isAckPending,
     isSubmittingFirstTurn,
     draftComposerRecipients,
@@ -189,8 +189,8 @@ export function NewChatDraft({
     greeting,
     greetingPool,
     draftHighlightedCatId,
-    draftCatModelOverrides,
-    selectedModel,
+    draftCatExecutionTargetOverrides,
+    selectedExecutionTarget,
     busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
@@ -208,7 +208,7 @@ export function NewChatDraft({
   const audienceParticipants: typeof groupComposerParticipants = (() => {
     // Parallel mode: first target as implicit participant
     if (isParallelMode && parallelTargets?.[0]) {
-      return [buildAudienceParticipantFromModel(parallelTargets[0], 'parallel:0')];
+      return [buildAudienceParticipantFromExecutionTarget(parallelTargets[0], 'parallel:0')];
     }
 
     if (isGroupDraft) {
@@ -228,8 +228,8 @@ export function NewChatDraft({
     }
 
     // Solo implicit: use the current execution target value
-    if (activePanelModel) {
-      return [buildAudienceParticipantFromModel(activePanelModel)];
+    if (activePanelExecutionTarget) {
+      return [buildAudienceParticipantFromExecutionTarget(activePanelExecutionTarget)];
     }
 
     return [];
@@ -580,7 +580,7 @@ export function NewChatDraft({
             {parallelTargets.slice(1).map((target, i, arr) => (
               <div key={i + 1} className="parallelStubCard" style={{ zIndex: arr.length - i }}>
                 <AudienceChip
-                  audienceParticipants={[buildAudienceParticipantFromModel(target, `parallel:${i + 1}`)]}
+                  audienceParticipants={[buildAudienceParticipantFromExecutionTarget(target, `parallel:${i + 1}`)]}
                   onSingleClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo(`parallel:${i + 1}`)}
                   disabled={isSubmittingFirstTurn}
                 />
@@ -643,7 +643,7 @@ export function NewChatDraft({
             hasReachedGroupParticipantLimit,
             isSubmittingFirstTurn,
             defaultRecipientCat,
-            activePanelModel,
+            activePanelExecutionTarget,
             onToggleDraftCat,
             onHighlightDraftCat,
             onAddDraftTemporaryParticipant,
@@ -657,9 +657,9 @@ export function NewChatDraft({
             createTemporaryParticipantFormValue,
             onTemporaryParticipantFormOpenChange: setTemporaryParticipantFormOpen,
             onSubmitTemporaryParticipant: submitTemporaryParticipant,
-            selectedModel,
-            onModelChange,
-            onDirectLaneModelChange,
+            selectedExecutionTarget,
+            onExecutionTargetChange,
+            onDirectLaneExecutionTargetChange,
             parallelTargets,
             onParallelTargetChange,
             folderBrowsePath,

@@ -36,10 +36,10 @@ export interface ChatViewSidePanelProps {
   assignedCatRecords: ChatCat[];
   defaultRecipientCat: SelectedChannelView['assignedCats'][number] | null;
   directLaneCat: ChatCat | null;
-  directLaneModelValue: ExecutionTargetValue | null;
+  directLaneExecutionTarget: ExecutionTargetValue | null;
   isDirectLane: boolean;
   isSoloComposer: boolean;
-  selectedModel?: ExecutionTargetValue;
+  selectedExecutionTarget?: ExecutionTargetValue;
   inspectedRun: ChatRunInspectorView | null;
   showAddCatButton: boolean;
   onSectionToggle: (section: string | null) => void;
@@ -53,8 +53,8 @@ export interface ChatViewSidePanelProps {
     checkpointId?: string | null;
     outcomeId?: string | null;
   }) => void;
-  onModelChange?: (value: ExecutionTargetValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
+  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   onOpenAddCat?: () => void;
 }
 
@@ -71,10 +71,10 @@ export function ChatViewSidePanel({
   assignedCatRecords,
   defaultRecipientCat,
   directLaneCat,
-  directLaneModelValue,
+  directLaneExecutionTarget,
   isDirectLane,
   isSoloComposer,
-  selectedModel,
+  selectedExecutionTarget,
   inspectedRun,
   showAddCatButton,
   onSectionToggle,
@@ -82,8 +82,8 @@ export function ChatViewSidePanel({
   onInspectRun,
   onApprovalDecision,
   onOperatorAction,
-  onModelChange,
-  onDirectLaneModelChange,
+  onExecutionTargetChange,
+  onDirectLaneExecutionTargetChange,
   onOpenAddCat,
 }: ChatViewSidePanelProps) {
   if (!sidePanelOpen) {
@@ -144,7 +144,7 @@ export function ChatViewSidePanel({
     }
 
     const executionChildren = (() => {
-      if (isDirectLane && directLaneCat && directLaneModelValue) {
+      if (isDirectLane && directLaneCat && directLaneExecutionTarget) {
         return (
           <>
             <CatAvatarRow
@@ -159,12 +159,12 @@ export function ChatViewSidePanel({
               onHighlight={() => {}}
             />
             <ProviderModelFields
-              provider={directLaneModelValue.provider}
-              instance={directLaneModelValue.instance ?? ''}
-              model={directLaneModelValue.model ?? ''}
-              modelSelection={directLaneModelValue.modelSelection}
+              provider={directLaneExecutionTarget.provider}
+              instance={directLaneExecutionTarget.instance ?? ''}
+              model={directLaneExecutionTarget.model ?? ''}
+              modelSelection={directLaneExecutionTarget.modelSelection}
               onTargetChange={(target: ProviderTargetSelection) => {
-                onDirectLaneModelChange?.(directLaneCat.id, {
+                onDirectLaneExecutionTargetChange?.(directLaneCat.id, {
                   provider: target.provider,
                   model: target.model || null,
                   instance: target.instance || null,
@@ -175,15 +175,15 @@ export function ChatViewSidePanel({
           </>
         );
       }
-      if (isSoloComposer && selectedModel && onModelChange) {
+      if (isSoloComposer && selectedExecutionTarget && onExecutionTargetChange) {
         return (
           <ProviderModelFields
-            provider={selectedModel.provider}
-            instance={selectedModel.instance ?? ''}
-            model={selectedModel.model ?? ''}
-            modelSelection={selectedModel.modelSelection}
+            provider={selectedExecutionTarget.provider}
+            instance={selectedExecutionTarget.instance ?? ''}
+            model={selectedExecutionTarget.model ?? ''}
+            modelSelection={selectedExecutionTarget.modelSelection}
             onTargetChange={(target: ProviderTargetSelection) => {
-              onModelChange({
+              onExecutionTargetChange({
                 provider: target.provider,
                 model: target.model || null,
                 instance: target.instance || null,

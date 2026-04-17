@@ -172,7 +172,7 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
     body: 'Ship the landing page',
     existingCount: 2,
     entryKind: 'solo',
-    draftModel: {
+    draftExecutionTarget: {
       provider: 'claude',
       model: 'claude-opus-4-6',
       instance: 'native',

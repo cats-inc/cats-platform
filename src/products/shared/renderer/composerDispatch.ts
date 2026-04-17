@@ -87,14 +87,14 @@ export function buildSoloDispatchTarget<
   isCatScopedLaneRoute: boolean;
   channelId: string;
   selectedChannel: TSelectedChannel | null;
-  soloChannelModel: ModelValue;
+  soloChannelExecutionTarget: ModelValue;
 }): PendingExecutionTargetInput | null {
   const {
     wasDraftingNewChat,
     isCatScopedLaneRoute,
     channelId,
     selectedChannel,
-    soloChannelModel,
+    soloChannelExecutionTarget,
   } = options;
 
   if (
@@ -107,10 +107,10 @@ export function buildSoloDispatchTarget<
   }
 
   return {
-    pendingProvider: soloChannelModel.provider,
-    pendingModel: soloChannelModel.model,
-    pendingInstance: soloChannelModel.instance,
-    pendingModelSelection: soloChannelModel.modelSelection,
+    pendingProvider: soloChannelExecutionTarget.provider,
+    pendingModel: soloChannelExecutionTarget.model,
+    pendingInstance: soloChannelExecutionTarget.instance,
+    pendingModelSelection: soloChannelExecutionTarget.modelSelection,
   };
 }
 
@@ -202,7 +202,7 @@ export async function prepareComposerChannelDispatch<
   participantCatIds: string[];
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
   draftEntryKind?: 'solo' | 'group' | 'direct';
-  draftModel?: ComposerModelValue;
+  draftExecutionTarget?: ComposerModelValue;
   createChatChannel: (
     input: ReturnType<typeof buildNewChatChannelInput>,
     signal?: AbortSignal,
@@ -233,7 +233,7 @@ export async function prepareComposerChannelDispatch<
     participantCatIds,
     temporaryParticipants = [],
     draftEntryKind,
-    draftModel,
+    draftExecutionTarget,
     createChatChannel,
     insertCreatedChannelIntoPayload,
     setState,
@@ -310,7 +310,7 @@ export async function prepareComposerChannelDispatch<
         modelSelection: participant.modelSelection ?? null,
         roleHint: participant.roleHint ?? undefined,
       })),
-      draftModel,
+      draftExecutionTarget,
     }), signal);
     channelId = createdChannel.id;
     if (!channelId) {
@@ -365,9 +365,9 @@ export async function prepareWorkspaceSendContext<
   participantCatIds: string[];
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
   draftEntryKind?: 'solo' | 'group' | 'direct';
-  draftModel?: ModelValue;
+  draftExecutionTarget?: ModelValue;
   selectedChannel: Pick<ComposerSelectedChannelLike, 'id' | 'composerMode'> | null;
-  soloChannelModel: ModelValue;
+  soloChannelExecutionTarget: ModelValue;
   draftFiles: File[];
   channelFiles: File[];
   createChatChannel: (
@@ -409,9 +409,9 @@ export async function prepareWorkspaceSendContext<
     participantCatIds,
     temporaryParticipants,
     draftEntryKind,
-    draftModel,
+    draftExecutionTarget,
     selectedChannel,
-    soloChannelModel,
+    soloChannelExecutionTarget,
     draftFiles,
     channelFiles,
     createChatChannel,
@@ -442,7 +442,7 @@ export async function prepareWorkspaceSendContext<
     participantCatIds,
     temporaryParticipants,
     draftEntryKind,
-    draftModel,
+    draftExecutionTarget,
     createChatChannel,
     insertCreatedChannelIntoPayload,
     setState,
@@ -460,7 +460,7 @@ export async function prepareWorkspaceSendContext<
     isCatScopedLaneRoute,
     channelId: preparedChannel.channelId,
     selectedChannel,
-    soloChannelModel,
+    soloChannelExecutionTarget,
   });
   const filesToUpload = resolveComposerFilesToUpload({
     isCatScopedLaneRoute,

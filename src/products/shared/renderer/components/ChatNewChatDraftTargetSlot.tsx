@@ -8,7 +8,7 @@ import {
 import { ComposerCatStack } from './ComposerCatStack.js';
 import type { ExecutionTargetValue } from './ExecutionTarget.js';
 import { AudienceChip } from './AudienceChip.js';
-import { buildAudienceParticipantFromModel } from '../audienceParticipantBuilder.js';
+import { buildAudienceParticipantFromExecutionTarget } from '../audienceParticipantBuilder.js';
 
 interface GroupComposerParticipant {
   key: string;
@@ -29,7 +29,7 @@ export interface ChatNewChatDraftTargetSlotProps {
   effectiveDefaultRecipientTemporaryParticipant: DraftTemporaryParticipant | null;
   draftComposerRecipients: RecipientChipTarget[];
   groupComposerParticipants: GroupComposerParticipant[];
-  activePanelModel: ExecutionTargetValue | null;
+  activePanelExecutionTarget: ExecutionTargetValue | null;
   isSubmittingFirstTurn: boolean;
   onOpenCats: () => void;
   onOpenExecution: () => void;
@@ -46,7 +46,7 @@ export function ChatNewChatDraftTargetSlot({
   effectiveDefaultRecipientTemporaryParticipant,
   draftComposerRecipients,
   groupComposerParticipants,
-  activePanelModel,
+  activePanelExecutionTarget,
   isSubmittingFirstTurn,
   onOpenCats,
   onOpenExecution,
@@ -142,11 +142,11 @@ export function ChatNewChatDraftTargetSlot({
     );
   }
 
-  if (activePanelModel) {
+  if (activePanelExecutionTarget) {
     return (
       <div style={{ marginRight: 8 }}>
         <AudienceChip
-          audienceParticipants={[buildAudienceParticipantFromModel(activePanelModel)]}
+          audienceParticipants={[buildAudienceParticipantFromExecutionTarget(activePanelExecutionTarget)]}
           onSingleClick={isSubmittingFirstTurn ? undefined : onOpenExecution}
           disabled={isSubmittingFirstTurn}
         />

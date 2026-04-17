@@ -8,13 +8,13 @@ import {
 import { AudienceChip } from '../AudienceChip.js';
 import {
   buildAudienceParticipantFromCat,
-  buildAudienceParticipantFromModel,
+  buildAudienceParticipantFromExecutionTarget,
 } from '../../audienceParticipantBuilder.js';
 
 export interface WorkspaceComposerTargetSlotProps {
   payload: AppShellPayload;
   composerBusy: boolean;
-  selectedModel?: ExecutionTargetValue;
+  selectedExecutionTarget?: ExecutionTargetValue;
   directLaneCat: ChatCat | null;
   defaultRecipientCat: SelectedChannelView['assignedCats'][number] | null;
   assignedCatRecords: ChatCat[];
@@ -31,7 +31,7 @@ export interface WorkspaceComposerTargetSlotProps {
 export function WorkspaceComposerTargetSlot({
   payload,
   composerBusy,
-  selectedModel,
+  selectedExecutionTarget,
   directLaneCat,
   defaultRecipientCat,
   assignedCatRecords,
@@ -78,10 +78,10 @@ export function WorkspaceComposerTargetSlot({
     );
   }
 
-  if (isSoloComposer && selectedModel) {
+  if (isSoloComposer && selectedExecutionTarget) {
     return (
       <AudienceChip
-        audienceParticipants={[buildAudienceParticipantFromModel(selectedModel)]}
+        audienceParticipants={[buildAudienceParticipantFromExecutionTarget(selectedExecutionTarget)]}
         onSingleClick={composerBusy ? undefined : () => onOpenSection('execution')}
         disabled={composerBusy}
       />

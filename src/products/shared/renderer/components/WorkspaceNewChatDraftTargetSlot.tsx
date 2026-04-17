@@ -2,14 +2,14 @@ import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { ExecutionTargetValue } from './ExecutionTarget.js';
 import { AudienceChip } from './AudienceChip.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
-import { buildAudienceParticipantFromModel } from '../audienceParticipantBuilder.js';
+import { buildAudienceParticipantFromExecutionTarget } from '../audienceParticipantBuilder.js';
 
 export interface WorkspaceNewChatDraftTargetSlotProps {
   payload: AppShellPayload;
   effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
   nonLeadDraftCats: AppShellPayload['chat']['cats'];
   isDirectLaneContext: boolean;
-  activePanelModel: ExecutionTargetValue | null;
+  activePanelExecutionTarget: ExecutionTargetValue | null;
   isSubmittingFirstTurn: boolean;
   onOpenExecution: () => void;
 }
@@ -19,7 +19,7 @@ export function WorkspaceNewChatDraftTargetSlot({
   effectiveDefaultRecipientCat,
   nonLeadDraftCats,
   isDirectLaneContext,
-  activePanelModel,
+  activePanelExecutionTarget,
   isSubmittingFirstTurn,
   onOpenExecution,
 }: WorkspaceNewChatDraftTargetSlotProps) {
@@ -34,11 +34,11 @@ export function WorkspaceNewChatDraftTargetSlot({
     );
   }
 
-  if (activePanelModel) {
+  if (activePanelExecutionTarget) {
     return (
       <div style={{ marginRight: 8 }}>
         <AudienceChip
-          audienceParticipants={[buildAudienceParticipantFromModel(activePanelModel)]}
+          audienceParticipants={[buildAudienceParticipantFromExecutionTarget(activePanelExecutionTarget)]}
           onSingleClick={isSubmittingFirstTurn ? undefined : onOpenExecution}
           disabled={isSubmittingFirstTurn}
         />

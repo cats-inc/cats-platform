@@ -71,8 +71,8 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onDraftDefaultRecipientChange: () => {},
     draftHighlightedCatId: null,
     onHighlightDraftCat: () => {},
-    draftCatModelOverrides: new Map(),
-    onDraftCatModelOverride: () => {},
+    draftCatExecutionTargetOverrides: new Map(),
+    onDraftCatExecutionTargetOverride: () => {},
     ...overrides,
   };
 }
@@ -360,7 +360,7 @@ test('solo draft without a recipient keeps the provider-model control on the aud
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        selectedModel: {
+        selectedExecutionTarget: {
           provider: 'claude',
           instance: 'native',
           model: 'claude-sonnet',

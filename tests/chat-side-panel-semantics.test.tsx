@@ -22,10 +22,10 @@ function buildExecutionMarkup(overrides: {
     defaultRecipientCatId: null,
     defaultRecipientParticipant: null,
     directLaneCat: null,
-    directLaneModelValue: null,
+    directLaneExecutionTarget: null,
     isDirectLane: overrides.isDirectLane ?? false,
     isSoloComposer: overrides.isSoloComposer ?? true,
-    selectedModel: {
+    selectedExecutionTarget: {
       provider: 'claude',
       instance: 'native',
       model: 'claude-sonnet',
@@ -44,7 +44,7 @@ function buildExecutionMarkup(overrides: {
     onInspectRun: () => {},
     onApprovalDecision: () => {},
     onOperatorAction: () => {},
-    onModelChange: () => {},
+    onExecutionTargetChange: () => {},
     onStartFresh: () => {},
     buildParticipantAvatarStyle: () => undefined,
   });

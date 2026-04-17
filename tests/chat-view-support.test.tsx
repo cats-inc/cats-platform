@@ -103,12 +103,12 @@ test('resolveChatComposerViewState does not leak dispatch busy into other channe
   assert.equal(result.showStopComposerAction, false);
 });
 
-test('buildChatComposerRecipients preserves solo model-selection controls for active chats', () => {
+test('buildChatComposerRecipients preserves solo execution-target controls for active chats', () => {
   const recipients = buildChatComposerRecipients({
     isDirectLane: false,
     directLaneCat: null,
     isSoloComposer: true,
-    selectedModel: {
+    selectedExecutionTarget: {
       provider: 'claude',
       instance: 'cli',
       model: 'opus',

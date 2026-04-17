@@ -5,7 +5,7 @@ import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
 export function useWorkspaceDraftCatState() {
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<string | null>(null);
-  const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<
+  const [draftCatExecutionTargetOverrides, setDraftCatExecutionTargetOverrides] = useState<
     Map<string, ExecutionTargetValue>
   >(new Map());
 
@@ -19,7 +19,7 @@ export function useWorkspaceDraftCatState() {
         setDraftHighlightedCatId((current) =>
           current === catId ? (next.length > 0 ? next[0] : null) : current,
         );
-        setDraftCatModelOverrides((overrides) => {
+        setDraftCatExecutionTargetOverrides((overrides) => {
           const copy = new Map(overrides);
           copy.delete(catId);
           return copy;
@@ -31,9 +31,9 @@ export function useWorkspaceDraftCatState() {
     });
   }, []);
 
-  const onDraftCatModelOverride = useCallback(
+  const onDraftCatExecutionTargetOverride = useCallback(
     (catId: string, value: ExecutionTargetValue) => {
-      setDraftCatModelOverrides((prev) => {
+      setDraftCatExecutionTargetOverrides((prev) => {
         const copy = new Map(prev);
         copy.set(catId, value);
         return copy;
@@ -45,7 +45,7 @@ export function useWorkspaceDraftCatState() {
   const resetDraftCats = useCallback(() => {
     setDraftCatIds([]);
     setDraftHighlightedCatId(null);
-    setDraftCatModelOverrides(new Map());
+    setDraftCatExecutionTargetOverrides(new Map());
   }, []);
 
   return {
@@ -53,10 +53,10 @@ export function useWorkspaceDraftCatState() {
     setDraftCatIds,
     draftHighlightedCatId,
     setDraftHighlightedCatId,
-    draftCatModelOverrides,
-    setDraftCatModelOverrides,
+    draftCatExecutionTargetOverrides,
+    setDraftCatExecutionTargetOverrides,
     onToggleDraftCat,
-    onDraftCatModelOverride,
+    onDraftCatExecutionTargetOverride,
     resetDraftCats,
   };
 }

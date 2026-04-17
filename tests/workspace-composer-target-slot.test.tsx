@@ -41,7 +41,7 @@ test('workspace composer renders a cat-backed audience chip for direct lanes', (
     <WorkspaceComposerTargetSlot
       payload={createPayload()}
       composerBusy={false}
-      selectedModel={undefined}
+      selectedExecutionTarget={undefined}
       directLaneCat={directLaneCat}
       defaultRecipientCat={null}
       assignedCatRecords={[]}
@@ -63,7 +63,7 @@ test('workspace composer renders a model-backed audience chip for solo mode', ()
     <WorkspaceComposerTargetSlot
       payload={createPayload()}
       composerBusy={false}
-      selectedModel={{
+      selectedExecutionTarget={{
         provider: 'claude',
         instance: 'cli',
         model: 'sonnet',
@@ -100,7 +100,7 @@ test('workspace composer renders a multi-cat audience chip for group rooms', () 
     <WorkspaceComposerTargetSlot
       payload={createPayload()}
       composerBusy={false}
-      selectedModel={undefined}
+      selectedExecutionTarget={undefined}
       directLaneCat={null}
       defaultRecipientCat={{ id: leadCat.id, name: leadCat.name } as never}
       assignedCatRecords={[leadCat, secondCat]}

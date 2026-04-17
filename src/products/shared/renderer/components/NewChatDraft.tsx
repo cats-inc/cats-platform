@@ -58,7 +58,7 @@ interface DraftTargetSlotProps {
   effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
   nonLeadDraftCats: AppShellPayload['chat']['cats'];
   isDirectLaneContext: boolean;
-  activePanelModel: ExecutionTargetValue | null;
+  activePanelExecutionTarget: ExecutionTargetValue | null;
   isSubmittingFirstTurn: boolean;
   onOpenExecution: () => void;
 }
@@ -111,7 +111,7 @@ export type WorkspaceNewChatDraftHeaderAccessoryCopy = Pick<
 export interface WorkspaceNewChatDraftHeaderAccessoryProps {
   copy: WorkspaceNewChatDraftHeaderAccessoryCopy;
   draftCwd: string | null;
-  selectedModel?: ExecutionTargetValue;
+  selectedExecutionTarget?: ExecutionTargetValue;
   disabled: boolean;
   onOpenSection: (section: WorkspaceNewChatDraftSectionId) => void;
 }
@@ -143,13 +143,13 @@ export interface WorkspaceNewChatDraftProps {
   draftDefaultRecipientCatId: string | null;
   onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
-  selectedModel?: ExecutionTargetValue;
-  onModelChange?: (value: ExecutionTargetValue) => void;
+  selectedExecutionTarget?: ExecutionTargetValue;
+  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   draftHighlightedCatId: string | null;
   onHighlightDraftCat: (catId: string | null) => void;
-  draftCatModelOverrides: Map<string, ExecutionTargetValue>;
-  onDraftCatModelOverride: (catId: string, value: ExecutionTargetValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
+  onDraftCatExecutionTargetOverride: (catId: string, value: ExecutionTargetValue) => void;
+  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -195,13 +195,13 @@ export function WorkspaceNewChatDraft({
   draftDefaultRecipientCatId,
   onDraftDefaultRecipientChange,
   allowAddCat = true,
-  selectedModel,
-  onModelChange,
+  selectedExecutionTarget,
+  onExecutionTargetChange,
   draftHighlightedCatId,
   onHighlightDraftCat,
-  draftCatModelOverrides,
-  onDraftCatModelOverride,
-  onDirectLaneModelChange,
+  draftCatExecutionTargetOverrides,
+  onDraftCatExecutionTargetOverride,
+  onDirectLaneExecutionTargetChange,
   folderBrowsePath = '',
   folderBrowseCurrentPath = '',
   folderBrowseParentPath = '',
@@ -262,7 +262,7 @@ export function WorkspaceNewChatDraft({
   const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
     ? chatCats.find((cat) => cat.id === draftHighlightedCatId) ?? null
     : null;
-  const activePanelModel: ExecutionTargetValue | null = isDirectLaneContext && defaultRecipientCat
+  const activePanelExecutionTarget: ExecutionTargetValue | null = isDirectLaneContext && defaultRecipientCat
     ? {
         provider: defaultRecipientCat.defaultExecutionTarget.provider,
         model: defaultRecipientCat.defaultExecutionTarget.model,
@@ -270,13 +270,13 @@ export function WorkspaceNewChatDraft({
         modelSelection: defaultRecipientCat.defaultModelSelection ?? null,
       }
     : highlightedCat
-      ? (draftCatModelOverrides.get(highlightedCat.id) ?? {
+      ? (draftCatExecutionTargetOverrides.get(highlightedCat.id) ?? {
           provider: highlightedCat.defaultExecutionTarget.provider,
           model: highlightedCat.defaultExecutionTarget.model,
           instance: highlightedCat.defaultExecutionTarget.instance,
           modelSelection: highlightedCat.defaultModelSelection ?? null,
         })
-      : selectedModel ?? null;
+      : selectedExecutionTarget ?? null;
   const isSubmittingFirstTurn = isComposerBusyForDraft(busy);
 
   return (
@@ -305,7 +305,7 @@ export function WorkspaceNewChatDraft({
                 folderActionLabel: resolvedCopy.folderActionLabel,
               }}
               draftCwd={draftCwd}
-              selectedModel={selectedModel}
+              selectedExecutionTarget={selectedExecutionTarget}
               disabled={isSubmittingFirstTurn}
               onOpenSection={openSidePanelTo}
             />
@@ -437,7 +437,7 @@ export function WorkspaceNewChatDraft({
                 .map((id) => chatCats.find((cat) => cat.id === id))
                 .filter((cat): cat is NonNullable<typeof cat> => cat != null)}
               isDirectLaneContext={isDirectLaneContext}
-              activePanelModel={activePanelModel}
+              activePanelExecutionTarget={activePanelExecutionTarget}
               isSubmittingFirstTurn={isSubmittingFirstTurn}
               onOpenExecution={() => openSidePanelTo('execution')}
             />
@@ -507,7 +507,7 @@ export function WorkspaceNewChatDraft({
     });
 
     const executionChildren = (() => {
-      if (isDirectLaneContext && defaultRecipientCat && activePanelModel) {
+      if (isDirectLaneContext && defaultRecipientCat && activePanelExecutionTarget) {
         return (
           <>
             <CatAvatarRowComponent
@@ -522,12 +522,12 @@ export function WorkspaceNewChatDraft({
               onHighlight={() => {}}
             />
             <ProviderModelFieldsComponent
-              provider={activePanelModel.provider}
-              instance={activePanelModel.instance ?? ''}
-              model={activePanelModel.model ?? ''}
-              modelSelection={activePanelModel.modelSelection}
+              provider={activePanelExecutionTarget.provider}
+              instance={activePanelExecutionTarget.instance ?? ''}
+              model={activePanelExecutionTarget.model ?? ''}
+              modelSelection={activePanelExecutionTarget.modelSelection}
               onTargetChange={(target: ProviderTargetSelection) => {
-                onDirectLaneModelChange?.(defaultRecipientCat.id, {
+                onDirectLaneExecutionTargetChange?.(defaultRecipientCat.id, {
                   provider: target.provider,
                   model: target.model || null,
                   instance: target.instance || null,
@@ -538,17 +538,17 @@ export function WorkspaceNewChatDraft({
           </>
         );
       }
-      if (activePanelModel) {
+      if (activePanelExecutionTarget) {
         return (
           <div style={effectiveDefaultRecipientCat && !isDirectLaneContext ? { pointerEvents: 'none', opacity: 0.45 } : undefined}>
             <ProviderModelFieldsComponent
-              provider={activePanelModel.provider}
-              instance={activePanelModel.instance ?? ''}
-              model={activePanelModel.model ?? ''}
-              modelSelection={activePanelModel.modelSelection}
+              provider={activePanelExecutionTarget.provider}
+              instance={activePanelExecutionTarget.instance ?? ''}
+              model={activePanelExecutionTarget.model ?? ''}
+              modelSelection={activePanelExecutionTarget.modelSelection}
               onTargetChange={(target: ProviderTargetSelection) => {
-                if (!effectiveDefaultRecipientCat && onModelChange) {
-                  onModelChange({
+                if (!effectiveDefaultRecipientCat && onExecutionTargetChange) {
+                  onExecutionTargetChange({
                     provider: target.provider,
                     model: target.model || null,
                     instance: target.instance || null,

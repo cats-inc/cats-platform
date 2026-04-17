@@ -43,7 +43,7 @@ import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../shared/operator-loop/index';
-import { type ExecutionTargetValue } from './ExecutionTarget';
+import { type ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import {
   type MessageChoicesSubmitInput,
 } from './MessageChoices';
@@ -128,9 +128,9 @@ export interface ChatViewProps {
     outcomeId?: string | null;
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
-  selectedModel?: ExecutionTargetValue;
-  onModelChange?: (value: ExecutionTargetValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  selectedExecutionTarget?: ExecutionTargetValue;
+  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
+  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   activeWorkflowShape?: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys?: string[] | null;
@@ -184,9 +184,9 @@ export function ChatView({
   onStartFresh,
   onOperatorAction,
   autoResize,
-  selectedModel,
-  onModelChange,
-  onDirectLaneModelChange,
+  selectedExecutionTarget,
+  onExecutionTargetChange,
+  onDirectLaneExecutionTargetChange,
   activeWorkflowShape = 'sequential',
   onToggleActiveWorkflowShape,
   activeAudienceKeys = null,
@@ -487,7 +487,7 @@ export function ChatView({
       isDirectLane,
       directLaneCat,
       isSoloComposer,
-      selectedModel,
+      selectedExecutionTarget,
       defaultRecipientParticipant,
       bossCatId: payload.chat.bossCatId,
       resolveParticipantCatRecord,
@@ -499,7 +499,7 @@ export function ChatView({
     isDirectLane,
     isSoloComposer,
     payload.chat.bossCatId,
-    selectedModel,
+    selectedExecutionTarget,
   ]);
   const layoutMetrics = useMemo(
     () => resolveLayoutMetrics(layoutMode, viewportWidth),
@@ -542,7 +542,7 @@ export function ChatView({
   );
   const {
     participantChipLabel,
-    directLaneModelValue,
+    directLaneExecutionTarget,
     directLaneExcludedMentionNames,
     composerBusy,
     composerAckBusy,
@@ -703,10 +703,10 @@ export function ChatView({
             defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
             defaultRecipientParticipant,
             directLaneCat,
-            directLaneModelValue,
+            directLaneExecutionTarget,
             isDirectLane,
             isSoloComposer,
-            selectedModel,
+            selectedExecutionTarget,
             inspectedRun,
             showAddCatButton,
             editingParticipantId,
@@ -723,9 +723,9 @@ export function ChatView({
             onInspectRun: setInspectedRunId,
             onApprovalDecision,
             onOperatorAction,
-            onModelChange,
+            onExecutionTargetChange,
             onStartFresh,
-            onDirectLaneModelChange,
+            onDirectLaneExecutionTargetChange,
             buildParticipantAvatarStyle,
           })}
         />

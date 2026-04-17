@@ -11,7 +11,7 @@ import {
   createCatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
-import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
+import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import {
   updateCatProfile,
 } from '../api/index.js';
@@ -36,7 +36,7 @@ export function useAppNavigationActions(options: {
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
+  setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;

@@ -182,10 +182,10 @@ export function useWorkspaceExecutionTargetState<
   updateChannelPendingExecutionTarget,
   debounceMs = 150,
 }: UseWorkspaceExecutionTargetStateOptions<TPayload, TChat, TSelectedChannel>) {
-  const [draftModel, setDraftModel] = useState<ExecutionTargetValue>(
+  const [draftExecutionTarget, setDraftExecutionTarget] = useState<ExecutionTargetValue>(
     createDefaultExecutionTargetValue,
   );
-  const [soloChannelModel, setSoloChannelModel] = useState<ExecutionTargetValue>(
+  const [soloChannelExecutionTarget, setSoloChannelExecutionTarget] = useState<ExecutionTargetValue>(
     createDefaultExecutionTargetValue,
   );
   const latestNewChatDefaultsSaveId = useRef(0);
@@ -193,22 +193,22 @@ export function useWorkspaceExecutionTargetState<
     typeof setTimeout
   > | null>(null);
   const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
-  const latestSoloChannelModelSaveId = useRef(0);
-  const pendingSoloChannelModelSaveTimeout = useRef<ReturnType<
+  const latestSoloChannelExecutionTargetSaveId = useRef(0);
+  const pendingSoloChannelExecutionTargetSaveTimeout = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
-  const pendingSoloChannelModelSaveAbort = useRef<AbortController | null>(null);
+  const pendingSoloChannelExecutionTargetSaveAbort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!readyChat) {
       return;
     }
 
-    const nextDraftModel = toExecutionTargetValue(readyChat.newChatDefaults);
-    setDraftModel((currentDraftModel) =>
-      sameExecutionTargetValue(currentDraftModel, nextDraftModel)
-        ? currentDraftModel
-        : nextDraftModel);
+    const nextDraftExecutionTarget = toExecutionTargetValue(readyChat.newChatDefaults);
+    setDraftExecutionTarget((currentDraftExecutionTarget) =>
+      sameExecutionTargetValue(currentDraftExecutionTarget, nextDraftExecutionTarget)
+        ? currentDraftExecutionTarget
+        : nextDraftExecutionTarget);
   }, [
     readyChat?.newChatDefaults?.instance,
     readyChat?.newChatDefaults?.model,
@@ -224,25 +224,25 @@ export function useWorkspaceExecutionTargetState<
       }
       pendingNewChatDefaultsSaveAbort.current?.abort();
       pendingNewChatDefaultsSaveAbort.current = null;
-      if (pendingSoloChannelModelSaveTimeout.current) {
-        clearTimeout(pendingSoloChannelModelSaveTimeout.current);
-        pendingSoloChannelModelSaveTimeout.current = null;
+      if (pendingSoloChannelExecutionTargetSaveTimeout.current) {
+        clearTimeout(pendingSoloChannelExecutionTargetSaveTimeout.current);
+        pendingSoloChannelExecutionTargetSaveTimeout.current = null;
       }
-      pendingSoloChannelModelSaveAbort.current?.abort();
-      pendingSoloChannelModelSaveAbort.current = null;
+      pendingSoloChannelExecutionTargetSaveAbort.current?.abort();
+      pendingSoloChannelExecutionTargetSaveAbort.current = null;
     };
   }, []);
 
   useEffect(() => {
-    const nextSoloChannelModel = toSoloChannelExecutionTargetValue(
+    const nextSoloChannelExecutionTarget = toSoloChannelExecutionTargetValue(
       readyChat,
       readySelectedChannel,
     );
-    if (!nextSoloChannelModel) {
+    if (!nextSoloChannelExecutionTarget) {
       return;
     }
 
-    setSoloChannelModel(nextSoloChannelModel);
+    setSoloChannelExecutionTarget(nextSoloChannelExecutionTarget);
   }, [
     readySelectedChannel?.id,
     readySelectedChannel?.composerMode,
@@ -265,7 +265,7 @@ export function useWorkspaceExecutionTargetState<
       return;
     }
 
-    setSoloChannelModel({
+    setSoloChannelExecutionTarget({
       provider: readySelectedChannel.pendingProvider,
       model: readySelectedChannel.pendingModel ?? null,
       instance: readySelectedChannel.pendingInstance ?? null,
@@ -278,10 +278,10 @@ export function useWorkspaceExecutionTargetState<
       return;
     }
 
-    const persistedDraftModel = toExecutionTargetValue(
+    const persistedDraftExecutionTarget = toExecutionTargetValue(
       state.payload.chat.newChatDefaults,
     );
-    if (sameExecutionTargetValue(draftModel, persistedDraftModel)) {
+    if (sameExecutionTargetValue(draftExecutionTarget, persistedDraftExecutionTarget)) {
       return;
     }
 
@@ -295,17 +295,17 @@ export function useWorkspaceExecutionTargetState<
     latestNewChatDefaultsSaveId.current = saveId;
     const controller = new AbortController();
     pendingNewChatDefaultsSaveAbort.current = controller;
-    const nextDraftModel: PersistedNewChatDefaultsInput = {
-      provider: draftModel.provider,
-      instance: draftModel.instance,
-      model: draftModel.model,
-      modelSelection: draftModel.modelSelection,
+    const nextDraftExecutionTarget: PersistedNewChatDefaultsInput = {
+      provider: draftExecutionTarget.provider,
+      instance: draftExecutionTarget.instance,
+      model: draftExecutionTarget.model,
+      modelSelection: draftExecutionTarget.modelSelection,
     };
 
     pendingNewChatDefaultsSaveTimeout.current = setTimeout(() => {
       pendingNewChatDefaultsSaveTimeout.current = null;
 
-      void updateNewChatDefaultsPreference(nextDraftModel, controller.signal)
+      void updateNewChatDefaultsPreference(nextDraftExecutionTarget, controller.signal)
         .then((payload) => {
           if (controller.signal.aborted || latestNewChatDefaultsSaveId.current !== saveId) {
             return;
@@ -335,10 +335,10 @@ export function useWorkspaceExecutionTargetState<
     };
   }, [
     debounceMs,
-    draftModel.instance,
-    draftModel.model,
-    draftModel.modelSelection,
-    draftModel.provider,
+    draftExecutionTarget.instance,
+    draftExecutionTarget.model,
+    draftExecutionTarget.modelSelection,
+    draftExecutionTarget.provider,
     setFeedback,
     setState,
     state.status,
@@ -362,56 +362,65 @@ export function useWorkspaceExecutionTargetState<
       return;
     }
 
-    const persistedSoloModel = toSoloChannelExecutionTargetValue(
+    const persistedSoloChannelExecutionTarget = toSoloChannelExecutionTargetValue(
       readyChat,
       readySelectedChannel,
     );
     if (
       !readySelectedChannel
-      || !persistedSoloModel
-      || sameExecutionTargetValue(soloChannelModel, persistedSoloModel)
+      || !persistedSoloChannelExecutionTarget
+      || sameExecutionTargetValue(
+        soloChannelExecutionTarget,
+        persistedSoloChannelExecutionTarget,
+      )
     ) {
       return;
     }
 
-    if (pendingSoloChannelModelSaveTimeout.current) {
-      clearTimeout(pendingSoloChannelModelSaveTimeout.current);
-      pendingSoloChannelModelSaveTimeout.current = null;
+    if (pendingSoloChannelExecutionTargetSaveTimeout.current) {
+      clearTimeout(pendingSoloChannelExecutionTargetSaveTimeout.current);
+      pendingSoloChannelExecutionTargetSaveTimeout.current = null;
     }
-    pendingSoloChannelModelSaveAbort.current?.abort();
+    pendingSoloChannelExecutionTargetSaveAbort.current?.abort();
 
     const channelId = readySelectedChannel.id;
-    const saveId = latestSoloChannelModelSaveId.current + 1;
-    latestSoloChannelModelSaveId.current = saveId;
+    const saveId = latestSoloChannelExecutionTargetSaveId.current + 1;
+    latestSoloChannelExecutionTargetSaveId.current = saveId;
     const controller = new AbortController();
-    pendingSoloChannelModelSaveAbort.current = controller;
-    const nextSoloModel = {
-      pendingProvider: soloChannelModel.provider,
-      pendingModel: soloChannelModel.model,
-      pendingInstance: soloChannelModel.instance,
-      pendingModelSelection: soloChannelModel.modelSelection,
+    pendingSoloChannelExecutionTargetSaveAbort.current = controller;
+    const nextSoloChannelExecutionTarget = {
+      pendingProvider: soloChannelExecutionTarget.provider,
+      pendingModel: soloChannelExecutionTarget.model,
+      pendingInstance: soloChannelExecutionTarget.instance,
+      pendingModelSelection: soloChannelExecutionTarget.modelSelection,
     };
 
-    pendingSoloChannelModelSaveTimeout.current = setTimeout(() => {
-      pendingSoloChannelModelSaveTimeout.current = null;
+    pendingSoloChannelExecutionTargetSaveTimeout.current = setTimeout(() => {
+      pendingSoloChannelExecutionTargetSaveTimeout.current = null;
 
       void updateChannelPendingExecutionTarget(
         channelId,
-        nextSoloModel,
+        nextSoloChannelExecutionTarget,
         controller.signal,
       )
         .then((payload) => {
-          if (controller.signal.aborted || latestSoloChannelModelSaveId.current !== saveId) {
+          if (
+            controller.signal.aborted
+            || latestSoloChannelExecutionTargetSaveId.current !== saveId
+          ) {
             return;
           }
-          pendingSoloChannelModelSaveAbort.current = null;
+          pendingSoloChannelExecutionTargetSaveAbort.current = null;
           startTransition(() => setState({ status: 'ready', payload }));
         })
         .catch((error) => {
-          if (controller.signal.aborted || latestSoloChannelModelSaveId.current !== saveId) {
+          if (
+            controller.signal.aborted
+            || latestSoloChannelExecutionTargetSaveId.current !== saveId
+          ) {
             return;
           }
-          pendingSoloChannelModelSaveAbort.current = null;
+          pendingSoloChannelExecutionTargetSaveAbort.current = null;
           setFeedback(
             error instanceof Error
               ? error.message
@@ -421,9 +430,9 @@ export function useWorkspaceExecutionTargetState<
     }, debounceMs);
 
     return () => {
-      if (pendingSoloChannelModelSaveTimeout.current) {
-        clearTimeout(pendingSoloChannelModelSaveTimeout.current);
-        pendingSoloChannelModelSaveTimeout.current = null;
+      if (pendingSoloChannelExecutionTargetSaveTimeout.current) {
+        clearTimeout(pendingSoloChannelExecutionTargetSaveTimeout.current);
+        pendingSoloChannelExecutionTargetSaveTimeout.current = null;
       }
       controller.abort();
     };
@@ -433,19 +442,19 @@ export function useWorkspaceExecutionTargetState<
     readySelectedChannel,
     setFeedback,
     setState,
-    soloChannelModel.instance,
-    soloChannelModel.model,
-    soloChannelModel.modelSelection,
-    soloChannelModel.provider,
+    soloChannelExecutionTarget.instance,
+    soloChannelExecutionTarget.model,
+    soloChannelExecutionTarget.modelSelection,
+    soloChannelExecutionTarget.provider,
     state.status,
     updateChannelPendingExecutionTarget,
   ]);
 
   return {
-    draftModel,
-    setDraftModel,
-    soloChannelModel,
-    setSoloChannelModel,
+    draftExecutionTarget,
+    setDraftExecutionTarget,
+    soloChannelExecutionTarget,
+    setSoloChannelExecutionTarget,
   };
 }
 

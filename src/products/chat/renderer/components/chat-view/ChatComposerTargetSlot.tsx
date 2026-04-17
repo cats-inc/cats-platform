@@ -6,7 +6,7 @@ import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import { AudienceChip } from '../../../../shared/renderer/components/AudienceChip.js';
 import {
   buildAudienceParticipantFromCat,
-  buildAudienceParticipantFromModel,
+  buildAudienceParticipantFromExecutionTarget,
   buildAudienceParticipantFromRecipient,
   buildAudienceParticipantFromStackParticipant,
 } from '../../../../shared/renderer/audienceParticipantBuilder.js';
@@ -124,7 +124,7 @@ export function ChatComposerTargetSlot({
   if (implicitRecipient) {
     return (
       <AudienceChip
-        audienceParticipants={[buildAudienceParticipantFromModel({
+        audienceParticipants={[buildAudienceParticipantFromExecutionTarget({
           provider: implicitRecipient.provider ?? '',
           instance: implicitRecipient.instance ?? null,
           model: implicitRecipient.model ?? null,

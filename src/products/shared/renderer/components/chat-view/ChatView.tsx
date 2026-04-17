@@ -102,9 +102,9 @@ export interface ChatViewProps {
     outcomeId?: string | null;
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
-  selectedModel?: ExecutionTargetValue;
-  onModelChange?: (value: ExecutionTargetValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  selectedExecutionTarget?: ExecutionTargetValue;
+  onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
+  onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
   activeWorkflowShape?: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys?: string[] | null;
@@ -175,9 +175,9 @@ export function ChatView({
   onResumeChannel,
   onOperatorAction,
   autoResize,
-  selectedModel,
-  onModelChange,
-  onDirectLaneModelChange,
+  selectedExecutionTarget,
+  onExecutionTargetChange,
+  onDirectLaneExecutionTargetChange,
   activeWorkflowShape = 'sequential',
   onToggleActiveWorkflowShape,
   activeAudienceKeys = null,
@@ -332,7 +332,7 @@ export function ChatView({
   const showRosterAvatars = isDirectLane
     ? Boolean(defaultRecipientCat)
     : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedCats.length > 0);
-  const directLaneModelValue: ExecutionTargetValue | null = directLaneCat
+  const directLaneExecutionTarget: ExecutionTargetValue | null = directLaneCat
     ? {
         provider: directLaneCat.defaultExecutionTarget.provider,
         model: directLaneCat.defaultExecutionTarget.model,
@@ -467,10 +467,10 @@ export function ChatView({
           assignedCatRecords={assignedCatRecords}
           defaultRecipientCat={defaultRecipientCat ?? null}
           directLaneCat={directLaneCat}
-          directLaneModelValue={directLaneModelValue}
+          directLaneExecutionTarget={directLaneExecutionTarget}
           isDirectLane={isDirectLane}
           isSoloComposer={isSoloComposer}
-          selectedModel={selectedModel}
+          selectedExecutionTarget={selectedExecutionTarget}
           inspectedRun={inspectedRun}
           showAddCatButton={showAddCatButton}
           onSectionToggle={setSidePanelSection}
@@ -478,8 +478,8 @@ export function ChatView({
           onInspectRun={setInspectedRunId}
           onApprovalDecision={onApprovalDecision}
           onOperatorAction={onOperatorAction}
-          onModelChange={onModelChange}
-          onDirectLaneModelChange={onDirectLaneModelChange}
+          onExecutionTargetChange={onExecutionTargetChange}
+          onDirectLaneExecutionTargetChange={onDirectLaneExecutionTargetChange}
           onOpenAddCat={onOpenAddCat}
         />
       )}
@@ -517,7 +517,7 @@ export function ChatView({
           <WorkspaceComposerTargetSlot
             payload={payload}
             composerBusy={composerBusy}
-            selectedModel={selectedModel}
+            selectedExecutionTarget={selectedExecutionTarget}
             directLaneCat={directLaneCat}
             defaultRecipientCat={defaultRecipientCat ?? null}
             assignedCatRecords={assignedCatRecords}

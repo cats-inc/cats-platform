@@ -45,7 +45,7 @@ converts one source type:
 
 - `buildAudienceParticipantFromCat(cat: ChatCat)`
 - `buildAudienceParticipantFromTemporaryParticipant(tp: DraftTemporaryParticipant)`
-- `buildAudienceParticipantFromModel(model: ExecutionTargetValue)`
+- `buildAudienceParticipantFromExecutionTarget(executionTarget: ExecutionTargetValue)`
 - `buildAudienceParticipantFromRecipient(recipient: RecipientChipTarget)`
 - `buildAudienceParticipantFromStackParticipant(participant: ComposerStackParticipant)`
 

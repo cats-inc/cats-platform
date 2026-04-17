@@ -216,10 +216,10 @@ export function createWorkspaceProductApp({
       setDraftCatIds,
       draftHighlightedCatId,
       setDraftHighlightedCatId,
-      draftCatModelOverrides,
-      setDraftCatModelOverrides,
+      draftCatExecutionTargetOverrides,
+      setDraftCatExecutionTargetOverrides,
       onToggleDraftCat,
-      onDraftCatModelOverride,
+      onDraftCatExecutionTargetOverride,
       resetDraftCats,
     } = useWorkspaceDraftCatState();
     const maxDraftGroupParticipants =
@@ -391,10 +391,10 @@ export function createWorkspaceProductApp({
       operatorRefreshKey,
     );
     const {
-      draftModel,
-      setDraftModel,
-      soloChannelModel,
-      setSoloChannelModel,
+      draftExecutionTarget,
+      setDraftExecutionTarget,
+      soloChannelExecutionTarget,
+      setSoloChannelExecutionTarget,
     } = useWorkspaceExecutionTargetState({
       state,
       readyChat,
@@ -421,16 +421,16 @@ export function createWorkspaceProductApp({
       onAddDraftParallelChatTarget,
       onRemoveDraftParallelChatTarget,
     } = useWorkspaceParallelDraft({
-      draftModel,
+      draftExecutionTarget,
       maxParallelChats,
     });
     const seedDraftGroupParticipants = useCallback(
-      () => createInitialGroupParticipants(draftModel, maxDraftGroupParticipants),
+      () => createInitialGroupParticipants(draftExecutionTarget, maxDraftGroupParticipants),
       [
-        draftModel.instance,
-        draftModel.model,
-        draftModel.modelSelection,
-        draftModel.provider,
+        draftExecutionTarget.instance,
+        draftExecutionTarget.model,
+        draftExecutionTarget.modelSelection,
+        draftExecutionTarget.provider,
         maxDraftGroupParticipants,
       ],
     );
@@ -459,16 +459,16 @@ export function createWorkspaceProductApp({
         const nextParticipant =
           current.length === 0 && draftParticipants.participantCatIds.length === 0
             ? createDraftTemporaryParticipant({
-                provider: draftModel.provider,
-                instance: draftModel.instance,
-                model: draftModel.model,
-                modelSelection: draftModel.modelSelection,
+                provider: draftExecutionTarget.provider,
+                instance: draftExecutionTarget.instance,
+                model: draftExecutionTarget.model,
+                modelSelection: draftExecutionTarget.modelSelection,
                 takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
                 randomUUID: () =>
                   globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
               })
             : createNextGroupTemporaryParticipant({
-                baseProvider: draftModel.provider,
+                baseProvider: draftExecutionTarget.provider,
                 existingParticipants: current,
                 takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
                 randomUUID: () =>
@@ -503,10 +503,10 @@ export function createWorkspaceProductApp({
         return [...normalizedAudienceKeys, nextParticipantKey];
       });
     }, [
-      draftModel.instance,
-      draftModel.model,
-      draftModel.modelSelection,
-      draftModel.provider,
+      draftExecutionTarget.instance,
+      draftExecutionTarget.model,
+      draftExecutionTarget.modelSelection,
+      draftExecutionTarget.provider,
       draftParticipants.participantCatIds,
       draftTemporaryParticipants,
       maxDraftAudienceParticipants,
@@ -605,7 +605,7 @@ export function createWorkspaceProductApp({
         && draftParticipants.participantCatIds.length === 0
         && draftTemporaryParticipants.length === 0;
       if (isNewLeadParticipant && participant.provider.trim()) {
-        setDraftModel({
+        setDraftExecutionTarget({
           provider: participant.provider.trim(),
           model: participant.model?.trim() || null,
           instance: participant.instance?.trim() || null,
@@ -634,7 +634,7 @@ export function createWorkspaceProductApp({
       effectiveNewChatMode,
       maxDraftAudienceParticipants,
       onAddDraftTemporaryParticipant,
-      setDraftModel,
+      setDraftExecutionTarget,
       showingNewChatDraft,
       supportsStructuredDraftModes,
     ]);
@@ -666,7 +666,7 @@ export function createWorkspaceProductApp({
       setDraftCatIds,
       setDraftTemporaryParticipants,
       setDraftHighlightedCatId,
-      setDraftCatModelOverrides,
+      setDraftCatExecutionTargetOverrides,
       setDraftWorkflowShape,
       setDraftAudienceKeys,
       resetDraftParallelChatTargets,
@@ -751,13 +751,13 @@ export function createWorkspaceProductApp({
       setDraftCatIds,
       setDraftTemporaryParticipants,
       setDraftHighlightedCatId,
-      setDraftCatModelOverrides,
+      setDraftCatExecutionTargetOverrides,
       setDraftFiles,
       setChannelFiles,
       setDraftWorkflowShape,
       setDraftAudienceKeys,
-      draftModel,
-      soloChannelModel,
+      draftExecutionTarget,
+      soloChannelExecutionTarget,
       showingParallelChatDraft: supportsStructuredDraftModes && showingParallelChatDraft,
       draftParallelChatTargets,
       draftWorkflowShape,
@@ -846,13 +846,13 @@ export function createWorkspaceProductApp({
       setDraftTemporaryParticipants((current) =>
         syncLeadDraftTemporaryParticipantWithTarget({
           participants: current,
-          target: draftModel,
+          target: draftExecutionTarget,
         }));
     }, [
-      draftModel.instance,
-      draftModel.model,
-      draftModel.modelSelection,
-      draftModel.provider,
+      draftExecutionTarget.instance,
+      draftExecutionTarget.model,
+      draftExecutionTarget.modelSelection,
+      draftExecutionTarget.provider,
       effectiveNewChatMode,
       setDraftTemporaryParticipants,
       showingNewChatDraft,
@@ -876,9 +876,9 @@ export function createWorkspaceProductApp({
       readySelectedChannel,
     });
 
-    const onDraftModelChange = useCallback(
-      (nextDraftModel: ExecutionTargetValue): void => {
-        setDraftModel(nextDraftModel);
+    const onDraftExecutionTargetChange = useCallback(
+      (nextDraftExecutionTarget: ExecutionTargetValue): void => {
+        setDraftExecutionTarget(nextDraftExecutionTarget);
         if (
           supportsStructuredDraftModes
           && showingNewChatDraft
@@ -887,7 +887,7 @@ export function createWorkspaceProductApp({
           setDraftTemporaryParticipants((current) =>
             syncLeadDraftTemporaryParticipantWithTarget({
               participants: current,
-              target: nextDraftModel,
+              target: nextDraftExecutionTarget,
             }));
         }
       },
@@ -902,10 +902,10 @@ export function createWorkspaceProductApp({
       (index: number, value: ExecutionTargetValue): void => {
         onDraftParallelChatTargetChange(index, value);
         if (index === 0) {
-          setDraftModel(value);
+          setDraftExecutionTarget(value);
         }
       },
-      [onDraftParallelChatTargetChange, setDraftModel],
+      [onDraftParallelChatTargetChange, setDraftExecutionTarget],
     );
 
     const onResumeChannel = useWorkspaceResumeChannel<AppShellPayload>({
@@ -1035,15 +1035,15 @@ export function createWorkspaceProductApp({
                       : undefined,
                     onOperatorAction,
                     autoResize,
-                    selectedModel:
+                    selectedExecutionTarget:
                       selectedChannel?.composerMode === "solo"
-                        ? soloChannelModel
+                        ? soloChannelExecutionTarget
                         : undefined,
-                    onModelChange:
+                    onExecutionTargetChange:
                       selectedChannel?.composerMode === "solo"
-                        ? setSoloChannelModel
+                        ? setSoloChannelExecutionTarget
                         : undefined,
-                    onDirectLaneModelChange: onDirectLaneModelSave,
+                    onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
                     activeWorkflowShape,
                     onToggleActiveWorkflowShape:
                       selectedChannel?.composerMode === "cat_led"
@@ -1093,13 +1093,13 @@ export function createWorkspaceProductApp({
                     autoResize,
                     draftDefaultRecipientCatId,
                     entryMode: effectiveNewChatMode,
-                    selectedModel: draftModel,
-                    onModelChange: onDraftModelChange,
+                    selectedExecutionTarget: draftExecutionTarget,
+                    onExecutionTargetChange: onDraftExecutionTargetChange,
                     draftHighlightedCatId,
                     onHighlightDraftCat: setDraftHighlightedCatId,
-                    draftCatModelOverrides,
-                    onDraftCatModelOverride,
-                    onDirectLaneModelChange: onDirectLaneModelSave,
+                    draftCatExecutionTargetOverrides,
+                    onDraftCatExecutionTargetOverride,
+                    onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
                     parallelTargets:
                       supportsStructuredDraftModes && showingParallelChatDraft
                         ? draftParallelChatTargets

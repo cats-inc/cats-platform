@@ -75,8 +75,8 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onDraftDefaultRecipientChange: () => {},
     draftHighlightedCatId: null,
     onHighlightDraftCat: () => {},
-    draftCatModelOverrides: new Map(),
-    onDraftCatModelOverride: () => {},
+    draftCatExecutionTargetOverrides: new Map(),
+    onDraftCatExecutionTargetOverride: () => {},
     ...overrides,
   };
 }
@@ -101,7 +101,7 @@ test('new code default draft keeps the original shared composer structure withou
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        selectedModel: {
+        selectedExecutionTarget: {
           provider: 'claude',
           instance: 'native',
           model: 'claude-sonnet',

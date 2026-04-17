@@ -24,7 +24,7 @@ import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
 } from '../shared/channelEntry';
-import type { ExecutionTargetValue } from './components/ExecutionTarget.js';
+import type { ExecutionTargetValue } from '../../shared/renderer/components/ExecutionTarget.js';
 import {
   emptyCatForm as emptyWorkspaceCatForm,
   isChatCat as isWorkspaceChatCat,
@@ -322,7 +322,7 @@ export function buildNewChatChannelInput(options: {
   defaultRecipientCatId?: string | null;
   participantCatIds?: string[];
   temporaryParticipants?: DraftTemporaryParticipant[];
-  draftModel?: {
+  draftExecutionTarget?: {
     provider: string;
     model: string | null;
     instance: string | null;

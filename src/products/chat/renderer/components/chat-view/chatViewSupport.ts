@@ -20,7 +20,7 @@ import {
 import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { buildImplicitRecipient, buildNamedRecipient, type RecipientChipTarget } from '../ComposerRecipientChip.js';
-import type { ExecutionTargetValue } from '../ExecutionTarget.js';
+import type { ExecutionTargetValue } from '../../../../shared/renderer/components/ExecutionTarget.js';
 import { presentChannelTitle, type SelectedChannelView } from '../../chatUtils.js';
 import {
   resolveCompareNeighborChannelId,
@@ -423,7 +423,7 @@ export function buildChatComposerRecipients(input: {
   isDirectLane: boolean;
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
   isSoloComposer: boolean;
-  selectedModel: ExecutionTargetValue | undefined;
+  selectedExecutionTarget: ExecutionTargetValue | undefined;
   defaultRecipientParticipant: ResolvedChannelParticipant | null;
   bossCatId: string | null;
   resolveParticipantCatRecord: (
@@ -460,8 +460,8 @@ export function buildChatComposerRecipients(input: {
       }),
     ];
   }
-  if (input.isSoloComposer && input.selectedModel) {
-    return [buildImplicitRecipient(input.selectedModel)];
+  if (input.isSoloComposer && input.selectedExecutionTarget) {
+    return [buildImplicitRecipient(input.selectedExecutionTarget)];
   }
   if (!input.defaultRecipientParticipant) {
     return [];
@@ -502,7 +502,7 @@ export function buildChatComposerRecipients(input: {
 
 export interface ChatComposerViewState {
   participantChipLabel: string;
-  directLaneModelValue: ExecutionTargetValue | null;
+  directLaneExecutionTarget: ExecutionTargetValue | null;
   directLaneExcludedMentionNames: string[];
   composerBusy: boolean;
   composerAckBusy: boolean;
@@ -553,7 +553,7 @@ export function resolveChatComposerViewState(input: {
     participantChipLabel: input.activeRoomParticipants.length > 0
       ? `${input.activeRoomParticipants.length} participant${input.activeRoomParticipants.length === 1 ? '' : 's'}`
       : 'Participants',
-    directLaneModelValue: input.directLaneCat
+    directLaneExecutionTarget: input.directLaneCat
       ? {
           provider: input.directLaneCat.defaultExecutionTarget.provider,
           model: input.directLaneCat.defaultExecutionTarget.model,

@@ -66,7 +66,7 @@ import {
   resolveDraftRouteContext,
   resolveDraftRoutePath,
 } from '../draftParticipants';
-import type { ExecutionTargetValue } from '../components/ExecutionTarget';
+import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
 
 type LoadStateLike =
@@ -106,13 +106,13 @@ export function useComposerSubmit(options: {
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
+  setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   setDraftWorkflowShape: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
-  draftModel: ExecutionTargetValue;
-  soloChannelModel: ExecutionTargetValue;
+  draftExecutionTarget: ExecutionTargetValue;
+  soloChannelExecutionTarget: ExecutionTargetValue;
   showingParallelChatDraft: boolean;
   draftParallelChatTargets: ExecutionTargetValue[];
   draftWorkflowShape: 'sequential' | 'concurrent';
@@ -147,13 +147,13 @@ export function useComposerSubmit(options: {
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
+    setDraftCatExecutionTargetOverrides,
     setDraftFiles,
     setChannelFiles,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
-    draftModel,
-    soloChannelModel,
+    draftExecutionTarget,
+    soloChannelExecutionTarget,
     showingParallelChatDraft,
     draftParallelChatTargets,
     draftWorkflowShape,
@@ -286,7 +286,7 @@ export function useComposerSubmit(options: {
           setDraftCatIds,
           setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
-          setDraftCatModelOverrides,
+          setDraftCatExecutionTargetOverrides,
           setDraftFiles,
           resetDraftParallelChatTargets,
           setDraftWorkflowShape,
@@ -350,9 +350,9 @@ export function useComposerSubmit(options: {
         participantCatIds: draftParticipantCatIds,
         temporaryParticipants: draftTemporaryParticipants,
         draftEntryKind,
-        draftModel,
+        draftExecutionTarget,
         selectedChannel,
-        soloChannelModel,
+        soloChannelExecutionTarget,
         draftFiles,
         channelFiles,
         createChatChannel,
@@ -448,7 +448,7 @@ export function useComposerSubmit(options: {
           setDraftCatIds,
           setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
-          setDraftCatModelOverrides,
+          setDraftCatExecutionTargetOverrides,
           setDraftFiles,
           setChannelFiles,
           setDraftWorkflowShape,
@@ -460,7 +460,7 @@ export function useComposerSubmit(options: {
           setDraftCatIds,
           setDraftTemporaryParticipants,
           setDraftHighlightedCatId,
-          setDraftCatModelOverrides,
+          setDraftCatExecutionTargetOverrides,
           setDraftFiles,
           setDraftWorkflowShape,
           setDraftAudienceKeys,
@@ -502,10 +502,10 @@ export function useComposerSubmit(options: {
     draftFiles,
     draftEntryKind,
     draftDefaultRecipientCatId,
-    draftModel.instance,
-    draftModel.modelSelection,
-    draftModel.model,
-    draftModel.provider,
+    draftExecutionTarget.instance,
+    draftExecutionTarget.modelSelection,
+    draftExecutionTarget.model,
+    draftExecutionTarget.provider,
     showingParallelChatDraft,
     draftParallelChatTargets,
     resetDraftParallelChatTargets,
@@ -519,7 +519,7 @@ export function useComposerSubmit(options: {
     setDraftCatIds,
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
-    setDraftCatModelOverrides,
+    setDraftCatExecutionTargetOverrides,
     setDraftCwd,
     setDraftFiles,
     setDraftAudienceKeys,
@@ -532,10 +532,10 @@ export function useComposerSubmit(options: {
     activeWorkflowShape,
     showingMyCatDirectLane,
     showingNewChatDraft,
-    soloChannelModel.instance,
-    soloChannelModel.modelSelection,
-    soloChannelModel.model,
-    soloChannelModel.provider,
+    soloChannelExecutionTarget.instance,
+    soloChannelExecutionTarget.modelSelection,
+    soloChannelExecutionTarget.model,
+    soloChannelExecutionTarget.provider,
     state,
   ]);
 
