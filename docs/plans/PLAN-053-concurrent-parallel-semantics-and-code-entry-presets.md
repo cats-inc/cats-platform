@@ -290,7 +290,7 @@ notes.
 | 2026-04-17 | Extended the shared copy seam so default `+New code` direct-lane hero text no longer falls back to chat-specific wording such as `Private Chat` |
 | 2026-04-17 | Implemented the first continuity follow-through slices: solo retarget full-transplant semantics, explicit `Start fresh`, same-participant restart transplants for cat/direct rooms, and structured choice-response packaging in continuity transcripts |
 | 2026-04-17 | Left Task 1B.6 open: preceding tool labels and structured choice responses are now carried, but tool-result/file-preview first-slice packaging still needs a final contract |
-| 2026-04-17 | Follow-up slice added token-budgeted semantic transplant fallback, explicit targeted handoff packaging, and fresh-start pre-reset memory flush; parallel child source-seed rules remain open under Task 1B.5 |
+| 2026-04-17 | Follow-up slice added token-budgeted semantic transplant fallback, explicit targeted handoff packaging, and fresh-start pre-reset memory flush; Task 1B.5 was corrected back to open because prior regressions only covered current child-local isolation, not an explicit production guard or source-seed rule |
 
 ---
 

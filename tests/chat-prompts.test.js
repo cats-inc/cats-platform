@@ -13,7 +13,6 @@ import {
   buildOrchestratorPrompt,
   buildBoundedRecentContextInstructions,
   buildSoloChatContinuityTransplantPackage,
-  buildSoloChatContinuityTransplantInstructions,
 } from '../build/server/products/chat/state/prompts.js';
 import { buildPromptForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
 import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
@@ -163,10 +162,29 @@ test('solo chat continuity package compacts oversized transcripts into semantic 
   assert.match(continuityPackage.instructions, /Same conversation continuity package:/u);
   assert.match(continuityPackage.instructions, /Earlier continuity digest:/u);
   assert.match(continuityPackage.instructions, /Recent verbatim/u);
+  assert.ok(continuityPackage.instructions.length <= 12_000);
+});
+
+test('semantic continuity digest keeps a representative middle snippet instead of only chunk edges', () => {
+  const oversizedTranscript = Array.from({ length: 120 }, (_value, index) => ({
+    senderKind: 'user',
+    senderName: 'Kenny',
+    body: index === 57
+      ? 'Critical middle decision: keep the rollback path and preserve the migration flag.'
+      : `Oversized user turn ${index + 1}: ${'x'.repeat(160)}`,
+  }));
+
+  const continuityPackage = buildSoloChatContinuityTransplantPackage(oversizedTranscript);
+
+  assert.equal(continuityPackage.mode, 'semantic_transplant');
+  assert.match(
+    continuityPackage.instructions ?? '',
+    /Critical middle decision: keep the rollback path and preserve the migration flag\./u,
+  );
 });
 
 test('solo chat continuity transplant instructions keep the full earlier conversational transcript', () => {
-  const instructions = buildSoloChatContinuityTransplantInstructions([
+  const continuityPackage = buildSoloChatContinuityTransplantPackage([
     {
       senderKind: 'system',
       senderName: 'Runtime',
@@ -178,8 +196,10 @@ test('solo chat continuity transplant instructions keep the full earlier convers
       body: `Earlier turn ${index + 1}`,
     })),
   ]);
+  const instructions = continuityPackage.instructions;
 
   assert.ok(instructions);
+  assert.equal(continuityPackage.mode, 'full_transplant');
   assert.match(instructions, /Same conversation continuity transcript:/u);
   assert.match(instructions, /\[user:Kenny\] Earlier turn 1/u);
   assert.match(instructions, /\[agent:Orchestrator\] Earlier turn 10/u);
@@ -187,7 +207,7 @@ test('solo chat continuity transplant instructions keep the full earlier convers
 });
 
 test('solo chat continuity transplant instructions preserve preceding tool labels for assistant turns', () => {
-  const instructions = buildSoloChatContinuityTransplantInstructions([
+  const instructions = buildSoloChatContinuityTransplantPackage([
     {
       senderKind: 'user',
       senderName: 'Kenny',
@@ -205,7 +225,7 @@ test('solo chat continuity transplant instructions preserve preceding tool label
         ],
       },
     },
-  ]);
+  ]).instructions;
 
   assert.ok(instructions);
   assert.match(
@@ -215,7 +235,7 @@ test('solo chat continuity transplant instructions preserve preceding tool label
 });
 
 test('solo chat continuity transplant instructions fold segmented assistant turns into one line', () => {
-  const instructions = buildSoloChatContinuityTransplantInstructions([
+  const instructions = buildSoloChatContinuityTransplantPackage([
     {
       senderKind: 'user',
       senderName: 'Kenny',
@@ -241,7 +261,7 @@ test('solo chat continuity transplant instructions fold segmented assistant turn
         precedingTools: [{ toolName: 'search_repo', toolId: 'tool-search' }],
       },
     },
-  ]);
+  ]).instructions;
 
   assert.ok(instructions);
   assert.match(
@@ -255,7 +275,7 @@ test('solo chat continuity transplant instructions fold segmented assistant turn
 });
 
 test('solo chat continuity transplant instructions preserve structured choice responses without body text', () => {
-  const instructions = buildSoloChatContinuityTransplantInstructions([
+  const instructions = buildSoloChatContinuityTransplantPackage([
     {
       id: 'message-choice-response',
       channelId: 'channel-1',
@@ -282,7 +302,7 @@ test('solo chat continuity transplant instructions preserve structured choice re
       executionInstance: null,
       createdAt: '2026-04-17T00:00:00.000Z',
     },
-  ]);
+  ]).instructions;
 
   assert.ok(instructions);
   assert.match(
@@ -501,4 +521,89 @@ test('multi-participant cat routing emits a targeted handoff package for first-t
   assert.match(prompt.instructions ?? '', /Targeted same-conversation handoff context:/u);
   assert.match(prompt.instructions ?? '', /Relevant recent room messages:/u);
   assert.match(prompt.instructions ?? '', /This handoff came from Agent-1\./u);
+});
+
+test('multi-participant cat routing keeps continuity metadata null when no handoff package is needed', () => {
+  const now = new Date('2026-04-15T00:00:00.000Z');
+  let state = createDefaultChatState();
+  state = createChatChannel(state, {
+    title: 'Fresh group handoff test',
+    topic: 'No prior conversational context should not force continuity metadata.',
+    temporaryParticipants: [
+      {
+        name: 'Agent-1',
+        provider: 'claude',
+        model: 'claude-default',
+      },
+      {
+        name: 'Agent-2',
+        provider: 'gemini',
+        model: 'gemini-default',
+      },
+    ],
+    skipBossCatGreeting: true,
+  }, now);
+  const channelId = state.channels[0].id;
+  const activeParticipants = buildChannelView(state, channelId).assignedParticipants
+    .filter((participant) => participant.status === 'active');
+  const firstParticipant = activeParticipants[0];
+  const secondParticipant = activeParticipants[1];
+  const routedTurn = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: 'Wake Agent-2 now.',
+    },
+    new Date('2026-04-15T00:00:03.000Z'),
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        targetKind: 'cat',
+        targetId: firstParticipant.participantId,
+        assistantTurnId: 'assistant-turn-agent-1',
+      },
+    },
+  );
+  state = routedTurn.state;
+
+  const prompt = buildPromptForTarget(state, channelId, {
+    turnId: 'turn-group-2',
+    dispatchId: 'dispatch-group-2',
+    targetStateId: 'target-group-2',
+    parentCheckpointId: null,
+    branchStrategy: 'transplant_context',
+    handoffReason: 'workflow_continuation',
+    sourceMessage: routedTurn.message,
+    sourceParticipant: {
+      participantKind: 'cat',
+      participantId: firstParticipant.participantId,
+      participantName: firstParticipant.name,
+    },
+    targets: [
+      {
+        participantKind: 'cat',
+        participantId: secondParticipant.participantId,
+        participantName: secondParticipant.name,
+        laneId: null,
+        sessionId: null,
+      },
+    ],
+    unresolved: [],
+    mentionNames: ['Agent-2'],
+    trigger: 'continuation_mention',
+    depth: 1,
+    target: {
+      participantKind: 'cat',
+      participantId: secondParticipant.participantId,
+      participantName: secondParticipant.name,
+      laneId: null,
+      sessionId: null,
+    },
+  });
+
+  assert.equal(prompt.instructions ?? null, null);
+  assert.equal(prompt.continuityMode ?? null, null);
+  assert.equal(prompt.continuityDeliveryMode ?? null, null);
 });

@@ -168,6 +168,25 @@ function truncateContinuityText(value: string, maxLength: number): string {
   return `${compact.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
+function pickRepresentativeContinuityMessages(
+  messages: NormalizedContinuityMessage[],
+  maxSnippetCount = 3,
+): NormalizedContinuityMessage[] {
+  if (messages.length <= maxSnippetCount) {
+    return messages;
+  }
+
+  const lastIndex = messages.length - 1;
+  const indices = new Set<number>([0, lastIndex]);
+  for (let slot = 1; slot < maxSnippetCount - 1; slot += 1) {
+    indices.add(Math.round((slot * lastIndex) / (maxSnippetCount - 1)));
+  }
+
+  return [...indices]
+    .sort((left, right) => left - right)
+    .map((index) => messages[index]!);
+}
+
 function buildContinuityChunkDigest(
   messages: NormalizedContinuityMessage[],
   startIndex: number,
@@ -187,10 +206,14 @@ function buildContinuityChunkDigest(
     if (speakerMessages.length === 0) {
       return null;
     }
-    if (speakerMessages.length === 1) {
-      return `${label}: "${truncateContinuityText(speakerMessages[0]!.body, snippetLength)}"`;
-    }
-    return `${label}(${speakerMessages.length}): "${truncateContinuityText(speakerMessages[0]!.body, snippetLength)}" … "${truncateContinuityText(speakerMessages.at(-1)!.body, snippetLength)}"`;
+
+    const representativeMessages = pickRepresentativeContinuityMessages(speakerMessages);
+    const snippetSummary = representativeMessages
+      .map((message) => `"${truncateContinuityText(message.body, snippetLength)}"`)
+      .join(' | ');
+    return speakerMessages.length === 1
+      ? `${label}: ${snippetSummary}`
+      : `${label}(${speakerMessages.length}): ${snippetSummary}`;
   };
 
   const chunkStart = startIndex + 1;
@@ -254,6 +277,24 @@ function renderSemanticContinuityInstructions(
   ]);
 }
 
+function clampContinuityInstructions(
+  instructions: string,
+): string {
+  if (instructions.length <= MAX_CONTINUITY_TRANSPLANT_CHARACTERS) {
+    return instructions;
+  }
+
+  const suffix = '\n\nCurrent message follows separately.';
+  const availablePrefixLength = Math.max(
+    0,
+    MAX_CONTINUITY_TRANSPLANT_CHARACTERS - suffix.length - 1,
+  );
+  const compactPrefix = instructions
+    .slice(0, availablePrefixLength)
+    .trimEnd();
+  return `${compactPrefix}…${suffix}`;
+}
+
 function buildSemanticContinuityTransplantInstructions(
   messages: NormalizedContinuityMessage[],
 ): string {
@@ -301,13 +342,13 @@ function buildSemanticContinuityTransplantInstructions(
     }
   }
 
-  return renderSemanticContinuityInstructions(messages, {
+  return clampContinuityInstructions(renderSemanticContinuityInstructions(messages, {
     recentCount: 2,
     digestBucketCount: 8,
     digestSnippetLength: 48,
     recentLineLimit: 180,
     recentLabel: 'Recent verbatim turn excerpts:',
-  });
+  }));
 }
 
 function languageInstruction(responseLanguage: string): string {
@@ -517,12 +558,6 @@ export function buildSoloChatContinuityTransplantPackage(
     instructions: buildSemanticContinuityTransplantInstructions(normalizedMessages),
     mode: 'semantic_transplant',
   };
-}
-
-export function buildSoloChatContinuityTransplantInstructions(
-  priorMessages: ChatMessage[],
-): string | null {
-  return buildSoloChatContinuityTransplantPackage(priorMessages).instructions;
 }
 
 export function buildTargetedChatHandoffPackage(input: {

@@ -760,6 +760,11 @@ export function buildPromptForTarget(
   const instructions = sameChatContinuityPackage?.instructions
     ?? targetedHandoffPackage?.instructions
     ?? null;
+  const continuityMode = participantContinuity
+    ? resolveSameChatContinuityMode(promptMessages, request, sameChatContinuityPackage)
+    : targetedHandoffPackage?.instructions
+      ? targetedHandoffPackage.mode
+      : null;
   return {
     message: buildCatPrompt(
       channel,
@@ -769,11 +774,9 @@ export function buildPromptForTarget(
       routingContext,
     ),
     instructions,
-    continuityMode: participantContinuity
-      ? resolveSameChatContinuityMode(promptMessages, request, sameChatContinuityPackage)
-      : targetedHandoffPackage?.instructions
-        ? targetedHandoffPackage.mode
-        : null,
-    continuityDeliveryMode: instructions ? 'turn_instructions' : 'none',
+    continuityMode,
+    continuityDeliveryMode: continuityMode == null
+      ? null
+      : instructions ? 'turn_instructions' : 'none',
   };
 }

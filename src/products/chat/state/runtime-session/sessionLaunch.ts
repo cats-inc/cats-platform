@@ -8,7 +8,7 @@ import {
 import type { RoutingTarget } from '../mentionRouter.js';
 import {
   buildSoloChatContinuityTransplantPackage,
-  MAX_BOUNDED_RECENT_CONTEXT_MESSAGES,
+  buildTargetedChatHandoffPackage,
 } from '../prompts.js';
 import {
   applySoloChatContinuityBoundary,
@@ -93,13 +93,14 @@ function resolveNewSessionContinuityMetadata(input: {
   const supportsParticipantContinuity = input.target.participantKind === 'cat'
     && (supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse);
   if (!isSoloOrchestrator && !supportsParticipantContinuity) {
-    const targetedPriorMessages = sourceMessage
-      ? messagesBeforeSource(continuityMessages, sourceMessage)
-        .slice(-MAX_BOUNDED_RECENT_CONTEXT_MESSAGES)
-      : [];
+    const targetedHandoffPackage = buildTargetedChatHandoffPackage({
+      priorMessages: sourceMessage
+        ? messagesBeforeSource(continuityMessages, sourceMessage)
+        : [],
+    });
     return {
-      continuityMode: targetedPriorMessages.length > 0 ? 'targeted_handoff' : 'fresh_start',
-      continuityDeliveryMode: targetedPriorMessages.length > 0 ? 'turn_instructions' : 'none',
+      continuityMode: targetedHandoffPackage.instructions ? 'targeted_handoff' : 'fresh_start',
+      continuityDeliveryMode: targetedHandoffPackage.instructions ? 'turn_instructions' : 'none',
       continuityResetAt: null,
     };
   }
