@@ -71,8 +71,15 @@ When shared primitives need product-specific variation, they should adopt
 structured seams such as:
 
 - copy override objects
+- header accessory components
 - section builders
 - target-slot components
+
+The first `+New code` slices now concretely use:
+
+- a product-owned copy override bag
+- a product-owned header accessory component
+- a product-owned target-slot override
 
 They should not accumulate one-off product booleans or string props for every
 minor surface difference.

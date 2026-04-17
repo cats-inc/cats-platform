@@ -10,6 +10,7 @@ export interface WorkspaceNewChatDraftTargetSlotProps {
   payload: AppShellPayload;
   effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
   nonLeadDraftCats: AppShellPayload['chat']['cats'];
+  isDirectLaneContext: boolean;
   activePanelModel: ModelSelectorValue | null;
   isSubmittingFirstTurn: boolean;
   onOpenExecution: () => void;
@@ -19,11 +20,12 @@ export function WorkspaceNewChatDraftTargetSlot({
   payload,
   effectiveDefaultRecipientCat,
   nonLeadDraftCats,
+  isDirectLaneContext,
   activePanelModel,
   isSubmittingFirstTurn,
   onOpenExecution,
 }: WorkspaceNewChatDraftTargetSlotProps) {
-  if (effectiveDefaultRecipientCat) {
+  if (isDirectLaneContext && effectiveDefaultRecipientCat) {
     return (
       <ComposerCatStack
         cats={[effectiveDefaultRecipientCat, ...nonLeadDraftCats]}

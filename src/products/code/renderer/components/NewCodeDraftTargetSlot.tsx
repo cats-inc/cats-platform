@@ -5,10 +5,11 @@ export function NewCodeDraftTargetSlot({
   payload,
   effectiveDefaultRecipientCat,
   nonLeadDraftCats,
+  isDirectLaneContext,
   isSubmittingFirstTurn,
   onOpenExecution,
 }: WorkspaceNewChatDraftTargetSlotProps) {
-  if (!effectiveDefaultRecipientCat) {
+  if (!isDirectLaneContext || !effectiveDefaultRecipientCat) {
     return null;
   }
 

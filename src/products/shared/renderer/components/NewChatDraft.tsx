@@ -66,6 +66,7 @@ interface DraftTargetSlotProps {
   payload: AppShellPayload;
   effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
   nonLeadDraftCats: AppShellPayload['chat']['cats'];
+  isDirectLaneContext: boolean;
   activePanelModel: ModelSelectorValue | null;
   isSubmittingFirstTurn: boolean;
   onOpenExecution: () => void;
@@ -88,6 +89,12 @@ export interface WorkspaceNewChatDraftCopy {
   folderEmptyState?: string;
 }
 
+export type WorkspaceNewChatDraftSectionId = 'cats' | 'execution' | 'cwd';
+
+function isWorkspaceNewChatDraftSectionId(value: string): value is WorkspaceNewChatDraftSectionId {
+  return value === 'cats' || value === 'execution' || value === 'cwd';
+}
+
 const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
   greeting: 'Meow. Ready when you are.',
   composerPlaceholder: 'How can I help you today?',
@@ -105,12 +112,17 @@ const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
   folderEmptyState: 'No folder selected yet.',
 };
 
+export type WorkspaceNewChatDraftHeaderAccessoryCopy = Pick<
+  Required<WorkspaceNewChatDraftCopy>,
+  'executionActionLabel' | 'folderActionLabel'
+>;
+
 export interface WorkspaceNewChatDraftHeaderAccessoryProps {
-  copy: Required<WorkspaceNewChatDraftCopy>;
+  copy: WorkspaceNewChatDraftHeaderAccessoryCopy;
   draftCwd: string | null;
   selectedModel?: ModelSelectorValue;
   disabled: boolean;
-  onOpenSection: (section: string) => void;
+  onOpenSection: (section: WorkspaceNewChatDraftSectionId) => void;
 }
 
 export interface WorkspaceNewChatDraftProps {
@@ -247,14 +259,14 @@ export function WorkspaceNewChatDraft({
     ? [defaultRecipientCat.id, ...draftCatIds.filter((id) => id !== defaultRecipientCat.id)]
     : draftCatIds;
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
+  const [sidePanelSection, setSidePanelSection] = useState<WorkspaceNewChatDraftSectionId>('cats');
 
-  function openSidePanelTo(section: string): void {
+  function openSidePanelTo(section: WorkspaceNewChatDraftSectionId): void {
     setSidePanelOpen(true);
     switchSection(section);
   }
 
-  function switchSection(section: string): void {
+  function switchSection(section: WorkspaceNewChatDraftSectionId): void {
     setSidePanelSection(section);
     if (section === 'cwd' && !folderBrowseCurrentPath && !folderBrowseLoading) {
       onPickFolder();
@@ -304,7 +316,10 @@ export function WorkspaceNewChatDraft({
         {HeaderAccessoryComponent ? (
           <div className="draftHeaderAccessory">
             <HeaderAccessoryComponent
-              copy={resolvedCopy}
+              copy={{
+                executionActionLabel: resolvedCopy.executionActionLabel,
+                folderActionLabel: resolvedCopy.folderActionLabel,
+              }}
               draftCwd={draftCwd}
               selectedModel={selectedModel}
               disabled={isSubmittingFirstTurn}
@@ -437,6 +452,7 @@ export function WorkspaceNewChatDraft({
               nonLeadDraftCats={nonLeadDraftCatIds
                 .map((id) => chatCats.find((cat) => cat.id === id))
                 .filter((cat): cat is NonNullable<typeof cat> => cat != null)}
+              isDirectLaneContext={isDirectLaneContext}
               activePanelModel={activePanelModel}
               isSubmittingFirstTurn={isSubmittingFirstTurn}
               onOpenExecution={() => openSidePanelTo('execution')}
@@ -474,7 +490,11 @@ export function WorkspaceNewChatDraft({
         <SidePanel
           title={resolvedCopy.sidePanelTitle}
           activeSection={sidePanelSection}
-          onSectionToggle={isSubmittingFirstTurn ? () => {} : switchSection}
+          onSectionToggle={isSubmittingFirstTurn ? () => {} : (sectionId) => {
+            if (isWorkspaceNewChatDraftSectionId(sectionId)) {
+              switchSection(sectionId);
+            }
+          }}
           onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
           className="chatPaneSidePanel"
           sections={buildDraftSidePanelSections()}

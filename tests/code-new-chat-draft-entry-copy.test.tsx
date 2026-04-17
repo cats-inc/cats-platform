@@ -10,7 +10,7 @@ import {
 } from '../src/products/code/renderer/components/NewChatDraft.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
-function createPayload(): AppShellPayload {
+function createPayload(overrides: Partial<AppShellPayload['chat']> = {}): AppShellPayload {
   return {
     chat: {
       bossCatId: null,
@@ -37,6 +37,7 @@ function createPayload(): AppShellPayload {
           defaultModelSelection: null,
         },
       ],
+      ...overrides,
     },
   } as unknown as AppShellPayload;
 }
@@ -91,6 +92,7 @@ test('new code draft publishes code-specific copy overrides for the shared works
   assert.equal(NEW_CODE_DRAFT_COPY.executionActionLabel, 'Choose execution target');
   assert.equal(NEW_CODE_DRAFT_COPY.executionEmptyState, 'No execution target set yet.');
   assert.equal(NEW_CODE_DRAFT_COPY.folderSectionTitle, 'Workspace');
+  assert.equal(NEW_CODE_DRAFT_COPY.participantsEmptyState, 'No participants available yet.');
   assert.equal(NEW_CODE_DRAFT_COPY.privateSessionEyebrow, 'Focused Code Session');
   assert.equal(NEW_CODE_DRAFT_COPY.privateSessionHeroNote, 'Single-participant coding lane.');
 });
@@ -108,11 +110,11 @@ test('new code default draft renders visible workspace and execution session chi
       })}
     />,
   );
-  const modelChipCount = markup.match(/class="modelSelectorChip"/gu)?.length ?? 0;
 
   assert.match(markup, /What should this code session build, fix, or investigate\?/u);
   assert.match(markup, /Choose workspace/u);
-  assert.equal(modelChipCount, 1);
+  assert.match(markup, /draftHeaderAccessory.*class="modelSelectorChip"/u);
+  assert.doesNotMatch(markup, /composerBottomRow.*class="modelSelectorChip"/u);
   assert.doesNotMatch(markup, /How can I help you today\?/u);
   assert.doesNotMatch(markup, /class="audienceChip"/u);
 });
@@ -125,10 +127,23 @@ test('new code default draft keeps empty execution state on-canvas when no execu
   assert.match(markup, /class="draftHeaderAccessory"/u);
 });
 
+test('new code solo drafts with a selected participant but no direct-lane route do not render the composer stack', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        draftCatIds: ['cat-lead'],
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /class="composerCatStack"/u);
+});
+
 test('new code direct-lane drafts keep the participant stack in the composer row', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
+        allowAddCat: false,
         draftCatIds: ['cat-lead'],
         draftDefaultRecipientCatId: 'cat-lead',
       })}
@@ -139,6 +154,33 @@ test('new code direct-lane drafts keep the participant stack in the composer row
   assert.match(markup, /Single-participant coding lane\./u);
   assert.match(markup, /class="composerCatStack"/u);
   assert.doesNotMatch(markup, /Private Chat/u);
+});
+
+test('new code direct-lane drafts keep the same hero copy when the participant is telegram-bound', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        allowAddCat: false,
+        payload: createPayload({
+          botBindings: [
+            {
+              id: 'binding-telegram',
+              platform: 'telegram',
+              status: 'active',
+              catId: 'cat-lead',
+              label: 'Telegram',
+            },
+          ],
+        }),
+        draftCatIds: ['cat-lead'],
+        draftDefaultRecipientCatId: 'cat-lead',
+      })}
+    />,
+  );
+
+  assert.match(markup, /Focused Code Session/u);
+  assert.match(markup, /Single-participant coding lane\./u);
+  assert.doesNotMatch(markup, /Telegram-bound private lane\./u);
 });
 
 test('team code and peer code drafts continue to delegate to the shared chat draft flow', () => {

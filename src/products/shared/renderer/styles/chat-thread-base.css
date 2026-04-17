@@ -421,11 +421,49 @@
 .draftHeaderAccessory {
   display: flex;
   justify-content: center;
-  margin: -8px 0 20px;
+  margin: 0 0 20px;
 }
 
-.draftHeaderAccessory .chipRow {
+.draftHeaderAccessoryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: center;
+}
+
+.draftContextChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+}
+
+.draftContextChipLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.draftContextChipClickable {
+  cursor: pointer;
+}
+
+.draftContextChipClickable:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.draftContextChipEmpty {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted-soft);
 }
 
 .recentCatAvatar {
