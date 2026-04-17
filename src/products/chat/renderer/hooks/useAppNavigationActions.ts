@@ -7,7 +7,7 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts.js';
-import type { ModelSelectorValue } from '../components/ModelSelector.js';
+import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
 import type { DraftTemporaryParticipant } from '../chatUtils.js';
 import {
   buildNewGroupChatPath,
@@ -55,7 +55,7 @@ export function useAppNavigationActions(options: {
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
+  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
   setDraftWorkflowShape: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
   resetDraftParallelChatTargets: () => void;
@@ -89,7 +89,7 @@ export function useAppNavigationActions(options: {
     confirm: confirmDialog,
   } = options;
   const sharedActions = useWorkspaceAppNavigationActions<
-    ModelSelectorValue,
+    ExecutionTargetValue,
     AppShellPayload,
     DraftTemporaryParticipant
   >({
@@ -269,3 +269,4 @@ export function useAppNavigationActions(options: {
     onStartNewParallelChat,
   };
 }
+

@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
 
-import type { ModelSelectorValue } from '../components/ModelSelector.js';
+import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
 
 export function useWorkspaceDraftCatState() {
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<string | null>(null);
   const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<
-    Map<string, ModelSelectorValue>
+    Map<string, ExecutionTargetValue>
   >(new Map());
 
   const onToggleDraftCat = useCallback((catId: string) => {
@@ -32,7 +32,7 @@ export function useWorkspaceDraftCatState() {
   }, []);
 
   const onDraftCatModelOverride = useCallback(
-    (catId: string, value: ModelSelectorValue) => {
+    (catId: string, value: ExecutionTargetValue) => {
       setDraftCatModelOverrides((prev) => {
         const copy = new Map(prev);
         copy.set(catId, value);
@@ -60,3 +60,4 @@ export function useWorkspaceDraftCatState() {
     resetDraftCats,
   };
 }
+

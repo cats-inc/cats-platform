@@ -66,14 +66,14 @@ type LoadStateLike =
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
 
-export interface WorkspaceModelSelectorValue {
+export interface WorkspaceExecutionTargetValue {
   provider: string;
   model: string | null;
   instance: string | null;
   modelSelection: ProviderModelSelection | null;
 }
 
-export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceModelSelectorValue> {
+export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExecutionTargetValue> {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
@@ -128,7 +128,7 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
-export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSelectorValue>(
+export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecutionTargetValue>(
   options: WorkspaceComposerSubmitOptions<ModelValue>,
 ) {
   const {
@@ -540,7 +540,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceModelSele
   };
 }
 
-export function createUseComposerSubmit<ModelValue extends WorkspaceModelSelectorValue>(
+export function createUseComposerSubmit<ModelValue extends WorkspaceExecutionTargetValue>(
   chatPrefix: string,
 ) {
   return function useComposerSubmit(
@@ -552,3 +552,4 @@ export function createUseComposerSubmit<ModelValue extends WorkspaceModelSelecto
     });
   };
 }
+

@@ -112,11 +112,11 @@ test('new code default draft keeps the original shared composer structure withou
   );
 
   assert.match(markup, /What should this code session build, fix, or investigate\?/u);
-  assert.match(markup, /composerBottomRow[\s\S]*class="modelSelectorChip"/u);
+  assert.match(markup, /composerBottomRow[\s\S]*class="audienceChip"/u);
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
   assert.doesNotMatch(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /How can I help you today\?/u);
-  assert.doesNotMatch(markup, /class="audienceChip"/u);
+  assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
 });
 
 test('new code default draft does not render standalone setup chips between the greeting and composer', () => {
@@ -208,3 +208,4 @@ test('team code and peer code drafts continue to delegate to the shared chat dra
   assert.match(markup, /class="audienceChip"/u);
   assert.doesNotMatch(markup, /What should this code session build, fix, or investigate\?/u);
 });
+

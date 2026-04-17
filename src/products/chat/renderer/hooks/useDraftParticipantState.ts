@@ -10,7 +10,7 @@ import {
   type DraftTemporaryParticipant,
 } from '../chatUtils.js';
 import { resolveDraftParticipantSelection } from '../draftParticipants.js';
-import type { ModelSelectorValue } from '../components/ModelSelector.js';
+import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -30,7 +30,7 @@ export function useDraftParticipantState(options: {
   const [draftCatIds, setDraftCatIds] = useState<string[]>([]);
   const [draftTemporaryParticipants, setDraftTemporaryParticipants] = useState<DraftTemporaryParticipant[]>([]);
   const [draftHighlightedCatId, setDraftHighlightedCatId] = useState<string | null>(null);
-  const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<Map<string, ModelSelectorValue>>(new Map());
+  const [draftCatModelOverrides, setDraftCatModelOverrides] = useState<Map<string, ExecutionTargetValue>>(new Map());
 
   const draftParticipants = useMemo(
     () => resolveDraftParticipantSelection({
@@ -110,7 +110,7 @@ export function useDraftParticipantState(options: {
     );
   }, []);
 
-  const onDraftCatModelOverride = useCallback((catId: string, value: ModelSelectorValue) => {
+  const onDraftCatModelOverride = useCallback((catId: string, value: ExecutionTargetValue) => {
     setDraftCatModelOverrides((prev) => {
       const copy = new Map(prev);
       copy.set(catId, value);
@@ -135,3 +135,4 @@ export function useDraftParticipantState(options: {
     onDraftCatModelOverride,
   };
 }
+

@@ -22,7 +22,7 @@ import {
   createParallelChatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
-import type { ModelSelectorValue } from '../components/ModelSelector.js';
+import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
 import type { SelectedChannelView } from '../../shared/channelEntry.js';
 import { relayParallelChatMessage } from '../api/index.js';
 
@@ -31,7 +31,7 @@ type LoadStateLike =
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
 
-export function createDefaultTargetForProvider(provider: string): ModelSelectorValue {
+export function createDefaultTargetForProvider(provider: string): ExecutionTargetValue {
   return {
     provider,
     model: getDefaultModel(provider) || null,
@@ -40,7 +40,7 @@ export function createDefaultTargetForProvider(provider: string): ModelSelectorV
   };
 }
 
-export function createInitialCompareTargets(baseTarget: ModelSelectorValue): ModelSelectorValue[] {
+export function createInitialCompareTargets(baseTarget: ExecutionTargetValue): ExecutionTargetValue[] {
   const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
     ?? 'codex';
 
@@ -51,9 +51,9 @@ export function createInitialCompareTargets(baseTarget: ModelSelectorValue): Mod
 }
 
 export function syncLeadCompareTarget(
-  currentTargets: ModelSelectorValue[],
-  leadTarget: ModelSelectorValue,
-): ModelSelectorValue[] {
+  currentTargets: ExecutionTargetValue[],
+  leadTarget: ExecutionTargetValue,
+): ExecutionTargetValue[] {
   if (currentTargets.length === 0) {
     return currentTargets;
   }
@@ -81,9 +81,9 @@ export function syncLeadCompareTarget(
 }
 
 export function createNextCompareTarget(
-  currentTargets: ModelSelectorValue[],
-  fallbackTarget: ModelSelectorValue,
-): ModelSelectorValue {
+  currentTargets: ExecutionTargetValue[],
+  fallbackTarget: ExecutionTargetValue,
+): ExecutionTargetValue {
   const nextProvider = PRODUCT_PROVIDER_ORDER.find((provider) =>
     !currentTargets.some((target) => target.provider === provider),
   ) ?? PRODUCT_PROVIDER_ORDER.find((provider) => provider !== fallbackTarget.provider)
@@ -104,7 +104,7 @@ export function createNextCompareTarget(
 export function useParallelChatDraft(options: {
   readyPayload: AppShellPayload | null;
   selectedChannel: SelectedChannelView | null;
-  draftModel: ModelSelectorValue;
+  draftModel: ExecutionTargetValue;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
@@ -117,7 +117,7 @@ export function useParallelChatDraft(options: {
     setBusy,
     setFeedback,
   } = options;
-  const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<ModelSelectorValue[]>(
+  const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<ExecutionTargetValue[]>(
     () => createInitialCompareTargets({
       provider: draftModel.provider,
       model: draftModel.model,
@@ -151,7 +151,7 @@ export function useParallelChatDraft(options: {
       syncLeadCompareTarget(currentTargets, draftModel));
   }, [draftModel]);
 
-  const onDraftParallelChatTargetChange = useCallback((index: number, value: ModelSelectorValue) => {
+  const onDraftParallelChatTargetChange = useCallback((index: number, value: ExecutionTargetValue) => {
     setDraftParallelChatTargets((prev) =>
       prev.map((target, currentIndex) => (currentIndex === index ? value : target)),
     );
@@ -229,3 +229,4 @@ export function useParallelChatDraft(options: {
     onRelayCompareMessage,
   };
 }
+

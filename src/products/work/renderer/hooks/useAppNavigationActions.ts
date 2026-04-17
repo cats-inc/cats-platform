@@ -11,7 +11,7 @@ import {
   createCatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
-import type { ModelSelectorValue } from '../components/ModelSelector.js';
+import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
 import {
   updateCatProfile,
 } from '../api/index.js';
@@ -36,7 +36,7 @@ export function useAppNavigationActions(options: {
   setDraftCwd: Dispatch<SetStateAction<string | null>>;
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
+  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
@@ -49,7 +49,7 @@ export function useAppNavigationActions(options: {
     setFeedback,
     confirm: confirmDialog,
   } = options;
-  const sharedActions = useWorkspaceAppNavigationActions<ModelSelectorValue>({
+  const sharedActions = useWorkspaceAppNavigationActions<ExecutionTargetValue>({
     ...options,
     platformShellSurface: 'work',
   });
@@ -82,3 +82,4 @@ export function useAppNavigationActions(options: {
     onArchiveCat,
   };
 }
+

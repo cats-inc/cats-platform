@@ -1,17 +1,15 @@
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
-import {
-  buildModelSelectorLabel,
-  ModelSelectorChip,
-  type ModelSelectorValue,
-} from './ModelSelector.js';
+import type { ExecutionTargetValue } from './ExecutionTarget.js';
+import { AudienceChip } from './AudienceChip.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
+import { buildAudienceParticipantFromModel } from '../audienceParticipantBuilder.js';
 
 export interface WorkspaceNewChatDraftTargetSlotProps {
   payload: AppShellPayload;
   effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
   nonLeadDraftCats: AppShellPayload['chat']['cats'];
   isDirectLaneContext: boolean;
-  activePanelModel: ModelSelectorValue | null;
+  activePanelModel: ExecutionTargetValue | null;
   isSubmittingFirstTurn: boolean;
   onOpenExecution: () => void;
 }
@@ -39,9 +37,10 @@ export function WorkspaceNewChatDraftTargetSlot({
   if (activePanelModel) {
     return (
       <div style={{ marginRight: 8 }}>
-        <ModelSelectorChip
-          label={buildModelSelectorLabel(activePanelModel)}
-          onClick={isSubmittingFirstTurn ? undefined : onOpenExecution}
+        <AudienceChip
+          audienceParticipants={[buildAudienceParticipantFromModel(activePanelModel)]}
+          onSingleClick={isSubmittingFirstTurn ? undefined : onOpenExecution}
+          disabled={isSubmittingFirstTurn}
         />
       </div>
     );
@@ -49,3 +48,4 @@ export function WorkspaceNewChatDraftTargetSlot({
 
   return null;
 }
+

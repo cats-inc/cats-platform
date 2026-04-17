@@ -11,11 +11,7 @@ import {
 } from '../draftChatUtils.js';
 import { catInitials, isChatCat, truncatePath } from '../workspaceChatUtils.js';
 import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
-import {
-  buildModelSelectorLabel,
-  ModelSelectorChip,
-  type ModelSelectorValue,
-} from './ModelSelector.js';
+import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import {
   buildChatNewChatDraftSidePanelSections,
 } from './chatNewChatDraftSidePanel.js';
@@ -72,15 +68,15 @@ export interface NewChatDraftProps {
   starterSuggestions?: ReadonlyArray<DraftStarterSuggestion> | null;
   onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
-  selectedModel?: ModelSelectorValue;
-  onModelChange?: (value: ModelSelectorValue) => void;
+  selectedModel?: ExecutionTargetValue;
+  onModelChange?: (value: ExecutionTargetValue) => void;
   draftHighlightedCatId: string | null;
   onHighlightDraftCat: (catId: string | null) => void;
-  draftCatModelOverrides: Map<string, ModelSelectorValue>;
-  onDraftCatModelOverride: (catId: string, value: ModelSelectorValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
-  parallelTargets?: ModelSelectorValue[];
-  onParallelTargetChange?: (index: number, value: ModelSelectorValue) => void;
+  draftCatModelOverrides: Map<string, ExecutionTargetValue>;
+  onDraftCatModelOverride: (catId: string, value: ExecutionTargetValue) => void;
+  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  parallelTargets?: ExecutionTargetValue[];
+  onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   onAddParallelTarget?: () => void;
   onRemoveParallelTarget?: (index: number) => void;
   folderBrowsePath?: string;
@@ -231,7 +227,7 @@ export function NewChatDraft({
       return [buildAudienceParticipantFromTemporaryParticipant(effectiveDefaultRecipientTemporaryParticipant)];
     }
 
-    // Solo implicit: use model selector value
+    // Solo implicit: use the current execution target value
     if (activePanelModel) {
       return [buildAudienceParticipantFromModel(activePanelModel)];
     }
@@ -279,7 +275,6 @@ export function NewChatDraft({
     onAddDraftTemporaryParticipant,
     onUpdateDraftTemporaryParticipant,
   });
-  const chipLabel = selectedModel ? buildModelSelectorLabel(selectedModel) : '';
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
 
   return (
@@ -684,3 +679,4 @@ export function NewChatDraft({
     </div>
   );
 }
+

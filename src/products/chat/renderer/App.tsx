@@ -73,8 +73,8 @@ import {
   useWorkspaceResumeChannel,
 } from '../../shared/renderer/hooks/useWorkspaceAppShellChannelActions.js';
 import {
-  useWorkspaceModelSelectionState,
-} from '../../shared/renderer/hooks/useWorkspaceModelSelectionState.js';
+  useWorkspaceExecutionTargetState,
+} from '../../shared/renderer/hooks/useWorkspaceExecutionTargetState.js';
 import {
   useWorkspaceAppTransientState,
 } from '../../shared/renderer/hooks/useWorkspaceAppTransientState.js';
@@ -98,7 +98,7 @@ import {
   updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
 } from './api';
-import type { ModelSelectorValue } from './components/ModelSelector';
+import type { ExecutionTargetValue } from './components/ExecutionTarget';
 import {
   Sidebar,
 } from './components/Sidebar';
@@ -292,7 +292,7 @@ export default function App() {
     setDraftModel,
     soloChannelModel,
     setSoloChannelModel,
-  } = useWorkspaceModelSelectionState({
+  } = useWorkspaceExecutionTargetState({
     state,
     readyChat,
     readySelectedChannel,
@@ -733,7 +733,7 @@ export default function App() {
     readySelectedChannel,
   });
 
-  const onDraftModelChange = useCallback((nextDraftModel: ModelSelectorValue): void => {
+  const onDraftModelChange = useCallback((nextDraftModel: ExecutionTargetValue): void => {
     setDraftModel(nextDraftModel);
     if (showingNewChatDraft && newChatMode === 'group') {
       setDraftTemporaryParticipants((current) =>
@@ -746,7 +746,7 @@ export default function App() {
 
   const onDraftParallelChatTargetChangeWithSharedDefault = useCallback((
     index: number,
-    value: ModelSelectorValue,
+    value: ExecutionTargetValue,
   ): void => {
     onDraftParallelChatTargetChange(index, value);
     if (index === 0) {
@@ -1042,3 +1042,5 @@ export default function App() {
     />
   );
 }
+
+

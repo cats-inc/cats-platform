@@ -4,7 +4,7 @@ import {
   encodeAttachmentFiles,
   sendParallelChatMessage,
 } from './api/index.js';
-import type { ModelSelectorValue } from './components/ModelSelector.js';
+import type { ExecutionTargetValue } from './components/ExecutionTarget.js';
 import { createDraftChannelTitle } from './chatUtils.js';
 import { buildChannelPath } from '../shared/channelPaths.js';
 
@@ -35,7 +35,7 @@ export interface SubmitNewParallelChatDraftOptions {
   payload: AppShellPayload;
   draftCwd: string | null;
   draftFiles: File[];
-  draftParallelChatTargets: ModelSelectorValue[];
+  draftParallelChatTargets: ExecutionTargetValue[];
   signal?: AbortSignal;
 }
 
@@ -148,3 +148,4 @@ export async function submitParallelCompareMessage({
       : null,
   };
 }
+

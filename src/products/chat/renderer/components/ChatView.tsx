@@ -43,7 +43,7 @@ import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../shared/operator-loop/index';
-import { type ModelSelectorValue } from './ModelSelector';
+import { type ExecutionTargetValue } from './ExecutionTarget';
 import {
   type MessageChoicesSubmitInput,
 } from './MessageChoices';
@@ -128,9 +128,9 @@ export interface ChatViewProps {
     outcomeId?: string | null;
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
-  selectedModel?: ModelSelectorValue;
-  onModelChange?: (value: ModelSelectorValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  selectedModel?: ExecutionTargetValue;
+  onModelChange?: (value: ExecutionTargetValue) => void;
+  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
   activeWorkflowShape?: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys?: string[] | null;
@@ -854,3 +854,4 @@ export function ChatView({
     </ChatViewFrame>
   );
 }
+

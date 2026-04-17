@@ -7,11 +7,7 @@ import type { ProviderTargetSelection } from '../../../../shared/providerSelecti
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
-import {
-  buildModelSelectorLabel,
-  ModelSelectorChip,
-  type ModelSelectorValue,
-} from './ModelSelector.js';
+import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import { CatAvatarRow } from './CatAvatarRow.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
 import { WorkspaceNewChatDraftTargetSlot } from './WorkspaceNewChatDraftTargetSlot.js';
@@ -25,16 +21,11 @@ interface ComposerCatStackProps {
   onClick?: () => void;
 }
 
-interface ModelSelectorChipProps {
-  label: string;
-  onClick?: () => void;
-}
-
 interface ProviderModelFieldsProps {
   provider: string;
   instance: string;
   model: string;
-  modelSelection?: ModelSelectorValue['modelSelection'];
+  modelSelection?: ExecutionTargetValue['modelSelection'];
   onTargetChange: (target: ProviderTargetSelection) => void;
 }
 
@@ -67,7 +58,7 @@ interface DraftTargetSlotProps {
   effectiveDefaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
   nonLeadDraftCats: AppShellPayload['chat']['cats'];
   isDirectLaneContext: boolean;
-  activePanelModel: ModelSelectorValue | null;
+  activePanelModel: ExecutionTargetValue | null;
   isSubmittingFirstTurn: boolean;
   onOpenExecution: () => void;
 }
@@ -120,7 +111,7 @@ export type WorkspaceNewChatDraftHeaderAccessoryCopy = Pick<
 export interface WorkspaceNewChatDraftHeaderAccessoryProps {
   copy: WorkspaceNewChatDraftHeaderAccessoryCopy;
   draftCwd: string | null;
-  selectedModel?: ModelSelectorValue;
+  selectedModel?: ExecutionTargetValue;
   disabled: boolean;
   onOpenSection: (section: WorkspaceNewChatDraftSectionId) => void;
 }
@@ -152,13 +143,13 @@ export interface WorkspaceNewChatDraftProps {
   draftDefaultRecipientCatId: string | null;
   onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
-  selectedModel?: ModelSelectorValue;
-  onModelChange?: (value: ModelSelectorValue) => void;
+  selectedModel?: ExecutionTargetValue;
+  onModelChange?: (value: ExecutionTargetValue) => void;
   draftHighlightedCatId: string | null;
   onHighlightDraftCat: (catId: string | null) => void;
-  draftCatModelOverrides: Map<string, ModelSelectorValue>;
-  onDraftCatModelOverride: (catId: string, value: ModelSelectorValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  draftCatModelOverrides: Map<string, ExecutionTargetValue>;
+  onDraftCatModelOverride: (catId: string, value: ExecutionTargetValue) => void;
+  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -169,7 +160,6 @@ export interface WorkspaceNewChatDraftProps {
   onFolderBrowse?: (path: string) => void;
   onFolderBrowseSelect?: () => void;
   ComposerCatStackComponent: ComponentType<ComposerCatStackProps>;
-  ModelSelectorChipComponent: ComponentType<ModelSelectorChipProps>;
   ProviderModelFieldsComponent: ComponentType<ProviderModelFieldsProps>;
   CatAvatarRowComponent: ComponentType<CatAvatarRowProps>;
   FolderBrowserContentComponent: ComponentType<FolderBrowserContentProps>;
@@ -222,7 +212,6 @@ export function WorkspaceNewChatDraft({
   onFolderBrowse,
   onFolderBrowseSelect,
   ComposerCatStackComponent,
-  ModelSelectorChipComponent,
   ProviderModelFieldsComponent,
   CatAvatarRowComponent,
   FolderBrowserContentComponent,
@@ -249,15 +238,11 @@ export function WorkspaceNewChatDraft({
     ? chatCats.find((cat) => cat.id === draftCatIds[0] && cat.status === 'active') ?? null
     : null;
   const effectiveDefaultRecipientCat = defaultRecipientCat ?? draftDefaultRecipientCat;
-  const showSoloSelector = !effectiveDefaultRecipientCat;
   const nonLeadDraftCatIds = draftDefaultRecipientCat
     ? draftCatIds.filter((id) => id !== draftDefaultRecipientCat.id)
     : defaultRecipientCat
       ? draftCatIds.filter((id) => id !== defaultRecipientCat.id)
       : draftCatIds;
-  const visibleDraftCatIds = defaultRecipientCat
-    ? [defaultRecipientCat.id, ...draftCatIds.filter((id) => id !== defaultRecipientCat.id)]
-    : draftCatIds;
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<WorkspaceNewChatDraftSectionId | null>('cats');
 
@@ -277,7 +262,7 @@ export function WorkspaceNewChatDraft({
   const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
     ? chatCats.find((cat) => cat.id === draftHighlightedCatId) ?? null
     : null;
-  const activePanelModel: ModelSelectorValue | null = isDirectLaneContext && defaultRecipientCat
+  const activePanelModel: ExecutionTargetValue | null = isDirectLaneContext && defaultRecipientCat
     ? {
         provider: defaultRecipientCat.defaultExecutionTarget.provider,
         model: defaultRecipientCat.defaultExecutionTarget.model,
@@ -292,7 +277,6 @@ export function WorkspaceNewChatDraft({
           modelSelection: highlightedCat.defaultModelSelection ?? null,
         })
       : selectedModel ?? null;
-  const chipLabel = selectedModel ? buildModelSelectorLabel(selectedModel) : '';
   const isSubmittingFirstTurn = isComposerBusyForDraft(busy);
 
   return (
@@ -619,7 +603,6 @@ export interface NewChatDraftProps extends Omit<
   WorkspaceNewChatDraftProps,
   | 'ComposerCatStackComponent'
   | 'DraftTargetSlotComponent'
-  | 'ModelSelectorChipComponent'
   | 'ProviderModelFieldsComponent'
   | 'CatAvatarRowComponent'
   | 'FolderBrowserContentComponent'
@@ -636,10 +619,10 @@ export function NewChatDraft({
       {...props}
       ComposerCatStackComponent={ComposerCatStack}
       DraftTargetSlotComponent={DraftTargetSlotComponent}
-      ModelSelectorChipComponent={ModelSelectorChip}
       ProviderModelFieldsComponent={ProviderModelFields}
       CatAvatarRowComponent={CatAvatarRow}
       FolderBrowserContentComponent={FolderBrowserContent}
     />
   );
 }
+

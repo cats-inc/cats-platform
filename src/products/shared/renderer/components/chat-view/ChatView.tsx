@@ -36,7 +36,7 @@ import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../../operator-loop/index.js';
-import { type ModelSelectorValue } from '../ModelSelector.js';
+import { type ExecutionTargetValue } from '../ExecutionTarget.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
 import { isComposerBusyForChannel } from '../../../../../shared/composer.js';
 import {
@@ -102,9 +102,9 @@ export interface ChatViewProps {
     outcomeId?: string | null;
   }) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
-  selectedModel?: ModelSelectorValue;
-  onModelChange?: (value: ModelSelectorValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  selectedModel?: ExecutionTargetValue;
+  onModelChange?: (value: ExecutionTargetValue) => void;
+  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
   activeWorkflowShape?: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys?: string[] | null;
@@ -332,7 +332,7 @@ export function ChatView({
   const showRosterAvatars = isDirectLane
     ? Boolean(defaultRecipientCat)
     : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedCats.length > 0);
-  const directLaneModelValue: ModelSelectorValue | null = directLaneCat
+  const directLaneModelValue: ExecutionTargetValue | null = directLaneCat
     ? {
         provider: directLaneCat.defaultExecutionTarget.provider,
         model: directLaneCat.defaultExecutionTarget.model,
@@ -566,3 +566,4 @@ export function ChatView({
     </ChatViewFrame>
   );
 }
+

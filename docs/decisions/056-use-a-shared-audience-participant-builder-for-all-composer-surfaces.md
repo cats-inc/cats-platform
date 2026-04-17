@@ -3,7 +3,7 @@
 > Stop constructing `DraftComposerStackParticipant` objects inline at every
 > call site. Centralise the conversion from each source type (ChatCat,
 > DraftTemporaryParticipant, RecipientChipTarget, ComposerStackParticipant,
-> ModelSelectorValue) into a single shared builder module so that tooltip,
+> ExecutionTargetValue) into a single shared builder module so that tooltip,
 > avatar, and identity fields stay consistent across draft, active-chat, and
 > workspace composer surfaces.
 
@@ -19,11 +19,11 @@ objects from different source types:
 
 1. `chatNewChatDraftSupport.ts` — ChatCat + DraftTemporaryParticipant
 2. `ChatNewChatDraft.tsx` — ChatCat, DraftTemporaryParticipant,
-   ModelSelectorValue (five inline constructions for parallel, group,
+   ExecutionTargetValue (five inline constructions for parallel, group,
    direct-lane, temp-participant, and solo modes)
 3. `ChatComposerTargetSlot.tsx` — RecipientChipTarget,
-   ComposerStackParticipant, ChatCat, ModelSelectorValue
-4. `WorkspaceComposerTargetSlot.tsx` — ChatCat, ModelSelectorValue
+   ComposerStackParticipant, ChatCat, ExecutionTargetValue
+4. `WorkspaceComposerTargetSlot.tsx` — ChatCat, ExecutionTargetValue
 
 Each site duplicates the same field mappings (`key`, `name`,
 `executionLabel`, `avatarColor`, `avatarUrl`, `isCat`, `catId`,
@@ -45,7 +45,7 @@ converts one source type:
 
 - `buildAudienceParticipantFromCat(cat: ChatCat)`
 - `buildAudienceParticipantFromTemporaryParticipant(tp: DraftTemporaryParticipant)`
-- `buildAudienceParticipantFromModel(model: ModelSelectorValue)`
+- `buildAudienceParticipantFromModel(model: ExecutionTargetValue)`
 - `buildAudienceParticipantFromRecipient(recipient: RecipientChipTarget)`
 - `buildAudienceParticipantFromStackParticipant(participant: ComposerStackParticipant)`
 
@@ -71,3 +71,4 @@ one place per source type.
 ---
 
 *Created: 2026-04-11*
+

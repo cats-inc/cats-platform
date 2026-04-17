@@ -24,7 +24,7 @@ updating every site; missing one produces an inconsistency.
   `WorkspaceComposerTargetSlot.tsx` (`catToAudienceParticipant`)
 - **DraftTemporaryParticipant** — `chatNewChatDraftSupport.ts`,
   `ChatNewChatDraft.tsx` (temp participant)
-- **ModelSelectorValue** — `ChatNewChatDraft.tsx` (parallel targets, solo
+- **ExecutionTargetValue** — `ChatNewChatDraft.tsx` (parallel targets, solo
   model), `ChatComposerTargetSlot.tsx` (implicit recipient),
   `WorkspaceComposerTargetSlot.tsx` (solo model)
 - **RecipientChipTarget** — `ChatComposerTargetSlot.tsx`
@@ -57,11 +57,11 @@ Builds from `tp.name`, `tp.provider`, `tp.instance`, `tp.model`,
 
 ```ts
 buildAudienceParticipantFromModel(
-  model: ModelSelectorValue,
+  model: ExecutionTargetValue,
 ): DraftComposerStackParticipant
 ```
 
-Builds from `buildModelSelectorLabel(model)`. Sets `isCat: false`,
+Builds from `buildExecutionTargetLabel(model)`. Sets `isCat: false`,
 `executionLabel` equals the label.
 
 ```ts
@@ -126,3 +126,4 @@ reduced to presentation-only concerns in a follow-up cleanup, since
 ---
 
 *Created: 2026-04-11*
+

@@ -372,7 +372,6 @@ test('solo draft without a recipient keeps the provider-model control on the aud
 
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /Claude-CLI · claude-sonnet/u);
-  assert.doesNotMatch(markup, /class="modelSelectorChip"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
 });
 
@@ -406,7 +405,6 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
 
   const audienceChipMatches = markup.match(/class="audienceChip"/gu) ?? [];
   const audienceAvatarMatches = markup.match(/class="audienceChipAvatar"/gu) ?? [];
-  const modelChipMatches = markup.match(/class="modelSelectorChip"/gu) ?? [];
   const recipientChipMatches = markup.match(/class="composerRecipientChip"/gu) ?? [];
   const implicitIconMatches = markup.match(/recipientChipIcon/gu) ?? [];
 
@@ -416,7 +414,6 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
   assert.match(markup, /data-tooltip="[^"]*gemini-2\.5-pro"/u);
   assert.equal(audienceChipMatches.length, 3);
   assert.equal(audienceAvatarMatches.length, 0);
-  assert.equal(modelChipMatches.length, 0);
   assert.equal(recipientChipMatches.length, 0);
   assert.equal(implicitIconMatches.length, 0);
 });
@@ -632,3 +629,4 @@ test('fresh draft greetings share one pool and still honor an explicit override 
     'Shared Two',
   );
 });
+

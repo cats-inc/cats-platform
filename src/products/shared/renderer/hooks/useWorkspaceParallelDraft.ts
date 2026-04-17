@@ -9,14 +9,14 @@ import {
   createNextParallelTarget,
   syncLeadParallelTarget,
 } from '../draftChatUtils.js';
-import type { WorkspaceModelSelectorValue } from './useWorkspaceComposerSubmit.js';
+import type { WorkspaceExecutionTargetValue } from './useWorkspaceComposerSubmit.js';
 
 export function useWorkspaceParallelDraft(options: {
-  draftModel: WorkspaceModelSelectorValue;
+  draftModel: WorkspaceExecutionTargetValue;
   maxParallelChats: number;
 }) {
   const { draftModel, maxParallelChats } = options;
-  const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<WorkspaceModelSelectorValue[]>(
+  const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<WorkspaceExecutionTargetValue[]>(
     () => createInitialParallelTargets({
       provider: draftModel.provider,
       model: draftModel.model,
@@ -34,7 +34,7 @@ export function useWorkspaceParallelDraft(options: {
       syncLeadParallelTarget(currentTargets, draftModel));
   }, [draftModel]);
 
-  const onDraftParallelChatTargetChange = useCallback((index: number, value: WorkspaceModelSelectorValue) => {
+  const onDraftParallelChatTargetChange = useCallback((index: number, value: WorkspaceExecutionTargetValue) => {
     setDraftParallelChatTargets((prev) =>
       prev.map((target, currentIndex) => (currentIndex === index ? value : target)),
     );
@@ -74,3 +74,4 @@ export function useWorkspaceParallelDraft(options: {
     onRemoveDraftParallelChatTarget,
   };
 }
+

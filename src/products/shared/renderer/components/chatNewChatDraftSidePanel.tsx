@@ -9,9 +9,9 @@ import {
 import { CatAvatarRow } from './CatAvatarRow.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import {
-  buildModelSelectorLabel,
-  type ModelSelectorValue,
-} from './ModelSelector.js';
+  buildExecutionTargetLabel,
+  type ExecutionTargetValue,
+} from './ExecutionTarget.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
 import { type SidePanelSection } from '../../../../design/components/SidePanel.js';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
@@ -21,7 +21,7 @@ export interface ChatNewChatTemporaryParticipantFormState {
   provider: string;
   instance: string;
   model: string;
-  modelSelection: ModelSelectorValue['modelSelection'];
+  modelSelection: ExecutionTargetValue['modelSelection'];
 }
 
 export interface BuildChatNewChatDraftSidePanelSectionsInput {
@@ -43,7 +43,7 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   hasReachedGroupParticipantLimit: boolean;
   isSubmittingFirstTurn: boolean;
   defaultRecipientCat: AppShellPayload['chat']['cats'][number] | null;
-  activePanelModel: ModelSelectorValue | null;
+  activePanelModel: ExecutionTargetValue | null;
   onToggleDraftCat: (catId: string) => void;
   onHighlightDraftCat: (catId: string | null) => void;
   onAddDraftTemporaryParticipant: (
@@ -63,11 +63,11 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   createTemporaryParticipantFormValue: () => ChatNewChatTemporaryParticipantFormState;
   onTemporaryParticipantFormOpenChange: (open: boolean) => void;
   onSubmitTemporaryParticipant: () => void;
-  selectedModel?: ModelSelectorValue;
-  onModelChange?: (value: ModelSelectorValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
-  parallelTargets?: ModelSelectorValue[];
-  onParallelTargetChange?: (index: number, value: ModelSelectorValue) => void;
+  selectedModel?: ExecutionTargetValue;
+  onModelChange?: (value: ExecutionTargetValue) => void;
+  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
+  parallelTargets?: ExecutionTargetValue[];
+  onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -365,7 +365,7 @@ export function buildChatNewChatDraftSidePanelSections(
     input.parallelTargets.forEach((target, index) => {
       sections.push({
         id: `parallel:${index}`,
-        title: buildModelSelectorLabel(target),
+        title: buildExecutionTargetLabel(target),
         children: (
           <ProviderModelFields
             provider={target.provider}
@@ -417,3 +417,4 @@ export function buildChatNewChatDraftSidePanelSections(
 
   return sections;
 }
+

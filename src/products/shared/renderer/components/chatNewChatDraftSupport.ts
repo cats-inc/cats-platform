@@ -15,7 +15,7 @@ import {
   buildRecipientFromCat,
   type RecipientChipTarget,
 } from './ComposerRecipientChip.js';
-import type { ModelSelectorValue } from './ModelSelector.js';
+import type { ExecutionTargetValue } from './ExecutionTarget.js';
 import {
   isComposerAckBusyForDraft,
   isComposerBusyForDraft,
@@ -83,13 +83,13 @@ export function resolveChatNewChatDraftViewState(input: {
   draftTemporaryParticipants: DraftTemporaryParticipant[];
   allowAddCat: boolean;
   entryMode: NewChatMode;
-  parallelTargets?: ModelSelectorValue[] | undefined;
+  parallelTargets?: ExecutionTargetValue[] | undefined;
   starterSuggestions?: ReadonlyArray<DraftStarterSuggestion> | null;
   greeting?: string | null;
   greetingPool?: ReadonlyArray<string> | null;
   draftHighlightedCatId: string | null;
-  draftCatModelOverrides: Map<string, ModelSelectorValue>;
-  selectedModel?: ModelSelectorValue | undefined;
+  draftCatModelOverrides: Map<string, ExecutionTargetValue>;
+  selectedModel?: ExecutionTargetValue | undefined;
   busy: WorkspaceBusyState;
 }) {
   const chatCats = input.payload.chat.cats.filter(isChatCat);
@@ -164,7 +164,7 @@ export function resolveChatNewChatDraftViewState(input: {
   const highlightedCat = input.draftHighlightedCatId && input.draftCatIds.includes(input.draftHighlightedCatId)
     ? chatCats.find((cat) => cat.id === input.draftHighlightedCatId) ?? null
     : null;
-  const activePanelModel: ModelSelectorValue | null =
+  const activePanelModel: ExecutionTargetValue | null =
     draftSuggestionContext.isDirectLaneContext && defaultRecipientCat
       ? {
           provider: defaultRecipientCat.defaultExecutionTarget.provider,
@@ -231,3 +231,4 @@ export function resolveChatNewChatDraftViewState(input: {
     groupComposerParticipants,
   };
 }
+

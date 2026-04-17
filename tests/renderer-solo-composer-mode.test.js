@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
 
-test('persisted chat view wires the solo model selector and suppresses visible boss chrome', async () => {
+test('persisted chat view wires the solo audience chip and suppresses visible boss chrome', async () => {
   const appSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/App.tsx'),
     'utf8',
@@ -28,8 +28,8 @@ test('persisted chat view wires the solo model selector and suppresses visible b
   );
   assert.match(
     chatViewSource,
-    /ModelSelector/,
-    'ChatView should render the model selector for solo persisted chats',
+    /WorkspaceComposerTargetSlot/,
+    'ChatView should render the shared audience-chip slot for solo persisted chats',
   );
   assert.match(
     chatViewSource,
@@ -37,3 +37,4 @@ test('persisted chat view wires the solo model selector and suppresses visible b
     'ChatView should branch on the shared conversation-mode helper when rendering chat modes',
   );
 });
+

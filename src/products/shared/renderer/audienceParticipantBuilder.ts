@@ -1,7 +1,7 @@
 import type { ChatCat } from '../api/workspaceContracts.js';
 import type { DraftTemporaryParticipant } from './draftChatUtils.js';
 import type { RecipientChipTarget } from './components/ComposerRecipientChip.js';
-import { buildModelSelectorLabel, type ModelSelectorValue } from './components/ModelSelector.js';
+import { buildExecutionTargetLabel, type ExecutionTargetValue } from './components/ExecutionTarget.js';
 import type { DraftComposerStackParticipant } from './components/chatNewChatDraftSupport.js';
 import {
   buildCatExecutionLabel,
@@ -57,10 +57,10 @@ export function buildAudienceParticipantFromTemporaryParticipant(
 }
 
 export function buildAudienceParticipantFromModel(
-  model: ModelSelectorValue,
+  target: ExecutionTargetValue,
   keyOverride?: string,
 ): DraftComposerStackParticipant {
-  const label = buildModelSelectorLabel(model);
+  const label = buildExecutionTargetLabel(target);
   return {
     key: keyOverride ?? 'implicit:model',
     name: label,
@@ -111,3 +111,4 @@ export function buildAudienceParticipantFromStackParticipant(
     participantId: participant.participantId,
   };
 }
+

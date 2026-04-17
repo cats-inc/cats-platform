@@ -15,23 +15,23 @@ import {
   sameProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
-import type { ModelSelectorValue } from '../components/ModelSelector.js';
+import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
 
-export interface ModelSelectorDefaultsLike {
+export interface ExecutionTargetDefaultsLike {
   provider?: string | null;
   model?: string | null;
   instance?: string | null;
   modelSelection?: ProviderModelSelection | null;
 }
 
-export interface WorkspaceModelSelectionPayloadLike {
+export interface WorkspaceExecutionTargetPayloadLike {
   chat: {
-    newChatDefaults: ModelSelectorDefaultsLike | null | undefined;
+    newChatDefaults: ExecutionTargetDefaultsLike | null | undefined;
   };
 }
 
-export interface WorkspaceModelSelectionChatLike {
-  newChatDefaults: ModelSelectorDefaultsLike | null | undefined;
+export interface WorkspaceExecutionTargetChatLike {
+  newChatDefaults: ExecutionTargetDefaultsLike | null | undefined;
   globalOrchestrator: {
     executionTarget: {
       provider: string;
@@ -42,7 +42,7 @@ export interface WorkspaceModelSelectionChatLike {
   };
 }
 
-export interface WorkspaceModelSelectionChannelLike {
+export interface WorkspaceExecutionTargetChannelLike {
   id: string;
   composerMode?: string | null;
   pendingProvider?: string | null;
@@ -65,22 +65,22 @@ export interface PersistedNewChatDefaultsInput {
   modelSelection: ProviderModelSelection | null;
 }
 
-export type WorkspaceModelSelectionLoadState<
-  TPayload extends WorkspaceModelSelectionPayloadLike,
+export type WorkspaceExecutionTargetLoadState<
+  TPayload extends WorkspaceExecutionTargetPayloadLike,
 > =
   | { status: 'loading' }
   | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
 
-export interface UseWorkspaceModelSelectionStateOptions<
-  TPayload extends WorkspaceModelSelectionPayloadLike,
-  TChat extends WorkspaceModelSelectionChatLike,
-  TSelectedChannel extends WorkspaceModelSelectionChannelLike,
+export interface UseWorkspaceExecutionTargetStateOptions<
+  TPayload extends WorkspaceExecutionTargetPayloadLike,
+  TChat extends WorkspaceExecutionTargetChatLike,
+  TSelectedChannel extends WorkspaceExecutionTargetChannelLike,
 > {
-  state: WorkspaceModelSelectionLoadState<TPayload>;
+  state: WorkspaceExecutionTargetLoadState<TPayload>;
   readyChat: TChat | null;
   readySelectedChannel: TSelectedChannel | null;
-  setState: Dispatch<SetStateAction<WorkspaceModelSelectionLoadState<TPayload>>>;
+  setState: Dispatch<SetStateAction<WorkspaceExecutionTargetLoadState<TPayload>>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   updateNewChatDefaultsPreference: (
     defaults: PersistedNewChatDefaultsInput,
@@ -94,9 +94,9 @@ export interface UseWorkspaceModelSelectionStateOptions<
   debounceMs?: number;
 }
 
-export function createModelSelectorValueForProvider(
+export function createExecutionTargetValueForProvider(
   provider: string,
-): ModelSelectorValue {
+): ExecutionTargetValue {
   return {
     provider,
     model: getDefaultModel(provider) || null,
@@ -106,15 +106,15 @@ export function createModelSelectorValueForProvider(
   };
 }
 
-export function createDefaultModelSelectorValue(): ModelSelectorValue {
-  return createModelSelectorValueForProvider('claude');
+export function createDefaultExecutionTargetValue(): ExecutionTargetValue {
+  return createExecutionTargetValueForProvider('claude');
 }
 
-export function toModelSelectorValue(
-  defaults: ModelSelectorDefaultsLike | null | undefined,
-): ModelSelectorValue {
+export function toExecutionTargetValue(
+  defaults: ExecutionTargetDefaultsLike | null | undefined,
+): ExecutionTargetValue {
   if (!defaults) {
-    return createDefaultModelSelectorValue();
+    return createDefaultExecutionTargetValue();
   }
 
   const provider = defaults.provider?.trim() || 'claude';
@@ -127,9 +127,9 @@ export function toModelSelectorValue(
   };
 }
 
-export function sameModelSelectorValue(
-  left: ModelSelectorValue,
-  right: ModelSelectorValue,
+export function sameExecutionTargetValue(
+  left: ExecutionTargetValue,
+  right: ExecutionTargetValue,
 ): boolean {
   return left.provider === right.provider
     && (left.instance ?? null) === (right.instance ?? null)
@@ -137,13 +137,13 @@ export function sameModelSelectorValue(
     && sameProviderModelSelection(left.modelSelection, right.modelSelection);
 }
 
-export function toSoloChannelModelSelectorValue<
-  TChat extends WorkspaceModelSelectionChatLike,
-  TSelectedChannel extends WorkspaceModelSelectionChannelLike,
+export function toSoloChannelExecutionTargetValue<
+  TChat extends WorkspaceExecutionTargetChatLike,
+  TSelectedChannel extends WorkspaceExecutionTargetChannelLike,
 >(
   readyChat: TChat | null,
   readySelectedChannel: TSelectedChannel | null,
-): ModelSelectorValue | null {
+): ExecutionTargetValue | null {
   if (!readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
     return null;
   }
@@ -168,10 +168,10 @@ export function toSoloChannelModelSelectorValue<
   };
 }
 
-export function useWorkspaceModelSelectionState<
-  TPayload extends WorkspaceModelSelectionPayloadLike,
-  TChat extends WorkspaceModelSelectionChatLike,
-  TSelectedChannel extends WorkspaceModelSelectionChannelLike,
+export function useWorkspaceExecutionTargetState<
+  TPayload extends WorkspaceExecutionTargetPayloadLike,
+  TChat extends WorkspaceExecutionTargetChatLike,
+  TSelectedChannel extends WorkspaceExecutionTargetChannelLike,
 >({
   state,
   readyChat,
@@ -181,12 +181,12 @@ export function useWorkspaceModelSelectionState<
   updateNewChatDefaultsPreference,
   updateChannelPendingExecutionTarget,
   debounceMs = 150,
-}: UseWorkspaceModelSelectionStateOptions<TPayload, TChat, TSelectedChannel>) {
-  const [draftModel, setDraftModel] = useState<ModelSelectorValue>(
-    createDefaultModelSelectorValue,
+}: UseWorkspaceExecutionTargetStateOptions<TPayload, TChat, TSelectedChannel>) {
+  const [draftModel, setDraftModel] = useState<ExecutionTargetValue>(
+    createDefaultExecutionTargetValue,
   );
-  const [soloChannelModel, setSoloChannelModel] = useState<ModelSelectorValue>(
-    createDefaultModelSelectorValue,
+  const [soloChannelModel, setSoloChannelModel] = useState<ExecutionTargetValue>(
+    createDefaultExecutionTargetValue,
   );
   const latestNewChatDefaultsSaveId = useRef(0);
   const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<
@@ -204,9 +204,9 @@ export function useWorkspaceModelSelectionState<
       return;
     }
 
-    const nextDraftModel = toModelSelectorValue(readyChat.newChatDefaults);
+    const nextDraftModel = toExecutionTargetValue(readyChat.newChatDefaults);
     setDraftModel((currentDraftModel) =>
-      sameModelSelectorValue(currentDraftModel, nextDraftModel)
+      sameExecutionTargetValue(currentDraftModel, nextDraftModel)
         ? currentDraftModel
         : nextDraftModel);
   }, [
@@ -234,7 +234,7 @@ export function useWorkspaceModelSelectionState<
   }, []);
 
   useEffect(() => {
-    const nextSoloChannelModel = toSoloChannelModelSelectorValue(
+    const nextSoloChannelModel = toSoloChannelExecutionTargetValue(
       readyChat,
       readySelectedChannel,
     );
@@ -278,10 +278,10 @@ export function useWorkspaceModelSelectionState<
       return;
     }
 
-    const persistedDraftModel = toModelSelectorValue(
+    const persistedDraftModel = toExecutionTargetValue(
       state.payload.chat.newChatDefaults,
     );
-    if (sameModelSelectorValue(draftModel, persistedDraftModel)) {
+    if (sameExecutionTargetValue(draftModel, persistedDraftModel)) {
       return;
     }
 
@@ -362,14 +362,14 @@ export function useWorkspaceModelSelectionState<
       return;
     }
 
-    const persistedSoloModel = toSoloChannelModelSelectorValue(
+    const persistedSoloModel = toSoloChannelExecutionTargetValue(
       readyChat,
       readySelectedChannel,
     );
     if (
       !readySelectedChannel
       || !persistedSoloModel
-      || sameModelSelectorValue(soloChannelModel, persistedSoloModel)
+      || sameExecutionTargetValue(soloChannelModel, persistedSoloModel)
     ) {
       return;
     }
@@ -448,3 +448,5 @@ export function useWorkspaceModelSelectionState<
     setSoloChannelModel,
   };
 }
+
+

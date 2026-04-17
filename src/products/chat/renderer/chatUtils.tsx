@@ -24,7 +24,7 @@ import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
 } from '../shared/channelEntry';
-import type { ModelSelectorValue } from './components/ModelSelector.js';
+import type { ExecutionTargetValue } from './components/ExecutionTarget.js';
 import {
   emptyCatForm as emptyWorkspaceCatForm,
   isChatCat as isWorkspaceChatCat,
@@ -109,7 +109,7 @@ function isAutoNamedDraftTemporaryParticipant(input: {
 }
 
 export function createInitialGroupParticipants(
-  baseTarget: Pick<ModelSelectorValue, 'provider' | 'model' | 'instance' | 'modelSelection'>,
+  baseTarget: Pick<ExecutionTargetValue, 'provider' | 'model' | 'instance' | 'modelSelection'>,
   maxParticipants: number = DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT,
 ): DraftTemporaryParticipant[] {
   const normalizedBaseTarget = toDraftTemporaryParticipantTarget(baseTarget);
@@ -152,7 +152,7 @@ export function createInitialGroupParticipants(
 
 export function syncLeadDraftTemporaryParticipantWithTarget(input: {
   participants: DraftTemporaryParticipant[];
-  target: Pick<ModelSelectorValue, 'provider' | 'model' | 'instance' | 'modelSelection'>;
+  target: Pick<ExecutionTargetValue, 'provider' | 'model' | 'instance' | 'modelSelection'>;
 }): DraftTemporaryParticipant[] {
   if (input.participants.length === 0) {
     return input.participants;
@@ -600,3 +600,4 @@ export function BootShell() {
     </div>
   );
 }
+

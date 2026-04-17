@@ -3,8 +3,8 @@ import { useMemo } from 'react';
 import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
 import type { SelectedChannelView } from '../../workspaceChatUtils.js';
 import {
-  type ModelSelectorValue,
-} from '../ModelSelector.js';
+  type ExecutionTargetValue,
+} from '../ExecutionTarget.js';
 import { AudienceChip } from '../AudienceChip.js';
 import {
   buildAudienceParticipantFromCat,
@@ -14,7 +14,7 @@ import {
 export interface WorkspaceComposerTargetSlotProps {
   payload: AppShellPayload;
   composerBusy: boolean;
-  selectedModel?: ModelSelectorValue;
+  selectedModel?: ExecutionTargetValue;
   directLaneCat: ChatCat | null;
   defaultRecipientCat: SelectedChannelView['assignedCats'][number] | null;
   assignedCatRecords: ChatCat[];
@@ -112,3 +112,4 @@ export function WorkspaceComposerTargetSlot({
 
   return null;
 }
+

@@ -28,7 +28,7 @@ import {
 import type { AppShellPayload } from "../api/workspaceContracts.js";
 import type { AddCatPanelProps } from "./components/AddCatPanel.js";
 import type { FolderBrowserContentProps } from "./components/FolderBrowser.js";
-import type { ModelSelectorValue } from "./components/ModelSelector.js";
+import type { ExecutionTargetValue } from "./components/ExecutionTarget.js";
 import type { NewChatDraftProps as ChatNewChatDraftProps } from "./components/ChatNewChatDraft.js";
 import type { ChatViewProps } from "./components/chat-view/ChatView.js";
 import {
@@ -62,7 +62,7 @@ import { useWorkspaceDraftCatState } from "./hooks/useWorkspaceDraftCatState.js"
 import { useWorkspaceDraftParticipantState } from "./hooks/useWorkspaceDraftParticipantState.js";
 import { useWorkspaceAppTransientState } from "./hooks/useWorkspaceAppTransientState.js";
 import { useWorkspaceLocationState } from "./hooks/useWorkspaceLocationState.js";
-import { useWorkspaceModelSelectionState } from "./hooks/useWorkspaceModelSelectionState.js";
+import { useWorkspaceExecutionTargetState } from "./hooks/useWorkspaceExecutionTargetState.js";
 import { useOnGenericDraftRouteEntry } from "./hooks/useOnGenericDraftRouteEntry.js";
 import { useWorkspaceParallelDraft } from "./hooks/useWorkspaceParallelDraft.js";
 import { useProductChannelDocumentTitle } from "./hooks/useProductChannelDocumentTitle.js";
@@ -170,7 +170,7 @@ export function createWorkspaceProductApp({
   renderSidebar,
 }: WorkspaceProductAppConfig) {
   const useComposerSubmit =
-    createUseComposerSubmit<ModelSelectorValue>(chatPrefix);
+    createUseComposerSubmit<ExecutionTargetValue>(chatPrefix);
 
   return function WorkspaceProductApp() {
     const navigate = useNavigate();
@@ -395,7 +395,7 @@ export function createWorkspaceProductApp({
       setDraftModel,
       soloChannelModel,
       setSoloChannelModel,
-    } = useWorkspaceModelSelectionState({
+    } = useWorkspaceExecutionTargetState({
       state,
       readyChat,
       readySelectedChannel,
@@ -650,7 +650,7 @@ export function createWorkspaceProductApp({
       onStartNewChat,
       onStartNewGroupChat,
       onStartNewParallelChat,
-    } = useWorkspaceAppNavigationActions<ModelSelectorValue, AppShellPayload, DraftTemporaryParticipant>({
+    } = useWorkspaceAppNavigationActions<ExecutionTargetValue, AppShellPayload, DraftTemporaryParticipant>({
       state,
       setState,
       navigate,
@@ -877,7 +877,7 @@ export function createWorkspaceProductApp({
     });
 
     const onDraftModelChange = useCallback(
-      (nextDraftModel: ModelSelectorValue): void => {
+      (nextDraftModel: ExecutionTargetValue): void => {
         setDraftModel(nextDraftModel);
         if (
           supportsStructuredDraftModes
@@ -899,7 +899,7 @@ export function createWorkspaceProductApp({
       ],
     );
     const onDraftParallelChatTargetChangeWithSharedDefault = useCallback(
-      (index: number, value: ModelSelectorValue): void => {
+      (index: number, value: ExecutionTargetValue): void => {
         onDraftParallelChatTargetChange(index, value);
         if (index === 0) {
           setDraftModel(value);
@@ -1181,3 +1181,5 @@ export function createWorkspaceProductApp({
     );
   };
 }
+
+

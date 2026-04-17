@@ -4,7 +4,7 @@ import {
   encodeAttachmentFiles,
   sendParallelChatMessage,
 } from './api/index.js';
-import type { WorkspaceModelSelectorValue } from './hooks/useWorkspaceComposerSubmit.js';
+import type { WorkspaceExecutionTargetValue } from './hooks/useWorkspaceComposerSubmit.js';
 import { createDraftChannelTitle } from './workspaceChatUtils.js';
 
 export interface ParallelDispatchRequestState {
@@ -34,7 +34,7 @@ export interface SubmitNewParallelChatDraftOptions {
   payload: AppShellPayload;
   draftCwd: string | null;
   draftFiles: File[];
-  draftParallelChatTargets: WorkspaceModelSelectorValue[];
+  draftParallelChatTargets: WorkspaceExecutionTargetValue[];
   buildChannelPath: (channelId: string) => string;
   signal?: AbortSignal;
 }
@@ -150,3 +150,4 @@ export async function submitParallelCompareMessage({
       : null,
   };
 }
+

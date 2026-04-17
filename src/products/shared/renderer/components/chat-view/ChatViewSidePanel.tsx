@@ -17,7 +17,7 @@ import { catInitials, type SelectedChannelView } from '../../workspaceChatUtils.
 import { ActivityFeed } from '../ActivityFeed.js';
 import { ApprovalQueuePanel } from '../ApprovalQueuePanel.js';
 import { CatAvatarRow } from '../CatAvatarRow.js';
-import type { ModelSelectorValue } from '../ModelSelector.js';
+import type { ExecutionTargetValue } from '../ExecutionTarget.js';
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
@@ -36,10 +36,10 @@ export interface ChatViewSidePanelProps {
   assignedCatRecords: ChatCat[];
   defaultRecipientCat: SelectedChannelView['assignedCats'][number] | null;
   directLaneCat: ChatCat | null;
-  directLaneModelValue: ModelSelectorValue | null;
+  directLaneModelValue: ExecutionTargetValue | null;
   isDirectLane: boolean;
   isSoloComposer: boolean;
-  selectedModel?: ModelSelectorValue;
+  selectedModel?: ExecutionTargetValue;
   inspectedRun: ChatRunInspectorView | null;
   showAddCatButton: boolean;
   onSectionToggle: (section: string | null) => void;
@@ -53,8 +53,8 @@ export interface ChatViewSidePanelProps {
     checkpointId?: string | null;
     outcomeId?: string | null;
   }) => void;
-  onModelChange?: (value: ModelSelectorValue) => void;
-  onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
+  onModelChange?: (value: ExecutionTargetValue) => void;
+  onDirectLaneModelChange?: (catId: string, value: ExecutionTargetValue) => void;
   onOpenAddCat?: () => void;
 }
 
@@ -316,3 +316,4 @@ export function ChatViewSidePanel({
     return sections;
   }
 }
+

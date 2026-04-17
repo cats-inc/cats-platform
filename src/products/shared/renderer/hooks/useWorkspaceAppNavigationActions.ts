@@ -92,7 +92,7 @@ export type WorkspaceNavigationLoadState<
   | { status: 'error'; message: string };
 
 export interface UseWorkspaceAppNavigationActionsOptions<
-  TModelSelectorValue,
+  TExecutionTargetValue,
   TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
   TDraftParticipant = never,
 > {
@@ -111,7 +111,7 @@ export interface UseWorkspaceAppNavigationActionsOptions<
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<TDraftParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, TModelSelectorValue>>>;
+  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, TExecutionTargetValue>>>;
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
   resetDraftParallelChatTargets?: () => void;
@@ -123,11 +123,11 @@ export interface UseWorkspaceAppNavigationActionsOptions<
 }
 
 export function useWorkspaceAppNavigationActions<
-  TModelSelectorValue,
+  TExecutionTargetValue,
   TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
   TDraftParticipant = never,
 >(
-  options: UseWorkspaceAppNavigationActionsOptions<TModelSelectorValue, TPayload, TDraftParticipant>,
+  options: UseWorkspaceAppNavigationActionsOptions<TExecutionTargetValue, TPayload, TDraftParticipant>,
 ) {
   const {
     state,
@@ -364,3 +364,4 @@ export function useWorkspaceAppNavigationActions<
     onStartNewParallelChat,
   };
 }
+

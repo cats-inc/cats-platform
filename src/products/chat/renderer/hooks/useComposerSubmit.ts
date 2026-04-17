@@ -66,7 +66,7 @@ import {
   resolveDraftRouteContext,
   resolveDraftRoutePath,
 } from '../draftParticipants';
-import type { ModelSelectorValue } from '../components/ModelSelector';
+import type { ExecutionTargetValue } from '../components/ExecutionTarget';
 import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
 
 type LoadStateLike =
@@ -106,15 +106,15 @@ export function useComposerSubmit(options: {
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
-  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ModelSelectorValue>>>;
+  setDraftCatModelOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   setDraftWorkflowShape: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
-  draftModel: ModelSelectorValue;
-  soloChannelModel: ModelSelectorValue;
+  draftModel: ExecutionTargetValue;
+  soloChannelModel: ExecutionTargetValue;
   showingParallelChatDraft: boolean;
-  draftParallelChatTargets: ModelSelectorValue[];
+  draftParallelChatTargets: ExecutionTargetValue[];
   draftWorkflowShape: 'sequential' | 'concurrent';
   draftAudienceKeys: string[] | null;
   activeWorkflowShape: 'sequential' | 'concurrent';
@@ -612,3 +612,4 @@ export function useComposerSubmit(options: {
     submitComposerMessage,
   };
 }
+

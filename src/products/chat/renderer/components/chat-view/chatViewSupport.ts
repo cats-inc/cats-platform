@@ -20,7 +20,7 @@ import {
 import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { buildImplicitRecipient, buildNamedRecipient, type RecipientChipTarget } from '../ComposerRecipientChip.js';
-import type { ModelSelectorValue } from '../ModelSelector.js';
+import type { ExecutionTargetValue } from '../ExecutionTarget.js';
 import { presentChannelTitle, type SelectedChannelView } from '../../chatUtils.js';
 import {
   resolveCompareNeighborChannelId,
@@ -423,7 +423,7 @@ export function buildChatComposerRecipients(input: {
   isDirectLane: boolean;
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
   isSoloComposer: boolean;
-  selectedModel: ModelSelectorValue | undefined;
+  selectedModel: ExecutionTargetValue | undefined;
   defaultRecipientParticipant: ResolvedChannelParticipant | null;
   bossCatId: string | null;
   resolveParticipantCatRecord: (
@@ -502,7 +502,7 @@ export function buildChatComposerRecipients(input: {
 
 export interface ChatComposerViewState {
   participantChipLabel: string;
-  directLaneModelValue: ModelSelectorValue | null;
+  directLaneModelValue: ExecutionTargetValue | null;
   directLaneExcludedMentionNames: string[];
   composerBusy: boolean;
   composerAckBusy: boolean;
@@ -572,3 +572,4 @@ export function resolveChatComposerViewState(input: {
     composerWorkspacePath: resolveComposerWorkspacePath(input.repoPath, input.chatCwd),
   };
 }
+
