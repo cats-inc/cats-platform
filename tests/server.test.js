@@ -160,8 +160,8 @@ function createRuntimeStub() {
       this.createdSessions.push({ ...input, id: session.id });
       return session;
     },
-    async sendMessage(sessionId, content) {
-      this.sentMessages.push({ sessionId, content });
+    async sendMessage(sessionId, content, input) {
+      this.sentMessages.push({ sessionId, content, input });
       const text = content.includes('Agent-1')
         ? 'Agent-1 handled the routed turn.'
         : 'Orchestrator acknowledged the chat request.';
@@ -10586,6 +10586,29 @@ test('PATCH /api/channels/:channelId can start a fresh solo continuity branch', 
     assert.match(
       channelPayload.channel.messages.at(-1)?.body ?? '',
       /Started fresh\./u,
+    );
+
+    const followUpResponse = await fetch(`${baseUrl}/api/channels/${channel.id}/messages`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        body: 'Continue from the fresh branch only.',
+        pendingProvider: 'gemini',
+        pendingInstance: 'native',
+        pendingModel: 'gemini-default',
+      }),
+    });
+    assert.equal(followUpResponse.status, 200);
+    await waitForCondition(() => runtimeClient.sentMessages.length >= 2);
+    assert.equal(
+      runtimeClient.sentMessages.at(-1)?.input?.context?.metadata?.continuityMode,
+      'fresh_start',
+    );
+    assert.equal(
+      runtimeClient.sentMessages.at(-1)?.input?.context?.metadata?.continuityResetAt,
+      channelPayload.channel.continuityResetAt,
     );
   });
 });

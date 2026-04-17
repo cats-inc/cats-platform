@@ -1573,6 +1573,10 @@ test('explicit solo start-fresh resets continuity before the next replacement se
   assert.deepEqual(runtimeClient.closedSessions, []);
   assert.equal(runtimeClient.createdSessions.length, 2);
   assert.equal(runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode, 'fresh_start');
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityResetAt,
+    '2026-03-23T00:00:30.000Z',
+  );
   assert.equal(runtimeClient.sentMessages[1]?.input?.instructions, undefined);
   assert.doesNotMatch(runtimeClient.sentMessages[1]?.input?.instructions ?? '', /First turn/u);
   assert.ok(resetMessage);

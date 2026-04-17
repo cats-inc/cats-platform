@@ -19,6 +19,7 @@ export function buildDispatchRuntimeContextMetadata(
   >,
   options: {
     continuityMode?: 'fresh_start' | 'native_resume' | 'full_transplant' | null;
+    continuityResetAt?: string | null;
   } = {},
 ): Record<string, unknown> {
   return {
@@ -40,6 +41,7 @@ export function buildDispatchRuntimeContextMetadata(
     sourceParticipantId: request.sourceParticipant?.participantId ?? null,
     sourceParticipantName: request.sourceParticipant?.participantName ?? null,
     continuityMode: options.continuityMode ?? null,
+    continuityResetAt: options.continuityResetAt ?? null,
   };
 }
 
