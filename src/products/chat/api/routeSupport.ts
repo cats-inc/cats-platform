@@ -1,5 +1,6 @@
 import type { AppConfig } from '../../../config.js';
 import { createCatActorId } from '../../../core/actors.js';
+import type { GuideCatRecord } from '../../../core/types.js';
 import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../../platform/transports/telegram/relay/index.js';
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
@@ -153,7 +154,7 @@ export function nowFrom(dependencies: ChatApiDependencies): Date {
 export async function enqueueGuideCatAssistRefreshIfRuntimeReachable(
   dependencies: ChatApiDependencies,
   options: {
-    guideCat: Awaited<ReturnType<ChatStore['readCore']>>['guideCat'];
+    guideCat: GuideCatRecord | null;
     ownerDisplayName?: string | null;
     now?: Date;
   },

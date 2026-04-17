@@ -38,8 +38,7 @@ import type {
   RoomWorkflowTurn,
 } from '../../../shared/roomRouting.js';
 import type {
-  GuideCatAssistNewChatMode,
-  GuideCatAssistSurfaceReadModel,
+  GuideCatAssistNewChatByMode,
 } from '../../../shared/guideCatAssist.js';
 import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
@@ -441,7 +440,7 @@ export interface ChatShellState {
   showLiveProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
   botBindings: ChatBotBindingSummary[];
-  newChatAssist?: Record<GuideCatAssistNewChatMode, GuideCatAssistSurfaceReadModel> | null;
+  newChatAssist?: GuideCatAssistNewChatByMode | null;
 }
 
 export interface AppShellPayload extends PlatformHostEnvelope {

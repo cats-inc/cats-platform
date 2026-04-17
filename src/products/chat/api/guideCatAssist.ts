@@ -1,5 +1,6 @@
 import type { GuideCatRecord } from '../../../core/types.js';
 import {
+  type GuideCatAssistNewChatByMode,
   GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE,
   buildGuideCatAssistRefreshContextHash,
   createGuideCatAssistScopeKey,
@@ -22,7 +23,7 @@ import {
 
 export interface ChatGuideCatAssistReadModel {
   lobby: GuideCatAssistSurfaceReadModel;
-  newChatByMode: Record<GuideCatAssistNewChatMode, GuideCatAssistSurfaceReadModel>;
+  newChatByMode: GuideCatAssistNewChatByMode;
 }
 
 interface GuideCatAssistRefreshQueueInput {
@@ -174,7 +175,7 @@ export async function resolveChatGuideCatAssistReadModel(input: {
       }),
     }),
     newChatByMode: Object.keys(GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE)
-      .reduce<Record<GuideCatAssistNewChatMode, GuideCatAssistSurfaceReadModel>>((acc, mode) => {
+      .reduce<GuideCatAssistNewChatByMode>((acc, mode) => {
         const newChatMode = mode as GuideCatAssistNewChatMode;
         acc[newChatMode] = resolveSurfaceReadModel({
           scope: {
@@ -204,7 +205,7 @@ export async function resolveChatGuideCatAssistReadModel(input: {
           }),
         });
         return acc;
-      }, {} as Record<GuideCatAssistNewChatMode, GuideCatAssistSurfaceReadModel>),
+      }, {} as GuideCatAssistNewChatByMode),
   };
 }
 
@@ -220,6 +221,8 @@ export async function refreshGuideCatAssistEligibleScopes(input: {
     return;
   }
 
+  // V1 only re-materializes deterministic or last-good bundles into the local cache.
+  // Runtime-backed content generation is deferred to a later slice.
   const [config, readModel] = await Promise.all([
     readGuideCatAssistConfig(input.chatStatePath),
     input.readModel
@@ -280,6 +283,7 @@ export function queueGuideCatAssistRefresh(input: GuideCatAssistRefreshQueueInpu
     return;
   }
 
+  // V1 queues cache hydration only; it does not dispatch runtime content generation.
   const existingEntry = guideCatAssistRefreshQueue.get(input.chatStatePath);
   if (existingEntry) {
     existingEntry.pendingInput = input;

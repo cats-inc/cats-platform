@@ -239,4 +239,12 @@ test('guide cat assist stale check only trips when expiresAt is in the past', as
       lastRefreshStatus: 'ok',
     },
   }, new Date('2026-04-17T18:00:00.000Z')), true);
+
+  assert.equal(isGuideCatAssistBundleStale({
+    freshness: {
+      generatedAt: '2026-04-17T12:00:00.000Z',
+      expiresAt: 'not-a-timestamp',
+      lastRefreshStatus: 'ok',
+    },
+  }, new Date('2026-04-17T18:00:00.000Z')), true);
 });

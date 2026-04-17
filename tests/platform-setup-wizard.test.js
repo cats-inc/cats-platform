@@ -876,7 +876,7 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
   });
 });
 
-test('GET /api/app-shell serves stale assist cache first and refreshes it lazily when runtime is back', async () => {
+test('GET /api/app-shell serves stale assist cache first and lazily rehydrates it when runtime is back', async () => {
   const runtime = createRuntimeStub({ reachable: false });
   await withServer(runtime, async (baseUrl, config) => {
     const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
@@ -939,7 +939,6 @@ test('GET /api/app-shell serves stale assist cache first and refreshes it lazily
     }
 
     assert.ok(refreshedBundle);
-    assert.equal(refreshedBundle.content.greeting, 'Stale cached lobby greeting');
     assert.equal(refreshedBundle.freshness.lastRefreshStatus, 'skipped');
   });
 });

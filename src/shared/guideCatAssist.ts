@@ -140,6 +140,10 @@ export const GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE = {
 } as const;
 
 export type GuideCatAssistNewChatMode = keyof typeof GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE;
+export type GuideCatAssistNewChatByMode = Record<
+  GuideCatAssistNewChatMode,
+  GuideCatAssistSurfaceReadModel
+>;
 
 type StableJsonValue =
   | string
@@ -261,7 +265,7 @@ export function isGuideCatAssistBundleStale(
 
   const expiresAtMs = Date.parse(bundle.freshness.expiresAt);
   if (Number.isNaN(expiresAtMs)) {
-    return false;
+    return true;
   }
   return expiresAtMs <= now.getTime();
 }
