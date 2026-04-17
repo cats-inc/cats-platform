@@ -160,42 +160,46 @@ Without a dedicated substrate, the platform will either:
 18. A surface shall be able to read last-good cached assist content
     synchronously and render without waiting for a live runtime round-trip.
 19. The initial refresh triggers shall include:
-    - one initial generation attempt after setup completes when a Guide Cat
+    - one initial hydration attempt after setup completes when a Guide Cat
       exists and the relevant first-entry bundles are missing or stale
-    - one initial generation attempt when a Guide Cat is newly created,
+    - one initial hydration attempt when a Guide Cat is newly created,
       restored, or materially reconfigured and the relevant bundles are
       missing or stale
-    - non-blocking stale check after desktop launch and runtime readiness
-    - on-surface-open refresh when the relevant bundle is stale or missing
-    - explicit manual refresh when a user requests it
-20. The first slice shall not require periodic background refresh for basic
-    usability.
-21. Runtime-backed refresh shall run through the existing runtime boundary and
-    may reuse a warm leased session when available.
-22. Runtime-backed refresh work shall be representable as `mission` and `run`
-    records rather than a special Guide-Cat-only execution type.
-23. Future periodic or delayed refresh may be layered through runtime wakeups,
+    - non-blocking stale check after desktop launch and runtime reachability
+      is known
+    - on-surface-open hydration when the relevant bundle is stale or missing
+    - explicit manual refresh only if a later slice chooses to expose it
+20. The first slice shall not require periodic background refresh or manual
+    refresh UI for basic usability.
+21. The first shipped slice may satisfy lazy refresh by non-blocking local
+    hydration/rehydration of deterministic or last-good bundles.
+22. Later runtime-backed assist generation shall run through the existing
+    runtime boundary and may reuse a warm leased session when available.
+23. Runtime-backed refresh work, when introduced, shall be representable as
+    `mission` and `run` records rather than a special Guide-Cat-only
+    execution type.
+24. Future periodic or delayed refresh may be layered through runtime wakeups,
     but wakeups shall remain optional for the initial slice.
-24. Refresh requests for recap or guidance bundles shall accept a
+25. Refresh requests for recap or guidance bundles shall accept a
     product-owned input payload or references for:
     - recent conversations or conversation summaries
     - recent managed-work references or summaries
     - recent surface-activity summaries
     - optional owner/profile personalization inputs
-25. The first slice may satisfy those recap inputs with lightweight product
+26. The first slice may satisfy those recap inputs with lightweight product
     summaries rather than full cross-product aggregation.
-26. Recap bundles may summarize recent work, recent conversations, or recent
+27. Recap bundles may summarize recent work, recent conversations, or recent
     product activity, but they shall remain non-authoritative projections.
-27. Recap bundles shall not implicitly create or mutate managed work, routing
+28. Recap bundles shall not implicitly create or mutate managed work, routing
     policy, or transcript truth without an explicit product handoff.
-28. Guide Cat assist bundles may recommend actions such as opening chat, work,
+29. Guide Cat assist bundles may recommend actions such as opening chat, work,
     or code surfaces, but the actual action shall happen through explicit
     product-owned handoff wiring.
-29. Surface-local view state such as sidecar dismissal, chip dismissal, or
+30. Surface-local view state such as sidecar dismissal, chip dismissal, or
     "already seen" markers shall remain distinct from assist bundle storage.
-30. When refresh fails, the platform shall retain the last-good cached bundle
+31. When refresh fails, the platform shall retain the last-good cached bundle
     when one exists and degrade cleanly to deterministic baseline otherwise.
-31. The platform shall record enough metadata to answer:
+32. The platform shall record enough metadata to answer:
     - which bundle was shown
     - on which surface
     - whether the surface rendered deterministic baseline, cached bundle, or a
@@ -254,6 +258,18 @@ The first shipped read-model paths should be explicit:
 The renderer should not choose between competing local-store access paths.
 Assist content should be resolved on the product/server side and delivered
 through the existing envelope/payload refresh flow for each adopted surface.
+
+### V1 Lazy Refresh Semantics
+
+The first shipped slice is intentionally narrower than the long-term
+runtime-backed model:
+
+- stale or missing adopted bundles may be rehydrated locally from
+  deterministic or last-good content
+- that local hydration updates freshness and invalidation metadata without
+  blocking entry
+- runtime-backed assist generation and mission/run provenance remain follow-up
+  work after the v1 storage/read-path slice
 
 ### V1 Scope Key
 
@@ -365,13 +381,15 @@ The default lifecycle should be:
    bundle immediately
 3. once app/runtime readiness is known, the product evaluates whether the
    bundle is stale or missing
-4. if refresh is allowed, the product launches a non-blocking refresh through
-   the runtime boundary
-5. when refresh succeeds, the cache updates and the current surface may choose
-   a non-disruptive re-render policy; v1 does not require mid-session visual
-   replacement and may adopt fresher content on the next surface open or the
-   next envelope/payload refresh
-6. when refresh fails, the product keeps last-good output or baseline fallback
+4. if refresh is allowed, the first shipped slice may perform a non-blocking
+   local hydration/rehydration of deterministic or last-good content; later
+   slices may replace or extend that step with runtime-backed generation
+5. when hydration or a later runtime refresh succeeds, the cache updates and
+   the current surface may choose a non-disruptive re-render policy; v1 does
+   not require mid-session visual replacement and may adopt fresher content on
+   the next surface open or the next envelope/payload refresh
+6. when hydration or refresh fails, the product keeps last-good output or
+   baseline fallback
 
 ### Initial Surface Adoption
 

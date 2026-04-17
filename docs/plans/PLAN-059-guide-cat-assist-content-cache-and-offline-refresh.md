@@ -2,8 +2,8 @@
 
 > Roll out the first executable slice of Guide Cat assist-content persistence so
 > Lobby and `+New chat` can render immediately from deterministic baseline or
-> last-good local cache, then refresh lazily without blocking entry on runtime
-> availability.
+> last-good local cache, then rehydrate lazily without blocking entry while
+> runtime-backed content generation remains deferred.
 
 ## Metadata
 
@@ -29,7 +29,7 @@ V1 only covers:
 
 - one shared local storage substrate for Guide Cat assist content
 - deterministic baseline plus cache resolution for adopted entry surfaces
-- one minimal stale-while-revalidate refresh path
+- one minimal stale-while-revalidate local hydration path
 - one explicit last-good fallback rule when refresh fails or runtime is offline
 
 The first adopted surfaces are:
@@ -82,11 +82,11 @@ part of this plan's implementation scope.
   resolution.
 - Adopted surfaces do not read local files from the renderer directly; the
   product resolves assist state through existing product/server boundaries.
-- Runtime-backed refresh never blocks initial render for Lobby or `+New chat`.
+- V1 lazy hydration never blocks initial render for Lobby or `+New chat`.
 - Refresh failure preserves the last-good cached bundle when one exists and
   degrades to deterministic baseline otherwise.
 - V1 ships without recap, feature-guidance, composer-assist, or scheduled
-  refresh behavior.
+  refresh behavior, and without runtime-backed assist generation.
 
 ## Implementation Phases
 
@@ -159,24 +159,24 @@ baseline or cache through one shared read path
 **Deliverables**: Lobby and `+New chat` stop treating local constant pools as
 their only source of truth
 
-### Phase 4: Add Minimal Lazy Refresh
+### Phase 4: Add Minimal Lazy Hydration
 
-- [ ] Task 4.1: Add one non-blocking refresh coordinator for adopted scopes
-      after desktop launch and runtime readiness.
-- [ ] Task 4.2: Add one non-blocking refresh check on adopted-surface open when
+- [ ] Task 4.1: Add one non-blocking hydration coordinator for adopted scopes
+      after desktop launch and runtime reachability checks.
+- [ ] Task 4.2: Add one non-blocking hydration check on adopted-surface open when
       the relevant bundle is missing or stale.
-- [ ] Task 4.3: Add one regeneration trigger when Guide Cat is newly created,
+- [ ] Task 4.3: Add one rehydration trigger when Guide Cat is newly created,
       restored, or materially reconfigured and the adopted bundles are missing
       or stale.
-- [ ] Task 4.4: Skip refresh cleanly when no Guide Cat exists or runtime is not
+- [ ] Task 4.4: Skip hydration cleanly when no Guide Cat exists or runtime is not
       ready.
-- [ ] Task 4.5: Persist refresh outcome metadata and retain last-good bundles
+- [ ] Task 4.5: Persist hydration outcome metadata and retain last-good bundles
       on failure.
 - [ ] Task 4.6: Defer manual refresh UI, scheduled refresh, and recap/guidance
-      generation to later follow-up work.
+      generation, plus runtime-backed assist generation, to later follow-up work.
 
-**Deliverables**: adopted surfaces use stale-while-revalidate without blocking
-entry or requiring always-on runtime sessions
+**Deliverables**: adopted surfaces use stale-while-revalidate local hydration
+without blocking entry or requiring always-on runtime sessions
 
 ### Phase 5: Verification and Handoff
 
@@ -223,14 +223,17 @@ proven refresh semantics
   the v1 baseline provider before any prompt/generation tuning.
 - Decision 4: Adopted surfaces resolve assist content through server/product
   payloads rather than renderer-direct file reads.
-- Decision 5: Refresh is stale-while-revalidate and non-blocking by default.
+- Decision 5: V1 hydration is stale-while-revalidate and non-blocking by
+  default.
 - Decision 6: V1 does not require visible mid-session content replacement when
   a fresher bundle arrives; safe next-open or envelope-refresh adoption is
   acceptable for the first slice.
 - Decision 7: If adopted-surface contracts need new fields, v1 should add them
   additively without rewriting existing shared envelope/payload shapes.
-- Decision 8: Mission/run provenance alignment remains a follow-up after the
-  v1 storage/read-path slice; v1 may persist refresh metadata first and add
+- Decision 8: The v1 coordinator only rehydrates deterministic or last-good
+  local bundles; it does not yet dispatch runtime-backed assist generation.
+- Decision 9: Mission/run provenance alignment remains a follow-up after the
+  v1 storage/read-path slice; v1 may persist hydration metadata first and add
   richer runtime provenance once the shared execution shape is ready.
 
 ## Testing Strategy
@@ -244,7 +247,7 @@ proven refresh semantics
   - start with no Guide Cat and verify Lobby and `+New chat` still render
   - seed cache, disable runtime, and verify last-good assist content appears
   - clear cache, keep runtime offline, and verify deterministic baseline is used
-  - restore runtime and verify stale bundles can refresh without blocking entry
+  - restore runtime and verify stale bundles can rehydrate without blocking entry
 
 ## Risks & Mitigations
 
@@ -262,6 +265,7 @@ proven refresh semantics
 |------|--------|
 | 2026-04-17 | Plan created for Guide Cat assist-content cache, recap, and offline refresh rollout |
 | 2026-04-17 | Narrowed the plan into an executable v1 slice focused on Lobby and `+New chat` greeting/chip persistence plus minimal lazy refresh |
+| 2026-04-17 | Clarified that the shipped v1 lazy-refresh slice performs local hydration/rehydration only; runtime-backed assist generation remains deferred |
 
 ---
 
