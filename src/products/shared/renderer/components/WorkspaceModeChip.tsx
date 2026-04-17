@@ -13,7 +13,7 @@ export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = DEFAULT_DRAFT_WORKSPACE_MOD
 // remains "worktree" because the runtime still uses git worktrees under the hood.
 const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
   current: 'Current folder',
-  worktree: 'Independent workspace',
+  worktree: 'Independent worktree',
 };
 
 const WORKSPACE_MODE_TOOLTIPS: Record<WorkspaceMode, string> = {
