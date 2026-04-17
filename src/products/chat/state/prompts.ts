@@ -6,6 +6,7 @@ import type {
   ChatMessage,
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
+import { buildChoiceResponseBody } from '../shared/messageChoices.js';
 import { ORCHESTRATOR_NAME } from './model/index.js';
 
 export interface PromptRoutingContext {
@@ -17,9 +18,20 @@ export interface PromptRoutingContext {
 
 export const MAX_PROMPT_RECENT_MESSAGES = 8;
 
+function resolveContinuityMessageBody(message: ChatMessage): string {
+  const body = message.body.trim();
+  if (body.length > 0) {
+    return message.body;
+  }
+  if (message.choiceResponse) {
+    return buildChoiceResponseBody(message.choiceResponse, message.choices ?? null);
+  }
+  return '';
+}
+
 function conversationalMessages(messages: ChatMessage[]): ChatMessage[] {
   return messages.filter(
-    (message) => message.senderKind !== 'system' && message.body.trim().length > 0,
+    (message) => message.senderKind !== 'system' && resolveContinuityMessageBody(message).trim().length > 0,
   );
 }
 
@@ -93,7 +105,7 @@ function normalizeContinuityMessages(messages: ChatMessage[]): Array<{
     normalized.push({
       senderKind: message.senderKind,
       senderName: message.senderName,
-      body: message.body,
+      body: resolveContinuityMessageBody(message),
       toolLabels,
       assistantTurnId,
     });

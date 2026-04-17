@@ -236,6 +236,43 @@ test('solo chat continuity transplant instructions fold segmented assistant turn
   );
 });
 
+test('solo chat continuity transplant instructions preserve structured choice responses without body text', () => {
+  const instructions = buildSoloChatContinuityTransplantInstructions([
+    {
+      id: 'message-choice-response',
+      channelId: 'channel-1',
+      senderKind: 'user',
+      senderName: 'User',
+      body: '',
+      choiceResponse: {
+        sourceMessageId: 'message-choice-source',
+        status: 'submitted',
+        answers: [
+          {
+            question: 'Which delivery mode should we use?',
+            selectedOptionIds: ['minimal'],
+            customText: 'Keep it shippable.',
+          },
+        ],
+        submittedAt: '2026-04-17T00:00:00.000Z',
+      },
+      mentions: [],
+      metadata: {},
+      usage: null,
+      executionProvider: null,
+      executionModel: null,
+      executionInstance: null,
+      createdAt: '2026-04-17T00:00:00.000Z',
+    },
+  ]);
+
+  assert.ok(instructions);
+  assert.match(
+    instructions,
+    /\[user:User\] Q: Which delivery mode should we use\?\nA: minimal, Keep it shippable\./u,
+  );
+});
+
 test('solo chat does not re-bootstrap when the same runtime session is reused across lanes', () => {
   const now = new Date('2026-04-15T00:00:00.000Z');
   let state = createDefaultChatState();
