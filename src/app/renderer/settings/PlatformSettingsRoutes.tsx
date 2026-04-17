@@ -69,6 +69,7 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
         )}
       />
       <Route path="cats" element={catsElement} />
+      <Route path="cats/new" element={catsElement} />
       <Route
         path="cats/my-cats"
         element={<Navigate to="/settings/cats" replace />}

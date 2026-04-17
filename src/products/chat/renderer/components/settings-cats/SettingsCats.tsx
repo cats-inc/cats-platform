@@ -15,8 +15,8 @@ import {
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 
 export interface ChatSettingsCatsProps extends Omit<
-  SharedSettingsCatsCanvasProps<BotFormState>,
-  'onPayloadUpdate' | 'useSettingsCatsRegistryActionsHook' | 'SettingsCatsRegistryComponent'
+  SharedSettingsCatsCanvasProps,
+  'payload' | 'onPayloadUpdate' | 'useSettingsCatsRegistryActionsHook' | 'SettingsCatsRegistryComponent'
 > {
   payload: AppShellPayload;
   onPayloadUpdate: (payload: AppShellPayload) => void;

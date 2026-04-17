@@ -4,11 +4,10 @@ import {
   type SharedSettingsCatsCanvasProps,
 } from '../../../../shared/renderer/components/settings-cats/SettingsCats.js';
 import { useSettingsCatsRegistryActions } from '../../hooks/useSettingsCatsRegistryActions.js';
-import type { BotFormState } from '../../hooks/useSettingsCatsRegistryActions.js';
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 
 export interface WorkSettingsCatsProps extends Omit<
-  SharedSettingsCatsCanvasProps<BotFormState>,
+  SharedSettingsCatsCanvasProps,
   'useSettingsCatsRegistryActionsHook' | 'SettingsCatsRegistryComponent'
 > {}
 

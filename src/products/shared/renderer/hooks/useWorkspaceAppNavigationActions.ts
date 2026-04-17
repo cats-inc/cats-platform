@@ -282,7 +282,7 @@ export function useWorkspaceAppNavigationActions<
   }, [navigate, platformShellSurface, setAccountMenuOpen, setAddCatOpen, setFeedback]);
 
   const onCreateNewCat = useCallback((): void => {
-    navigate('/settings/cats', {
+    navigate('/settings/cats/new', {
       state: { platformShellSurface },
     });
     setAccountMenuOpen(false);
