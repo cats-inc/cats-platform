@@ -1,10 +1,10 @@
-export type RuntimeWorkspaceKind = 'source' | 'sandbox' | 'worktree';
-export type RuntimeWorkspaceAccess = 'read_write' | 'read_only';
-export type RuntimePermissionMode = 'skip' | 'default' | 'whitelist';
-
 export const RUNTIME_WORKSPACE_KINDS = ['source', 'sandbox', 'worktree'] as const;
 export const RUNTIME_WORKSPACE_ACCESS_VALUES = ['read_write', 'read_only'] as const;
 export const RUNTIME_PERMISSION_MODES = ['skip', 'default', 'whitelist'] as const;
+
+export type RuntimeWorkspaceKind = typeof RUNTIME_WORKSPACE_KINDS[number];
+export type RuntimeWorkspaceAccess = typeof RUNTIME_WORKSPACE_ACCESS_VALUES[number];
+export type RuntimePermissionMode = typeof RUNTIME_PERMISSION_MODES[number];
 
 export interface RuntimeSessionPolicy {
   workspaceKind: RuntimeWorkspaceKind;
@@ -22,19 +22,22 @@ function hasRepoPath(repoPath: string | null | undefined): boolean {
   return typeof repoPath === 'string' && repoPath.trim().length > 0;
 }
 
-function mergeDefinedPolicyFields(
-  defaults: RuntimeSessionPolicy,
-  policy?: Partial<RuntimeSessionPolicy> | null,
-): RuntimeSessionPolicy {
+function mergeDefinedPolicyFields<T extends object>(
+  defaults: T,
+  policy?: Partial<T> | null,
+): T {
   if (!policy) {
     return defaults;
   }
 
-  return {
-    workspaceKind: policy.workspaceKind ?? defaults.workspaceKind,
-    workspaceAccess: policy.workspaceAccess ?? defaults.workspaceAccess,
-    permissionMode: policy.permissionMode ?? defaults.permissionMode,
-  };
+  const merged: T = { ...defaults };
+  for (const key of Object.keys(defaults) as Array<keyof T>) {
+    const nextValue = policy[key];
+    if (nextValue !== undefined) {
+      Object.assign(merged, { [key]: nextValue });
+    }
+  }
+  return merged;
 }
 
 export function createDefaultRuntimeSessionPolicy(): RuntimeSessionPolicy {

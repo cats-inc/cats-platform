@@ -11,7 +11,7 @@ export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = DEFAULT_DRAFT_WORKSPACE_MOD
 
 const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
   current: 'Current folder',
-  worktree: 'Worktree',
+  worktree: 'Independent workspace',
 };
 
 const WORKSPACE_MODE_ORDER: readonly WorkspaceMode[] = ['current', 'worktree'];
