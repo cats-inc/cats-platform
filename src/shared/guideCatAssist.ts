@@ -3,7 +3,12 @@ import { createHash } from 'node:crypto';
 export const GUIDE_CAT_ASSIST_SCHEMA_VERSION = 1 as const;
 export const GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX = 'gca:v1';
 
-export type GuideCatAssistSurfaceId = 'lobby' | 'chat:new' | 'chat:composer' | (string & {});
+export type GuideCatAssistSurfaceId =
+  | 'lobby'
+  | 'chat:new'
+  | 'chat:composer'
+  | 'code:new'
+  | (string & {});
 export type GuideCatAssistSurfaceMode =
   | 'default'
   | 'solo'
@@ -129,6 +134,7 @@ export const GUIDE_CAT_ASSIST_V1_SCOPE_KEYS = {
   chatNewDirect: 'chat:new:direct:default',
   chatNewGroup: 'chat:new:group:default',
   chatNewParallel: 'chat:new:parallel:default',
+  codeNewDefault: 'code:new:default:default',
 } as const;
 
 export const GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE = {

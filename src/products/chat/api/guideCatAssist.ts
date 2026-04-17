@@ -13,6 +13,7 @@ import {
 import {
   resolveLobbyGuideCatAssistBaseline,
   resolveNewChatGuideCatAssistBaseline,
+  resolveNewCodeGuideCatAssistBaseline,
 } from '../../../shared/guideCatAssistBaselines.js';
 import {
   readGuideCatAssistCache,
@@ -24,6 +25,7 @@ import {
 export interface ChatGuideCatAssistReadModel {
   lobby: GuideCatAssistSurfaceReadModel;
   newChatByMode: GuideCatAssistNewChatByMode;
+  newCode: GuideCatAssistSurfaceReadModel;
 }
 
 interface GuideCatAssistRefreshQueueInput {
@@ -206,6 +208,32 @@ export async function resolveChatGuideCatAssistReadModel(input: {
         });
         return acc;
       }, {} as GuideCatAssistNewChatByMode),
+    newCode: resolveSurfaceReadModel({
+      scope: {
+        surfaceId: 'code:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      guideCatExists: Boolean(input.guideCat),
+      runtimeReachable: input.runtimeReachable,
+      refreshContextHash: resolveGuideCatAssistRefreshContextHash({
+        scope: {
+          surfaceId: 'code:new',
+          surfaceMode: 'default',
+          audienceState: 'default',
+        },
+        guideCat: input.guideCat,
+        ownerDisplayName: input.ownerDisplayName,
+      }),
+      refreshRuntimeEnabled: config.refreshPreferences.runtimeRefreshEnabled,
+      disabledSurfaceKeys: config.disabledSurfaceKeys,
+      curatedOverrides: config.curatedOverrides,
+      cacheBundles: cache.bundles,
+      refreshFailures: cache.refreshFailures,
+      baselineBundle: resolveNewCodeGuideCatAssistBaseline({
+        seed: config.deterministicSeed,
+      }),
+    }),
   };
 }
 
@@ -237,6 +265,7 @@ export async function refreshGuideCatAssistEligibleScopes(input: {
   const refreshableSurfaces = [
     readModel.lobby,
     ...Object.values(readModel.newChatByMode),
+    readModel.newCode,
   ].filter((surface) => surface.refreshEligible);
   if (refreshableSurfaces.length === 0) {
     return;

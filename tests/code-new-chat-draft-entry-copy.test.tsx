@@ -21,6 +21,7 @@ function createPayload(overrides: Partial<AppShellPayload['chat']> = {}): AppShe
         maxAudienceParticipants: 3,
         maxParallelChats: 5,
       },
+      newCodeAssist: null,
       cats: [
         {
           id: 'cat-lead',
@@ -119,9 +120,77 @@ test('new code default draft keeps the original shared composer structure withou
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
 });
 
-test('new code default draft does not render standalone setup chips between the greeting and composer', () => {
-  const markup = renderToStaticMarkup(<NewChatDraft {...createProps()} />);
+test('new code default draft prefers payload-backed assist greeting and shows up to three helper chips', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        greeting: 'Legacy code greeting.',
+        payload: createPayload({
+          newCodeAssist: {
+            scopeKey: 'code:new:default:default',
+            renderSource: 'cache',
+            cacheHit: true,
+            missing: false,
+            stale: false,
+            refreshEligible: false,
+            surfaceDisabled: false,
+            lastFailure: null,
+            bundle: {
+              bundleId: 'code:new:default:default',
+              scope: {
+                surfaceId: 'code:new',
+                surfaceMode: 'default',
+                audienceState: 'default',
+              },
+              content: {
+                greeting: 'Pick a small coding task.',
+                entryChips: [
+                  {
+                    id: 'code-pomodoro',
+                    label: 'Pomodoro app',
+                    prompt: 'Write a small pomodoro timer app.',
+                  },
+                  {
+                    id: 'code-fix-bug',
+                    label: 'Fix a bug',
+                    prompt: 'Find and fix a bug in this codebase.',
+                  },
+                  {
+                    id: 'code-refactor',
+                    label: 'Refactor code',
+                    prompt: 'Refactor this code without changing behavior.',
+                  },
+                  {
+                    id: 'code-hidden',
+                    label: 'Hidden helper',
+                    prompt: 'This helper should not render.',
+                  },
+                ],
+              },
+              provenance: {
+                originMode: 'runtime',
+                refreshContextHash: 'gca:v1:test-code',
+                missionId: null,
+                runId: null,
+              },
+              freshness: {
+                generatedAt: '2026-04-17T12:00:00.000Z',
+                expiresAt: null,
+                lastRefreshStatus: 'ok',
+              },
+            },
+          },
+        }),
+      })}
+    />,
+  );
 
+  assert.match(markup, /Pick a small coding task\./u);
+  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Fix a bug</u);
+  assert.match(markup, />Refactor code</u);
+  assert.doesNotMatch(markup, />Hidden helper</u);
+  assert.doesNotMatch(markup, /Legacy code greeting\./u);
   assert.doesNotMatch(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /Choose execution target/u);
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);

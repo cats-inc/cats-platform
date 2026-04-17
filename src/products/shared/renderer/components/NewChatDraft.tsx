@@ -2,6 +2,7 @@ import { useState, type ComponentType, type FormEvent, type KeyboardEvent, type 
 
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
+import type { GuideCatAssistEntryChip } from '../../../../shared/guideCatAssist.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
@@ -121,6 +122,7 @@ export interface WorkspaceNewChatDraftProps {
   composerDraft: string;
   busy: WorkspaceBusyState;
   greeting?: string;
+  helperChips?: ReadonlyArray<GuideCatAssistEntryChip> | null;
   draftFiles: File[];
   draftCwd: string | null;
   draftCatIds: string[];
@@ -173,6 +175,7 @@ export function WorkspaceNewChatDraft({
   composerDraft,
   busy,
   greeting,
+  helperChips = null,
   draftFiles,
   draftCwd,
   draftCatIds,
@@ -278,6 +281,12 @@ export function WorkspaceNewChatDraft({
         })
       : selectedExecutionTarget ?? null;
   const isSubmittingFirstTurn = isComposerBusyForDraft(busy);
+  const visibleHelperChips = !composerDraft.trim()
+    ? helperChips
+      ?.filter((chip) => chip.prompt.trim().length > 0)
+      .slice(0, 3)
+      ?? []
+    : [];
 
   return (
     <div className="viewShell viewShellDraft">
@@ -296,6 +305,23 @@ export function WorkspaceNewChatDraft({
           ) : (
             <h1>{resolvedGreeting}</h1>
           )}
+          {visibleHelperChips.length > 0 ? (
+            <div className="draftPromptSuggestions">
+              <div className="chipRow">
+                {visibleHelperChips.map((chip) => (
+                  <button
+                    key={chip.id}
+                    className="promptChip draftPromptChip"
+                    type="button"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={() => onComposerChange(chip.prompt)}
+                  >
+                    {chip.label?.trim() || chip.prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
         {HeaderAccessoryComponent ? (
           <div className="draftHeaderAccessory">

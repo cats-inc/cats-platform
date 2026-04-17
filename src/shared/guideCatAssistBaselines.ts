@@ -33,6 +33,14 @@ export const DRAFT_GREETING_LINES = [
   'This cat doesn\'t sleep on the job.',
 ];
 
+export const CODE_DRAFT_GREETING_LINES = [
+  'Ready to code.',
+  'Open the repo and start small.',
+  'Build, fix, or refactor something real.',
+  'Ship one clear improvement.',
+  'Start with the smallest useful change.',
+];
+
 function withCatName(
   template: string,
   catName: string | null | undefined,
@@ -242,5 +250,38 @@ export function resolveNewChatGuideCatAssistBaseline(input: {
       mode: input.mode,
       defaultRecipientName: input.defaultRecipientName,
     }),
+  });
+}
+
+export function resolveNewCodeGuideCatAssistBaseline(options: {
+  seed?: string | null;
+} = {}): GuideCatAssistBundle {
+  const scope: GuideCatAssistScope = {
+    surfaceId: 'code:new',
+    surfaceMode: 'default',
+    audienceState: 'default',
+  };
+  return createDeterministicBaselineBundle(scope, {
+    greeting: selectDeterministicLine(CODE_DRAFT_GREETING_LINES, {
+      scopeKey: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault,
+      seed: options.seed,
+    }),
+    entryChips: [
+      {
+        id: 'code-pomodoro',
+        label: 'Pomodoro app',
+        prompt: 'Write a small pomodoro timer app.',
+      },
+      {
+        id: 'code-fix-bug',
+        label: 'Fix a bug',
+        prompt: 'Find and fix a bug in this codebase.',
+      },
+      {
+        id: 'code-refactor',
+        label: 'Refactor code',
+        prompt: 'Refactor this code without changing behavior.',
+      },
+    ],
   });
 }

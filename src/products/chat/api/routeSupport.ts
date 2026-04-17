@@ -318,6 +318,7 @@ export async function buildAppShellPayload(
       },
       lobbyGuideCatAssist: guideCatAssist.lobby,
       newChatAssist: guideCatAssist.newChatByMode,
+      newCodeAssist: guideCatAssist.newCode,
       runtimeSetup,
     },
   );

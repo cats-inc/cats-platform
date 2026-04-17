@@ -50,6 +50,8 @@ test('chat guide cat assist read model falls back to deterministic baseline when
   assert.equal(readModel.lobby.bundle.scope.surfaceId, 'lobby');
   assert.equal(readModel.newChatByMode.solo.renderSource, 'deterministic');
   assert.equal(readModel.newChatByMode.direct.bundle.scope.surfaceMode, 'direct');
+  assert.equal(readModel.newCode.bundle.scope.surfaceId, 'code:new');
+  assert.equal(readModel.newCode.bundle.content.entryChips.length, 3);
   assert.match(
     readModel.newChatByMode.direct.bundle.content.entryChips[0]?.prompt ?? '',
     /this Cat/,
@@ -145,6 +147,7 @@ test('createAppShell carries guide cat assist read models into lobby and chat pa
       ownerAvatarColor: null,
       lobbyGuideCatAssist: guideCatAssist.lobby,
       newChatAssist: guideCatAssist.newChatByMode,
+      newCodeAssist: guideCatAssist.newCode,
     },
   );
 
@@ -152,6 +155,10 @@ test('createAppShell carries guide cat assist read models into lobby and chat pa
   assert.equal(
     payload.chat.newChatAssist?.parallel.scopeKey,
     GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
+  );
+  assert.equal(
+    payload.chat.newCodeAssist?.scopeKey,
+    GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault,
   );
 });
 
@@ -263,4 +270,5 @@ test('guide cat assist refresh can materialize eligible scopes into the local ca
     'skipped',
   );
   assert.ok(cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel]);
+  assert.ok(cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault]);
 });

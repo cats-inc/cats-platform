@@ -68,6 +68,7 @@ export function createAppShell(
     assistantPresets?: AssistantPresetRecord[];
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
+    newCodeAssist?: AppShellPayload['chat']['newCodeAssist'];
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -120,6 +121,7 @@ export function createAppShell(
       concurrentPresentationMode: chat.concurrentPresentationMode ?? 'inline_stack',
       botBindings,
       newChatAssist: structuredClone(setup?.newChatAssist ?? null),
+      newCodeAssist: structuredClone(setup?.newCodeAssist ?? null),
     },
     runtime,
     runtimeSetup: setup?.runtimeSetup ?? createUnavailableRuntimeSetupSummary(

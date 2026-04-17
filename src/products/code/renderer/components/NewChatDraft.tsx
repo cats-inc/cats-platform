@@ -51,6 +51,9 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
     onCancelPendingSend,
     ...workspaceProps
   } = props;
+  const codeAssist = props.payload.chat.newCodeAssist ?? null;
+  const assistGreeting = codeAssist?.bundle.content.greeting?.trim() || null;
+  const helperChips = codeAssist?.bundle.content.entryChips ?? [];
 
   // Default +New code intentionally ignores the chat-group and parallel draft fields
   // until Team Code and Peer Code get their own product-owned draft surfaces.
@@ -74,7 +77,8 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
 
   return {
     ...workspaceProps,
-    greeting: greeting ?? undefined,
+    greeting: assistGreeting ?? greeting ?? undefined,
+    helperChips,
   };
 }
 
