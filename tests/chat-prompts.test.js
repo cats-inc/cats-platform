@@ -196,6 +196,46 @@ test('solo chat continuity transplant instructions preserve preceding tool label
   );
 });
 
+test('solo chat continuity transplant instructions fold segmented assistant turns into one line', () => {
+  const instructions = buildSoloChatContinuityTransplantInstructions([
+    {
+      senderKind: 'user',
+      senderName: 'Kenny',
+      body: 'Summarize the findings.',
+      metadata: {},
+    },
+    {
+      senderKind: 'agent',
+      senderName: 'Orchestrator',
+      body: 'First segment. ',
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-1',
+      },
+    },
+    {
+      senderKind: 'agent',
+      senderName: 'Orchestrator',
+      body: 'Second segment.',
+      metadata: {
+        event: 'assistant_turn_segment',
+        assistantTurnId: 'assistant-turn-1',
+        precedingTools: [{ toolName: 'search_repo', toolId: 'tool-search' }],
+      },
+    },
+  ]);
+
+  assert.ok(instructions);
+  assert.match(
+    instructions,
+    /\[agent:Orchestrator\] \[tools: search_repo\] First segment\. Second segment\./u,
+  );
+  assert.equal(
+    instructions.match(/\[agent:Orchestrator\]/gu)?.length ?? 0,
+    1,
+  );
+});
+
 test('solo chat does not re-bootstrap when the same runtime session is reused across lanes', () => {
   const now = new Date('2026-04-15T00:00:00.000Z');
   let state = createDefaultChatState();

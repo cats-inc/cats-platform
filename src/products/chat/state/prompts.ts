@@ -45,12 +45,68 @@ function readMessageToolLabels(message: Pick<ChatMessage, 'metadata'>): string[]
   }).filter((label, index, labels) => labels.indexOf(label) === index);
 }
 
+function readAssistantTurnId(message: Pick<ChatMessage, 'metadata'>): string | null {
+  const value = message.metadata?.assistantTurnId;
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function normalizeContinuityMessages(messages: ChatMessage[]): Array<{
+  senderKind: ChatMessage['senderKind'];
+  senderName: string;
+  body: string;
+  toolLabels: string[];
+  assistantTurnId: string | null;
+}> {
+  const normalized: Array<{
+    senderKind: ChatMessage['senderKind'];
+    senderName: string;
+    body: string;
+    toolLabels: string[];
+    assistantTurnId: string | null;
+  }> = [];
+
+  for (const message of messages) {
+    const assistantTurnId = readAssistantTurnId(message);
+    const toolLabels = readMessageToolLabels(message);
+    const last = normalized.at(-1);
+    if (
+      assistantTurnId
+      && last
+      && last.assistantTurnId === assistantTurnId
+      && last.senderKind === message.senderKind
+      && last.senderName === message.senderName
+    ) {
+      const shouldInsertSpace = last.body.length > 0
+        && message.body.length > 0
+        && !/\s$/u.test(last.body)
+        && !/^\s/u.test(message.body);
+      last.body += shouldInsertSpace
+        ? ` ${message.body}`
+        : message.body;
+      last.toolLabels = [...last.toolLabels, ...toolLabels]
+        .filter((label, index, labels) => labels.indexOf(label) === index);
+      continue;
+    }
+
+    normalized.push({
+      senderKind: message.senderKind,
+      senderName: message.senderName,
+      body: message.body,
+      toolLabels,
+      assistantTurnId,
+    });
+  }
+
+  return normalized;
+}
+
 function formatContinuityMessages(messages: ChatMessage[]): string {
-  return messages
+  return normalizeContinuityMessages(messages)
     .map((message) => {
-      const toolLabels = readMessageToolLabels(message);
-      const toolPrefix = toolLabels.length > 0
-        ? ` [tools: ${toolLabels.join(', ')}]`
+      const toolPrefix = message.toolLabels.length > 0
+        ? ` [tools: ${message.toolLabels.join(', ')}]`
         : '';
       return `[${message.senderKind}:${message.senderName}]${toolPrefix} ${message.body}`;
     })

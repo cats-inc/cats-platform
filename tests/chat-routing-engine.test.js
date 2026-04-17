@@ -1618,6 +1618,87 @@ test('solo replacement-session transplants preserve prior assistant tool labels'
   );
 });
 
+test('solo replacement-session transplants fold segmented assistant turns into one continuity line', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Carry segmented assistant turns cleanly across a retarget.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) => {
+    if (sessionId === 'session-1') {
+      return {
+        segments: [
+          {
+            kind: 'text',
+            text: 'First segment. ',
+            toolName: null,
+            toolId: null,
+          },
+          {
+            kind: 'tool_use',
+            text: '',
+            toolName: 'search_repo',
+            toolId: 'tool-search',
+          },
+          {
+            kind: 'text',
+            text: 'Second segment.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 10,
+        outputTokens: 8,
+        tokensUsed: 18,
+      };
+    }
+
+    return usage(`response from ${sessionId}`);
+  });
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Inspect first, then continue.',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+  await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    {
+      body: 'Switch providers and continue.',
+      pendingProvider: 'gemini',
+      pendingModel: 'gemini-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+
+  const instructions = runtimeClient.sentMessages[1]?.input?.instructions ?? '';
+  assert.match(
+    instructions,
+    /\[agent:Orchestrator\] \[tools: search_repo\] First segment\. Second segment\./u,
+  );
+  assert.equal(instructions.match(/\[agent:Orchestrator\]/gu)?.length ?? 0, 1);
+});
+
 test('explicit solo start-fresh resets continuity before the next replacement session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
