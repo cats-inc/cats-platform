@@ -16,6 +16,7 @@ import {
 import { repairChannelReadState } from '../channelRepair.js';
 import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
 import type {
   CreateChatChannelInput,
@@ -384,8 +385,16 @@ async function handleRestPatchChannel(
       }
 
       if (body.resetContinuity === true) {
+        const currentChannel = requireChannel(persisted, channelId);
+        if (currentChannel.composerMode !== 'solo' || isDirectLaneChannel(currentChannel)) {
+          sendJson(context.response, 400, {
+            error: 'continuity_reset_unsupported',
+            message: 'Start fresh is currently only supported for solo chats.',
+          });
+          return;
+        }
         const existingSessionId =
-          requireChannel(persisted, channelId).orchestratorLease.sessionId?.trim() || null;
+          currentChannel.orchestratorLease.sessionId?.trim() || null;
         if (existingSessionId) {
           try {
             await context.dependencies.runtimeClient.closeSession(existingSessionId);

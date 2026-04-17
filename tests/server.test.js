@@ -10613,6 +10613,49 @@ test('PATCH /api/channels/:channelId can start a fresh solo continuity branch', 
   });
 });
 
+test('PATCH /api/channels/:channelId rejects continuity reset for non-solo chats', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Group Room',
+        topic: 'Start fresh should stay scoped to solo for now.',
+        temporaryParticipants: [
+          {
+            name: 'Room Cat',
+            provider: 'claude',
+            model: 'claude-opus-4-6',
+          },
+        ],
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const { channel } = await createChannelResponse.json();
+    assert.notEqual(channel.composerMode, 'solo');
+
+    const resetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        resetContinuity: true,
+      }),
+    });
+    assert.equal(resetResponse.status, 400);
+    const resetPayload = await resetResponse.json();
+    assert.equal(resetPayload.error, 'continuity_reset_unsupported');
+    assert.match(resetPayload.message ?? '', /solo chats/u);
+    assert.deepEqual(runtimeClient.closedSessions, []);
+  });
+});
+
 test('POST /api/channels/:channelId/activations recreates closed direct-lane sessions instead of reporting already started', async () => {
   const runtimeClient = createRuntimeStub();
   const chatStore = new MemoryChatStore();
