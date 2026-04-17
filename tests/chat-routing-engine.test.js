@@ -2245,6 +2245,101 @@ test('multi-cat rooms full-transplant continuity when an existing participant re
   );
 });
 
+test('multi-cat rooms full-transplant continuity after stale-session recovery recreates an existing participant session', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Reviewer',
+      provider: 'codex',
+      model: 'gpt-5.4',
+    },
+    now,
+  );
+  const reviewerId = state.cats[0].id;
+  state = createCat(
+    state,
+    {
+      name: 'Observer',
+      provider: 'claude',
+      model: 'claude-sonnet',
+    },
+    now,
+  );
+  const observerId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Review room',
+      topic: 'Stale participant sessions should recover without losing continuity.',
+      participantCatIds: [reviewerId, observerId],
+      defaultRecipientId: reviewerId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId, content, sentMessages }) => {
+    if (!content.includes('You are Reviewer')) {
+      throw new Error(`Unexpected prompt:\n${content}`);
+    }
+    if (sessionId === 'session-1' && sentMessages.length > 1) {
+      throw new Error('Session not found');
+    }
+    return usage(`response from ${sessionId}`);
+  });
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First review turn',
+    },
+    runtimeClient,
+    now,
+  );
+  const recoveredDispatch = await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    {
+      body: 'Recover the same participant context',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+    {
+      runtimeRecovery: {
+        staleSessionRetryLimit: 1,
+      },
+    },
+  );
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(
+    runtimeClient.sentMessages.at(-1)?.input?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.match(
+    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
+    /\[user:User\] First review turn/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
+    /\[agent:Reviewer\] response from session-1/u,
+  );
+  assert.equal(
+    buildChannelView(recoveredDispatch.state, channelId).assignedParticipants?.[0]?.execution.lease.sessionId,
+    'session-2',
+  );
+});
+
 test('direct cat chat full-transplants continuity when a restarted lead-cat session changes model selection', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
