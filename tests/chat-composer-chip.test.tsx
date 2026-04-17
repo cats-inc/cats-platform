@@ -106,8 +106,8 @@ test('chat composer preserves runtime-backed implicit audience labels instead of
       composerRecipients={[
         {
           kind: 'implicit',
-          name: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
-          executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+          name: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
+          executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
           provider: 'claude',
           instance: 'cli/native',
           model: 'opus',
@@ -161,7 +161,7 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
         'claude.reasoning_effort': 'xhigh',
       },
     },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
   });
   const payload = createPayload();
   payload.chat.bossCatId = 'cat-jiang';
@@ -344,4 +344,3 @@ test('chat composer renders a multi-audience chip for group chats', () => {
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /class="composerCatStack"/u);
 });
-

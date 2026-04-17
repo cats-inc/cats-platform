@@ -121,7 +121,7 @@ test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native
       source: 'static',
       cache: null,
       models: [
-        { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
+        { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
         { id: 'sonnet', label: 'Sonnet 4.6' },
         { id: 'haiku', label: 'Haiku 4.5' },
       ],
@@ -135,7 +135,7 @@ test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native
       source: 'static',
       cache: null,
       entries: [
-        { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
+        { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
         { id: 'sonnet', label: 'Sonnet 4.6' },
         { id: 'haiku', label: 'Haiku 4.5' },
       ],
@@ -211,7 +211,7 @@ test('isLegacyProviderModelTarget treats Claude native aliases as catalog models
         source: 'static',
         cache: null,
         models: [
-          { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
+          { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
           { id: 'sonnet', label: 'Sonnet 4.6' },
           { id: 'haiku', label: 'Haiku 4.5' },
         ],
@@ -235,7 +235,7 @@ test('isLegacyProviderModelTarget treats Claude default as a legacy model id aft
         source: 'static',
         cache: null,
         models: [
-          { id: 'opus', label: 'Opus 4.6 with 1M context', default: true },
+          { id: 'opus', label: 'Opus 4.7 with 1M context', default: true },
           { id: 'sonnet', label: 'Sonnet 4.6' },
           { id: 'haiku', label: 'Haiku 4.5' },
         ],

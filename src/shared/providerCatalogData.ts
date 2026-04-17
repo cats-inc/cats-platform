@@ -20,7 +20,7 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'openclaw-coder', label: 'openclaw-coder (default)', default: true },
   ],
   claude: [
-    { value: 'opus', label: 'Opus 4.6 with 1M context', default: true },
+    { value: 'opus', label: 'Opus 4.7 with 1M context', default: true },
     { value: 'sonnet', label: 'Sonnet 4.6' },
     { value: 'haiku', label: 'Haiku 4.5' },
   ],

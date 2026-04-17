@@ -199,7 +199,7 @@ test('Guide Cat sidecar reuses remembered runtime-backed execution labels for to
         'claude.reasoning_effort': 'max',
       },
     },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
   });
 
   try {
@@ -222,7 +222,7 @@ test('Guide Cat sidecar reuses remembered runtime-backed execution labels for to
 
     assert.match(
       markup,
-      /data-tooltip="Guide Cat · Claude-CLI · Opus 4\.7 with 1M context · xHigh \(default\)"/u,
+      /data-tooltip="Guide Cat · Claude-CLI · Opus 4\.7 with 1M context · xHigh"/u,
     );
   } finally {
     clearRememberedExecutionLabels();

@@ -12,6 +12,14 @@ type ExecutionControlMap = Record<string, ExecutionControlValue>;
 
 const executionLabelMemory = new Map<string, string>();
 
+function stripExecutionLabelDecorations(
+  label: string,
+): string {
+  return label
+    .replace(/\s*\((?:default|recommended)\)\s*/giu, ' ')
+    .trim();
+}
+
 function resolveBackendSuffixFromBackend(
   backend: string | null | undefined,
 ): string {
@@ -57,9 +65,7 @@ function resolveModelLabel(provider: string, model: string | null | undefined): 
     && (normalizedModel === 'opus' || normalizedModel === 'sonnet' || normalizedModel === 'haiku')
     ? normalizedModel.charAt(0).toUpperCase() + normalizedModel.slice(1)
     : normalizedModel;
-  return (catalogLabel ?? fallbackLabel)
-    .replace(/\s*\((?:default|recommended)\)\s*/giu, ' ')
-    .trim();
+  return stripExecutionLabelDecorations(catalogLabel ?? fallbackLabel);
 }
 
 function normalizeExecutionModelLabel(
@@ -70,16 +76,14 @@ function normalizeExecutionModelLabel(
     return null;
   }
 
-  return trimmed
-    .replace(/\s*\((?:default|recommended)\)\s*/giu, ' ')
-    .trim();
+  return stripExecutionLabelDecorations(trimmed);
 }
 
 function normalizeRememberedExecutionLabel(
   label: string | null | undefined,
 ): string | null {
   const trimmed = label?.trim();
-  return trimmed ? trimmed : null;
+  return trimmed ? stripExecutionLabelDecorations(trimmed) : null;
 }
 
 function serializeExecutionControlValue(
@@ -182,7 +186,7 @@ function readRememberedExecutionLabel(input: {
 
 const KNOWN_CONTROL_VALUE_LABELS: Record<string, string> = {
   max: 'Max',
-  xhigh: 'Extra High',
+  xhigh: 'xHigh',
   high: 'High',
   medium: 'Medium',
   low: 'Low',
@@ -209,7 +213,7 @@ export function resolveControlDisplayLabels(
     .map(([key, value]) => {
       const catalog = catalogMap.get(key);
       const match = catalog?.values?.find((v) => v.value === value);
-      return match?.label ?? formatFallbackControlValue(value);
+      return stripExecutionLabelDecorations(match?.label ?? formatFallbackControlValue(value));
     })
     .filter((label) => label.length > 0);
 }

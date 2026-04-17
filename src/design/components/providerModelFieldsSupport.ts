@@ -379,6 +379,57 @@ export function filterPersistentControlValues(
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
+function resolveExecutionLabelControlValues(input: {
+  entryId: string;
+  modelSelection?: ProviderModelSelection | null;
+  effectiveAdvancedCatalog: ProviderAdvancedModelCatalog;
+}): Record<string, ProviderAdvancedControlValue> | undefined {
+  const { entryId, modelSelection, effectiveAdvancedCatalog } = input;
+  if (!entryId) {
+    return undefined;
+  }
+
+  const persistentControls = listPersistentControlOptions(
+    effectiveAdvancedCatalog.controls,
+    entryId,
+  );
+  if (persistentControls.length === 0) {
+    return undefined;
+  }
+
+  const resolvedValues: Record<string, ProviderAdvancedControlValue> = {};
+  const defaultSelectionControls =
+    effectiveAdvancedCatalog.defaultSelection?.entryId === entryId
+      ? effectiveAdvancedCatalog.defaultSelection.controls
+      : undefined;
+
+  for (const control of persistentControls) {
+    const explicitValue = modelSelection?.controls?.[control.key];
+    if (explicitValue !== undefined) {
+      resolvedValues[control.key] = explicitValue;
+      continue;
+    }
+
+    const defaultSelectionValue = defaultSelectionControls?.[control.key];
+    if (defaultSelectionValue !== undefined) {
+      resolvedValues[control.key] = defaultSelectionValue;
+      continue;
+    }
+
+    if (control.kind !== 'enum') {
+      continue;
+    }
+
+    const defaultOption = listApplicableControlValueOptions(control, entryId)
+      .find((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
+    if (defaultOption) {
+      resolvedValues[control.key] = defaultOption.value;
+    }
+  }
+
+  return Object.keys(resolvedValues).length > 0 ? resolvedValues : undefined;
+}
+
 export function shouldTreatPersistedTargetAsLegacyModel(input: {
   catalog: ProviderModelCatalog;
   model: string | null | undefined;
@@ -434,8 +485,13 @@ export function resolveExecutionLabelForProviderTarget(input: {
   const controlCatalog = entryId
     ? listPersistentControlOptions(input.effectiveAdvancedCatalog.controls, entryId)
     : [];
+  const controlValues = resolveExecutionLabelControlValues({
+    entryId,
+    modelSelection: input.modelSelection ?? null,
+    effectiveAdvancedCatalog: input.effectiveAdvancedCatalog,
+  });
   const controlLabels = resolveControlDisplayLabels(
-    input.modelSelection?.controls,
+    controlValues,
     controlCatalog,
   );
 

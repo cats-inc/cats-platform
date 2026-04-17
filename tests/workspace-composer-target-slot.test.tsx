@@ -102,7 +102,7 @@ test('workspace composer prefers runtime-backed execution labels for solo audien
             'claude.reasoning_effort': 'xhigh',
           },
         },
-        executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+        executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
       }}
       directLaneCat={null}
       defaultRecipientCat={null}
@@ -115,7 +115,7 @@ test('workspace composer prefers runtime-backed execution labels for solo audien
   );
 
   assert.match(markup, /class="audienceChip"/u);
-  assert.match(markup, /Claude-CLI · Opus 4\.7 with 1M context · xHigh \(default\)/u);
+  assert.match(markup, /Claude-CLI · Opus 4\.7 with 1M context · xHigh/u);
 });
 
 test('workspace composer renders a multi-cat audience chip for group rooms', () => {

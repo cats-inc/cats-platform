@@ -12,9 +12,24 @@ import {
   getDefaultProviderInstance,
 } from '../../../../shared/providerCatalog.js';
 import {
+  resolveCatalogTargetSelection,
+  resolveSelectedProviderInstance,
   sameProviderModelSelection,
+  type ProviderTargetSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
+import {
+  attachExecutionLabelToProviderTarget,
+  resolveAdvancedCatalogFallback,
+  sanitizePersistentTargetSelection,
+  shouldDeferCatalogTargetReconciliation,
+  shouldTreatPersistedTargetAsLegacyModel,
+} from '../../../../design/components/providerModelFieldsSupport.js';
+import {
+  fetchAdvancedProviderModels,
+  fetchProviderModels,
+  fetchProviderRegistry,
+} from '../api/providers.js';
 import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
 
 export interface ExecutionTargetDefaultsLike {
@@ -137,6 +152,145 @@ export function sameExecutionTargetValue(
     && sameProviderModelSelection(left.modelSelection, right.modelSelection);
 }
 
+function sameExecutionTargetValueAndLabel(
+  left: ExecutionTargetValue,
+  right: ExecutionTargetValue,
+): boolean {
+  return sameExecutionTargetValue(left, right)
+    && (left.executionLabel ?? null) === (right.executionLabel ?? null);
+}
+
+function mergeExecutionTargetValue(
+  current: ExecutionTargetValue,
+  next: ExecutionTargetValue,
+): ExecutionTargetValue {
+  if (!sameExecutionTargetValue(current, next)) {
+    return next;
+  }
+
+  const nextExecutionLabel = next.executionLabel ?? current.executionLabel ?? null;
+  if ((current.executionLabel ?? null) === nextExecutionLabel) {
+    return current;
+  }
+
+  return {
+    ...current,
+    executionLabel: nextExecutionLabel,
+  };
+}
+
+function toProviderTargetSelection(
+  target: ExecutionTargetValue,
+): ProviderTargetSelection {
+  return {
+    provider: target.provider,
+    instance: target.instance ?? '',
+    model: target.model ?? '',
+    modelSelection: target.modelSelection ?? null,
+    executionLabel: target.executionLabel ?? null,
+  };
+}
+
+export async function reconcileRuntimeBackedExecutionTargetValue(input: {
+  target: ExecutionTargetValue;
+  fetchProviderRegistryFn?: typeof fetchProviderRegistry;
+  fetchProviderModelsFn?: typeof fetchProviderModels;
+  fetchAdvancedProviderModelsFn?: typeof fetchAdvancedProviderModels;
+}): Promise<ExecutionTargetValue> {
+  const provider = input.target.provider.trim();
+  if (!provider) {
+    return input.target;
+  }
+
+  const registry = await (input.fetchProviderRegistryFn ?? fetchProviderRegistry)();
+  const selectedProvider = registry.providers.find((option) => option.id === provider);
+  if (!selectedProvider) {
+    return input.target;
+  }
+
+  const resolvedInstance = resolveSelectedProviderInstance(
+    selectedProvider,
+    input.target.instance ?? '',
+  );
+  const [modelsResult, advancedResult] = await Promise.allSettled([
+    (input.fetchProviderModelsFn ?? fetchProviderModels)(provider, resolvedInstance || null),
+    (input.fetchAdvancedProviderModelsFn ?? fetchAdvancedProviderModels)(
+      provider,
+      resolvedInstance || null,
+    ),
+  ]);
+
+  if (modelsResult.status !== 'fulfilled') {
+    const normalizedFallbackTarget: ExecutionTargetValue = {
+      ...input.target,
+      instance: resolvedInstance || null,
+    };
+    return sameExecutionTargetValueAndLabel(input.target, normalizedFallbackTarget)
+      ? input.target
+      : normalizedFallbackTarget;
+  }
+
+  const effectiveCatalog = modelsResult.value;
+  const effectiveAdvancedCatalog = resolveAdvancedCatalogFallback({
+    provider,
+    instance: resolvedInstance || null,
+    catalog: effectiveCatalog,
+    advancedCatalogResult: advancedResult,
+    modelsResult,
+  });
+
+  let nextTarget = toProviderTargetSelection({
+    ...input.target,
+    provider,
+    instance: resolvedInstance || null,
+  });
+
+  const shouldDeferReconciliation = shouldDeferCatalogTargetReconciliation({
+    catalogSource: effectiveCatalog.source,
+    advancedCatalogSource: effectiveAdvancedCatalog.source,
+    model: nextTarget.model,
+    modelSelection: nextTarget.modelSelection,
+  });
+  if (!shouldDeferReconciliation && effectiveCatalog.models.length > 0) {
+    const preserveExistingSelection =
+      Boolean(nextTarget.modelSelection)
+      || shouldTreatPersistedTargetAsLegacyModel({
+        catalog: effectiveCatalog,
+        model: nextTarget.model,
+        modelSelection: nextTarget.modelSelection,
+      });
+    nextTarget = sanitizePersistentTargetSelection({
+      target: resolveCatalogTargetSelection({
+        target: nextTarget,
+        catalog: effectiveCatalog,
+        advancedCatalog: effectiveAdvancedCatalog,
+        preserveCurrentModel: preserveExistingSelection,
+        preserveCurrentSelection: preserveExistingSelection,
+      }),
+      controls: effectiveAdvancedCatalog.controls,
+    });
+  }
+
+  const labeledTarget = nextTarget.model
+    ? attachExecutionLabelToProviderTarget({
+        target: nextTarget,
+        effectiveCatalog,
+        effectiveAdvancedCatalog,
+      })
+    : {
+        ...nextTarget,
+        executionLabel: null,
+      };
+
+  return {
+    provider: labeledTarget.provider,
+    instance: labeledTarget.instance || null,
+    model: labeledTarget.model || null,
+    modelSelection: labeledTarget.modelSelection ?? null,
+    executionLabel: labeledTarget.executionLabel ?? null,
+  };
+}
+
 export function toSoloChannelExecutionTargetValue<
   TChat extends WorkspaceExecutionTargetChatLike,
   TSelectedChannel extends WorkspaceExecutionTargetChannelLike,
@@ -206,9 +360,7 @@ export function useWorkspaceExecutionTargetState<
 
     const nextDraftExecutionTarget = toExecutionTargetValue(readyChat.newChatDefaults);
     setDraftExecutionTarget((currentDraftExecutionTarget) =>
-      sameExecutionTargetValue(currentDraftExecutionTarget, nextDraftExecutionTarget)
-        ? currentDraftExecutionTarget
-        : nextDraftExecutionTarget);
+      mergeExecutionTargetValue(currentDraftExecutionTarget, nextDraftExecutionTarget));
   }, [
     readyChat?.newChatDefaults?.instance,
     readyChat?.newChatDefaults?.model,
@@ -242,7 +394,8 @@ export function useWorkspaceExecutionTargetState<
       return;
     }
 
-    setSoloChannelExecutionTarget(nextSoloChannelExecutionTarget);
+    setSoloChannelExecutionTarget((currentSoloChannelExecutionTarget) =>
+      mergeExecutionTargetValue(currentSoloChannelExecutionTarget, nextSoloChannelExecutionTarget));
   }, [
     readySelectedChannel?.id,
     readySelectedChannel?.composerMode,
@@ -265,13 +418,76 @@ export function useWorkspaceExecutionTargetState<
       return;
     }
 
-    setSoloChannelExecutionTarget({
-      provider: readySelectedChannel.pendingProvider,
-      model: readySelectedChannel.pendingModel ?? null,
-      instance: readySelectedChannel.pendingInstance ?? null,
-      modelSelection: readySelectedChannel.pendingModelSelection ?? null,
-    });
+    const pendingProvider = readySelectedChannel.pendingProvider;
+
+    setSoloChannelExecutionTarget((currentSoloChannelExecutionTarget) =>
+      mergeExecutionTargetValue(currentSoloChannelExecutionTarget, {
+        provider: pendingProvider,
+        model: readySelectedChannel.pendingModel ?? null,
+        instance: readySelectedChannel.pendingInstance ?? null,
+        modelSelection: readySelectedChannel.pendingModelSelection ?? null,
+        executionLabel: null,
+      }));
   }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    let cancelled = false;
+
+    void reconcileRuntimeBackedExecutionTargetValue({
+      target: draftExecutionTarget,
+    }).then((nextDraftExecutionTarget) => {
+      if (cancelled) {
+        return;
+      }
+
+      setDraftExecutionTarget((currentDraftExecutionTarget) =>
+        mergeExecutionTargetValue(currentDraftExecutionTarget, nextDraftExecutionTarget));
+    }).catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    draftExecutionTarget.instance,
+    draftExecutionTarget.model,
+    draftExecutionTarget.modelSelection,
+    draftExecutionTarget.provider,
+    state.status,
+  ]);
+
+  useEffect(() => {
+    if (state.status !== 'ready' || readySelectedChannel?.composerMode !== 'solo') {
+      return;
+    }
+
+    let cancelled = false;
+
+    void reconcileRuntimeBackedExecutionTargetValue({
+      target: soloChannelExecutionTarget,
+    }).then((nextSoloChannelExecutionTarget) => {
+      if (cancelled) {
+        return;
+      }
+
+      setSoloChannelExecutionTarget((currentSoloChannelExecutionTarget) =>
+        mergeExecutionTargetValue(currentSoloChannelExecutionTarget, nextSoloChannelExecutionTarget));
+    }).catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    readySelectedChannel?.composerMode,
+    soloChannelExecutionTarget.instance,
+    soloChannelExecutionTarget.model,
+    soloChannelExecutionTarget.modelSelection,
+    soloChannelExecutionTarget.provider,
+    state.status,
+  ]);
 
   useEffect(() => {
     if (state.status !== 'ready') {
@@ -457,5 +673,3 @@ export function useWorkspaceExecutionTargetState<
     setSoloChannelExecutionTarget,
   };
 }
-
-

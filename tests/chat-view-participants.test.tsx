@@ -365,7 +365,7 @@ test('ChatView reuses remembered runtime-backed labels for Cat avatars and parti
         'claude.reasoning_effort': 'xhigh',
       },
     },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
   });
 
   const leadCat = createChatCat({

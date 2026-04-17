@@ -617,7 +617,9 @@ export default function App() {
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     draftExecutionTarget,
+    setDraftExecutionTarget,
     soloChannelExecutionTarget,
+    setSoloChannelExecutionTarget,
     showingParallelChatDraft,
     draftParallelChatTargets,
     draftWorkflowShape,
@@ -1042,5 +1044,4 @@ export default function App() {
     />
   );
 }
-
 

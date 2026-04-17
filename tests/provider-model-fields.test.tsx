@@ -976,7 +976,7 @@ test('runtime-backed execution labels prefer advanced catalog entry and control 
         warnings: [],
       },
     }),
-    'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+    'Claude-CLI · Opus 4.7 with 1M context · xHigh',
   );
 });
 

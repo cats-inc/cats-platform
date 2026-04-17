@@ -109,7 +109,7 @@ test('PlatformLobby reuses remembered runtime-backed labels for lobby cat toolti
         'claude.reasoning_effort': 'xhigh',
       },
     },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
   });
 
   const markup = renderToStaticMarkup(
@@ -143,7 +143,7 @@ test('PlatformLobby reuses remembered runtime-backed labels for lobby cat toolti
     </StaticRouter>,
   );
 
-  assert.match(markup, /data-tooltip="Guide · Claude-CLI · Opus 4\.7 with 1M context · xHigh \(default\)"/u);
+  assert.match(markup, /data-tooltip="Guide · Claude-CLI · Opus 4\.7 with 1M context · xHigh"/u);
   clearRememberedExecutionLabels();
 });
 
