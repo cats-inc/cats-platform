@@ -28,8 +28,8 @@ import {
 import { normalizePlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   RuntimeSessionPolicyError,
-  resolveCreateRuntimeSessionPolicy,
-  validateRuntimeSessionPolicyInput,
+  parseRuntimeSessionPolicyCreateInput,
+  type RuntimeSessionPolicy,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import {
   resolveChannelParticipantAssignments,
@@ -149,6 +149,15 @@ export function createParallelChatGroup(
   const nowIso = isoAt(now);
   const memberChannelIds: string[] = [];
   const originSurface = resolveCreateInputOriginSurface(input.originSurface);
+  // Parse the group-level runtime policy once; every child channel below
+  // receives it pre-parsed so createChannel never re-parses the same input.
+  const parsedSessionPolicy = parseRuntimeSessionPolicyCreateInput({
+    repoPath: input.repoPath,
+    policy: {},
+  });
+  if (!parsedSessionPolicy.ok) {
+    throw new RuntimeSessionPolicyError(parsedSessionPolicy.issue);
+  }
 
   for (const target of [...input.targets].reverse()) {
     nextState = createChannel(
@@ -167,6 +176,7 @@ export function createParallelChatGroup(
         skipBossCatGreeting: true,
       },
       now,
+      { prevalidatedRuntimePolicy: parsedSessionPolicy.policy },
     );
     memberChannelIds.unshift(nextState.selectedChannelId);
   }
@@ -238,10 +248,20 @@ function resolveRequestedParticipantCount(input: CreateChatChannelInput): number
   return Math.max(1, explicitParticipantCount);
 }
 
+export interface CreateChannelOptions {
+  // Boundary callers (HTTP route, createParallelChatGroup) pre-parse the raw
+  // runtime policy payload via parseRuntimeSessionPolicyCreateInput and pass
+  // the narrowed result here. When absent, createChannel falls back to parsing
+  // the raw CreateChatChannelInput fields itself — a defensive seam for
+  // legacy / internal callers such as the Telegram bridge adapter.
+  prevalidatedRuntimePolicy?: RuntimeSessionPolicy;
+}
+
 export function createChannel(
   state: ChatState,
   input: CreateChatChannelInput,
   now: Date = new Date(),
+  options: CreateChannelOptions = {},
 ): ChatState {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
@@ -277,25 +297,26 @@ export function createChannel(
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
   const originSurface = resolveCreateInputOriginSurface(input.originSurface);
-  // Defensive guard for untyped/internal callers that bypass the stricter
-  // create-boundary contracts. HTTP routes should reject these combinations
-  // before they reach the model layer.
-  const runtimePolicyIssue = validateRuntimeSessionPolicyInput({
-    workspaceKind: input.runtimeWorkspaceKind,
-    workspaceAccess: input.runtimeWorkspaceAccess,
-    permissionMode: input.runtimePermissionMode,
-  });
-  if (runtimePolicyIssue) {
-    throw new RuntimeSessionPolicyError(runtimePolicyIssue);
+  // Trust the caller's pre-parsed policy when supplied; otherwise parse the
+  // raw fields ourselves. The defensive seam only catches untyped/internal
+  // callers (e.g. Telegram bridge) that skip the HTTP boundary parser.
+  let runtimeSessionPolicy: RuntimeSessionPolicy;
+  if (options.prevalidatedRuntimePolicy) {
+    runtimeSessionPolicy = options.prevalidatedRuntimePolicy;
+  } else {
+    const parsed = parseRuntimeSessionPolicyCreateInput({
+      repoPath: input.repoPath,
+      policy: {
+        workspaceKind: input.runtimeWorkspaceKind,
+        workspaceAccess: input.runtimeWorkspaceAccess,
+        permissionMode: input.runtimePermissionMode,
+      },
+    });
+    if (!parsed.ok) {
+      throw new RuntimeSessionPolicyError(parsed.issue);
+    }
+    runtimeSessionPolicy = parsed.policy;
   }
-  const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
-    repoPath: input.repoPath,
-    policy: {
-      workspaceKind: input.runtimeWorkspaceKind ?? undefined,
-      workspaceAccess: input.runtimeWorkspaceAccess ?? undefined,
-      permissionMode: input.runtimePermissionMode ?? undefined,
-    },
-  });
 
   // Auto-generate title for direct cat chats when title is empty
   let title = input.title.trim();

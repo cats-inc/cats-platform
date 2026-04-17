@@ -148,10 +148,14 @@ function mergeDefinedPolicyFields<T extends object>(
 }
 
 function createDefaultPolicyFields(): RuntimeSessionPolicyFields {
+  // Default access is a policy choice (most permissive wins); the matching
+  // permissionMode is derived from VALID_PERMISSION_MODES_BY_ACCESS so the
+  // default tracks the invariant table instead of carrying its own literal.
+  const workspaceAccess: RuntimeWorkspaceAccess = 'read_write';
   return {
     workspaceKind: 'sandbox',
-    workspaceAccess: 'read_write',
-    permissionMode: 'skip',
+    workspaceAccess,
+    permissionMode: defaultPermissionModeFor(workspaceAccess),
   };
 }
 

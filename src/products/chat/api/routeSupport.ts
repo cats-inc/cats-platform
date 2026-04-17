@@ -359,6 +359,7 @@ export async function persistCreatedChannel(
     await context.dependencies.chatStore.read(),
     input,
     now,
+    { prevalidatedRuntimePolicy: parsed.policy },
   );
 
   if (
