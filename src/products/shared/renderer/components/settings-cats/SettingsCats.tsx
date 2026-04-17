@@ -313,6 +313,7 @@ export function SettingsCatsCanvas({
 
   const [nameDraft, setNameDraft] = useState<string>(selectedCat?.name ?? '');
   const [skillDraft, setSkillDraft] = useState<string>(selectedCat?.skillProfile ?? 'chat-default');
+  const [makeBossDraft, setMakeBossDraft] = useState<boolean>(false);
   const [providerDraft, setProviderDraft] = useState<ProviderTargetSelection>(() => ({
     provider: selectedCat?.defaultExecutionTarget.provider ?? '',
     instance: selectedCat?.defaultExecutionTarget.instance ?? '',
@@ -323,6 +324,7 @@ export function SettingsCatsCanvas({
     if (!selectedCat) return;
     setNameDraft(selectedCat.name);
     setSkillDraft(selectedCat.skillProfile ?? 'chat-default');
+    setMakeBossDraft(false);
     setProviderDraft({
       provider: selectedCat.defaultExecutionTarget.provider ?? '',
       instance: selectedCat.defaultExecutionTarget.instance ?? '',
@@ -340,6 +342,7 @@ export function SettingsCatsCanvas({
     selectedCat && (
       nameDraft.trim() !== savedName
       || skillDraft !== savedSkill
+      || makeBossDraft
       || providerDraft.provider !== savedProvider
       || (providerDraft.instance ?? '') !== savedInstance
       || (providerDraft.model ?? '') !== savedModel
@@ -351,18 +354,29 @@ export function SettingsCatsCanvas({
 
   const handleSaveAll = async () => {
     if (!selectedCat || saveDisabled) return;
+    if (makeBossDraft && payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
+      const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+      const confirmed = await confirm({
+        title: 'Change Boss Cat',
+        message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set ${selectedCat.name} as the Boss instead?`,
+        confirmLabel: 'Confirm',
+      });
+      if (!confirmed) return;
+    }
     setSavingDetail(true);
     try {
-      const payload: Parameters<typeof updateCatProfile>[1] = {};
+      const patch: Parameters<typeof updateCatProfile>[1] = {};
       const trimmedName = nameDraft.trim();
-      if (trimmedName !== savedName) payload.name = trimmedName;
-      if (skillDraft !== savedSkill) payload.skillProfile = skillDraft;
-      if (providerDraft.provider !== savedProvider) payload.provider = providerDraft.provider;
-      if ((providerDraft.instance ?? '') !== savedInstance) payload.instance = providerDraft.instance || null;
-      if ((providerDraft.model ?? '') !== savedModel) payload.model = providerDraft.model || null;
-      payload.modelSelection = providerDraft.modelSelection ?? null;
-      const next = await updateCatProfile(selectedCat.id, payload);
+      if (trimmedName !== savedName) patch.name = trimmedName;
+      if (skillDraft !== savedSkill) patch.skillProfile = skillDraft;
+      if (makeBossDraft) patch.makeBoss = true;
+      if (providerDraft.provider !== savedProvider) patch.provider = providerDraft.provider;
+      if ((providerDraft.instance ?? '') !== savedInstance) patch.instance = providerDraft.instance || null;
+      if ((providerDraft.model ?? '') !== savedModel) patch.model = providerDraft.model || null;
+      patch.modelSelection = providerDraft.modelSelection ?? null;
+      const next = await updateCatProfile(selectedCat.id, patch);
       onPayloadUpdate(next);
+      setMakeBossDraft(false);
       toastFeedback('Saved.');
     } catch (error) {
       toastFeedback(error instanceof Error ? error.message : 'Failed to save.');
@@ -375,6 +389,7 @@ export function SettingsCatsCanvas({
     if (!selectedCat) return;
     setNameDraft(selectedCat.name);
     setSkillDraft(selectedCat.skillProfile ?? 'chat-default');
+    setMakeBossDraft(false);
     setProviderDraft({
       provider: selectedCat.defaultExecutionTarget.provider ?? '',
       instance: selectedCat.defaultExecutionTarget.instance ?? '',
@@ -762,6 +777,16 @@ export function SettingsCatsCanvas({
                       </button>
                     ) : null}
                   </div>
+                  {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
+                    <label className="fieldLabel fieldLabelInline">
+                      <input
+                        type="checkbox"
+                        checked={makeBossDraft}
+                        onChange={(event) => setMakeBossDraft(event.target.checked)}
+                      />
+                      <span>Set as Boss Cat</span>
+                    </label>
+                  ) : null}
                 </div>
                 <label className="fieldLabel">
                   <span>Name</span>
