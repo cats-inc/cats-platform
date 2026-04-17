@@ -25,6 +25,19 @@ function resolveShowDelay(target: HTMLElement): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+export function shouldPaintDelayedTooltipTarget(
+  target: Pick<HTMLElement, 'isConnected' | 'matches'>,
+): boolean {
+  if (!target.isConnected) {
+    return false;
+  }
+  try {
+    return target.matches(':hover');
+  } catch {
+    return true;
+  }
+}
+
 function paint(target: HTMLElement, text: string): void {
   const el = getPortal();
   el.textContent = text;
@@ -71,7 +84,9 @@ function show(target: HTMLElement): void {
       showTimer = null;
       // Re-check the text in case it changed while we waited.
       const liveText = target.getAttribute('data-tooltip');
-      if (liveText) paint(target, liveText);
+      if (liveText && shouldPaintDelayedTooltipTarget(target)) {
+        paint(target, liveText);
+      }
     }, delay);
     return;
   }
@@ -128,6 +143,7 @@ export function initTooltipPortal(): () => void {
     document.removeEventListener('mouseover', onOver, true);
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
+    hideImmediately();
     if (portal) {
       portal.remove();
       portal = null;

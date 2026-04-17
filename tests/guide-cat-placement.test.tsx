@@ -53,6 +53,20 @@ test('resolveGuideCatSafeArea keeps a pill-radius buffer around chrome edges', (
   assert.equal(workspaceSafe.bottom, 770);
 });
 
+test('resolveGuideCatSafeArea trims the workspace right edge around visible blocked regions', () => {
+  const viewport = { width: 1200, height: 800 };
+  const safeArea = resolveGuideCatSafeArea({
+    surface: 'workspace',
+    viewport,
+    topChromeBottom: null,
+    sidebarRight: 240,
+    rightBlockedLeft: 840,
+  });
+
+  assert.equal(safeArea.left, 270);
+  assert.equal(safeArea.right, 810);
+});
+
 test('clampFloatingAnchorToSafeArea pins anchors inside the safe rectangle', () => {
   const viewport = { width: 1000, height: 600 };
   const safeArea = { left: 100, top: 40, right: 900, bottom: 560 };

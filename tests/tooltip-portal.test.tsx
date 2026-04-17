@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { initTooltipPortal } from '../src/products/chat/renderer/tooltipPortal.ts';
+import {
+  initTooltipPortal,
+  shouldPaintDelayedTooltipTarget,
+} from '../src/products/chat/renderer/tooltipPortal.ts';
 
 class FakeClassList {
   private readonly values = new Set<string>();
@@ -135,4 +138,40 @@ test('tooltip portal hides immediately on click so stale tooltips do not survive
       value: previousWindow,
     });
   }
+});
+
+test('shouldPaintDelayedTooltipTarget rejects disconnected targets', () => {
+  assert.equal(
+    shouldPaintDelayedTooltipTarget({
+      isConnected: false,
+      matches: () => true,
+    }),
+    false,
+  );
+});
+
+test('shouldPaintDelayedTooltipTarget requires a connected hovered target', () => {
+  let selector: string | null = null;
+  const result = shouldPaintDelayedTooltipTarget({
+    isConnected: true,
+    matches: (value: string) => {
+      selector = value;
+      return value === ':hover';
+    },
+  });
+
+  assert.equal(result, true);
+  assert.equal(selector, ':hover');
+});
+
+test('shouldPaintDelayedTooltipTarget falls back safely when hover matching throws', () => {
+  assert.equal(
+    shouldPaintDelayedTooltipTarget({
+      isConnected: true,
+      matches: () => {
+        throw new Error('selector matching unavailable');
+      },
+    }),
+    true,
+  );
 });

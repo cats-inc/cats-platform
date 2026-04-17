@@ -2,6 +2,8 @@ import { useEffect, useRef, type ReactNode } from 'react';
 
 import { AccordionSection } from './AccordionSection';
 
+export const SIDE_PANEL_LAYOUT_EVENT = 'cats:side-panel-layout-change';
+
 export interface SidePanelSection {
   id: string;
   title: string;
@@ -29,6 +31,11 @@ export function SidePanel({
   position = 'side',
 }: SidePanelProps) {
   const panelRef = useRef<HTMLElement>(null);
+  const panelClassName = [
+    'sidePanel',
+    position === 'bottom' ? 'sidePanelBottom' : '',
+    className,
+  ].filter(Boolean).join(' ');
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent): void {
@@ -55,11 +62,15 @@ export function SidePanel({
     };
   }, [onClose]);
 
-  const panelClassName = [
-    'sidePanel',
-    position === 'bottom' ? 'sidePanelBottom' : '',
-    className,
-  ].filter(Boolean).join(' ');
+  useEffect(() => {
+    dispatchSidePanelLayoutEvent();
+  }, [panelClassName]);
+
+  useEffect(() => {
+    return () => {
+      dispatchSidePanelLayoutEvent();
+    };
+  }, []);
 
   return (
     <aside className={panelClassName} ref={panelRef}>
@@ -90,4 +101,11 @@ export function SidePanel({
       </div>
     </aside>
   );
+}
+
+function dispatchSidePanelLayoutEvent(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.dispatchEvent(new Event(SIDE_PANEL_LAYOUT_EVENT));
 }

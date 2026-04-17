@@ -66,8 +66,15 @@ export function resolveGuideCatSafeArea(input: {
   viewport: GuideCatViewportRect;
   topChromeBottom: number | null;
   sidebarRight: number | null;
+  rightBlockedLeft?: number | null;
 }): GuideCatSafeArea {
-  const { surface, viewport, topChromeBottom, sidebarRight } = input;
+  const {
+    surface,
+    viewport,
+    topChromeBottom,
+    sidebarRight,
+    rightBlockedLeft = null,
+  } = input;
   // The safe area describes valid positions for the pill centre, so the pill
   // radius is added on every edge to keep the visible pill a full
   // SAFE_AREA_MARGIN away from chrome rather than half-overlapping it.
@@ -77,11 +84,14 @@ export function resolveGuideCatSafeArea(input: {
   const topChrome = surface === 'lobby' && topChromeBottom != null
     ? Math.max(SAFE_AREA_MARGIN, topChromeBottom + SAFE_AREA_MARGIN)
     : SAFE_AREA_MARGIN;
+  const rightChrome = surface === 'workspace' && rightBlockedLeft != null
+    ? Math.min(viewport.width - SAFE_AREA_MARGIN, rightBlockedLeft - SAFE_AREA_MARGIN)
+    : viewport.width - SAFE_AREA_MARGIN;
   const left = leftChrome + FLOATING_PILL_RADIUS_PX;
   const top = topChrome + FLOATING_PILL_RADIUS_PX;
   const right = Math.max(
     left + 1,
-    viewport.width - SAFE_AREA_MARGIN - FLOATING_PILL_RADIUS_PX,
+    rightChrome - FLOATING_PILL_RADIUS_PX,
   );
   const bottom = Math.max(
     top + 1,

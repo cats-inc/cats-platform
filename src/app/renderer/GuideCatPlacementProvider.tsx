@@ -18,6 +18,7 @@ import type {
   GuideCatPlacement,
   GuideCatSidecarMode,
 } from '../../shared/platform-contract.js';
+import { SIDE_PANEL_LAYOUT_EVENT } from '../../design/components/SidePanel.js';
 import { hideTooltipPortal } from '../../products/chat/renderer/tooltipPortal.js';
 import { dispatchPlatformEnvelopeRefresh } from './platformEnvelopeEvents.js';
 import {
@@ -124,6 +125,7 @@ export function GuideCatPlacementProvider({
     readViewport());
   const [topChromeBottom, setTopChromeBottom] = useState<number | null>(null);
   const [sidebarRight, setSidebarRight] = useState<number | null>(null);
+  const [workspaceRightBlockedLeft, setWorkspaceRightBlockedLeft] = useState<number | null>(null);
 
   const slotRefs = useRef<Record<GuideCatDockSlotKind, HTMLElement | null>>({
     lobby: null,
@@ -190,9 +192,34 @@ export function GuideCatPlacementProvider({
     };
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') {
+      return;
+    }
+    const update = () => {
+      const next = surface === 'workspace'
+        ? readWorkspaceRightBlockedLeft(document)
+        : null;
+      setWorkspaceRightBlockedLeft((current) => (current === next ? current : next));
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener(SIDE_PANEL_LAYOUT_EVENT, update as EventListener);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener(SIDE_PANEL_LAYOUT_EVENT, update as EventListener);
+    };
+  }, [surface, location.pathname]);
+
   const safeArea: GuideCatSafeArea = useMemo(
-    () => resolveGuideCatSafeArea({ surface, viewport, topChromeBottom, sidebarRight }),
-    [surface, viewport, topChromeBottom, sidebarRight],
+    () => resolveGuideCatSafeArea({
+      surface,
+      viewport,
+      topChromeBottom,
+      sidebarRight,
+      rightBlockedLeft: workspaceRightBlockedLeft,
+    }),
+    [surface, viewport, topChromeBottom, sidebarRight, workspaceRightBlockedLeft],
   );
 
   const baseProjection: GuideCatProjection = useMemo(
@@ -454,10 +481,10 @@ export function GuideCatPlacementProvider({
       event.preventDefault();
       event.stopPropagation();
       suppressClickRef.current = false;
-      // Close any popover (account menu, surface switcher, overflow menus)
-      // that was open when the user pressed on the guide cat, regardless of
-      // whether this ends up being a click or a drag.
-      dismissGlobalPopovers();
+      // Close any transient chrome surface (account menu, surface switcher,
+      // overflow menu, or non-pinned side panel) that follows document-level
+      // outside-click semantics before the guide-cat interaction proceeds.
+      dismissTransientChrome();
       const element = event.currentTarget;
       const rect = element.getBoundingClientRect();
       const basePillX = rect.left + rect.width / 2;
@@ -494,7 +521,7 @@ export function GuideCatPlacementProvider({
       event.preventDefault();
       event.stopPropagation();
       suppressClickRef.current = false;
-      dismissGlobalPopovers();
+      dismissTransientChrome();
       const element = event.currentTarget;
       const rect = element.getBoundingClientRect();
       const basePillX = rect.left + rect.width / 2;
@@ -599,15 +626,11 @@ function hideGlobalTooltip(): void {
   hideTooltipPortal();
 }
 
-/** Synthesise a `mousedown` on document.body so that any popover with a
- * document-level click-outside listener (account menu, surface switcher,
- * sidebar overflow menus, etc.) self-dismisses. Called on pointerdown for the
- * guide cat pill — relying on the compatibility mousedown is unreliable
- * because some browsers / configurations suppress it when pointerdown is
- * cancelled. Dispatching it explicitly is safe: popover handlers only close
- * when their root does not contain the event target, and `document.body` is
- * always outside those popover roots. */
-function dismissGlobalPopovers(): void {
+/** Synthesise a `mousedown` on `document.body` so any transient chrome surface
+ * with document-level outside-click semantics self-dismisses before the
+ * guide-cat interaction continues. This intentionally covers more than menus:
+ * unpinned side panels that share the same contract should close too. */
+function dismissTransientChrome(): void {
   if (typeof document === 'undefined' || typeof MouseEvent === 'undefined') return;
   const evt = new MouseEvent('mousedown', {
     bubbles: true,
@@ -628,6 +651,18 @@ function readSlotRect(node: HTMLElement): GuideCatSlotRect {
     right: rect.right,
     bottom: rect.bottom,
   };
+}
+
+function readWorkspaceRightBlockedLeft(doc: Document): number | null {
+  const panels = Array.from(doc.querySelectorAll<HTMLElement>('.sidePanel:not(.sidePanelBottom)'));
+  const left = panels
+    .map((panel) => panel.getBoundingClientRect())
+    .filter((rect) => rect.width > 0 && rect.height > 0)
+    .reduce<number | null>(
+      (current, rect) => (current == null ? rect.left : Math.min(current, rect.left)),
+      null,
+    );
+  return left == null ? null : Math.round(left);
 }
 
 export function persistGuideCatPlacementPreference(patch: {

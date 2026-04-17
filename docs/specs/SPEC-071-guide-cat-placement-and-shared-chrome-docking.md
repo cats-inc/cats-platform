@@ -196,6 +196,8 @@ Guide Cat placement
 - The same shared normalized floating anchor used on Lobby should be projected
   here and reclamped against workspace-safe regions rather than replaced with a
   separate workspace-only remembered position.
+- Starting a Guide Cat click/drag may dismiss transient workspace chrome that
+  relies on outside-click semantics, such as menus or non-pinned side panels.
 - Workspace exposes a dedicated sidebar assist dock slot above the account/user
   footer.
 - Docked Guide Cat is stored in chrome, but expanded Guide Cat content must
