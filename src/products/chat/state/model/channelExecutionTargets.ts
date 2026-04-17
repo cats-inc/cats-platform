@@ -156,6 +156,16 @@ export function resetSoloChannelContinuity(
     throw new Error('Start fresh is currently only supported for solo chats.');
   }
 
+  const existingResetAt = channel.continuityResetAt?.trim() || null;
+  if (existingResetAt) {
+    const hasPostResetBranchActivity = channel.messages.some((message) =>
+      message.createdAt.localeCompare(existingResetAt) > 0
+      && message.metadata?.event !== 'continuity_reset');
+    if (!hasPostResetBranchActivity) {
+      return nextState;
+    }
+  }
+
   const nowIso = isoAt(now);
   channel.continuityResetAt = nowIso;
   channel.orchestratorLease = createEmptyExecutionLease();

@@ -10613,6 +10613,65 @@ test('PATCH /api/channels/:channelId can start a fresh solo continuity branch', 
   });
 });
 
+test('PATCH /api/channels/:channelId keeps repeated solo continuity resets idempotent until new branch activity exists', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Solo Draft',
+        topic: 'Start fresh should not duplicate reset markers when pressed twice in a row.',
+        composerMode: 'solo',
+        pendingProvider: 'claude',
+        pendingInstance: 'native',
+        pendingModel: 'claude-opus-4-6',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const { channel } = await createChannelResponse.json();
+
+    const firstResetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        resetContinuity: true,
+      }),
+    });
+    assert.equal(firstResetResponse.status, 200);
+
+    const secondResetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        resetContinuity: true,
+      }),
+    });
+    assert.equal(secondResetResponse.status, 200);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+    const resetMessages = channelPayload.channel.messages.filter(
+      (message) => message.metadata?.event === 'continuity_reset',
+    );
+
+    assert.equal(resetMessages.length, 1);
+    assert.equal(
+      channelPayload.channel.continuityResetAt,
+      resetMessages[0]?.metadata?.continuityResetAt ?? null,
+    );
+  });
+});
+
 test('PATCH /api/channels/:channelId rejects continuity reset for non-solo chats', async () => {
   const runtimeClient = createRuntimeStub();
 

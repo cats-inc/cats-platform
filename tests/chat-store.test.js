@@ -139,6 +139,40 @@ test('FileChatStore round-trips explicit solo continuity reset boundaries', asyn
   assert.equal(reloadedChannel?.messages.at(-1)?.metadata?.event, 'continuity_reset');
 });
 
+test('resetSoloChannelContinuity is idempotent before the new branch starts', async () => {
+  const now = new Date('2026-04-17T00:00:00.000Z');
+  let state = createDefaultChatState();
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Do not append duplicate reset markers before any new branch activity.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const firstResetState = resetSoloChannelContinuity(
+    state,
+    channelId,
+    new Date('2026-04-17T00:00:30.000Z'),
+  );
+  const secondResetState = resetSoloChannelContinuity(
+    firstResetState,
+    channelId,
+    new Date('2026-04-17T00:01:00.000Z'),
+  );
+  const channel = secondResetState.channels.find((candidate) => candidate.id === channelId);
+  const resetMessages = channel?.messages.filter((message) => message.metadata?.event === 'continuity_reset') ?? [];
+
+  assert.equal(channel?.continuityResetAt, '2026-04-17T00:00:30.000Z');
+  assert.equal(resetMessages.length, 1);
+});
+
 test('assigning the first cat upgrades a solo chat into cat-led mode and removing the last cat returns it to solo', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
