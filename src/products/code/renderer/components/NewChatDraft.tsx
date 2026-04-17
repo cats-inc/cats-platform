@@ -14,6 +14,11 @@ import {
   PermissionModeChip,
   type PermissionMode,
 } from '../../../shared/renderer/components/PermissionModeChip.js';
+import {
+  DEFAULT_WORKSPACE_MODE,
+  WorkspaceModeChip,
+  type WorkspaceMode,
+} from '../../../shared/renderer/components/WorkspaceModeChip.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 import { inspectPath } from '../api/index.js';
 
@@ -160,7 +165,7 @@ function useCodeDraftRepoProbe(draftCwd: string | null): RepoProbeResult {
 
 export function NewChatDraft(props: NewChatDraftProps) {
   const { isRepo, repoRoot, branch } = useCodeDraftRepoProbe(props.draftCwd);
-  const [worktreeEnabled, setWorktreeEnabled] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(DEFAULT_WORKSPACE_MODE);
   const [permissionMode, setPermissionMode] = useState<PermissionMode>(DEFAULT_PERMISSION_MODE);
 
   if (props.entryMode === 'group' || props.entryMode === 'parallel') {
@@ -190,15 +195,11 @@ export function NewChatDraft(props: NewChatDraftProps) {
             </svg>
             <span>{branchLabel}</span>
           </span>
-          <label className="composerWorktreeChip">
-            <input
-              type="checkbox"
-              checked={worktreeEnabled}
-              disabled={isSubmittingFirstTurn}
-              onChange={(event) => setWorktreeEnabled(event.target.checked)}
-            />
-            <span>worktree</span>
-          </label>
+          <WorkspaceModeChip
+            value={workspaceMode}
+            onChange={setWorkspaceMode}
+            disabled={isSubmittingFirstTurn}
+          />
         </>
       ) : null}
     </>

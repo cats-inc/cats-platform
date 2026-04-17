@@ -1,23 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 
-export type PermissionMode = 'full' | 'read_only';
+export type WorkspaceMode = 'current' | 'worktree';
 
-export const DEFAULT_PERMISSION_MODE: PermissionMode = 'full';
+export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = 'current';
 
-const PERMISSION_MODE_LABELS: Record<PermissionMode, string> = {
-  full: 'Full access',
-  read_only: 'Read only',
+const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
+  current: 'Current folder',
+  worktree: 'Worktree',
 };
 
-const PERMISSION_MODE_ORDER: readonly PermissionMode[] = ['full', 'read_only'];
+const WORKSPACE_MODE_ORDER: readonly WorkspaceMode[] = ['current', 'worktree'];
 
-export interface PermissionModeChipProps {
-  value: PermissionMode;
-  onChange: (next: PermissionMode) => void;
+export interface WorkspaceModeChipProps {
+  value: WorkspaceMode;
+  onChange: (next: WorkspaceMode) => void;
   disabled?: boolean;
 }
 
-export function PermissionModeChip({ value, onChange, disabled }: PermissionModeChipProps) {
+export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeChipProps) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -44,26 +44,28 @@ export function PermissionModeChip({ value, onChange, disabled }: PermissionMode
   }, [open]);
 
   return (
-    <div className="composerSelectChipWrapper composerPermissionChipWrapper" ref={wrapperRef}>
+    <div className="composerSelectChipWrapper composerWorkspaceModeChipWrapper" ref={wrapperRef}>
       <button
         type="button"
-        className="composerSelectChip composerPermissionChip"
+        className="composerSelectChip composerWorkspaceModeChip"
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
+          <path d="M8 2 2 5l6 3 6-3-6-3z" />
+          <path d="M2 8l6 3 6-3" />
+          <path d="M2 11l6 3 6-3" />
         </svg>
-        <span>{PERMISSION_MODE_LABELS[value]}</span>
+        <span>{WORKSPACE_MODE_LABELS[value]}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>
       </button>
       {open ? (
         <div className="composerSelectChipMenu" role="listbox">
-          {PERMISSION_MODE_ORDER.map((mode) => {
+          {WORKSPACE_MODE_ORDER.map((mode) => {
             const selected = mode === value;
             return (
               <button
@@ -84,7 +86,7 @@ export function PermissionModeChip({ value, onChange, disabled }: PermissionMode
                     </svg>
                   ) : null}
                 </span>
-                <span>{PERMISSION_MODE_LABELS[mode]}</span>
+                <span>{WORKSPACE_MODE_LABELS[mode]}</span>
               </button>
             );
           })}

@@ -65,18 +65,18 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
-test('new code default draft initial render does not show the branch chip before the repo probe resolves', () => {
+test('new code default draft initial render does not show the branch or workspace mode chip before the repo probe resolves', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps({ draftCwd: '/tmp/my-repo' })} />);
 
   assert.doesNotMatch(markup, /class="composerBranchChip"/u);
-  assert.doesNotMatch(markup, /class="composerWorktreeChip"/u);
+  assert.doesNotMatch(markup, /class="composerWorkspaceModeChip"/u);
 });
 
-test('new code default draft without a draft cwd never renders the branch chip', () => {
+test('new code default draft without a draft cwd never renders the branch or workspace mode chip', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps({ draftCwd: null })} />);
 
   assert.doesNotMatch(markup, /class="composerBranchChip"/u);
-  assert.doesNotMatch(markup, /class="composerWorktreeChip"/u);
+  assert.doesNotMatch(markup, /class="composerWorkspaceModeChip"/u);
 });
 
 test('new code default draft hides the permission chip and footer row entirely when no cwd is selected', () => {
@@ -97,9 +97,9 @@ test('new code default draft renders the permission chip as the leftmost session
   // permission chip should still anchor the session policy row.
   assert.match(
     markup,
-    /class="composerFooterRow"[\s\S]*?class="composerPermissionChipWrapper"/u,
+    /class="composerFooterRow"[\s\S]*?composerPermissionChipWrapper/u,
   );
-  assert.match(markup, /class="composerPermissionChip"[\s\S]*?Full access/u);
+  assert.match(markup, /composerPermissionChip[\s\S]*?Full access/u);
 });
 
 test('shared workspace draft renders composerFooterAccessory below the composer card when provided', () => {
@@ -111,10 +111,9 @@ test('shared workspace draft renders composerFooterAccessory below the composer 
           <span className="composerBranchChip">
             <span>main</span>
           </span>
-          <label className="composerWorktreeChip">
-            <input type="checkbox" />
-            <span>worktree</span>
-          </label>
+          <button className="composerSelectChip composerWorkspaceModeChip" type="button">
+            <span>Current folder</span>
+          </button>
         </>
       }
     />,
@@ -126,8 +125,8 @@ test('shared workspace draft renders composerFooterAccessory below the composer 
   );
   assert.match(
     markup,
-    /class="composerBranchChip"[\s\S]*?class="composerWorktreeChip"/u,
+    /class="composerBranchChip"[\s\S]*?class="composerSelectChip composerWorkspaceModeChip"/u,
   );
   assert.match(markup, />main</u);
-  assert.match(markup, />worktree</u);
+  assert.match(markup, />Current folder</u);
 });

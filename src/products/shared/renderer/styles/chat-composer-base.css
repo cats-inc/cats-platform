@@ -724,12 +724,12 @@
   min-width: 0;
 }
 
-.composerPermissionChipWrapper {
+.composerSelectChipWrapper {
   position: relative;
   display: inline-flex;
 }
 
-.composerPermissionChip {
+.composerSelectChip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -743,17 +743,17 @@
   cursor: pointer;
 }
 
-.composerPermissionChip:hover:not(:disabled) {
+.composerSelectChip:hover:not(:disabled) {
   background: var(--panel-hover);
   color: var(--text);
 }
 
-.composerPermissionChip:disabled {
+.composerSelectChip:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.composerPermissionMenu {
+.composerSelectChipMenu {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -769,7 +769,7 @@
   z-index: 12;
 }
 
-.composerPermissionMenuItem {
+.composerSelectChipMenuItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -784,16 +784,16 @@
   white-space: nowrap;
 }
 
-.composerPermissionMenuItem:hover {
+.composerSelectChipMenuItem:hover {
   background: var(--panel-hover);
 }
 
-.composerPermissionMenuItemSelected {
+.composerSelectChipMenuItemSelected {
   color: var(--text);
   font-weight: 500;
 }
 
-.composerPermissionMenuItemCheck {
+.composerSelectChipMenuItemCheck {
   display: inline-grid;
   place-items: center;
   width: 14px;
@@ -821,34 +821,6 @@
   text-overflow: ellipsis;
 }
 
-.composerWorktreeChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--muted);
-  font-size: 0.78rem;
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
-}
-
-.composerWorktreeChip:hover {
-  background: var(--panel-hover);
-  color: var(--text);
-}
-
-.composerWorktreeChip input[type="checkbox"] {
-  margin: 0;
-  cursor: pointer;
-}
-
-.composerWorktreeChip input[type="checkbox"]:disabled {
-  cursor: not-allowed;
-}
 
 .composerChipClose {
   display: grid;
