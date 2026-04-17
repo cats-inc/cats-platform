@@ -222,6 +222,11 @@ export function Sidebar(props: SidebarProps) {
     accountMenuRef: props.accountMenuRef,
     primaryActions: createPrimaryActions(props),
     recentEntries: buildRecentEntries(props),
+    forceShowMyCatsSection: true,
+    myCatsEmptyStatePlaceholder: {
+      label: 'New cat',
+      onClick: props.onStartNewChat,
+    },
     helpers: {
       catInitials,
       presentChannelTitle,

@@ -113,6 +113,63 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
   );
 }
 
+export interface ConversationSidebarMyCatsPlaceholder {
+  label: string;
+  onClick?: () => void;
+}
+
+function MyCatPlaceholderRow({
+  label,
+  onClick,
+}: ConversationSidebarMyCatsPlaceholder) {
+  const interactive = typeof onClick === 'function';
+  const handleClick = () => {
+    if (interactive) {
+      onClick?.();
+    }
+  };
+  return (
+    <div
+      className={[
+        'myCatRow',
+        'myCatRowPlaceholder',
+        interactive ? '' : 'myCatRowPlaceholderStatic',
+      ].filter(Boolean).join(' ')}
+      onClick={handleClick}
+    >
+      <button
+        className="myCatItem myCatItemPlaceholder"
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          handleClick();
+        }}
+        disabled={!interactive}
+      >
+        <span className="myCatAvatarWrap catAvatar catAvatarPlaceholder" aria-hidden="true">
+          <svg
+            className="myCatPlaceholderIcon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" />
+            <line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
+        </span>
+        <span className="myCatName myCatNamePlaceholder">{label}</span>
+      </button>
+    </div>
+  );
+}
+
 export function ConversationSidebarMyCatsSection<
   TCat extends ConversationSidebarCat,
   TChannel extends ConversationSidebarChannel,
@@ -129,6 +186,7 @@ export function ConversationSidebarMyCatsSection<
   onOverflowMenuToggle,
   onDirectChatCat,
   onArchiveCat,
+  emptyStatePlaceholder,
 }: {
   label?: string;
   cats: readonly TCat[];
@@ -141,15 +199,24 @@ export function ConversationSidebarMyCatsSection<
   onOverflowMenuToggle: (channelId: string | null) => void;
   onDirectChatCat: (catId: string) => void;
   onArchiveCat: (catId: string) => void;
+  emptyStatePlaceholder?: ConversationSidebarMyCatsPlaceholder;
 }) {
+  const activeCats = helpers.sortCatsForDisplay(
+    cats.filter((cat) => cat.status === 'active'),
+    { bossCatIds: bossCatId },
+  );
+  const showPlaceholder = activeCats.length === 0 && emptyStatePlaceholder != null;
   return (
     <section className="myCatsSection">
       <p className="sectionLabel">{label}</p>
       <div className="myCatsList">
-        {helpers.sortCatsForDisplay(
-          cats.filter((cat) => cat.status === 'active'),
-          { bossCatIds: bossCatId },
-        ).map((cat) => {
+        {showPlaceholder ? (
+          <MyCatPlaceholderRow
+            label={emptyStatePlaceholder!.label}
+            onClick={emptyStatePlaceholder!.onClick}
+          />
+        ) : null}
+        {activeCats.map((cat) => {
           const isBoss = cat.id === bossCatId;
           const isActive = activeMyCatId === cat.id;
           const hasTelegramBinding = telegramBoundCatIds.has(cat.id);

@@ -12,7 +12,10 @@ import type {
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { ConversationSidebarFooter } from './ConversationSidebarFooter.js';
-import { ConversationSidebarMyCatsSection } from './ConversationSidebarMyCats.js';
+import {
+  ConversationSidebarMyCatsSection,
+  type ConversationSidebarMyCatsPlaceholder,
+} from './ConversationSidebarMyCats.js';
 import { ConversationSidebarNavigation } from './ConversationSidebarNavigation.js';
 import { buildConversationSidebarViewModel } from './conversationSidebarViewModel.js';
 import { ConversationSidebarRecentsSection } from './ConversationSidebarRecents.js';
@@ -159,6 +162,7 @@ export interface ConversationSidebarProps<
   myCatsSectionLabel?: string;
   forceShowMyCatsSection?: boolean;
   myCatsSectionCats?: readonly TCat[];
+  myCatsEmptyStatePlaceholder?: ConversationSidebarMyCatsPlaceholder;
   helpers: ConversationSidebarHelpers<TCat, TChannel, TDot>;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -197,6 +201,7 @@ export function ConversationSidebar<
   myCatsSectionLabel,
   forceShowMyCatsSection = false,
   myCatsSectionCats,
+  myCatsEmptyStatePlaceholder,
   helpers,
   onToggleSidebar,
   onCollapsedSidebarClick,
@@ -230,7 +235,10 @@ export function ConversationSidebar<
     currentPath,
   });
   const resolvedMyCatsSectionCats = myCatsSectionCats ?? visibleCats;
-  const showMyCatsSection = forceShowMyCatsSection || resolvedMyCatsSectionCats.length > 0;
+  const showMyCatsSection =
+    forceShowMyCatsSection
+    || resolvedMyCatsSectionCats.length > 0
+    || myCatsEmptyStatePlaceholder != null;
 
   return (
     <aside
@@ -289,6 +297,7 @@ export function ConversationSidebar<
               onOverflowMenuToggle={onOverflowMenuToggle}
               onDirectChatCat={onDirectChatCat}
               onArchiveCat={onArchiveCat}
+              emptyStatePlaceholder={myCatsEmptyStatePlaceholder}
             />
           ) : null}
 
