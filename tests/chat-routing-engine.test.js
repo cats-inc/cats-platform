@@ -2120,6 +2120,114 @@ test('cat-led sessions restart when a participant model selection changes', asyn
   });
 });
 
+test('direct cat chat full-transplants continuity when a restarted lead-cat session changes model selection', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'codex',
+      model: 'gpt-5.4',
+      modelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'medium',
+        },
+      },
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Direct-lane restarts should preserve full continuity.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First direct turn',
+    },
+    runtimeClient,
+    now,
+  );
+  const retargetedState = setChannelCatExecutionTarget(
+    firstDispatch.state,
+    channelId,
+    companionId,
+    {
+      modelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'high',
+        },
+      },
+    },
+    new Date('2026-03-23T00:00:45.000Z'),
+  );
+  await routeChannelMessage(
+    retargetedState,
+    channelId,
+    {
+      body: 'Second direct turn',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.equal(
+    runtimeClient.createdSessions[0]?.context?.metadata?.continuityMode,
+    'fresh_start',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityDeliveryMode,
+    'turn_instructions',
+  );
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityDeliveryMode,
+    'turn_instructions',
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /Same conversation continuity transcript:/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[user:User\] First direct turn/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[agent:Companion\] response from session-1/u,
+  );
+});
+
 test('solo composer mode sends raw user text without default instructions on a stable session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');

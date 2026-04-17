@@ -7,6 +7,7 @@ import {
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import { buildSoloChatContinuityTransplantInstructions } from '../prompts.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import {
   applySoloChatContinuityBoundary,
   messagesBeforeSource,
@@ -46,9 +47,10 @@ interface ResolvedTargetRuntimeEnvelope {
   canonicalMetadata: RuntimeEnvelopeCanonicalMetadata;
 }
 
-function resolveNewSoloSessionContinuityMetadata(input: {
+function resolveNewSessionContinuityMetadata(input: {
   state: ChatState;
   channelId: string;
+  target: RoutingTarget;
   sourceMessageId?: string | null;
 }): {
   continuityMode: 'fresh_start' | 'full_transplant';
@@ -56,7 +58,11 @@ function resolveNewSoloSessionContinuityMetadata(input: {
   continuityResetAt: string | null;
 } | null {
   const channel = buildChannelView(input.state, input.channelId);
-  if (channel.composerMode !== 'solo') {
+  const isSoloOrchestrator = input.target.participantKind === 'orchestrator'
+    && channel.composerMode === 'solo';
+  const isDirectLaneParticipant = input.target.participantKind === 'cat'
+    && isDirectLaneChannel(channel);
+  if (!isSoloOrchestrator && !isDirectLaneParticipant) {
     return null;
   }
 
@@ -65,12 +71,18 @@ function resolveNewSoloSessionContinuityMetadata(input: {
     return {
       continuityMode: 'fresh_start',
       continuityDeliveryMode: 'none',
-      continuityResetAt: channel.continuityResetAt?.trim() || null,
+      continuityResetAt: isSoloOrchestrator
+        ? channel.continuityResetAt?.trim() || null
+        : null,
     };
   }
 
-  const continuityResetAt = channel.continuityResetAt?.trim() || null;
-  const continuityMessages = applySoloChatContinuityBoundary(channel, channel.messages);
+  const continuityResetAt = isSoloOrchestrator
+    ? channel.continuityResetAt?.trim() || null
+    : null;
+  const continuityMessages = isSoloOrchestrator
+    ? applySoloChatContinuityBoundary(channel, channel.messages)
+    : channel.messages;
   const sourceMessage = continuityMessages.find((message) => message.id === sourceMessageId) ?? null;
   const priorMessages = sourceMessage
     ? messagesBeforeSource(continuityMessages, sourceMessage)
@@ -160,13 +172,12 @@ export async function startAttachedTargetSession(input: {
 
   try {
     nextState = markTargetWaking(nextState, channelId, attachedTarget, now, laneId);
-    const soloContinuityMetadata = attachedTarget.participantKind === 'orchestrator'
-      ? resolveNewSoloSessionContinuityMetadata({
-        state: nextState,
-        channelId,
-        sourceMessageId: input.sourceMessageId ?? null,
-      })
-      : null;
+    const sameChatContinuityMetadata = resolveNewSessionContinuityMetadata({
+      state: nextState,
+      channelId,
+      target: attachedTarget,
+      sourceMessageId: input.sourceMessageId ?? null,
+    });
     const {
       runtimeEnvelope,
       canonicalMetadata,
@@ -190,7 +201,7 @@ export async function startAttachedTargetSession(input: {
         runtimeClient,
         dispatchContextMetadata: {
           ...(routingOptions.dispatchContextMetadata ?? {}),
-          ...(soloContinuityMetadata ?? {}),
+          ...(sameChatContinuityMetadata ?? {}),
         },
         taskExecutionContext,
         runtimeEnvelope,
@@ -202,7 +213,10 @@ export async function startAttachedTargetSession(input: {
         spawnCwd,
         workspaceKind,
         runtimeClient,
-        dispatchContextMetadata: routingOptions.dispatchContextMetadata,
+        dispatchContextMetadata: {
+          ...(routingOptions.dispatchContextMetadata ?? {}),
+          ...(sameChatContinuityMetadata ?? {}),
+        },
         taskExecutionContext,
         runtimeEnvelope,
       });

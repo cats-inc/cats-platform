@@ -587,7 +587,7 @@ function hasVisibleResponseFromCurrentTargetIdentity(
   });
 }
 
-function resolveSoloChatInstructions(
+function resolveSameChatContinuityInstructions(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
 ): string | null {
@@ -598,7 +598,7 @@ function resolveSoloChatInstructions(
   return buildSoloChatContinuityTransplantInstructions(priorMessages);
 }
 
-function resolveSoloChatContinuityMode(
+function resolveSameChatContinuityMode(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
   instructions: string | null,
@@ -672,20 +672,22 @@ export function buildPromptForTarget(
     sourceParticipantName: request.sourceParticipant?.participantName ?? null,
     transport: resolveTransportContext(channel, transport),
   };
+  const directLaneContinuity = request.target.participantKind === 'cat'
+    && isDirectLaneChannel(channel);
 
   if (request.target.participantKind === 'orchestrator') {
     if (isSoloChatChannel(channel)) {
-      const instructions = resolveSoloChatInstructions(continuityMessages, request);
+      const instructions = resolveSameChatContinuityInstructions(continuityMessages, request);
       return {
         message: request.sourceMessage.body,
         instructions,
-        continuityMode: resolveSoloChatContinuityMode(continuityMessages, request, instructions),
+        continuityMode: resolveSameChatContinuityMode(continuityMessages, request, instructions),
         continuityDeliveryMode: instructions ? 'turn_instructions' : 'none',
         continuityResetAt: channel.continuityResetAt?.trim() || null,
       };
     }
     return {
-        message: buildOrchestratorPrompt(
+      message: buildOrchestratorPrompt(
         channel,
         state.globalOrchestrator,
         promptSourceMessage,
@@ -700,13 +702,23 @@ export function buildPromptForTarget(
     throw new Error(`Target participant is no longer assigned to the selected chat: ${request.target.participantId}`);
   }
 
+  const instructions = directLaneContinuity
+    ? resolveSameChatContinuityInstructions(promptMessages, request)
+    : null;
   return {
-      message: buildCatPrompt(
-        channel,
-        state.globalOrchestrator,
-        participant,
-        promptSourceMessage,
-        routingContext,
-      ),
+    message: buildCatPrompt(
+      channel,
+      state.globalOrchestrator,
+      participant,
+      promptSourceMessage,
+      routingContext,
+    ),
+    instructions,
+    continuityMode: directLaneContinuity
+      ? resolveSameChatContinuityMode(promptMessages, request, instructions)
+      : null,
+    continuityDeliveryMode: directLaneContinuity
+      ? instructions ? 'turn_instructions' : 'none'
+      : null,
   };
 }
