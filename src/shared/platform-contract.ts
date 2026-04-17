@@ -3,6 +3,7 @@ import type {
   ExecutionTargetSummary,
   GuideCatRecord,
 } from '../core/types.js';
+import type { GuideCatAssistSurfaceReadModel } from './guideCatAssist.js';
 import type { RuntimeStatusSummary } from '../platform/runtime/client.js';
 import type { ProviderModelSelection } from './providerSelection.js';
 import type { RuntimeSetupSummary } from './runtimeSetup.js';
@@ -76,6 +77,7 @@ export interface PlatformLobbyPreferences {
 
 export interface PlatformLobbyState extends PlatformLobbyPreferences {
   cats: PlatformLobbyCatSummary[];
+  guideCatAssist?: GuideCatAssistSurfaceReadModel | null;
 }
 
 export interface PlatformOwnerContext {

@@ -1,6 +1,7 @@
 import type { AppConfig } from '../../../config.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
+import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAssist.js';
 import type {
   GuideCatSidecarMode,
   PlatformDesktopPreferences,
@@ -65,6 +66,8 @@ export function createAppShell(
     guideCatSidecarSeen?: boolean;
     guideCatSidecarMode?: GuideCatSidecarMode;
     assistantPresets?: AssistantPresetRecord[];
+    lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
+    newChatAssist?: AppShellPayload['chat']['newChatAssist'];
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -86,6 +89,7 @@ export function createAppShell(
     lobby: {
       animationMode: setup?.lobby?.animationMode ?? 'reduced',
       cats: buildLobbyCats(summary.cats, chat.bossCatId),
+      guideCatAssist: setup?.lobbyGuideCatAssist ?? null,
     },
     chat: {
       id: chat.id,
@@ -115,6 +119,7 @@ export function createAppShell(
       showLiveProgressDetails: chat.showLiveProgressDetails ?? false,
       concurrentPresentationMode: chat.concurrentPresentationMode ?? 'inline_stack',
       botBindings,
+      newChatAssist: structuredClone(setup?.newChatAssist ?? null),
     },
     runtime,
     runtimeSetup: setup?.runtimeSetup ?? createUnavailableRuntimeSetupSummary(

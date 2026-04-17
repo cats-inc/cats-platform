@@ -89,6 +89,20 @@ export interface GuideCatAssistCacheFile {
   refreshFailures: Record<string, GuideCatAssistRefreshFailure>;
 }
 
+export type GuideCatAssistRenderSource = 'deterministic' | 'cache';
+
+export interface GuideCatAssistSurfaceReadModel {
+  scopeKey: string;
+  bundle: GuideCatAssistBundle;
+  renderSource: GuideCatAssistRenderSource;
+  cacheHit: boolean;
+  missing: boolean;
+  stale: boolean;
+  refreshEligible: boolean;
+  surfaceDisabled: boolean;
+  lastFailure: GuideCatAssistRefreshFailure | null;
+}
+
 export interface GuideCatAssistRefreshContextInput {
   schemaVersion?: number;
   scope: Pick<GuideCatAssistScope, 'surfaceId' | 'surfaceMode' | 'audienceState'>;
@@ -124,6 +138,8 @@ export const GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE = {
   group: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewGroup,
   parallel: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
 } as const;
+
+export type GuideCatAssistNewChatMode = keyof typeof GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE;
 
 type StableJsonValue =
   | string
