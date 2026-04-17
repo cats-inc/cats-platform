@@ -72,6 +72,7 @@ interface DraftTargetSlotProps {
 }
 
 export interface WorkspaceNewChatDraftCopy {
+  greeting?: string;
   composerPlaceholder?: string;
   sidePanelTitle?: string;
   participantsSectionTitle?: string;
@@ -83,6 +84,7 @@ export interface WorkspaceNewChatDraftCopy {
 }
 
 const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
+  greeting: 'Meow. Ready when you are.',
   composerPlaceholder: 'How can I help you today?',
   sidePanelTitle: 'New Chat Setup',
   participantsSectionTitle: 'Cats',
@@ -97,7 +99,7 @@ export interface WorkspaceNewChatDraftProps {
   payload: AppShellPayload;
   composerDraft: string;
   busy: WorkspaceBusyState;
-  greeting: string;
+  greeting?: string;
   draftFiles: File[];
   draftCwd: string | null;
   draftCatIds: string[];
@@ -199,6 +201,7 @@ export function WorkspaceNewChatDraft({
   void bossCatName;
   void bossCatAvatarColor;
   const resolvedCopy = { ...defaultWorkspaceNewChatDraftCopy, ...copy };
+  const resolvedGreeting = greeting ?? resolvedCopy.greeting;
 
   const chatCats = payload.chat.cats.filter(isChatCat);
   const defaultRecipientCat = draftDefaultRecipientCatId
@@ -273,7 +276,7 @@ export function WorkspaceNewChatDraft({
               </p>
             </>
           ) : (
-            <h1>{greeting}</h1>
+            <h1>{resolvedGreeting}</h1>
           )}
         </div>
         <form

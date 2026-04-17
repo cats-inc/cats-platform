@@ -122,6 +122,16 @@ minor surface difference.
 - **Why rejected**: this is just a slower version of the same architectural
   drift
 
+### Alternative 4: Keep `ChatNewChatDraft` and add extension slots for Code
+
+- **Pros**: preserves one draft entry component and could expose richer
+  product-specific surfaces through explicit slots
+- **Cons**: still anchors Code to the chat-owned draft surface and leaves the
+  first `+New code` slice carrying chat-specific copy and setup semantics
+- **Why rejected**: the platform already has a more neutral shared primitive in
+  `WorkspaceNewChatDraft`, so the first ownership correction is cleaner if Code
+  starts there instead of extending the chat-specific surface further
+
 ## References
 
 - [SPEC-043](../specs/SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md)

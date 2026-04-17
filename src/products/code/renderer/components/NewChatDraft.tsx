@@ -4,14 +4,17 @@ import {
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
 import {
   NewChatDraft as WorkspaceNewChatDraft,
+  type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
+  greeting: 'Ready to code.',
   composerPlaceholder: 'What should this code session build, fix, or investigate?',
   sidePanelTitle: 'New Code Setup',
   participantsSectionTitle: 'Participants',
   executionSectionTitle: 'Execution',
+  executionEmptyState: 'No execution target set yet.',
   folderSectionTitle: 'Workspace',
   folderActionLabel: 'Choose workspace',
   folderEmptyState: 'No workspace selected yet.',
@@ -21,55 +24,65 @@ export type {
   NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
 
+function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps {
+  const {
+    greeting,
+    greetingPool,
+    draftTemporaryParticipants,
+    onAddDraftTemporaryParticipant,
+    onQuickAddDraftTemporaryParticipant,
+    onRemoveDraftTemporaryParticipant,
+    onUpdateDraftTemporaryParticipant,
+    entryMode,
+    starterSuggestions,
+    parallelTargets,
+    onParallelTargetChange,
+    onAddParallelTarget,
+    onRemoveParallelTarget,
+    draftWorkflowShape,
+    onToggleDraftWorkflowShape,
+    draftAudienceKeys,
+    onSetAudienceKeys,
+    onCancelPendingSend,
+    ...workspaceProps
+  } = props;
+
+  // Default +New code intentionally ignores the chat-group and parallel draft fields
+  // until Team Code and Peer Code get their own product-owned draft surfaces.
+  void greetingPool;
+  void draftTemporaryParticipants;
+  void onAddDraftTemporaryParticipant;
+  void onQuickAddDraftTemporaryParticipant;
+  void onRemoveDraftTemporaryParticipant;
+  void onUpdateDraftTemporaryParticipant;
+  void entryMode;
+  void starterSuggestions;
+  void parallelTargets;
+  void onParallelTargetChange;
+  void onAddParallelTarget;
+  void onRemoveParallelTarget;
+  void draftWorkflowShape;
+  void onToggleDraftWorkflowShape;
+  void draftAudienceKeys;
+  void onSetAudienceKeys;
+  void onCancelPendingSend;
+
+  return {
+    ...workspaceProps,
+    greeting: greeting ?? undefined,
+  };
+}
+
 export function NewChatDraft(props: NewChatDraftProps) {
   if (props.entryMode === 'group' || props.entryMode === 'parallel') {
     return <ChatNewChatDraft {...props} />;
   }
 
+  const workspaceProps = buildWorkspaceDraftProps(props);
+
   return (
     <WorkspaceNewChatDraft
-      payload={props.payload}
-      composerDraft={props.composerDraft}
-      busy={props.busy}
-      greeting={props.greeting ?? 'Ready to code.'}
-      draftFiles={props.draftFiles}
-      draftCwd={props.draftCwd}
-      draftCatIds={props.draftCatIds}
-      plusMenuOpen={props.plusMenuOpen}
-      plusMenuRef={props.plusMenuRef}
-      fileInputRef={props.fileInputRef}
-      bossCatName={props.bossCatName}
-      bossCatAvatarColor={props.bossCatAvatarColor}
-      onComposerChange={props.onComposerChange}
-      onComposerKeyDown={props.onComposerKeyDown}
-      onSendMessage={props.onSendMessage}
-      onTogglePlusMenu={props.onTogglePlusMenu}
-      onFileSelect={props.onFileSelect}
-      onPickFolder={props.onPickFolder}
-      onOpenAddCat={props.onOpenAddCat}
-      onDraftFilesChange={props.onDraftFilesChange}
-      onDraftCwdClear={props.onDraftCwdClear}
-      onToggleDraftCat={props.onToggleDraftCat}
-      autoResize={props.autoResize}
-      draftDefaultRecipientCatId={props.draftDefaultRecipientCatId}
-      onDraftDefaultRecipientChange={props.onDraftDefaultRecipientChange}
-      allowAddCat={props.allowAddCat}
-      selectedModel={props.selectedModel}
-      onModelChange={props.onModelChange}
-      draftHighlightedCatId={props.draftHighlightedCatId}
-      onHighlightDraftCat={props.onHighlightDraftCat}
-      draftCatModelOverrides={props.draftCatModelOverrides}
-      onDraftCatModelOverride={props.onDraftCatModelOverride}
-      onDirectLaneModelChange={props.onDirectLaneModelChange}
-      folderBrowsePath={props.folderBrowsePath}
-      folderBrowseCurrentPath={props.folderBrowseCurrentPath}
-      folderBrowseParentPath={props.folderBrowseParentPath}
-      folderBrowseEntries={props.folderBrowseEntries}
-      folderBrowseLoading={props.folderBrowseLoading}
-      folderBrowseError={props.folderBrowseError}
-      onFolderBrowsePathChange={props.onFolderBrowsePathChange}
-      onFolderBrowse={props.onFolderBrowse}
-      onFolderBrowseSelect={props.onFolderBrowseSelect}
+      {...workspaceProps}
       copy={NEW_CODE_DRAFT_COPY}
     />
   );

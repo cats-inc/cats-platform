@@ -81,12 +81,14 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
 }
 
 test('new code draft publishes code-specific copy overrides for the shared workspace draft', () => {
+  assert.equal(NEW_CODE_DRAFT_COPY.greeting, 'Ready to code.');
   assert.equal(
     NEW_CODE_DRAFT_COPY.composerPlaceholder,
     'What should this code session build, fix, or investigate?',
   );
   assert.equal(NEW_CODE_DRAFT_COPY.sidePanelTitle, 'New Code Setup');
   assert.equal(NEW_CODE_DRAFT_COPY.executionSectionTitle, 'Execution');
+  assert.equal(NEW_CODE_DRAFT_COPY.executionEmptyState, 'No execution target set yet.');
   assert.equal(NEW_CODE_DRAFT_COPY.folderSectionTitle, 'Workspace');
 });
 
@@ -131,5 +133,7 @@ test('team code and peer code drafts continue to delegate to the shared chat dra
   );
 
   assert.match(markup, /Add another model to collaborate/u);
+  assert.match(markup, /How can I help you today\?/u);
   assert.match(markup, /class="audienceChip"/u);
+  assert.doesNotMatch(markup, /What should this code session build, fix, or investigate\?/u);
 });
