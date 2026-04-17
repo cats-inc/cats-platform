@@ -20,8 +20,7 @@ import {
 
 import {
   buildCatTooltip,
-  buildExecutionLabel,
-  resolveControlDisplayLabels,
+  resolveExecutionTargetLabel,
 } from '../../shared/executionLabel.js';
 import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
 
@@ -409,14 +408,12 @@ export function GuideCatSidecarView({
 }
 
 function buildGuideCatTooltip(guideCat: GuideCatRecord): string {
-  const controlLabels = resolveControlDisplayLabels(guideCat.modelSelection?.controls);
-  const executionLabel = buildExecutionLabel(
-    guideCat.executionTarget.provider,
-    guideCat.executionTarget.instance,
-    guideCat.executionTarget.model,
-    null,
-    controlLabels,
-  );
+  const executionLabel = resolveExecutionTargetLabel({
+    provider: guideCat.executionTarget.provider,
+    instance: guideCat.executionTarget.instance,
+    model: guideCat.executionTarget.model,
+    modelSelection: guideCat.modelSelection ?? null,
+  });
   return buildCatTooltip(guideCat.name, executionLabel);
 }
 

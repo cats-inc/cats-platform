@@ -15,6 +15,10 @@ import {
   resolveGuideCatSidecarOffsets,
   resolveGuideCatSidecarSurfaceMode,
 } from '../src/design/components/GuideCatSidecar.tsx';
+import {
+  clearRememberedExecutionLabels,
+  rememberExecutionLabel,
+} from '../src/shared/executionLabel.ts';
 
 function createGuideCat() {
   return {
@@ -182,6 +186,47 @@ test('Guide Cat sidecar open panel header keeps the execution tooltip metadata o
   );
 
   assert.match(markup, /class="guideCatPanelHeader" data-tooltip="Guide Cat · Claude-CLI · [^"]* · Max"/u);
+});
+
+test('Guide Cat sidecar reuses remembered runtime-backed execution labels for tooltips', () => {
+  clearRememberedExecutionLabels();
+  rememberExecutionLabel({
+    provider: 'claude',
+    instance: 'native',
+    model: 'opus',
+    modelSelection: {
+      controls: {
+        'claude.reasoning_effort': 'max',
+      },
+    },
+    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh (default)',
+  });
+
+  try {
+    const markup = renderToStaticMarkup(
+      <GuideCatSidecarView
+        viewState="collapsed"
+        guideCat={createGuideCat()}
+        ownerDisplayName="Kenny"
+        unreadCount={0}
+        onToggle={() => {}}
+        onAction={() => {}}
+        onCollapse={() => {}}
+        onDismissClick={() => {}}
+        anchorStyle={{}}
+        surfaceMode="product"
+        dialog={null}
+        onDialogClose={() => {}}
+      />,
+    );
+
+    assert.match(
+      markup,
+      /data-tooltip="Guide Cat · Claude-CLI · Opus 4\.7 with 1M context · xHigh \(default\)"/u,
+    );
+  } finally {
+    clearRememberedExecutionLabels();
+  }
 });
 
 test('Guide Cat sidecar welcome-peek renders the dismiss confirmation dialog when present', () => {
