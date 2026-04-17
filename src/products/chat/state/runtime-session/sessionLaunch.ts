@@ -7,7 +7,11 @@ import {
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import { buildSoloChatContinuityTransplantInstructions } from '../prompts.js';
-import { resolveRuntimeEnvelopeForTarget } from '../runtimeTargeting.js';
+import {
+  applySoloChatContinuityBoundary,
+  messagesBeforeSource,
+  resolveRuntimeEnvelopeForTarget,
+} from '../runtimeTargeting.js';
 import {
   markTargetWaking,
   spawnCwdFor,
@@ -66,12 +70,10 @@ function resolveNewSoloSessionContinuityMetadata(input: {
   }
 
   const continuityResetAt = channel.continuityResetAt?.trim() || null;
-  const continuityMessages = continuityResetAt
-    ? channel.messages.filter((message) => message.createdAt.localeCompare(continuityResetAt) > 0)
-    : channel.messages;
-  const sourceIndex = continuityMessages.findIndex((message) => message.id === sourceMessageId);
-  const priorMessages = sourceIndex > 0
-    ? continuityMessages.slice(0, sourceIndex)
+  const continuityMessages = applySoloChatContinuityBoundary(channel, channel.messages);
+  const sourceMessage = continuityMessages.find((message) => message.id === sourceMessageId) ?? null;
+  const priorMessages = sourceMessage
+    ? messagesBeforeSource(continuityMessages, sourceMessage)
     : [];
   const instructions = buildSoloChatContinuityTransplantInstructions(priorMessages);
 

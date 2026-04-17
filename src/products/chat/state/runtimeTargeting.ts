@@ -517,7 +517,7 @@ function sliceRecentContextForTarget(
   return relevantMessages.slice(-MAX_RECENT_CONTEXT_MESSAGES);
 }
 
-function messagesBeforeSource(
+export function messagesBeforeSource(
   messages: ReadonlyArray<ChatMessage>,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
 ): ChatMessage[] {
@@ -529,7 +529,7 @@ function messagesBeforeSource(
   return messages.slice(0, sourceIndex);
 }
 
-function applySoloChatContinuityBoundary(
+export function applySoloChatContinuityBoundary(
   channel: Pick<ChatChannelView, 'continuityResetAt'>,
   messages: ReadonlyArray<ChatMessage>,
 ): ChatMessage[] {
