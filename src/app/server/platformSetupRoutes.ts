@@ -148,7 +148,8 @@ async function handlePlatformSetupComplete(
     // Commit chat/core as one persisted snapshot so setup cannot land in a half-written state.
     await context.dependencies.chatStore.writeSnapshot(chatState, core);
     await enqueueGuideCatAssistRefreshIfRuntimeReachable(context.dependencies, {
-      guideCatExists: createGuideCat,
+      guideCat: createGuideCat ? core.guideCat : null,
+      ownerDisplayName: core.ownerProfile.displayName,
       now,
     });
     await recordProductEvent(context, {

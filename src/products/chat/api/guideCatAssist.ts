@@ -1,5 +1,7 @@
+import type { GuideCatRecord } from '../../../core/types.js';
 import {
   GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE,
+  buildGuideCatAssistRefreshContextHash,
   createGuideCatAssistScopeKey,
   isGuideCatAssistBundleStale,
   type GuideCatAssistContent,
@@ -23,8 +25,22 @@ export interface ChatGuideCatAssistReadModel {
   newChatByMode: Record<GuideCatAssistNewChatMode, GuideCatAssistSurfaceReadModel>;
 }
 
+interface GuideCatAssistRefreshQueueInput {
+  chatStatePath: string;
+  guideCat: GuideCatRecord | null;
+  ownerDisplayName?: string | null;
+  runtimeReachable: boolean;
+  now?: Date;
+  readModel?: ChatGuideCatAssistReadModel;
+}
+
+interface GuideCatAssistRefreshQueueEntry {
+  pendingInput: GuideCatAssistRefreshQueueInput | null;
+}
+
 const DEFAULT_GUIDE_CAT_ASSIST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-const guideCatAssistRefreshQueue = new Map<string, Promise<void>>();
+const GUIDE_CAT_ASSIST_TEMPLATE_REVISION = 'guide-cat-assist-v1';
+const guideCatAssistRefreshQueue = new Map<string, GuideCatAssistRefreshQueueEntry>();
 
 function mergeOverrideContent(
   baseContent: GuideCatAssistContent,
@@ -45,6 +61,7 @@ function resolveSurfaceReadModel(options: {
   scope: Pick<GuideCatAssistScope, 'surfaceId' | 'surfaceMode' | 'audienceState'>;
   guideCatExists: boolean;
   runtimeReachable: boolean;
+  refreshContextHash: string | null;
   refreshRuntimeEnabled: boolean;
   disabledSurfaceKeys: readonly string[];
   curatedOverrides: Record<string, GuideCatAssistContent>;
@@ -59,7 +76,15 @@ function resolveSurfaceReadModel(options: {
   const selectedBundle = cachedBundle && !surfaceDisabled
     ? cachedBundle
     : options.baselineBundle;
-  const stale = cachedBundle ? isGuideCatAssistBundleStale(cachedBundle) : false;
+  const stale = cachedBundle
+    ? (
+      isGuideCatAssistBundleStale(cachedBundle)
+      || (
+        options.refreshContextHash !== null
+        && cachedBundle.provenance.refreshContextHash !== options.refreshContextHash
+      )
+    )
+    : false;
   const missing = cachedBundle === null;
   const refreshEligible =
     !surfaceDisabled
@@ -84,9 +109,34 @@ function resolveSurfaceReadModel(options: {
   };
 }
 
+function resolveGuideCatAssistRefreshContextHash(options: {
+  scope: Pick<GuideCatAssistScope, 'surfaceId' | 'surfaceMode' | 'audienceState'>;
+  guideCat: GuideCatRecord | null;
+  ownerDisplayName?: string | null;
+}): string | null {
+  if (!options.guideCat) {
+    return null;
+  }
+
+  return buildGuideCatAssistRefreshContextHash({
+    scope: options.scope,
+    guideCat: {
+      id: options.guideCat.id,
+      name: options.guideCat.name,
+      executionTarget: options.guideCat.executionTarget,
+      modelSelection: options.guideCat.modelSelection,
+    },
+    ownerProfile: {
+      displayName: options.ownerDisplayName ?? null,
+    },
+    assistTemplateRevision: GUIDE_CAT_ASSIST_TEMPLATE_REVISION,
+  });
+}
+
 export async function resolveChatGuideCatAssistReadModel(input: {
   chatStatePath: string;
-  guideCatExists: boolean;
+  guideCat: GuideCatRecord | null;
+  ownerDisplayName?: string | null;
   runtimeReachable: boolean;
 }): Promise<ChatGuideCatAssistReadModel> {
   const [config, cache] = await Promise.all([
@@ -101,8 +151,17 @@ export async function resolveChatGuideCatAssistReadModel(input: {
         surfaceMode: 'default',
         audienceState: 'default',
       },
-      guideCatExists: input.guideCatExists,
+      guideCatExists: Boolean(input.guideCat),
       runtimeReachable: input.runtimeReachable,
+      refreshContextHash: resolveGuideCatAssistRefreshContextHash({
+        scope: {
+          surfaceId: 'lobby',
+          surfaceMode: 'default',
+          audienceState: 'default',
+        },
+        guideCat: input.guideCat,
+        ownerDisplayName: input.ownerDisplayName,
+      }),
       refreshRuntimeEnabled: config.refreshPreferences.runtimeRefreshEnabled,
       disabledSurfaceKeys: config.disabledSurfaceKeys,
       curatedOverrides: config.curatedOverrides,
@@ -121,8 +180,17 @@ export async function resolveChatGuideCatAssistReadModel(input: {
             surfaceMode: newChatMode,
             audienceState: 'default',
           },
-          guideCatExists: input.guideCatExists,
+          guideCatExists: Boolean(input.guideCat),
           runtimeReachable: input.runtimeReachable,
+          refreshContextHash: resolveGuideCatAssistRefreshContextHash({
+            scope: {
+              surfaceId: 'chat:new',
+              surfaceMode: newChatMode,
+              audienceState: 'default',
+            },
+            guideCat: input.guideCat,
+            ownerDisplayName: input.ownerDisplayName,
+          }),
           refreshRuntimeEnabled: config.refreshPreferences.runtimeRefreshEnabled,
           disabledSurfaceKeys: config.disabledSurfaceKeys,
           curatedOverrides: config.curatedOverrides,
@@ -140,12 +208,13 @@ export async function resolveChatGuideCatAssistReadModel(input: {
 
 export async function refreshGuideCatAssistEligibleScopes(input: {
   chatStatePath: string;
-  guideCatExists: boolean;
+  guideCat: GuideCatRecord | null;
+  ownerDisplayName?: string | null;
   runtimeReachable: boolean;
   now?: Date;
   readModel?: ChatGuideCatAssistReadModel;
 }): Promise<void> {
-  if (!input.guideCatExists || !input.runtimeReachable) {
+  if (!input.guideCat || !input.runtimeReachable) {
     return;
   }
 
@@ -155,7 +224,8 @@ export async function refreshGuideCatAssistEligibleScopes(input: {
       ? Promise.resolve(input.readModel)
       : resolveChatGuideCatAssistReadModel({
         chatStatePath: input.chatStatePath,
-        guideCatExists: input.guideCatExists,
+        guideCat: input.guideCat,
+        ownerDisplayName: input.ownerDisplayName,
         runtimeReachable: input.runtimeReachable,
       }),
   ]);
@@ -174,15 +244,22 @@ export async function refreshGuideCatAssistEligibleScopes(input: {
 
   for (const surface of refreshableSurfaces) {
     try {
+      const refreshContextHash = resolveGuideCatAssistRefreshContextHash({
+        scope: surface.bundle.scope,
+        guideCat: input.guideCat,
+        ownerDisplayName: input.ownerDisplayName,
+      }) ?? surface.bundle.provenance.refreshContextHash;
       await upsertGuideCatAssistBundle(input.chatStatePath, {
         ...surface.bundle,
+        provenance: {
+          ...surface.bundle.provenance,
+          refreshContextHash,
+        },
         freshness: {
           ...surface.bundle.freshness,
           generatedAt,
           expiresAt,
-          lastRefreshStatus: surface.cacheHit
-            ? surface.bundle.freshness.lastRefreshStatus
-            : 'skipped',
+          lastRefreshStatus: 'skipped',
         },
       });
     } catch (error) {
@@ -196,24 +273,29 @@ export async function refreshGuideCatAssistEligibleScopes(input: {
   }
 }
 
-export function queueGuideCatAssistRefresh(input: {
-  chatStatePath: string;
-  guideCatExists: boolean;
-  runtimeReachable: boolean;
-  now?: Date;
-  readModel?: ChatGuideCatAssistReadModel;
-}): void {
-  if (!input.guideCatExists || !input.runtimeReachable) {
-    return;
-  }
-  if (guideCatAssistRefreshQueue.has(input.chatStatePath)) {
+export function queueGuideCatAssistRefresh(input: GuideCatAssistRefreshQueueInput): void {
+  if (!input.guideCat || !input.runtimeReachable) {
     return;
   }
 
-  const refreshPromise = refreshGuideCatAssistEligibleScopes(input)
-    .catch(() => {})
-    .finally(() => {
-      guideCatAssistRefreshQueue.delete(input.chatStatePath);
-    });
-  guideCatAssistRefreshQueue.set(input.chatStatePath, refreshPromise);
+  const existingEntry = guideCatAssistRefreshQueue.get(input.chatStatePath);
+  if (existingEntry) {
+    existingEntry.pendingInput = input;
+    return;
+  }
+
+  const entry: GuideCatAssistRefreshQueueEntry = {
+    pendingInput: null,
+  };
+  guideCatAssistRefreshQueue.set(input.chatStatePath, entry);
+
+  void (async () => {
+    let nextInput: GuideCatAssistRefreshQueueInput | null = input;
+    while (nextInput) {
+      await refreshGuideCatAssistEligibleScopes(nextInput).catch(() => {});
+      nextInput = entry.pendingInput;
+      entry.pendingInput = null;
+    }
+    guideCatAssistRefreshQueue.delete(input.chatStatePath);
+  })();
 }

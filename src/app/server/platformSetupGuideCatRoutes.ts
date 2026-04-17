@@ -44,7 +44,8 @@ async function handleGuideCatUpdate(
 
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
   await enqueueGuideCatAssistRefreshIfRuntimeReachable(context.dependencies, {
-    guideCatExists: true,
+    guideCat: core.guideCat,
+    ownerDisplayName: core.ownerProfile.displayName,
     now,
   });
   sendJson(context.response, 200, { guideCat: core.guideCat });
@@ -87,7 +88,8 @@ async function handleGuideCatStatusUpdate(
   await context.dependencies.chatStore.writeSnapshot(chatState, core);
   if (core.guideCat?.status === 'active') {
     await enqueueGuideCatAssistRefreshIfRuntimeReachable(context.dependencies, {
-      guideCatExists: true,
+      guideCat: core.guideCat,
+      ownerDisplayName: core.ownerProfile.displayName,
       now,
     });
   }

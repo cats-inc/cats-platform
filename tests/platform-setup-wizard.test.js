@@ -782,6 +782,56 @@ test('PUT /api/platform/guide-cat hydrates assist cache without requiring an app
   });
 });
 
+test('PUT /api/platform/guide-cat refreshes a still-fresh assist cache when guide cat context changes', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl, config) => {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+        guideCatName: 'First Guide',
+        guideCatProvider: 'claude',
+        guideCatModel: 'claude-sonnet',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const firstBundle = await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+    );
+    const firstHash = firstBundle.provenance.refreshContextHash;
+
+    const updateResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Second Guide',
+        provider: 'codex',
+        model: 'gpt-5.4',
+      }),
+    });
+    assert.equal(updateResponse.status, 200);
+
+    const deadline = Date.now() + 2_000;
+    let refreshedBundle = firstBundle;
+    while (Date.now() < deadline) {
+      refreshedBundle = await waitForGuideCatAssistBundle(
+        config.chatStatePath,
+        GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+      );
+      if (refreshedBundle.provenance.refreshContextHash !== firstHash) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    assert.notEqual(refreshedBundle.provenance.refreshContextHash, firstHash);
+    assert.equal(refreshedBundle.freshness.lastRefreshStatus, 'skipped');
+  });
+});
+
 test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after restore', async () => {
   const runtime = createRuntimeStub({ reachable: false });
   await withServer(runtime, async (baseUrl, config) => {

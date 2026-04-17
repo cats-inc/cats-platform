@@ -153,11 +153,12 @@ export function nowFrom(dependencies: ChatApiDependencies): Date {
 export async function enqueueGuideCatAssistRefreshIfRuntimeReachable(
   dependencies: ChatApiDependencies,
   options: {
-    guideCatExists: boolean;
+    guideCat: Awaited<ReturnType<ChatStore['readCore']>>['guideCat'];
+    ownerDisplayName?: string | null;
     now?: Date;
   },
 ): Promise<void> {
-  if (!options.guideCatExists) {
+  if (!options.guideCat) {
     return;
   }
 
@@ -165,7 +166,8 @@ export async function enqueueGuideCatAssistRefreshIfRuntimeReachable(
     const runtime = await dependencies.runtimeClient.getHealth();
     queueGuideCatAssistRefresh({
       chatStatePath: dependencies.config.chatStatePath,
-      guideCatExists: true,
+      guideCat: options.guideCat,
+      ownerDisplayName: options.ownerDisplayName,
       runtimeReachable: runtime.reachable,
       now: options.now ?? nowFrom(dependencies),
     });
@@ -275,12 +277,14 @@ export async function buildAppShellPayload(
   );
   const guideCatAssist = await resolveChatGuideCatAssistReadModel({
     chatStatePath: dependencies.config.chatStatePath,
-    guideCatExists: Boolean(core.guideCat),
+    guideCat: core.guideCat,
+    ownerDisplayName: core.ownerProfile.displayName,
     runtimeReachable: runtime.reachable,
   });
   queueGuideCatAssistRefresh({
     chatStatePath: dependencies.config.chatStatePath,
-    guideCatExists: Boolean(core.guideCat),
+    guideCat: core.guideCat,
+    ownerDisplayName: core.ownerProfile.displayName,
     runtimeReachable: runtime.reachable,
     now: nowFrom(dependencies),
     readModel: guideCatAssist,
