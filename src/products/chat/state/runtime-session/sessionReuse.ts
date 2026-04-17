@@ -59,6 +59,42 @@ export type ExistingTargetSessionOutcome =
       result: EnsureTargetSessionResult;
     };
 
+function hasParticipantExecutionTargetDrift(input: {
+  participantLease: ReturnType<typeof resolveParticipantLeaseAttachment>;
+  assignment: ReturnType<typeof resolvePrimaryParticipantExecutionAssignment>;
+}): boolean {
+  const { participantLease, assignment } = input;
+  if (!participantLease || !assignment) {
+    return false;
+  }
+  if (participantLease.provider === null) {
+    return false;
+  }
+
+  if (participantLease.provider !== assignment.execution.target.provider) {
+    return true;
+  }
+  if (
+    assignment.execution.target.instance !== null
+    && participantLease.instance !== assignment.execution.target.instance
+  ) {
+    return true;
+  }
+  if (
+    assignment.execution.target.model !== null
+    && participantLease.model !== assignment.execution.target.model
+  ) {
+    return true;
+  }
+
+  return !providerModelSelectionsEqual(
+    participantLease.modelSelection ?? null,
+    assignment.execution.modelSelection === undefined
+      ? participantLease.modelSelection ?? null
+      : assignment.execution.modelSelection ?? null,
+  );
+}
+
 function readObservedSessionState(
   observed: Awaited<ReturnType<RuntimeClient['observeSession']>>,
 ): string | null {
@@ -273,16 +309,10 @@ export async function resolveExistingTargetSessionOutcome(input: {
     const assignmentProvider = assignment?.execution.target.provider ?? null;
     const assignmentInstance = assignment?.execution.target.instance ?? null;
     const assignmentModel = assignment?.execution.target.model ?? null;
-    const shouldRestartParticipantSession = Boolean(
-      assignment
-      && participantLease?.modelSelection !== undefined
-      && !providerModelSelectionsEqual(
-        participantLease.modelSelection ?? null,
-        assignment.execution.modelSelection === undefined
-          ? participantLease.modelSelection ?? null
-          : assignment.execution.modelSelection ?? null,
-      ),
-    );
+    const shouldRestartParticipantSession = hasParticipantExecutionTargetDrift({
+      participantLease,
+      assignment,
+    });
 
     if (shouldRestartParticipantSession) {
       await bestEffortFlushRuntimeSessionMemory({
