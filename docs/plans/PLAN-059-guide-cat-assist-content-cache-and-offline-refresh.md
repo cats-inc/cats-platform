@@ -133,7 +133,9 @@ bundle fields, and invalidation inputs
       - freshness / refresh eligibility
 - [ ] Task 2.4: Define the server-owned read-model boundary for adopted
       surfaces so Lobby and `+New chat` can consume assist data through
-      existing envelope/payload flows.
+      existing envelope/payload flows:
+      - Lobby via the platform envelope
+      - `+New chat` via the chat payload
 - [ ] Task 2.5: Keep view-local shell state separate from assist bundle
       storage.
 
@@ -225,6 +227,11 @@ proven refresh semantics
 - Decision 6: V1 does not require visible mid-session content replacement when
   a fresher bundle arrives; safe next-open or envelope-refresh adoption is
   acceptable for the first slice.
+- Decision 7: If adopted-surface contracts need new fields, v1 should add them
+  additively without rewriting existing shared envelope/payload shapes.
+- Decision 8: Mission/run provenance alignment remains a follow-up after the
+  v1 storage/read-path slice; v1 may persist refresh metadata first and add
+  richer runtime provenance once the shared execution shape is ready.
 
 ## Testing Strategy
 

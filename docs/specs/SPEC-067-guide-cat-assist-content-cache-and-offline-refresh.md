@@ -244,6 +244,17 @@ surface context
     guide-cat-assist-cache.local.json
 ```
 
+### V1 Delivery Boundary
+
+The first shipped read-model paths should be explicit:
+
+- Lobby reads resolved assist content through the platform envelope contract.
+- `+New chat` reads resolved assist content through the chat payload contract.
+
+The renderer should not choose between competing local-store access paths.
+Assist content should be resolved on the product/server side and delivered
+through the existing envelope/payload refresh flow for each adopted surface.
+
 ### V1 Scope Key
 
 The first slice should freeze one cache-key shape:
@@ -357,7 +368,9 @@ The default lifecycle should be:
 4. if refresh is allowed, the product launches a non-blocking refresh through
    the runtime boundary
 5. when refresh succeeds, the cache updates and the current surface may choose
-   a non-disruptive re-render policy
+   a non-disruptive re-render policy; v1 does not require mid-session visual
+   replacement and may adopt fresher content on the next surface open or the
+   next envelope/payload refresh
 6. when refresh fails, the product keeps last-good output or baseline fallback
 
 ### Initial Surface Adoption
@@ -393,8 +406,6 @@ Future consumers may include:
       both.
 - [ ] Whether manual refresh should be exposed in the first UI slice or only as
       internal invalidation.
-- [ ] How aggressively surfaces should live-update visible chips when a fresher
-      bundle arrives during the same session.
 - [ ] Whether device-local assist bundles should remain unsynced across
       desktop/mobile surfaces or later gain a cross-device seed/sync model.
 
