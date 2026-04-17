@@ -17,3 +17,7 @@
 .tooltipPortal.tooltipVisible {
   opacity: 1;
 }
+
+body.guideCatDragging .tooltipPortal {
+  opacity: 0 !important;
+}

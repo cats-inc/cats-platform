@@ -42,8 +42,21 @@ export function resolveGuideCatSurfaceClass(pathname: string): GuideCatSurfaceCl
 
 const SAFE_AREA_MARGIN = 16;
 const FLOATING_PILL_DIAMETER = 28;
-const DOCK_CORRIDOR_PADDING = 48;
+export const FLOATING_PILL_RADIUS_PX = FLOATING_PILL_DIAMETER / 2;
+const DOCK_CORRIDOR_PADDING = 72;
 export const GUIDE_CAT_UNDOCK_ESCAPE_THRESHOLD_PX = 24;
+export const GUIDE_CAT_DRAG_MOVEMENT_THRESHOLD_PX = 4;
+
+export function hasDragMovement(input: {
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+}): boolean {
+  const dx = input.currentX - input.startX;
+  const dy = input.currentY - input.startY;
+  return Math.hypot(dx, dy) >= GUIDE_CAT_DRAG_MOVEMENT_THRESHOLD_PX;
+}
 
 export function resolveGuideCatSafeArea(input: {
   surface: GuideCatSurfaceClass;
@@ -52,18 +65,26 @@ export function resolveGuideCatSafeArea(input: {
   sidebarRight: number | null;
 }): GuideCatSafeArea {
   const { surface, viewport, topChromeBottom, sidebarRight } = input;
-  const left = surface === 'workspace' && sidebarRight != null
+  // The safe area describes valid positions for the pill centre, so the pill
+  // radius is added on every edge to keep the visible pill a full
+  // SAFE_AREA_MARGIN away from chrome rather than half-overlapping it.
+  const leftChrome = surface === 'workspace' && sidebarRight != null
     ? Math.max(SAFE_AREA_MARGIN, sidebarRight + SAFE_AREA_MARGIN)
     : SAFE_AREA_MARGIN;
-  const top = surface === 'lobby' && topChromeBottom != null
+  const topChrome = surface === 'lobby' && topChromeBottom != null
     ? Math.max(SAFE_AREA_MARGIN, topChromeBottom + SAFE_AREA_MARGIN)
     : SAFE_AREA_MARGIN;
-  return {
-    left,
-    top,
-    right: Math.max(left + FLOATING_PILL_DIAMETER, viewport.width - SAFE_AREA_MARGIN),
-    bottom: Math.max(top + FLOATING_PILL_DIAMETER, viewport.height - SAFE_AREA_MARGIN),
-  };
+  const left = leftChrome + FLOATING_PILL_RADIUS_PX;
+  const top = topChrome + FLOATING_PILL_RADIUS_PX;
+  const right = Math.max(
+    left + 1,
+    viewport.width - SAFE_AREA_MARGIN - FLOATING_PILL_RADIUS_PX,
+  );
+  const bottom = Math.max(
+    top + 1,
+    viewport.height - SAFE_AREA_MARGIN - FLOATING_PILL_RADIUS_PX,
+  );
+  return { left, top, right, bottom };
 }
 
 export function clampFloatingAnchorToSafeArea(input: {

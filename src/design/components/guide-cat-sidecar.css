@@ -7,7 +7,7 @@
   left: var(--guide-cat-pill-left, 16px);
   top: 50%;
   transform: translateY(-50%);
-  z-index: 20;
+  z-index: 80;
   touch-action: none;
 }
 
@@ -62,6 +62,17 @@
   display: flex;
 }
 
+.guideCatPillWrap[data-dragging='true'] .guideCatPillDismiss {
+  display: none !important;
+}
+
+.guideCatPillWrap[data-dragging='true'] .guideCatPill {
+  cursor: grabbing;
+  transform: scale(1.08);
+  box-shadow: var(--shadow-sheet);
+  opacity: 1;
+}
+
 .guideCatPillDismiss:hover {
   background: rgba(200, 50, 50, 0.85);
 }
@@ -76,25 +87,53 @@
 /* ── Dock slot (Lobby top chrome, workspace sidebar above footer) ── */
 
 .guideCatDockSlot {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  min-width: 28px;
+  min-width: 44px;
+  /* 28px ghost/pill + 6px top/bottom padding + 2px top/bottom border =
+     44px intrinsic height. Locking min-height at 44 keeps the slot's visual
+     centre fixed across idle-drag, preview, and docked states so the future
+     pill position does not shift when preview kicks in. */
+  min-height: 44px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  /* Reserve border width at all times so the box does not resize between the
+     idle-drag dashed state and the preview solid state. */
+  border: 2px solid transparent;
+}
+
+/* Appear only when actively hosting the docked pill, showing a drop preview,
+   or while a drag is in progress. At rest the slot contributes nothing to
+   the surrounding flex layout, so adjacent chrome keeps its original gap. */
+body.guideCatDragging .guideCatDockSlot,
+.guideCatDockSlot[data-active='true'],
+.guideCatDockSlot[data-preview='true'] {
+  display: flex;
 }
 
 .guideCatDockSlot--lobby {
   padding: 0 var(--space-2, 6px);
+  margin: 0 var(--space-1, 4px);
 }
 
+/* Sit above the account footer with a small gap, and keep the outlined border
+   fully inside the sidebar so neither the dashed drop-zone nor the preview
+   border overflows the sidebar edges or bleeds into the user chrome. */
 .guideCatDockSlot--workspace {
   padding: var(--space-2, 6px) 18px;
-  border-top: 1px solid rgba(0, 0, 0, 0.04);
+  margin: 0 8px 8px;
 }
 
-.guideCatDockSlot[data-active='true'],
+body.guideCatDragging
+  .guideCatDockSlot[data-active='false'][data-preview='false'] {
+  border-style: dashed;
+  border-color: rgba(139, 126, 116, 0.55);
+}
+
 .guideCatDockSlot[data-preview='true'] {
-  min-height: 36px;
+  border-color: rgba(139, 126, 116, 0.8);
+  background: rgba(139, 126, 116, 0.1);
 }
 
 .guideCatPill--docked {
@@ -170,7 +209,7 @@
   left: var(--guide-cat-peek-left, 64px);
   top: 50%;
   transform: translateY(-50%);
-  z-index: 20;
+  z-index: 80;
   width: 260px;
   border-radius: 16px;
   background: var(--panel);
@@ -268,7 +307,7 @@
   top: 0;
   width: min(320px, calc(100vw - var(--guide-cat-panel-left, 24px) - 16px));
   height: 100vh;
-  z-index: 20;
+  z-index: 80;
   background: var(--panel);
   border-right: 1px solid var(--border);
   box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06);

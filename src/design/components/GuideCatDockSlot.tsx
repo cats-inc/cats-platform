@@ -18,8 +18,15 @@ export interface GuideCatDockSlotProps {
 
 export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
   const slotRef = useRef<HTMLDivElement | null>(null);
-  const { guideCat, projection, dockSlotState, presentation, onDockedPointerDown } =
-    useGuideCatPlacement();
+  const {
+    guideCat,
+    projection,
+    dockSlotState,
+    presentation,
+    onDockedPointerDown,
+    consumePillClickSuppression,
+    dragActive,
+  } = useGuideCatPlacement();
   const registerRef = useRegisterGuideCatDockSlot(slotKind);
 
   const setRef = useCallback(
@@ -46,6 +53,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
   };
 
   const handleClick = () => {
+    if (consumePillClickSuppression()) return;
     presentation.toggle();
   };
 
@@ -55,6 +63,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
       className={`guideCatDockSlot guideCatDockSlot--${slotKind}`}
       data-active={isActive ? 'true' : 'false'}
       data-preview={isPreview ? 'true' : 'false'}
+      data-dragging={dragActive ? 'true' : 'false'}
     >
       {isActive ? (
         <button

@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   clampFloatingAnchorToSafeArea,
+  hasDragMovement,
   isPointerOverSlotCorridor,
   projectFloatingAnchorToNormalized,
   resolveActiveDockSlot,
@@ -10,6 +11,7 @@ import {
   resolveGuideCatProjection,
   resolveGuideCatSafeArea,
   resolveGuideCatSurfaceClass,
+  GUIDE_CAT_DRAG_MOVEMENT_THRESHOLD_PX,
   GUIDE_CAT_UNDOCK_ESCAPE_THRESHOLD_PX,
 } from '../src/app/renderer/guideCatPlacement.ts';
 import { GUIDE_CAT_FLOATING_ANCHOR_DEFAULT } from '../src/shared/platform-contract.ts';
@@ -25,17 +27,19 @@ test('resolveGuideCatSurfaceClass maps lobby/workspace/hidden from the pathname'
   assert.equal(resolveGuideCatSurfaceClass('/settings/general'), 'hidden');
 });
 
-test('resolveGuideCatSafeArea respects top chrome on lobby and sidebar on workspace', () => {
+test('resolveGuideCatSafeArea keeps a pill-radius buffer around chrome edges', () => {
   const viewport = { width: 1200, height: 800 };
 
+  // Pill radius (14px) is added to each edge so the rendered pill edge stays
+  // a full 16px margin away from chrome — matching the pre-refactor spacing.
   const lobbySafe = resolveGuideCatSafeArea({
     surface: 'lobby',
     viewport,
     topChromeBottom: 60,
     sidebarRight: null,
   });
-  assert.equal(lobbySafe.left, 16);
-  assert.equal(lobbySafe.top, 76);
+  assert.equal(lobbySafe.left, 30);
+  assert.equal(lobbySafe.top, 90);
 
   const workspaceSafe = resolveGuideCatSafeArea({
     surface: 'workspace',
@@ -43,11 +47,10 @@ test('resolveGuideCatSafeArea respects top chrome on lobby and sidebar on worksp
     topChromeBottom: null,
     sidebarRight: 240,
   });
-  assert.equal(workspaceSafe.left, 256);
-  assert.equal(workspaceSafe.top, 16);
-
-  assert.equal(workspaceSafe.right, 1184);
-  assert.equal(workspaceSafe.bottom, 784);
+  assert.equal(workspaceSafe.left, 270);
+  assert.equal(workspaceSafe.top, 30);
+  assert.equal(workspaceSafe.right, 1170);
+  assert.equal(workspaceSafe.bottom, 770);
 });
 
 test('clampFloatingAnchorToSafeArea pins anchors inside the safe rectangle', () => {
@@ -105,7 +108,7 @@ test('resolveEffectiveFloatingAnchor falls back to the shared default when null'
   );
 });
 
-test('isPointerOverSlotCorridor uses a 48px padding around the slot rect', () => {
+test('isPointerOverSlotCorridor uses a 72px padding around the slot rect', () => {
   const slotRect = { left: 200, top: 400, right: 260, bottom: 440 };
 
   assert.equal(
@@ -117,15 +120,15 @@ test('isPointerOverSlotCorridor uses a 48px padding around the slot rect', () =>
     true,
   );
   assert.equal(
-    isPointerOverSlotCorridor({ pointerX: 152, pointerY: 420, slotRect }),
+    isPointerOverSlotCorridor({ pointerX: 128, pointerY: 420, slotRect }),
     true,
   );
   assert.equal(
-    isPointerOverSlotCorridor({ pointerX: 151, pointerY: 420, slotRect }),
+    isPointerOverSlotCorridor({ pointerX: 127, pointerY: 420, slotRect }),
     false,
   );
   assert.equal(
-    isPointerOverSlotCorridor({ pointerX: 140, pointerY: 420, slotRect }),
+    isPointerOverSlotCorridor({ pointerX: 50, pointerY: 420, slotRect }),
     false,
   );
   assert.equal(
@@ -267,4 +270,24 @@ test('resolveGuideCatProjection falls back to the default anchor when none is pe
 
 test('undock escape threshold constant is the SPEC-071 24px value', () => {
   assert.equal(GUIDE_CAT_UNDOCK_ESCAPE_THRESHOLD_PX, 24);
+});
+
+test('hasDragMovement flips true once the pointer leaves the 4px click window', () => {
+  assert.equal(GUIDE_CAT_DRAG_MOVEMENT_THRESHOLD_PX, 4);
+  assert.equal(
+    hasDragMovement({ startX: 100, startY: 100, currentX: 101, currentY: 101 }),
+    false,
+  );
+  assert.equal(
+    hasDragMovement({ startX: 100, startY: 100, currentX: 103, currentY: 102 }),
+    false,
+  );
+  assert.equal(
+    hasDragMovement({ startX: 100, startY: 100, currentX: 104, currentY: 100 }),
+    true,
+  );
+  assert.equal(
+    hasDragMovement({ startX: 100, startY: 100, currentX: 200, currentY: 300 }),
+    true,
+  );
 });

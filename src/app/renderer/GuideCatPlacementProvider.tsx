@@ -26,6 +26,7 @@ import {
 import {
   GUIDE_CAT_UNDOCK_ESCAPE_THRESHOLD_PX,
   clampFloatingAnchorToSafeArea,
+  hasDragMovement,
   isPointerOverSlotCorridor,
   projectFloatingAnchorToNormalized,
   resolveActiveDockSlot,
@@ -54,6 +55,9 @@ export interface GuideCatPlacementContextValue {
   registerSlotRef: (slot: GuideCatDockSlotKind, node: HTMLElement | null) => void;
   onFloatingPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   onDockedPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
+  /** Returns true if the previous pointer interaction was a drag; consuming
+      resets the flag so the next click is allowed through. */
+  consumePillClickSuppression: () => boolean;
   presentation: GuideCatSidecarState;
   dragActive: boolean;
 }
@@ -116,6 +120,7 @@ export function GuideCatPlacementProvider({
     workspace: null,
   });
   const pillRef = useRef<HTMLElement | null>(null);
+  const suppressClickRef = useRef(false);
   const [drag, setDrag] = useState<DragState | null>(null);
 
   useEffect(() => {
@@ -183,34 +188,26 @@ export function GuideCatPlacementProvider({
       return baseProjection;
     }
     if (drag.mode === 'floating') {
-      const { x, y } = clampFloatingAnchorToSafeArea({
-        anchor: projectFloatingAnchorToNormalized({
-          pointerX: drag.currentX,
-          pointerY: drag.currentY,
-          viewport,
-        }),
-        viewport,
-        safeArea,
-      });
-      return { kind: 'floating', x, y, overrideReason: null };
+      return {
+        kind: 'floating',
+        x: clampToViewport(drag.currentX, viewport.width),
+        y: clampToViewport(drag.currentY, viewport.height),
+        overrideReason: null,
+      };
     }
     if (drag.mode === 'docked' && !drag.escaped) {
       return baseProjection;
     }
     if (drag.mode === 'docked' && drag.escaped) {
-      const { x, y } = clampFloatingAnchorToSafeArea({
-        anchor: projectFloatingAnchorToNormalized({
-          pointerX: drag.currentX,
-          pointerY: drag.currentY,
-          viewport,
-        }),
-        viewport,
-        safeArea,
-      });
-      return { kind: 'floating', x, y, overrideReason: null };
+      return {
+        kind: 'floating',
+        x: clampToViewport(drag.currentX, viewport.width),
+        y: clampToViewport(drag.currentY, viewport.height),
+        overrideReason: null,
+      };
     }
     return baseProjection;
-  }, [baseProjection, drag, safeArea, viewport]);
+  }, [baseProjection, drag, viewport]);
 
   const dockSlotState: Record<GuideCatDockSlotKind, DockSlotState> = useMemo(() => {
     const activeSlot = resolveActiveDockSlot(surface);
@@ -276,13 +273,22 @@ export function GuideCatPlacementProvider({
 
   const endDrag = useCallback(
     (state: DragState) => {
+      const moved = hasDragMovement({
+        startX: state.startX,
+        startY: state.startY,
+        currentX: state.currentX,
+        currentY: state.currentY,
+      });
       if (state.mode === 'floating' && state.overSlot) {
         commitDockRelease(state.overSlot);
-      } else if (state.mode === 'floating') {
+        suppressClickRef.current = true;
+      } else if (state.mode === 'floating' && moved) {
         commitFloatingRelease(state.currentX, state.currentY);
+        suppressClickRef.current = true;
       } else if (state.mode === 'docked' && state.escaped) {
         onCommit({ placement: 'floating' });
         commitFloatingRelease(state.currentX, state.currentY);
+        suppressClickRef.current = true;
       }
       setDrag(null);
     },
@@ -363,11 +369,30 @@ export function GuideCatPlacementProvider({
     };
   }, [drag, handleMove, handleUp]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (drag) {
+      document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
+      hideGlobalTooltip();
+      return () => {
+        document.body.classList.remove(GUIDE_CAT_DRAGGING_BODY_CLASS);
+      };
+    }
+  }, [drag]);
+
   const onFloatingPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       if (event.button !== 0 && event.pointerType === 'mouse') return;
       event.preventDefault();
       event.stopPropagation();
+      suppressClickRef.current = false;
+      hideGlobalTooltip();
+      // Reveal the dock slots now so refreshSlotRects reads valid geometry
+      // instead of zero rects from display:none. useEffect below keeps the
+      // class in sync for the rest of the drag lifecycle.
+      if (typeof document !== 'undefined') {
+        document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
+      }
       refreshSlotRects();
       const element = event.currentTarget;
       try {
@@ -394,6 +419,11 @@ export function GuideCatPlacementProvider({
       if (event.button !== 0 && event.pointerType === 'mouse') return;
       event.preventDefault();
       event.stopPropagation();
+      suppressClickRef.current = false;
+      hideGlobalTooltip();
+      if (typeof document !== 'undefined') {
+        document.body.classList.add(GUIDE_CAT_DRAGGING_BODY_CLASS);
+      }
       refreshSlotRects();
       const element = event.currentTarget;
       try {
@@ -415,6 +445,12 @@ export function GuideCatPlacementProvider({
     [refreshSlotRects],
   );
 
+  const consumePillClickSuppression = useCallback(() => {
+    const was = suppressClickRef.current;
+    suppressClickRef.current = false;
+    return was;
+  }, []);
+
   const value: GuideCatPlacementContextValue = useMemo(
     () => ({
       guideCat,
@@ -424,6 +460,7 @@ export function GuideCatPlacementProvider({
       registerSlotRef,
       onFloatingPointerDown,
       onDockedPointerDown,
+      consumePillClickSuppression,
       presentation,
       dragActive: drag !== null,
     }),
@@ -434,6 +471,7 @@ export function GuideCatPlacementProvider({
       registerSlotRef,
       onFloatingPointerDown,
       onDockedPointerDown,
+      consumePillClickSuppression,
       presentation,
       drag,
     ],
@@ -470,6 +508,19 @@ function readViewport(): GuideCatViewportRect {
   }
   return { width: window.innerWidth, height: window.innerHeight };
 }
+
+function clampToViewport(value: number, max: number): number {
+  if (max <= 0) return value;
+  return Math.min(max, Math.max(0, value));
+}
+
+function hideGlobalTooltip(): void {
+  if (typeof document === 'undefined') return;
+  const portal = document.querySelector('.tooltipPortal');
+  if (portal) portal.classList.remove('tooltipVisible');
+}
+
+const GUIDE_CAT_DRAGGING_BODY_CLASS = 'guideCatDragging';
 
 function readSlotRect(node: HTMLElement): GuideCatSlotRect {
   const rect = node.getBoundingClientRect();

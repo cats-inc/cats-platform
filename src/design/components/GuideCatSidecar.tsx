@@ -50,6 +50,7 @@ export function CollapsedPill({
   onPointerDown,
   style,
   className,
+  dragging,
 }: {
   name: string;
   tooltip: string;
@@ -59,9 +60,14 @@ export function CollapsedPill({
   onPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
   style?: CSSProperties;
   className?: string;
+  dragging?: boolean;
 }) {
   return (
-    <div className={className ?? 'guideCatPillWrap'} style={style}>
+    <div
+      className={className ?? 'guideCatPillWrap'}
+      data-dragging={dragging ? 'true' : 'false'}
+      style={style}
+    >
       <button
         type="button"
         className="guideCatPill"
@@ -75,7 +81,7 @@ export function CollapsedPill({
           <span className="guideCatPillBadge">{unreadCount}</span>
         ) : null}
       </button>
-      {onDismissClick ? (
+      {onDismissClick && !dragging ? (
         <button
           type="button"
           className="guideCatPillDismiss"
@@ -205,6 +211,7 @@ export interface GuideCatSidecarViewProps {
   onDismissWelcome?: () => void;
   onDismissClick: () => void;
   onPillPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
+  dragging?: boolean;
   pillStyle: CSSProperties;
   peekStyle: CSSProperties;
   panelStyle: CSSProperties;
@@ -225,6 +232,7 @@ export function GuideCatSidecarView({
   onDismissWelcome,
   onDismissClick,
   onPillPointerDown,
+  dragging,
   pillStyle,
   peekStyle,
   panelStyle,
@@ -249,6 +257,7 @@ export function GuideCatSidecarView({
         onDismissClick={onDismissClick}
         onPointerDown={onPillPointerDown}
         style={pillStyle}
+        dragging={dragging}
       />
     );
   } else if (viewState === 'welcome-peek') {
@@ -262,6 +271,7 @@ export function GuideCatSidecarView({
           onDismissClick={onDismissClick}
           onPointerDown={onPillPointerDown}
           style={pillStyle}
+          dragging={dragging}
         />
         <WelcomePeek
           ownerDisplayName={ownerDisplayName}
@@ -316,6 +326,7 @@ function SidecarContent({
   dismissWelcome,
   onDismissed,
   onPillPointerDown,
+  consumePillClickSuppression,
   pillStyle,
   peekStyle,
   panelStyle,
@@ -332,6 +343,7 @@ function SidecarContent({
   dismissWelcome: () => void;
   onDismissed: () => void;
   onPillPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
+  consumePillClickSuppression: () => boolean;
   pillStyle: CSSProperties;
   peekStyle: CSSProperties;
   panelStyle: CSSProperties;
@@ -390,18 +402,24 @@ function SidecarContent({
     };
   }, [viewState, collapse, proactive, dragActive]);
 
+  const handlePillClick = useCallback(() => {
+    if (consumePillClickSuppression()) return;
+    toggle();
+  }, [consumePillClickSuppression, toggle]);
+
   return (
     <GuideCatSidecarView
       viewState={viewState}
       guideCat={guideCat}
       ownerDisplayName={ownerDisplayName}
       unreadCount={unreadCount}
-      onToggle={toggle}
+      onToggle={handlePillClick}
       onAction={handleAction}
       onCollapse={collapse}
       onDismissWelcome={proactive ? dismissWelcome : undefined}
       onDismissClick={handleDismissClick}
       onPillPointerDown={onPillPointerDown}
+      dragging={dragActive}
       pillStyle={pillStyle}
       peekStyle={peekStyle}
       panelStyle={panelStyle}
@@ -419,8 +437,13 @@ export function GuideCatSidecar({
   unreadCount,
   onDismissed,
 }: GuideCatSidecarProps) {
-  const { projection, presentation, onFloatingPointerDown, dragActive } =
-    useGuideCatPlacement();
+  const {
+    projection,
+    presentation,
+    onFloatingPointerDown,
+    consumePillClickSuppression,
+    dragActive,
+  } = useGuideCatPlacement();
 
   if (projection.kind !== 'floating') {
     return null;
@@ -456,6 +479,7 @@ export function GuideCatSidecar({
       dismissWelcome={presentation.dismissWelcome}
       onDismissed={onDismissed}
       onPillPointerDown={onFloatingPointerDown}
+      consumePillClickSuppression={consumePillClickSuppression}
       pillStyle={pillStyle}
       peekStyle={peekStyle}
       panelStyle={panelStyle}
