@@ -198,6 +198,37 @@ export function cloneProviderModelSelection(
   };
 }
 
+function serializeProviderModelSelection(
+  selection: ProviderModelSelection | null | undefined,
+): string {
+  const cloned = cloneProviderModelSelection(selection);
+  if (!cloned) {
+    return 'null';
+  }
+
+  const serializedControls = cloned.controls
+    ? Object.fromEntries(
+      Object.keys(cloned.controls)
+        .sort()
+        .map((key) => [key, cloned.controls?.[key]]),
+    )
+    : undefined;
+
+  return JSON.stringify({
+    ...(cloned.entryId ? { entryId: cloned.entryId } : {}),
+    entryMode: cloned.entryMode,
+    ...(cloned.presetId ? { presetId: cloned.presetId } : {}),
+    ...(serializedControls ? { controls: serializedControls } : {}),
+  });
+}
+
+export function providerModelSelectionsEqual(
+  left: ProviderModelSelection | null | undefined,
+  right: ProviderModelSelection | null | undefined,
+): boolean {
+  return serializeProviderModelSelection(left) === serializeProviderModelSelection(right);
+}
+
 export function cloneProviderModelResolution(
   resolution: ProviderModelResolution | null | undefined,
 ): ProviderModelResolution | null {

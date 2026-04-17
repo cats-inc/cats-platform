@@ -1916,6 +1916,111 @@ test('solo composer mode restarts orchestrator sessions when the pending instanc
   );
 });
 
+test('solo composer mode restarts orchestrator sessions when the pending model selection changes', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Switch reasoning effort without reusing the stale runtime session.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'codex',
+      pendingModel: 'gpt-5.4',
+      pendingModelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'medium',
+        },
+      },
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First turn',
+      pendingProvider: 'codex',
+      pendingModel: 'gpt-5.4',
+      pendingModelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'medium',
+        },
+      },
+    },
+    runtimeClient,
+    now,
+  );
+  const secondDispatch = await routeChannelMessage(
+    firstDispatch.state,
+    channelId,
+    {
+      body: 'Second turn with deeper reasoning',
+      pendingProvider: 'codex',
+      pendingModel: 'gpt-5.4',
+      pendingModelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+        controls: {
+          'codex.reasoning_effort': 'high',
+        },
+      },
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+  const channel = buildChannelView(secondDispatch.state, channelId);
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.deepEqual(runtimeClient.createdSessions[0]?.modelSelection, {
+    entryId: 'gpt-5.4',
+    entryMode: 'explicit',
+    controls: {
+      'codex.reasoning_effort': 'medium',
+    },
+  });
+  assert.deepEqual(runtimeClient.createdSessions[1]?.modelSelection, {
+    entryId: 'gpt-5.4',
+    entryMode: 'explicit',
+    controls: {
+      'codex.reasoning_effort': 'high',
+    },
+  });
+  assert.equal(
+    runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.equal(channel.pendingProvider, 'codex');
+  assert.equal(channel.pendingModel, 'gpt-5.4');
+  assert.deepEqual(channel.pendingModelSelection, {
+    entryId: 'gpt-5.4',
+    entryMode: 'explicit',
+    controls: {
+      'codex.reasoning_effort': 'high',
+    },
+  });
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /Same conversation continuity transcript:/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[user:User\] First turn/u,
+  );
+});
+
 test('solo composer mode sends raw user text without default instructions on a stable session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');

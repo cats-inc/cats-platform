@@ -6,6 +6,7 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
+import { providerModelSelectionsEqual } from '../../../../shared/providerSelection.js';
 import {
   requireChannel,
   setChannelParticipantLease,
@@ -220,6 +221,10 @@ export async function resolveExistingTargetSessionOutcome(input: {
         orchestratorLease?.provider !== executionTarget.provider
         || orchestratorLease?.instance !== executionTarget.instance
         || orchestratorLease?.model !== executionTarget.model
+        || !providerModelSelectionsEqual(
+          channelState.pendingModelSelection ?? null,
+          executionTarget.modelSelection ?? null,
+        )
       );
 
     if (shouldRestartSoloSession) {
