@@ -1583,6 +1583,73 @@ test('explicit solo start-fresh resets continuity before the next replacement se
   assert.equal(channel.continuityResetAt, '2026-03-23T00:00:30.000Z');
 });
 
+test('solo retarget after start-fresh only transplants the new continuity branch', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Retarget after a fresh start must ignore the older branch.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Old branch turn',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+  const resetState = resetSoloChannelContinuity(
+    firstDispatch.state,
+    channelId,
+    new Date('2026-03-23T00:00:30.000Z'),
+  );
+  const freshBranchDispatch = await routeChannelMessage(
+    resetState,
+    channelId,
+    {
+      body: 'Fresh branch turn',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+  await routeChannelMessage(
+    freshBranchDispatch.state,
+    channelId,
+    {
+      body: 'Retarget after reset',
+      pendingProvider: 'gemini',
+      pendingModel: 'gemini-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:02:00.000Z'),
+  );
+
+  const transplantInstructions = runtimeClient.sentMessages[2]?.input?.instructions ?? '';
+  assert.match(transplantInstructions, /\[user:User\] Fresh branch turn/u);
+  assert.match(transplantInstructions, /\[agent:Orchestrator\] response from session-2/u);
+  assert.doesNotMatch(transplantInstructions, /\[user:User\] Old branch turn/u);
+  assert.doesNotMatch(transplantInstructions, /\[agent:Orchestrator\] response from session-1/u);
+});
+
 test('solo composer mode restarts orchestrator sessions when the pending instance changes', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
