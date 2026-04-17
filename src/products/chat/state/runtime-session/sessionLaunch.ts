@@ -6,14 +6,16 @@ import {
   requireChannel,
 } from '../model/index.js';
 import type { RoutingTarget } from '../mentionRouter.js';
-import { buildSoloChatContinuityTransplantInstructions } from '../prompts.js';
-import { isDirectLaneChannel } from '../../shared/channelTopology.js';
-import { activeAssignedParticipants } from '../../shared/channelParticipants.js';
+import {
+  buildSoloChatContinuityTransplantPackage,
+  MAX_BOUNDED_RECENT_CONTEXT_MESSAGES,
+} from '../prompts.js';
 import {
   applySoloChatContinuityBoundary,
   hasVisibleResponseFromLogicalTarget,
   messagesBeforeSource,
   resolveRuntimeEnvelopeForTarget,
+  supportsSameChatParticipantContinuity,
 } from '../runtimeTargeting.js';
 import {
   markTargetWaking,
@@ -49,19 +51,13 @@ interface ResolvedTargetRuntimeEnvelope {
   canonicalMetadata: RuntimeEnvelopeCanonicalMetadata;
 }
 
-function supportsSameChatParticipantContinuity(
-  channel: Pick<ReturnType<typeof buildChannelView>, 'assignedParticipants' | 'assignedCats' | 'channelKind'>,
-): boolean {
-  return isDirectLaneChannel(channel) || activeAssignedParticipants(channel).length === 1;
-}
-
 function resolveNewSessionContinuityMetadata(input: {
   state: ChatState;
   channelId: string;
   target: RoutingTarget;
   sourceMessageId?: string | null;
 }): {
-  continuityMode: 'fresh_start' | 'full_transplant';
+  continuityMode: 'fresh_start' | 'full_transplant' | 'semantic_transplant' | 'targeted_handoff';
   continuityDeliveryMode: 'none' | 'turn_instructions';
   continuityResetAt: string | null;
 } | null {
@@ -97,20 +93,24 @@ function resolveNewSessionContinuityMetadata(input: {
   const supportsParticipantContinuity = input.target.participantKind === 'cat'
     && (supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse);
   if (!isSoloOrchestrator && !supportsParticipantContinuity) {
+    const targetedPriorMessages = sourceMessage
+      ? messagesBeforeSource(continuityMessages, sourceMessage)
+        .slice(-MAX_BOUNDED_RECENT_CONTEXT_MESSAGES)
+      : [];
     return {
-      continuityMode: 'fresh_start',
-      continuityDeliveryMode: 'none',
+      continuityMode: targetedPriorMessages.length > 0 ? 'targeted_handoff' : 'fresh_start',
+      continuityDeliveryMode: targetedPriorMessages.length > 0 ? 'turn_instructions' : 'none',
       continuityResetAt: null,
     };
   }
   const priorMessages = sourceMessage
     ? messagesBeforeSource(continuityMessages, sourceMessage)
     : [];
-  const instructions = buildSoloChatContinuityTransplantInstructions(priorMessages);
+  const continuityPackage = buildSoloChatContinuityTransplantPackage(priorMessages);
 
   return {
-    continuityMode: instructions ? 'full_transplant' : 'fresh_start',
-    continuityDeliveryMode: instructions ? 'turn_instructions' : 'none',
+    continuityMode: continuityPackage.instructions ? continuityPackage.mode : 'fresh_start',
+    continuityDeliveryMode: continuityPackage.instructions ? 'turn_instructions' : 'none',
     continuityResetAt,
   };
 }

@@ -18,7 +18,13 @@ export function buildDispatchRuntimeContextMetadata(
     | 'mentionNames'
   >,
   options: {
-    continuityMode?: 'fresh_start' | 'native_resume' | 'full_transplant' | null;
+    continuityMode?:
+      | 'fresh_start'
+      | 'native_resume'
+      | 'full_transplant'
+      | 'semantic_transplant'
+      | 'targeted_handoff'
+      | null;
     continuityDeliveryMode?: 'none' | 'turn_instructions' | null;
     continuityResetAt?: string | null;
   } = {},

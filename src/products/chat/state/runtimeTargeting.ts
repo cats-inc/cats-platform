@@ -41,9 +41,10 @@ import {
 import type { RoutingTarget } from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,
-  buildSoloChatContinuityTransplantInstructions,
+  buildSoloChatContinuityTransplantPackage,
+  buildTargetedChatHandoffPackage,
   buildCatPrompt,
-  MAX_PROMPT_RECENT_MESSAGES,
+  MAX_BOUNDED_RECENT_CONTEXT_MESSAGES,
 } from './prompts.js';
 import { resolveRoomRoutingState } from './room-routing/index.js';
 import type { DispatchRequest } from './room-routing/runtime.js';
@@ -51,7 +52,7 @@ import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
 
 export type RuntimeTransportContext = 'telegram' | 'web';
 
-const MAX_RECENT_CONTEXT_MESSAGES = MAX_PROMPT_RECENT_MESSAGES;
+const MAX_RECENT_CONTEXT_MESSAGES = MAX_BOUNDED_RECENT_CONTEXT_MESSAGES;
 
 export function isSoloChatChannel(
   channel: Pick<ChatChannelState | ChatChannelView, 'channelKind' | 'composerMode' | 'roomRouting'>,
@@ -232,7 +233,7 @@ function resolveTransportContext(
   return transport ?? 'web';
 }
 
-function supportsSameChatParticipantContinuity(
+export function supportsSameChatParticipantContinuity(
   channel: Pick<ChatChannelView, 'assignedParticipants' | 'assignedCats' | 'channelKind'>,
 ): boolean {
   return isDirectLaneChannel(channel) || activeAssignedParticipants(channel).length === 1;
@@ -616,24 +617,24 @@ export function hasVisibleResponseFromLogicalTarget(
   });
 }
 
-function resolveSameChatContinuityInstructions(
+function resolveSameChatContinuityPackage(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
-): string | null {
+): ReturnType<typeof buildSoloChatContinuityTransplantPackage> | null {
   const priorMessages = messagesBeforeSource(messages, request.sourceMessage);
   if (hasVisibleResponseFromCurrentTargetIdentity(messages, request.target, request.sourceMessage)) {
     return null;
   }
-  return buildSoloChatContinuityTransplantInstructions(priorMessages);
+  return buildSoloChatContinuityTransplantPackage(priorMessages);
 }
 
 function resolveSameChatContinuityMode(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
-  instructions: string | null,
-): 'fresh_start' | 'native_resume' | 'full_transplant' {
-  if (instructions) {
-    return 'full_transplant';
+  continuityPackage: ReturnType<typeof buildSoloChatContinuityTransplantPackage> | null,
+): 'fresh_start' | 'native_resume' | 'full_transplant' | 'semantic_transplant' {
+  if (continuityPackage?.instructions) {
+    return continuityPackage.mode;
   }
 
   return hasVisibleResponseFromCurrentTargetIdentity(messages, request.target, request.sourceMessage)
@@ -667,7 +668,13 @@ function describeRoutingReason(
 export interface DispatchPrompt {
   message: string;
   instructions?: string | null;
-  continuityMode?: 'fresh_start' | 'native_resume' | 'full_transplant' | null;
+  continuityMode?:
+    | 'fresh_start'
+    | 'native_resume'
+    | 'full_transplant'
+    | 'semantic_transplant'
+    | 'targeted_handoff'
+    | null;
   continuityDeliveryMode?: 'none' | 'turn_instructions' | null;
   continuityResetAt?: string | null;
 }
@@ -711,12 +718,16 @@ export function buildPromptForTarget(
 
   if (request.target.participantKind === 'orchestrator') {
     if (isSoloChatChannel(channel)) {
-      const instructions = resolveSameChatContinuityInstructions(continuityMessages, request);
+      const continuityPackage = resolveSameChatContinuityPackage(continuityMessages, request);
       return {
         message: request.sourceMessage.body,
-        instructions,
-        continuityMode: resolveSameChatContinuityMode(continuityMessages, request, instructions),
-        continuityDeliveryMode: instructions ? 'turn_instructions' : 'none',
+        instructions: continuityPackage?.instructions ?? null,
+        continuityMode: resolveSameChatContinuityMode(
+          continuityMessages,
+          request,
+          continuityPackage,
+        ),
+        continuityDeliveryMode: continuityPackage?.instructions ? 'turn_instructions' : 'none',
         continuityResetAt: channel.continuityResetAt?.trim() || null,
       };
     }
@@ -736,9 +747,19 @@ export function buildPromptForTarget(
     throw new Error(`Target participant is no longer assigned to the selected chat: ${request.target.participantId}`);
   }
 
-  const instructions = participantContinuity
-    ? resolveSameChatContinuityInstructions(promptMessages, request)
+  const sameChatContinuityPackage = participantContinuity
+    ? resolveSameChatContinuityPackage(promptMessages, request)
     : null;
+  const targetedHandoffPackage = participantContinuity
+    ? null
+    : buildTargetedChatHandoffPackage({
+      priorMessages: messagesBeforeSource(recentMessages, promptSourceMessage),
+      reason: routingContext.reason,
+      sourceParticipantName: routingContext.sourceParticipantName ?? null,
+    });
+  const instructions = sameChatContinuityPackage?.instructions
+    ?? targetedHandoffPackage?.instructions
+    ?? null;
   return {
     message: buildCatPrompt(
       channel,
@@ -749,10 +770,10 @@ export function buildPromptForTarget(
     ),
     instructions,
     continuityMode: participantContinuity
-      ? resolveSameChatContinuityMode(promptMessages, request, instructions)
-      : null,
-    continuityDeliveryMode: participantContinuity
-      ? instructions ? 'turn_instructions' : 'none'
-      : null,
+      ? resolveSameChatContinuityMode(promptMessages, request, sameChatContinuityPackage)
+      : targetedHandoffPackage?.instructions
+        ? targetedHandoffPackage.mode
+        : null,
+    continuityDeliveryMode: instructions ? 'turn_instructions' : 'none',
   };
 }

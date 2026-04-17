@@ -16,7 +16,37 @@ export interface PromptRoutingContext {
   transport?: 'telegram' | 'web';
 }
 
-export const MAX_PROMPT_RECENT_MESSAGES = 8;
+export const MAX_BOUNDED_RECENT_CONTEXT_MESSAGES = 8;
+export const MAX_CONTINUITY_TRANSPLANT_CHARACTERS = 12_000;
+
+type ContinuityInstructionMode =
+  | 'fresh_start'
+  | 'full_transplant'
+  | 'semantic_transplant'
+  | 'targeted_handoff';
+
+interface ContinuityInstructionPackage {
+  instructions: string | null;
+  mode: ContinuityInstructionMode;
+}
+
+type SoloContinuityInstructionMode =
+  | 'fresh_start'
+  | 'full_transplant'
+  | 'semantic_transplant';
+
+interface SoloContinuityInstructionPackage {
+  instructions: string | null;
+  mode: SoloContinuityInstructionMode;
+}
+
+interface NormalizedContinuityMessage {
+  senderKind: ChatMessage['senderKind'];
+  senderName: string;
+  body: string;
+  toolLabels: string[];
+  assistantTurnId: string | null;
+}
 
 function resolveContinuityMessageBody(message: ChatMessage): string {
   const body = message.body.trim();
@@ -64,20 +94,8 @@ function readAssistantTurnId(message: Pick<ChatMessage, 'metadata'>): string | n
     : null;
 }
 
-function normalizeContinuityMessages(messages: ChatMessage[]): Array<{
-  senderKind: ChatMessage['senderKind'];
-  senderName: string;
-  body: string;
-  toolLabels: string[];
-  assistantTurnId: string | null;
-}> {
-  const normalized: Array<{
-    senderKind: ChatMessage['senderKind'];
-    senderName: string;
-    body: string;
-    toolLabels: string[];
-    assistantTurnId: string | null;
-  }> = [];
+function normalizeContinuityMessages(messages: ChatMessage[]): NormalizedContinuityMessage[] {
+  const normalized: NormalizedContinuityMessage[] = [];
 
   for (const message of messages) {
     const assistantTurnId = readAssistantTurnId(message);
@@ -114,15 +132,182 @@ function normalizeContinuityMessages(messages: ChatMessage[]): Array<{
   return normalized;
 }
 
+function formatNormalizedContinuityLine(
+  message: Pick<NormalizedContinuityMessage, 'senderKind' | 'senderName' | 'body' | 'toolLabels'>,
+): string {
+  const toolPrefix = message.toolLabels.length > 0
+    ? ` [tools: ${message.toolLabels.join(', ')}]`
+    : '';
+  return `[${message.senderKind}:${message.senderName}]${toolPrefix} ${message.body}`;
+}
+
 function formatContinuityMessages(messages: ChatMessage[]): string {
   return normalizeContinuityMessages(messages)
-    .map((message) => {
-      const toolPrefix = message.toolLabels.length > 0
-        ? ` [tools: ${message.toolLabels.join(', ')}]`
-        : '';
-      return `[${message.senderKind}:${message.senderName}]${toolPrefix} ${message.body}`;
-    })
+    .map((message) => formatNormalizedContinuityLine(message))
     .join('\n');
+}
+
+function compactWhitespace(value: string): string {
+  return value.replace(/\s+/gu, ' ').trim();
+}
+
+function truncateContinuityText(value: string, maxLength: number): string {
+  if (maxLength <= 0) {
+    return '';
+  }
+
+  const compact = compactWhitespace(value);
+  if (compact.length <= maxLength) {
+    return compact;
+  }
+
+  if (maxLength <= 1) {
+    return '…';
+  }
+
+  return `${compact.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function buildContinuityChunkDigest(
+  messages: NormalizedContinuityMessage[],
+  startIndex: number,
+  endIndex: number,
+  snippetLength: number,
+): string {
+  const chunk = messages.slice(startIndex, endIndex);
+  const userMessages = chunk.filter((message) => message.senderKind === 'user');
+  const assistantMessages = chunk.filter((message) => message.senderKind !== 'user');
+  const toolLabels = chunk.flatMap((message) => message.toolLabels)
+    .filter((label, index, labels) => labels.indexOf(label) === index);
+
+  const describeSpeakerTurns = (
+    label: string,
+    speakerMessages: NormalizedContinuityMessage[],
+  ): string | null => {
+    if (speakerMessages.length === 0) {
+      return null;
+    }
+    if (speakerMessages.length === 1) {
+      return `${label}: "${truncateContinuityText(speakerMessages[0]!.body, snippetLength)}"`;
+    }
+    return `${label}(${speakerMessages.length}): "${truncateContinuityText(speakerMessages[0]!.body, snippetLength)}" … "${truncateContinuityText(speakerMessages.at(-1)!.body, snippetLength)}"`;
+  };
+
+  const chunkStart = startIndex + 1;
+  const chunkEnd = endIndex;
+  const details = [
+    describeSpeakerTurns('user', userMessages),
+    describeSpeakerTurns('assistant', assistantMessages),
+    toolLabels.length > 0 ? `tools: ${toolLabels.join(', ')}` : null,
+  ].filter((detail): detail is string => Boolean(detail));
+
+  return `Turns ${chunkStart}-${chunkEnd}: ${details.join(' | ')}`;
+}
+
+function renderSemanticContinuityInstructions(
+  messages: NormalizedContinuityMessage[],
+  options: {
+    recentCount: number;
+    digestBucketCount: number;
+    digestSnippetLength: number;
+    recentLineLimit: number | null;
+    recentLabel: string;
+  },
+): string {
+  const recentCount = Math.min(options.recentCount, messages.length);
+  const recentMessages = messages.slice(-recentCount);
+  const earlierMessages = messages.slice(0, -recentCount);
+  const digestBucketCount = Math.max(1, options.digestBucketCount);
+  const digestChunkSize = earlierMessages.length > 0
+    ? Math.max(1, Math.ceil(earlierMessages.length / digestBucketCount))
+    : 0;
+  const digestLines = digestChunkSize > 0
+    ? Array.from({ length: Math.ceil(earlierMessages.length / digestChunkSize) }, (_value, index) => {
+      const startIndex = index * digestChunkSize;
+      const endIndex = Math.min(startIndex + digestChunkSize, earlierMessages.length);
+      return buildContinuityChunkDigest(
+        earlierMessages,
+        startIndex,
+        endIndex,
+        options.digestSnippetLength,
+      );
+    })
+    : [];
+  const recentLines = recentMessages.map((message) => {
+    const formatted = formatNormalizedContinuityLine(message);
+    return options.recentLineLimit === null
+      ? formatted
+      : truncateContinuityText(formatted, options.recentLineLimit);
+  });
+
+  return joinPromptSections([
+    'Same conversation continuity package:',
+    earlierMessages.length > 0
+      ? [
+        `Earlier transcript was compacted from ${earlierMessages.length} prior turns to fit provider limits while preserving sender and turn order.`,
+        'Earlier continuity digest:',
+        digestLines.join('\n'),
+      ].join('\n')
+      : null,
+    `${options.recentLabel}\n${recentLines.join('\n')}`,
+    'Current message follows separately.',
+  ]);
+}
+
+function buildSemanticContinuityTransplantInstructions(
+  messages: NormalizedContinuityMessage[],
+): string {
+  const configs: Array<{
+    recentCount: number;
+    digestBucketCount: number;
+    digestSnippetLength: number;
+    recentLineLimit: number | null;
+    recentLabel: string;
+  }> = [
+    {
+      recentCount: 6,
+      digestBucketCount: 24,
+      digestSnippetLength: 96,
+      recentLineLimit: null,
+      recentLabel: 'Recent verbatim transcript:',
+    },
+    {
+      recentCount: 6,
+      digestBucketCount: 20,
+      digestSnippetLength: 84,
+      recentLineLimit: 480,
+      recentLabel: 'Recent verbatim turn excerpts:',
+    },
+    {
+      recentCount: 4,
+      digestBucketCount: 16,
+      digestSnippetLength: 72,
+      recentLineLimit: 320,
+      recentLabel: 'Recent verbatim turn excerpts:',
+    },
+    {
+      recentCount: 2,
+      digestBucketCount: 12,
+      digestSnippetLength: 64,
+      recentLineLimit: 220,
+      recentLabel: 'Recent verbatim turn excerpts:',
+    },
+  ];
+
+  for (const config of configs) {
+    const rendered = renderSemanticContinuityInstructions(messages, config);
+    if (rendered.length <= MAX_CONTINUITY_TRANSPLANT_CHARACTERS) {
+      return rendered;
+    }
+  }
+
+  return renderSemanticContinuityInstructions(messages, {
+    recentCount: 2,
+    digestBucketCount: 8,
+    digestSnippetLength: 48,
+    recentLineLimit: 180,
+    recentLabel: 'Recent verbatim turn excerpts:',
+  });
 }
 
 function languageInstruction(responseLanguage: string): string {
@@ -134,7 +319,7 @@ function languageInstruction(responseLanguage: string): string {
 }
 
 function formatRecentMessages(messages: ChatMessage[]): string {
-  const recent = messages.slice(-MAX_PROMPT_RECENT_MESSAGES);
+  const recent = messages.slice(-MAX_BOUNDED_RECENT_CONTEXT_MESSAGES);
   if (recent.length === 0) {
     return 'No prior chat messages.';
   }
@@ -287,11 +472,11 @@ export function buildOrchestratorPrompt(
   ]);
 }
 
-export function buildSoloChatBootstrapInstructions(
+export function buildBoundedRecentContextInstructions(
   priorMessages: ChatMessage[],
 ): string | null {
   const earlierMessages = conversationalMessages(priorMessages)
-    .slice(-MAX_PROMPT_RECENT_MESSAGES);
+    .slice(-MAX_BOUNDED_RECENT_CONTEXT_MESSAGES);
   if (earlierMessages.length === 0) {
     return null;
   }
@@ -303,19 +488,69 @@ export function buildSoloChatBootstrapInstructions(
   ]);
 }
 
+export function buildSoloChatContinuityTransplantPackage(
+  priorMessages: ChatMessage[],
+): SoloContinuityInstructionPackage {
+  const earlierMessages = conversationalMessages(priorMessages);
+  if (earlierMessages.length === 0) {
+    return {
+      instructions: null,
+      mode: 'fresh_start',
+    };
+  }
+
+  const normalizedMessages = normalizeContinuityMessages(earlierMessages);
+  const fullInstructions = joinPromptSections([
+    'Same conversation continuity transcript:',
+    normalizedMessages.map((message) => formatNormalizedContinuityLine(message)).join('\n'),
+    'Current message follows separately.',
+  ]);
+
+  if (fullInstructions.length <= MAX_CONTINUITY_TRANSPLANT_CHARACTERS) {
+    return {
+      instructions: fullInstructions,
+      mode: 'full_transplant',
+    };
+  }
+
+  return {
+    instructions: buildSemanticContinuityTransplantInstructions(normalizedMessages),
+    mode: 'semantic_transplant',
+  };
+}
+
 export function buildSoloChatContinuityTransplantInstructions(
   priorMessages: ChatMessage[],
 ): string | null {
-  const earlierMessages = conversationalMessages(priorMessages);
+  return buildSoloChatContinuityTransplantPackage(priorMessages).instructions;
+}
+
+export function buildTargetedChatHandoffPackage(input: {
+  priorMessages: ChatMessage[];
+  reason?: string | null;
+  sourceParticipantName?: string | null;
+}): ContinuityInstructionPackage {
+  const earlierMessages = conversationalMessages(input.priorMessages)
+    .slice(-MAX_BOUNDED_RECENT_CONTEXT_MESSAGES);
   if (earlierMessages.length === 0) {
-    return null;
+    return {
+      instructions: null,
+      mode: 'fresh_start',
+    };
   }
 
-  return joinPromptSections([
-    'Same conversation continuity transcript:',
-    formatContinuityMessages(earlierMessages),
-    'Current message follows separately.',
-  ]);
+  return {
+    instructions: joinPromptSections([
+      'Targeted same-conversation handoff context:',
+      input.reason?.trim() || null,
+      input.sourceParticipantName?.trim()
+        ? `This handoff came from ${input.sourceParticipantName.trim()}.`
+        : null,
+      `Relevant recent room messages:\n${formatContinuityMessages(earlierMessages)}`,
+      'Current message follows separately.',
+    ]),
+    mode: 'targeted_handoff',
+  };
 }
 
 export function buildOrchestratorRewritePrompt(

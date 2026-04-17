@@ -43,6 +43,7 @@ import { publishRoomMutation } from '../transportEventPublisher.js';
 import { routeChatChannelAttachmentResourceApi } from './channelAttachmentRoutes.js';
 import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
+import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import {
   buildCanonicalChatUserMessage,
   readChatCoreTurnMetadataString,
@@ -79,6 +80,18 @@ function logBackgroundDispatchPersistenceError(
     : String(error);
   process.stderr.write(
     `[cats-chat-dispatch] failed to persist finalized dispatch for ${channelId}: ${detail}\n`,
+  );
+}
+
+function logContinuityResetCleanupError(
+  channelId: string,
+  error: unknown,
+): void {
+  const detail = error instanceof Error
+    ? (error.stack ?? error.message)
+    : String(error);
+  process.stderr.write(
+    `[cats-chat-reset] failed to close runtime session for ${channelId}: ${detail}\n`,
   );
 }
 
@@ -396,10 +409,19 @@ async function handleRestPatchChannel(
         const existingSessionId =
           currentChannel.orchestratorLease.sessionId?.trim() || null;
         if (existingSessionId) {
+          await bestEffortFlushRuntimeSessionMemory({
+            runtimeClient: context.dependencies.runtimeClient,
+            sessionId: existingSessionId,
+            requestedPhase: 'pre_reset',
+            memoryService: context.dependencies.memoryService,
+            companionStore: context.dependencies.companionStore,
+            coreStore: context.dependencies.chatStore,
+            now: nowFrom(context.dependencies),
+          });
           try {
             await context.dependencies.runtimeClient.closeSession(existingSessionId);
-          } catch {
-            // Best-effort close only; the explicit continuity reset still proceeds.
+          } catch (error) {
+            logContinuityResetCleanupError(channelId, error);
           }
         }
         const nextState = resetSoloChannelContinuity(

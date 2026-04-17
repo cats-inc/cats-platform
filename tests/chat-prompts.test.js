@@ -4,13 +4,15 @@ import test from 'node:test';
 import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   appendMessage,
+  buildChannelView,
   createChannel as createChatChannel,
   setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
 import {
   buildCatPrompt,
   buildOrchestratorPrompt,
-  buildSoloChatBootstrapInstructions,
+  buildBoundedRecentContextInstructions,
+  buildSoloChatContinuityTransplantPackage,
   buildSoloChatContinuityTransplantInstructions,
 } from '../build/server/products/chat/state/prompts.js';
 import { buildPromptForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
@@ -116,11 +118,11 @@ test('cat prompt omits blank transport sections when no transport context is pro
 });
 
 test('solo chat bootstrap instructions are absent without prior conversational messages', () => {
-  assert.equal(buildSoloChatBootstrapInstructions([]), null);
+  assert.equal(buildBoundedRecentContextInstructions([]), null);
 });
 
 test('solo chat bootstrap instructions include only earlier conversational context', () => {
-  const instructions = buildSoloChatBootstrapInstructions([
+  const instructions = buildBoundedRecentContextInstructions([
     {
       senderKind: 'system',
       senderName: 'Runtime',
@@ -145,6 +147,22 @@ test('solo chat bootstrap instructions include only earlier conversational conte
   assert.ok(!instructions.includes('AGENTS.md'));
   assert.ok(!instructions.includes('Telegram'));
   assert.ok(!instructions.includes('Respond in English'));
+});
+
+test('solo chat continuity package compacts oversized transcripts into semantic transplant instructions', () => {
+  const oversizedTranscript = Array.from({ length: 48 }, (_value, index) => ({
+    senderKind: index % 2 === 0 ? 'user' : 'agent',
+    senderName: index % 2 === 0 ? 'Kenny' : 'Orchestrator',
+    body: `Oversized earlier turn ${index + 1}: ${'x'.repeat(420)}`,
+  }));
+
+  const continuityPackage = buildSoloChatContinuityTransplantPackage(oversizedTranscript);
+
+  assert.equal(continuityPackage.mode, 'semantic_transplant');
+  assert.ok(continuityPackage.instructions);
+  assert.match(continuityPackage.instructions, /Same conversation continuity package:/u);
+  assert.match(continuityPackage.instructions, /Earlier continuity digest:/u);
+  assert.match(continuityPackage.instructions, /Recent verbatim/u);
 });
 
 test('solo chat continuity transplant instructions keep the full earlier conversational transcript', () => {
@@ -367,4 +385,120 @@ test('solo chat does not re-bootstrap when the same runtime session is reused ac
   });
 
   assert.equal(prompt.instructions, null);
+});
+
+test('multi-participant cat routing emits a targeted handoff package for first-turn context', () => {
+  const now = new Date('2026-04-15T00:00:00.000Z');
+  let state = createDefaultChatState();
+  state = createChatChannel(state, {
+    title: 'Group handoff test',
+    topic: 'Ensure a newly engaged participant receives bounded room context.',
+    temporaryParticipants: [
+      {
+        name: 'Agent-1',
+        provider: 'claude',
+        model: 'claude-default',
+      },
+      {
+        name: 'Agent-2',
+        provider: 'gemini',
+        model: 'gemini-default',
+      },
+    ],
+    skipBossCatGreeting: true,
+  }, now);
+  const channelId = state.channels[0].id;
+  const activeParticipants = buildChannelView(state, channelId).assignedParticipants
+    .filter((participant) => participant.status === 'active');
+  const firstParticipant = activeParticipants[0];
+  const secondParticipant = activeParticipants[1];
+
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Kenny',
+      body: 'Need a quick review before we patch this.',
+    },
+    new Date('2026-04-15T00:00:01.000Z'),
+  ).state;
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: firstParticipant.name,
+      body: 'I inspected the issue and think Agent-2 should validate the fix path.',
+    },
+    new Date('2026-04-15T00:00:02.000Z'),
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        targetKind: 'cat',
+        targetId: firstParticipant.participantId,
+        assistantTurnId: 'assistant-turn-agent-1',
+      },
+    },
+  ).state;
+  const routedTurn = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'agent',
+      senderName: firstParticipant.name,
+      body: '@Agent-2 please double-check the plan.',
+    },
+    new Date('2026-04-15T00:00:03.000Z'),
+    {
+      metadata: {
+        event: 'assistant_turn_segment',
+        targetKind: 'cat',
+        targetId: firstParticipant.participantId,
+        assistantTurnId: 'assistant-turn-agent-1',
+      },
+    },
+  );
+  state = routedTurn.state;
+
+  const prompt = buildPromptForTarget(state, channelId, {
+    turnId: 'turn-group-1',
+    dispatchId: 'dispatch-group-1',
+    targetStateId: 'target-group-1',
+    parentCheckpointId: null,
+    branchStrategy: 'transplant_context',
+    handoffReason: 'workflow_continuation',
+    sourceMessage: routedTurn.message,
+    sourceParticipant: {
+      participantKind: 'cat',
+      participantId: firstParticipant.participantId,
+      participantName: firstParticipant.name,
+    },
+    targets: [
+      {
+        participantKind: 'cat',
+        participantId: secondParticipant.participantId,
+        participantName: secondParticipant.name,
+        laneId: null,
+        sessionId: null,
+      },
+    ],
+    unresolved: [],
+    mentionNames: ['Agent-2'],
+    trigger: 'continuation_mention',
+    depth: 1,
+    target: {
+      participantKind: 'cat',
+      participantId: secondParticipant.participantId,
+      participantName: secondParticipant.name,
+      laneId: null,
+      sessionId: null,
+    },
+  });
+
+  assert.equal(prompt.continuityMode, 'targeted_handoff');
+  assert.equal(prompt.continuityDeliveryMode, 'turn_instructions');
+  assert.match(prompt.instructions ?? '', /Targeted same-conversation handoff context:/u);
+  assert.match(prompt.instructions ?? '', /Relevant recent room messages:/u);
+  assert.match(prompt.instructions ?? '', /This handoff came from Agent-1\./u);
 });
