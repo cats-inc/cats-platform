@@ -540,6 +540,22 @@ contracts.
       surfaces over the shared conversation/container engine, including
       convergence policy, automated review-share loops, and role/workflow
       templates such as single-coder, team PDCA, and peer review modes
+- [ ] Finish the first `+New code` renderer-ownership cleanup after the landed
+      draft-shell slices, including regrouping the flat
+      `WorkspaceNewChatDraftCopy` contract by concern, extracting one shared
+      execution-target summary/label helper for header and side-panel surfaces,
+      and consolidating the growing draft extension props into a more
+      structured slot namespace before more Code-only seams are added
+- [ ] Add a product-owned side-panel composition seam for Code drafts together
+      with render-level coverage for empty participant states, section-open
+      behavior, and later execution-profile sections, so `+New code` does not
+      remain blocked on internal shared-draft state or brittle static-markup
+      assertions
+- [ ] Move `+Team code` and `+Peer code` off the current shared chat-draft
+      fallback onto product-owned draft surfaces above the same shared
+      primitives, so Code group/parallel entry no longer inherits chat-specific
+      setup copy or side-panel framing while still reusing the shared draft
+      mechanics
 - [ ] Keep work surfaces product-owned and avoid leaking provider or runtime
       internals into the UI model
 - [ ] Extend task-strategy handoff beyond the current Chat-first
@@ -588,4 +604,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-17*
