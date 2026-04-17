@@ -14,11 +14,13 @@ Guide Cat should no longer be defined only as a fixed left-docked sidecar.
 
 The platform now needs a host-owned placement model that lets Guide Cat:
 
-- float inside safe canvas regions on eligible surfaces
+- float from one normalized viewport-relative anchor through safe canvas
+  regions on eligible surfaces
 - dock into explicit host-chrome slots on Lobby and product pages
 - preserve a shared dock intent across route changes
-- temporarily park or clamp itself on Settings and narrow layouts without
-  losing the user's broader preference
+- hide on Settings without losing the user's broader placement preference
+- proactively reflow or clamp itself when live layout changes make the current
+  projection unsafe
 
 This spec defines that placement model.
 Guide Cat content, runtime-backed assist, and cached suggestion bundles remain
@@ -32,8 +34,9 @@ Guide Cat lives and how it moves.
 - keep chrome ownership clear on Lobby and in product sidebars
 - make placement resilient to differing canvas shapes across Lobby, workspaces,
   and Settings
-- preserve layout safety by storing intent and normalized positions instead of
-  fragile global pixel coordinates
+- preserve layout safety by storing one normalized viewport anchor plus
+  surface-specific avoidance rules instead of fragile global pixels or
+  per-surface remembered positions
 
 ## Non-Goals
 
@@ -52,6 +55,8 @@ Guide Cat lives and how it moves.
   into Chat, Work, or Code.
 - As a user, I want Settings to stay readable and not inherit clutter from my
   workspace layout.
+- As a user, if the layout changes around me, I want Guide Cat to move out of
+  the way rather than cover important controls.
 - As a product developer, I want one host-owned placement contract that each
   surface can project safely rather than re-implementing drag and dock logic.
 
@@ -68,62 +73,72 @@ Guide Cat lives and how it moves.
    - `docked`
 3. Eligible surfaces shall expose host-owned placement policy rather than rely
    on one global hard-coded anchor.
-4. The first supported surface families shall be:
+4. The first supported surface classes shall be:
    - `lobby`
    - `workspace` for Chat / Work / Code
-   - `settings` as a restricted/override family
+   - `settings` as a hidden override surface
 5. When Guide Cat is `floating`, the floating anchor shall be draggable only
-   inside the current surface family's safe area.
-6. Floating position persistence shall be stored per surface family, not as one
-   global absolute pixel coordinate.
-7. Persisted floating positions shall use normalized coordinates or another
+   inside the active surface's safe area, except for explicit dock approach
+   corridors that lead into a valid dock slot.
+6. Floating position persistence shall use one normalized viewport-relative
+   floating anchor rather than per-surface remembered floating positions.
+7. Surfaces shall project that shared floating anchor through host-defined safe
+   areas and exclusion zones.
+8. Persisted floating anchors shall use normalized coordinates or another
    layout-resilient representation rather than raw cross-surface pixel values.
-8. The platform shall be allowed to clamp, offset, or override a remembered
-   floating position when the remembered position is no longer safe or visible.
-9. The platform shall define an explicit Lobby dock slot in primary chrome.
-10. The Lobby dock slot shall be rendered as a dedicated assist slot located
+9. If no floating anchor has yet been persisted, the host shall choose one
+   deterministic default floating anchor and use that same anchor across Lobby
+   and workspace surfaces until the user moves it.
+10. The platform shall be allowed to clamp, offset, or override the rendered
+    floating projection when the current projection is no longer safe or
+    visible.
+11. The platform shall proactively re-evaluate Guide Cat placement during live
+    layout changes such as viewport resize, sidebar collapse/expansion,
+    top-chrome reflow, or blocked-region changes.
+12. During proactive re-evaluation, the host shall be allowed to reflow,
+    clamp, collapse, or temporarily hide the current Guide Cat projection while
+    preserving the underlying floating-vs-docked intent.
+13. The platform shall define an explicit Lobby dock slot in primary chrome.
+14. The Lobby dock slot shall be rendered as a dedicated assist slot located
     between the cat-roster chrome and the account/user chrome rather than as an
     accidental gap between unrelated elements.
-11. The platform shall define an explicit workspace dock slot in the product
+15. The platform shall define an explicit workspace dock slot in the product
     sidebar chrome above the user/account footer.
-12. Docking shall be modeled as one shared dock target intent, not as unrelated
+16. A dock slot shall define:
+    - a visible drop target
+    - an activation/snap threshold
+    - a preview state before drop is committed
+17. Releasing the dragged Guide Cat anchor while a valid dock target is active
+    shall commit docking into that dock slot.
+18. Docking shall be modeled as one shared dock intent, not as unrelated
     per-surface booleans.
-13. If the user docks Guide Cat on Lobby, then navigates to Chat, Work, or
+19. If the user docks Guide Cat on Lobby, then navigates to Chat, Work, or
     Code, the platform shall keep Guide Cat in `docked` placement mode and
     render it into the workspace dock slot.
-14. If the user returns to Lobby while Guide Cat remains docked, the platform
+20. If the user returns to Lobby while Guide Cat remains docked, the platform
     shall render it back into the Lobby dock slot.
-15. When the user undocks Guide Cat, the platform shall restore the last valid
-    floating position for the current surface family rather than reuse another
-    surface family's raw geometry.
-16. Guide Cat open-state affordances launched from a dock slot shall open
+21. When the user undocks Guide Cat, the platform shall restore the shared
+    normalized floating anchor and reclamp it against the active surface's
+    current safe area and exclusion zones.
+22. Undocking shall require either:
+    - an explicit undock affordance
+    - a drag-away gesture that crosses a defined escape threshold before release
+23. Guide Cat open-state affordances launched from a dock slot shall open
     toward the canvas or another host-owned assist surface rather than expand
     inside the sidebar navigation stack itself.
-17. Settings shall not expose unrestricted floating Guide Cat placement.
-18. When the user enters Settings while Guide Cat is floating elsewhere, the
-    platform shall be allowed to apply a temporary parked presentation such as:
-    - docked in a Settings-safe assist slot
-    - collapsed in a host-safe anchor
-    - hidden when the current layout cannot safely host it
-19. A temporary Settings override shall not delete the user's remembered
-    floating position for Lobby or workspace surfaces.
-20. On narrow or crowded layouts, the platform shall be allowed to replace the
+24. Settings shall render Guide Cat hidden for now rather than expose
+    unrestricted floating or parked assist behavior.
+25. Entering Settings shall not delete the user's remembered floating anchor or
+    docked preference.
+26. Leaving Settings shall restore the underlying floating or docked placement
+    mode that was active before Settings hid Guide Cat.
+27. On narrow or crowded layouts, the platform shall be allowed to replace the
     usual floating or docked projection with a safer fallback such as:
     - collapsed badge
-    - compact dock badge
-    - bottom sheet
-    - safe overlay
-21. When a dock slot is a valid drop target, the UI shall provide a visible
-    dock affordance such as highlight, ghost preview, or other explicit target
-    feedback.
-22. If a dock slot cannot render at full size because chrome is too narrow, the
-    host shall preserve dock intent and render the safest compact dock
-    projection available.
-23. The placement system shall not require Guide Cat to occupy the right-side
-    inspector/detail region used by product-native panels.
-24. The placement system shall preserve the distinction between platform-owned
+    - hidden projection
+28. The placement system shall preserve the distinction between platform-owned
     Guide Cat chrome and product-native navigation chrome.
-25. This placement system shall remain compatible with Guide Cat being absent;
+29. This placement system shall remain compatible with Guide Cat being absent;
     when `guideCat == null`, no floating or docked projection shall appear.
 
 ### Non-Functional Requirements
@@ -131,13 +146,14 @@ Guide Cat lives and how it moves.
 - **Clarity**: the user should understand the difference between a floating
   assistant, a docked assistant, and product navigation
 - **Layout Safety**: remembered positions must never override visibility or
-  critical interaction safety
+  critical interaction safety, and live layout changes must trigger proactive
+  avoidance
 - **Continuity**: docking should feel like one cross-surface preference, not a
   separate per-page trick
-- **Predictability**: undocking should restore the current surface family's
-  remembered floating position in a stable way
+- **Predictability**: undocking should restore the shared floating anchor, then
+  clamp it consistently for the active surface
 - **Responsiveness**: the placement model must degrade safely on narrow or
-  crowded layouts
+  crowded layouts without inventing alternate product ownership rules
 
 ## Design Overview
 
@@ -148,16 +164,16 @@ Guide Cat placement
     |
     +--> floating
     |      |
+    |      +--> one normalized viewport anchor
     |      +--> drag anchor inside surface safe area
-    |      +--> remember normalized position per surface family
+    |      +--> allow dock approach through dock corridor
     |      +--> clamp/reflow when layout changes
     |
     +--> docked
            |
-           +--> dockTarget = primary_chrome
            +--> Lobby slot: top chrome assist slot
            +--> Workspace slot: sidebar assist slot
-           +--> Settings may temporarily park here
+           +--> Settings: hidden override, preserve docked intent
 ```
 
 ## Surface Model
@@ -165,6 +181,8 @@ Guide Cat placement
 ### Lobby
 
 - Guide Cat may float inside Lobby's safe content region.
+- The same shared normalized floating anchor should be reused on Lobby and then
+  clamped against Lobby's current safe area and exclusion zones.
 - Lobby exposes a dedicated top-chrome assist dock slot.
 - The slot should sit visually between the cat-roster chrome and the
   account/user chrome.
@@ -175,6 +193,9 @@ Guide Cat placement
 
 - Chat, Work, and Code share the first workspace-family placement policy.
 - Guide Cat may float inside the workspace canvas safe area.
+- The same shared normalized floating anchor used on Lobby should be projected
+  here and reclamped against workspace-safe regions rather than replaced with a
+  separate workspace-only remembered position.
 - Workspace exposes a dedicated sidebar assist dock slot above the account/user
   footer.
 - Docked Guide Cat is stored in chrome, but expanded Guide Cat content must
@@ -183,19 +204,20 @@ Guide Cat placement
 ### Settings
 
 - Settings should prefer tidy, low-interference Guide Cat behavior.
-- Settings may show Guide Cat only through a parked/docked/collapsed override.
-- Entering Settings should not destroy remembered floating positions for Lobby
-  or workspace.
+- Settings should hide Guide Cat for now.
+- Entering Settings should not destroy the remembered shared floating anchor or
+  docked preference.
 
 ## Suggested State Additions
 
 The first implementation slice should introduce host-owned state such as:
 
 - `guideCatPlacementMode: 'hidden' | 'floating' | 'docked'`
-- `guideCatDockTarget: 'primary_chrome' | null`
-- `guideCatFloatingPositions: { lobby?: { x: number; y: number }; workspace?: { x: number; y: number } }`
+- `guideCatFloatingAnchor: { x: number; y: number } | null`
 - `guideCatPresentationState: 'collapsed' | 'welcome-peek' | 'open'`
-- `guideCatPlacementOverrideReason?: 'settings_parked' | 'narrow_layout' | 'collision_reflow' | null`
+  `welcome-peek` means a system-initiated compact intro bubble anchored to the
+  current floating or docked Guide Cat entrypoint.
+- `guideCatPlacementOverrideReason?: 'settings_hidden' | 'narrow_layout' | 'collision_reflow' | null`
 
 This state should remain platform-owned rather than being embedded inside one
 product's route-local transcript state.
@@ -213,10 +235,10 @@ product's route-local transcript state.
 - [ ] Should the workspace dock slot look identical across Chat, Work, and
       Code, or allow light product tinting while preserving one interaction
       contract?
-- [ ] On very narrow sidebar widths, should the compact dock projection show
-      name text, avatar only, or avatar plus badge?
-- [ ] Should entering Settings always force a docked projection first, or may
-      some layouts choose a collapsed parked anchor instead?
+- [ ] On very narrow layouts, should the first fallback be a collapsed badge or
+      a fully hidden projection?
+- [ ] Should first-run `welcome-peek` be allowed from both floating and docked
+      entrypoints, or only from the floating projection?
 
 ## References
 

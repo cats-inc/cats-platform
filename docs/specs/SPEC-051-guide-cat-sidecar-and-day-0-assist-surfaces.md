@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Historical / Superseded by [SPEC-071](./SPEC-071-guide-cat-placement-and-shared-chrome-docking.md) |
+| **Status** | Superseded by [SPEC-071](./SPEC-071-guide-cat-placement-and-shared-chrome-docking.md) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 

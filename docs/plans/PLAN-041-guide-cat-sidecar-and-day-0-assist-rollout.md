@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Historical / Superseded by [PLAN-061](./PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md) |
+| **Status** | Superseded by [PLAN-061](./PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
