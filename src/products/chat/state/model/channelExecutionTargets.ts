@@ -10,10 +10,18 @@ import {
   cloneProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
   resolveParticipantExecutionAssignments,
 } from '../../shared/channelParticipants.js';
+import {
+  createEmptyExecutionLease,
+} from '../defaults.js';
+import {
+  applyMessageToChannel,
+  createMessageRecord,
+} from './recordBuilders.js';
 import {
   cloneState,
   isoAt,
@@ -134,6 +142,44 @@ export function setChannelPendingExecutionTarget(
   }
 
   channel.updatedAt = isoAt(now);
+  return nextState;
+}
+
+export function resetSoloChannelContinuity(
+  state: ChatState,
+  channelId: string,
+  now: Date = new Date(),
+): ChatState {
+  const nextState = cloneState(state);
+  const channel = requireChannel(nextState, channelId);
+  if (channel.composerMode !== 'solo' || isDirectLaneChannel(channel)) {
+    throw new Error('Start fresh is currently only supported for solo chats.');
+  }
+
+  const nowIso = isoAt(now);
+  channel.continuityResetAt = nowIso;
+  channel.orchestratorLease = createEmptyExecutionLease();
+  channel.updatedAt = nowIso;
+
+  applyMessageToChannel(
+    channel,
+    createMessageRecord(
+      channelId,
+      'system',
+      'Chat',
+      'Started fresh. The next solo turn will not inherit earlier chat continuity.',
+      nowIso,
+      {
+        event: 'continuity_reset',
+        resetMode: 'fresh_start',
+        targetKind: 'orchestrator',
+        continuityResetAt: nowIso,
+      },
+      null,
+    ),
+    nowIso,
+  );
+
   return nextState;
 }
 

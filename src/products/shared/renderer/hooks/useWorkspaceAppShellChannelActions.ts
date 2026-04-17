@@ -106,3 +106,37 @@ export function useWorkspaceResumeChannel<TPayload>({
     [activateChatChannel, publishReadyPayload, setBusy, setFeedback],
   );
 }
+
+export interface UseWorkspaceResetChannelContinuityOptions<TPayload> {
+  resetChannelContinuity: (channelId: string) => Promise<TPayload>;
+  publishReadyPayload: (payload: TPayload) => void;
+  setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
+  setFeedback: Dispatch<SetStateAction<string>>;
+}
+
+export function useWorkspaceResetChannelContinuity<TPayload>({
+  resetChannelContinuity,
+  publishReadyPayload,
+  setBusy,
+  setFeedback,
+}: UseWorkspaceResetChannelContinuityOptions<TPayload>) {
+  return useCallback(
+    async (channelId: string): Promise<void> => {
+      setBusy(createChannelBusyState('reset'));
+      setFeedback('');
+      try {
+        const payload = await resetChannelContinuity(channelId);
+        startTransition(() => publishReadyPayload(payload));
+      } catch (error) {
+        setFeedback(
+          error instanceof Error
+            ? error.message
+            : 'Failed to start a fresh chat continuity branch.',
+        );
+      } finally {
+        setBusy(clearBusyState());
+      }
+    },
+    [publishReadyPayload, resetChannelContinuity, setBusy, setFeedback],
+  );
+}

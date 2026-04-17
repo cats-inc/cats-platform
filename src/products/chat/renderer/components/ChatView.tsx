@@ -119,6 +119,7 @@ export interface ChatViewProps {
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
   onRetryMessage?: (messageId: string) => Promise<void>;
   onResumeChannel?: () => void;
+  onStartFresh?: () => void;
   onOperatorAction: (input: {
     action: 'retry' | 'acknowledge';
     taskId?: string | null;
@@ -180,6 +181,7 @@ export function ChatView({
   onChoiceSubmit,
   onRetryMessage,
   onResumeChannel,
+  onStartFresh,
   onOperatorAction,
   autoResize,
   selectedModel,
@@ -722,6 +724,7 @@ export function ChatView({
             onApprovalDecision,
             onOperatorAction,
             onModelChange,
+            onStartFresh,
             onDirectLaneModelChange,
             buildParticipantAvatarStyle,
           })}

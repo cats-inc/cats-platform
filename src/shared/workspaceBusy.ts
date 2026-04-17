@@ -10,7 +10,7 @@ export type WorkspaceBusyState =
       scope: ComposerBusyScope;
     }
   | { kind: 'parallel-chat'; phase: 'ack' | 'dispatch' | 'relay' | 'stop' }
-  | { kind: 'channel'; action: 'resume' }
+  | { kind: 'channel'; action: 'resume' | 'reset' }
   | { kind: 'channel'; action: 'rename' | 'delete'; channelId: string }
   | { kind: 'channel-participant'; action: 'update'; participantId: string }
   | { kind: 'concurrent-group'; action: 'rename' | 'ungroup' | 'delete'; groupId: string }
@@ -73,17 +73,17 @@ export function createParallelChatBusyState(
   return { kind: 'parallel-chat', phase };
 }
 
-export function createChannelBusyState(action: 'resume'): WorkspaceBusyState;
+export function createChannelBusyState(action: 'resume' | 'reset'): WorkspaceBusyState;
 export function createChannelBusyState(
   action: 'rename' | 'delete',
   channelId: string,
 ): WorkspaceBusyState;
 export function createChannelBusyState(
-  action: 'resume' | 'rename' | 'delete',
+  action: 'resume' | 'reset' | 'rename' | 'delete',
   channelId?: string,
 ): WorkspaceBusyState {
-  if (action === 'resume') {
-    return { kind: 'channel', action: 'resume' };
+  if (action === 'resume' || action === 'reset') {
+    return { kind: 'channel', action };
   }
 
   if (!channelId) {
@@ -214,14 +214,14 @@ export function isParallelChatBusy(
 
 export function isChannelBusy(
   busy: WorkspaceBusyState | null | undefined,
-  action: 'resume' | 'rename' | 'delete',
+  action: 'resume' | 'reset' | 'rename' | 'delete',
   channelId?: string,
 ): boolean {
   if (busy?.kind !== 'channel' || busy.action !== action) {
     return false;
   }
 
-  if (action === 'resume') {
+  if (action === 'resume' || action === 'reset') {
     return true;
   }
 
@@ -352,9 +352,9 @@ export function describeBusyState(busy: WorkspaceBusyState | null | undefined): 
     case 'parallel-chat':
       return `parallel-chat:${busy.phase}`;
     case 'channel':
-      return busy.action === 'resume'
-        ? 'channel:resume'
-        : `channel:${busy.action}:${busy.channelId}`;
+      return busy.action === 'resume' || busy.action === 'reset'
+        ? `channel:${busy.action}`
+        : `channel:${busy.action}:${'channelId' in busy ? busy.channelId : ''}`;
     case 'channel-participant':
       return `channel-participant:${busy.action}:${busy.participantId}`;
     case 'concurrent-group':

@@ -17,6 +17,7 @@ import {
   deleteChannel,
   exportChannel,
   removeCatFromChannel,
+  resetSoloChannelContinuity,
   toChannelSummary,
   unarchiveCat,
   updateGlobalOrchestrator,
@@ -100,6 +101,42 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   assert.equal(createdChannel.catAssignments.length, 2);
   assert.equal(createdChannel.catAssignments[0].execution.target.provider, 'claude');
   assert.equal(createdChannel.messages.at(-1).mentions[0], 'Agent-1');
+});
+
+test('FileChatStore round-trips explicit solo continuity reset boundaries', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileChatStore(statePath);
+  const now = new Date('2026-04-17T00:00:00.000Z');
+
+  let state = await store.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Persist explicit continuity resets.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  state = resetSoloChannelContinuity(
+    state,
+    channelId,
+    new Date('2026-04-17T00:00:30.000Z'),
+  );
+
+  await store.write(state);
+
+  const reloadedState = await store.read();
+  const reloadedChannel = reloadedState.channels.find((channel) => channel.id === channelId);
+
+  assert.equal(reloadedChannel?.continuityResetAt, '2026-04-17T00:00:30.000Z');
+  assert.equal(reloadedChannel?.orchestratorLease.sessionId, null);
+  assert.equal(reloadedChannel?.messages.at(-1)?.metadata?.event, 'continuity_reset');
 });
 
 test('assigning the first cat upgrades a solo chat into cat-led mode and removing the last cat returns it to solo', async () => {

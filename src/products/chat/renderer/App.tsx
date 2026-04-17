@@ -69,6 +69,7 @@ import {
 } from '../../shared/renderer/hooks/useProductChannelDocumentTitle.js';
 import {
   useWorkspaceDirectLaneModelSave,
+  useWorkspaceResetChannelContinuity,
   useWorkspaceResumeChannel,
 } from '../../shared/renderer/hooks/useWorkspaceAppShellChannelActions.js';
 import {
@@ -91,6 +92,7 @@ import {
 import {
   activateChatChannel,
   fetchAppShell,
+  resetChannelContinuity,
   updateCatProfile,
   updateChannelParticipantApi,
   updateChannelPendingExecutionTarget,
@@ -758,6 +760,12 @@ export default function App() {
     setBusy,
     setFeedback,
   });
+  const onStartFreshChannel = useWorkspaceResetChannelContinuity<AppShellPayload>({
+    resetChannelContinuity,
+    publishReadyPayload,
+    setBusy,
+    setFeedback,
+  });
 
   const updatePayload = usePublishReadyPayload<AppShellPayload>(setState);
   const setPayloadImmediate = useCallback((payload: AppShellPayload): void => {
@@ -902,6 +910,10 @@ export default function App() {
                   onResumeChannel: visibleChatChannelId
                     ? () => onResumeChannel(visibleChatChannelId)
                     : undefined,
+                  onStartFresh:
+                    visibleChatChannelId && selectedChannel?.composerMode === 'solo'
+                      ? () => onStartFreshChannel(visibleChatChannelId)
+                      : undefined,
                   onOperatorAction,
                   autoResize,
                   selectedModel:

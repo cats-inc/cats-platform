@@ -13,6 +13,7 @@ import {
   createParallelChatGroup,
   removeCatFromChannel,
   requireChannel,
+  resetSoloChannelContinuity,
   setChannelCatLease,
   setChannelOrchestratorLease,
 } from '../build/server/products/chat/state/model/index.js';
@@ -1516,6 +1517,66 @@ test('solo composer mode full-transplants earlier user-only context on replaceme
     runtimeClient.sentMessages[0]?.input?.instructions ?? '',
     /\[user:User\] Earlier user turn 10/u,
   );
+});
+
+test('explicit solo start-fresh resets continuity before the next replacement session', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createChannel(
+    state,
+    {
+      title: 'Solo Thread',
+      topic: 'Explicit start-fresh must cut continuity instead of silently retransplanting.',
+      skipBossCatGreeting: true,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First turn',
+      pendingProvider: 'claude',
+      pendingModel: 'claude-default',
+    },
+    runtimeClient,
+    now,
+  );
+  const resetState = resetSoloChannelContinuity(
+    firstDispatch.state,
+    channelId,
+    new Date('2026-03-23T00:00:30.000Z'),
+  );
+  const restartedDispatch = await routeChannelMessage(
+    resetState,
+    channelId,
+    {
+      body: 'Fresh branch turn',
+      pendingProvider: 'gemini',
+      pendingModel: 'gemini-default',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+  const channel = buildChannelView(restartedDispatch.state, channelId);
+  const resetMessage = channel.messages.find((message) => message.metadata?.event === 'continuity_reset');
+
+  assert.deepEqual(runtimeClient.closedSessions, []);
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.equal(runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode, 'fresh_start');
+  assert.equal(runtimeClient.sentMessages[1]?.input?.instructions, undefined);
+  assert.doesNotMatch(runtimeClient.sentMessages[1]?.input?.instructions ?? '', /First turn/u);
+  assert.ok(resetMessage);
+  assert.equal(channel.continuityResetAt, '2026-03-23T00:00:30.000Z');
 });
 
 test('solo composer mode restarts orchestrator sessions when the pending instance changes', async () => {

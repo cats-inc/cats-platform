@@ -304,6 +304,7 @@ export interface ChatChannelState {
   pendingModel: string | null;
   pendingInstance: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
+  continuityResetAt?: string | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
@@ -636,6 +637,7 @@ export interface UpdateChannelInput {
   pendingModel?: string | null;
   pendingInstance?: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
+  resetContinuity?: boolean;
 }
 
 export interface UpdateChannelParticipantInput {

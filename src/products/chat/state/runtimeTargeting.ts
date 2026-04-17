@@ -529,6 +529,18 @@ function messagesBeforeSource(
   return messages.slice(0, sourceIndex);
 }
 
+function applySoloChatContinuityBoundary(
+  channel: Pick<ChatChannelView, 'continuityResetAt'>,
+  messages: ReadonlyArray<ChatMessage>,
+): ChatMessage[] {
+  const resetAt = channel.continuityResetAt?.trim() || null;
+  if (!resetAt) {
+    return [...messages];
+  }
+
+  return messages.filter((message) => message.createdAt.localeCompare(resetAt) > 0);
+}
+
 function resolveSourceBoundaryIndex(
   messages: ReadonlyArray<ChatMessage>,
   sourceMessage: Pick<ChatMessage, 'id' | 'createdAt'>,
@@ -643,8 +655,12 @@ export function buildPromptForTarget(
     channelId,
     transcriptMessages: channel.messages,
   });
+  const continuityMessages =
+    request.target.participantKind === 'orchestrator' && isSoloChatChannel(channel)
+      ? applySoloChatContinuityBoundary(channel, promptMessages)
+      : promptMessages;
   const recentMessages = sliceRecentContextForTarget(
-    promptMessages,
+    continuityMessages,
     request.target,
     promptSourceMessage,
   );
@@ -657,11 +673,11 @@ export function buildPromptForTarget(
 
   if (request.target.participantKind === 'orchestrator') {
     if (isSoloChatChannel(channel)) {
-      const instructions = resolveSoloChatInstructions(promptMessages, request);
+      const instructions = resolveSoloChatInstructions(continuityMessages, request);
       return {
         message: request.sourceMessage.body,
         instructions,
-        continuityMode: resolveSoloChatContinuityMode(promptMessages, request, instructions),
+        continuityMode: resolveSoloChatContinuityMode(continuityMessages, request, instructions),
       };
     }
     return {

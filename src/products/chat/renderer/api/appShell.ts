@@ -140,6 +140,27 @@ export async function updateChannelPendingExecutionTarget(
   );
 }
 
+export async function resetChannelContinuity(
+  channelId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(`/api/channels/${encodeURIComponent(channelId)}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ resetContinuity: true }),
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats channel continuity reset returned ${response.status}`,
+    signal,
+  );
+}
+
 export async function updateChatOrchestrator(
   input: UpdateGlobalOrchestratorInput,
   signal?: AbortSignal,

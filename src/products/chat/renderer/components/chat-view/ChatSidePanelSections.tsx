@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 
 import type { SidePanelSection } from '../../../../../design/components/SidePanel.js';
 import type { ProviderTargetSelection } from '../../../../../shared/providerSelection.js';
+import { isChannelBusy } from '../../../../../shared/workspaceBusy.js';
 import {
   getProviderDisplayName,
   getProviderModels,
@@ -63,6 +64,7 @@ export interface BuildChatSidePanelSectionsOptions {
     outcomeId?: string | null;
   }) => void;
   onModelChange?: (value: ModelSelectorValue) => void;
+  onStartFresh?: () => void;
   onDirectLaneModelChange?: (catId: string, value: ModelSelectorValue) => void;
   buildParticipantAvatarStyle: (
     participant: ResolvedChannelParticipant,
@@ -101,10 +103,12 @@ export function buildChatSidePanelSections({
   onApprovalDecision,
   onOperatorAction,
   onModelChange,
+  onStartFresh,
   onDirectLaneModelChange,
   buildParticipantAvatarStyle,
 }: BuildChatSidePanelSectionsOptions): SidePanelSection[] {
   const sections: SidePanelSection[] = [];
+  const startFreshBusy = isChannelBusy(busy, 'reset');
 
   if (showAddCatButton || assignedCatRecords.length > 0 || assignedAdhocParticipants.length > 0) {
     sections.push({
@@ -171,20 +175,37 @@ export function buildChatSidePanelSections({
     }
     if (isSoloComposer && selectedModel && onModelChange) {
       return (
-        <ProviderModelFields
-          provider={selectedModel.provider}
-          instance={selectedModel.instance ?? ''}
-          model={selectedModel.model ?? ''}
-          modelSelection={selectedModel.modelSelection}
-          onTargetChange={(target: ProviderTargetSelection) => {
-            onModelChange({
-              provider: target.provider,
-              model: target.model || null,
-              instance: target.instance || null,
-              modelSelection: target.modelSelection ?? null,
-            });
-          }}
-        />
+        <>
+          <ProviderModelFields
+            provider={selectedModel.provider}
+            instance={selectedModel.instance ?? ''}
+            model={selectedModel.model ?? ''}
+            modelSelection={selectedModel.modelSelection}
+            onTargetChange={(target: ProviderTargetSelection) => {
+              onModelChange({
+                provider: target.provider,
+                model: target.model || null,
+                instance: target.instance || null,
+                modelSelection: target.modelSelection ?? null,
+              });
+            }}
+          />
+          {onStartFresh ? (
+            <div className="sidePanelSectionStack">
+              <button
+                type="button"
+                className="operatorActionButton"
+                onClick={() => void onStartFresh()}
+                disabled={startFreshBusy}
+              >
+                {startFreshBusy ? 'Starting fresh...' : 'Start fresh'}
+              </button>
+              <p className="operatorEmptyState">
+                Keep this chat open, but reset solo continuity so the next turn starts a new branch.
+              </p>
+            </div>
+          ) : null}
+        </>
       );
     }
     if (!isSoloComposer && defaultRecipientParticipant) {

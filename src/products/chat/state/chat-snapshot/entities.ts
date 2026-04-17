@@ -331,6 +331,7 @@ export function normalizeChannel(
     pendingModel: readNullableString(channelRecord.pendingModel),
     pendingInstance: readNullableString(channelRecord.pendingInstance),
     pendingModelSelection: parseProviderModelSelection(channelRecord.pendingModelSelection),
+    continuityResetAt: readNullableString(channelRecord.continuityResetAt),
     createdAt: readString(channelRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(channelRecord.updatedAt, new Date().toISOString()),
     lastMessageAt: readNullableString(channelRecord.lastMessageAt),

@@ -8,6 +8,7 @@ import {
 import {
   buildChannelView,
   requireChannel,
+  resetSoloChannelContinuity,
   resolveChannelCanonicalIdentity,
   setChannelPendingExecutionTarget,
   toChannelSummary,
@@ -379,6 +380,24 @@ async function handleRestPatchChannel(
           instance: body.pendingInstance,
           modelSelection: body.pendingModelSelection,
         }, nowFrom(context.dependencies));
+        persisted = await context.dependencies.chatStore.write(nextState);
+      }
+
+      if (body.resetContinuity === true) {
+        const existingSessionId =
+          requireChannel(persisted, channelId).orchestratorLease.sessionId?.trim() || null;
+        if (existingSessionId) {
+          try {
+            await context.dependencies.runtimeClient.closeSession(existingSessionId);
+          } catch {
+            // Best-effort close only; the explicit continuity reset still proceeds.
+          }
+        }
+        const nextState = resetSoloChannelContinuity(
+          persisted,
+          channelId,
+          nowFrom(context.dependencies),
+        );
         persisted = await context.dependencies.chatStore.write(nextState);
       }
 
