@@ -506,6 +506,26 @@ export function SettingsCatsCanvas({
                       </button>
                     ) : null}
                   </div>
+                  <label className="fieldLabel fieldLabelInline">
+                    <input
+                      type="checkbox"
+                      checked={catForm.makeBoss}
+                      onChange={async (event) => {
+                        const next = event.target.checked;
+                        if (next && payload.chat.bossCatId) {
+                          const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                          const confirmed = await confirm({
+                            title: 'Change Boss Cat',
+                            message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set this new cat as the Boss instead?`,
+                            confirmLabel: 'Confirm',
+                          });
+                          if (!confirmed) return;
+                        }
+                        setCatForm({ ...catForm, makeBoss: next });
+                      }}
+                    />
+                    <span>Set as Boss Cat</span>
+                  </label>
                 </div>
                 <label className="fieldLabel">
                   <span>Name</span>
@@ -517,14 +537,21 @@ export function SettingsCatsCanvas({
                     onChange={(event) => setCatForm({ ...catForm, name: event.target.value })}
                   />
                 </label>
-                <label className="fieldLabel fieldLabelInline">
-                  <input
-                    type="checkbox"
-                    checked={catForm.makeBoss}
-                    onChange={(event) => setCatForm({ ...catForm, makeBoss: event.target.checked })}
-                  />
-                  <span>Set as Boss Cat</span>
-                </label>
+                <div className="fieldLabel">
+                  <span>Skill Profile</span>
+                  <div className="skillPills">
+                    {SKILL_PROFILES.map((profile) => (
+                      <button
+                        key={profile.value}
+                        type="button"
+                        className={(catForm.skillProfile || 'chat-default') === profile.value ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+                        onClick={() => setCatForm({ ...catForm, skillProfile: profile.value })}
+                      >
+                        {profile.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </section>
 
               <section className="catsSubCard">

@@ -35,6 +35,7 @@ export interface CatFormState {
   modelSelection: ProviderModelSelection | null;
   makeBoss: boolean;
   products: string[];
+  skillProfile: string;
 }
 
 export function emptyCatForm(): CatFormState {
@@ -46,6 +47,7 @@ export function emptyCatForm(): CatFormState {
     modelSelection: null,
     makeBoss: false,
     products: defaultCatProducts(),
+    skillProfile: 'chat-default',
   };
 }
 

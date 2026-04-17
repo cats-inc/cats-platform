@@ -62,6 +62,7 @@ export function createSettingsCatsRegistryActions(
         modelSelection: context.catForm.modelSelection,
         makeBoss: context.catForm.makeBoss || undefined,
         products: context.catForm.products.length > 0 ? context.catForm.products : undefined,
+        skillProfile: context.catForm.skillProfile || undefined,
       });
       context.onPayloadUpdate(result);
       context.setCatForm(context.emptyCatForm());

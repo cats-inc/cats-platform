@@ -63,6 +63,7 @@ export interface CatFormState {
   modelSelection: ProviderModelSelection | null;
   makeBoss: boolean;
   products: string[];
+  skillProfile: string;
 }
 
 export interface DraftTemporaryParticipant extends CreateTemporaryParticipantInput {
