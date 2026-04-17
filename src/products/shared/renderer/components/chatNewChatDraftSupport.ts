@@ -37,6 +37,45 @@ export interface DraftComposerStackParticipant {
   participantId: string | null;
 }
 
+function personalizeDeterministicAssistPrompt(
+  prompt: string,
+  recipientName: string | null,
+): string {
+  const normalizedRecipientName = recipientName?.trim();
+  if (!normalizedRecipientName) {
+    return prompt;
+  }
+  return prompt.replaceAll('this Cat', normalizedRecipientName);
+}
+
+function resolvePayloadDraftAssist(input: {
+  payload: AppShellPayload;
+  mode: NonNullable<ReturnType<typeof resolveDraftStarterSuggestionContext>['mode']>;
+  defaultRecipientName: string | null;
+}) {
+  const assist = input.payload.chat.newChatAssist?.[input.mode] ?? null;
+  if (!assist) {
+    return {
+      greeting: null,
+      starterSuggestions: undefined as DraftStarterSuggestion[] | undefined,
+    };
+  }
+
+  const starterSuggestions = assist.bundle.content.entryChips.map((chip) => ({
+    id: chip.id,
+    prompt:
+      assist.renderSource === 'deterministic'
+      && (input.mode === 'direct' || input.mode === 'cat_led')
+        ? personalizeDeterministicAssistPrompt(chip.prompt, input.defaultRecipientName)
+        : chip.prompt,
+  }));
+
+  return {
+    greeting: assist.bundle.content.greeting,
+    starterSuggestions,
+  };
+}
+
 export function resolveChatNewChatDraftViewState(input: {
   payload: AppShellPayload;
   draftDefaultRecipientCatId: string | null;
@@ -93,16 +132,25 @@ export function resolveChatNewChatDraftViewState(input: {
     participantCount: draftParticipantCount,
     parallelTargetCount: input.parallelTargets?.length ?? 0,
   });
+  const payloadDraftAssist = resolvePayloadDraftAssist({
+    payload: input.payload,
+    mode: draftSuggestionContext.mode,
+    defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
+  });
   const visibleDraftCatIds = draftParticipants.participantCatIds;
   const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
     mode: draftSuggestionContext.mode,
     defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
-    suggestions: input.starterSuggestions,
+    suggestions: input.starterSuggestions ?? payloadDraftAssist.starterSuggestions,
   });
   const resolvedGreeting = (() => {
     const explicitGreeting = input.greeting?.trim();
     if (explicitGreeting) {
       return explicitGreeting;
+    }
+    const payloadGreeting = payloadDraftAssist.greeting?.trim();
+    if (payloadGreeting) {
+      return payloadGreeting;
     }
     return pickDraftGreeting({ pool: input.greetingPool });
   })();

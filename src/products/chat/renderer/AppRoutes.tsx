@@ -140,7 +140,6 @@ export function AppRoutes({
               <NewChatDraft
                 {...draftSurfaceProps}
                 payload={payload}
-                starterSuggestions={[]}
                 onOpenAddCat={noop}
                 onDraftDefaultRecipientChange={noop}
                 allowAddCat={false}
@@ -163,7 +162,6 @@ export function AppRoutes({
             <NewChatDraft
               {...draftSurfaceProps}
               payload={payload}
-              starterSuggestions={[]}
               onOpenAddCat={onOpenDraftAddCat}
               onDraftDefaultRecipientChange={onChangeDraftDefaultRecipient}
               folderBrowsePath={folderBrowserSurfaceProps.folderBrowsePath}

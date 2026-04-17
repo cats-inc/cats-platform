@@ -70,12 +70,13 @@ export function PlatformLobby({
   envelope: PlatformHostEnvelope;
 }) {
   const navigate = useNavigate();
-  const [greeting] = useState(pickLobbyGreeting);
+  const [fallbackGreeting] = useState(pickLobbyGreeting);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const entries = buildPlatformLobbyEntries({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
   });
+  const greeting = envelope.lobby.guideCatAssist?.bundle.content.greeting?.trim() || fallbackGreeting;
   const runtimeStatus = resolveRuntimePresentationStatus(envelope.runtime);
   const dotClass = resolveRuntimeLobbyDotClassName(runtimeStatus);
   const runtimeTooltip = resolveRuntimeTooltip(runtimeStatus);

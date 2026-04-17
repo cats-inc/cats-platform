@@ -146,3 +146,51 @@ test('PlatformLobby reuses remembered runtime-backed labels for lobby cat toolti
   assert.match(markup, /data-tooltip="Guide · Claude-CLI · Opus 4\.7 with 1M context · xHigh \(default\)"/u);
   clearRememberedExecutionLabels();
 });
+
+test('PlatformLobby prefers guide cat assist greeting from the platform envelope when present', () => {
+  const markup = renderToStaticMarkup(
+    <StaticRouter location="/lobby">
+      <PlatformLobby envelope={createEnvelope({
+        lobby: {
+          animationMode: 'reduced',
+          cats: [],
+          guideCatAssist: {
+            scopeKey: 'lobby:default:default',
+            renderSource: 'cache',
+            cacheHit: true,
+            missing: false,
+            stale: false,
+            refreshEligible: false,
+            surfaceDisabled: false,
+            lastFailure: null,
+            bundle: {
+              bundleId: 'lobby:default:default',
+              scope: {
+                surfaceId: 'lobby',
+                surfaceMode: 'default',
+                audienceState: 'default',
+              },
+              content: {
+                greeting: 'Cached lobby assist greeting.',
+                entryChips: [],
+              },
+              provenance: {
+                originMode: 'runtime',
+                refreshContextHash: 'gca:v1:test',
+                missionId: null,
+                runId: null,
+              },
+              freshness: {
+                generatedAt: '2026-04-17T12:00:00.000Z',
+                expiresAt: null,
+                lastRefreshStatus: 'ok',
+              },
+            },
+          },
+        },
+      })} />
+    </StaticRouter>,
+  );
+
+  assert.match(markup, /Cached lobby assist greeting\./u);
+});

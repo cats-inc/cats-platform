@@ -475,6 +475,120 @@ test('draft hides starter suggestions when the seam supplies an explicit empty o
   assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
+test('draft prefers payload-backed assist greeting and starter suggestions when the seam provides them', () => {
+  const payload = createPayload();
+  payload.chat.newChatAssist = {
+    solo: {
+      scopeKey: 'chat:new:solo:default',
+      renderSource: 'cache',
+      cacheHit: true,
+      missing: false,
+      stale: false,
+      refreshEligible: false,
+      surfaceDisabled: false,
+      lastFailure: null,
+      bundle: {
+        bundleId: 'chat:new:solo:default',
+        scope: {
+          surfaceId: 'chat:new',
+          surfaceMode: 'solo',
+          audienceState: 'default',
+        },
+        content: {
+          greeting: 'Payload says hello.',
+          entryChips: [
+            {
+              id: 'payload-plan',
+              prompt: 'Payload asks you to line up the first deliverable before you send anything.',
+            },
+          ],
+        },
+        provenance: {
+          originMode: 'runtime',
+          refreshContextHash: 'gca:v1:test-solo',
+          missionId: null,
+          runId: null,
+        },
+        freshness: {
+          generatedAt: '2026-04-17T12:00:00.000Z',
+          expiresAt: null,
+          lastRefreshStatus: 'ok',
+        },
+      },
+    },
+  } as typeof payload.chat.newChatAssist;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload,
+        greeting: null,
+      })}
+    />,
+  );
+
+  assert.match(markup, /Payload says hello\./u);
+  assert.match(markup, /Payload asks you to line up the first deliverable/u);
+  assert.doesNotMatch(markup, /Plan today's priorities and turn them into next actions\./u);
+});
+
+test('draft can personalize deterministic payload-backed direct-lane starter prompts with the selected cat name', () => {
+  const payload = createPayload();
+  payload.chat.newChatAssist = {
+    direct: {
+      scopeKey: 'chat:new:direct:default',
+      renderSource: 'deterministic',
+      cacheHit: false,
+      missing: true,
+      stale: false,
+      refreshEligible: false,
+      surfaceDisabled: false,
+      lastFailure: null,
+      bundle: {
+        bundleId: 'chat:new:direct:default',
+        scope: {
+          surfaceId: 'chat:new',
+          surfaceMode: 'direct',
+          audienceState: 'default',
+        },
+        content: {
+          greeting: 'Private lane for this Cat.',
+          entryChips: [
+            {
+              id: 'direct-update',
+              prompt: 'Ask this Cat for a focused update or recommendation on this task.',
+            },
+          ],
+        },
+        provenance: {
+          originMode: 'deterministic',
+          refreshContextHash: 'gca:v1:test-direct',
+          missionId: null,
+          runId: null,
+        },
+        freshness: {
+          generatedAt: '2026-04-17T12:00:00.000Z',
+          expiresAt: null,
+          lastRefreshStatus: 'never',
+        },
+      },
+    },
+  } as typeof payload.chat.newChatAssist;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload,
+        greeting: null,
+        draftDefaultRecipientCatId: 'cat-lead',
+        allowAddCat: false,
+      })}
+    />,
+  );
+
+  assert.match(markup, /Ask Milo for a focused update or recommendation on this task\./u);
+});
+
 test('fresh draft greetings share one pool and still honor an explicit override pool', () => {
   assert.equal(
     pickDraftGreeting({
