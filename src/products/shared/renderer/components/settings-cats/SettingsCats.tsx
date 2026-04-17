@@ -156,23 +156,45 @@ export function SettingsCatsCanvas({
     () => payload.chat.cats.filter((cat) => cat.status === 'active'),
     [payload.chat.cats],
   );
+  const archivedCats = useMemo(
+    () => payload.chat.cats.filter((cat) => cat.status === 'archived'),
+    [payload.chat.cats],
+  );
   const activeCatCount = activeCats.length;
   const sortedActiveCats = useMemo(
     () => sortChatCatsForDisplay(activeCats, { bossCatIds: payload.chat.bossCatId }),
     [activeCats, payload.chat.bossCatId],
   );
+  const sortedArchivedCats = useMemo(
+    () => sortChatCatsForDisplay(archivedCats, { bossCatIds: null }),
+    [archivedCats],
+  );
   const atCatLimit = activeCatCount >= payload.chat.capabilities.maxCats;
+  const [showArchived, setShowArchived] = useState(false);
 
-  const [selectedCatId, setSelectedCatId] = useState<string | null>(() => sortedActiveCats[0]?.id ?? null);
-  const effectiveMode: 'create' | 'view' = isCreateRoute || activeCatCount === 0 ? 'create' : 'view';
+  const [selectedCatId, setSelectedCatId] = useState<string | null>(
+    () => sortedActiveCats[0]?.id ?? sortedArchivedCats[0]?.id ?? null,
+  );
+  const hasAnyCat = activeCatCount > 0 || sortedArchivedCats.length > 0;
+  const effectiveMode: 'create' | 'view' = isCreateRoute || !hasAnyCat ? 'create' : 'view';
 
   useEffect(() => {
-    if (effectiveMode === 'view' && sortedActiveCats.length > 0) {
-      if (!selectedCatId || !sortedActiveCats.some((cat) => cat.id === selectedCatId)) {
-        setSelectedCatId(sortedActiveCats[0].id);
-      }
+    if (activeCatCount === 0 && sortedArchivedCats.length > 0 && !showArchived) {
+      setShowArchived(true);
     }
-  }, [effectiveMode, selectedCatId, sortedActiveCats]);
+  }, [activeCatCount, showArchived, sortedArchivedCats.length]);
+
+  useEffect(() => {
+    if (effectiveMode !== 'view') return;
+    const current = selectedCatId
+      ? payload.chat.cats.find((cat) => cat.id === selectedCatId) ?? null
+      : null;
+    const hiddenBecauseArchived = current?.status === 'archived' && !showArchived;
+    if (!current || hiddenBecauseArchived) {
+      const fallback = sortedActiveCats[0] ?? sortedArchivedCats[0];
+      if (fallback) setSelectedCatId(fallback.id);
+    }
+  }, [effectiveMode, payload.chat.cats, selectedCatId, showArchived, sortedActiveCats, sortedArchivedCats]);
 
   useEffect(() => {
     if (effectiveMode === 'view' && selectedCatId) {
@@ -225,9 +247,12 @@ export function SettingsCatsCanvas({
   };
 
   const selectedCat = useMemo(
-    () => (selectedCatId ? sortedActiveCats.find((cat) => cat.id === selectedCatId) ?? null : null),
-    [selectedCatId, sortedActiveCats],
+    () => (selectedCatId ? payload.chat.cats.find((cat) => cat.id === selectedCatId) ?? null : null),
+    [payload.chat.cats, selectedCatId],
   );
+  useEffect(() => {
+    if (selectedCat?.status === 'archived') setShowArchived(true);
+  }, [selectedCat]);
 
   const createNameInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -239,6 +264,16 @@ export function SettingsCatsCanvas({
   }, [effectiveMode, isCreateRoute]);
 
   const [avatarCropOpen, setAvatarCropOpen] = useState(false);
+  const [detailMoreMenuOpen, setDetailMoreMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!detailMoreMenuOpen) return;
+    const onDocClick = () => setDetailMoreMenuOpen(false);
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [detailMoreMenuOpen]);
+  useEffect(() => {
+    setDetailMoreMenuOpen(false);
+  }, [selectedCatId, effectiveMode]);
   const [pendingCreateAvatar, setPendingCreateAvatar] = useState<string | null>(null);
   useEffect(() => {
     if (!isCreateRoute) setPendingCreateAvatar(null);
@@ -306,7 +341,8 @@ export function SettingsCatsCanvas({
       || (providerDraft.model ?? '') !== savedModel
     )
   );
-  const saveDisabled = !detailDirty || nameDraft.trim().length === 0;
+  const isArchived = selectedCat?.status === 'archived';
+  const saveDisabled = !detailDirty || nameDraft.trim().length === 0 || isArchived;
   const [savingDetail, setSavingDetail] = useState(false);
 
   const handleSaveAll = async () => {
@@ -392,6 +428,45 @@ export function SettingsCatsCanvas({
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
+          {showArchived && sortedArchivedCats.length > 0 ? (
+            <span className="catsSelectorDivider" aria-hidden="true" />
+          ) : null}
+          {showArchived ? sortedArchivedCats.map((cat) => {
+            const isSelected = effectiveMode === 'view' && cat.id === selectedCatId;
+            const className = [
+              'catAvatar',
+              'catsSelectorAvatar',
+              'catsSelectorAvatarArchived',
+              isSelected ? 'catsSelectorAvatarActive' : '',
+            ].filter(Boolean).join(' ');
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                className={className}
+                style={cat.avatarUrl
+                  ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : cat.avatarColor ? { background: cat.avatarColor } : undefined}
+                onClick={() => handleSelectCat(cat.id)}
+                data-tooltip={`${cat.name} (archived)`}
+                aria-label={`${cat.name} (archived)`}
+              >
+                {cat.avatarUrl ? null : catInitials(cat.name)}
+              </button>
+            );
+          }) : null}
+          {archivedCats.length > 0 ? (
+            <label className="catsSelectorArchiveToggle">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(event) => setShowArchived(event.target.checked)}
+              />
+              <span>Show archived ({archivedCats.length})</span>
+            </label>
+          ) : null}
         </nav>
 
         <section className="contentCard catsDetailCard">
@@ -399,10 +474,13 @@ export function SettingsCatsCanvas({
             <h2>
               {effectiveMode === 'create' ? 'New cat' : selectedCat ? (
                 <>
+                  {selectedCat.name}
                   {selectedCat.id === payload.chat.bossCatId ? (
                     <span className="catsDetailBossTag">Boss</span>
                   ) : null}
-                  {selectedCat.name}
+                  {selectedCat.status === 'archived' ? (
+                    <span className="catsDetailArchivedTag">Archived</span>
+                  ) : null}
                 </>
               ) : null}
             </h2>
@@ -426,6 +504,65 @@ export function SettingsCatsCanvas({
                 >
                   {savingDetail ? 'Saving...' : detailDirty ? 'Save changes' : 'Saved'}
                 </button>
+                <div className="catsDetailMoreWrap" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="catsDetailMoreButton"
+                    onClick={() => setDetailMoreMenuOpen((v) => !v)}
+                    aria-label="More actions"
+                    aria-haspopup="menu"
+                    aria-expanded={detailMoreMenuOpen}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="5" cy="12" r="1.6" />
+                      <circle cx="12" cy="12" r="1.6" />
+                      <circle cx="19" cy="12" r="1.6" />
+                    </svg>
+                  </button>
+                  {detailMoreMenuOpen ? (
+                    <div className="catsDetailMoreMenu" role="menu">
+                      {selectedCat.status === 'active' ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={isCatBusy(busy, 'archive', selectedCat.id)}
+                          onClick={() => {
+                            setDetailMoreMenuOpen(false);
+                            void onArchiveCat(selectedCat.id, selectedCat.name);
+                          }}
+                        >
+                          Archive
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={isCatBusy(busy, 'unarchive', selectedCat.id)}
+                            onClick={() => {
+                              setDetailMoreMenuOpen(false);
+                              void onUnarchiveCat(selectedCat.id, selectedCat.name);
+                            }}
+                          >
+                            Recover
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="catsDetailMoreMenuDanger"
+                            disabled={isCatBusy(busy, 'delete', selectedCat.id)}
+                            onClick={() => {
+                              setDetailMoreMenuOpen(false);
+                              void onDeleteCat(selectedCat.id, selectedCat.name);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ) : null}
             {effectiveMode === 'create' ? (
@@ -575,7 +712,10 @@ export function SettingsCatsCanvas({
               </section>
             </div>
           ) : selectedCat ? (
-            <div className="catsDetailBody">
+            <fieldset
+              className={isArchived ? 'catsDetailBody catsDetailBodyReadOnly' : 'catsDetailBody'}
+              disabled={isArchived}
+            >
               <section className="catsSubCard catsIdentityCard">
                 <div className="catsIdentityRow">
                   <div className="catsAvatarDock">
@@ -585,19 +725,22 @@ export function SettingsCatsCanvas({
                       style={selectedCat.avatarUrl
                         ? { backgroundImage: `url(${selectedCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
                         : selectedCat.avatarColor ? { background: selectedCat.avatarColor } : undefined}
-                      onClick={() => setAvatarCropOpen(true)}
+                      onClick={() => { if (!isArchived) setAvatarCropOpen(true); }}
+                      disabled={isArchived}
                       aria-label={selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
-                      data-tooltip={selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
+                      data-tooltip={isArchived ? undefined : (selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar')}
                     >
                       {selectedCat.avatarUrl ? '' : catInitials(selectedCat.name)}
                     </button>
-                    <span className="catsAvatarCameraBadge" aria-hidden="true">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </svg>
-                    </span>
-                    {selectedCat.avatarUrl ? (
+                    {!isArchived ? (
+                      <span className="catsAvatarCameraBadge" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                      </span>
+                    ) : null}
+                    {selectedCat.avatarUrl && !isArchived ? (
                       <button
                         type="button"
                         className="catsAvatarRemoveBadge"
@@ -623,6 +766,7 @@ export function SettingsCatsCanvas({
                     value={nameDraft}
                     onChange={(event) => setNameDraft(event.target.value)}
                     placeholder={selectedCat.name}
+                    disabled={isArchived}
                   />
                 </label>
                 <div className="fieldLabel">
@@ -634,36 +778,13 @@ export function SettingsCatsCanvas({
                         type="button"
                         className={skillDraft === profile.value ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
                         onClick={() => setSkillDraft(profile.value)}
+                        disabled={isArchived}
                       >
                         {profile.label}
                       </button>
                     ))}
                   </div>
                 </div>
-                {selectedCat.id !== payload.chat.bossCatId ? (
-                  <SettingsCatsDetailPanelContent
-                    busy={busy}
-                    botBindings={botBindings}
-                    cat={selectedCat}
-                    isBossCat={false}
-                    memoryController={memoryController}
-                    registryController={{
-                      botForm,
-                      renameValue,
-                      setBotForm,
-                      setRenameValue,
-                      onCreateBinding,
-                      onDeleteBinding,
-                      onMakeBossCat,
-                      onRenameCat,
-                      onSkillChange,
-                      onUpdateProducts,
-                    }}
-                    telegramDiagnostics={telegramDiagnostics}
-                    confirm={confirm}
-                    sections={['makeBoss']}
-                  />
-                ) : null}
               </section>
 
               <section className="catsSubCard">
@@ -730,7 +851,7 @@ export function SettingsCatsCanvas({
                 />
               </section>
 
-            </div>
+            </fieldset>
           ) : null}
         </section>
 

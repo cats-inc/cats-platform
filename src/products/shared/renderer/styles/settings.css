@@ -55,6 +55,88 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.catsDetailBodyReadOnly {
+  opacity: 0.75;
+}
+
+.catsDetailBodyReadOnly .catAvatar.catsIdentityAvatar {
+  cursor: default;
+}
+
+.catsDetailMoreWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.catsDetailMoreButton {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.catsDetailMoreButton:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.catsDetailMoreMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow, 0 6px 20px rgba(0, 0, 0, 0.12));
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.catsDetailMoreMenu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.catsDetailMoreMenu button:hover:not(:disabled) {
+  background: var(--panel-hover);
+}
+
+.catsDetailMoreMenu button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.catsDetailMoreMenu .catsDetailMoreMenuDanger {
+  color: var(--danger, #d04040);
+}
+
+.catsDetailMoreMenu .catsDetailMoreMenuDanger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger, #d04040) 10%, transparent);
 }
 
 .catsSubCard {
@@ -212,13 +294,50 @@
   overflow-x: auto;
 }
 
+.catsSelectorDivider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 32px;
+  background: var(--border);
+}
+
+.catAvatar.catsSelectorAvatar.catsSelectorAvatarArchived {
+  opacity: 0.35;
+  filter: grayscale(0.3);
+}
+
+.catAvatar.catsSelectorAvatar.catsSelectorAvatarArchived:hover {
+  opacity: 0.6;
+}
+
+.catAvatar.catsSelectorAvatar.catsSelectorAvatarArchived.catsSelectorAvatarActive {
+  opacity: 0.9;
+  filter: grayscale(0.1);
+}
+
+.catsSelectorArchiveToggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.catsSelectorArchiveToggle input {
+  margin: 0;
+}
+
 .catAvatar.catsSelectorAvatar {
   width: 56px;
   height: 56px;
   font-size: 1rem;
   flex-shrink: 0;
   cursor: pointer;
-  opacity: 0.5;
+  opacity: 0.78;
   transition: opacity 0.15s ease, transform 0.15s ease;
   border: 0;
   outline: none;
@@ -227,7 +346,7 @@
 }
 
 .catAvatar.catsSelectorAvatar:hover {
-  opacity: 0.85;
+  opacity: 0.95;
 }
 
 .catAvatar.catsSelectorAvatar.catsSelectorAvatarActive {
@@ -303,6 +422,18 @@
   border-radius: 999px;
   background: color-mix(in srgb, #e8c84a 30%, transparent);
   color: #6a5600;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.catsDetailArchivedTag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--muted);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.08em;

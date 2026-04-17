@@ -63,7 +63,7 @@ export function useSettingsCatsRegistryActions(options: {
     const confirmed = confirmDialog
       ? await confirmDialog({
           title: 'Archive cat',
-          message: `Archive "${catName}"? Telegram bot bindings will be removed, but you can still recover the cat later from Settings.`,
+          message: `Archive "${catName}"? You can recover this cat later from Settings.`,
           confirmLabel: 'Archive',
         })
       : true;
@@ -88,7 +88,7 @@ export function useSettingsCatsRegistryActions(options: {
     const confirmed = confirmDialog
       ? await confirmDialog({
           title: 'Recover cat',
-          message: `Recover "${catName}" from archive? Avatar and cat settings will return, but Telegram bindings stay removed.`,
+          message: `Recover "${catName}" from archive?`,
           confirmLabel: 'Recover',
         })
       : true;
