@@ -47,7 +47,9 @@ export {
 export {
   type BrowseDirectoriesResult,
   type BrowseDirectoryEntry,
+  type InspectPathResult,
   browseDirectories,
+  inspectPath,
   openFolderInExplorer,
 } from './shell.js';
 

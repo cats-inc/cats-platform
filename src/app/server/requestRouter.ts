@@ -170,6 +170,64 @@ async function handleShellBrowse(
   }
 }
 
+async function handleShellInspectPath(
+  url: URL,
+  response: import('node:http').ServerResponse,
+): Promise<void> {
+  const requestedPath = url.searchParams.get('path')?.trim() ?? '';
+  if (!requestedPath) {
+    sendJson(response, 200, { path: '', isDirectory: false, isRepo: false, repoRoot: null });
+    return;
+  }
+  const resolvedPath = path.resolve(requestedPath);
+
+  try {
+    const targetStats = await stat(resolvedPath);
+    if (!targetStats.isDirectory()) {
+      sendJson(response, 200, {
+        path: resolvedPath,
+        isDirectory: false,
+        isRepo: false,
+        repoRoot: null,
+      });
+      return;
+    }
+  } catch {
+    sendJson(response, 200, {
+      path: resolvedPath,
+      isDirectory: false,
+      isRepo: false,
+      repoRoot: null,
+    });
+    return;
+  }
+
+  const repoRoot = await findGitRepoRoot(resolvedPath);
+  sendJson(response, 200, {
+    path: resolvedPath,
+    isDirectory: true,
+    isRepo: repoRoot !== null,
+    repoRoot,
+  });
+}
+
+async function findGitRepoRoot(startPath: string): Promise<string | null> {
+  let current = startPath;
+  while (true) {
+    try {
+      await access(path.join(current, '.git'));
+      return current;
+    } catch {
+      // fall through
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
+}
+
 async function handleShellOpenFolder(
   request: IncomingMessage,
   response: import('node:http').ServerResponse,
@@ -285,6 +343,15 @@ export async function routeRequest(
       return;
     }
     await handleShellBrowse(url, response);
+    return;
+  }
+
+  if (url.pathname === '/api/shell/inspect-path') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return;
+    }
+    await handleShellInspectPath(url, response);
     return;
   }
 

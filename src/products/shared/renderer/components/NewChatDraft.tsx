@@ -167,6 +167,7 @@ export interface WorkspaceNewChatDraftProps {
   onFolderBrowsePathChange?: (path: string) => void;
   onFolderBrowse?: (path: string) => void;
   onFolderBrowseSelect?: () => void;
+  composerFooterAccessory?: ReactNode;
   ComposerCatStackComponent: ComponentType<ComposerCatStackProps>;
   ProviderModelFieldsComponent: ComponentType<ProviderModelFieldsProps>;
   CatAvatarRowComponent: ComponentType<CatAvatarRowProps>;
@@ -220,6 +221,7 @@ export function WorkspaceNewChatDraft({
   onFolderBrowsePathChange,
   onFolderBrowse,
   onFolderBrowseSelect,
+  composerFooterAccessory = null,
   ComposerCatStackComponent,
   ProviderModelFieldsComponent,
   CatAvatarRowComponent,
@@ -479,6 +481,9 @@ export function WorkspaceNewChatDraft({
             }}
           />
         </form>
+        {composerFooterAccessory ? (
+          <div className="composerFooterRow">{composerFooterAccessory}</div>
+        ) : null}
       </section>
       {sidePanelOpen ? (
         <SidePanel

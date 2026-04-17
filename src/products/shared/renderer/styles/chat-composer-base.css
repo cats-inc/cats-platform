@@ -709,6 +709,38 @@
   color: var(--text);
 }
 
+.composerFooterRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin: 12px auto 0;
+  padding: 0 4px;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  min-width: 0;
+}
+
+.composerWorkspaceChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+}
+
+.composerWorkspaceChip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .composerChipClose {
   display: grid;
   width: 16px;

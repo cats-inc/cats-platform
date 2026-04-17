@@ -30,6 +30,30 @@ export async function browseDirectories(
   );
 }
 
+export interface InspectPathResult {
+  path: string;
+  isDirectory: boolean;
+  isRepo: boolean;
+  repoRoot: string | null;
+}
+
+export async function inspectPath(
+  targetPath: string,
+  signal?: AbortSignal,
+): Promise<InspectPathResult> {
+  const response = await fetch(`/api/shell/inspect-path?path=${encodeURIComponent(targetPath)}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+  return expectJson<InspectPathResult>(
+    response,
+    `inspect path returned ${response.status}`,
+  );
+}
+
 export async function openFolderInExplorer(folderPath: string): Promise<void> {
   await fetch('/api/shell/open-folder', {
     method: 'POST',
