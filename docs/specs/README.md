@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-069](./SPEC-069-chat-continuity-semantics-and-context-transplant.md) | Chat Continuity Semantics and Context Transplant | Draft | [PLAN-053](../plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md), [ADR-068](../decisions/068-own-chat-continuity-semantics-above-runtime-session-boundaries.md) |
 | [SPEC-067](./SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md) | Guide Cat Assist Content Cache and Offline Refresh | Draft | [PLAN-059](../plans/PLAN-059-guide-cat-assist-content-cache-and-offline-refresh.md), [ADR-066](../decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md) |
 | [SPEC-066](./SPEC-066-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md) | Concurrent ChatView Presentation Modes and Policy-Aware Cluster Projection | Draft | [PLAN-058](../plans/PLAN-058-concurrent-chatview-presentation-modes-and-policy-aware-cluster-projection.md) |
 | [SPEC-065](./SPEC-065-core-contract-freeze-and-first-migration-wave.md) | Core Contract Freeze and First Migration Wave | Draft | [PLAN-057](../plans/PLAN-057-core-contract-freeze-and-first-migration-wave.md) |

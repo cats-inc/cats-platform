@@ -49,12 +49,14 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current platform-foundation context plus the same-environment CLI collaboration contract |
 | [terminology.md](./terminology.md) | Complete | Product, engine, and protocol terms including `Container`, `Turn`, `Lane`, `Segment`, `Session`, `Mission`, `Run`, `Schedule`, `Transport Binding`, conversational/operational/hybrid agent projections, `MY CATS` lenses, Guide/Boss capability language, materialization, scheduler policy, and runtime capability profiles |
 | [a2a/](./a2a/) | Complete | Pilot-owned A2A v1.0 example set for future platform-host/orchestrator adapter work; standards-aligned docs, not a claim of a live A2A endpoint today |
-| [specs/](./specs/) | Complete | Feature specifications covering the unified conversation-turn-lane engine, interaction/materialization split, heterogeneous runtime delivery normalization, Guide Cat optional assist capability, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
+| [specs/](./specs/) | Complete | Feature specifications covering the unified conversation-turn-lane engine, interaction/materialization split, heterogeneous runtime delivery normalization, chat continuity semantics/context transplant, Guide Cat optional assist capability, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
 | [plans/](./plans/) | Complete | Implementation plans covering the unified engine rollout, interaction/materialization seam, runtime normalization, Guide Cat capability rollout, concurrent transcript delivery, and the linked Chat/Work/Code product slices |
-| [decisions/](./decisions/) | Complete | Architecture Decision Records covering the unified conversation engine, heterogeneous runtime delivery normalization, Guide Cat optional assist capability, concurrent transcript delivery, and the earlier shared platform decisions |
+| [decisions/](./decisions/) | Complete | Architecture Decision Records covering the unified conversation engine, chat continuity semantics above runtime sessions, heterogeneous runtime delivery normalization, Guide Cat optional assist capability, concurrent transcript delivery, and the earlier shared platform decisions |
 
 Recent additions:
 
+- [SPEC-069](./specs/SPEC-069-chat-continuity-semantics-and-context-transplant.md)
+- [ADR-068](./decisions/068-own-chat-continuity-semantics-above-runtime-session-boundaries.md)
 - [SPEC-067](./specs/SPEC-067-guide-cat-assist-content-cache-and-offline-refresh.md)
 - [PLAN-059](./plans/PLAN-059-guide-cat-assist-content-cache-and-offline-refresh.md)
 - [ADR-066](./decisions/066-persist-guide-cat-assist-content-as-platform-owned-local-state.md)
