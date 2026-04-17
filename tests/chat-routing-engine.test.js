@@ -2436,6 +2436,80 @@ test('direct cat chat restarts the lead-cat session when the provider target cha
   );
 });
 
+test('direct cat chat restarts the lead-cat session when the instance target changes explicitly', async () => {
+  let state = await new MemoryChatStore().read();
+  const now = new Date('2026-03-23T00:00:00.000Z');
+
+  state = createCat(
+    state,
+    {
+      name: 'Companion',
+      provider: 'codex',
+      model: 'gpt-5.4',
+      roles: ['companion'],
+    },
+    now,
+  );
+  const companionId = state.cats[0].id;
+  state = createChannel(
+    state,
+    {
+      title: 'Companion lane',
+      topic: 'Explicit instance retargets should restart the lead-cat session.',
+      roomMode: 'direct_cat_chat',
+      participantCatIds: [companionId],
+      defaultRecipientId: companionId,
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+
+  const channelId = state.selectedChannelId;
+  const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
+    usage(`response from ${sessionId}`));
+
+  const firstDispatch = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'First direct turn',
+    },
+    runtimeClient,
+    now,
+  );
+  const retargetedState = setChannelCatExecutionTarget(
+    firstDispatch.state,
+    channelId,
+    companionId,
+    {
+      instance: 'team-a',
+    },
+    new Date('2026-03-23T00:00:45.000Z'),
+  );
+  await routeChannelMessage(
+    retargetedState,
+    channelId,
+    {
+      body: 'Second direct turn',
+    },
+    runtimeClient,
+    new Date('2026-03-23T00:01:00.000Z'),
+  );
+
+  assert.equal(runtimeClient.createdSessions.length, 2);
+  assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+  assert.equal(runtimeClient.createdSessions[0]?.instance ?? null, null);
+  assert.equal(runtimeClient.createdSessions[1]?.instance, 'team-a');
+  assert.equal(
+    runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityMode,
+    'full_transplant',
+  );
+  assert.match(
+    runtimeClient.sentMessages[1]?.input?.instructions ?? '',
+    /\[agent:Companion\] response from session-1/u,
+  );
+});
+
 test('solo composer mode sends raw user text without default instructions on a stable session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
