@@ -96,7 +96,7 @@ export {
   handleRestError,
   sendRestError,
 } from './routeErrors.js';
-import { ChatApiError, sendRestError } from './routeErrors.js';
+import { ChatApiError } from './routeErrors.js';
 export {
   cancelSessionIds,
   cleanupSessionsForProductDelete,
@@ -356,19 +356,26 @@ export function resolveCreateOriginSurface(
     targetNoun: string;
   },
 ): PlatformSurfaceId {
+  if (originSurface === undefined || originSurface === null) {
+    process.stderr.write(
+      `[cats-chat-api] ${options.targetNoun} missing explicit originSurface; defaulting to chat for compatibility.\n`,
+    );
+    return 'chat';
+  }
+
   const explicitSurface = normalizePlatformSurface(originSurface);
   if (explicitSurface) {
     return explicitSurface;
   }
 
-  process.stderr.write(
-    `[cats-chat-api] ${options.targetNoun} missing explicit originSurface; defaulting to chat for compatibility.\n`,
+  throw new ChatApiError(
+    400,
+    'invalid_origin_surface',
+    `${options.targetNoun} originSurface must be one of: chat, work, code.`,
+    {
+      received: originSurface,
+    },
   );
-  const normalized = normalizePlatformSurface(originSurface, 'chat');
-  if (normalized) {
-    return normalized;
-  }
-  throw new Error(`${options.targetNoun} originSurface must be one of: chat, work, code.`);
 }
 
 async function writeCoreWithUpdatedBindings(

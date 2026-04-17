@@ -17,6 +17,7 @@ import {
   cloneProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   inferChannelKind,
@@ -115,6 +116,21 @@ export {
   updateNewChatDefaults,
 } from './channelExecutionTargets.js';
 
+function resolveCreateInputOriginSurface(
+  originSurface: unknown,
+): PlatformSurfaceId {
+  if (originSurface === undefined || originSurface === null) {
+    return 'chat';
+  }
+
+  const normalized = normalizePlatformSurface(originSurface);
+  if (normalized) {
+    return normalized;
+  }
+
+  throw new Error('originSurface must be one of: chat, work, code.');
+}
+
 export function createParallelChatGroup(
   state: ChatState,
   input: CreateParallelChatGroupInput,
@@ -127,7 +143,7 @@ export function createParallelChatGroup(
   let nextState = cloneState(state);
   const nowIso = isoAt(now);
   const memberChannelIds: string[] = [];
-  const originSurface = normalizePlatformSurface(input.originSurface, 'chat');
+  const originSurface = resolveCreateInputOriginSurface(input.originSurface);
 
   for (const target of [...input.targets].reverse()) {
     nextState = createChannel(
@@ -255,7 +271,7 @@ export function createChannel(
   const createdTemporaryParticipants = resolvedTemporaryParticipants.map((participant) =>
     createTemporaryParticipantAssignment(participant, nowIso));
   const requestedRoomMode = resolveRequestedRoomMode(input);
-  const originSurface = normalizePlatformSurface(input.originSurface, 'chat');
+  const originSurface = resolveCreateInputOriginSurface(input.originSurface);
 
   // Auto-generate title for direct cat chats when title is empty
   let title = input.title.trim();

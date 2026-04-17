@@ -569,6 +569,22 @@ contracts.
       primitives, so Code group/parallel entry no longer inherits chat-specific
       setup copy or side-panel framing while still reusing the shared draft
       mechanics
+- [ ] Retire the temporary raw-HTTP `originSurface` compatibility seam once
+      legacy callers have been updated, so channel and parallel-group create
+      paths fail fast on missing product ownership instead of defaulting to
+      `chat` beyond the rollout window
+- [ ] Harden the internal Chat create/model APIs around `originSurface`
+      invariants after the current legacy fixtures are migrated, so typed
+      product-owned create paths and lower-level state mutation helpers no
+      longer diverge on whether missing ownership metadata is tolerated
+- [ ] Replace the current stderr-only `originSurface` compatibility warning
+      path with a measurable platform logging/telemetry seam, so the team can
+      see how often legacy callers still omit ownership metadata and know when
+      the compatibility fallback can safely be removed
+- [ ] Re-enable `Cats Code` recents on top of the same product-scoped
+      `originSurface` filter, and only then evaluate whether Chat/Work/Code
+      also need an explicit secondary cross-product `All recents` lens instead
+      of one global mixed default
 - [ ] Keep work surfaces product-owned and avoid leaking provider or runtime
       internals into the UI model
 - [ ] Extend task-strategy handoff beyond the current Chat-first

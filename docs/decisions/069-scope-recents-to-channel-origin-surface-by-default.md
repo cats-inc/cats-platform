@@ -5,7 +5,7 @@
 
 ## Status
 
-Accepted (Rollout In Progress)
+Accepted
 
 ## Context
 

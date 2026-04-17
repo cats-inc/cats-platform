@@ -109,6 +109,28 @@ test('POST /api/channels keeps legacy raw create requests compatible by defaulti
   });
 });
 
+test('POST /api/channels rejects invalid originSurface values instead of silently coercing them to chat', async () => {
+  await withServer(async (baseUrl, chatStore) => {
+    const response = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Invalid surface create',
+        topic: 'This should fail.',
+        originSurface: 'bogus',
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    const payload = await response.json();
+    assert.equal(payload.error.code, 'invalid_origin_surface');
+    assert.match(payload.error.message, /must be one of: chat, work, code/u);
+
+    const persisted = await chatStore.read();
+    assert.equal(persisted.channels.length, 0);
+  });
+});
+
 test('POST /api/concurrent-groups keeps legacy raw create requests compatible by defaulting missing originSurface to chat', async () => {
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/concurrent-groups`, {
@@ -136,5 +158,31 @@ test('POST /api/concurrent-groups keeps legacy raw create requests compatible by
         persisted.channels.find((channel) => channel.id === channelId)?.originSurface ?? null),
       ['chat', 'chat'],
     );
+  });
+});
+
+test('POST /api/concurrent-groups rejects invalid originSurface values instead of silently coercing them to chat', async () => {
+  await withServer(async (baseUrl, chatStore) => {
+    const response = await fetch(`${baseUrl}/api/concurrent-groups`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Invalid compare create',
+        originSurface: 'bogus',
+        targets: [
+          { provider: 'claude', instance: null, model: 'claude-default' },
+          { provider: 'codex', instance: null, model: 'gpt-5.4' },
+        ],
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    const payload = await response.json();
+    assert.equal(payload.error.code, 'invalid_origin_surface');
+    assert.match(payload.error.message, /must be one of: chat, work, code/u);
+
+    const persisted = await chatStore.read();
+    assert.equal(persisted.parallelChatGroups.length, 0);
+    assert.equal(persisted.channels.length, 0);
   });
 });

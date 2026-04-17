@@ -116,6 +116,7 @@ optional cross-product browsing.
 | 2026-04-17 | Plan created and first slice landed: channel/group origin metadata plus product-scoped recents filtering |
 | 2026-04-17 | Follow-up tightened typed create payloads to require `originSurface` and extended shared recents filtering to grouped entries, not only standalone channels |
 | 2026-04-17 | Follow-up clarified rollout boundaries: product-owned typed create paths now require explicit stamping, while raw legacy HTTP compatibility still defaults missing `originSurface` to `chat` until a later hardening slice retires that seam |
+| 2026-04-17 | Follow-up narrowed the compatibility seam so only missing `originSurface` may default to `chat`; invalid values now fail fast instead of being silently coerced |
 
 ---
 

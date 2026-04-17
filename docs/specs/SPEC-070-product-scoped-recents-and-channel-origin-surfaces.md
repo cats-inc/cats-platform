@@ -127,6 +127,8 @@ The platform needs explicit conversation-origin metadata that survives:
 16. Raw legacy HTTP create requests may temporarily normalize missing
     `originSurface` to `chat` during rollout, but this shall remain a
     compatibility seam rather than the long-term product contract.
+17. Invalid non-surface `originSurface` values shall be rejected rather than
+    silently coerced to `chat`.
 
 ## Design Overview
 
