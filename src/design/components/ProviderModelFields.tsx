@@ -251,7 +251,7 @@ export function ProviderModelFields({
   return (
     <>
       <label className="fieldLabel">
-        <span>AI Service</span>
+        <span>Provider</span>
         <select
           className="textInput"
           value={selectedProvider?.id ?? ''}
@@ -286,7 +286,7 @@ export function ProviderModelFields({
       </label>
       {showInstanceField ? (
         <label className="fieldLabel">
-          <span>Connection</span>
+          <span>Provider Instance</span>
           <select
             className="textInput"
             value={resolvedInstance}
@@ -318,8 +318,8 @@ export function ProviderModelFields({
           disabled={!isLegacyModelTarget && entryOptions.length === 0}
           onChange={(event) => onModelEntryChange(event.target.value)}
         >
-          {!isLegacyModelTarget ? (
-            <option value="" disabled={entryOptions.length > 0}>
+          {!isLegacyModelTarget && entryOptions.length === 0 ? (
+            <option value="" disabled>
               {modelPlaceholder}
             </option>
           ) : null}

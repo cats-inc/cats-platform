@@ -108,7 +108,7 @@ export function SettingsCatsCreateForm({
             model: target.model,
             modelSelection: target.modelSelection ?? null,
           })}
-        namePlaceholder="Ops reviewer"
+        namePlaceholder="Cat name"
         autoFocusName={autoFocusName}
         makeBoss={catForm.makeBoss}
         onMakeBossChange={(makeBoss) => onCatFormChange({ ...catForm, makeBoss })}

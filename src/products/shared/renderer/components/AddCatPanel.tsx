@@ -161,7 +161,7 @@ export function WorkspaceAddCatPanel({
                 className="textInput"
                 value={catForm.name}
                 onChange={(event) => onCatFormChange({ ...catForm, name: event.target.value })}
-                placeholder="Ops reviewer"
+                placeholder="Cat name"
               />
             </label>
             <ProviderModelFieldsComponent

@@ -7,7 +7,6 @@ import type {
 } from '../../api/index.js';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory.js';
 import type { BotFormState } from '../../hooks/settingsCatsRegistryActions.js';
-import { buildProductSurfaceToggleStates } from '../../../../../design/components/productSurfaceToggles.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../../../shared/platformSurfaces.js';
 import {
   isBotBusy,
@@ -30,6 +29,13 @@ export interface SettingsCatsDetailPanelRegistryController {
   onUpdateProducts: (catId: string, products: string[]) => Promise<void>;
 }
 
+export type SettingsCatsDetailSectionKey =
+  | 'rename'
+  | 'makeBoss'
+  | 'skill'
+  | 'telegram'
+  | 'memory';
+
 export interface SettingsCatsDetailPanelContentProps {
   busy: WorkspaceBusyState;
   botBindings: NonNullable<AppShellPayload['chat']['botBindings']>;
@@ -43,6 +49,7 @@ export interface SettingsCatsDetailPanelContentProps {
   availableSurfaces?: string[];
   enabledSurfaces?: string[];
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
+  sections?: ReadonlyArray<SettingsCatsDetailSectionKey>;
 }
 
 export function SettingsCatsDetailPanelContent({
@@ -53,10 +60,11 @@ export function SettingsCatsDetailPanelContent({
   memoryController,
   registryController,
   telegramDiagnostics,
-  availableSurfaces,
-  enabledSurfaces,
   confirm: confirmDialog,
+  sections,
 }: SettingsCatsDetailPanelContentProps) {
+  const shouldRender = (key: SettingsCatsDetailSectionKey) =>
+    sections === undefined || sections.includes(key);
   const {
     botForm,
     renameValue,
@@ -67,7 +75,6 @@ export function SettingsCatsDetailPanelContent({
     onMakeBossCat,
     onRenameCat,
     onSkillChange,
-    onUpdateProducts,
   } = registryController;
   const {
     memoryForm,
@@ -81,74 +88,39 @@ export function SettingsCatsDetailPanelContent({
   const catBindingDiagnostics = telegramDiagnostics?.bindings.filter((binding) =>
     binding.bindingId && catBindings.some((candidate) => candidate.id === binding.bindingId),
   ) ?? [];
-  const surfaceToggleStates = buildProductSurfaceToggleStates({
-    surfaces: availableSurfaces ?? [],
-    selected: cat.products,
-    enabledSurfaces,
-    requiredSurfaces: isBossCat ? ['chat'] : [],
-    disabled: isCatBusy(busy, 'products', cat.id),
-  });
   const canBindTelegramBot = cat.status === 'active'
     && hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() });
 
   return (
     <>
-      <div className="catDetailSection">
-        <p className="sectionLabel">Rename</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            className="textInput"
-            placeholder={cat.name}
-            value={renameValue}
-            onChange={(event) => setRenameValue(event.target.value)}
-            onFocus={() => setRenameValue(cat.name)}
-          />
-          <button
-            className="primaryButton"
-            type="button"
-            disabled={
-              !renameValue.trim()
-              || renameValue.trim() === cat.name
-              || isCatBusy(busy, 'rename', cat.id)
-            }
-            onClick={() => void onRenameCat(cat.id)}
-          >
-            {isCatBusy(busy, 'rename', cat.id) ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      </div>
-
-      {availableSurfaces && availableSurfaces.length > 1 ? (
+      {shouldRender('rename') ? (
         <div className="catDetailSection">
-          <p className="sectionLabel">Available in</p>
-          <div className="productToggles">
-            {surfaceToggleStates.map(({ surface, active, disabled, unavailable }) => {
-              return (
-                <button
-                  key={surface}
-                  type="button"
-                  className={active ? 'productToggle productToggleActive' : 'productToggle'}
-                  disabled={disabled}
-                  onClick={() => {
-                    if (disabled) {
-                      return;
-                    }
-                    const next = active
-                      ? cat.products.filter((candidate) => candidate !== surface)
-                      : [...cat.products, surface];
-                    void onUpdateProducts(cat.id, next);
-                  }}
-                  data-tooltip={unavailable ? `${surface} is not enabled yet` : undefined}
-                >
-                  {surface}
-                </button>
-              );
-            })}
+          <p className="sectionLabel">Rename</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="textInput"
+              placeholder={cat.name}
+              value={renameValue}
+              onChange={(event) => setRenameValue(event.target.value)}
+              onFocus={() => setRenameValue(cat.name)}
+            />
+            <button
+              className="primaryButton"
+              type="button"
+              disabled={
+                !renameValue.trim()
+                || renameValue.trim() === cat.name
+                || isCatBusy(busy, 'rename', cat.id)
+              }
+              onClick={() => void onRenameCat(cat.id)}
+            >
+              {isCatBusy(busy, 'rename', cat.id) ? 'Saving...' : 'Save'}
+            </button>
           </div>
         </div>
       ) : null}
 
-      {!isBossCat ? (
+      {shouldRender('makeBoss') && !isBossCat ? (
         <div className="catDetailSection">
           <p className="sectionLabel">Boss Cat</p>
           <button
@@ -169,29 +141,32 @@ export function SettingsCatsDetailPanelContent({
         </div>
       ) : null}
 
-      <div className="catDetailSection">
-        <p className="sectionLabel">Skill Profile</p>
-        <div className="skillPills">
-          {SKILL_PROFILES.map((profile) => (
-            <button
-              key={profile.value}
-              className={
-                (cat.skillProfile ?? 'chat-default') === profile.value
-                  ? 'draftLeadPill draftLeadPillActive'
-                  : 'draftLeadPill'
-              }
-              type="button"
-              disabled={isCatBusy(busy, 'skill', cat.id)}
-              onClick={() => void onSkillChange(cat.id, profile.value)}
-            >
-              {profile.label}
-            </button>
-          ))}
+      {shouldRender('skill') ? (
+        <div className="catDetailSection">
+          <p className="sectionLabel">Skill Profile</p>
+          <div className="skillPills">
+            {SKILL_PROFILES.map((profile) => (
+              <button
+                key={profile.value}
+                className={
+                  (cat.skillProfile ?? 'chat-default') === profile.value
+                    ? 'draftLeadPill draftLeadPillActive'
+                    : 'draftLeadPill'
+                }
+                type="button"
+                disabled={isCatBusy(busy, 'skill', cat.id)}
+                onClick={() => void onSkillChange(cat.id, profile.value)}
+              >
+                {profile.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <div className="catDetailSection">
-        <p className="sectionLabel">Telegram Bot</p>
+      {shouldRender('telegram') ? (
+        <div className="catDetailSection">
+          <p className="sectionLabel">Telegram Bot</p>
         {catBindings.length > 0 ? (
           <div className="botBindingList">
             {catBindings.map((binding) => (
@@ -311,57 +286,60 @@ export function SettingsCatsDetailPanelContent({
         ) : (
           <p style={{ opacity: 0.6, marginBottom: 8 }}>
             This Cat already has a Telegram bot. Remove it first if you want to bind another one.
-          </p>
-        )}
-      </div>
-
-      <div className="catDetailSection">
-        <p className="sectionLabel">Memory ({memoryLoading ? '...' : catMemory.length})</p>
-        {catMemory.length > 0 ? (
-          <div className="memoryList">
-            {catMemory.map((memoryRecord) => (
-              <SettingsCatsMemoryRow
-                key={memoryRecord.id}
-                busy={busy}
-                memoryRecord={memoryRecord}
-                onDelete={() => void deleteMemory(cat.id, memoryRecord.id)}
-              />
-            ))}
-          </div>
-        ) : !memoryLoading ? (
-          <p style={{ opacity: 0.6, marginBottom: 8 }}>No memory records yet.</p>
-        ) : null}
-        <div className="memoryForm">
-          <select
-            className="textInput"
-            value={memoryForm.category}
-            onChange={(event) =>
-              setMemoryForm({ ...memoryForm, category: event.target.value })}
-          >
-            {MEMORY_CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          <textarea
-            className="textInput"
-            rows={2}
-            placeholder="Memory content..."
-            value={memoryForm.content}
-            onChange={(event) =>
-              setMemoryForm({ ...memoryForm, content: event.target.value })}
-          />
-          <button
-            className="primaryButton"
-            type="button"
-            disabled={!memoryForm.content.trim() || isMemoryBusy(busy, 'create')}
-            onClick={() => void addMemory(cat.id)}
-          >
-            {isMemoryBusy(busy, 'create') ? 'Saving...' : 'Add Memory'}
-          </button>
+            </p>
+          )}
         </div>
-      </div>
+      ) : null}
+
+      {shouldRender('memory') ? (
+        <div className="catDetailSection">
+          <p className="sectionLabel">Memory ({memoryLoading ? '...' : catMemory.length})</p>
+          {catMemory.length > 0 ? (
+            <div className="memoryList">
+              {catMemory.map((memoryRecord) => (
+                <SettingsCatsMemoryRow
+                  key={memoryRecord.id}
+                  busy={busy}
+                  memoryRecord={memoryRecord}
+                  onDelete={() => void deleteMemory(cat.id, memoryRecord.id)}
+                />
+              ))}
+            </div>
+          ) : !memoryLoading ? (
+            <p style={{ opacity: 0.6, marginBottom: 8 }}>No memory records yet.</p>
+          ) : null}
+          <div className="memoryForm">
+            <select
+              className="textInput"
+              value={memoryForm.category}
+              onChange={(event) =>
+                setMemoryForm({ ...memoryForm, category: event.target.value })}
+            >
+              {MEMORY_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <textarea
+              className="textInput"
+              rows={2}
+              placeholder="Memory content..."
+              value={memoryForm.content}
+              onChange={(event) =>
+                setMemoryForm({ ...memoryForm, content: event.target.value })}
+            />
+            <button
+              className="primaryButton"
+              type="button"
+              disabled={!memoryForm.content.trim() || isMemoryBusy(busy, 'create')}
+              onClick={() => void addMemory(cat.id)}
+            >
+              {isMemoryBusy(busy, 'create') ? 'Saving...' : 'Add Memory'}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

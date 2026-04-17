@@ -196,7 +196,7 @@ export function AvatarCropDialog({ onSave, onClose }: AvatarCropDialogProps) {
               type="button"
               onClick={handleSave}
             >
-              Save
+              Apply
             </button>
           ) : null}
         </div>
