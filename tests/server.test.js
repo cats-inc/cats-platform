@@ -10513,6 +10513,83 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
   });
 });
 
+test('PATCH /api/channels/:channelId can start a fresh solo continuity branch', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Solo Draft',
+        topic: 'Reset continuity without leaving the chat.',
+        composerMode: 'solo',
+        pendingProvider: 'claude',
+        pendingInstance: 'native',
+        pendingModel: 'claude-opus-4-6',
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const { channel } = await createChannelResponse.json();
+
+    const messageResponse = await fetch(`${baseUrl}/api/channels/${channel.id}/messages`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        body: 'Carry this context forward first.',
+        pendingProvider: 'claude',
+        pendingInstance: 'native',
+        pendingModel: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(messageResponse.status, 200);
+    await waitForCondition(async () => {
+      if (runtimeClient.createdSessions.length !== 1) {
+        return null;
+      }
+
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
+      if (channelResponse.status !== 200) {
+        return null;
+      }
+      const channelPayload = await channelResponse.json();
+      return channelPayload.channel.orchestratorLease.sessionId === 'session-1'
+        ? channelPayload
+        : null;
+    });
+
+    const resetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        resetContinuity: true,
+      }),
+    });
+    assert.equal(resetResponse.status, 200);
+    assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
+
+    const channelResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`);
+    assert.equal(channelResponse.status, 200);
+    const channelPayload = await channelResponse.json();
+
+    assert.ok(channelPayload.channel.continuityResetAt);
+    assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
+    assert.equal(channelPayload.channel.orchestratorLease.status, 'not_started');
+    assert.equal(channelPayload.channel.messages.at(-1)?.metadata?.event, 'continuity_reset');
+    assert.match(
+      channelPayload.channel.messages.at(-1)?.body ?? '',
+      /Started fresh\./u,
+    );
+  });
+});
+
 test('POST /api/channels/:channelId/activations recreates closed direct-lane sessions instead of reporting already started', async () => {
   const runtimeClient = createRuntimeStub();
   const chatStore = new MemoryChatStore();
