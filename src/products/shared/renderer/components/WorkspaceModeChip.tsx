@@ -9,9 +9,15 @@ export type WorkspaceMode = DraftWorkspaceMode;
 
 export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = DEFAULT_DRAFT_WORKSPACE_MODE;
 
+// UI-facing copy stays user-readable here, even though the underlying mode name
+// remains "worktree" because the runtime still uses git worktrees under the hood.
 const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
   current: 'Current folder',
   worktree: 'Independent workspace',
+};
+
+const WORKSPACE_MODE_TOOLTIPS: Partial<Record<WorkspaceMode, string>> = {
+  worktree: 'Uses git worktree and requires a git repository.',
 };
 
 const WORKSPACE_MODE_ORDER: readonly WorkspaceMode[] = ['current', 'worktree'];
@@ -56,6 +62,7 @@ export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeCh
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
+        title={WORKSPACE_MODE_TOOLTIPS[value]}
         onClick={() => setOpen((current) => !current)}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -79,6 +86,7 @@ export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeCh
                 role="option"
                 aria-selected={selected}
                 className={`composerSelectChipMenuItem${selected ? ' composerSelectChipMenuItemSelected' : ''}`}
+                title={WORKSPACE_MODE_TOOLTIPS[mode]}
                 onClick={() => {
                   onChange(mode);
                   setOpen(false);

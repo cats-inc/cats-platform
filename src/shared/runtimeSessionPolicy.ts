@@ -27,14 +27,14 @@ function mergeDefinedPolicyFields<T extends object>(
   policy?: Partial<T> | null,
 ): T {
   if (!policy) {
-    return defaults;
+    return { ...defaults };
   }
 
   const merged: T = { ...defaults };
   for (const key of Object.keys(defaults) as Array<keyof T>) {
     const nextValue = policy[key];
     if (nextValue !== undefined) {
-      Object.assign(merged, { [key]: nextValue });
+      merged[key] = nextValue as T[typeof key];
     }
   }
   return merged;
