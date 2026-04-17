@@ -54,6 +54,7 @@ The result should be:
 - designing every final prompt/chip/copy variant in this spec
 - replacing sidecar shell state or route-local UI state
 - requiring Work and Code surfaces to adopt the shared cache immediately
+- defining cross-device sync for device-local assist caches in the first slice
 
 ## Problem Statement
 
@@ -108,10 +109,18 @@ Without a dedicated substrate, the platform will either:
    - route/product context
    - coarse audience state such as `first_run`, `returning`, or
      `recap_candidate`
-5. The bundle model shall allow later specialization by additional context such
-   as workspace, recent activity class, or surface-local variant key without
-   redefining the base schema.
-6. Each bundle shall include freshness and provenance metadata, including at
+5. The first-slice cache key shall use exactly:
+   - `surfaceId`
+   - `surfaceMode`
+   - `audienceState`
+6. `surfaceMode` shall use `default` when a surface does not expose a more
+   specific mode split.
+7. In the first slice, richer context such as `product`, `route`,
+   `workspace`, `recentActivityClass`, and `variantKey` shall remain scope
+   metadata or refresh hints rather than cache-key fields.
+8. The bundle model shall allow later specialization by additional context
+   without redefining the base schema.
+9. Each bundle shall include freshness and provenance metadata, including at
    least:
    - stable bundle id
    - content origin: `deterministic` or `runtime`
@@ -119,47 +128,74 @@ Without a dedicated substrate, the platform will either:
    - `expiresAt` or equivalent freshness policy
    - last refresh status
    - optional linked `missionId` / `runId`
-7. Guide Cat assist storage shall follow the structured platform layout from
+10. Each cached bundle shall include a stable `refreshContextHash` or
+    equivalent refresh key derived from:
+    - `schemaVersion`
+    - first-slice cache-key fields
+    - Guide Cat identity and visible naming inputs used by the bundle
+    - Guide Cat execution target inputs such as provider, instance, model, and
+      `modelSelection`
+    - owner-visible naming inputs when personalization depends on them
+    - assist-template revision inputs
+11. `refreshContextHash` shall exclude volatile values such as timestamps,
+    ephemeral session ids, or transient UI state.
+12. Guide Cat assist storage shall follow the structured platform layout from
    `ADR-053`.
-8. The first slice shall introduce:
+13. The first slice shall introduce:
    - `~/.cats/platform/config/guide-cat-assist-config.json`
    - `~/.cats/platform/state/guide-cat-assist-cache.local.json`
-9. `guide-cat-assist-config.json` shall be reserved for user- or product-owned
+14. Both assist files shall carry an explicit `schemaVersion`, and read paths
+    shall support tolerant migration or safe fallback when older versions are
+    encountered.
+15. `guide-cat-assist-config.json` shall be reserved for user- or product-owned
    configuration such as:
    - disabled surfaces
    - deterministic seed choices
    - optional curated overrides
    - refresh preferences
-10. `guide-cat-assist-cache.local.json` shall hold generated or cached bundles,
+16. `guide-cat-assist-cache.local.json` shall hold generated or cached bundles,
     provenance, freshness metadata, and refresh failures.
-11. Every adopted surface shall define a deterministic baseline that remains
+17. Every adopted surface shall define a deterministic baseline that remains
     usable when no valid cached bundle exists.
-12. A surface shall be able to read last-good cached assist content
+18. A surface shall be able to read last-good cached assist content
     synchronously and render without waiting for a live runtime round-trip.
-13. The initial refresh triggers shall include:
+19. The initial refresh triggers shall include:
+    - one initial generation attempt after setup completes when a Guide Cat
+      exists and the relevant first-entry bundles are missing or stale
+    - one initial generation attempt when a Guide Cat is newly created,
+      restored, or materially reconfigured and the relevant bundles are
+      missing or stale
     - non-blocking stale check after desktop launch and runtime readiness
     - on-surface-open refresh when the relevant bundle is stale or missing
     - explicit manual refresh when a user requests it
-14. The first slice shall not require periodic background refresh for basic
+20. The first slice shall not require periodic background refresh for basic
     usability.
-15. Runtime-backed refresh shall run through the existing runtime boundary and
+21. Runtime-backed refresh shall run through the existing runtime boundary and
     may reuse a warm leased session when available.
-16. Runtime-backed refresh work shall be representable as `mission` and `run`
+22. Runtime-backed refresh work shall be representable as `mission` and `run`
     records rather than a special Guide-Cat-only execution type.
-17. Future periodic or delayed refresh may be layered through runtime wakeups,
+23. Future periodic or delayed refresh may be layered through runtime wakeups,
     but wakeups shall remain optional for the initial slice.
-18. Recap bundles may summarize recent work, recent conversations, or recent
+24. Refresh requests for recap or guidance bundles shall accept a
+    product-owned input payload or references for:
+    - recent conversations or conversation summaries
+    - recent managed-work references or summaries
+    - recent surface-activity summaries
+    - optional owner/profile personalization inputs
+25. The first slice may satisfy those recap inputs with lightweight product
+    summaries rather than full cross-product aggregation.
+26. Recap bundles may summarize recent work, recent conversations, or recent
     product activity, but they shall remain non-authoritative projections.
-19. Recap bundles shall not implicitly create or mutate managed work, routing
+27. Recap bundles shall not implicitly create or mutate managed work, routing
     policy, or transcript truth without an explicit product handoff.
-20. Guide Cat assist bundles may recommend actions such as opening chat, work,
+28. Guide Cat assist bundles may recommend actions such as opening chat, work,
     or code surfaces, but the actual action shall happen through explicit
     product-owned handoff wiring.
-21. Surface-local view state such as sidecar dismissal, chip dismissal, or
+29. Surface-local view state such as sidecar dismissal, chip dismissal, or
     "already seen" markers shall remain distinct from assist bundle storage.
-22. When refresh fails, the platform shall retain the last-good cached bundle
+30. When refresh fails, the platform shall retain the last-good cached bundle
     when one exists and degrade cleanly to deterministic baseline otherwise.
-23. The platform shall record enough metadata to answer:
+31. The platform shall record enough metadata to answer:
     - which bundle was shown
     - on which surface
     - whether the surface rendered deterministic baseline, cached bundle, or a
@@ -208,6 +244,50 @@ surface context
     guide-cat-assist-cache.local.json
 ```
 
+### V1 Scope Key
+
+The first slice should freeze one cache-key shape:
+
+```text
+<surfaceId>:<surfaceMode>:<audienceState>
+```
+
+- `surfaceId`
+  - `lobby`
+  - `chat:new`
+  - later `chat:composer`
+- `surfaceMode`
+  - `default` when the surface has no mode split
+  - `solo`, `cat_led`, `direct`, `group`, or `parallel` for `chat:new`
+- `audienceState`
+  - `default` for current greeting/chip migration
+  - later `first_run`, `returning`, or `recap_candidate` when those surfaces
+    intentionally diverge
+
+`product`, `route`, `workspace`, and other richer context remain scope metadata
+and refresh inputs in the first slice, but they do not participate in the
+first cache key.
+
+### V1 Legacy Mapping
+
+The first migration should preserve the current deterministic sources through a
+stable mode-to-scope mapping:
+
+| Current source | Current mode split | V1 scope key(s) | Notes |
+|------|------|------|------|
+| `LOBBY_GREETING_LINES` | none | `lobby:default:default` | Lobby greeting baseline |
+| `DRAFT_GREETING_LINES` | none | `chat:new:solo:default`, `chat:new:cat_led:default`, `chat:new:direct:default`, `chat:new:group:default`, `chat:new:parallel:default` | Same greeting baseline reused across initial `+New chat` modes |
+| `resolveDraftStarterSuggestions('solo')` | `solo` | `chat:new:solo:default` | Starter chips |
+| `resolveDraftStarterSuggestions('cat_led')` | `cat_led` | `chat:new:cat_led:default` | Starter chips |
+| `resolveDraftStarterSuggestions('direct')` | `direct` | `chat:new:direct:default` | Starter chips |
+| `resolveDraftStarterSuggestions('group')` | `group` | `chat:new:group:default` | Starter chips |
+| `resolveDraftStarterSuggestions('parallel')` | `parallel` | `chat:new:parallel:default` | Starter chips |
+
+This mapping is intentionally narrower than the long-term bundle model. It
+freezes the first migration target so existing greeting and starter-suggestion
+behavior can move into the shared assist cache without changing user-facing
+mode semantics.
+
 ### Bundle Shape
 
 Each `GuideCatAssistBundle` should contain these logical sections:
@@ -232,9 +312,10 @@ Illustrative example:
 
 ```json
 {
-  "bundleId": "chat:new:returning:default",
+  "bundleId": "chat:new:solo:returning",
   "scope": {
     "surfaceId": "chat:new",
+    "surfaceMode": "solo",
     "product": "chat",
     "audienceState": "returning"
   },
@@ -251,6 +332,7 @@ Illustrative example:
   },
   "provenance": {
     "originMode": "runtime",
+    "refreshContextHash": "gca:v1:2b9a8d0f",
     "missionId": "mission-123",
     "runId": "run-456"
   },
@@ -266,15 +348,17 @@ Illustrative example:
 
 The default lifecycle should be:
 
-1. route/app entry reads deterministic baseline plus any last-good cached
+1. setup completion or Guide Cat creation/restoration may enqueue one initial
+   generation for first-entry bundles when they are missing or stale
+2. route/app entry reads deterministic baseline plus any last-good cached
    bundle immediately
-2. once app/runtime readiness is known, the product evaluates whether the
+3. once app/runtime readiness is known, the product evaluates whether the
    bundle is stale or missing
-3. if refresh is allowed, the product launches a non-blocking refresh through
+4. if refresh is allowed, the product launches a non-blocking refresh through
    the runtime boundary
-4. when refresh succeeds, the cache updates and the current surface may choose
+5. when refresh succeeds, the cache updates and the current surface may choose
    a non-disruptive re-render policy
-5. when refresh fails, the product keeps last-good output or baseline fallback
+6. when refresh fails, the product keeps last-good output or baseline fallback
 
 ### Initial Surface Adoption
 
@@ -304,13 +388,15 @@ Future consumers may include:
 ## Open Questions
 
 - [ ] Which exact surface-scope fields should participate in the first cache
-      key versus stay outside the key as soft hints?
+      key versus stay outside the key as soft hints after the v1 key freeze.
 - [ ] Whether recap should initially live on Lobby only, `+New chat` only, or
       both.
 - [ ] Whether manual refresh should be exposed in the first UI slice or only as
       internal invalidation.
 - [ ] How aggressively surfaces should live-update visible chips when a fresher
       bundle arrives during the same session.
+- [ ] Whether device-local assist bundles should remain unsynced across
+      desktop/mobile surfaces or later gain a cross-device seed/sync model.
 
 ## References
 

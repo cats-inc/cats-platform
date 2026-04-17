@@ -43,10 +43,20 @@ The first adopted surfaces are:
       - `config/guide-cat-assist-config.json`
       - `state/guide-cat-assist-cache.local.json`
 - [ ] Task 1.2: Define the `GuideCatAssistBundle` read/write schema.
-- [ ] Task 1.3: Define normalized surface-scope keys for the first adopted
-      surfaces.
-- [ ] Task 1.4: Define deterministic baseline provider contracts per surface.
-- [ ] Task 1.5: Define provenance and freshness fields, including optional
+- [ ] Task 1.3: Freeze the first-slice cache-key fields:
+      - `surfaceId`
+      - `surfaceMode`
+      - `audienceState`
+- [ ] Task 1.4: Publish a v1 legacy mapping table from current deterministic
+      sources into the new scope keys for:
+      - Lobby greeting
+      - `+New chat` greeting
+      - `solo` / `cat_led` / `direct` / `group` / `parallel` starter chips
+- [ ] Task 1.5: Define deterministic baseline provider contracts per surface.
+- [ ] Task 1.6: Define `refreshContextHash` inputs and invalidation rules.
+- [ ] Task 1.7: Add `schemaVersion` plus tolerant migration/fallback rules for
+      assist-config and assist-cache file envelopes.
+- [ ] Task 1.8: Define provenance and freshness fields, including optional
       `missionId` / `runId`.
 
 **Deliverables**: one stable persistence contract plus one shared bundle model
@@ -81,14 +91,19 @@ pools as the only source of truth
 
 ### Phase 4: Add Lazy Refresh Orchestration
 
-- [ ] Task 4.1: Add non-blocking stale check after desktop launch and runtime
+- [ ] Task 4.1: Add one initial generation hook after setup completion when a
+      Guide Cat exists and first-entry bundles are missing or stale.
+- [ ] Task 4.2: Add one initial generation hook when a Guide Cat is newly
+      created, restored, or materially reconfigured and relevant bundles are
+      missing or stale.
+- [ ] Task 4.3: Add non-blocking stale check after desktop launch and runtime
       readiness.
-- [ ] Task 4.2: Add on-surface-open stale/missing refresh for adopted scopes.
-- [ ] Task 4.3: Define manual invalidation or refresh entry points for future
+- [ ] Task 4.4: Add on-surface-open stale/missing refresh for adopted scopes.
+- [ ] Task 4.5: Define manual invalidation or refresh entry points for future
       UI use.
-- [ ] Task 4.4: Persist last refresh status and retain last-good bundles on
+- [ ] Task 4.6: Persist last refresh status and retain last-good bundles on
       failure.
-- [ ] Task 4.5: Map runtime refresh attempts onto `mission` / `run` provenance
+- [ ] Task 4.7: Map runtime refresh attempts onto `mission` / `run` provenance
       where available.
 
 **Deliverables**: stale-while-revalidate behavior with provenance-aware cache
@@ -96,13 +111,18 @@ updates
 
 ### Phase 5: Add Recap and Feature-Guidance Bundles
 
-- [ ] Task 5.1: Define the first recap content shape for returning-user entry
+- [ ] Task 5.1: Define the first recap refresh-input payload placeholder from:
+      - recent conversation summaries
+      - recent managed-work references or summaries
+      - recent surface-activity summaries
+      - optional owner/profile personalization inputs
+- [ ] Task 5.2: Define the first recap content shape for returning-user entry
       surfaces.
-- [ ] Task 5.2: Define feature-guidance card content and explicit handoff
+- [ ] Task 5.3: Define feature-guidance card content and explicit handoff
       actions.
-- [ ] Task 5.3: Ensure recap/guidance remains non-authoritative and does not
+- [ ] Task 5.4: Ensure recap/guidance remains non-authoritative and does not
       mutate work/chat truth implicitly.
-- [ ] Task 5.4: Decide which adopted surface shows recap first.
+- [ ] Task 5.5: Decide which adopted surface shows recap first.
 
 **Deliverables**: shared bundles cover more than greetings and chips
 
