@@ -15,7 +15,6 @@ import {
   updateGuideCatStatus,
   upsertGuideCat,
 } from './platformSetupStateMutations.js';
-import { resolveGuideCatSystemName } from '../../shared/guideCatIdentity.js';
 type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
 function reportGuideCatCleanupFailure(scope: string, error: unknown): void {
@@ -34,9 +33,7 @@ async function handleGuideCatUpdate(
     sendJson(context.response, 400, { error: { code: 'bad_request', message } });
     return;
   }
-  const parsedBody = parseGuideCatUpdateBody(body, {
-    fixedName: resolveGuideCatSystemName(context.request.headers['accept-language']),
-  });
+  const parsedBody = parseGuideCatUpdateBody(body);
   if (!parsedBody.ok) {
     sendJson(context.response, 400, {
       error: { code: 'bad_request', message: parsedBody.message },

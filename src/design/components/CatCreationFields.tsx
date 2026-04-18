@@ -70,7 +70,7 @@ export function CatCreationFields({
         <input
           className="textInput"
           value={name}
-          onChange={nameReadOnly ? undefined : (e) => onNameChange(e.target.value)}
+          onChange={(e) => onNameChange(e.target.value)}
           placeholder={namePlaceholder}
           autoFocus={autoFocusName && !nameReadOnly}
           readOnly={nameReadOnly}

@@ -103,7 +103,7 @@ function createPayload(): AppShellPayload {
 }
 
 test('SettingsAssistants renders guide cat and saved assistant presets', () => {
-  const guideCatName = resolveGuideCatDisplayName({ name: 'Catlas' });
+  const guideCatName = resolveGuideCatDisplayName();
   const markup = renderToStaticMarkup(
     <SettingsAssistants
       payload={createPayload()}

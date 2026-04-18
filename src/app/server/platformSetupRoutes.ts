@@ -29,6 +29,7 @@ export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 const GUIDE_CAT_PRIMARY_ID = 'guide-cat-primary';
 
 interface LegacyPlatformSetupCompleteInput extends PlatformSetupCompleteInput {
+  guideCatName?: string | null;
   createBossCat?: boolean;
   bossCatName?: string;
   bossCatProvider?: string;
@@ -65,6 +66,19 @@ async function handlePlatformSetupComplete(
     const message = error instanceof Error ? error.message : 'Invalid request body';
     sendJson(context.response, 400, {
       error: { code: 'bad_request', message },
+    });
+    return;
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(body, 'guideCatName')
+    || Object.prototype.hasOwnProperty.call(body, 'bossCatName')
+  ) {
+    sendJson(context.response, 400, {
+      error: {
+        code: 'bad_request',
+        message: 'Guide Cat name is fixed and cannot be changed',
+      },
     });
     return;
   }

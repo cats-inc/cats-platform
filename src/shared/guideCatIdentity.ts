@@ -1,5 +1,3 @@
-import type { GuideCatRecord } from '../core/types.js';
-
 export const GUIDE_CAT_SYSTEM_NAME = 'Catlas';
 
 interface LocalizedGuideCatName {
@@ -73,10 +71,9 @@ export function resolveGuideCatSystemName(localeSource?: LocaleSource): string {
 }
 
 export function resolveGuideCatDisplayName(
-  guideCat?: Pick<GuideCatRecord, 'name'> | null,
   localeSource: LocaleSource = readGuideCatLocaleSourceFromNavigator(),
 ): string {
-  return resolveGuideCatSystemName(localeSource) || guideCat?.name?.trim() || GUIDE_CAT_SYSTEM_NAME;
+  return resolveGuideCatSystemName(localeSource);
 }
 
 export function isGuideCatEnabledStatus(status?: string | null): boolean {

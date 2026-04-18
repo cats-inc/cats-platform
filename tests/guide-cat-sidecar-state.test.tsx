@@ -244,7 +244,7 @@ test('Guide Cat sidecar avatar resolves from the shared guide cat asset', () => 
 });
 
 test('Guide Cat sidecar collapsed pill shows the same execution tooltip metadata on lobby and product surfaces', () => {
-  const guideCatName = resolveGuideCatDisplayName(createGuideCat());
+  const guideCatName = resolveGuideCatDisplayName();
   const markup = renderToStaticMarkup(
     <GuideCatSidecarView
       viewState="collapsed"
@@ -269,7 +269,7 @@ test('Guide Cat sidecar collapsed pill shows the same execution tooltip metadata
 });
 
 test('Guide Cat sidecar open panel header keeps the execution tooltip metadata on product pages', () => {
-  const guideCatName = resolveGuideCatDisplayName(createGuideCat());
+  const guideCatName = resolveGuideCatDisplayName();
   const markup = renderToStaticMarkup(
     <GuideCatSidecarView
       viewState="open"
@@ -296,7 +296,7 @@ test('Guide Cat sidecar open panel header keeps the execution tooltip metadata o
 });
 
 test('Guide Cat sidecar reuses remembered runtime-backed execution labels for tooltips', () => {
-  const guideCatName = resolveGuideCatDisplayName(createGuideCat());
+  const guideCatName = resolveGuideCatDisplayName();
   clearRememberedExecutionLabels();
   rememberExecutionLabel({
     provider: 'claude',

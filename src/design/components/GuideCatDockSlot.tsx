@@ -51,7 +51,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
   const isActive =
     projection.kind === 'docked' && projection.slot === slotKind;
   const isPreview = state.preview;
-  const displayName = resolveGuideCatDisplayName(guideCat);
+  const displayName = resolveGuideCatDisplayName();
 
   const tooltip = buildDockedTooltip(guideCat);
 
@@ -125,7 +125,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
 }
 
 function buildDockedTooltip(guideCat: GuideCatRecord): string {
-  const displayName = resolveGuideCatDisplayName(guideCat);
+  const displayName = resolveGuideCatDisplayName();
   const executionLabel = resolveExecutionTargetLabel({
     provider: guideCat.executionTarget.provider,
     instance: guideCat.executionTarget.instance,

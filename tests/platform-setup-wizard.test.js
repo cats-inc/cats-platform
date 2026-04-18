@@ -190,7 +190,6 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Meowster',
         guideCatProvider: 'claude',
         guideCatModel: 'claude-sonnet',
       }),
@@ -302,7 +301,6 @@ test('POST /api/platform/setup/complete persists Guide Cat modelSelection withou
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Meowster',
         guideCatProvider: 'codex',
         guideCatModel: 'gpt-5.4',
         guideCatModelSelection: {
@@ -384,7 +382,6 @@ test('POST /api/platform/setup/complete with createGuideCat=true defaults name t
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: '',
         guideCatProvider: 'claude',
       }),
     });
@@ -415,6 +412,25 @@ test('POST /api/platform/setup/complete keeps the shipped guide cat name across 
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.guideCat?.name, resolveGuideCatSystemName('zh-TW,zh;q=0.9,en;q=0.8'));
+  });
+});
+
+test('POST /api/platform/setup/complete rejects guide cat name overrides', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+        guideCatName: 'Meowster',
+        guideCatProvider: 'claude',
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    const payload = await response.json();
+    assert.match(payload.error?.message ?? '', /name is fixed and cannot be changed/u);
   });
 });
 
@@ -449,7 +465,6 @@ test('POST /api/platform/setup/complete still honors legacy selectedProduct for 
         ownerDisplayName: 'Kenny',
         selectedProduct: 'work',
         createGuideCat: true,
-        guideCatName: 'CrossProduct',
         guideCatProvider: 'claude',
         guideCatModel: 'claude-sonnet',
       }),
@@ -466,7 +481,7 @@ test('POST /api/platform/setup/complete still honors legacy selectedProduct for 
   });
 });
 
-test('POST /api/platform/setup/complete still accepts legacy Boss Cat aliases as Guide Cat compatibility', async () => {
+test('POST /api/platform/setup/complete still accepts legacy Boss Cat provider aliases as Guide Cat compatibility', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
@@ -474,7 +489,6 @@ test('POST /api/platform/setup/complete still accepts legacy Boss Cat aliases as
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createBossCat: true,
-        bossCatName: 'Legacy Boss',
         bossCatProvider: 'claude',
         bossCatModel: 'claude-sonnet',
       }),
@@ -673,7 +687,6 @@ test('PATCH /api/platform/guide-cat disable status survives later guide cat edit
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Attempted Rename',
       }),
     });
 
@@ -690,7 +703,6 @@ test('PATCH /api/platform/guide-cat disable status survives later guide cat edit
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        name: 'Resting Guide',
         provider: 'claude',
         model: 'claude-sonnet',
       }),
@@ -716,7 +728,6 @@ test('DELETE /api/platform/guide-cat clears assist cache and restores determinis
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Attempted Rename',
       }),
     });
     assert.equal(setupResponse.status, 200);
@@ -752,7 +763,6 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Attempted Rename',
       }),
     });
     assert.equal(setupResponse.status, 200);
@@ -838,7 +848,6 @@ test('GET /api/app-shell serves stale assist cache first and lazily rehydrates i
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Attempted Rename',
       }),
     });
     assert.equal(setupResponse.status, 200);
@@ -913,7 +922,6 @@ test('PUT /api/platform/guide-cat hydrates assist cache without requiring an app
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        name: 'Runtime Guide',
         provider: 'claude',
         model: 'claude-sonnet',
       }),
@@ -942,7 +950,6 @@ test('PUT /api/platform/guide-cat refreshes a still-fresh assist cache when guid
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'First Guide',
         guideCatProvider: 'claude',
         guideCatModel: 'claude-sonnet',
       }),
@@ -959,7 +966,6 @@ test('PUT /api/platform/guide-cat refreshes a still-fresh assist cache when guid
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        name: 'Second Guide',
         provider: 'codex',
         model: 'gpt-5.4',
       }),
@@ -992,7 +998,6 @@ test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after 
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Sleeping Guide',
       }),
     });
     assert.equal(setupResponse.status, 200);
@@ -1019,6 +1024,34 @@ test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after 
       GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
     );
     assert.equal(parallelBundle.freshness.lastRefreshStatus, 'skipped');
+  });
+});
+
+test('PUT /api/platform/guide-cat rejects guide cat name overrides', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: false,
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const updateResponse = await fetch(`${baseUrl}/api/platform/guide-cat`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Runtime Guide',
+        provider: 'claude',
+        model: 'claude-sonnet',
+      }),
+    });
+
+    assert.equal(updateResponse.status, 400);
+    const payload = await updateResponse.json();
+    assert.match(payload.error?.message ?? '', /name is fixed and cannot be changed/u);
   });
 });
 

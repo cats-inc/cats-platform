@@ -39,7 +39,7 @@ export interface ParsedAssistantPresetBody {
 }
 
 export interface GuideCatUpdateBody {
-  name?: string;
+  name?: string | null;
   provider?: string;
   instance?: string | null;
   model?: string | null;
@@ -173,12 +173,15 @@ export function parseAssistantPresetBody(
 
 export function parseGuideCatUpdateBody(
   body: GuideCatUpdateBody,
-  options?: { fixedName?: string | null },
 ): ParseResult<ParsedGuideCatUpdateBody> {
+  if (Object.prototype.hasOwnProperty.call(body, 'name')) {
+    return { ok: false, message: 'Guide Cat name is fixed and cannot be changed' };
+  }
+
   return {
     ok: true,
     value: {
-      name: options?.fixedName?.trim() || GUIDE_CAT_SYSTEM_NAME,
+      name: GUIDE_CAT_SYSTEM_NAME,
       provider: body.provider?.trim() || 'claude',
       instance: body.instance?.trim() || null,
       model: body.model ?? null,

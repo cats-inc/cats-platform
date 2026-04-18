@@ -122,7 +122,6 @@ export interface PlatformSetupCompleteInput {
   attemptId?: string | null;
   ownerDisplayName: string;
   createGuideCat?: boolean;
-  guideCatName?: string;
   guideCatProvider?: string;
   guideCatInstance?: string;
   guideCatModel?: string;

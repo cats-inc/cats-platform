@@ -93,7 +93,7 @@ export function CollapsedPill({
   className?: string;
   dragging?: boolean;
 }) {
-  const displayName = resolveGuideCatDisplayName({ name });
+  const displayName = resolveGuideCatDisplayName();
   return (
     <div
       className={className ?? 'guideCatPillWrap'}
@@ -193,7 +193,7 @@ function OpenPanel({
   style?: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
 }) {
-  const displayName = resolveGuideCatDisplayName({ name });
+  const displayName = resolveGuideCatDisplayName();
   return (
     <div
       className={
@@ -368,7 +368,7 @@ export function GuideCatSidecarView({
 }
 
 function buildGuideCatTooltip(guideCat: GuideCatRecord): string {
-  const displayName = resolveGuideCatDisplayName(guideCat);
+  const displayName = resolveGuideCatDisplayName();
   const executionLabel = resolveExecutionTargetLabel({
     provider: guideCat.executionTarget.provider,
     instance: guideCat.executionTarget.instance,
@@ -421,7 +421,7 @@ function SidecarContent({
   const panelRef = useRef<HTMLDivElement>(null);
   const guideCatUiPrefs = useGuideCatUiPrefs();
   const { dialog, choose, handleClose } = useConfirmDialog();
-  const guideCatName = resolveGuideCatDisplayName(guideCat);
+  const guideCatName = resolveGuideCatDisplayName();
 
   const handleAction = useCallback((route: string) => {
     collapse();

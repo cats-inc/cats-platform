@@ -111,7 +111,7 @@ export function PlatformSettingsGeneral({
 
   const avatarUrl = payload.ownerAvatarUrl;
   const initials = nameInitials(payload.ownerDisplayName);
-  const guideCatName = resolveGuideCatDisplayName(payload.guideCat);
+  const guideCatName = resolveGuideCatDisplayName();
   const guideCatEnabled = isGuideCatEnabledStatus(payload.guideCat?.status);
   const lobbyPrefs = payload.lobby ?? {
     animationMode: 'reduced',

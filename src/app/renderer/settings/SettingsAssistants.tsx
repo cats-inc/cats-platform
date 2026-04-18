@@ -63,7 +63,7 @@ export function SettingsAssistants({
   onPayloadUpdate,
 }: SettingsAssistantsProps) {
   const guideCat = payload.guideCat ?? null;
-  const guideCatName = resolveGuideCatDisplayName(guideCat);
+  const guideCatName = resolveGuideCatDisplayName();
   const guideCatEnabled = guideCat ? isGuideCatEnabledStatus(guideCat.status) : false;
   const assistantPresets = payload.assistantPresets ?? [];
   const [guideForm, setGuideForm] = useState<GuideCatFormState>(() =>
