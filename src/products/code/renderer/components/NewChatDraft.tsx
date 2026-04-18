@@ -182,13 +182,15 @@ function useCodeDraftRepoProbe(draftCwd: string | null): RepoProbeResult {
 }
 
 export function NewChatDraft(props: NewChatDraftProps) {
-  const { isRepo, repoRoot, branch } = useCodeDraftRepoProbe(props.draftCwd);
-  const defaultSessionPolicy = createDefaultRuntimeSessionPolicy();
-
   if (props.entryMode === 'group' || props.entryMode === 'parallel') {
     return <ChatNewChatDraft {...props} />;
   }
+  return <CodeDefaultDraft {...props} />;
+}
 
+function CodeDefaultDraft(props: NewChatDraftProps) {
+  const { isRepo, repoRoot, branch } = useCodeDraftRepoProbe(props.draftCwd);
+  const defaultSessionPolicy = createDefaultRuntimeSessionPolicy();
   const currentSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath: props.draftCwd,
     policy: props.draftRuntimeSessionPolicy ?? defaultSessionPolicy,
@@ -202,11 +204,15 @@ export function NewChatDraft(props: NewChatDraftProps) {
   const availableHelperChips = (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
     .filter((chip) => chip.prompt.trim().length > 0)
     .slice(0, 3);
+  const helperChipResetKey = availableHelperChips.length > 0
+    ? availableHelperChips.map((chip) => chip.id).join('|')
+    : null;
   const {
     showDraftHelperChips,
     dismissDraftHelperChips,
   } = useDraftHelperChipVisibility({
     availableChipCount: availableHelperChips.length,
+    resetKey: helperChipResetKey,
   });
   const workspaceProps = buildWorkspaceDraftProps({
     props,

@@ -196,11 +196,15 @@ export function NewChatDraft({
     busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
+  const helperChipResetKey = visibleStarterSuggestions.length > 0
+    ? visibleStarterSuggestions.map((suggestion) => suggestion.id).join('|')
+    : null;
   const {
     showDraftHelperChips,
     dismissDraftHelperChips,
   } = useDraftHelperChipVisibility({
     availableChipCount: visibleStarterSuggestions.length,
+    resetKey: helperChipResetKey,
   });
 
   function capAudienceParticipants(
