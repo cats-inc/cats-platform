@@ -55,6 +55,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-064](./plans/PLAN-064-new-code-mvp-task-run-artifact-materialization.md)
 - [PLAN-063](./plans/PLAN-063-guide-cat-renderer-owned-ui-preferences-migration.md)
 - [SPEC-072](./specs/SPEC-072-runtime-session-policy-boundary-validation.md)
 - [ADR-071](./decisions/071-reject-invalid-runtime-session-policy-combinations-at-create-boundary.md)
@@ -158,4 +159,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-18*
+*Last updated: 2026-04-19*
