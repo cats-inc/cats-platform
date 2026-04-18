@@ -83,6 +83,41 @@ import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
 import { isBrowserLiveTraceEnabled } from '../../../../../shared/liveTrace.js';
 
 let _lastLiveIndicatorLogSignature: string | null = null;
+let _lastLiveIndicatorLogAt: number | null = null;
+
+function buildLiveTraceSegmentDetail(segment: LiveIndicatorSegmentState): string {
+  const blockDetail = segment.contentBlocks
+    .map((block) => block.kind + '#' + block.index + ':' + block.status)
+    .join('|');
+  const metaDetail = [
+    segment.targetStateId ? 'ts:' + segment.targetStateId : null,
+    segment.sessionId ? 'sid:' + segment.sessionId : null,
+    segment.participantId ? 'pid:' + segment.participantId : null,
+    segment.speakerLabel ? 'sp:' + segment.speakerLabel : null,
+    segment.progressKind ? 'pk:' + segment.progressKind : null,
+    segment.progressText ? 'pt:' + segment.progressText : null,
+    segment.tools.length > 0
+      ? 'tools:' + segment.tools.map((tool) => `${tool.toolName}:${tool.done ? 'done' : 'pending'}`).join(',')
+      : null,
+    segment.events.length > 0
+      ? 'events:' + segment.events.map((event) => event.eventType).join(',')
+      : null,
+  ]
+    .filter((detail): detail is string => detail != null && detail.length > 0)
+    .join('|');
+  return `${segment.phase}:si${segment.segmentIndex}:${blockDetail || metaDetail || 'empty'}`;
+}
+
+function buildLiveTraceStateSignature(state: LiveIndicatorState | null | undefined): string {
+  if (!state) {
+    return 'null';
+  }
+  if (!state.active) {
+    return 'inactive';
+  }
+  const segments = state.segments?.length ? state.segments : [state as unknown as LiveIndicatorSegmentState];
+  return state.phase + ':' + segments.length + ':' + segments.map(buildLiveTraceSegmentDetail).join(';');
+}
 
 export interface ChatViewRenderContext {
   payload: AppShellPayload;
@@ -954,37 +989,24 @@ export function ChatView({
         onRetryMessage={onRetryMessage}
         onRelayMessage={onRelayMessage}
         liveIndicator={(() => {
-          if (visibleLiveIndicator?.active && isBrowserLiveTraceEnabled()) {
-            const segments = visibleLiveIndicator.segments?.length
-              ? visibleLiveIndicator.segments
-              : [visibleLiveIndicator];
-            const signature = visibleLiveIndicator.phase + ':' + segments.length + ':' + segments.map((segment) => {
-              const blockDetail = segment.contentBlocks
-                .map((block) => block.kind + '#' + block.index + ':' + block.status)
-                .join('|');
-              const metaDetail = [
-                segment.targetStateId ? 'ts:' + segment.targetStateId : null,
-                segment.sessionId ? 'sid:' + segment.sessionId : null,
-                segment.participantId ? 'pid:' + segment.participantId : null,
-                segment.speakerLabel ? 'sp:' + segment.speakerLabel : null,
-                segment.progressKind ? 'pk:' + segment.progressKind : null,
-                segment.progressText ? 'pt:' + segment.progressText : null,
-                segment.tools.length > 0
-                  ? 'tools:' + segment.tools.map((tool) => `${tool.toolName}:${tool.done ? 'done' : 'pending'}`).join(',')
-                  : null,
-                segment.events.length > 0
-                  ? 'events:' + segment.events.map((event) => event.eventType).join(',')
-                  : null,
-              ]
-                .filter((detail): detail is string => detail != null && detail.length > 0)
-                .join('|');
-              return `${segment.phase}:si${segment.segmentIndex}:${blockDetail || metaDetail || 'empty'}`;
-            }).join(';');
-            if (signature !== _lastLiveIndicatorLogSignature) {
-              _lastLiveIndicatorLogSignature = signature;
-              console.log('[CV] li ph=' + visibleLiveIndicator.phase + ' segs=' + segments.length + ' detail=' + JSON.stringify(
-                signature.split(';'),
-              ) + ' nb=' + (isNearBottom ? '1' : '0'));
+          if (isBrowserLiveTraceEnabled()) {
+            const rawSignature = buildLiveTraceStateSignature(liveIndicator);
+            const visibleSignature = buildLiveTraceStateSignature(visibleLiveIndicator);
+            const activeTurnUpdatedAt = selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null;
+            const combinedSignature =
+              `raw=${rawSignature}|vis=${visibleSignature}|turn=${activeTurnUpdatedAt ?? 'none'}`;
+            if (combinedSignature !== _lastLiveIndicatorLogSignature) {
+              const now = Date.now();
+              const gapMs = _lastLiveIndicatorLogAt != null ? now - _lastLiveIndicatorLogAt : 0;
+              _lastLiveIndicatorLogSignature = combinedSignature;
+              _lastLiveIndicatorLogAt = now;
+              console.log(
+                '[CV] li gap=' + gapMs + 'ms'
+                + ' raw=' + rawSignature
+                + ' vis=' + visibleSignature
+                + ' turn=' + (activeTurnUpdatedAt ?? 'none')
+                + ' nb=' + (isNearBottom ? '1' : '0'),
+              );
             }
           }
           return visibleLiveIndicator ?? undefined;
