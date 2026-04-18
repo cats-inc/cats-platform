@@ -89,7 +89,23 @@ let _lastLiveIndicatorLogAt: number | null = null;
 
 function buildLiveTraceSegmentDetail(segment: LiveIndicatorSegmentState): string {
   const blockDetail = segment.contentBlocks
-    .map((block) => block.kind + '#' + block.index + ':' + block.status)
+    .map((block) => {
+      const base = block.kind + '#' + block.index + ':' + block.status;
+      if (block.kind === 'text') {
+        const trimmed = block.text.trim();
+        if (trimmed.length === 0) {
+          return base + '(empty)';
+        }
+        if (trimmed.length < 40) {
+          return base + '(len' + trimmed.length + ')';
+        }
+        if (trimmed.length < 400) {
+          return base + '(len~' + Math.floor(trimmed.length / 40) * 40 + ')';
+        }
+        return base + '(len~' + Math.floor(trimmed.length / 400) * 400 + ')';
+      }
+      return base;
+    })
     .join('|');
   const metaDetail = [
     segment.targetStateId ? 'ts:' + segment.targetStateId : null,
