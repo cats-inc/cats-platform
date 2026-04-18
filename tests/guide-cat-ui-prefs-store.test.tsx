@@ -5,11 +5,9 @@ import {
   GUIDE_CAT_UI_PREFS_DEFAULTS,
   GUIDE_CAT_UI_PREFS_STORAGE_KEY,
   createGuideCatUiPrefsStore,
-  deriveGuideCatUiPrefsFromLegacy,
   hydrateGuideCatUiPrefs,
   mergeGuideCatUiPrefs,
   parseStoredGuideCatUiPrefs,
-  readLegacyGuideCatUiPrefsInput,
   serializeGuideCatUiPrefs,
   writeStoredGuideCatUiPrefs,
 } from '../src/app/renderer/guideCatUiPrefsStore.ts';
@@ -119,69 +117,7 @@ test('serializeGuideCatUiPrefs round-trips a valid record', () => {
   assert.deepEqual(parseStoredGuideCatUiPrefs(serializeGuideCatUiPrefs(prefs)), prefs);
 });
 
-test('deriveGuideCatUiPrefsFromLegacy repairs likely race-polluted sidecarSeen=false', () => {
-  assert.deepEqual(
-    deriveGuideCatUiPrefsFromLegacy({
-      sidecarSeen: false,
-      sidecarMode: 'bubble',
-      placement: 'floating',
-      floatingAnchor: null,
-    }),
-    {
-      sidecarSeen: true,
-      sidecarMode: 'bubble',
-      placement: 'floating',
-      floatingAnchor: null,
-    },
-  );
-
-  assert.deepEqual(
-    deriveGuideCatUiPrefsFromLegacy({
-      sidecarSeen: false,
-      sidecarMode: 'auto',
-      placement: 'docked',
-      floatingAnchor: null,
-    }),
-    {
-      sidecarSeen: true,
-      sidecarMode: 'auto',
-      placement: 'docked',
-      floatingAnchor: null,
-    },
-  );
-});
-
-test('deriveGuideCatUiPrefsFromLegacy keeps pristine defaults unseen', () => {
-  assert.deepEqual(
-    deriveGuideCatUiPrefsFromLegacy({
-      sidecarSeen: false,
-      sidecarMode: 'auto',
-      placement: 'floating',
-      floatingAnchor: null,
-    }),
-    GUIDE_CAT_UI_PREFS_DEFAULTS,
-  );
-});
-
-test('readLegacyGuideCatUiPrefsInput only returns a legacy snapshot when old fields exist', () => {
-  assert.equal(readLegacyGuideCatUiPrefsInput({ ownerDisplayName: 'Kenny' }), null);
-  assert.deepEqual(
-    readLegacyGuideCatUiPrefsInput({
-      guideCatSidecarSeen: true,
-      guideCatSidecarMode: 'bubble',
-      guideCatPlacement: 'docked',
-      guideCatFloatingAnchor: { x: 0.4, y: 0.6 },
-    }),
-    {
-      sidecarSeen: true,
-      sidecarMode: 'bubble',
-      placement: 'docked',
-      floatingAnchor: { x: 0.4, y: 0.6 },
-    },
-  );
-});
-
-test('hydrateGuideCatUiPrefs prefers an existing local record over legacy values', () => {
+test('hydrateGuideCatUiPrefs prefers an existing local record over defaults', () => {
   const storage = new MemoryStorage();
   storage.setItem(
     GUIDE_CAT_UI_PREFS_STORAGE_KEY,
@@ -195,12 +131,6 @@ test('hydrateGuideCatUiPrefs prefers an existing local record over legacy values
 
   const result = hydrateGuideCatUiPrefs({
     storage,
-    legacy: {
-      sidecarSeen: false,
-      sidecarMode: 'bubble',
-      placement: 'floating',
-      floatingAnchor: null,
-    },
   });
 
   assert.equal(result.source, 'local');
@@ -213,52 +143,30 @@ test('hydrateGuideCatUiPrefs prefers an existing local record over legacy values
   });
 });
 
-test('hydrateGuideCatUiPrefs imports legacy values and persists them locally', () => {
+test('hydrateGuideCatUiPrefs falls back to defaults and persists them locally', () => {
   const storage = new MemoryStorage();
   const result = hydrateGuideCatUiPrefs({
     storage,
-    legacy: {
-      sidecarSeen: false,
-      sidecarMode: 'bubble',
-      placement: 'floating',
-      floatingAnchor: { x: 0.2, y: 0.8 },
-    },
   });
 
-  assert.equal(result.source, 'legacy');
+  assert.equal(result.source, 'defaults');
   assert.equal(result.persisted, true);
-  assert.deepEqual(result.prefs, {
-    sidecarSeen: true,
-    sidecarMode: 'bubble',
-    placement: 'floating',
-    floatingAnchor: { x: 0.2, y: 0.8 },
-  });
+  assert.deepEqual(result.prefs, GUIDE_CAT_UI_PREFS_DEFAULTS);
   assert.deepEqual(
     parseStoredGuideCatUiPrefs(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY)),
     result.prefs,
   );
 });
 
-test('hydrateGuideCatUiPrefs retries later when local persistence fails', () => {
+test('hydrateGuideCatUiPrefs keeps defaults in memory when local persistence fails', () => {
   const storage = new ThrowingStorage();
   const result = hydrateGuideCatUiPrefs({
     storage,
-    legacy: {
-      sidecarSeen: true,
-      sidecarMode: 'drawer',
-      placement: 'docked',
-      floatingAnchor: { x: 0.6, y: 0.4 },
-    },
   });
 
-  assert.equal(result.source, 'legacy');
+  assert.equal(result.source, 'defaults');
   assert.equal(result.persisted, false);
-  assert.deepEqual(result.prefs, {
-    sidecarSeen: true,
-    sidecarMode: 'drawer',
-    placement: 'docked',
-    floatingAnchor: { x: 0.6, y: 0.4 },
-  });
+  assert.deepEqual(result.prefs, GUIDE_CAT_UI_PREFS_DEFAULTS);
 });
 
 test('writeStoredGuideCatUiPrefs persists one atomic record', () => {
@@ -296,25 +204,10 @@ test('GuideCatUiPrefsStore hydrates once and notifies subscribers on durable upd
     notifications += 1;
   });
 
-  store.ensureHydrated({
-    sidecarSeen: false,
-    sidecarMode: 'bubble',
-    placement: 'floating',
-    floatingAnchor: { x: 0.2, y: 0.8 },
-  });
-  store.ensureHydrated({
-    sidecarSeen: true,
-    sidecarMode: 'drawer',
-    placement: 'docked',
-    floatingAnchor: { x: 0.9, y: 0.1 },
-  });
+  store.ensureHydrated();
+  store.ensureHydrated();
 
-  assert.deepEqual(store.getSnapshot(), {
-    sidecarSeen: true,
-    sidecarMode: 'bubble',
-    placement: 'floating',
-    floatingAnchor: { x: 0.2, y: 0.8 },
-  });
+  assert.deepEqual(store.getSnapshot(), GUIDE_CAT_UI_PREFS_DEFAULTS);
 
   store.update({
     placement: 'docked',
@@ -323,8 +216,7 @@ test('GuideCatUiPrefsStore hydrates once and notifies subscribers on durable upd
 
   assert.equal(notifications, 1);
   assert.deepEqual(store.getSnapshot(), {
-    sidecarSeen: true,
-    sidecarMode: 'bubble',
+    ...GUIDE_CAT_UI_PREFS_DEFAULTS,
     placement: 'docked',
     floatingAnchor: { x: 0.3, y: 0.4 },
   });
@@ -344,12 +236,7 @@ test('GuideCatUiPrefsStore reconciles external storage updates from another wind
       notifications += 1;
     });
 
-    store.ensureHydrated({
-      sidecarSeen: false,
-      sidecarMode: 'auto',
-      placement: 'floating',
-      floatingAnchor: null,
-    });
+    store.ensureHydrated();
 
     storage.setItem(
       GUIDE_CAT_UI_PREFS_STORAGE_KEY,
@@ -384,12 +271,7 @@ test('GuideCatUiPrefsStore ignores storage events for other keys', async () => {
       notifications += 1;
     });
 
-    store.ensureHydrated({
-      sidecarSeen: false,
-      sidecarMode: 'auto',
-      placement: 'floating',
-      floatingAnchor: null,
-    });
+    store.ensureHydrated();
 
     dispatchStorage({
       key: 'cats.some-other-setting',

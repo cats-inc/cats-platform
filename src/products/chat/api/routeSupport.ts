@@ -15,10 +15,7 @@ import { bestEffortFlushRuntimeSessionMemory } from '../../../platform/memory/ru
 import { escapeContentDispositionFilename } from '../shared/channelPaths.js';
 import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
-import {
-  readLegacyGuideCatUiPrefs,
-  readPlatformPreferences,
-} from '../../../shared/platformPreferences.js';
+import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
@@ -280,9 +277,6 @@ export async function buildAppShellPayload(
   });
 
   const platformPrefs = await readPlatformPreferences(dependencies.config.chatStatePath);
-  const legacyGuideCatUiPrefs = await readLegacyGuideCatUiPrefs(
-    dependencies.config.chatStatePath,
-  );
   const bootstrapAttemptId = await readDesktopHostBootstrapAttemptId(
     dependencies.config.desktopHostStatePath,
   );
@@ -324,7 +318,6 @@ export async function buildAppShellPayload(
       lobby: {
         animationMode: platformPrefs.lobbyAnimationMode,
       },
-      legacyGuideCatUiPrefs,
       lobbyGuideCatAssist: guideCatAssist.lobby,
       newChatAssist: guideCatAssist.newChatByMode,
       codeGuideCatAssist: guideCatAssist.newCode,

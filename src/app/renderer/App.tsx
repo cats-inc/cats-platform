@@ -232,7 +232,6 @@ export default function PlatformApp() {
   const isLobbyRoute = isLobbyPath(location.pathname);
   const guideCatUiPrefs = useGuideCatUiPrefs({
     hydrate: state.status === 'ready',
-    legacy: state.status === 'ready' ? state.envelope.legacyGuideCatUiPrefs ?? null : null,
   });
   const persistGuideCatSeen = useCallback(() => {
     guideCatUiPrefs.update({ sidecarSeen: true });

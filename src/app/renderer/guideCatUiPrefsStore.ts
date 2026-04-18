@@ -22,13 +22,6 @@ export interface GuideCatUiPrefs {
   floatingAnchor: GuideCatFloatingAnchor | null;
 }
 
-export interface LegacyGuideCatUiPrefsInput {
-  sidecarSeen?: boolean | null;
-  sidecarMode?: GuideCatSidecarMode | null;
-  placement?: GuideCatPlacement | null;
-  floatingAnchor?: GuideCatFloatingAnchor | null;
-}
-
 export interface GuideCatUiPrefsPatch {
   sidecarSeen?: boolean;
   sidecarMode?: GuideCatSidecarMode;
@@ -66,7 +59,7 @@ type GuideCatUiPrefsListener = () => void;
 
 export interface GuideCatUiPrefsHydrationResult {
   prefs: GuideCatUiPrefs;
-  source: 'local' | 'legacy' | 'defaults';
+  source: 'local' | 'defaults';
   persisted: boolean;
 }
 
@@ -78,7 +71,6 @@ export const GUIDE_CAT_UI_PREFS_DEFAULTS: GuideCatUiPrefs = {
 };
 
 export interface UseGuideCatUiPrefsOptions {
-  legacy?: LegacyGuideCatUiPrefsInput | null;
   hydrate?: boolean;
 }
 
@@ -128,44 +120,6 @@ function normalizePlacement(value: unknown): GuideCatPlacement {
   return value === 'floating' || value === 'docked'
     ? value
     : GUIDE_CAT_UI_PREFS_DEFAULTS.placement;
-}
-
-function hasLegacyGuideCatUiPrefsInput(
-  value: LegacyGuideCatUiPrefsInput | null | undefined,
-): value is LegacyGuideCatUiPrefsInput {
-  if (!value) {
-    return false;
-  }
-  return (
-    value.sidecarSeen !== undefined
-    || value.sidecarMode !== undefined
-    || value.placement !== undefined
-    || value.floatingAnchor !== undefined
-  );
-}
-
-export function readLegacyGuideCatUiPrefsInput(
-  value: unknown,
-): LegacyGuideCatUiPrefsInput | null {
-  if (typeof value !== 'object' || value === null) {
-    return null;
-  }
-  const record = value as Record<string, unknown>;
-  const hasLegacyFields =
-    Object.prototype.hasOwnProperty.call(record, 'guideCatSidecarSeen')
-    || Object.prototype.hasOwnProperty.call(record, 'guideCatSidecarMode')
-    || Object.prototype.hasOwnProperty.call(record, 'guideCatPlacement')
-    || Object.prototype.hasOwnProperty.call(record, 'guideCatFloatingAnchor');
-  if (!hasLegacyFields) {
-    return null;
-  }
-  const legacy: LegacyGuideCatUiPrefsInput = {
-    sidecarSeen: record.guideCatSidecarSeen === true,
-    sidecarMode: normalizeSidecarMode(record.guideCatSidecarMode),
-    placement: normalizePlacement(record.guideCatPlacement),
-    floatingAnchor: normalizeFloatingAnchor(record.guideCatFloatingAnchor),
-  };
-  return legacy;
 }
 
 export function mergeGuideCatUiPrefs(
@@ -252,42 +206,18 @@ export function writeStoredGuideCatUiPrefs(
   return { persisted: false, prefs };
 }
 
-export function deriveGuideCatUiPrefsFromLegacy(
-  legacy: LegacyGuideCatUiPrefsInput | null | undefined,
-): GuideCatUiPrefs {
-  const sidecarMode = normalizeSidecarMode(legacy?.sidecarMode);
-  const placement = normalizePlacement(legacy?.placement);
-  const floatingAnchor = normalizeFloatingAnchor(legacy?.floatingAnchor);
-  const interactedBeyondDefaults =
-    sidecarMode !== GUIDE_CAT_UI_PREFS_DEFAULTS.sidecarMode
-    || placement !== GUIDE_CAT_UI_PREFS_DEFAULTS.placement
-    || floatingAnchor !== null;
-  const sidecarSeen = legacy?.sidecarSeen === true || interactedBeyondDefaults;
-
-  return {
-    sidecarSeen,
-    sidecarMode,
-    placement,
-    floatingAnchor,
-  };
-}
-
 export function hydrateGuideCatUiPrefs(options: {
   storage: GuideCatUiPrefsStorage | null | undefined;
-  legacy?: LegacyGuideCatUiPrefsInput | null;
 }): GuideCatUiPrefsHydrationResult {
-  const { storage, legacy = null } = options;
+  const { storage } = options;
   const stored = readStoredGuideCatUiPrefs(storage);
   if (stored) {
     return { prefs: stored, source: 'local', persisted: true };
   }
 
-  const source = hasLegacyGuideCatUiPrefsInput(legacy) ? 'legacy' : 'defaults';
-  const prefs = source === 'legacy'
-    ? deriveGuideCatUiPrefsFromLegacy(legacy)
-    : { ...GUIDE_CAT_UI_PREFS_DEFAULTS };
+  const prefs = { ...GUIDE_CAT_UI_PREFS_DEFAULTS };
   const persisted = writeStoredGuideCatUiPrefs(storage, prefs).persisted;
-  return { prefs, source, persisted };
+  return { prefs, source: 'defaults', persisted };
 }
 
 function areGuideCatUiPrefsEqual(a: GuideCatUiPrefs, b: GuideCatUiPrefs): boolean {
@@ -327,11 +257,11 @@ export class GuideCatUiPrefsStore {
     };
   };
 
-  ensureHydrated(legacy?: LegacyGuideCatUiPrefsInput | null): void {
+  ensureHydrated(): void {
     if (this.hydrated) {
       return;
     }
-    const result = hydrateGuideCatUiPrefs({ storage: this.storage, legacy });
+    const result = hydrateGuideCatUiPrefs({ storage: this.storage });
     this.prefs = result.prefs;
     this.hydrated = true;
   }
@@ -407,7 +337,6 @@ export function useGuideCatUiPrefs(
   options: UseGuideCatUiPrefsOptions = {},
 ): UseGuideCatUiPrefsResult {
   const {
-    legacy = null,
     hydrate = true,
   } = options;
   const store = useMemo(
@@ -423,9 +352,9 @@ export function useGuideCatUiPrefs(
     if (!hydrate || store.isHydrated()) {
       return;
     }
-    store.ensureHydrated(legacy);
+    store.ensureHydrated();
     setHydrationTick((current) => current + 1);
-  }, [hydrate, legacy, store]);
+  }, [hydrate, store]);
 
   const prefs = useSyncExternalStore(
     store.subscribe,

@@ -4,7 +4,6 @@ import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAssist.js';
 import type {
   PlatformDesktopPreferences,
-  PlatformLegacyGuideCatUiPrefs,
   PlatformLobbyCatSummary,
   PlatformLobbyPreferences,
   PlatformSurfaceId,
@@ -61,7 +60,6 @@ export function createAppShell(
     lastProductSurface?: PlatformSurfaceId | null;
     desktop?: PlatformDesktopPreferences;
     lobby?: PlatformLobbyPreferences;
-    legacyGuideCatUiPrefs?: PlatformLegacyGuideCatUiPrefs | null;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
     assistantPresets?: AssistantPresetRecord[];
@@ -91,7 +89,6 @@ export function createAppShell(
       cats: buildLobbyCats(summary.cats, chat.bossCatId),
       guideCatAssist: setup?.lobbyGuideCatAssist ?? null,
     },
-    legacyGuideCatUiPrefs: setup?.legacyGuideCatUiPrefs ?? null,
     guideCatAssist: {
       codeNewDraft: setup?.codeGuideCatAssist ?? null,
     },
