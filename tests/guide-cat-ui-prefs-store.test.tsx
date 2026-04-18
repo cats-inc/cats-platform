@@ -35,7 +35,10 @@ class ThrowingStorage extends MemoryStorage {
 async function withBrowserStorageHarness(
   run: (harness: {
     storage: MemoryStorage;
-    dispatchStorage: (newValue: string | null) => void;
+    dispatchStorage: (options: {
+      key?: string | null;
+      newValue: string | null;
+    }) => void;
   }) => Promise<void> | void,
 ): Promise<void> {
   const browserGlobal = globalThis as typeof globalThis & {
@@ -70,10 +73,10 @@ async function withBrowserStorageHarness(
   try {
     await run({
       storage,
-      dispatchStorage(newValue) {
+      dispatchStorage({ key = GUIDE_CAT_UI_PREFS_STORAGE_KEY, newValue }) {
         listeners.forEach((listener) => {
           listener({
-            key: GUIDE_CAT_UI_PREFS_STORAGE_KEY,
+            key,
             newValue,
           });
         });
@@ -357,7 +360,9 @@ test('GuideCatUiPrefsStore reconciles external storage updates from another wind
         floatingAnchor: { x: 0.7, y: 0.3 },
       }),
     );
-    dispatchStorage(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY));
+    dispatchStorage({
+      newValue: storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY),
+    });
 
     assert.equal(notifications, 1);
     assert.deepEqual(store.getSnapshot(), {
@@ -366,6 +371,38 @@ test('GuideCatUiPrefsStore reconciles external storage updates from another wind
       placement: 'docked',
       floatingAnchor: { x: 0.7, y: 0.3 },
     });
+
+    unsubscribe();
+  });
+});
+
+test('GuideCatUiPrefsStore ignores storage events for other keys', async () => {
+  await withBrowserStorageHarness(async ({ storage, dispatchStorage }) => {
+    const store = createGuideCatUiPrefsStore(storage);
+    let notifications = 0;
+    const unsubscribe = store.subscribe(() => {
+      notifications += 1;
+    });
+
+    store.ensureHydrated({
+      sidecarSeen: false,
+      sidecarMode: 'auto',
+      placement: 'floating',
+      floatingAnchor: null,
+    });
+
+    dispatchStorage({
+      key: 'cats.some-other-setting',
+      newValue: serializeGuideCatUiPrefs({
+        sidecarSeen: true,
+        sidecarMode: 'bubble',
+        placement: 'docked',
+        floatingAnchor: { x: 0.4, y: 0.6 },
+      }),
+    });
+
+    assert.equal(notifications, 0);
+    assert.deepEqual(store.getSnapshot(), GUIDE_CAT_UI_PREFS_DEFAULTS);
 
     unsubscribe();
   });

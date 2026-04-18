@@ -401,10 +401,6 @@ function getBrowserGuideCatUiPrefsStore(): GuideCatUiPrefsStore {
   return guideCatUiPrefsStore;
 }
 
-export function resetGuideCatUiPrefsStoreForTests(): void {
-  guideCatUiPrefsStore = null;
-}
-
 export function useGuideCatUiPrefs(
   options: UseGuideCatUiPrefsOptions = {},
 ): UseGuideCatUiPrefsResult {
