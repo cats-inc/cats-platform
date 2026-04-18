@@ -3,6 +3,8 @@ import { useState } from 'react';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
+import type { GuideCatSidecarMode } from '../../../shared/platform-contract.js';
+import { useGuideCatUiPrefs } from '../guideCatUiPrefsStore.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
@@ -21,7 +23,14 @@ export function PlatformSettingsGeneral({
 }: PlatformSettingsGeneralProps) {
   const [cropOpen, setCropOpen] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
-  const [savingSidecarMode, setSavingSidecarMode] = useState(false);
+  const guideCatUiPrefs = useGuideCatUiPrefs({
+    legacy: {
+      sidecarSeen: payload.guideCatSidecarSeen ?? false,
+      sidecarMode: payload.guideCatSidecarMode ?? 'auto',
+      placement: payload.guideCatPlacement ?? 'floating',
+      floatingAnchor: payload.guideCatFloatingAnchor ?? null,
+    },
+  });
 
   async function updateOwnerAvatar(
     nextAvatarUrl: string | null,
@@ -91,34 +100,17 @@ export function PlatformSettingsGeneral({
   }
 
   async function updateGuideCatSidecarMode(
-    nextMode: 'auto' | 'drawer' | 'bubble',
-    errorMessage: string,
+    nextMode: GuideCatSidecarMode,
   ): Promise<void> {
-    const previousMode = payload.guideCatSidecarMode ?? 'auto';
     onPayloadUpdate({
       ...payload,
       guideCatSidecarMode: nextMode,
     });
-    setSavingSidecarMode(true);
     try {
-      const response = await fetch('/api/platform/preferences', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ guideCatSidecarMode: nextMode }),
-      });
-      if (!response.ok) {
-        throw new Error(errorMessage);
-      }
-      dispatchPlatformEnvelopeRefresh();
+      guideCatUiPrefs.update({ sidecarMode: nextMode });
       onFeedback('');
     } catch (error) {
-      onPayloadUpdate({
-        ...payload,
-        guideCatSidecarMode: previousMode,
-      });
-      onFeedback(error instanceof Error ? error.message : errorMessage);
-    } finally {
-      setSavingSidecarMode(false);
+      onFeedback(error instanceof Error ? error.message : 'Failed to update guide cat mode');
     }
   }
 
@@ -273,10 +265,9 @@ export function PlatformSettingsGeneral({
                   <input
                     type="radio"
                     name="guide-cat-sidecar-mode"
-                    checked={(payload.guideCatSidecarMode ?? 'auto') === 'auto'}
-                    disabled={savingSidecarMode}
+                    checked={guideCatUiPrefs.prefs.sidecarMode === 'auto'}
                     onChange={() => {
-                      void updateGuideCatSidecarMode('auto', 'Failed to update guide cat mode');
+                      void updateGuideCatSidecarMode('auto');
                     }}
                   />
                   <span className="settingsCheckboxMeta">
@@ -290,10 +281,9 @@ export function PlatformSettingsGeneral({
                   <input
                     type="radio"
                     name="guide-cat-sidecar-mode"
-                    checked={(payload.guideCatSidecarMode ?? 'auto') === 'drawer'}
-                    disabled={savingSidecarMode}
+                    checked={guideCatUiPrefs.prefs.sidecarMode === 'drawer'}
                     onChange={() => {
-                      void updateGuideCatSidecarMode('drawer', 'Failed to update guide cat mode');
+                      void updateGuideCatSidecarMode('drawer');
                     }}
                   />
                   <span className="settingsCheckboxMeta">
@@ -307,10 +297,9 @@ export function PlatformSettingsGeneral({
                   <input
                     type="radio"
                     name="guide-cat-sidecar-mode"
-                    checked={(payload.guideCatSidecarMode ?? 'auto') === 'bubble'}
-                    disabled={savingSidecarMode}
+                    checked={guideCatUiPrefs.prefs.sidecarMode === 'bubble'}
                     onChange={() => {
-                      void updateGuideCatSidecarMode('bubble', 'Failed to update guide cat mode');
+                      void updateGuideCatSidecarMode('bubble');
                     }}
                   />
                   <span className="settingsCheckboxMeta">

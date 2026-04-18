@@ -23,8 +23,8 @@ import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
 import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,
-  persistGuideCatPlacementPreference,
 } from './GuideCatPlacementProvider';
+import { useGuideCatUiPrefs } from './guideCatUiPrefsStore.js';
 import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
@@ -230,6 +230,17 @@ export default function PlatformApp() {
   }, [refreshEnvelope]);
 
   const isLobbyRoute = isLobbyPath(location.pathname);
+  const guideCatUiPrefs = useGuideCatUiPrefs({
+    hydrate: state.status === 'ready',
+    legacy: state.status === 'ready'
+      ? {
+          sidecarSeen: state.envelope.guideCatSidecarSeen ?? false,
+          sidecarMode: state.envelope.guideCatSidecarMode ?? 'auto',
+          placement: state.envelope.guideCatPlacement ?? 'floating',
+          floatingAnchor: state.envelope.guideCatFloatingAnchor ?? null,
+        }
+      : null,
+  });
 
   useEffect(() => {
     const previousPathname = previousPathnameRef.current;
@@ -494,11 +505,12 @@ export default function PlatformApp() {
   return (
     <GuideCatPlacementProvider
       guideCat={guideCatVisible ? guideCatSidecarInput.guideCat : null}
-      placement={readyEnvelope.guideCatPlacement ?? 'floating'}
-      floatingAnchor={readyEnvelope.guideCatFloatingAnchor ?? null}
-      sidecarSeen={readyEnvelope.guideCatSidecarSeen ?? false}
-      sidecarMode={readyEnvelope.guideCatSidecarMode ?? 'auto'}
-      onCommit={persistGuideCatPlacementPreference}
+      placement={guideCatUiPrefs.prefs.placement}
+      floatingAnchor={guideCatUiPrefs.prefs.floatingAnchor}
+      sidecarSeen={guideCatUiPrefs.prefs.sidecarSeen}
+      sidecarMode={guideCatUiPrefs.prefs.sidecarMode}
+      onPersistSeen={() => guideCatUiPrefs.update({ sidecarSeen: true })}
+      onCommit={guideCatUiPrefs.update}
     >
       {guideCatVisible ? (
         <GuideCatSidecar

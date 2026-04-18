@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
-import { dispatchPlatformEnvelopeRefresh } from './platformEnvelopeEvents.js';
 
 export type GuideCatSidecarViewState = 'hidden' | 'collapsed' | 'welcome-peek' | 'open';
 type GuideCatSidecarInnerState = Exclude<GuideCatSidecarViewState, 'hidden'>;
@@ -14,20 +13,6 @@ export interface GuideCatSidecarState {
   toggle: () => void;
   collapse: () => void;
   dismissWelcome: () => void;
-}
-
-function persistSidecarSeen(): void {
-  void fetch('/api/platform/preferences', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ guideCatSidecarSeen: true }),
-  })
-    .then((response) => {
-      if (response.ok) {
-        dispatchPlatformEnvelopeRefresh();
-      }
-    })
-    .catch(() => {});
 }
 
 function resolveOpenState(mode: GuideCatSidecarMode): GuideCatSidecarInnerState {
@@ -72,6 +57,7 @@ export function resolveGuideCatSidecarPreferenceState(
 export function useGuideCatSidecarState(
   sidecarSeen: boolean,
   mode: GuideCatSidecarMode,
+  onPersistSeen: () => void,
 ): GuideCatSidecarState {
   const location = useLocation();
   const [innerState, setInnerState] = useState<GuideCatSidecarInnerState>(
@@ -103,28 +89,28 @@ export function useGuideCatSidecarState(
     setInnerState((prev) => {
       const transition = toggleGuideCatSidecarState(prev, mode);
       if (transition.persistSeen) {
-        persistSidecarSeen();
+        onPersistSeen();
       }
       return transition.nextState;
     });
-  }, [mode]);
+  }, [mode, onPersistSeen]);
 
   const collapse = useCallback(() => {
     setProactive(false);
     setInnerState((prev) => {
       const transition = collapseGuideCatSidecarState(prev);
       if (transition.persistSeen) {
-        persistSidecarSeen();
+        onPersistSeen();
       }
       return transition.nextState;
     });
-  }, []);
+  }, [onPersistSeen]);
 
   const dismissWelcome = useCallback(() => {
     setProactive(false);
     setInnerState('collapsed');
-    persistSidecarSeen();
-  }, []);
+    onPersistSeen();
+  }, [onPersistSeen]);
 
   return { viewState, proactive, toggle, collapse, dismissWelcome };
 }

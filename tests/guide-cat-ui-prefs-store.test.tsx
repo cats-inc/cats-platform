@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   GUIDE_CAT_UI_PREFS_DEFAULTS,
   GUIDE_CAT_UI_PREFS_STORAGE_KEY,
+  createGuideCatUiPrefsStore,
   deriveGuideCatUiPrefsFromLegacy,
   hydrateGuideCatUiPrefs,
   mergeGuideCatUiPrefs,
@@ -197,4 +198,52 @@ test('writeStoredGuideCatUiPrefs persists one atomic record', () => {
       floatingAnchor: { x: 0.3, y: 0.4 },
     },
   );
+});
+
+test('GuideCatUiPrefsStore hydrates once and notifies subscribers on durable updates', () => {
+  const storage = new MemoryStorage();
+  const store = createGuideCatUiPrefsStore(storage);
+  let notifications = 0;
+  const unsubscribe = store.subscribe(() => {
+    notifications += 1;
+  });
+
+  store.ensureHydrated({
+    sidecarSeen: false,
+    sidecarMode: 'bubble',
+    placement: 'floating',
+    floatingAnchor: { x: 0.2, y: 0.8 },
+  });
+  store.ensureHydrated({
+    sidecarSeen: true,
+    sidecarMode: 'drawer',
+    placement: 'docked',
+    floatingAnchor: { x: 0.9, y: 0.1 },
+  });
+
+  assert.deepEqual(store.getSnapshot(), {
+    sidecarSeen: true,
+    sidecarMode: 'bubble',
+    placement: 'floating',
+    floatingAnchor: { x: 0.2, y: 0.8 },
+  });
+
+  store.update({
+    placement: 'docked',
+    floatingAnchor: { x: 0.3, y: 0.4 },
+  });
+
+  assert.equal(notifications, 1);
+  assert.deepEqual(store.getSnapshot(), {
+    sidecarSeen: true,
+    sidecarMode: 'bubble',
+    placement: 'docked',
+    floatingAnchor: { x: 0.3, y: 0.4 },
+  });
+  assert.deepEqual(
+    parseStoredGuideCatUiPrefs(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY)),
+    store.getSnapshot(),
+  );
+
+  unsubscribe();
 });

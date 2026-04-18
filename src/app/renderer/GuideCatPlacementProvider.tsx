@@ -21,7 +21,6 @@ import type {
 import { SIDE_PANEL_LAYOUT_EVENT } from '../../design/components/SidePanel.js';
 import { hideTooltipPortal } from '../../products/chat/renderer/tooltipPortal.js';
 import { readSidePanelRightBlockedLeft } from './guideCatPanelDetection.js';
-import { dispatchPlatformEnvelopeRefresh } from './platformEnvelopeEvents.js';
 import {
   useGuideCatSidecarState,
   type GuideCatSidecarState,
@@ -75,11 +74,6 @@ export interface GuideCatPlacementContextValue {
 
 const GuideCatPlacementContext = createContext<GuideCatPlacementContextValue | null>(null);
 
-export interface GuideCatPlacementPreferences {
-  placement: GuideCatPlacement;
-  floatingAnchor: GuideCatFloatingAnchor | null;
-}
-
 interface DragState {
   mode: 'floating' | 'docked';
   pointerId: number;
@@ -106,6 +100,7 @@ export interface GuideCatPlacementProviderProps {
   floatingAnchor: GuideCatFloatingAnchor | null;
   sidecarSeen: boolean;
   sidecarMode: GuideCatSidecarMode;
+  onPersistSeen: () => void;
   onCommit: (patch: {
     placement?: GuideCatPlacement;
     floatingAnchor?: GuideCatFloatingAnchor | null;
@@ -119,10 +114,11 @@ export function GuideCatPlacementProvider({
   floatingAnchor,
   sidecarSeen,
   sidecarMode,
+  onPersistSeen,
   onCommit,
   children,
 }: GuideCatPlacementProviderProps) {
-  const presentation = useGuideCatSidecarState(sidecarSeen, sidecarMode);
+  const presentation = useGuideCatSidecarState(sidecarSeen, sidecarMode, onPersistSeen);
   const location = useLocation();
   const surface: GuideCatSurfaceClass = resolveGuideCatSurfaceClass(location.pathname);
 
@@ -704,31 +700,4 @@ function readSlotRect(node: HTMLElement): GuideCatSlotRect {
     right: rect.right,
     bottom: rect.bottom,
   };
-}
-
-export function persistGuideCatPlacementPreference(patch: {
-  placement?: GuideCatPlacement;
-  floatingAnchor?: GuideCatFloatingAnchor | null;
-}): void {
-  // Map the internal patch keys to the server's PlatformPreferencesUpdateBody
-  // keys; without this remapping the server silently ignores the fields and
-  // the dock release never actually persists.
-  const body: Record<string, unknown> = {};
-  if (patch.placement !== undefined) {
-    body.guideCatPlacement = patch.placement;
-  }
-  if (patch.floatingAnchor !== undefined) {
-    body.guideCatFloatingAnchor = patch.floatingAnchor;
-  }
-  void fetch('/api/platform/preferences', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-    .then((response) => {
-      if (response.ok) {
-        dispatchPlatformEnvelopeRefresh();
-      }
-    })
-    .catch(() => {});
 }

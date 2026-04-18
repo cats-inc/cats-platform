@@ -1,3 +1,9 @@
+import {
+  useCallback,
+  useMemo,
+  useSyncExternalStore,
+} from 'react';
+
 import type {
   GuideCatFloatingAnchor,
   GuideCatPlacement,
@@ -37,6 +43,8 @@ interface GuideCatUiPrefsStorage {
   setItem(key: string, value: string): void;
 }
 
+type GuideCatUiPrefsListener = () => void;
+
 export interface GuideCatUiPrefsHydrationResult {
   prefs: GuideCatUiPrefs;
   source: 'local' | 'legacy' | 'defaults';
@@ -49,6 +57,17 @@ export const GUIDE_CAT_UI_PREFS_DEFAULTS: GuideCatUiPrefs = {
   placement: 'floating',
   floatingAnchor: null,
 };
+
+export interface UseGuideCatUiPrefsOptions {
+  legacy?: LegacyGuideCatUiPrefsInput | null;
+  hydrate?: boolean;
+}
+
+export interface UseGuideCatUiPrefsResult {
+  prefs: GuideCatUiPrefs;
+  hydrated: boolean;
+  update: (patch: GuideCatUiPrefsPatch) => void;
+}
 
 function normalizeFloatingAnchor(value: unknown): GuideCatFloatingAnchor | null {
   if (typeof value !== 'object' || value === null) {
@@ -215,4 +234,167 @@ export function hydrateGuideCatUiPrefs(options: {
     : { ...GUIDE_CAT_UI_PREFS_DEFAULTS };
   const persisted = writeStoredGuideCatUiPrefs(storage, prefs).persisted;
   return { prefs, source, persisted };
+}
+
+function areGuideCatUiPrefsEqual(a: GuideCatUiPrefs, b: GuideCatUiPrefs): boolean {
+  return (
+    a.sidecarSeen === b.sidecarSeen
+    && a.sidecarMode === b.sidecarMode
+    && a.placement === b.placement
+    && a.floatingAnchor?.x === b.floatingAnchor?.x
+    && a.floatingAnchor?.y === b.floatingAnchor?.y
+  );
+}
+
+export class GuideCatUiPrefsStore {
+  private prefs: GuideCatUiPrefs = { ...GUIDE_CAT_UI_PREFS_DEFAULTS };
+  private hydrated = false;
+  private listeners = new Set<GuideCatUiPrefsListener>();
+  private storageListening = false;
+
+  constructor(
+    private readonly storage: GuideCatUiPrefsStorage | null | undefined,
+  ) {}
+
+  getSnapshot = (): GuideCatUiPrefs => this.prefs;
+
+  isHydrated(): boolean {
+    return this.hydrated;
+  }
+
+  subscribe = (listener: GuideCatUiPrefsListener): (() => void) => {
+    this.listeners.add(listener);
+    this.ensureStorageListener();
+    return () => {
+      this.listeners.delete(listener);
+      if (this.listeners.size === 0) {
+        this.teardownStorageListener();
+      }
+    };
+  };
+
+  ensureHydrated(legacy?: LegacyGuideCatUiPrefsInput | null): void {
+    if (this.hydrated) {
+      return;
+    }
+    const result = hydrateGuideCatUiPrefs({ storage: this.storage, legacy });
+    this.prefs = result.prefs;
+    this.hydrated = true;
+  }
+
+  update(patch: GuideCatUiPrefsPatch): void {
+    if (!this.hydrated) {
+      this.ensureHydrated();
+    }
+
+    const next = mergeGuideCatUiPrefs(this.prefs, patch);
+    if (areGuideCatUiPrefsEqual(this.prefs, next)) {
+      return;
+    }
+
+    const nextSnapshot = writeStoredGuideCatUiPrefs(this.storage, next).prefs;
+    this.prefs = nextSnapshot;
+    this.hydrated = true;
+    this.emit();
+  }
+
+  private emit(): void {
+    this.listeners.forEach((listener) => listener());
+  }
+
+  private ensureStorageListener(): void {
+    if (
+      this.storageListening
+      || typeof window === 'undefined'
+      || typeof window.addEventListener !== 'function'
+    ) {
+      return;
+    }
+    window.addEventListener('storage', this.handleStorageEvent);
+    this.storageListening = true;
+  }
+
+  private teardownStorageListener(): void {
+    if (
+      !this.storageListening
+      || typeof window === 'undefined'
+      || typeof window.removeEventListener !== 'function'
+    ) {
+      return;
+    }
+    window.removeEventListener('storage', this.handleStorageEvent);
+    this.storageListening = false;
+  }
+
+  private readonly handleStorageEvent = (event: StorageEvent): void => {
+    if (event.key !== GUIDE_CAT_UI_PREFS_STORAGE_KEY) {
+      return;
+    }
+    const next = parseStoredGuideCatUiPrefs(event.newValue) ?? { ...GUIDE_CAT_UI_PREFS_DEFAULTS };
+    if (areGuideCatUiPrefsEqual(this.prefs, next)) {
+      return;
+    }
+    this.prefs = next;
+    this.hydrated = true;
+    this.emit();
+  };
+}
+
+export function createGuideCatUiPrefsStore(
+  storage: GuideCatUiPrefsStorage | null | undefined,
+): GuideCatUiPrefsStore {
+  return new GuideCatUiPrefsStore(storage);
+}
+
+let guideCatUiPrefsStore: GuideCatUiPrefsStore | null = null;
+
+function getBrowserGuideCatUiPrefsStore(): GuideCatUiPrefsStore {
+  if (!guideCatUiPrefsStore) {
+    guideCatUiPrefsStore = createGuideCatUiPrefsStore(
+      typeof window === 'undefined' ? null : window.localStorage,
+    );
+  }
+  return guideCatUiPrefsStore;
+}
+
+export function resetGuideCatUiPrefsStoreForTests(): void {
+  guideCatUiPrefsStore = null;
+}
+
+export function useGuideCatUiPrefs(
+  options: UseGuideCatUiPrefsOptions = {},
+): UseGuideCatUiPrefsResult {
+  const {
+    legacy = null,
+    hydrate = true,
+  } = options;
+  const store = useMemo(
+    () =>
+      typeof window === 'undefined'
+        ? createGuideCatUiPrefsStore(null)
+        : getBrowserGuideCatUiPrefsStore(),
+    [],
+  );
+
+  if (hydrate) {
+    store.ensureHydrated(legacy);
+  }
+
+  const prefs = useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot,
+    store.getSnapshot,
+  );
+  const update = useCallback(
+    (patch: GuideCatUiPrefsPatch) => {
+      store.update(patch);
+    },
+    [store],
+  );
+
+  return {
+    prefs,
+    hydrated: hydrate && store.isHydrated(),
+    update,
+  };
 }
