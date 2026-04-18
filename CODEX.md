@@ -57,15 +57,25 @@ If assigned as Conductor in Project Roles table:
 - **MUST** update documentation when changing public APIs
 - **MUST** follow coding conventions specified in AGENTS.md
 - **MUST** respect `.editorconfig` settings (LF line endings, final newline, trim rules)
+- **MUST NOT** run dependent Git commands in parallel. If one Git step changes
+  repo state or determines the next command, run it first, inspect the result,
+  then run the next step.
+- **MUST NOT** use parallel tool wrappers for dependent Git flows such as
+  `fetch -> rebase`, conflict resolution `-> rebase --continue`, or
+  `commit -> push`
 - **MUST NOT** use interactive rebase; always use non-interactive rebase commands only
 - **MUST NOT** run `git commit` and `git push` simultaneously or in one
   parallelized step; finish and verify the commit first, then run a separate
   push
+- **MUST** inspect repo state after each state-changing Git command before
+  issuing the next Git command
 - **MUST NOT** run plain `git rebase --continue` in this Windows/PowerShell
   workspace, because Git may open an editor and block the session
 - **MUST** continue rebases with an explicit no-editor command after conflicts
   are resolved:
   `$env:GIT_EDITOR='node -e \"process.exit(0)\"'; git rebase --continue`
+- **MUST NOT** rely on an interactive terminal editor for any Git continue
+  flow in this workspace
 - **SHOULD** use the same no-editor pattern for `git cherry-pick --continue`
   and `git merge --continue` when Git would otherwise invoke an editor
 - **SHOULD** make minimal, focused changes
@@ -418,4 +428,4 @@ working memory for Codex, not yet a ratified product spec or ADR.
 
 This file is maintained by Codex only. Other agents should not modify this file.
 
-Last updated: 2026-04-17
+Last updated: 2026-04-18
