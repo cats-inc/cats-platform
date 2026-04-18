@@ -67,6 +67,10 @@ export interface GuideCatPlacementContextValue {
    * so it hugs the chrome (workspace sidebar right edge, or lobby left edge)
    * rather than drifting with the pill centre. */
   panelOriginX: number;
+  /** Live viewport rect of a registered dock slot, or null when the slot
+   * is not currently mounted. Used by the sidecar to anchor the bubble-mode
+   * peek next to the docked pill without caching stale geometry. */
+  getDockSlotRect: (slot: GuideCatDockSlotKind) => GuideCatSlotRect | null;
 }
 
 const GuideCatPlacementContext = createContext<GuideCatPlacementContextValue | null>(null);
@@ -294,6 +298,18 @@ export function GuideCatPlacementProvider({
       slotRects.current[slot] = node ? readSlotRect(node) : null;
     });
   }, []);
+
+  const getDockSlotRect = useCallback(
+    (slot: GuideCatDockSlotKind): GuideCatSlotRect | null => {
+      // Re-measure on demand rather than returning the cached rect — the
+      // cache is updated during drag/register events but callers (e.g.
+      // bubble-mode peek anchoring) want the current geometry after
+      // layout shifts that don't run through this provider.
+      const node = slotRefs.current[slot];
+      return node ? readSlotRect(node) : null;
+    },
+    [],
+  );
 
   const commitFloatingRelease = useCallback(
     (pointerX: number, pointerY: number) => {
@@ -582,6 +598,7 @@ export function GuideCatPlacementProvider({
       presentation,
       dragActive: dragActivated,
       panelOriginX,
+      getDockSlotRect,
     }),
     [
       guideCat,
@@ -594,6 +611,7 @@ export function GuideCatPlacementProvider({
       presentation,
       dragActivated,
       panelOriginX,
+      getDockSlotRect,
     ],
   );
 
@@ -641,10 +659,29 @@ function hideGlobalTooltip(): void {
   hideTooltipPortal();
 }
 
+/** Events dispatched by `dismissTransientChrome` carry this symbol so the
+ * guide-cat's own document-level listeners (the sidecar's outside-click
+ * collapse) can recognise the synthetic mousedown as our own bookkeeping
+ * and skip it. Other chrome (account menu, side panel) has no reason to
+ * check for this and continues to self-dismiss on the same event. */
+const GUIDE_CAT_DISMISS_EVENT_SYMBOL: unique symbol = Symbol.for(
+  'cats.guideCat.dismissTransientChrome',
+);
+
+export function isGuideCatDismissTransientChromeEvent(event: Event): boolean {
+  return Boolean(
+    (event as unknown as Record<symbol, unknown>)[GUIDE_CAT_DISMISS_EVENT_SYMBOL],
+  );
+}
+
 /** Synthesise a `mousedown` on `document.body` so any transient chrome surface
  * with document-level outside-click semantics self-dismisses before the
  * guide-cat interaction continues. This intentionally covers more than menus:
- * unpinned side panels that share the same contract should close too. */
+ * unpinned side panels that share the same contract should close too. The
+ * event is tagged with `GUIDE_CAT_DISMISS_EVENT_SYMBOL` so the guide-cat's
+ * own sidecar listener can ignore it — otherwise clicking a docked pill
+ * while the sidecar panel is open would collapse the panel synthetically,
+ * only for the click to immediately toggle it back open. */
 function dismissTransientChrome(): void {
   if (typeof document === 'undefined' || typeof MouseEvent === 'undefined') return;
   const evt = new MouseEvent('mousedown', {
@@ -653,6 +690,7 @@ function dismissTransientChrome(): void {
     view: typeof window !== 'undefined' ? window : undefined,
     button: 0,
   });
+  (evt as unknown as Record<symbol, unknown>)[GUIDE_CAT_DISMISS_EVENT_SYMBOL] = true;
   document.body.dispatchEvent(evt);
 }
 

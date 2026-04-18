@@ -259,6 +259,39 @@ body.guideCatDragging
   to   { opacity: 1; transform: translateY(-50%) translateX(0); }
 }
 
+/* Bubble mode + lobby dock: the pill is in the horizontal top bar, so the
+   peek sits below the pill with an upward-pointing tail instead of the
+   default left-pointing one. Inline `style` from React sets left/top/
+   transform to centre the peek horizontally on the dock slot. */
+.guideCatPeek--anchor-top {
+  animation: guideCatPeekInTop 0.2s ease-out;
+}
+
+.guideCatPeek--anchor-top::before {
+  left: 50%;
+  top: -8px;
+  transform: translateX(-50%);
+  border-top: none;
+  border-bottom: 8px solid var(--border);
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+}
+
+.guideCatPeek--anchor-top::after {
+  left: 50%;
+  top: -6px;
+  transform: translateX(-50%);
+  border-top: none;
+  border-bottom: 7px solid var(--panel);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+}
+
+@keyframes guideCatPeekInTop {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .guideCatPeekGreeting {
   font-size: var(--text-sm);
   color: var(--muted);

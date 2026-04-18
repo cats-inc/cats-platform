@@ -14,7 +14,10 @@ import { useConfirmDialog, ConfirmDialog, type ConfirmDialogOptions } from './Co
 
 import type { GuideCatRecord } from '../../core/types.js';
 import type { GuideCatSidecarViewState } from '../../app/renderer/useGuideCatSidecarState.js';
-import { useGuideCatPlacement } from '../../app/renderer/GuideCatPlacementProvider.js';
+import {
+  isGuideCatDismissTransientChromeEvent,
+  useGuideCatPlacement,
+} from '../../app/renderer/GuideCatPlacementProvider.js';
 
 import {
   buildCatTooltip,
@@ -96,20 +99,28 @@ export function CollapsedPill({
   );
 }
 
+export type GuideCatPeekAnchor = 'anchor-left' | 'anchor-top';
+
 function WelcomePeek({
   ownerDisplayName,
   onAction,
   onDismiss,
   style,
+  anchor = 'anchor-left',
 }: {
   ownerDisplayName: string;
   onAction: (route: string) => void;
   onDismiss?: () => void;
   style?: CSSProperties;
+  /** Tail direction for the speech bubble tail — `anchor-left` keeps the
+   * default (tail pointing left toward a floating pill on the right), and
+   * `anchor-top` flips the tail upward so the peek can sit below a docked
+   * pill in the lobby top-bar dock slot. */
+  anchor?: GuideCatPeekAnchor;
 }) {
   return (
     <div
-      className="guideCatPeek"
+      className={`guideCatPeek guideCatPeek--${anchor}`}
       style={style}
     >
       <p className="guideCatPeekGreeting">
@@ -220,6 +231,14 @@ export interface GuideCatSidecarViewProps {
   dialog: { options: ConfirmDialogOptions } | null;
   onDialogClose: (confirmed: boolean) => void;
   rootRef?: Ref<HTMLDivElement>;
+  /** When true, the pill is being rendered by the dock slot component
+   * instead of the sidecar. In that case the sidecar still renders the
+   * welcome-peek bubble (anchored to the dock slot via `peekStyle` /
+   * `peekAnchor`) or the open panel; the collapsed view is skipped because
+   * the dock slot already owns that UI. */
+  pillHostedExternally?: boolean;
+  /** Tail direction for the welcome-peek bubble. See WelcomePeek. */
+  peekAnchor?: GuideCatPeekAnchor;
 }
 
 export function GuideCatSidecarView({
@@ -241,8 +260,17 @@ export function GuideCatSidecarView({
   dialog,
   onDialogClose,
   rootRef,
+  pillHostedExternally,
+  peekAnchor = 'anchor-left',
 }: GuideCatSidecarViewProps) {
   if (viewState === 'hidden') {
+    return null;
+  }
+  if (pillHostedExternally && viewState === 'collapsed') {
+    // The collapsed pill lives in the dock slot in docked mode; the sidecar
+    // has no content to add on top of that. Welcome-peek and open both
+    // still render here (the peek is anchored to the dock slot rect by the
+    // caller via `peekStyle` + `peekAnchor`).
     return null;
   }
 
@@ -264,21 +292,24 @@ export function GuideCatSidecarView({
   } else if (viewState === 'welcome-peek') {
     content = (
       <div ref={rootRef}>
-        <CollapsedPill
-          name={guideCat.name}
-          tooltip={tooltip}
-          unreadCount={0}
-          onClick={onToggle}
-          onDismissClick={onDismissClick}
-          onPointerDown={onPillPointerDown}
-          style={pillStyle}
-          dragging={dragging}
-        />
+        {pillHostedExternally ? null : (
+          <CollapsedPill
+            name={guideCat.name}
+            tooltip={tooltip}
+            unreadCount={0}
+            onClick={onToggle}
+            onDismissClick={onDismissClick}
+            onPointerDown={onPillPointerDown}
+            style={pillStyle}
+            dragging={dragging}
+          />
+        )}
         <WelcomePeek
           ownerDisplayName={ownerDisplayName}
           onAction={onAction}
           onDismiss={onDismissWelcome}
           style={peekStyle}
+          anchor={peekAnchor}
         />
       </div>
     );
@@ -333,6 +364,8 @@ function SidecarContent({
   panelStyle,
   surfaceMode,
   dragActive,
+  pillHostedExternally,
+  peekAnchor,
 }: {
   viewState: GuideCatSidecarViewState;
   guideCat: GuideCatRecord;
@@ -350,6 +383,8 @@ function SidecarContent({
   panelStyle: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
   dragActive: boolean;
+  pillHostedExternally?: boolean;
+  peekAnchor?: GuideCatPeekAnchor;
 }) {
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -387,6 +422,21 @@ function SidecarContent({
     if (dragActive) return;
 
     function onClickOutside(event: MouseEvent) {
+      // Skip the synthetic mousedown that `dismissTransientChrome` emits on
+      // every pill pointerdown: it targets document.body, so without this
+      // check the sidecar would collapse itself, only for the ensuing
+      // click to toggle the panel right back open.
+      if (isGuideCatDismissTransientChromeEvent(event)) return;
+      const target = event.target as HTMLElement | null;
+      // Clicks on the pill / dock slot toggle the sidecar through the
+      // existing click path. Collapsing here would race that toggle and
+      // flip the panel back to its previous state.
+      if (
+        target?.closest?.('.guideCatDockSlot')
+        || target?.closest?.('.guideCatPillWrap')
+      ) {
+        return;
+      }
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
         collapse();
       }
@@ -428,6 +478,8 @@ function SidecarContent({
       dialog={dialog}
       onDialogClose={handleClose}
       rootRef={panelRef}
+      pillHostedExternally={pillHostedExternally}
+      peekAnchor={peekAnchor}
     />
   );
 }
@@ -446,24 +498,41 @@ export function GuideCatSidecar({
     consumePillClickSuppression,
     dragActive,
     panelOriginX,
+    getDockSlotRect,
   } = useGuideCatPlacement();
 
-  if (projection.kind !== 'floating') {
+  if (projection.kind === 'hidden') {
     return null;
   }
 
-  const pillLeft = projection.x - FLOATING_PILL_RADIUS_PX;
-  const pillTop = projection.y - FLOATING_PILL_RADIUS_PX;
-  const pillStyle: CSSProperties = {
-    left: `${pillLeft}px`,
-    top: `${pillTop}px`,
-    transform: 'none',
-  };
-  const peekStyle: CSSProperties = {
-    left: `${projection.x + FLOATING_PEEK_OFFSET_PX}px`,
-    top: `${projection.y}px`,
-    transform: 'translateY(-50%)',
-  };
+  const pillHostedInDockSlot = projection.kind === 'docked';
+  // The dock slot owns the collapsed pill UI in docked mode; nothing for
+  // the sidecar to render on top of that. Welcome-peek (bubble mode) and
+  // open both still render here — see peekStyle / peekAnchor below for
+  // how the peek anchors to the docked pill's live rect.
+  if (pillHostedInDockSlot && presentation.viewState === 'collapsed') {
+    return null;
+  }
+
+  const floating = projection.kind === 'floating' ? projection : null;
+  const pillStyle: CSSProperties = floating
+    ? {
+        left: `${floating.x - FLOATING_PILL_RADIUS_PX}px`,
+        top: `${floating.y - FLOATING_PILL_RADIUS_PX}px`,
+        transform: 'none',
+      }
+    : {};
+  const dockedPeek = !floating && projection.kind === 'docked'
+    ? resolveDockedPeekPlacement(projection.slot, getDockSlotRect(projection.slot))
+    : null;
+  const peekStyle: CSSProperties = floating
+    ? {
+        left: `${floating.x + FLOATING_PEEK_OFFSET_PX}px`,
+        top: `${floating.y}px`,
+        transform: 'translateY(-50%)',
+      }
+    : dockedPeek?.style ?? {};
+  const peekAnchor: GuideCatPeekAnchor = dockedPeek?.anchor ?? 'anchor-left';
   const panelStyle: CSSProperties = {
     left: `${panelOriginX}px`,
   };
@@ -482,14 +551,47 @@ export function GuideCatSidecar({
       collapse={presentation.collapse}
       dismissWelcome={presentation.dismissWelcome}
       onDismissed={onDismissed}
-      onPillPointerDown={onFloatingPointerDown}
+      onPillPointerDown={pillHostedInDockSlot ? undefined : onFloatingPointerDown}
       consumePillClickSuppression={consumePillClickSuppression}
       pillStyle={pillStyle}
       peekStyle={peekStyle}
       panelStyle={panelStyle}
       surfaceMode={surfaceMode}
       dragActive={dragActive}
+      pillHostedExternally={pillHostedInDockSlot}
+      peekAnchor={peekAnchor}
     />,
     document.body,
   );
+}
+
+/** Compute where the welcome-peek bubble should sit relative to a docked
+ * pill. Workspace dock lives in the left sidebar → peek sits to the right
+ * with the existing left-pointing tail. Lobby dock lives in the top bar →
+ * peek sits below with an upward-pointing tail (the `anchor-top` variant).
+ * Returns null when the slot isn't mounted yet, so the caller can fall
+ * back to no positioning rather than snap the peek to viewport defaults. */
+function resolveDockedPeekPlacement(
+  slot: 'lobby' | 'workspace',
+  rect: { left: number; top: number; right: number; bottom: number } | null,
+): { style: CSSProperties; anchor: GuideCatPeekAnchor } | null {
+  if (!rect) return null;
+  if (slot === 'workspace') {
+    return {
+      style: {
+        left: `${rect.right + FLOATING_PEEK_OFFSET_PX}px`,
+        top: `${(rect.top + rect.bottom) / 2}px`,
+        transform: 'translateY(-50%)',
+      },
+      anchor: 'anchor-left',
+    };
+  }
+  return {
+    style: {
+      left: `${(rect.left + rect.right) / 2}px`,
+      top: `${rect.bottom + FLOATING_PEEK_OFFSET_PX}px`,
+      transform: 'translateX(-50%)',
+    },
+    anchor: 'anchor-top',
+  };
 }
