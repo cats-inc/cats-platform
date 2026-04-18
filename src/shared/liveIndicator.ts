@@ -1204,7 +1204,17 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     if (!Number.isFinite(activeTurnTimestamp)) {
       return null;
     }
-    const latestReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
+    // Use a speaker/lane-scoped reply timestamp so a persisted reply from a
+    // sibling lane (concurrent / compare flows) cannot suppress this lane's
+    // gap placeholder. Falls back to the global timestamp only when the
+    // segment lacks any speaker identity to scope the comparison.
+    const segmentScopedIndicator = projectLiveIndicatorStateFromSegments([lastSegment]);
+    const latestReplyTimestamp = hasLiveIndicatorIdentity(segmentScopedIndicator)
+      ? resolveLatestVisibleReplyTimestamp(
+          messages,
+          (message) => doesMessageMatchLiveIndicatorSpeaker(message, segmentScopedIndicator),
+        )
+      : resolveLatestVisibleReplyTimestamp(messages);
     if (latestReplyTimestamp > activeTurnTimestamp) {
       return null;
     }

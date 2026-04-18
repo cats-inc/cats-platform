@@ -6194,3 +6194,77 @@ test('resolveVisibleLiveIndicator does not append a trailing placeholder once th
   assert.equal(visible.segments.length, 1, 'no trailing placeholder after terminal result');
   assert.equal(visible.segments[0]?.phase, 'sealed');
 });
+
+test('resolveVisibleLiveIndicator keeps the gap placeholder for a lane that has not replied even when a sibling lane has a persisted reply after the turn timestamp', () => {
+  // Multi-lane / compare_cards scenario. Lane A sealed-and-persisted its
+  // reply at 12:00:05 (which is > activeTurnUpdatedAt = 12:00:04). Lane B is
+  // mid-turn: its sealed segment is NOT yet persisted, so
+  // hasVisiblePersistedSegment filters B out via the "no-reply-yet" path
+  // leaves visibleSegments empty. A globally-scoped reply timestamp would
+  // then see lane A's reply and suppress B's gap placeholder - the exact
+  // multi-lane regression the reviewer flagged. A speaker-scoped timestamp
+  // looks only for lane B's own reply (none) and keeps the placeholder.
+  const laneBSealedSegment = createLiveIndicatorSegmentState({
+    phase: 'sealed',
+    sourceMessageId: 'message-user-current',
+    laneId: 'lane-b',
+    targetStateId: 'target-state-b',
+    sessionId: 'session-b',
+    participantId: 'participant-lane-b',
+    speakerLabel: 'Lane-B-CLI',
+    identityParticipantId: 'participant-lane-b',
+    contentBlocks: [
+      {
+        id: 'text:b',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'Lane B first draft.',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  });
+  const liveIndicator = projectLiveIndicatorStateFromSegments([laneBSealedSegment]);
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user-current',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-18T12:00:00.000Z',
+      },
+      {
+        id: 'message-lane-a-reply',
+        senderKind: 'agent',
+        senderName: 'Lane-A-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-user-current',
+          laneId: 'lane-a',
+          targetId: 'participant-lane-a',
+          targetStateId: 'target-state-a',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-18T12:00:05.000Z',
+      },
+    ],
+    '2026-04-18T12:00:04.000Z',
+  );
+
+  assert.ok(
+    visible,
+    'lane B placeholder must survive when sibling lane A replied after the turn timestamp',
+  );
+  assert.equal(visible.segments.length, 2, 'expected lane-B sealed + lane-B waiting placeholder');
+  assert.equal(visible.segments[0]?.phase, 'sealed');
+  assert.equal(visible.segments[0]?.laneId, 'lane-b');
+  assert.equal(visible.segments[1]?.phase, 'waiting');
+  assert.equal(visible.segments[1]?.laneId, 'lane-b');
+  assert.equal(visible.segments[1]?.speakerLabel, 'Lane-B-CLI');
+});

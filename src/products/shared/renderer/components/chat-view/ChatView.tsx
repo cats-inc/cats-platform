@@ -1018,9 +1018,17 @@ export function ChatView({
             const activeTurnUpdatedAt = selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null;
             const messagesSignature = visibleMessages
               .map((message) => {
-                const bodyHint = message.body?.trim()
-                  ? message.body.trim().slice(0, 16).replace(/\s+/gu, ' ') + (message.body.length > 16 ? '…' : '')
-                  : '∅';
+                // Body length bin (no content preview) keeps the trace
+                // useful for diffing transcripts without leaking real
+                // message text into the shared ChatView log surface.
+                const bodyLength = message.body?.trim().length ?? 0;
+                const bodyHint = bodyLength === 0
+                  ? '∅'
+                  : bodyLength < 40
+                    ? 'len' + bodyLength
+                    : bodyLength < 400
+                      ? 'len~' + Math.floor(bodyLength / 40) * 40
+                      : 'len~' + Math.floor(bodyLength / 400) * 400;
                 return `${message.senderKind}#${message.id.slice(-6)}:${bodyHint}`;
               })
               .join(',');
