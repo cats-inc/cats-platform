@@ -42,6 +42,7 @@ export interface ChatComposerAreaProps {
   showStopComposerAction: boolean;
   composerCardRef: RefCallback<HTMLElement>;
   composerTargetSlot?: ReactNode;
+  composerFooterAccessory?: ReactNode;
   onOpenSection: (section: string) => void;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -85,6 +86,7 @@ export function ChatComposerArea({
   showStopComposerAction,
   composerCardRef,
   composerTargetSlot,
+  composerFooterAccessory,
   onOpenSection,
   onComposerChange,
   onComposerKeyDown,
@@ -108,6 +110,7 @@ export function ChatComposerArea({
       : null;
 
   return (
+    <>
     <form
       ref={composerCardRef}
       className={`${
@@ -342,5 +345,9 @@ export function ChatComposerArea({
         }}
       />
     </form>
+    {composerFooterAccessory ? (
+      <div className="composerFooterRow">{composerFooterAccessory}</div>
+    ) : null}
+    </>
   );
 }

@@ -5,6 +5,7 @@ import type {
 } from '../../api/contracts';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { createKeyedRequestCoalescer } from '../../shared/asyncControl.js';
+import { resetChannelContinuity as resetWorkspaceChannelContinuity } from '../../../shared/renderer/api/appShell.js';
 
 import { normalizeAppShellPayload } from './normalization.js';
 import { expectJson, readErrorMessage } from './http.js';
@@ -144,21 +145,7 @@ export async function resetChannelContinuity(
   channelId: string,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(`/api/channels/${encodeURIComponent(channelId)}`, {
-    method: 'PATCH',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ resetContinuity: true }),
-    signal,
-  });
-
-  return mutateAndRefetch(
-    response,
-    `cats channel continuity reset returned ${response.status}`,
-    signal,
-  );
+  return resetWorkspaceChannelContinuity(channelId, signal) as Promise<AppShellPayload>;
 }
 
 export async function updateChatOrchestrator(

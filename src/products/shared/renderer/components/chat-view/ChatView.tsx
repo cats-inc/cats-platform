@@ -28,7 +28,6 @@ import {
   hasConfirmedLiveIndicatorSegmentSessionStart,
   resolveTranscriptFollowState,
 } from '../../../../../shared/liveIndicator.js';
-import { isBrowserLiveTraceEnabled } from '../../../../../shared/liveTrace.js';
 import { SidePanel, type SidePanelSection } from '../../../../../design/components/SidePanel.js';
 import {
   resolveLayoutMetrics,
@@ -81,6 +80,7 @@ import {
   type SelectedChannelView,
 } from '../../workspaceChatUtils.js';
 import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
+import { isBrowserLiveTraceEnabled } from '../../../../../shared/liveTrace.js';
 
 let _lastLiveIndicatorLogSignature: string | null = null;
 
@@ -188,6 +188,7 @@ export interface ChatViewProps {
   renderStatusRow?: (context: ChatViewRenderContext) => ReactNode;
   renderTopBarExtraActions?: (context: ChatViewRenderContext) => ReactNode;
   renderComposerTargetSlot?: (context: ChatViewComposerTargetSlotContext) => ReactNode;
+  renderComposerFooterAccessory?: (context: ChatViewRenderContext) => ReactNode;
   buildSidePanelSections?: (
     options: BuildChatSidePanelSectionsOptions,
   ) => SidePanelSection[];
@@ -248,6 +249,7 @@ export function ChatView({
   renderStatusRow,
   renderTopBarExtraActions,
   renderComposerTargetSlot,
+  renderComposerFooterAccessory,
   buildSidePanelSections,
   sidePanelTitle = 'Chat Setup',
 }: ChatViewProps) {
@@ -454,32 +456,42 @@ export function ChatView({
             message.metadata?.verbosity === 'verbose'
             && payload.chat.showVerboseMessages !== true
           ));
-        const activeTurnTargetStateIds = activeTurn?.targetStatuses
-          ?.map((target) => target.id ?? null)
+        const activeTurnTargetStateIds: string[] = activeTurn?.targetStatuses
+          ?.map((target) => target.id)
           ?? [];
-        const activeTurnLaneIds = activeTurn?.targetStatuses
-          ?.map((target) => {
+        const activeTurnLaneIds: string[] = (activeTurn?.targetStatuses ?? [])
+          .map((target) => {
             const persistedLaneId = target.laneId?.trim() || null;
             if (persistedLaneId) {
               return persistedLaneId;
             }
-            if (!activeTurn.id || !target.id) {
+            if (!activeTurn?.id || !target.id) {
               return null;
             }
             return buildChatLaneId(activeTurn.id, target.id, target.participant.participantId);
           })
-          ?? [];
-        const activeTurnParticipantIds = activeTurn?.targetStatuses
-          ?.map((target) => target.participant.participantId ?? null)
-          ?? [];
-        const hasVisibleSessionStart = selectedChannel.messages.some((message, index) =>
-          index > latestUserMessageIndex
-          && message.metadata?.kind === 'session_start'
-          && (
-            activeTurnTargetStateIds.includes(message.metadata?.targetStateId ?? null)
-            || activeTurnLaneIds.includes(message.metadata?.laneId ?? null)
-            || activeTurnParticipantIds.includes(message.metadata?.participantId ?? null)
-          ));
+          .filter((laneId): laneId is string => laneId != null);
+        const activeTurnParticipantIds: string[] = (activeTurn?.targetStatuses ?? [])
+          .map((target) => target.participant.participantId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0);
+        const hasVisibleSessionStart = selectedChannel.messages.some((message, index) => {
+          if (index <= latestUserMessageIndex) return false;
+          if (message.metadata?.kind !== 'session_start') return false;
+          const targetStateId = typeof message.metadata?.targetStateId === 'string'
+            ? message.metadata.targetStateId
+            : null;
+          const laneId = typeof message.metadata?.laneId === 'string'
+            ? message.metadata.laneId
+            : null;
+          const participantId = typeof message.metadata?.participantId === 'string'
+            ? message.metadata.participantId
+            : null;
+          return (
+            (targetStateId != null && activeTurnTargetStateIds.includes(targetStateId))
+            || (laneId != null && activeTurnLaneIds.includes(laneId))
+            || (participantId != null && activeTurnParticipantIds.includes(participantId))
+          );
+        });
         const dispatchedTargets = (activeTurn?.targetStatuses ?? []).filter((target) =>
           target.status === 'running' || target.status === 'completed');
         const hasDispatchedTarget = dispatchedTargets.length > 0
@@ -860,6 +872,7 @@ export function ChatView({
 
   const topBarExtraActions = renderTopBarExtraActions?.(viewContext) ?? null;
   const statusRow = renderStatusRow?.(viewContext) ?? null;
+  const composerFooterAccessory = renderComposerFooterAccessory?.(viewContext) ?? null;
 
   function navigateCompareMember(direction: 'prev' | 'next'): void {
     const channelId = direction === 'prev' ? comparePrevChannelId : compareNextChannelId;
@@ -1020,6 +1033,7 @@ export function ChatView({
         showStopComposerAction={showStopComposerAction}
         composerCardRef={composerCardRef}
         composerTargetSlot={composerTargetSlot}
+        composerFooterAccessory={composerFooterAccessory}
         onOpenSection={openSidePanelTo}
         onComposerChange={onComposerChange}
         onComposerKeyDown={onComposerKeyDown}
@@ -1033,15 +1047,15 @@ export function ChatView({
         onStopMessage={onStopMessage}
         autoResize={autoResize}
       />
-      {compareMembers.length > 1 ? (
+      {compareMembers.length > 1 && onSelect ? (
         <ParallelFooterBar
-          members={compareMembers}
-          activeChannelId={activeCompareChannelId}
-          activeIndex={compareMemberIndex}
-          prevChannelId={comparePrevChannelId}
-          nextChannelId={compareNextChannelId}
-          onSelect={(channelId) => onSelect?.(channelId)}
-          onNavigate={navigateCompareMember}
+          compareMembers={compareMembers}
+          selectedChannelId={activeCompareChannelId}
+          comparePrevChannelId={comparePrevChannelId}
+          compareNextChannelId={compareNextChannelId}
+          onSelect={onSelect}
+          onNavigatePrev={() => navigateCompareMember('prev')}
+          onNavigateNext={() => navigateCompareMember('next')}
         />
       ) : null}
     </ChatViewFrame>

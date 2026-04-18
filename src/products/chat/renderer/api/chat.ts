@@ -22,15 +22,20 @@ import type {
 import {
   activateChatChannel as activateWorkspaceChatChannel,
   assignCatToChannelApi as assignWorkspaceCatToChannelApi,
+  cancelChatChannel as cancelWorkspaceChatChannel,
+  cancelParallelChatGroup as cancelWorkspaceParallelChatGroup,
   createChatChannel as createWorkspaceChatChannel,
   createGlobalCat as createWorkspaceGlobalCat,
   deleteChatChannel as deleteWorkspaceChatChannel,
   deleteGlobalCat as deleteWorkspaceGlobalCat,
   encodeAttachmentFiles as encodeWorkspaceAttachmentFiles,
+  relayParallelChatMessage as relayWorkspaceParallelChatMessage,
   removeCatFromChannelApi as removeWorkspaceCatFromChannelApi,
   renameChatChannel as renameWorkspaceChatChannel,
+  retryChatMessage as retryWorkspaceChatMessage,
   sendChatMessage as sendWorkspaceChatMessage,
   updateCatProfile as updateWorkspaceCatProfile,
+  updateChannelParticipantApi as updateWorkspaceChannelParticipantApi,
   uploadChannelAttachments as uploadWorkspaceChannelAttachments,
 } from '../../../shared/renderer/api/chat.js';
 import { refetchAfterMutation } from './appShell.js';
@@ -96,24 +101,7 @@ export async function updateChannelParticipantApi(
   input: UpdateChannelParticipantInput,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
-  const response = await fetch(
-    `/api/channels/${encodeURIComponent(channelId)}/participants/${encodeURIComponent(participantId)}`,
-    {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(input),
-      signal,
-    },
-  );
-
-  return refetchAfterMutation(
-    response,
-    `cats channel participant update returned ${response.status}`,
-    signal,
-  );
+  return updateWorkspaceChannelParticipantApi(channelId, participantId, input, signal) as Promise<AppShellPayload>;
 }
 
 export async function activateChatChannel(
@@ -150,39 +138,14 @@ export async function retryChatMessage(
   messageId: string,
   signal?: AbortSignal,
 ): Promise<SendChannelMessageResponse> {
-  const response = await fetch(
-    `/api/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}/retry`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-      },
-      signal,
-    },
-  );
-
-  return expectJson<SendChannelMessageResponse>(
-    response,
-    `channel message retry returned ${response.status}`,
-  );
+  return retryWorkspaceChatMessage(channelId, messageId, signal) as Promise<SendChannelMessageResponse>;
 }
 
 export async function cancelChatChannel(
   channelId: string,
   signal?: AbortSignal,
 ): Promise<CancelChannelResponse> {
-  const response = await fetch(`/api/channels/${channelId}/cancel`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-    },
-    signal,
-  });
-
-  return expectJson<CancelChannelResponse>(
-    response,
-    `cats channel cancel returned ${response.status}`,
-  );
+  return cancelWorkspaceChatChannel(channelId, signal) as Promise<CancelChannelResponse>;
 }
 
 export async function createParallelChatGroup(
@@ -234,23 +197,11 @@ export async function relayParallelChatMessage(
   input: RelayParallelChatMessageInput,
   signal?: AbortSignal,
 ): Promise<ParallelChatDispatchResponse> {
-  const response = await fetch(
-    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}/relay`,
-    {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(input),
-      signal,
-    },
-  );
-
-  return expectJson<ParallelChatDispatchResponse>(
-    response,
-    `parallel chat relay returned ${response.status}`,
-  );
+  return relayWorkspaceParallelChatMessage(
+    groupId,
+    input,
+    signal,
+  ) as Promise<ParallelChatDispatchResponse>;
 }
 
 export async function cancelParallelChatGroup(
@@ -258,23 +209,11 @@ export async function cancelParallelChatGroup(
   input: CancelParallelChatGroupInput,
   signal?: AbortSignal,
 ): Promise<CancelParallelChatGroupResponse> {
-  const response = await fetch(
-    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}/cancel`,
-    {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(input),
-      signal,
-    },
-  );
-
-  return expectJson<CancelParallelChatGroupResponse>(
-    response,
-    `parallel chat cancel returned ${response.status}`,
-  );
+  return cancelWorkspaceParallelChatGroup(
+    groupId,
+    input,
+    signal,
+  ) as Promise<CancelParallelChatGroupResponse>;
 }
 
 export async function renameParallelChatGroup(

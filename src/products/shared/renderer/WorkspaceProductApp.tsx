@@ -33,7 +33,10 @@ import type { NewChatDraftProps as ChatNewChatDraftProps } from "./components/Ch
 import type { ChatViewProps } from "./components/chat-view/ChatView.js";
 import {
   activateChatChannel,
+  relayParallelChatMessage,
+  resetChannelContinuity,
   updateCatProfile,
+  updateChannelParticipantApi,
   updateChannelPendingExecutionTarget,
   updateNewChatDefaultsPreference,
 } from "./api/index.js";
@@ -69,8 +72,11 @@ import { useProductChannelDocumentTitle } from "./hooks/useProductChannelDocumen
 import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
 import {
   useWorkspaceDirectLaneModelSave,
+  useWorkspaceResetChannelContinuity,
   useWorkspaceResumeChannel,
 } from "./hooks/useWorkspaceAppShellChannelActions.js";
+import { useWorkspaceChannelParticipantUpdate } from "./hooks/useWorkspaceChannelParticipantUpdate.js";
+import { useWorkspaceCompareRelay } from "./hooks/useWorkspaceCompareRelay.js";
 import { usePublishReadyPayload } from "./hooks/usePublishReadyPayload.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
@@ -739,7 +745,13 @@ export function createWorkspaceProductApp({
       setCompareSendScope('all_members');
     }, [selectedParallelChatGroup?.id]);
 
-    const { onComposerKeyDown, onSendMessage } = useComposerSubmit({
+    const {
+      onComposerKeyDown,
+      onCancelPendingSend,
+      onSendMessage,
+      onStopMessage,
+      onRetryMessage,
+    } = useComposerSubmit({
       state,
       setState,
       navigate,
@@ -925,6 +937,26 @@ export function createWorkspaceProductApp({
       setBusy,
       setFeedback,
     });
+    const onStartFreshChannel = useWorkspaceResetChannelContinuity<AppShellPayload>({
+      resetChannelContinuity,
+      publishReadyPayload,
+      setBusy,
+      setFeedback,
+    });
+    const onUpdateChannelParticipant = useWorkspaceChannelParticipantUpdate<AppShellPayload>({
+      updateChannelParticipantApi,
+      setBusy,
+      setFeedback,
+      setState,
+    });
+    const onRelayCompareMessage = useWorkspaceCompareRelay<AppShellPayload>({
+      selectedChannel,
+      selectedParallelChatGroup,
+      relayParallelChatMessage,
+      setBusy,
+      setFeedback,
+      setState,
+    });
 
     return (
       <ProductAppStateBoundary
@@ -1036,6 +1068,9 @@ export function createWorkspaceProductApp({
                     onComposerChange: setComposerDraft,
                     onComposerKeyDown,
                     onSendMessage,
+                    onCancelPendingSend,
+                    onStopMessage,
+                    onRetryMessage,
                     onToggleChannelPlusMenu: toggleChannelPlusMenu,
                     onChannelFileSelect: openChannelFilePicker,
                     onChannelFilesChange: setChannelFiles,
@@ -1043,6 +1078,15 @@ export function createWorkspaceProductApp({
                     onChoiceSubmit,
                     onResumeChannel: visibleChatChannelId
                       ? () => onResumeChannel(visibleChatChannelId)
+                      : undefined,
+                    onStartFresh:
+                      visibleChatChannelId && selectedChannel?.composerMode === 'solo'
+                        ? () => onStartFreshChannel(visibleChatChannelId)
+                        : undefined,
+                    onRelayMessage: onRelayCompareMessage,
+                    onUpdateChannelParticipant: visibleChatChannelId
+                      ? (participantId, input) =>
+                          onUpdateChannelParticipant(visibleChatChannelId, participantId, input)
                       : undefined,
                     onOperatorAction,
                     autoResize,

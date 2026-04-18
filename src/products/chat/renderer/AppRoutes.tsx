@@ -128,7 +128,7 @@ export function AppRoutes({
                       }
                       return resolveCatStatusIndicator(
                         cat,
-                        context.selectedChannel as unknown as Parameters<typeof resolveCatStatusIndicator>[1],
+                        context.selectedChannel,
                         context.operatorView,
                       );
                     })

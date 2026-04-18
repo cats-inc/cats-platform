@@ -126,6 +126,14 @@ export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
 // TODO: extend when branch/peer container modes land.
 export type ParallelChatMode = 'parallel';
 export type ParallelChatStatus = 'active' | 'archived';
+export type ParallelChatRelayCommandKind =
+  | 'check_this'
+  | 'adopt_this'
+  | 'debate_this'
+  | 'improve_this'
+  | 'counter_this'
+  | 'synthesize_this';
+export type ParallelChatRelayTargetPolicy = 'all_others' | 'single';
 
 export type ConcurrentChatPresentationMode =
   | 'inline_stack'
@@ -147,8 +155,11 @@ export interface ParticipantSessionSummary {
 }
 
 export interface ParticipantExecutionLease extends ParticipantSessionSummary {
+  laneId: string | null;
   provider: string | null;
+  instance?: string | null;
   model: string | null;
+  modelSelection?: ProviderModelSelection | null;
   startedAt: string | null;
   lastUsedAt: string | null;
 }
@@ -178,26 +189,56 @@ export interface ChatCat {
 }
 
 export interface ChannelCatAssignment {
+  participantId: string;
+  sourceKind: 'cat';
+  sourceRefId: string;
   catId: string;
+  name: string;
   status: 'active' | 'removed';
   roles: string[];
+  roleHint: string | null;
   joinedAt: string;
   leftAt: string | null;
   execution: ParticipantExecutionState;
 }
 
-export interface ChatChannelCat {
-  catId: string;
+export type ChannelParticipantSourceKind = 'cat' | 'adhoc';
+
+export interface ChannelParticipantAssignment {
+  participantId: string;
+  sourceKind: ChannelParticipantSourceKind;
+  sourceRefId: string | null;
+  name: string;
+  status: 'active' | 'removed';
+  roles: string[];
+  roleHint: string | null;
+  joinedAt: string;
+  leftAt: string | null;
+  execution: ParticipantExecutionState;
+}
+
+export interface ChatChannelParticipant {
+  participantId: string;
+  sourceKind: ChannelParticipantSourceKind;
+  sourceRefId: string | null;
   name: string;
   roles: string[];
+  roleHint: string | null;
   skillProfile: string | null;
   mcpProfile: string | null;
   status: 'active' | 'removed';
   joinedAt: string;
   leftAt: string | null;
   avatarColor: string | null;
+  avatarUrl: string | null;
   execution: ParticipantExecutionState;
   memory: MemoryCheckpointSummary;
+}
+
+export interface ChatChannelCat extends ChatChannelParticipant {
+  sourceKind: 'cat';
+  sourceRefId: string;
+  catId: string;
 }
 
 export interface ChatMessageOption {
@@ -571,6 +612,44 @@ export interface UpdateChannelInput {
   pendingModel?: string | null;
   pendingInstance?: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
+}
+
+export interface UpdateChannelParticipantInput {
+  name?: string;
+  roleHint?: string | null;
+}
+
+export interface RelayParallelChatMessageInput {
+  activeChannelId: string;
+  sourceChannelId: string;
+  sourceMessageId: string;
+  command: ParallelChatRelayCommandKind;
+  targetPolicy?: ParallelChatRelayTargetPolicy;
+  targetChannelId?: string;
+}
+
+export interface CancelParallelChatGroupInput {
+  activeChannelId: string;
+}
+
+export interface CancelChannelResponse {
+  appShell: AppShellPayload;
+  cancellation: {
+    channelId: string;
+    cancelledAt: string;
+    cancelledSessionCount: number;
+  };
+}
+
+export interface CancelParallelChatGroupResponse {
+  appShell: AppShellPayload;
+  groupId: string;
+  cancellation: {
+    activeChannelId: string;
+    cancelledAt: string;
+    cancelledSessionCount: number;
+    targetChannelIds: string[];
+  };
 }
 
 export interface ChannelActivationResult {

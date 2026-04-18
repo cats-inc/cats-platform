@@ -19,10 +19,13 @@ export interface CatStatusIndicator {
   busy: boolean;
 }
 
+export type CatStatusChannelView = Pick<ChatChannelView, 'catAssignments'>;
+export type CatStatusOperatorView = Pick<ChatOperatorView, 'approvals' | 'latestRun'>;
+
 export function resolveCatStatusIndicator(
   cat: ChatCat,
-  channel: ChatChannelView,
-  operatorView: ChatOperatorView | null,
+  channel: CatStatusChannelView,
+  operatorView: CatStatusOperatorView | null,
 ): CatStatusIndicator {
   const assignment = channel.catAssignments?.find((a) => a.catId === cat.id);
   const leaseStatus = assignment?.execution?.lease?.status ?? 'not_started';

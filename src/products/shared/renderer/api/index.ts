@@ -10,6 +10,7 @@ export {
 export {
   fetchAppShell,
   refetchAfterMutation,
+  resetChannelContinuity,
   updateChatOrchestrator,
   updateChannelPendingExecutionTarget,
   updateConcurrentPresentationModePreference,
@@ -30,6 +31,8 @@ export {
 export {
   activateChatChannel,
   assignCatToChannelApi,
+  cancelChatChannel,
+  cancelParallelChatGroup,
   createChatChannel,
   createParallelChatGroup,
   createGlobalCat,
@@ -37,10 +40,13 @@ export {
   renameChatChannel,
   deleteGlobalCat,
   encodeAttachmentFiles,
+  relayParallelChatMessage,
   removeCatFromChannelApi,
+  retryChatMessage,
   sendParallelChatMessage,
   sendChatMessage,
   updateCatProfile,
+  updateChannelParticipantApi,
   uploadChannelAttachments,
 } from './chat.js';
 

@@ -6,7 +6,6 @@ import type { JSX } from 'react';
 
 import { IDLE_BUSY_STATE } from '../src/shared/workspaceBusy.ts';
 import { ChatTranscriptPanel } from '../src/products/shared/renderer/components/chat-view/ChatTranscriptPanel.tsx';
-import { ChatTranscriptSurface } from '../src/products/shared/renderer/components/chat-view/ChatTranscriptSurface.tsx';
 import {
   buildConcurrentTranscriptRenderItems,
   resolveDurableConcurrentClusterMaxSegmentCount,
@@ -336,36 +335,40 @@ test('ChatTranscriptPanel falls back to raw transcript bubbles when a durable cl
   assert.match(markup, /Codex answer\./u);
 });
 
-test('shared ChatTranscriptSurface keeps compare_cards layout for completed concurrent turns', () => {
+test('ChatTranscriptPanel keeps compare_cards layout when driven with stub participant resolvers', () => {
   const { visibleMessages, workflow } = createCompletedConcurrentTurnFixture();
 
   const markup = renderToStaticMarkup(
-    <ChatTranscriptSurface
+    <ChatTranscriptPanel
       hasConversationStarted
       greeting="Hello"
-      payload={{
-        chat: {
-          cats: [],
-          bossCatId: null,
-          showVerboseMessages: true,
-          showLiveProgressDetails: false,
-        },
-      } as Parameters<typeof ChatTranscriptSurface>[0]['payload']}
-      selectedChannel={{
-        id: 'channel-1',
-        title: 'Team Code',
-        messages: [...visibleMessages],
-        roomRouting: {
-          defaultRecipientId: null,
-          workflow,
-        },
-      } as Parameters<typeof ChatTranscriptSurface>[0]['selectedChannel']}
-      busy={IDLE_BUSY_STATE}
-      liveIndicator={undefined}
-      directLaneExcludedMentionNames={[]}
-      transcriptListRef={() => {}}
+      transcriptListRef={createRef<HTMLDivElement>()}
       bottomSentinelRef={() => {}}
+      visibleMessages={[...visibleMessages]}
+      workflow={workflow}
+      cats={[]}
+      bossCatId={null}
+      selectedChannelId="channel-1"
+      disabledMentionNames={[]}
+      busy={IDLE_BUSY_STATE}
+      compareBusy={false}
+      isCompareGroup={false}
+      choiceResponsesBySource={new Map()}
       onChoiceSubmit={() => {}}
+      latestUserTurnMessageId={null}
+      latestUserTurnStatus="idle"
+      liveIndicator={undefined}
+      liveSpeakerParticipant={null}
+      liveSpeakerParticipantCat={null}
+      resolveLiveIndicatorSegmentParticipant={() => null}
+      messageStackTone={(senderKind) => senderKind}
+      resolveMessageParticipant={() => null}
+      resolveParticipantCatRecord={() => null}
+      buildParticipantAvatarClassName={() => 'catAvatar transcriptAvatar'}
+      buildParticipantAvatarStyle={() => undefined}
+      resolveParticipantAvatarUrl={() => null}
+      resolveParticipantDisplayName={() => ''}
+      showLiveProgressDetails={false}
       resolveConcurrentClusterPresentationMode={() => 'compare_cards'}
       buildConcurrentClusterActions={() => []}
     />,
@@ -378,63 +381,70 @@ test('shared ChatTranscriptSurface keeps compare_cards layout for completed conc
   assert.match(markup, /Codex answer\./u);
 });
 
-test('shared ChatTranscriptSurface renders copy actions for completed assistant bubbles and accepts extra message actions', () => {
+test('ChatTranscriptPanel renders copy actions for completed assistant bubbles and accepts extra message actions', () => {
   const markup = renderToStaticMarkup(
-    <ChatTranscriptSurface
+    <ChatTranscriptPanel
       hasConversationStarted
       greeting="Hello"
-      payload={({
-        chat: {
-          cats: [],
-          bossCatId: null,
-          showVerboseMessages: true,
-          showLiveProgressDetails: false,
-        },
-      }) as Parameters<typeof ChatTranscriptSurface>[0]['payload']}
-      selectedChannel={({
-        id: 'channel-1',
-        title: 'Peer Code',
-        messages: [
-          {
-            id: 'message-user',
-            channelId: 'channel-1',
-            senderKind: 'user',
-            senderName: 'Kenneth',
-            body: 'hi',
-            mentions: [],
-            metadata: {},
-            usage: null,
-            createdAt: '2026-04-16T12:00:00.000Z',
-          },
-          {
-            id: 'message-agent',
-            channelId: 'channel-1',
-            senderKind: 'agent',
-            senderName: 'Claude-CLI',
-            body: 'Hello from Claude.',
-            mentions: [],
-            metadata: {},
-            usage: null,
-            createdAt: '2026-04-16T12:00:01.000Z',
-          },
-        ],
-        roomRouting: {
-          defaultRecipientId: null,
-          workflow: {
-            activeTurn: null,
-            turnHistory: [],
-            eventHistory: [],
-            lastCheckpointEvent: null,
-            lastOutcomeEvent: null,
-          },
-        },
-      }) as Parameters<typeof ChatTranscriptSurface>[0]['selectedChannel']}
-      busy={IDLE_BUSY_STATE}
-      liveIndicator={undefined}
-      directLaneExcludedMentionNames={[]}
-      transcriptListRef={() => {}}
+      transcriptListRef={createRef<HTMLDivElement>()}
       bottomSentinelRef={() => {}}
+      visibleMessages={[
+        {
+          id: 'message-user',
+          channelId: 'channel-1',
+          senderKind: 'user',
+          senderName: 'Kenneth',
+          body: 'hi',
+          mentions: [],
+          metadata: {},
+          usage: null,
+          createdAt: '2026-04-16T12:00:00.000Z',
+        },
+        {
+          id: 'message-agent',
+          channelId: 'channel-1',
+          senderKind: 'agent',
+          senderName: 'Claude-CLI',
+          body: 'Hello from Claude.',
+          mentions: [],
+          metadata: {},
+          usage: null,
+          createdAt: '2026-04-16T12:00:01.000Z',
+        },
+      ] as Parameters<typeof ChatTranscriptPanel>[0]['visibleMessages']}
+      workflow={{
+        activeTurn: null,
+        turnHistory: [],
+        eventHistory: [],
+        lastCheckpointEvent: null,
+        lastOutcomeEvent: null,
+      } as never}
+      cats={[]}
+      bossCatId={null}
+      selectedChannelId="channel-1"
+      disabledMentionNames={[]}
+      busy={IDLE_BUSY_STATE}
+      compareBusy={false}
+      isCompareGroup={false}
+      choiceResponsesBySource={new Map()}
       onChoiceSubmit={() => {}}
+      latestUserTurnMessageId={null}
+      latestUserTurnStatus="idle"
+      liveIndicator={undefined}
+      liveSpeakerParticipant={null}
+      liveSpeakerParticipantCat={null}
+      resolveLiveIndicatorSegmentParticipant={() => null}
+      messageStackTone={(senderKind) =>
+        senderKind === 'user'
+          ? 'transcriptMessageStack transcriptMessageStackUser'
+          : 'transcriptMessageStack transcriptMessageStackAgent'}
+      resolveMessageParticipant={() => null}
+      resolveParticipantCatRecord={() => null}
+      buildParticipantAvatarClassName={() => 'catAvatar transcriptAvatar'}
+      buildParticipantAvatarStyle={() => undefined}
+      resolveParticipantAvatarUrl={() => null}
+      resolveParticipantDisplayName={() => ''}
+      showLiveProgressDetails={false}
       resolveConcurrentClusterPresentationMode={() => 'inline_stack'}
       buildConcurrentClusterActions={() => []}
       buildTranscriptMessageActions={({ message }) =>

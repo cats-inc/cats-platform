@@ -45,8 +45,11 @@ import {
   prepareWorkspaceSendContext,
 } from '../composerDispatch.js';
 import {
+  cancelChatChannel,
+  cancelParallelChatGroup,
   createChatChannel,
   fetchAppShell,
+  retryChatMessage,
   sendChatMessage,
   updateSelectedChannel,
   uploadChannelAttachments,
@@ -63,6 +66,7 @@ import {
 } from '../composerNavigation.js';
 import { resetComposerDraftState } from '../composerDraftState.js';
 import { resolveActiveChannelMessageMetadata } from '../composerMessageMetadata.js';
+import { useComposerRequestControls } from './useComposerRequestControls.js';
 import { useComposerRequestLifecycle } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
 
@@ -188,6 +192,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
   const {
     activeDispatchRequestRef,
     beginAckRequest,
+    cancelPendingAckRequest,
     clearAckRequestIfCurrent,
     clearDispatchRequestIfCurrent,
     setActiveDispatchRequest,
@@ -198,6 +203,18 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setState,
     fetchPayload: fetchAppShell,
     isChannelDispatchRunning,
+  });
+  const {
+    onCancelPendingSend,
+    onStopMessage,
+  } = useComposerRequestControls({
+    activeDispatchRequestRef,
+    cancelPendingAckRequest,
+    cancelChannel: cancelChatChannel,
+    cancelConcurrentGroup: cancelParallelChatGroup,
+    setBusy,
+    setFeedback,
+    setState,
   });
 
   const submitComposerMessage = useCallback(async (): Promise<void> => {
@@ -555,9 +572,73 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
   const { onSendMessage, onComposerKeyDown } =
     useComposerSubmitBindings(submitComposerMessage);
 
+  const onRetryMessage = useCallback(async (messageId: string): Promise<void> => {
+    if (state.status !== 'ready' || !selectedChannel || !messageId.trim()) {
+      return;
+    }
+
+    const channelId = selectedChannel.id;
+    setFeedback('');
+    const { id: submitId, controller: ackController } = beginAckRequest();
+    let keepBusyAfterReturn = false;
+
+    try {
+      setBusy(createComposerBusyState('ack', createChannelComposerBusyScope(channelId)));
+      const dispatch = await retryChatMessage(
+        channelId,
+        messageId,
+        ackController.signal,
+      );
+      clearAckRequestIfCurrent(submitId);
+      setState({ status: 'ready', payload: dispatch.appShell });
+      if (isChannelDispatchRunning(dispatch.appShell, channelId)) {
+        setActiveDispatchRequest({
+          id: submitId,
+          kind: 'channel',
+          channelId,
+        });
+        setBusy(createComposerBusyState('send', createChannelComposerBusyScope(channelId)));
+        keepBusyAfterReturn = true;
+      } else {
+        setActiveDispatchRequest(null);
+      }
+      setFeedback('');
+    } catch (error) {
+      clearAckRequestIfCurrent(submitId);
+      if (activeDispatchRequestRef.current?.id === submitId) {
+        setActiveDispatchRequest(null);
+      }
+      if (isAbortError(error)) {
+        setFeedback('');
+      } else {
+        setFeedback(error instanceof Error ? error.message : 'Failed to retry response.');
+      }
+    } finally {
+      if (!keepBusyAfterReturn) {
+        clearAckRequestIfCurrent(submitId);
+        clearDispatchRequestIfCurrent(submitId);
+        setBusy(clearBusyState());
+      }
+    }
+  }, [
+    activeDispatchRequestRef,
+    beginAckRequest,
+    clearAckRequestIfCurrent,
+    clearDispatchRequestIfCurrent,
+    selectedChannel,
+    setActiveDispatchRequest,
+    setBusy,
+    setFeedback,
+    setState,
+    state,
+  ]);
+
   return {
     onComposerKeyDown,
+    onCancelPendingSend,
     onSendMessage,
+    onStopMessage,
+    onRetryMessage,
     submitComposerMessage,
   };
 }
