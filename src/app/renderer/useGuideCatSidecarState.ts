@@ -15,8 +15,18 @@ export interface GuideCatSidecarState {
   dismissWelcome: () => void;
 }
 
-function resolveOpenState(mode: GuideCatSidecarMode): GuideCatSidecarInnerState {
+function resolveManualOpenState(mode: GuideCatSidecarMode): GuideCatSidecarInnerState {
   return mode === 'bubble' ? 'welcome-peek' : 'open';
+}
+
+export function resolveGuideCatSidecarRestingState(): GuideCatSidecarInnerState {
+  return 'collapsed';
+}
+
+export function resolveGuideCatSidecarProactiveState(
+  mode: GuideCatSidecarMode,
+): GuideCatSidecarInnerState {
+  return mode === 'drawer' ? 'open' : 'welcome-peek';
 }
 
 export function toggleGuideCatSidecarState(
@@ -24,7 +34,7 @@ export function toggleGuideCatSidecarState(
   mode: GuideCatSidecarMode,
 ): { nextState: GuideCatSidecarInnerState; persistSeen: boolean } {
   if (prev === 'collapsed') {
-    return { nextState: resolveOpenState(mode), persistSeen: false };
+    return { nextState: resolveManualOpenState(mode), persistSeen: false };
   }
   if (prev === 'welcome-peek') {
     if (mode === 'bubble') {
@@ -45,27 +55,23 @@ export function collapseGuideCatSidecarState(
 }
 
 export function resolveGuideCatSidecarPreferenceState(
-  sidecarSeen: boolean,
-  mode: GuideCatSidecarMode,
+  _sidecarSeen: boolean,
+  _mode: GuideCatSidecarMode,
 ): GuideCatSidecarInnerState {
-  if (!sidecarSeen && mode !== 'drawer') {
-    return 'welcome-peek';
-  }
-  return 'collapsed';
+  return resolveGuideCatSidecarRestingState();
 }
 
 export function useGuideCatSidecarState(
   sidecarSeen: boolean,
   mode: GuideCatSidecarMode,
   onPersistSeen: () => void,
+  proactiveGreetingToken = 0,
 ): GuideCatSidecarState {
   const location = useLocation();
   const [innerState, setInnerState] = useState<GuideCatSidecarInnerState>(
     () => resolveGuideCatSidecarPreferenceState(sidecarSeen, mode),
   );
-  const [proactive, setProactive] = useState(
-    () => resolveGuideCatSidecarPreferenceState(sidecarSeen, mode) === 'welcome-peek',
-  );
+  const [proactive, setProactive] = useState(false);
 
   const isHiddenRoute =
     location.pathname === '/setup'
@@ -76,11 +82,23 @@ export function useGuideCatSidecarState(
       return;
     }
 
+    setProactive(false);
     setInnerState((prev) => {
       const nextState = resolveGuideCatSidecarPreferenceState(sidecarSeen, mode);
       return prev === nextState ? prev : nextState;
     });
   }, [isHiddenRoute, mode, sidecarSeen]);
+
+  useEffect(() => {
+    if (proactiveGreetingToken <= 0 || isHiddenRoute) {
+      return;
+    }
+    setProactive(true);
+    setInnerState((prev) => {
+      const nextState = resolveGuideCatSidecarProactiveState(mode);
+      return prev === nextState ? prev : nextState;
+    });
+  }, [isHiddenRoute, mode, proactiveGreetingToken]);
 
   const viewState: GuideCatSidecarViewState = isHiddenRoute ? 'hidden' : innerState;
 

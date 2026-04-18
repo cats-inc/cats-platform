@@ -186,6 +186,7 @@ export default function PlatformApp() {
   const navigate = useNavigate();
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   const [productSurfaceFallbackActive, setProductSurfaceFallbackActive] = useState(false);
+  const [guideCatProactiveGreetingToken, setGuideCatProactiveGreetingToken] = useState(0);
   const lastSyncedSurface = useRef<string | null>(null);
   const previousPathnameRef = useRef(location.pathname);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
@@ -473,6 +474,9 @@ export default function PlatformApp() {
               onComplete={(nextEnvelope) => {
                 flushSync(() => {
                   setState({ status: 'ready', envelope: nextEnvelope });
+                  if (nextEnvelope.guideCat && nextEnvelope.guideCat.status !== 'dismissed') {
+                    setGuideCatProactiveGreetingToken((current) => current + 1);
+                  }
                 });
                 navigate('/lobby', { replace: true });
               }}
@@ -504,6 +508,7 @@ export default function PlatformApp() {
       floatingAnchor={guideCatUiPrefs.prefs.floatingAnchor}
       sidecarSeen={guideCatUiPrefs.prefs.sidecarSeen}
       sidecarMode={guideCatUiPrefs.prefs.sidecarMode}
+      proactiveGreetingToken={guideCatProactiveGreetingToken}
       onPersistSeen={persistGuideCatSeen}
       onCommit={guideCatUiPrefs.update}
     >

@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { shouldRenderGuideCatSidecar } from '../src/app/renderer/App.tsx';
 import {
   collapseGuideCatSidecarState,
+  resolveGuideCatSidecarProactiveState,
   resolveGuideCatSidecarPreferenceState,
   toggleGuideCatSidecarState,
 } from '../src/app/renderer/useGuideCatSidecarState.ts';
@@ -78,12 +79,18 @@ test('Guide Cat sidecar toggle respects interaction mode transitions', () => {
   });
 });
 
-test('Guide Cat sidecar preference state recalculates from seen flag and interaction mode', () => {
-  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'auto'), 'welcome-peek');
-  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'bubble'), 'welcome-peek');
+test('Guide Cat sidecar resting state stays collapsed regardless of seen flag or click mode', () => {
+  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'auto'), 'collapsed');
+  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'bubble'), 'collapsed');
   assert.equal(resolveGuideCatSidecarPreferenceState(false, 'drawer'), 'collapsed');
   assert.equal(resolveGuideCatSidecarPreferenceState(true, 'auto'), 'collapsed');
   assert.equal(resolveGuideCatSidecarPreferenceState(true, 'bubble'), 'collapsed');
+});
+
+test('Guide Cat proactive greeting uses bubble-style peek except in drawer mode', () => {
+  assert.equal(resolveGuideCatSidecarProactiveState('auto'), 'welcome-peek');
+  assert.equal(resolveGuideCatSidecarProactiveState('bubble'), 'welcome-peek');
+  assert.equal(resolveGuideCatSidecarProactiveState('drawer'), 'open');
 });
 
 test('Guide Cat sidecar resolves surface mode by route', () => {

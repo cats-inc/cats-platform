@@ -98,6 +98,7 @@ export interface GuideCatPlacementProviderProps {
   floatingAnchor: GuideCatFloatingAnchor | null;
   sidecarSeen: boolean;
   sidecarMode: GuideCatSidecarMode;
+  proactiveGreetingToken?: number;
   onPersistSeen: () => void;
   onCommit: (patch: {
     placement?: GuideCatPlacement;
@@ -112,11 +113,17 @@ export function GuideCatPlacementProvider({
   floatingAnchor,
   sidecarSeen,
   sidecarMode,
+  proactiveGreetingToken = 0,
   onPersistSeen,
   onCommit,
   children,
 }: GuideCatPlacementProviderProps) {
-  const presentation = useGuideCatSidecarState(sidecarSeen, sidecarMode, onPersistSeen);
+  const presentation = useGuideCatSidecarState(
+    sidecarSeen,
+    sidecarMode,
+    onPersistSeen,
+    proactiveGreetingToken,
+  );
   const location = useLocation();
   const surface: GuideCatSurfaceClass = resolveGuideCatSurfaceClass(location.pathname);
 
@@ -156,39 +163,27 @@ export function GuideCatPlacementProvider({
   }, []);
 
   useEffect(() => {
-    if (typeof document === 'undefined' || typeof ResizeObserver === 'undefined') return;
-    const lobbyBar = document.querySelector<HTMLElement>('.lobbyTopBar');
-    if (!lobbyBar) {
-      setTopChromeBottom(null);
-      return;
-    }
-    const update = () => setTopChromeBottom(lobbyBar.getBoundingClientRect().bottom);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(lobbyBar);
-    return () => observer.disconnect();
+    if (typeof document === 'undefined') return;
+    return observeGuideCatChromeMetric({
+      document,
+      selector: '.lobbyTopBar',
+      readValue: (node) => node ? Math.round(node.getBoundingClientRect().bottom) : null,
+      onChange: (next) => {
+        setTopChromeBottom((current) => (current === next ? current : next));
+      },
+    });
   }, [location.pathname]);
 
   useEffect(() => {
-    if (typeof document === 'undefined' || typeof ResizeObserver === 'undefined') return;
-    const sidebar = document.querySelector<HTMLElement>('aside.sidebar');
-    if (!sidebar) {
-      setSidebarRight(null);
-      return;
-    }
-    const update = () => setSidebarRight(sidebar.getBoundingClientRect().right);
-    update();
-    const resize = new ResizeObserver(update);
-    resize.observe(sidebar);
-    let mutation: MutationObserver | null = null;
-    if (typeof MutationObserver === 'function') {
-      mutation = new MutationObserver(update);
-      mutation.observe(sidebar, { attributes: true, attributeFilter: ['class', 'style'] });
-    }
-    return () => {
-      resize.disconnect();
-      mutation?.disconnect();
-    };
+    if (typeof document === 'undefined') return;
+    return observeGuideCatChromeMetric({
+      document,
+      selector: 'aside.sidebar',
+      readValue: (node) => node ? Math.round(node.getBoundingClientRect().right) : null,
+      onChange: (next) => {
+        setSidebarRight((current) => (current === next ? current : next));
+      },
+    });
   }, [location.pathname]);
 
   useEffect(() => {
@@ -686,5 +681,75 @@ function readSlotRect(node: HTMLElement): GuideCatSlotRect {
     top: rect.top,
     right: rect.right,
     bottom: rect.bottom,
+  };
+}
+
+interface ObserveGuideCatChromeMetricOptions {
+  document: Document;
+  selector: string;
+  readValue: (node: HTMLElement | null) => number | null;
+  onChange: (value: number | null) => void;
+}
+
+export function observeGuideCatChromeMetric(
+  options: ObserveGuideCatChromeMetricOptions,
+): () => void {
+  const { document, selector, readValue, onChange } = options;
+  const ResizeObserverCtor = globalThis.ResizeObserver;
+  const MutationObserverCtor = globalThis.MutationObserver;
+  const root = document.body ?? document.documentElement;
+  if (!root) {
+    onChange(readValue(document.querySelector<HTMLElement>(selector)));
+    return () => {};
+  }
+
+  let target: HTMLElement | null = null;
+  let resizeObserver: ResizeObserver | null = null;
+  let attributeObserver: MutationObserver | null = null;
+
+  const disconnectTargetObservers = () => {
+    resizeObserver?.disconnect();
+    attributeObserver?.disconnect();
+    resizeObserver = null;
+    attributeObserver = null;
+  };
+
+  const emit = () => {
+    onChange(readValue(target));
+  };
+
+  const syncTarget = () => {
+    const nextTarget = document.querySelector<HTMLElement>(selector);
+    if (nextTarget !== target) {
+      disconnectTargetObservers();
+      target = nextTarget;
+      if (target && typeof ResizeObserverCtor === 'function') {
+        resizeObserver = new ResizeObserverCtor(emit);
+        resizeObserver.observe(target);
+      }
+      if (target && typeof MutationObserverCtor === 'function') {
+        attributeObserver = new MutationObserverCtor(emit);
+        attributeObserver.observe(target, {
+          attributes: true,
+          attributeFilter: ['class', 'style'],
+        });
+      }
+    }
+    emit();
+  };
+
+  let treeObserver: MutationObserver | null = null;
+  if (typeof MutationObserverCtor === 'function') {
+    treeObserver = new MutationObserverCtor(syncTarget);
+    treeObserver.observe(root, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  syncTarget();
+  return () => {
+    disconnectTargetObservers();
+    treeObserver?.disconnect();
   };
 }
