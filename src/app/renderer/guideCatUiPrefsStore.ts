@@ -1,6 +1,8 @@
 import {
   useCallback,
+  useLayoutEffect,
   useMemo,
+  useState,
   useSyncExternalStore,
 } from 'react';
 
@@ -415,10 +417,15 @@ export function useGuideCatUiPrefs(
         : getBrowserGuideCatUiPrefsStore(),
     [],
   );
+  const [, setHydrationTick] = useState(0);
 
-  if (hydrate) {
+  useLayoutEffect(() => {
+    if (!hydrate || store.isHydrated()) {
+      return;
+    }
     store.ensureHydrated(legacy);
-  }
+    setHydrationTick((current) => current + 1);
+  }, [hydrate, legacy, store]);
 
   const prefs = useSyncExternalStore(
     store.subscribe,
