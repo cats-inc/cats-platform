@@ -59,11 +59,26 @@ export interface PlatformPreferencesUpdateBody {
   openWindowOnStartup?: boolean;
   systemTrayEnabled?: boolean;
   lobbyAnimationMode?: string;
+  /** Deprecated renderer-owned compatibility field; ignored when sent by older clients. */
+  guideCatSidecarSeen?: boolean;
+  /** Deprecated renderer-owned compatibility field; ignored when sent by older clients. */
+  guideCatSidecarMode?: string;
+  /** Deprecated renderer-owned compatibility field; ignored when sent by older clients. */
+  guideCatPlacement?: string;
+  /** Deprecated renderer-owned compatibility field; ignored when sent by older clients. */
+  guideCatFloatingAnchor?: unknown;
 }
 
 type ParseResult<T> =
   | { ok: true; value: T }
   | { ok: false; message: string };
+
+const LEGACY_GUIDE_CAT_PLATFORM_PREFERENCE_FIELDS = [
+  'guideCatSidecarSeen',
+  'guideCatSidecarMode',
+  'guideCatPlacement',
+  'guideCatFloatingAnchor',
+] as const;
 
 function parsePlatformSurface(value: unknown): PlatformSurfaceId | undefined {
   return value === 'chat' || value === 'work' || value === 'code' ? value : undefined;
@@ -97,6 +112,14 @@ export function parsePlatformPreferencesUpdate(
   body: PlatformPreferencesUpdateBody,
   currentPrefs: PlatformPreferences,
 ): ParseResult<PlatformPreferences> {
+  const hasLegacyGuideCatUiFields = LEGACY_GUIDE_CAT_PLATFORM_PREFERENCE_FIELDS.some((key) =>
+    Object.prototype.hasOwnProperty.call(body, key));
+  if (hasLegacyGuideCatUiFields) {
+    process.stderr.write(
+      '[cats-platform] Ignoring deprecated guide-cat UI preference fields on '
+      + '/api/platform/preferences; renderer storage now owns these values.\n',
+    );
+  }
   const surface = body.lastProductSurface;
   if (surface !== undefined && parsePlatformSurface(surface) === undefined) {
     return { ok: false, message: 'Invalid product surface' };

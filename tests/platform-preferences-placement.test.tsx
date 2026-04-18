@@ -84,6 +84,38 @@ test('parsePlatformPreferencesUpdate preserves omitted fields', () => {
   }
 });
 
+test('parsePlatformPreferencesUpdate ignores deprecated guide cat ui fields from older clients', () => {
+  const originalWrite = process.stderr.write.bind(process.stderr);
+  let warning = '';
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    warning += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf-8');
+    return true;
+  }) as typeof process.stderr.write;
+
+  try {
+    const result = parsePlatformPreferencesUpdate(
+      {
+        lastProductSurface: 'work',
+        guideCatSidecarSeen: true,
+        guideCatSidecarMode: 'bubble',
+        guideCatPlacement: 'docked',
+        guideCatFloatingAnchor: { x: 0.2, y: 0.8 },
+      },
+      baselinePreferences(),
+    );
+
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.value.lastProductSurface, 'work');
+      assert.equal(result.value.startAtLogin, true);
+      assert.equal(result.value.lobbyAnimationMode, 'reduced');
+    }
+    assert.match(warning, /Ignoring deprecated guide-cat UI preference fields/u);
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+});
+
 test('writePlatformPreferences preserves legacy guide cat fields for migration retries', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-platform-prefs-'));
   const chatStatePath = path.join(tempDir, 'platform', 'state', 'chat-state.local.json');
