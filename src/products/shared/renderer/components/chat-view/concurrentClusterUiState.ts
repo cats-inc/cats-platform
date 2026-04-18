@@ -173,10 +173,12 @@ export function readConcurrentClusterUiStateMap(
 function tryShrinkAndWriteConcurrentClusterUiStateMap(
   storage: ConcurrentClusterUiStateStorage,
   normalized: ConcurrentClusterUiStateMap,
-): boolean {
+): ConcurrentClusterUiStateMap | null {
   // Halve the map each retry so we converge in a few attempts rather than
   // dumping everything to a hard-coded 32. Stop before we go below a single
   // entry — at that point the caller should fall back to removeItem instead.
+  // Returns the map that actually landed so the caller can sync in-memory
+  // state to the persisted truth; null means nothing landed.
   let currentSize = Object.keys(normalized).length;
   while (currentSize > 1) {
     currentSize = Math.floor(currentSize / 2);
@@ -186,20 +188,25 @@ function tryShrinkAndWriteConcurrentClusterUiStateMap(
         CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
         JSON.stringify(pruned),
       );
-      return true;
+      return pruned;
     } catch {
       // try the next (smaller) tier
     }
   }
-  return false;
+  return null;
 }
 
+// Returns the map that was actually persisted. When quota pressure forces a
+// shrink or a removeItem fallback, the return value diverges from the input —
+// callers must reconcile their in-memory state so the UI stops showing
+// dismissals that no longer survive a refresh, and so the next write doesn't
+// re-trigger the same quota failure with the bloated map.
 export function writeConcurrentClusterUiStateMap(
   storage: ConcurrentClusterUiStateStorage | null | undefined,
   value: ConcurrentClusterUiStateMap,
-): void {
+): ConcurrentClusterUiStateMap {
   if (!storage) {
-    return;
+    return value;
   }
 
   const normalized = pruneConcurrentClusterUiStateMap(value);
@@ -208,10 +215,11 @@ export function writeConcurrentClusterUiStateMap(
       CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
       JSON.stringify(normalized),
     );
-    return;
+    return normalized;
   } catch (initialError) {
-    if (tryShrinkAndWriteConcurrentClusterUiStateMap(storage, normalized)) {
-      return;
+    const shrunk = tryShrinkAndWriteConcurrentClusterUiStateMap(storage, normalized);
+    if (shrunk !== null) {
+      return shrunk;
     }
     // Last resort: nuke the stored key so we don't keep carrying a stale payload
     // that blocks future writes. Small maps (size ≤ 1) also land here because the
@@ -224,6 +232,7 @@ export function writeConcurrentClusterUiStateMap(
       }
     }
     warnConcurrentClusterUiStateStorageFailure('write', initialError);
+    return {};
   }
 }
 

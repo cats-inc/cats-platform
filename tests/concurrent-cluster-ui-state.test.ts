@@ -284,6 +284,86 @@ test('loadConcurrentClusterUiStateMap flags dirty storage when parse drops recor
   });
 });
 
+test('writeConcurrentClusterUiStateMap returns the input identity on a clean write for caller sync', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
+  const storage = {
+    getItem(): string | null {
+      return null;
+    },
+    setItem(): void {},
+  };
+  const dismissed = dismissConcurrentClusterUiState({}, {
+    channelId: 'channel-1',
+    turnId: 'turn-1',
+  });
+
+  const persisted = writeConcurrentClusterUiStateMap(storage, dismissed);
+
+  assert.strictEqual(persisted, dismissed);
+});
+
+test('writeConcurrentClusterUiStateMap returns the shrunk map that actually landed under quota pressure', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
+  let state: ConcurrentClusterUiStateMap = {};
+  for (let index = 0; index < MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES; index += 1) {
+    state = dismissConcurrentClusterUiState(state, {
+      channelId: 'channel-1',
+      turnId: `turn-${index}`,
+    });
+  }
+  let persistedCount: number | null = null;
+  const storage = {
+    getItem(): string | null {
+      return null;
+    },
+    setItem(_key: string, value: string): void {
+      const count = Object.keys(JSON.parse(value)).length;
+      if (count > 25) {
+        throw new Error('quota exceeded');
+      }
+      persistedCount = count;
+    },
+  };
+
+  const persisted = writeConcurrentClusterUiStateMap(storage, state);
+
+  assert.notStrictEqual(persisted, state);
+  assert.equal(Object.keys(persisted).length, persistedCount);
+  assert.ok(Object.keys(persisted).length <= 25);
+});
+
+test('writeConcurrentClusterUiStateMap returns an empty map when it fell back to removeItem', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
+  let removedKey: string | null = null;
+  const storage = {
+    getItem(): string | null {
+      return null;
+    },
+    setItem(): void {
+      throw new Error('quota exceeded');
+    },
+    removeItem(key: string): void {
+      removedKey = key;
+    },
+  };
+  const dismissed = dismissConcurrentClusterUiState({}, {
+    channelId: 'channel-1',
+    turnId: 'turn-1',
+  });
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  let persisted: ConcurrentClusterUiStateMap;
+  try {
+    persisted = writeConcurrentClusterUiStateMap(storage, dismissed);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.deepEqual(persisted, {});
+  assert.equal(removedKey, CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY);
+});
+
 test('loadConcurrentClusterUiStateMap reports clean storage when no normalization is required', () => {
   const storage = {
     getItem(): string | null {

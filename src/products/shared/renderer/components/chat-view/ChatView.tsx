@@ -785,10 +785,20 @@ export function ChatView({
       hasPersistedConcurrentClusterUiStateRef.current = true;
       return;
     }
-    writeConcurrentClusterUiStateMap(
+    const persisted = writeConcurrentClusterUiStateMap(
       window.localStorage,
       concurrentClusterUiStateByKey,
     );
+    // Under quota pressure the writer may shrink or drop the payload. Sync the
+    // in-memory map back to what actually landed so the UI doesn't promise
+    // dismissals that vanish after refresh and the next write isn't driven by
+    // a stale oversized map. Functional setter guards against a newer dismiss
+    // landing between the write and this state update.
+    if (persisted !== concurrentClusterUiStateByKey) {
+      setConcurrentClusterUiStateByKey((prev) =>
+        prev === concurrentClusterUiStateByKey ? persisted : prev,
+      );
+    }
   }, [concurrentClusterUiStateByKey]);
 
   const inspectedRun = useMemo(
