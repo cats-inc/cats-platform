@@ -993,8 +993,16 @@ export function ChatView({
             const rawSignature = buildLiveTraceStateSignature(liveIndicator);
             const visibleSignature = buildLiveTraceStateSignature(visibleLiveIndicator);
             const activeTurnUpdatedAt = selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null;
+            const messagesSignature = visibleMessages
+              .map((message) => {
+                const bodyHint = message.body?.trim()
+                  ? message.body.trim().slice(0, 16).replace(/\s+/gu, ' ') + (message.body.length > 16 ? '…' : '')
+                  : '∅';
+                return `${message.senderKind}#${message.id.slice(-6)}:${bodyHint}`;
+              })
+              .join(',');
             const combinedSignature =
-              `raw=${rawSignature}|vis=${visibleSignature}|turn=${activeTurnUpdatedAt ?? 'none'}`;
+              `raw=${rawSignature}|vis=${visibleSignature}|turn=${activeTurnUpdatedAt ?? 'none'}|msgs=${messagesSignature}`;
             if (combinedSignature !== _lastLiveIndicatorLogSignature) {
               const now = Date.now();
               const gapMs = _lastLiveIndicatorLogAt != null ? now - _lastLiveIndicatorLogAt : 0;
@@ -1005,6 +1013,7 @@ export function ChatView({
                 + ' raw=' + rawSignature
                 + ' vis=' + visibleSignature
                 + ' turn=' + (activeTurnUpdatedAt ?? 'none')
+                + ' msgs[' + visibleMessages.length + ']=' + messagesSignature
                 + ' nb=' + (isNearBottom ? '1' : '0'),
               );
             }
