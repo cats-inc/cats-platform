@@ -64,7 +64,6 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
     onRemoveDraftTemporaryParticipant,
     onUpdateDraftTemporaryParticipant,
     entryMode,
-    starterSuggestions,
     parallelTargets,
     onParallelTargetChange,
     onAddParallelTarget,
@@ -96,7 +95,6 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
   void onRemoveDraftTemporaryParticipant;
   void onUpdateDraftTemporaryParticipant;
   void entryMode;
-  void starterSuggestions;
   void parallelTargets;
   void onParallelTargetChange;
   void onAddParallelTarget;

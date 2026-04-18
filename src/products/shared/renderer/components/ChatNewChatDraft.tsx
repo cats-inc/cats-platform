@@ -5,7 +5,6 @@ import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import { SidePanel } from '../../../../design/components/SidePanel.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { type NewChatMode } from '../draftStarterSuggestionContext.js';
-import { type DraftStarterSuggestion } from '../draftStarterSuggestions.js';
 import {
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
@@ -68,7 +67,6 @@ export interface NewChatDraftProps {
   autoResize: (el: HTMLTextAreaElement) => void;
   draftDefaultRecipientCatId: string | null;
   entryMode?: NewChatMode;
-  starterSuggestions?: ReadonlyArray<DraftStarterSuggestion> | null;
   onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
   selectedExecutionTarget?: ExecutionTargetValue;
@@ -132,7 +130,6 @@ export function NewChatDraft({
   autoResize,
   draftDefaultRecipientCatId,
   entryMode = 'default',
-  starterSuggestions,
   onDraftDefaultRecipientChange,
   allowAddCat = true,
   selectedExecutionTarget,
@@ -190,7 +187,6 @@ export function NewChatDraft({
     allowAddCat,
     entryMode,
     parallelTargets,
-    starterSuggestions,
     greeting,
     greetingPool,
     draftHighlightedCatId,

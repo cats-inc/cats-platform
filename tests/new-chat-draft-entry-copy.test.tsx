@@ -521,38 +521,6 @@ test('direct-lane draft with an active Telegram binding keeps the bound private-
   assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
-test('draft uses externally supplied starter suggestions before static fallback prompts', () => {
-  const markup = renderToStaticMarkup(
-    <NewChatDraft
-      {...createProps({
-        draftDefaultRecipientCatId: 'cat-lead',
-        starterSuggestions: [
-          {
-            id: 'guide-cat-start',
-            prompt: 'Guide Cat suggests framing the first deliverable before asking Milo to execute.',
-          },
-        ],
-      })}
-    />,
-  );
-
-  assert.match(markup, /Guide Cat suggests framing the first deliverable/u);
-  assert.doesNotMatch(markup, /Ask Milo to take the first pass, then tighten the plan together\./u);
-});
-
-test('draft hides starter suggestions when the seam supplies an explicit empty override', () => {
-  const markup = renderToStaticMarkup(
-    <NewChatDraft
-      {...createProps({
-        starterSuggestions: [],
-      })}
-    />,
-  );
-
-  assert.doesNotMatch(markup, /Plan today's priorities/u);
-  assert.doesNotMatch(markup, /draftPromptChip/u);
-});
-
 test('draft prefers payload-backed assist greeting and starter suggestions when the seam provides them', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {
@@ -836,26 +804,6 @@ test('direct-lane draft suppresses even runtime-origin payload-backed starter pr
   );
 
   assert.doesNotMatch(markup, /Runtime-generated direct-lane suggestion\./u);
-  assert.doesNotMatch(markup, /draftPromptChip/u);
-});
-
-test('direct-lane draft suppresses caller-supplied starterSuggestions to protect the private lane', () => {
-  const markup = renderToStaticMarkup(
-    <NewChatDraft
-      {...createProps({
-        draftDefaultRecipientCatId: 'cat-lead',
-        allowAddCat: false,
-        starterSuggestions: [
-          {
-            id: 'caller-injected',
-            prompt: 'Caller-injected direct-lane suggestion that must not appear.',
-          },
-        ],
-      })}
-    />,
-  );
-
-  assert.doesNotMatch(markup, /Caller-injected direct-lane suggestion that must not appear\./u);
   assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 

@@ -38,10 +38,14 @@ export interface DraftComposerStackParticipant {
 }
 
 // Draft helper chips are gated on two rules the renderer treats as non-negotiable:
-//   1. Direct lane is a private chat; no third-party prompt source may ever insert chips.
+//   1. Direct lane is a private chat; no prompt source may ever insert chips.
 //   2. Non-direct modes only surface chips sourced from a runtime-refreshed bundle
 //      (provenance.originMode === 'runtime'); deterministic baselines stay silent so the
 //      composer does not advertise generic guidance the user has not opted into.
+// The payload bundle is therefore the single source of visible chips. Earlier revisions
+// exposed an `input.starterSuggestions` seam as a caller override, but that bypassed the
+// runtime-origin contract and no production caller used it; keep chip sourcing centralized
+// here rather than re-introducing that seam.
 function resolvePayloadDraftAssist(input: {
   payload: AppShellPayload;
   mode: NonNullable<ReturnType<typeof resolveDraftStarterSuggestionContext>['mode']>;
@@ -76,7 +80,6 @@ export function resolveChatNewChatDraftViewState(input: {
   allowAddCat: boolean;
   entryMode: NewChatMode;
   parallelTargets?: ExecutionTargetValue[] | undefined;
-  starterSuggestions?: ReadonlyArray<DraftStarterSuggestion> | null;
   greeting?: string | null;
   greetingPool?: ReadonlyArray<string> | null;
   draftHighlightedCatId: string | null;
@@ -129,11 +132,11 @@ export function resolveChatNewChatDraftViewState(input: {
     mode: draftSuggestionContext.mode,
   });
   const visibleDraftCatIds = draftParticipants.participantCatIds;
-  // Direct lane is private chat; no caller input or payload source may override the
-  // "no chips" rule. Other modes may use caller input, then runtime-origin payload.
+  // Direct lane is private chat: no chips from any source. Other modes only surface
+  // runtime-origin payload chips (resolvePayloadDraftAssist already enforces this).
   const starterSuggestionInput = draftSuggestionContext.mode === 'direct'
     ? []
-    : (input.starterSuggestions ?? payloadDraftAssist.starterSuggestions ?? []);
+    : (payloadDraftAssist.starterSuggestions ?? []);
   const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
     suggestions: starterSuggestionInput,
   });
