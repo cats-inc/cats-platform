@@ -85,10 +85,6 @@ with one in-memory source of truth and a local persistence backend such as
 In steady state, those four values should not remain part of
 server-managed `PlatformPreferences` or `PlatformHostEnvelope`.
 
-If a migration needs to import legacy file-backed values once, that migration
-may temporarily read the old server-backed source, but that legacy source
-should not remain the steady-state owner.
-
 ### 2. Floating uses one host-owned normalized anchor plus surface-defined avoidance rules
 
 When Guide Cat is `floating`, the user may drag its floating anchor inside the
@@ -228,7 +224,7 @@ preserving the underlying placement intent.
   than one static placement rule.
 - Rendering and persistence become more complex because placement state and
   presentation state are separate, and the renderer now owns a dedicated Guide
-  Cat UI preference store plus migration from the old server-backed values.
+  Cat UI preference store with its own forward-only schema/version contract.
 - Surface teams must expose explicit safe areas, exclusion zones, and dock
   slots instead of relying on incidental geometry.
 

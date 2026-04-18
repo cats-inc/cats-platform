@@ -58,7 +58,7 @@ renderer-owned store baseline forward.
 **Deliverables**: one explicit clean/current-environment baseline instead of
 silent prerelease migration debt
 
-### Phase 1: Freeze Ownership and Migration Contract
+### Phase 1: Freeze Ownership and Forward-Only Store Contract
 
 - [x] Task 1.1: Amend the active Guide Cat docs so the steady-state ownership
       model is renderer-owned UI preferences, not server-owned platform
@@ -75,7 +75,7 @@ silent prerelease migration debt
       - assist content/cache data
       - owner/profile/product shell metadata
 - [x] Task 1.4: Define the client-store schema version, storage key, default
-      values, and one-time migration marker.
+      values, and unsupported-record fallback behavior.
 - [x] Task 1.5: Freeze the clean-start rule: do not ship a prerelease
       server-backed Guide Cat UI preference hydration seam.
 - [ ] Task 1.6: Freeze the schema-evolution strategy for future store versions,

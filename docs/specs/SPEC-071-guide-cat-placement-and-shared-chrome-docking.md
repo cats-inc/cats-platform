@@ -161,10 +161,10 @@ persistence for Guide Cat chrome is renderer-owned.
 33. Guide Cat UI preference consumers shall not each read/write raw
     `localStorage`; they shall read/write through the shared renderer-owned
     store.
-34. If a migration from legacy server-backed Guide Cat UI preference values is
-    needed, that migration shall be one-time, renderer-initiated, read-only
-    from the server side, and shall not stamp completion until local
-    persistence succeeds.
+34. The current renderer-owned Guide Cat UI preference record shall be treated
+    as the first supported shipped baseline for durable Guide Cat UI
+    persistence, and this slice shall not depend on any server-backed import
+    seam for earlier prerelease variants.
 35. In steady state, the app-shell envelope shall not remain the durable owner
     of the four Guide Cat UI preference fields.
 36. When a durable Guide Cat UI preference commit changes more than one of the
