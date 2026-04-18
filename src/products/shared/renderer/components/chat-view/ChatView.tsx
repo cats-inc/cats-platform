@@ -3,6 +3,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type DependencyList,
@@ -395,6 +396,7 @@ export function ChatView({
       readConcurrentClusterUiStateMap(
         typeof window === 'undefined' ? null : window.localStorage,
       ));
+  const hasPersistedConcurrentClusterUiStateRef = useRef(false);
   const resolveConcurrentClusterMode = useCallback(
     (context: ConcurrentClusterContext) =>
       resolveConcurrentClusterPresentationMode({
@@ -770,6 +772,10 @@ export function ChatView({
 
   useEffect(() => {
     if (typeof window === 'undefined') {
+      return;
+    }
+    if (!hasPersistedConcurrentClusterUiStateRef.current) {
+      hasPersistedConcurrentClusterUiStateRef.current = true;
       return;
     }
     writeConcurrentClusterUiStateMap(

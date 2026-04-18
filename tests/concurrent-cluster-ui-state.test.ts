@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
+  MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES,
   buildConcurrentClusterUiStateKey,
   dismissConcurrentClusterUiState,
   parseStoredConcurrentClusterUiStateMap,
@@ -103,4 +104,52 @@ test('parseStoredConcurrentClusterUiStateMap ignores invalid records and keeps v
   assert.deepEqual(parsed, {
     'channel-1:turn-1': { presentationOverride: 'inline_stack' },
   });
+});
+
+test('dismissConcurrentClusterUiState keeps only the most recent bounded entry set', () => {
+  let state: ConcurrentClusterUiStateMap = {};
+  for (let index = 0; index < MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES + 5; index += 1) {
+    state = dismissConcurrentClusterUiState(state, {
+      channelId: 'channel-1',
+      turnId: `turn-${index}`,
+    });
+  }
+
+  assert.equal(Object.keys(state).length, MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES);
+  assert.equal(state[buildConcurrentClusterUiStateKey('channel-1', 'turn-0')], undefined);
+  assert.deepEqual(
+    state[buildConcurrentClusterUiStateKey(
+      'channel-1',
+      `turn-${MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES + 4}`,
+    )],
+    { presentationOverride: 'inline_stack' },
+  );
+});
+
+test('writeConcurrentClusterUiStateMap warns when storage writes fail', () => {
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = (message?: unknown) => {
+    warnings.push(String(message ?? ''));
+  };
+  try {
+    const storage = {
+      getItem(): string | null {
+        return null;
+      },
+      setItem(): void {
+        throw new Error('quota exceeded');
+      },
+    };
+
+    writeConcurrentClusterUiStateMap(storage, dismissConcurrentClusterUiState({}, {
+      channelId: 'channel-1',
+      turnId: 'turn-1',
+    }));
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0] ?? '', /Failed to write concurrent cluster dismiss state/i);
 });

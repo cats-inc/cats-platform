@@ -3,6 +3,7 @@ import type { ConcurrentChatPresentationMode } from '../../../api/workspaceContr
 import { resolveConcurrentPresentationMode } from './concurrentModeResolver.js';
 
 export const CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY = 'cats.concurrent-cluster-ui-state';
+export const MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES = 200;
 
 export interface ConcurrentClusterContext {
   turnId: string;
@@ -34,6 +35,25 @@ interface ConcurrentClusterUiStateStorage {
   setItem(key: string, value: string): void;
 }
 
+const warnedConcurrentClusterUiStateStorageContexts = new Set<'read' | 'write'>();
+
+function warnConcurrentClusterUiStateStorageFailure(
+  context: 'read' | 'write',
+  error: unknown,
+): void {
+  if (warnedConcurrentClusterUiStateStorageContexts.has(context)) {
+    return;
+  }
+  warnedConcurrentClusterUiStateStorageContexts.add(context);
+  if (typeof console === 'undefined' || typeof console.warn !== 'function') {
+    return;
+  }
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  console.warn(
+    `[Cats] Failed to ${context} concurrent cluster dismiss state: ${errorMessage}`,
+  );
+}
+
 function readConcurrentClusterUiStateRecord(
   value: unknown,
 ): ConcurrentClusterUiState | null {
@@ -45,6 +65,17 @@ function readConcurrentClusterUiStateRecord(
     return null;
   }
   return { presentationOverride };
+}
+
+function pruneConcurrentClusterUiStateMap(
+  value: ConcurrentClusterUiStateMap,
+  maxEntries: number = MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES,
+): ConcurrentClusterUiStateMap {
+  const entries = Object.entries(value);
+  if (entries.length <= maxEntries) {
+    return value;
+  }
+  return Object.fromEntries(entries.slice(-maxEntries));
 }
 
 export function buildConcurrentClusterUiStateKey(
@@ -77,7 +108,7 @@ export function parseStoredConcurrentClusterUiStateMap(
         next[key] = normalized;
       }
     }
-    return next;
+    return pruneConcurrentClusterUiStateMap(next);
   } catch {
     return {};
   }
@@ -94,7 +125,8 @@ export function readConcurrentClusterUiStateMap(
     return parseStoredConcurrentClusterUiStateMap(
       storage.getItem(CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY),
     );
-  } catch {
+  } catch (error) {
+    warnConcurrentClusterUiStateStorageFailure('read', error);
     return {};
   }
 }
@@ -107,13 +139,27 @@ export function writeConcurrentClusterUiStateMap(
     return;
   }
 
+  const normalized = pruneConcurrentClusterUiStateMap(value);
   try {
     storage.setItem(
       CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
-      JSON.stringify(value),
+      JSON.stringify(normalized),
     );
-  } catch {
-    // Ignore storage failures and keep the in-memory dismiss path working.
+  } catch (error) {
+    const aggressivelyPruned = pruneConcurrentClusterUiStateMap(normalized, 32);
+    if (aggressivelyPruned !== normalized) {
+      try {
+        storage.setItem(
+          CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
+          JSON.stringify(aggressivelyPruned),
+        );
+        return;
+      } catch (retryError) {
+        warnConcurrentClusterUiStateStorageFailure('write', retryError);
+        return;
+      }
+    }
+    warnConcurrentClusterUiStateStorageFailure('write', error);
   }
 }
 
@@ -132,10 +178,10 @@ export function dismissConcurrentClusterUiState(
   if (currentState?.presentationOverride === nextState.presentationOverride) {
     return previous;
   }
-  return {
+  return pruneConcurrentClusterUiStateMap({
     ...previous,
     [key]: nextState,
-  };
+  });
 }
 
 export function resolveConcurrentClusterPresentationMode(input: {
