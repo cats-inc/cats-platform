@@ -88,6 +88,12 @@ export interface LiveIndicatorTranscriptMessageLike {
 const MAX_LIVE_INDICATOR_BLOCKS = 12;
 const MAX_LIVE_INDICATOR_EVENTS = 8;
 const MAX_EVENT_TEXT = 220;
+// UI-side heuristic for when a streaming text bubble has gone visually stale
+// enough that we should hand off to a dedicated waiting placeholder. This is
+// intentionally local to the product projection layer for now; if runtimes
+// later expose explicit "text completed, tool still running" timing/status,
+// move this threshold behind that richer signal instead of widening renderer
+// heuristics again.
 const STALLED_STREAMING_TEXT_WAITING_DELAY_MS = 1200;
 
 export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {

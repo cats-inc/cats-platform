@@ -27,6 +27,7 @@ import {
   applyLiveIndicatorEvent,
   createLiveIndicatorSegmentState,
   createWaitingLiveIndicatorState,
+  estimateNextLiveIndicatorProjectionAtMs,
   hasVisibleLiveIndicatorSpeakerReplyAfterMessage,
   projectLiveIndicatorStateFromSegments,
   resolveTranscriptFollowState,
@@ -6310,4 +6311,28 @@ test('resolveVisibleLiveIndicator seals a stale streaming text bubble and append
   assert.equal(visible.segments[1]?.phase, 'waiting');
   assert.equal(visible.segments[1]?.speakerLabel, 'Claude-CLI');
   assert.equal(visible.segments[1]?.contentBlocks.length, 0);
+});
+
+test('estimateNextLiveIndicatorProjectionAtMs schedules stalled streaming text at the waiting threshold', () => {
+  let liveIndicator = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+  liveIndicator = applyLiveIndicatorEvent(
+    liveIndicator,
+    'text',
+    {
+      sourceMessageId: 'message-user-current',
+      participantId: 'participant-claude',
+      speakerLabel: 'Claude-CLI',
+      text: 'I will build a single-file HTML pomodoro timer.',
+    },
+    1_000,
+  );
+
+  assert.equal(estimateNextLiveIndicatorProjectionAtMs(liveIndicator, 1_100), 2_200);
+  assert.equal(estimateNextLiveIndicatorProjectionAtMs(liveIndicator, 2_200), null);
 });
