@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress (Primary Migration Landed) |
+| **Status** | In Progress (Compatibility Window Active) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -67,15 +67,15 @@ acceptance of the current race window
 
 ### Phase 1: Freeze Ownership and Migration Contract
 
-- [ ] Task 1.1: Amend the active Guide Cat docs so the steady-state ownership
+- [x] Task 1.1: Amend the active Guide Cat docs so the steady-state ownership
       model is renderer-owned UI preferences, not server-owned platform
       preferences.
-- [ ] Task 1.2: Freeze the exact migration set as:
+- [x] Task 1.2: Freeze the exact migration set as:
       - `guideCatSidecarSeen`
       - `guideCatSidecarMode`
       - `guideCatPlacement`
       - `guideCatFloatingAnchor`
-- [ ] Task 1.3: Freeze the server-owned remainder so it stays out of the
+- [x] Task 1.3: Freeze the server-owned remainder so it stays out of the
       client store, especially:
       - `guideCat` record
       - dismissed/active status
@@ -83,7 +83,7 @@ acceptance of the current race window
       - owner/profile/product shell metadata
 - [ ] Task 1.4: Define the client-store schema version, storage key, default
       values, and one-time migration marker.
-- [ ] Task 1.5: Define the legacy hydration rule for importing old file-backed
+- [x] Task 1.5: Define the legacy hydration rule for importing old file-backed
       values without leaving a permanent envelope dependency behind.
 - [ ] Task 1.6: Freeze the schema-evolution strategy for future store versions,
       including:
@@ -97,19 +97,19 @@ contract for the four Guide Cat UI fields
 
 ### Phase 2: Introduce a Renderer-Owned Guide Cat UI Preference Store
 
-- [ ] Task 2.1: Create a dedicated Guide Cat UI preference store/hook instead
+- [x] Task 2.1: Create a dedicated Guide Cat UI preference store/hook instead
       of letting individual components read and write raw `localStorage`.
-- [ ] Task 2.2: Persist the four Guide Cat UI fields as one atomic record, not
+- [x] Task 2.2: Persist the four Guide Cat UI fields as one atomic record, not
       as per-field writes.
-- [ ] Task 2.3: Make the store resilient to missing storage, malformed JSON,
+- [x] Task 2.3: Make the store resilient to missing storage, malformed JSON,
       and quota/storage exceptions while keeping the in-memory UI usable.
-- [ ] Task 2.4: Add same-browser synchronization through one internal publish/
+- [x] Task 2.4: Add same-browser synchronization through one internal publish/
       subscribe seam plus `storage`-event reconciliation for multi-window or
       cross-tab cases.
-- [ ] Task 2.5: Keep transient interaction state out of the durable store,
+- [x] Task 2.5: Keep transient interaction state out of the durable store,
       including hover, drag-in-progress, preview, and temporary hidden-route
       overrides.
-- [ ] Task 2.6: Freeze the hidden-route rule so entering Settings or any other
+- [x] Task 2.6: Freeze the hidden-route rule so entering Settings or any other
       hidden override route may change transient projection state only and must
       not trigger durable Guide Cat UI preference writes.
 
@@ -118,7 +118,7 @@ UI preference fetches
 
 ### Phase 3: Migrate Existing Preference Data Once
 
-- [ ] Task 3.1: Prefer existing renderer-local Guide Cat UI prefs when a valid
+- [x] Task 3.1: Prefer existing renderer-local Guide Cat UI prefs when a valid
       local record already exists.
 - [ ] Task 3.2: When no local record exists, import the legacy server-backed
       Guide Cat UI values into memory, persist them locally, and only stamp the
@@ -127,23 +127,23 @@ UI preference fetches
       interrupted startup, leave the migration incomplete, keep the session
       running from memory where possible, and retry migration on the next app
       startup.
-- [ ] Task 3.4: Ensure the migration path is read-only from the server side and
+- [x] Task 3.4: Ensure the migration path is read-only from the server side and
       cannot continue to act as a steady-state source of truth.
-- [ ] Task 3.5: Keep legacy hydration available for at least one packaged
+- [x] Task 3.5: Keep legacy hydration available for at least one packaged
       release window after the renderer store first ships; Phase 5 removal may
       not start before that deprecation window closes.
-- [ ] Task 3.6: Repair likely race-polluted legacy `guideCatSidecarSeen=false`
+- [x] Task 3.6: Repair likely race-polluted legacy `guideCatSidecarSeen=false`
       values during migration; at minimum, coerce `seen=true` when other legacy
       Guide Cat UI prefs already prove post-onboarding interaction, such as:
       - `guideCatSidecarMode !== 'auto'`
       - `guideCatPlacement !== 'floating'`
       - `guideCatFloatingAnchor != null`
-- [ ] Task 3.7: Define the fallback when no usable legacy values exist:
+- [x] Task 3.7: Define the fallback when no usable legacy values exist:
       - `guideCatSidecarSeen = false`
       - `guideCatSidecarMode = 'auto'`
       - `guideCatPlacement = 'floating'`
       - `guideCatFloatingAnchor = null`
-- [ ] Task 3.8: Ensure migration preserves previously selected `bubble` /
+- [x] Task 3.8: Ensure migration preserves previously selected `bubble` /
       `drawer` mode and remembered floating placement when legacy values are
       present.
 
@@ -152,25 +152,25 @@ without leaving steady-state ownership on the server
 
 ### Phase 4: Rewire Guide Cat Consumers to the Client Store
 
-- [ ] Task 4.1: Make the platform app and Guide Cat placement/presentation
+- [x] Task 4.1: Make the platform app and Guide Cat placement/presentation
       layers read the four UI fields from the renderer store, not from the app
       shell envelope.
-- [ ] Task 4.2: Make Settings General read and update Guide Cat mode through
+- [x] Task 4.2: Make Settings General read and update Guide Cat mode through
       the renderer store, not through `/api/platform/preferences`.
-- [ ] Task 4.3: Remove Guide Cat UI preference POSTs from:
+- [x] Task 4.3: Remove Guide Cat UI preference POSTs from:
       - sidecar-seen persistence
       - placement persistence
       - undock/dock persistence
       - mode switching in Settings
-- [ ] Task 4.4: Ensure durable commits happen only at completed interaction
+- [x] Task 4.4: Ensure durable commits happen only at completed interaction
       boundaries, not at hover/preview/pointerdown time.
-- [ ] Task 4.5: Ensure hidden-route overrides such as Settings-hidden remain
+- [x] Task 4.5: Ensure hidden-route overrides such as Settings-hidden remain
       transient and never trigger durable store writes for remembered Guide Cat
       placement or mode.
-- [ ] Task 4.6: Make multi-field placement commits land atomically as one
+- [x] Task 4.6: Make multi-field placement commits land atomically as one
       logical local-store update so they cannot partially land or visually jump
       between stale and fresh values.
-- [ ] Task 4.7: Remove the legacy `persistGuideCatPlacementPreference` export
+- [x] Task 4.7: Remove the legacy `persistGuideCatPlacementPreference` export
       and any remaining fetch-based Guide Cat UI preference helper once no
       callers remain.
 
@@ -198,16 +198,16 @@ carry Guide Cat UI prefs in steady state
 
 ### Exit Criteria
 
-- [ ] Changing Guide Cat mode in Settings no longer sends a network request.
-- [ ] Dock, undock, and floating-anchor updates no longer send a network
+- [x] Changing Guide Cat mode in Settings no longer sends a network request.
+- [x] Dock, undock, and floating-anchor updates no longer send a network
       request.
-- [ ] Repeated undock attempts cannot partially land `placement` and
+- [x] Repeated undock attempts cannot partially land `placement` and
       `floatingAnchor` as separate writes.
-- [ ] Opening two renderer windows and changing Guide Cat UI prefs in one
+- [x] Opening two renderer windows and changing Guide Cat UI prefs in one
       window reconciles cleanly in the other.
 - [ ] If local persistence is unavailable during migration, the app retries on
       a future startup instead of permanently losing the old value.
-- [ ] Existing users with stored Guide Cat mode/placement keep those values
+- [x] Existing users with stored Guide Cat mode/placement keep those values
       after migration.
 - [ ] `PlatformPreferences` and `PlatformHostEnvelope` no longer own the four
       Guide Cat UI fields in the end state.
@@ -225,16 +225,16 @@ regressing placement continuity or Settings behavior
 | `docs/plans/README.md` | Modify | Add PLAN-063 to the plans index |
 | `docs/README.md` | Modify | Add PLAN-063 to recent documentation additions |
 | `src/app/renderer/guideCatUiPrefsStore.ts` | Create | Single renderer-owned Guide Cat UI preference store |
-| `src/app/renderer/App.tsx` | Modify | Hydrate Guide Cat UI prefs from the renderer store instead of the envelope |
+| `src/app/renderer/App.tsx` | Modify | Hydrate Guide Cat UI prefs from the renderer store and import the temporary `legacyGuideCatUiPrefs` seam once |
 | `src/app/renderer/useGuideCatSidecarState.ts` | Modify | Replace server-backed sidecar-seen writes with client-store writes |
 | `src/app/renderer/GuideCatPlacementProvider.tsx` | Modify | Replace placement fetches with atomic local store updates and remove the legacy `persistGuideCatPlacementPreference` export |
 | `src/app/renderer/settings/PlatformSettingsGeneral.tsx` | Modify | Replace Guide Cat mode POSTs with renderer-store updates |
-| `src/shared/platform-contract.ts` | Modify | Remove Guide Cat UI preference fields from `PlatformHostEnvelope` |
-| `src/shared/platformPreferences.ts` | Modify | Remove server persistence for the four Guide Cat UI fields |
-| `src/app/server/platformSetupRouteSupport.ts` | Modify | Remove Guide Cat UI preference parsing from platform preference updates |
+| `src/shared/platform-contract.ts` | Modify | Replace the old top-level Guide Cat UI preference payload with a temporary read-only `legacyGuideCatUiPrefs` migration seam |
+| `src/shared/platformPreferences.ts` | Modify | Remove server ownership for the four Guide Cat UI fields while preserving raw legacy values during the deprecation window |
+| `src/app/server/platformSetupRouteSupport.ts` | Modify | Remove steady-state Guide Cat UI preference parsing from platform preference updates and ignore deprecated compatibility inputs |
 | `src/app/server/platformSetupPreferenceRoutes.ts` | Modify | Stop treating the four Guide Cat UI fields as writable platform preferences |
-| `src/products/chat/api/routeSupport.ts` | Modify | Stop projecting Guide Cat UI prefs into the app shell payload |
-| `src/products/chat/state/shell.ts` | Modify | Stop normalizing Guide Cat UI prefs from app-shell setup payloads |
+| `src/products/chat/api/routeSupport.ts` | Modify | Stop projecting steady-state Guide Cat UI prefs into the app shell payload and expose a temporary read-only migration seam |
+| `src/products/chat/state/shell.ts` | Modify | Stop normalizing steady-state Guide Cat UI prefs from app-shell setup payloads while carrying the temporary read-only migration seam |
 | `tests/guide-cat-ui-prefs-store.test.ts` | Create | Validate parsing, defaults, migration, and atomic persistence |
 | `tests/guide-cat-sidecar-state.test.tsx` | Modify | Cover renderer-store-backed sidecar state transitions |
 | `tests/guide-cat-placement.test.tsx` | Modify | Cover atomic undock persistence and no-network placement updates |
@@ -306,6 +306,8 @@ regressing placement continuity or Settings behavior
 | 2026-04-18 | Plan created for moving Guide Cat UI preferences from server-owned platform preferences into a renderer-owned local store |
 | 2026-04-18 | Landed the renderer-owned `GuideCatUiPrefsStore`, rewired App/Settings/placement consumers off steady-state Guide Cat UI-pref fetches, and removed the four Guide Cat UI preference fields from server-owned platform preferences and app-shell contracts |
 | 2026-04-18 | Added automated regression coverage for multi-window/storage-event reconciliation in the renderer-owned Guide Cat UI preference store |
+| 2026-04-18 | Restored a temporary read-only `legacyGuideCatUiPrefs` migration seam through the app shell, preserved raw legacy disk values during the deprecation window, and verified existing `bubble` / `docked` users upgrade without silent resets |
+| 2026-04-18 | Landed atomic undock persistence, explicit no-op handling for deprecated `/api/platform/preferences` Guide Cat UI fields, and moved Guide Cat UI-pref hydration out of the render body |
 
 ---
 
