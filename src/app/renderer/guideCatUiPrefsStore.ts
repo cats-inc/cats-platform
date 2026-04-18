@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useState,
@@ -90,6 +91,8 @@ function readBrowserGlobal(): GuideCatBrowserGlobalLike | null {
   }
   return candidate;
 }
+
+const useIsoLayoutEffect = readBrowserGlobal() === null ? useEffect : useLayoutEffect;
 
 function normalizeFloatingAnchor(value: unknown): GuideCatFloatingAnchor | null {
   if (typeof value !== 'object' || value === null) {
@@ -370,7 +373,7 @@ export function useGuideCatUiPrefs(
   );
   const [, setHydrationTick] = useState(0);
 
-  useLayoutEffect(() => {
+  useIsoLayoutEffect(() => {
     if (!hydrate || store.isHydrated()) {
       return;
     }
