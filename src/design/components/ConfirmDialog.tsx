@@ -1,34 +1,43 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+export type ConfirmDialogAction = 'confirm' | 'cancel' | 'auxiliary';
+
 export interface ConfirmDialogOptions {
   title: string;
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  auxiliaryLabel?: string;
+  defaultAction?: ConfirmDialogAction;
 }
 
 interface ConfirmDialogState {
   options: ConfirmDialogOptions;
-  resolve: (confirmed: boolean) => void;
+  resolve: (action: ConfirmDialogAction) => void;
 }
 
 export function useConfirmDialog() {
   const [dialog, setDialog] = useState<ConfirmDialogState | null>(null);
 
-  const confirm = useCallback((options: ConfirmDialogOptions): Promise<boolean> => {
+  const choose = useCallback((options: ConfirmDialogOptions): Promise<ConfirmDialogAction> => {
     return new Promise((resolve) => {
       setDialog({ options, resolve });
     });
   }, []);
 
-  const handleClose = useCallback((confirmed: boolean) => {
+  const confirm = useCallback(async (options: ConfirmDialogOptions): Promise<boolean> => {
+    const action = await choose(options);
+    return action === 'confirm';
+  }, [choose]);
+
+  const handleClose = useCallback((action: ConfirmDialogAction | boolean) => {
     if (dialog) {
-      dialog.resolve(confirmed);
+      dialog.resolve(normalizeConfirmDialogAction(action));
       setDialog(null);
     }
   }, [dialog]);
 
-  return { dialog, confirm, handleClose };
+  return { dialog, confirm, choose, handleClose };
 }
 
 export function ConfirmDialog({
@@ -36,13 +45,13 @@ export function ConfirmDialog({
   onClose,
 }: {
   dialog: { options: ConfirmDialogOptions } | null;
-  onClose: (confirmed: boolean) => void;
+  onClose: (action: ConfirmDialogAction | boolean) => void;
 }) {
-  const confirmRef = useRef<HTMLButtonElement>(null);
+  const initialFocusRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (dialog) {
-      confirmRef.current?.focus();
+      initialFocusRef.current?.focus();
     }
   }, [dialog]);
 
@@ -50,7 +59,7 @@ export function ConfirmDialog({
     if (!dialog) return;
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        onClose(false);
+        onClose('cancel');
       }
     }
     document.addEventListener('keydown', handleKeyDown);
@@ -59,24 +68,37 @@ export function ConfirmDialog({
 
   if (!dialog) return null;
 
+  const defaultAction = dialog.options.defaultAction ?? 'confirm';
+
   return (
-    <div className="confirmOverlay" onClick={() => onClose(false)}>
+    <div className="confirmOverlay" onClick={() => onClose('cancel')}>
       <div className="confirmDialog" onClick={(e) => e.stopPropagation()}>
         <p className="confirmTitle">{dialog.options.title}</p>
         <p className="confirmMessage">{dialog.options.message}</p>
         <div className="confirmActions">
           <button
+            ref={defaultAction === 'cancel' ? initialFocusRef : null}
             className="confirmCancelButton"
             type="button"
-            onClick={() => onClose(false)}
+            onClick={() => onClose('cancel')}
           >
             {dialog.options.cancelLabel ?? 'Cancel'}
           </button>
+          {dialog.options.auxiliaryLabel ? (
+            <button
+              ref={defaultAction === 'auxiliary' ? initialFocusRef : null}
+              className="confirmAuxiliaryButton"
+              type="button"
+              onClick={() => onClose('auxiliary')}
+            >
+              {dialog.options.auxiliaryLabel}
+            </button>
+          ) : null}
           <button
-            ref={confirmRef}
+            ref={defaultAction === 'confirm' ? initialFocusRef : null}
             className="confirmDestructiveButton"
             type="button"
-            onClick={() => onClose(true)}
+            onClick={() => onClose('confirm')}
           >
             {dialog.options.confirmLabel ?? 'Delete'}
           </button>
@@ -84,4 +106,13 @@ export function ConfirmDialog({
       </div>
     </div>
   );
+}
+
+function normalizeConfirmDialogAction(
+  action: ConfirmDialogAction | boolean,
+): ConfirmDialogAction {
+  if (typeof action === 'boolean') {
+    return action ? 'confirm' : 'cancel';
+  }
+  return action;
 }

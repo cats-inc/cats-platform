@@ -10,6 +10,7 @@ import type {
 } from '../../../../core/types.js';
 import { createCatActorId } from '../../../../core/actors.js';
 import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { GUIDE_CAT_SYSTEM_NAME } from '../../../../shared/guideCatIdentity.js';
 import {
   asRecord,
   normalizeExecutionTarget,
@@ -146,7 +147,7 @@ export function normalizeGuideCatRecord(rawGuideCat: unknown): GuideCatRecord | 
 
   return {
     id: readString(guideCatRecord.id, 'guide-cat-primary'),
-    name: readString(guideCatRecord.name, 'Guide Cat'),
+    name: readString(guideCatRecord.name, GUIDE_CAT_SYSTEM_NAME),
     status,
     executionTarget: normalizeExecutionTarget(
       guideCatRecord.executionTarget,

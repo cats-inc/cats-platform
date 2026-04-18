@@ -2065,7 +2065,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
     },
     guideCat: {
       id: 'guide-cat-primary',
-      name: 'Guide Cat',
+      name: 'Catlas',
       status: 'dismissed',
       executionTarget: {
         provider: 'claude',
@@ -2249,7 +2249,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
 
   assert.equal(reloadedCore.version, 5);
   assert.equal(reloadedCore.ownerProfile.displayName, 'Boss Owner');
-  assert.equal(reloadedCore.guideCat?.name, 'Guide Cat');
+  assert.equal(reloadedCore.guideCat?.name, 'Catlas');
   assert.equal(reloadedCore.guideCat?.status, 'dismissed');
   assert.equal(reloadedCore.guideCat?.executionTarget.model, 'claude-sonnet');
   assert.equal(reloadedCore.assistantPresets[0]?.name, 'Pair Reviewer');

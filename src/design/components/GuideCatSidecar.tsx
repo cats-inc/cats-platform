@@ -10,7 +10,12 @@ import React, {
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { useConfirmDialog, ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog.js';
+import {
+  useConfirmDialog,
+  ConfirmDialog,
+  type ConfirmDialogAction,
+  type ConfirmDialogOptions,
+} from './ConfirmDialog.js';
 
 import type { GuideCatRecord } from '../../core/types.js';
 import type { GuideCatSidecarViewState } from '../../app/renderer/useGuideCatSidecarState.js';
@@ -18,11 +23,15 @@ import {
   isGuideCatDismissTransientChromeEvent,
   useGuideCatPlacement,
 } from '../../app/renderer/GuideCatPlacementProvider.js';
+import { useGuideCatUiPrefs } from '../../app/renderer/guideCatUiPrefsStore.js';
 
 import {
   buildCatTooltip,
   resolveExecutionTargetLabel,
 } from '../../shared/executionLabel.js';
+import {
+  resolveGuideCatDisplayName,
+} from '../../shared/guideCatIdentity.js';
 
 interface GuideCatSidecarProps {
   guideCat: GuideCatRecord;
@@ -84,6 +93,7 @@ export function CollapsedPill({
   className?: string;
   dragging?: boolean;
 }) {
+  const displayName = resolveGuideCatDisplayName({ name });
   return (
     <div
       className={className ?? 'guideCatPillWrap'}
@@ -95,7 +105,7 @@ export function CollapsedPill({
         className="guideCatPill"
         onPointerDown={onPointerDown}
         onClick={onClick}
-        aria-label={`Open guide: ${name}`}
+        aria-label={`Open guide: ${displayName}`}
         data-tooltip={tooltip}
         data-tooltip-delay="1000"
       >
@@ -109,7 +119,7 @@ export function CollapsedPill({
           type="button"
           className="guideCatPillDismiss"
           onClick={(e: ReactMouseEvent) => { e.stopPropagation(); onDismissClick(); }}
-          aria-label="Dismiss guide cat"
+          aria-label="Disable guide cat"
         >
           &#x2715;
         </button>
@@ -183,6 +193,7 @@ function OpenPanel({
   style?: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
 }) {
+  const displayName = resolveGuideCatDisplayName({ name });
   return (
     <div
       className={
@@ -194,14 +205,14 @@ function OpenPanel({
     >
       <div className="guideCatPanelHeader" data-tooltip={tooltip} data-tooltip-delay="1000">
         <GuideCatAvatar className="guideCatPanelAvatar" />
-        <span className="guideCatPanelName">{name}</span>
+        <span className="guideCatPanelName">{displayName}</span>
         <button type="button" className="guideCatPanelClose" onClick={onClose} aria-label="Close">
           &#x2715;
         </button>
       </div>
       <div className="guideCatPanelBody">
         <p className="guideCatPanelGreeting">
-          Hi {ownerDisplayName}, I&rsquo;m {name} &mdash; your guide cat.
+          Hi {ownerDisplayName}, I&rsquo;m {displayName} &mdash; your guide cat.
           Pick any of these to get started, or close this panel and explore on your own.
         </p>
         <div className="guideCatPanelActions">
@@ -248,7 +259,7 @@ export interface GuideCatSidecarViewProps {
   panelStyle: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
   dialog: { options: ConfirmDialogOptions } | null;
-  onDialogClose: (confirmed: boolean) => void;
+  onDialogClose: (action: ConfirmDialogAction | boolean) => void;
   rootRef?: Ref<HTMLDivElement>;
   /** When true, the pill is being rendered by the dock slot component
    * instead of the sidecar. In that case the sidecar still renders the
@@ -357,13 +368,14 @@ export function GuideCatSidecarView({
 }
 
 function buildGuideCatTooltip(guideCat: GuideCatRecord): string {
+  const displayName = resolveGuideCatDisplayName(guideCat);
   const executionLabel = resolveExecutionTargetLabel({
     provider: guideCat.executionTarget.provider,
     instance: guideCat.executionTarget.instance,
     model: guideCat.executionTarget.model,
     modelSelection: guideCat.modelSelection ?? null,
   });
-  return buildCatTooltip(guideCat.name, executionLabel);
+  return buildCatTooltip(displayName, executionLabel);
 }
 
 function SidecarContent({
@@ -407,7 +419,9 @@ function SidecarContent({
 }) {
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
-  const { dialog, confirm, handleClose } = useConfirmDialog();
+  const guideCatUiPrefs = useGuideCatUiPrefs();
+  const { dialog, choose, handleClose } = useConfirmDialog();
+  const guideCatName = resolveGuideCatDisplayName(guideCat);
 
   const handleAction = useCallback((route: string) => {
     collapse();
@@ -415,13 +429,20 @@ function SidecarContent({
   }, [collapse, navigate]);
 
   const handleDismissClick = useCallback(async () => {
-    const confirmed = await confirm({
-      title: 'Dismiss Guide Cat?',
-      message: 'Your guide cat will be hidden. You can restore it later from Settings.',
-      confirmLabel: 'Dismiss',
-      cancelLabel: 'Keep',
+    const action = await choose({
+      title: `Disable ${guideCatName}?`,
+      message: `This turns off ${guideCatName} help in Cats. If you just want it out of the way, you can dock it now instead. You can enable it again from Settings > Assistants.`,
+      confirmLabel: 'Disable',
+      cancelLabel: 'Keep enabled',
+      auxiliaryLabel: 'Dock now',
+      defaultAction: 'auxiliary',
     });
-    if (!confirmed) return;
+    if (action === 'auxiliary') {
+      guideCatUiPrefs.update({ placement: 'docked' });
+      collapse();
+      return;
+    }
+    if (action !== 'confirm') return;
 
     try {
       const response = await fetch('/api/platform/guide-cat', {
@@ -433,7 +454,7 @@ function SidecarContent({
         onDismissed();
       }
     } catch { /* ignore */ }
-  }, [confirm, onDismissed]);
+  }, [choose, collapse, guideCatName, guideCatUiPrefs, onDismissed]);
 
   useEffect(() => {
     if (viewState !== 'open' && viewState !== 'welcome-peek') return;

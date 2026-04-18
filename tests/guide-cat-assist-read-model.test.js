@@ -22,7 +22,7 @@ import { createAppShell } from '../build/server/products/chat/state/shell.js';
 
 const TEST_GUIDE_CAT = {
   id: 'guide-cat-primary',
-  name: 'Guide Cat',
+  name: 'Catlas',
   status: 'active',
   executionTarget: {
     provider: 'claude',
@@ -194,7 +194,7 @@ test('chat guide cat assist treats refreshContextHash mismatches as stale even b
     chatStatePath,
     guideCat: {
       ...TEST_GUIDE_CAT,
-      name: 'Renamed Guide Cat',
+      name: 'Renamed Catlas',
     },
     ownerDisplayName: 'Owner',
     runtimeReachable: true,

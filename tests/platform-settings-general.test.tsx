@@ -93,3 +93,36 @@ test('PlatformSettingsGeneral renders lobby motion controls without desktop star
   assert.doesNotMatch(markup, /Desktop startup/u);
   assert.match(markup, /checked/u);
 });
+
+test('PlatformSettingsGeneral points disabled guide cat users to Assistants', () => {
+  const payload = createPayload();
+  payload.guideCat = {
+    id: 'guide-cat-primary',
+    name: 'Catlas',
+    status: 'dismissed',
+    executionTarget: {
+      provider: 'claude',
+      instance: null,
+      model: 'claude-sonnet',
+    },
+    modelSelection: null,
+    createdAt: '2026-04-05T00:00:00.000Z',
+    updatedAt: '2026-04-05T00:00:00.000Z',
+  };
+
+  const markup = renderToStaticMarkup(
+    <StaticRouter location="/settings/general">
+      <PlatformSettingsGeneral
+        payload={payload}
+        feedback=""
+        onPayloadUpdate={() => {}}
+        onFeedback={() => {}}
+      />
+    </StaticRouter>,
+  );
+
+  assert.match(markup, /Guide Cat assist/u);
+  assert.match(markup, /Catlas help back/u);
+  assert.match(markup, /Settings &gt; Assistants/u);
+  assert.match(markup, /Open Assistants/u);
+});

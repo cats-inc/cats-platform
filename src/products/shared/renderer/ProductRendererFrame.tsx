@@ -1,6 +1,10 @@
 import type { ComponentType, ReactNode } from 'react';
 
-import { ConfirmDialog, type ConfirmDialogOptions } from '../../../design/components/ConfirmDialog.js';
+import {
+  ConfirmDialog,
+  type ConfirmDialogAction,
+  type ConfirmDialogOptions,
+} from '../../../design/components/ConfirmDialog.js';
 
 export type ProductRendererLoadState<TPayload> =
   | { status: 'loading' }
@@ -48,7 +52,7 @@ export function ProductRendererShell({
   sidebar: ReactNode;
   mainContent: ReactNode;
   confirmDialog: { options: ConfirmDialogOptions } | null;
-  onConfirmClose: (confirmed: boolean) => void;
+  onConfirmClose: (action: ConfirmDialogAction | boolean) => void;
 }) {
   return (
     <div

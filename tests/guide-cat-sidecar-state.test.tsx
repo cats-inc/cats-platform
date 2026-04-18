@@ -22,11 +22,12 @@ import {
   clearRememberedExecutionLabels,
   rememberExecutionLabel,
 } from '../src/shared/executionLabel.ts';
+import { resolveGuideCatDisplayName } from '../src/shared/guideCatIdentity.ts';
 
 function createGuideCat() {
   return {
     id: 'guide-cat-primary',
-    name: 'Guide Cat',
+    name: 'Catlas',
     status: 'active' as const,
     executionTarget: {
       provider: 'claude',
@@ -243,6 +244,7 @@ test('Guide Cat sidecar avatar resolves from the shared guide cat asset', () => 
 });
 
 test('Guide Cat sidecar collapsed pill shows the same execution tooltip metadata on lobby and product surfaces', () => {
+  const guideCatName = resolveGuideCatDisplayName(createGuideCat());
   const markup = renderToStaticMarkup(
     <GuideCatSidecarView
       viewState="collapsed"
@@ -263,10 +265,11 @@ test('Guide Cat sidecar collapsed pill shows the same execution tooltip metadata
   );
 
   assert.match(markup, /class="guideCatPill"/u);
-  assert.match(markup, /data-tooltip="Guide Cat · Claude-CLI · [^"]* · Max"/u);
+  assert.match(markup, new RegExp(`data-tooltip="${guideCatName} · Claude-CLI · [^\"]* · Max"`, 'u'));
 });
 
 test('Guide Cat sidecar open panel header keeps the execution tooltip metadata on product pages', () => {
+  const guideCatName = resolveGuideCatDisplayName(createGuideCat());
   const markup = renderToStaticMarkup(
     <GuideCatSidecarView
       viewState="open"
@@ -286,10 +289,14 @@ test('Guide Cat sidecar open panel header keeps the execution tooltip metadata o
     />,
   );
 
-  assert.match(markup, /class="guideCatPanelHeader" data-tooltip="Guide Cat · Claude-CLI · [^"]* · Max"/u);
+  assert.match(
+    markup,
+    new RegExp(`class="guideCatPanelHeader" data-tooltip="${guideCatName} · Claude-CLI · [^\"]* · Max"`, 'u'),
+  );
 });
 
 test('Guide Cat sidecar reuses remembered runtime-backed execution labels for tooltips', () => {
+  const guideCatName = resolveGuideCatDisplayName(createGuideCat());
   clearRememberedExecutionLabels();
   rememberExecutionLabel({
     provider: 'claude',
@@ -325,7 +332,7 @@ test('Guide Cat sidecar reuses remembered runtime-backed execution labels for to
 
     assert.match(
       markup,
-      /data-tooltip="Guide Cat · Claude-CLI · Opus 4\.7 with 1M context · xHigh"/u,
+      new RegExp(`data-tooltip="${guideCatName} · Claude-CLI · Opus 4\\.7 with 1M context · xHigh"`, 'u'),
     );
   } finally {
     clearRememberedExecutionLabels();
@@ -350,18 +357,22 @@ test('Guide Cat sidecar welcome-peek renders the dismiss confirmation dialog whe
       surfaceMode="lobby"
       dialog={{
         options: {
-          title: 'Dismiss Guide Cat?',
-          message: 'Your guide cat will be hidden. You can restore it later from Settings.',
-          confirmLabel: 'Dismiss',
-          cancelLabel: 'Keep',
+          title: 'Disable Catlas?',
+          message: 'This turns off Catlas help in Cats. If you just want it out of the way, you can dock it now instead. You can enable it again from Settings > Assistants.',
+          confirmLabel: 'Disable',
+          cancelLabel: 'Keep enabled',
+          auxiliaryLabel: 'Dock now',
+          defaultAction: 'auxiliary',
         },
       }}
       onDialogClose={() => {}}
     />,
   );
 
-  assert.match(markup, /Dismiss Guide Cat\?/u);
-  assert.match(markup, /restore it later from Settings/u);
-  assert.match(markup, /Keep/u);
-  assert.match(markup, /Dismiss/u);
+  assert.match(markup, /Disable Catlas\?/u);
+  assert.match(markup, /dock it now instead/u);
+  assert.match(markup, /Settings &gt; Assistants/u);
+  assert.match(markup, /Keep enabled/u);
+  assert.match(markup, /Dock now/u);
+  assert.match(markup, /Disable/u);
 });

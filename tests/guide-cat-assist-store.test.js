@@ -53,7 +53,7 @@ test('guide cat assist refresh context hash stays stable across object key order
     },
     guideCat: {
       id: 'guide-cat-primary',
-      name: 'Guide Cat',
+      name: 'Catlas',
       executionTarget: {
         provider: 'claude',
         instance: 'desk',
@@ -77,7 +77,7 @@ test('guide cat assist refresh context hash stays stable across object key order
     },
     guideCat: {
       id: 'guide-cat-primary',
-      name: 'Guide Cat',
+      name: 'Catlas',
       executionTarget: {
         model: 'sonnet',
         provider: 'claude',

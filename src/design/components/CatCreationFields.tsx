@@ -14,6 +14,7 @@ import { ProviderModelFields } from './ProviderModelFields.js';
 export interface CatCreationFieldsProps {
   name: string;
   onNameChange: (name: string) => void;
+  nameReadOnly?: boolean;
   provider: string;
   instance: string;
   model: string;
@@ -43,6 +44,7 @@ export interface CatCreationFieldsProps {
 export function CatCreationFields({
   name,
   onNameChange,
+  nameReadOnly,
   provider,
   instance,
   model,
@@ -68,9 +70,11 @@ export function CatCreationFields({
         <input
           className="textInput"
           value={name}
-          onChange={(e) => onNameChange(e.target.value)}
+          onChange={nameReadOnly ? undefined : (e) => onNameChange(e.target.value)}
           placeholder={namePlaceholder}
-          autoFocus={autoFocusName}
+          autoFocus={autoFocusName && !nameReadOnly}
+          readOnly={nameReadOnly}
+          aria-readonly={nameReadOnly ? 'true' : undefined}
         />
         {nameHint ? <span className="fieldHint">{nameHint}</span> : null}
       </label>

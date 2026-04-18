@@ -5,6 +5,7 @@ import type {
 import type { PlatformPreferences } from '../../shared/platformPreferences.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
+import { GUIDE_CAT_SYSTEM_NAME } from '../../shared/guideCatIdentity.js';
 
 export interface SetupDebugContextInput {
   ownerDisplayName: string;
@@ -79,7 +80,7 @@ export function buildSetupDebugContext(input: SetupDebugContextInput): Record<st
     ownerDisplayName: input.ownerDisplayName,
     createGuideCat,
     guideCatId: input.guideCatId ?? null,
-    guideCatName: createGuideCat ? input.guideCatName?.trim() || 'Guide Cat' : null,
+    guideCatName: createGuideCat ? input.guideCatName?.trim() || GUIDE_CAT_SYSTEM_NAME : null,
     guideCatProvider: createGuideCat ? input.guideCatProvider?.trim() || 'claude' : null,
     guideCatInstance: createGuideCat ? input.guideCatInstance?.trim() || null : null,
     guideCatModel: createGuideCat ? input.guideCatModel ?? null : null,
@@ -172,16 +173,12 @@ export function parseAssistantPresetBody(
 
 export function parseGuideCatUpdateBody(
   body: GuideCatUpdateBody,
+  options?: { fixedName?: string | null },
 ): ParseResult<ParsedGuideCatUpdateBody> {
-  const name = body.name?.trim();
-  if (!name) {
-    return { ok: false, message: 'Guide Cat name is required' };
-  }
-
   return {
     ok: true,
     value: {
-      name,
+      name: options?.fixedName?.trim() || GUIDE_CAT_SYSTEM_NAME,
       provider: body.provider?.trim() || 'claude',
       instance: body.instance?.trim() || null,
       model: body.model ?? null,

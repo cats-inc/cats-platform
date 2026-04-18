@@ -18,6 +18,7 @@ import {
   TOTAL_SETUP_STEPS,
   type SetupStep,
 } from './flow';
+import { resolveGuideCatDisplayName } from '../../../shared/guideCatIdentity.js';
 
 type PendingAction = 'complete' | null;
 
@@ -38,7 +39,6 @@ export function PlatformSetupWizard({
   const [step, setStep] = useState<SetupStep>(1);
   const [ownerName, setOwnerName] = useState('');
   const [createGuideCat, setCreateGuideCat] = useState(false);
-  const [guideCatName, setGuideCatName] = useState('Guide Cat');
   const [provider, setProvider] = useState('claude');
   const [instance, setInstance] = useState('');
   const [model, setModel] = useState('');
@@ -48,6 +48,7 @@ export function PlatformSetupWizard({
   const setupOpenedRecorded = useRef(false);
 
   const busy = busyAction !== null;
+  const guideCatName = resolveGuideCatDisplayName();
   const canContinueGuideCatStep = canContinueGuideCatSetupStep({
     createGuideCat,
     model,
@@ -62,7 +63,6 @@ export function PlatformSetupWizard({
         attemptId,
         ownerDisplayName: ownerName.trim(),
         createGuideCat,
-        guideCatName: createGuideCat ? (guideCatName.trim() || undefined) : undefined,
         guideCatProvider: createGuideCat ? provider : undefined,
         guideCatInstance: createGuideCat ? (instance || undefined) : undefined,
         guideCatModel: createGuideCat ? (model || undefined) : undefined,
@@ -77,7 +77,6 @@ export function PlatformSetupWizard({
     }
   }, [
     createGuideCat,
-    guideCatName,
     instance,
     model,
     modelSelection,
@@ -175,9 +174,9 @@ export function PlatformSetupWizard({
         {step === 2 ? (
           <div className="contentCard setupCard">
             <p className="eyebrow">Step 2 of 2</p>
-            <h1>Create your Guide Cat</h1>
+            <h1>Enable your {guideCatName}</h1>
             <p className="heroNote">
-              This optional Cat can help you get started across Chat, Work, and Code.
+              This optional helper can support you across Chat, Work, and Code.
             </p>
             <label className="setupCheckboxLabel">
               <input
@@ -186,7 +185,7 @@ export function PlatformSetupWizard({
                 checked={createGuideCat}
                 onChange={(e) => setCreateGuideCat(e.target.checked)}
               />
-              <span>Create a Guide Cat</span>
+              <span>Enable {guideCatName}</span>
             </label>
             {createGuideCat ? (
               <GuideCatSetupFields
@@ -194,7 +193,6 @@ export function PlatformSetupWizard({
                 instance={instance}
                 model={model}
                 modelSelection={modelSelection}
-                catName={guideCatName}
                 runtimeReachable={envelope.runtime.reachable}
                 runtimeBaseUrl={envelope.runtime.baseUrl}
                 onTargetChange={(target) => {
@@ -203,11 +201,10 @@ export function PlatformSetupWizard({
                   setModel(target.model);
                   setModelSelection(target.modelSelection ?? null);
                 }}
-                onCatNameChange={setGuideCatName}
               />
             ) : (
               <p className="setupRuntimeNote">
-                You can skip this for now and add a Guide Cat later.
+                You can skip this for now and enable {guideCatName} later from Settings &gt; Assistants.
               </p>
             )}
             {feedback ? <p className="feedbackText">{feedback}</p> : null}

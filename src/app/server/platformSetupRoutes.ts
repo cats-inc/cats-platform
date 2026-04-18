@@ -22,6 +22,7 @@ import { routePlatformAssistantPresetApi } from './platformSetupAssistantRoutes.
 import { routePlatformSetupDiagnosticsApi } from './platformSetupDiagnosticsRoutes.js';
 import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
 import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
+import { resolveGuideCatSystemName } from '../../shared/guideCatIdentity.js';
 
 export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
@@ -84,7 +85,8 @@ async function handlePlatformSetupComplete(
 
   const ownerDisplayName = body.ownerDisplayName?.trim() || 'Owner';
   const createGuideCat = body.createGuideCat ?? body.createBossCat ?? false;
-  const guideCatName = body.guideCatName ?? body.bossCatName;
+  const resolvedGuideCatName = resolveGuideCatSystemName(context.request.headers['accept-language']);
+  const guideCatName = createGuideCat ? resolvedGuideCatName : null;
   const guideCatProvider = body.guideCatProvider ?? body.bossCatProvider;
   const guideCatInstance = body.guideCatInstance ?? body.bossCatInstance;
   const guideCatModel = body.guideCatModel ?? body.bossCatModel;
@@ -120,7 +122,7 @@ async function handlePlatformSetupComplete(
         updatedAt: nowIso,
         guideCat: {
           id: createdGuideCatId,
-          name: guideCatName?.trim() || 'Guide Cat',
+          name: resolvedGuideCatName,
           status: core.guideCat?.status ?? 'active',
           executionTarget: {
             provider: guideCatProvider || 'claude',

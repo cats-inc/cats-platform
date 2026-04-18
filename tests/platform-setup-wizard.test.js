@@ -8,6 +8,10 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { GUIDE_CAT_ASSIST_V1_SCOPE_KEYS } from '../build/server/shared/guideCatAssist.js';
 import {
+  GUIDE_CAT_SYSTEM_NAME,
+  resolveGuideCatSystemName,
+} from '../build/server/shared/guideCatIdentity.js';
+import {
   readGuideCatAssistCache,
   upsertGuideCatAssistBundle,
 } from '../build/server/shared/guideCatAssistStore.js';
@@ -201,7 +205,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should remain null');
     assert.deepEqual(payload.chat.capabilities.availableSurfaces, ['chat', 'work', 'code']);
     assert.equal(payload.chat.cats.length, 0, 'platform setup should not inject Guide Cat into chat cats');
-    assert.equal(payload.guideCat?.name, 'Meowster');
+    assert.equal(payload.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
     assert.deepEqual(payload.assistantPresets, []);
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
     assert.equal(payload.guideCat?.executionTarget.model, 'claude-sonnet');
@@ -211,7 +215,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(shellResponse.status, 200);
     const shellPayload = await shellResponse.json();
-    assert.equal(shellPayload.guideCat?.name, 'Meowster');
+    assert.equal(shellPayload.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
     assert.deepEqual(shellPayload.assistantPresets, []);
     assert.equal(shellPayload.chat.cats.length, 0);
     assert.equal(shellPayload.lastProductSurface, null);
@@ -372,7 +376,7 @@ test('POST /api/platform/setup/complete returns 409 if already completed', async
   });
 });
 
-test('POST /api/platform/setup/complete with createGuideCat=true defaults name to Guide Cat', async () => {
+test('POST /api/platform/setup/complete with createGuideCat=true defaults name to the shipped guide cat name', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
@@ -388,7 +392,29 @@ test('POST /api/platform/setup/complete with createGuideCat=true defaults name t
     assert.equal(response.status, 200);
     const payload = await response.json();
 
-    assert.equal(payload.guideCat?.name, 'Guide Cat');
+    assert.equal(payload.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
+  });
+});
+
+test('POST /api/platform/setup/complete keeps the shipped guide cat name across current locales', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'accept-language': 'zh-TW,zh;q=0.9,en;q=0.8',
+      },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        createGuideCat: true,
+        guideCatProvider: 'claude',
+        guideCatModel: 'claude-sonnet',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.guideCat?.name, resolveGuideCatSystemName('zh-TW,zh;q=0.9,en;q=0.8'));
   });
 });
 
@@ -434,7 +460,7 @@ test('POST /api/platform/setup/complete still honors legacy selectedProduct for 
     assert.equal(payload.lastProductSurface, 'work');
     assert.equal(payload.chat.bossCatId, null);
     assert.equal(payload.chat.cats.length, 0);
-    assert.equal(payload.guideCat?.name, 'CrossProduct');
+    assert.equal(payload.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
     assert.equal(payload.chat.globalOrchestrator.executionTarget.model, null);
   });
@@ -458,7 +484,7 @@ test('POST /api/platform/setup/complete still accepts legacy Boss Cat aliases as
     const payload = await response.json();
     assert.equal(payload.chat.bossCatId, null, 'platform setup should not assign Boss Cat');
     assert.equal(payload.chat.cats.length, 0);
-    assert.equal(payload.guideCat?.name, 'Legacy Boss');
+    assert.equal(payload.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
     assert.equal(payload.guideCat?.executionTarget.provider, 'claude');
     assert.equal(payload.guideCat?.executionTarget.model, 'claude-sonnet');
     assert.equal(payload.chat.globalOrchestrator.executionTarget.model, null);
@@ -639,7 +665,7 @@ test('POST /api/platform/preferences rejects invalid surface', async () => {
   });
 });
 
-test('PATCH /api/platform/guide-cat dismissal survives later guide cat edits', async () => {
+test('PATCH /api/platform/guide-cat disable status survives later guide cat edits', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
@@ -647,7 +673,7 @@ test('PATCH /api/platform/guide-cat dismissal survives later guide cat edits', a
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Guide Cat',
+        guideCatName: 'Attempted Rename',
       }),
     });
 
@@ -671,13 +697,13 @@ test('PATCH /api/platform/guide-cat dismissal survives later guide cat edits', a
     });
     assert.equal(updateResponse.status, 200);
     const updatedPayload = await updateResponse.json();
-    assert.equal(updatedPayload.guideCat.name, 'Resting Guide');
+    assert.equal(updatedPayload.guideCat.name, GUIDE_CAT_SYSTEM_NAME);
     assert.equal(updatedPayload.guideCat.status, 'dismissed');
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(shellResponse.status, 200);
     const shell = await shellResponse.json();
-    assert.equal(shell.guideCat?.name, 'Resting Guide');
+    assert.equal(shell.guideCat?.name, GUIDE_CAT_SYSTEM_NAME);
     assert.equal(shell.guideCat?.status, 'dismissed');
   });
 });
@@ -690,7 +716,7 @@ test('DELETE /api/platform/guide-cat clears assist cache and restores determinis
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Guide Cat',
+        guideCatName: 'Attempted Rename',
       }),
     });
     assert.equal(setupResponse.status, 200);
@@ -726,7 +752,7 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Guide Cat',
+        guideCatName: 'Attempted Rename',
       }),
     });
     assert.equal(setupResponse.status, 200);
@@ -812,7 +838,7 @@ test('GET /api/app-shell serves stale assist cache first and lazily rehydrates i
       body: JSON.stringify({
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
-        guideCatName: 'Guide Cat',
+        guideCatName: 'Attempted Rename',
       }),
     });
     assert.equal(setupResponse.status, 200);

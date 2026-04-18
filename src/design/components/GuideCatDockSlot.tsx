@@ -16,6 +16,7 @@ import {
   resolveExecutionTargetLabel,
 } from '../../shared/executionLabel.js';
 import { GUIDE_CAT_AVATAR_URL } from './GuideCatSidecar.js';
+import { resolveGuideCatDisplayName } from '../../shared/guideCatIdentity.js';
 
 export interface GuideCatDockSlotProps {
   slotKind: GuideCatDockSlotKind;
@@ -50,6 +51,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
   const isActive =
     projection.kind === 'docked' && projection.slot === slotKind;
   const isPreview = state.preview;
+  const displayName = resolveGuideCatDisplayName(guideCat);
 
   const tooltip = buildDockedTooltip(guideCat);
 
@@ -92,7 +94,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
             className="guideCatPill guideCatPill--docked"
             onPointerDown={handleDockPointerDown}
             onClick={handlePillClick}
-            aria-label={`Open guide: ${guideCat.name}`}
+            aria-label={`Open guide: ${displayName}`}
             data-tooltip={tooltip}
             data-tooltip-delay="1000"
           >
@@ -104,7 +106,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
             />
           </button>
           {slotKind === 'workspace' ? (
-            <span className="guideCatDockName">{guideCat.name}</span>
+            <span className="guideCatDockName">{displayName}</span>
           ) : null}
         </>
       ) : null}
@@ -123,11 +125,12 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
 }
 
 function buildDockedTooltip(guideCat: GuideCatRecord): string {
+  const displayName = resolveGuideCatDisplayName(guideCat);
   const executionLabel = resolveExecutionTargetLabel({
     provider: guideCat.executionTarget.provider,
     instance: guideCat.executionTarget.instance,
     model: guideCat.executionTarget.model,
     modelSelection: guideCat.modelSelection ?? null,
   });
-  return buildCatTooltip(guideCat.name, executionLabel);
+  return buildCatTooltip(displayName, executionLabel);
 }

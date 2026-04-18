@@ -4,13 +4,13 @@ import { CatCreationFields } from './CatCreationFields.js';
 import type { ProductProviderRegistryReadModel } from '../../../shared/providerCatalog.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { resolveProviderRegistrySetupHref } from '../../../design/components/ProviderModelFields.js';
+import { resolveGuideCatDisplayName } from '../../../shared/guideCatIdentity.js';
 
 export interface GuideCatSetupFieldsProps {
   provider: string;
   instance: string;
   model: string;
   modelSelection: ProviderModelSelection | null;
-  catName: string;
   runtimeReachable: boolean;
   runtimeBaseUrl: string;
   onTargetChange: (target: {
@@ -19,7 +19,6 @@ export interface GuideCatSetupFieldsProps {
     model: string;
     modelSelection?: ProviderModelSelection | null;
   }) => void;
-  onCatNameChange: (name: string) => void;
 }
 
 export function GuideCatSetupFields({
@@ -27,12 +26,11 @@ export function GuideCatSetupFields({
   instance,
   model,
   modelSelection,
-  catName,
   runtimeReachable,
   runtimeBaseUrl,
   onTargetChange,
-  onCatNameChange,
 }: GuideCatSetupFieldsProps) {
+  const guideCatName = resolveGuideCatDisplayName();
   const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>({
     state: 'ready',
     providers: [],
@@ -50,17 +48,17 @@ export function GuideCatSetupFields({
   return (
     <>
       <CatCreationFields
-        name={catName}
-        onNameChange={onCatNameChange}
+        name={guideCatName}
+        onNameChange={() => {}}
+        nameReadOnly
         provider={provider}
         instance={instance}
         model={model}
         modelSelection={modelSelection}
         onTargetChange={onTargetChange}
         nameLabel="Guide Cat name"
-        namePlaceholder="Guide Cat"
-        nameHint="An optional helper Cat that can support you across Chat, Work, and Code."
-        autoFocusName
+        namePlaceholder={guideCatName}
+        nameHint="Cats keeps this name fixed. It can vary by app language later."
         hideMakeBoss
         hideProductToggles
         onProviderRegistryChange={setProviderRegistry}
@@ -72,7 +70,7 @@ export function GuideCatSetupFields({
         {providerRegistry.state === 'runtime_unreachable' ? (
           <>
             <span className="setupRuntimeNote">
-              Cats can still open without a Guide Cat. Retry here, or open Cats Runtime setup if the
+              Cats can still open without the Guide Cat. Retry here, or open Cats Runtime setup if the
               provider registry keeps timing out.
             </span>
             <a className="secondaryButton setupInlineLink" href={runtimeSetupHref} target="_blank" rel="noreferrer">
@@ -83,7 +81,7 @@ export function GuideCatSetupFields({
         {providerRegistry.state === 'no_usable_targets' ? (
           <>
             <span className="setupRuntimeNote">
-              Cats Runtime is reachable, but it did not report any usable provider targets for a Guide Cat.
+              Cats Runtime is reachable, but it did not report any usable provider targets for the Guide Cat.
             </span>
             <a className="secondaryButton setupInlineLink" href={runtimeSetupHref} target="_blank" rel="noreferrer">
               Open Cats Runtime setup

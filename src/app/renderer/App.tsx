@@ -30,6 +30,7 @@ import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
 import { prefetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
+import { isGuideCatEnabledStatus } from '../../shared/guideCatIdentity.js';
 
 type PlatformLoadState =
   | { status: 'loading' }
@@ -76,7 +77,7 @@ export function shouldRenderGuideCatSidecar(input: {
 } {
   return Boolean(
     input.guideCat
-    && input.guideCat.status !== 'dismissed'
+    && isGuideCatEnabledStatus(input.guideCat.status)
     && !input.productSurfaceFallbackActive,
   );
 }
@@ -496,7 +497,7 @@ export default function PlatformApp() {
                   // always true here in practice.
                   if (
                     nextEnvelope.guideCat
-                    && nextEnvelope.guideCat.status !== 'dismissed'
+                    && isGuideCatEnabledStatus(nextEnvelope.guideCat.status)
                     && guideCatUiPrefs.hydrated
                     && !guideCatUiPrefs.prefs.sidecarSeen
                   ) {

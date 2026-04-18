@@ -6,6 +6,10 @@ import type { ProviderModelSelection } from '../../../shared/providerSelection.j
 import { CatCreationFields } from '../setup/CatCreationFields.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
+import {
+  isGuideCatEnabledStatus,
+  resolveGuideCatDisplayName,
+} from '../../../shared/guideCatIdentity.js';
 
 export interface SettingsAssistantsProps {
   payload: AppShellPayload;
@@ -13,7 +17,6 @@ export interface SettingsAssistantsProps {
 }
 
 interface GuideCatFormState {
-  name: string;
   provider: string;
   instance: string;
   model: string;
@@ -21,12 +24,12 @@ interface GuideCatFormState {
 }
 
 interface AssistantPresetFormState extends GuideCatFormState {
+  name: string;
   roleHint: string;
 }
 
 function guideCatFormStateFromRecord(record: GuideCatRecord | null): GuideCatFormState {
   return {
-    name: record?.name ?? 'Guide Cat',
     provider: record?.executionTarget.provider ?? 'claude',
     instance: record?.executionTarget.instance ?? '',
     model: record?.executionTarget.model ?? '',
@@ -60,6 +63,8 @@ export function SettingsAssistants({
   onPayloadUpdate,
 }: SettingsAssistantsProps) {
   const guideCat = payload.guideCat ?? null;
+  const guideCatName = resolveGuideCatDisplayName(guideCat);
+  const guideCatEnabled = guideCat ? isGuideCatEnabledStatus(guideCat.status) : false;
   const assistantPresets = payload.assistantPresets ?? [];
   const [guideForm, setGuideForm] = useState<GuideCatFormState>(() =>
     guideCatFormStateFromRecord(guideCat),
@@ -95,37 +100,59 @@ export function SettingsAssistants({
     setAssistantForm(assistantPresetFormStateFromRecord(selectedAssistant));
   }, [selectedAssistant]);
 
-  const canSaveGuide = guideForm.name.trim().length > 0
-    && guideForm.provider.trim().length > 0
+  const canSaveGuide = guideForm.provider.trim().length > 0
     && guideForm.model.trim().length > 0;
   const canSaveAssistant = assistantForm.name.trim().length > 0
     && assistantForm.provider.trim().length > 0
     && assistantForm.model.trim().length > 0;
 
+  const saveGuideConfig = useCallback(async (): Promise<GuideCatRecord> => {
+    const response = await fetch('/api/platform/guide-cat', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        provider: guideForm.provider,
+        instance: guideForm.instance || null,
+        model: guideForm.model || null,
+        modelSelection: guideForm.modelSelection,
+      }),
+    });
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(
+        (errorPayload as { error?: { message?: string } } | null)?.error?.message
+        ?? `Save failed (${response.status})`,
+      );
+    }
+    const result = (await response.json()) as { guideCat: GuideCatRecord };
+    return result.guideCat;
+  }, [guideForm.instance, guideForm.model, guideForm.modelSelection, guideForm.provider]);
+
+  const patchGuideStatus = useCallback(async (
+    status: 'active' | 'dismissed',
+  ): Promise<GuideCatRecord> => {
+    const response = await fetch('/api/platform/guide-cat', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(
+        (errorPayload as { error?: { message?: string } } | null)?.error?.message
+        ?? `Status update failed (${response.status})`,
+      );
+    }
+    const result = (await response.json()) as { guideCat: GuideCatRecord };
+    return result.guideCat;
+  }, []);
+
   const handleSaveGuide = useCallback(async () => {
     setGuideBusy(true);
     setGuideFeedback('');
     try {
-      const response = await fetch('/api/platform/guide-cat', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          name: guideForm.name.trim(),
-          provider: guideForm.provider,
-          instance: guideForm.instance || null,
-          model: guideForm.model || null,
-          modelSelection: guideForm.modelSelection,
-        }),
-      });
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
-        throw new Error(
-          (errorPayload as { error?: { message?: string } } | null)?.error?.message
-          ?? `Save failed (${response.status})`,
-        );
-      }
-      const result = (await response.json()) as { guideCat: GuideCatRecord };
-      onPayloadUpdate({ ...payload, guideCat: result.guideCat });
+      const nextGuideCat = await saveGuideConfig();
+      onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
       dispatchPlatformEnvelopeRefresh();
       setGuideFeedback('Saved.');
     } catch (error) {
@@ -133,33 +160,49 @@ export function SettingsAssistants({
     } finally {
       setGuideBusy(false);
     }
-  }, [guideForm, onPayloadUpdate, payload]);
+  }, [onPayloadUpdate, payload, saveGuideConfig]);
 
-  const handleDeleteGuide = useCallback(async () => {
+  const handleEnableGuide = useCallback(async () => {
     setGuideBusy(true);
     setGuideFeedback('');
     try {
-      const response = await fetch('/api/platform/guide-cat', {
-        method: 'DELETE',
-        headers: { Accept: 'application/json' },
-      });
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
-        throw new Error(
-          (errorPayload as { error?: { message?: string } } | null)?.error?.message
-          ?? `Delete failed (${response.status})`,
-        );
+      let nextGuideCat = guideCat;
+      if (!nextGuideCat) {
+        nextGuideCat = await saveGuideConfig();
+      } else if (!isGuideCatEnabledStatus(nextGuideCat.status)) {
+        nextGuideCat = await saveGuideConfig();
+        nextGuideCat = await patchGuideStatus('active');
       }
-      onPayloadUpdate({ ...payload, guideCat: null });
-      setGuideForm(guideCatFormStateFromRecord(null));
+      if (!nextGuideCat) {
+        throw new Error('Failed to enable Guide Cat.');
+      }
+      onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
       dispatchPlatformEnvelopeRefresh();
-      setGuideFeedback('Guide Cat removed.');
+      setGuideFeedback('Guide Cat enabled.');
     } catch (error) {
-      setGuideFeedback(error instanceof Error ? error.message : 'Failed to remove Guide Cat.');
+      setGuideFeedback(error instanceof Error ? error.message : 'Failed to enable Guide Cat.');
     } finally {
       setGuideBusy(false);
     }
-  }, [onPayloadUpdate, payload]);
+  }, [guideCat, onPayloadUpdate, patchGuideStatus, payload, saveGuideConfig]);
+
+  const handleDisableGuide = useCallback(async () => {
+    if (!guideCat) {
+      return;
+    }
+    setGuideBusy(true);
+    setGuideFeedback('');
+    try {
+      const nextGuideCat = await patchGuideStatus('dismissed');
+      onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
+      dispatchPlatformEnvelopeRefresh();
+      setGuideFeedback('Guide Cat disabled.');
+    } catch (error) {
+      setGuideFeedback(error instanceof Error ? error.message : 'Failed to disable Guide Cat.');
+    } finally {
+      setGuideBusy(false);
+    }
+  }, [guideCat, onPayloadUpdate, patchGuideStatus, payload]);
 
   const handleSelectAssistant = useCallback((assistantId: string | null) => {
     setSelectedAssistantId(assistantId);
@@ -251,11 +294,11 @@ export function SettingsAssistants({
         <div className="contentCardHeader">
           <div>
             <p className="sectionLabel">Guide Cat</p>
-            <h2>{guideCat ? guideCat.name : 'No Guide Cat configured'}</h2>
+            <h2>{guideCatName}</h2>
           </div>
-          {guideCat ? (
-            <span className="statusChip statusChipReady">Active</span>
-          ) : null}
+          <span className={guideCatEnabled ? 'statusChip statusChipReady' : 'statusChip statusChipWarm'}>
+            {guideCatEnabled ? 'Enabled' : 'Disabled'}
+          </span>
         </div>
 
         {guideCat ? (
@@ -268,11 +311,17 @@ export function SettingsAssistants({
                 guideCat.executionTarget.model,
               )}
             </p>
+            {!guideCatEnabled ? (
+              <p className="muted">
+                {guideCatName} is currently disabled. Enable it again here whenever you want the
+                floating helper back.
+              </p>
+            ) : null}
             <p className="muted">{formatTimestamps(guideCat)}</p>
           </div>
         ) : (
           <p className="settingsCardNote">
-            You can create a Guide Cat to help you across Chat, Work, and Code.
+            {guideCatName} is currently disabled. Enable it to help across Chat, Work, and Code.
           </p>
         )}
       </section>
@@ -280,14 +329,15 @@ export function SettingsAssistants({
       <section className="contentCard contentCardForm">
         <div className="contentCardHeader">
           <div>
-            <p className="sectionLabel">{guideCat ? 'Edit' : 'Create'}</p>
-            <h2>Guide Cat</h2>
+            <p className="sectionLabel">{guideCatEnabled ? 'Edit' : 'Enable'}</p>
+            <h2>{guideCatName}</h2>
           </div>
         </div>
         <div className="stackForm">
           <CatCreationFields
-            name={guideForm.name}
-            onNameChange={(name) => setGuideForm((prev) => ({ ...prev, name }))}
+            name={guideCatName}
+            onNameChange={() => {}}
+            nameReadOnly
             provider={guideForm.provider}
             instance={guideForm.instance}
             model={guideForm.model}
@@ -301,29 +351,39 @@ export function SettingsAssistants({
                 modelSelection: target.modelSelection ?? null,
               }))}
             nameLabel="Guide Cat name"
-            namePlaceholder="Guide Cat"
-            nameHint="An optional helper Cat that supports you across Chat, Work, and Code."
+            namePlaceholder={guideCatName}
+            nameHint="Cats keeps this name fixed. It can vary by app language later."
             hideMakeBoss
             hideProductToggles
           />
           {guideFeedback ? <p className="feedbackText">{guideFeedback}</p> : null}
           <div className="settingsActionRow">
+            {!guideCatEnabled ? (
+              <button
+                className="primaryButton"
+                type="button"
+                disabled={guideBusy || !canSaveGuide}
+                onClick={() => void handleEnableGuide()}
+              >
+                {guideBusy ? 'Saving...' : `Enable ${guideCatName}`}
+              </button>
+            ) : null}
             <button
-              className="primaryButton"
+              className={guideCatEnabled ? 'primaryButton' : 'secondaryButton'}
               type="button"
               disabled={guideBusy || !canSaveGuide}
               onClick={() => void handleSaveGuide()}
             >
-              {guideBusy ? 'Saving...' : guideCat ? 'Save changes' : 'Create Guide Cat'}
+              {guideBusy ? 'Saving...' : 'Save changes'}
             </button>
-            {guideCat ? (
+            {guideCatEnabled ? (
               <button
-                className="dangerButton"
+                className="secondaryButton"
                 type="button"
                 disabled={guideBusy}
-                onClick={() => void handleDeleteGuide()}
+                onClick={() => void handleDisableGuide()}
               >
-                Remove
+                Disable
               </button>
             ) : null}
           </div>

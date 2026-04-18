@@ -2,7 +2,10 @@ import type { ReactNode } from 'react';
 
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { PlatformSettingsRoutes } from '../../../app/renderer/settings/PlatformSettingsRoutes.js';
-import type { ConfirmDialogOptions } from '../../../design/components/ConfirmDialog.js';
+import type {
+  ConfirmDialogAction,
+  ConfirmDialogOptions,
+} from '../../../design/components/ConfirmDialog.js';
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../api/workspaceContracts.js';
 import { ProductRendererShell } from './ProductRendererFrame.js';
 
@@ -21,7 +24,7 @@ export interface ProductReadyShellProps<
   onFeedback: (message: string) => void;
   onBusy: (busy: WorkspaceBusyState) => void;
   onResetSetup: () => void;
-  onConfirmClose: (confirmed: boolean) => void;
+  onConfirmClose: (action: ConfirmDialogAction | boolean) => void;
 }
 
 export function ProductReadyShell<TPayload extends WorkspaceAppShellPayload>({

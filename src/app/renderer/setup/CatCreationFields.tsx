@@ -12,6 +12,7 @@ import {
 export interface CatCreationFieldsProps {
   name: string;
   onNameChange: (name: string) => void;
+  nameReadOnly?: boolean;
   provider: string;
   instance: string;
   model: string;

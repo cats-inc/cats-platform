@@ -7,6 +7,11 @@ import type { GuideCatSidecarMode } from '../../../shared/platform-contract.js';
 import { useGuideCatUiPrefs } from '../guideCatUiPrefsStore.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
+import {
+  isGuideCatEnabledStatus,
+  resolveGuideCatDisplayName,
+} from '../../../shared/guideCatIdentity.js';
+import { useNavigate } from 'react-router-dom';
 
 export interface PlatformSettingsGeneralProps {
   payload: AppShellPayload;
@@ -21,6 +26,7 @@ export function PlatformSettingsGeneral({
   onPayloadUpdate,
   onFeedback,
 }: PlatformSettingsGeneralProps) {
+  const navigate = useNavigate();
   const [cropOpen, setCropOpen] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
   const guideCatUiPrefs = useGuideCatUiPrefs();
@@ -105,6 +111,8 @@ export function PlatformSettingsGeneral({
 
   const avatarUrl = payload.ownerAvatarUrl;
   const initials = nameInitials(payload.ownerDisplayName);
+  const guideCatName = resolveGuideCatDisplayName(payload.guideCat);
+  const guideCatEnabled = isGuideCatEnabledStatus(payload.guideCat?.status);
   const lobbyPrefs = payload.lobby ?? {
     animationMode: 'reduced',
   };
@@ -222,33 +230,26 @@ export function PlatformSettingsGeneral({
         {payload.guideCat ? (
           <div className="contentCard">
             <h2>Guide Cat assist</h2>
-            {payload.guideCat.status === 'dismissed' ? (
+            {!guideCatEnabled ? (
               <>
                 <p className="heroNote">
-                  {payload.guideCat.name} is currently dismissed. Restore to show the floating guide cat assistant again.
+                  {guideCatName} is disabled. Enable it again from Settings &gt; Assistants when
+                  you want {guideCatName} help back.
                 </p>
                 <div className="setupActionGroup">
                   <button
                     type="button"
-                    className="primaryButton"
-                    onClick={() => {
-                      void fetch('/api/platform/guide-cat', {
-                        method: 'PATCH',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ status: 'active' }),
-                      }).then((r) => {
-                        if (r.ok) dispatchPlatformEnvelopeRefresh();
-                      });
-                    }}
+                    className="secondaryButton"
+                    onClick={() => navigate('/settings/cats/assistants')}
                   >
-                    Restore {payload.guideCat.name}
+                    Open Assistants
                   </button>
                 </div>
               </>
             ) : (
               <>
                 <p className="heroNote">
-                  Choose how {payload.guideCat.name} appears when you click the floating avatar.
+                  Choose how {guideCatName} appears when you click the floating avatar.
                 </p>
                 <label className="settingsCheckboxRow">
                   <input
