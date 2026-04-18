@@ -106,7 +106,19 @@ test('generic new chat draft with one selected cat renders cat-led copy', () => 
   assert.doesNotMatch(markup, /Group Chat/u);
 });
 
-test('generic new chat draft with multiple selected cats keeps a lightweight greeting and group prompts', () => {
+test('generic new chat draft does not show helper chips out of the box', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps()}
+    />,
+  );
+
+  assert.match(markup, /Meow\. Ready when you are\./u);
+  assert.doesNotMatch(markup, /Plan today's priorities/u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
+});
+
+test('generic new chat draft with multiple selected cats keeps a lightweight greeting without helper chips', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -136,7 +148,8 @@ test('generic new chat draft with multiple selected cats keeps a lightweight gre
   );
 
   assert.match(markup, /Meow\. Ready when you are\./u);
-  assert.match(markup, /split roles, and ask for a coordinated plan/u);
+  assert.doesNotMatch(markup, /split roles, and ask for a coordinated plan/u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
   assert.doesNotMatch(markup, /Cat-led Chat/u);
 });
 
@@ -152,6 +165,19 @@ test('group route uses the greeting seam instead of a fixed heading', () => {
 
   assert.match(markup, /Round up the room\./u);
   assert.doesNotMatch(markup, /Start a group chat/u);
+});
+
+test('group route does not show helper chips without runtime-backed assist content', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryMode: 'group',
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /split roles, and ask for a coordinated plan/u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
 test('group route shows add-participant hint inside the composer', () => {
@@ -416,9 +442,11 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
   assert.equal(audienceAvatarMatches.length, 0);
   assert.equal(recipientChipMatches.length, 0);
   assert.equal(implicitIconMatches.length, 0);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
+  assert.doesNotMatch(markup, /Compare how different models would approach the same task\./u);
 });
 
-test('direct-lane draft keeps private chat copy', () => {
+test('direct-lane draft keeps private chat copy without helper chips', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -430,7 +458,8 @@ test('direct-lane draft keeps private chat copy', () => {
 
   assert.match(markup, /Private Chat/u);
   assert.match(markup, /Private lane for this Cat\./u);
-  assert.match(markup, /Ask Milo for a focused update or recommendation/u);
+  assert.doesNotMatch(markup, /focused update or recommendation/u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /class="audienceChipAvatar"/u);
   assert.match(markup, />Milo<\/span>/u);
@@ -465,6 +494,7 @@ test('direct-lane draft with an active Telegram binding keeps the bound private-
   assert.match(markup, /Private Chat/u);
   assert.match(markup, /Telegram-bound private lane\./u);
   assert.doesNotMatch(markup, /Private lane for this Cat\./u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
 test('draft uses externally supplied starter suggestions before static fallback prompts', () => {
@@ -556,7 +586,7 @@ test('draft prefers payload-backed assist greeting and starter suggestions when 
   assert.doesNotMatch(markup, /Plan today's priorities and turn them into next actions\./u);
 });
 
-test('draft can personalize deterministic payload-backed direct-lane starter prompts with the selected cat name', () => {
+test('direct-lane draft ignores deterministic payload-backed starter prompts', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {
     direct: {
@@ -610,7 +640,8 @@ test('draft can personalize deterministic payload-backed direct-lane starter pro
     />,
   );
 
-  assert.match(markup, /Ask Milo for a focused update or recommendation on this task\./u);
+  assert.doesNotMatch(markup, /Ask Milo for a focused update or recommendation on this task\./u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
 test('fresh draft greetings share one pool and still honor an explicit override pool', () => {
@@ -629,4 +660,3 @@ test('fresh draft greetings share one pool and still honor an explicit override 
     'Shared Two',
   );
 });
-

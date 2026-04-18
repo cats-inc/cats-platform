@@ -72,7 +72,10 @@ function resolvePayloadDraftAssist(input: {
 
   return {
     greeting: assist.bundle.content.greeting,
-    starterSuggestions,
+    starterSuggestions:
+      input.mode !== 'direct' && assist.bundle.provenance.originMode === 'runtime'
+        ? starterSuggestions
+        : undefined,
   };
 }
 
@@ -138,10 +141,13 @@ export function resolveChatNewChatDraftViewState(input: {
     defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
   });
   const visibleDraftCatIds = draftParticipants.participantCatIds;
+  const starterSuggestionInput = draftSuggestionContext.mode === 'direct'
+    ? []
+    : (input.starterSuggestions ?? payloadDraftAssist.starterSuggestions ?? []);
   const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
     mode: draftSuggestionContext.mode,
     defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
-    suggestions: input.starterSuggestions ?? payloadDraftAssist.starterSuggestions,
+    suggestions: starterSuggestionInput,
   });
   const resolvedGreeting = (() => {
     const explicitGreeting = input.greeting?.trim();
@@ -231,4 +237,3 @@ export function resolveChatNewChatDraftViewState(input: {
     groupComposerParticipants,
   };
 }
-
