@@ -24,10 +24,7 @@ import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,
 } from './GuideCatPlacementProvider';
-import {
-  readLegacyGuideCatUiPrefsInput,
-  useGuideCatUiPrefs,
-} from './guideCatUiPrefsStore.js';
+import { useGuideCatUiPrefs } from './guideCatUiPrefsStore.js';
 import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
@@ -235,8 +232,11 @@ export default function PlatformApp() {
   const isLobbyRoute = isLobbyPath(location.pathname);
   const guideCatUiPrefs = useGuideCatUiPrefs({
     hydrate: state.status === 'ready',
-    legacy: state.status === 'ready' ? readLegacyGuideCatUiPrefsInput(state.envelope) : null,
+    legacy: state.status === 'ready' ? state.envelope.legacyGuideCatUiPrefs ?? null : null,
   });
+  const persistGuideCatSeen = useCallback(() => {
+    guideCatUiPrefs.update({ sidecarSeen: true });
+  }, [guideCatUiPrefs.update]);
 
   useEffect(() => {
     const previousPathname = previousPathnameRef.current;
@@ -505,7 +505,7 @@ export default function PlatformApp() {
       floatingAnchor={guideCatUiPrefs.prefs.floatingAnchor}
       sidecarSeen={guideCatUiPrefs.prefs.sidecarSeen}
       sidecarMode={guideCatUiPrefs.prefs.sidecarMode}
-      onPersistSeen={() => guideCatUiPrefs.update({ sidecarSeen: true })}
+      onPersistSeen={persistGuideCatSeen}
       onCommit={guideCatUiPrefs.update}
     >
       {guideCatVisible ? (

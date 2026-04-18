@@ -307,7 +307,7 @@ export function GuideCatPlacementProvider({
     [],
   );
 
-  const commitFloatingRelease = useCallback(
+  const resolveFloatingReleaseAnchor = useCallback(
     (pointerX: number, pointerY: number) => {
       const anchor = projectFloatingAnchorToNormalized({
         pointerX,
@@ -325,9 +325,9 @@ export function GuideCatPlacementProvider({
         pointerY: clamped.y,
         viewport,
       });
-      onCommit({ floatingAnchor: normalized });
+      return normalized;
     },
-    [onCommit, safeArea, viewport],
+    [safeArea, viewport],
   );
 
   const commitDockRelease = useCallback(
@@ -352,16 +352,20 @@ export function GuideCatPlacementProvider({
         commitDockRelease(state.overSlot);
         suppressClickRef.current = true;
       } else if (state.mode === 'floating' && moved) {
-        commitFloatingRelease(pillX, pillY);
+        onCommit({
+          floatingAnchor: resolveFloatingReleaseAnchor(pillX, pillY),
+        });
         suppressClickRef.current = true;
       } else if (state.mode === 'docked' && state.escaped) {
-        onCommit({ placement: 'floating' });
-        commitFloatingRelease(pillX, pillY);
+        onCommit({
+          placement: 'floating',
+          floatingAnchor: resolveFloatingReleaseAnchor(pillX, pillY),
+        });
         suppressClickRef.current = true;
       }
       setDrag(null);
     },
-    [commitDockRelease, commitFloatingRelease, onCommit],
+    [commitDockRelease, onCommit, resolveFloatingReleaseAnchor],
   );
 
   const handleMove = useCallback(

@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
+import { mkdir, readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { parsePlatformPreferencesUpdate } from '../src/app/server/platformSetupRouteSupport.ts';
-import type { PlatformPreferences } from '../src/shared/platformPreferences.ts';
+import {
+  readLegacyGuideCatUiPrefs,
+  resolvePlatformPreferencesPath,
+  writePlatformPreferences,
+  type PlatformPreferences,
+} from '../src/shared/platformPreferences.ts';
 
 function baselinePreferences(): PlatformPreferences {
   return {
@@ -73,5 +81,58 @@ test('parsePlatformPreferencesUpdate preserves omitted fields', () => {
     assert.equal(result.value.startAtLogin, false);
     assert.equal(result.value.lastProductSurface, 'code');
     assert.equal(result.value.lobbyAnimationMode, 'off');
+  }
+});
+
+test('writePlatformPreferences preserves legacy guide cat fields for migration retries', async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-platform-prefs-'));
+  const chatStatePath = path.join(tempDir, 'platform', 'state', 'chat-state.local.json');
+  const prefsPath = resolvePlatformPreferencesPath(chatStatePath);
+
+  try {
+    await mkdir(path.dirname(prefsPath), { recursive: true });
+    await writeFile(
+      prefsPath,
+      JSON.stringify({
+        lastProductSurface: 'chat',
+        startAtLogin: true,
+        openWindowOnStartup: false,
+        systemTrayEnabled: true,
+        lobbyAnimationMode: 'reduced',
+        guideCatSidecarSeen: true,
+        guideCatSidecarMode: 'bubble',
+        guideCatPlacement: 'docked',
+        guideCatFloatingAnchor: { x: 0.25, y: 0.75 },
+      }, null, 2),
+      'utf-8',
+    );
+
+    await writePlatformPreferences(chatStatePath, {
+      lastProductSurface: 'work',
+      startAtLogin: false,
+      openWindowOnStartup: true,
+      systemTrayEnabled: false,
+      lobbyAnimationMode: 'full',
+    });
+
+    assert.deepEqual(await readLegacyGuideCatUiPrefs(chatStatePath), {
+      sidecarSeen: true,
+      sidecarMode: 'bubble',
+      placement: 'docked',
+      floatingAnchor: { x: 0.25, y: 0.75 },
+    });
+
+    const written = JSON.parse(await readFile(prefsPath, 'utf-8')) as Record<string, unknown>;
+    assert.equal(written.lastProductSurface, 'work');
+    assert.equal(written.startAtLogin, false);
+    assert.equal(written.openWindowOnStartup, true);
+    assert.equal(written.systemTrayEnabled, false);
+    assert.equal(written.lobbyAnimationMode, 'full');
+    assert.equal(written.guideCatSidecarSeen, true);
+    assert.equal(written.guideCatSidecarMode, 'bubble');
+    assert.equal(written.guideCatPlacement, 'docked');
+    assert.deepEqual(written.guideCatFloatingAnchor, { x: 0.25, y: 0.75 });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
   }
 });

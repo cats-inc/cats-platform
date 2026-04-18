@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -11,6 +11,7 @@ import {
   readGuideCatAssistCache,
   upsertGuideCatAssistBundle,
 } from '../build/server/shared/guideCatAssistStore.js';
+import { resolvePlatformPreferencesPath } from '../build/server/shared/platformPreferences.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createCat } from '../build/server/products/chat/state/model/index.js';
 
@@ -174,6 +175,40 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
         { id: 'work', group: 'office', maturity: 'preview', selectable: true },
       ],
     );
+  });
+});
+
+test('GET /api/app-shell exposes a read-only legacy Guide Cat UI seam for upgrade migration', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl, config) => {
+    const prefsPath = resolvePlatformPreferencesPath(config.chatStatePath);
+    await mkdir(path.dirname(prefsPath), { recursive: true });
+    await writeFile(
+      prefsPath,
+      JSON.stringify({
+        lastProductSurface: 'work',
+        startAtLogin: true,
+        openWindowOnStartup: false,
+        systemTrayEnabled: true,
+        lobbyAnimationMode: 'reduced',
+        guideCatSidecarSeen: false,
+        guideCatSidecarMode: 'bubble',
+        guideCatPlacement: 'docked',
+        guideCatFloatingAnchor: { x: 0.4, y: 0.6 },
+      }, null, 2) + '\n',
+      'utf-8',
+    );
+
+    const response = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.lastProductSurface, 'work');
+    assert.deepEqual(payload.legacyGuideCatUiPrefs, {
+      sidecarSeen: false,
+      sidecarMode: 'bubble',
+      placement: 'docked',
+      floatingAnchor: { x: 0.4, y: 0.6 },
+    });
   });
 });
 

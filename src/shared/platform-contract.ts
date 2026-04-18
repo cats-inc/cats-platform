@@ -96,6 +96,13 @@ export interface PlatformGuideCatAssistState {
   codeNewDraft?: GuideCatAssistSurfaceReadModel | null;
 }
 
+export interface PlatformLegacyGuideCatUiPrefs {
+  sidecarSeen?: boolean | null;
+  sidecarMode?: GuideCatSidecarMode | null;
+  placement?: GuideCatPlacement | null;
+  floatingAnchor?: GuideCatFloatingAnchor | null;
+}
+
 export interface PlatformOwnerContext {
   setupCompleteAt: string | null;
   ownerDisplayName: string;
@@ -112,6 +119,7 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
   desktop: PlatformDesktopPreferences;
   lobby: PlatformLobbyState;
   guideCatAssist?: PlatformGuideCatAssistState;
+  legacyGuideCatUiPrefs?: PlatformLegacyGuideCatUiPrefs | null;
   runtime: RuntimeStatusSummary;
   runtimeSetup: RuntimeSetupSummary;
   metadata: PlatformResponseMetadata;
