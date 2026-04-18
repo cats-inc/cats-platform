@@ -14,6 +14,7 @@ import {
   ChatView,
   type ChatViewProps,
 } from './components/ChatView.js';
+import { ActiveSessionPermissionChip } from '../../shared/renderer/components/ActiveSessionPermissionChip.js';
 import { IntakeForm } from './components/IntakeForm.js';
 import {
   NewChatDraft,
@@ -105,6 +106,9 @@ export function AppRoutes({
         selectedChannel={channel}
         onOpenAddCat={options.onOpenAddCat}
         showAddCatButton={options.showAddCatButton}
+        renderComposerFooterAccessory={(ctx) => (
+          <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
+        )}
       />
     ),
     renderNewChatDraft: (options) => (

@@ -18,6 +18,7 @@ import {
   ChatView,
   type ChatViewProps,
 } from '../../shared/renderer/components/chat-view/ChatView.js';
+import { ActiveSessionPermissionChip } from '../../shared/renderer/components/ActiveSessionPermissionChip.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
@@ -102,6 +103,9 @@ export function AppRoutes({
                 selectedChannel={selectedChannel}
                 routeChannelId={routeChannelId}
                 onOpenAddCat={onToggleAddCat}
+                renderComposerFooterAccessory={(ctx) => (
+                  <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
+                )}
                 renderComposerTargetSlot={(context) => (
                   <ChatComposerTargetSlot
                     payload={context.payload}
@@ -175,6 +179,9 @@ export function AppRoutes({
                 selectedChannel={directLaneChannel}
                 onOpenAddCat={noop}
                 showAddCatButton={false}
+                renderComposerFooterAccessory={(ctx) => (
+                  <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
+                )}
                 renderComposerTargetSlot={(context) => (
                   <ChatComposerTargetSlot
                     payload={context.payload}
