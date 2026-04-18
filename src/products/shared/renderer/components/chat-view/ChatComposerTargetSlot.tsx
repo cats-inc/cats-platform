@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
 
-import type { AppShellPayload } from '../../../api/contracts.js';
+import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
-import { AudienceChip } from '../../../../shared/renderer/components/AudienceChip.js';
+import { AudienceChip } from '../AudienceChip.js';
 import {
   buildAudienceParticipantFromCat,
   buildAudienceParticipantFromExecutionTarget,
   buildAudienceParticipantFromRecipient,
   buildAudienceParticipantFromStackParticipant,
-} from '../../../../shared/renderer/audienceParticipantBuilder.js';
+} from '../../audienceParticipantBuilder.js';
 
 export interface ChatComposerTargetSlotProps {
   payload: AppShellPayload;

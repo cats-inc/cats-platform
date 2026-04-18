@@ -5,7 +5,7 @@ import {
   buildChatComposerRecipients,
   resolveChatComposerViewState,
   resolveLatestUserTurnPresentationState,
-} from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
+} from '../src/products/shared/renderer/components/chat-view/chatViewSupport.ts';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import { buildChatLaneId } from '../src/shared/chatCoreIds.ts';
 import {

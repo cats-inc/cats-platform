@@ -1,58 +1,61 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
   type RefObject,
 } from 'react';
 
 import type {
   AppShellPayload,
+  ChatChannelView,
   ChatCat,
   ParallelChatGroupSummary,
+  ParallelChatRelayCommandKind,
 } from '../../../api/workspaceContracts.js';
-import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
+import { isParallelChatBusy } from '../../../../../shared/workspaceBusy.js';
+import type {
+  LiveIndicatorSegmentState,
+  LiveIndicatorState,
+} from '../../hooks/useLiveIndicator.js';
 import {
-  isChannelBusy,
-  isParallelChatBusy,
-} from '../../../../../shared/workspaceBusy.js';
+  hasConfirmedLiveIndicatorSegmentSessionStart,
+  resolveTranscriptFollowState,
+} from '../../../../../shared/liveIndicator.js';
+import { isBrowserLiveTraceEnabled } from '../../../../../shared/liveTrace.js';
+import { SidePanel, type SidePanelSection } from '../../../../../design/components/SidePanel.js';
 import {
   resolveLayoutMetrics,
   type ChatLayoutMode,
 } from '../../../../../design/chatLayout.js';
-import {
-  resolveTranscriptFollowState,
-} from '../../../../../shared/liveIndicator.js';
-import {
-  presentChannelTitle,
-  type SelectedChannelView,
-} from '../../workspaceChatUtils.js';
-import type { ChatOperatorSnapshot } from '../../../operator-loop/index.js';
+import type { ChatOperatorSnapshot, ChatOperatorView, ChatRunInspectorView } from '../../../operator-loop/index.js';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
 } from '../../../operator-loop/index.js';
+import type { ResolvedChannelParticipant } from '../../../channelParticipants.js';
 import { type ExecutionTargetValue } from '../ExecutionTarget.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
-import { isComposerBusyForChannel } from '../../../../../shared/composer.js';
 import {
   isDirectConversationMode,
   isSoloThreadConversationMode,
   resolveConversationMode,
 } from '../../../../../app/renderer/productShell/conversationMode.js';
 import { useTranscriptAutoScroll } from '../../hooks/useTranscriptAutoScroll.js';
-import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
-import { ChatComposerSurface } from './ChatComposerSurface.js';
-import { WorkspaceComposerTargetSlot } from './WorkspaceComposerTargetSlot.js';
+import { useWorkspaceParticipantPresentation } from '../../hooks/useWorkspaceParticipantPresentation.js';
 import { ChatViewFrame } from './ChatViewFrame.js';
-import { ParallelFooterBar } from './ParallelFooterBar.js';
 import { ChatViewTopBar } from './ChatViewTopBar.js';
-import { ChatViewSidePanel } from './ChatViewSidePanel.js';
-import { ChatTranscriptSurface } from './ChatTranscriptSurface.js';
+import { buildChatSidePanelSections, type BuildChatSidePanelSectionsOptions } from './ChatSidePanelSections.js';
+import { ChatComposerArea } from './ChatComposerArea.js';
+import { ChatComposerTargetSlot } from './ChatComposerTargetSlot.js';
+import { ParallelFooterBar } from './ParallelFooterBar.js';
+import { ChatTranscriptPanel, type TranscriptMessageActionContext } from './ChatTranscriptPanel.js';
 import {
   dismissConcurrentClusterUiState,
   resolveConcurrentClusterPresentationMode,
@@ -60,16 +63,70 @@ import {
   type ConcurrentClusterContext,
   type ConcurrentClusterUiStateMap,
 } from './concurrentClusterUiState.js';
-import type {
-  TranscriptMessageActionContext,
-} from './ChatTranscriptSurface.js';
-import type {
-  TranscriptMessageActionDescriptor,
-} from './TranscriptMessageActions.js';
+import {
+  buildChatComposerRecipients,
+  buildChatComposerStackParticipants,
+  buildChoiceResponsesBySource,
+  messageStackTone,
+  resolveChatComposerViewState,
+  resolveChatViewCompareState,
+  resolveChatViewTopBarPresenceState,
+  resolveChatViewTopBarTitle,
+  resolveShowRosterAvatars,
+  type ChatComposerStackParticipantView,
+} from './chatViewSupport.js';
+import type { TranscriptMessageActionDescriptor } from './TranscriptMessageActions.js';
+import {
+  presentChannelTitle,
+  type SelectedChannelView,
+} from '../../workspaceChatUtils.js';
+import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
+
+let _lastLiveIndicatorLogSignature: string | null = null;
+
+export interface ChatViewRenderContext {
+  payload: AppShellPayload;
+  selectedChannel: SelectedChannelView;
+  activeAssignedCats: SelectedChannelView['assignedCats'];
+  activeRoomParticipants: ResolvedChannelParticipant[];
+  assignedCatRecords: ChatCat[];
+  assignedAdhocParticipants: ResolvedChannelParticipant[];
+  defaultRecipientParticipant: ResolvedChannelParticipant | null;
+  defaultRecipientCat: SelectedChannelView['assignedCats'][number] | null;
+  directLaneCat: ChatCat | null;
+  directLaneExecutionTarget: ExecutionTargetValue | null;
+  operatorView: ChatOperatorView | null;
+  inspectedRun: ChatRunInspectorView | null;
+  isDirectLane: boolean;
+  isSoloComposer: boolean;
+  sidePanelOpen: boolean;
+  openSidePanelTo: (section: string) => void;
+}
+
+export interface ChatViewComposerTargetSlotContext {
+  payload: AppShellPayload;
+  composerBusy: boolean;
+  selectedExecutionTarget?: ExecutionTargetValue;
+  composerRecipients: ReturnType<typeof buildChatComposerRecipients>;
+  defaultRecipientParticipantId: string | null;
+  composerStackParticipants: ChatComposerStackParticipantView[];
+  directLaneCat: ChatCat | null;
+  defaultRecipientCat: SelectedChannelView['assignedCats'][number] | null;
+  assignedCatRecords: ChatCat[];
+  leadCatRecord: ChatCat | null;
+  isDirectLane: boolean;
+  isSoloComposer: boolean;
+  activeWorkflowShape: 'sequential' | 'concurrent';
+  onToggleActiveWorkflowShape?: () => void;
+  activeAudienceKeys: string[] | null;
+  onSetActiveAudienceKeys?: (keys: string[]) => void;
+  onOpenSection: (section: string) => void;
+}
 
 export interface ChatViewProps {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
+  routeChannelId?: string | null;
   operatorSnapshot: ChatOperatorSnapshot | null;
   operatorLoading: boolean;
   operatorError: string;
@@ -88,12 +145,16 @@ export interface ChatViewProps {
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
+  onCancelPendingSend?: () => void;
+  onStopMessage?: () => void;
   onToggleChannelPlusMenu: () => void;
   onChannelFileSelect: () => void;
   onChannelFilesChange: (files: File[]) => void;
   onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
+  onRetryMessage?: (messageId: string) => Promise<void>;
   onResumeChannel?: () => void;
+  onStartFresh?: () => void;
   onOperatorAction: (input: {
     action: 'retry' | 'acknowledge';
     taskId?: string | null;
@@ -116,39 +177,27 @@ export interface ChatViewProps {
   compareGroup?: ParallelChatGroupSummary | null;
   compareSendScope?: 'all_members' | 'active_only';
   onCompareSendScopeChange?: (value: 'all_members' | 'active_only') => void;
+  onRelayMessage?: (messageId: string, command: ParallelChatRelayCommandKind) => Promise<void>;
+  onUpdateChannelParticipant?: (
+    participantId: string,
+    input: { name?: string; roleHint?: string | null },
+  ) => Promise<void>;
   buildTranscriptMessageActions?: (
     input: TranscriptMessageActionContext,
   ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
-}
-
-function resolveActiveCompareChannelId(
-  compareMembers: readonly ParallelChatGroupSummary['members'][number][],
-  selectedChannelId: string,
-): string {
-  if (compareMembers.some((member) => member.channelId === selectedChannelId)) {
-    return selectedChannelId;
-  }
-  return compareMembers[0]?.channelId ?? selectedChannelId;
-}
-
-function resolveCompareNeighborChannelId(
-  compareMembers: readonly ParallelChatGroupSummary['members'][number][],
-  activeChannelId: string,
-  direction: 'prev' | 'next',
-): string | null {
-  const activeIndex = compareMembers.findIndex((member) => member.channelId === activeChannelId);
-  if (activeIndex < 0 || compareMembers.length < 2) {
-    return null;
-  }
-
-  return direction === 'prev'
-    ? compareMembers[(activeIndex - 1 + compareMembers.length) % compareMembers.length]?.channelId ?? null
-    : compareMembers[(activeIndex + 1) % compareMembers.length]?.channelId ?? null;
+  renderStatusRow?: (context: ChatViewRenderContext) => ReactNode;
+  renderTopBarExtraActions?: (context: ChatViewRenderContext) => ReactNode;
+  renderComposerTargetSlot?: (context: ChatViewComposerTargetSlotContext) => ReactNode;
+  buildSidePanelSections?: (
+    options: BuildChatSidePanelSectionsOptions,
+  ) => SidePanelSection[];
+  sidePanelTitle?: string;
 }
 
 export function ChatView({
   payload,
   selectedChannel,
+  routeChannelId = null,
   operatorSnapshot,
   operatorLoading,
   operatorError,
@@ -167,12 +216,16 @@ export function ChatView({
   onComposerChange,
   onComposerKeyDown,
   onSendMessage,
+  onCancelPendingSend,
+  onStopMessage,
   onToggleChannelPlusMenu,
   onChannelFileSelect,
   onChannelFilesChange,
   onApprovalDecision,
   onChoiceSubmit,
+  onRetryMessage,
   onResumeChannel,
+  onStartFresh,
   onOperatorAction,
   autoResize,
   selectedExecutionTarget,
@@ -187,50 +240,91 @@ export function ChatView({
   showAddCatButton = true,
   liveIndicator,
   compareGroup = null,
-  compareSendScope = 'active_only',
+  compareSendScope = 'all_members',
   onCompareSendScopeChange,
+  onRelayMessage,
+  onUpdateChannelParticipant,
   buildTranscriptMessageActions,
+  renderStatusRow,
+  renderTopBarExtraActions,
+  renderComposerTargetSlot,
+  buildSidePanelSections,
+  sidePanelTitle = 'Chat Setup',
 }: ChatViewProps) {
-  const hasConversationStarted =
-    selectedChannel.messages.some((message) => message.senderKind !== 'system');
+  const visibleMessages = selectedChannel.messages.filter(
+    (message) => payload.chat.showVerboseMessages || message.metadata?.verbosity !== 'verbose',
+  );
+  const hasConversationStarted = visibleMessages.length > 0;
   const transcriptFollowState = useMemo(
     () => resolveTranscriptFollowState(
       liveIndicator,
-      selectedChannel.messages,
+      visibleMessages,
       selectedChannel.roomRouting.workflow.activeTurn?.updatedAt ?? null,
+      selectedChannel.messages,
     ),
-    [liveIndicator, selectedChannel.messages, selectedChannel.roomRouting.workflow.activeTurn?.updatedAt],
+    [
+      liveIndicator,
+      selectedChannel.messages,
+      selectedChannel.roomRouting.workflow.activeTurn?.updatedAt,
+      visibleMessages,
+    ],
   );
   const { visibleLiveIndicator, transcriptScrollKey } = transcriptFollowState;
-
-  const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
-  const defaultRecipientCat = defaultRecipientId
-    ? activeAssignedCats.find((c) => c.catId === defaultRecipientId)
-    : null;
-  const compareMembers = compareGroup?.members ?? [];
-  const isCompareGroup = compareMembers.length > 1;
-  const activeCompareChannelId = resolveActiveCompareChannelId(compareMembers, selectedChannel.id);
-  const compareGroupChannels = compareMembers
-    .map((member) => payload.chat.channels.find((channel) => channel.id === member.channelId) ?? null)
-    .filter((channel): channel is AppShellPayload['chat']['channels'][number] => channel != null);
-  const compareBusy = isParallelChatBusy(busy)
-    || compareGroupChannels.some((channel) => channel.routingStatus === 'running');
-  const comparePrevChannelId = isCompareGroup
-    ? resolveCompareNeighborChannelId(compareMembers, activeCompareChannelId, 'prev')
-    : null;
-  const compareNextChannelId = isCompareGroup
-    ? resolveCompareNeighborChannelId(compareMembers, activeCompareChannelId, 'next')
-    : null;
   const conversationMode = resolveConversationMode(selectedChannel);
+  const compareState = useMemo(
+    () => resolveChatViewCompareState({
+      compareGroup,
+      channels: payload.chat.channels,
+      routeChannelId,
+      selectedChannelId: selectedChannel.id,
+      busy,
+    }),
+    [busy, compareGroup, payload.chat.channels, routeChannelId, selectedChannel.id],
+  );
+  const {
+    compareMembers,
+    isCompareGroup,
+    activeCompareChannelId,
+    compareMemberIndex,
+    compareBusy,
+    comparePrevChannelId,
+    compareNextChannelId,
+  } = compareState;
   const isSoloComposer = isSoloThreadConversationMode(conversationMode);
   const isDirectLane = isDirectConversationMode(conversationMode);
+  const {
+    activeRoomParticipants,
+    defaultRecipientParticipant,
+    defaultRecipientCat,
+    directLaneCat,
+    bossCatRecord,
+    defaultRecipientCatRecord,
+    assignedCatRecords,
+    assignedAdhocParticipants,
+    topBarParticipants,
+    resolveParticipantCatRecord,
+    resolveParticipantDisplayName,
+    resolveParticipantAvatarUrl,
+    buildParticipantAvatarStyle,
+    buildParticipantAvatarClassName,
+    resolveMessageParticipant,
+  } = useWorkspaceParticipantPresentation({
+    payload,
+    selectedChannel,
+    activeAssignedCats,
+    showBossCatAvatar,
+    isDirectLane,
+    isSoloComposer,
+  });
   const layoutMode: ChatLayoutMode = isDirectLane
     ? 'direct_lane'
-    : activeAssignedCats.length > 1
+    : activeRoomParticipants.length > 1
       ? 'multi_cat'
       : 'solo';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
+  const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [editingParticipantName, setEditingParticipantName] = useState('');
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
@@ -282,90 +376,288 @@ export function ChatView({
     setSidePanelSection(section);
   }
 
-  const directLaneCat = isDirectLane && defaultRecipientCat
-    ? payload.chat.cats.find((c) => c.id === defaultRecipientCat.catId) ?? null
-    : null;
-  const bossCatRecord = payload.chat.bossCatId
-    ? payload.chat.cats.find((c) => c.id === payload.chat.bossCatId) ?? null
-    : null;
-  const leadCatRecord = defaultRecipientCat
-    ? payload.chat.cats.find((c) => c.id === defaultRecipientCat.catId) ?? null
-    : null;
-  const topBarTitle = isDirectLane
-    ? (directLaneCat?.name ?? leadCatRecord?.name ?? presentChannelTitle(selectedChannel.title))
-    : isCompareGroup && compareGroup
-      ? presentChannelTitle(compareGroup.title)
-      : presentChannelTitle(selectedChannel.title);
-  const assignedCatRecords = useMemo(
-    () =>
-      activeAssignedCats
-        .map((assignedCat) => payload.chat.cats.find((cat) => cat.id === assignedCat.catId) ?? null)
-        .filter((cat): cat is ChatCat => cat != null),
-    [activeAssignedCats, payload.chat.cats],
-  );
-  const topBarCats = useMemo(() => {
-    const ordered: Array<ChatCat | null> = [];
-    if (isDirectLane) {
-      ordered.push(leadCatRecord);
-    } else {
-      if (showBossCatAvatar && !isSoloComposer) {
-        ordered.push(bossCatRecord);
-      }
-      ordered.push(...assignedCatRecords);
-    }
-    const seen = new Set<string>();
-    return ordered.filter((cat): cat is ChatCat => {
-      if (!cat || seen.has(cat.id)) {
-        return false;
-      }
-      seen.add(cat.id);
-      return true;
-    });
-  }, [
-    assignedCatRecords,
-    bossCatRecord,
+  const topBarTitle = resolveChatViewTopBarTitle({
     isDirectLane,
-    isSoloComposer,
-    leadCatRecord,
+    directLaneCat,
+    defaultRecipientCatRecord,
+    selectedChannelTitle: selectedChannel.title,
+    isCompareGroup,
+    compareGroup,
+  });
+  const showRosterAvatars = resolveShowRosterAvatars({
+    isDirectLane,
+    defaultRecipientCat,
     showBossCatAvatar,
-  ]);
-  const showRosterAvatars = isDirectLane
-    ? Boolean(defaultRecipientCat)
-    : Boolean((showBossCatAvatar && !isSoloComposer) || activeAssignedCats.length > 0);
-  const directLaneExecutionTarget: ExecutionTargetValue | null = directLaneCat
-    ? {
-        provider: directLaneCat.defaultExecutionTarget.provider,
-        model: directLaneCat.defaultExecutionTarget.model,
-        instance: directLaneCat.defaultExecutionTarget.instance,
-        modelSelection: directLaneCat.defaultModelSelection ?? null,
-      }
-    : null;
-  const directLaneExcludedMentionNames = useMemo(
-    () => (isDirectLane && directLaneCat?.name ? [directLaneCat.name] : []),
-    [directLaneCat?.name, isDirectLane],
+    isSoloComposer,
+    activeRoomParticipants,
+  });
+  const composerStackParticipants = useMemo(
+    () => buildChatComposerStackParticipants({
+      activeRoomParticipants,
+      bossCatId: payload.chat.bossCatId,
+      resolveParticipantCatRecord,
+      resolveParticipantDisplayName,
+    }),
+    [
+      activeRoomParticipants,
+      payload.chat.bossCatId,
+      resolveParticipantCatRecord,
+      resolveParticipantDisplayName,
+    ],
   );
   const operatorView = useMemo(
     () => buildChatOperatorView(operatorSnapshot, selectedChannel),
     [operatorSnapshot, selectedChannel],
   );
+  const choiceResponsesBySource = useMemo(
+    () => buildChoiceResponsesBySource(selectedChannel.messages),
+    [selectedChannel.messages],
+  );
+  const latestUserTurnPresentation = useMemo(
+    () => ({
+      messageId: selectedChannel.messages
+        .slice()
+        .reverse()
+        .find((message) => message.senderKind === 'user')?.id ?? null,
+      status: (() => {
+        const latestUserMessage = selectedChannel.messages
+          .slice()
+          .reverse()
+          .find((message) => message.senderKind === 'user') ?? null;
+        if (!latestUserMessage) {
+          return 'idle' as const;
+        }
+        const activeTurn = selectedChannel.roomRouting.workflow.activeTurn ?? null;
+        const lastOutcome = selectedChannel.roomRouting.lastOutcome ?? null;
+        const latestUserMessageIndex = selectedChannel.messages.findIndex(
+          (message) => message.id === latestUserMessage.id,
+        );
+        const activeTurnSourceMessageId = activeTurn?.sourceMessageId ?? null;
+        const activeTurnSourceMessageIndex = activeTurnSourceMessageId
+          ? selectedChannel.messages.findIndex((message) => message.id === activeTurnSourceMessageId)
+          : -1;
+        const liveIndicatorSourceMessageId = visibleLiveIndicator?.sourceMessageId ?? null;
+        const liveIndicatorMatchesLatestUserMessage = liveIndicatorSourceMessageId
+          ? liveIndicatorSourceMessageId === latestUserMessage.id
+          : activeTurnSourceMessageId === latestUserMessage.id;
+        const hasAssistantIdentityBubble = liveIndicatorMatchesLatestUserMessage
+          && Boolean(
+            visibleLiveIndicator?.speakerLabel
+            || visibleLiveIndicator?.participantId
+            || visibleLiveIndicator?.catId,
+          );
+        const hasVisibleAssistantReply = selectedChannel.messages.some((message, index) =>
+          index > latestUserMessageIndex
+          && message.senderKind !== 'user'
+          && message.senderKind !== 'system'
+          && !(
+            message.metadata?.verbosity === 'verbose'
+            && payload.chat.showVerboseMessages !== true
+          ));
+        const activeTurnTargetStateIds = activeTurn?.targetStatuses
+          ?.map((target) => target.id ?? null)
+          ?? [];
+        const activeTurnLaneIds = activeTurn?.targetStatuses
+          ?.map((target) => {
+            const persistedLaneId = target.laneId?.trim() || null;
+            if (persistedLaneId) {
+              return persistedLaneId;
+            }
+            if (!activeTurn.id || !target.id) {
+              return null;
+            }
+            return buildChatLaneId(activeTurn.id, target.id, target.participant.participantId);
+          })
+          ?? [];
+        const activeTurnParticipantIds = activeTurn?.targetStatuses
+          ?.map((target) => target.participant.participantId ?? null)
+          ?? [];
+        const hasVisibleSessionStart = selectedChannel.messages.some((message, index) =>
+          index > latestUserMessageIndex
+          && message.metadata?.kind === 'session_start'
+          && (
+            activeTurnTargetStateIds.includes(message.metadata?.targetStateId ?? null)
+            || activeTurnLaneIds.includes(message.metadata?.laneId ?? null)
+            || activeTurnParticipantIds.includes(message.metadata?.participantId ?? null)
+          ));
+        const dispatchedTargets = (activeTurn?.targetStatuses ?? []).filter((target) =>
+          target.status === 'running' || target.status === 'completed');
+        const hasDispatchedTarget = dispatchedTargets.length > 0
+          && (
+            activeTurn?.workflowShape === 'concurrent'
+            || dispatchedTargets.some((target) => target.status === 'completed')
+            || dispatchedTargets.length > 1
+          );
+        const activeTurnOwnsLatestUserMessage =
+          activeTurn?.sourceMessageId === latestUserMessage.id
+          && (activeTurn.status === 'running' || activeTurn.status === 'pending');
+        const queuedBehindActiveTurn = (
+          latestUserMessageIndex > -1
+          && activeTurnSourceMessageIndex > -1
+          && activeTurnSourceMessageIndex < latestUserMessageIndex
+          && (activeTurn?.status === 'running' || activeTurn?.status === 'pending')
+        );
+
+        if (
+          (
+            (activeTurnOwnsLatestUserMessage && !hasDispatchedTarget)
+            || queuedBehindActiveTurn
+          )
+          && !hasAssistantIdentityBubble
+          && (
+            queuedBehindActiveTurn
+            || (!hasVisibleAssistantReply && !hasVisibleSessionStart)
+          )
+        ) {
+          return 'processing' as const;
+        }
+
+        if (
+          lastOutcome?.sourceMessageId === latestUserMessage.id
+          && lastOutcome.status === 'error'
+        ) {
+          return 'failed' as const;
+        }
+
+        return 'idle' as const;
+      })(),
+    }),
+    [payload.chat.showVerboseMessages, selectedChannel, visibleLiveIndicator],
+  );
   const runIdsKey = useMemo(
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
     [operatorView],
   );
-  const activeTopBarCatIds = useMemo(() => {
-    const ids = visibleLiveIndicator?.activeCatIds?.filter((id) => id.trim().length > 0) ?? [];
-    if (ids.length > 0) {
-      return [...new Set(ids)];
-    }
-    if (visibleLiveIndicator?.active && visibleLiveIndicator.catId) {
-      return [visibleLiveIndicator.catId];
-    }
-    return [];
-  }, [visibleLiveIndicator]);
+  const topBarPresenceState = useMemo(
+    () => resolveChatViewTopBarPresenceState({
+      visibleLiveIndicator,
+      selectedChannel,
+      activeRoomParticipants,
+    }),
+    [activeRoomParticipants, selectedChannel, visibleLiveIndicator],
+  );
+  const { activeTopBarCatIds, activeTopBarParticipantIds, liveSpeakerParticipant } =
+    topBarPresenceState;
+  const resolveLiveIndicatorSegmentParticipant = useCallback(
+    (segment: LiveIndicatorSegmentState) => {
+      if (segment.participantId) {
+        const byParticipantId = activeRoomParticipants.find(
+          (participant) => participant.participantId === segment.participantId,
+        ) ?? null;
+        if (byParticipantId) {
+          return byParticipantId;
+        }
+      }
+
+      const confirmedIdentityParticipantId = (() => {
+        const identityParticipantId = segment.identityParticipantId?.trim() || null;
+        if (!identityParticipantId || identityParticipantId === segment.participantId) {
+          return null;
+        }
+        return hasConfirmedLiveIndicatorSegmentSessionStart(segment, selectedChannel.messages)
+          ? identityParticipantId
+          : null;
+      })();
+      if (confirmedIdentityParticipantId) {
+        const byIdentityParticipantId = activeRoomParticipants.find(
+          (participant) => participant.participantId === confirmedIdentityParticipantId,
+        ) ?? null;
+        if (byIdentityParticipantId) {
+          return byIdentityParticipantId;
+        }
+      }
+
+      if (segment.catId) {
+        const byCatId = activeRoomParticipants.find((participant) =>
+          resolveParticipantCatRecord(participant)?.id === segment.catId)
+          ?? null;
+        if (byCatId) {
+          return byCatId;
+        }
+      }
+
+      if (segment.phase === 'sealed') {
+        const workflowTurnHistory = Array.isArray(selectedChannel.roomRouting.workflow.turnHistory)
+          ? selectedChannel.roomRouting.workflow.turnHistory
+          : [];
+        const matchingWorkflowTarget = [
+          selectedChannel.roomRouting.workflow.activeTurn,
+          ...workflowTurnHistory,
+        ]
+          .filter((turn): turn is NonNullable<typeof selectedChannel.roomRouting.workflow.activeTurn> =>
+            turn != null)
+          .flatMap((turn) =>
+            turn.targetStatuses.map((target) => ({
+              participantId: target.participant.participantId,
+              targetStateId: target.id,
+              laneId: target.laneId?.trim() || buildChatLaneId(
+                turn.id,
+                target.id,
+                target.participant.participantId,
+              ),
+            })))
+          .find((target) =>
+            (segment.targetStateId != null && target.targetStateId === segment.targetStateId)
+            || (segment.laneId != null && target.laneId === segment.laneId));
+
+        if (matchingWorkflowTarget) {
+          const byWorkflowTarget = activeRoomParticipants.find(
+            (participant) => participant.participantId === matchingWorkflowTarget.participantId,
+          ) ?? null;
+          if (byWorkflowTarget) {
+            return byWorkflowTarget;
+          }
+        }
+      }
+
+      const normalizedSpeakerLabel = segment.speakerLabel?.trim();
+      if (!normalizedSpeakerLabel) {
+        return null;
+      }
+
+      return activeRoomParticipants.find((participant) => {
+        const participantCat = resolveParticipantCatRecord(participant);
+        return resolveParticipantDisplayName(participant, participantCat) === normalizedSpeakerLabel;
+      }) ?? null;
+    },
+    [
+      activeRoomParticipants,
+      resolveParticipantCatRecord,
+      resolveParticipantDisplayName,
+      selectedChannel.messages,
+      selectedChannel.roomRouting.workflow.activeTurn,
+      selectedChannel.roomRouting.workflow.turnHistory,
+    ],
+  );
   const activeTopBarCatIdSet = useMemo(
     () => new Set(activeTopBarCatIds),
     [activeTopBarCatIds],
   );
+  const activeTopBarParticipantIdSet = useMemo(
+    () => new Set(activeTopBarParticipantIds),
+    [activeTopBarParticipantIds],
+  );
+  const composerRecipients = useMemo(() => {
+    return buildChatComposerRecipients({
+      isDirectLane,
+      directLaneCat,
+      isSoloComposer,
+      selectedExecutionTarget,
+      defaultRecipientParticipant,
+      bossCatId: payload.chat.bossCatId,
+      resolveParticipantCatRecord,
+      resolveParticipantDisplayName,
+    });
+  }, [
+    defaultRecipientParticipant,
+    directLaneCat,
+    isDirectLane,
+    isSoloComposer,
+    payload.chat.bossCatId,
+    resolveParticipantCatRecord,
+    resolveParticipantDisplayName,
+    selectedExecutionTarget,
+  ]);
   const layoutMetrics = useMemo(
     () => resolveLayoutMetrics(layoutMode, viewportWidth),
     [layoutMode, viewportWidth],
@@ -405,23 +697,178 @@ export function ChatView({
     () => buildRunInspectorView(operatorView, inspectedRunId),
     [operatorView, inspectedRunId],
   );
-  const composerBusy = isComposerBusyForChannel(busy, selectedChannel.id) || compareBusy;
-  const resumeBusy = isChannelBusy(busy, 'resume');
-  const canResumeChannel = !composerBusy && !resumeBusy;
-  const composerWorkspacePath = resolveComposerWorkspacePath(
-    selectedChannel.repoPath,
-    selectedChannel.chatCwd,
-  );
   const {
-    transcriptListRef,
-    composerCardRef,
-    bottomSentinelRef,
-    isNearBottom,
-    scrollToBottom,
-  } = useTranscriptAutoScroll({
-    channelId: selectedChannel.id,
-    scrollKey: transcriptScrollKey,
+    directLaneExecutionTarget,
+    directLaneExcludedMentionNames,
+    composerBusy,
+    resumeBusy,
+    showCancelComposerAction,
+    showStopComposerAction,
+    composerWorkspacePath,
+  } = useMemo(
+    () => resolveChatComposerViewState({
+      activeRoomParticipants,
+      directLaneCat: isDirectLane ? directLaneCat : null,
+      busy,
+      isCompareGroup,
+      selectedChannelId: selectedChannel.id,
+      onCancelPendingSend,
+      onStopMessage,
+      repoPath: selectedChannel.repoPath,
+      chatCwd: selectedChannel.chatCwd,
+    }),
+    [
+      activeRoomParticipants,
+      busy,
+      directLaneCat,
+      isCompareGroup,
+      isDirectLane,
+      onCancelPendingSend,
+      onStopMessage,
+      selectedChannel.chatCwd,
+      selectedChannel.id,
+      selectedChannel.repoPath,
+    ],
+  );
+  const canResumeChannel = !composerBusy && !resumeBusy;
+  const stopBusy = isParallelChatBusy(busy, 'stop');
+  const { transcriptListRef, composerCardRef, bottomSentinelRef, isNearBottom, scrollToBottom } =
+    useTranscriptAutoScroll({
+      channelId: selectedChannel.id,
+      scrollKey: transcriptScrollKey,
+      scrollOnChannelChange: true,
+    });
+
+  useLayoutEffect(() => {
+    if (!visibleLiveIndicator?.active || !isNearBottom) {
+      return;
+    }
+
+    scrollToBottom();
+  }, [isNearBottom, scrollToBottom, transcriptScrollKey, visibleLiveIndicator?.active]);
+
+  function beginParticipantRename(participant: ResolvedChannelParticipant): void {
+    setEditingParticipantId(participant.participantId);
+    setEditingParticipantName(participant.name);
+  }
+
+  function cancelParticipantRename(): void {
+    setEditingParticipantId(null);
+    setEditingParticipantName('');
+  }
+
+  async function submitParticipantRename(participantId: string): Promise<void> {
+    const nextName = editingParticipantName.trim();
+    if (!nextName || !onUpdateChannelParticipant) {
+      return;
+    }
+    await onUpdateChannelParticipant(participantId, { name: nextName });
+    cancelParticipantRename();
+  }
+
+  const viewContext: ChatViewRenderContext = {
+    payload,
+    selectedChannel,
+    activeAssignedCats,
+    activeRoomParticipants,
+    assignedCatRecords,
+    assignedAdhocParticipants,
+    defaultRecipientParticipant,
+    defaultRecipientCat,
+    directLaneCat,
+    directLaneExecutionTarget,
+    operatorView,
+    inspectedRun,
+    isDirectLane,
+    isSoloComposer,
+    sidePanelOpen,
+    openSidePanelTo,
+  };
+  const composerTargetSlotContext: ChatViewComposerTargetSlotContext = {
+    payload,
+    composerBusy,
+    selectedExecutionTarget,
+    composerRecipients,
+    defaultRecipientParticipantId: defaultRecipientParticipant?.participantId ?? null,
+    composerStackParticipants,
+    directLaneCat,
+    defaultRecipientCat,
+    assignedCatRecords,
+    leadCatRecord: defaultRecipientCatRecord,
+    isDirectLane,
+    isSoloComposer,
+    activeWorkflowShape,
+    onToggleActiveWorkflowShape,
+    activeAudienceKeys,
+    onSetActiveAudienceKeys,
+    onOpenSection: openSidePanelTo,
+  };
+  const composerTargetSlot = renderComposerTargetSlot?.(composerTargetSlotContext) ?? (
+    <ChatComposerTargetSlot
+      payload={payload}
+      composerBusy={composerBusy}
+      composerRecipients={composerRecipients}
+      defaultRecipientParticipantId={defaultRecipientParticipant?.participantId ?? null}
+      composerStackParticipants={composerStackParticipants}
+      directLaneCat={directLaneCat}
+      isDirectLane={isDirectLane}
+      isSoloComposer={isSoloComposer}
+      activeWorkflowShape={activeWorkflowShape}
+      onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
+      activeAudienceKeys={activeAudienceKeys}
+      onSetActiveAudienceKeys={onSetActiveAudienceKeys}
+      onOpenSection={openSidePanelTo}
+    />
+  );
+  const sidePanelSections = (buildSidePanelSections ?? buildChatSidePanelSections)({
+    payload,
+    selectedChannel,
+    busy,
+    operatorView,
+    operatorLoading,
+    operatorError,
+    assignedCatRecords,
+    assignedAdhocParticipants,
+    defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
+    defaultRecipientParticipant,
+    directLaneCat,
+    directLaneExecutionTarget,
+    isDirectLane,
+    isSoloComposer,
+    selectedExecutionTarget,
+    inspectedRun,
+    showAddCatButton,
+    editingParticipantId,
+    editingParticipantName,
+    canRenameParticipants: onUpdateChannelParticipant != null,
+    onEditingParticipantNameChange: setEditingParticipantName,
+    onBeginParticipantRename: beginParticipantRename,
+    onCancelParticipantRename: cancelParticipantRename,
+    onSubmitParticipantRename: (participantId) => {
+      void submitParticipantRename(participantId);
+    },
+    onOpenAddCat,
+    onCloseSidePanel: () => setSidePanelOpen(false),
+    onInspectRun: setInspectedRunId,
+    onApprovalDecision,
+    onOperatorAction,
+    onExecutionTargetChange,
+    onStartFresh,
+    onDirectLaneExecutionTargetChange,
+    buildParticipantAvatarStyle,
   });
+
+  const topBarExtraActions = renderTopBarExtraActions?.(viewContext) ?? null;
+  const statusRow = renderStatusRow?.(viewContext) ?? null;
+
+  function navigateCompareMember(direction: 'prev' | 'next'): void {
+    const channelId = direction === 'prev' ? comparePrevChannelId : compareNextChannelId;
+    if (!channelId || !onSelect) {
+      return;
+    }
+
+    onSelect(channelId);
+  }
 
   return (
     <ChatViewFrame
@@ -433,14 +880,19 @@ export function ChatView({
       hasConversationStarted={hasConversationStarted}
       topBar={(
         <ChatViewTopBar
-          avatars={topBarCats.map((cat) => ({
-            key: cat.id,
-            label: cat.name,
-            avatarColor: cat.avatarColor,
-            avatarUrl: cat.avatarUrl,
-            isBoss: cat.id === payload.chat.bossCatId,
-            showLeadBadge: cat.id === defaultRecipientId,
-            pulsing: activeTopBarCatIdSet.has(cat.id),
+          avatars={topBarParticipants.map((participant) => ({
+            key: participant.key,
+            label: participant.label,
+            executionLabel: participant.executionLabel,
+            avatarColor: participant.avatarColor,
+            avatarUrl: participant.avatarUrl,
+            isBoss: participant.isBoss,
+            useNeutralAvatar: participant.useNeutralAvatar,
+            pulsing: Boolean(
+              (participant.pulseParticipantId
+                && activeTopBarParticipantIdSet.has(participant.pulseParticipantId))
+              || (participant.pulseCatId && activeTopBarCatIdSet.has(participant.pulseCatId)),
+            ),
           }))}
           showRosterAvatars={showRosterAvatars}
           isDirectLane={isDirectLane}
@@ -449,58 +901,100 @@ export function ChatView({
           resumeBusy={resumeBusy}
           sidePanelOpen={sidePanelOpen}
           approvalCount={operatorView?.approvals.length ?? 0}
+          extraActions={topBarExtraActions}
           onResumeChannel={onResumeChannel}
           onToggleSidePanel={() => setSidePanelOpen(!sidePanelOpen)}
         />
       )}
-      sidePanel={(
-        <ChatViewSidePanel
-          sidePanelOpen={sidePanelOpen}
-          sidePanelSection={sidePanelSection}
-          sidePanelPosition={layoutMetrics.secondarySurfacePosition === 'bottom' ? 'bottom' : 'side'}
-          payload={payload}
-          selectedChannel={selectedChannel}
-          busy={busy}
-          operatorView={operatorView}
-          operatorLoading={operatorLoading}
-          operatorError={operatorError}
-          assignedCatRecords={assignedCatRecords}
-          defaultRecipientCat={defaultRecipientCat ?? null}
-          directLaneCat={directLaneCat}
-          directLaneExecutionTarget={directLaneExecutionTarget}
-          isDirectLane={isDirectLane}
-          isSoloComposer={isSoloComposer}
-          selectedExecutionTarget={selectedExecutionTarget}
-          inspectedRun={inspectedRun}
-          showAddCatButton={showAddCatButton}
+      statusRow={statusRow}
+      sidePanel={sidePanelOpen ? (
+        <SidePanel
+          title={sidePanelTitle}
+          activeSection={sidePanelSection}
           onSectionToggle={setSidePanelSection}
           onClose={() => setSidePanelOpen(false)}
-          onInspectRun={setInspectedRunId}
-          onApprovalDecision={onApprovalDecision}
-          onOperatorAction={onOperatorAction}
-          onExecutionTargetChange={onExecutionTargetChange}
-          onDirectLaneExecutionTargetChange={onDirectLaneExecutionTargetChange}
-          onOpenAddCat={onOpenAddCat}
+          position={layoutMetrics.secondarySurfacePosition === 'bottom' ? 'bottom' : 'side'}
+          className="chatPaneSidePanel chatPaneSidePanelBelowBar"
+          sections={sidePanelSections}
         />
-      )}
+      ) : null}
     >
-      <ChatTranscriptSurface
+      <ChatTranscriptPanel
         hasConversationStarted={hasConversationStarted}
-        payload={payload}
-        selectedChannel={selectedChannel}
-        busy={busy}
         greeting={greeting}
-        liveIndicator={visibleLiveIndicator ?? undefined}
-        directLaneExcludedMentionNames={directLaneExcludedMentionNames}
         transcriptListRef={transcriptListRef}
         bottomSentinelRef={bottomSentinelRef}
+        selectedChannel={selectedChannel}
+        visibleMessages={visibleMessages}
+        workflow={selectedChannel.roomRouting.workflow}
+        cats={payload.chat.cats}
+        bossCatId={payload.chat.bossCatId}
+        selectedChannelId={selectedChannel.id}
+        disabledMentionNames={directLaneExcludedMentionNames}
+        busy={busy}
+        compareBusy={compareBusy}
+        isCompareGroup={isCompareGroup}
+        choiceResponsesBySource={choiceResponsesBySource}
         onChoiceSubmit={onChoiceSubmit}
+        latestUserTurnMessageId={latestUserTurnPresentation.messageId}
+        latestUserTurnStatus={latestUserTurnPresentation.status}
+        onRetryMessage={onRetryMessage}
+        onRelayMessage={onRelayMessage}
+        liveIndicator={(() => {
+          if (visibleLiveIndicator?.active && isBrowserLiveTraceEnabled()) {
+            const segments = visibleLiveIndicator.segments?.length
+              ? visibleLiveIndicator.segments
+              : [visibleLiveIndicator];
+            const signature = visibleLiveIndicator.phase + ':' + segments.length + ':' + segments.map((segment) => {
+              const blockDetail = segment.contentBlocks
+                .map((block) => block.kind + '#' + block.index + ':' + block.status)
+                .join('|');
+              const metaDetail = [
+                segment.targetStateId ? 'ts:' + segment.targetStateId : null,
+                segment.sessionId ? 'sid:' + segment.sessionId : null,
+                segment.participantId ? 'pid:' + segment.participantId : null,
+                segment.speakerLabel ? 'sp:' + segment.speakerLabel : null,
+                segment.progressKind ? 'pk:' + segment.progressKind : null,
+                segment.progressText ? 'pt:' + segment.progressText : null,
+                segment.tools.length > 0
+                  ? 'tools:' + segment.tools.map((tool) => `${tool.toolName}:${tool.done ? 'done' : 'pending'}`).join(',')
+                  : null,
+                segment.events.length > 0
+                  ? 'events:' + segment.events.map((event) => event.eventType).join(',')
+                  : null,
+              ]
+                .filter((detail): detail is string => detail != null && detail.length > 0)
+                .join('|');
+              return `${segment.phase}:si${segment.segmentIndex}:${blockDetail || metaDetail || 'empty'}`;
+            }).join(';');
+            if (signature !== _lastLiveIndicatorLogSignature) {
+              _lastLiveIndicatorLogSignature = signature;
+              console.log('[CV] li ph=' + visibleLiveIndicator.phase + ' segs=' + segments.length + ' detail=' + JSON.stringify(
+                signature.split(';'),
+              ) + ' nb=' + (isNearBottom ? '1' : '0'));
+            }
+          }
+          return visibleLiveIndicator ?? undefined;
+        })()}
+        liveSpeakerParticipant={liveSpeakerParticipant}
+        liveSpeakerParticipantCat={resolveParticipantCatRecord(liveSpeakerParticipant)}
+        resolveLiveIndicatorSegmentParticipant={resolveLiveIndicatorSegmentParticipant}
+        messageStackTone={messageStackTone}
+        resolveMessageParticipant={resolveMessageParticipant}
+        resolveParticipantCatRecord={resolveParticipantCatRecord}
+        buildParticipantAvatarClassName={buildParticipantAvatarClassName}
+        buildParticipantAvatarStyle={buildParticipantAvatarStyle}
+        resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
+        resolveParticipantDisplayName={resolveParticipantDisplayName}
+        showLiveProgressDetails={payload.chat.showLiveProgressDetails === true}
         resolveConcurrentClusterPresentationMode={resolveConcurrentClusterMode}
         buildConcurrentClusterActions={buildConcurrentClusterActions}
         buildTranscriptMessageActions={buildTranscriptMessageActions}
       />
-      <ChatComposerSurface
+      <ChatComposerArea
         hasConversationStarted={hasConversationStarted}
+        isCompareGroup={isCompareGroup}
+        isNearBottom={isNearBottom}
         payload={payload}
         composerDraft={composerDraft}
         channelFiles={channelFiles}
@@ -509,30 +1003,23 @@ export function ChatView({
         channelFileInputRef={channelFileInputRef}
         composerBusy={composerBusy}
         compareBusy={compareBusy}
-        isCompareGroup={isCompareGroup}
-        compareSendScope={compareSendScope}
+        stopBusy={stopBusy}
         composerWorkspacePath={composerWorkspacePath}
         directLaneExcludedMentionNames={directLaneExcludedMentionNames}
-        composerTargetSlot={(
-          <WorkspaceComposerTargetSlot
-            payload={payload}
-            composerBusy={composerBusy}
-            selectedExecutionTarget={selectedExecutionTarget}
-            directLaneCat={directLaneCat}
-            defaultRecipientCat={defaultRecipientCat ?? null}
-            assignedCatRecords={assignedCatRecords}
-            leadCatRecord={leadCatRecord}
-            isDirectLane={isDirectLane}
-            isSoloComposer={isSoloComposer}
-            activeWorkflowShape={activeWorkflowShape}
-            onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
-            activeAudienceKeys={activeAudienceKeys}
-            onSetActiveAudienceKeys={onSetActiveAudienceKeys}
-            onOpenSection={openSidePanelTo}
-          />
-        )}
+        composerRecipients={composerRecipients}
+        defaultRecipientParticipantId={defaultRecipientParticipant?.participantId ?? null}
+        composerStackParticipants={composerStackParticipants}
+        isDirectLane={isDirectLane}
+        isSoloComposer={isSoloComposer}
+        activeWorkflowShape={activeWorkflowShape}
+        onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
+        activeAudienceKeys={activeAudienceKeys}
+        onSetActiveAudienceKeys={onSetActiveAudienceKeys}
+        compareSendScope={compareSendScope}
+        showCancelComposerAction={showCancelComposerAction}
+        showStopComposerAction={showStopComposerAction}
         composerCardRef={composerCardRef}
-        isNearBottom={isNearBottom}
+        composerTargetSlot={composerTargetSlot}
         onOpenSection={openSidePanelTo}
         onComposerChange={onComposerChange}
         onComposerKeyDown={onComposerKeyDown}
@@ -542,28 +1029,21 @@ export function ChatView({
         onChannelFilesChange={onChannelFilesChange}
         onScrollToBottom={scrollToBottom}
         onCompareSendScopeChange={onCompareSendScopeChange}
+        onCancelPendingSend={onCancelPendingSend}
+        onStopMessage={onStopMessage}
         autoResize={autoResize}
       />
-      {isCompareGroup && onSelect ? (
+      {compareMembers.length > 1 ? (
         <ParallelFooterBar
-          compareMembers={compareMembers}
-          selectedChannelId={activeCompareChannelId}
-          comparePrevChannelId={comparePrevChannelId}
-          compareNextChannelId={compareNextChannelId}
-          onSelect={onSelect}
-          onNavigatePrev={() => {
-            if (comparePrevChannelId) {
-              onSelect(comparePrevChannelId);
-            }
-          }}
-          onNavigateNext={() => {
-            if (compareNextChannelId) {
-              onSelect(compareNextChannelId);
-            }
-          }}
+          members={compareMembers}
+          activeChannelId={activeCompareChannelId}
+          activeIndex={compareMemberIndex}
+          prevChannelId={comparePrevChannelId}
+          nextChannelId={compareNextChannelId}
+          onSelect={(channelId) => onSelect?.(channelId)}
+          onNavigate={navigateCompareMember}
         />
       ) : null}
     </ChatViewFrame>
   );
 }
-

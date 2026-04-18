@@ -1,12 +1,13 @@
 import {
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
   type RefCallback,
   type RefObject,
 } from 'react';
 
-import type { AppShellPayload } from '../../../api/contracts.js';
-import { truncatePath } from '../../chatUtils.js';
+import type { AppShellPayload } from '../../../api/workspaceContracts.js';
+import { truncatePath } from '../../workspaceChatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
@@ -40,6 +41,7 @@ export interface ChatComposerAreaProps {
   showCancelComposerAction: boolean;
   showStopComposerAction: boolean;
   composerCardRef: RefCallback<HTMLElement>;
+  composerTargetSlot?: ReactNode;
   onOpenSection: (section: string) => void;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -82,6 +84,7 @@ export function ChatComposerArea({
   showCancelComposerAction,
   showStopComposerAction,
   composerCardRef,
+  composerTargetSlot,
   onOpenSection,
   onComposerChange,
   onComposerKeyDown,
@@ -236,21 +239,23 @@ export function ChatComposerArea({
           })()}
         </div>
         <div className="composerRightGroup">
-          <ChatComposerTargetSlot
-            payload={payload}
-            composerBusy={composerBusy}
-            composerRecipients={composerRecipients}
-            defaultRecipientParticipantId={defaultRecipientParticipantId}
-            composerStackParticipants={composerStackParticipants}
-            directLaneCat={directLaneCat}
-            isDirectLane={isDirectLane}
-            isSoloComposer={isSoloComposer}
-            activeWorkflowShape={activeWorkflowShape}
-            onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
-            activeAudienceKeys={activeAudienceKeys}
-            onSetActiveAudienceKeys={onSetActiveAudienceKeys}
-            onOpenSection={onOpenSection}
-          />
+          {composerTargetSlot ?? (
+            <ChatComposerTargetSlot
+              payload={payload}
+              composerBusy={composerBusy}
+              composerRecipients={composerRecipients}
+              defaultRecipientParticipantId={defaultRecipientParticipantId}
+              composerStackParticipants={composerStackParticipants}
+              directLaneCat={directLaneCat}
+              isDirectLane={isDirectLane}
+              isSoloComposer={isSoloComposer}
+              activeWorkflowShape={activeWorkflowShape}
+              onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
+              activeAudienceKeys={activeAudienceKeys}
+              onSetActiveAudienceKeys={onSetActiveAudienceKeys}
+              onOpenSection={onOpenSection}
+            />
+          )}
           {showCancelComposerAction ? (
             <button
               className="composerSendButton composerCancelButton"

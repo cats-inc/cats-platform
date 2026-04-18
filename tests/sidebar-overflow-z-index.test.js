@@ -11,7 +11,7 @@ test('sidebar overflow menus stay above the footer chrome', async () => {
     new URL('../src/products/chat/renderer/styles/chat-thread.css', import.meta.url),
   );
   const extrasStyles = await readFile(
-    new URL('../src/products/chat/renderer/styles/extras.css', import.meta.url),
+    new URL('../src/products/shared/renderer/styles/extras.css', import.meta.url),
     'utf8',
   );
 

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
-import { buildChatSidePanelSections } from '../src/products/chat/renderer/components/chat-view/ChatSidePanelSections.tsx';
+import { buildChatSidePanelSections } from '../src/products/shared/renderer/components/chat-view/ChatSidePanelSections.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function buildExecutionMarkup(overrides: {

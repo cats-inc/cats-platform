@@ -5,8 +5,11 @@ import { resolveProjectRoot } from './projectRoot.js';
 
 export async function readProductChatViewSource(product) {
   const projectRoot = resolveProjectRoot(import.meta.url);
+  const chatViewPath = product === 'chat'
+    ? path.join(projectRoot, 'src/products/shared/renderer/components/chat-view/ChatView.tsx')
+    : path.join(projectRoot, `src/products/${product}/renderer/components/ChatView.tsx`);
   const chatViewSource = await readFile(
-    path.join(projectRoot, `src/products/${product}/renderer/components/ChatView.tsx`),
+    chatViewPath,
     'utf8',
   );
   const localChatViewDir = path.join(
@@ -15,7 +18,7 @@ export async function readProductChatViewSource(product) {
   );
   const localChatViewFiles = product === 'chat'
     ? (await readdir(localChatViewDir)
-        .then((entries) => entries.filter((name) => name.endsWith('.tsx')).sort())
+        .then((entries) => entries.filter((name) => /\.(ts|tsx)$/u.test(name)).sort())
         .catch(() => []))
     : [];
   const localSources = await Promise.all(
@@ -23,7 +26,7 @@ export async function readProductChatViewSource(product) {
       readFile(path.join(localChatViewDir, name), 'utf8')),
   );
 
-  const consumesSharedChatView = product !== 'chat'
+  const consumesSharedChatView = product === 'chat'
     || chatViewSource.includes('shared/renderer/components/chat-view/');
   if (!consumesSharedChatView) {
     return `${chatViewSource}\n${localSources.join('\n')}`;
@@ -31,7 +34,7 @@ export async function readProductChatViewSource(product) {
 
   const chatViewDir = path.join(projectRoot, 'src/products/shared/renderer/components/chat-view');
   const sharedFiles = (await readdir(chatViewDir))
-    .filter((name) => name.endsWith('.tsx'))
+    .filter((name) => /\.(ts|tsx)$/u.test(name))
     .sort();
   const sharedSources = await Promise.all(
     sharedFiles.map((name) =>

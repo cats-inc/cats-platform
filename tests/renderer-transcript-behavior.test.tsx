@@ -67,7 +67,7 @@ for (const product of PRODUCT_SURFACES) {
     assert.match(source, /const \{ visibleLiveIndicator, transcriptScrollKey \} = transcriptFollowState/u);
     assert.doesNotMatch(source, /scrollKey:\s*\[\s*selectedChannel\.updatedAt/u);
     assert.match(source, /if \(!composerWorkspacePath\) return null;/u);
-    assert.match(source, /liveIndicator\.contentBlocks/u);
+    assert.match(source, /(?:liveIndicator|segment)\.contentBlocks/u);
     assert.doesNotMatch(source, /const cwd = selectedChannel\.repoPath \?\? selectedChannel\.chatCwd;\s*if \(!cwd\) return null;/u);
   });
 

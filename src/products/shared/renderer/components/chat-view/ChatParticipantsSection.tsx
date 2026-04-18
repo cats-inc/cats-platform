@@ -1,7 +1,7 @@
-import type { ChatCat } from '../../../api/contracts.js';
-import { buildDraftParticipantExecutionLabel } from '../../chatUtils.js';
+import type { ChatCat } from '../../../api/workspaceContracts.js';
+import { buildDraftParticipantExecutionLabel } from '../../draftChatUtils.js';
 import { CatAvatarRow } from '../CatAvatarRow.js';
-import type { ResolvedChannelParticipant } from '../../../shared/channelParticipants.js';
+import type { ResolvedChannelParticipant } from '../../../channelParticipants.js';
 import {
   isChannelParticipantBusy,
   type WorkspaceBusyState,

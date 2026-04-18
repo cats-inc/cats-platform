@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   resolveActiveCompareChannelId,
   resolveCompareNeighborChannelId,
-} from '../src/products/chat/renderer/components/chat-view/compareNavigation.js';
+} from '../src/products/shared/renderer/components/chat-view/compareNavigation.js';
 
 const compareMembers = [
   { channelId: 'channel-a', title: 'A' },

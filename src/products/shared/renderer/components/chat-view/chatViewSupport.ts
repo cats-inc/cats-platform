@@ -1,7 +1,7 @@
 import type {
   AppShellPayload,
   ParallelChatGroupSummary,
-} from '../../../api/contracts.js';
+} from '../../../api/workspaceContracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
 import {
   isComposerAckBusyForChannel,
@@ -21,12 +21,12 @@ import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
 import { resolveComposerWorkspacePath } from '../../../../../core/workspacePaths.js';
 import { buildImplicitRecipient, buildNamedRecipient, type RecipientChipTarget } from '../ComposerRecipientChip.js';
 import type { ExecutionTargetValue } from '../../../../shared/renderer/components/ExecutionTarget.js';
-import { presentChannelTitle, type SelectedChannelView } from '../../chatUtils.js';
+import { presentChannelTitle, type SelectedChannelView } from '../../workspaceChatUtils.js';
 import {
   resolveCompareNeighborChannelId,
   resolveActiveCompareChannelId,
 } from './compareNavigation.js';
-import { resolveParticipantCatId, type ResolvedChannelParticipant } from '../../../shared/channelParticipants.js';
+import { resolveParticipantCatId, type ResolvedChannelParticipant } from '../../../channelParticipants.js';
 import {
   buildCatExecutionLabel,
   buildParticipantExecutionLabel,
@@ -572,4 +572,3 @@ export function resolveChatComposerViewState(input: {
     composerWorkspacePath: resolveComposerWorkspacePath(input.repoPath, input.chatCwd),
   };
 }
-

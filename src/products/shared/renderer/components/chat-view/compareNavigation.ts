@@ -1,4 +1,4 @@
-import type { ParallelChatGroupSummary } from '../../../api/contracts.js';
+import type { ParallelChatGroupSummary } from '../../../api/workspaceContracts.js';
 
 type CompareMember = ParallelChatGroupSummary['members'][number];
 

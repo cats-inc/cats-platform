@@ -3,7 +3,7 @@ import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
-import { ChatComposerArea } from '../src/products/chat/renderer/components/chat-view/ChatComposerArea.tsx';
+import { ChatComposerArea } from '../src/products/shared/renderer/components/chat-view/ChatComposerArea.tsx';
 import {
   clearRememberedExecutionLabels,
   rememberExecutionLabel,

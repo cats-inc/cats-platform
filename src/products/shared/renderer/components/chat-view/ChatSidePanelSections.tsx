@@ -7,17 +7,17 @@ import {
   getProviderDisplayName,
   getProviderModels,
 } from '../../../../../shared/providerCatalog.js';
-import type { AppShellPayload, ChatCat } from '../../../api/contracts.js';
+import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
 import type {
   ChatOperatorView,
   ChatRunInspectorView,
-} from '../../../shared/operator-loop/index.js';
+} from '../../../operator-loop/index.js';
 import {
   resolveParticipantCatId,
   type ResolvedChannelParticipant,
-} from '../../../shared/channelParticipants.js';
+} from '../../../channelParticipants.js';
 import { openFolderInExplorer } from '../../api/index.js';
-import { catInitials, type SelectedChannelView } from '../../chatUtils.js';
+import { catInitials, type SelectedChannelView } from '../../workspaceChatUtils.js';
 import { ActivityFeed } from '../ActivityFeed.js';
 import { ApprovalQueuePanel } from '../ApprovalQueuePanel.js';
 import type { ExecutionTargetValue } from '../../../../shared/renderer/components/ExecutionTarget.js';

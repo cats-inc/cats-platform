@@ -75,7 +75,7 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
 test('chat composer surfaces cancel-send during ACK and stop during dispatch', async () => {
   const chatViewSource = await readProductChatViewSource('chat');
   const chatViewSupportSource = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/components/chat-view/chatViewSupport.ts'),
+    path.join(process.cwd(), 'src/products/shared/renderer/components/chat-view/chatViewSupport.ts'),
     'utf8',
   );
 

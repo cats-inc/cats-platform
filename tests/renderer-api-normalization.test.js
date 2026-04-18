@@ -63,7 +63,7 @@ test('renderer cat memory client reads the single-record create response shape',
 
 test('ChatView reads roomRouting from the normalized selected-channel view without casts', async () => {
   const source = await readFile(
-    path.join(process.cwd(), 'src/products/chat/renderer/components/ChatView.tsx'),
+    path.join(process.cwd(), 'src/products/shared/renderer/components/chat-view/ChatView.tsx'),
     'utf8',
   );
 

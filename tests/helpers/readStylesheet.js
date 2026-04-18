@@ -1,5 +1,5 @@
-import { readFile as readFileAsync } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { access, readFile as readFileAsync } from 'node:fs/promises';
+import { constants, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,14 +9,48 @@ function resolvePath(input) {
   return input instanceof URL ? fileURLToPath(input) : input;
 }
 
+async function resolveExistingStylesheetPath(filePath) {
+  try {
+    await access(filePath, constants.F_OK);
+    return filePath;
+  } catch {
+    if (/src[\\/]products[\\/]chat[\\/]renderer[\\/]styles[\\/]/u.test(filePath)) {
+      const fallbackPath = filePath.replace(
+        /src[\\/]products[\\/]chat[\\/]renderer[\\/]styles[\\/]/u,
+        `${['src', 'products', 'shared', 'renderer', 'styles'].join(path.sep)}${path.sep}`,
+      );
+      await access(fallbackPath, constants.F_OK);
+      return fallbackPath;
+    }
+    throw new Error(`ENOENT: no such file or directory, open '${filePath}'`);
+  }
+}
+
+function resolveExistingStylesheetPathSync(filePath) {
+  if (existsSync(filePath)) {
+    return filePath;
+  }
+  if (/src[\\/]products[\\/]chat[\\/]renderer[\\/]styles[\\/]/u.test(filePath)) {
+    const fallbackPath = filePath.replace(
+      /src[\\/]products[\\/]chat[\\/]renderer[\\/]styles[\\/]/u,
+      `${['src', 'products', 'shared', 'renderer', 'styles'].join(path.sep)}${path.sep}`,
+    );
+    if (existsSync(fallbackPath)) {
+      return fallbackPath;
+    }
+  }
+  throw new Error(`ENOENT: no such file or directory, open '${filePath}'`);
+}
+
 async function readStylesheetInternal(filePath, seen) {
-  if (seen.has(filePath)) {
+  const resolvedPath = await resolveExistingStylesheetPath(filePath);
+  if (seen.has(resolvedPath)) {
     return '';
   }
-  seen.add(filePath);
+  seen.add(resolvedPath);
 
-  const source = await readFileAsync(filePath, 'utf8');
-  const directory = path.dirname(filePath);
+  const source = await readFileAsync(resolvedPath, 'utf8');
+  const directory = path.dirname(resolvedPath);
   let output = '';
   let lastIndex = 0;
 
@@ -31,13 +65,14 @@ async function readStylesheetInternal(filePath, seen) {
 }
 
 function readStylesheetSyncInternal(filePath, seen) {
-  if (seen.has(filePath)) {
+  const resolvedPath = resolveExistingStylesheetPathSync(filePath);
+  if (seen.has(resolvedPath)) {
     return '';
   }
-  seen.add(filePath);
+  seen.add(resolvedPath);
 
-  const source = readFileSync(filePath, 'utf8');
-  const directory = path.dirname(filePath);
+  const source = readFileSync(resolvedPath, 'utf8');
+  const directory = path.dirname(resolvedPath);
   let output = '';
   let lastIndex = 0;
 

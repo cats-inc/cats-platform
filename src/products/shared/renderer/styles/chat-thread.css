@@ -1,6 +1,124 @@
-@import './chat-thread-base.css';
+@import '../../../shared/renderer/styles/chat-thread-base.css';
 
-/* ── Message actions ── */
+.channelTopBarCenter {
+  width: min(55vw, var(--chat-transcript-max-width, 680px));
+}
+
+.catAvatar.channelParticipantAvatar {
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #fff;
+  color: #222;
+}
+
+.transcriptPanel {
+  max-width: var(--chat-transcript-max-width, 680px);
+}
+
+.transcriptList {
+  padding-top: 12px;
+}
+
+.transcriptMessageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transcriptMessageStackUser {
+  align-items: flex-end;
+}
+
+.transcriptMessageStackOrchestrator,
+.transcriptMessageStackAgent {
+  align-items: flex-start;
+}
+
+.transcriptMessageStackSystem {
+  align-items: center;
+}
+
+.transcriptMessageUser {
+  margin-left: 0;
+}
+
+.transcriptMessageOrchestrator,
+.transcriptMessageAgent {
+  margin-right: 0;
+}
+
+.transcriptMessageSystem {
+  margin: 0;
+}
+
+.scrollToBottomButton {
+  position: absolute;
+  top: -48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  pointer-events: auto;
+}
+
+.scrollToBottomButton:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.composerCardDocked {
+  max-width: var(--chat-transcript-max-width, 680px);
+}
+
+.composerCardDocked.composerCardDockedParallel {
+  bottom: 78px;
+}
+
+.composerCardFresh {
+  max-width: var(--chat-transcript-max-width, 680px);
+}
+
+.draftGreetingActions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.draftPromptSuggestions {
+  margin-top: 18px;
+}
+
+.draftPromptSuggestions .chipRow {
+  justify-content: center;
+}
+
+.draftPromptChip {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.draftPromptChip:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.draftPromptChip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
 .messageActions {
   display: flex;
@@ -44,6 +162,18 @@
 .transcriptMessageStackUser:hover .messageActionsHoverOnly,
 .transcriptMessageStackUser:focus-within .messageActionsHoverOnly {
   opacity: 1;
+}
+
+.userTurnStatus {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.userTurnStatusFailed {
+  color: color-mix(in srgb, #b42318 72%, var(--text) 28%);
+  font-size: 0.76rem;
+  font-weight: 500;
 }
 
 .messageActionsPersistent {
@@ -98,62 +228,207 @@
   background: var(--border);
 }
 
-/* ── Compare cards ── */
+.parallelFooterBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 60px;
+  width: calc(100% + 56px);
+  margin: 0 -28px;
+  padding: 0 28px;
+  background: color-mix(in srgb, var(--canvas-bg) 90%, white 10%);
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent 20%);
+  backdrop-filter: blur(10px);
+  z-index: 4;
+}
+
+.parallelFooterNavButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.parallelFooterNavButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.parallelFooterNavButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.parallelFooterTabs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.parallelFooterTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.parallelFooterTab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.parallelFooterTab:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.parallelFooterTabActive {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.parallelFooterTabLabel {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 720px) {
+  .composerCardDocked.composerCardDockedParallel {
+    bottom: 78px;
+  }
+
+  .parallelFooterBar {
+    width: calc(100% + 16px);
+    margin: 0 -8px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  .parallelFooterTab {
+    padding: 0 10px;
+  }
+
+  .parallelFooterTabLabel {
+    max-width: 120px;
+  }
+}
+
+.typingEventTape {
+  margin-top: 8px;
+}
+
+.typingEventRow {
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: var(--panel-hover);
+}
+
+.typingEventRowActive {
+  border-left: 2px solid var(--accent);
+}
+
+.typingEventRowSuccess {
+  border-left: 2px solid var(--ready-text);
+}
+
+.typingEventRowError {
+  border-left: 2px solid var(--danger);
+}
+
+.typingEventLabel {
+  color: var(--muted-soft);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+}
+
+.typingEventText {
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* ── Compare cards carousel ── */
 
 .compareCardsCarousel {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  overflow: visible;
   width: 100%;
 }
 
 .compareCardsGrid {
   display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   width: 100%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .compareCardsGridSingle {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 1fr;
 }
 
 .compareCard {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-width: 0;
+  gap: 8px;
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--panel);
   box-shadow: var(--shadow);
   animation: typingFadeIn 0.2s ease;
+  min-width: 0;
 }
 
 .compareCardStreaming {
-  border-color: color-mix(in srgb, var(--accent) 18%, var(--border) 82%);
-  background: color-mix(in srgb, var(--panel) 94%, var(--accent-soft) 6%);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border) 65%);
 }
 
 .compareCardSealed {
-  background: color-mix(in srgb, var(--panel) 98%, white 2%);
+  opacity: 1;
 }
 
 .compareCardHeader {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 28px;
 }
 
-.compareCardHeader .transcriptMessageTop {
-  margin-bottom: 0;
+.compareCardBody {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  min-height: 1.5em;
 }
 
 .compareCardActions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -176,35 +451,27 @@
   color: var(--text);
 }
 
-.compareCardBody {
-  min-width: 0;
-}
-
-.compareCardsCarouselNavVisible {
-  padding-inline: 44px;
-}
+/* Floating nav buttons */
 
 .compareCardsNavButton {
   position: absolute;
-  top: 50%;
-  z-index: 1;
+  top: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--panel) 92%, white 8%);
+  background: var(--panel);
   color: var(--muted);
-  box-shadow: var(--shadow);
   cursor: pointer;
-  transform: translateY(-50%);
+  z-index: 2;
 }
 
 .compareCardsNavButton:hover {
-  color: var(--text);
   background: var(--panel-hover);
+  color: var(--text);
 }
 
 .compareCardsNavPrev {
@@ -215,19 +482,22 @@
   right: -44px;
 }
 
+/* Pagination dots */
+
 .compareCardsPagination {
   display: flex;
-  align-items: center;
   justify-content: center;
   gap: 6px;
+  padding: 8px 0 0;
 }
 
 .compareCardsPaginationDot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--border);
+  border-radius: 50%;
+  background: var(--muted-soft);
   cursor: pointer;
   transition: background 0.15s ease;
 }

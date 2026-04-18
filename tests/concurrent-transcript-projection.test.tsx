@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import type { JSX } from 'react';
 
 import { IDLE_BUSY_STATE } from '../src/shared/workspaceBusy.ts';
-import { ChatTranscriptPanel } from '../src/products/chat/renderer/components/chat-view/ChatTranscriptPanel.tsx';
+import { ChatTranscriptPanel } from '../src/products/shared/renderer/components/chat-view/ChatTranscriptPanel.tsx';
 import { ChatTranscriptSurface } from '../src/products/shared/renderer/components/chat-view/ChatTranscriptSurface.tsx';
 import {
   buildConcurrentTranscriptRenderItems,

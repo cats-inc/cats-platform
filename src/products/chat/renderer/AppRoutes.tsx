@@ -6,20 +6,23 @@ import {
   resolveAppEntryPath,
   resolveVisibleChatPath,
 } from '../shared/channelPaths.js';
+import { resolveCatStatusIndicator } from '../shared/catStatusResolution.js';
 import { BootShell, type SelectedChannelView } from './chatUtils.js';
 import {
   AddCatPanel,
   type AddCatPanelProps,
 } from './components/AddCatPanel.js';
+import { CatStatusRow } from './components/CatStatusRow.js';
 import type { FolderBrowserContentProps } from './components/FolderBrowser.js';
 import {
   ChatView,
   type ChatViewProps,
-} from './components/ChatView.js';
+} from '../../shared/renderer/components/chat-view/ChatView.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
+import { ChatComposerTargetSlot } from '../../shared/renderer/components/chat-view/ChatComposerTargetSlot.js';
 import {
   CompanionWorkspace,
 } from './components/companion/CompanionWorkspace.js';
@@ -99,6 +102,44 @@ export function AppRoutes({
                 selectedChannel={selectedChannel}
                 routeChannelId={routeChannelId}
                 onOpenAddCat={onToggleAddCat}
+                renderComposerTargetSlot={(context) => (
+                  <ChatComposerTargetSlot
+                    payload={context.payload}
+                    composerBusy={context.composerBusy}
+                    composerRecipients={context.composerRecipients}
+                    defaultRecipientParticipantId={context.defaultRecipientParticipantId}
+                    composerStackParticipants={context.composerStackParticipants}
+                    directLaneCat={context.directLaneCat}
+                    isDirectLane={context.isDirectLane}
+                    isSoloComposer={context.isSoloComposer}
+                    activeWorkflowShape={context.activeWorkflowShape}
+                    onToggleActiveWorkflowShape={context.onToggleActiveWorkflowShape}
+                    activeAudienceKeys={context.activeAudienceKeys}
+                    onSetActiveAudienceKeys={context.onSetActiveAudienceKeys}
+                    onOpenSection={context.onOpenSection}
+                  />
+                )}
+                renderStatusRow={(context) => {
+                  const indicators = context.activeAssignedCats
+                    .map((assignment) => {
+                      const cat = context.payload.chat.cats.find((candidate) => candidate.id === assignment.catId);
+                      if (!cat) {
+                        return null;
+                      }
+                      return resolveCatStatusIndicator(
+                        cat,
+                        context.selectedChannel as unknown as Parameters<typeof resolveCatStatusIndicator>[1],
+                        context.operatorView,
+                      );
+                    })
+                    .filter((indicator): indicator is NonNullable<typeof indicator> => indicator != null);
+                  return indicators.length > 0 ? (
+                    <CatStatusRow
+                      indicators={indicators}
+                      onInspect={(catId) => context.openSidePanelTo(`cat:${catId}`)}
+                    />
+                  ) : null;
+                }}
               />
             ) : (
               <BootShell />
@@ -134,7 +175,33 @@ export function AppRoutes({
                 selectedChannel={directLaneChannel}
                 onOpenAddCat={noop}
                 showAddCatButton={false}
-                onToggleCompanionMode={onToggleCompanionMode}
+                renderComposerTargetSlot={(context) => (
+                  <ChatComposerTargetSlot
+                    payload={context.payload}
+                    composerBusy={context.composerBusy}
+                    composerRecipients={context.composerRecipients}
+                    defaultRecipientParticipantId={context.defaultRecipientParticipantId}
+                    composerStackParticipants={context.composerStackParticipants}
+                    directLaneCat={context.directLaneCat}
+                    isDirectLane={context.isDirectLane}
+                    isSoloComposer={context.isSoloComposer}
+                    activeWorkflowShape={context.activeWorkflowShape}
+                    onToggleActiveWorkflowShape={context.onToggleActiveWorkflowShape}
+                    activeAudienceKeys={context.activeAudienceKeys}
+                    onSetActiveAudienceKeys={context.onSetActiveAudienceKeys}
+                    onOpenSection={context.onOpenSection}
+                  />
+                )}
+                renderTopBarExtraActions={(context) => context.isDirectLane ? (
+                  <button
+                    className="companionToggleButton"
+                    type="button"
+                    onClick={onToggleCompanionMode}
+                    title="Open companion workspace"
+                  >
+                    Companion
+                  </button>
+                ) : null}
               />
             ) : (
               <NewChatDraft

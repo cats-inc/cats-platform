@@ -10,18 +10,20 @@ for (const product of PRODUCT_SURFACES) {
     const source = await readProductChatViewSource(product);
 
     assert.match(source, /className="rosterAvatars rosterAvatarsExpanded"/u);
-    assert.match(source, /const activeTopBarCatIds = useMemo/u);
+    assert.match(source, /resolveChatViewTopBarPresenceState|const activeTopBarCatIds = useMemo/u);
     assert.match(source, /visibleLiveIndicator\?\.activeCatIds/u);
     assert.match(source, /new Set\(activeTopBarCatIds\)/u);
+    assert.match(source, /activeTopBarCatIdSet\.has\(participant\.pulseCatId\)/u);
     if (product === 'chat') {
-      assert.match(source, /const activeTopBarParticipantIds = useMemo/u);
+      assert.match(
+        source,
+        /resolveChatViewTopBarPresenceState|const activeTopBarParticipantIds = useMemo/u,
+      );
       assert.match(source, /new Set\(activeTopBarParticipantIds\)/u);
       assert.match(source, /activeTopBarParticipantIdSet\.has\(participant\.pulseParticipantId\)/u);
-      assert.match(source, /activeTopBarCatIdSet\.has\(participant\.pulseCatId\)/u);
       return;
     }
 
-    assert.match(source, /pulsing:\s*activeTopBarCatIdSet\.has\(cat\.id\)/u);
     assert.doesNotMatch(source, /liveIndicator\?\.active && liveIndicator\.catId === cat\.id/u);
   });
 

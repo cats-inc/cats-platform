@@ -35,7 +35,7 @@ import {
 } from '../src/shared/liveIndicator.ts';
 import {
   resolveChatViewTopBarPresenceState,
-} from '../src/products/chat/renderer/components/chat-view/chatViewSupport.ts';
+} from '../src/products/shared/renderer/components/chat-view/chatViewSupport.ts';
 import {
   shouldRenderLiveTranscriptBlock,
   shouldShowLiveTranscriptTrailingDots,

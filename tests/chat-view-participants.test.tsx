@@ -9,7 +9,7 @@ import type {
   ChatChannelParticipant,
   ChatChannelView,
 } from '../src/products/chat/api/contracts.ts';
-import { ChatView, type ChatViewProps } from '../src/products/chat/renderer/components/ChatView.tsx';
+import { ChatView, type ChatViewProps } from '../src/products/shared/renderer/components/chat-view/ChatView.tsx';
 import { buildDraftParticipantExecutionLabel } from '../src/products/chat/renderer/chatUtils.tsx';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
 import {

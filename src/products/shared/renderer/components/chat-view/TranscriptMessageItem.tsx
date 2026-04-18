@@ -4,22 +4,39 @@ import type {
   ChatCat,
   ChatMessageChoiceResponse,
   ParallelChatRelayCommandKind,
-} from '../../../api/contracts.js';
+} from '../../../api/workspaceContracts.js';
 import {
   catInitials,
   messageTone,
   resolveTranscriptMessageSpeaker,
   type SelectedChannelView,
-} from '../../chatUtils.js';
+} from '../../workspaceChatUtils.js';
 import { MessageBody } from '../MessageBody.js';
 import {
   MessageChoices,
   type MessageChoicesSubmitInput,
 } from '../MessageChoices.js';
-import { TranscriptMessageActions } from './TranscriptMessageActions.js';
+import {
+  RelayActionIcon,
+  RetryActionIcon,
+  TranscriptMessageActions,
+  type TranscriptMessageActionDescriptor,
+} from './TranscriptMessageActions.js';
 import type {
   ResolvedChannelParticipant,
-} from '../../../shared/channelParticipants.js';
+} from '../../../channelParticipants.js';
+
+const relayActions: Array<{
+  command: ParallelChatRelayCommandKind;
+  label: string;
+}> = [
+  { command: 'check_this', label: 'Check with others' },
+  { command: 'synthesize_this', label: 'Synthesize with others' },
+  { command: 'improve_this', label: 'Improve in others' },
+  { command: 'adopt_this', label: 'Adopt in others' },
+  { command: 'counter_this', label: 'Counter with others' },
+  { command: 'debate_this', label: 'Debate with others' },
+];
 
 export interface TranscriptMessageItemProps {
   message: SelectedChannelView['messages'][number];
@@ -41,6 +58,7 @@ export interface TranscriptMessageItemProps {
   onToggleRelayMenu: () => void;
   onCloseRelayMenu: () => void;
   onRelayMessage?: (messageId: string, command: ParallelChatRelayCommandKind) => Promise<void>;
+  extraActions?: ReadonlyArray<TranscriptMessageActionDescriptor>;
   resolveMessageParticipant: (
     message: SelectedChannelView['messages'][number],
   ) => ResolvedChannelParticipant | null;
@@ -86,6 +104,7 @@ export function TranscriptMessageItem({
   onToggleRelayMenu,
   onCloseRelayMenu,
   onRelayMessage,
+  extraActions = [],
   resolveMessageParticipant,
   resolveParticipantCatRecord,
   buildParticipantAvatarClassName,
@@ -97,6 +116,41 @@ export function TranscriptMessageItem({
   const speaker = resolveTranscriptMessageSpeaker(message, cats);
   const transcriptParticipant = resolveMessageParticipant(message);
   const transcriptParticipantCat = resolveParticipantCatRecord(transcriptParticipant);
+  const resolvedExtraActions: TranscriptMessageActionDescriptor[] = [...extraActions];
+
+  if (message.senderKind === 'user' && userTurnStatus === 'failed' && onRetryMessage) {
+    resolvedExtraActions.push({
+      key: `retry:${message.id}`,
+      title: 'Retry response',
+      icon: <RetryActionIcon />,
+      disabled: retryBusy,
+      onSelect: () => {
+        void onRetryMessage(message.id);
+      },
+    });
+  }
+
+  if (isCompareGroup && message.senderKind !== 'user' && onRelayMessage) {
+    resolvedExtraActions.push({
+      key: `relay:${message.id}`,
+      kind: 'menu',
+      title: 'Relay to others',
+      icon: <RelayActionIcon />,
+      disabled: compareBusy,
+      open: relayMenuOpen,
+      onToggle: onToggleRelayMenu,
+      items: relayActions.map((action, index) => ({
+        key: action.command,
+        label: action.label,
+        disabled: compareBusy,
+        dividerBefore: index === 2 || index === 4,
+        onSelect: () => {
+          onCloseRelayMenu();
+          void onRelayMessage(message.id, action.command);
+        },
+      })),
+    });
+  }
 
   return (
     <article className={stackClassName}>
@@ -167,19 +221,12 @@ export function TranscriptMessageItem({
         ) : null}
       </div>
       <TranscriptMessageActions
-        messageId={message.id}
-        messageBody={message.body}
         senderKind={message.senderKind}
-        compareBusy={compareBusy}
-        isCompareGroup={isCompareGroup}
-        relayMenuOpen={relayMenuOpen}
-        showRetryAction={userTurnStatus === 'failed'}
-        retryBusy={retryBusy}
-        onRetryMessage={onRetryMessage}
-        onCopyMessage={onCopyMessage}
-        onToggleRelayMenu={onToggleRelayMenu}
-        onCloseRelayMenu={onCloseRelayMenu}
-        onRelayMessage={onRelayMessage}
+        showDefaultCopyAction={message.body.trim().length > 0}
+        onCopyMessage={() => {
+          void onCopyMessage(message.body);
+        }}
+        extraActions={resolvedExtraActions}
       />
 
       {message.choices && message.choices.length > 0 ? (

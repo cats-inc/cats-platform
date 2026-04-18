@@ -11,16 +11,16 @@ import type {
   ChatMessageChoiceResponse,
   ConcurrentChatPresentationMode,
   ParallelChatRelayCommandKind,
-} from '../../../api/contracts.js';
+} from '../../../api/workspaceContracts.js';
 import type { LiveIndicatorState } from '../../hooks/useLiveIndicator.js';
 import type { LiveIndicatorSegmentState } from '../../hooks/useLiveIndicator.js';
 import type {
   MessageChoicesSubmitInput,
 } from '../MessageChoices.js';
-import type { SelectedChannelView } from '../../chatUtils.js';
+import type { SelectedChannelView } from '../../workspaceChatUtils.js';
 import type {
   ResolvedChannelParticipant,
-} from '../../../shared/channelParticipants.js';
+} from '../../../channelParticipants.js';
 import {
   resolveLiveIndicatorSegments,
 } from '../../../../../shared/liveIndicator.js';
@@ -38,12 +38,19 @@ import type {
   ConcurrentClusterContext,
 } from '../../../../shared/renderer/components/chat-view/concurrentClusterUiState.js';
 import { LiveTranscriptIndicator } from '../../../../shared/renderer/components/chat-view/LiveTranscriptIndicator.js';
+import type { TranscriptMessageActionDescriptor } from './TranscriptMessageActions.js';
+
+export interface TranscriptMessageActionContext {
+  message: SelectedChannelView['messages'][number];
+  selectedChannel: SelectedChannelView;
+}
 
 export interface ChatTranscriptPanelProps {
   hasConversationStarted: boolean;
   greeting: string;
   transcriptListRef: Ref<HTMLDivElement>;
   bottomSentinelRef: RefCallback<HTMLDivElement>;
+  selectedChannel: SelectedChannelView;
   visibleMessages: SelectedChannelView['messages'];
   workflow: SelectedChannelView['roomRouting']['workflow'];
   cats: ChatCat[];
@@ -95,6 +102,9 @@ export interface ChatTranscriptPanelProps {
   buildConcurrentClusterActions?: (
     input: ConcurrentClusterActionContext,
   ) => ReadonlyArray<ConcurrentClusterAction>;
+  buildTranscriptMessageActions?: (
+    input: TranscriptMessageActionContext,
+  ) => ReadonlyArray<TranscriptMessageActionDescriptor>;
 }
 
 export function ChatTranscriptPanel({
@@ -102,6 +112,7 @@ export function ChatTranscriptPanel({
   greeting,
   transcriptListRef,
   bottomSentinelRef,
+  selectedChannel,
   visibleMessages,
   workflow,
   cats,
@@ -131,6 +142,7 @@ export function ChatTranscriptPanel({
   showLiveProgressDetails = false,
   resolveConcurrentClusterPresentationMode,
   buildConcurrentClusterActions,
+  buildTranscriptMessageActions,
 }: ChatTranscriptPanelProps) {
   const [openRelayMenuId, setOpenRelayMenuId] = useState<string | null>(null);
 
@@ -211,6 +223,10 @@ export function ChatTranscriptPanel({
           )}
         onCloseRelayMenu={() => setOpenRelayMenuId(null)}
         onRelayMessage={onRelayMessage}
+        extraActions={buildTranscriptMessageActions?.({
+          message,
+          selectedChannel,
+        }) ?? []}
         resolveMessageParticipant={resolveMessageParticipant}
         resolveParticipantCatRecord={resolveParticipantCatRecord}
         buildParticipantAvatarClassName={buildParticipantAvatarClassName}

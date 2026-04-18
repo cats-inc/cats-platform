@@ -6,10 +6,10 @@ import {
 import type {
   AppShellPayload,
   ChatCat,
-} from '../../api/contracts.js';
+} from '../../api/workspaceContracts.js';
 import {
   type SelectedChannelView,
-} from '../chatUtils.js';
+} from '../workspaceChatUtils.js';
 import {
   buildCatExecutionLabel,
   buildParticipantExecutionLabel,
@@ -20,7 +20,7 @@ import {
   findAssignedParticipant,
   resolveParticipantCatId,
   type ResolvedChannelParticipant,
-} from '../../shared/channelParticipants.js';
+} from '../../channelParticipants.js';
 
 export interface TopBarParticipant {
   key: string;
@@ -34,7 +34,7 @@ export interface TopBarParticipant {
   pulseCatId: string | null;
 }
 
-export function useChatParticipantPresentation(options: {
+export function useWorkspaceParticipantPresentation(options: {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
   activeAssignedCats: SelectedChannelView['assignedCats'];
@@ -291,3 +291,5 @@ export function useChatParticipantPresentation(options: {
     resolveMessageParticipant,
   };
 }
+
+export { useWorkspaceParticipantPresentation as useChatParticipantPresentation };
