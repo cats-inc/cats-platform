@@ -104,3 +104,21 @@ test('fingerprintDraftHelperChips treats a missing label the same as an empty la
     fingerprintDraftHelperChips(withNullLabel),
   );
 });
+
+test('fingerprintDraftHelperChips resists delimiter-injection collisions when chip copy shifts separator characters across fields', () => {
+  const promptOwnsTail = [{ id: 'chip-a', prompt: 'b::c', label: 'd' }];
+  const labelOwnsTail = [{ id: 'chip-a', prompt: 'b', label: 'c::d' }];
+  assert.notEqual(
+    fingerprintDraftHelperChips(promptOwnsTail),
+    fingerprintDraftHelperChips(labelOwnsTail),
+  );
+  const promptOwnsJoin = [{ id: 'chip-a', prompt: 'x||y', label: 'z' }];
+  const splitAcrossChips = [
+    { id: 'chip-a', prompt: 'x', label: '' },
+    { id: 'y', prompt: 'z', label: '' },
+  ];
+  assert.notEqual(
+    fingerprintDraftHelperChips(promptOwnsJoin),
+    fingerprintDraftHelperChips(splitAcrossChips),
+  );
+});

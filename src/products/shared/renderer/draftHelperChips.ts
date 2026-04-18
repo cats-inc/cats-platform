@@ -41,6 +41,8 @@ export function shouldRenderDraftHelperChips(input: {
 // Callers pass this fingerprint as the hook's reset key. We encode id, prompt, and label
 // because a bundle refresh can reuse the same chip ids while rewriting the copy — keying
 // on ids alone would keep a dismissed row hidden even though the content changed.
+// Serialize via JSON.stringify over fixed-order tuples so chip copy containing delimiter
+// characters cannot collide with a different chip set under naive string joining.
 export function fingerprintDraftHelperChips(chips: ReadonlyArray<{
   id: string;
   prompt: string;
@@ -49,9 +51,9 @@ export function fingerprintDraftHelperChips(chips: ReadonlyArray<{
   if (chips.length === 0) {
     return null;
   }
-  return chips
-    .map((chip) => `${chip.id}::${chip.prompt}::${chip.label ?? ''}`)
-    .join('||');
+  return JSON.stringify(
+    chips.map((chip) => [chip.id, chip.prompt, chip.label ?? null]),
+  );
 }
 
 export function useDraftHelperChipVisibility(input: {
