@@ -169,6 +169,60 @@ test('hydrateGuideCatUiPrefs keeps defaults in memory when local persistence fai
   assert.deepEqual(result.prefs, GUIDE_CAT_UI_PREFS_DEFAULTS);
 });
 
+test('hydrateGuideCatUiPrefs does not overwrite malformed stored records during bootstrap', () => {
+  const storage = new MemoryStorage();
+  storage.setItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY, '{');
+
+  const result = hydrateGuideCatUiPrefs({
+    storage,
+  });
+
+  assert.equal(result.source, 'defaults');
+  assert.equal(result.persisted, false);
+  assert.deepEqual(result.prefs, GUIDE_CAT_UI_PREFS_DEFAULTS);
+  assert.equal(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY), '{');
+});
+
+test('hydrateGuideCatUiPrefs does not overwrite unsupported stored schema versions', () => {
+  const storage = new MemoryStorage();
+  const unsupportedRecord = JSON.stringify({
+    version: 2,
+    sidecarSeen: true,
+    sidecarMode: 'bubble',
+    placement: 'docked',
+    floatingAnchor: { x: 0.2, y: 0.8 },
+  });
+  storage.setItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY, unsupportedRecord);
+
+  const result = hydrateGuideCatUiPrefs({
+    storage,
+  });
+
+  assert.equal(result.source, 'defaults');
+  assert.equal(result.persisted, false);
+  assert.deepEqual(result.prefs, GUIDE_CAT_UI_PREFS_DEFAULTS);
+  assert.equal(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY), unsupportedRecord);
+});
+
+test('hydrateGuideCatUiPrefs retries local persistence on a later startup', () => {
+  const firstStartup = hydrateGuideCatUiPrefs({
+    storage: new ThrowingStorage(),
+  });
+  assert.equal(firstStartup.persisted, false);
+
+  const secondStorage = new MemoryStorage();
+  const secondStartup = hydrateGuideCatUiPrefs({
+    storage: secondStorage,
+  });
+
+  assert.equal(secondStartup.source, 'defaults');
+  assert.equal(secondStartup.persisted, true);
+  assert.deepEqual(
+    parseStoredGuideCatUiPrefs(secondStorage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY)),
+    GUIDE_CAT_UI_PREFS_DEFAULTS,
+  );
+});
+
 test('writeStoredGuideCatUiPrefs persists one atomic record', () => {
   const storage = new MemoryStorage();
   const current = {
@@ -226,6 +280,33 @@ test('GuideCatUiPrefsStore hydrates once and notifies subscribers on durable upd
   );
 
   unsubscribe();
+});
+
+test('GuideCatUiPrefsStore replaces an invalid stored record on the next durable write', () => {
+  const storage = new MemoryStorage();
+  storage.setItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY, '{');
+  const store = createGuideCatUiPrefsStore(storage);
+
+  store.ensureHydrated();
+
+  assert.deepEqual(store.getSnapshot(), GUIDE_CAT_UI_PREFS_DEFAULTS);
+  assert.equal(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY), '{');
+
+  store.update({
+    sidecarMode: 'bubble',
+  });
+
+  assert.deepEqual(store.getSnapshot(), {
+    ...GUIDE_CAT_UI_PREFS_DEFAULTS,
+    sidecarMode: 'bubble',
+  });
+  assert.deepEqual(
+    parseStoredGuideCatUiPrefs(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY)),
+    {
+      ...GUIDE_CAT_UI_PREFS_DEFAULTS,
+      sidecarMode: 'bubble',
+    },
+  );
 });
 
 test('GuideCatUiPrefsStore reconciles external storage updates from another window', async () => {

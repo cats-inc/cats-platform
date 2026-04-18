@@ -185,6 +185,19 @@ export function readStoredGuideCatUiPrefs(
   }
 }
 
+function readStoredGuideCatUiPrefsRaw(
+  storage: GuideCatUiPrefsStorage | null | undefined,
+): string | null {
+  if (!storage) {
+    return null;
+  }
+  try {
+    return storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function writeStoredGuideCatUiPrefs(
   storage: GuideCatUiPrefsStorage | null | undefined,
   prefs: GuideCatUiPrefs,
@@ -210,9 +223,18 @@ export function hydrateGuideCatUiPrefs(options: {
   storage: GuideCatUiPrefsStorage | null | undefined;
 }): GuideCatUiPrefsHydrationResult {
   const { storage } = options;
-  const stored = readStoredGuideCatUiPrefs(storage);
+  const storedRaw = readStoredGuideCatUiPrefsRaw(storage);
+  const stored = parseStoredGuideCatUiPrefs(storedRaw);
   if (stored) {
     return { prefs: stored, source: 'local', persisted: true };
+  }
+
+  if (storedRaw !== null) {
+    return {
+      prefs: { ...GUIDE_CAT_UI_PREFS_DEFAULTS },
+      source: 'defaults',
+      persisted: false,
+    };
   }
 
   const prefs = { ...GUIDE_CAT_UI_PREFS_DEFAULTS };

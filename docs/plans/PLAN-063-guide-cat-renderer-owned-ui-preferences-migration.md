@@ -78,10 +78,10 @@ silent prerelease migration debt
       values, and unsupported-record fallback behavior.
 - [x] Task 1.5: Freeze the clean-start rule: do not ship a prerelease
       server-backed Guide Cat UI preference hydration seam.
-- [ ] Task 1.6: Freeze the schema-evolution strategy for future store versions,
+- [x] Task 1.6: Freeze the schema-evolution strategy for future store versions,
       including:
-      - tolerant parsing of older payloads
-      - unsupported/newer-version fallback behavior
+      - future versions must continue to parse the current schema version
+      - unsupported/newer-version bootstrap fallback behavior
       - malformed-record recovery behavior
       - when a future schema migration may overwrite or discard an older record
 
@@ -115,7 +115,7 @@ UI preference fetches
       local record already exists.
 - [x] Task 3.2: When no local record exists, initialize the renderer-owned
       Guide Cat UI prefs from deterministic defaults and persist them locally.
-- [ ] Task 3.3: If local persistence fails because of quota, permissions, or
+- [x] Task 3.3: If local persistence fails because of quota, permissions, or
       interrupted startup, keep the session running from memory where possible
       and let the next startup retry from the same renderer-owned path.
 - [x] Task 3.4: Keep the fallback when no usable local values exist:
