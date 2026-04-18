@@ -123,49 +123,74 @@ body.guideCatDragging .guideCatDockSlot,
   min-height: 32px;
 }
 
-/* Drag-preview / drop-zone state: sit above the account footer with a small
-   gap, and keep the outlined border fully inside the sidebar so neither the
-   dashed drop-zone nor the preview border overflows the sidebar edges or
-   bleeds into the user chrome. */
+/* Workspace dock slot: span the full sidebar width and align content to the
+   same 18px x-offset as the user chrome's profile badge. This way the
+   drag-preview ghost sits exactly where the pill will land once the drop
+   commits, and the docked pill avatar lines up under the user avatar.
+   `margin-bottom: 5px` lifts the drop-zone row above the footer so the
+   pill's vertical centre during drag preview is closer to where it ends
+   up after dock (the slot grows from 44px to 60px on dock, which
+   otherwise nudges the pill upward). The active-state override below
+   resets this margin so the docked slot sits flush with the footer. */
 .guideCatDockSlot--workspace {
   padding: var(--space-2, 6px) 18px;
-  margin: 0 8px 8px;
+  margin: 0 0 5px;
+  justify-content: flex-start;
 }
 
-/* Docked (active) state: the slot leaves drop-zone shape behind and joins the
-   user chrome as one 2x-tall block. It spans the full sidebar width, drops
-   its side margins, removes the dashed/preview border, and moves the hairline
-   separator from the footer's top to its own top so the dock row + footer row
-   read as a single chrome region. The pill is pinned to the same x offset as
-   the footer profile badge (see .sidebarFooterButton padding) so the avatars
-   line up vertically. */
+/* Docked (active) state: join the user chrome as one 2x-tall block — the
+   slot grows to 60px, the dashed drop-zone border is replaced by a single
+   hairline at the top, and the separator on top of .sidebarFooter is
+   removed so the dock row + footer row read as one chrome region. */
 .guideCatDockSlot--workspace[data-active='true'] {
   margin: 0;
   padding: 0 18px;
   min-height: 60px;
   height: 60px;
-  justify-content: flex-start;
+  /* Match .sidebarFooterButton's 10px gap between avatar and name so the
+     docked pill + name reads as the same chrome layout as the user row
+     below it. */
+  gap: 10px;
   border: none;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 0;
+  cursor: pointer;
+}
+
+/* Docked guide-cat name label next to the pill. Mirrors .sidebarFooter
+   strong's typography (0.9rem / 600) and truncates with an ellipsis so a
+   long name does not push the layout around. */
+.guideCatDockName {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarCollapsed .guideCatDockName {
+  display: none;
 }
 
 .guideCatDockSlot--workspace[data-active='true'] + .sidebarFooter {
   border-top: none;
 }
 
-/* Collapsed sidebar: the default 18px horizontal padding crushes the 28px
-   pill into an oval because the rail is too narrow. Drop the padding and
-   margins so the pill (and drag preview) sit as a 28px circle centred in the
-   rail, matching how the collapsed footer avatar is centred. */
+/* Collapsed sidebar: the default 18px horizontal padding and left alignment
+   would push the 28px pill into an oval / stick it to the rail's left edge.
+   Drop horizontal padding and re-centre so the pill (and drag preview) sit
+   as a 28px circle in the rail, matching how the collapsed footer avatar
+   is centred. */
 .sidebarCollapsed .guideCatDockSlot--workspace {
   padding: var(--space-2, 6px) 0;
-  margin: 0;
+  justify-content: center;
 }
 
 .sidebarCollapsed .guideCatDockSlot--workspace[data-active='true'] {
   padding: 0;
-  justify-content: center;
 }
 
 body.guideCatDragging
@@ -216,6 +241,13 @@ body.guideCatDragging
 
 .guideCatDockSlotGhost .guideCatPillAvatar {
   opacity: 0.4;
+}
+
+/* Nudge the workspace dock ghost 1px left so it sits on the same visual
+   column as the docked pill / user-avatar rather than a hair to the right.
+   Lobby dock keeps its centred layout untouched. */
+.guideCatDockSlot--workspace .guideCatDockSlotGhost {
+  margin-left: -1px;
 }
 
 @keyframes guideCatDockSlotGhostPulse {

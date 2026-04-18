@@ -1,4 +1,9 @@
-import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useCallback,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 
 import type { GuideCatRecord } from '../../core/types.js';
 import {
@@ -57,6 +62,20 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
     presentation.toggle();
   };
 
+  // Clicking the full active chrome row toggles the sidecar so the click
+  // target matches the 2x-tall chrome block the dock joins, not just the
+  // 28px pill. Drag-to-undock deliberately stays tied to the pill button
+  // (onPointerDown below) — pointerdown on the surrounding row does
+  // nothing, so the user can only start a drag by grabbing the avatar.
+  const handleRowClick = isActive ? handleClick : undefined;
+  const handlePillClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    // Stop the click from bubbling into the row handler; otherwise a
+    // direct avatar click would fire toggle twice (button + row) and
+    // cancel itself out.
+    event.stopPropagation();
+    handleClick();
+  };
+
   return (
     <div
       ref={setRef}
@@ -64,24 +83,30 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
       data-active={isActive ? 'true' : 'false'}
       data-preview={isPreview ? 'true' : 'false'}
       data-dragging={dragActive ? 'true' : 'false'}
+      onClick={handleRowClick}
     >
       {isActive ? (
-        <button
-          type="button"
-          className="guideCatPill guideCatPill--docked"
-          onPointerDown={handleDockPointerDown}
-          onClick={handleClick}
-          aria-label={`Open guide: ${guideCat.name}`}
-          data-tooltip={tooltip}
-          data-tooltip-delay="1000"
-        >
-          <img
-            className="guideCatPillAvatar"
-            src={GUIDE_CAT_AVATAR_URL}
-            alt=""
-            aria-hidden="true"
-          />
-        </button>
+        <>
+          <button
+            type="button"
+            className="guideCatPill guideCatPill--docked"
+            onPointerDown={handleDockPointerDown}
+            onClick={handlePillClick}
+            aria-label={`Open guide: ${guideCat.name}`}
+            data-tooltip={tooltip}
+            data-tooltip-delay="1000"
+          >
+            <img
+              className="guideCatPillAvatar"
+              src={GUIDE_CAT_AVATAR_URL}
+              alt=""
+              aria-hidden="true"
+            />
+          </button>
+          {slotKind === 'workspace' ? (
+            <span className="guideCatDockName">{guideCat.name}</span>
+          ) : null}
+        </>
       ) : null}
       {isPreview && !isActive ? (
         <div className="guideCatDockSlotGhost" aria-hidden="true">
