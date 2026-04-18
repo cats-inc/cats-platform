@@ -534,3 +534,9 @@ user starts with vague or concrete app intent
 - [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md)
 - [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md)
 - [Research: Codex View - Cats Chat, Cats Work, and Cats Code Product Boundaries](../research/2026-03-20-codex-cats-chat-work-code-product-boundaries.md)
+
+---
+
+*Created: 2026-04-14*
+*Author: Codex*
+*Updated: 2026-04-19*
