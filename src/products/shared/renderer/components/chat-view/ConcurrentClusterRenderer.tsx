@@ -413,7 +413,9 @@ export function SegmentContentBody({
     if (showProgressDetails && segment.progressText) {
       return <p className="typingStatusText">{segment.progressText}</p>;
     }
-    if (segment.phase === 'streaming' && hasVisibleLiveIndicatorSegmentActivity(segment)) {
+    // A streaming segment with identity but no visible text/progress/tools/events yet
+    // is the "waiting for reply" state - show typing dots instead of an orphan avatar.
+    if (segment.phase === 'streaming') {
       return <span className="typingDots"><span /><span /><span /></span>;
     }
     if (showTrailingDots) {

@@ -464,3 +464,82 @@ test('ChatTranscriptPanel renders copy actions for completed assistant bubbles a
   assert.match(markup, /aria-label="Copy message"/u);
   assert.match(markup, /title="Share to other chats"/u);
 });
+
+test('ChatTranscriptPanel shows typing dots for a streaming segment that has identity but no visible content yet', () => {
+  // Covers the +New code "Claude-CLI is working" state: assistant identity is known
+  // but no streaming text, tools, or events have landed yet. Without dots we would
+  // render an orphan avatar and no bubble, which made shared ChatView look broken in
+  // code/work compared to chat.
+  const liveIndicator = {
+    active: true,
+    sourceMessageId: 'message-user',
+    laneId: null,
+    targetStateId: null,
+    segmentIndex: 0,
+    sessionId: null,
+    identityParticipantId: null,
+    participantId: 'participant-claude',
+    catId: null,
+    activeCatIds: [],
+    catName: null,
+    speakerLabel: 'Claude-CLI',
+    sessionStartedAt: null,
+    requiresSessionStartConfirmation: false,
+    phase: 'streaming' as const,
+    progressText: '',
+    progressKind: null,
+    tools: [],
+    contentBlocks: [],
+    events: [],
+    segments: [],
+  };
+
+  const markup = renderToStaticMarkup(
+    <ChatTranscriptPanel
+      hasConversationStarted
+      greeting="Hello"
+      transcriptListRef={createRef<HTMLDivElement>()}
+      bottomSentinelRef={() => {}}
+      visibleMessages={[]}
+      workflow={{
+        activeTurn: null,
+        turnHistory: [],
+        eventHistory: [],
+        lastCheckpointEvent: null,
+        lastOutcomeEvent: null,
+      } as never}
+      cats={[]}
+      bossCatId={null}
+      selectedChannelId="channel-1"
+      disabledMentionNames={[]}
+      busy={IDLE_BUSY_STATE}
+      compareBusy={false}
+      isCompareGroup={false}
+      choiceResponsesBySource={new Map()}
+      onChoiceSubmit={() => {}}
+      latestUserTurnMessageId={null}
+      latestUserTurnStatus="idle"
+      liveIndicator={liveIndicator as Parameters<typeof ChatTranscriptPanel>[0]['liveIndicator']}
+      liveSpeakerParticipant={null}
+      liveSpeakerParticipantCat={null}
+      resolveLiveIndicatorSegmentParticipant={() => null}
+      messageStackTone={(senderKind) => senderKind}
+      resolveMessageParticipant={() => null}
+      resolveParticipantCatRecord={() => null}
+      buildParticipantAvatarClassName={() => 'catAvatar transcriptAvatar'}
+      buildParticipantAvatarStyle={() => undefined}
+      resolveParticipantAvatarUrl={() => null}
+      resolveParticipantDisplayName={() => ''}
+      showLiveProgressDetails={false}
+      resolveConcurrentClusterPresentationMode={() => 'inline_stack'}
+      buildConcurrentClusterActions={() => []}
+    />,
+  );
+
+  assert.match(markup, /typingIndicator/u);
+  assert.match(markup, /typingDots/u);
+  assert.match(
+    markup,
+    /transcriptMessage transcriptMessageAgent"><div class="transcriptMessageTop"[\s\S]*Claude-CLI[\s\S]*<\/strong><\/div><span class="typingDots"/u,
+  );
+});
