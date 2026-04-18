@@ -3281,7 +3281,7 @@ test('resolveVisibleLiveIndicator keeps active progress while only the user turn
   assert.equal(visible, liveIndicator);
 });
 
-test('collapsed live transcript keeps error blocks visible and only shows dots for streaming non-text blocks', () => {
+test('collapsed live transcript keeps error blocks visible and surfaces trailing dots whenever the segment is still streaming', () => {
   assert.equal(
     shouldRenderLiveTranscriptBlock(
       {
@@ -3299,6 +3299,9 @@ test('collapsed live transcript keeps error blocks visible and only shows dots f
     ),
     true,
   );
+  // Non-text block in any streaming segment keeps trailing dots visible so
+  // the user sees a "still working" signal regardless of whether the tool
+  // has already completed - the segment phase is what drives activity.
   assert.equal(
     shouldShowLiveTranscriptTrailingDots('streaming', {
       id: 'tool:complete',
@@ -3311,7 +3314,7 @@ test('collapsed live transcript keeps error blocks visible and only shows dots f
       toolId: 'tool-search',
       metadata: null,
     }),
-    false,
+    true,
   );
   assert.equal(
     shouldShowLiveTranscriptTrailingDots('streaming', {
@@ -3326,6 +3329,54 @@ test('collapsed live transcript keeps error blocks visible and only shows dots f
       metadata: null,
     }),
     true,
+  );
+  // Actively streaming text is the only case that suppresses trailing dots
+  // - the animated text itself already communicates "more coming".
+  assert.equal(
+    shouldShowLiveTranscriptTrailingDots('streaming', {
+      id: 'text:streaming',
+      index: 3,
+      kind: 'text',
+      status: 'streaming',
+      title: null,
+      text: 'partial',
+      toolName: null,
+      toolId: null,
+      metadata: null,
+    }),
+    false,
+  );
+  // A completed text block while the segment is still streaming (runtime
+  // has sealed the text but not the segment) should keep dots visible
+  // instead of leaving the bubble silent.
+  assert.equal(
+    shouldShowLiveTranscriptTrailingDots('streaming', {
+      id: 'text:complete',
+      index: 4,
+      kind: 'text',
+      status: 'complete',
+      title: null,
+      text: "I'll build a single-file HTML pomodoro timer.",
+      toolName: null,
+      toolId: null,
+      metadata: null,
+    }),
+    true,
+  );
+  // Sealed segments never show trailing dots, regardless of last block.
+  assert.equal(
+    shouldShowLiveTranscriptTrailingDots('sealed', {
+      id: 'text:complete',
+      index: 5,
+      kind: 'text',
+      status: 'complete',
+      title: null,
+      text: 'Final answer.',
+      toolName: null,
+      toolId: null,
+      metadata: null,
+    }),
+    false,
   );
 });
 
@@ -6045,4 +6096,98 @@ test('resolveVisibleLiveIndicator does not synthesize a waiting placeholder once
   );
 
   assert.equal(visible, null);
+});
+
+test('resolveVisibleLiveIndicator appends a waiting placeholder after a sealed primary segment while the workflow turn is still running', () => {
+  // Scenario: a sealed segment sits in the live indicator without a terminal
+  // result/error event yet (e.g., the runtime has sealed the text but has
+  // not emitted the next tool_use or text segment). If the sealed reply
+  // hasn't been persisted to messages yet, visibleSegments retains it. We
+  // synthesize a trailing waiting placeholder so the transcript keeps a
+  // "still working" dots bubble until the next segment lands.
+  const sealedSegment = createLiveIndicatorSegmentState({
+    phase: 'sealed',
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    identityParticipantId: 'participant-claude',
+    contentBlocks: [
+      {
+        id: 'text:0',
+        index: 0,
+        kind: 'text' as const,
+        status: 'complete' as const,
+        title: null,
+        text: 'I will build a single-file HTML pomodoro timer.',
+        toolName: null,
+        toolId: null,
+        metadata: null,
+      },
+    ],
+  });
+  const liveIndicator = projectLiveIndicatorStateFromSegments([sealedSegment]);
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user-current',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-18T12:00:00.000Z',
+      },
+    ],
+    '2026-04-18T12:00:04.000Z',
+  );
+
+  assert.ok(visible, 'expected visible indicator with trailing placeholder');
+  assert.equal(visible.segments.length, 2, 'expected sealed primary + waiting placeholder');
+  assert.equal(visible.segments[0]?.phase, 'sealed');
+  assert.equal(visible.segments[1]?.phase, 'waiting');
+  assert.equal(visible.segments[1]?.participantId, 'participant-claude');
+  assert.equal(visible.segments[1]?.speakerLabel, 'Claude-CLI');
+  assert.equal(visible.segments[1]?.contentBlocks.length, 0);
+});
+
+test('resolveVisibleLiveIndicator does not append a trailing placeholder once the sealed primary has fired a terminal result', () => {
+  // Same sealed-primary shape as the gap test, but the result event fired.
+  // Turn is done - no placeholder, no lingering dots after the sealed bubble.
+  let liveIndicator = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'text', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    text: 'All done.',
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'result', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+  });
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user-current',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-18T12:00:00.000Z',
+      },
+    ],
+    '2026-04-18T12:00:04.000Z',
+  );
+
+  assert.ok(visible, 'expected sealed segment to remain visible');
+  assert.equal(visible.segments.length, 1, 'no trailing placeholder after terminal result');
+  assert.equal(visible.segments[0]?.phase, 'sealed');
 });

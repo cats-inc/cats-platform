@@ -29,8 +29,18 @@ export function shouldShowLiveTranscriptTrailingDots(
   phase: 'idle' | 'waiting' | 'streaming' | 'sealed',
   lastBlock: LiveIndicatorContentBlock | null | undefined,
 ): boolean {
-  return phase === 'streaming'
-    && lastBlock != null
-    && lastBlock.kind !== 'text'
-    && lastBlock.status === 'streaming';
+  if (phase !== 'streaming') {
+    return false;
+  }
+  // Actively streaming text already communicates "more coming" through the
+  // animated text itself, so we suppress trailing dots in that case to avoid
+  // a redundant indicator tacked onto the end of the current chunk.
+  if (lastBlock?.kind === 'text' && lastBlock.status === 'streaming') {
+    return false;
+  }
+  // Any other streaming-phase state (no block yet, a streaming tool chip,
+  // or - critically - a completed text block waiting for the runtime to emit
+  // the next segment) should surface trailing dots so the bubble does not go
+  // silent between tokens.
+  return true;
 }

@@ -1188,6 +1188,44 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     return true;
   });
 
+  const buildTrailingWaitingPlaceholder = (
+    lastSegment: LiveIndicatorSegmentState,
+  ): LiveIndicatorSegmentState | null => {
+    if (!activeTurnUpdatedAt) {
+      return null;
+    }
+    const turnTerminated = lastSegment.events.some(
+      (event) => event.eventType === 'result' || event.eventType === 'error',
+    );
+    if (turnTerminated) {
+      return null;
+    }
+    const activeTurnTimestamp = Date.parse(activeTurnUpdatedAt);
+    if (!Number.isFinite(activeTurnTimestamp)) {
+      return null;
+    }
+    const latestReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
+    if (latestReplyTimestamp > activeTurnTimestamp) {
+      return null;
+    }
+    return createLiveIndicatorSegmentState({
+      phase: 'waiting',
+      sourceMessageId: lastSegment.sourceMessageId,
+      laneId: lastSegment.laneId,
+      targetStateId: lastSegment.targetStateId,
+      segmentIndex: lastSegment.segmentIndex + 1,
+      sessionId: lastSegment.sessionId,
+      identityParticipantId: lastSegment.identityParticipantId,
+      participantId: lastSegment.participantId,
+      catId: lastSegment.catId,
+      activeCatIds: lastSegment.activeCatIds,
+      catName: lastSegment.catName,
+      speakerLabel: lastSegment.speakerLabel,
+      sessionStartedAt: lastSegment.sessionStartedAt,
+      requiresSessionStartConfirmation: lastSegment.requiresSessionStartConfirmation,
+    });
+  };
+
   if (visibleSegments.length === 0) {
     // All source segments were filtered (typically because the sealed reply
     // was persisted to the transcript). If we're still inside an active
@@ -1196,38 +1234,25 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
     // transcript keeps showing typing dots during the gap between a sealed
     // reply and the next runtime event. Without this, CLI-backed sessions
     // leave an orphan avatar floating after the sealed bubble for seconds.
-    if (sourceSegments.length > 0 && activeTurnUpdatedAt) {
-      const lastSegment = sourceSegments.at(-1)!;
-      const turnTerminated = lastSegment.events.some(
-        (event) => event.eventType === 'result' || event.eventType === 'error',
-      );
-      if (!turnTerminated) {
-        const activeTurnTimestamp = Date.parse(activeTurnUpdatedAt);
-        if (Number.isFinite(activeTurnTimestamp)) {
-          const latestReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
-          if (latestReplyTimestamp <= activeTurnTimestamp) {
-            const waitingSegment = createLiveIndicatorSegmentState({
-              phase: 'waiting',
-              sourceMessageId: lastSegment.sourceMessageId,
-              laneId: lastSegment.laneId,
-              targetStateId: lastSegment.targetStateId,
-              segmentIndex: lastSegment.segmentIndex + 1,
-              sessionId: lastSegment.sessionId,
-              identityParticipantId: lastSegment.identityParticipantId,
-              participantId: lastSegment.participantId,
-              catId: lastSegment.catId,
-              activeCatIds: lastSegment.activeCatIds,
-              catName: lastSegment.catName,
-              speakerLabel: lastSegment.speakerLabel,
-              sessionStartedAt: lastSegment.sessionStartedAt,
-              requiresSessionStartConfirmation: lastSegment.requiresSessionStartConfirmation,
-            });
-            return projectLiveIndicatorStateFromSegments([waitingSegment]);
-          }
-        }
+    if (sourceSegments.length > 0) {
+      const placeholder = buildTrailingWaitingPlaceholder(sourceSegments.at(-1)!);
+      if (placeholder) {
+        return projectLiveIndicatorStateFromSegments([placeholder]);
       }
     }
     return null;
+  }
+
+  // Sealed-primary gap: the last visible segment is sealed but the workflow
+  // turn has not yet emitted a terminal event. Append a waiting placeholder
+  // so the user keeps seeing typing dots after the sealed bubble while the
+  // runtime prepares its next segment (tool_use, next text, etc.).
+  const lastVisibleSegment = visibleSegments.at(-1)!;
+  if (lastVisibleSegment.phase === 'sealed') {
+    const placeholder = buildTrailingWaitingPlaceholder(lastVisibleSegment);
+    if (placeholder) {
+      visibleSegments.push(placeholder);
+    }
   }
 
   const canReuseOriginalLiveIndicator =
