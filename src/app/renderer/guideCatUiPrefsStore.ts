@@ -150,15 +150,17 @@ export function parseStoredGuideCatUiPrefs(
       return null;
     }
     const record = parsed as Record<string, unknown>;
-    if (record.version !== GUIDE_CAT_UI_PREFS_SCHEMA_VERSION) {
-      return null;
+    switch (record.version) {
+      case GUIDE_CAT_UI_PREFS_SCHEMA_VERSION:
+        return {
+          sidecarSeen: record.sidecarSeen === true,
+          sidecarMode: normalizeSidecarMode(record.sidecarMode),
+          placement: normalizePlacement(record.placement),
+          floatingAnchor: normalizeFloatingAnchor(record.floatingAnchor),
+        };
+      default:
+        return null;
     }
-    return {
-      sidecarSeen: record.sidecarSeen === true,
-      sidecarMode: normalizeSidecarMode(record.sidecarMode),
-      placement: normalizePlacement(record.placement),
-      floatingAnchor: normalizeFloatingAnchor(record.floatingAnchor),
-    };
   } catch {
     return null;
   }
