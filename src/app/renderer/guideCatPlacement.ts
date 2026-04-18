@@ -135,6 +135,41 @@ export function resolveEffectiveFloatingAnchor(
   return anchor ?? { ...GUIDE_CAT_FLOATING_ANCHOR_DEFAULT };
 }
 
+export type GuideCatFloatingReleaseCommit =
+  | { floatingAnchor: GuideCatFloatingAnchor }
+  | { placement: 'floating'; floatingAnchor: GuideCatFloatingAnchor };
+
+export function resolveGuideCatFloatingReleaseCommit(input: {
+  pointerX: number;
+  pointerY: number;
+  viewport: GuideCatViewportRect;
+  safeArea: GuideCatSafeArea;
+  undock?: boolean;
+}): GuideCatFloatingReleaseCommit {
+  const anchor = projectFloatingAnchorToNormalized({
+    pointerX: input.pointerX,
+    pointerY: input.pointerY,
+    viewport: input.viewport,
+  });
+  const effective = resolveEffectiveFloatingAnchor(anchor);
+  const clamped = clampFloatingAnchorToSafeArea({
+    anchor: effective,
+    viewport: input.viewport,
+    safeArea: input.safeArea,
+  });
+  const floatingAnchor = projectFloatingAnchorToNormalized({
+    pointerX: clamped.x,
+    pointerY: clamped.y,
+    viewport: input.viewport,
+  });
+  return input.undock
+    ? {
+      placement: 'floating',
+      floatingAnchor,
+    }
+    : { floatingAnchor };
+}
+
 export function isPointerOverSlotCorridor(input: {
   pointerX: number;
   pointerY: number;

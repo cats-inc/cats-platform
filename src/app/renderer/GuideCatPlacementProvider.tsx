@@ -27,12 +27,10 @@ import {
 } from './useGuideCatSidecarState.js';
 import {
   GUIDE_CAT_UNDOCK_ESCAPE_THRESHOLD_PX,
-  clampFloatingAnchorToSafeArea,
   hasDragMovement,
   isPointerOverSlotCorridor,
-  projectFloatingAnchorToNormalized,
   resolveActiveDockSlot,
-  resolveEffectiveFloatingAnchor,
+  resolveGuideCatFloatingReleaseCommit,
   resolveGuideCatProjection,
   resolveGuideCatSafeArea,
   resolveGuideCatSurfaceClass,
@@ -307,25 +305,15 @@ export function GuideCatPlacementProvider({
     [],
   );
 
-  const resolveFloatingReleaseAnchor = useCallback(
-    (pointerX: number, pointerY: number) => {
-      const anchor = projectFloatingAnchorToNormalized({
+  const resolveFloatingReleaseCommit = useCallback(
+    (pointerX: number, pointerY: number, undock = false) => {
+      return resolveGuideCatFloatingReleaseCommit({
         pointerX,
         pointerY,
         viewport,
-      });
-      const effective = resolveEffectiveFloatingAnchor(anchor);
-      const clamped = clampFloatingAnchorToSafeArea({
-        anchor: effective,
-        viewport,
         safeArea,
+        undock,
       });
-      const normalized = projectFloatingAnchorToNormalized({
-        pointerX: clamped.x,
-        pointerY: clamped.y,
-        viewport,
-      });
-      return normalized;
     },
     [safeArea, viewport],
   );
@@ -352,20 +340,15 @@ export function GuideCatPlacementProvider({
         commitDockRelease(state.overSlot);
         suppressClickRef.current = true;
       } else if (state.mode === 'floating' && moved) {
-        onCommit({
-          floatingAnchor: resolveFloatingReleaseAnchor(pillX, pillY),
-        });
+        onCommit(resolveFloatingReleaseCommit(pillX, pillY));
         suppressClickRef.current = true;
       } else if (state.mode === 'docked' && state.escaped) {
-        onCommit({
-          placement: 'floating',
-          floatingAnchor: resolveFloatingReleaseAnchor(pillX, pillY),
-        });
+        onCommit(resolveFloatingReleaseCommit(pillX, pillY, true));
         suppressClickRef.current = true;
       }
       setDrag(null);
     },
-    [commitDockRelease, onCommit, resolveFloatingReleaseAnchor],
+    [commitDockRelease, onCommit, resolveFloatingReleaseCommit],
   );
 
   const handleMove = useCallback(

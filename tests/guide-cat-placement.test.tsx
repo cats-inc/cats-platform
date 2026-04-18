@@ -13,6 +13,7 @@ import {
   resolveGuideCatSurfaceClass,
   GUIDE_CAT_DRAG_MOVEMENT_THRESHOLD_PX,
   GUIDE_CAT_UNDOCK_ESCAPE_THRESHOLD_PX,
+  resolveGuideCatFloatingReleaseCommit,
 } from '../src/app/renderer/guideCatPlacement.ts';
 import { GUIDE_CAT_FLOATING_ANCHOR_DEFAULT } from '../src/shared/platform-contract.ts';
 
@@ -119,6 +120,37 @@ test('resolveEffectiveFloatingAnchor falls back to the shared default when null'
   assert.deepEqual(
     resolveEffectiveFloatingAnchor({ x: 0.2, y: 0.8 }),
     { x: 0.2, y: 0.8 },
+  );
+});
+
+test('resolveGuideCatFloatingReleaseCommit returns one atomic patch for floating release and undock', () => {
+  const viewport = { width: 1000, height: 600 };
+  const safeArea = { left: 100, top: 40, right: 900, bottom: 560 };
+
+  assert.deepEqual(
+    resolveGuideCatFloatingReleaseCommit({
+      pointerX: 320,
+      pointerY: 260,
+      viewport,
+      safeArea,
+    }),
+    {
+      floatingAnchor: { x: 0.32, y: 0.43333333333333335 },
+    },
+  );
+
+  assert.deepEqual(
+    resolveGuideCatFloatingReleaseCommit({
+      pointerX: 20,
+      pointerY: 580,
+      viewport,
+      safeArea,
+      undock: true,
+    }),
+    {
+      placement: 'floating',
+      floatingAnchor: { x: 0.1, y: 0.9333333333333333 },
+    },
   );
 });
 
