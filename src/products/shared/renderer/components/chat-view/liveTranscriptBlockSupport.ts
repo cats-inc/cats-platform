@@ -27,20 +27,18 @@ export function shouldRenderLiveTranscriptBlock(
 
 export function shouldShowLiveTranscriptTrailingDots(
   phase: 'idle' | 'waiting' | 'streaming' | 'sealed',
-  lastBlock: LiveIndicatorContentBlock | null | undefined,
+  _lastBlock: LiveIndicatorContentBlock | null | undefined,
 ): boolean {
-  if (phase !== 'streaming') {
-    return false;
-  }
-  // Actively streaming text already communicates "more coming" through the
-  // animated text itself, so we suppress trailing dots in that case to avoid
-  // a redundant indicator tacked onto the end of the current chunk.
-  if (lastBlock?.kind === 'text' && lastBlock.status === 'streaming') {
-    return false;
-  }
-  // Any other streaming-phase state (no block yet, a streaming tool chip,
-  // or - critically - a completed text block waiting for the runtime to emit
-  // the next segment) should surface trailing dots so the bubble does not go
-  // silent between tokens.
-  return true;
+  // As long as the segment is streaming, surface trailing dots unconditionally.
+  // Earlier revisions tried to suppress dots when a text block was in
+  // "streaming" status (on the theory that the animated text itself was
+  // enough of an activity signal) or only for non-text streaming blocks.
+  // The live trace showed CLI-backed runtimes hold a text block at
+  // status=streaming for tens of seconds after emitting its entire content,
+  // producing a static sentence with no dots for the long gap between the
+  // text and the next tool_use / segment. Always showing dots for streaming
+  // segments matches user expectation ("dots = still working") without
+  // clashing with live text, which visually grows above the dots instead of
+  // competing with them.
+  return phase === 'streaming';
 }

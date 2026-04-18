@@ -3330,8 +3330,11 @@ test('collapsed live transcript keeps error blocks visible and surfaces trailing
     }),
     true,
   );
-  // Actively streaming text is the only case that suppresses trailing dots
-  // - the animated text itself already communicates "more coming".
+  // Streaming text also surfaces trailing dots. Live-trace evidence showed
+  // CLI-backed runtimes hold text blocks at status=streaming for tens of
+  // seconds after emitting the entire sentence, so suppressing dots while
+  // status=streaming produces a silent stale bubble. Showing dots under a
+  // genuinely animating text block is harmless; the text grows above them.
   assert.equal(
     shouldShowLiveTranscriptTrailingDots('streaming', {
       id: 'text:streaming',
@@ -3344,7 +3347,7 @@ test('collapsed live transcript keeps error blocks visible and surfaces trailing
       toolId: null,
       metadata: null,
     }),
-    false,
+    true,
   );
   // A completed text block while the segment is still streaming (runtime
   // has sealed the text but not the segment) should keep dots visible
