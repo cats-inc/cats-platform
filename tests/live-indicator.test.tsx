@@ -5926,3 +5926,123 @@ test('applyLiveIndicatorEvent increments the segment index for same-speaker solo
   assert.equal(state.segments[1]?.segmentIndex, 1);
   assert.notEqual(state.segments[0]?.id, state.segments[1]?.id);
 });
+
+test('resolveVisibleLiveIndicator surfaces a waiting placeholder during the gap between a sealed reply that was persisted and the next event', () => {
+  // Scenario: CLI-backed session just emitted a text_complete for its first
+  // assistant reply. The sealed segment matches a visible persisted message
+  // so the normal filter would drop it, but the workflow turn has not yet
+  // reached a terminal result/error event — the runtime is about to emit more
+  // tool_use / text events. Without a placeholder, the transcript goes dark
+  // between the sealed bubble and the next streaming segment.
+  let liveIndicator = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'text', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    text: 'Empty directory. I will create a single-file HTML pomodoro timer.',
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'content_block', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    index: 0,
+    kind: 'text',
+    status: 'complete',
+    text: 'Empty directory. I will create a single-file HTML pomodoro timer.',
+  });
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user-current',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-18T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-claude-segment-0',
+        senderKind: 'agent',
+        senderName: 'Claude-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-user-current',
+          targetKind: 'participant',
+          targetId: 'participant-claude',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-18T12:00:03.000Z',
+      },
+    ],
+    '2026-04-18T12:00:03.500Z',
+  );
+
+  assert.ok(visible, 'expected a waiting placeholder, got null');
+  assert.equal(visible.active, true);
+  assert.equal(visible.phase, 'waiting');
+  assert.equal(visible.participantId, 'participant-claude');
+  assert.equal(visible.speakerLabel, 'Claude-CLI');
+  assert.equal(visible.contentBlocks.length, 0);
+  assert.equal(visible.tools.length, 0);
+  assert.equal(visible.events.length, 0);
+});
+
+test('resolveVisibleLiveIndicator does not synthesize a waiting placeholder once the turn has a terminal result event', () => {
+  // Same shape as the gap test, but the 'result' event has fired — signalling
+  // the turn is finished. The placeholder must NOT appear, so the composer is
+  // not stuck with a dot bubble after the session closes.
+  let liveIndicator = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'text', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+    text: 'All done.',
+  });
+  liveIndicator = applyLiveIndicatorEvent(liveIndicator, 'result', {
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    speakerLabel: 'Claude-CLI',
+  });
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user-current',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-18T12:00:00.000Z',
+      },
+      {
+        id: 'message-agent-claude-segment-0',
+        senderKind: 'agent',
+        senderName: 'Claude-CLI',
+        metadata: {
+          event: 'assistant_turn_segment',
+          sourceMessageId: 'message-user-current',
+          targetKind: 'participant',
+          targetId: 'participant-claude',
+          segmentIndex: 0,
+        },
+        createdAt: '2026-04-18T12:00:03.000Z',
+      },
+    ],
+    '2026-04-18T12:00:04.000Z',
+  );
+
+  assert.equal(visible, null);
+});

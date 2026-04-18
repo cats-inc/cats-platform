@@ -1189,6 +1189,44 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   });
 
   if (visibleSegments.length === 0) {
+    // All source segments were filtered (typically because the sealed reply
+    // was persisted to the transcript). If we're still inside an active
+    // workflow turn that has not yet emitted a terminal event, surface a
+    // waiting placeholder preserving the last segment's identity so the
+    // transcript keeps showing typing dots during the gap between a sealed
+    // reply and the next runtime event. Without this, CLI-backed sessions
+    // leave an orphan avatar floating after the sealed bubble for seconds.
+    if (sourceSegments.length > 0 && activeTurnUpdatedAt) {
+      const lastSegment = sourceSegments.at(-1)!;
+      const turnTerminated = lastSegment.events.some(
+        (event) => event.eventType === 'result' || event.eventType === 'error',
+      );
+      if (!turnTerminated) {
+        const activeTurnTimestamp = Date.parse(activeTurnUpdatedAt);
+        if (Number.isFinite(activeTurnTimestamp)) {
+          const latestReplyTimestamp = resolveLatestVisibleReplyTimestamp(messages);
+          if (latestReplyTimestamp <= activeTurnTimestamp) {
+            const waitingSegment = createLiveIndicatorSegmentState({
+              phase: 'waiting',
+              sourceMessageId: lastSegment.sourceMessageId,
+              laneId: lastSegment.laneId,
+              targetStateId: lastSegment.targetStateId,
+              segmentIndex: lastSegment.segmentIndex + 1,
+              sessionId: lastSegment.sessionId,
+              identityParticipantId: lastSegment.identityParticipantId,
+              participantId: lastSegment.participantId,
+              catId: lastSegment.catId,
+              activeCatIds: lastSegment.activeCatIds,
+              catName: lastSegment.catName,
+              speakerLabel: lastSegment.speakerLabel,
+              sessionStartedAt: lastSegment.sessionStartedAt,
+              requiresSessionStartConfirmation: lastSegment.requiresSessionStartConfirmation,
+            });
+            return projectLiveIndicatorStateFromSegments([waitingSegment]);
+          }
+        }
+      }
+    }
     return null;
   }
 

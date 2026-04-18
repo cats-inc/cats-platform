@@ -645,7 +645,7 @@ test('Code sidebar clears chat recents and shows No codes yet', () => {
   assert.equal(recentsSection.props.emptyStateLabel, 'No codes yet');
 });
 
-test('Work sidebar clears shared recents and shows No work yet', () => {
+test('Work sidebar surfaces work-origin recents while filtering out chat recents', () => {
   const tree = WorkSidebar({
     payload: createPayload([
       {
@@ -710,8 +710,87 @@ test('Work sidebar clears shared recents and shows No work yet', () => {
     throw new Error('ConversationSidebarRecentsSection not found.');
   }
 
-  assert.deepEqual(recentsSection.props.entries, []);
+  const entries = recentsSection.props.entries as ReadonlyArray<{
+    kind: string;
+    channel?: { id: string };
+  }>;
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.kind, 'channel');
+  assert.equal(entries[0]?.channel?.id, 'work-1');
   assert.equal(recentsSection.props.emptyStateLabel, 'No work yet');
+});
+
+test('Code sidebar surfaces code-origin recents once a +New code channel lands', () => {
+  const tree = CodeSidebar({
+    payload: createPayload([
+      {
+        id: 'code-1',
+        title: 'Pomodoro timer',
+        topic: '',
+        originSurface: 'code',
+        status: 'active',
+        unreadCount: 0,
+        catCount: 0,
+        activeCatCount: 0,
+        repoPath: null,
+        chatCwd: null,
+        lastMessageAt: null,
+        lastActivatedAt: null,
+      },
+      {
+        id: 'chat-1',
+        title: 'Chat recent',
+        topic: '',
+        originSurface: 'chat',
+        status: 'active',
+        unreadCount: 0,
+        catCount: 0,
+        activeCatCount: 0,
+        repoPath: null,
+        chatCwd: null,
+        lastMessageAt: null,
+        lastActivatedAt: null,
+      },
+    ]) as unknown as CodeAppShellPayload,
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    shellSurface: 'code',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+    onOpenBuild: () => {},
+    onOpenRelay: () => {},
+  });
+
+  const recentsSection = findElementByComponent(tree, ConversationSidebarRecentsSection);
+  if (!recentsSection) {
+    throw new Error('ConversationSidebarRecentsSection not found.');
+  }
+
+  const entries = recentsSection.props.entries as ReadonlyArray<{
+    kind: string;
+    channel?: { id: string };
+  }>;
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.kind, 'channel');
+  assert.equal(entries[0]?.channel?.id, 'code-1');
+  assert.equal(recentsSection.props.emptyStateLabel, 'No codes yet');
 });
 
 test('Work and Code sidebars keep the shared environment account menu wiring', () => {
