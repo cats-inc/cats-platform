@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress (Primary Migration Landed) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -304,6 +304,8 @@ regressing placement continuity or Settings behavior
 | Date | Update |
 |------|--------|
 | 2026-04-18 | Plan created for moving Guide Cat UI preferences from server-owned platform preferences into a renderer-owned local store |
+| 2026-04-18 | Landed the renderer-owned `GuideCatUiPrefsStore`, rewired App/Settings/placement consumers off steady-state Guide Cat UI-pref fetches, and removed the four Guide Cat UI preference fields from server-owned platform preferences and app-shell contracts |
+| 2026-04-18 | Added automated regression coverage for multi-window/storage-event reconciliation in the renderer-owned Guide Cat UI preference store |
 
 ---
 
