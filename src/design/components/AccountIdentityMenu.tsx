@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import React, { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 
 export type AccountIdentityMenuPlacement = 'above' | 'below';
 export type AccountIdentityMenuAlignment = 'start' | 'end';

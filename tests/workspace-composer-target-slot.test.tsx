@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload, ChatCat } from '../src/products/shared/api/workspaceContracts.ts';

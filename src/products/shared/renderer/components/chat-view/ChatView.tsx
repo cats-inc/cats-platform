@@ -119,6 +119,11 @@ function buildLiveTraceStateSignature(state: LiveIndicatorState | null | undefin
   return state.phase + ':' + segments.length + ':' + segments.map(buildLiveTraceSegmentDetail).join(';');
 }
 
+function useIsoLayoutEffect(effect: EffectCallback, deps: DependencyList): void {
+  const hook = typeof document === 'undefined' ? useEffect : useLayoutEffect;
+  hook(effect, deps);
+}
+
 export interface ChatViewRenderContext {
   payload: AppShellPayload;
   selectedChannel: SelectedChannelView;
@@ -786,7 +791,7 @@ export function ChatView({
       scrollOnChannelChange: true,
     });
 
-  useLayoutEffect(() => {
+  useIsoLayoutEffect(() => {
     if (!visibleLiveIndicator?.active || !isNearBottom) {
       return;
     }

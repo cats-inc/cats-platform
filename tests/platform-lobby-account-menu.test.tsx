@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
 
+import { GuideCatPlacementProvider } from '../src/app/renderer/GuideCatPlacementProvider.tsx';
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
 import {
@@ -87,7 +89,17 @@ function createEnvelope(
 test('PlatformLobby renders the shared account menu trigger in the top bar', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/lobby">
-      <PlatformLobby envelope={createEnvelope()} />
+      <GuideCatPlacementProvider
+        guideCat={null}
+        placement="floating"
+        floatingAnchor={null}
+        sidecarSeen={false}
+        sidecarMode="auto"
+        onPersistSeen={() => {}}
+        onCommit={() => {}}
+      >
+        <PlatformLobby envelope={createEnvelope()} />
+      </GuideCatPlacementProvider>
     </StaticRouter>,
   );
 
@@ -114,32 +126,42 @@ test('PlatformLobby reuses remembered runtime-backed labels for lobby cat toolti
 
   const markup = renderToStaticMarkup(
     <StaticRouter location="/lobby">
-      <PlatformLobby envelope={createEnvelope({
-        lobby: {
-          animationMode: 'reduced',
-          cats: [
-            {
-              id: 'cat-guide',
-              name: 'Guide',
-              avatarColor: '#7A5B3A',
-              avatarUrl: null,
-              isBoss: false,
-              defaultExecutionTarget: {
-                provider: 'claude',
-                instance: 'cli/native',
-                model: 'opus',
-              },
-              defaultModelSelection: {
-                entryMode: 'explicit',
-                controls: {
-                  'claude.reasoning_effort': 'xhigh',
+      <GuideCatPlacementProvider
+        guideCat={null}
+        placement="floating"
+        floatingAnchor={null}
+        sidecarSeen={false}
+        sidecarMode="auto"
+        onPersistSeen={() => {}}
+        onCommit={() => {}}
+      >
+        <PlatformLobby envelope={createEnvelope({
+          lobby: {
+            animationMode: 'reduced',
+            cats: [
+              {
+                id: 'cat-guide',
+                name: 'Guide',
+                avatarColor: '#7A5B3A',
+                avatarUrl: null,
+                isBoss: false,
+                defaultExecutionTarget: {
+                  provider: 'claude',
+                  instance: 'cli/native',
+                  model: 'opus',
                 },
+                defaultModelSelection: {
+                  entryMode: 'explicit',
+                  controls: {
+                    'claude.reasoning_effort': 'xhigh',
+                  },
+                },
+                executionLabel: null,
               },
-              executionLabel: null,
-            },
-          ],
-        },
-      })} />
+            ],
+          },
+        })} />
+      </GuideCatPlacementProvider>
     </StaticRouter>,
   );
 
@@ -150,45 +172,55 @@ test('PlatformLobby reuses remembered runtime-backed labels for lobby cat toolti
 test('PlatformLobby prefers guide cat assist greeting from the platform envelope when present', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/lobby">
-      <PlatformLobby envelope={createEnvelope({
-        lobby: {
-          animationMode: 'reduced',
-          cats: [],
-          guideCatAssist: {
-            scopeKey: 'lobby:default:default',
-            renderSource: 'cache',
-            cacheHit: true,
-            missing: false,
-            stale: false,
-            refreshEligible: false,
-            surfaceDisabled: false,
-            lastFailure: null,
-            bundle: {
-              bundleId: 'lobby:default:default',
-              scope: {
-                surfaceId: 'lobby',
-                surfaceMode: 'default',
-                audienceState: 'default',
-              },
-              content: {
-                greeting: 'Cached lobby assist greeting.',
-                entryChips: [],
-              },
-              provenance: {
-                originMode: 'runtime',
-                refreshContextHash: 'gca:v1:test',
-                missionId: null,
-                runId: null,
-              },
-              freshness: {
-                generatedAt: '2026-04-17T12:00:00.000Z',
-                expiresAt: null,
-                lastRefreshStatus: 'ok',
+      <GuideCatPlacementProvider
+        guideCat={null}
+        placement="floating"
+        floatingAnchor={null}
+        sidecarSeen={false}
+        sidecarMode="auto"
+        onPersistSeen={() => {}}
+        onCommit={() => {}}
+      >
+        <PlatformLobby envelope={createEnvelope({
+          lobby: {
+            animationMode: 'reduced',
+            cats: [],
+            guideCatAssist: {
+              scopeKey: 'lobby:default:default',
+              renderSource: 'cache',
+              cacheHit: true,
+              missing: false,
+              stale: false,
+              refreshEligible: false,
+              surfaceDisabled: false,
+              lastFailure: null,
+              bundle: {
+                bundleId: 'lobby:default:default',
+                scope: {
+                  surfaceId: 'lobby',
+                  surfaceMode: 'default',
+                  audienceState: 'default',
+                },
+                content: {
+                  greeting: 'Cached lobby assist greeting.',
+                  entryChips: [],
+                },
+                provenance: {
+                  originMode: 'runtime',
+                  refreshContextHash: 'gca:v1:test',
+                  missionId: null,
+                  runId: null,
+                },
+                freshness: {
+                  generatedAt: '2026-04-17T12:00:00.000Z',
+                  expiresAt: null,
+                  lastRefreshStatus: 'ok',
+                },
               },
             },
           },
-        },
-      })} />
+        })} />
+      </GuideCatPlacementProvider>
     </StaticRouter>,
   );
 

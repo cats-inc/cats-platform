@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createRef } from 'react';
+import React, { createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import type { JSX } from 'react';
 

@@ -1,3 +1,5 @@
+import React from 'react';
+
 export function ProviderRegistryRecovery(input: {
   providerRegistryHint: string;
   canRetryProviderRegistry: boolean;
