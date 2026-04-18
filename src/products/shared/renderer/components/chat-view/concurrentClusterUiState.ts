@@ -2,6 +2,8 @@ import type { ConcurrentChatPresentationMode } from '../../../api/workspaceContr
 
 import { resolveConcurrentPresentationMode } from './concurrentModeResolver.js';
 
+export const CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY = 'cats.concurrent-cluster-ui-state';
+
 export interface ConcurrentClusterContext {
   turnId: string;
   sourceMessageId: string;
@@ -27,11 +29,92 @@ export interface ConcurrentClusterUiState {
 
 export type ConcurrentClusterUiStateMap = Record<string, ConcurrentClusterUiState>;
 
+interface ConcurrentClusterUiStateStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+function readConcurrentClusterUiStateRecord(
+  value: unknown,
+): ConcurrentClusterUiState | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const presentationOverride = (value as { presentationOverride?: unknown }).presentationOverride;
+  if (presentationOverride !== 'inline_stack') {
+    return null;
+  }
+  return { presentationOverride };
+}
+
 export function buildConcurrentClusterUiStateKey(
   channelId: string,
   turnId: string,
 ): string {
   return `${channelId}:${turnId}`;
+}
+
+export function parseStoredConcurrentClusterUiStateMap(
+  value: string | null | undefined,
+): ConcurrentClusterUiStateMap {
+  if (!value) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== 'object') {
+      return {};
+    }
+
+    const next: ConcurrentClusterUiStateMap = {};
+    for (const [key, record] of Object.entries(parsed)) {
+      if (!key || typeof key !== 'string') {
+        continue;
+      }
+      const normalized = readConcurrentClusterUiStateRecord(record);
+      if (normalized) {
+        next[key] = normalized;
+      }
+    }
+    return next;
+  } catch {
+    return {};
+  }
+}
+
+export function readConcurrentClusterUiStateMap(
+  storage: ConcurrentClusterUiStateStorage | null | undefined,
+): ConcurrentClusterUiStateMap {
+  if (!storage) {
+    return {};
+  }
+
+  try {
+    return parseStoredConcurrentClusterUiStateMap(
+      storage.getItem(CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY),
+    );
+  } catch {
+    return {};
+  }
+}
+
+export function writeConcurrentClusterUiStateMap(
+  storage: ConcurrentClusterUiStateStorage | null | undefined,
+  value: ConcurrentClusterUiStateMap,
+): void {
+  if (!storage) {
+    return;
+  }
+
+  try {
+    storage.setItem(
+      CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
+      JSON.stringify(value),
+    );
+  } catch {
+    // Ignore storage failures and keep the in-memory dismiss path working.
+  }
 }
 
 export function dismissConcurrentClusterUiState(

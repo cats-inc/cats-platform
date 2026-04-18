@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
   buildConcurrentClusterUiStateKey,
   dismissConcurrentClusterUiState,
+  parseStoredConcurrentClusterUiStateMap,
+  readConcurrentClusterUiStateMap,
   resolveConcurrentClusterPresentationMode,
   type ConcurrentClusterUiStateMap,
+  writeConcurrentClusterUiStateMap,
 } from '../src/products/shared/renderer/components/chat-view/concurrentClusterUiState.js';
 
 test('dismissConcurrentClusterUiState scopes dismissal by channel and turn', () => {
@@ -65,4 +69,38 @@ test('resolveConcurrentClusterPresentationMode only applies override to the dism
     }),
     'compare_cards',
   );
+});
+
+test('writeConcurrentClusterUiStateMap persists dismiss overrides for refresh-time restore', () => {
+  const writes = new Map<string, string>();
+  const storage = {
+    getItem(key: string) {
+      return writes.get(key) ?? null;
+    },
+    setItem(key: string, value: string) {
+      writes.set(key, value);
+    },
+  };
+  const uiStateByKey: ConcurrentClusterUiStateMap = dismissConcurrentClusterUiState({}, {
+    channelId: 'channel-1',
+    turnId: 'turn-1',
+  });
+
+  writeConcurrentClusterUiStateMap(storage, uiStateByKey);
+
+  assert.equal(writes.has(CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY), true);
+  assert.deepEqual(readConcurrentClusterUiStateMap(storage), uiStateByKey);
+});
+
+test('parseStoredConcurrentClusterUiStateMap ignores invalid records and keeps valid dismiss overrides', () => {
+  const parsed = parseStoredConcurrentClusterUiStateMap(JSON.stringify({
+    'channel-1:turn-1': { presentationOverride: 'inline_stack' },
+    'channel-1:turn-2': { presentationOverride: 'focus_rail' },
+    'channel-1:turn-3': { presentationOverride: null },
+    'channel-1:turn-4': 'bad-record',
+  }));
+
+  assert.deepEqual(parsed, {
+    'channel-1:turn-1': { presentationOverride: 'inline_stack' },
+  });
 });

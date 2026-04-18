@@ -59,10 +59,12 @@ import { ParallelFooterBar } from './ParallelFooterBar.js';
 import { ChatTranscriptPanel, type TranscriptMessageActionContext } from './ChatTranscriptPanel.js';
 import {
   dismissConcurrentClusterUiState,
+  readConcurrentClusterUiStateMap,
   resolveConcurrentClusterPresentationMode,
   type ConcurrentClusterActionContext,
   type ConcurrentClusterContext,
   type ConcurrentClusterUiStateMap,
+  writeConcurrentClusterUiStateMap,
 } from './concurrentClusterUiState.js';
 import {
   buildChatComposerRecipients,
@@ -389,7 +391,10 @@ export function ChatView({
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
   const [concurrentClusterUiStateByKey, setConcurrentClusterUiStateByKey] =
-    useState<ConcurrentClusterUiStateMap>({});
+    useState<ConcurrentClusterUiStateMap>(() =>
+      readConcurrentClusterUiStateMap(
+        typeof window === 'undefined' ? null : window.localStorage,
+      ));
   const resolveConcurrentClusterMode = useCallback(
     (context: ConcurrentClusterContext) =>
       resolveConcurrentClusterPresentationMode({
@@ -762,6 +767,16 @@ export function ChatView({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    writeConcurrentClusterUiStateMap(
+      window.localStorage,
+      concurrentClusterUiStateByKey,
+    );
+  }, [concurrentClusterUiStateByKey]);
 
   const inspectedRun = useMemo(
     () => buildRunInspectorView(operatorView, inspectedRunId),
