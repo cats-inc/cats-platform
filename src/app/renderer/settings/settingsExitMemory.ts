@@ -3,23 +3,29 @@
 // in-settings tab navigations (e.g., General → My Cats → Assistants) and
 // land on whatever non-settings surface the user came from.
 //
-// Lifecycle:
-//   - Entered settings (previous path was non-settings): remember the
-//     idx of the last non-settings entry (= current idx - 1). Only set
-//     when idx > 0; on a fresh mount into /settings (tray direct, bookmark,
-//     hard reload) there is nothing behind us to return to and we fall
-//     through to the lobby default.
-//   - Still inside settings: keep the remembered idx stable.
-//   - Left settings: clear. Next entry restarts tracking.
+// We use `idx - 1` as the "where I came from" marker, but only when we
+// have actually observed a non-settings path in this session. Without
+// that flag, a hard reload at a deep settings URL (e.g. /settings/runtime
+// at idx=7) would incorrectly treat idx=6 as the return target even if
+// idx=6 is itself another settings entry. When we have no reliable memory,
+// the close button falls back to /lobby via getSettingsExitDelta returning
+// null.
 //
-// Module state is per-session. On hard reload inside /settings we lose
-// the memory and the close button falls back to the lobby — acceptable
-// because the user's "came from" context is genuinely gone at that point.
+// Lifecycle:
+//   - Visit non-settings path: mark "we've seen a home surface", clear
+//     preSettingsIdx (next entry restarts tracking).
+//   - Enter settings from non-settings: snapshot preSettingsIdx = idx - 1.
+//   - Still inside settings (including browser back/forward within
+//     settings): keep preSettingsIdx stable.
+//   - Mount fresh at a settings path (tray direct, bookmark, hard reload):
+//     hasSeenNonSettings stays false → preSettingsIdx stays null → the
+//     close button falls back to /lobby with replace.
 
 const SETTINGS_PATH_PREFIX = '/settings';
 
 let preSettingsIdx: number | null = null;
 let wasInSettings = false;
+let hasSeenNonSettings = false;
 
 export function isSettingsPath(pathname: string): boolean {
   return pathname === SETTINGS_PATH_PREFIX || pathname.startsWith(`${SETTINGS_PATH_PREFIX}/`);
@@ -27,10 +33,13 @@ export function isSettingsPath(pathname: string): boolean {
 
 export function recordSettingsRouteTransition(pathname: string, idx: number | undefined): void {
   const nowInSettings = isSettingsPath(pathname);
-  if (nowInSettings && !wasInSettings) {
-    preSettingsIdx = typeof idx === 'number' && idx > 0 ? idx - 1 : null;
-  } else if (!nowInSettings) {
+  if (!nowInSettings) {
+    hasSeenNonSettings = true;
     preSettingsIdx = null;
+  } else if (!wasInSettings) {
+    preSettingsIdx = hasSeenNonSettings && typeof idx === 'number' && idx > 0
+      ? idx - 1
+      : null;
   }
   wasInSettings = nowInSettings;
 }
@@ -44,4 +53,11 @@ export function getSettingsExitDelta(currentIdx: number | undefined): number | n
     return -(currentIdx - preSettingsIdx);
   }
   return null;
+}
+
+// Test-only: reset module state for isolation between test cases.
+export function __resetSettingsExitMemoryForTests(): void {
+  preSettingsIdx = null;
+  wasInSettings = false;
+  hasSeenNonSettings = false;
 }
