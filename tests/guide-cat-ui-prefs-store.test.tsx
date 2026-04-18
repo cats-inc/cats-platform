@@ -32,6 +32,72 @@ class ThrowingStorage extends MemoryStorage {
   }
 }
 
+async function withBrowserStorageHarness(
+  run: (harness: {
+    storage: MemoryStorage;
+    dispatchStorage: (newValue: string | null) => void;
+  }) => Promise<void> | void,
+): Promise<void> {
+  const browserGlobal = globalThis as typeof globalThis & {
+    addEventListener?: (type: 'storage', listener: (event: {
+      key: string | null;
+      newValue: string | null;
+    }) => void) => void;
+    removeEventListener?: (type: 'storage', listener: (event: {
+      key: string | null;
+      newValue: string | null;
+    }) => void) => void;
+    localStorage?: MemoryStorage;
+  };
+  const originalAddEventListener = browserGlobal.addEventListener;
+  const originalRemoveEventListener = browserGlobal.removeEventListener;
+  const originalLocalStorage = browserGlobal.localStorage;
+  const listeners = new Set<(event: { key: string | null; newValue: string | null }) => void>();
+  const storage = new MemoryStorage();
+
+  browserGlobal.addEventListener = (type, listener) => {
+    if (type === 'storage') {
+      listeners.add(listener);
+    }
+  };
+  browserGlobal.removeEventListener = (type, listener) => {
+    if (type === 'storage') {
+      listeners.delete(listener);
+    }
+  };
+  browserGlobal.localStorage = storage;
+
+  try {
+    await run({
+      storage,
+      dispatchStorage(newValue) {
+        listeners.forEach((listener) => {
+          listener({
+            key: GUIDE_CAT_UI_PREFS_STORAGE_KEY,
+            newValue,
+          });
+        });
+      },
+    });
+  } finally {
+    if (originalAddEventListener) {
+      browserGlobal.addEventListener = originalAddEventListener;
+    } else {
+      delete browserGlobal.addEventListener;
+    }
+    if (originalRemoveEventListener) {
+      browserGlobal.removeEventListener = originalRemoveEventListener;
+    } else {
+      delete browserGlobal.removeEventListener;
+    }
+    if (originalLocalStorage) {
+      browserGlobal.localStorage = originalLocalStorage;
+    } else {
+      delete browserGlobal.localStorage;
+    }
+  }
+}
+
 test('parseStoredGuideCatUiPrefs rejects missing or malformed records', () => {
   assert.equal(parseStoredGuideCatUiPrefs(null), null);
   assert.equal(parseStoredGuideCatUiPrefs(''), null);
@@ -265,4 +331,42 @@ test('GuideCatUiPrefsStore hydrates once and notifies subscribers on durable upd
   );
 
   unsubscribe();
+});
+
+test('GuideCatUiPrefsStore reconciles external storage updates from another window', async () => {
+  await withBrowserStorageHarness(async ({ storage, dispatchStorage }) => {
+    const store = createGuideCatUiPrefsStore(storage);
+    let notifications = 0;
+    const unsubscribe = store.subscribe(() => {
+      notifications += 1;
+    });
+
+    store.ensureHydrated({
+      sidecarSeen: false,
+      sidecarMode: 'auto',
+      placement: 'floating',
+      floatingAnchor: null,
+    });
+
+    storage.setItem(
+      GUIDE_CAT_UI_PREFS_STORAGE_KEY,
+      serializeGuideCatUiPrefs({
+        sidecarSeen: true,
+        sidecarMode: 'bubble',
+        placement: 'docked',
+        floatingAnchor: { x: 0.7, y: 0.3 },
+      }),
+    );
+    dispatchStorage(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY));
+
+    assert.equal(notifications, 1);
+    assert.deepEqual(store.getSnapshot(), {
+      sidecarSeen: true,
+      sidecarMode: 'bubble',
+      placement: 'docked',
+      floatingAnchor: { x: 0.7, y: 0.3 },
+    });
+
+    unsubscribe();
+  });
 });
