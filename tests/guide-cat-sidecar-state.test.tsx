@@ -6,6 +6,8 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { shouldRenderGuideCatSidecar } from '../src/app/renderer/App.tsx';
 import {
   collapseGuideCatSidecarState,
+  consumeGuideCatProactiveGreeting,
+  queueGuideCatProactiveGreeting,
   resolveGuideCatSidecarProactiveState,
   resolveGuideCatSidecarPreferenceState,
   toggleGuideCatSidecarState,
@@ -79,18 +81,39 @@ test('Guide Cat sidecar toggle respects interaction mode transitions', () => {
   });
 });
 
-test('Guide Cat sidecar resting state stays collapsed regardless of seen flag or click mode', () => {
-  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'auto'), 'collapsed');
-  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'bubble'), 'collapsed');
-  assert.equal(resolveGuideCatSidecarPreferenceState(false, 'drawer'), 'collapsed');
-  assert.equal(resolveGuideCatSidecarPreferenceState(true, 'auto'), 'collapsed');
-  assert.equal(resolveGuideCatSidecarPreferenceState(true, 'bubble'), 'collapsed');
+test('Guide Cat sidecar resting state stays collapsed by default', () => {
+  assert.equal(resolveGuideCatSidecarPreferenceState(), 'collapsed');
 });
 
 test('Guide Cat proactive greeting uses bubble-style peek except in drawer mode', () => {
   assert.equal(resolveGuideCatSidecarProactiveState('auto'), 'welcome-peek');
   assert.equal(resolveGuideCatSidecarProactiveState('bubble'), 'welcome-peek');
   assert.equal(resolveGuideCatSidecarProactiveState('drawer'), 'open');
+});
+
+test('Guide Cat proactive greeting queue waits until a visible route before consuming a trigger', () => {
+  const queued = queueGuideCatProactiveGreeting(
+    { lastQueuedToken: 0, pendingToken: null },
+    1,
+  );
+  assert.deepEqual(queued, { lastQueuedToken: 1, pendingToken: 1 });
+
+  const hidden = consumeGuideCatProactiveGreeting(queued, true);
+  assert.equal(hidden.shouldOpen, false);
+  assert.deepEqual(hidden.queue, queued);
+
+  const visible = consumeGuideCatProactiveGreeting(hidden.queue, false);
+  assert.equal(visible.shouldOpen, true);
+  assert.deepEqual(visible.queue, { lastQueuedToken: 1, pendingToken: null });
+});
+
+test('Guide Cat proactive greeting queue ignores duplicate tokens and accepts newer triggers', () => {
+  const initial = { lastQueuedToken: 1, pendingToken: null };
+  assert.deepEqual(queueGuideCatProactiveGreeting(initial, 1), initial);
+  assert.deepEqual(
+    queueGuideCatProactiveGreeting(initial, 2),
+    { lastQueuedToken: 2, pendingToken: 2 },
+  );
 });
 
 test('Guide Cat sidecar resolves surface mode by route', () => {

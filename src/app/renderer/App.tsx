@@ -474,7 +474,11 @@ export default function PlatformApp() {
               onComplete={(nextEnvelope) => {
                 flushSync(() => {
                   setState({ status: 'ready', envelope: nextEnvelope });
-                  if (nextEnvelope.guideCat && nextEnvelope.guideCat.status !== 'dismissed') {
+                  if (
+                    nextEnvelope.guideCat
+                    && nextEnvelope.guideCat.status !== 'dismissed'
+                    && !guideCatUiPrefs.prefs.sidecarSeen
+                  ) {
                     setGuideCatProactiveGreetingToken((current) => current + 1);
                   }
                 });
@@ -506,7 +510,6 @@ export default function PlatformApp() {
       guideCat={guideCatVisible ? guideCatSidecarInput.guideCat : null}
       placement={guideCatUiPrefs.prefs.placement}
       floatingAnchor={guideCatUiPrefs.prefs.floatingAnchor}
-      sidecarSeen={guideCatUiPrefs.prefs.sidecarSeen}
       sidecarMode={guideCatUiPrefs.prefs.sidecarMode}
       proactiveGreetingToken={guideCatProactiveGreetingToken}
       onPersistSeen={persistGuideCatSeen}

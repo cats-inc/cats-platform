@@ -4,6 +4,8 @@ import test from 'node:test';
 import { observeGuideCatChromeMetric } from '../src/app/renderer/GuideCatPlacementProvider.tsx';
 
 class FakeMeasuredElement {
+  isConnected = false;
+
   constructor(
     private rect: { right: number; bottom: number },
   ) {}
@@ -35,6 +37,13 @@ class FakeDocument {
   private readonly nodes = new Map<string, FakeMeasuredElement | null>();
 
   setNode(selector: string, node: FakeMeasuredElement | null): void {
+    const previous = this.nodes.get(selector);
+    if (previous) {
+      previous.isConnected = false;
+    }
+    if (node) {
+      node.isConnected = true;
+    }
     this.nodes.set(selector, node);
   }
 
@@ -61,6 +70,12 @@ class FakeMutationObserver {
 
   flush(): void {
     this.callback([], this as unknown as MutationObserver);
+  }
+
+  static flushFor(target: unknown): void {
+    FakeMutationObserver.instances
+      .filter((instance) => instance.target === target)
+      .forEach((instance) => instance.flush());
   }
 
   static flushAll(): void {
@@ -151,6 +166,30 @@ test('observeGuideCatChromeMetric tracks late-mounted sidebar chrome and resize 
     document.setNode('aside.sidebar', null);
     FakeMutationObserver.flushAll();
     assert.equal(observed.at(-1), null);
+
+    cleanup();
+  });
+});
+
+test('observeGuideCatChromeMetric ignores unrelated tree mutations after the target is connected', async () => {
+  await withGuideCatChromeObserverHarness(() => {
+    const document = new FakeDocument();
+    const observed: Array<number | null> = [];
+    const sidebar = new FakeMeasuredElement({ right: 240, bottom: 600 });
+    document.setNode('aside.sidebar', sidebar);
+
+    const cleanup = observeGuideCatChromeMetric({
+      document: document as unknown as Document,
+      selector: 'aside.sidebar',
+      readValue: (node) => node ? Math.round(node.getBoundingClientRect().right) : null,
+      onChange: (value) => {
+        observed.push(value);
+      },
+    });
+
+    assert.deepEqual(observed, [240]);
+    FakeMutationObserver.flushFor(document.body);
+    assert.deepEqual(observed, [240]);
 
     cleanup();
   });

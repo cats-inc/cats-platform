@@ -96,7 +96,6 @@ export interface GuideCatPlacementProviderProps {
   guideCat: GuideCatRecord | null;
   placement: GuideCatPlacement;
   floatingAnchor: GuideCatFloatingAnchor | null;
-  sidecarSeen: boolean;
   sidecarMode: GuideCatSidecarMode;
   proactiveGreetingToken?: number;
   onPersistSeen: () => void;
@@ -111,7 +110,6 @@ export function GuideCatPlacementProvider({
   guideCat,
   placement,
   floatingAnchor,
-  sidecarSeen,
   sidecarMode,
   proactiveGreetingToken = 0,
   onPersistSeen,
@@ -119,7 +117,6 @@ export function GuideCatPlacementProvider({
   children,
 }: GuideCatPlacementProviderProps) {
   const presentation = useGuideCatSidecarState(
-    sidecarSeen,
     sidecarMode,
     onPersistSeen,
     proactiveGreetingToken,
@@ -718,36 +715,49 @@ export function observeGuideCatChromeMetric(
     onChange(readValue(target));
   };
 
+  const attachTargetObservers = () => {
+    if (target && typeof ResizeObserverCtor === 'function') {
+      resizeObserver = new ResizeObserverCtor(emit);
+      resizeObserver.observe(target);
+    }
+    if (target && typeof MutationObserverCtor === 'function') {
+      attributeObserver = new MutationObserverCtor(emit);
+      attributeObserver.observe(target, {
+        attributes: true,
+        attributeFilter: ['class', 'style'],
+      });
+    }
+  };
+
   const syncTarget = () => {
     const nextTarget = document.querySelector<HTMLElement>(selector);
-    if (nextTarget !== target) {
-      disconnectTargetObservers();
-      target = nextTarget;
-      if (target && typeof ResizeObserverCtor === 'function') {
-        resizeObserver = new ResizeObserverCtor(emit);
-        resizeObserver.observe(target);
-      }
-      if (target && typeof MutationObserverCtor === 'function') {
-        attributeObserver = new MutationObserverCtor(emit);
-        attributeObserver.observe(target, {
-          attributes: true,
-          attributeFilter: ['class', 'style'],
-        });
-      }
+    if (nextTarget === target) {
+      return false;
     }
+    disconnectTargetObservers();
+    target = nextTarget;
+    attachTargetObservers();
     emit();
+    return true;
   };
 
   let treeObserver: MutationObserver | null = null;
   if (typeof MutationObserverCtor === 'function') {
-    treeObserver = new MutationObserverCtor(syncTarget);
+    treeObserver = new MutationObserverCtor(() => {
+      if ((target as { isConnected?: boolean } | null)?.isConnected !== false && target) {
+        return;
+      }
+      syncTarget();
+    });
     treeObserver.observe(root, {
       childList: true,
       subtree: true,
     });
   }
 
-  syncTarget();
+  if (!syncTarget()) {
+    emit();
+  }
   return () => {
     disconnectTargetObservers();
     treeObserver?.disconnect();

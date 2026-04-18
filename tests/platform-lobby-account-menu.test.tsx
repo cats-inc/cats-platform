@@ -93,7 +93,6 @@ test('PlatformLobby renders the shared account menu trigger in the top bar', () 
         guideCat={null}
         placement="floating"
         floatingAnchor={null}
-        sidecarSeen={false}
         sidecarMode="auto"
         onPersistSeen={() => {}}
         onCommit={() => {}}
@@ -130,7 +129,6 @@ test('PlatformLobby reuses remembered runtime-backed labels for lobby cat toolti
         guideCat={null}
         placement="floating"
         floatingAnchor={null}
-        sidecarSeen={false}
         sidecarMode="auto"
         onPersistSeen={() => {}}
         onCommit={() => {}}
@@ -176,7 +174,6 @@ test('PlatformLobby prefers guide cat assist greeting from the platform envelope
         guideCat={null}
         placement="floating"
         floatingAnchor={null}
-        sidecarSeen={false}
         sidecarMode="auto"
         onPersistSeen={() => {}}
         onCommit={() => {}}

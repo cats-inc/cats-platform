@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
 
 export type GuideCatSidecarViewState = 'hidden' | 'collapsed' | 'welcome-peek' | 'open';
 type GuideCatSidecarInnerState = Exclude<GuideCatSidecarViewState, 'hidden'>;
+
+export interface GuideCatProactiveGreetingQueue {
+  lastQueuedToken: number;
+  pendingToken: number | null;
+}
 
 export interface GuideCatSidecarState {
   viewState: GuideCatSidecarViewState;
@@ -27,6 +32,35 @@ export function resolveGuideCatSidecarProactiveState(
   mode: GuideCatSidecarMode,
 ): GuideCatSidecarInnerState {
   return mode === 'drawer' ? 'open' : 'welcome-peek';
+}
+
+export function queueGuideCatProactiveGreeting(
+  current: GuideCatProactiveGreetingQueue,
+  nextToken: number,
+): GuideCatProactiveGreetingQueue {
+  if (nextToken <= current.lastQueuedToken) {
+    return current;
+  }
+  return {
+    lastQueuedToken: nextToken,
+    pendingToken: nextToken,
+  };
+}
+
+export function consumeGuideCatProactiveGreeting(
+  current: GuideCatProactiveGreetingQueue,
+  isHiddenRoute: boolean,
+): { queue: GuideCatProactiveGreetingQueue; shouldOpen: boolean } {
+  if (isHiddenRoute || current.pendingToken == null) {
+    return { queue: current, shouldOpen: false };
+  }
+  return {
+    queue: {
+      ...current,
+      pendingToken: null,
+    },
+    shouldOpen: true,
+  };
 }
 
 export function toggleGuideCatSidecarState(
@@ -54,24 +88,24 @@ export function collapseGuideCatSidecarState(
   };
 }
 
-export function resolveGuideCatSidecarPreferenceState(
-  _sidecarSeen: boolean,
-  _mode: GuideCatSidecarMode,
-): GuideCatSidecarInnerState {
+export function resolveGuideCatSidecarPreferenceState(): GuideCatSidecarInnerState {
   return resolveGuideCatSidecarRestingState();
 }
 
 export function useGuideCatSidecarState(
-  sidecarSeen: boolean,
   mode: GuideCatSidecarMode,
   onPersistSeen: () => void,
   proactiveGreetingToken = 0,
 ): GuideCatSidecarState {
   const location = useLocation();
   const [innerState, setInnerState] = useState<GuideCatSidecarInnerState>(
-    () => resolveGuideCatSidecarPreferenceState(sidecarSeen, mode),
+    () => resolveGuideCatSidecarPreferenceState(),
   );
   const [proactive, setProactive] = useState(false);
+  const proactiveQueueRef = useRef<GuideCatProactiveGreetingQueue>({
+    lastQueuedToken: 0,
+    pendingToken: null,
+  });
 
   const isHiddenRoute =
     location.pathname === '/setup'
@@ -84,13 +118,21 @@ export function useGuideCatSidecarState(
 
     setProactive(false);
     setInnerState((prev) => {
-      const nextState = resolveGuideCatSidecarPreferenceState(sidecarSeen, mode);
+      const nextState = resolveGuideCatSidecarPreferenceState();
       return prev === nextState ? prev : nextState;
     });
-  }, [isHiddenRoute, mode, sidecarSeen]);
+  }, [isHiddenRoute]);
 
   useEffect(() => {
-    if (proactiveGreetingToken <= 0 || isHiddenRoute) {
+    const queued = queueGuideCatProactiveGreeting(
+      proactiveQueueRef.current,
+      proactiveGreetingToken,
+    );
+    proactiveQueueRef.current = queued;
+
+    const consumed = consumeGuideCatProactiveGreeting(proactiveQueueRef.current, isHiddenRoute);
+    proactiveQueueRef.current = consumed.queue;
+    if (!consumed.shouldOpen) {
       return;
     }
     setProactive(true);
