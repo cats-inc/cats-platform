@@ -100,11 +100,44 @@
   overflow: hidden;
 }
 
-.settingsContent h1 {
+.settingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin: 0 0 16px;
+}
+
+.settingsHeader h1 {
+  margin: 0;
   font-size: 1.4rem;
   font-weight: 600;
   letter-spacing: -0.03em;
+}
+
+.settingsCloseButton {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.settingsCloseButton:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.settingsCloseButton:focus-visible {
+  outline: 2px solid var(--accent, #4a7bd6);
+  outline-offset: 2px;
 }
 
 .settingsBody {

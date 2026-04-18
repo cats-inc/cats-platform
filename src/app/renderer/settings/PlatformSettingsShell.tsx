@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type {
@@ -6,6 +6,7 @@ import type {
   PlatformProductSettingsDescriptor,
 } from '../../../shared/platform-contract.js';
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
+import { getSettingsExitDelta } from './settingsExitMemory.js';
 
 type PlatformSettingsSection =
   | 'general'
@@ -50,6 +51,22 @@ export function PlatformSettingsShell({
   const navigate = useNavigate();
   const productEntries = buildPlatformSettingsProductEntries(products);
   const showDesktop = isDesktopEnvironment();
+
+  // settingsExitMemory tracks the idx just before the user entered /settings
+  // in this session. If we have that memory, navigate(-N) jumps past all
+  // in-settings tab navigations (General → My Cats → Assistants) in one
+  // step and lands on whatever non-settings surface the user came from.
+  // If memory is absent (tray direct, bookmark, hard reload on /settings),
+  // fall back to /lobby with replace so the forward button cannot un-close.
+  const handleClose = useCallback(() => {
+    const historyState = window.history.state as { idx?: number } | null;
+    const delta = getSettingsExitDelta(historyState?.idx);
+    if (delta !== null) {
+      navigate(delta);
+    } else {
+      navigate('/lobby', { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <div className="settingsShell">
@@ -114,7 +131,17 @@ export function PlatformSettingsShell({
         </button>
       </nav>
       <section className="settingsContent">
-        <h1>{title}</h1>
+        <header className="settingsHeader">
+          <h1>{title}</h1>
+          <button
+            type="button"
+            className="settingsCloseButton"
+            aria-label="Close settings"
+            onClick={handleClose}
+          >
+            &#x2715;
+          </button>
+        </header>
         <div className="settingsBody">
           {children}
         </div>

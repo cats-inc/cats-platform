@@ -29,6 +29,7 @@ import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
 import { prefetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
+import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
 
 type PlatformLoadState =
   | { status: 'loading' }
@@ -250,6 +251,11 @@ export default function PlatformApp() {
     }
     void refreshEnvelope(undefined, { suppressErrors: true });
   }, [isLobbyRoute, location.pathname, refreshEnvelope, state.status]);
+
+  useEffect(() => {
+    const historyState = window.history.state as { idx?: number } | null;
+    recordSettingsRouteTransition(location.pathname, historyState?.idx);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (
