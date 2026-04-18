@@ -10,7 +10,7 @@
 |-------|-------|
 | **Status** | Draft |
 | **Owner** | Codex |
-| **Reviewer** | User |
+| **Reviewer** | middl |
 
 ## Related Spec / Dependencies
 
@@ -47,8 +47,8 @@ The implementation thesis is:
 3. `Run` should appear only when a concrete execution attempt starts
 4. `Artifact` should remain traceable to the task and, when available, the
    producing run
-5. Code-origin work should remain Code-owned unless it is explicitly promoted
-   into operator-visible Work
+5. Code-origin work should remain Code-owned in this MVP slice; Work promotion
+   stays deferred
 
 ## Slice Boundary
 
@@ -58,18 +58,25 @@ The implementation thesis is:
 - primary `code_thread` conversation creation
 - primary code-task seeding
 - first run creation and repeat-run semantics
-- task/run/artifact linkage and projection rules
+- direct `Task -> Run` linkage for the MVP, without a required Mission layer
+- task/run/artifact linkage and Code-only projection rules
 - Code recents, task detail, artifact, and run-history presentation for this
   slice
-- explicit Work-promotion seam without full Work-product takeover
+- Code-product-only visibility for the first `code_thread` entry/resume path
 
 ### Explicitly deferred after PLAN-064
 
 - `+Team code` and `+Peer code` topology-specific materialization
+- a first-class Mission layer between `Task` and `Run` for `+New code`
+- Work promotion, `WorkItem` linkage, and default Work-product projection for
+  Code-origin tasks
+- Chat-product recents or other cross-product entry points for
+  `code_thread` conversations
 - multi-agent roster, relay, and convergence work beyond existing `PLAN-032`
 - full Boss Cat continuation rules across hidden Code-owned tasks
+- duplicate-create collapse or idempotent `+New code` create behavior
 - top-level run dashboard or standalone run product surface
-- rich Work-board lifecycle for every Code-origin task
+- rich Work-board lifecycle for Code-origin tasks once promotion is introduced
 
 ## Implementation Phases
 
@@ -84,14 +91,11 @@ The implementation thesis is:
       - product hint / origin surface
       - linked conversation id
       - workspace hint when already known
-      - initial ownership state of Code vs Work
+      - initial Code-owned visibility state
 - [ ] Make the no-`job` rule explicit in create-boundary helpers and contracts
       so internal APIs do not reintroduce mixed terminology
 - [ ] Reuse shared Core records and existing Code task helpers instead of
       creating a Code-only persistence shape for this slice
-- [ ] Define idempotency or resume rules for repeated `+New code` create
-      attempts so the product does not accidentally seed duplicate primary
-      tasks during entry retries
 
 **Deliverables**: one frozen `+New code` create contract with stable task and
 conversation anchors.
@@ -106,8 +110,11 @@ conversation anchors.
       - explicit restart creates a new run
       - takeover or handoff creates a new run when recorded as a new attempt
       - reconnect/resume inside the same active attempt reuses the same run
-- [ ] Ensure run records remain linked to the durable task and, where relevant,
-      any delegated mission/runtime session identifiers
+- [ ] Make the MVP execution shape explicit:
+      - `+New code` uses direct `Task -> Run` linkage
+      - Mission-backed execution remains follow-on work for later slices
+- [ ] Ensure run records remain linked to the durable task and relevant runtime
+      session/execution identifiers for observability
 - [ ] Expose run history as task-adjacent observability rather than a
       replacement for task identity
 - [ ] Align builder-loop execution helpers so run creation, resume, and history
@@ -140,6 +147,9 @@ same durable task and execution history.
       path into the created `code_thread`
 - [ ] Update Code recents so they are conversation-led while still surfacing
       enough task state to resume work confidently
+- [ ] Keep `code_thread` visibility scoped to the Code product in this slice
+      instead of also projecting the same entry into Chat recents or other
+      cross-product launch surfaces
 - [ ] Update Code task detail so it becomes the primary place to inspect:
       - primary task state
       - latest run
@@ -154,55 +164,12 @@ same durable task and execution history.
 **Deliverables**: a usable `+New code` UI path where entry, resume, execution,
 and evidence all point back to one task/conversation anchor.
 
-### Phase 5: Work Promotion and Operator-Visible Boundaries
-
-- [ ] Define the first promotion seam from Code-owned task into Work-owned
-      tracking, including at least:
-      - explicit user promotion
-      - link to `WorkItem`
-      - blocked or approval-required operator-visible states
-- [ ] Keep non-promoted Code-origin tasks out of default Work projections so
-      Work is not polluted by every scratch coding thread
-- [ ] Make the promotion boundary additive so future Boss Cat / operator flows
-      can observe the same task without changing task identity
-- [ ] Reuse existing managed-work and WorkItem projections where possible
-      instead of creating a second promotion table for Code
-- [ ] Document the follow-on seam for cross-product visibility invariants that
-      are intentionally deferred from this MVP slice
-
-**Deliverables**: clear Code-owned-by-default behavior with a stable path into
-Work when operator tracking is actually needed.
-
-### Phase 6: Hardening and Acceptance Coverage
-
-- [ ] Add regression coverage for:
-      - `+New code` create flow
-      - primary task seeding
-      - first-run creation timing
-      - retry/restart/takeover run boundaries
-      - artifact lineage and resume projections
-- [ ] Add manual verification steps for the narrow MVP path:
-      - create `+New code`
-      - confirm conversation + primary task exist
-      - execute once and confirm first run appears
-      - retry and confirm same task / new run
-      - inspect artifacts from task detail
-      - promote into Work only when explicitly requested or operator-visible
-- [ ] Log deferred follow-ons needed for:
-      - `+Team code`
-      - `+Peer code`
-      - Boss Cat continuation visibility
-      - standalone run analytics or dashboards
-
-**Deliverables**: a testable MVP slice with explicit deferred seams.
-
 ## Files to Create/Modify
 
 | File | Action | Description |
 |------|--------|-------------|
 | `src/products/code/shared/channelEntry.ts` | Modify | Lock `+New code` create semantics and entry metadata |
-| `src/products/code/shared/channelTopology.ts` | Modify | Keep preset topology aligned with the new create-time materialization rules |
-| `src/products/code/api/contracts.ts` | Modify | Encode primary task, run, artifact, and promotion payload shapes |
+| `src/products/code/api/contracts.ts` | Modify | Encode primary task, run, and artifact payload shapes |
 | `src/products/code/api/taskRoutes.ts` | Modify | Add or tighten create/resume routes for primary code task and run history |
 | `src/products/code/api/runtimeBridgeRoutes.ts` | Modify | Ensure first-run creation timing and execution-boundary semantics stay consistent |
 | `src/products/code/api/projection.ts` | Modify | Add Code recents/task-detail projections for task/run/artifact lineage |
@@ -213,58 +180,70 @@ Work when operator tracking is actually needed.
 | `src/products/code/renderer/components/CodeBuilderView.tsx` | Modify | Reuse the same primary task and run semantics from the entry slice |
 | `src/products/code/renderer/components/RunInspector.tsx` | Modify | Render task-adjacent run history without elevating runs above tasks |
 | `src/products/code/renderer/components/ArtifactDetailView.tsx` | Modify | Show artifact provenance back to task and producing run |
-| `src/products/code/renderer/api/codeTask.ts` | Modify | Normalize primary task, run history, and promotion data for the UI |
-| `src/core/model/executionRecords.ts` | Modify | Keep shared run-record usage aligned with the frozen terminology |
+| `src/products/code/renderer/api/codeTask.ts` | Modify | Normalize primary task, run history, and artifact-lineage data for the UI |
 | `src/core/taskRecords.ts` | Modify | Support task linkage and seed-time metadata needed by `+New code` |
 | `src/core/executionRecordLists.ts` | Modify | Provide additive run-history queries needed by Code detail |
-| `src/core/managedWorkProjection.ts` | Modify | Add the Work-promotion seam for promoted/operator-visible Code tasks |
-| `src/products/work/api/projection.ts` | Modify (additive) | Accept promoted Code-origin tasks without defaulting all Code tasks into Work |
-| `tests/**` | Modify/Create | Cover create flow, run boundaries, artifact lineage, and promotion behavior |
+| `tests/code-new-chat-draft-entry-copy.test.tsx` | Modify | Verify `+New code` entry copy and Code-only entry visibility remain correct |
+| `tests/code-task-execution.test.js` | Modify | Cover first-run creation timing plus retry/restart boundaries |
+| `tests/code-builder-resume.test.js` | Modify | Keep builder resume behavior aligned with task-bound run semantics |
+| `tests/code-routing.test.tsx` | Modify | Ensure Code entry, builder, and artifact-detail surfaces stay reachable from Code |
+| `tests/execution-record-lists.test.js` | Modify | Validate run-history queries for one task with many runs |
+| `tests/code-task-detail-projection.test.js` | Create | Cover latest-run and artifact-lineage projection in Code task detail |
 
 ## Technical Decisions
 
 - Treat `Conversation + primary code Task` as the durable `+New code` anchor.
 - Create `Run` lazily at execution time, not at entry time.
+- For this MVP, `+New code` uses direct `Task -> Run` linkage and does not
+  require a first-class Mission record.
 - Keep one task identity across retries, restarts, takeovers, and repair loops
   unless the product is explicitly creating a different durable objective.
+- Keep explicit repeated `+New code` actions simple: each create action may open
+  a new conversation/task pair, matching current product behavior. Create-time
+  deduplication or idempotency is deferred.
 - Keep Code recents conversation-led while making task and latest-run state easy
   to resume from the same surface.
-- Keep Work projection opt-in or operator-driven rather than automatic for every
-  Code-origin task.
+- Keep `code_thread` visibility scoped to Code product entry points in this
+  slice; Chat-product projection is deferred.
+- Defer Work promotion from this slice; Code-origin tasks stay Code-owned by
+  default.
 - Preserve `job` only as an external-system boundary term; do not reintroduce
   it as a Core-owned noun.
 
 ## Testing Strategy
 
 - **Unit Tests**:
-  `+New code` create helpers, task-seeding metadata, run-boundary helpers,
-  artifact-lineage selectors, Work-promotion eligibility rules
+  `tests/code-task-execution.test.js`,
+  `tests/execution-record-lists.test.js`,
+  `tests/code-task-detail-projection.test.js`
 - **Integration Tests**:
   create conversation -> seed primary task -> execute -> create first run ->
-  retry -> attach artifacts -> inspect task detail -> promote into Work
+  retry -> attach artifacts -> inspect task detail
 - **Renderer/Behavior Tests**:
-  `+New code` entry flow, conversation-led recents, task-detail run history,
-  artifact provenance display, Work-promotion affordance visibility
+  `tests/code-new-chat-draft-entry-copy.test.tsx`,
+  `tests/code-builder-resume.test.js`,
+  `tests/code-routing.test.tsx`
 - **Manual Testing**:
   create a fresh `+New code` thread, confirm the primary task exists before
   execution, start one build/continue attempt, verify the first run appears,
-  retry once, inspect artifacts from Code detail, then confirm Work remains
-  unchanged until promotion or operator-visible blocking occurs
+  retry once, inspect artifacts from Code detail, and confirm the thread stays
+  resumable from Code recents only
 
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| `+New code` still behaves like a transient draft and reseeds duplicate tasks on retry | High | Freeze create-time idempotency/resume rules before renderer wiring |
+| The slice drifts back into Work- or Chat-level integration before `+New code` basics land | High | Keep Work promotion and Chat projection explicitly deferred in this plan |
 | `Run` semantics drift again between Code builder, runtime bridge, and docs | High | Centralize run-boundary rules in shared task-execution helpers and keep terminology tests/docs aligned |
 | Artifact UI loses provenance when several runs exist for one task | Medium | Keep task-first artifact lists with explicit producing-run hints in detail views |
-| Work becomes noisy if every Code task is projected by default | High | Gate Work projection behind explicit promotion or operator-visible states only |
+| MVP readers assume Mission is still required between `Task` and `Run` | Medium | State the direct `Task -> Run` rule explicitly and defer Mission-backed execution to later slices |
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
 | 2026-04-19 | Plan created to implement the first narrow `+New code` materialization slice around `Conversation + primary code Task + Run* + Artifact*` with Code-owned-by-default behavior |
+| 2026-04-19 | Follow-up trim: deferred Work promotion and Chat projection, removed create-time idempotency from MVP scope, and made the MVP `Task -> Run` rule explicit |
 
 ---
 
