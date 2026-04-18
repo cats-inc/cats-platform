@@ -25,7 +25,7 @@ those pieces end to end.
 This spec defines `Cats Code v1` as a local-first workflow:
 
 - pick or bootstrap a room-owned coding workspace
-- create or resume a code task on shared Core records
+- create or resume the primary code task on shared Core records
 - run a coder session through the existing runtime bridge
 - surface live plan/progress plus preview/build outputs
 - let the owner decide whether to revise, review, commit, push, or publish
@@ -64,6 +64,15 @@ That also means `Cats Code` should distinguish:
 
 One durable task may therefore spawn many Code missions and many runs without
 duplicating the canonical planning record.
+
+For MVP alignment with `+New code`, this builder loop should assume one primary
+`code_thread` conversation plus one primary code task as the durable anchor for
+execution, artifacts, retries, review follow-ons, and repair work. In this
+spec, a `Run` means one concrete execution attempt against that task or a
+delegated mission, not the task itself. Code-origin tasks should remain
+Code-owned by default and only project into `Cats Work` when they are
+explicitly promoted into managed work, linked to a `WorkItem`, or enter an
+operator-visible state that warrants Work ownership.
 
 ## Non-Goals
 
@@ -129,6 +138,9 @@ duplicating the canonical planning record.
 4. Product state shall keep room-owned workspace authority separate from any
    individual runtime session cwd.
 
+For the `+New code` MVP, the builder loop should seed one primary code task for
+the conversation instead of waiting for a later Work promotion step.
+
 #### Code task execution
 
 5. `Cats Code` actions such as "build this", "continue implementation", or "fix
@@ -147,6 +159,12 @@ duplicating the canonical planning record.
    session.
 10. Code task detail shall expose the active runtime session's state, provider
     target, workspace summary, and last updated execution status.
+
+For this slice, retries, explicit restarts, or takeover/handoff attempts may
+create additional runs for the same task without replacing the task itself.
+Transient reconnect/resume behavior inside the same active attempt should not
+be forced to create a new run unless the product is explicitly recording a new
+attempt boundary.
 
 #### Plan and live progress
 
@@ -220,6 +238,9 @@ duplicating the canonical planning record.
 32. Code-originated follow-up work that needs durable operator planning or
     prioritization shall be promoted back through shared managed-work records
     rather than kept only as session-local run state.
+
+Code-origin tasks that have not been promoted into managed work should remain
+visible in `Cats Code` without being forced into `Cats Work` by default.
 
 ### Non-Functional Requirements
 
@@ -343,3 +364,4 @@ first serious builder slice:
 *Created: 2026-03-29*
 *Author: Codex*
 *Related Plan: [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md)*
+*Updated: 2026-04-19*

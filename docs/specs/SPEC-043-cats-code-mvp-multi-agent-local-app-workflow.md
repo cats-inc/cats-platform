@@ -152,6 +152,36 @@ These presets do not create separate workflow engines. They configure topology,
 sharing, scheduler, and automation policy above the same shared interaction
 core.
 
+### Minimal MVP materialization for `+New code`
+
+For the first `+New code` slice, the product should materialize only the
+durable units needed to keep coding work resumable, inspectable, and promotable
+into `Cats Work`.
+
+At minimum, `+New code` should create or seed:
+
+- one `Conversation` with `kind = 'code_thread'`
+- one primary code `Task` linked to that conversation
+- zero or more `Run`s linked to that task as execution attempts occur
+- zero or more `Artifact`s linked to the task and, when applicable, the
+  producing run
+
+In this MVP:
+
+- `Task` is the durable coding objective
+- `Run` is one concrete execution attempt against that task
+- `Artifact` is a durable output of the task or run
+
+The MVP should not use `job` as a canonical shared term. If an external system
+speaks in jobs, the product should map that term into `task`, `mission`,
+`run`, or artifact metadata at the boundary instead of promoting `job` into the
+Core vocabulary.
+
+Not every code-origin task should appear in `Cats Work` by default. A
+`+New code` task should remain Code-owned unless it is explicitly promoted into
+managed work, linked to a `WorkItem`, or enters an operator-visible state such
+as blocked/approval-required tracking that warrants Work ownership.
+
 ### Rounds
 
 The project thread shall record distinct rounds of work so the product can
@@ -243,6 +273,18 @@ the same agent roster and quota context when routing work.
    or `fit` after later work has already begun.
 4. The product shall preserve a readable timeline of rounds, mode switches,
    artifacts, approvals, and human feedback inside the same thread.
+
+Implementation note for the `+New code` MVP:
+
+- the product should seed one primary code task for the thread instead of
+  waiting for a later Work promotion step
+- retries, explicit restarts, or takeover/handoff attempts may create
+  additional runs for the same task without replacing the task itself
+- transient reconnect/resume behavior inside the same active attempt should not
+  be forced to create a new run unless the product is explicitly recording a
+  new attempt boundary
+- run history should initially surface inside Code task detail rather than
+  requiring a top-level run dashboard in the MVP
 
 #### Multi-agent discussion and relay
 

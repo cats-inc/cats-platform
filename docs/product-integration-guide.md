@@ -189,7 +189,7 @@ All product teams must preserve this split:
 - `Mission`
   - delegated agent work bridging intent into execution
 - `Run`
-  - one execution attempt for a mission or runtime action
+  - one execution attempt for a task, mission, or runtime action
 - `Schedule / Trigger`
   - the condition that launches a mission or run
 

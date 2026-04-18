@@ -108,7 +108,7 @@
 | Guide Cat assist bundle | One locally persisted snapshot of Guide Cat assist content for a normalized surface scope. A bundle may include greeting copy, chips, recap, feature guidance, provenance, and freshness metadata. |
 | Deterministic assist baseline | The built-in surface-specific fallback content used when no fresh or cached Guide Cat assist bundle is available. |
 | Execution profile | A durable preset or binding that captures runtime-affecting inputs such as `cwd`, worktree mode, permission profile, tool/skill profile, and memory profile for a participant, lane, or child conversation. |
-| New Code | The one-person `Cats Code` entry preset that creates one primary coding conversation. |
+| New Code | The one-person `Cats Code` entry preset that creates one primary coding conversation and seeds one primary code task. |
 | Team Code | The shared-room `Cats Code` entry preset that creates one multi-participant coding conversation with workflow policy. |
 | Peer Code | The branch/review `Cats Code` entry preset that creates one parallel container with many child coding conversations and optional automation policies. |
 
@@ -117,10 +117,11 @@
 | Term | Meaning |
 |------|---------|
 | Managed Work | The operator-facing family of durable planning records such as goals, projects, requirements, backlog items, issues, tasks, and approvals. |
+| Code Task | A code-oriented durable task record linked to a code conversation. In the MVP, a Code task is the primary anchor for runs, artifacts, review outputs, and repair follow-ups in `Cats Code`. |
 | Work Task | One operator-managed durable task record inside Managed Work. A Work task is not automatically the same thing as a mission or run. |
 | Mission | An agent-delegated work unit that bridges managed work, interaction context, and execution. One Work task may spawn many missions; some missions may remain internal and never become Work tasks. |
 | Assignment | An optional synonym for a mission when a product surface wants user-facing wording like "assigned to this agent." New shared contracts should still prefer `Mission`. |
-| Run | One concrete execution attempt for a mission, such as one CLI/model session, tool batch, build, or retry. |
+| Run | One concrete execution attempt for a task or mission, such as one coder session, tool batch, build, test, retry, or takeover attempt. A run is not the durable objective itself; one task may accumulate many runs over time. |
 | Schedule | A durable rule that can create or activate missions later, such as a cron schedule or recurring automation rule. |
 | Trigger | The immediate event that starts work, such as a cron tick, webhook, transport ingress, owner click, or workflow continuation. |
 | Job | An overloaded legacy term. In new Cats docs and contracts, prefer `Mission` for delegated work and `Run` for concrete execution attempts unless an external system explicitly requires the word `job`. |
@@ -144,4 +145,4 @@
 
 ---
 
-Last updated: 2026-04-17
+Last updated: 2026-04-19

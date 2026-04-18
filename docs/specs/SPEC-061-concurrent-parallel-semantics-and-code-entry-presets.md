@@ -161,9 +161,23 @@ Definitions:
 Baseline contract:
 
 - one `Conversation`
+- one primary code `Task` linked to that conversation
 - one primary coding participant or implicit runtime target
 - one project/workspace intent
 - one execution profile chosen at creation or updated later
+- zero or more `Run`s as concrete execution attempts occur
+- zero or more `Artifact`s linked to the task and, when applicable, the
+  producing run
+
+The first slice should treat:
+
+- `Task` as the durable coding objective
+- `Run` as one execution attempt against that task
+- `Artifact` as a durable output of the task or run
+
+`+New code` should remain Code-owned by default. It may later project into
+`Cats Work` through managed-work promotion or a linked `WorkItem`, but that
+should not be the preset's default creation behavior.
 
 Initial preset inputs should include:
 
@@ -281,3 +295,4 @@ Typical first-slice roles include:
 
 *Created: 2026-04-14*
 *Author: Codex*
+*Updated: 2026-04-19*
