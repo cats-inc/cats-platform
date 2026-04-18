@@ -60,7 +60,7 @@ import { ParallelFooterBar } from './ParallelFooterBar.js';
 import { ChatTranscriptPanel, type TranscriptMessageActionContext } from './ChatTranscriptPanel.js';
 import {
   dismissConcurrentClusterUiState,
-  readConcurrentClusterUiStateMap,
+  loadConcurrentClusterUiStateMap,
   resolveConcurrentClusterPresentationMode,
   type ConcurrentClusterActionContext,
   type ConcurrentClusterContext,
@@ -391,12 +391,19 @@ export function ChatView({
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1280 : window.innerWidth,
   );
+  const [initialConcurrentClusterUiStateLoad] = useState(() =>
+    loadConcurrentClusterUiStateMap(
+      typeof window === 'undefined' ? null : window.localStorage,
+    ),
+  );
   const [concurrentClusterUiStateByKey, setConcurrentClusterUiStateByKey] =
-    useState<ConcurrentClusterUiStateMap>(() =>
-      readConcurrentClusterUiStateMap(
-        typeof window === 'undefined' ? null : window.localStorage,
-      ));
-  const hasPersistedConcurrentClusterUiStateRef = useRef(false);
+    useState<ConcurrentClusterUiStateMap>(initialConcurrentClusterUiStateLoad.value);
+  // Seed the "first-mount skip" ref from the load result: when parse normalized
+  // storage (dirty), let the first effect actually write the cleaned map so the
+  // bloat doesn't linger until the next user dismiss.
+  const hasPersistedConcurrentClusterUiStateRef = useRef(
+    initialConcurrentClusterUiStateLoad.requiresPersistedCleanup,
+  );
   const resolveConcurrentClusterMode = useCallback(
     (context: ConcurrentClusterContext) =>
       resolveConcurrentClusterPresentationMode({

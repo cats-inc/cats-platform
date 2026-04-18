@@ -33,18 +33,30 @@ export type ConcurrentClusterUiStateMap = Record<string, ConcurrentClusterUiStat
 interface ConcurrentClusterUiStateStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem?(key: string): void;
 }
 
-const warnedConcurrentClusterUiStateStorageContexts = new Set<'read' | 'write'>();
+const warnedConcurrentClusterUiStateStorageKeys = new Set<string>();
+
+function resolveConcurrentClusterUiStateWarningDedupeKey(
+  context: 'read' | 'write',
+  error: unknown,
+): string {
+  if (error instanceof Error) {
+    return `${context}:${error.name || 'Error'}`;
+  }
+  return `${context}:${typeof error}`;
+}
 
 function warnConcurrentClusterUiStateStorageFailure(
   context: 'read' | 'write',
   error: unknown,
 ): void {
-  if (warnedConcurrentClusterUiStateStorageContexts.has(context)) {
+  const dedupeKey = resolveConcurrentClusterUiStateWarningDedupeKey(context, error);
+  if (warnedConcurrentClusterUiStateStorageKeys.has(dedupeKey)) {
     return;
   }
-  warnedConcurrentClusterUiStateStorageContexts.add(context);
+  warnedConcurrentClusterUiStateStorageKeys.add(dedupeKey);
   if (typeof console === 'undefined' || typeof console.warn !== 'function') {
     return;
   }
@@ -52,6 +64,13 @@ function warnConcurrentClusterUiStateStorageFailure(
   console.warn(
     `[Cats] Failed to ${context} concurrent cluster dismiss state: ${errorMessage}`,
   );
+}
+
+// Tests share this module-level dedupe set, so a previous test that triggered the
+// same context+error name would silently swallow the next warn assertion. Reset
+// between tests that assert on warn output.
+export function resetConcurrentClusterUiStateStorageWarnings(): void {
+  warnedConcurrentClusterUiStateStorageKeys.clear();
 }
 
 function readConcurrentClusterUiStateRecord(
@@ -114,21 +133,65 @@ export function parseStoredConcurrentClusterUiStateMap(
   }
 }
 
+export interface LoadedConcurrentClusterUiStateMap {
+  value: ConcurrentClusterUiStateMap;
+  // True when parse normalized the raw payload (dropped invalid records or pruned
+  // overflow). Callers should persist the cleaned value on first mount instead of
+  // letting the next user dismiss overwrite the storage-side bloat.
+  requiresPersistedCleanup: boolean;
+}
+
+export function loadConcurrentClusterUiStateMap(
+  storage: ConcurrentClusterUiStateStorage | null | undefined,
+): LoadedConcurrentClusterUiStateMap {
+  if (!storage) {
+    return { value: {}, requiresPersistedCleanup: false };
+  }
+
+  let raw: string | null = null;
+  try {
+    raw = storage.getItem(CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY);
+  } catch (error) {
+    warnConcurrentClusterUiStateStorageFailure('read', error);
+    return { value: {}, requiresPersistedCleanup: false };
+  }
+  if (!raw) {
+    return { value: {}, requiresPersistedCleanup: false };
+  }
+
+  const value = parseStoredConcurrentClusterUiStateMap(raw);
+  const requiresPersistedCleanup = JSON.stringify(value) !== raw;
+  return { value, requiresPersistedCleanup };
+}
+
 export function readConcurrentClusterUiStateMap(
   storage: ConcurrentClusterUiStateStorage | null | undefined,
 ): ConcurrentClusterUiStateMap {
-  if (!storage) {
-    return {};
-  }
+  return loadConcurrentClusterUiStateMap(storage).value;
+}
 
-  try {
-    return parseStoredConcurrentClusterUiStateMap(
-      storage.getItem(CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY),
-    );
-  } catch (error) {
-    warnConcurrentClusterUiStateStorageFailure('read', error);
-    return {};
+function tryShrinkAndWriteConcurrentClusterUiStateMap(
+  storage: ConcurrentClusterUiStateStorage,
+  normalized: ConcurrentClusterUiStateMap,
+): boolean {
+  // Halve the map each retry so we converge in a few attempts rather than
+  // dumping everything to a hard-coded 32. Stop before we go below a single
+  // entry — at that point the caller should fall back to removeItem instead.
+  let currentSize = Object.keys(normalized).length;
+  while (currentSize > 1) {
+    currentSize = Math.floor(currentSize / 2);
+    const pruned = pruneConcurrentClusterUiStateMap(normalized, currentSize);
+    try {
+      storage.setItem(
+        CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
+        JSON.stringify(pruned),
+      );
+      return true;
+    } catch {
+      // try the next (smaller) tier
+    }
   }
+  return false;
 }
 
 export function writeConcurrentClusterUiStateMap(
@@ -145,21 +208,22 @@ export function writeConcurrentClusterUiStateMap(
       CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
       JSON.stringify(normalized),
     );
-  } catch (error) {
-    const aggressivelyPruned = pruneConcurrentClusterUiStateMap(normalized, 32);
-    if (aggressivelyPruned !== normalized) {
+    return;
+  } catch (initialError) {
+    if (tryShrinkAndWriteConcurrentClusterUiStateMap(storage, normalized)) {
+      return;
+    }
+    // Last resort: nuke the stored key so we don't keep carrying a stale payload
+    // that blocks future writes. Small maps (size ≤ 1) also land here because the
+    // shrink loop has nothing to prune.
+    if (typeof storage.removeItem === 'function') {
       try {
-        storage.setItem(
-          CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY,
-          JSON.stringify(aggressivelyPruned),
-        );
-        return;
-      } catch (retryError) {
-        warnConcurrentClusterUiStateStorageFailure('write', retryError);
-        return;
+        storage.removeItem(CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY);
+      } catch {
+        // Nothing left to try — warning below will surface the original error.
       }
     }
-    warnConcurrentClusterUiStateStorageFailure('write', error);
+    warnConcurrentClusterUiStateStorageFailure('write', initialError);
   }
 }
 

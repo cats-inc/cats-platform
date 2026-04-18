@@ -6,8 +6,10 @@ import {
   MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES,
   buildConcurrentClusterUiStateKey,
   dismissConcurrentClusterUiState,
+  loadConcurrentClusterUiStateMap,
   parseStoredConcurrentClusterUiStateMap,
   readConcurrentClusterUiStateMap,
+  resetConcurrentClusterUiStateStorageWarnings,
   resolveConcurrentClusterPresentationMode,
   type ConcurrentClusterUiStateMap,
   writeConcurrentClusterUiStateMap,
@@ -127,6 +129,7 @@ test('dismissConcurrentClusterUiState keeps only the most recent bounded entry s
 });
 
 test('writeConcurrentClusterUiStateMap warns when storage writes fail', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
   const warnings: string[] = [];
   const originalWarn = console.warn;
   console.warn = (message?: unknown) => {
@@ -152,4 +155,149 @@ test('writeConcurrentClusterUiStateMap warns when storage writes fail', () => {
 
   assert.equal(warnings.length, 1);
   assert.match(warnings[0] ?? '', /Failed to write concurrent cluster dismiss state/i);
+});
+
+test('writeConcurrentClusterUiStateMap surfaces distinct failure modes across successive calls', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = (message?: unknown) => {
+    warnings.push(String(message ?? ''));
+  };
+  try {
+    const makeThrowingStorage = (errorName: string, errorMessage: string) => ({
+      getItem(): string | null {
+        return null;
+      },
+      setItem(): void {
+        const err = new Error(errorMessage);
+        err.name = errorName;
+        throw err;
+      },
+    });
+    const dismissed = dismissConcurrentClusterUiState({}, {
+      channelId: 'channel-1',
+      turnId: 'turn-1',
+    });
+
+    writeConcurrentClusterUiStateMap(
+      makeThrowingStorage('QuotaExceededError', 'quota full'),
+      dismissed,
+    );
+    writeConcurrentClusterUiStateMap(
+      makeThrowingStorage('QuotaExceededError', 'still full'),
+      dismissed,
+    );
+    writeConcurrentClusterUiStateMap(
+      makeThrowingStorage('SecurityError', 'disabled'),
+      dismissed,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(warnings.length, 2);
+  assert.match(warnings[0] ?? '', /quota full/);
+  assert.match(warnings[1] ?? '', /disabled/);
+});
+
+test('writeConcurrentClusterUiStateMap removes the stored key when every retry fails on a small map', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
+  let removedKey: string | null = null;
+  const storage = {
+    getItem(): string | null {
+      return null;
+    },
+    setItem(): void {
+      throw new Error('quota exceeded');
+    },
+    removeItem(key: string): void {
+      removedKey = key;
+    },
+  };
+  const dismissed = dismissConcurrentClusterUiState({}, {
+    channelId: 'channel-1',
+    turnId: 'turn-1',
+  });
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    writeConcurrentClusterUiStateMap(storage, dismissed);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(removedKey, CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY);
+});
+
+test('writeConcurrentClusterUiStateMap halves the map on retry before giving up on large writes', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
+  let state: ConcurrentClusterUiStateMap = {};
+  for (let index = 0; index < MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES; index += 1) {
+    state = dismissConcurrentClusterUiState(state, {
+      channelId: 'channel-1',
+      turnId: `turn-${index}`,
+    });
+  }
+  const setAttempts: number[] = [];
+  let committedPayload: string | null = null;
+  const storage = {
+    getItem(): string | null {
+      return null;
+    },
+    setItem(_key: string, value: string): void {
+      const entryCount = Object.keys(JSON.parse(value)).length;
+      setAttempts.push(entryCount);
+      if (entryCount > 25) {
+        throw new Error('quota exceeded');
+      }
+      committedPayload = value;
+    },
+  };
+
+  writeConcurrentClusterUiStateMap(storage, state);
+
+  assert.equal(setAttempts[0], MAX_CONCURRENT_CLUSTER_UI_STATE_ENTRIES);
+  assert.ok(setAttempts.length >= 2, 'should have attempted at least one halving retry');
+  assert.ok(setAttempts.every((count, idx) => idx === 0 || count < setAttempts[idx - 1]!),
+    'each retry should shrink the payload');
+  assert.ok(committedPayload !== null, 'eventually one of the smaller writes should land');
+});
+
+test('loadConcurrentClusterUiStateMap flags dirty storage when parse drops records', () => {
+  const storage = {
+    getItem(): string | null {
+      return JSON.stringify({
+        'channel-1:turn-1': { presentationOverride: 'inline_stack' },
+        'channel-1:turn-2': { presentationOverride: 'focus_rail' },
+      });
+    },
+    setItem(): void {},
+  };
+
+  const loaded = loadConcurrentClusterUiStateMap(storage);
+
+  assert.equal(loaded.requiresPersistedCleanup, true);
+  assert.deepEqual(loaded.value, {
+    'channel-1:turn-1': { presentationOverride: 'inline_stack' },
+  });
+});
+
+test('loadConcurrentClusterUiStateMap reports clean storage when no normalization is required', () => {
+  const storage = {
+    getItem(): string | null {
+      return JSON.stringify({
+        'channel-1:turn-1': { presentationOverride: 'inline_stack' },
+      });
+    },
+    setItem(): void {},
+  };
+
+  const loaded = loadConcurrentClusterUiStateMap(storage);
+
+  assert.equal(loaded.requiresPersistedCleanup, false);
+  assert.deepEqual(loaded.value, {
+    'channel-1:turn-1': { presentationOverride: 'inline_stack' },
+  });
 });
