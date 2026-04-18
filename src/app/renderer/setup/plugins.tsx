@@ -5,8 +5,7 @@ import type { ProductProviderRegistryReadModel } from '../../../shared/providerC
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { resolveProviderRegistrySetupHref } from '../../../design/components/ProviderModelFields.js';
 import {
-  readGuideCatLocaleSourceFromNavigator,
-  resolveGuideCatSystemName,
+  resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
 
 export interface GuideCatSetupFieldsProps {
@@ -33,7 +32,7 @@ export function GuideCatSetupFields({
   runtimeBaseUrl,
   onTargetChange,
 }: GuideCatSetupFieldsProps) {
-  const guideCatName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+  const guideCatName = resolveClientGuideCatName();
   const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>({
     state: 'ready',
     providers: [],

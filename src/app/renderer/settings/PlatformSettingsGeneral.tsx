@@ -9,8 +9,7 @@ import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 import {
   isGuideCatEnabledStatus,
-  readGuideCatLocaleSourceFromNavigator,
-  resolveGuideCatSystemName,
+  resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
 import { useNavigate } from 'react-router-dom';
 
@@ -112,7 +111,7 @@ export function PlatformSettingsGeneral({
 
   const avatarUrl = payload.ownerAvatarUrl;
   const initials = nameInitials(payload.ownerDisplayName);
-  const guideCatName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+  const guideCatName = resolveClientGuideCatName();
   const guideCatEnabled = isGuideCatEnabledStatus(payload.guideCat?.status);
   const lobbyPrefs = payload.lobby ?? {
     animationMode: 'reduced',

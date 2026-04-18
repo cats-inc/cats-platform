@@ -70,6 +70,10 @@ export function resolveGuideCatSystemName(localeSource?: LocaleSource): string {
   return GUIDE_CAT_SYSTEM_NAME;
 }
 
+export function resolveClientGuideCatName(): string {
+  return resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+}
+
 export function isGuideCatEnabledStatus(status?: string | null): boolean {
   return status === undefined || status === null || status === 'active';
 }

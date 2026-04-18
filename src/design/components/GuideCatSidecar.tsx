@@ -30,8 +30,7 @@ import {
   resolveExecutionTargetLabel,
 } from '../../shared/executionLabel.js';
 import {
-  readGuideCatLocaleSourceFromNavigator,
-  resolveGuideCatSystemName,
+  resolveClientGuideCatName,
 } from '../../shared/guideCatIdentity.js';
 
 interface GuideCatSidecarProps {
@@ -94,7 +93,7 @@ export function CollapsedPill({
   className?: string;
   dragging?: boolean;
 }) {
-  const displayName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+  const displayName = resolveClientGuideCatName();
   return (
     <div
       className={className ?? 'guideCatPillWrap'}
@@ -194,7 +193,7 @@ function OpenPanel({
   style?: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
 }) {
-  const displayName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+  const displayName = resolveClientGuideCatName();
   return (
     <div
       className={
@@ -369,7 +368,7 @@ export function GuideCatSidecarView({
 }
 
 function buildGuideCatTooltip(guideCat: GuideCatRecord): string {
-  const displayName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+  const displayName = resolveClientGuideCatName();
   const executionLabel = resolveExecutionTargetLabel({
     provider: guideCat.executionTarget.provider,
     instance: guideCat.executionTarget.instance,
@@ -422,7 +421,7 @@ function SidecarContent({
   const panelRef = useRef<HTMLDivElement>(null);
   const guideCatUiPrefs = useGuideCatUiPrefs();
   const { dialog, choose, handleClose } = useConfirmDialog();
-  const guideCatName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+  const guideCatName = resolveClientGuideCatName();
 
   const handleAction = useCallback((route: string) => {
     collapse();

@@ -17,8 +17,7 @@ import {
 } from '../../shared/executionLabel.js';
 import { GUIDE_CAT_AVATAR_URL } from './GuideCatSidecar.js';
 import {
-  readGuideCatLocaleSourceFromNavigator,
-  resolveGuideCatSystemName,
+  resolveClientGuideCatName,
 } from '../../shared/guideCatIdentity.js';
 
 export interface GuideCatDockSlotProps {
@@ -54,7 +53,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
   const isActive =
     projection.kind === 'docked' && projection.slot === slotKind;
   const isPreview = state.preview;
-  const displayName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+  const displayName = resolveClientGuideCatName();
 
   const tooltip = buildDockedTooltip(guideCat);
 
@@ -128,7 +127,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
 }
 
 function buildDockedTooltip(guideCat: GuideCatRecord): string {
-  const displayName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
+  const displayName = resolveClientGuideCatName();
   const executionLabel = resolveExecutionTargetLabel({
     provider: guideCat.executionTarget.provider,
     instance: guideCat.executionTarget.instance,
