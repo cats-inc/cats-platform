@@ -183,7 +183,8 @@ carry Guide Cat UI prefs in steady state
       window reconciles cleanly in the other.
 - [x] If local persistence is unavailable during startup, the app retries on a
       future startup instead of permanently losing the current renderer-owned
-      value.
+      value; unsupported or malformed existing records are handled
+      conservatively without bootstrap overwrite.
 - [x] The current version boots from renderer-owned local state or
       deterministic defaults without any server-owned Guide Cat UI preference
       seam.
@@ -268,7 +269,7 @@ regressing placement continuity or Settings behavior
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Future store schema changes drop current renderer-owned values | High | Treat the current versioned local record as the forward baseline, require future versions to parse it, and avoid overwriting unsupported records during bootstrap |
+| Future store schema changes drop current renderer-owned values | High | Treat the current versioned local record as the forward baseline, require future versions to parse it, avoid overwriting unsupported records during bootstrap, and keep runtime storage-event handling conservative when another window surfaces an unsupported record |
 | Local persistence fails and the UI falls back to defaults too often | High | Keep the in-memory store usable and tighten retry/diagnostics in follow-up slices |
 | Multiple renderer windows diverge on Guide Cat UI state | Medium | Use one store contract plus `storage`-event reconciliation |
 | Components bypass the store and reintroduce raw `localStorage` coupling | Medium | Centralize read/write APIs in one store module and update tests to enforce behavior |
@@ -285,6 +286,7 @@ regressing placement continuity or Settings behavior
 | 2026-04-18 | Landed atomic undock persistence and moved Guide Cat UI-pref hydration out of the render body |
 | 2026-04-18 | Removed the prerelease backward-compatibility seam for older server-backed Guide Cat UI prefs and re-froze the plan around the current renderer-owned baseline only |
 | 2026-04-18 | Hardened renderer-store bootstrap so unsupported or malformed local records do not get overwritten during startup, and added retry coverage for later-startup persistence recovery |
+| 2026-04-18 | Added developer-visible warnings for unsupported or malformed Guide Cat UI pref records and aligned cross-window storage-event handling to preserve the current in-memory snapshot instead of resetting to defaults |
 
 ---
 

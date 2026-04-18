@@ -81,6 +81,8 @@ export interface UseGuideCatUiPrefsResult {
   update: (patch: GuideCatUiPrefsPatch) => void;
 }
 
+const warnedInvalidGuideCatUiPrefsContexts = new Set<string>();
+
 function readBrowserGlobal(): GuideCatBrowserGlobalLike | null {
   const candidate = globalThis as unknown as GuideCatBrowserGlobalLike;
   if (
@@ -150,6 +152,8 @@ export function parseStoredGuideCatUiPrefs(
       return null;
     }
     const record = parsed as Record<string, unknown>;
+    // Future: when bumping the schema version, add a case that parses older
+    // records and migrates them in memory before returning the current shape.
     switch (record.version) {
       case GUIDE_CAT_UI_PREFS_SCHEMA_VERSION:
         return {
@@ -164,6 +168,16 @@ export function parseStoredGuideCatUiPrefs(
   } catch {
     return null;
   }
+}
+
+function warnInvalidGuideCatUiPrefsRecord(context: 'bootstrap' | 'storage-event'): void {
+  if (warnedInvalidGuideCatUiPrefsContexts.has(context)) {
+    return;
+  }
+  warnedInvalidGuideCatUiPrefsContexts.add(context);
+  globalThis.console?.warn?.(
+    `[guide-cat-ui-prefs] Ignoring unsupported or malformed stored prefs during ${context}.`,
+  );
 }
 
 export function serializeGuideCatUiPrefs(prefs: GuideCatUiPrefs): string {
@@ -235,6 +249,7 @@ export function hydrateGuideCatUiPrefs(options: {
   }
 
   if (storedRaw !== null) {
+    warnInvalidGuideCatUiPrefsRecord('bootstrap');
     return {
       prefs: { ...GUIDE_CAT_UI_PREFS_DEFAULTS },
       source: 'defaults',
@@ -335,7 +350,21 @@ export class GuideCatUiPrefsStore {
     if (event.key !== GUIDE_CAT_UI_PREFS_STORAGE_KEY) {
       return;
     }
-    const next = parseStoredGuideCatUiPrefs(event.newValue) ?? { ...GUIDE_CAT_UI_PREFS_DEFAULTS };
+    if (event.newValue === null) {
+      const next = { ...GUIDE_CAT_UI_PREFS_DEFAULTS };
+      if (areGuideCatUiPrefsEqual(this.prefs, next)) {
+        return;
+      }
+      this.prefs = next;
+      this.hydrated = true;
+      this.emit();
+      return;
+    }
+    const next = parseStoredGuideCatUiPrefs(event.newValue);
+    if (!next) {
+      warnInvalidGuideCatUiPrefsRecord('storage-event');
+      return;
+    }
     if (areGuideCatUiPrefsEqual(this.prefs, next)) {
       return;
     }

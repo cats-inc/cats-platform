@@ -172,15 +172,26 @@ test('hydrateGuideCatUiPrefs keeps defaults in memory when local persistence fai
 test('hydrateGuideCatUiPrefs does not overwrite malformed stored records during bootstrap', () => {
   const storage = new MemoryStorage();
   storage.setItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY, '{');
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+  console.warn = (message?: unknown) => {
+    warnings.push(String(message ?? ''));
+  };
 
-  const result = hydrateGuideCatUiPrefs({
-    storage,
-  });
+  try {
+    const result = hydrateGuideCatUiPrefs({
+      storage,
+    });
 
-  assert.equal(result.source, 'defaults');
-  assert.equal(result.persisted, false);
-  assert.deepEqual(result.prefs, GUIDE_CAT_UI_PREFS_DEFAULTS);
-  assert.equal(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY), '{');
+    assert.equal(result.source, 'defaults');
+    assert.equal(result.persisted, false);
+    assert.deepEqual(result.prefs, GUIDE_CAT_UI_PREFS_DEFAULTS);
+    assert.equal(storage.getItem(GUIDE_CAT_UI_PREFS_STORAGE_KEY), '{');
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0] ?? '', /Ignoring unsupported or malformed stored prefs/u);
+  } finally {
+    console.warn = originalWarn;
+  }
 });
 
 test('hydrateGuideCatUiPrefs does not overwrite unsupported stored schema versions', () => {
@@ -341,6 +352,82 @@ test('GuideCatUiPrefsStore reconciles external storage updates from another wind
     });
 
     unsubscribe();
+  });
+});
+
+test('GuideCatUiPrefsStore ignores invalid storage events and keeps the current snapshot', async () => {
+  await withBrowserStorageHarness(async ({ storage, dispatchStorage }) => {
+    const store = createGuideCatUiPrefsStore(storage);
+    let notifications = 0;
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (message?: unknown) => {
+      warnings.push(String(message ?? ''));
+    };
+    const unsubscribe = store.subscribe(() => {
+      notifications += 1;
+    });
+
+    try {
+      store.ensureHydrated();
+      store.update({
+        sidecarMode: 'bubble',
+        placement: 'docked',
+        floatingAnchor: { x: 0.7, y: 0.3 },
+      });
+      notifications = 0;
+
+      dispatchStorage({
+        newValue: JSON.stringify({
+          version: 2,
+          sidecarSeen: true,
+          sidecarMode: 'drawer',
+          placement: 'floating',
+          floatingAnchor: { x: 0.1, y: 0.1 },
+        }),
+      });
+
+      assert.equal(notifications, 0);
+      assert.deepEqual(store.getSnapshot(), {
+        ...GUIDE_CAT_UI_PREFS_DEFAULTS,
+        sidecarMode: 'bubble',
+        placement: 'docked',
+        floatingAnchor: { x: 0.7, y: 0.3 },
+      });
+      assert.equal(warnings.length, 1);
+      assert.match(warnings[0] ?? '', /Ignoring unsupported or malformed stored prefs/u);
+    } finally {
+      console.warn = originalWarn;
+      unsubscribe();
+    }
+  });
+});
+
+test('GuideCatUiPrefsStore falls back to defaults when another window clears the stored key', async () => {
+  await withBrowserStorageHarness(async ({ storage, dispatchStorage }) => {
+    const store = createGuideCatUiPrefsStore(storage);
+    let notifications = 0;
+    const unsubscribe = store.subscribe(() => {
+      notifications += 1;
+    });
+
+    try {
+      store.ensureHydrated();
+      store.update({
+        sidecarSeen: true,
+        sidecarMode: 'bubble',
+      });
+      notifications = 0;
+
+      dispatchStorage({
+        newValue: null,
+      });
+
+      assert.equal(notifications, 1);
+      assert.deepEqual(store.getSnapshot(), GUIDE_CAT_UI_PREFS_DEFAULTS);
+    } finally {
+      unsubscribe();
+    }
   });
 });
 

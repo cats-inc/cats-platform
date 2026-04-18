@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { parsePlatformPreferencesUpdate } from '../src/app/server/platformSetupRouteSupport.ts';
 import type { PlatformPreferences } from '../src/shared/platformPreferences.ts';
+import type { PlatformPreferencesUpdateBody } from '../src/app/server/platformSetupRouteSupport.ts';
 
 function baselinePreferences(): PlatformPreferences {
   return {
@@ -89,7 +90,7 @@ test('parsePlatformPreferencesUpdate ignores legacy guide-cat keys without touch
       guideCatPlacement: 'docked',
       guideCatFloatingAnchor: { x: 0.4, y: 0.6 },
       guideCatSidecarSeen: true,
-    } as PlatformPreferences & Record<string, unknown>,
+    } as PlatformPreferencesUpdateBody & Record<string, unknown>,
     current,
   );
   assert.equal(result.ok, true);
