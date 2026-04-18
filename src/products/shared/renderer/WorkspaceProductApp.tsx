@@ -90,6 +90,7 @@ import {
 } from "../../../shared/runtimeSessionPolicy.js";
 import {
   buildFolderBrowserContentProps,
+  resolveVisibleChatChannel,
   resolveVisibleChatChannelId,
 } from "./appShellPresentation.js";
 import {
@@ -994,7 +995,10 @@ export function createWorkspaceProductApp({
             selectedChannel,
             directLaneChannel,
           );
-          const visibleChannel = selectedChannel ?? directLaneChannel;
+          const visibleChannel = resolveVisibleChatChannel(
+            selectedChannel,
+            directLaneChannel,
+          );
 
           function onSwitchProduct(nextSurface: PlatformSurfaceId): void {
             navigate(platformSurfaceRoutePrefix(nextSurface));

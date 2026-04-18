@@ -149,12 +149,13 @@ function normalizeSelectedChannel(
   if (!Array.isArray(selectedChannel.participantAssignments)) {
     selectedChannel.participantAssignments = catAssignments.map((assignmentValue) => {
       const assignment = asRecord(assignmentValue) ?? {};
+      const cat = catsById.get(readString(assignment.catId)) ?? {};
       return {
         participantId: readString(assignment.participantId, readString(assignment.catId)),
         sourceKind: readString(assignment.sourceKind, 'cat') === 'cat' ? 'cat' : 'adhoc',
         sourceRefId:
           readNullableString(assignment.sourceRefId) ?? readNullableString(assignment.catId),
-        name: readString(assignment.name, 'Participant'),
+        name: readString(assignment.name, readString(cat.name, 'Participant')),
         status: readString(assignment.status, 'active'),
         roles: Array.isArray(assignment.roles) ? assignment.roles : [],
         roleHint: readNullableString(assignment.roleHint),

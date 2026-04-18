@@ -9,6 +9,13 @@ export function resolveVisibleChatChannelId(
   return selectedChannel?.id ?? directLaneChannel?.id ?? null;
 }
 
+export function resolveVisibleChatChannel<TChannel>(
+  selectedChannel: TChannel | null,
+  directLaneChannel: TChannel | null,
+): TChannel | null {
+  return selectedChannel ?? directLaneChannel;
+}
+
 export interface FolderBrowserContentPropsOptions<TEntry> {
   folderBrowsePath: string;
   folderBrowseCurrentPath: string | null;
