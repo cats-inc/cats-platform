@@ -18,7 +18,10 @@ import {
   TOTAL_SETUP_STEPS,
   type SetupStep,
 } from './flow';
-import { resolveGuideCatDisplayName } from '../../../shared/guideCatIdentity.js';
+import {
+  readGuideCatLocaleSourceFromNavigator,
+  resolveGuideCatSystemName,
+} from '../../../shared/guideCatIdentity.js';
 
 type PendingAction = 'complete' | null;
 
@@ -48,7 +51,7 @@ export function PlatformSetupWizard({
   const setupOpenedRecorded = useRef(false);
 
   const busy = busyAction !== null;
-  const guideCatName = resolveGuideCatDisplayName();
+  const guideCatName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
   const canContinueGuideCatStep = canContinueGuideCatSetupStep({
     createGuideCat,
     model,

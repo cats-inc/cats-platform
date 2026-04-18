@@ -430,7 +430,10 @@ test('POST /api/platform/setup/complete rejects guide cat name overrides', async
 
     assert.equal(response.status, 400);
     const payload = await response.json();
-    assert.match(payload.error?.message ?? '', /name is fixed and cannot be changed/u);
+    assert.equal(
+      payload.error?.message,
+      'Unexpected name field. Guide Cat name is system-managed.',
+    );
   });
 });
 
@@ -1051,7 +1054,10 @@ test('PUT /api/platform/guide-cat rejects guide cat name overrides', async () =>
 
     assert.equal(updateResponse.status, 400);
     const payload = await updateResponse.json();
-    assert.match(payload.error?.message ?? '', /name is fixed and cannot be changed/u);
+    assert.equal(
+      payload.error?.message,
+      'Unexpected name field. Guide Cat name is system-managed.',
+    );
   });
 });
 

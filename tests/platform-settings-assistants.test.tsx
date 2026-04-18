@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { SettingsAssistants } from '../src/app/renderer/settings/SettingsAssistants.tsx';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
-import { resolveGuideCatDisplayName } from '../src/shared/guideCatIdentity.ts';
+import { resolveGuideCatSystemName } from '../src/shared/guideCatIdentity.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -103,7 +103,7 @@ function createPayload(): AppShellPayload {
 }
 
 test('SettingsAssistants renders guide cat and saved assistant presets', () => {
-  const guideCatName = resolveGuideCatDisplayName();
+  const guideCatName = resolveGuideCatSystemName(null);
   const markup = renderToStaticMarkup(
     <SettingsAssistants
       payload={createPayload()}
@@ -124,7 +124,7 @@ test('SettingsAssistants empty state keeps temporary participants out of setting
   const payload = createPayload();
   payload.guideCat = null;
   payload.assistantPresets = [];
-  const guideCatName = resolveGuideCatDisplayName();
+  const guideCatName = resolveGuideCatSystemName(null);
 
   const markup = renderToStaticMarkup(
     <SettingsAssistants

@@ -29,9 +29,7 @@ export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 const GUIDE_CAT_PRIMARY_ID = 'guide-cat-primary';
 
 interface LegacyPlatformSetupCompleteInput extends PlatformSetupCompleteInput {
-  guideCatName?: string | null;
   createBossCat?: boolean;
-  bossCatName?: string;
   bossCatProvider?: string;
   bossCatInstance?: string;
   bossCatModel?: string;
@@ -77,7 +75,7 @@ async function handlePlatformSetupComplete(
     sendJson(context.response, 400, {
       error: {
         code: 'bad_request',
-        message: 'Guide Cat name is fixed and cannot be changed',
+        message: 'Unexpected name field. Guide Cat name is system-managed.',
       },
     });
     return;

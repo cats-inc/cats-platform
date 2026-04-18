@@ -4,7 +4,10 @@ import { CatCreationFields } from './CatCreationFields.js';
 import type { ProductProviderRegistryReadModel } from '../../../shared/providerCatalog.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { resolveProviderRegistrySetupHref } from '../../../design/components/ProviderModelFields.js';
-import { resolveGuideCatDisplayName } from '../../../shared/guideCatIdentity.js';
+import {
+  readGuideCatLocaleSourceFromNavigator,
+  resolveGuideCatSystemName,
+} from '../../../shared/guideCatIdentity.js';
 
 export interface GuideCatSetupFieldsProps {
   provider: string;
@@ -30,7 +33,7 @@ export function GuideCatSetupFields({
   runtimeBaseUrl,
   onTargetChange,
 }: GuideCatSetupFieldsProps) {
-  const guideCatName = resolveGuideCatDisplayName();
+  const guideCatName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
   const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>({
     state: 'ready',
     providers: [],

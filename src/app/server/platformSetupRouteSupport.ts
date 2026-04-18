@@ -39,7 +39,6 @@ export interface ParsedAssistantPresetBody {
 }
 
 export interface GuideCatUpdateBody {
-  name?: string | null;
   provider?: string;
   instance?: string | null;
   model?: string | null;
@@ -175,7 +174,7 @@ export function parseGuideCatUpdateBody(
   body: GuideCatUpdateBody,
 ): ParseResult<ParsedGuideCatUpdateBody> {
   if (Object.prototype.hasOwnProperty.call(body, 'name')) {
-    return { ok: false, message: 'Guide Cat name is fixed and cannot be changed' };
+    return { ok: false, message: 'Unexpected name field. Guide Cat name is system-managed.' };
   }
 
   return {

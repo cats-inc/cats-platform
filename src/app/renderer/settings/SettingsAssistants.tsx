@@ -8,7 +8,8 @@ import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import {
   isGuideCatEnabledStatus,
-  resolveGuideCatDisplayName,
+  readGuideCatLocaleSourceFromNavigator,
+  resolveGuideCatSystemName,
 } from '../../../shared/guideCatIdentity.js';
 
 export interface SettingsAssistantsProps {
@@ -63,7 +64,7 @@ export function SettingsAssistants({
   onPayloadUpdate,
 }: SettingsAssistantsProps) {
   const guideCat = payload.guideCat ?? null;
-  const guideCatName = resolveGuideCatDisplayName();
+  const guideCatName = resolveGuideCatSystemName(readGuideCatLocaleSourceFromNavigator());
   const guideCatEnabled = guideCat ? isGuideCatEnabledStatus(guideCat.status) : false;
   const assistantPresets = payload.assistantPresets ?? [];
   const [guideForm, setGuideForm] = useState<GuideCatFormState>(() =>
