@@ -55,6 +55,7 @@ class FakeDocument {
 class FakeMutationObserver {
   static instances: FakeMutationObserver[] = [];
   target: unknown = null;
+  disconnected = false;
 
   constructor(
     private readonly callback: MutationCallback,
@@ -66,9 +67,15 @@ class FakeMutationObserver {
     this.target = target;
   }
 
-  disconnect(): void {}
+  disconnect(): void {
+    this.disconnected = true;
+    FakeMutationObserver.instances = FakeMutationObserver.instances.filter(
+      (instance) => instance !== this,
+    );
+  }
 
   flush(): void {
+    if (this.disconnected) return;
     this.callback([], this as unknown as MutationObserver);
   }
 
@@ -90,6 +97,7 @@ class FakeMutationObserver {
 class FakeResizeObserver {
   static instances: FakeResizeObserver[] = [];
   target: unknown = null;
+  disconnected = false;
 
   constructor(
     private readonly callback: ResizeObserverCallback,
@@ -101,9 +109,15 @@ class FakeResizeObserver {
     this.target = target;
   }
 
-  disconnect(): void {}
+  disconnect(): void {
+    this.disconnected = true;
+    FakeResizeObserver.instances = FakeResizeObserver.instances.filter(
+      (instance) => instance !== this,
+    );
+  }
 
   flush(): void {
+    if (this.disconnected) return;
     this.callback([], this as unknown as ResizeObserver);
   }
 
@@ -212,15 +226,32 @@ test('observeGuideCatChromeMetric re-syncs when the observed target disconnects 
     });
 
     assert.deepEqual(observed, [240]);
+    // Per-target resize + attribute observers are attached on the first sync.
+    const firstSidebarResize = FakeResizeObserver.instances.find(
+      (instance) => instance.target === firstSidebar,
+    );
+    const firstSidebarAttrs = FakeMutationObserver.instances.find(
+      (instance) => instance.target === firstSidebar,
+    );
+    assert.ok(firstSidebarResize, 'first sidebar resize observer should be attached');
+    assert.ok(firstSidebarAttrs, 'first sidebar attribute observer should be attached');
 
     document.setNode('aside.sidebar', null);
     FakeMutationObserver.flushFor(document.body);
     assert.deepEqual(observed, [240, null]);
+    // Old target observers must be disconnected on swap; otherwise stale
+    // resize/attribute events from an unmounted node would keep reaching us.
+    assert.equal(firstSidebarResize.disconnected, true);
+    assert.equal(firstSidebarAttrs.disconnected, true);
 
     const secondSidebar = new FakeMeasuredElement({ right: 312, bottom: 600 });
     document.setNode('aside.sidebar', secondSidebar);
     FakeMutationObserver.flushFor(document.body);
     assert.deepEqual(observed, [240, null, 312]);
+    const secondSidebarResize = FakeResizeObserver.instances.find(
+      (instance) => instance.target === secondSidebar,
+    );
+    assert.ok(secondSidebarResize, 'remounted sidebar should get a fresh resize observer');
 
     cleanup();
   });

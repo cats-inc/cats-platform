@@ -63,6 +63,36 @@ export function consumeGuideCatProactiveGreeting(
   };
 }
 
+export interface GuideCatProactiveGreetingTickResult {
+  queue: GuideCatProactiveGreetingQueue;
+  commit: { innerState: GuideCatSidecarInnerState; proactive: boolean } | null;
+}
+
+/** Pure step combining queue → consume → resolve for the proactive greeting
+ * effect. Keeping it outside of React lets tests lock in the one-shot
+ * contract: once a token is consumed, subsequent ticks with the same token
+ * must not re-open the peek even if `mode` changes, because proactive is
+ * a fire-once event and later mode switches are user intent, not replay. */
+export function tickGuideCatProactiveGreeting(input: {
+  queue: GuideCatProactiveGreetingQueue;
+  token: number;
+  isHiddenRoute: boolean;
+  mode: GuideCatSidecarMode;
+}): GuideCatProactiveGreetingTickResult {
+  const queued = queueGuideCatProactiveGreeting(input.queue, input.token);
+  const consumed = consumeGuideCatProactiveGreeting(queued, input.isHiddenRoute);
+  if (!consumed.shouldOpen) {
+    return { queue: consumed.queue, commit: null };
+  }
+  return {
+    queue: consumed.queue,
+    commit: {
+      innerState: resolveGuideCatSidecarProactiveState(input.mode),
+      proactive: true,
+    },
+  };
+}
+
 export function toggleGuideCatSidecarState(
   prev: GuideCatSidecarInnerState,
   mode: GuideCatSidecarMode,
@@ -106,6 +136,10 @@ export function useGuideCatSidecarState(
     lastQueuedToken: 0,
     pendingToken: null,
   });
+  // `mode` is read via ref inside the proactive effect so later mode
+  // changes don't re-run the effect and replay the one-shot greeting. The
+  // inline ref update is safe here because `useEffect` always runs after
+  // render commits — the effect sees the latest committed mode.
   const modeRef = useRef(mode);
   modeRef.current = mode;
 
@@ -126,25 +160,22 @@ export function useGuideCatSidecarState(
   }, [isHiddenRoute]);
 
   useEffect(() => {
-    const queued = queueGuideCatProactiveGreeting(
-      proactiveQueueRef.current,
-      proactiveGreetingToken,
-    );
-    proactiveQueueRef.current = queued;
-
-    const consumed = consumeGuideCatProactiveGreeting(proactiveQueueRef.current, isHiddenRoute);
-    proactiveQueueRef.current = consumed.queue;
-    if (!consumed.shouldOpen) {
+    // Proactive greeting glue (queue → consume → resolve) lives in
+    // `tickGuideCatProactiveGreeting` so the one-shot-on-mode-change
+    // contract is unit-testable without React. See that function's doc.
+    const result = tickGuideCatProactiveGreeting({
+      queue: proactiveQueueRef.current,
+      token: proactiveGreetingToken,
+      isHiddenRoute,
+      mode: modeRef.current,
+    });
+    proactiveQueueRef.current = result.queue;
+    if (!result.commit) {
       return;
     }
-    // Proactive greeting is a one-shot event. Once the queued token is
-    // consumed we intentionally keep the resulting peek/open shape stable
-    // instead of re-resolving it on later mode changes.
-    setProactive(true);
-    setInnerState((prev) => {
-      const nextState = resolveGuideCatSidecarProactiveState(modeRef.current);
-      return prev === nextState ? prev : nextState;
-    });
+    const { innerState: nextInnerState, proactive: nextProactive } = result.commit;
+    setProactive(nextProactive);
+    setInnerState((prev) => (prev === nextInnerState ? prev : nextInnerState));
   }, [isHiddenRoute, proactiveGreetingToken]);
 
   const viewState: GuideCatSidecarViewState = isHiddenRoute ? 'hidden' : innerState;

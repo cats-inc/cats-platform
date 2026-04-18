@@ -477,13 +477,20 @@ export default function PlatformApp() {
               onComplete={(nextEnvelope) => {
                 flushSync(() => {
                   setState({ status: 'ready', envelope: nextEnvelope });
+                  // Fire the one-shot setup greeting only for fresh installs
+                  // (sidecarSeen=false). See `persistGuideCatSeen` above for
+                  // why sidecarSeen still exists after the renderer-owned
+                  // prefs migration — it is the only signal that prevents
+                  // replaying this peek after the user resets setup on the
+                  // same install. The hydrated guard is pessimistic on
+                  // purpose: if hydration is ever made async, skipping is
+                  // safer than replaying, at the accepted cost that a fresh
+                  // install with a not-yet-hydrated store would miss this
+                  // one-shot. Today hydration is synchronous so hydrated is
+                  // always true here in practice.
                   if (
                     nextEnvelope.guideCat
                     && nextEnvelope.guideCat.status !== 'dismissed'
-                    // This gate is intentionally hydrated-first: if the prefs
-                    // store ever becomes async here, we prefer skipping the
-                    // proactive setup greeting over replaying one that the
-                    // same local install already consumed.
                     && guideCatUiPrefs.hydrated
                     && !guideCatUiPrefs.prefs.sidecarSeen
                   ) {

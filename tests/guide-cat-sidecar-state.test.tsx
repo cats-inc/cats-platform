@@ -10,6 +10,7 @@ import {
   queueGuideCatProactiveGreeting,
   resolveGuideCatSidecarProactiveState,
   resolveGuideCatSidecarPreferenceState,
+  tickGuideCatProactiveGreeting,
   toggleGuideCatSidecarState,
 } from '../src/app/renderer/useGuideCatSidecarState.ts';
 import {
@@ -114,6 +115,63 @@ test('Guide Cat proactive greeting queue ignores duplicate tokens and accepts ne
     queueGuideCatProactiveGreeting(initial, 2),
     { lastQueuedToken: 2, pendingToken: 2 },
   );
+});
+
+test('tickGuideCatProactiveGreeting does nothing at token=0 and no pending greeting', () => {
+  const result = tickGuideCatProactiveGreeting({
+    queue: { lastQueuedToken: 0, pendingToken: null },
+    token: 0,
+    isHiddenRoute: false,
+    mode: 'auto',
+  });
+  assert.equal(result.commit, null);
+  assert.deepEqual(result.queue, { lastQueuedToken: 0, pendingToken: null });
+});
+
+test('tickGuideCatProactiveGreeting commits a peek on a fresh token bump in a visible route', () => {
+  const result = tickGuideCatProactiveGreeting({
+    queue: { lastQueuedToken: 0, pendingToken: null },
+    token: 1,
+    isHiddenRoute: false,
+    mode: 'auto',
+  });
+  assert.deepEqual(result.commit, { innerState: 'welcome-peek', proactive: true });
+  assert.deepEqual(result.queue, { lastQueuedToken: 1, pendingToken: null });
+});
+
+test('tickGuideCatProactiveGreeting defers the greeting on hidden routes and keeps the token pending', () => {
+  const result = tickGuideCatProactiveGreeting({
+    queue: { lastQueuedToken: 0, pendingToken: null },
+    token: 1,
+    isHiddenRoute: true,
+    mode: 'bubble',
+  });
+  assert.equal(result.commit, null);
+  assert.deepEqual(result.queue, { lastQueuedToken: 1, pendingToken: 1 });
+});
+
+test('tickGuideCatProactiveGreeting ignores the same token after it has been consumed, even if mode changed', () => {
+  const consumed = { lastQueuedToken: 1, pendingToken: null };
+  const result = tickGuideCatProactiveGreeting({
+    queue: consumed,
+    token: 1,
+    isHiddenRoute: false,
+    mode: 'drawer',
+  });
+  assert.equal(result.commit, null);
+  assert.equal(result.queue, consumed);
+});
+
+test('tickGuideCatProactiveGreeting uses the latest mode for a newer token after the previous one was consumed', () => {
+  const consumed = { lastQueuedToken: 1, pendingToken: null };
+  const result = tickGuideCatProactiveGreeting({
+    queue: consumed,
+    token: 2,
+    isHiddenRoute: false,
+    mode: 'drawer',
+  });
+  assert.deepEqual(result.commit, { innerState: 'open', proactive: true });
+  assert.deepEqual(result.queue, { lastQueuedToken: 2, pendingToken: null });
 });
 
 test('Guide Cat sidecar resolves surface mode by route', () => {
