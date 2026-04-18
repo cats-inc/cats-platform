@@ -11,6 +11,7 @@ import {
   readGuideCatAssistCache,
   upsertGuideCatAssistBundle,
 } from '../build/server/shared/guideCatAssistStore.js';
+import { waitForGuideCatAssistRefreshIdle } from '../build/server/products/chat/api/guideCatAssist.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createCat } from '../build/server/products/chat/state/model/index.js';
 
@@ -938,6 +939,7 @@ test('PUT /api/platform/guide-cat refreshes a still-fresh assist cache when guid
       }),
     });
     assert.equal(updateResponse.status, 200);
+    await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
 
     const deadline = Date.now() + 5_000;
     let refreshedBundle = firstBundle;
@@ -984,6 +986,7 @@ test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after 
       body: JSON.stringify({ status: 'active' }),
     });
     assert.equal(restoreResponse.status, 200);
+    await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
 
     const parallelBundle = await waitForGuideCatAssistBundle(
       config.chatStatePath,
