@@ -329,6 +329,44 @@ body.guideCatDragging
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* Workspace dock variant: the peek sits to the right of the sidebar and is
+   pinned by its bottom edge (React sets `top: dock-slot-bottom` with
+   `translateY(-100%)`) so it hugs the dock row instead of centring across
+   the canvas. Move the tail near the bottom of the peek — that's the edge
+   closest to the docked pill — while still pointing left toward the
+   sidebar. The animation translates only on the X axis so the
+   `translateY(-100%)` pin is preserved during the slide-in. */
+.guideCatPeek--anchor-bottom-left {
+  animation: guideCatPeekInBottomLeft 0.2s ease-out;
+}
+
+.guideCatPeek--anchor-bottom-left::before {
+  left: -8px;
+  top: auto;
+  bottom: 16px;
+  transform: none;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid var(--border);
+  border-left: none;
+}
+
+.guideCatPeek--anchor-bottom-left::after {
+  left: -6px;
+  top: auto;
+  bottom: 17px;
+  transform: none;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 7px solid var(--panel);
+  border-left: none;
+}
+
+@keyframes guideCatPeekInBottomLeft {
+  from { opacity: 0; transform: translateY(-100%) translateX(-8px); }
+  to   { opacity: 1; transform: translateY(-100%) translateX(0); }
+}
+
 .guideCatPeekGreeting {
   font-size: var(--text-sm);
   color: var(--muted);

@@ -108,7 +108,7 @@ export function CollapsedPill({
   );
 }
 
-export type GuideCatPeekAnchor = 'anchor-left' | 'anchor-top';
+export type GuideCatPeekAnchor = 'anchor-left' | 'anchor-top' | 'anchor-bottom-left';
 
 function WelcomePeek({
   ownerDisplayName,
@@ -577,10 +577,13 @@ export function GuideCatSidecar({
 
 /** Compute where the welcome-peek bubble should sit relative to a docked
  * pill. Workspace dock lives in the left sidebar → peek sits to the right
- * with the existing left-pointing tail. Lobby dock lives in the top bar →
- * peek sits below with an upward-pointing tail (the `anchor-top` variant).
- * Returns null when the slot isn't mounted yet, so the caller can fall
- * back to no positioning rather than snap the peek to viewport defaults. */
+ * with its bottom edge pinned to the dock slot bottom (= the line that
+ * used to separate dock from user chrome), so the peek reads as attached
+ * to the dock row rather than floating across the canvas. Lobby dock
+ * lives in the top bar → peek sits below with an upward-pointing tail
+ * (the `anchor-top` variant). Returns null when the slot isn't mounted
+ * yet, so the caller can fall back to no positioning rather than snap
+ * the peek to viewport defaults. */
 function resolveDockedPeekPlacement(
   slot: 'lobby' | 'workspace',
   rect: { left: number; top: number; right: number; bottom: number } | null,
@@ -590,10 +593,10 @@ function resolveDockedPeekPlacement(
     return {
       style: {
         left: `${rect.right + FLOATING_PEEK_OFFSET_PX}px`,
-        top: `${(rect.top + rect.bottom) / 2}px`,
-        transform: 'translateY(-50%)',
+        top: `${rect.bottom}px`,
+        transform: 'translateY(-100%)',
       },
-      anchor: 'anchor-left',
+      anchor: 'anchor-bottom-left',
     };
   }
   return {
