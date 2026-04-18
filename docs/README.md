@@ -55,6 +55,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-063](./plans/PLAN-063-guide-cat-renderer-owned-ui-preferences-migration.md)
 - [SPEC-072](./specs/SPEC-072-runtime-session-policy-boundary-validation.md)
 - [ADR-071](./decisions/071-reject-invalid-runtime-session-policy-combinations-at-create-boundary.md)
 - [PLAN-062](./plans/PLAN-062-runtime-session-policy-boundary-hardening.md)

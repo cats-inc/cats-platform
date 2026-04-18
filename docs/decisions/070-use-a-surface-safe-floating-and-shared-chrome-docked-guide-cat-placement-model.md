@@ -34,6 +34,10 @@ the fixed-left-dock model does not handle cleanly:
   would create collision and clipping bugs whenever layout changes.
 - Persisting separate remembered floating positions per surface family would
   also create avoidable "teleport" behavior during surface transitions.
+- Persisting renderer chrome preferences through server-managed
+  `PlatformPreferences` has also proven brittle because partial preference
+  writes can race each other and restore stale Guide Cat UI values such as
+  `auto` sidecar mode or an outdated dock/floating placement.
 
 At the same time, Guide Cat should remain:
 
@@ -59,7 +63,33 @@ At minimum, placement should distinguish:
 Guide Cat presentation state such as `collapsed`, `welcome-peek`, and `open`
 should remain a separate concern layered on top of placement.
 
-### 2. Floating uses one host-owned normalized anchor plus surface-defined avoidance rules
+### 2. Placement semantics remain host-owned, but durable Guide Cat UI preference persistence is renderer-owned
+
+The host should continue to own placement semantics, safe-area policy, dock
+intent, and projection rules.
+
+However, the durable persistence for Guide Cat chrome/UI preferences should be
+renderer-owned rather than server-owned.
+
+The steady-state renderer-owned preference set is:
+
+- `guideCatSidecarSeen`
+- `guideCatSidecarMode`
+- `guideCatPlacement`
+- `guideCatFloatingAnchor`
+
+Those values should live in one renderer-owned Guide Cat UI preference store
+with one in-memory source of truth and a local persistence backend such as
+`localStorage`.
+
+In steady state, those four values should not remain part of
+server-managed `PlatformPreferences` or `PlatformHostEnvelope`.
+
+If a migration needs to import legacy file-backed values once, that migration
+may temporarily read the old server-backed source, but that legacy source
+should not remain the steady-state owner.
+
+### 3. Floating uses one host-owned normalized anchor plus surface-defined avoidance rules
 
 When Guide Cat is `floating`, the user may drag its floating anchor inside the
 current surface's safe area.
@@ -80,7 +110,7 @@ when needed to preserve:
 This avoids cross-surface teleport behavior while still letting Lobby and
 workspace surfaces enforce different layout safety rules.
 
-### 3. Drag-to-dock uses explicit dock corridors and snap rules
+### 4. Drag-to-dock uses explicit dock corridors and snap rules
 
 Floating drag should be constrained to the active safe area except for explicit
 host-defined dock approach corridors that let the user drag toward a valid dock
@@ -95,7 +125,7 @@ Docking should require:
 Undocking should require either an explicit undock action or a drag-away
 gesture that crosses a defined escape threshold before release.
 
-### 4. Docking uses one shared dock intent with surface-specific slots
+### 5. Docking uses one shared dock intent with surface-specific slots
 
 The product should treat docking as one shared semantic target, for example
 `primary chrome docking`, rather than as unrelated per-surface hacks.
@@ -111,7 +141,7 @@ on the active surface:
 The dock slot must be explicit host chrome, not an accidental gap between
 unrelated elements and not a normal sidebar navigation item.
 
-### 5. Docked state persists across surface changes as intent, not geometry
+### 6. Docked state persists across surface changes as intent, not geometry
 
 If the user docks Guide Cat on Lobby, the platform should preserve the docked
 intent when the user navigates into Chat, Work, or Code.
@@ -122,16 +152,20 @@ slot.
 Likewise, when the user returns to Lobby while still docked, Guide Cat should
 return to the Lobby chrome slot.
 
-### 6. Undocking restores the shared floating anchor, then reclamps it for the active surface
+### 7. Undocking restores the shared floating anchor, then reclamps it for the active surface
 
 When the user undocks Guide Cat, the platform should restore the shared
 normalized floating anchor and clamp it against the active surface's current
 safe area and exclusion zones.
 
+Because `guideCatPlacement` and `guideCatFloatingAnchor` are one logical
+renderer-owned preference update, undocking should persist them atomically
+rather than as split writes.
+
 This keeps Lobby and workspace behavior predictable without introducing
 per-surface teleport behavior.
 
-### 7. The host must proactively avoid new collisions during live layout changes
+### 8. The host must proactively avoid new collisions during live layout changes
 
 Guide Cat placement must react not only during restore, but also during live
 layout changes such as:
@@ -145,7 +179,7 @@ When such changes would make the current floating or docked projection unsafe,
 the host may reflow, clamp, collapse, or temporarily hide Guide Cat while
 preserving the underlying floating-vs-docked intent.
 
-### 8. Open Guide Cat content opens toward the canvas, not inside navigation chrome
+### 9. Open Guide Cat content opens toward the canvas, not inside navigation chrome
 
 Docking stores Guide Cat in chrome.
 It does not turn Guide Cat into a sidebar navigation primitive.
@@ -154,7 +188,7 @@ When Guide Cat opens from a docked slot, its bubble/panel should expand toward
 the canvas or another host-owned assist surface, not grow inside the navigation
 stack itself.
 
-### 9. Settings stays hidden for now and should not mutate remembered placement
+### 10. Settings stays hidden for now and should not mutate remembered placement
 
 Settings should not allow unrestricted floating placement.
 
@@ -165,7 +199,7 @@ remembered floating anchor.
 If the product later wants a Settings-specific assist slot, that should be a
 follow-on design slice rather than being implied by this placement decision.
 
-### 10. Constrained layouts may temporarily collapse or hide Guide Cat while preserving intent
+### 11. Constrained layouts may temporarily collapse or hide Guide Cat while preserving intent
 
 Narrow or crowded layouts may temporarily collapse or hide Guide Cat while
 preserving the underlying placement intent.
@@ -183,6 +217,8 @@ preserving the underlying placement intent.
 - Persistent placement becomes more robust because the product stores one
   normalized anchor plus surface-specific avoidance rules rather than one
   fragile absolute coordinate or multiple per-surface remembered positions.
+- Renderer-owned persistence removes unnecessary network round-trips and avoids
+  server-side read/merge/write races for Guide Cat UI chrome preferences.
 - Sidebar ownership remains clear because Guide Cat docks into dedicated assist
   chrome instead of masquerading as a normal nav item.
 
@@ -191,7 +227,8 @@ preserving the underlying placement intent.
 - The host must now own drag, clamp, dock-target, and override policies rather
   than one static placement rule.
 - Rendering and persistence become more complex because placement state and
-  presentation state are separate.
+  presentation state are separate, and the renderer now owns a dedicated Guide
+  Cat UI preference store plus migration from the old server-backed values.
 - Surface teams must expose explicit safe areas, exclusion zones, and dock
   slots instead of relying on incidental geometry.
 
@@ -236,6 +273,7 @@ preserving the underlying placement intent.
 - [SPEC-060](../specs/SPEC-060-guide-cat-optional-surface-assist-capability.md)
 - [SPEC-071](../specs/SPEC-071-guide-cat-placement-and-shared-chrome-docking.md)
 - [PLAN-061](../plans/PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md)
+- [PLAN-063](../plans/PLAN-063-guide-cat-renderer-owned-ui-preferences-migration.md)
 
 ---
 
