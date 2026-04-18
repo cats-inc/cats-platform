@@ -181,7 +181,7 @@ carry Guide Cat UI prefs in steady state
       `floatingAnchor` as separate writes.
 - [x] Opening two renderer windows and changing Guide Cat UI prefs in one
       window reconciles cleanly in the other.
-- [ ] If local persistence is unavailable during startup, the app retries on a
+- [x] If local persistence is unavailable during startup, the app retries on a
       future startup instead of permanently losing the current renderer-owned
       value.
 - [x] The current version boots from renderer-owned local state or
@@ -240,8 +240,9 @@ regressing placement continuity or Settings behavior
 
 ## Testing Strategy
 
-- **Unit Tests**: Guide Cat UI store parse/default behavior, malformed-storage
-  fallback, atomic write behavior, and cross-window reconciliation behavior
+- **Unit Tests**: Guide Cat UI store parse/default behavior, malformed or
+  unsupported-record bootstrap fallback, next-startup retry behavior, atomic
+  write behavior, and cross-window reconciliation behavior
 - **Integration Tests**: Settings `bubble/drawer/auto` changes without network
   writes, dock/undock continuity using the client store, repeated undock
   attempts without split persistence, and hidden Settings override without
@@ -267,7 +268,7 @@ regressing placement continuity or Settings behavior
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Future store schema changes drop current renderer-owned values | High | Evolve from the current versioned local record and keep schema parsing tolerant |
+| Future store schema changes drop current renderer-owned values | High | Treat the current versioned local record as the forward baseline, require future versions to parse it, and avoid overwriting unsupported records during bootstrap |
 | Local persistence fails and the UI falls back to defaults too often | High | Keep the in-memory store usable and tighten retry/diagnostics in follow-up slices |
 | Multiple renderer windows diverge on Guide Cat UI state | Medium | Use one store contract plus `storage`-event reconciliation |
 | Components bypass the store and reintroduce raw `localStorage` coupling | Medium | Centralize read/write APIs in one store module and update tests to enforce behavior |
@@ -283,6 +284,7 @@ regressing placement continuity or Settings behavior
 | 2026-04-18 | Added automated regression coverage for multi-window/storage-event reconciliation in the renderer-owned Guide Cat UI preference store |
 | 2026-04-18 | Landed atomic undock persistence and moved Guide Cat UI-pref hydration out of the render body |
 | 2026-04-18 | Removed the prerelease backward-compatibility seam for older server-backed Guide Cat UI prefs and re-froze the plan around the current renderer-owned baseline only |
+| 2026-04-18 | Hardened renderer-store bootstrap so unsupported or malformed local records do not get overwritten during startup, and added retry coverage for later-startup persistence recovery |
 
 ---
 
