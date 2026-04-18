@@ -5,6 +5,8 @@ import {
   useMemo,
   useState,
   type CSSProperties,
+  type DependencyList,
+  type EffectCallback,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,

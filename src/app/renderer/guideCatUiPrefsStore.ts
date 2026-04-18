@@ -5,6 +5,8 @@ import {
   useMemo,
   useState,
   useSyncExternalStore,
+  type DependencyList,
+  type EffectCallback,
 } from 'react';
 
 import type {
@@ -94,7 +96,10 @@ function readBrowserGlobal(): GuideCatBrowserGlobalLike | null {
   return candidate;
 }
 
-const useIsoLayoutEffect = readBrowserGlobal() === null ? useEffect : useLayoutEffect;
+function useIsoLayoutEffect(effect: EffectCallback, deps: DependencyList): void {
+  const hook = readBrowserGlobal() === null ? useEffect : useLayoutEffect;
+  hook(effect, deps);
+}
 
 function normalizeFloatingAnchor(value: unknown): GuideCatFloatingAnchor | null {
   if (typeof value !== 'object' || value === null) {
