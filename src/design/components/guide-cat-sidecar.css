@@ -113,13 +113,23 @@ body.guideCatDragging .guideCatDockSlot,
 }
 
 .guideCatDockSlot--lobby {
-  padding: 0 var(--space-2, 6px);
-  margin: 0 var(--space-1, 4px);
+  padding: 0;
+  /* No left/top/bottom margin — rely only on .lobbyTopBarEnd's
+     `gap: var(--space-3)` between flex children so the dock sits as close
+     to the cats avatar stack and the user identity menu as possible.
+     A 2px negative margin-right trims the dock→identity gap from 12 to
+     10 so the docked pill's centre lines up with where the first cat sat
+     in the pre-dock roster (the identity is right-anchored in the top
+     bar, so shrinking the right-side gap pulls the dock rightwards
+     without shifting the roster). */
+  margin: 0 -2px 0 0;
   /* Lobby's horizontal top bar has no vertical padding, so the natural slot
      height is 28px ghost + 4px border = 32px. Shrink min-height from the
      workspace default (44) so the slot never exceeds the identity menu's
      natural height and the lobby hero/products grid never reflow downward
-     when drag-to-dock reveals the slot. */
+     when drag-to-dock reveals the slot. Lock min-width to match so the
+     slot stays square. */
+  min-width: 32px;
   min-height: 32px;
 }
 
@@ -191,6 +201,11 @@ body.guideCatDragging .guideCatDockSlot,
 
 .sidebarCollapsed .guideCatDockSlot--workspace[data-active='true'] {
   padding: 0;
+  /* Hide the hairline separator above the dock row when the sidebar is
+     collapsed — the narrow rail reads as one continuous chrome strip, so
+     the line only adds visual noise and breaks the rail into awkward
+     sections. */
+  border-top: none;
 }
 
 body.guideCatDragging
