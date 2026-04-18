@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createDraftHelperChipsState,
   dismissDraftHelperChipsState,
+  fingerprintDraftHelperChips,
   shouldRenderDraftHelperChips,
   syncDraftHelperChipsResetKey,
 } from '../src/products/shared/renderer/draftHelperChips.ts';
@@ -69,4 +70,37 @@ test('syncing the reset key from a value to null also resets dismissal so a no-c
   const synced = syncDraftHelperChipsResetKey(dismissed, null);
   assert.equal(synced.dismissed, false);
   assert.equal(synced.lastResetKey, null);
+});
+
+test('fingerprintDraftHelperChips returns null for an empty chip set', () => {
+  assert.equal(fingerprintDraftHelperChips([]), null);
+});
+
+test('fingerprintDraftHelperChips returns identical fingerprints for identical content so stable refreshes keep the dismissal', () => {
+  const chips = [
+    { id: 'chip-a', prompt: 'Review this PR', label: 'Review' },
+    { id: 'chip-b', prompt: 'Summarize the thread', label: 'Summarize' },
+  ];
+  assert.equal(fingerprintDraftHelperChips(chips), fingerprintDraftHelperChips([...chips]));
+});
+
+test('fingerprintDraftHelperChips diverges when a refresh rewrites a chip prompt even if the id is reused', () => {
+  const before = [{ id: 'chip-a', prompt: 'Review this PR', label: 'Review' }];
+  const after = [{ id: 'chip-a', prompt: 'Summarize this PR', label: 'Review' }];
+  assert.notEqual(fingerprintDraftHelperChips(before), fingerprintDraftHelperChips(after));
+});
+
+test('fingerprintDraftHelperChips diverges when only the label changes so relabeled chips revive the row', () => {
+  const before = [{ id: 'chip-a', prompt: 'Review this PR', label: 'Review' }];
+  const after = [{ id: 'chip-a', prompt: 'Review this PR', label: 'Reviewing' }];
+  assert.notEqual(fingerprintDraftHelperChips(before), fingerprintDraftHelperChips(after));
+});
+
+test('fingerprintDraftHelperChips treats a missing label the same as an empty label so chat-shaped chips stay stable', () => {
+  const withUndefined = [{ id: 'chip-a', prompt: 'Review this PR' }];
+  const withNullLabel = [{ id: 'chip-a', prompt: 'Review this PR', label: null }];
+  assert.equal(
+    fingerprintDraftHelperChips(withUndefined),
+    fingerprintDraftHelperChips(withNullLabel),
+  );
 });

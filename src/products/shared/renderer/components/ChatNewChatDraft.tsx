@@ -8,7 +8,10 @@ import { type NewChatMode } from '../draftStarterSuggestionContext.js';
 import {
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
-import { useDraftHelperChipVisibility } from '../draftHelperChips.js';
+import {
+  fingerprintDraftHelperChips,
+  useDraftHelperChipVisibility,
+} from '../draftHelperChips.js';
 import { catInitials, isChatCat, truncatePath } from '../workspaceChatUtils.js';
 import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
 import { type ExecutionTargetValue } from './ExecutionTarget.js';
@@ -196,9 +199,7 @@ export function NewChatDraft({
     busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
-  const helperChipResetKey = visibleStarterSuggestions.length > 0
-    ? visibleStarterSuggestions.map((suggestion) => suggestion.id).join('|')
-    : null;
+  const helperChipResetKey = fingerprintDraftHelperChips(visibleStarterSuggestions);
   const {
     showDraftHelperChips,
     dismissDraftHelperChips,

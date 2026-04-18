@@ -9,7 +9,10 @@ import {
   type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
-import { useDraftHelperChipVisibility } from '../../../shared/renderer/draftHelperChips.js';
+import {
+  fingerprintDraftHelperChips,
+  useDraftHelperChipVisibility,
+} from '../../../shared/renderer/draftHelperChips.js';
 import {
   DEFAULT_PERMISSION_MODE,
   PermissionModeChip,
@@ -204,9 +207,7 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
   const availableHelperChips = (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
     .filter((chip) => chip.prompt.trim().length > 0)
     .slice(0, 3);
-  const helperChipResetKey = availableHelperChips.length > 0
-    ? availableHelperChips.map((chip) => chip.id).join('|')
-    : null;
+  const helperChipResetKey = fingerprintDraftHelperChips(availableHelperChips);
   const {
     showDraftHelperChips,
     dismissDraftHelperChips,
