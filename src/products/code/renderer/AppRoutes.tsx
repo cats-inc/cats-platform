@@ -14,6 +14,7 @@ import {
   ChatView,
   type ChatViewProps,
 } from './components/ChatView.js';
+import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
 import { CodeRelayView } from './components/CodeRelayView.js';
@@ -112,6 +113,9 @@ export function AppRoutes({
         selectedChannel={channel}
         onOpenAddCat={options.onOpenAddCat}
         showAddCatButton={options.showAddCatButton}
+        renderComposerFooterAccessory={(ctx) => (
+          <ActiveCodeComposerChips channel={ctx.selectedChannel} />
+        )}
       />
     ),
     renderNewChatDraft: (options) => (

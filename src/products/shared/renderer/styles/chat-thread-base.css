@@ -370,17 +370,27 @@
   margin: 0 auto;
 }
 
-.composerCardDocked {
+.composerAreaStack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.composerAreaStack.composerAreaStackDocked {
   position: sticky;
   bottom: 16px;
-  max-width: 680px;
-  margin: 0 auto;
-  width: 100%;
   z-index: 5;
 }
 
-.composerCardDocked.composerCardMenuOpen {
+.composerAreaStack.composerAreaStackMenuOpen {
   z-index: 12;
+}
+
+.composerCardDocked {
+  max-width: 680px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .composerCardFresh {

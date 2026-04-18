@@ -82,7 +82,7 @@
   max-width: var(--chat-transcript-max-width, 680px);
 }
 
-.composerCardDocked.composerCardDockedParallel {
+.composerAreaStack.composerAreaStackDocked.composerAreaStackDockedParallel {
   bottom: 78px;
 }
 
@@ -318,7 +318,7 @@
 }
 
 @media (max-width: 720px) {
-  .composerCardDocked.composerCardDockedParallel {
+  .composerAreaStack.composerAreaStackDocked.composerAreaStackDockedParallel {
     bottom: 78px;
   }
 

@@ -109,8 +109,24 @@ export function ChatComposerArea({
       ? payload.chat.cats.find((cat) => cat.id === directLaneRecipient.catId) ?? null
       : null;
 
+  const stackClassName = (() => {
+    const classes = ['composerAreaStack'];
+    if (hasConversationStarted) {
+      classes.push('composerAreaStackDocked');
+      if (isCompareGroup) {
+        classes.push('composerAreaStackDockedParallel');
+      }
+    } else {
+      classes.push('composerAreaStackFresh');
+    }
+    if (channelPlusMenuOpen) {
+      classes.push('composerAreaStackMenuOpen');
+    }
+    return classes.join(' ');
+  })();
+
   return (
-    <>
+    <div className={stackClassName}>
     <form
       ref={composerCardRef}
       className={`${
@@ -348,6 +364,6 @@ export function ChatComposerArea({
     {composerFooterAccessory ? (
       <div className="composerFooterRow">{composerFooterAccessory}</div>
     ) : null}
-    </>
+    </div>
   );
 }
