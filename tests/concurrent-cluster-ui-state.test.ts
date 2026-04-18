@@ -332,6 +332,70 @@ test('writeConcurrentClusterUiStateMap returns the shrunk map that actually land
   assert.ok(Object.keys(persisted).length <= 25);
 });
 
+test('writeConcurrentClusterUiStateMap returns the input identity when removeItem itself throws so UI state is not falsely cleared', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
+  let removeItemAttempts = 0;
+  const storage = {
+    getItem(): string | null {
+      return null;
+    },
+    setItem(): void {
+      throw new Error('quota exceeded');
+    },
+    removeItem(): void {
+      removeItemAttempts += 1;
+      throw new Error('security error');
+    },
+  };
+  const dismissed = dismissConcurrentClusterUiState({}, {
+    channelId: 'channel-1',
+    turnId: 'turn-1',
+  });
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  let persisted: ConcurrentClusterUiStateMap;
+  try {
+    persisted = writeConcurrentClusterUiStateMap(storage, dismissed);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  // Storage was never actually cleared, so returning {} would make the caller
+  // sync in-memory to empty — a lie that a refresh would immediately expose.
+  assert.strictEqual(persisted, dismissed);
+  assert.equal(removeItemAttempts, 1);
+});
+
+test('writeConcurrentClusterUiStateMap returns the input identity when storage has no removeItem and all retries fail', () => {
+  resetConcurrentClusterUiStateStorageWarnings();
+  const storage = {
+    getItem(): string | null {
+      return null;
+    },
+    setItem(): void {
+      throw new Error('quota exceeded');
+    },
+  };
+  const dismissed = dismissConcurrentClusterUiState({}, {
+    channelId: 'channel-1',
+    turnId: 'turn-1',
+  });
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  let persisted: ConcurrentClusterUiStateMap;
+  try {
+    persisted = writeConcurrentClusterUiStateMap(storage, dismissed);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  // Without removeItem we had no way to clear storage either; must not claim
+  // the stored key is empty.
+  assert.strictEqual(persisted, dismissed);
+});
+
 test('writeConcurrentClusterUiStateMap returns an empty map when it fell back to removeItem', () => {
   resetConcurrentClusterUiStateStorageWarnings();
   let removedKey: string | null = null;

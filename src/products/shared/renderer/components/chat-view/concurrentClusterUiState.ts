@@ -196,11 +196,13 @@ function tryShrinkAndWriteConcurrentClusterUiStateMap(
   return null;
 }
 
-// Returns the map that was actually persisted. When quota pressure forces a
-// shrink or a removeItem fallback, the return value diverges from the input —
-// callers must reconcile their in-memory state so the UI stops showing
-// dismissals that no longer survive a refresh, and so the next write doesn't
-// re-trigger the same quota failure with the bloated map.
+// Returns the map that was actually persisted. On a clean write this is the
+// input (identity preserved so callers can skip sync). Under quota pressure
+// the return value may be a shrunk subset, or {} when removeItem succeeded in
+// clearing the stored key. When the writer could neither persist nor confirm
+// the key was cleared, the input is returned unchanged — the caller must not
+// sync in-memory state to a clean slate that storage can't back up, or a
+// refresh will resurrect the stale payload.
 export function writeConcurrentClusterUiStateMap(
   storage: ConcurrentClusterUiStateStorage | null | undefined,
   value: ConcurrentClusterUiStateMap,
@@ -223,16 +225,25 @@ export function writeConcurrentClusterUiStateMap(
     }
     // Last resort: nuke the stored key so we don't keep carrying a stale payload
     // that blocks future writes. Small maps (size ≤ 1) also land here because the
-    // shrink loop has nothing to prune.
+    // shrink loop has nothing to prune. Only claim storage is empty when
+    // removeItem actually succeeded — otherwise whatever was there before this
+    // attempt still lingers, and falsely syncing the caller to {} would
+    // resurrect those entries on the next refresh.
     if (typeof storage.removeItem === 'function') {
       try {
         storage.removeItem(CONCURRENT_CLUSTER_UI_STATE_STORAGE_KEY);
+        warnConcurrentClusterUiStateStorageFailure('write', initialError);
+        return {};
       } catch {
-        // Nothing left to try — warning below will surface the original error.
+        // removeItem also failed — fall through to "storage is opaque" path.
       }
     }
     warnConcurrentClusterUiStateStorageFailure('write', initialError);
-    return {};
+    // Storage retains whatever it had before; we haven't actually persisted or
+    // cleared anything. Return the input so the caller's identity check keeps
+    // in-memory state unchanged rather than promising a clean slate storage
+    // can't back up.
+    return value;
   }
 }
 
