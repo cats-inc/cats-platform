@@ -106,6 +106,8 @@ export function useGuideCatSidecarState(
     lastQueuedToken: 0,
     pendingToken: null,
   });
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   const isHiddenRoute =
     location.pathname === '/setup'
@@ -135,12 +137,15 @@ export function useGuideCatSidecarState(
     if (!consumed.shouldOpen) {
       return;
     }
+    // Proactive greeting is a one-shot event. Once the queued token is
+    // consumed we intentionally keep the resulting peek/open shape stable
+    // instead of re-resolving it on later mode changes.
     setProactive(true);
     setInnerState((prev) => {
-      const nextState = resolveGuideCatSidecarProactiveState(mode);
+      const nextState = resolveGuideCatSidecarProactiveState(modeRef.current);
       return prev === nextState ? prev : nextState;
     });
-  }, [isHiddenRoute, mode, proactiveGreetingToken]);
+  }, [isHiddenRoute, proactiveGreetingToken]);
 
   const viewState: GuideCatSidecarViewState = isHiddenRoute ? 'hidden' : innerState;
 

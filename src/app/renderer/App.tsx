@@ -235,6 +235,9 @@ export default function PlatformApp() {
     hydrate: state.status === 'ready',
   });
   const persistGuideCatSeen = useCallback(() => {
+    // `sidecarSeen` exists only to suppress replaying the one-shot setup
+    // greeting if the user later resets setup and goes through onboarding
+    // again on the same install.
     guideCatUiPrefs.update({ sidecarSeen: true });
   }, [guideCatUiPrefs.update]);
 
@@ -477,6 +480,11 @@ export default function PlatformApp() {
                   if (
                     nextEnvelope.guideCat
                     && nextEnvelope.guideCat.status !== 'dismissed'
+                    // This gate is intentionally hydrated-first: if the prefs
+                    // store ever becomes async here, we prefer skipping the
+                    // proactive setup greeting over replaying one that the
+                    // same local install already consumed.
+                    && guideCatUiPrefs.hydrated
                     && !guideCatUiPrefs.prefs.sidecarSeen
                   ) {
                     setGuideCatProactiveGreetingToken((current) => current + 1);

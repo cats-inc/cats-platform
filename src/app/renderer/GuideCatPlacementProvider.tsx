@@ -744,7 +744,8 @@ export function observeGuideCatChromeMetric(
   let treeObserver: MutationObserver | null = null;
   if (typeof MutationObserverCtor === 'function') {
     treeObserver = new MutationObserverCtor(() => {
-      if ((target as { isConnected?: boolean } | null)?.isConnected !== false && target) {
+      const stillConnected = target != null && ((target as { isConnected?: boolean }).isConnected ?? true);
+      if (stillConnected) {
         return;
       }
       syncTarget();

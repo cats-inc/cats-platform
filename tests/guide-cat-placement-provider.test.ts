@@ -194,3 +194,34 @@ test('observeGuideCatChromeMetric ignores unrelated tree mutations after the tar
     cleanup();
   });
 });
+
+test('observeGuideCatChromeMetric re-syncs when the observed target disconnects and later remounts', async () => {
+  await withGuideCatChromeObserverHarness(() => {
+    const document = new FakeDocument();
+    const observed: Array<number | null> = [];
+    const firstSidebar = new FakeMeasuredElement({ right: 240, bottom: 600 });
+    document.setNode('aside.sidebar', firstSidebar);
+
+    const cleanup = observeGuideCatChromeMetric({
+      document: document as unknown as Document,
+      selector: 'aside.sidebar',
+      readValue: (node) => node ? Math.round(node.getBoundingClientRect().right) : null,
+      onChange: (value) => {
+        observed.push(value);
+      },
+    });
+
+    assert.deepEqual(observed, [240]);
+
+    document.setNode('aside.sidebar', null);
+    FakeMutationObserver.flushFor(document.body);
+    assert.deepEqual(observed, [240, null]);
+
+    const secondSidebar = new FakeMeasuredElement({ right: 312, bottom: 600 });
+    document.setNode('aside.sidebar', secondSidebar);
+    FakeMutationObserver.flushFor(document.body);
+    assert.deepEqual(observed, [240, null, 312]);
+
+    cleanup();
+  });
+});

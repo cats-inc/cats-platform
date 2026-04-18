@@ -109,7 +109,7 @@ test('Guide Cat proactive greeting queue waits until a visible route before cons
 
 test('Guide Cat proactive greeting queue ignores duplicate tokens and accepts newer triggers', () => {
   const initial = { lastQueuedToken: 1, pendingToken: null };
-  assert.deepEqual(queueGuideCatProactiveGreeting(initial, 1), initial);
+  assert.equal(queueGuideCatProactiveGreeting(initial, 1), initial);
   assert.deepEqual(
     queueGuideCatProactiveGreeting(initial, 2),
     { lastQueuedToken: 2, pendingToken: 2 },
