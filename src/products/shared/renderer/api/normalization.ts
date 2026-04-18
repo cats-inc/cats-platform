@@ -146,30 +146,92 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
       selectedChannel.catAssignments = [];
     }
 
-    if (!Array.isArray(selectedChannel.assignedCats)) {
-      if (Array.isArray(selectedChannel.catAssignments)) {
-        selectedChannel.assignedCats = selectedChannel.catAssignments.map((assignmentValue) => {
-          const assignment = asRecord(assignmentValue) ?? {};
-          const cat = catsById.get(readString(assignment.catId)) ?? {};
-          return {
-            catId: readString(assignment.catId),
-            name: readString(cat.name, 'Cat'),
-            roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat.roles),
-            skillProfile: readNullableString(cat.skillProfile),
-            mcpProfile: readNullableString(cat.mcpProfile),
-            status: readString(assignment.status, 'active'),
-            joinedAt: readString(assignment.joinedAt),
-            leftAt: readNullableString(assignment.leftAt),
-            execution: assignment.execution,
-            memory: asRecord(cat.memory) ?? {
-              summary: null,
-              facts: [],
-              openLoops: [],
-              updatedAt: null,
-            },
-          };
-        });
-      }
+    const catAssignments = Array.isArray(selectedChannel.catAssignments)
+      ? selectedChannel.catAssignments
+      : [];
+    if (!Array.isArray(selectedChannel.participantAssignments)) {
+      selectedChannel.participantAssignments = catAssignments.map((assignmentValue) => {
+        const assignment = asRecord(assignmentValue) ?? {};
+        return {
+          participantId: readString(assignment.participantId, readString(assignment.catId)),
+          sourceKind: readString(assignment.sourceKind, 'cat') === 'cat' ? 'cat' : 'adhoc',
+          sourceRefId:
+            readNullableString(assignment.sourceRefId) ?? readNullableString(assignment.catId),
+          name: readString(assignment.name, 'Participant'),
+          status: readString(assignment.status, 'active'),
+          roles: Array.isArray(assignment.roles) ? assignment.roles : [],
+          roleHint: readNullableString(assignment.roleHint),
+          joinedAt: readString(assignment.joinedAt),
+          leftAt: readNullableString(assignment.leftAt),
+          execution: assignment.execution,
+        };
+      });
+    }
+
+    if (catAssignments.length > 0 || !Array.isArray(selectedChannel.assignedCats)) {
+      selectedChannel.assignedCats = catAssignments.map((assignmentValue) => {
+        const assignment = asRecord(assignmentValue) ?? {};
+        const cat = catsById.get(readString(assignment.catId)) ?? {};
+        return {
+          participantId: readString(assignment.participantId, readString(assignment.catId)),
+          sourceKind: 'cat',
+          sourceRefId: readString(assignment.sourceRefId, readString(assignment.catId)),
+          catId: readString(assignment.catId),
+          name: readString(cat.name, 'Cat'),
+          roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat.roles),
+          roleHint: readNullableString(assignment.roleHint),
+          skillProfile: readNullableString(cat.skillProfile),
+          mcpProfile: readNullableString(cat.mcpProfile),
+          status: readString(assignment.status, 'active'),
+          joinedAt: readString(assignment.joinedAt),
+          leftAt: readNullableString(assignment.leftAt),
+          avatarColor: readNullableString(cat.avatarColor),
+          avatarUrl: readNullableString(cat.avatarUrl),
+          execution: assignment.execution,
+          memory: asRecord(cat.memory) ?? {
+            summary: null,
+            facts: [],
+            openLoops: [],
+            updatedAt: null,
+          },
+        };
+      });
+    }
+
+    const participantAssignments = Array.isArray(selectedChannel.participantAssignments)
+      ? selectedChannel.participantAssignments
+      : [];
+    if (
+      participantAssignments.length > 0
+      || !Array.isArray(selectedChannel.assignedParticipants)
+    ) {
+      selectedChannel.assignedParticipants = participantAssignments.map((assignmentValue) => {
+        const assignment = asRecord(assignmentValue) ?? {};
+        const sourceRefId = readNullableString(assignment.sourceRefId);
+        const cat = sourceRefId ? (catsById.get(sourceRefId) ?? null) : null;
+        return {
+          participantId: readString(assignment.participantId),
+          sourceKind: readString(assignment.sourceKind, 'adhoc') === 'cat' ? 'cat' : 'adhoc',
+          sourceRefId,
+          name: readString(assignment.name, readString(cat?.name, 'Participant')),
+          roles: Array.isArray(assignment.roles) ? assignment.roles : readStringArray(cat?.roles),
+          roleHint: readNullableString(assignment.roleHint),
+          skillProfile: readNullableString(cat?.skillProfile),
+          mcpProfile: readNullableString(cat?.mcpProfile),
+          status: readString(assignment.status, 'active'),
+          joinedAt: readString(assignment.joinedAt),
+          leftAt: readNullableString(assignment.leftAt),
+          avatarColor: readNullableString(cat?.avatarColor),
+          avatarUrl: readNullableString(cat?.avatarUrl),
+          execution: assignment.execution,
+          memory: asRecord(cat?.memory) ?? {
+            summary: null,
+            facts: [],
+            openLoops: [],
+            updatedAt: null,
+          },
+        };
+      });
     }
   }
 

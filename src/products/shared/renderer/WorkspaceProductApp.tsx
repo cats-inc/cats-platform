@@ -994,6 +994,7 @@ export function createWorkspaceProductApp({
             selectedChannel,
             directLaneChannel,
           );
+          const visibleChannel = selectedChannel ?? directLaneChannel;
 
           function onSwitchProduct(nextSurface: PlatformSurfaceId): void {
             navigate(platformSurfaceRoutePrefix(nextSurface));
@@ -1080,7 +1081,7 @@ export function createWorkspaceProductApp({
                       ? () => onResumeChannel(visibleChatChannelId)
                       : undefined,
                     onStartFresh:
-                      visibleChatChannelId && selectedChannel?.composerMode === 'solo'
+                      visibleChatChannelId && visibleChannel?.composerMode === 'solo'
                         ? () => onStartFreshChannel(visibleChatChannelId)
                         : undefined,
                     onRelayMessage: onRelayCompareMessage,
@@ -1091,24 +1092,24 @@ export function createWorkspaceProductApp({
                     onOperatorAction,
                     autoResize,
                     selectedExecutionTarget:
-                      selectedChannel?.composerMode === "solo"
+                      visibleChannel?.composerMode === "solo"
                         ? soloChannelExecutionTarget
                         : undefined,
                     onExecutionTargetChange:
-                      selectedChannel?.composerMode === "solo"
+                      visibleChannel?.composerMode === "solo"
                         ? setSoloChannelExecutionTarget
                         : undefined,
                     onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
                     activeWorkflowShape,
                     onToggleActiveWorkflowShape:
-                      selectedChannel?.composerMode === "cat_led"
+                      visibleChannel?.composerMode === "cat_led"
                         ? () =>
                             setActiveWorkflowShape((prev) =>
                               prev === 'concurrent' ? 'sequential' : 'concurrent')
                         : undefined,
                     activeAudienceKeys,
                     onSetActiveAudienceKeys:
-                      selectedChannel?.composerMode === "cat_led"
+                      visibleChannel?.composerMode === "cat_led"
                         ? setActiveAudienceKeys
                         : undefined,
                     onSelect,
