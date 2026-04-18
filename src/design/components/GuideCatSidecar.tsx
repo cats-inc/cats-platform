@@ -36,6 +36,16 @@ export const GUIDE_CAT_AVATAR_URL = new URL('../../../assets/guide-cat-avatar.sv
   .href;
 const FLOATING_PILL_RADIUS_PX = 14;
 const FLOATING_PEEK_OFFSET_PX = 36;
+/** Distance between the right edge of the workspace sidebar (the dock
+ * slot's right edge) and the peek's left edge when the pill is docked.
+ * Smaller than the floating offset so the peek hugs the sidebar instead
+ * of floating 36px out into the canvas. */
+const WORKSPACE_DOCKED_PEEK_OFFSET_PX = 20;
+/** Distance between the bottom of the lobby top-bar dock slot and the
+ * top of the peek when the pill is docked. Smaller than the floating
+ * offset so the peek's upward-pointing tail hugs the dock pill instead
+ * of dropping 36px into the canvas. */
+const LOBBY_DOCKED_PEEK_OFFSET_PX = 20;
 
 export function resolveGuideCatSidecarSurfaceMode(
   pathname: string,
@@ -592,7 +602,7 @@ function resolveDockedPeekPlacement(
   if (slot === 'workspace') {
     return {
       style: {
-        left: `${rect.right + FLOATING_PEEK_OFFSET_PX}px`,
+        left: `${rect.right + WORKSPACE_DOCKED_PEEK_OFFSET_PX}px`,
         top: `${rect.bottom}px`,
         transform: 'translateY(-100%)',
       },
@@ -602,7 +612,7 @@ function resolveDockedPeekPlacement(
   return {
     style: {
       left: `${(rect.left + rect.right) / 2}px`,
-      top: `${rect.bottom + FLOATING_PEEK_OFFSET_PX}px`,
+      top: `${rect.bottom + LOBBY_DOCKED_PEEK_OFFSET_PX}px`,
       transform: 'translateX(-50%)',
     },
     anchor: 'anchor-top',

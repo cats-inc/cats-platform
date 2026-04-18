@@ -243,11 +243,11 @@ body.guideCatDragging
   opacity: 0.4;
 }
 
-/* Nudge the workspace dock ghost 1px left so it sits on the same visual
+/* Nudge the workspace dock ghost 2px left so it sits on the same visual
    column as the docked pill / user-avatar rather than a hair to the right.
    Lobby dock keeps its centred layout untouched. */
 .guideCatDockSlot--workspace .guideCatDockSlotGhost {
-  margin-left: -1px;
+  margin-left: -2px;
 }
 
 @keyframes guideCatDockSlotGhostPulse {
