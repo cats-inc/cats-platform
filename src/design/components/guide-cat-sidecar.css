@@ -165,6 +165,14 @@ body.guideCatDragging .guideCatDockSlot,
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 0;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+/* Row-wide hover tint mirrors .sidebarFooterButton:hover so the whole
+   dock chrome reads as clickable. The pill keeps its own shadow hover,
+   which layers on top when pointer is over the avatar. */
+.guideCatDockSlot--workspace[data-active='true']:hover {
+  background: var(--sidebar-hover-bg);
 }
 
 /* Docked guide-cat name label next to the pill. Mirrors .sidebarFooter
