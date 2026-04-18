@@ -28,6 +28,17 @@ test('resolveGuideCatSurfaceClass maps lobby/workspace/hidden from the pathname'
   assert.equal(resolveGuideCatSurfaceClass('/settings/general'), 'hidden');
 });
 
+test('resolveGuideCatSurfaceClass keeps /settings alive for docked placement so the dock pill stays clickable', () => {
+  assert.equal(resolveGuideCatSurfaceClass('/settings', 'docked'), 'workspace');
+  assert.equal(resolveGuideCatSurfaceClass('/settings/general', 'docked'), 'workspace');
+  // Setup stays hidden regardless of placement — there is no dock slot in
+  // the setup wizard chrome.
+  assert.equal(resolveGuideCatSurfaceClass('/setup', 'docked'), 'hidden');
+  // Floating placement has no sidebar dock to host the pill, so /settings
+  // continues to hide the guide cat.
+  assert.equal(resolveGuideCatSurfaceClass('/settings', 'floating'), 'hidden');
+});
+
 test('resolveGuideCatSafeArea keeps a pill-radius buffer around chrome edges', () => {
   const viewport = { width: 1200, height: 800 };
 

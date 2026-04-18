@@ -123,12 +123,49 @@ body.guideCatDragging .guideCatDockSlot,
   min-height: 32px;
 }
 
-/* Sit above the account footer with a small gap, and keep the outlined border
-   fully inside the sidebar so neither the dashed drop-zone nor the preview
-   border overflows the sidebar edges or bleeds into the user chrome. */
+/* Drag-preview / drop-zone state: sit above the account footer with a small
+   gap, and keep the outlined border fully inside the sidebar so neither the
+   dashed drop-zone nor the preview border overflows the sidebar edges or
+   bleeds into the user chrome. */
 .guideCatDockSlot--workspace {
   padding: var(--space-2, 6px) 18px;
   margin: 0 8px 8px;
+}
+
+/* Docked (active) state: the slot leaves drop-zone shape behind and joins the
+   user chrome as one 2x-tall block. It spans the full sidebar width, drops
+   its side margins, removes the dashed/preview border, and moves the hairline
+   separator from the footer's top to its own top so the dock row + footer row
+   read as a single chrome region. The pill is pinned to the same x offset as
+   the footer profile badge (see .sidebarFooterButton padding) so the avatars
+   line up vertically. */
+.guideCatDockSlot--workspace[data-active='true'] {
+  margin: 0;
+  padding: 0 18px;
+  min-height: 60px;
+  height: 60px;
+  justify-content: flex-start;
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 0;
+}
+
+.guideCatDockSlot--workspace[data-active='true'] + .sidebarFooter {
+  border-top: none;
+}
+
+/* Collapsed sidebar: the default 18px horizontal padding crushes the 28px
+   pill into an oval because the rail is too narrow. Drop the padding and
+   margins so the pill (and drag preview) sit as a 28px circle centred in the
+   rail, matching how the collapsed footer avatar is centred. */
+.sidebarCollapsed .guideCatDockSlot--workspace {
+  padding: var(--space-2, 6px) 0;
+  margin: 0;
+}
+
+.sidebarCollapsed .guideCatDockSlot--workspace[data-active='true'] {
+  padding: 0;
+  justify-content: center;
 }
 
 body.guideCatDragging

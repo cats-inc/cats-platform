@@ -30,9 +30,20 @@ export interface GuideCatSlotRect {
   bottom: number;
 }
 
-export function resolveGuideCatSurfaceClass(pathname: string): GuideCatSurfaceClass {
-  if (pathname === '/setup' || pathname === '/settings' || pathname.startsWith('/settings/')) {
+export function resolveGuideCatSurfaceClass(
+  pathname: string,
+  placement: GuideCatPlacement = 'floating',
+): GuideCatSurfaceClass {
+  if (pathname === '/setup') {
     return 'hidden';
+  }
+  const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/');
+  if (isSettingsRoute) {
+    // When the pill is docked, the sidebar still renders in settings mode
+    // and the user can reasonably click the docked pill to open a peek.
+    // Only the floating placement needs settings to hide the pill (there is
+    // no floating surface to anchor against inside the settings layout).
+    return placement === 'docked' ? 'workspace' : 'hidden';
   }
   if (pathname === '/lobby' || pathname.startsWith('/lobby/')) {
     return 'lobby';

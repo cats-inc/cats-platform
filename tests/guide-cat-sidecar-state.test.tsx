@@ -182,6 +182,38 @@ test('Guide Cat sidecar resolves surface mode by route', () => {
   assert.equal(resolveGuideCatSidecarSurfaceMode('/setup'), 'hidden');
 });
 
+test('Guide Cat sidecar keeps product surface for docked pill on /settings', () => {
+  assert.equal(resolveGuideCatSidecarSurfaceMode('/settings', 'docked'), 'product');
+  assert.equal(resolveGuideCatSidecarSurfaceMode('/settings/general', 'docked'), 'product');
+  // Setup has no dock, so it stays hidden even if placement is docked.
+  assert.equal(resolveGuideCatSidecarSurfaceMode('/setup', 'docked'), 'hidden');
+});
+
+test('toggleGuideCatSidecarState on a cramped surface downgrades auto to welcome-peek instead of open', () => {
+  // Cramped surface (e.g. /settings with a docked pill): auto clicks behave
+  // like bubble mode so the drawer does not smother the settings canvas.
+  assert.deepEqual(
+    toggleGuideCatSidecarState('collapsed', 'auto', true),
+    { nextState: 'welcome-peek', persistSeen: false },
+  );
+  assert.deepEqual(
+    toggleGuideCatSidecarState('welcome-peek', 'auto', true),
+    { nextState: 'collapsed', persistSeen: true },
+  );
+  // Drawer users opted into the full panel — keep it even on a cramped
+  // surface.
+  assert.deepEqual(
+    toggleGuideCatSidecarState('collapsed', 'drawer', true),
+    { nextState: 'open', persistSeen: false },
+  );
+  // Default (prefersBubble=false) path still matches the pre-existing
+  // manual-toggle contract for auto mode.
+  assert.deepEqual(
+    toggleGuideCatSidecarState('collapsed', 'auto'),
+    { nextState: 'open', persistSeen: false },
+  );
+});
+
 test('Guide Cat sidecar stays hidden while a product surface fallback is active', () => {
   assert.equal(
     shouldRenderGuideCatSidecar({

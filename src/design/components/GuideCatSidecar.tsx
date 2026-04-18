@@ -37,9 +37,18 @@ export const GUIDE_CAT_AVATAR_URL = new URL('../../../assets/guide-cat-avatar.sv
 const FLOATING_PILL_RADIUS_PX = 14;
 const FLOATING_PEEK_OFFSET_PX = 36;
 
-export function resolveGuideCatSidecarSurfaceMode(pathname: string): GuideCatSidecarSurfaceMode {
-  if (pathname === '/setup' || pathname.startsWith('/settings')) {
+export function resolveGuideCatSidecarSurfaceMode(
+  pathname: string,
+  placement: 'floating' | 'docked' = 'floating',
+): GuideCatSidecarSurfaceMode {
+  if (pathname === '/setup') {
     return 'hidden';
+  }
+  if (pathname === '/settings' || pathname.startsWith('/settings/')) {
+    // Mirror resolveGuideCatSurfaceClass: a docked pill on /settings keeps
+    // the sidecar alive (but it opens as a speech bubble — see
+    // useGuideCatSidecarState) so it does not smother the settings canvas.
+    return placement === 'docked' ? 'product' : 'hidden';
   }
   return pathname === '/lobby' ? 'lobby' : 'product';
 }
@@ -538,6 +547,7 @@ export function GuideCatSidecar({
   };
   const surfaceMode: GuideCatSidecarSurfaceMode = resolveGuideCatSidecarSurfaceMode(
     location.pathname,
+    projection.kind === 'docked' ? 'docked' : 'floating',
   );
 
   return createPortal(

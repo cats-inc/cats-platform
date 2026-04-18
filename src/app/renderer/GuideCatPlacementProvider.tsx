@@ -120,9 +120,10 @@ export function GuideCatPlacementProvider({
     sidecarMode,
     onPersistSeen,
     proactiveGreetingToken,
+    placement,
   );
   const location = useLocation();
-  const surface: GuideCatSurfaceClass = resolveGuideCatSurfaceClass(location.pathname);
+  const surface: GuideCatSurfaceClass = resolveGuideCatSurfaceClass(location.pathname, placement);
 
   const [viewport, setViewport] = useState<GuideCatViewportRect>(() =>
     readViewport());

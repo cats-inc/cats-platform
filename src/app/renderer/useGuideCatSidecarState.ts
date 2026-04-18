@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import type { GuideCatSidecarMode } from '../../shared/platform-contract.js';
+import type { GuideCatPlacement, GuideCatSidecarMode } from '../../shared/platform-contract.js';
 
 export type GuideCatSidecarViewState = 'hidden' | 'collapsed' | 'welcome-peek' | 'open';
 type GuideCatSidecarInnerState = Exclude<GuideCatSidecarViewState, 'hidden'>;
@@ -20,8 +20,17 @@ export interface GuideCatSidecarState {
   dismissWelcome: () => void;
 }
 
-function resolveManualOpenState(mode: GuideCatSidecarMode): GuideCatSidecarInnerState {
-  return mode === 'bubble' ? 'welcome-peek' : 'open';
+function resolveManualOpenState(
+  mode: GuideCatSidecarMode,
+  prefersBubble = false,
+): GuideCatSidecarInnerState {
+  // `prefersBubble` is set when the surface is too cramped for the full
+  // drawer panel (e.g. /settings with a docked pill). In that case auto
+  // mode downgrades to the bubble peek so the panel does not cover the
+  // settings canvas. Bubble mode keeps its native peek regardless.
+  if (mode === 'bubble') return 'welcome-peek';
+  if (prefersBubble && mode === 'auto') return 'welcome-peek';
+  return 'open';
 }
 
 export function resolveGuideCatSidecarRestingState(): GuideCatSidecarInnerState {
@@ -96,12 +105,16 @@ export function tickGuideCatProactiveGreeting(input: {
 export function toggleGuideCatSidecarState(
   prev: GuideCatSidecarInnerState,
   mode: GuideCatSidecarMode,
+  prefersBubble = false,
 ): { nextState: GuideCatSidecarInnerState; persistSeen: boolean } {
   if (prev === 'collapsed') {
-    return { nextState: resolveManualOpenState(mode), persistSeen: false };
+    return { nextState: resolveManualOpenState(mode, prefersBubble), persistSeen: false };
   }
   if (prev === 'welcome-peek') {
-    if (mode === 'bubble') {
+    if (mode === 'bubble' || (prefersBubble && mode === 'auto')) {
+      // Cramped-surface auto mirrors bubble's collapsed ↔ welcome-peek cycle
+      // so the user stays in the same shape instead of getting a surprise
+      // drawer on the next click.
       return { nextState: 'collapsed', persistSeen: true };
     }
     return { nextState: 'open', persistSeen: true };
@@ -126,6 +139,7 @@ export function useGuideCatSidecarState(
   mode: GuideCatSidecarMode,
   onPersistSeen: () => void,
   proactiveGreetingToken = 0,
+  placement: GuideCatPlacement = 'floating',
 ): GuideCatSidecarState {
   const location = useLocation();
   const [innerState, setInnerState] = useState<GuideCatSidecarInnerState>(
@@ -143,9 +157,16 @@ export function useGuideCatSidecarState(
   const modeRef = useRef(mode);
   modeRef.current = mode;
 
-  const isHiddenRoute =
-    location.pathname === '/setup'
-    || location.pathname.startsWith('/settings');
+  const isSetupRoute = location.pathname === '/setup';
+  const isSettingsRoute =
+    location.pathname === '/settings' || location.pathname.startsWith('/settings/');
+  // Settings hides the sidecar for floating placement because there is no
+  // canvas to anchor against, but a docked pill should still be clickable
+  // from the sidebar chrome even while the settings page is open. The
+  // `prefersBubble` hint below downgrades that click from the drawer panel
+  // to the speech-bubble peek so the panel does not smother settings.
+  const isHiddenRoute = isSetupRoute || (isSettingsRoute && placement !== 'docked');
+  const prefersBubble = isSettingsRoute && placement === 'docked';
 
   useEffect(() => {
     if (!isHiddenRoute) {
@@ -183,13 +204,13 @@ export function useGuideCatSidecarState(
   const toggle = useCallback(() => {
     setProactive(false);
     setInnerState((prev) => {
-      const transition = toggleGuideCatSidecarState(prev, mode);
+      const transition = toggleGuideCatSidecarState(prev, mode, prefersBubble);
       if (transition.persistSeen) {
         onPersistSeen();
       }
       return transition.nextState;
     });
-  }, [mode, onPersistSeen]);
+  }, [mode, onPersistSeen, prefersBubble]);
 
   const collapse = useCallback(() => {
     setProactive(false);
