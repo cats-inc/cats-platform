@@ -9,6 +9,7 @@ import {
   hydrateGuideCatUiPrefs,
   mergeGuideCatUiPrefs,
   parseStoredGuideCatUiPrefs,
+  readLegacyGuideCatUiPrefsInput,
   serializeGuideCatUiPrefs,
   writeStoredGuideCatUiPrefs,
 } from '../src/app/renderer/guideCatUiPrefsStore.ts';
@@ -90,6 +91,24 @@ test('deriveGuideCatUiPrefsFromLegacy keeps pristine defaults unseen', () => {
       floatingAnchor: null,
     }),
     GUIDE_CAT_UI_PREFS_DEFAULTS,
+  );
+});
+
+test('readLegacyGuideCatUiPrefsInput only returns a legacy snapshot when old fields exist', () => {
+  assert.equal(readLegacyGuideCatUiPrefsInput({ ownerDisplayName: 'Kenny' }), null);
+  assert.deepEqual(
+    readLegacyGuideCatUiPrefsInput({
+      guideCatSidecarSeen: true,
+      guideCatSidecarMode: 'bubble',
+      guideCatPlacement: 'docked',
+      guideCatFloatingAnchor: { x: 0.4, y: 0.6 },
+    }),
+    {
+      sidecarSeen: true,
+      sidecarMode: 'bubble',
+      placement: 'docked',
+      floatingAnchor: { x: 0.4, y: 0.6 },
+    },
   );
 });
 

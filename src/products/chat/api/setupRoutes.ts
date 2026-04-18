@@ -129,10 +129,6 @@ async function handleSetupReset(
       await writePlatformPreferences(context.dependencies.config.chatStatePath, {
         ...currentPrefs,
         lastProductSurface: null,
-        guideCatSidecarSeen: false,
-        guideCatSidecarMode: 'auto',
-        guideCatPlacement: 'floating',
-        guideCatFloatingAnchor: null,
       });
     } catch (error) {
       reportSetupRouteFailure('setup_reset_prefs', error);

@@ -11,100 +11,67 @@ function baselinePreferences(): PlatformPreferences {
     openWindowOnStartup: false,
     systemTrayEnabled: true,
     lobbyAnimationMode: 'reduced',
-    guideCatSidecarSeen: false,
-    guideCatSidecarMode: 'auto',
-    guideCatPlacement: 'floating',
-    guideCatFloatingAnchor: null,
   };
 }
 
-test('parsePlatformPreferencesUpdate accepts a valid floating placement update', () => {
+test('parsePlatformPreferencesUpdate accepts a valid lastProductSurface update', () => {
   const result = parsePlatformPreferencesUpdate(
-    { guideCatPlacement: 'floating' },
+    { lastProductSurface: 'work' },
     baselinePreferences(),
   );
   assert.equal(result.ok, true);
   if (result.ok) {
-    assert.equal(result.value.guideCatPlacement, 'floating');
+    assert.equal(result.value.lastProductSurface, 'work');
   }
 });
 
-test('parsePlatformPreferencesUpdate accepts a valid docked placement update', () => {
+test('parsePlatformPreferencesUpdate rejects an unknown product surface', () => {
   const result = parsePlatformPreferencesUpdate(
-    { guideCatPlacement: 'docked' },
-    baselinePreferences(),
-  );
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.equal(result.value.guideCatPlacement, 'docked');
-  }
-});
-
-test('parsePlatformPreferencesUpdate rejects an unknown placement value', () => {
-  const result = parsePlatformPreferencesUpdate(
-    { guideCatPlacement: 'hidden' },
+    { lastProductSurface: 'invalid' },
     baselinePreferences(),
   );
   assert.equal(result.ok, false);
   if (!result.ok) {
-    assert.match(result.message, /guideCatPlacement/u);
+    assert.match(result.message, /Invalid product surface/u);
   }
 });
 
-test('parsePlatformPreferencesUpdate clamps floating anchor coordinates into [0,1]', () => {
+test('parsePlatformPreferencesUpdate accepts a valid lobby animation mode', () => {
   const result = parsePlatformPreferencesUpdate(
-    { guideCatFloatingAnchor: { x: -0.5, y: 1.8 } },
+    { lobbyAnimationMode: 'full' },
     baselinePreferences(),
   );
   assert.equal(result.ok, true);
   if (result.ok) {
-    assert.deepEqual(result.value.guideCatFloatingAnchor, { x: 0, y: 1 });
+    assert.equal(result.value.lobbyAnimationMode, 'full');
   }
 });
 
-test('parsePlatformPreferencesUpdate accepts a null floating anchor to reset to default', () => {
+test('parsePlatformPreferencesUpdate rejects an unknown lobby animation mode', () => {
   const result = parsePlatformPreferencesUpdate(
-    { guideCatFloatingAnchor: null },
-    { ...baselinePreferences(), guideCatFloatingAnchor: { x: 0.5, y: 0.5 } },
-  );
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.equal(result.value.guideCatFloatingAnchor, null);
-  }
-});
-
-test('parsePlatformPreferencesUpdate rejects floating anchor with non-number coordinates', () => {
-  const result = parsePlatformPreferencesUpdate(
-    { guideCatFloatingAnchor: { x: '0.5', y: 0.5 } as { x?: unknown; y?: unknown } },
+    { lobbyAnimationMode: 'max' },
     baselinePreferences(),
   );
   assert.equal(result.ok, false);
   if (!result.ok) {
-    assert.match(result.message, /guideCatFloatingAnchor/u);
+    assert.match(result.message, /lobbyAnimationMode/u);
   }
 });
 
-test('parsePlatformPreferencesUpdate rejects floating anchor with NaN coordinates', () => {
-  const result = parsePlatformPreferencesUpdate(
-    { guideCatFloatingAnchor: { x: Number.NaN, y: 0.5 } },
-    baselinePreferences(),
-  );
-  assert.equal(result.ok, false);
-});
-
-test('parsePlatformPreferencesUpdate preserves current placement/anchor when omitted from body', () => {
+test('parsePlatformPreferencesUpdate preserves omitted fields', () => {
   const current: PlatformPreferences = {
     ...baselinePreferences(),
-    guideCatPlacement: 'docked',
-    guideCatFloatingAnchor: { x: 0.1, y: 0.2 },
+    lastProductSurface: 'code',
+    lobbyAnimationMode: 'off',
   };
   const result = parsePlatformPreferencesUpdate(
-    { guideCatSidecarSeen: true },
+    { startAtLogin: false },
     current,
   );
   assert.equal(result.ok, true);
   if (result.ok) {
-    assert.equal(result.value.guideCatPlacement, 'docked');
-    assert.deepEqual(result.value.guideCatFloatingAnchor, { x: 0.1, y: 0.2 });
+    assert.equal(result.value.startAtLogin, false);
+    assert.equal(result.value.lastProductSurface, 'code');
+    assert.equal(result.value.lobbyAnimationMode, 'off');
   }
 });

@@ -103,10 +103,6 @@ export interface PlatformOwnerContext {
   ownerAvatarUrl: string | null;
   lastProductSurface: PlatformSurfaceId | null;
   guideCat: GuideCatRecord | null;
-  guideCatSidecarSeen?: boolean;
-  guideCatSidecarMode?: GuideCatSidecarMode;
-  guideCatPlacement?: GuideCatPlacement;
-  guideCatFloatingAnchor?: GuideCatFloatingAnchor | null;
   assistantPresets?: AssistantPresetRecord[];
 }
 

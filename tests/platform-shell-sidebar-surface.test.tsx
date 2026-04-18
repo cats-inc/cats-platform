@@ -74,7 +74,6 @@ function createPayload(
     ownerAvatarUrl: null,
     lastProductSurface: 'work',
     guideCat: null,
-    guideCatSidecarSeen: true,
     assistantPresets: [],
     chat: {
       id: 'chat',

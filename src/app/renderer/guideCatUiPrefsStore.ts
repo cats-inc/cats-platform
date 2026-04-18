@@ -43,6 +43,23 @@ interface GuideCatUiPrefsStorage {
   setItem(key: string, value: string): void;
 }
 
+interface GuideCatBrowserGlobalLike {
+  addEventListener?: (
+    type: 'storage',
+    listener: (event: GuideCatStorageEventLike) => void,
+  ) => void;
+  removeEventListener?: (
+    type: 'storage',
+    listener: (event: GuideCatStorageEventLike) => void,
+  ) => void;
+  localStorage?: GuideCatUiPrefsStorage;
+}
+
+interface GuideCatStorageEventLike {
+  key: string | null;
+  newValue: string | null;
+}
+
 type GuideCatUiPrefsListener = () => void;
 
 export interface GuideCatUiPrefsHydrationResult {
@@ -67,6 +84,17 @@ export interface UseGuideCatUiPrefsResult {
   prefs: GuideCatUiPrefs;
   hydrated: boolean;
   update: (patch: GuideCatUiPrefsPatch) => void;
+}
+
+function readBrowserGlobal(): GuideCatBrowserGlobalLike | null {
+  const candidate = globalThis as unknown as GuideCatBrowserGlobalLike;
+  if (
+    typeof candidate.addEventListener !== 'function'
+    || typeof candidate.removeEventListener !== 'function'
+  ) {
+    return null;
+  }
+  return candidate;
 }
 
 function normalizeFloatingAnchor(value: unknown): GuideCatFloatingAnchor | null {
@@ -112,6 +140,30 @@ function hasLegacyGuideCatUiPrefsInput(
     || value.placement !== undefined
     || value.floatingAnchor !== undefined
   );
+}
+
+export function readLegacyGuideCatUiPrefsInput(
+  value: unknown,
+): LegacyGuideCatUiPrefsInput | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const hasLegacyFields =
+    Object.prototype.hasOwnProperty.call(record, 'guideCatSidecarSeen')
+    || Object.prototype.hasOwnProperty.call(record, 'guideCatSidecarMode')
+    || Object.prototype.hasOwnProperty.call(record, 'guideCatPlacement')
+    || Object.prototype.hasOwnProperty.call(record, 'guideCatFloatingAnchor');
+  if (!hasLegacyFields) {
+    return null;
+  }
+  const legacy: LegacyGuideCatUiPrefsInput = {
+    sidecarSeen: record.guideCatSidecarSeen === true,
+    sidecarMode: normalizeSidecarMode(record.guideCatSidecarMode),
+    placement: normalizePlacement(record.guideCatPlacement),
+    floatingAnchor: normalizeFloatingAnchor(record.guideCatFloatingAnchor),
+  };
+  return legacy;
 }
 
 export function mergeGuideCatUiPrefs(
@@ -303,30 +355,24 @@ export class GuideCatUiPrefsStore {
   }
 
   private ensureStorageListener(): void {
-    if (
-      this.storageListening
-      || typeof window === 'undefined'
-      || typeof window.addEventListener !== 'function'
-    ) {
+    const browser = readBrowserGlobal();
+    if (!browser || this.storageListening) {
       return;
     }
-    window.addEventListener('storage', this.handleStorageEvent);
+    browser.addEventListener?.('storage', this.handleStorageEvent);
     this.storageListening = true;
   }
 
   private teardownStorageListener(): void {
-    if (
-      !this.storageListening
-      || typeof window === 'undefined'
-      || typeof window.removeEventListener !== 'function'
-    ) {
+    const browser = readBrowserGlobal();
+    if (!browser || !this.storageListening) {
       return;
     }
-    window.removeEventListener('storage', this.handleStorageEvent);
+    browser.removeEventListener?.('storage', this.handleStorageEvent);
     this.storageListening = false;
   }
 
-  private readonly handleStorageEvent = (event: StorageEvent): void => {
+  private readonly handleStorageEvent = (event: GuideCatStorageEventLike): void => {
     if (event.key !== GUIDE_CAT_UI_PREFS_STORAGE_KEY) {
       return;
     }
@@ -350,9 +396,7 @@ let guideCatUiPrefsStore: GuideCatUiPrefsStore | null = null;
 
 function getBrowserGuideCatUiPrefsStore(): GuideCatUiPrefsStore {
   if (!guideCatUiPrefsStore) {
-    guideCatUiPrefsStore = createGuideCatUiPrefsStore(
-      typeof window === 'undefined' ? null : window.localStorage,
-    );
+    guideCatUiPrefsStore = createGuideCatUiPrefsStore(readBrowserGlobal()?.localStorage ?? null);
   }
   return guideCatUiPrefsStore;
 }
@@ -370,7 +414,7 @@ export function useGuideCatUiPrefs(
   } = options;
   const store = useMemo(
     () =>
-      typeof window === 'undefined'
+      readBrowserGlobal() === null
         ? createGuideCatUiPrefsStore(null)
         : getBrowserGuideCatUiPrefsStore(),
     [],

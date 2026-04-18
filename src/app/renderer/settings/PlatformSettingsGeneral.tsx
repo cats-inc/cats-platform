@@ -4,7 +4,10 @@ import type { AppShellPayload } from '../../../products/shared/api/workspaceCont
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type { GuideCatSidecarMode } from '../../../shared/platform-contract.js';
-import { useGuideCatUiPrefs } from '../guideCatUiPrefsStore.js';
+import {
+  readLegacyGuideCatUiPrefsInput,
+  useGuideCatUiPrefs,
+} from '../guideCatUiPrefsStore.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
@@ -24,12 +27,7 @@ export function PlatformSettingsGeneral({
   const [cropOpen, setCropOpen] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
   const guideCatUiPrefs = useGuideCatUiPrefs({
-    legacy: {
-      sidecarSeen: payload.guideCatSidecarSeen ?? false,
-      sidecarMode: payload.guideCatSidecarMode ?? 'auto',
-      placement: payload.guideCatPlacement ?? 'floating',
-      floatingAnchor: payload.guideCatFloatingAnchor ?? null,
-    },
+    legacy: readLegacyGuideCatUiPrefsInput(payload),
   });
 
   async function updateOwnerAvatar(
@@ -102,10 +100,6 @@ export function PlatformSettingsGeneral({
   async function updateGuideCatSidecarMode(
     nextMode: GuideCatSidecarMode,
   ): Promise<void> {
-    onPayloadUpdate({
-      ...payload,
-      guideCatSidecarMode: nextMode,
-    });
     try {
       guideCatUiPrefs.update({ sidecarMode: nextMode });
       onFeedback('');

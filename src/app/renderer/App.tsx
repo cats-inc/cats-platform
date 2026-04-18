@@ -24,7 +24,10 @@ import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,
 } from './GuideCatPlacementProvider';
-import { useGuideCatUiPrefs } from './guideCatUiPrefsStore.js';
+import {
+  readLegacyGuideCatUiPrefsInput,
+  useGuideCatUiPrefs,
+} from './guideCatUiPrefsStore.js';
 import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
@@ -232,14 +235,7 @@ export default function PlatformApp() {
   const isLobbyRoute = isLobbyPath(location.pathname);
   const guideCatUiPrefs = useGuideCatUiPrefs({
     hydrate: state.status === 'ready',
-    legacy: state.status === 'ready'
-      ? {
-          sidecarSeen: state.envelope.guideCatSidecarSeen ?? false,
-          sidecarMode: state.envelope.guideCatSidecarMode ?? 'auto',
-          placement: state.envelope.guideCatPlacement ?? 'floating',
-          floatingAnchor: state.envelope.guideCatFloatingAnchor ?? null,
-        }
-      : null,
+    legacy: state.status === 'ready' ? readLegacyGuideCatUiPrefsInput(state.envelope) : null,
   });
 
   useEffect(() => {

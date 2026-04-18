@@ -3,9 +3,6 @@ import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAssist.js';
 import type {
-  GuideCatFloatingAnchor,
-  GuideCatPlacement,
-  GuideCatSidecarMode,
   PlatformDesktopPreferences,
   PlatformLobbyCatSummary,
   PlatformLobbyPreferences,
@@ -65,10 +62,6 @@ export function createAppShell(
     lobby?: PlatformLobbyPreferences;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
-    guideCatSidecarSeen?: boolean;
-    guideCatSidecarMode?: GuideCatSidecarMode;
-    guideCatPlacement?: GuideCatPlacement;
-    guideCatFloatingAnchor?: GuideCatFloatingAnchor | null;
     assistantPresets?: AssistantPresetRecord[];
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
@@ -145,12 +138,6 @@ export function createAppShell(
     ownerAvatarUrl: setup?.ownerAvatarUrl ?? null,
     lastProductSurface: setup?.lastProductSurface ?? null,
     guideCat: setup?.guideCat ? structuredClone(setup.guideCat) : null,
-    guideCatSidecarSeen: setup?.guideCatSidecarSeen ?? false,
-    guideCatSidecarMode: setup?.guideCatSidecarMode ?? 'auto',
-    guideCatPlacement: setup?.guideCatPlacement ?? 'floating',
-    guideCatFloatingAnchor: setup?.guideCatFloatingAnchor
-      ? { ...setup.guideCatFloatingAnchor }
-      : null,
     assistantPresets: structuredClone(setup?.assistantPresets ?? []),
   };
 }
