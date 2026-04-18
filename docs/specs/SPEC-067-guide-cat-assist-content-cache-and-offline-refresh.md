@@ -308,17 +308,26 @@ stable mode-to-scope mapping:
 | `LOBBY_GREETING_LINES` | none | `lobby:default:default` | Lobby greeting baseline |
 | `DRAFT_GREETING_LINES` | none | `chat:new:solo:default`, `chat:new:cat_led:default`, `chat:new:direct:default`, `chat:new:group:default`, `chat:new:parallel:default` | Same greeting baseline reused across initial `+New chat` modes |
 | `CODE_DRAFT_GREETING_LINES` | none | `code:new:default:default` | `+New code` greeting baseline |
-| `resolveDraftStarterSuggestions('solo')` | `solo` | `chat:new:solo:default` | Starter chips |
-| `resolveDraftStarterSuggestions('cat_led')` | `cat_led` | `chat:new:cat_led:default` | Starter chips |
-| `resolveDraftStarterSuggestions('direct')` | `direct` | `chat:new:direct:default` | Starter chips |
-| `resolveDraftStarterSuggestions('group')` | `group` | `chat:new:group:default` | Starter chips |
-| `resolveDraftStarterSuggestions('parallel')` | `parallel` | `chat:new:parallel:default` | Starter chips |
+| `resolveDraftStarterSuggestionsBaseline('solo')` | `solo` | `chat:new:solo:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
+| `resolveDraftStarterSuggestionsBaseline('cat_led')` | `cat_led` | `chat:new:cat_led:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
+| `resolveDraftStarterSuggestionsBaseline('direct')` | `direct` | `chat:new:direct:default` | Starter chips produced for the baseline; renderer suppresses them in direct lane regardless of origin (private chat rule) |
+| `resolveDraftStarterSuggestionsBaseline('group')` | `group` | `chat:new:group:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
+| `resolveDraftStarterSuggestionsBaseline('parallel')` | `parallel` | `chat:new:parallel:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
 | `resolveNewCodeGuideCatAssistBaseline()` | `default` | `code:new:default:default` | Short helper chips for `+New code` |
 
 This mapping is intentionally narrower than the long-term bundle model. It
 freezes the first migration target so existing greeting and starter-suggestion
 behavior can move into the shared assist cache without changing user-facing
 mode semantics.
+
+`+New chat` starter chips carry an additional renderer visibility rule that the
+cache does not itself enforce: the composer only shows chips from a bundle whose
+`provenance.originMode === 'runtime'`, and the `direct` lane never shows chips
+from any source. Deterministic baselines therefore populate the cache for parity
+and offline readiness but stay invisible in the composer until a runtime refresh
+writes a runtime-origin bundle. See
+`src/products/shared/renderer/components/chatNewChatDraftSupport.ts` for the
+gate implementation.
 
 ### Bundle Shape
 

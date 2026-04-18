@@ -442,6 +442,30 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
   assert.equal(audienceAvatarMatches.length, 0);
   assert.equal(recipientChipMatches.length, 0);
   assert.equal(implicitIconMatches.length, 0);
+});
+
+test('parallel draft does not show helper chips without runtime-backed assist content', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        parallelTargets: [
+          {
+            provider: 'claude-cli',
+            instance: null,
+            model: 'opus-4.6-1m',
+            modelSelection: null,
+          },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+          },
+        ],
+      })}
+    />,
+  );
+
   assert.doesNotMatch(markup, /draftPromptChip/u);
   assert.doesNotMatch(markup, /Compare how different models would approach the same task\./u);
 });
@@ -586,6 +610,119 @@ test('draft prefers payload-backed assist greeting and starter suggestions when 
   assert.doesNotMatch(markup, /Plan today's priorities and turn them into next actions\./u);
 });
 
+test('group draft ignores deterministic payload-backed starter prompts', () => {
+  const payload = createPayload();
+  payload.chat.newChatAssist = {
+    group: {
+      scopeKey: 'chat:new:group:default',
+      renderSource: 'deterministic',
+      cacheHit: false,
+      missing: true,
+      stale: false,
+      refreshEligible: false,
+      surfaceDisabled: false,
+      lastFailure: null,
+      bundle: {
+        bundleId: 'chat:new:group:default',
+        scope: {
+          surfaceId: 'chat:new',
+          surfaceMode: 'group',
+          audienceState: 'default',
+        },
+        content: {
+          greeting: 'Round up the room.',
+          entryChips: [
+            {
+              id: 'group-roles',
+              prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
+            },
+          ],
+        },
+        provenance: {
+          originMode: 'deterministic',
+          refreshContextHash: 'gca:v1:test-group-deterministic',
+          missionId: null,
+          runId: null,
+        },
+        freshness: {
+          generatedAt: '2026-04-17T12:00:00.000Z',
+          expiresAt: null,
+          lastRefreshStatus: 'never',
+        },
+      },
+    },
+  } as typeof payload.chat.newChatAssist;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload,
+        greeting: null,
+        entryMode: 'group',
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /Brief the group, split roles, and ask for a coordinated plan\./u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
+});
+
+test('group draft surfaces runtime-origin payload-backed starter prompts', () => {
+  const payload = createPayload();
+  payload.chat.newChatAssist = {
+    group: {
+      scopeKey: 'chat:new:group:default',
+      renderSource: 'cache',
+      cacheHit: true,
+      missing: false,
+      stale: false,
+      refreshEligible: false,
+      surfaceDisabled: false,
+      lastFailure: null,
+      bundle: {
+        bundleId: 'chat:new:group:default',
+        scope: {
+          surfaceId: 'chat:new',
+          surfaceMode: 'group',
+          audienceState: 'default',
+        },
+        content: {
+          greeting: 'Runtime group greeting.',
+          entryChips: [
+            {
+              id: 'runtime-group-roles',
+              prompt: 'Runtime-generated coordinated plan suggestion.',
+            },
+          ],
+        },
+        provenance: {
+          originMode: 'runtime',
+          refreshContextHash: 'gca:v1:test-group-runtime',
+          missionId: null,
+          runId: null,
+        },
+        freshness: {
+          generatedAt: '2026-04-17T12:00:00.000Z',
+          expiresAt: null,
+          lastRefreshStatus: 'ok',
+        },
+      },
+    },
+  } as typeof payload.chat.newChatAssist;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload,
+        greeting: null,
+        entryMode: 'group',
+      })}
+    />,
+  );
+
+  assert.match(markup, /Runtime-generated coordinated plan suggestion\./u);
+});
+
 test('direct-lane draft ignores deterministic payload-backed starter prompts', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {
@@ -641,6 +778,84 @@ test('direct-lane draft ignores deterministic payload-backed starter prompts', (
   );
 
   assert.doesNotMatch(markup, /Ask Milo for a focused update or recommendation on this task\./u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
+});
+
+test('direct-lane draft suppresses even runtime-origin payload-backed starter prompts', () => {
+  const payload = createPayload();
+  payload.chat.newChatAssist = {
+    direct: {
+      scopeKey: 'chat:new:direct:default',
+      renderSource: 'cache',
+      cacheHit: true,
+      missing: false,
+      stale: false,
+      refreshEligible: false,
+      surfaceDisabled: false,
+      lastFailure: null,
+      bundle: {
+        bundleId: 'chat:new:direct:default',
+        scope: {
+          surfaceId: 'chat:new',
+          surfaceMode: 'direct',
+          audienceState: 'default',
+        },
+        content: {
+          greeting: 'Private lane for this Cat.',
+          entryChips: [
+            {
+              id: 'runtime-direct',
+              prompt: 'Runtime-generated direct-lane suggestion.',
+            },
+          ],
+        },
+        provenance: {
+          originMode: 'runtime',
+          refreshContextHash: 'gca:v1:test-direct-runtime',
+          missionId: null,
+          runId: null,
+        },
+        freshness: {
+          generatedAt: '2026-04-17T12:00:00.000Z',
+          expiresAt: null,
+          lastRefreshStatus: 'ok',
+        },
+      },
+    },
+  } as typeof payload.chat.newChatAssist;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload,
+        greeting: null,
+        draftDefaultRecipientCatId: 'cat-lead',
+        allowAddCat: false,
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /Runtime-generated direct-lane suggestion\./u);
+  assert.doesNotMatch(markup, /draftPromptChip/u);
+});
+
+test('direct-lane draft suppresses caller-supplied starterSuggestions to protect the private lane', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        draftDefaultRecipientCatId: 'cat-lead',
+        allowAddCat: false,
+        starterSuggestions: [
+          {
+            id: 'caller-injected',
+            prompt: 'Caller-injected direct-lane suggestion that must not appear.',
+          },
+        ],
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(markup, /Caller-injected direct-lane suggestion that must not appear\./u);
   assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 

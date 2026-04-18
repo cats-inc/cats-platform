@@ -209,7 +209,8 @@ proven refresh semantics
 | `src/app/renderer/lobbyModel.ts` | Modify | Convert Lobby greeting ownership into deterministic baseline inputs for the shared assist resolver |
 | `src/app/renderer/PlatformLobby.tsx` | Modify | Consume resolved Lobby assist content instead of direct local greeting picks |
 | `src/products/shared/renderer/draftChatUtils.tsx` | Modify | Convert draft greeting ownership into shared assist baseline inputs |
-| `src/products/shared/renderer/draftStarterSuggestions.ts` | Modify | Convert starter-suggestion ownership into shared assist baseline inputs |
+| `src/shared/guideCatAssistBaselines.ts` | Modify | Own starter-suggestion baseline content (`resolveDraftStarterSuggestionsBaseline`); the former renderer-side `resolveDraftStarterSuggestions` fallback has been removed in favor of runtime-origin bundles |
+| `src/products/shared/renderer/draftStarterSuggestions.ts` | Modify | Thin renderer helper that only sanitizes explicitly supplied starter chips; no static fallback, since chip visibility is gated on runtime-origin payload bundles (see `chatNewChatDraftSupport.ts`) |
 | `src/products/shared/renderer/**` | Modify | Consume resolved `+New chat` assist bundles without changing mode-specific semantics |
 | `tests/**` | Create/Modify | Cover schema, mapping, cache behavior, refresh policy, and adopted surfaces |
 

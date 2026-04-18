@@ -37,21 +37,14 @@ export interface DraftComposerStackParticipant {
   participantId: string | null;
 }
 
-function personalizeDeterministicAssistPrompt(
-  prompt: string,
-  recipientName: string | null,
-): string {
-  const normalizedRecipientName = recipientName?.trim();
-  if (!normalizedRecipientName) {
-    return prompt;
-  }
-  return prompt.replaceAll('this Cat', normalizedRecipientName);
-}
-
+// Draft helper chips are gated on two rules the renderer treats as non-negotiable:
+//   1. Direct lane is a private chat; no third-party prompt source may ever insert chips.
+//   2. Non-direct modes only surface chips sourced from a runtime-refreshed bundle
+//      (provenance.originMode === 'runtime'); deterministic baselines stay silent so the
+//      composer does not advertise generic guidance the user has not opted into.
 function resolvePayloadDraftAssist(input: {
   payload: AppShellPayload;
   mode: NonNullable<ReturnType<typeof resolveDraftStarterSuggestionContext>['mode']>;
-  defaultRecipientName: string | null;
 }) {
   const assist = input.payload.chat.newChatAssist?.[input.mode] ?? null;
   if (!assist) {
@@ -61,21 +54,17 @@ function resolvePayloadDraftAssist(input: {
     };
   }
 
-  const starterSuggestions = assist.bundle.content.entryChips.map((chip) => ({
-    id: chip.id,
-    prompt:
-      assist.renderSource === 'deterministic'
-      && (input.mode === 'direct' || input.mode === 'cat_led')
-        ? personalizeDeterministicAssistPrompt(chip.prompt, input.defaultRecipientName)
-        : chip.prompt,
-  }));
+  const isRuntimeOriginForVisibleMode =
+    input.mode !== 'direct' && assist.bundle.provenance.originMode === 'runtime';
 
   return {
     greeting: assist.bundle.content.greeting,
-    starterSuggestions:
-      input.mode !== 'direct' && assist.bundle.provenance.originMode === 'runtime'
-        ? starterSuggestions
-        : undefined,
+    starterSuggestions: isRuntimeOriginForVisibleMode
+      ? assist.bundle.content.entryChips.map((chip) => ({
+          id: chip.id,
+          prompt: chip.prompt,
+        }))
+      : undefined,
   };
 }
 
@@ -138,15 +127,14 @@ export function resolveChatNewChatDraftViewState(input: {
   const payloadDraftAssist = resolvePayloadDraftAssist({
     payload: input.payload,
     mode: draftSuggestionContext.mode,
-    defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
   });
   const visibleDraftCatIds = draftParticipants.participantCatIds;
+  // Direct lane is private chat; no caller input or payload source may override the
+  // "no chips" rule. Other modes may use caller input, then runtime-origin payload.
   const starterSuggestionInput = draftSuggestionContext.mode === 'direct'
     ? []
     : (input.starterSuggestions ?? payloadDraftAssist.starterSuggestions ?? []);
   const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
-    mode: draftSuggestionContext.mode,
-    defaultRecipientName: effectiveDefaultRecipientCat?.name ?? null,
     suggestions: starterSuggestionInput,
   });
   const resolvedGreeting = (() => {
