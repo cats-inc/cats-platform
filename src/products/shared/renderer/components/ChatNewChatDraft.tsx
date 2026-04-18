@@ -8,6 +8,7 @@ import { type NewChatMode } from '../draftStarterSuggestionContext.js';
 import {
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
+import { useDraftHelperChipVisibility } from '../draftHelperChips.js';
 import { catInitials, isChatCat, truncatePath } from '../workspaceChatUtils.js';
 import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
 import { type ExecutionTargetValue } from './ExecutionTarget.js';
@@ -195,6 +196,12 @@ export function NewChatDraft({
     busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
+  const {
+    showDraftHelperChips,
+    dismissDraftHelperChips,
+  } = useDraftHelperChipVisibility({
+    availableChipCount: visibleStarterSuggestions.length,
+  });
 
   function capAudienceParticipants(
     participants: typeof groupComposerParticipants,
@@ -303,7 +310,7 @@ export function NewChatDraft({
           ) : (
             <h1>{resolvedGreeting}</h1>
           )}
-          {!composerDraft.trim() && visibleStarterSuggestions.length > 0 ? (
+          {showDraftHelperChips ? (
             <div className="draftPromptSuggestions">
               <div className="chipRow">
                 {visibleStarterSuggestions.map((suggestion) => (
@@ -312,7 +319,10 @@ export function NewChatDraft({
                     className="promptChip draftPromptChip"
                     type="button"
                     disabled={isSubmittingFirstTurn}
-                    onClick={() => onComposerChange(suggestion.prompt)}
+                    onClick={() => {
+                      dismissDraftHelperChips();
+                      onComposerChange(suggestion.prompt);
+                    }}
                   >
                     {suggestion.prompt}
                   </button>

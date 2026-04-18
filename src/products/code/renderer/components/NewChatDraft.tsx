@@ -9,6 +9,7 @@ import {
   type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
+import { useDraftHelperChipVisibility } from '../../../shared/renderer/draftHelperChips.js';
 import {
   DEFAULT_PERMISSION_MODE,
   PermissionModeChip,
@@ -54,7 +55,16 @@ export type {
   NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
 
-function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps {
+function buildWorkspaceDraftProps(input: {
+  props: NewChatDraftProps;
+  visibleHelperChips: Array<{
+    id: string;
+    label?: string | null;
+    prompt: string;
+  }>;
+  onSelectHelperChip: (prompt: string) => void;
+}): WorkspaceDraftProps {
+  const { props, visibleHelperChips, onSelectHelperChip } = input;
   const {
     greeting,
     greetingPool,
@@ -79,11 +89,6 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
   } = props;
   const codeAssist = props.payload.guideCatAssist?.codeNewDraft ?? null;
   const assistGreeting = codeAssist?.bundle.content.greeting?.trim() || null;
-  const visibleHelperChips = !props.composerDraft.trim()
-    ? (codeAssist?.bundle.content.entryChips ?? [])
-      .filter((chip) => chip.prompt.trim().length > 0)
-      .slice(0, 3)
-    : [];
   const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
 
   // Default +New code intentionally ignores the chat-group and parallel draft fields
@@ -119,7 +124,7 @@ function buildWorkspaceDraftProps(props: NewChatDraftProps): WorkspaceDraftProps
               className="promptChip draftPromptChip"
               type="button"
               disabled={isSubmittingFirstTurn}
-              onClick={() => props.onComposerChange(chip.prompt)}
+              onClick={() => onSelectHelperChip(chip.prompt)}
             >
               {chip.label?.trim() || chip.prompt}
             </button>
@@ -194,7 +199,23 @@ export function NewChatDraft(props: NewChatDraftProps) {
       : DEFAULT_WORKSPACE_MODE;
   const permissionMode: PermissionMode =
     resolveDraftPermissionModeFromRuntimeAccess(currentSessionPolicy.workspaceAccess);
-  const workspaceProps = buildWorkspaceDraftProps(props);
+  const availableHelperChips = (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
+    .filter((chip) => chip.prompt.trim().length > 0)
+    .slice(0, 3);
+  const {
+    showDraftHelperChips,
+    dismissDraftHelperChips,
+  } = useDraftHelperChipVisibility({
+    availableChipCount: availableHelperChips.length,
+  });
+  const workspaceProps = buildWorkspaceDraftProps({
+    props,
+    visibleHelperChips: showDraftHelperChips ? availableHelperChips : [],
+    onSelectHelperChip: (prompt) => {
+      dismissDraftHelperChips();
+      props.onComposerChange(prompt);
+    },
+  });
   const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
   const branchLabel = branch ?? 'detached';
   const repoReady = Boolean(isRepo && repoRoot);

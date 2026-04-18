@@ -691,6 +691,63 @@ test('group draft surfaces runtime-origin payload-backed starter prompts', () =>
   assert.match(markup, /Runtime-generated coordinated plan suggestion\./u);
 });
 
+test('group draft keeps runtime-origin helper chips visible while the user types manually', () => {
+  const payload = createPayload();
+  payload.chat.newChatAssist = {
+    group: {
+      scopeKey: 'chat:new:group:default',
+      renderSource: 'cache',
+      cacheHit: true,
+      missing: false,
+      stale: false,
+      refreshEligible: false,
+      surfaceDisabled: false,
+      lastFailure: null,
+      bundle: {
+        bundleId: 'chat:new:group:default',
+        scope: {
+          surfaceId: 'chat:new',
+          surfaceMode: 'group',
+          audienceState: 'default',
+        },
+        content: {
+          greeting: 'Runtime group greeting.',
+          entryChips: [
+            {
+              id: 'runtime-group-roles',
+              prompt: 'Runtime-generated coordinated plan suggestion.',
+            },
+          ],
+        },
+        provenance: {
+          originMode: 'runtime',
+          refreshContextHash: 'gca:v1:test-group-runtime-manual-typing',
+          missionId: null,
+          runId: null,
+        },
+        freshness: {
+          generatedAt: '2026-04-17T12:00:00.000Z',
+          expiresAt: null,
+          lastRefreshStatus: 'ok',
+        },
+      },
+    },
+  } as typeof payload.chat.newChatAssist;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload,
+        greeting: null,
+        entryMode: 'group',
+        composerDraft: 'User typed this manually.',
+      })}
+    />,
+  );
+
+  assert.match(markup, /Runtime-generated coordinated plan suggestion\./u);
+});
+
 test('direct-lane draft ignores deterministic payload-backed starter prompts', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {

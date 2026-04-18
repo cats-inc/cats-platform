@@ -211,6 +211,62 @@ test('new code default draft prefers payload-backed assist greeting and shows up
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
 });
 
+test('new code helper chips stay visible while the user types manually', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        composerDraft: 'User typed this manually.',
+        payload: {
+          ...createPayload(),
+          guideCatAssist: {
+            codeNewDraft: {
+              scopeKey: 'code:new:default:default',
+              renderSource: 'cache',
+              cacheHit: true,
+              missing: false,
+              stale: false,
+              refreshEligible: false,
+              surfaceDisabled: false,
+              lastFailure: null,
+              bundle: {
+                bundleId: 'code:new:default:default',
+                scope: {
+                  surfaceId: 'code:new',
+                  surfaceMode: 'default',
+                  audienceState: 'default',
+                },
+                content: {
+                  greeting: 'Pick a small coding task.',
+                  entryChips: [
+                    {
+                      id: 'code-pomodoro',
+                      label: 'Pomodoro app',
+                      prompt: 'Write a small pomodoro timer app.',
+                    },
+                  ],
+                },
+                provenance: {
+                  originMode: 'runtime',
+                  refreshContextHash: 'gca:v1:test-code-manual-typing',
+                  missionId: null,
+                  runId: null,
+                },
+                freshness: {
+                  generatedAt: '2026-04-17T12:00:00.000Z',
+                  expiresAt: null,
+                  lastRefreshStatus: 'ok',
+                },
+              },
+            },
+          },
+        } as AppShellPayload,
+      })}
+    />,
+  );
+
+  assert.match(markup, />Pomodoro app</u);
+});
+
 test('new code solo drafts without an explicit direct-lane route do not render the composer stack', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
