@@ -93,82 +93,83 @@ persistence for Guide Cat chrome is renderer-owned.
    areas and exclusion zones.
 8. Persisted floating anchors shall use normalized coordinates or another
    layout-resilient representation rather than raw cross-surface pixel values.
-9. The durable persistence owner for these four Guide Cat UI fields shall be a
-   renderer-owned Guide Cat UI preference store rather than
-   server-managed `PlatformPreferences`:
-   - `guideCatSidecarSeen`
-   - `guideCatSidecarMode`
-   - `guideCatPlacement`
-   - `guideCatFloatingAnchor`
-10. The renderer-owned Guide Cat UI preference store shall expose one
-    in-memory source of truth and one local persistence backend.
-11. The first implementation slice should use `localStorage` as that local
-    persistence backend unless a later ADR changes the storage substrate.
-12. Guide Cat UI preference consumers shall not each read/write raw
-    `localStorage`; they shall read/write through the shared renderer-owned
-    store.
-13. If no floating anchor has yet been persisted, the host shall choose one
+9. If no floating anchor has yet been persisted, the host shall choose one
     deterministic default floating anchor and use that same anchor across Lobby
     and workspace surfaces until the user moves it.
-14. The platform shall be allowed to clamp, offset, or override the rendered
+10. The platform shall be allowed to clamp, offset, or override the rendered
     floating projection when the current projection is no longer safe or
     visible.
-15. The platform shall proactively re-evaluate Guide Cat placement during live
+11. The platform shall proactively re-evaluate Guide Cat placement during live
     layout changes such as viewport resize, sidebar collapse/expansion,
     top-chrome reflow, or blocked-region changes.
-16. During proactive re-evaluation, the host shall be allowed to reflow,
+12. During proactive re-evaluation, the host shall be allowed to reflow,
     clamp, collapse, or temporarily hide the current Guide Cat projection while
     preserving the underlying floating-vs-docked intent.
-17. The platform shall define an explicit Lobby dock slot in primary chrome.
-18. The Lobby dock slot shall be rendered as a dedicated assist slot located
+13. The platform shall define an explicit Lobby dock slot in primary chrome.
+14. The Lobby dock slot shall be rendered as a dedicated assist slot located
     between the cat-roster chrome and the account/user chrome rather than as an
     accidental gap between unrelated elements.
-19. The platform shall define an explicit workspace dock slot in the product
+15. The platform shall define an explicit workspace dock slot in the product
     sidebar chrome above the user/account footer.
-20. A dock slot shall define:
+16. A dock slot shall define:
     - a visible drop target
     - an activation/snap threshold
     - a preview state before drop is committed
-21. Releasing the dragged Guide Cat anchor while a valid dock target is active
+17. Releasing the dragged Guide Cat anchor while a valid dock target is active
     shall commit docking into that dock slot.
-22. Docking shall be modeled as one shared dock intent, not as unrelated
+18. Docking shall be modeled as one shared dock intent, not as unrelated
     per-surface booleans.
-23. If the user docks Guide Cat on Lobby, then navigates to Chat, Work, or
+19. If the user docks Guide Cat on Lobby, then navigates to Chat, Work, or
     Code, the platform shall keep Guide Cat in `docked` placement mode and
     render it into the workspace dock slot.
-24. If the user returns to Lobby while Guide Cat remains docked, the platform
+20. If the user returns to Lobby while Guide Cat remains docked, the platform
     shall render it back into the Lobby dock slot.
-25. When the user undocks Guide Cat, the platform shall restore the shared
+21. When the user undocks Guide Cat, the platform shall restore the shared
     normalized floating anchor and reclamp it against the active surface's
     current safe area and exclusion zones.
-26. When undocking commits a durable preference update, `guideCatPlacement`
-    and `guideCatFloatingAnchor` shall land atomically as one logical store
-    update rather than as split persistence writes.
-27. Undocking shall require either:
+22. Undocking shall require either:
     - an explicit undock affordance
     - a drag-away gesture that crosses a defined escape threshold before release
-28. Guide Cat open-state affordances launched from a dock slot shall open
+23. Guide Cat open-state affordances launched from a dock slot shall open
     toward the canvas or another host-owned assist surface rather than expand
     inside the sidebar navigation stack itself.
-29. Settings shall render Guide Cat hidden for now rather than expose
+24. Settings shall render Guide Cat hidden for now rather than expose
     unrestricted floating or parked assist behavior.
-30. Entering Settings shall not delete the user's remembered floating anchor or
+25. Entering Settings shall not delete the user's remembered floating anchor or
     docked preference.
-31. Leaving Settings shall restore the underlying floating or docked placement
+26. Leaving Settings shall restore the underlying floating or docked placement
     mode that was active before Settings hid Guide Cat.
-32. If a migration from legacy server-backed Guide Cat UI preference values is
-    needed, that migration shall be one-time, renderer-initiated, and read-only
-    from the server side.
-33. In steady state, the app-shell envelope shall not remain the durable owner
-    of the four Guide Cat UI preference fields.
-34. On narrow or crowded layouts, the platform shall be allowed to replace the
+27. On narrow or crowded layouts, the platform shall be allowed to replace the
     usual floating or docked projection with a safer fallback such as:
     - collapsed badge
     - hidden projection
-35. The placement system shall preserve the distinction between platform-owned
+28. The placement system shall preserve the distinction between platform-owned
     Guide Cat chrome and product-native navigation chrome.
-36. This placement system shall remain compatible with Guide Cat being absent;
+29. This placement system shall remain compatible with Guide Cat being absent;
     when `guideCat == null`, no floating or docked projection shall appear.
+30. The durable persistence owner for these four Guide Cat UI fields shall be a
+    renderer-owned Guide Cat UI preference store rather than
+    server-managed `PlatformPreferences`:
+    - `guideCatSidecarSeen`
+    - `guideCatSidecarMode`
+    - `guideCatPlacement`
+    - `guideCatFloatingAnchor`
+31. The renderer-owned Guide Cat UI preference store shall expose one
+    in-memory source of truth and one local persistence backend.
+32. The first implementation slice shall use `localStorage` as that local
+    persistence backend unless a later ADR changes the storage substrate.
+33. Guide Cat UI preference consumers shall not each read/write raw
+    `localStorage`; they shall read/write through the shared renderer-owned
+    store.
+34. If a migration from legacy server-backed Guide Cat UI preference values is
+    needed, that migration shall be one-time, renderer-initiated, read-only
+    from the server side, and shall not stamp completion until local
+    persistence succeeds.
+35. In steady state, the app-shell envelope shall not remain the durable owner
+    of the four Guide Cat UI preference fields.
+36. When a durable Guide Cat UI preference commit changes more than one of the
+    four Guide Cat UI preference fields, it shall land atomically as one
+    logical store update rather than as split persistence writes.
 
 ### Non-Functional Requirements
 
