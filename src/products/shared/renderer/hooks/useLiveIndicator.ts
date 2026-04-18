@@ -8,6 +8,7 @@ import {
   applyLiveIndicatorEvent,
   createLiveIndicatorSegmentState,
   createWaitingLiveIndicatorState,
+  estimateNextLiveIndicatorProjectionAtMs,
   EMPTY_LIVE_INDICATOR,
   hasLiveIndicatorIdentity,
   hasVisibleAssistantReplyAfterMessage,
@@ -652,6 +653,8 @@ function areLiveIndicatorSegmentsEquivalent(
     && left.speakerLabel === right.speakerLabel
     && left.sessionStartedAt === right.sessionStartedAt
     && left.requiresSessionStartConfirmation === right.requiresSessionStartConfirmation
+    && left.lastActivityAtMs === right.lastActivityAtMs
+    && left.lastVisibleContentAtMs === right.lastVisibleContentAtMs
     && left.progressText === right.progressText
     && left.progressKind === right.progressKind
     && areStringArraysEqual(left.activeCatIds, right.activeCatIds)
@@ -682,6 +685,8 @@ function areLiveIndicatorStatesEquivalent(
     || left.speakerLabel !== right.speakerLabel
     || left.sessionStartedAt !== right.sessionStartedAt
     || left.requiresSessionStartConfirmation !== right.requiresSessionStartConfirmation
+    || left.lastActivityAtMs !== right.lastActivityAtMs
+    || left.lastVisibleContentAtMs !== right.lastVisibleContentAtMs
     || left.progressText !== right.progressText
     || left.progressKind !== right.progressKind
     || !areStringArraysEqual(left.activeCatIds, right.activeCatIds)
@@ -1694,7 +1699,7 @@ export function useLiveIndicator<
             ? mergeConcurrentWaitingIndicatorState(previous, waitingState)
             : mergeWaitingIndicatorTimelineState(previous, waitingState);
         }
-        return applyLiveIndicatorEvent(previous, eventType, data);
+        return applyLiveIndicatorEvent(previous, eventType, data, Date.now());
       });
 
       if (
@@ -1958,6 +1963,33 @@ export function useLiveIndicator<
     shouldShowWaitingIndicator,
     waitingIndicatorInputs,
   ]);
+
+  const nextProjectionAtMs = useMemo(
+    () => estimateNextLiveIndicatorProjectionAtMs(state, Date.now()),
+    [state],
+  );
+
+  useEffect(() => {
+    if (nextProjectionAtMs == null) {
+      return;
+    }
+
+    const delayMs = Math.max(nextProjectionAtMs - Date.now(), 0);
+    const timer = globalThis.setTimeout(() => {
+      setState((previous) => {
+        if (!previous.active) {
+          return previous;
+        }
+        const next = { ...previous };
+        stateRef.current = next;
+        return next;
+      });
+    }, delayMs);
+
+    return () => {
+      globalThis.clearTimeout(timer);
+    };
+  }, [nextProjectionAtMs]);
 
   return state;
 }

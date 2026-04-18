@@ -46,6 +46,8 @@ export interface LiveIndicatorSegmentState {
   tools: LiveToolEntry[];
   contentBlocks: LiveIndicatorContentBlock[];
   events: LiveIndicatorEventEntry[];
+  lastActivityAtMs?: number | null;
+  lastVisibleContentAtMs?: number | null;
 }
 
 export interface LiveIndicatorState {
@@ -70,6 +72,8 @@ export interface LiveIndicatorState {
   contentBlocks: LiveIndicatorContentBlock[];
   events: LiveIndicatorEventEntry[];
   segments: LiveIndicatorSegmentState[];
+  lastActivityAtMs?: number | null;
+  lastVisibleContentAtMs?: number | null;
 }
 
 export interface LiveIndicatorTranscriptMessageLike {
@@ -84,6 +88,7 @@ export interface LiveIndicatorTranscriptMessageLike {
 const MAX_LIVE_INDICATOR_BLOCKS = 12;
 const MAX_LIVE_INDICATOR_EVENTS = 8;
 const MAX_EVENT_TEXT = 220;
+const STALLED_STREAMING_TEXT_WAITING_DELAY_MS = 1200;
 
 export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   active: false,
@@ -107,6 +112,8 @@ export const EMPTY_LIVE_INDICATOR: LiveIndicatorState = {
   contentBlocks: [],
   events: [],
   segments: [],
+  lastActivityAtMs: null,
+  lastVisibleContentAtMs: null,
 };
 
 function buildLiveIndicatorSegmentId(input: {
@@ -152,6 +159,8 @@ export function createLiveIndicatorSegmentState(input: {
   tools?: LiveToolEntry[];
   contentBlocks?: LiveIndicatorContentBlock[];
   events?: LiveIndicatorEventEntry[];
+  lastActivityAtMs?: number | null;
+  lastVisibleContentAtMs?: number | null;
   id?: string | null;
 }): LiveIndicatorSegmentState {
   const catId = input.catId ?? null;
@@ -189,6 +198,10 @@ export function createLiveIndicatorSegmentState(input: {
     tools: input.tools ?? [],
     contentBlocks: input.contentBlocks ?? [],
     events: input.events ?? [],
+    lastActivityAtMs: typeof input.lastActivityAtMs === 'number' ? input.lastActivityAtMs : null,
+    lastVisibleContentAtMs: typeof input.lastVisibleContentAtMs === 'number'
+      ? input.lastVisibleContentAtMs
+      : null,
   };
 }
 
@@ -296,6 +309,8 @@ export function projectLiveIndicatorStateFromSegments(
     contentBlocks: primary.contentBlocks,
     events: primary.events,
     segments: normalizedSegments,
+    lastActivityAtMs: primary.lastActivityAtMs,
+    lastVisibleContentAtMs: primary.lastVisibleContentAtMs,
   };
 }
 
@@ -619,6 +634,49 @@ function segmentHasTextContent(
   );
 }
 
+function segmentHasStreamingTextContent(
+  segment: Pick<LiveIndicatorSegmentState, 'contentBlocks'>,
+): boolean {
+  return segment.contentBlocks.some(
+    (block) =>
+      block.kind === 'text'
+      && block.status === 'streaming'
+      && block.text.trim().length > 0,
+  );
+}
+
+function shouldProjectStalledStreamingTextAsWaiting(
+  segment: Pick<LiveIndicatorSegmentState, 'phase' | 'contentBlocks' | 'lastVisibleContentAtMs'>,
+  nowMs: number,
+): boolean {
+  return segment.phase === 'streaming'
+    && segmentHasStreamingTextContent(segment)
+    && segment.lastVisibleContentAtMs != null
+    && nowMs - segment.lastVisibleContentAtMs >= STALLED_STREAMING_TEXT_WAITING_DELAY_MS;
+}
+
+export function estimateNextLiveIndicatorProjectionAtMs(
+  liveIndicator: LiveIndicatorState | null | undefined,
+  nowMs = Date.now(),
+): number | null {
+  if (!liveIndicator?.active) {
+    return null;
+  }
+
+  const streamingDueTimes = resolveLiveIndicatorSegments(liveIndicator)
+    .filter((segment) => segment.phase === 'streaming' && segmentHasStreamingTextContent(segment))
+    .map((segment) => segment.lastVisibleContentAtMs)
+    .filter((timestamp): timestamp is number => typeof timestamp === 'number')
+    .map((timestamp) => timestamp + STALLED_STREAMING_TEXT_WAITING_DELAY_MS)
+    .filter((dueAt) => dueAt > nowMs);
+
+  if (streamingDueTimes.length === 0) {
+    return null;
+  }
+
+  return Math.min(...streamingDueTimes);
+}
+
 function resolveProjectedTextSegmentOrdinal(
   segments: ReadonlyArray<LiveIndicatorSegmentState>,
   segmentIndex: number,
@@ -840,6 +898,7 @@ export function applyLiveIndicatorEvent(
   previous: LiveIndicatorState,
   eventType: string,
   data: Record<string, unknown>,
+  observedAtMs = Date.now(),
 ): LiveIndicatorState {
   if (!previous.active) {
     return previous;
@@ -849,23 +908,25 @@ export function applyLiveIndicatorEvent(
 
   switch (eventType) {
     case 'progress':
-      return applyProgressEvent(nextState, data);
+      return applyProgressEvent(nextState, data, observedAtMs);
     case 'text':
-      return applyTextEvent(nextState, data);
+      return applyTextEvent(nextState, data, observedAtMs);
     case 'tool_use':
-      return applyToolUseEvent(nextState, data);
+      return applyToolUseEvent(nextState, data, observedAtMs);
     case 'tool_result':
-      return applyToolResultEvent(nextState, data);
+      return applyToolResultEvent(nextState, data, observedAtMs);
     case 'content_block':
-      return applyContentBlockEvent(nextState, data);
+      return applyContentBlockEvent(nextState, data, observedAtMs);
     case 'result':
-      return applyResultEvent(nextState, data);
+      return applyResultEvent(nextState, data, observedAtMs);
     case 'session_closed': {
       const currentSegment = resolveLiveIndicatorEventTargetSegment(nextState, data).segment;
-      return currentSegment?.phase === 'waiting' ? nextState : applyResultEvent(nextState, data);
+      return currentSegment?.phase === 'waiting'
+        ? nextState
+        : applyResultEvent(nextState, data, observedAtMs);
     }
     case 'error':
-      return applyErrorEvent(nextState, data);
+      return applyErrorEvent(nextState, data, observedAtMs);
     default:
       return nextState;
   }
@@ -1137,6 +1198,7 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   messages: ReadonlyArray<TMessage>,
   activeTurnUpdatedAt: string | null | undefined,
   sessionMessages: ReadonlyArray<TMessage> = messages,
+  nowMs = Date.now(),
 ): LiveIndicatorState | null {
   if (!liveIndicator?.active) {
     return liveIndicator ?? null;
@@ -1233,6 +1295,8 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
       speakerLabel: lastSegment.speakerLabel,
       sessionStartedAt: lastSegment.sessionStartedAt,
       requiresSessionStartConfirmation: lastSegment.requiresSessionStartConfirmation,
+      lastActivityAtMs: lastSegment.lastActivityAtMs,
+      lastVisibleContentAtMs: lastSegment.lastVisibleContentAtMs,
     });
   };
 
@@ -1258,7 +1322,26 @@ export function resolveVisibleLiveIndicator<TMessage extends LiveIndicatorTransc
   // so the user keeps seeing typing dots after the sealed bubble while the
   // runtime prepares its next segment (tool_use, next text, etc.).
   const lastVisibleSegment = visibleSegments.at(-1)!;
-  if (lastVisibleSegment.phase === 'sealed') {
+  if (
+    lastVisibleSegment.phase === 'streaming'
+    && shouldProjectStalledStreamingTextAsWaiting(lastVisibleSegment, nowMs)
+  ) {
+    // The source segment is still streaming, but its last visible text update
+    // has been idle long enough that the conversation should look like
+    // "sealed text bubble + still working" instead of "static text bubble
+    // with inline dots". Keep the raw state untouched; only the visible
+    // projection splits it into a sealed transcript bubble plus a waiting
+    // placeholder.
+    const sealedVisibleSegment = createLiveIndicatorSegmentState({
+      ...lastVisibleSegment,
+      phase: 'sealed',
+    });
+    const placeholder = buildTrailingWaitingPlaceholder(sealedVisibleSegment);
+    if (placeholder) {
+      visibleSegments[visibleSegments.length - 1] = sealedVisibleSegment;
+      visibleSegments.push(placeholder);
+    }
+  } else if (lastVisibleSegment.phase === 'sealed') {
     const placeholder = buildTrailingWaitingPlaceholder(lastVisibleSegment);
     if (placeholder) {
       visibleSegments.push(placeholder);
@@ -1332,6 +1415,7 @@ export function resolveTranscriptFollowState<TMessage extends LiveIndicatorTrans
   messages: ReadonlyArray<TMessage>,
   activeTurnUpdatedAt: string | null | undefined,
   sessionMessages: ReadonlyArray<TMessage> = messages,
+  nowMs = Date.now(),
 ): {
   visibleLiveIndicator: LiveIndicatorState | null;
   transcriptScrollKey: string;
@@ -1341,6 +1425,7 @@ export function resolveTranscriptFollowState<TMessage extends LiveIndicatorTrans
     messages,
     activeTurnUpdatedAt,
     sessionMessages,
+    nowMs,
   );
   const lastMessage = messages.at(-1);
 
@@ -1358,6 +1443,7 @@ export function resolveTranscriptFollowState<TMessage extends LiveIndicatorTrans
 function applyProgressEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
+  observedAtMs: number,
 ): LiveIndicatorState {
   const text = summarizeEventText(data.text);
   const metadata = asRecord(data.metadata);
@@ -1367,6 +1453,7 @@ function applyProgressEvent(
       ...segment,
       phase: 'streaming',
       ...(kind ? { progressKind: kind } : {}),
+      lastActivityAtMs: observedAtMs,
     }));
   }
 
@@ -1384,12 +1471,15 @@ function applyProgressEvent(
       toolName: null,
       toolId: null,
     }),
+    lastActivityAtMs: observedAtMs,
+    lastVisibleContentAtMs: observedAtMs,
   }));
 }
 
 function applyTextEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
+  observedAtMs: number,
 ): LiveIndicatorState {
   const textChunk = typeof data.text === 'string' ? data.text : '';
   const summarizedText = summarizeEventText(data.text);
@@ -1397,6 +1487,7 @@ function applyTextEvent(
     return updateLiveIndicatorEventSegment(previous, data, (segment) => ({
       ...segment,
       phase: 'streaming',
+      lastActivityAtMs: observedAtMs,
     }));
   }
 
@@ -1417,6 +1508,8 @@ function applyTextEvent(
         toolId: null,
       })
       : segment.events,
+    lastActivityAtMs: observedAtMs,
+    lastVisibleContentAtMs: observedAtMs,
   }));
 }
 
@@ -1472,6 +1565,7 @@ function isSyntheticFallbackTextBlock(
 function applyToolUseEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
+  observedAtMs: number,
 ): LiveIndicatorState {
   const normalizedSegment = normalizeRuntimeMessageSegmentEntry({
     type: 'tool_use',
@@ -1502,6 +1596,7 @@ function applyToolUseEvent(
         toolName,
         toolId: toolId || toolName,
       }),
+      lastActivityAtMs: observedAtMs,
     };
   });
 }
@@ -1509,6 +1604,7 @@ function applyToolUseEvent(
 function applyToolResultEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
+  observedAtMs: number,
 ): LiveIndicatorState {
   const normalizedSegment = normalizeRuntimeMessageSegmentEntry({
     type: 'tool_result',
@@ -1544,12 +1640,14 @@ function applyToolResultEvent(
       toolName,
       toolId: toolId || toolName,
     }),
+    lastActivityAtMs: observedAtMs,
   }));
 }
 
 function applyResultEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown> = {},
+  observedAtMs: number,
 ): LiveIndicatorState {
   return updateLiveIndicatorEventSegment(previous, data, (segment) => {
     const hasTextContent = segment.contentBlocks.some(
@@ -1570,6 +1668,8 @@ function applyResultEvent(
         toolName: null,
         toolId: null,
       }),
+      lastActivityAtMs: observedAtMs,
+      lastVisibleContentAtMs: hasTextContent ? segment.lastVisibleContentAtMs : observedAtMs,
     };
   });
 }
@@ -1577,6 +1677,7 @@ function applyResultEvent(
 function applyContentBlockEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
+  observedAtMs: number,
 ): LiveIndicatorState {
   const block = normalizeRuntimeContentBlock(data);
   if (!block) {
@@ -1598,6 +1699,8 @@ function applyContentBlockEvent(
       ...segment,
       phase: segment.phase === 'sealed' ? 'sealed' : 'streaming',
       contentBlocks: nextContentBlocks,
+      lastActivityAtMs: observedAtMs,
+      lastVisibleContentAtMs: observedAtMs,
     };
   };
 
@@ -1618,6 +1721,7 @@ function applyContentBlockEvent(
 function applyErrorEvent(
   previous: LiveIndicatorState,
   data: Record<string, unknown>,
+  observedAtMs: number,
 ): LiveIndicatorState {
   const text = summarizeEventText(data.text) || 'Finishing...';
   return updateLiveIndicatorEventSegment(previous, data, (segment) => ({
@@ -1634,6 +1738,8 @@ function applyErrorEvent(
       toolName: null,
       toolId: null,
     }),
+    lastActivityAtMs: observedAtMs,
+    lastVisibleContentAtMs: observedAtMs,
   }));
 }
 

@@ -3299,9 +3299,9 @@ test('collapsed live transcript keeps error blocks visible and surfaces trailing
     ),
     true,
   );
-  // Non-text block in any streaming segment keeps trailing dots visible so
-  // the user sees a "still working" signal regardless of whether the tool
-  // has already completed - the segment phase is what drives activity.
+  // Only actively streaming non-text blocks keep inline trailing dots.
+  // Once a block completes, the projection layer is responsible for handing
+  // off to a separate waiting placeholder if the turn is still running.
   assert.equal(
     shouldShowLiveTranscriptTrailingDots('streaming', {
       id: 'tool:complete',
@@ -3314,7 +3314,7 @@ test('collapsed live transcript keeps error blocks visible and surfaces trailing
       toolId: 'tool-search',
       metadata: null,
     }),
-    true,
+    false,
   );
   assert.equal(
     shouldShowLiveTranscriptTrailingDots('streaming', {
@@ -3330,11 +3330,9 @@ test('collapsed live transcript keeps error blocks visible and surfaces trailing
     }),
     true,
   );
-  // Streaming text also surfaces trailing dots. Live-trace evidence showed
-  // CLI-backed runtimes hold text blocks at status=streaming for tens of
-  // seconds after emitting the entire sentence, so suppressing dots while
-  // status=streaming produces a silent stale bubble. Showing dots under a
-  // genuinely animating text block is harmless; the text grows above them.
+  // Streaming text does not keep inline dots. If it later stalls while the
+  // segment remains open, the projection layer seals the text bubble and
+  // appends a waiting placeholder under it.
   assert.equal(
     shouldShowLiveTranscriptTrailingDots('streaming', {
       id: 'text:streaming',
@@ -3347,11 +3345,10 @@ test('collapsed live transcript keeps error blocks visible and surfaces trailing
       toolId: null,
       metadata: null,
     }),
-    true,
+    false,
   );
-  // A completed text block while the segment is still streaming (runtime
-  // has sealed the text but not the segment) should keep dots visible
-  // instead of leaving the bubble silent.
+  // Completed text blocks also stay quiet inline; the waiting cue, when
+  // needed, comes from a separate synthetic waiting bubble.
   assert.equal(
     shouldShowLiveTranscriptTrailingDots('streaming', {
       id: 'text:complete',
@@ -3364,7 +3361,7 @@ test('collapsed live transcript keeps error blocks visible and surfaces trailing
       toolId: null,
       metadata: null,
     }),
-    true,
+    false,
   );
   // Sealed segments never show trailing dots, regardless of last block.
   assert.equal(
@@ -6267,4 +6264,50 @@ test('resolveVisibleLiveIndicator keeps the gap placeholder for a lane that has 
   assert.equal(visible.segments[1]?.phase, 'waiting');
   assert.equal(visible.segments[1]?.laneId, 'lane-b');
   assert.equal(visible.segments[1]?.speakerLabel, 'Lane-B-CLI');
+});
+
+test('resolveVisibleLiveIndicator seals a stale streaming text bubble and appends a waiting placeholder', () => {
+  let liveIndicator = createWaitingLiveIndicatorState({
+    sourceMessageId: 'message-user-current',
+    participantId: 'participant-claude',
+    catId: null,
+    speakerLabel: 'Claude-CLI',
+    revealIdentity: true,
+  });
+  liveIndicator = applyLiveIndicatorEvent(
+    liveIndicator,
+    'text',
+    {
+      sourceMessageId: 'message-user-current',
+      participantId: 'participant-claude',
+      speakerLabel: 'Claude-CLI',
+      text: 'I will build a single-file HTML pomodoro timer.',
+    },
+    1_000,
+  );
+
+  const visible = resolveVisibleLiveIndicator(
+    liveIndicator,
+    [
+      {
+        id: 'message-user-current',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        metadata: {},
+        createdAt: '2026-04-18T12:00:00.000Z',
+      },
+    ],
+    '2026-04-18T12:00:04.000Z',
+    undefined,
+    2_400,
+  );
+
+  assert.ok(visible, 'expected stale streaming text to remain visible');
+  assert.equal(visible.segments.length, 2, 'expected sealed text bubble + waiting placeholder');
+  assert.equal(visible.segments[0]?.phase, 'sealed');
+  assert.equal(visible.segments[0]?.contentBlocks[0]?.kind, 'text');
+  assert.equal(visible.segments[0]?.contentBlocks[0]?.status, 'streaming');
+  assert.equal(visible.segments[1]?.phase, 'waiting');
+  assert.equal(visible.segments[1]?.speakerLabel, 'Claude-CLI');
+  assert.equal(visible.segments[1]?.contentBlocks.length, 0);
 });
