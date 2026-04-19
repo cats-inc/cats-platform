@@ -102,6 +102,15 @@
   border-top: 0;
 }
 
+/* When the last choice row is also the section's last child, drop its
+ * padding-bottom so it does not stack on the card's own padding and leave
+ * a visibly oversized void below the final option. (When something else
+ * follows — e.g. a SettingsActionBar — the padding stays for divider
+ * breathing.) */
+.settings-section > .settings-option-row[data-choice='true']:last-child {
+  padding-bottom: 0;
+}
+
 /* Choice rows own their divider + padding rhythm; opt out of the section's
  * default row gap so it does not stack on top of the row's padding-top. */
 .settings-section > .settings-option-row[data-choice='true'] {
