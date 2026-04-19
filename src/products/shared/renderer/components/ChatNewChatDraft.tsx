@@ -1,4 +1,4 @@
-import { type FormEvent, type KeyboardEvent, type RefObject } from 'react';
+import { type FormEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
@@ -99,6 +99,7 @@ export interface NewChatDraftProps {
   onSetAudienceKeys?: (keys: string[]) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
+  composerFooterAccessory?: ReactNode;
 }
 
 export function NewChatDraft({
@@ -160,6 +161,7 @@ export function NewChatDraft({
   onToggleDraftWorkflowShape,
   draftAudienceKeys,
   onSetAudienceKeys,
+  composerFooterAccessory = null,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const maxAudienceParticipants = payload.chat.capabilities.maxAudienceParticipants ?? 3;
@@ -591,6 +593,9 @@ export function NewChatDraft({
             }}
           />
         </form>
+        {composerFooterAccessory ? (
+          <div className="composerFooterRow">{composerFooterAccessory}</div>
+        ) : null}
         {isParallelMode && parallelTargets && parallelTargets.length > 1 ? (
           <div className="parallelStubStack">
             {parallelTargets.slice(1).map((target, i, arr) => (
