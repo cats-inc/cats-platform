@@ -47,6 +47,13 @@ This means:
 - structured product state is materialized beside the transcript, not scraped
   back out of it later
 
+Terminology rule:
+
+- shared technical contracts should say `Conversation`, not `thread`
+- product copy and UI may still say `thread` when that reads more naturally
+- names such as `chat_thread`, `code_thread`, and `work_thread` remain
+  `Conversation` kinds, not alternate durable record families
+
 ## Managed Work, Missions, Runs, and Transport Bindings
 
 The unified interaction engine is not enough by itself. The platform also needs
@@ -996,4 +1003,4 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-04-17*
+*Last updated: 2026-04-19*

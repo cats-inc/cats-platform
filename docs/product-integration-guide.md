@@ -63,6 +63,8 @@ All product teams must treat these as frozen architectural rules:
     panels are contextual subsets, not alternate registries.
 12. `RECENTS` defaults must stay product-scoped through explicit
     `originSurface` metadata, not renderer heuristics.
+13. `Conversation` remains the canonical cross-product interaction term;
+    `thread` is UI/informal language only.
 
 ## Frozen Shared Contracts
 
@@ -96,6 +98,25 @@ At the doc/architecture level, the current freeze set also includes:
 
 Products must not work around these invariants by inventing local room modes,
 local replay logic, or local materialization semantics.
+
+## Conversation vs Thread Naming
+
+All product teams must preserve this rule:
+
+- `Conversation` is the canonical shared contract term
+- `thread` may appear in product copy, UI labels, and informal discussion
+- names such as `chat_thread`, `code_thread`, and `work_thread` are
+  `Conversation` kinds, not alternate top-level records
+
+Rules:
+
+- Shared types, APIs, schema docs, and cross-product specs should say
+  `Conversation` unless they are intentionally naming a UI label.
+- Product teams must not introduce parallel durable nouns such as "Chat
+  Thread record" or "Work Thread record" when the underlying canonical unit is
+  the shared `Conversation`.
+- If a UI says `thread`, the related technical documentation should still map
+  that view back to a `Conversation`.
 
 ## Conversation Origin and Product-Scoped Recents
 
@@ -403,4 +424,4 @@ When converging product work into the platform host:
 
 ---
 
-*Last updated: 2026-04-17*
+*Last updated: 2026-04-19*

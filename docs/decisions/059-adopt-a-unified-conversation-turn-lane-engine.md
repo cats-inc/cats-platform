@@ -78,6 +78,12 @@ The meaning of each layer is fixed:
 - `Segment`: one lane-local rendered unit such as text/tool/status delivery
 - `Session`: one runtime attachment generation for a lane
 
+`Conversation` is the canonical shared contract term for the durable
+thread-like unit across `Chat`, `Work`, and `Code`. Product/UI language may
+still say `thread`, and kinds such as `chat_thread`, `code_thread`, or
+`work_thread` remain valid labels, but they do not replace `Conversation` as
+the underlying engine record name.
+
 ### 2. One engine, not many chat-mode engines
 
 The product may continue to expose UX entries such as:

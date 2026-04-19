@@ -22,7 +22,7 @@
 | Cats Chat | The chat-first product surface in the Cats platform. |
 | Cats Work | The work and operations product surface in the Cats platform. |
 | Cats Core v1 | The shared product contract layer for identity, actors/resources, permissions, conversations, approvals, owner profile, and archive metadata. |
-| Chat | A topic-centered conversation thread inside `Cats Chat`. Chat is the primary navigation unit, even when one or more Cats participate in it. |
+| Chat | A topic-centered product conversation inside `Cats Chat`. Chat is the primary navigation unit, even when one or more Cats participate in it. In UI and everyday speech, users may call it a thread; shared Core contracts should still model it as a `Conversation`. |
 | Cat | A reusable product-facing identity in the Cats platform. In the long-range model, a Cat is a user-facing projection over a reusable `Entity`, often but not always backed by an execution-capable `Agent`. |
 | Guide Cat | The canonical product and developer term for the optional first helper offered during setup. Guide Cat is a Cat identity that may help across `Chat`, `Work`, and `Code`, but it is not automatically the same thing as `Boss Cat` or the invisible orchestration layer. Guide Cat is now also framed as an optional low-privilege surface-assist capability. |
 | Boss Cat | The user-facing product term for the default public orchestrator and transport-facing Cat. Boss Cat is a coordinator capability layered above the shared interaction engine; it is distinct from the current-turn recipient slot and is not automatically the front-stage counterpart for every new chat. |
@@ -82,10 +82,20 @@
 
 ## Interaction Core Terms
 
+Canonical naming rule:
+
+- `Conversation` is the canonical shared term for the durable interaction unit
+  across `Chat`, `Work`, and `Code`.
+- `thread` is allowed as UI copy or informal shorthand, but it should not
+  replace `Conversation` in shared schemas, APIs, or cross-product contracts.
+- Names such as `chat_thread`, `code_thread`, and `work_thread` should be
+  treated as kinds of `Conversation`, not as separate top-level record types.
+
 | Term | Meaning |
 |------|---------|
 | Container | An optional parent grouping that owns one or more conversations, such as a parallel-comparison surface. |
-| Conversation | One durable interaction boundary with its own transcript and execution state. |
+| Conversation | One durable interaction boundary with its own transcript and execution state. `Conversation` is the canonical Core/API/schema term for the durable thread-like unit across `Chat`, `Work`, and `Code`. |
+| Thread | A UI-facing or informal alias for a `Conversation` or product-local room. Use `thread` in copy when it reads more naturally, but do not promote it over `Conversation` in shared technical contracts. |
 | Turn | One user- or system-initiated dispatch cycle inside a conversation. |
 | Lane | One stable target-specific response track inside a turn. Lane identity is durable and must not be conflated with runtime session identity. |
 | Segment | One lane-local product-visible unit such as text, tool, or status delivery. A segment is product-normalized and is not required to equal a provider-native block or chunk. |
