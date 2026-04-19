@@ -581,7 +581,7 @@ contracts.
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when
       the compatibility fallback can safely be removed
-- [ ] Wire cross-surface draft dispatch and warm product handoff so that
+- [ ] Wire cross-surface draft dispatch and warm navigation handoff so that
       flipping `+New chat`'s draft surface (currently chat -> code via the
       seeded Pomodoro helper chip, later more entries) actually creates a
       destination-owned conversation on the target product and lands in its
@@ -595,6 +595,16 @@ contracts.
       [SPEC-074](./docs/specs/SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md),
       and
       [PLAN-066](./docs/plans/PLAN-066-cross-surface-draft-dispatch-and-warm-product-handoff-rollout.md).
+- [ ] Reuse the same warm navigation handoff seam for later supported
+      cross-surface navigation targets such as existing conversations,
+      artifacts, tasks, and runs, instead of letting each deep-link or
+      product-to-product jump invent a second continuity stack above routing,
+      prefetch, and handoff-state consumption
+- [ ] After the first cross-surface draft submit path ships, choose and land
+      the first non-draft consumer of the warm navigation seam so the generic
+      investment is proven by a real follow-on path rather than remaining
+      draft-only in practice; likely candidates are existing-conversation,
+      artifact, or task/run deep links
 - [ ] Re-enable `Cats Code` recents on top of the same product-scoped
       `originSurface` filter, and only then evaluate whether Chat/Work/Code
       also need an explicit secondary cross-product `All recents` lens instead

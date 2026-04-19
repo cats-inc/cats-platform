@@ -146,7 +146,8 @@ The platform therefore needs both:
 
 18. Before navigating across products, the platform shall be able to store an
     ephemeral warm navigation handoff bundle for the destination surface when
-    continuity optimization is warranted.
+    the transition crosses a `React.lazy` product boundary or when optimistic
+    continuity is needed on first render.
 19. The handoff bundle shall be in-memory only and shall not be treated as
     durable persisted product state or canonical route truth.
 20. The handoff bundle shall be sufficient to render immediate continuity on
@@ -157,6 +158,11 @@ The platform therefore needs both:
     - optional optimistic first user turn
     - optional current dispatch/busy phase
     - optional snapshot metadata needed for immediate render
+    - for the first shipping slice, implemented handoff kinds shall include:
+      `draft-create-channel` and `draft-create-parallel-group`
+    - reserved future examples may include `navigate-conversation`,
+      `navigate-artifact`, `navigate-task`, and `navigate-run`, but those are
+      not required to ship in this first slice
 21. The destination product shall attempt to consume a matching handoff bundle
     immediately on mount or route activation.
 22. After consuming the bundle, the destination product shall refresh
@@ -221,6 +227,8 @@ The platform should own a registry that can answer:
   surface, and later supported cross-surface entity routes
 - how to prefetch the corresponding product bundle
 - how the target product reads and clears a warm navigation handoff bundle
+- which handoff kinds are currently implemented versus merely reserved for
+  later consumers
 
 ### 3. Ephemeral Warm Navigation Handoff Store
 
