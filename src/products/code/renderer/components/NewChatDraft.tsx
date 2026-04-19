@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-
 import {
   NewChatDraft as ChatNewChatDraft,
   type NewChatDraftProps,
@@ -14,29 +12,8 @@ import {
   fingerprintDraftHelperChips,
   useDraftHelperChipVisibility,
 } from '../../../shared/renderer/draftHelperChips.js';
-import {
-  DEFAULT_PERMISSION_MODE,
-  PermissionModeChip,
-  type PermissionMode,
-} from '../../../shared/renderer/components/PermissionModeChip.js';
-import {
-  DEFAULT_WORKSPACE_MODE,
-  WorkspaceModeChip,
-  type WorkspaceMode,
-} from '../../../shared/renderer/components/WorkspaceModeChip.js';
+import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
-import {
-  completeRuntimeSessionPolicy,
-  createDefaultRuntimeSessionPolicy,
-  resolveCreateRuntimeSessionPolicy,
-  resolveDraftPermissionModeFromRuntimeAccess,
-  resolveDraftWorkspaceModeFromRuntimeKind,
-  resolveRuntimePermissionPolicyFromDraft,
-  resolveRuntimeWorkspaceKindFromDraft,
-  type RuntimeSessionPolicyInput,
-} from '../../../../shared/runtimeSessionPolicy.js';
-import { inspectPath } from '../api/index.js';
-import { useSyncRuntimeWorkspaceKindWithCwd } from '../hooks/useSyncRuntimeWorkspaceKindWithCwd.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   greeting: 'Ready to code.',
@@ -136,72 +113,38 @@ function buildWorkspaceDraftProps(input: {
   };
 }
 
-interface RepoProbeResult {
-  isRepo: boolean;
-  repoRoot: string | null;
-  branch: string | null;
-}
-
-function useCodeDraftRepoProbe(draftCwd: string | null): RepoProbeResult {
-  const [result, setResult] = useState<RepoProbeResult>({
-    isRepo: false,
-    repoRoot: null,
-    branch: null,
-  });
-
-  useEffect(() => {
-    if (!draftCwd) {
-      setResult({ isRepo: false, repoRoot: null, branch: null });
-      return;
-    }
-
-    const controller = new AbortController();
-    inspectPath(draftCwd, controller.signal)
-      .then((info) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setResult({
-          isRepo: Boolean(info.isRepo),
-          repoRoot: info.repoRoot ?? null,
-          branch: info.branch ?? null,
-        });
-      })
-      .catch(() => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setResult({ isRepo: false, repoRoot: null, branch: null });
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [draftCwd]);
-
-  return result;
-}
-
 export function NewChatDraft(props: NewChatDraftProps) {
   if (props.entryMode === 'group' || props.entryMode === 'parallel') {
-    return <ChatNewChatDraft {...props} modeTag={<ComposerModeChip mode="code" />} />;
+    return <CodeGroupParallelDraft {...props} />;
   }
   return <CodeDefaultDraft {...props} />;
 }
 
-function CodeDefaultDraft(props: NewChatDraftProps) {
-  const { isRepo, repoRoot, branch } = useCodeDraftRepoProbe(props.draftCwd);
-  const defaultSessionPolicy = createDefaultRuntimeSessionPolicy();
-  const currentSessionPolicy = resolveCreateRuntimeSessionPolicy({
-    repoPath: props.draftCwd,
-    policy: props.draftRuntimeSessionPolicy ?? defaultSessionPolicy,
+function CodeGroupParallelDraft(props: NewChatDraftProps) {
+  const { permissionChip, whereExtras } = useDraftSessionChips({
+    draftCwd: props.draftCwd,
+    busy: props.busy,
+    draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
+    onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
   });
-  const workspaceMode: WorkspaceMode =
-    props.draftCwd
-      ? resolveDraftWorkspaceModeFromRuntimeKind(currentSessionPolicy.workspaceKind)
-      : DEFAULT_WORKSPACE_MODE;
-  const permissionMode: PermissionMode =
-    resolveDraftPermissionModeFromRuntimeAccess(currentSessionPolicy.workspaceAccess);
+  return (
+    <ChatNewChatDraft
+      {...props}
+      composerHeaderAccessory={permissionChip}
+      composerHeaderWhereExtras={whereExtras}
+      modeTag={<ComposerModeChip mode="code" />}
+      folderActionLabel={NEW_CODE_DRAFT_COPY.folderActionLabel}
+    />
+  );
+}
+
+function CodeDefaultDraft(props: NewChatDraftProps) {
+  const { permissionChip, whereExtras } = useDraftSessionChips({
+    draftCwd: props.draftCwd,
+    busy: props.busy,
+    draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
+    onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
+  });
   const availableHelperChips = (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
     .filter((chip) => chip.prompt.trim().length > 0)
     .slice(0, 3);
@@ -221,72 +164,6 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
       props.onComposerChange(prompt);
     },
   });
-  const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
-  const branchLabel = branch ?? 'detached';
-  const repoReady = Boolean(isRepo && repoRoot);
-  const resolvedRuntimeWorkspaceKind = resolveRuntimeWorkspaceKindFromDraft({
-    hasCwd: Boolean(props.draftCwd),
-    isRepo: repoReady,
-    workspaceMode,
-  });
-
-  useSyncRuntimeWorkspaceKindWithCwd({
-    currentSessionPolicy,
-    resolvedRuntimeWorkspaceKind,
-    onChange: props.onDraftRuntimeSessionPolicyChange,
-  });
-
-  function updateSessionPolicy(patch: RuntimeSessionPolicyInput): void {
-    if (!props.onDraftRuntimeSessionPolicyChange) {
-      return;
-    }
-    props.onDraftRuntimeSessionPolicyChange(
-      completeRuntimeSessionPolicy({
-        workspaceKind: currentSessionPolicy.workspaceKind,
-        workspaceAccess: currentSessionPolicy.workspaceAccess,
-        permissionMode: currentSessionPolicy.permissionMode,
-        ...patch,
-      }),
-    );
-  }
-
-  const permissionChip = props.draftCwd ? (
-    <PermissionModeChip
-      value={permissionMode}
-      onChange={(nextMode) => {
-        updateSessionPolicy(resolveRuntimePermissionPolicyFromDraft(nextMode));
-      }}
-      disabled={isSubmittingFirstTurn}
-    />
-  ) : null;
-
-  const whereExtras = props.draftCwd && repoReady ? (
-    <>
-      <span className="composerBranchChip">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="4" cy="4" r="1.6" />
-          <circle cx="12" cy="4" r="1.6" />
-          <circle cx="4" cy="12" r="1.6" />
-          <path d="M4 5.6v4.8" />
-          <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
-        </svg>
-        <span>{branchLabel}</span>
-      </span>
-      <WorkspaceModeChip
-        value={workspaceMode}
-        onChange={(nextMode) => {
-          updateSessionPolicy({
-            workspaceKind: resolveRuntimeWorkspaceKindFromDraft({
-              hasCwd: Boolean(props.draftCwd),
-              isRepo: Boolean(repoReady),
-              workspaceMode: nextMode,
-            }),
-          });
-        }}
-        disabled={isSubmittingFirstTurn}
-      />
-    </>
-  ) : null;
 
   return (
     <WorkspaceNewChatDraft

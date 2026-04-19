@@ -12,21 +12,23 @@ import {
   DEFAULT_PERMISSION_MODE,
   PermissionModeChip,
 } from '../../../shared/renderer/components/PermissionModeChip.js';
+import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
 
 export type { NewChatDraftProps };
 
 const POMODORO_PROMPT = 'Write a small pomodoro timer app.';
 
-// Chat's draft composer mirrors the active-composer behaviour added in
-// 9a8695b4: when the user has selected a cwd, show a disabled
-// PermissionModeChip beneath the composer so the effective permission
-// mode is visible in both the draft and active phases. The chip is
-// read-only because Chat's permission mode is governed by the boss cat
-// / runtime, not a free-form draft toggle (Code is where the user
-// authors the policy directly).
 export function NewChatDraft(props: NewChatDraftProps) {
   const [draftMode, setDraftMode] = useState<ComposerMode>('chat');
+  const codeChips = useDraftSessionChips({
+    draftCwd: props.draftCwd,
+    busy: props.busy,
+    draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
+    onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
+  });
+
+  const isCodeMode = draftMode === 'code';
 
   const modeTag: ReactNode = draftMode !== 'chat' ? (
     <ComposerModeChip mode={draftMode} onDismiss={() => setDraftMode('chat')} />
@@ -43,17 +45,32 @@ export function NewChatDraft(props: NewChatDraftProps) {
     },
   ];
 
+  const composerHeaderAccessory = isCodeMode
+    ? codeChips.permissionChip
+    : buildChatPermissionChip(props);
+  const composerHeaderWhereExtras = isCodeMode ? codeChips.whereExtras : null;
+  const chooseFolderPlacement = isCodeMode ? 'header' : 'plusMenu';
+  const folderActionLabel = isCodeMode ? 'Choose workspace' : 'Choose folder';
+
   return (
     <SharedChatNewChatDraft
       {...props}
-      composerHeaderAccessory={buildDraftPermissionChip(props)}
+      composerHeaderAccessory={composerHeaderAccessory}
+      composerHeaderWhereExtras={composerHeaderWhereExtras}
       modeTag={modeTag}
+      chooseFolderPlacement={chooseFolderPlacement}
+      folderActionLabel={folderActionLabel}
       leadingStarterChips={leadingStarterChips}
     />
   );
 }
 
-function buildDraftPermissionChip(props: NewChatDraftProps): ReactNode {
+// Chat@chat: when the user has selected a cwd, show a disabled
+// PermissionModeChip so the effective permission mode is visible.
+// The chip is read-only because Chat's permission mode is governed
+// by the boss cat / runtime, not a free-form draft toggle (Code is
+// where the user authors the policy directly).
+function buildChatPermissionChip(props: NewChatDraftProps): ReactNode {
   if (!props.draftCwd) {
     return null;
   }

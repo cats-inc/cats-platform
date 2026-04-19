@@ -105,6 +105,8 @@ export interface NewChatDraftProps {
   composerFooterAccessory?: ReactNode;
   draftCustomRegion?: ReactNode;
   modeTag?: ReactNode;
+  folderActionLabel?: string;
+  chooseFolderPlacement?: 'header' | 'plusMenu';
   leadingStarterChips?: ReadonlyArray<{
     id: string;
     label: string;
@@ -176,6 +178,8 @@ export function NewChatDraft({
   composerFooterAccessory = null,
   draftCustomRegion = null,
   modeTag = null,
+  folderActionLabel = 'Choose folder',
+  chooseFolderPlacement = 'header',
   leadingStarterChips,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
@@ -332,52 +336,55 @@ export function NewChatDraft({
         {draftCustomRegion ? (
           <div className="draftCustomRegion">{draftCustomRegion}</div>
         ) : null}
-        <div className="composerHeaderRow">
-          <div className="composerHeaderLeft">
-            {draftCwd ? (
-              <span
-                className="composerCwdChip composerCwdClickable"
-                data-tooltip={draftCwd}
-                role="button"
-                tabIndex={isSubmittingFirstTurn ? undefined : 0}
-                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cwd')}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                </svg>
-                <span>{truncatePath(draftCwd)}</span>
-                <button
-                  className="composerChipClose"
-                  type="button"
-                  disabled={isSubmittingFirstTurn}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDraftCwdClear();
-                  }}
-                  aria-label="Remove folder"
+        {(modeTag || draftCwd || chooseFolderPlacement === 'header' || composerHeaderWhereExtras || composerHeaderAccessory) ? (
+          <div className="composerHeaderRow">
+            <div className="composerHeaderLeft">
+              {modeTag}
+              {draftCwd ? (
+                <span
+                  className="composerCwdChip composerCwdClickable"
+                  data-tooltip={draftCwd}
+                  role="button"
+                  tabIndex={isSubmittingFirstTurn ? undefined : 0}
+                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cwd')}
                 >
-                  &times;
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                  </svg>
+                  <span>{truncatePath(draftCwd)}</span>
+                  <button
+                    className="composerChipClose"
+                    type="button"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDraftCwdClear();
+                    }}
+                    aria-label="Remove folder"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ) : chooseFolderPlacement === 'header' ? (
+                <button
+                  type="button"
+                  className="composerHeaderChooseButton"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={() => openSidePanelTo('cwd')}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                  </svg>
+                  <span>{folderActionLabel}</span>
                 </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="composerHeaderChooseButton"
-                disabled={isSubmittingFirstTurn}
-                onClick={() => openSidePanelTo('cwd')}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                </svg>
-                <span>Choose folder</span>
-              </button>
-            )}
-            {composerHeaderWhereExtras}
+              ) : null}
+              {composerHeaderWhereExtras}
+            </div>
+            {composerHeaderAccessory ? (
+              <div className="composerHeaderRight">{composerHeaderAccessory}</div>
+            ) : null}
           </div>
-          {composerHeaderAccessory ? (
-            <div className="composerHeaderRight">{composerHeaderAccessory}</div>
-          ) : null}
-        </div>
+        ) : null}
         <form
           className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
           onSubmit={(event) => void onSendMessage(event)}
@@ -457,10 +464,24 @@ export function NewChatDraft({
                       </svg>
                       Add photos and files
                     </button>
+                    {chooseFolderPlacement === 'plusMenu' ? (
+                      <button
+                        className="composerPlusMenuItem"
+                        type="button"
+                        disabled={isSubmittingFirstTurn}
+                        onClick={() => {
+                          openSidePanelTo('cwd');
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                        </svg>
+                        {folderActionLabel}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
-              {modeTag}
               {isGroupDraft ? (
                 <div className="composerGroupAddRow">
                   {groupComposerParticipants.map((participant) => {

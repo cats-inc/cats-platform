@@ -133,9 +133,10 @@ export function ChatComposerArea({
 
   return (
     <div className={stackClassName}>
-    {(composerWorkspacePath || composerHeaderAccessory || composerHeaderWhereExtras) ? (
+    {(modeTag || composerWorkspacePath || composerHeaderAccessory || composerHeaderWhereExtras) ? (
       <div className="composerHeaderRow">
         <div className="composerHeaderLeft">
+          {modeTag}
           {composerWorkspacePath ? (
             <span
               className="composerCwdChip composerCwdClickable"
@@ -269,7 +270,6 @@ export function ChatComposerArea({
               </div>
             ) : null}
           </div>
-          {modeTag}
         </div>
         <div className="composerRightGroup">
           {composerTargetSlot ?? (
