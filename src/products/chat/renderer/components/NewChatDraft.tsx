@@ -1,9 +1,13 @@
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import {
   NewChatDraft as SharedChatNewChatDraft,
   type NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
+import {
+  ComposerModeChip,
+  type ComposerMode,
+} from '../../../shared/renderer/components/ComposerModeChip.js';
 import {
   DEFAULT_PERMISSION_MODE,
   PermissionModeChip,
@@ -11,6 +15,8 @@ import {
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
 
 export type { NewChatDraftProps };
+
+const POMODORO_PROMPT = 'Write a small pomodoro timer app.';
 
 // Chat's draft composer mirrors the active-composer behaviour added in
 // 9a8695b4: when the user has selected a cwd, show a disabled
@@ -20,10 +26,29 @@ export type { NewChatDraftProps };
 // / runtime, not a free-form draft toggle (Code is where the user
 // authors the policy directly).
 export function NewChatDraft(props: NewChatDraftProps) {
+  const [draftMode, setDraftMode] = useState<ComposerMode>('chat');
+
+  const modeTag: ReactNode = draftMode !== 'chat' ? (
+    <ComposerModeChip mode={draftMode} onDismiss={() => setDraftMode('chat')} />
+  ) : null;
+
+  const leadingStarterChips = [
+    {
+      id: 'pomodoro-app',
+      label: 'Pomodoro app',
+      onClick: () => {
+        props.onComposerChange(POMODORO_PROMPT);
+        setDraftMode('code');
+      },
+    },
+  ];
+
   return (
     <SharedChatNewChatDraft
       {...props}
-      composerFooterAccessory={buildDraftPermissionChip(props)}
+      composerHeaderAccessory={buildDraftPermissionChip(props)}
+      modeTag={modeTag}
+      leadingStarterChips={leadingStarterChips}
     />
   );
 }

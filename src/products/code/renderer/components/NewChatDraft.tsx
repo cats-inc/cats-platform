@@ -9,6 +9,7 @@ import {
   type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
+import { ComposerModeChip } from '../../../shared/renderer/components/ComposerModeChip.js';
 import {
   fingerprintDraftHelperChips,
   useDraftHelperChipVisibility,
@@ -183,7 +184,7 @@ function useCodeDraftRepoProbe(draftCwd: string | null): RepoProbeResult {
 
 export function NewChatDraft(props: NewChatDraftProps) {
   if (props.entryMode === 'group' || props.entryMode === 'parallel') {
-    return <ChatNewChatDraft {...props} />;
+    return <ChatNewChatDraft {...props} modeTag={<ComposerModeChip mode="code" />} />;
   }
   return <CodeDefaultDraft {...props} />;
 }
@@ -249,42 +250,41 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
     );
   }
 
-  const sessionPolicyChips = props.draftCwd ? (
+  const permissionChip = props.draftCwd ? (
+    <PermissionModeChip
+      value={permissionMode}
+      onChange={(nextMode) => {
+        updateSessionPolicy(resolveRuntimePermissionPolicyFromDraft(nextMode));
+      }}
+      disabled={isSubmittingFirstTurn}
+    />
+  ) : null;
+
+  const whereExtras = props.draftCwd && repoReady ? (
     <>
-      <PermissionModeChip
-        value={permissionMode}
+      <span className="composerBranchChip">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="4" cy="4" r="1.6" />
+          <circle cx="12" cy="4" r="1.6" />
+          <circle cx="4" cy="12" r="1.6" />
+          <path d="M4 5.6v4.8" />
+          <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
+        </svg>
+        <span>{branchLabel}</span>
+      </span>
+      <WorkspaceModeChip
+        value={workspaceMode}
         onChange={(nextMode) => {
-          updateSessionPolicy(resolveRuntimePermissionPolicyFromDraft(nextMode));
+          updateSessionPolicy({
+            workspaceKind: resolveRuntimeWorkspaceKindFromDraft({
+              hasCwd: Boolean(props.draftCwd),
+              isRepo: Boolean(repoReady),
+              workspaceMode: nextMode,
+            }),
+          });
         }}
         disabled={isSubmittingFirstTurn}
       />
-      {repoReady ? (
-        <>
-          <span className="composerBranchChip">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="4" cy="4" r="1.6" />
-              <circle cx="12" cy="4" r="1.6" />
-              <circle cx="4" cy="12" r="1.6" />
-              <path d="M4 5.6v4.8" />
-              <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
-            </svg>
-            <span>{branchLabel}</span>
-          </span>
-          <WorkspaceModeChip
-            value={workspaceMode}
-            onChange={(nextMode) => {
-              updateSessionPolicy({
-                workspaceKind: resolveRuntimeWorkspaceKindFromDraft({
-                  hasCwd: Boolean(props.draftCwd),
-                  isRepo: Boolean(repoReady),
-                  workspaceMode: nextMode,
-                }),
-              });
-            }}
-            disabled={isSubmittingFirstTurn}
-          />
-        </>
-      ) : null}
     </>
   ) : null;
 
@@ -292,7 +292,9 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
     <WorkspaceNewChatDraft
       {...workspaceProps}
       copy={NEW_CODE_DRAFT_COPY}
-      composerFooterAccessory={sessionPolicyChips}
+      composerHeaderAccessory={permissionChip}
+      composerHeaderWhereExtras={whereExtras}
+      modeTag={<ComposerModeChip mode="code" />}
     />
   );
 }

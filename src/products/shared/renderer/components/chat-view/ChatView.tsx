@@ -249,7 +249,10 @@ export interface ChatViewProps {
   renderStatusRow?: (context: ChatViewRenderContext) => ReactNode;
   renderTopBarExtraActions?: (context: ChatViewRenderContext) => ReactNode;
   renderComposerTargetSlot?: (context: ChatViewComposerTargetSlotContext) => ReactNode;
+  renderComposerHeaderAccessory?: (context: ChatViewRenderContext) => ReactNode;
+  renderComposerHeaderWhereExtras?: (context: ChatViewRenderContext) => ReactNode;
   renderComposerFooterAccessory?: (context: ChatViewRenderContext) => ReactNode;
+  renderComposerModeTag?: (context: ChatViewRenderContext) => ReactNode;
   buildSidePanelSections?: (
     options: BuildChatSidePanelSectionsOptions,
   ) => SidePanelSection[];
@@ -310,7 +313,10 @@ export function ChatView({
   renderStatusRow,
   renderTopBarExtraActions,
   renderComposerTargetSlot,
+  renderComposerHeaderAccessory,
+  renderComposerHeaderWhereExtras,
   renderComposerFooterAccessory,
+  renderComposerModeTag,
   buildSidePanelSections,
   sidePanelTitle = 'Chat Setup',
 }: ChatViewProps) {
@@ -968,7 +974,10 @@ export function ChatView({
 
   const topBarExtraActions = renderTopBarExtraActions?.(viewContext) ?? null;
   const statusRow = renderStatusRow?.(viewContext) ?? null;
+  const composerHeaderAccessory = renderComposerHeaderAccessory?.(viewContext) ?? null;
+  const composerHeaderWhereExtras = renderComposerHeaderWhereExtras?.(viewContext) ?? null;
   const composerFooterAccessory = renderComposerFooterAccessory?.(viewContext) ?? null;
+  const composerModeTag = renderComposerModeTag?.(viewContext) ?? null;
 
   function navigateCompareMember(direction: 'prev' | 'next'): void {
     const channelId = direction === 'prev' ? comparePrevChannelId : compareNextChannelId;
@@ -1133,7 +1142,10 @@ export function ChatView({
         showStopComposerAction={showStopComposerAction}
         composerCardRef={composerCardRef}
         composerTargetSlot={composerTargetSlot}
+        composerHeaderAccessory={composerHeaderAccessory}
+        composerHeaderWhereExtras={composerHeaderWhereExtras}
         composerFooterAccessory={composerFooterAccessory}
+        modeTag={composerModeTag}
         onOpenSection={openSidePanelTo}
         onComposerChange={onComposerChange}
         onComposerKeyDown={onComposerKeyDown}

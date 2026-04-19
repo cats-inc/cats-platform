@@ -42,7 +42,10 @@ export interface ChatComposerAreaProps {
   showStopComposerAction: boolean;
   composerCardRef: RefCallback<HTMLElement>;
   composerTargetSlot?: ReactNode;
+  composerHeaderAccessory?: ReactNode;
+  composerHeaderWhereExtras?: ReactNode;
   composerFooterAccessory?: ReactNode;
+  modeTag?: ReactNode;
   onOpenSection: (section: string) => void;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -86,7 +89,10 @@ export function ChatComposerArea({
   showStopComposerAction,
   composerCardRef,
   composerTargetSlot,
+  composerHeaderAccessory,
+  composerHeaderWhereExtras,
   composerFooterAccessory,
+  modeTag,
   onOpenSection,
   onComposerChange,
   onComposerKeyDown,
@@ -127,6 +133,30 @@ export function ChatComposerArea({
 
   return (
     <div className={stackClassName}>
+    {(composerWorkspacePath || composerHeaderAccessory || composerHeaderWhereExtras) ? (
+      <div className="composerHeaderRow">
+        <div className="composerHeaderLeft">
+          {composerWorkspacePath ? (
+            <span
+              className="composerCwdChip composerCwdClickable"
+              data-tooltip={composerWorkspacePath}
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpenSection('cwd')}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+              </svg>
+              <span>{truncatePath(composerWorkspacePath)}</span>
+            </span>
+          ) : null}
+          {composerHeaderWhereExtras}
+        </div>
+        {composerHeaderAccessory ? (
+          <div className="composerHeaderRight">{composerHeaderAccessory}</div>
+        ) : null}
+      </div>
+    ) : null}
     <form
       ref={composerCardRef}
       className={`${
@@ -239,23 +269,7 @@ export function ChatComposerArea({
               </div>
             ) : null}
           </div>
-          {(() => {
-            if (!composerWorkspacePath) return null;
-            return (
-              <span
-                className="composerCwdChip composerCwdClickable"
-                data-tooltip={composerWorkspacePath}
-                role="button"
-                tabIndex={0}
-                onClick={() => onOpenSection('cwd')}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                </svg>
-                <span>{truncatePath(composerWorkspacePath)}</span>
-              </span>
-            );
-          })()}
+          {modeTag}
         </div>
         <div className="composerRightGroup">
           {composerTargetSlot ?? (

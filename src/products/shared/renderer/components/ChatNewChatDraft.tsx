@@ -100,7 +100,16 @@ export interface NewChatDraftProps {
   onSetAudienceKeys?: (keys: string[]) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
+  composerHeaderAccessory?: ReactNode;
+  composerHeaderWhereExtras?: ReactNode;
   composerFooterAccessory?: ReactNode;
+  draftCustomRegion?: ReactNode;
+  modeTag?: ReactNode;
+  leadingStarterChips?: ReadonlyArray<{
+    id: string;
+    label: string;
+    onClick: () => void;
+  }>;
 }
 
 export function NewChatDraft({
@@ -162,7 +171,12 @@ export function NewChatDraft({
   onToggleDraftWorkflowShape,
   draftAudienceKeys,
   onSetAudienceKeys,
+  composerHeaderAccessory = null,
+  composerHeaderWhereExtras = null,
   composerFooterAccessory = null,
+  draftCustomRegion = null,
+  modeTag = null,
+  leadingStarterChips,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const maxAudienceParticipants = payload.chat.capabilities.maxAudienceParticipants ?? 3;
@@ -315,6 +329,55 @@ export function NewChatDraft({
             title={resolvedGreeting}
           />
         )}
+        {draftCustomRegion ? (
+          <div className="draftCustomRegion">{draftCustomRegion}</div>
+        ) : null}
+        <div className="composerHeaderRow">
+          <div className="composerHeaderLeft">
+            {draftCwd ? (
+              <span
+                className="composerCwdChip composerCwdClickable"
+                data-tooltip={draftCwd}
+                role="button"
+                tabIndex={isSubmittingFirstTurn ? undefined : 0}
+                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cwd')}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                </svg>
+                <span>{truncatePath(draftCwd)}</span>
+                <button
+                  className="composerChipClose"
+                  type="button"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDraftCwdClear();
+                  }}
+                  aria-label="Remove folder"
+                >
+                  &times;
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="composerHeaderChooseButton"
+                disabled={isSubmittingFirstTurn}
+                onClick={() => openSidePanelTo('cwd')}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                </svg>
+                <span>Choose folder</span>
+              </button>
+            )}
+            {composerHeaderWhereExtras}
+          </div>
+          {composerHeaderAccessory ? (
+            <div className="composerHeaderRight">{composerHeaderAccessory}</div>
+          ) : null}
+        </div>
         <form
           className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
           onSubmit={(event) => void onSendMessage(event)}
@@ -394,22 +457,10 @@ export function NewChatDraft({
                       </svg>
                       Add photos and files
                     </button>
-                    <button
-                      className="composerPlusMenuItem"
-                      type="button"
-                      disabled={isSubmittingFirstTurn}
-                      onClick={() => {
-                        openSidePanelTo('cwd');
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                      </svg>
-                      Choose folder
-                    </button>
                   </div>
                 ) : null}
               </div>
+              {modeTag}
               {isGroupDraft ? (
                 <div className="composerGroupAddRow">
                   {groupComposerParticipants.map((participant) => {
@@ -486,26 +537,6 @@ export function NewChatDraft({
                   ) : null}
                 </div>
               ) : null}
-              {draftCwd ? (
-                <span
-                  className="composerCwdChip"
-                  data-tooltip={draftCwd}
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                  </svg>
-                  <span>{truncatePath(draftCwd)}</span>
-                  <button
-                    className="composerChipClose"
-                    type="button"
-                    disabled={isSubmittingFirstTurn}
-                    onClick={onDraftCwdClear}
-                    aria-label="Remove folder"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ) : null}
             </div>
             <div className="composerRightGroup">
               {audienceParticipants.length > 0 ? (
@@ -573,23 +604,39 @@ export function NewChatDraft({
         {composerFooterAccessory ? (
           <div className="composerFooterRow">{composerFooterAccessory}</div>
         ) : null}
-        {showDraftHelperChips ? (
+        {(showDraftHelperChips || (leadingStarterChips && leadingStarterChips.length > 0)) ? (
           <div className="draftPromptSuggestions">
             <div className="chipRow">
-              {visibleStarterSuggestions.map((suggestion) => (
+              {leadingStarterChips?.map((chip) => (
                 <button
-                  key={suggestion.id}
+                  key={chip.id}
                   className="promptChip draftPromptChip"
                   type="button"
                   disabled={isSubmittingFirstTurn}
                   onClick={() => {
                     dismissDraftHelperChips();
-                    onComposerChange(suggestion.prompt);
+                    chip.onClick();
                   }}
                 >
-                  {suggestion.prompt}
+                  {chip.label}
                 </button>
               ))}
+              {showDraftHelperChips
+                ? visibleStarterSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      className="promptChip draftPromptChip"
+                      type="button"
+                      disabled={isSubmittingFirstTurn}
+                      onClick={() => {
+                        dismissDraftHelperChips();
+                        onComposerChange(suggestion.prompt);
+                      }}
+                    >
+                      {suggestion.prompt}
+                    </button>
+                  ))
+                : null}
             </div>
           </div>
         ) : null}

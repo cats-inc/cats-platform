@@ -103,7 +103,7 @@ export function AppRoutes({
                 selectedChannel={selectedChannel}
                 routeChannelId={routeChannelId}
                 onOpenAddCat={onToggleAddCat}
-                renderComposerFooterAccessory={(ctx) => (
+                renderComposerHeaderAccessory={(ctx) => (
                   <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
                 )}
                 renderComposerTargetSlot={(context) => (
@@ -179,7 +179,7 @@ export function AppRoutes({
                 selectedChannel={directLaneChannel}
                 onOpenAddCat={noop}
                 showAddCatButton={false}
-                renderComposerFooterAccessory={(ctx) => (
+                renderComposerHeaderAccessory={(ctx) => (
                   <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
                 )}
                 renderComposerTargetSlot={(context) => (

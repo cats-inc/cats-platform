@@ -682,14 +682,12 @@
 }
 
 .composerCwdChip {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
-  box-sizing: border-box;
-  padding: 0 6px 0 10px;
+  padding: 4px 6px 4px 10px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.72);
   color: var(--muted);
   font-size: 0.78rem;
@@ -727,13 +725,99 @@
 .composerHeaderRow {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 8px;
   margin: 0 auto 12px;
   padding: 0 4px;
   width: 100%;
   max-width: var(--chat-transcript-max-width, 680px);
   min-width: 0;
+}
+
+.composerHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.composerHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.composerHeaderChooseButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.composerHeaderChooseButton:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.composerHeaderChooseButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.composerModeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-hover, rgba(0, 0, 0, 0.04));
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.composerModeChip > span {
+  padding-right: 2px;
+}
+
+.composerModeChipCode {
+  background: rgba(95, 135, 240, 0.12);
+  color: #3856a0;
+  border-color: rgba(95, 135, 240, 0.25);
+}
+
+.composerModeChipWork {
+  background: rgba(176, 132, 72, 0.12);
+  color: #7a5428;
+  border-color: rgba(176, 132, 72, 0.3);
+}
+
+.composerModeChipChat {
+  background: rgba(120, 120, 120, 0.1);
+  color: var(--muted);
+}
+
+.draftCustomRegion {
+  margin: 0 auto 12px;
+  padding: 0 4px;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  min-width: 0;
+  min-height: 8px;
 }
 
 .composerSelectChipWrapper {
