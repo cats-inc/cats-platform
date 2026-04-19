@@ -386,6 +386,23 @@ See `skills/README.md` for full details on the SKILL.md format and available ski
 - Pass collaborators like runtime clients into server factories
 - Avoid hidden global singletons where a constructor parameter will do
 
+### Settings UI Conventions
+
+- **MUST NOT** render inline feedback (success or error) for any value-change
+  in a Settings page. Examples of forbidden patterns: a `<p className="feedbackText">`
+  glued under a card, an inline error string injected next to a control, a
+  `feedback?: string` prop slot on a Settings primitive that the page renders
+  in place.
+- **MUST** use the existing `useToast()` / `<ToastContainer>` from
+  `src/design/components/Toast.tsx` when a setting save needs user-visible
+  acknowledgement or error reporting. Toast is the only acceptable channel.
+- **SHOULD** stay silent on success when the UI already reflects the new
+  state (e.g. a toggle that flipped, an avatar that re-rendered). Toast is for
+  errors and for changes whose effect is not immediately visible.
+- This rule is paired with [SPEC-073](./docs/specs/SPEC-073-settings-composition-layer.md)
+  and applies to every Settings surface, including pages that have not yet
+  migrated to the composition primitives.
+
 ---
 
 ## Testing Protocols

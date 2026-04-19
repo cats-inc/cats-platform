@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
+import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
   SettingsActionBar,
   SettingsOptionRow,
@@ -21,16 +22,12 @@ import { useNavigate } from 'react-router-dom';
 
 export interface PlatformSettingsGeneralProps {
   payload: AppShellPayload;
-  feedback: string;
   onPayloadUpdate: (payload: AppShellPayload) => void;
-  onFeedback: (message: string) => void;
 }
 
 export function PlatformSettingsGeneral({
   payload,
-  feedback,
   onPayloadUpdate,
-  onFeedback,
 }: PlatformSettingsGeneralProps) {
   const navigate = useNavigate();
   const [cropOpen, setCropOpen] = useState(false);
@@ -38,6 +35,7 @@ export function PlatformSettingsGeneral({
   const [nameDraft, setNameDraft] = useState(payload.ownerDisplayName);
   const [savingName, setSavingName] = useState(false);
   const guideCatUiPrefs = useGuideCatUiPrefs();
+  const { toasts, showToast } = useToast();
 
   useEffect(() => {
     setNameDraft(payload.ownerDisplayName);
@@ -61,9 +59,8 @@ export function PlatformSettingsGeneral({
         ownerAvatarUrl: nextAvatarUrl,
       });
       dispatchPlatformEnvelopeRefresh();
-      onFeedback('');
     } catch (error) {
-      onFeedback(error instanceof Error ? error.message : errorMessage);
+      showToast(error instanceof Error ? error.message : errorMessage);
     }
   }
 
@@ -85,9 +82,8 @@ export function PlatformSettingsGeneral({
         ownerDisplayName: trimmed,
       });
       dispatchPlatformEnvelopeRefresh();
-      onFeedback('');
     } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to update name');
+      showToast(error instanceof Error ? error.message : 'Failed to update name');
     } finally {
       setSavingName(false);
     }
@@ -124,13 +120,12 @@ export function PlatformSettingsGeneral({
         },
       });
       dispatchPlatformEnvelopeRefresh();
-      onFeedback('');
     } catch (error) {
       onPayloadUpdate({
         ...payload,
         lobby: previousLobbyPrefs,
       });
-      onFeedback(error instanceof Error ? error.message : errorMessage);
+      showToast(error instanceof Error ? error.message : errorMessage);
     } finally {
       setSavingLobbyPrefs(false);
     }
@@ -141,9 +136,8 @@ export function PlatformSettingsGeneral({
   ): Promise<void> {
     try {
       guideCatUiPrefs.update({ sidecarMode: nextMode });
-      onFeedback('');
     } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to update guide cat mode');
+      showToast(error instanceof Error ? error.message : 'Failed to update guide cat mode');
     }
   }
 
@@ -165,7 +159,14 @@ export function PlatformSettingsGeneral({
         title="General"
         products={payload.products}
       >
-        <SettingsSection>
+        <SettingsSection
+          header={
+            <SettingsSectionHeader
+              title="Profile"
+              description="This is your platform-wide profile across Chat, Code, Work, and Lobby."
+            />
+          }
+        >
           <div className="settingsOwnerAvatarDock">
             <button
               type="button"
@@ -216,9 +217,6 @@ export function PlatformSettingsGeneral({
               onChange={(event) => setNameDraft(event.target.value)}
               disabled={savingName}
             />
-            <span className="fieldHint">
-              This is your platform-wide profile across Lobby, Chat, Work, and Code.
-            </span>
           </label>
           {nameDirty ? (
             <SettingsActionBar>
@@ -375,7 +373,6 @@ export function PlatformSettingsGeneral({
           </SettingsSection>
         ) : null}
 
-        {feedback ? <p className="feedbackText">{feedback}</p> : null}
       </PlatformSettingsShell>
       {cropOpen ? (
         <AvatarCropDialog
@@ -386,6 +383,7 @@ export function PlatformSettingsGeneral({
           onClose={() => setCropOpen(false)}
         />
       ) : null}
+      <ToastContainer toasts={toasts} />
     </>
   );
 }

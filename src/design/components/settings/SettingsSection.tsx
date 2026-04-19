@@ -1,20 +1,28 @@
 import type { ReactNode } from 'react';
 
-export interface SettingsSectionProps {
-  header?: ReactNode;
+interface SettingsSectionCommonProps {
   children: ReactNode;
   className?: string;
   variant?: 'default' | 'form';
   id?: string;
 }
 
-export function SettingsSection({
-  header,
-  children,
-  className,
-  variant = 'default',
-  id,
-}: SettingsSectionProps) {
+interface SettingsSectionWithHeaderProps extends SettingsSectionCommonProps {
+  header: ReactNode;
+  headerless?: false;
+}
+
+interface SettingsSectionHeaderlessProps extends SettingsSectionCommonProps {
+  headerless: true;
+  header?: never;
+}
+
+export type SettingsSectionProps =
+  | SettingsSectionWithHeaderProps
+  | SettingsSectionHeaderlessProps;
+
+export function SettingsSection(props: SettingsSectionProps) {
+  const { children, className, variant = 'default', id } = props;
   const merged = [
     'contentCard',
     variant === 'form' ? 'contentCardForm' : null,
@@ -29,7 +37,7 @@ export function SettingsSection({
       data-variant={variant === 'form' ? 'form' : undefined}
       id={id}
     >
-      {header}
+      {props.headerless ? null : props.header}
       {children}
     </section>
   );

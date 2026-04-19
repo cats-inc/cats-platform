@@ -58,6 +58,28 @@ guide, and a dedupe pass on colliding CSS.
 - No new color palette. Colors continue to come from ADR-035 tokens
   (`--text`, `--muted`, `--accent`, `--danger`, etc.).
 
+## Feedback Conventions (Normative)
+
+Settings pages **MUST NOT** render inline feedback (success or error) for
+value-change interactions. This is an owner-set hard rule that applies to
+every Settings surface, regardless of whether it has migrated to the
+composition primitives.
+
+- **Forbidden**: a `<p className="feedbackText">` glued under a card, an
+  inline error string injected next to a control, a `feedback?: string`
+  prop slot on a Settings primitive that the page then renders in place.
+- **Required**: when a save needs user-visible acknowledgement or an
+  error must be surfaced, use the existing `useToast()` /
+  `<ToastContainer>` pair from `src/design/components/Toast.tsx`. Toast
+  is the only acceptable channel.
+- **Preferred default**: stay silent on success when the UI already
+  reflects the new state (a flipped toggle, a re-rendered avatar). Toast
+  is reserved for errors and for changes whose effect is not immediately
+  visible.
+- The primitives in this SPEC therefore **MUST NOT** expose `feedback`
+  / `error` slots, and migrators **MUST** strip any inline feedback
+  rendering they encounter, replacing it with toast usage.
+
 ## User Stories
 
 - As the owner, I want to change the Settings card corner radius once
@@ -140,8 +162,13 @@ order.
 
 ```ts
 // SettingsSection — outer card, wraps a coherent group of rows.
-interface SettingsSectionProps {
-  header?: ReactNode;        // typically a <SettingsSectionHeader/>
+// `header` is required by default; pages opt out of a header by passing
+// `headerless` so the omission is always a deliberate choice.
+type SettingsSectionProps =
+  | (SettingsSectionCommonProps & { header: ReactNode; headerless?: false })
+  | (SettingsSectionCommonProps & { headerless: true; header?: never });
+
+interface SettingsSectionCommonProps {
   children: ReactNode;       // rows, forms, or nested content
   className?: string;        // escape hatch
   /**
@@ -236,7 +263,7 @@ PLAN-065 Phase 1.
   --settings-subtitle-size: 1rem;                   /* nested h3 */
   --settings-eyebrow-size: var(--text-xs);          /* 0.72rem */
   --settings-label-size: var(--text-sm);            /* 0.85rem */
-  --settings-body-size: var(--text-base);           /* 1rem */
+  --settings-body-size: var(--text-sm);             /* 0.85rem */
   --settings-hint-size: var(--text-xs);             /* 0.72rem */
 
   /* Letter-spacing */

@@ -61,9 +61,7 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
         element={(
           <PlatformSettingsGeneral
             payload={payload}
-            feedback={feedback}
             onPayloadUpdate={onWorkspacePayloadUpdate}
-            onFeedback={onFeedback}
           />
         )}
       />

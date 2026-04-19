@@ -10,6 +10,7 @@
   --settings-row-gap: var(--space-3);
   --settings-row-padding-y: 14px;
   --settings-action-gap: var(--space-2);
+  --settings-header-description-gap: 4px;
 
   /* Radius */
   --settings-radius-sm: 10px;
@@ -23,7 +24,7 @@
   --settings-subtitle-size: 1rem;
   --settings-eyebrow-size: 0.73rem;
   --settings-label-size: var(--text-sm);
-  --settings-body-size: var(--text-base);
+  --settings-body-size: var(--text-sm);
   --settings-hint-size: var(--text-xs);
   --settings-eyebrow-tracking: 0.04em;
 

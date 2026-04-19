@@ -61,6 +61,17 @@ Outer card for a coherent group of settings.
 </SettingsSection>
 ```
 
+`header` is **required**. The framework enforces a header on every
+section so titles, typography, and spacing stay consistent across pages.
+For the rare case where a card is genuinely self-evident, opt out
+explicitly with `headerless`:
+
+```tsx
+<SettingsSection headerless>
+  {/* avatar + name only — no title needed */}
+</SettingsSection>
+```
+
 Use `variant="form"` when the card is a form that should `align-self:
 start` within a grid.
 
@@ -149,6 +160,21 @@ Terminal section for destructive actions.
   </button>
 </SettingsDangerZone>
 ```
+
+## Feedback conventions
+
+Settings pages **never** render inline feedback for value changes. No
+`<p className="feedbackText">` glued under a card, no error string injected
+next to a control, no `feedback?: string` prop slot on these primitives.
+
+- Use `useToast()` / `<ToastContainer>` from `src/design/components/Toast.tsx`
+  when a save needs acknowledgement or an error must surface.
+- Default to staying silent on success when the UI already reflects the new
+  state (toggle flipped, avatar re-rendered). Toast is for errors and for
+  changes whose effect is not immediately visible.
+
+See `SPEC-073` "Feedback Conventions" and `cats-platform/AGENTS.md`
+"Settings UI Conventions" for the normative rule.
 
 ## Migration stance
 

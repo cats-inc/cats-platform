@@ -41,7 +41,7 @@ export function SettingsSectionHeader({
         ) : null}
       </header>
       {description ? (
-        <p className="heroNote settings-section-header__description">{description}</p>
+        <p className="settings-section-header__description">{description}</p>
       ) : null}
     </>
   );
