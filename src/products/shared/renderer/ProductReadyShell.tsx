@@ -22,7 +22,7 @@ export interface ProductReadyShellProps<
   onPayloadUpdate: (payload: TPayload) => void;
   onFeedback: (message: string) => void;
   onBusy: (busy: WorkspaceBusyState) => void;
-  onResetSetup: () => void;
+  onResetSetup: () => Promise<void>;
   onConfirmClose: (action: ConfirmDialogAction | boolean) => void;
 }
 

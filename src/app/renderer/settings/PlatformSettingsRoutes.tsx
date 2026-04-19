@@ -22,7 +22,7 @@ export interface PlatformSettingsRoutesProps<
   busy: WorkspaceBusyState;
   onFeedback: (message: string) => void;
   onBusy: (busy: WorkspaceBusyState) => void;
-  onResetSetup: () => void;
+  onResetSetup: () => Promise<void>;
 }
 
 export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload>({

@@ -322,10 +322,10 @@ export function useWorkspaceAppNavigationActions<
       });
       window.location.href = '/';
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to reset setup.');
       setBusy(clearBusyState());
+      throw error;
     }
-  }, [confirmDialog, navigationApi, setBusy, setFeedback]);
+  }, [confirmDialog, navigationApi, setBusy]);
 
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildWorkspaceNewChatPath(chatPrefix, null));

@@ -1,4 +1,5 @@
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
   isSetupResetBusy,
   type WorkspaceBusyState,
@@ -8,7 +9,7 @@ import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 export interface PlatformSettingsDataProps {
   payload: AppShellPayload;
   busy: WorkspaceBusyState;
-  onResetSetup: () => void;
+  onResetSetup: () => Promise<void>;
 }
 
 export function PlatformSettingsData({
@@ -17,6 +18,16 @@ export function PlatformSettingsData({
   onResetSetup,
 }: PlatformSettingsDataProps) {
   const resetBusy = isSetupResetBusy(busy);
+  const { toasts, showToast } = useToast();
+
+  async function handleReset(): Promise<void> {
+    try {
+      await onResetSetup();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to reset setup.');
+    }
+  }
+
   return (
     <PlatformSettingsShell
       section="data"
@@ -33,11 +44,12 @@ export function PlatformSettingsData({
           className="dangerButton"
           type="button"
           disabled={resetBusy}
-          onClick={onResetSetup}
+          onClick={() => void handleReset()}
         >
           {resetBusy ? 'Resetting...' : 'Reset all data'}
         </button>
       </div>
+      <ToastContainer toasts={toasts} />
     </PlatformSettingsShell>
   );
 }
