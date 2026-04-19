@@ -40,7 +40,7 @@ The platform therefore needs:
 
 1. one explicit submit-time destination term
 2. one platform-owned cross-surface dispatcher
-3. one warm handoff mechanism that bridges the lazy-route boundary
+3. one warm navigation handoff mechanism that bridges the lazy-route boundary
 
 ## Decision
 
@@ -82,29 +82,47 @@ This decision intentionally prefers the existing shared create boundaries
 (`POST /api/channels`, `POST /api/parallel-chat-groups`) over direct
 product-to-product renderer coupling.
 
-### 3. Add a platform-owned warm handoff bundle
+The first shipping caller is cross-surface draft submit, but the seam should be
+generic enough to later support other cross-surface route transitions where
+continuity matters, such as opening an existing conversation, artifact, task,
+or run on another product surface.
 
-Cross-surface submit should write an in-memory, renderer-local handoff bundle
-before navigation.
+### 3. Add a platform-owned warm navigation handoff seam
+
+The first implementation slice should have cross-surface submit write an
+in-memory, renderer-local navigation handoff bundle before navigation.
+
+That seam should remain reusable for later supported cross-surface navigation
+flows and deep links instead of being permanently shaped as a draft-submit-only
+bundle.
 
 The bundle should be ephemeral and non-persistent. It should carry only enough
 state to make the target surface feel continuous, for example:
 
+- handoff kind / destination entity kind
 - target surface id
-- created conversation/group id
-- optimistic first user turn
-- dispatch/busy phase
 - selected route target
-- any already-materialized attachment/body metadata needed for immediate render
+- created or selected conversation/group/entity id
+- optional optimistic first user turn
+- optional dispatch/busy phase
+- optional snapshot metadata needed for immediate render, such as artifact,
+  task, or run summary data
 
 The target product should consume that bundle immediately on mount, then refresh
 `/api/app-shell` in the background and reconcile with server truth.
 
-### 4. Prefetch the target product bundle when surface intent changes
+The route remains canonical truth. The handoff bundle is only a temporary
+continuity aid and must never become a second source of durable routing truth.
+
+### 4. Prefetch the target product bundle once destination intent is known
 
 The platform should begin product-bundle prefetch once a draft's
 `targetSurface` diverges from `currentSurface`, or at latest immediately before
 the route transition.
+
+Later supported cross-surface navigations may use the same prefetch seam once a
+destination surface/route is known, even when the transition did not start from
+a draft surface switch.
 
 This is explicitly tied to the existing `React.lazy` route split. The warm
 handoff is not complete if the route still drops into a cold loading panel for
@@ -159,7 +177,7 @@ primary expected path for deliberate cross-surface draft submits.
 - **Why rejected**: the platform already exposes a surface switch, so leaving
   it UI-only would knowingly preserve incorrect behavior
 
-### Alternative 2: Redirect cold after create without warm handoff
+### Alternative 2: Redirect cold after create without warm navigation handoff
 
 - **Pros**: simpler than adding a handoff cache
 - **Cons**: route-level lazy loading plus per-product app-shell boot causes

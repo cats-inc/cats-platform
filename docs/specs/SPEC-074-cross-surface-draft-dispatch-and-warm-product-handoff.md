@@ -32,7 +32,8 @@ This spec defines one coherent contract for that transition:
 - drafts may carry a `targetSurface`
 - submit writes `originSurface = targetSurface`
 - navigation lands in the target product's active route
-- the platform performs a warm handoff across the lazy-route boundary
+- the platform performs a warm navigation handoff across the lazy-route
+  boundary
 
 ## Goals
 
@@ -43,6 +44,8 @@ This spec defines one coherent contract for that transition:
 - preserve optimistic continuity for the first turn during a product handoff
 - keep product boundaries clean while enabling future Chat -> Code, Chat ->
   Work, and later other cross-surface draft entries
+- shape the continuity seam so later supported cross-surface navigations and
+  deep links can reuse it without redefining product-to-product handoff
 
 ## Non-Goals
 
@@ -51,6 +54,8 @@ This spec defines one coherent contract for that transition:
 - redesigning the entire product sidebar or recents model
 - replacing the current shared channel/group create endpoints
 - changing the canonical `Conversation` model or turn/lane engine
+- shipping warm optimization for every future conversation/artifact/task deep
+  link in the first slice
 
 ## Problem Statement
 
@@ -73,7 +78,7 @@ its own app-shell refresh path.
 The platform therefore needs both:
 
 - semantic correctness
-- warm handoff continuity
+- warm navigation handoff continuity
 
 ## User Stories
 
@@ -84,6 +89,9 @@ The platform therefore needs both:
   loading panel.
 - As a platform maintainer, I want cross-surface draft handoff to use shared
   seams rather than direct imports between product renderers.
+- As a platform maintainer, I want later supported cross-surface conversation
+  or artifact navigation to reuse the same continuity seam instead of creating
+  another special-case handoff path.
 
 ## Requirements
 
@@ -124,39 +132,45 @@ The platform therefore needs both:
     `originSurface` shall be written from `targetSurface`, not from the source
     route.
 14. The first slice shall not require a new persisted `sourceSurface` field.
-15. Cross-surface draft handoff shall not be implemented by one product
-    importing another product's renderer-local submit logic or local state
-    stores.
+15. Cross-surface draft dispatch and warm-navigation handoff shall not be
+    implemented by one product importing another product's renderer-local
+    submit logic or local state stores.
 16. Shared create boundaries may remain:
     - `POST /api/channels`
     - `POST /api/parallel-chat-groups`
-17. Product-specific routing and warm-handoff behavior shall be coordinated by a
-    platform/shared renderer seam above those create boundaries.
+17. Product-specific routing and warm-navigation-handoff behavior shall be
+    coordinated by a platform/shared renderer seam above those create
+    boundaries.
 
-### Warm Handoff Requirements
+### Warm Navigation Handoff Requirements
 
-18. Before navigating across products, the platform shall store an ephemeral
-    warm handoff bundle for the destination surface.
+18. Before navigating across products, the platform shall be able to store an
+    ephemeral warm navigation handoff bundle for the destination surface when
+    continuity optimization is warranted.
 19. The handoff bundle shall be in-memory only and shall not be treated as
-    durable persisted product state.
+    durable persisted product state or canonical route truth.
 20. The handoff bundle shall be sufficient to render immediate continuity on
     the destination surface, including:
-    - selected created conversation/group id
-    - optimistic first user turn
-    - current dispatch/busy phase
+    - handoff kind / destination entity kind
     - route target
+    - selected created or resolved conversation/group/entity id
+    - optional optimistic first user turn
+    - optional current dispatch/busy phase
+    - optional snapshot metadata needed for immediate render
 21. The destination product shall attempt to consume a matching handoff bundle
-    immediately on mount.
+    immediately on mount or route activation.
 22. After consuming the bundle, the destination product shall refresh
     `/api/app-shell` in the background and reconcile back to server truth.
 23. If the handoff bundle is missing, stale, or incompatible, the destination
     product may fall back to the current cold boot behavior without corrupting
-    state.
+    state or changing the route-derived destination truth.
 
 ### Performance Requirements
 
-24. When `targetSurface !== currentSurface`, the platform should begin
-    prefetching the destination product bundle before or during submit.
+24. When `targetSurface !== currentSurface`, or when another supported
+    cross-surface navigation has already resolved a destination product/route,
+    the platform should begin prefetching the destination product bundle before
+    or during transition.
 25. The common happy path should avoid dropping into a visible cold loading
     panel for the full duration of the cross-surface handoff.
 26. The current route-level lazy-loading split shall remain intact; this feature
@@ -168,9 +182,13 @@ The platform therefore needs both:
     conversation and land in the Code active route when submitted.
 28. Future Chat -> Work or other surface switches shall use the same shared
     contract rather than bespoke one-off flows.
-29. Dismissing a surface switch shall restore the draft back to the current
+29. Later supported cross-surface navigation targets, such as existing
+    conversations, artifacts, tasks, or runs, should layer onto the same
+    registry/store seam when continuity optimization is needed instead of
+    introducing a second product-to-product handoff stack.
+30. Dismissing a surface switch shall restore the draft back to the current
     surface semantics without forcing a new route.
-30. Product-scoped recents shall continue to rely on `originSurface`; no
+31. Product-scoped recents shall continue to rely on `originSurface`; no
     renderer-side heuristic may override that rule during cross-surface submit.
 
 ## Design Overview
@@ -178,9 +196,9 @@ The platform therefore needs both:
 ```text
 current product draft
   -> targetSurface chosen inside draft
-  -> platform cross-surface dispatcher
+  -> platform cross-surface dispatcher / navigation handoff coordinator
        -> shared create endpoint with originSurface = targetSurface
-       -> create warm handoff bundle
+       -> create warm navigation handoff bundle
        -> prefetch target product chunk
        -> navigate to target product route
   -> target product consumes handoff bundle
@@ -200,14 +218,17 @@ current product draft
 The platform should own a registry that can answer:
 
 - how to build the active route for a created conversation/group on each
-  surface
+  surface, and later supported cross-surface entity routes
 - how to prefetch the corresponding product bundle
-- how the target product reads and clears a warm handoff bundle
+- how the target product reads and clears a warm navigation handoff bundle
 
-### 3. Ephemeral Warm Handoff Store
+### 3. Ephemeral Warm Navigation Handoff Store
 
-The warm handoff store should live in platform/shared renderer space, not in a
-product-owned persisted store.
+The warm navigation handoff store should live in platform/shared renderer
+space, not in a product-owned persisted store.
+
+The store should be navigation-scoped rather than draft-submit-shaped, even
+though draft submit is the first shipping caller.
 
 It should be safe to discard on:
 
@@ -232,6 +253,9 @@ It should be safe to discard on:
       the generic dispatcher and handoff cache immediately for Work as well?
 - [ ] Should target-product bundle prefetch happen eagerly on surface switch,
       or only once the draft becomes sendable?
+- [ ] After Chat -> Code, which should be the first non-draft consumer of the
+      same seam: conversation deep link, artifact deep link, or task/run deep
+      link?
 
 ## References
 
