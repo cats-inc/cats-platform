@@ -4,7 +4,6 @@ import type { AppShellPayload } from '../../../products/shared/api/workspaceCont
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
-  SettingsActionBar,
   SettingsOptionRow,
   SettingsSection,
   SettingsSectionHeader,
@@ -64,9 +63,14 @@ export function PlatformSettingsGeneral({
     }
   }
 
-  async function updateOwnerDisplayName(): Promise<void> {
+  async function commitOwnerDisplayName(): Promise<void> {
     const trimmed = nameDraft.trim();
-    if (!trimmed || trimmed === payload.ownerDisplayName) return;
+    if (!trimmed) {
+      // Empty value is not a valid name; revert silently to the canonical value.
+      setNameDraft(payload.ownerDisplayName);
+      return;
+    }
+    if (trimmed === payload.ownerDisplayName) return;
     setSavingName(true);
     try {
       const response = await fetch('/api/core/owner-profile', {
@@ -148,9 +152,6 @@ export function PlatformSettingsGeneral({
   const lobbyPrefs = payload.lobby ?? {
     animationMode: 'reduced',
   };
-  const trimmedName = nameDraft.trim();
-  const nameDirty = trimmedName !== payload.ownerDisplayName;
-  const nameSaveDisabled = savingName || trimmedName.length === 0 || !nameDirty;
 
   return (
     <>
@@ -218,29 +219,21 @@ export function PlatformSettingsGeneral({
               className="textInput"
               value={nameDraft}
               onChange={(event) => setNameDraft(event.target.value)}
+              onBlur={() => void commitOwnerDisplayName()}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void commitOwnerDisplayName();
+                } else if (event.key === 'Escape') {
+                  event.preventDefault();
+                  setNameDraft(payload.ownerDisplayName);
+                  event.currentTarget.blur();
+                }
+              }}
               disabled={savingName}
+              aria-busy={savingName}
             />
           </label>
-          {nameDirty ? (
-            <SettingsActionBar>
-              <button
-                type="button"
-                className="primaryButton"
-                disabled={nameSaveDisabled}
-                onClick={() => void updateOwnerDisplayName()}
-              >
-                {savingName ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                type="button"
-                className="secondaryButton"
-                disabled={savingName}
-                onClick={() => setNameDraft(payload.ownerDisplayName)}
-              >
-                Cancel
-              </button>
-            </SettingsActionBar>
-          ) : null}
         </SettingsSection>
 
         <SettingsSection
