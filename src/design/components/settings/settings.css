@@ -141,6 +141,20 @@
   align-items: center;
 }
 
+/* ─── Field label (Settings-scoped restyle) ──────────────────────────── */
+/* The shared `.fieldLabel > span` defaults to 0.82rem / weight 500 /
+ * --muted, which reads visibly weaker than the option row labels next to
+ * it. Inside a Settings section, bring the label span up to the same
+ * size / weight / color as `.settings-option-row__label` so editable
+ * fields and choice options share one visual hierarchy. The
+ * `.fieldHint` exception preserves the smaller muted hint when it lives
+ * inside the same `<label>` (none in tree today, but future-proof). */
+.settings-section .fieldLabel > span:not(.fieldHint) {
+  color: var(--settings-text);
+  font-size: var(--settings-label-size);
+  font-weight: 500;
+}
+
 /* ─── Action bar ──────────────────────────────────────────────────────── */
 
 .settings-action-bar {
