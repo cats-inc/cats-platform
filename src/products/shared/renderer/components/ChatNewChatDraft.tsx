@@ -317,26 +317,6 @@ export function NewChatDraft({
           ) : (
             <h1>{resolvedGreeting}</h1>
           )}
-          {showDraftHelperChips ? (
-            <div className="draftPromptSuggestions">
-              <div className="chipRow">
-                {visibleStarterSuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.id}
-                    className="promptChip draftPromptChip"
-                    type="button"
-                    disabled={isSubmittingFirstTurn}
-                    onClick={() => {
-                      dismissDraftHelperChips();
-                      onComposerChange(suggestion.prompt);
-                    }}
-                  >
-                    {suggestion.prompt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
         <form
           className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
@@ -595,6 +575,26 @@ export function NewChatDraft({
         </form>
         {composerFooterAccessory ? (
           <div className="composerFooterRow">{composerFooterAccessory}</div>
+        ) : null}
+        {showDraftHelperChips ? (
+          <div className="draftPromptSuggestions">
+            <div className="chipRow">
+              {visibleStarterSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.id}
+                  className="promptChip draftPromptChip"
+                  type="button"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={() => {
+                    dismissDraftHelperChips();
+                    onComposerChange(suggestion.prompt);
+                  }}
+                >
+                  {suggestion.prompt}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
         {isParallelMode && parallelTargets && parallelTargets.length > 1 ? (
           <div className="parallelStubStack">

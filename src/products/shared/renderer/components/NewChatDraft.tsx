@@ -115,7 +115,8 @@ export interface WorkspaceNewChatDraftProps {
   composerDraft: string;
   busy: WorkspaceBusyState;
   greeting?: string;
-  greetingAccessory?: ReactNode;
+  composerHeaderAccessory?: ReactNode;
+  postComposerAccessory?: ReactNode;
   draftFiles: File[];
   draftCwd: string | null;
   draftCatIds: string[];
@@ -168,7 +169,8 @@ export function WorkspaceNewChatDraft({
   composerDraft,
   busy,
   greeting,
-  greetingAccessory = null,
+  composerHeaderAccessory = null,
+  postComposerAccessory = null,
   draftFiles,
   draftCwd,
   draftCatIds,
@@ -292,8 +294,10 @@ export function WorkspaceNewChatDraft({
           ) : (
             <h1>{resolvedGreeting}</h1>
           )}
-          {greetingAccessory}
         </div>
+        {composerHeaderAccessory ? (
+          <div className="composerHeaderRow">{composerHeaderAccessory}</div>
+        ) : null}
         <form
           className={`composerCard composerCardFresh${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
           onSubmit={(event) => void onSendMessage(event)}
@@ -455,6 +459,7 @@ export function WorkspaceNewChatDraft({
         {composerFooterAccessory ? (
           <div className="composerFooterRow">{composerFooterAccessory}</div>
         ) : null}
+        {postComposerAccessory}
       </section>
       {sidePanelOpen ? (
         <SidePanel

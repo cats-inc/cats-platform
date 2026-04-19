@@ -724,6 +724,18 @@
   min-width: 0;
 }
 
+.composerHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin: 0 auto 12px;
+  padding: 0 4px;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  min-width: 0;
+}
+
 .composerSelectChipWrapper {
   position: relative;
   display: inline-flex;

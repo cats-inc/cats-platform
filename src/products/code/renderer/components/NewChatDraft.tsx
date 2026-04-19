@@ -118,7 +118,7 @@ function buildWorkspaceDraftProps(input: {
   return {
     ...workspaceProps,
     greeting: assistGreeting ?? greeting ?? undefined,
-    greetingAccessory: visibleHelperChips.length > 0 ? (
+    postComposerAccessory: visibleHelperChips.length > 0 ? (
       <div className="draftPromptSuggestions">
         <div className="chipRow">
           {visibleHelperChips.map((chip) => (
