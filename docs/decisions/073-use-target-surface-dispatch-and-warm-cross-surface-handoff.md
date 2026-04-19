@@ -5,7 +5,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -194,5 +194,5 @@ primary expected path for deliberate cross-surface draft submits.
 
 ---
 
-*Proposed: 2026-04-20*
+*Accepted: 2026-04-20*
 *Decided by: Codex under user-requested planning direction*

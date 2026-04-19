@@ -70,7 +70,10 @@ function NewChatDraftInner(props: NewChatDraftProps) {
           //   2. navigate to the target surface's buildChannelPath
           //   3. prefetch the target product bundle on surface switch to
           //      cover the React.lazy gap in app/renderer/App.tsx
-          // Tracked in ROADMAP.md Phase 5 (Cats Work/Code Launch Track).
+          // Tracked in:
+          //   - ADR-073: target-surface dispatch + warm cross-surface handoff
+          //   - SPEC-074: cross-surface draft dispatch and warm product handoff
+          //   - PLAN-066: rollout for dispatch, routing, and handoff continuity
           setDraftSurface('code');
         },
       },
