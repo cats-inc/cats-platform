@@ -73,6 +73,13 @@
   font-weight: 600;
 }
 
+.settingsOwnerAvatarDock {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
 .settingsOwnerAvatar {
   width: 56px;
   height: 56px;
@@ -85,10 +92,67 @@
   place-items: center;
   cursor: pointer;
   flex-shrink: 0;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px color-mix(in srgb, var(--border) 80%, transparent);
+  transition: box-shadow 0.15s ease;
 }
 
 .settingsOwnerAvatar:hover {
-  opacity: 0.8;
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--accent);
+}
+
+.settingsOwnerAvatarCamera {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--panel, #fff);
+  color: var(--muted, #6e655c);
+  box-shadow: 0 0 0 2px var(--panel, #fff), 0 1px 3px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  z-index: 2;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.settingsOwnerAvatarDock:hover .settingsOwnerAvatarCamera {
+  background: var(--accent);
+  color: #fff;
+}
+
+.settingsOwnerAvatarRemove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--panel, #fff);
+  color: var(--muted, #6e655c);
+  cursor: pointer;
+  box-shadow: 0 0 0 2px var(--panel, #fff), 0 1px 3px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  z-index: 2;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.settingsOwnerAvatarDock:hover .settingsOwnerAvatarRemove,
+.settingsOwnerAvatarRemove:focus-visible {
+  opacity: 1;
+}
+
+.settingsOwnerAvatarRemove:hover {
+  background: #d04040;
+  color: #fff;
 }
 
 .settingsContent {
@@ -149,28 +213,6 @@
 
 .settingsBody > * {
   min-width: 0;
-}
-
-.settingsProfileRow {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.settingsProfileMeta {
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.settingsProfileName {
-  margin: 0;
-  font-weight: 600;
-}
-
-.settingsProfileNote {
-  margin: 0;
 }
 
 .settingsActionRow {

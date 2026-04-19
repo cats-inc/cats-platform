@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
@@ -35,7 +35,13 @@ export function PlatformSettingsGeneral({
   const navigate = useNavigate();
   const [cropOpen, setCropOpen] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
+  const [nameDraft, setNameDraft] = useState(payload.ownerDisplayName);
+  const [savingName, setSavingName] = useState(false);
   const guideCatUiPrefs = useGuideCatUiPrefs();
+
+  useEffect(() => {
+    setNameDraft(payload.ownerDisplayName);
+  }, [payload.ownerDisplayName]);
 
   async function updateOwnerAvatar(
     nextAvatarUrl: string | null,
@@ -58,6 +64,32 @@ export function PlatformSettingsGeneral({
       onFeedback('');
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : errorMessage);
+    }
+  }
+
+  async function updateOwnerDisplayName(): Promise<void> {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === payload.ownerDisplayName) return;
+    setSavingName(true);
+    try {
+      const response = await fetch('/api/core/owner-profile', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ displayName: trimmed }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update name');
+      }
+      onPayloadUpdate({
+        ...payload,
+        ownerDisplayName: trimmed,
+      });
+      dispatchPlatformEnvelopeRefresh();
+      onFeedback('');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'Failed to update name');
+    } finally {
+      setSavingName(false);
     }
   }
 
@@ -116,12 +148,15 @@ export function PlatformSettingsGeneral({
   }
 
   const avatarUrl = payload.ownerAvatarUrl;
-  const initials = nameInitials(payload.ownerDisplayName);
+  const initials = nameInitials(nameDraft || payload.ownerDisplayName);
   const guideCatName = resolveClientGuideCatName();
   const guideCatEnabled = isGuideCatEnabledStatus(payload.guideCat?.status);
   const lobbyPrefs = payload.lobby ?? {
     animationMode: 'reduced',
   };
+  const trimmedName = nameDraft.trim();
+  const nameDirty = trimmedName !== payload.ownerDisplayName;
+  const nameSaveDisabled = savingName || trimmedName.length === 0 || !nameDirty;
 
   return (
     <>
@@ -131,48 +166,80 @@ export function PlatformSettingsGeneral({
         products={payload.products}
       >
         <SettingsSection>
-          <div className="settingsProfileRow">
-            <div
+          <div className="settingsOwnerAvatarDock">
+            <button
+              type="button"
               className="settingsOwnerAvatar"
               style={avatarUrl
                 ? {
                     backgroundImage: `url(${avatarUrl})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
+                    color: 'transparent',
                   }
                 : undefined}
               onClick={() => setCropOpen(true)}
-              role="button"
-              tabIndex={0}
-              data-tooltip="Change avatar"
+              aria-label={avatarUrl ? 'Change avatar' : 'Upload avatar'}
+              data-tooltip={avatarUrl ? 'Change avatar' : 'Upload avatar'}
             >
-              {!avatarUrl ? initials : null}
-            </div>
-            <div className="settingsProfileMeta">
-              <p className="settingsProfileName">{payload.ownerDisplayName}</p>
-              <p className="heroNote settingsProfileNote">
-                This is your platform-wide profile across Lobby, Chat, Work, and Code.
-              </p>
-            </div>
-          </div>
-          <SettingsActionBar>
-            <button
-              type="button"
-              className="primaryButton"
-              onClick={() => setCropOpen(true)}
-            >
-              {avatarUrl ? 'Change avatar' : 'Upload avatar'}
+              {avatarUrl ? '' : initials}
             </button>
+            <span className="settingsOwnerAvatarCamera" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </span>
             {avatarUrl ? (
               <button
                 type="button"
-                className="secondaryButton"
-                onClick={() => void updateOwnerAvatar(null, 'Failed to remove avatar')}
+                className="settingsOwnerAvatarRemove"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void updateOwnerAvatar(null, 'Failed to remove avatar');
+                }}
+                aria-label="Remove avatar"
+                data-tooltip="Remove avatar"
               >
-                Remove avatar
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             ) : null}
-          </SettingsActionBar>
+          </div>
+          <label className="fieldLabel">
+            <span>Name</span>
+            <input
+              className="textInput"
+              value={nameDraft}
+              onChange={(event) => setNameDraft(event.target.value)}
+              disabled={savingName}
+            />
+            <span className="fieldHint">
+              This is your platform-wide profile across Lobby, Chat, Work, and Code.
+            </span>
+          </label>
+          {nameDirty ? (
+            <SettingsActionBar>
+              <button
+                type="button"
+                className="primaryButton"
+                disabled={nameSaveDisabled}
+                onClick={() => void updateOwnerDisplayName()}
+              >
+                {savingName ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={savingName}
+                onClick={() => setNameDraft(payload.ownerDisplayName)}
+              >
+                Cancel
+              </button>
+            </SettingsActionBar>
+          ) : null}
         </SettingsSection>
 
         <SettingsSection
