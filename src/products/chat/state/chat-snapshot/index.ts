@@ -73,6 +73,7 @@ import {
   normalizeGlobalOrchestrator,
   normalizeNewChatDefaults,
 } from './entities.js';
+import { normalizeFolderBrowsePreferences } from '../../../shared/folderBrowsePreferences.js';
 import {
   asRecord,
   readBoolean,
@@ -150,6 +151,7 @@ export function normalizeChatState(rawState: unknown): ChatState {
     concurrentPresentationMode: normalizeConcurrentPresentationMode(
       stateRecord.concurrentPresentationMode,
     ),
+    folderBrowsePreferences: normalizeFolderBrowsePreferences(stateRecord.folderBrowsePreferences),
   };
 }
 

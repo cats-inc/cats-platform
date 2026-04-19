@@ -12,6 +12,7 @@ import {
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
+import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 export { createEmptyMemoryCheckpoint };
 
 function isoNow(): string {
@@ -116,5 +117,6 @@ export function createDefaultChatState(): ChatState {
     showVerboseMessages: false,
     showLiveProgressDetails: false,
     concurrentPresentationMode: 'inline_stack' as const,
+    folderBrowsePreferences: createDefaultFolderBrowsePreferences(),
   };
 }

@@ -46,6 +46,7 @@ import type {
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { FolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 import type {
   RuntimePermissionMode,
   RuntimeSessionCreateContractInput,
@@ -468,6 +469,7 @@ export interface ChatState {
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  folderBrowsePreferences?: FolderBrowsePreferences;
 }
 
 export interface BotBindingSummary {
@@ -514,6 +516,7 @@ export interface ChatShellState {
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  folderBrowsePreferences?: FolderBrowsePreferences;
   botBindings: ChatBotBindingSummary[];
   newChatAssist?: GuideCatAssistNewChatByMode | null;
 }

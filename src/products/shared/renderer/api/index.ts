@@ -14,6 +14,7 @@ export {
   updateChatOrchestrator,
   updateChannelPendingExecutionTarget,
   updateConcurrentPresentationModePreference,
+  updateFolderBrowsePreference,
   updateLiveProgressDetailsPreference,
   updateNewChatDefaultsPreference,
   updateSelectedChannel,

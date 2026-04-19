@@ -205,6 +205,77 @@ test('GET /api/preferences returns preferences', async () => {
     const payload = await response.json();
     assert.equal(typeof payload.preferences.selectedChannelId, 'string');
     assert.equal(payload.preferences.newChatDefaults.provider, 'claude');
+    assert.deepEqual(payload.preferences.folderBrowsePreferences, {
+      bySurface: {},
+      chatDirectLaneByCatId: {},
+    });
+  });
+});
+
+test('PATCH /api/preferences persists folder browse memory per surface and per chat direct lane', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const chatSurfaceResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        folderBrowsePreference: {
+          surface: 'chat',
+          path: 'C:/repo/chat-root',
+        },
+      }),
+    });
+    assert.equal(chatSurfaceResponse.status, 200);
+
+    const codeSurfaceResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        folderBrowsePreference: {
+          surface: 'code',
+          path: 'C:/repo/code-root',
+        },
+      }),
+    });
+    assert.equal(codeSurfaceResponse.status, 200);
+
+    const directLaneResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        folderBrowsePreference: {
+          surface: 'chat',
+          directLaneCatId: 'cat-direct-1',
+          path: 'C:/repo/direct-cat-1',
+        },
+      }),
+    });
+    assert.equal(directLaneResponse.status, 200);
+
+    const readResponse = await fetch(`${baseUrl}/api/preferences`);
+    assert.equal(readResponse.status, 200);
+    const readPayload = await readResponse.json();
+    assert.deepEqual(readPayload.preferences.folderBrowsePreferences, {
+      bySurface: {
+        chat: 'C:/repo/chat-root',
+        code: 'C:/repo/code-root',
+      },
+      chatDirectLaneByCatId: {
+        'cat-direct-1': 'C:/repo/direct-cat-1',
+      },
+    });
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(appShellResponse.status, 200);
+    const appShellPayload = await appShellResponse.json();
+    assert.deepEqual(appShellPayload.chat.folderBrowsePreferences, {
+      bySurface: {
+        chat: 'C:/repo/chat-root',
+        code: 'C:/repo/code-root',
+      },
+      chatDirectLaneByCatId: {
+        'cat-direct-1': 'C:/repo/direct-cat-1',
+      },
+    });
   });
 });
 

@@ -432,9 +432,13 @@ PATCH /api/preferences
 - `GET` returns `{ preferences: { selectedChannelId } }`.
 - `GET` also returns `showVerboseMessages`, `showLiveProgressDetails`, and
   `newChatDefaults`.
+- `GET` also returns `folderBrowsePreferences`, with:
+  - `bySurface.chat|work|code` for product-scoped chooser memory
+  - `chatDirectLaneByCatId` for Chat direct-lane chooser memory keyed by Cat id
 - `PATCH` accepts `selectedChannelId`, `showVerboseMessages`,
-  `showLiveProgressDetails`, and `newChatDefaults`, then returns the updated
-  preferences payload.
+  `showLiveProgressDetails`, `newChatDefaults`, and
+  `folderBrowsePreference { surface, directLaneCatId?, path }`, then returns
+  the updated preferences payload.
 - Updating `selectedChannelId` also wakes the selected room's visible entry
   participant when that room is currently sleeping:
   - `boss_chat` wakes `Boss Cat`
@@ -2583,7 +2587,12 @@ Request body:
 {
   "selectedChannelId": "550e8400-e29b-41d4-a716-446655440000",
   "showVerboseMessages": false,
-  "showLiveProgressDetails": false
+  "showLiveProgressDetails": false,
+  "folderBrowsePreference": {
+    "surface": "chat",
+    "directLaneCatId": "cat-123",
+    "path": "C:/repo/direct-lane"
+  }
 }
 ```
 

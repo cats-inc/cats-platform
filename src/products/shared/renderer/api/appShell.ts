@@ -4,9 +4,24 @@ import type {
   UpdateGlobalOrchestratorInput,
 } from '../../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
+import type {
+  FolderBrowsePreferenceScope,
+  FolderBrowsePreferences,
+} from '../../folderBrowsePreferences.js';
 
 import { normalizeAppShellPayload } from './normalization.js';
 import { expectJson, readErrorMessage } from './http.js';
+
+export interface WorkspacePreferencesPayload {
+  preferences: {
+    selectedChannelId: string;
+    showVerboseMessages: boolean;
+    showLiveProgressDetails?: boolean;
+    concurrentPresentationMode?: string;
+    newChatDefaults: NewChatDefaults;
+    folderBrowsePreferences?: FolderBrowsePreferences;
+  };
+}
 
 export async function fetchAppShell(signal?: AbortSignal): Promise<AppShellPayload> {
   const response = await fetch('/api/app-shell', {
@@ -138,6 +153,32 @@ export async function updateNewChatDefaultsPreference(
     response,
     `cats new chat defaults update returned ${response.status}`,
     signal,
+  );
+}
+
+export async function updateFolderBrowsePreference(
+  input: FolderBrowsePreferenceScope & { path: string | null },
+  signal?: AbortSignal,
+): Promise<WorkspacePreferencesPayload> {
+  const response = await fetch('/api/preferences', {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      folderBrowsePreference: {
+        surface: input.surface,
+        directLaneCatId: input.directLaneCatId ?? null,
+        path: input.path,
+      },
+    }),
+    signal,
+  });
+
+  return expectJson<WorkspacePreferencesPayload>(
+    response,
+    `cats folder browse preference update returned ${response.status}`,
   );
 }
 

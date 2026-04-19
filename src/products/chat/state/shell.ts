@@ -15,6 +15,7 @@ import {
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
+import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
 import { summarizeState } from './model/index.js';
@@ -119,6 +120,9 @@ export function createAppShell(
       showVerboseMessages: chat.showVerboseMessages,
       showLiveProgressDetails: chat.showLiveProgressDetails ?? false,
       concurrentPresentationMode: chat.concurrentPresentationMode ?? 'inline_stack',
+      folderBrowsePreferences: structuredClone(
+        chat.folderBrowsePreferences ?? createDefaultFolderBrowsePreferences(),
+      ),
       botBindings,
       newChatAssist: structuredClone(setup?.newChatAssist ?? null),
     },

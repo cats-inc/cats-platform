@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { resolveChannelKind } from '../../channelTopology.js';
+import { createDefaultFolderBrowsePreferences } from '../../folderBrowsePreferences.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -255,6 +256,9 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   }
   if (chatState.showLiveProgressDetails === undefined) {
     chatState.showLiveProgressDetails = false;
+  }
+  if (!asRecord(chatState.folderBrowsePreferences)) {
+    chatState.folderBrowsePreferences = createDefaultFolderBrowsePreferences();
   }
   if (!asRecord(chatState.newChatDefaults)) {
     chatState.newChatDefaults = {
