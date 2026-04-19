@@ -328,7 +328,7 @@ test('team code and peer code drafts continue to delegate to the shared chat dra
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
         draftTemporaryParticipants: [
           {
             participantId: 'participant-inline',

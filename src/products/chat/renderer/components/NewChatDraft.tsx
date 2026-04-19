@@ -32,16 +32,25 @@ export function NewChatDraft(props: NewChatDraftProps) {
     <ComposerSurfaceChip surface={draftSurface} onDismiss={() => setDraftSurface('chat')} />
   ) : null;
 
-  const leadingStarterChips = [
-    {
-      id: 'pomodoro-app',
-      label: 'Pomodoro app',
-      onClick: () => {
-        props.onComposerChange(POMODORO_PROMPT);
-        setDraftSurface('code');
+  const isDirectLaneDraft = !(props.allowAddCat ?? true) && Boolean(props.draftDefaultRecipientCatId);
+  const isParallelDraft = (props.parallelTargets?.length ?? 0) >= 2;
+  const isDefaultChatEntry =
+    (props.entryPreset ?? 'default') === 'default'
+    && !isDirectLaneDraft
+    && !isParallelDraft;
+
+  const leadingStarterChips = isDefaultChatEntry
+    ? [
+      {
+        id: 'pomodoro-app',
+        label: 'Pomodoro app',
+        onClick: () => {
+          props.onComposerChange(POMODORO_PROMPT);
+          setDraftSurface('code');
+        },
       },
-    },
-  ];
+    ]
+    : [];
 
   const composerHeaderAccessory = isCodeSurface
     ? codeChips.permissionChip

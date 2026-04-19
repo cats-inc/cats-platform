@@ -1,4 +1,4 @@
-export type NewChatMode = 'default' | 'group' | 'parallel';
+export type NewChatPreset = 'default' | 'group' | 'parallel';
 export type DraftStarterSuggestionMode =
   | 'solo'
   | 'cat_led'
@@ -17,12 +17,12 @@ export function resolveDraftStarterSuggestionContext(input: {
   allowAddCat?: boolean;
   draftDefaultRecipientCatId?: string | null;
   hasDefaultRecipientCat: boolean;
-  entryMode?: NewChatMode;
+  entryPreset?: NewChatPreset;
   participantCount: number;
   parallelTargetCount?: number;
 }): DraftStarterSuggestionContext {
   const isParallelMode = (input.parallelTargetCount ?? 0) >= 2;
-  const isGroupDraft = input.entryMode === 'group' || input.participantCount > 1;
+  const isGroupDraft = input.entryPreset === 'group' || input.participantCount > 1;
   const isDirectLaneContext =
     !input.allowAddCat
     && Boolean(input.draftDefaultRecipientCatId)

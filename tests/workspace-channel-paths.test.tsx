@@ -7,7 +7,7 @@ import {
   buildMyCatPath as buildCodeMyCatPath,
   buildNewChatPath as buildCodeNewChatPath,
   buildNewParallelChatPath as buildCodeNewParallelChatPath,
-  readNewChatMode as readCodeNewChatMode,
+  readNewChatPreset as readCodeNewChatPreset,
   resolveVisibleChatPath as resolveCodeVisibleChatPath,
 } from '../src/products/code/shared/channelPaths.ts';
 import {
@@ -16,7 +16,7 @@ import {
   buildMyCatPath as buildWorkMyCatPath,
   buildNewChatPath as buildWorkNewChatPath,
   buildNewParallelChatPath as buildWorkNewParallelChatPath,
-  readNewChatMode as readWorkNewChatMode,
+  readNewChatPreset as readWorkNewChatPreset,
   resolveVisibleChatPath as resolveWorkVisibleChatPath,
 } from '../src/products/work/shared/channelPaths.ts';
 
@@ -28,18 +28,18 @@ test('workspace channel paths keep product prefixes while sharing visible-chat s
 
   assert.equal(buildWorkNewChatPath('cat-1'), '/work/new?cat=cat-1');
   assert.equal(buildCodeNewChatPath('cat-1'), '/code/new?cat=cat-1');
-  assert.equal(buildWorkNewGroupChatPath(), '/work/new?mode=group');
-  assert.equal(buildCodeNewGroupChatPath(), '/code/new?mode=group');
-  assert.equal(buildWorkNewParallelChatPath(), '/work/new?mode=parallel');
-  assert.equal(buildCodeNewParallelChatPath(), '/code/new?mode=parallel');
+  assert.equal(buildWorkNewGroupChatPath(), '/work/new?preset=group');
+  assert.equal(buildCodeNewGroupChatPath(), '/code/new?preset=group');
+  assert.equal(buildWorkNewParallelChatPath(), '/work/new?preset=parallel');
+  assert.equal(buildCodeNewParallelChatPath(), '/code/new?preset=parallel');
   assert.equal(buildWorkMyCatPath('companion-cat'), '/work/my-cats/companion-cat');
   assert.equal(buildCodeMyCatPath('companion-cat'), '/code/my-cats/companion-cat');
   assert.equal(buildWorkChannelPath('boss-1'), '/work/chats/boss-1');
   assert.equal(buildCodeChannelPath('boss-1'), '/code/chats/boss-1');
-  assert.equal(readWorkNewChatMode('?mode=group'), 'group');
-  assert.equal(readCodeNewChatMode('?mode=parallel'), 'parallel');
-  assert.equal(readWorkNewChatMode('?mode=unknown'), 'default');
-  assert.equal(readCodeNewChatMode(''), 'default');
+  assert.equal(readWorkNewChatPreset('?preset=group'), 'group');
+  assert.equal(readCodeNewChatPreset('?preset=parallel'), 'parallel');
+  assert.equal(readWorkNewChatPreset('?preset=unknown'), 'default');
+  assert.equal(readCodeNewChatPreset(''), 'default');
   assert.equal(resolveWorkVisibleChatPath(channels, 'direct-1'), '/work/chats/boss-1');
   assert.equal(resolveCodeVisibleChatPath(channels, 'direct-1'), '/code/chats/boss-1');
 });

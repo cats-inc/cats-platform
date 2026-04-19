@@ -7,7 +7,7 @@ import type {
   CreateTemporaryParticipantInput,
   NewChatEntryKind,
 } from '../api/contracts';
-import type { NewChatMode } from '../shared/channelPaths.js';
+import type { NewChatPreset } from '../shared/channelPaths.js';
 import type { AssistantPresetRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
@@ -241,11 +241,11 @@ export function createNextGroupTemporaryParticipant(options: {
 }
 
 export function resolveGenericDraftTemporaryParticipants(
-  mode: NewChatMode,
+  preset: NewChatPreset,
   existingParticipants: DraftTemporaryParticipant[],
   createGroupParticipants: () => DraftTemporaryParticipant[],
 ): DraftTemporaryParticipant[] {
-  if (mode !== 'group') {
+  if (preset !== 'group') {
     return [];
   }
 

@@ -295,11 +295,11 @@ export function createNextGroupTemporaryParticipant(options: {
 }
 
 export function resolveGenericDraftTemporaryParticipants(
-  mode: 'default' | 'group' | 'parallel',
+  preset: 'default' | 'group' | 'parallel',
   existingParticipants: DraftTemporaryParticipant[],
   createGroupParticipants: () => DraftTemporaryParticipant[],
 ): DraftTemporaryParticipant[] {
-  if (mode !== 'group') {
+  if (preset !== 'group') {
     return [];
   }
 

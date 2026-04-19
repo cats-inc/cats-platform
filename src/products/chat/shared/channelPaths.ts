@@ -7,12 +7,12 @@ export const UUID_PATTERN =
 export const CHAT_PREFIX = '/chat';
 export const NEW_CHAT_PATH = `${CHAT_PREFIX}/new`;
 export const NEW_CHAT_CAT_QUERY_PARAM = 'cat';
-export const NEW_CHAT_MODE_QUERY_PARAM = 'mode';
-export const NEW_CHAT_MODE_GROUP = 'group';
-export const NEW_CHAT_MODE_PARALLEL = 'parallel';
+export const NEW_CHAT_PRESET_QUERY_PARAM = 'preset';
+export const NEW_CHAT_PRESET_GROUP = 'group';
+export const NEW_CHAT_PRESET_PARALLEL = 'parallel';
 export const SETUP_PATH = '/setup';
 export const MY_CATS_PATH_PREFIX = `${CHAT_PREFIX}/my-cats`;
-export type NewChatMode = 'default' | 'group' | 'parallel';
+export type NewChatPreset = 'default' | 'group' | 'parallel';
 
 export function resolveAppEntryPath(setupCompleteAt: string | null | undefined): string {
   return setupCompleteAt ? NEW_CHAT_PATH : SETUP_PATH;
@@ -34,12 +34,12 @@ export function buildNewChatPath(defaultRecipientCatId?: string | null): string 
 }
 
 export function buildNewParallelChatPath(): string {
-  const params = new URLSearchParams([[NEW_CHAT_MODE_QUERY_PARAM, NEW_CHAT_MODE_PARALLEL]]);
+  const params = new URLSearchParams([[NEW_CHAT_PRESET_QUERY_PARAM, NEW_CHAT_PRESET_PARALLEL]]);
   return `${NEW_CHAT_PATH}?${params.toString()}`;
 }
 
 export function buildNewGroupChatPath(): string {
-  const params = new URLSearchParams([[NEW_CHAT_MODE_QUERY_PARAM, NEW_CHAT_MODE_GROUP]]);
+  const params = new URLSearchParams([[NEW_CHAT_PRESET_QUERY_PARAM, NEW_CHAT_PRESET_GROUP]]);
   return `${NEW_CHAT_PATH}?${params.toString()}`;
 }
 
@@ -57,13 +57,13 @@ export function readNewChatDefaultRecipientCatId(search: string): string | null 
   return normalizeRouteToken(params.get(NEW_CHAT_CAT_QUERY_PARAM));
 }
 
-export function readNewChatMode(search: string): NewChatMode {
+export function readNewChatPreset(search: string): NewChatPreset {
   const params = new URLSearchParams(search);
-  const mode = normalizeRouteToken(params.get(NEW_CHAT_MODE_QUERY_PARAM));
-  if (mode === NEW_CHAT_MODE_PARALLEL) {
+  const preset = normalizeRouteToken(params.get(NEW_CHAT_PRESET_QUERY_PARAM));
+  if (preset === NEW_CHAT_PRESET_PARALLEL) {
     return 'parallel';
   }
-  if (mode === NEW_CHAT_MODE_GROUP) {
+  if (preset === NEW_CHAT_PRESET_GROUP) {
     return 'group';
   }
   return 'default';

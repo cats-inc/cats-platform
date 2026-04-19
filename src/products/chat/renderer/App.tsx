@@ -19,7 +19,7 @@ import {
   CHAT_PREFIX,
   isNewChatPath,
   readNewChatDefaultRecipientCatId,
-  readNewChatMode,
+  readNewChatPreset,
 } from '../shared/channelPaths';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
@@ -113,8 +113,8 @@ export default function App() {
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isNewChatPath(location.pathname);
-  const newChatMode = showingNewChatDraft ? readNewChatMode(location.search) : 'default';
-  const showingParallelChatDraft = newChatMode === 'parallel';
+  const newChatPreset = showingNewChatDraft ? readNewChatPreset(location.search) : 'default';
+  const showingParallelChatDraft = newChatPreset === 'parallel';
   const draftDefaultRecipientCatId = routeMyCatId ?? readNewChatDefaultRecipientCatId(location.search);
   const draftRoute = resolveDraftRouteContext({
     draftDefaultRecipientCatId,
@@ -194,7 +194,7 @@ export default function App() {
   });
   const draftEntryKind: NewChatEntryKind = draftRoute.isDirectLaneRoute
     ? 'direct'
-    : newChatMode === 'group'
+    : newChatPreset === 'group'
       || draftRoute.isRecipientScopedNewChatRoute
       || draftParticipants.hasParticipants
       || draftTemporaryParticipants.length > 0
@@ -509,7 +509,7 @@ export default function App() {
   ) => {
     const isNewLeadParticipant =
       showingNewChatDraft
-      && newChatMode === 'group'
+      && newChatPreset === 'group'
       && draftParticipants.participantCatIds.length === 0
       && draftTemporaryParticipants.length === 0;
     onAddDraftTemporaryParticipant(participant);
@@ -535,7 +535,7 @@ export default function App() {
   }, [
     draftParticipantKeys,
     maxDraftAudienceParticipants,
-    newChatMode,
+    newChatPreset,
     onAddDraftTemporaryParticipant,
     draftParticipants.participantCatIds.length,
     draftTemporaryParticipants.length,
@@ -686,7 +686,7 @@ export default function App() {
       setDraftCatIds([]);
       setDraftTemporaryParticipants((current) =>
         resolveGenericDraftTemporaryParticipants(
-          newChatMode,
+          newChatPreset,
           current,
           seedDraftGroupParticipants,
         ));
@@ -695,7 +695,7 @@ export default function App() {
       setDraftWorkflowShape('sequential');
       setDraftAudienceKeys(null);
     }, [
-      newChatMode,
+      newChatPreset,
       seedDraftGroupParticipants,
       setDraftCatIds,
       setDraftTemporaryParticipants,
@@ -707,7 +707,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!showingNewChatDraft || newChatMode !== 'group') {
+    if (!showingNewChatDraft || newChatPreset !== 'group') {
       return;
     }
 
@@ -721,7 +721,7 @@ export default function App() {
     draftExecutionTarget.model,
     draftExecutionTarget.modelSelection,
     draftExecutionTarget.provider,
-    newChatMode,
+    newChatPreset,
     setDraftTemporaryParticipants,
     showingNewChatDraft,
   ]);
@@ -744,14 +744,14 @@ export default function App() {
 
   const onDraftExecutionTargetChange = useCallback((nextDraftExecutionTarget: ExecutionTargetValue): void => {
     setDraftExecutionTarget(nextDraftExecutionTarget);
-    if (showingNewChatDraft && newChatMode === 'group') {
+    if (showingNewChatDraft && newChatPreset === 'group') {
       setDraftTemporaryParticipants((current) =>
         syncLeadDraftTemporaryParticipantWithTarget({
           participants: current,
           target: nextDraftExecutionTarget,
         }));
     }
-  }, [newChatMode, setDraftTemporaryParticipants, showingNewChatDraft]);
+  }, [newChatPreset, setDraftTemporaryParticipants, showingNewChatDraft]);
 
   const onDraftParallelChatTargetChangeWithSharedDefault = useCallback((
     index: number,
@@ -975,7 +975,7 @@ export default function App() {
                   onUpdateDraftTemporaryParticipant: onUpdateDraftTemporaryParticipant,
                   autoResize,
                   draftDefaultRecipientCatId,
-                  entryMode: newChatMode,
+                  entryPreset: newChatPreset,
                   selectedExecutionTarget: draftExecutionTarget,
                   onExecutionTargetChange: onDraftExecutionTargetChange,
                   draftHighlightedCatId,

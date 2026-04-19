@@ -190,12 +190,12 @@ export function createWorkspaceProductApp({
       settingsMode,
       routeChannelId,
       showingNewChatDraft,
-      newChatMode,
+      newChatPreset,
       draftDefaultRecipientCatId,
       showingMyCatDirectLane,
     } = useWorkspaceLocationState(chatPrefix);
-    const effectiveNewChatMode = supportsStructuredDraftModes ? newChatMode : "default";
-    const showingParallelChatDraft = effectiveNewChatMode === "parallel";
+    const effectiveNewChatPreset = supportsStructuredDraftModes ? newChatPreset : "default";
+    const showingParallelChatDraft = effectiveNewChatPreset === "parallel";
 
     const {
       state,
@@ -428,7 +428,7 @@ export function createWorkspaceProductApp({
       ? "direct"
       : supportsStructuredDraftModes
         && (
-          effectiveNewChatMode === "group"
+          effectiveNewChatPreset === "group"
           || draftParticipants.participantCatIds.length > 0
           || draftTemporaryParticipants.length > 0
         )
@@ -621,7 +621,7 @@ export function createWorkspaceProductApp({
 
       const isNewLeadParticipant =
         showingNewChatDraft
-        && effectiveNewChatMode === "group"
+        && effectiveNewChatPreset === "group"
         && draftParticipants.participantCatIds.length === 0
         && draftTemporaryParticipants.length === 0;
       if (isNewLeadParticipant && participant.provider.trim()) {
@@ -651,7 +651,7 @@ export function createWorkspaceProductApp({
       draftParticipantKeys,
       draftParticipants.participantCatIds.length,
       draftTemporaryParticipants.length,
-      effectiveNewChatMode,
+      effectiveNewChatPreset,
       maxDraftAudienceParticipants,
       onAddDraftTemporaryParticipant,
       setDraftExecutionTarget,
@@ -844,7 +844,7 @@ export function createWorkspaceProductApp({
         setDraftTemporaryParticipants((current) =>
           supportsStructuredDraftModes
             ? resolveGenericDraftTemporaryParticipants(
-                effectiveNewChatMode,
+                effectiveNewChatPreset,
                 current,
                 seedDraftGroupParticipants,
               )
@@ -853,7 +853,7 @@ export function createWorkspaceProductApp({
         setDraftAudienceKeys(null);
         resetDraftParallelChatTargets();
       }, [
-        effectiveNewChatMode,
+        effectiveNewChatPreset,
         resetDraftCats,
         resetDraftParallelChatTargets,
         seedDraftGroupParticipants,
@@ -868,7 +868,7 @@ export function createWorkspaceProductApp({
       if (
         !supportsStructuredDraftModes
         || !showingNewChatDraft
-        || effectiveNewChatMode !== "group"
+        || effectiveNewChatPreset !== "group"
       ) {
         return;
       }
@@ -883,7 +883,7 @@ export function createWorkspaceProductApp({
       draftExecutionTarget.model,
       draftExecutionTarget.modelSelection,
       draftExecutionTarget.provider,
-      effectiveNewChatMode,
+      effectiveNewChatPreset,
       setDraftTemporaryParticipants,
       showingNewChatDraft,
       supportsStructuredDraftModes,
@@ -912,7 +912,7 @@ export function createWorkspaceProductApp({
         if (
           supportsStructuredDraftModes
           && showingNewChatDraft
-          && effectiveNewChatMode === "group"
+          && effectiveNewChatPreset === "group"
         ) {
           setDraftTemporaryParticipants((current) =>
             syncLeadDraftTemporaryParticipantWithTarget({
@@ -922,7 +922,7 @@ export function createWorkspaceProductApp({
         }
       },
       [
-        effectiveNewChatMode,
+        effectiveNewChatPreset,
         setDraftTemporaryParticipants,
         showingNewChatDraft,
         supportsStructuredDraftModes,
@@ -1157,7 +1157,7 @@ export function createWorkspaceProductApp({
                     onUpdateDraftTemporaryParticipant,
                     autoResize,
                     draftDefaultRecipientCatId,
-                    entryMode: effectiveNewChatMode,
+                    entryPreset: effectiveNewChatPreset,
                     selectedExecutionTarget: draftExecutionTarget,
                     onExecutionTargetChange: onDraftExecutionTargetChange,
                     draftHighlightedCatId,

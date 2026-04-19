@@ -5,7 +5,7 @@ import {
   buildWorkspaceChannelPath,
   buildWorkspaceMyCatPath,
   buildWorkspaceNewChatPath,
-  readWorkspaceNewChatMode,
+  readWorkspaceNewChatPreset,
   readWorkspaceNewChatLeadCatId,
   resolveWorkspaceAppEntryPath,
   resolveWorkspaceDefaultChatPath,
@@ -16,9 +16,9 @@ import {
 export {
   UUID_PATTERN,
   NEW_CHAT_CAT_QUERY_PARAM,
-  NEW_CHAT_MODE_GROUP,
-  NEW_CHAT_MODE_PARALLEL,
-  NEW_CHAT_MODE_QUERY_PARAM,
+  NEW_CHAT_PRESET_GROUP,
+  NEW_CHAT_PRESET_PARALLEL,
+  NEW_CHAT_PRESET_QUERY_PARAM,
   SETUP_PATH,
   escapeContentDispositionFilename,
   isOpaqueChannelId,
@@ -55,8 +55,8 @@ export function readNewChatDefaultRecipientCatId(search: string): string | null 
   return readWorkspaceNewChatLeadCatId(search);
 }
 
-export function readNewChatMode(search: string) {
-  return readWorkspaceNewChatMode(search);
+export function readNewChatPreset(search: string) {
+  return readWorkspaceNewChatPreset(search);
 }
 
 export function buildChannelPath(channelId: string): string {

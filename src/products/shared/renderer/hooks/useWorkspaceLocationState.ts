@@ -5,9 +5,9 @@ import {
 
 import {
   isWorkspaceNewChatPath,
-  readWorkspaceNewChatMode,
+  readWorkspaceNewChatPreset,
   readWorkspaceNewChatLeadCatId,
-  type WorkspaceNewChatMode,
+  type WorkspaceNewChatPreset,
 } from '../../channelPaths.js';
 
 export interface WorkspaceLocationState {
@@ -16,7 +16,7 @@ export interface WorkspaceLocationState {
   routeChannelId: string | null;
   routeMyCatId: string | null;
   showingNewChatDraft: boolean;
-  newChatMode: WorkspaceNewChatMode;
+  newChatPreset: WorkspaceNewChatPreset;
   draftDefaultRecipientCatId: string | null;
   showingMyCatDirectLane: boolean;
 }
@@ -28,7 +28,7 @@ export function useWorkspaceLocationState(chatPrefix: string): WorkspaceLocation
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isWorkspaceNewChatPath(chatPrefix, location.pathname);
-  const newChatMode = showingNewChatDraft ? readWorkspaceNewChatMode(location.search) : 'default';
+  const newChatPreset = showingNewChatDraft ? readWorkspaceNewChatPreset(location.search) : 'default';
   const draftDefaultRecipientCatId =
     routeMyCatId ?? readWorkspaceNewChatLeadCatId(location.search);
 
@@ -39,7 +39,7 @@ export function useWorkspaceLocationState(chatPrefix: string): WorkspaceLocation
     routeChannelId,
     routeMyCatId,
     showingNewChatDraft,
-    newChatMode,
+    newChatPreset,
     draftDefaultRecipientCatId,
     showingMyCatDirectLane: Boolean(routeMyCatId),
   };

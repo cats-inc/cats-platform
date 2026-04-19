@@ -4,7 +4,7 @@ import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import { SidePanel } from '../../../../design/components/SidePanel.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
-import { type NewChatMode } from '../draftStarterSuggestionContext.js';
+import { type NewChatPreset } from '../draftStarterSuggestionContext.js';
 import {
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
@@ -71,7 +71,7 @@ export interface NewChatDraftProps {
   ) => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   draftDefaultRecipientCatId: string | null;
-  entryMode?: NewChatMode;
+  entryPreset?: NewChatPreset;
   onDraftDefaultRecipientChange: (catId: string | null) => void;
   allowAddCat?: boolean;
   selectedExecutionTarget?: ExecutionTargetValue;
@@ -146,7 +146,7 @@ export function NewChatDraft({
   onUpdateDraftTemporaryParticipant,
   autoResize,
   draftDefaultRecipientCatId,
-  entryMode = 'default',
+  entryPreset = 'default',
   onDraftDefaultRecipientChange,
   allowAddCat = true,
   selectedExecutionTarget,
@@ -209,7 +209,7 @@ export function NewChatDraft({
     draftCatIds,
     draftTemporaryParticipants,
     allowAddCat,
-    entryMode,
+    entryPreset,
     parallelTargets,
     greeting,
     greetingPool,
@@ -625,7 +625,7 @@ export function NewChatDraft({
         {composerFooterAccessory ? (
           <div className="composerFooterRow">{composerFooterAccessory}</div>
         ) : null}
-        {(showDraftHelperChips || (leadingStarterChips && leadingStarterChips.length > 0)) ? (
+        {!isDirectLaneContext && (showDraftHelperChips || (leadingStarterChips && leadingStarterChips.length > 0)) ? (
           <div className="draftPromptSuggestions">
             <div className="chipRow">
               {leadingStarterChips?.map((chip) => (

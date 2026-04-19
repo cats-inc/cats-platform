@@ -5,11 +5,11 @@ export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 export const NEW_CHAT_CAT_QUERY_PARAM = 'cat';
-export const NEW_CHAT_MODE_QUERY_PARAM = 'mode';
-export const NEW_CHAT_MODE_GROUP = 'group';
-export const NEW_CHAT_MODE_PARALLEL = 'parallel';
+export const NEW_CHAT_PRESET_QUERY_PARAM = 'preset';
+export const NEW_CHAT_PRESET_GROUP = 'group';
+export const NEW_CHAT_PRESET_PARALLEL = 'parallel';
 export const SETUP_PATH = '/setup';
-export type WorkspaceNewChatMode = 'default' | 'group' | 'parallel';
+export type WorkspaceNewChatPreset = 'default' | 'group' | 'parallel';
 
 type WorkspaceChannelSummaryRef = {
   id: string;
@@ -52,12 +52,12 @@ export function buildWorkspaceNewChatPath(
 }
 
 export function buildWorkspaceNewGroupChatPath(chatPrefix: string): string {
-  const params = new URLSearchParams([[NEW_CHAT_MODE_QUERY_PARAM, NEW_CHAT_MODE_GROUP]]);
+  const params = new URLSearchParams([[NEW_CHAT_PRESET_QUERY_PARAM, NEW_CHAT_PRESET_GROUP]]);
   return `${resolveWorkspaceNewChatPath(chatPrefix)}?${params.toString()}`;
 }
 
 export function buildWorkspaceNewParallelChatPath(chatPrefix: string): string {
-  const params = new URLSearchParams([[NEW_CHAT_MODE_QUERY_PARAM, NEW_CHAT_MODE_PARALLEL]]);
+  const params = new URLSearchParams([[NEW_CHAT_PRESET_QUERY_PARAM, NEW_CHAT_PRESET_PARALLEL]]);
   return `${resolveWorkspaceNewChatPath(chatPrefix)}?${params.toString()}`;
 }
 
@@ -76,13 +76,13 @@ export function readWorkspaceNewChatLeadCatId(search: string): string | null {
   return normalizeRouteToken(params.get(NEW_CHAT_CAT_QUERY_PARAM));
 }
 
-export function readWorkspaceNewChatMode(search: string): WorkspaceNewChatMode {
+export function readWorkspaceNewChatPreset(search: string): WorkspaceNewChatPreset {
   const params = new URLSearchParams(search);
-  const mode = normalizeRouteToken(params.get(NEW_CHAT_MODE_QUERY_PARAM));
-  if (mode === NEW_CHAT_MODE_PARALLEL) {
+  const preset = normalizeRouteToken(params.get(NEW_CHAT_PRESET_QUERY_PARAM));
+  if (preset === NEW_CHAT_PRESET_PARALLEL) {
     return 'parallel';
   }
-  if (mode === NEW_CHAT_MODE_GROUP) {
+  if (preset === NEW_CHAT_PRESET_GROUP) {
     return 'group';
   }
   return 'default';

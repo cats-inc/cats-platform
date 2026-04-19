@@ -51,7 +51,7 @@ function buildWorkspaceDraftProps(input: {
     onQuickAddDraftTemporaryParticipant,
     onRemoveDraftTemporaryParticipant,
     onUpdateDraftTemporaryParticipant,
-    entryMode,
+    entryPreset,
     parallelTargets,
     onParallelTargetChange,
     onAddParallelTarget,
@@ -77,7 +77,7 @@ function buildWorkspaceDraftProps(input: {
   void onQuickAddDraftTemporaryParticipant;
   void onRemoveDraftTemporaryParticipant;
   void onUpdateDraftTemporaryParticipant;
-  void entryMode;
+  void entryPreset;
   void parallelTargets;
   void onParallelTargetChange;
   void onAddParallelTarget;
@@ -114,7 +114,7 @@ function buildWorkspaceDraftProps(input: {
 }
 
 export function NewChatDraft(props: NewChatDraftProps) {
-  if (props.entryMode === 'group' || props.entryMode === 'parallel') {
+  if (props.entryPreset === 'group' || props.entryPreset === 'parallel') {
     return <CodeGroupParallelDraft {...props} />;
   }
   return <CodeDefaultDraft {...props} />;

@@ -14,7 +14,7 @@ test('composer auto-navigation only continues while the user stays on the manage
     true,
   );
   assert.equal(
-    shouldAutoNavigateComposerLocation('/chat/new?mode=group', '/chat/new?mode=group'),
+    shouldAutoNavigateComposerLocation('/chat/new?preset=group', '/chat/new?preset=group'),
     true,
   );
   assert.equal(
@@ -22,7 +22,7 @@ test('composer auto-navigation only continues while the user stays on the manage
     false,
   );
   assert.equal(
-    shouldAutoNavigateComposerLocation('/chat/new?mode=parallel', '/chat/chats/channel-2'),
+    shouldAutoNavigateComposerLocation('/chat/new?preset=parallel', '/chat/chats/channel-2'),
     false,
   );
 });
@@ -79,10 +79,10 @@ test('managed composer navigation helpers capture and clear the current route', 
   try {
     globalThis.location = {
       pathname: '/chat/new',
-      search: '?mode=group',
+      search: '?preset=group',
     };
     captureManagedComposerLocation(managedLocationRef);
-    assert.equal(managedLocationRef.current, '/chat/new?mode=group');
+    assert.equal(managedLocationRef.current, '/chat/new?preset=group');
     clearManagedComposerLocation(managedLocationRef);
     assert.equal(managedLocationRef.current, null);
   } finally {

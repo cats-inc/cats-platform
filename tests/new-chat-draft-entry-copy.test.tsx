@@ -158,7 +158,7 @@ test('group route uses the greeting seam instead of a fixed heading', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
         greeting: 'Round up the room.',
       })}
     />,
@@ -172,7 +172,7 @@ test('group route does not show helper chips without runtime-backed assist conte
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
       })}
     />,
   );
@@ -185,7 +185,7 @@ test('group route shows add-participant hint inside the composer', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
         draftTemporaryParticipants: [
           {
             participantId: 'participant-inline',
@@ -212,7 +212,7 @@ test('group route hides add-participant hint and button when max participants is
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
         payload,
         draftCatIds: ['cat-lead'],
         draftTemporaryParticipants: [
@@ -242,7 +242,7 @@ test('group route keeps the current audience chip and inline avatar row for part
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
         payload,
         draftCatIds: ['cat-lead'],
         draftTemporaryParticipants: [
@@ -279,7 +279,7 @@ test('group route caps the audience chip selection to the configured max audienc
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
         payload,
         draftCatIds: ['cat-lead'],
         draftTemporaryParticipants: [
@@ -317,7 +317,7 @@ test('group route keeps remove controls hidden when only two participants remain
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
         draftCatIds: ['cat-lead'],
         draftTemporaryParticipants: [
           {
@@ -341,7 +341,7 @@ test('group route restores remove controls once the draft has three participants
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
-        entryMode: 'group',
+        entryPreset: 'group',
         draftCatIds: ['cat-lead', 'cat-reviewer'],
         payload: {
           chat: {
@@ -627,7 +627,7 @@ test('group draft ignores deterministic payload-backed starter prompts', () => {
       {...createProps({
         payload,
         greeting: null,
-        entryMode: 'group',
+        entryPreset: 'group',
       })}
     />,
   );
@@ -684,7 +684,7 @@ test('group draft surfaces runtime-origin payload-backed starter prompts', () =>
       {...createProps({
         payload,
         greeting: null,
-        entryMode: 'group',
+        entryPreset: 'group',
       })}
     />,
   );
@@ -740,7 +740,7 @@ test('group draft keeps runtime-origin helper chips visible while the user types
       {...createProps({
         payload,
         greeting: null,
-        entryMode: 'group',
+        entryPreset: 'group',
         composerDraft: 'User typed this manually.',
       })}
     />,

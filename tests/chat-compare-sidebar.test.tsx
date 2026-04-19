@@ -10,7 +10,7 @@ import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/a
 import {
   buildNewGroupChatPath,
   buildNewParallelChatPath,
-  readNewChatMode,
+  readNewChatPreset,
 } from '../src/products/chat/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
@@ -441,10 +441,10 @@ test('Sidebar wires the shared account identity menu to the runtime root', () =>
 });
 
 test('new-chat route helpers keep group and parallel entry intents explicit', () => {
-  assert.equal(buildNewGroupChatPath(), '/chat/new?mode=group');
-  assert.equal(buildNewParallelChatPath(), '/chat/new?mode=parallel');
-  assert.equal(readNewChatMode('?mode=group'), 'group');
-  assert.equal(readNewChatMode('?mode=parallel'), 'parallel');
-  assert.equal(readNewChatMode('?mode=compare'), 'default');
-  assert.equal(readNewChatMode(''), 'default');
+  assert.equal(buildNewGroupChatPath(), '/chat/new?preset=group');
+  assert.equal(buildNewParallelChatPath(), '/chat/new?preset=parallel');
+  assert.equal(readNewChatPreset('?preset=group'), 'group');
+  assert.equal(readNewChatPreset('?preset=parallel'), 'parallel');
+  assert.equal(readNewChatPreset('?preset=compare'), 'default');
+  assert.equal(readNewChatPreset(''), 'default');
 });

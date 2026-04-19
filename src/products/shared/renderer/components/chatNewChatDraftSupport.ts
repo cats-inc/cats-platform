@@ -2,7 +2,7 @@ import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { resolveDraftParticipantSelection } from '../draftParticipants.js';
 import {
   resolveDraftStarterSuggestionContext,
-  type NewChatMode,
+  type NewChatPreset,
 } from '../draftStarterSuggestionContext.js';
 import {
   resolveVisibleDraftStarterSuggestions,
@@ -78,7 +78,7 @@ export function resolveChatNewChatDraftViewState(input: {
   draftCatIds: string[];
   draftTemporaryParticipants: DraftTemporaryParticipant[];
   allowAddCat: boolean;
-  entryMode: NewChatMode;
+  entryPreset: NewChatPreset;
   parallelTargets?: ExecutionTargetValue[] | undefined;
   greeting?: string | null;
   greetingPool?: ReadonlyArray<string> | null;
@@ -123,7 +123,7 @@ export function resolveChatNewChatDraftViewState(input: {
     allowAddCat: input.allowAddCat,
     draftDefaultRecipientCatId: input.draftDefaultRecipientCatId,
     hasDefaultRecipientCat: Boolean(effectiveDefaultRecipientCat),
-    entryMode: input.entryMode,
+    entryPreset: input.entryPreset,
     participantCount: draftParticipantCount,
     parallelTargetCount: input.parallelTargets?.length ?? 0,
   });
