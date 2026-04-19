@@ -37,6 +37,7 @@
   --settings-border: var(--border);
   --settings-surface: var(--panel);
   --settings-surface-hover: var(--panel-hover);
+  --settings-sub-surface: var(--panel-subtle);
   --settings-danger: var(--danger);
   --settings-danger-hover: var(--danger-hover);
 }

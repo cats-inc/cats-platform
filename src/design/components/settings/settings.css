@@ -141,6 +141,25 @@
   align-items: center;
 }
 
+/* ─── Sub-card ────────────────────────────────────────────────────────── */
+/* Inner card with a tinted background, used to group a coherent set of
+ * fields inside a section (e.g. avatar + name on the Profile card).
+ * Matches the visual weight of My Cats' `.catCard` — same warm tint,
+ * 14px padding/radius — but tokenized so future palette changes
+ * propagate. Constrained to roughly half the section width so the
+ * grouped fields read as a compact identity block rather than
+ * stretching across the whole card. */
+.settings-sub-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--settings-border);
+  border-radius: 14px;
+  background: var(--settings-sub-surface);
+  width: clamp(280px, 50%, 480px);
+  min-width: 0;
+}
+
 /* ─── Field label (Settings-scoped restyle) ──────────────────────────── */
 /* The shared `.fieldLabel > span` defaults to 0.82rem / weight 500 /
  * --muted, which reads visibly weaker than the option row labels next to

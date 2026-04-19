@@ -168,72 +168,74 @@ export function PlatformSettingsGeneral({
             />
           }
         >
-          <div className="fieldLabel">
-            <span>Avatar</span>
-            <div className="settingsOwnerAvatarDock">
-              <button
-                type="button"
-                className="settingsOwnerAvatar"
-                style={avatarUrl
-                  ? {
-                      backgroundImage: `url(${avatarUrl})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      color: 'transparent',
-                    }
-                  : undefined}
-                onClick={() => setCropOpen(true)}
-                aria-label={avatarUrl ? 'Change avatar' : 'Upload avatar'}
-                data-tooltip={avatarUrl ? 'Change avatar' : 'Upload avatar'}
-              >
-                {avatarUrl ? '' : initials}
-              </button>
-              <span className="settingsOwnerAvatarCamera" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              </span>
-              {avatarUrl ? (
+          <div className="settings-sub-card">
+            <div className="fieldLabel">
+              <span>Avatar</span>
+              <div className="settingsOwnerAvatarDock">
                 <button
                   type="button"
-                  className="settingsOwnerAvatarRemove"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void updateOwnerAvatar(null, 'Failed to remove avatar');
-                  }}
-                  aria-label="Remove avatar"
-                  data-tooltip="Remove avatar"
+                  className="settingsOwnerAvatar"
+                  style={avatarUrl
+                    ? {
+                        backgroundImage: `url(${avatarUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        color: 'transparent',
+                      }
+                    : undefined}
+                  onClick={() => setCropOpen(true)}
+                  aria-label={avatarUrl ? 'Change avatar' : 'Upload avatar'}
+                  data-tooltip={avatarUrl ? 'Change avatar' : 'Upload avatar'}
                 >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  {avatarUrl ? '' : initials}
                 </button>
-              ) : null}
+                <span className="settingsOwnerAvatarCamera" aria-hidden="true">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </span>
+                {avatarUrl ? (
+                  <button
+                    type="button"
+                    className="settingsOwnerAvatarRemove"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void updateOwnerAvatar(null, 'Failed to remove avatar');
+                    }}
+                    aria-label="Remove avatar"
+                    data-tooltip="Remove avatar"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                ) : null}
+              </div>
             </div>
+            <label className="fieldLabel">
+              <span>Name</span>
+              <input
+                className="textInput"
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                onBlur={() => void commitOwnerDisplayName()}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void commitOwnerDisplayName();
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setNameDraft(payload.ownerDisplayName);
+                    event.currentTarget.blur();
+                  }
+                }}
+                disabled={savingName}
+                aria-busy={savingName}
+              />
+            </label>
           </div>
-          <label className="fieldLabel">
-            <span>Name</span>
-            <input
-              className="textInput"
-              value={nameDraft}
-              onChange={(event) => setNameDraft(event.target.value)}
-              onBlur={() => void commitOwnerDisplayName()}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  void commitOwnerDisplayName();
-                } else if (event.key === 'Escape') {
-                  event.preventDefault();
-                  setNameDraft(payload.ownerDisplayName);
-                  event.currentTarget.blur();
-                }
-              }}
-              disabled={savingName}
-              aria-busy={savingName}
-            />
-          </label>
         </SettingsSection>
 
         <SettingsSection
