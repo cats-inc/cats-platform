@@ -294,7 +294,7 @@ duplicated pattern with bare CSS classes where a primitive exists.
   and force a SPEC change mid-rollout**
   *Impact*: Medium; expected, not surprising.
   *Mitigation*: Phase 4 explicitly treats SPEC-073 as mutable; update
-  in place rather than creating SPEC-074.
+  it in place rather than creating a second follow-up settings spec.
 
 - **`products/shared/` importing from `src/design/components/settings/`
   is rejected by a layer-check rule we forgot about**

@@ -55,6 +55,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-066](./plans/PLAN-066-cross-surface-draft-dispatch-and-warm-product-handoff-rollout.md)
+- [SPEC-074](./specs/SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md)
+- [ADR-073](./decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md)
 - [2026-04-20 Draft Canvas and Composer Layout Guidance](./research/2026-04-20-draft-canvas-and-composer-layout-guidance.md)
 - [PLAN-064](./plans/PLAN-064-new-code-mvp-task-run-artifact-materialization.md)
 - [PLAN-063](./plans/PLAN-063-guide-cat-renderer-owned-ui-preferences-migration.md)
