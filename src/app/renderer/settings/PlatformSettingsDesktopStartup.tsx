@@ -1,14 +1,13 @@
 import { useState } from 'react';
 
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsDesktopStartupProps {
   payload: AppShellPayload;
-  feedback: string;
   onPayloadUpdate: (payload: AppShellPayload) => void;
-  onFeedback: (message: string) => void;
 }
 
 function resolveDefaultDesktopPreferences(): AppShellPayload['desktop'] {
@@ -21,12 +20,11 @@ function resolveDefaultDesktopPreferences(): AppShellPayload['desktop'] {
 
 export function PlatformSettingsDesktopStartup({
   payload,
-  feedback,
   onPayloadUpdate,
-  onFeedback,
 }: PlatformSettingsDesktopStartupProps) {
   const [savingDesktopPrefs, setSavingDesktopPrefs] = useState(false);
   const desktopPrefs = payload.desktop ?? resolveDefaultDesktopPreferences();
+  const { toasts, showToast } = useToast();
 
   async function updateDesktopPreferences(
     nextDesktopPrefs: AppShellPayload['desktop'],
@@ -74,13 +72,12 @@ export function PlatformSettingsDesktopStartup({
         desktop: persistedPrefs,
       });
       dispatchPlatformEnvelopeRefresh();
-      onFeedback('');
     } catch (error) {
       onPayloadUpdate({
         ...payload,
         desktop: previousDesktopPrefs,
       });
-      onFeedback(error instanceof Error ? error.message : errorMessage);
+      showToast(error instanceof Error ? error.message : errorMessage);
     } finally {
       setSavingDesktopPrefs(false);
     }
@@ -175,7 +172,7 @@ export function PlatformSettingsDesktopStartup({
         </label>
       </div>
 
-      {feedback ? <p className="feedbackText">{feedback}</p> : null}
+      <ToastContainer toasts={toasts} />
     </PlatformSettingsShell>
   );
 }

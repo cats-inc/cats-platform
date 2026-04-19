@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
 interface SettingsSectionCommonProps {
   children: ReactNode;
@@ -8,7 +8,11 @@ interface SettingsSectionCommonProps {
 }
 
 interface SettingsSectionWithHeaderProps extends SettingsSectionCommonProps {
-  header: ReactNode;
+  /** Required JSX element. Typed as ReactElement (not ReactNode) so callers
+   * cannot pass `null` / `undefined` / `false` and silently bypass the
+   * "every section has a header" contract. To intentionally omit, use
+   * `headerless`. */
+  header: ReactElement;
   headerless?: false;
 }
 

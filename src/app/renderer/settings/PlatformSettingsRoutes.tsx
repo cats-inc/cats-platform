@@ -19,7 +19,6 @@ export interface PlatformSettingsRoutesProps<
 > {
   payload: TPayload;
   onPayloadUpdate: (payload: TPayload) => void;
-  feedback: string;
   busy: WorkspaceBusyState;
   onFeedback: (message: string) => void;
   onBusy: (busy: WorkspaceBusyState) => void;
@@ -29,7 +28,6 @@ export interface PlatformSettingsRoutesProps<
 export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload>({
   payload,
   onPayloadUpdate,
-  feedback,
   busy,
   onFeedback,
   onBusy,
@@ -87,9 +85,7 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
         element={(
           <PlatformSettingsChat
             payload={payload}
-            feedback={feedback}
             onPayloadUpdate={onWorkspacePayloadUpdate}
-            onFeedback={onFeedback}
           />
         )}
       />
@@ -125,9 +121,7 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
           element={(
             <PlatformSettingsDesktopStartup
               payload={payload}
-              feedback={feedback}
               onPayloadUpdate={onWorkspacePayloadUpdate}
-              onFeedback={onFeedback}
             />
           )}
         />
@@ -144,7 +138,6 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
         element={(
           <PlatformSettingsData
             payload={payload}
-            feedback={feedback}
             busy={busy}
             onResetSetup={onResetSetup}
           />

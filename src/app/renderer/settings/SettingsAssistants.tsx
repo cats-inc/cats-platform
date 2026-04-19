@@ -4,6 +4,7 @@ import type { AppShellPayload } from '../../../products/shared/api/workspaceCont
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { CatCreationFields } from '../setup/CatCreationFields.js';
+import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import { buildExecutionLabel } from '../../../shared/executionLabel.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import {
@@ -70,7 +71,6 @@ export function SettingsAssistants({
     guideCatFormStateFromRecord(guideCat),
   );
   const [guideBusy, setGuideBusy] = useState(false);
-  const [guideFeedback, setGuideFeedback] = useState('');
   const [selectedAssistantId, setSelectedAssistantId] = useState<string | null>(
     assistantPresets[0]?.id ?? null,
   );
@@ -81,7 +81,7 @@ export function SettingsAssistants({
     assistantPresetFormStateFromRecord(selectedAssistant),
   );
   const [assistantBusy, setAssistantBusy] = useState(false);
-  const [assistantFeedback, setAssistantFeedback] = useState('');
+  const { toasts, showToast } = useToast();
 
   useEffect(() => {
     setGuideForm(guideCatFormStateFromRecord(guideCat));
@@ -149,22 +149,19 @@ export function SettingsAssistants({
 
   const handleSaveGuide = useCallback(async () => {
     setGuideBusy(true);
-    setGuideFeedback('');
     try {
       const nextGuideCat = await saveGuideConfig();
       onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
       dispatchPlatformEnvelopeRefresh();
-      setGuideFeedback('Saved.');
     } catch (error) {
-      setGuideFeedback(error instanceof Error ? error.message : 'Failed to save Guide Cat.');
+      showToast(error instanceof Error ? error.message : 'Failed to save Guide Cat.');
     } finally {
       setGuideBusy(false);
     }
-  }, [onPayloadUpdate, payload, saveGuideConfig]);
+  }, [onPayloadUpdate, payload, saveGuideConfig, showToast]);
 
   const handleEnableGuide = useCallback(async () => {
     setGuideBusy(true);
-    setGuideFeedback('');
     try {
       let nextGuideCat = guideCat;
       if (!nextGuideCat) {
@@ -178,35 +175,31 @@ export function SettingsAssistants({
       }
       onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
       dispatchPlatformEnvelopeRefresh();
-      setGuideFeedback('Guide Cat enabled.');
     } catch (error) {
-      setGuideFeedback(error instanceof Error ? error.message : 'Failed to enable Guide Cat.');
+      showToast(error instanceof Error ? error.message : 'Failed to enable Guide Cat.');
     } finally {
       setGuideBusy(false);
     }
-  }, [guideCat, onPayloadUpdate, patchGuideStatus, payload, saveGuideConfig]);
+  }, [guideCat, onPayloadUpdate, patchGuideStatus, payload, saveGuideConfig, showToast]);
 
   const handleDisableGuide = useCallback(async () => {
     if (!guideCat) {
       return;
     }
     setGuideBusy(true);
-    setGuideFeedback('');
     try {
       const nextGuideCat = await patchGuideStatus('dismissed');
       onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
       dispatchPlatformEnvelopeRefresh();
-      setGuideFeedback('Guide Cat disabled.');
     } catch (error) {
-      setGuideFeedback(error instanceof Error ? error.message : 'Failed to disable Guide Cat.');
+      showToast(error instanceof Error ? error.message : 'Failed to disable Guide Cat.');
     } finally {
       setGuideBusy(false);
     }
-  }, [guideCat, onPayloadUpdate, patchGuideStatus, payload]);
+  }, [guideCat, onPayloadUpdate, patchGuideStatus, payload, showToast]);
 
   const handleSelectAssistant = useCallback((assistantId: string | null) => {
     setSelectedAssistantId(assistantId);
-    setAssistantFeedback('');
     if (assistantId === null) {
       setAssistantForm(assistantPresetFormStateFromRecord(null));
     }
@@ -214,7 +207,6 @@ export function SettingsAssistants({
 
   const handleSaveAssistant = useCallback(async () => {
     setAssistantBusy(true);
-    setAssistantFeedback('');
     const isEditing = Boolean(selectedAssistant);
     try {
       const response = await fetch(
@@ -248,20 +240,18 @@ export function SettingsAssistants({
       onPayloadUpdate({ ...payload, assistantPresets: result.assistants });
       setSelectedAssistantId(result.assistant.id);
       setAssistantForm(assistantPresetFormStateFromRecord(result.assistant));
-      setAssistantFeedback(isEditing ? 'Assistant updated.' : 'Assistant saved.');
     } catch (error) {
-      setAssistantFeedback(error instanceof Error ? error.message : 'Failed to save assistant.');
+      showToast(error instanceof Error ? error.message : 'Failed to save assistant.');
     } finally {
       setAssistantBusy(false);
     }
-  }, [assistantForm, onPayloadUpdate, payload, selectedAssistant]);
+  }, [assistantForm, onPayloadUpdate, payload, selectedAssistant, showToast]);
 
   const handleDeleteAssistant = useCallback(async () => {
     if (!selectedAssistant) {
       return;
     }
     setAssistantBusy(true);
-    setAssistantFeedback('');
     try {
       const response = await fetch(`/api/platform/assistants/${selectedAssistant.id}`, {
         method: 'DELETE',
@@ -280,13 +270,12 @@ export function SettingsAssistants({
       onPayloadUpdate({ ...payload, assistantPresets: result.assistants });
       setSelectedAssistantId(null);
       setAssistantForm(assistantPresetFormStateFromRecord(null));
-      setAssistantFeedback('Assistant removed.');
     } catch (error) {
-      setAssistantFeedback(error instanceof Error ? error.message : 'Failed to remove assistant.');
+      showToast(error instanceof Error ? error.message : 'Failed to remove assistant.');
     } finally {
       setAssistantBusy(false);
     }
-  }, [onPayloadUpdate, payload, selectedAssistant]);
+  }, [onPayloadUpdate, payload, selectedAssistant, showToast]);
 
   return (
     <div className="catsLayout">
@@ -356,7 +345,6 @@ export function SettingsAssistants({
             hideMakeBoss
             hideProductToggles
           />
-          {guideFeedback ? <p className="feedbackText">{guideFeedback}</p> : null}
           <div className="settingsActionRow">
             {!guideCatEnabled ? (
               <button
@@ -483,7 +471,6 @@ export function SettingsAssistants({
             hideMakeBoss
             hideProductToggles
           />
-          {assistantFeedback ? <p className="feedbackText">{assistantFeedback}</p> : null}
           <div className="settingsActionRow">
             <button
               className="primaryButton"
@@ -518,6 +505,7 @@ export function SettingsAssistants({
           </div>
         </div>
       </section>
+      <ToastContainer toasts={toasts} />
     </div>
   );
 }

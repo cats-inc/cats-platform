@@ -871,7 +871,6 @@ export default function App() {
               />
             )}
             settingsMode={settingsMode}
-            feedback={feedback}
             busy={busy}
             appContent={(
               <AppRoutes

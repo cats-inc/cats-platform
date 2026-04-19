@@ -1041,7 +1041,6 @@ export function createWorkspaceProductApp({
                 navigate,
               })}
               settingsMode={settingsMode}
-              feedback={feedback}
               busy={busy}
               appContent={(
                 <AppRoutesComponent

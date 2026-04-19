@@ -165,7 +165,7 @@ order.
 // `header` is required by default; pages opt out of a header by passing
 // `headerless` so the omission is always a deliberate choice.
 type SettingsSectionProps =
-  | (SettingsSectionCommonProps & { header: ReactNode; headerless?: false })
+  | (SettingsSectionCommonProps & { header: ReactElement; headerless?: false })
   | (SettingsSectionCommonProps & { headerless: true; header?: never });
 
 interface SettingsSectionCommonProps {

@@ -7,14 +7,12 @@ import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsDataProps {
   payload: AppShellPayload;
-  feedback: string;
   busy: WorkspaceBusyState;
   onResetSetup: () => void;
 }
 
 export function PlatformSettingsData({
   payload,
-  feedback,
   busy,
   onResetSetup,
 }: PlatformSettingsDataProps) {
@@ -40,7 +38,6 @@ export function PlatformSettingsData({
           {resetBusy ? 'Resetting...' : 'Reset all data'}
         </button>
       </div>
-      {feedback ? <p className="feedbackText">{feedback}</p> : null}
     </PlatformSettingsShell>
   );
 }

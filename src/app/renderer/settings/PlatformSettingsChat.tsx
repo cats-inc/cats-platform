@@ -4,6 +4,7 @@ import type {
   AppShellPayload,
   ConcurrentChatPresentationMode,
 } from '../../../products/shared/api/workspaceContracts.js';
+import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
   updateConcurrentPresentationModePreference,
   updateLiveProgressDetailsPreference,
@@ -13,17 +14,15 @@ import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsChatProps {
   payload: AppShellPayload;
-  feedback: string;
   onPayloadUpdate: (payload: AppShellPayload) => void;
-  onFeedback: (message: string) => void;
 }
 
 export function PlatformSettingsChat({
   payload,
-  feedback,
   onPayloadUpdate,
-  onFeedback,
 }: PlatformSettingsChatProps) {
+  const { toasts, showToast } = useToast();
+
   async function toggleVerboseMessages(): Promise<void> {
     const show = !payload.chat.showVerboseMessages;
     onPayloadUpdate({
@@ -33,13 +32,12 @@ export function PlatformSettingsChat({
     try {
       const next = await updateVerbosePreference(show);
       startTransition(() => onPayloadUpdate(next));
-      onFeedback('');
     } catch (error) {
       onPayloadUpdate({
         ...payload,
         chat: { ...payload.chat, showVerboseMessages: !show },
       });
-      onFeedback(error instanceof Error ? error.message : 'Failed to update preference');
+      showToast(error instanceof Error ? error.message : 'Failed to update preference');
     }
   }
 
@@ -52,13 +50,12 @@ export function PlatformSettingsChat({
     try {
       const next = await updateLiveProgressDetailsPreference(show);
       startTransition(() => onPayloadUpdate(next));
-      onFeedback('');
     } catch (error) {
       onPayloadUpdate({
         ...payload,
         chat: { ...payload.chat, showLiveProgressDetails: !show },
       });
-      onFeedback(error instanceof Error ? error.message : 'Failed to update preference');
+      showToast(error instanceof Error ? error.message : 'Failed to update preference');
     }
   }
 
@@ -71,13 +68,12 @@ export function PlatformSettingsChat({
     try {
       const next = await updateConcurrentPresentationModePreference(mode);
       startTransition(() => onPayloadUpdate(next));
-      onFeedback('');
     } catch (error) {
       onPayloadUpdate({
         ...payload,
         chat: { ...payload.chat, concurrentPresentationMode: previous },
       });
-      onFeedback(error instanceof Error ? error.message : 'Failed to update preference');
+      showToast(error instanceof Error ? error.message : 'Failed to update preference');
     }
   }
 
@@ -128,7 +124,7 @@ export function PlatformSettingsChat({
         </p>
       </div>
 
-      {feedback ? <p className="feedbackText">{feedback}</p> : null}
+      <ToastContainer toasts={toasts} />
     </PlatformSettingsShell>
   );
 }

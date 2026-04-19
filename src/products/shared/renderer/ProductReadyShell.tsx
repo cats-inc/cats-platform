@@ -16,7 +16,6 @@ export interface ProductReadyShellProps<
   sidebarOpen: boolean;
   sidebar: ReactNode;
   settingsMode: boolean;
-  feedback: string;
   busy: WorkspaceBusyState;
   appContent: ReactNode;
   confirmDialog: { options: ConfirmDialogOptions } | null;
@@ -32,7 +31,6 @@ export function ProductReadyShell<TPayload extends WorkspaceAppShellPayload>({
   sidebarOpen,
   sidebar,
   settingsMode,
-  feedback,
   busy,
   appContent,
   confirmDialog,
@@ -50,7 +48,6 @@ export function ProductReadyShell<TPayload extends WorkspaceAppShellPayload>({
         <PlatformSettingsRoutes
           payload={payload}
           onPayloadUpdate={onPayloadUpdate}
-          feedback={feedback}
           busy={busy}
           onFeedback={onFeedback}
           onBusy={onBusy}
