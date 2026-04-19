@@ -153,7 +153,7 @@ export interface WorkspaceNewChatDraftProps {
   composerHeaderWhereExtras?: ReactNode;
   composerFooterAccessory?: ReactNode;
   draftCustomRegion?: ReactNode;
-  modeTag?: ReactNode;
+  surfaceTag?: ReactNode;
   chooseFolderPlacement?: 'header' | 'plusMenu';
   ComposerCatStackComponent: ComponentType<ComposerCatStackProps>;
   ProviderModelFieldsComponent: ComponentType<ProviderModelFieldsProps>;
@@ -211,7 +211,7 @@ export function WorkspaceNewChatDraft({
   composerHeaderWhereExtras = null,
   composerFooterAccessory = null,
   draftCustomRegion = null,
-  modeTag = null,
+  surfaceTag = null,
   chooseFolderPlacement = 'header',
   ComposerCatStackComponent,
   ProviderModelFieldsComponent,
@@ -293,10 +293,10 @@ export function WorkspaceNewChatDraft({
         {draftCustomRegion ? (
           <div className="draftCustomRegion">{draftCustomRegion}</div>
         ) : null}
-        {(modeTag || draftCwd || chooseFolderPlacement === 'header' || composerHeaderWhereExtras || composerHeaderAccessory) ? (
+        {(surfaceTag || draftCwd || chooseFolderPlacement === 'header' || composerHeaderWhereExtras || composerHeaderAccessory) ? (
           <div className="composerHeaderRow">
             <div className="composerHeaderLeft">
-              {modeTag}
+              {surfaceTag}
               {draftCwd ? (
                 <span
                   className="composerCwdChip composerCwdClickable"

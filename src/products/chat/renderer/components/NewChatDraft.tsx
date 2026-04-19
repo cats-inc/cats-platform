@@ -4,15 +4,13 @@ import {
   NewChatDraft as SharedChatNewChatDraft,
   type NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
-import {
-  ComposerModeChip,
-  type ComposerMode,
-} from '../../../shared/renderer/components/ComposerModeChip.js';
+import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import {
   DEFAULT_PERMISSION_MODE,
   PermissionModeChip,
 } from '../../../shared/renderer/components/PermissionModeChip.js';
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
 
 export type { NewChatDraftProps };
@@ -20,7 +18,7 @@ export type { NewChatDraftProps };
 const POMODORO_PROMPT = 'Write a small pomodoro timer app.';
 
 export function NewChatDraft(props: NewChatDraftProps) {
-  const [draftMode, setDraftMode] = useState<ComposerMode>('chat');
+  const [draftSurface, setDraftSurface] = useState<PlatformSurfaceId>('chat');
   const codeChips = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
@@ -28,10 +26,10 @@ export function NewChatDraft(props: NewChatDraftProps) {
     onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
   });
 
-  const isCodeMode = draftMode === 'code';
+  const isCodeSurface = draftSurface === 'code';
 
-  const modeTag: ReactNode = draftMode !== 'chat' ? (
-    <ComposerModeChip mode={draftMode} onDismiss={() => setDraftMode('chat')} />
+  const surfaceTag: ReactNode = draftSurface !== 'chat' ? (
+    <ComposerSurfaceChip surface={draftSurface} onDismiss={() => setDraftSurface('chat')} />
   ) : null;
 
   const leadingStarterChips = [
@@ -40,24 +38,24 @@ export function NewChatDraft(props: NewChatDraftProps) {
       label: 'Pomodoro app',
       onClick: () => {
         props.onComposerChange(POMODORO_PROMPT);
-        setDraftMode('code');
+        setDraftSurface('code');
       },
     },
   ];
 
-  const composerHeaderAccessory = isCodeMode
+  const composerHeaderAccessory = isCodeSurface
     ? codeChips.permissionChip
     : buildChatPermissionChip(props);
-  const composerHeaderWhereExtras = isCodeMode ? codeChips.whereExtras : null;
-  const chooseFolderPlacement = isCodeMode ? 'header' : 'plusMenu';
-  const folderActionLabel = isCodeMode ? 'Choose workspace' : 'Choose folder';
+  const composerHeaderWhereExtras = isCodeSurface ? codeChips.whereExtras : null;
+  const chooseFolderPlacement = isCodeSurface ? 'header' : 'plusMenu';
+  const folderActionLabel = isCodeSurface ? 'Choose workspace' : 'Choose folder';
 
   return (
     <SharedChatNewChatDraft
       {...props}
       composerHeaderAccessory={composerHeaderAccessory}
       composerHeaderWhereExtras={composerHeaderWhereExtras}
-      modeTag={modeTag}
+      surfaceTag={surfaceTag}
       chooseFolderPlacement={chooseFolderPlacement}
       folderActionLabel={folderActionLabel}
       leadingStarterChips={leadingStarterChips}

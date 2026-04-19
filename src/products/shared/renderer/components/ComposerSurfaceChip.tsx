@@ -1,20 +1,20 @@
 import type { ReactNode } from 'react';
 
-export type ComposerMode = 'chat' | 'code' | 'work';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 
-export interface ComposerModeChipProps {
-  mode: ComposerMode;
+export interface ComposerSurfaceChipProps {
+  surface: PlatformSurfaceId;
   onDismiss?: () => void;
   disabled?: boolean;
 }
 
-const MODE_LABELS: Record<ComposerMode, string> = {
+const SURFACE_LABELS: Record<PlatformSurfaceId, string> = {
   chat: 'Chat',
   code: 'Code',
   work: 'Work',
 };
 
-function renderModeIcon(mode: ComposerMode): ReactNode {
+function renderSurfaceIcon(surface: PlatformSurfaceId): ReactNode {
   const common = {
     width: 12,
     height: 12,
@@ -25,7 +25,7 @@ function renderModeIcon(mode: ComposerMode): ReactNode {
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
   };
-  if (mode === 'code') {
+  if (surface === 'code') {
     return (
       <svg {...common} aria-hidden="true">
         <path d="M5 4L2 8l3 4" />
@@ -34,7 +34,7 @@ function renderModeIcon(mode: ComposerMode): ReactNode {
       </svg>
     );
   }
-  if (mode === 'work') {
+  if (surface === 'work') {
     return (
       <svg {...common} aria-hidden="true">
         <rect x="2" y="5" width="12" height="8" rx="1.5" />
@@ -49,11 +49,11 @@ function renderModeIcon(mode: ComposerMode): ReactNode {
   );
 }
 
-export function ComposerModeChip({ mode, onDismiss, disabled = false }: ComposerModeChipProps) {
-  const label = MODE_LABELS[mode];
+export function ComposerSurfaceChip({ surface, onDismiss, disabled = false }: ComposerSurfaceChipProps) {
+  const label = SURFACE_LABELS[surface];
   return (
-    <span className={`composerModeChip composerModeChip${capitalize(mode)}`}>
-      {renderModeIcon(mode)}
+    <span className={`composerSurfaceChip composerSurfaceChip${capitalize(surface)}`}>
+      {renderSurfaceIcon(surface)}
       <span>{label}</span>
       {onDismiss ? (
         <button
@@ -61,7 +61,7 @@ export function ComposerModeChip({ mode, onDismiss, disabled = false }: Composer
           className="composerChipClose"
           disabled={disabled}
           onClick={onDismiss}
-          aria-label={`Clear ${label} mode`}
+          aria-label={`Clear ${label} surface`}
         >
           &times;
         </button>

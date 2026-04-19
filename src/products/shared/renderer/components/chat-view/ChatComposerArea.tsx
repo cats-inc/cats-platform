@@ -45,7 +45,7 @@ export interface ChatComposerAreaProps {
   composerHeaderAccessory?: ReactNode;
   composerHeaderWhereExtras?: ReactNode;
   composerFooterAccessory?: ReactNode;
-  modeTag?: ReactNode;
+  surfaceTag?: ReactNode;
   onOpenSection: (section: string) => void;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -92,7 +92,7 @@ export function ChatComposerArea({
   composerHeaderAccessory,
   composerHeaderWhereExtras,
   composerFooterAccessory,
-  modeTag,
+  surfaceTag,
   onOpenSection,
   onComposerChange,
   onComposerKeyDown,
@@ -133,10 +133,10 @@ export function ChatComposerArea({
 
   return (
     <div className={stackClassName}>
-    {(modeTag || composerWorkspacePath || composerHeaderAccessory || composerHeaderWhereExtras) ? (
+    {(surfaceTag || composerWorkspacePath || composerHeaderAccessory || composerHeaderWhereExtras) ? (
       <div className="composerHeaderRow">
         <div className="composerHeaderLeft">
-          {modeTag}
+          {surfaceTag}
           {composerWorkspacePath ? (
             <span
               className="composerCwdChip composerCwdClickable"

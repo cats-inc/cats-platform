@@ -773,7 +773,7 @@
   cursor: not-allowed;
 }
 
-.composerModeChip {
+.composerSurfaceChip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -790,23 +790,23 @@
   white-space: nowrap;
 }
 
-.composerModeChip > span {
+.composerSurfaceChip > span {
   padding-right: 2px;
 }
 
-.composerModeChipCode {
+.composerSurfaceChipCode {
   background: rgba(95, 135, 240, 0.12);
   color: #3856a0;
   border-color: rgba(95, 135, 240, 0.25);
 }
 
-.composerModeChipWork {
+.composerSurfaceChipWork {
   background: rgba(176, 132, 72, 0.12);
   color: #7a5428;
   border-color: rgba(176, 132, 72, 0.3);
 }
 
-.composerModeChipChat {
+.composerSurfaceChipChat {
   background: rgba(120, 120, 120, 0.1);
   color: var(--muted);
 }

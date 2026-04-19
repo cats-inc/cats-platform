@@ -15,7 +15,7 @@ import {
   type ChatViewProps,
 } from './components/ChatView.js';
 import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
-import { ComposerModeChip } from '../../shared/renderer/components/ComposerModeChip.js';
+import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
 import { CodeRelayView } from './components/CodeRelayView.js';
@@ -120,7 +120,7 @@ export function AppRoutes({
         renderComposerHeaderWhereExtras={(ctx) => (
           <ActiveCodeComposerChips channel={ctx.selectedChannel} placement="where" />
         )}
-        renderComposerModeTag={() => <ComposerModeChip mode="code" />}
+        renderComposerSurfaceTag={() => <ComposerSurfaceChip surface="code" />}
       />
     ),
     renderNewChatDraft: (options) => (

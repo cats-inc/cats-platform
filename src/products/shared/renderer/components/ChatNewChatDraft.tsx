@@ -104,7 +104,7 @@ export interface NewChatDraftProps {
   composerHeaderWhereExtras?: ReactNode;
   composerFooterAccessory?: ReactNode;
   draftCustomRegion?: ReactNode;
-  modeTag?: ReactNode;
+  surfaceTag?: ReactNode;
   folderActionLabel?: string;
   chooseFolderPlacement?: 'header' | 'plusMenu';
   leadingStarterChips?: ReadonlyArray<{
@@ -177,7 +177,7 @@ export function NewChatDraft({
   composerHeaderWhereExtras = null,
   composerFooterAccessory = null,
   draftCustomRegion = null,
-  modeTag = null,
+  surfaceTag = null,
   folderActionLabel = 'Choose folder',
   chooseFolderPlacement = 'header',
   leadingStarterChips,
@@ -336,10 +336,10 @@ export function NewChatDraft({
         {draftCustomRegion ? (
           <div className="draftCustomRegion">{draftCustomRegion}</div>
         ) : null}
-        {(modeTag || draftCwd || chooseFolderPlacement === 'header' || composerHeaderWhereExtras || composerHeaderAccessory) ? (
+        {(surfaceTag || draftCwd || chooseFolderPlacement === 'header' || composerHeaderWhereExtras || composerHeaderAccessory) ? (
           <div className="composerHeaderRow">
             <div className="composerHeaderLeft">
-              {modeTag}
+              {surfaceTag}
               {draftCwd ? (
                 <span
                   className="composerCwdChip composerCwdClickable"

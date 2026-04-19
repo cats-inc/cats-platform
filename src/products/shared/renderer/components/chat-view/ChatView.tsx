@@ -252,7 +252,7 @@ export interface ChatViewProps {
   renderComposerHeaderAccessory?: (context: ChatViewRenderContext) => ReactNode;
   renderComposerHeaderWhereExtras?: (context: ChatViewRenderContext) => ReactNode;
   renderComposerFooterAccessory?: (context: ChatViewRenderContext) => ReactNode;
-  renderComposerModeTag?: (context: ChatViewRenderContext) => ReactNode;
+  renderComposerSurfaceTag?: (context: ChatViewRenderContext) => ReactNode;
   buildSidePanelSections?: (
     options: BuildChatSidePanelSectionsOptions,
   ) => SidePanelSection[];
@@ -316,7 +316,7 @@ export function ChatView({
   renderComposerHeaderAccessory,
   renderComposerHeaderWhereExtras,
   renderComposerFooterAccessory,
-  renderComposerModeTag,
+  renderComposerSurfaceTag,
   buildSidePanelSections,
   sidePanelTitle = 'Chat Setup',
 }: ChatViewProps) {
@@ -977,7 +977,7 @@ export function ChatView({
   const composerHeaderAccessory = renderComposerHeaderAccessory?.(viewContext) ?? null;
   const composerHeaderWhereExtras = renderComposerHeaderWhereExtras?.(viewContext) ?? null;
   const composerFooterAccessory = renderComposerFooterAccessory?.(viewContext) ?? null;
-  const composerModeTag = renderComposerModeTag?.(viewContext) ?? null;
+  const composerSurfaceTag = renderComposerSurfaceTag?.(viewContext) ?? null;
 
   function navigateCompareMember(direction: 'prev' | 'next'): void {
     const channelId = direction === 'prev' ? comparePrevChannelId : compareNextChannelId;
@@ -1145,7 +1145,7 @@ export function ChatView({
         composerHeaderAccessory={composerHeaderAccessory}
         composerHeaderWhereExtras={composerHeaderWhereExtras}
         composerFooterAccessory={composerFooterAccessory}
-        modeTag={composerModeTag}
+        surfaceTag={composerSurfaceTag}
         onOpenSection={openSidePanelTo}
         onComposerChange={onComposerChange}
         onComposerKeyDown={onComposerKeyDown}

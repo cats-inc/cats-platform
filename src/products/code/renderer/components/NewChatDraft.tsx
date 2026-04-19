@@ -7,7 +7,7 @@ import {
   type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
-import { ComposerModeChip } from '../../../shared/renderer/components/ComposerModeChip.js';
+import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import {
   fingerprintDraftHelperChips,
   useDraftHelperChipVisibility,
@@ -132,7 +132,7 @@ function CodeGroupParallelDraft(props: NewChatDraftProps) {
       {...props}
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
-      modeTag={<ComposerModeChip mode="code" />}
+      surfaceTag={<ComposerSurfaceChip surface="code" />}
       folderActionLabel={NEW_CODE_DRAFT_COPY.folderActionLabel}
     />
   );
@@ -171,7 +171,7 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
       copy={NEW_CODE_DRAFT_COPY}
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
-      modeTag={<ComposerModeChip mode="code" />}
+      surfaceTag={<ComposerSurfaceChip surface="code" />}
     />
   );
 }

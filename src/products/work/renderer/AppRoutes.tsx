@@ -15,7 +15,7 @@ import {
   type ChatViewProps,
 } from './components/ChatView.js';
 import { ActiveSessionPermissionChip } from '../../shared/renderer/components/ActiveSessionPermissionChip.js';
-import { ComposerModeChip } from '../../shared/renderer/components/ComposerModeChip.js';
+import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import { IntakeForm } from './components/IntakeForm.js';
 import {
   NewChatDraft,
@@ -110,7 +110,7 @@ export function AppRoutes({
         renderComposerHeaderAccessory={(ctx) => (
           <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
         )}
-        renderComposerModeTag={() => <ComposerModeChip mode="work" />}
+        renderComposerSurfaceTag={() => <ComposerSurfaceChip surface="work" />}
       />
     ),
     renderNewChatDraft: (options) => (
