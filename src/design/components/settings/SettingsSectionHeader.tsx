@@ -16,25 +16,33 @@ export function SettingsSectionHeader({
   nested = false,
 }: SettingsSectionHeaderProps) {
   const TitleTag = nested ? 'h3' : 'h2';
+  const hasInnerWrap = Boolean(eyebrow);
+  const titleNode = (
+    <TitleTag
+      className="settings-section-header__title"
+      data-nested={nested ? 'true' : undefined}
+    >
+      {title}
+    </TitleTag>
+  );
   return (
-    <header className="settings-section-header">
-      <div>
-        {eyebrow ? (
-          <p className="settings-section-header__eyebrow">{eyebrow}</p>
+    <>
+      <header className="contentCardHeader settings-section-header">
+        {hasInnerWrap ? (
+          <div>
+            <p className="settings-section-header__eyebrow">{eyebrow}</p>
+            {titleNode}
+          </div>
+        ) : (
+          titleNode
+        )}
+        {status ? (
+          <span className="settings-section-header__status">{status}</span>
         ) : null}
-        <TitleTag
-          className="settings-section-header__title"
-          data-nested={nested ? 'true' : undefined}
-        >
-          {title}
-        </TitleTag>
-        {description ? (
-          <p className="settings-section-header__description">{description}</p>
-        ) : null}
-      </div>
-      {status ? (
-        <span className="settings-section-header__status">{status}</span>
+      </header>
+      {description ? (
+        <p className="heroNote settings-section-header__description">{description}</p>
       ) : null}
-    </header>
+    </>
   );
 }
