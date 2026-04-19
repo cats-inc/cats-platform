@@ -58,6 +58,19 @@ function NewChatDraftInner(props: NewChatDraftProps) {
         label: 'Pomodoro app',
         onClick: () => {
           props.onComposerChange(POMODORO_PROMPT);
+          // TODO(cross-surface-dispatch): setDraftSurface('code') only flips
+          // local UI (ComposerSurfaceChip, WHERE header, Choose workspace).
+          // Send still goes through chat's useComposerSubmit at
+          //   chat/renderer/hooks/useComposerSubmit.ts (hardcoded
+          //   originSurface: 'chat' at ~:310 and ~:422)
+          // and lands at chat/shared/channelPaths.ts:buildChannelPath =>
+          // /chat/chats/<id>, not /code/<id>. A proper fix needs:
+          //   1. chat submit to detect draftSurface and dispatch to the
+          //      target product's create API (not chat's createChatChannel)
+          //   2. navigate to the target surface's buildChannelPath
+          //   3. prefetch the target product bundle on surface switch to
+          //      cover the React.lazy gap in app/renderer/App.tsx
+          // Tracked in ROADMAP.md Phase 5 (Cats Work/Code Launch Track).
           setDraftSurface('code');
         },
       },

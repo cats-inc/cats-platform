@@ -581,6 +581,24 @@ contracts.
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when
       the compatibility fallback can safely be removed
+- [ ] Wire cross-surface dispatch for chat-draft surface switches so that
+      flipping `+New chat`'s draft surface (currently chat -> code via the
+      seeded Pomodoro helper chip, later more entries) actually creates a
+      channel on the target product and navigates to its route, instead of
+      staying a UI-only preview. Today `chat/renderer/components/NewChatDraft.tsx`
+      only mutates a local `draftSurface` state that re-skins the composer
+      (ComposerSurfaceChip, WHERE header, Choose workspace), while send still
+      flows through `chat/renderer/hooks/useComposerSubmit.ts` with
+      `originSurface: 'chat'` hardcoded (~line 310 for parallel drafts,
+      ~line 422 for the general submit) and lands at
+      `chat/shared/channelPaths.ts:buildChannelPath` -> `/chat/chats/<id>`,
+      never on `/code/<id>`. Needs: chat composer submit to branch on
+      `draftSurface` into the target product's create API without violating
+      product boundaries (likely a shared dispatcher or a server-side unified
+      `create conversation` endpoint keyed by `targetSurface`), redirect to
+      the target surface's `buildChannelPath`, and prefetch the target
+      product bundle on surface switch to cover the `React.lazy` gap in
+      `app/renderer/App.tsx`.
 - [ ] Re-enable `Cats Code` recents on top of the same product-scoped
       `originSurface` filter, and only then evaluate whether Chat/Work/Code
       also need an explicit secondary cross-product `All recents` lens instead
@@ -633,4 +651,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-17*
+*Last updated: 2026-04-20*
