@@ -1780,6 +1780,7 @@ test('renderer styles compose a shared design layer with chat-owned companion ov
   assert.match(panelStylesSource, /\.feedbackText/u);
   assert.match(formsStylesSource, /\.fieldLabel/u);
   assert.match(formsStylesSource, /\.sendButton/u);
+  assert.match(formsStylesSource, /\.dangerButton/u);
   assert.match(sidebarChromeStylesSource, /\.sidebarFooter/u);
   assert.match(sidebarChromeStylesSource, /\.profileBadge/u);
   assert.match(menuStylesSource, /\.accountMenu/u);
@@ -1790,7 +1791,7 @@ test('renderer styles compose a shared design layer with chat-owned companion ov
   assert.match(operatorChromeStylesSource, /\.operatorStatusBadge/u);
   assert.match(placeholderStylesSource, /\.productPlaceholderSurface/u);
   assert.match(settingsShellStylesSource, /\.settingsShell/u);
-  assert.match(settingsShellStylesSource, /\.dangerButton/u);
+  assert.doesNotMatch(settingsShellStylesSource, /\.dangerButton/u);
   assert.match(stylesIndexSource, /@import '\.\.\/\.\.\/shared\/renderer\/styles\.css';/u);
   assert.match(stylesIndexSource, /@import '\.\/styles\/chat-companion\.css';/u);
   assert.doesNotMatch(stylesIndexSource, /@import '\.\/styles\/base\.css';/u);

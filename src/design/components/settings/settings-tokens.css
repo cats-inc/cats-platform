@@ -1,0 +1,41 @@
+/* Settings-scoped semantic tokens.
+ * Source of truth for Settings-only spacing, radius, and type scales.
+ * Map to primitive tokens from design/tokens.css, spacing.css, typography.css.
+ * Change a value here to propagate to every Settings page.
+ * Contract: SPEC-073 / ADR-072. */
+:root {
+  /* Spacing */
+  --settings-card-padding: var(--space-4);
+  --settings-section-gap: var(--space-4);
+  --settings-row-gap: var(--space-3);
+  --settings-row-padding-y: 14px;
+  --settings-action-gap: var(--space-2);
+
+  /* Radius */
+  --settings-radius-sm: 10px;
+  --settings-radius-md: 12px;
+  --settings-radius-lg: 16px;
+  --settings-radius-pill: 999px;
+
+  /* Type */
+  --settings-page-title-size: 1.4rem;
+  --settings-title-size: 1.1rem;
+  --settings-subtitle-size: 1rem;
+  --settings-eyebrow-size: 0.73rem;
+  --settings-label-size: var(--text-sm);
+  --settings-body-size: var(--text-base);
+  --settings-hint-size: var(--text-xs);
+  --settings-eyebrow-tracking: 0.04em;
+
+  /* Shadow */
+  --settings-card-shadow: var(--shadow);
+
+  /* Color aliases (no new values) */
+  --settings-text: var(--text);
+  --settings-text-muted: var(--muted);
+  --settings-border: var(--border);
+  --settings-surface: var(--panel);
+  --settings-surface-hover: var(--panel-hover);
+  --settings-danger: var(--danger);
+  --settings-danger-hover: var(--danger-hover);
+}

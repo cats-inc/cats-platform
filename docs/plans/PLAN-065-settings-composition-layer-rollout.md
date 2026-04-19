@@ -1,4 +1,4 @@
-# PLAN-064: Settings Composition Layer Rollout
+# PLAN-065: Settings Composition Layer Rollout
 
 > Phased rollout of the six Settings primitives, Settings-scoped tokens,
 > and CSS dedupe defined in SPEC-073 / ADR-072. Structured so each phase
@@ -61,7 +61,7 @@ clean up duplicate CSS so existing pages show no regression.
       - `SettingsActionBar.tsx`
       - `SettingsStatusChip.tsx`
       - `SettingsDangerZone.tsx`
-      - `index.ts` (barrel)
+      - `index.tsx` (barrel)
 - [ ] **1.5** Create `src/design/components/settings/README.md`
       with casing rules + one usage example per primitive
 - [ ] **1.6** Dedupe `.dangerButton`:
@@ -193,7 +193,7 @@ duplicated pattern with bare CSS classes where a primitive exists.
 
 ### Created
 
-- `src/design/components/settings/index.ts`
+- `src/design/components/settings/index.tsx`
 - `src/design/components/settings/README.md`
 - `src/design/components/settings/settings-tokens.css`
 - `src/design/components/settings/settings.css`

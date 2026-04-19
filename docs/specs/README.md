@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-073](./SPEC-073-settings-composition-layer.md) | Settings UI Composition Layer | Draft | [PLAN-065](../plans/PLAN-065-settings-composition-layer-rollout.md), [ADR-072](../decisions/072-settings-composition-layer-in-design.md) |
 | [SPEC-072](./SPEC-072-runtime-session-policy-boundary-validation.md) | Runtime Session Policy Boundary Validation | In Progress (First Slice Landed) | [PLAN-062](../plans/PLAN-062-runtime-session-policy-boundary-hardening.md), [ADR-071](../decisions/071-reject-invalid-runtime-session-policy-combinations-at-create-boundary.md) |
 | [SPEC-071](./SPEC-071-guide-cat-placement-and-shared-chrome-docking.md) | Guide Cat Placement and Shared-Chrome Docking | Draft | [PLAN-061](../plans/PLAN-061-guide-cat-placement-and-shared-chrome-docking-rollout.md), [ADR-070](../decisions/070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model.md) |
 | [SPEC-070](./SPEC-070-product-scoped-recents-and-channel-origin-surfaces.md) | Product-Scoped Recents and Channel Origin Surfaces | In Progress (First Slice Landed) | [PLAN-060](../plans/PLAN-060-product-scoped-recents-and-origin-surface-rollout.md), [ADR-069](../decisions/069-scope-recents-to-channel-origin-surface-by-default.md) |

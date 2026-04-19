@@ -1,0 +1,159 @@
+/* Settings composition class contract.
+ * Paired with React primitives in src/design/components/settings/*.tsx.
+ * See SPEC-073 for the written contract.
+ *
+ * During migration, primitives also render legacy class names
+ * (.contentCard, .settingsActionRow, .settingsCheckboxRow, .statusChip*)
+ * so unchanged CSS keeps rendering. Later phases can retire the legacy
+ * class names once every Settings call-site uses a primitive.
+ */
+
+/* ─── Section ─────────────────────────────────────────────────────────── */
+
+.settings-section {
+  padding: var(--settings-card-padding);
+  border-radius: var(--settings-radius-lg);
+  border: 1px solid var(--settings-border);
+  background: var(--settings-surface);
+  box-shadow: var(--settings-card-shadow);
+}
+
+.settings-section[data-variant='form'] {
+  align-self: start;
+}
+
+/* ─── Section header ──────────────────────────────────────────────────── */
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+
+.settings-section-header__eyebrow {
+  margin: 0 0 8px;
+  color: var(--muted-soft);
+  font-size: var(--settings-eyebrow-size);
+  font-weight: 600;
+  letter-spacing: var(--settings-eyebrow-tracking);
+  text-transform: uppercase;
+}
+
+.settings-section-header__title {
+  margin: 0;
+  font-size: var(--settings-title-size);
+  font-weight: 600;
+}
+
+.settings-section-header__title[data-nested='true'] {
+  font-size: var(--settings-subtitle-size);
+}
+
+.settings-section-header__description {
+  margin: 4px 0 0;
+  color: var(--settings-text-muted);
+  font-size: var(--settings-body-size);
+}
+
+.settings-section-header__status {
+  margin-left: auto;
+}
+
+/* ─── Option row ──────────────────────────────────────────────────────── */
+
+.settings-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--settings-row-gap);
+}
+
+.settings-option-row[data-layout='stack'] {
+  display: grid;
+  grid-auto-flow: row;
+  gap: 6px;
+  justify-content: start;
+}
+
+.settings-option-row[data-choice='true'] {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--settings-row-gap);
+  padding: var(--settings-row-padding-y) 0;
+  border-top: 1px solid color-mix(in srgb, var(--settings-text) 8%, transparent);
+}
+
+.settings-option-row[data-choice='true']:first-of-type {
+  border-top: 0;
+}
+
+.settings-option-row__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-option-row__label {
+  font-weight: 600;
+  color: var(--settings-text);
+}
+
+.settings-option-row__description {
+  margin: 0;
+  color: var(--settings-text-muted);
+  font-size: var(--settings-body-size);
+}
+
+.settings-option-row__control {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ─── Action bar ──────────────────────────────────────────────────────── */
+
+.settings-action-bar {
+  display: flex;
+  gap: var(--settings-action-gap);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ─── Status chip ─────────────────────────────────────────────────────── */
+/* Marker class only. Visual styling comes from the existing
+ * .statusChip / .statusChipReady / .statusChipWarm / .statusChipMuted
+ * classes in design/components/badge.css. The primitive renders both
+ * the legacy classes and this marker, so `[data-tone]` can be used by
+ * future selectors without duplicating badge styles today.
+ */
+.settings-status-chip {
+  /* intentionally empty for Phase 1 */
+}
+
+/* ─── Danger zone ─────────────────────────────────────────────────────── */
+/* Inherits card styles via dual className (.contentCard + .settings-section).
+ * Phase 1 does not add red accents; red trim / danger title coloring is a
+ * Phase 3.4 decision when PlatformSettingsData migrates.
+ */
+
+.settings-danger-zone__title {
+  margin: 0;
+  font-size: var(--settings-title-size);
+  font-weight: 600;
+}
+
+.settings-danger-zone__description {
+  margin: 4px 0 0;
+  color: var(--settings-text-muted);
+  font-size: var(--settings-body-size);
+}
+
+.settings-danger-zone__actions {
+  margin-top: var(--space-3);
+  display: flex;
+  gap: var(--settings-action-gap);
+  align-items: center;
+  flex-wrap: wrap;
+}

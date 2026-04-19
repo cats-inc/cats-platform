@@ -276,7 +276,7 @@ confirms it. No commit without confirmation (see
   — extracted `src/design/` tokens and `src/design/components/`
 - [SPEC-073](../specs/SPEC-073-settings-composition-layer.md) — primitive
   prop shapes, tokens, casing rules, class contract
-- [PLAN-064](../plans/PLAN-064-settings-composition-layer-rollout.md) —
+- [PLAN-065](../plans/PLAN-065-settings-composition-layer-rollout.md) —
   phased rollout and migration order
 - [CLAUDE.md](../../CLAUDE.md) — shared visual primitives may live in
   `src/design/**`; do not upstream product-specific behavior prematurely

@@ -117,7 +117,7 @@ guide, and a dedupe pass on colliding CSS.
 
 ```
 src/design/components/settings/
-  index.ts                      — public barrel (re-exports primitives)
+  index.tsx                      — public barrel (re-exports primitives)
   README.md                     — casing rules, usage guide
   settings-tokens.css           — Settings-scoped semantic tokens
   settings.css                  — class contract (BEM-ish naming)
@@ -136,7 +136,7 @@ order.
 ### Primitive prop shapes
 
 > These are **draft** interfaces for owner review. Names are final
-> subject to PLAN-064 Phase 2 spike feedback.
+> subject to PLAN-065 Phase 2 spike feedback.
 
 ```ts
 // SettingsSection — outer card, wraps a coherent group of rows.
@@ -213,7 +213,7 @@ interface SettingsDangerZoneProps {
 
 Defined in `settings-tokens.css`. Values below are **proposals**; exact
 numbers to be reconciled against the current computed styles during
-PLAN-064 Phase 1.
+PLAN-065 Phase 1.
 
 ```css
 :root {
@@ -401,7 +401,7 @@ During migration, both the new `.settings-section` class and the legacy
 working while the new ones take over, and allows per-phase rollback to
 the old class by dropping the primitive.
 
-After all pages migrate (end of PLAN-064 Phase 4), a follow-up spec will
+After all pages migrate (end of PLAN-065 Phase 4), a follow-up spec will
 decide whether to retire the legacy class names; it is not part of this
 SPEC.
 
@@ -419,7 +419,7 @@ SPEC.
 - [ ] **Radio/checkbox semantics** — Is `asChoice` on
   `<SettingsOptionRow>` the right escape, or should we ship
   `<SettingsChoiceRow>` as a separate primitive? Proposal: ship a
-  variant now, promote only if PLAN-064 Phase 3 shows the variant is
+  variant now, promote only if PLAN-065 Phase 3 shows the variant is
   load-bearing for 2+ pages.
 - [ ] **Token parity with ADR-035** — Should `--settings-radius-lg`
   stay as `16px` (current `.contentCard`) or be promoted to a general
@@ -429,7 +429,7 @@ SPEC.
 - [ ] **`<SettingsSubSection>` timing** — Do any Phase 3 pages
   (Desktop / Chat / Runtime / Data) genuinely want a nested card, or
   can they all flatten to one level? Revisit after Phase 3.
-- [ ] **Barrel vs per-file imports** — `index.ts` barrel is convenient
+- [ ] **Barrel vs per-file imports** — `index.tsx` barrel is convenient
   but harder to tree-shake. Proposal: ship the barrel; measure bundle
   cost at the end of migration.
 - [ ] **Tests for primitives** — Do we add snapshot / render tests for
@@ -442,7 +442,7 @@ SPEC.
   architectural decision
 - [ADR-035](../decisions/035-invert-platform-dependency-and-extract-shared-design-layer.md)
   — design layer extraction
-- [PLAN-064](../plans/PLAN-064-settings-composition-layer-rollout.md) —
+- [PLAN-065](../plans/PLAN-065-settings-composition-layer-rollout.md) —
   rollout phases
 - `src/design/tokens.css`, `src/design/typography.css`,
   `src/design/spacing.css`, `src/design/components/panel.css`,
@@ -454,4 +454,4 @@ SPEC.
 
 *Created: 2026-04-18*
 *Author: Claude (for owner review)*
-*Related Plan: [PLAN-064](../plans/PLAN-064-settings-composition-layer-rollout.md)*
+*Related Plan: [PLAN-065](../plans/PLAN-065-settings-composition-layer-rollout.md)*

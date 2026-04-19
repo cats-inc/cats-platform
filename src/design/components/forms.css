@@ -135,10 +135,6 @@ textarea.textInput {
   color: var(--muted-soft);
 }
 
-.dangerButton {
-  color: #fff;
-}
-
 .primaryButton {
   padding: 10px 14px;
   border: 1px solid var(--border);
@@ -191,6 +187,8 @@ textarea.textInput {
   border: 0;
   border-radius: 12px;
   background: var(--danger);
+  color: #fff;
+  font: inherit;
   font-weight: 600;
   cursor: pointer;
   margin-top: 12px;

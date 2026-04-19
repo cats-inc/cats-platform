@@ -21,3 +21,5 @@
 @import './components/accordion.css';
 @import './components/side-panel.css';
 @import './components/guide-cat-sidecar.css';
+@import './components/settings/settings-tokens.css';
+@import './components/settings/settings.css';

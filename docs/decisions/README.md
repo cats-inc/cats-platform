@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [072-settings-composition-layer-in-design](./072-settings-composition-layer-in-design.md) | Settings composition layer lives in `src/design/`, built on tokens + shared classes + minimal compound components | Proposed | 2026-04-18 |
 | [071-reject-invalid-runtime-session-policy-combinations-at-create-boundary](./071-reject-invalid-runtime-session-policy-combinations-at-create-boundary.md) | Reject invalid runtime session policy combinations at the create boundary | Accepted | 2026-04-18 |
 | [070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model](./070-use-a-surface-safe-floating-and-shared-chrome-docked-guide-cat-placement-model.md) | Use a surface-safe floating and shared-chrome-docked Guide Cat placement model | Proposed | 2026-04-17 |
 | [069-scope-recents-to-channel-origin-surface-by-default](./069-scope-recents-to-channel-origin-surface-by-default.md) | Scope recents to channel origin surface by default | Accepted | 2026-04-17 |
