@@ -2,6 +2,11 @@ import { useState } from 'react';
 
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
+import {
+  SettingsOptionRow,
+  SettingsSection,
+  SettingsSectionHeader,
+} from '../../../design/components/settings/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
@@ -89,88 +94,78 @@ export function PlatformSettingsDesktopStartup({
       title="Desktop"
       products={payload.products}
     >
-      <div className="contentCard">
-        <h2>Startup behavior</h2>
-        <p className="heroNote">
-          Control whether Cats Desktop starts when you sign in, whether it opens
-          the main window automatically after sign-in startup, and whether
-          closing the window keeps Cats available in the system tray.
-        </p>
-        <label className="settingsCheckboxRow">
-          <input
-            type="checkbox"
-            checked={desktopPrefs.startAtLogin}
-            disabled={savingDesktopPrefs}
-            onChange={() => {
-              void updateDesktopPreferences(
-                {
-                  ...desktopPrefs,
-                  startAtLogin: !desktopPrefs.startAtLogin,
-                },
-                'Failed to update desktop startup preference',
-              );
-            }}
+      <SettingsSection
+        header={
+          <SettingsSectionHeader
+            title="Startup behavior"
+            description="Control whether Cats Desktop starts when you sign in, whether it opens the main window automatically after sign-in startup, and whether closing the window keeps Cats available in the system tray."
           />
-          <span className="settingsCheckboxMeta">
-            <span className="settingsCheckboxLabel">
-              Start Cats Desktop when you sign in to your computer
-            </span>
-            <span className="heroNote">
-              Keep Cats Desktop ready in the background as soon as you sign in.
-            </span>
-          </span>
-        </label>
-        <label className="settingsCheckboxRow">
-          <input
-            type="checkbox"
-            checked={desktopPrefs.systemTrayEnabled}
-            disabled={savingDesktopPrefs}
-            onChange={() => {
-              void updateDesktopPreferences(
-                {
-                  ...desktopPrefs,
-                  systemTrayEnabled: !desktopPrefs.systemTrayEnabled,
-                },
-                'Failed to update system tray preference',
-              );
-            }}
-          />
-          <span className="settingsCheckboxMeta">
-            <span className="settingsCheckboxLabel">
-              Keep Cats in the system tray when you close the window
-            </span>
-            <span className="heroNote">
-              When enabled, closing the window hides Cats and keeps it running. When disabled, closing the window quits Cats.
-            </span>
-          </span>
-        </label>
-        <label className="settingsCheckboxRow">
-          <input
-            type="checkbox"
-            checked={desktopPrefs.openWindowOnStartup}
-            disabled={savingDesktopPrefs}
-            onChange={() => {
-              void updateDesktopPreferences(
-                {
-                  ...desktopPrefs,
-                  openWindowOnStartup: !desktopPrefs.openWindowOnStartup,
-                },
-                'Failed to update startup window preference',
-              );
-            }}
-          />
-          <span className="settingsCheckboxMeta">
-            <span className="settingsCheckboxLabel">
-              Open Cats after sign-in startup
-            </span>
-            <span className="heroNote">
-              When disabled, Cats can start in the background after you sign in
-              without opening the main window automatically. Opening Cats
-              yourself still shows the app.
-            </span>
-          </span>
-        </label>
-      </div>
+        }
+      >
+        <SettingsOptionRow
+          asChoice
+          label="Start Cats Desktop when you sign in to your computer"
+          description="Keep Cats Desktop ready in the background as soon as you sign in."
+          control={
+            <input
+              type="checkbox"
+              checked={desktopPrefs.startAtLogin}
+              disabled={savingDesktopPrefs}
+              onChange={() => {
+                void updateDesktopPreferences(
+                  {
+                    ...desktopPrefs,
+                    startAtLogin: !desktopPrefs.startAtLogin,
+                  },
+                  'Failed to update desktop startup preference',
+                );
+              }}
+            />
+          }
+        />
+        <SettingsOptionRow
+          asChoice
+          label="Keep Cats in the system tray when you close the window"
+          description="When enabled, closing the window hides Cats and keeps it running. When disabled, closing the window quits Cats."
+          control={
+            <input
+              type="checkbox"
+              checked={desktopPrefs.systemTrayEnabled}
+              disabled={savingDesktopPrefs}
+              onChange={() => {
+                void updateDesktopPreferences(
+                  {
+                    ...desktopPrefs,
+                    systemTrayEnabled: !desktopPrefs.systemTrayEnabled,
+                  },
+                  'Failed to update system tray preference',
+                );
+              }}
+            />
+          }
+        />
+        <SettingsOptionRow
+          asChoice
+          label="Open Cats after sign-in startup"
+          description="When disabled, Cats can start in the background after you sign in without opening the main window automatically. Opening Cats yourself still shows the app."
+          control={
+            <input
+              type="checkbox"
+              checked={desktopPrefs.openWindowOnStartup}
+              disabled={savingDesktopPrefs}
+              onChange={() => {
+                void updateDesktopPreferences(
+                  {
+                    ...desktopPrefs,
+                    openWindowOnStartup: !desktopPrefs.openWindowOnStartup,
+                  },
+                  'Failed to update startup window preference',
+                );
+              }}
+            />
+          }
+        />
+      </SettingsSection>
 
       <ToastContainer toasts={toasts} />
     </PlatformSettingsShell>

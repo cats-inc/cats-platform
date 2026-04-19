@@ -46,15 +46,15 @@ Only targeted tests run, never the full `npm test` suite (per
 Goal: land the primitives and tokens so Phase 2 can import them, and
 clean up duplicate CSS so existing pages show no regression.
 
-- [ ] **1.1** Create `src/design/components/settings/settings-tokens.css`
+- [x] **1.1** Create `src/design/components/settings/settings-tokens.css`
       with the Settings-scoped semantic tokens from SPEC-073
-- [ ] **1.2** Create `src/design/components/settings/settings.css` with
+- [x] **1.2** Create `src/design/components/settings/settings.css` with
       the class contract from SPEC-073 (aliases onto existing
       `.contentCard`, `.statusChip`, `.heroNote`)
-- [ ] **1.3** Wire `settings-tokens.css` and `settings.css` into the
+- [x] **1.3** Wire `settings-tokens.css` and `settings.css` into the
       renderer entry stylesheet (after ADR-035 design imports, before
       product-specific styles)
-- [ ] **1.4** Create `src/design/components/settings/`:
+- [x] **1.4** Create `src/design/components/settings/`:
       - `SettingsSection.tsx`
       - `SettingsSectionHeader.tsx`
       - `SettingsOptionRow.tsx`
@@ -62,9 +62,9 @@ clean up duplicate CSS so existing pages show no regression.
       - `SettingsStatusChip.tsx`
       - `SettingsDangerZone.tsx`
       - `index.tsx` (barrel)
-- [ ] **1.5** Create `src/design/components/settings/README.md`
+- [x] **1.5** Create `src/design/components/settings/README.md`
       with casing rules + one usage example per primitive
-- [ ] **1.6** Dedupe `.dangerButton`:
+- [x] **1.6** Dedupe `.dangerButton`:
       - Confirm which of `forms.css:138` or `forms.css:189` is the
         canonical style (the "wanted" rules)
       - Delete the loser duplicate in `forms.css`
@@ -78,9 +78,9 @@ clean up duplicate CSS so existing pages show no regression.
       - Either replace callsites or leave `.sectionLabel` as a
         legacy alias that applies the same rules as `.eyebrow`
         (decide during implementation; prefer alias to avoid churn)
-- [ ] **1.8** Replace hard-coded `#3a2c26` in `.settingsCheckboxLabel`
+- [x] **1.8** Replace hard-coded `#3a2c26` in `.settingsCheckboxLabel`
       with `var(--settings-text)` (= `var(--text)`)
-- [ ] **1.9** Typecheck cleanly (`npx tsc --noEmit`)
+- [x] **1.9** Typecheck cleanly (`npx tsc --noEmit`)
 
 **Deliverables**: primitives importable from
 `src/design/components/settings`, tokens defined, duplicate CSS removed,
@@ -95,7 +95,7 @@ Goal: migrate `PlatformSettingsGeneral.tsx` to the primitives; iterate
 on prop shapes based on owner feedback before committing to a wider
 rollout.
 
-- [ ] **2.1** Migrate `src/app/renderer/settings/PlatformSettingsGeneral.tsx`
+- [x] **2.1** Migrate `src/app/renderer/settings/PlatformSettingsGeneral.tsx`
       to use:
       - `<SettingsSection>` for "Lobby motion", "Guide Cat assist",
         "Profile" groupings
@@ -104,10 +104,12 @@ rollout.
       - `<SettingsOptionRow>` for toggles (inline layout, with the
         existing `.toggleRow` button as the `control`)
       - `<SettingsActionBar>` for any save/reset buttons
-- [ ] **2.2** Side-by-side visual review with owner (before vs after)
-- [ ] **2.3** Capture prop-shape feedback; update SPEC-073 if changes
-      are needed; iterate until owner confirms
-- [ ] **2.4** Typecheck clean; commit only after owner confirmation
+- [x] **2.2** Side-by-side visual review with owner (before vs after)
+- [x] **2.3** Capture prop-shape feedback; update SPEC-073 if changes
+      are needed; iterate until owner confirms (header required +
+      headerless variant; --settings-body-size lowered; sub-card
+      primitive added; field label restyle)
+- [x] **2.4** Typecheck clean; commit only after owner confirmation
 
 **Deliverables**: one page on primitives; prop-shape API locked for
 Phase 3.
