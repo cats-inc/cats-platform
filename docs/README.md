@@ -55,6 +55,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [2026-04-20 Draft Canvas and Composer Layout Guidance](./research/2026-04-20-draft-canvas-and-composer-layout-guidance.md)
 - [PLAN-064](./plans/PLAN-064-new-code-mvp-task-run-artifact-materialization.md)
 - [PLAN-063](./plans/PLAN-063-guide-cat-renderer-owned-ui-preferences-migration.md)
 - [SPEC-072](./specs/SPEC-072-runtime-session-policy-boundary-validation.md)
@@ -118,7 +119,7 @@ Recent additions:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, product-boundary positioning for `Cats Chat` / `Cats Work` / `Cats Code`, the current Chat/runtime killer-feature audits for Paperclip and OpenClaw, OpenClaw memory-layering benchmarks, unified planning strategy notes, Cats Chat spatial layout guidance, companion capability baselines, external knowledge ingestion and connector strategy, packaged setup and packaged-startup operational investigations including the new packaged cold-start trace evidence, the self-hosted CLI-provider port matrix, the long-range AI-first app-store platform vision, the `Cats Coding` playground concept, and the sibling A2A pilot alignment with `cats-runtime` |
+| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, product-boundary positioning for `Cats Chat` / `Cats Work` / `Cats Code`, temporary draft-canvas/composer guidance, the current Chat/runtime killer-feature audits for Paperclip and OpenClaw, OpenClaw memory-layering benchmarks, unified planning strategy notes, Cats Chat spatial layout guidance, companion capability baselines, external knowledge ingestion and connector strategy, packaged setup and packaged-startup operational investigations including the new packaged cold-start trace evidence, the self-hosted CLI-provider port matrix, the long-range AI-first app-store platform vision, the `Cats Coding` playground concept, and the sibling A2A pilot alignment with `cats-runtime` |
 
 ## Context-Driven Development
 
@@ -159,4 +160,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-19*
+*Last updated: 2026-04-20*

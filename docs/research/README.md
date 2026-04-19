@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-04-20-draft-canvas-and-composer-layout-guidance](./2026-04-20-draft-canvas-and-composer-layout-guidance.md) | 2026-04-20 | Draft canvas and composer layout guidance | Non-binding UI guidance for shared draft layout vocabulary, `mode / lane / participants` framing, `5W1H` mapping, and the current `WHERE` vs `WHO / WHOM / WHAT` composer split across Chat / Code / Work |
 | [2026-04-16-packaged-desktop-cold-start-investigation](./2026-04-16-packaged-desktop-cold-start-investigation.md) | 2026-04-16 | Packaged desktop cold-start investigation | Startup traces plus packaged A/B runs show Windows cold-start is dominated by pre-JS packaged launch/scanning cost, and bundling `cats-platform` collapses its startup from about 74s to about 3s while the still-split runtime remains slow |
 | [2026-04-04-self-hosted-cli-provider-port-matrix](./2026-04-04-self-hosted-cli-provider-port-matrix.md) | 2026-04-04 | Self-hosted CLI provider port matrix | Freeze which `environment-bootstrap` CLI provider lanes are now repo-owned in `cats-platform`, which never existed upstream, and which remaining gaps are product-integration rather than missing scripts |
 | [2026-03-31-packaged-startup-terminal-popup-investigation](./2026-03-31-packaged-startup-terminal-popup-investigation.md) | 2026-03-31 | Packaged startup terminal popup investigation | Trace why packaged post-onboarding startup still opened visible terminal windows, then lock the fix around persisted setup truth, lightweight runtime health, and manual-only background discovery |
@@ -40,4 +41,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-20*
