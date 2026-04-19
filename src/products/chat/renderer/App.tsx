@@ -85,7 +85,6 @@ import {
   ProductAppStateBoundary,
 } from '../../shared/renderer/ProductRendererFrame.js';
 import { ProductReadyShell } from '../../shared/renderer/ProductReadyShell.js';
-import { normalizeFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 import {
   buildFolderBrowserContentProps,
   resolveVisibleChatChannelId,
@@ -237,13 +236,11 @@ export default function App() {
     setFolderBrowsePath,
   } = useFolderBrowser({
     onSelectPath: setDraftCwd,
-    scope: {
-      surface: 'chat',
-      directLaneCatId: routeMyCatId,
-    },
+    surface: 'chat',
+    directLaneCatId: routeMyCatId,
     initialPreferences:
       state.status === 'ready'
-        ? normalizeFolderBrowsePreferences(state.payload.chat.folderBrowsePreferences)
+        ? state.payload.chat.folderBrowsePreferences
         : undefined,
   });
   const {

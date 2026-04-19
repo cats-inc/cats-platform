@@ -6,6 +6,7 @@ import {
 import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
 import {
   createDefaultFolderBrowsePreferences,
+  isFolderBrowsePreferenceSurface,
   normalizeFolderBrowsePreferences,
   writeFolderBrowseRememberedPath,
 } from '../../../shared/folderBrowsePreferences.js';
@@ -18,6 +19,8 @@ import {
   type ChatApiRouteContext,
 } from '../routeSupport.js';
 import type { ChatState } from '../../api/contracts.js';
+
+const PREFERENCES_MUTATION_GATE_KEY = 'preferences';
 
 function serializePreferences(state: ChatState) {
   return {
@@ -84,7 +87,7 @@ function applyPreferencePatch(
 
   if (body.folderBrowsePreference && typeof body.folderBrowsePreference === 'object') {
     const surface = body.folderBrowsePreference.surface;
-    if (surface === 'chat' || surface === 'work' || surface === 'code') {
+    if (isFolderBrowsePreferenceSurface(surface)) {
       nextState = {
         ...nextState,
         folderBrowsePreferences: writeFolderBrowseRememberedPath(
@@ -140,24 +143,27 @@ async function handleRestUpdatePreferences(
         path?: string | null;
       };
     }>(context.request);
-    const persisted = await (
-      body.selectedChannelId !== undefined
-        ? context.dependencies.mutationGate.run(body.selectedChannelId, async () => {
-          let nextState = await context.dependencies.chatStore.read();
+    const persisted = await context.dependencies.mutationGate.run(
+      PREFERENCES_MUTATION_GATE_KEY,
+      async () => (
+        body.selectedChannelId !== undefined
+          ? context.dependencies.mutationGate.run(body.selectedChannelId, async () => {
+            let nextState = await context.dependencies.chatStore.read();
 
-          nextState = selectChannel(
-            nextState,
-            body.selectedChannelId!,
-            nowFrom(context.dependencies),
-          );
-          nextState = applyPreferencePatch(nextState, body);
-          return context.dependencies.chatStore.write(nextState);
-        })
-        : (async () => {
-          let nextState = await context.dependencies.chatStore.read();
-          nextState = applyPreferencePatch(nextState, body);
-          return context.dependencies.chatStore.write(nextState);
-        })()
+            nextState = selectChannel(
+              nextState,
+              body.selectedChannelId!,
+              nowFrom(context.dependencies),
+            );
+            nextState = applyPreferencePatch(nextState, body);
+            return context.dependencies.chatStore.write(nextState);
+          })
+          : (async () => {
+            let nextState = await context.dependencies.chatStore.read();
+            nextState = applyPreferencePatch(nextState, body);
+            return context.dependencies.chatStore.write(nextState);
+          })()
+      ),
     );
 
     sendJson(context.response, 200, {

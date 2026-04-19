@@ -15,58 +15,128 @@ import {
   normalizeFolderBrowsePreferences,
   readFolderBrowseRememberedPath,
   writeFolderBrowseRememberedPath,
-  type FolderBrowsePreferenceScope,
+  type FolderBrowsePreferenceSurface,
   type FolderBrowsePreferences,
 } from '../../folderBrowsePreferences.js';
 
+const FOLDER_BROWSE_PERSIST_DELAY_MS = 300;
+const NO_PENDING_REMEMBER_PATH = Symbol('NO_PENDING_REMEMBER_PATH');
+
 export function useFolderBrowser(options: {
   onSelectPath: (path: string) => void;
-  scope: FolderBrowsePreferenceScope;
+  surface: FolderBrowsePreferenceSurface;
+  directLaneCatId?: string | null;
   initialPreferences?: FolderBrowsePreferences | null;
 }) {
-  const { onSelectPath, scope } = options;
+  const {
+    onSelectPath,
+    surface,
+    directLaneCatId = null,
+  } = options;
   const [folderBrowsePath, setFolderBrowsePath] = useState('');
   const [folderBrowseCurrentPath, setFolderBrowseCurrentPath] = useState('');
   const [folderBrowseParentPath, setFolderBrowseParentPath] = useState('');
   const [folderBrowseEntries, setFolderBrowseEntries] = useState<BrowseDirectoryEntry[]>([]);
   const [folderBrowseLoading, setFolderBrowseLoading] = useState(false);
   const [folderBrowseError, setFolderBrowseError] = useState('');
-  const [preferences, setPreferences] = useState<FolderBrowsePreferences>(
-    () => normalizeFolderBrowsePreferences(options.initialPreferences),
+  const preferencesRef = useRef<FolderBrowsePreferences>(
+    normalizeFolderBrowsePreferences(options.initialPreferences),
   );
-  const preferencesRef = useRef(preferences);
-  const hydratedInitialPreferencesRef = useRef(options.initialPreferences !== undefined);
+  const pendingRememberPathRef =
+    useRef<string | null | typeof NO_PENDING_REMEMBER_PATH>(NO_PENDING_REMEMBER_PATH);
+  const inflightRememberPathRef =
+    useRef<string | null | typeof NO_PENDING_REMEMBER_PATH>(NO_PENDING_REMEMBER_PATH);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistRequestRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
-    preferencesRef.current = preferences;
-  }, [preferences]);
+    const scope = { surface, directLaneCatId };
+    const normalized = normalizeFolderBrowsePreferences(options.initialPreferences);
+    const optimisticPath =
+      pendingRememberPathRef.current !== NO_PENDING_REMEMBER_PATH
+        ? pendingRememberPathRef.current
+        : inflightRememberPathRef.current;
+    preferencesRef.current =
+      optimisticPath === NO_PENDING_REMEMBER_PATH
+        ? normalized
+        : writeFolderBrowseRememberedPath(normalized, scope, optimisticPath);
+  }, [directLaneCatId, options.initialPreferences, surface]);
 
-  useEffect(() => {
-    if (hydratedInitialPreferencesRef.current || options.initialPreferences === undefined) {
+  const flushRememberPath = useCallback((): Promise<void> => {
+    if (persistRequestRef.current) {
+      return persistRequestRef.current;
+    }
+    if (pendingRememberPathRef.current === NO_PENDING_REMEMBER_PATH) {
+      return Promise.resolve();
+    }
+
+    const path = pendingRememberPathRef.current;
+    pendingRememberPathRef.current = NO_PENDING_REMEMBER_PATH;
+    inflightRememberPathRef.current = path;
+    const request = updateFolderBrowsePreference({
+      surface,
+      directLaneCatId,
+      path,
+    })
+      .then(() => {})
+      .catch(() => {})
+      .finally(() => {
+        if (persistRequestRef.current === request) {
+          persistRequestRef.current = null;
+        }
+        if (
+          inflightRememberPathRef.current === path
+          && pendingRememberPathRef.current === NO_PENDING_REMEMBER_PATH
+        ) {
+          inflightRememberPathRef.current = NO_PENDING_REMEMBER_PATH;
+        }
+        if (pendingRememberPathRef.current !== NO_PENDING_REMEMBER_PATH) {
+          void flushRememberPath();
+        }
+      });
+    persistRequestRef.current = request;
+    return request;
+  }, [directLaneCatId, surface]);
+
+  const scheduleRememberPathPersist = useCallback((path: string | null, immediate: boolean) => {
+    pendingRememberPathRef.current = path;
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    if (immediate) {
+      void flushRememberPath();
       return;
     }
-    const normalized = normalizeFolderBrowsePreferences(options.initialPreferences);
-    hydratedInitialPreferencesRef.current = true;
-    preferencesRef.current = normalized;
-    setPreferences(normalized);
-  }, [options.initialPreferences]);
 
-  const rememberPath = useCallback((path: string | null) => {
+    persistTimerRef.current = setTimeout(() => {
+      persistTimerRef.current = null;
+      void flushRememberPath();
+    }, FOLDER_BROWSE_PERSIST_DELAY_MS);
+  }, [flushRememberPath]);
+
+  const rememberPath = useCallback((path: string | null, immediate = false) => {
+    const scope = { surface, directLaneCatId };
     const currentPreferences = preferencesRef.current;
     const currentPath = readFolderBrowseRememberedPath(currentPreferences, scope);
     if (currentPath === path) {
+      if (immediate && pendingRememberPathRef.current !== NO_PENDING_REMEMBER_PATH) {
+        scheduleRememberPathPersist(path, true);
+      }
       return;
     }
 
-    const nextPreferences = writeFolderBrowseRememberedPath(currentPreferences, scope, path);
-    preferencesRef.current = nextPreferences;
-    setPreferences(nextPreferences);
-    void updateFolderBrowsePreference({
-      surface: scope.surface,
-      directLaneCatId: scope.directLaneCatId ?? null,
-      path,
-    }).catch(() => {});
-  }, [scope]);
+    preferencesRef.current = writeFolderBrowseRememberedPath(currentPreferences, scope, path);
+    scheduleRememberPathPersist(path, immediate);
+  }, [directLaneCatId, scheduleRememberPathPersist, surface]);
+
+  useEffect(() => () => {
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    void flushRememberPath();
+  }, [flushRememberPath]);
 
   const browseFolder = useCallback(async (targetPath?: string): Promise<void> => {
     setFolderBrowseLoading(true);
@@ -93,7 +163,10 @@ export function useFolderBrowser(options: {
   }, [rememberPath]);
 
   const openFolderBrowser = useCallback(async (targetPath?: string | null): Promise<void> => {
-    const rememberedPath = readFolderBrowseRememberedPath(preferencesRef.current, scope);
+    const rememberedPath = readFolderBrowseRememberedPath(preferencesRef.current, {
+      surface,
+      directLaneCatId,
+    });
     const initialPath = targetPath?.trim() ? targetPath : rememberedPath;
     setFolderBrowseLoading(true);
     setFolderBrowseError('');
@@ -118,14 +191,14 @@ export function useFolderBrowser(options: {
     } finally {
       setFolderBrowseLoading(false);
     }
-  }, [rememberPath, scope]);
+  }, [directLaneCatId, rememberPath, surface]);
 
   const selectCurrentFolder = useCallback(() => {
     if (!folderBrowseCurrentPath || folderBrowseError) {
       return;
     }
 
-    rememberPath(folderBrowseCurrentPath);
+    rememberPath(folderBrowseCurrentPath, true);
     onSelectPath(folderBrowseCurrentPath);
   }, [folderBrowseCurrentPath, folderBrowseError, onSelectPath, rememberPath]);
 

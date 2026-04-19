@@ -1,12 +1,15 @@
-import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
+export const FOLDER_BROWSE_PREFERENCE_SURFACES = ['chat', 'work', 'code'] as const;
+
+export type FolderBrowsePreferenceSurface =
+  typeof FOLDER_BROWSE_PREFERENCE_SURFACES[number];
 
 export interface FolderBrowsePreferences {
-  bySurface: Partial<Record<PlatformSurfaceId, string>>;
+  bySurface: Partial<Record<FolderBrowsePreferenceSurface, string>>;
   chatDirectLaneByCatId: Record<string, string>;
 }
 
 export interface FolderBrowsePreferenceScope {
-  surface: PlatformSurfaceId;
+  surface: FolderBrowsePreferenceSurface;
   directLaneCatId?: string | null;
 }
 
@@ -17,7 +20,7 @@ export interface FolderBrowseResultLike {
   error?: string;
 }
 
-function normalizePath(value: string | null | undefined): string | null {
+function normalizeTrimmedString(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null;
   }
@@ -26,10 +29,11 @@ function normalizePath(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function normalizeSurface(value: unknown): PlatformSurfaceId | null {
-  return value === 'chat' || value === 'work' || value === 'code'
-    ? value
-    : null;
+export function isFolderBrowsePreferenceSurface(
+  value: unknown,
+): value is FolderBrowsePreferenceSurface {
+  return typeof value === 'string'
+    && (FOLDER_BROWSE_PREFERENCE_SURFACES as readonly string[]).includes(value);
 }
 
 export function createDefaultFolderBrowsePreferences(): FolderBrowsePreferences {
@@ -61,8 +65,8 @@ export function normalizeFolderBrowsePreferences(
 
   const bySurface: FolderBrowsePreferences['bySurface'] = {};
   for (const [key, rawValue] of Object.entries(bySurfaceRecord)) {
-    const surface = normalizeSurface(key);
-    const path = normalizePath(typeof rawValue === 'string' ? rawValue : null);
+    const surface = isFolderBrowsePreferenceSurface(key) ? key : null;
+    const path = normalizeTrimmedString(typeof rawValue === 'string' ? rawValue : null);
     if (surface && path) {
       bySurface[surface] = path;
     }
@@ -70,8 +74,8 @@ export function normalizeFolderBrowsePreferences(
 
   const chatDirectLaneByCatId: Record<string, string> = {};
   for (const [key, rawValue] of Object.entries(chatDirectLaneRecord)) {
-    const catId = normalizePath(key);
-    const path = normalizePath(typeof rawValue === 'string' ? rawValue : null);
+    const catId = normalizeTrimmedString(key);
+    const path = normalizeTrimmedString(typeof rawValue === 'string' ? rawValue : null);
     if (catId && path) {
       chatDirectLaneByCatId[catId] = path;
     }
@@ -88,7 +92,7 @@ export function readFolderBrowseRememberedPath(
   scope: FolderBrowsePreferenceScope,
 ): string | null {
   const normalized = normalizeFolderBrowsePreferences(preferences);
-  const directLaneCatId = normalizePath(scope.directLaneCatId);
+  const directLaneCatId = normalizeTrimmedString(scope.directLaneCatId);
 
   if (scope.surface === 'chat' && directLaneCatId) {
     return normalized.chatDirectLaneByCatId[directLaneCatId] ?? null;
@@ -103,8 +107,8 @@ export function writeFolderBrowseRememberedPath(
   path: string | null | undefined,
 ): FolderBrowsePreferences {
   const normalized = normalizeFolderBrowsePreferences(preferences);
-  const nextPath = normalizePath(path);
-  const directLaneCatId = normalizePath(scope.directLaneCatId);
+  const nextPath = normalizeTrimmedString(path);
+  const directLaneCatId = normalizeTrimmedString(scope.directLaneCatId);
 
   if (scope.surface === 'chat' && directLaneCatId) {
     const nextDirectLaneByCatId = { ...normalized.chatDirectLaneByCatId };
@@ -136,12 +140,12 @@ export async function browseFolderWithHomeFallback<TResult extends FolderBrowseR
   requestedPath?: string | null;
   rememberedPath?: string | null;
 }): Promise<TResult> {
-  const requestedPath = normalizePath(options.requestedPath);
-  const rememberedPath = normalizePath(options.rememberedPath);
+  const requestedPath = normalizeTrimmedString(options.requestedPath);
+  const rememberedPath = normalizeTrimmedString(options.rememberedPath);
   const initialPath = requestedPath ?? rememberedPath;
   const firstResult = await options.browse(initialPath ?? undefined);
 
-  if (!firstResult.error || !initialPath) {
+  if (!firstResult.error || !rememberedPath || requestedPath) {
     return firstResult;
   }
 

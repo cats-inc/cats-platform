@@ -108,6 +108,19 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   }
 }
 
+class DelayedMemoryChatStore extends MemoryChatStore {
+  async read() {
+    const state = await super.read();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    return state;
+  }
+
+  async write(state) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    return super.write(state);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Phase 2: Read-side resource routes
 // ---------------------------------------------------------------------------
@@ -277,6 +290,51 @@ test('PATCH /api/preferences persists folder browse memory per surface and per c
       },
     });
   });
+});
+
+test('PATCH /api/preferences serializes concurrent folder browse updates', async () => {
+  await withServer(
+    createRuntimeStub(),
+    async (baseUrl) => {
+      const [chatResponse, workResponse] = await Promise.all([
+        fetch(`${baseUrl}/api/preferences`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            folderBrowsePreference: {
+              surface: 'chat',
+              path: 'C:/repo/chat-root',
+            },
+          }),
+        }),
+        fetch(`${baseUrl}/api/preferences`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            folderBrowsePreference: {
+              surface: 'work',
+              path: 'C:/repo/work-root',
+            },
+          }),
+        }),
+      ]);
+
+      assert.equal(chatResponse.status, 200);
+      assert.equal(workResponse.status, 200);
+
+      const readResponse = await fetch(`${baseUrl}/api/preferences`);
+      assert.equal(readResponse.status, 200);
+      const readPayload = await readResponse.json();
+      assert.deepEqual(readPayload.preferences.folderBrowsePreferences, {
+        bySurface: {
+          chat: 'C:/repo/chat-root',
+          work: 'C:/repo/work-root',
+        },
+        chatDirectLaneByCatId: {},
+      });
+    },
+    new DelayedMemoryChatStore(),
+  );
 });
 
 test('GET /api/orchestrator returns orchestrator state', async () => {

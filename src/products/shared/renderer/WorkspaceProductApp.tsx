@@ -93,7 +93,6 @@ import {
   resolveVisibleChatChannel,
   resolveVisibleChatChannelId,
 } from "./appShellPresentation.js";
-import { normalizeFolderBrowsePreferences } from "../folderBrowsePreferences.js";
 import {
   createInitialGroupParticipants,
   createNextGroupTemporaryParticipant,
@@ -322,13 +321,11 @@ export function createWorkspaceProductApp({
       setFolderBrowsePath,
     } = useFolderBrowser({
       onSelectPath: setDraftCwd,
-      scope: {
-        surface: shellSurface,
-        directLaneCatId: null,
-      },
+      surface: shellSurface,
+      directLaneCatId: null,
       initialPreferences:
         state.status === "ready"
-          ? normalizeFolderBrowsePreferences(state.payload.chat.folderBrowsePreferences)
+          ? state.payload.chat.folderBrowsePreferences
           : undefined,
     });
     const {
