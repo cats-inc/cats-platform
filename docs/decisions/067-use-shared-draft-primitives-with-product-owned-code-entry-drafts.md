@@ -71,7 +71,6 @@ When shared primitives need product-specific variation, they should adopt
 structured seams such as:
 
 - copy override objects
-- header accessory components
 - section builders, if a later slice needs product-owned side-panel composition
 - target-slot components
 

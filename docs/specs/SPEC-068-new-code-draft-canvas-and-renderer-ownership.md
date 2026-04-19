@@ -116,15 +116,13 @@ The platform needs a boundary where:
    - folder selection shell
    - provider/model editing shell
    - send-row layout
-11. Shared draft primitives may expose a neutral header-accessory seam for
-    product-owned draft chrome without importing product semantics.
-12. Product-owned draft wrappers shall own:
+11. Product-owned draft wrappers shall own:
    - entry-specific copy
    - which shared primitive variant is composed
    - when the draft delegates to another shared draft path
-13. Product-specific changes to `+New code` shall not require editing Chat or
+12. Product-specific changes to `+New code` shall not require editing Chat or
    Work draft copy unless the underlying primitive changed.
-14. Shared primitive bugs or styling fixes shall remain reusable across Chat,
+13. Shared primitive bugs or styling fixes shall remain reusable across Chat,
     Work, and Code without code-surface forking.
 
 ### Future Compatibility Requirements
@@ -201,4 +199,5 @@ draft footer is not just decorative chrome.
 
 *Created: 2026-04-17*
 *Author: Codex*
+*Updated: 2026-04-20*
 *Related Plan: [PLAN-053](../plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md)*

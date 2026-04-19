@@ -196,12 +196,10 @@ group-join modes.
         `products/code/*` while reusing shared draft primitives
       - first slice: add code-specific draft copy overrides without forking
         shared composer/panel mechanics
-      - second slice: add visible workspace/execution draft context chips via
-        a shared header-accessory seam and a code-owned accessory component
-      - third slice: keep the solo execution-target chip in that header row
-        and reserve the lower composer target slot for direct-lane participant
-        stacks only
-      - fourth slice: move direct-lane hero wording for default `+New code`
+      - second slice: keep the lower composer target slot reserved for
+        direct-lane participant stacks instead of inventing a second summary
+        row above the composer
+      - third slice: move direct-lane hero wording for default `+New code`
         onto the code-owned copy seam so it stops inheriting chat phrasing
 - [ ] Task 4.3: Ensure `+Team code` exposes workflow-policy configuration
 - [ ] Task 4.4: Ensure `+Peer code` exposes branch roles and automation-policy
@@ -285,15 +283,16 @@ notes.
 | 2026-04-14 | Plan created to formalize concurrent vs parallel semantics and map `Cats Code` entry points onto the shared engine |
 | 2026-04-17 | Reserved SPEC-068 / ADR-067 for the first `+New code` slice and started moving default Code draft ownership out of the chat-specific draft re-export path |
 | 2026-04-17 | Added continuity follow-through under the same plan so same-chat solo retarget, parallel child continuity, and excerpt-bootstrap removal stay attached to the shared semantics work |
-| 2026-04-17 | Added a shared draft header-accessory seam so `+New code` can render visible workspace and execution chips on the draft canvas without forking chat/work primitives |
 | 2026-04-17 | Scoped the default `+New code` target slot so solo drafts stop duplicating the execution chip while direct-lane participant stacks still use the lower composer row |
 | 2026-04-17 | Extended the shared copy seam so default `+New code` direct-lane hero text no longer falls back to chat-specific wording such as `Private Chat` |
 | 2026-04-18 | Wired the current `+New code` footer policy chips into create-channel payloads, persisted channel runtime defaults, and runtime session creation so workspace isolation and access policy no longer stop at renderer state |
 | 2026-04-17 | Implemented the first continuity follow-through slices: solo retarget full-transplant semantics, explicit `Start fresh`, same-participant restart transplants for cat/direct rooms, and structured choice-response packaging in continuity transcripts |
 | 2026-04-17 | Left Task 1B.6 open: preceding tool labels and structured choice responses are now carried, but tool-result/file-preview first-slice packaging still needs a final contract |
 | 2026-04-17 | Follow-up slice added token-budgeted semantic transplant fallback, explicit targeted handoff packaging, and fresh-start pre-reset memory flush; Task 1B.5 was corrected back to open because prior regressions only covered current child-local isolation, not an explicit production guard or source-seed rule |
+| 2026-04-20 | Removed the shared draft header-accessory seam after deciding it duplicated existing draft context controls and created a second, misleading summary lane above the composer |
 
 ---
 
 *Created: 2026-04-14*
 *Author: Codex*
+*Updated: 2026-04-20*

@@ -110,19 +110,6 @@ const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
   folderEmptyState: 'No folder selected yet.',
 };
 
-export type WorkspaceNewChatDraftHeaderAccessoryCopy = Pick<
-  Required<WorkspaceNewChatDraftCopy>,
-  'executionActionLabel' | 'folderActionLabel'
->;
-
-export interface WorkspaceNewChatDraftHeaderAccessoryProps {
-  copy: WorkspaceNewChatDraftHeaderAccessoryCopy;
-  draftCwd: string | null;
-  selectedExecutionTarget?: ExecutionTargetValue;
-  disabled: boolean;
-  onOpenSection: (section: WorkspaceNewChatDraftSectionId) => void;
-}
-
 export interface WorkspaceNewChatDraftProps {
   payload: AppShellPayload;
   composerDraft: string;
@@ -173,7 +160,6 @@ export interface WorkspaceNewChatDraftProps {
   CatAvatarRowComponent: ComponentType<CatAvatarRowProps>;
   FolderBrowserContentComponent: ComponentType<FolderBrowserContentProps>;
   DraftTargetSlotComponent: ComponentType<DraftTargetSlotProps>;
-  HeaderAccessoryComponent?: ComponentType<WorkspaceNewChatDraftHeaderAccessoryProps>;
   copy?: WorkspaceNewChatDraftCopy;
 }
 
@@ -227,7 +213,6 @@ export function WorkspaceNewChatDraft({
   CatAvatarRowComponent,
   FolderBrowserContentComponent,
   DraftTargetSlotComponent,
-  HeaderAccessoryComponent,
   copy,
 }: WorkspaceNewChatDraftProps) {
   void bossCatName;
@@ -309,20 +294,6 @@ export function WorkspaceNewChatDraft({
           )}
           {greetingAccessory}
         </div>
-        {HeaderAccessoryComponent ? (
-          <div className="draftHeaderAccessory">
-            <HeaderAccessoryComponent
-              copy={{
-                executionActionLabel: resolvedCopy.executionActionLabel,
-                folderActionLabel: resolvedCopy.folderActionLabel,
-              }}
-              draftCwd={draftCwd}
-              selectedExecutionTarget={selectedExecutionTarget}
-              disabled={isSubmittingFirstTurn}
-              onOpenSection={openSidePanelTo}
-            />
-          </div>
-        ) : null}
         <form
           className={`composerCard composerCardFresh${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
           onSubmit={(event) => void onSendMessage(event)}
