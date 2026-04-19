@@ -18,6 +18,18 @@ export type { NewChatDraftProps };
 const POMODORO_PROMPT = 'Write a small pomodoro timer app.';
 
 export function NewChatDraft(props: NewChatDraftProps) {
+  // Reset per-draft state (draftSurface, repo probe, ...) when the route
+  // identity changes so switching between +New chat, +Group, +Parallel,
+  // cat-led, and direct-lane drafts does not leak state across entries.
+  const draftKey = [
+    props.entryPreset ?? 'default',
+    (props.allowAddCat ?? true) ? 'public' : 'direct',
+    props.draftDefaultRecipientCatId ?? 'none',
+  ].join(':');
+  return <NewChatDraftInner key={draftKey} {...props} />;
+}
+
+function NewChatDraftInner(props: NewChatDraftProps) {
   const [draftSurface, setDraftSurface] = useState<PlatformSurfaceId>('chat');
   const codeChips = useDraftSessionChips({
     draftCwd: props.draftCwd,
