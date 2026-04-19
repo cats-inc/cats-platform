@@ -18,6 +18,7 @@ import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import {
   buildChatNewChatDraftSidePanelSections,
 } from './chatNewChatDraftSidePanel.js';
+import { DraftHeader } from './DraftHeader.js';
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
@@ -170,7 +171,6 @@ export function NewChatDraft({
     assistantPresets,
     draftParticipants,
     defaultRecipientCat,
-    hasTelegramBinding,
     effectiveDefaultRecipientCat,
     effectiveDefaultRecipientTemporaryParticipant,
     draftParticipantCount,
@@ -291,33 +291,30 @@ export function NewChatDraft({
     onUpdateDraftTemporaryParticipant,
   });
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
-
   return (
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
-        <div className="draftGreeting">
-          {isDirectLaneContext && defaultRecipientCat ? (
-            <>
-              <p className="eyebrow">Private Chat</p>
-              <h1>{defaultRecipientCat.name}</h1>
-              <p className="heroNote">
-                {hasTelegramBinding ? 'Telegram-bound private lane.' : 'Private lane for this Cat.'}
-              </p>
-            </>
-          ) : isGroupDraft ? (
-            <h1>{resolvedGreeting}</h1>
-          ) : isCatLedDraft && effectiveDefaultRecipientCat ? (
-            <>
-              <p className="eyebrow">Cat-led Chat</p>
-              <h1>Start with {effectiveDefaultRecipientCat.name}</h1>
-              <p className="heroNote">
-                Ask {effectiveDefaultRecipientCat.name} to take the first pass. Add more Cats anytime, or keep the thread focused.
-              </p>
-            </>
-          ) : (
-            <h1>{resolvedGreeting}</h1>
-          )}
-        </div>
+        {isDirectLaneContext && defaultRecipientCat ? (
+          <DraftHeader
+            variant="profile"
+            title={defaultRecipientCat.name}
+            avatarName={defaultRecipientCat.name}
+            avatarUrl={defaultRecipientCat.avatarUrl}
+            avatarColor={defaultRecipientCat.avatarColor}
+          />
+        ) : isCatLedDraft && effectiveDefaultRecipientCat ? (
+          <DraftHeader
+            variant="intro"
+            eyebrow="Cat-led Chat"
+            title={`Start with ${effectiveDefaultRecipientCat.name}`}
+            description={`Ask ${effectiveDefaultRecipientCat.name} to take the first pass. Add more Cats anytime, or keep the thread focused.`}
+          />
+        ) : (
+          <DraftHeader
+            variant="intro"
+            title={resolvedGreeting}
+          />
+        )}
         <form
           className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
           onSubmit={(event) => void onSendMessage(event)}

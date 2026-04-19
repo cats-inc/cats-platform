@@ -17,6 +17,7 @@ import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
 import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import { CatAvatarRow } from './CatAvatarRow.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
+import { DraftHeader } from './DraftHeader.js';
 import { WorkspaceNewChatDraftTargetSlot } from './WorkspaceNewChatDraftTargetSlot.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
@@ -76,9 +77,6 @@ export interface WorkspaceNewChatDraftCopy {
   sidePanelTitle?: string;
   participantsSectionTitle?: string;
   participantsEmptyState?: string;
-  privateSessionEyebrow?: string;
-  privateSessionHeroNote?: string;
-  privateSessionBoundHeroNote?: string;
   executionSectionTitle?: string;
   executionActionLabel?: string;
   executionEmptyState?: string;
@@ -99,9 +97,6 @@ const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
   sidePanelTitle: 'New Chat Setup',
   participantsSectionTitle: 'Cats',
   participantsEmptyState: 'No cats are available yet.',
-  privateSessionEyebrow: 'Private Chat',
-  privateSessionHeroNote: 'Private lane for this Cat.',
-  privateSessionBoundHeroNote: 'Telegram-bound private lane.',
   executionSectionTitle: 'AI Reply',
   executionActionLabel: 'Choose AI reply',
   executionEmptyState: 'No AI reply setup yet.',
@@ -226,12 +221,6 @@ export function WorkspaceNewChatDraft({
   const defaultRecipientCat = draftDefaultRecipientCatId
     ? chatCats.find((cat) => cat.id === draftDefaultRecipientCatId && cat.status === 'active') ?? null
     : null;
-  const hasTelegramBinding = Boolean(
-    defaultRecipientCat && payload.chat.botBindings.some((binding) =>
-      binding.platform === 'telegram'
-      && binding.status === 'active'
-      && binding.catId === defaultRecipientCat.id),
-  );
   const draftDefaultRecipientCat = !defaultRecipientCat && draftCatIds.length > 0
     ? chatCats.find((cat) => cat.id === draftCatIds[0] && cat.status === 'active') ?? null
     : null;
@@ -276,25 +265,23 @@ export function WorkspaceNewChatDraft({
         })
       : selectedExecutionTarget ?? null;
   const isSubmittingFirstTurn = isComposerBusyForDraft(busy);
-
   return (
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
-        <div className="draftGreeting">
-          {defaultRecipientCat ? (
-            <>
-              <p className="eyebrow">{resolvedCopy.privateSessionEyebrow}</p>
-              <h1>{defaultRecipientCat.name}</h1>
-              <p className="heroNote">
-                {hasTelegramBinding
-                  ? resolvedCopy.privateSessionBoundHeroNote
-                  : resolvedCopy.privateSessionHeroNote}
-              </p>
-            </>
-          ) : (
-            <h1>{resolvedGreeting}</h1>
-          )}
-        </div>
+        {isDirectLaneContext && defaultRecipientCat ? (
+          <DraftHeader
+            variant="profile"
+            title={defaultRecipientCat.name}
+            avatarName={defaultRecipientCat.name}
+            avatarUrl={defaultRecipientCat.avatarUrl}
+            avatarColor={defaultRecipientCat.avatarColor}
+          />
+        ) : (
+          <DraftHeader
+            variant="intro"
+            title={resolvedGreeting}
+          />
+        )}
         {composerHeaderAccessory ? (
           <div className="composerHeaderRow">{composerHeaderAccessory}</div>
         ) : null}

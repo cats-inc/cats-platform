@@ -428,15 +428,102 @@
   color: var(--text);
 }
 
-.draftHeaderAccessory {
-  margin: 0 0 20px;
+.draftHeader {
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  margin: 0 auto 24px;
 }
 
-.draftHeaderAccessoryRow {
+.draftHeaderIntro {
+  text-align: center;
+}
+
+.draftHeaderIntro .draftHeaderTitleRow {
+  justify-content: center;
+}
+
+.draftHeaderIntro .draftHeaderActions,
+.draftHeaderIntro .draftHeaderMetaRow {
+  justify-content: center;
+}
+
+.draftHeaderProfile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+  text-align: left;
+}
+
+.draftHeaderVisual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.draftHeaderAvatar {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.draftHeaderBody {
+  min-width: 0;
+}
+
+.draftHeaderTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.draftHeaderTitle {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.draftHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.draftHeaderSupportingContent {
+  margin-top: 12px;
+}
+
+.draftHeaderMetaRow {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  .draftHeaderProfile {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .draftHeaderVisual {
+    justify-content: center;
+  }
+
+  .draftHeaderTitleRow {
+    justify-content: center;
+  }
 }
 
 .draftContextChip {
