@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
@@ -33,6 +33,10 @@ export function PlatformSettingsGeneral({
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
   const [nameDraft, setNameDraft] = useState(payload.ownerDisplayName);
   const [savingName, setSavingName] = useState(false);
+  // Escape sets this synchronously before calling blur(); commitOwnerDisplayName
+  // reads it on the same tick and bails out, so the queued setNameDraft revert
+  // is not raced by the blur-triggered commit reading the stale draft.
+  const revertedNameDraftRef = useRef(false);
   const guideCatUiPrefs = useGuideCatUiPrefs();
   const { toasts, showToast } = useToast();
 
@@ -64,13 +68,25 @@ export function PlatformSettingsGeneral({
   }
 
   async function commitOwnerDisplayName(): Promise<void> {
+    if (revertedNameDraftRef.current) {
+      // Escape just queued a revert; skip this commit so we do not race the
+      // pending setNameDraft and accidentally save the pre-revert draft.
+      revertedNameDraftRef.current = false;
+      return;
+    }
     const trimmed = nameDraft.trim();
     if (!trimmed) {
       // Empty value is not a valid name; revert silently to the canonical value.
       setNameDraft(payload.ownerDisplayName);
       return;
     }
-    if (trimmed === payload.ownerDisplayName) return;
+    if (trimmed === payload.ownerDisplayName) {
+      // Whitespace-only edit (e.g. " Alice " against canonical "Alice"):
+      // normalize the visible draft so the field does not look "saved" while
+      // showing a value that disagrees with the server.
+      setNameDraft(payload.ownerDisplayName);
+      return;
+    }
     setSavingName(true);
     try {
       const response = await fetch('/api/core/owner-profile', {
@@ -227,6 +243,7 @@ export function PlatformSettingsGeneral({
                     void commitOwnerDisplayName();
                   } else if (event.key === 'Escape') {
                     event.preventDefault();
+                    revertedNameDraftRef.current = true;
                     setNameDraft(payload.ownerDisplayName);
                     event.currentTarget.blur();
                   }
