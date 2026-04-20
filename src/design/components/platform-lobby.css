@@ -88,20 +88,39 @@
   outline-offset: 0px;
 }
 
+/* Split-click user chrome: clicking the pill navigates to
+ * /settings/general; clicking the runtime sub-region (right, past the
+ * divider) navigates to /settings/runtime. Whole pill hovers as one —
+ * same pattern as AudienceChip + audienceChipWorkflow. The divider is
+ * inset (not edge-to-edge) because the sub-region's height is shorter
+ * than the pill, so `border-left` only spans the sub-region. */
 .lobbyIdentity {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel);
+  color: inherit;
+  font: inherit;
   cursor: pointer;
   transition: background 0.12s ease;
 }
 
 .lobbyIdentity:hover {
   background: var(--panel-hover);
+}
+
+.lobbyIdentityRuntime {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: var(--space-1);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--border);
+  cursor: pointer;
 }
 
 .lobbyAvatar {

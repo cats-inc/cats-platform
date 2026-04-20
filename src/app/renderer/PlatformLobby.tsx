@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { AccountIdentityMenu } from '../../design/components/AccountIdentityMenu.js';
 import { GuideCatDockSlot } from '../../design/components/GuideCatDockSlot.js';
 import { buildCatExecutionLabel, buildCatTooltip } from '../../shared/executionLabel.js';
 import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared/platform-contract.js';
-import { executeEnvironmentRecovery } from '../../shared/environmentRecoveryAction.js';
 import {
   resolveRuntimeLobbyDotClassName,
   resolveRuntimePresentationStatus,
@@ -72,7 +70,6 @@ export function PlatformLobby({
 }) {
   const navigate = useNavigate();
   const [fallbackGreeting] = useState(pickLobbyGreeting);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const entries = buildPlatformLobbyEntries({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
@@ -86,6 +83,10 @@ export function PlatformLobby({
     ? { backgroundImage: `url(${envelope.ownerAvatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
     : undefined;
 
+  const settingsNavState = {
+    platformShellSurface: envelope.lastProductSurface ?? 'chat',
+  };
+
   return (
     <div className="screen screenCentered lobbyScreen">
       <LobbyBouncingCats animationMode={envelope.lobby.animationMode} cats={envelope.lobby.cats} />
@@ -98,29 +99,73 @@ export function PlatformLobby({
               onSelect={(catId) => navigate(buildDirectLanePath(catId))}
             />
             <GuideCatDockSlot slotKind="lobby" />
-            <AccountIdentityMenu
-              open={accountMenuOpen}
-              onOpenChange={setAccountMenuOpen}
-              onNavigateSettings={() => navigate('/settings/general', {
-                state: { platformShellSurface: envelope.lastProductSurface ?? 'chat' },
-              })}
-              onNavigateEnvironment={() => {
-                void executeEnvironmentRecovery({
-                  runtimeStatus,
-                  runtimeSetupStatus: envelope.runtimeSetup.status,
-                });
-              }}
-              triggerClassName="lobbyIdentity"
-              menuPlacement="below"
-              menuAlignment="end"
-              avatar={(
-                <span className="lobbyAvatar" style={avatarStyle}>
-                  {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
-                </span>
-              )}
-              meta={<span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>}
-              statusIndicator={<span className={dotClass} data-tooltip={runtimeTooltip} aria-label={runtimeTooltip} />}
-            />
+            <button
+              type="button"
+              className="lobbyIdentity"
+              onClick={() => navigate('/settings/general', { state: settingsNavState })}
+              aria-label="Open account settings"
+            >
+              <span className="lobbyAvatar" style={avatarStyle}>
+                {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
+              </span>
+              <span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>
+              <span
+                className="lobbyIdentityRuntime"
+                role="button"
+                tabIndex={0}
+                data-tooltip={runtimeTooltip}
+                aria-label={`Runtime status: ${runtimeTooltip}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate('/settings/runtime', { state: settingsNavState });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    navigate('/settings/runtime', { state: settingsNavState });
+                  }
+                }}
+              >
+                <span className={dotClass} aria-hidden="true" />
+              </span>
+            </button>
+            {/* ─── Preserved: popup-menu variant (re-enable in a later
+             * release) — original click opened a Settings / Environment
+             * menu via <AccountIdentityMenu>. Split-click routing above
+             * replaces it until more account-level actions exist: the
+             * left half (avatar + name) navigates to /settings/general,
+             * the right half (runtime dot, divided by a border-left)
+             * navigates to /settings/runtime — mirroring the
+             * AudienceChip's `audienceChipWorkflow` divider treatment.
+             *
+             * To re-enable:
+             *  1. Re-add the imports:
+             *       import { AccountIdentityMenu } from '../../design/components/AccountIdentityMenu.js';
+             *       import { executeEnvironmentRecovery } from '../../shared/environmentRecoveryAction.js';
+             *  2. Restore `const [accountMenuOpen, setAccountMenuOpen] = useState(false);`.
+             *  3. Replace the <button className="lobbyIdentity">…</button>
+             *     (with its inner <span role="button" className="lobbyIdentityRuntime">)
+             *     with:
+             *
+             *     <AccountIdentityMenu
+             *       open={accountMenuOpen}
+             *       onOpenChange={setAccountMenuOpen}
+             *       onNavigateSettings={() => navigate('/settings/general', { state: settingsNavState })}
+             *       onNavigateEnvironment={() => {
+             *         void executeEnvironmentRecovery({
+             *           runtimeStatus,
+             *           runtimeSetupStatus: envelope.runtimeSetup.status,
+             *         });
+             *       }}
+             *       triggerClassName="lobbyIdentity"
+             *       menuPlacement="below"
+             *       menuAlignment="end"
+             *       avatar={<span className="lobbyAvatar" style={avatarStyle}>…</span>}
+             *       meta={<span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>}
+             *       statusIndicator={<span className={dotClass} data-tooltip={runtimeTooltip} aria-label={runtimeTooltip} />}
+             *     />
+             */}
           </div>
         </div>
 
