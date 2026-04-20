@@ -1059,3 +1059,79 @@ test('fresh draft greetings share one pool and still honor an explicit override 
     'Shared Two',
   );
 });
+
+test('advanced draft controls off hides the per-branch collaborator button on parallel shadow rows', () => {
+  // Regression guard: when advanced draft controls are OFF the
+  // +Parallel entry must stay strictly 1xN — shadow rows cannot sprout
+  // their own +collaborate button even if the caller would otherwise
+  // wire a per-branch quick-add callback.
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          leadTarget,
+          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+          { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
+        ],
+        showDraftGroupAddButton: false,
+        onQuickAddParallelBranchTemporaryParticipant: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="parallelStubStack"/u);
+  const collabButtons = markup.match(/aria-label="Add another model to collaborate"/gu) ?? [];
+  assert.equal(collabButtons.length, 0);
+});
+
+test('advanced draft controls on exposes a collaborator button on every parallel branch row', () => {
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          leadTarget,
+          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+          { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
+        ],
+        showDraftGroupAddButton: true,
+        onQuickAddDraftTemporaryParticipant: () => {},
+        onQuickAddParallelBranchTemporaryParticipant: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="parallelStubStack"/u);
+  const collabButtons = markup.match(/aria-label="Add another model to collaborate"/gu) ?? [];
+  // 1 lead row + 2 shadow rows = 3 collaborator buttons when advanced is on.
+  assert.equal(collabButtons.length, 3);
+});
+
+test('parallel draft without temp participants keeps the lead roster collapsed and shadows target-only', () => {
+  // When +compare runs under advanced-off semantics it only appends a
+  // parallel target — no temp participant is added and no branch
+  // audience is seeded. This test locks in that the lead row does not
+  // sprout group avatar slots and shadow chips stay on the
+  // target-derived treatment (no avatar).
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        parallelTargets: [
+          { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null },
+          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+          { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
+          { provider: 'cursor-cli', instance: null, model: 'composer-max', modelSelection: null },
+        ],
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="parallelStubStack"/u);
+  assert.doesNotMatch(markup, /class="composerGroupAvatarSlot"/u);
+  assert.doesNotMatch(markup, /class="audienceChipAvatar"/u);
+});

@@ -1027,6 +1027,19 @@ export default function App() {
     if (state.status !== 'ready') return;
 
     const seedWorkflowShape = draftParallelBranchWorkflowShapes[0] ?? draftWorkflowShape;
+
+    // Advanced draft controls off: +Parallel stays strictly 1×N. No
+    // temp participant is created and no branch audience is seeded —
+    // each shadow row falls back to the target-derived chip, and the
+    // lead row keeps its existing 1-recipient shape.
+    if (!advancedDraftControlsEnabled) {
+      onAddDraftParallelChatTarget({
+        seedAudienceKeys: [],
+        seedWorkflowShape,
+      });
+      return;
+    }
+
     // Smart-arrange: each new parallel branch boots with one fresh
     // temp participant whose provider/model matches the next slot in
     // the parallel-target rotation. This gives every shadow row its
@@ -1071,6 +1084,7 @@ export default function App() {
       seedWorkflowShape,
     });
   }, [
+    advancedDraftControlsEnabled,
     draftExecutionTarget,
     draftParallelBranchWorkflowShapes,
     draftParallelChatTargets,

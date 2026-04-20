@@ -8,18 +8,22 @@ import {
 const SURFACE_COPY: Record<'chat' | 'code' | 'work', {
   title: string;
   description: string;
+  toggleDescription: string;
 }> = {
   chat: {
     title: 'Draft builder',
-    description: 'Expose group and compare controls directly on fresh Chat drafts.',
+    description: 'Let any Chat draft add collaborators or compare against other models.',
+    toggleDescription: 'Shows the +collaborate and +compare buttons that are hidden by default.',
   },
   code: {
     title: 'Draft builder',
-    description: 'Expose Team Code and Peer Code controls directly on fresh Code drafts.',
+    description: 'Let any Code draft add collaborators or compare against other models.',
+    toggleDescription: 'Shows the +collaborate and +compare buttons that are hidden by default.',
   },
   work: {
     title: 'Draft builder',
-    description: 'Expose collaborator and compare controls directly on fresh Work drafts.',
+    description: 'Let any Work draft add collaborators or compare against other models.',
+    toggleDescription: 'Shows the +collaborate and +compare buttons that are hidden by default.',
   },
 };
 
@@ -53,7 +57,7 @@ export function ProductAdvancedDraftControlsSection({
     >
       <SettingsOptionRow
         label="Enable advanced draft controls"
-        description="Adds the blue group and compare buttons to new drafts without pre-filling extra participants or compare targets."
+        description={copy.toggleDescription}
         control={(
           <input
             type="checkbox"
