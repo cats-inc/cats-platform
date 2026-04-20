@@ -17,6 +17,7 @@
 
 - [SPEC-076: Per-Entity State Subscription Protocol](../specs/SPEC-076-per-entity-state-subscription-protocol.md)
 - [ADR-075: Adopt Push-Based Per-Entity State Subscription](../decisions/075-adopt-push-based-per-entity-state-subscription.md)
+- [ADR-041: Push Transport and Chat Invalidations Over SSE](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) — collection-level invalidation tier this rollout coexists with
 - [Research: Per-Entity State Subscription Architecture](../research/2026-04-21-per-entity-state-subscription-architecture.md)
 - [SPEC-074: Cross-Surface Draft Dispatch and Warm Product Handoff](../specs/SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md)
 - [ADR-073: Target-Surface Dispatch and Warm Cross-Surface Handoff](../decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md)
@@ -110,7 +111,7 @@ transitions to the assistant identity and the assistant reply lands in
 `selectedChannel.messages` on both Chat and Code renders of the same
 channel.
 
-### Phase 3: Cross-Surface Acceptance and Polling Cleanup
+### Phase 3: Cross-Surface Acceptance, Polling Cleanup, and ADR-041 Coexistence
 
 - [ ] Task 3.1: Lock in the target-surface regression test from
       SPEC-076's acceptance criteria: both `/chat/chats/:id` and
@@ -127,9 +128,25 @@ channel.
       payload does not balloon just to keep chat-field clients happy;
       if we can trim chat slices in the poll response now that nothing
       consumes them, do it (optional tail task).
-
-**Deliverables**: the polling path is explicitly runtime-health only;
-chat state sync is owned end-to-end by the subscription protocol.
+- [ ] Task 3.5: Verify ADR-041 coexistence on target surface. After
+      a cross-surface handoff, `/api/events/chat` invalidation events
+      must continue flowing to `useChatAppShellRefresh` /
+      `useChatEvents` and must continue driving `refreshAppShell()`
+      on `room_updated` / `recents_changed` / `unread_changed` /
+      `transport_ingress`. The entity subscription must not prevent
+      or duplicate this path.
+- [ ] Task 3.6: Document the two-tier model in code: add a
+      structured comment at the `useChatEvents` call site in
+      `useChatAppShellRefresh.ts` pointing at ADR-041 (collection
+      tier) and ADR-075 (entity tier) so future contributors don't
+      try to collapse them into one stream.
+- [ ] Task 3.7: Audit every surface that reads collection-level
+      chat state — `payload.chat.channels`, `payload.chat.recents`,
+      `payload.chat.parallelChatGroups`, unread counters — to
+      confirm none of them accidentally depend on the entity
+      subscription for freshness. Anything that does must either
+      move to the entity snapshot (if it's truly per-entity) or
+      stay on the ADR-041 refetch path (if it's collection-level).
 
 ### Phase 4: Polymorphism Proof with a Second Entity Kind
 
@@ -179,6 +196,8 @@ template without architecture change.
 | `cats-platform/tests/entity-subscription-channel-roundtrip.test.ts` | Create | Server-side publisher + renderer dispatcher roundtrip (snapshot, patch, reconnect). |
 | `cats-platform/tests/cross-surface-handoff-transcript-sync.test.tsx` | Create | Target surface receives `session_started` + assistant segments after warm handoff. |
 | `cats-platform/tests/app-shell-background-refresh-chat-exclusion.test.ts` | Create | Explicit regression lock: chat state is never merged from poll. |
+| `cats-platform/tests/adr-041-coexistence-after-cross-surface-handoff.test.tsx` | Create | After warm handoff, ADR-041 invalidation events still reach `useChatEvents` and trigger `refreshAppShell()` for collection-level changes. |
+| `cats-platform/src/products/chat/renderer/hooks/useChatAppShellRefresh.ts` | Modify (comment only) | Add structured comment at the `useChatEvents` call site pointing at the ADR-041 / ADR-075 two-tier model. |
 
 ## Technical Decisions
 
@@ -216,6 +235,12 @@ template without architecture change.
     reach target renderer
   - reconnect: drop the SSE mid-turn, reconnect, confirm replacement
     snapshot brings the view back in sync
+  - ADR-041 coexistence: with an active entity subscription on
+    channel A, emit a server-side `room_updated` / `unread_changed`
+    / `recents_changed` / `transport_ingress` event for channel B;
+    assert the target surface calls `refreshAppShell()` and picks
+    up collection-level changes without disturbing the entity
+    subscription state on channel A
 - **Manual Testing**:
   - `+New chat → Pomodoro app` → target Code surface shows named
     assistant bubble and streams the reply; Chat surface in parallel
@@ -235,6 +260,8 @@ template without architecture change.
 | Optimistic client state clobbered by incoming patches | Medium — user types a message and sees it flicker | Dispatcher preserves locally-pending messages by correlating on message id; server emits the canonical id when the message lands |
 | Electron host or future mobile client transports differ | Low (first slice same-origin only) | Keep transport and hub layers separable; SSE handler is a thin wrapper over the publisher core |
 | Phase 1 lands server-side without any renderer consumer | Low — dead code risk | Phase 1 and Phase 2 gated together in rollout; server publisher stays feature-flagged until renderer hub ships |
+| A contributor "simplifies" by folding ADR-041 invalidation into the entity subscription or vice versa | Medium — regresses sibling-channel recents/unread or forces every sidebar channel to subscribe | Structured comment at the `useChatEvents` site plus SPEC-076 non-goal plus explicit coexistence test (Task 3.5) block the refactor at review time |
+| Channel snapshot drifts into carrying collection-level state (sibling channels, global unread, recents) | Medium — snapshot payload bloats and ADR-041 boundary erodes | SPEC-076 scopes snapshot to channel-local fields + compare-group membership of the mounted channel only; review must reject snapshot additions that aren't channel-local |
 
 ## Progress Log
 

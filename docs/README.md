@@ -55,6 +55,10 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-068](./plans/PLAN-068-per-entity-state-subscription-rollout.md)
+- [SPEC-076](./specs/SPEC-076-per-entity-state-subscription-protocol.md)
+- [ADR-075](./decisions/075-adopt-push-based-per-entity-state-subscription.md)
+- [2026-04-21 Per-Entity State Subscription Architecture](./research/2026-04-21-per-entity-state-subscription-architecture.md)
 - [PLAN-067](./plans/PLAN-067-platform-browser-ingress-rollout.md)
 - [SPEC-075](./specs/SPEC-075-platform-browser-ingress-for-lan-and-tunneled-access.md)
 - [ADR-074](./decisions/074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md)
@@ -170,4 +174,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-04-21*

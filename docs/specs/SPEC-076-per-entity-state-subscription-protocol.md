@@ -14,7 +14,8 @@
 | **Owner** | TBD (Conductor on accept) |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) |
-| **Follow-up plan** | PLAN-068 (to be authored) |
+| **Companion ADR** | [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) (collection-level invalidation tier) |
+| **Follow-up plan** | [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md) |
 
 ## Summary
 
@@ -61,6 +62,15 @@ This spec defines a single subscription protocol, keyed by
   platform host session
 - no removal of `/api/app-shell` cold-boot fetch or background
   runtime-health refresh in the first slice
+- **does not define or replace collection-level invalidation.** The
+  existing [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md)
+  `/api/events/chat` SSE stream (consumed via `useChatEvents` in
+  `useChatAppShellRefresh`) remains the authoritative seam for
+  "channel list / parallelChatGroups / recents / unread /
+  transport-ingress changed → refetch app-shell." Entity
+  subscriptions only cover the deep state of a single mounted
+  `(kind, id)`; they do not replace ADR-041, and ADR-041 does not
+  replace them.
 
 ## User Stories
 
@@ -215,7 +225,24 @@ an unsupported shape rather than silently render corrupt state.
 ### Event vocabulary for `kind = 'channel'` (first slice)
 
 Snapshot `state` payload is the existing `SelectedChannelView`
-projection (messages, room routing, workflow, runtime metadata).
+projection plus the channel-local fields the renderer reads today
+to render the mounted channel. Concretely the snapshot must carry:
+
+- `selectedChannel.messages`, `selectedChannel.roomRouting`,
+  `selectedChannel.workflow`, and other fields currently populated
+  by `resolveSelectedChannelView()`
+- the **parallel chat group membership of the mounted channel** —
+  the subset of `parallelChatGroups` entries that reference the
+  subscribed channel id (so `resolveChatViewCompareState` can render
+  the compare footer for the mounted channel without depending on
+  an app-shell refetch)
+- the runtime-session identity of the mounted channel
+  (`runtime.chatSession` / `runtime.codeSession` / ... as applicable)
+
+The snapshot is explicitly *not* the whole `AppShellPayload.chat`
+tree — sibling channels, the global recents list, and unread counts
+belong to the ADR-041 collection tier and are not republished on
+this stream.
 
 Patch event kinds:
 
@@ -231,6 +258,10 @@ Patch event kinds:
   `message.appended` for the session_started message but kept
   explicit for clarity
 - `session.closed` — paired lifecycle event
+- `compareGroupMembership.updated` — the subscribed channel was
+  added to / removed from / reordered inside a parallel chat group
+  (only the membership relevant to the mounted channel; the global
+  group-list invalidation still flows via ADR-041)
 
 Exact payload shapes are enumerated in the implementation plan; the
 contract owner here is that every patch carries enough identity
@@ -264,6 +295,38 @@ views call `useEntitySubscription({ kind, id })`.
 
 `mergeWorkspaceBackgroundRefreshPayload`'s chat exclusion stays in
 place — chat state is owned by the subscription, not the poll.
+
+### Interaction with ADR-041 (two-tier state model)
+
+This spec is **orthogonal** to [ADR-041's invalidation
+contract](../decisions/041-push-transport-and-chat-invalidations-over-sse.md).
+The two run side-by-side on the target surface:
+
+- ADR-041's `/api/events/chat` stream keeps fired through
+  `useChatEvents` exactly as today. It drives
+  `refreshAppShell()` on `room_updated`, `recents_changed`,
+  `unread_changed`, `transport_ingress` so collection-level state
+  (channel list, `parallelChatGroups`, recents, unread,
+  private-lane promotion) stays fresh.
+- SPEC-076's `/api/subscribe?kind=channel&id=<mounted>` stream
+  keeps the *deep* state of the currently-mounted channel fresh
+  via snapshot + patch.
+- A renderer mount opens both: ADR-041 once at app level, ADR-075
+  per mounted entity. Neither contract tries to absorb the other.
+- When a message lands on a sibling channel that the user is not
+  viewing, ADR-041 invalidates and `refreshAppShell()` updates the
+  sidebar; SPEC-076 is silent because no subscription targets that
+  entity. When the user navigates into that channel, a new
+  subscription opens and its `snapshot` provides the full live
+  state.
+
+Renderer ordering is well-defined: ADR-041 invalidations run
+through `refreshAppShell()`, which re-populates the app-shell
+slices that SPEC-076 does not own. SPEC-076 patches are applied to
+the mounted entity's slice only and are never overwritten by a
+collection-level refetch (because the poll and refetch paths
+already exclude the chat slice — see
+`mergeWorkspaceBackgroundRefreshPayload`).
 
 ### Interaction with liveIndicator (no regression)
 
@@ -325,15 +388,24 @@ once the subscription layer has matured.
 - [ ] Adding a second entity kind (in a follow-up slice) touches
       server-side projector + schema + consuming view only; no
       subscription hub or transport change required.
+- [ ] ADR-041 collection-level invalidation continues to flow on
+      the target surface after cross-surface handoff: a new message
+      on a sibling channel still updates recents / unread /
+      `parallelChatGroups` via `refreshAppShell()`, and a new
+      private lane still promotes. Entity subscription and ADR-041
+      stream coexist without either shadowing the other.
 
 ## References
 
 - [ADR-075: Adopt Push-Based Per-Entity State Subscription](../decisions/075-adopt-push-based-per-entity-state-subscription.md)
+- [ADR-041: Push Transport and Chat Invalidations Over SSE](../decisions/041-push-transport-and-chat-invalidations-over-sse.md)
+- [PLAN-068: Per-Entity State Subscription Rollout](../plans/PLAN-068-per-entity-state-subscription-rollout.md)
 - [Research: Per-Entity State Subscription Architecture](../research/2026-04-21-per-entity-state-subscription-architecture.md)
 - [ADR-073](../decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md)
 - [SPEC-074](./SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md)
 - [ADR-060](../decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
 - [SPEC-059](./SPEC-059-heterogeneous-runtime-delivery-normalization.md)
+- `cats-platform/src/products/chat/renderer/hooks/useChatAppShellRefresh.ts` (ADR-041 consumer)
 - `cats-platform/src/products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts`
 - `cats-platform/src/products/shared/renderer/hooks/useLiveIndicator.ts`
 - `cats-platform/src/products/chat/state/runtime-dispatch/canonicalInteraction.ts`
@@ -344,4 +416,4 @@ once the subscription layer has matured.
 
 *Created: 2026-04-21*
 *Author: Claude under user-directed investigation*
-*Related Plan: PLAN-068 (to be authored on acceptance)*
+*Related Plan: [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md)*

@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-068](./PLAN-068-per-entity-state-subscription-rollout.md) | Per-Entity State Subscription Rollout | Draft | [SPEC-076](../specs/SPEC-076-per-entity-state-subscription-protocol.md), [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md), [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) |
 | [PLAN-067](./PLAN-067-platform-browser-ingress-rollout.md) | Platform Browser Ingress Rollout | In Progress | [SPEC-075](../specs/SPEC-075-platform-browser-ingress-for-lan-and-tunneled-access.md), [ADR-074](../decisions/074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md) |
 | [PLAN-066](./PLAN-066-cross-surface-draft-dispatch-and-warm-product-handoff-rollout.md) | Cross-Surface Draft Dispatch and Warm Product Handoff Rollout | Draft | [SPEC-074](../specs/SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md), [ADR-073](../decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) |
 | [PLAN-065](./PLAN-065-settings-composition-layer-rollout.md) | Settings Composition Layer Rollout | Draft | [SPEC-073](../specs/SPEC-073-settings-composition-layer.md), [ADR-072](../decisions/072-settings-composition-layer-in-design.md) |
@@ -121,6 +122,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-04-21*
 
 *See also: [specs/](../specs/) for feature specifications*

@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-04-21-per-entity-state-subscription-architecture](./2026-04-21-per-entity-state-subscription-architecture.md) | 2026-04-21 | Per-entity state subscription architecture | Survey four renderer-sync options for the cross-surface handoff gap (catch-up fetch, expand-poll merge, client-side re-projection, push-based per-entity subscription); recommend push-based `(kind, id)` subscription as the long-term renderer sync primitive coexisting with the ADR-041 collection-level invalidation tier |
 | [2026-04-20-platform-browser-ingress-local-probe](./2026-04-20-platform-browser-ingress-local-probe.md) | 2026-04-20 | Platform browser ingress local probe | Real-machine Wi-Fi and Tailscale probes confirm the new same-origin `/runtime/*` + `/runtime/api/*` seam works over non-loopback addresses while filtering virtual adapters from candidate browser URLs |
 | [2026-04-20-draft-canvas-and-composer-layout-guidance](./2026-04-20-draft-canvas-and-composer-layout-guidance.md) | 2026-04-20 | Draft canvas and composer layout guidance | Non-binding UI guidance for shared draft layout vocabulary, `mode / lane / participants` framing, `5W1H` mapping, and the current `WHERE` vs `WHO / WHOM / WHAT` composer split across Chat / Code / Work |
 | [2026-04-16-packaged-desktop-cold-start-investigation](./2026-04-16-packaged-desktop-cold-start-investigation.md) | 2026-04-16 | Packaged desktop cold-start investigation | Startup traces plus packaged A/B runs show Windows cold-start is dominated by pre-JS packaged launch/scanning cost, and bundling `cats-platform` collapses its startup from about 74s to about 3s while the still-split runtime remains slow |
@@ -42,4 +43,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-04-21*

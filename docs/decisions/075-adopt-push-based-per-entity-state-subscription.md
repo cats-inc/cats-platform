@@ -141,6 +141,63 @@ This ADR explicitly does not introduce new server-persisted entity
 fields. It defines how existing projected state reaches renderers
 over the network. Persistence contracts remain unchanged.
 
+### 7. Relationship with ADR-041 invalidation contract (two tiers)
+
+This ADR deliberately splits "renderer state freshness" into two
+tiers with clear ownership so neither contract has to absorb the
+other's concerns.
+
+**Tier A — Collection-level invalidation (owned by [ADR-041](./041-push-transport-and-chat-invalidations-over-sse.md))**
+
+- Stream: `/api/events/chat` (existing), consumed today by
+  `useChatAppShellRefresh` via `useChatEvents({ onRoomUpdated,
+  onRecentsChanged, onUnreadChanged, onTransportIngress })`.
+- Scope: "something in the app-shell changed, refetch." Covers
+  channel list, `parallelChatGroups`, recents ordering, unread
+  counts, private-lane promotion, transport ingress.
+- Shape: invalidation + refetch (coarse). Renderer re-runs
+  `refreshAppShell()` on signal.
+
+**Tier B — Per-entity deep state (owned by this ADR + SPEC-076)**
+
+- Stream: `/api/subscribe?kind=&id=` (new), consumed by
+  `useEntitySubscription`.
+- Scope: the authoritative state of a single entity the current view
+  is rendering. For `kind='channel'`: `selectedChannel.messages`,
+  `selectedChannel.roomRouting.workflow`, runtime metadata for that
+  channel, and any channel-local fields that the server projects.
+- Shape: snapshot + ordered patches (fine). Renderer applies
+  patches without refetching.
+
+**Division of labor**
+
+- When the list of channels changes (a new channel appears in
+  recents, a private lane gets promoted, unread count on a sibling
+  channel changes), that is Tier A's responsibility — ADR-041
+  invalidation fires and `refreshAppShell()` refetches the list.
+- When the transcript of the *mounted* channel grows by a new
+  assistant segment, that is Tier B's responsibility — the
+  `(kind='channel', id=<mounted>)` subscription delivers a
+  `message.appended` patch and the renderer upserts locally
+  without a full refetch.
+- When both are relevant (e.g. a brand-new message on a channel
+  the user is not currently viewing), ADR-041 invalidates the
+  channel list so the sibling entry can update its unread/preview,
+  while Tier B remains silent because there's no active
+  subscription on that entity.
+
+**Why both, not one**
+
+- Folding Tier A into Tier B would require the renderer to
+  subscribe to every channel the user could possibly see in the
+  sidebar — not scalable.
+- Folding Tier B into Tier A would keep the refetch-all pattern that
+  triggered this ADR in the first place (heavy payload, clobbers
+  optimistic UI, doesn't solve cross-surface transcript sync).
+- The two tiers stay orthogonal: ADR-041 invalidates collections,
+  ADR-075 streams entities. The renderer consumes both, they don't
+  cross-talk.
+
 ## Consequences
 
 ### Positive
@@ -223,7 +280,9 @@ over the network. Persistence contracts remain unchanged.
 - [SPEC-074: Cross-Surface Draft Dispatch and Warm Product Handoff](../specs/SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md)
 - [ADR-060: Heterogeneous Runtime Delivery Normalization](./060-normalize-heterogeneous-runtime-delivery-into-product-events.md)
 - [SPEC-059: Heterogeneous Runtime Delivery Normalization](../specs/SPEC-059-heterogeneous-runtime-delivery-normalization.md)
-- SPEC-076 (to be authored): Per-Entity State Subscription Protocol
+- [ADR-041: Push Transport and Chat Invalidations Over SSE](./041-push-transport-and-chat-invalidations-over-sse.md)
+- [SPEC-076: Per-Entity State Subscription Protocol](../specs/SPEC-076-per-entity-state-subscription-protocol.md)
+- [PLAN-068: Per-Entity State Subscription Rollout](../plans/PLAN-068-per-entity-state-subscription-rollout.md)
 
 ---
 
