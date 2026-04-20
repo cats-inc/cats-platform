@@ -110,8 +110,19 @@ composition primitives.
 - **FR-5**: `.dangerButton` appears exactly **once** in the design
   layer after this SPEC lands. `settings-shell.css:242` and
   `forms.css:189` copies are removed.
-- **FR-6**: `.sectionLabel` and `.eyebrow` are consolidated into one
-  canonical class used by `<SettingsSectionHeader>`'s eyebrow slot.
+- **FR-6**: The canonical eyebrow for Settings is
+  `.settings-section-header__eyebrow`, produced by
+  `<SettingsSectionHeader>`'s eyebrow slot and mirroring
+  `.sectionLabel`'s visual (muted-soft, 0.73rem, tracking 0.04em).
+  `.sectionLabel` (sidebar / chrome label) and `.eyebrow` in
+  `panel.css` (accent hero label, 0.75rem, tracking 0.12em) are
+  **distinct** patterns that are **not** consolidated — aliasing one
+  onto the other would regress every non-Settings callsite. The
+  Settings primitive is the single place consumers inside Settings
+  should reach for; existing `.sectionLabel` callsites in Settings
+  surfaces migrate through Phase 4. See PLAN-065 phase 1.7 for the
+  investigation that walked this back from the original "consolidate"
+  proposal.
 - **FR-7**: Hard-coded `#3a2c26` in `.settingsCheckboxLabel` is
   replaced with `var(--text)` (or the equivalent semantic token).
 - **FR-8**: `<SettingsStatusChip>` supports at minimum three tones:

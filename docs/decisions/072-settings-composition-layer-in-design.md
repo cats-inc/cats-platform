@@ -170,11 +170,17 @@ diff.
 
 - Keep exactly one `.dangerButton` definition, in `forms.css`; delete the
   duplicate at `forms.css:189` and the copy at `settings-shell.css:242`
-- Consolidate `.sectionLabel` (in `settings-shell.css`) and `.eyebrow`
-  (in `panel.css`) into one canonical class used by
-  `<SettingsSectionHeader>`
 - Replace hard-coded `#3a2c26` in `.settingsCheckboxLabel` with
   `var(--text)`
+
+`.sectionLabel` and `.eyebrow` were originally on the dedupe list, but
+Phase 1.7 investigation (see PLAN-065) walked this back: they are two
+distinct visual patterns (muted chrome label vs accent hero label),
+not duplicates. The Settings-scoped canonical is already in place as
+`.settings-section-header__eyebrow` — a new class rather than a
+consolidation of the existing two. Remaining direct `.sectionLabel`
+callsites inside Settings migrate to `<SettingsSectionHeader eyebrow>`
+during Phase 4.
 
 ### 6. Migration order — simple pages first, complex pages last
 
