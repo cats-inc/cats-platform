@@ -163,6 +163,7 @@ function CodeGroupParallelDraft(props: NewChatDraftProps) {
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
+      composerPlaceholder={NEW_CODE_DRAFT_COPY.composerPlaceholder}
       folderActionLabel={NEW_CODE_DRAFT_COPY.folderActionLabel}
       showDraftGroupAddButton={showCrossGroupButton}
       hideDraftGroupHint={showCrossGroupButton}

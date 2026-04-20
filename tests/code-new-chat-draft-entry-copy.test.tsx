@@ -365,9 +365,9 @@ test('team code and peer code drafts continue to delegate to the shared chat dra
   );
 
   assert.match(markup, /Add another model to collaborate/u);
-  assert.match(markup, /How can I help you today\?/u);
+  assert.match(markup, /What should this code session build, fix, or investigate\?/u);
   assert.match(markup, /class="audienceChip"/u);
-  assert.doesNotMatch(markup, /What should this code session build, fix, or investigate\?/u);
+  assert.doesNotMatch(markup, /How can I help you today\?/u);
 });
 
 test('advanced draft controls expose collaborator and compare buttons on the default code draft without hint copy', () => {
@@ -464,5 +464,7 @@ test('advanced draft controls keep peer code drafts on one lead target, expose c
   assert.match(markup, /aria-label="Add another model to collaborate"/u);
   assert.match(markup, /aria-label="Add parallel chat"/u);
   assert.match(markup, /Add another model to compare/u);
+  assert.match(markup, /What should this code session build, fix, or investigate\?/u);
+  assert.doesNotMatch(markup, /How can I help you today\?/u);
   assert.doesNotMatch(markup, /class="parallelStubStack"/u);
 });

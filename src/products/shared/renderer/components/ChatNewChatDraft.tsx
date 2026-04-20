@@ -117,6 +117,7 @@ export interface NewChatDraftProps {
   composerFooterAccessory?: ReactNode;
   draftCustomRegion?: ReactNode;
   surfaceTag?: ReactNode;
+  composerPlaceholder?: string;
   hideDraftGroupHint?: boolean;
   hideDraftParallelHint?: boolean;
   folderActionLabel?: string;
@@ -200,6 +201,7 @@ export function NewChatDraft({
   composerFooterAccessory = null,
   draftCustomRegion = null,
   surfaceTag = null,
+  composerPlaceholder = 'How can I help you today?',
   hideDraftGroupHint = false,
   hideDraftParallelHint = false,
   folderActionLabel = 'Choose folder',
@@ -569,7 +571,7 @@ export function NewChatDraft({
               <textarea
                 className="composerInput"
                 rows={1}
-                placeholder="How can I help you today?"
+                placeholder={composerPlaceholder}
                 value={composerDraft}
                 disabled={isSubmittingFirstTurn}
                 onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
