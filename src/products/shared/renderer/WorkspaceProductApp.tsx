@@ -95,6 +95,7 @@ import {
 } from "./appShellPresentation.js";
 import {
   buildCrossSurfaceNavigationMatchPath,
+  peekCrossSurfaceNavigationOptimisticState,
   peekCrossSurfaceNavigationSnapshot,
 } from "./crossSurfaceNavigationHandoff.js";
 import {
@@ -215,6 +216,23 @@ export function createWorkspaceProductApp({
       }),
       [currentNavigationPath, shellSurface],
     );
+    const pendingDispatchHydration = useMemo<{ channelId: string } | null>(() => {
+      if (!initialWarmPayload) {
+        return null;
+      }
+      const optimistic = peekCrossSurfaceNavigationOptimisticState({
+        surface: shellSurface,
+        path: currentNavigationPath,
+      });
+      if (!optimistic?.pendingExecution) {
+        return null;
+      }
+      const channelId =
+        optimistic.selectedChannelId
+        ?? initialWarmPayload.chat.selectedChannelId
+        ?? null;
+      return channelId ? { channelId } : null;
+    }, [currentNavigationPath, initialWarmPayload, shellSurface]);
 
     const {
       state,
@@ -1017,6 +1035,7 @@ export function createWorkspaceProductApp({
       busy,
       setBusy,
       setFeedback,
+      hydratePendingDispatch: pendingDispatchHydration,
     });
     const {
       onAssignExistingCat,

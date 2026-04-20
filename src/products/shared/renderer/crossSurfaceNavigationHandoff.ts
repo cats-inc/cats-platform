@@ -574,6 +574,12 @@ export function peekCrossSurfaceNavigationSnapshot<TPayload extends AppShellPayl
   ) as TPayload | null;
 }
 
+export function peekCrossSurfaceNavigationOptimisticState(
+  match: CrossSurfaceNavigationHandoffMatch,
+): CrossSurfaceNavigationOptimisticState | null {
+  return peekCrossSurfaceNavigationHandoffForMatch(match)?.optimisticState ?? null;
+}
+
 export function consumeCrossSurfaceNavigationSnapshot<TPayload extends AppShellPayload = AppShellPayload>(
   match: CrossSurfaceNavigationHandoffMatch,
 ): TPayload | null {

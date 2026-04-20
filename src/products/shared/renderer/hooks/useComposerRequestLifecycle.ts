@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } fr
 import { getComposerDispatchChannelId, isComposerStopBusy } from '../../../../shared/composer.js';
 import {
   clearBusyState,
+  createChannelComposerBusyScope,
+  createComposerBusyState,
   isParallelChatBusy,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
@@ -23,6 +25,10 @@ export interface ActiveSubmitRequest {
   channelId: string;
   groupId?: string;
   channelIds?: string[];
+}
+
+export interface PendingDispatchHydration {
+  channelId: string;
 }
 
 function isDispatchRequestRunning<TPayload>(
@@ -56,17 +62,55 @@ export function useComposerRequestLifecycle<TPayload>(options: {
   setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
   fetchPayload: () => Promise<TPayload>;
   isChannelDispatchRunning: (payload: TPayload, channelId: string) => boolean;
+  hydratePendingDispatch?: PendingDispatchHydration | null;
 }) {
-  const { state, busy, setBusy, setState, fetchPayload, isChannelDispatchRunning } = options;
+  const {
+    state,
+    busy,
+    setBusy,
+    setState,
+    fetchPayload,
+    isChannelDispatchRunning,
+    hydratePendingDispatch,
+  } = options;
   const activeAckRequestRef = useRef<ActiveAckRequest | null>(null);
   const activeDispatchRequestRef = useRef<ActiveSubmitRequest | null>(null);
   const nextSubmitIdRef = useRef(1);
+  const hydratedDispatchChannelIdRef = useRef<string | null>(null);
 
   useEffect(() => () => {
     activeAckRequestRef.current?.controller.abort();
     activeAckRequestRef.current = null;
     activeDispatchRequestRef.current = null;
   }, []);
+
+  // Cross-surface handoff rehydration: when the target surface mounts with a
+  // staged warm payload whose dispatch is still running on the backend, local
+  // busy + active-request state start empty, so `useLiveIndicator` would skip
+  // opening the channel stream and the watchdog below would never activate.
+  // Prime both from the handoff's optimistic signal so in-flight work surfaces.
+  useEffect(() => {
+    if (
+      !hydratePendingDispatch
+      || state.status !== 'ready'
+      || activeDispatchRequestRef.current !== null
+      || hydratedDispatchChannelIdRef.current === hydratePendingDispatch.channelId
+    ) {
+      return;
+    }
+    const { channelId } = hydratePendingDispatch;
+    if (!channelId || !isChannelDispatchRunning(state.payload, channelId)) {
+      return;
+    }
+    hydratedDispatchChannelIdRef.current = channelId;
+    activeDispatchRequestRef.current = {
+      id: nextSubmitIdRef.current,
+      kind: 'channel',
+      channelId,
+    };
+    nextSubmitIdRef.current += 1;
+    setBusy(createComposerBusyState('send', createChannelComposerBusyScope(channelId)));
+  }, [hydratePendingDispatch, isChannelDispatchRunning, setBusy, state]);
 
   useEffect(() => {
     if (state.status !== 'ready') {

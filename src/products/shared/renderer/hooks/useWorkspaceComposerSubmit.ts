@@ -64,7 +64,10 @@ import {
 import { resetComposerDraftState } from '../composerDraftState.js';
 import { resolveActiveChannelMessageMetadata } from '../composerMessageMetadata.js';
 import { useComposerRequestControls } from './useComposerRequestControls.js';
-import { useComposerRequestLifecycle } from './useComposerRequestLifecycle.js';
+import {
+  useComposerRequestLifecycle,
+  type PendingDispatchHydration,
+} from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
 import type { DraftParallelBranchState } from '../draftParallelBranches.js';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
@@ -128,6 +131,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   busy: WorkspaceBusyState;
   setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
+  hydratePendingDispatch?: PendingDispatchHydration | null;
 }
 
 function isChannelDispatchRunning(
@@ -190,6 +194,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     busy,
     setBusy,
     setFeedback,
+    hydratePendingDispatch = null,
   } = options;
   const managedNavigationLocationRef = useRef<string | null>(null);
   const {
@@ -206,6 +211,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setState,
     fetchPayload: fetchAppShell,
     isChannelDispatchRunning,
+    hydratePendingDispatch,
   });
   const {
     onCancelPendingSend,
