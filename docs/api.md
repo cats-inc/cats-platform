@@ -784,6 +784,24 @@ POST /api/runtime/mcp
   product routes can stay HTTP-native while orchestrator-style agents still use
   the same runtime MCP tool surface.
 
+### Debug Routes
+
+```text
+GET /api/debug/live-trace
+GET /api/debug/navigation-handoff
+```
+
+- `GET /api/debug/live-trace` returns the current server live-trace buffer when
+  `debugLiveTrace` is enabled; otherwise it returns `404` with
+  `live_trace_disabled`.
+- `GET /api/debug/navigation-handoff` returns the current warm-navigation
+  handoff telemetry snapshot when `debugLiveTrace` is enabled; otherwise it
+  returns `404` with `navigation_handoff_debug_disabled`.
+- The navigation-handoff payload exposes:
+  - stage/hit/miss counters
+  - active staged targets still waiting to be consumed
+  - latest stage/hit/miss metadata for the current process
+
 ### Error Shape (Canonical Routes)
 
 Canonical routes use structured errors:

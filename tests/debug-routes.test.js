@@ -5,6 +5,11 @@ import {
   clearServerLiveTrace,
   pushServerLiveTrace,
 } from '../build/server/shared/liveTrace.js';
+import {
+  clearCrossSurfaceNavigationHandoff,
+  resetCrossSurfaceNavigationHandoffTelemetry,
+  stageCrossSurfaceNavigationHandoff,
+} from '../build/server/products/shared/renderer/crossSurfaceNavigationHandoff.js';
 import { routeChatDebugResourceApi } from '../build/server/products/chat/api/resources/debugRoutes.js';
 
 function createResponse() {
@@ -79,4 +84,65 @@ test('routeChatDebugResourceApi reports disabled tracing when the env flag is of
   assert.equal(handled, true);
   assert.equal(response.statusCode, 404);
   assert.equal(JSON.parse(response.body).error, 'live_trace_disabled');
+});
+
+test('routeChatDebugResourceApi returns warm navigation handoff telemetry when enabled', async () => {
+  clearCrossSurfaceNavigationHandoff();
+  resetCrossSurfaceNavigationHandoffTelemetry();
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-debug-handoff',
+      route: {
+        surface: 'code',
+        path: '/code/chats/channel-debug-handoff',
+      },
+    },
+    createdAt: '2026-04-20T12:00:00.000Z',
+  });
+
+  const response = createResponse();
+  const handled = await routeChatDebugResourceApi({
+    url: new URL('http://localhost/api/debug/navigation-handoff'),
+    method: 'GET',
+    response,
+    dependencies: {
+      config: {
+        debugLiveTrace: true,
+      },
+    },
+  });
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = JSON.parse(response.body);
+  assert.equal(payload.enabled, true);
+  assert.equal(payload.handoff.counters.stage, 1);
+  assert.equal(payload.handoff.counters.hit, 0);
+  assert.equal(payload.handoff.counters.miss.missing, 0);
+  assert.equal(payload.handoff.activeStagedTargets.length, 1);
+  assert.equal(payload.handoff.latestStage.entityId, 'channel-debug-handoff');
+  clearCrossSurfaceNavigationHandoff();
+  resetCrossSurfaceNavigationHandoffTelemetry();
+});
+
+test('routeChatDebugResourceApi reports disabled navigation handoff telemetry when the debug flag is off', async () => {
+  const response = createResponse();
+  const handled = await routeChatDebugResourceApi({
+    url: new URL('http://localhost/api/debug/navigation-handoff'),
+    method: 'GET',
+    response,
+    dependencies: {
+      config: {
+        debugLiveTrace: false,
+      },
+    },
+  });
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 404);
+  assert.equal(JSON.parse(response.body).error, 'navigation_handoff_debug_disabled');
 });

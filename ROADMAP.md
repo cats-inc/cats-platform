@@ -607,8 +607,9 @@ contracts.
       once more consumers adopt it
       Progress: the shared cross-surface handoff store now exposes inspectable
       stage/hit/miss telemetry counters plus latest route metadata and active
-      staged targets; product-level wiring and longer-horizon reporting still
-      remain.
+      staged targets, and `/api/debug/navigation-handoff` now surfaces that
+      per-process snapshot behind the existing debug gate; product-level wiring
+      and longer-horizon reporting still remain.
 - [ ] Add integration coverage for the warm-navigation seam instead of relying
       only on pure seam tests, specifically `useWorkspaceAppShellRouting`
       mount-time consume + background refresh behavior and the cross-surface
