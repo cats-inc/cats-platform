@@ -716,7 +716,14 @@ export async function persistCatAssignmentUpdate(
         channelId,
         runtimeEnvelope.context,
       ));
-      const { spawnCwd, ...runtimePolicy } = sessionPolicy;
+      const { spawnCwd: sessionPolicySpawnCwd, ...runtimePolicy } = sessionPolicy;
+      const effectiveWorkspaceKind = (
+        spawnCwd
+        && !sessionPolicySpawnCwd
+        && runtimePolicy.workspaceKind === 'sandbox'
+      )
+        ? 'source'
+        : runtimePolicy.workspaceKind;
       const session = await context.dependencies.runtimeClient.createSession({
         provider: updatedCat.execution.target.provider,
         instance: updatedCat.execution.target.instance,
@@ -724,8 +731,9 @@ export async function persistCatAssignmentUpdate(
         modelSelection:
           updatedCat.execution.modelSelection
           ?? createExplicitProviderModelSelection(updatedCat.execution.target.model),
-        cwd: spawnCwd,
+        cwd: spawnCwd ?? sessionPolicySpawnCwd ?? undefined,
         ...runtimePolicy,
+        workspaceKind: effectiveWorkspaceKind,
         context: runtimeEnvelope.context,
         skills: runtimeEnvelope.skills,
       });
@@ -750,7 +758,7 @@ export async function persistCatAssignmentUpdate(
         startedAt: timestamp,
         lastUsedAt: timestamp,
       }, now);
-      if (!spawnCwd && session.cwd) {
+      if (!spawnCwd && !sessionPolicySpawnCwd && session.cwd) {
         nextState = setChannelChatCwd(nextState, channelId, session.cwd, now);
       }
       nextState = setChannelStatus(nextState, channelId, 'active', now);

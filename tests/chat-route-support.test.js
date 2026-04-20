@@ -6,7 +6,12 @@ import test from 'node:test';
 import {
   persistCatAssignmentRemoval,
   persistCatAssignmentUpdate,
+  resolveCreateOriginSurface,
 } from '../build/server/products/chat/api/routeSupport.js';
+import {
+  inspectOriginSurfaceCompatibilityTelemetry,
+  resetOriginSurfaceCompatibilityTelemetry,
+} from '../build/server/products/chat/api/originSurfaceCompatibilityTelemetry.js';
 import {
   buildChatConversationId,
   buildDirectLaneTransportBindingId,
@@ -61,6 +66,65 @@ function createRuntimeStub() {
     },
   };
 }
+
+test('resolveCreateOriginSurface preserves explicit values, records missing ownership, and rejects invalid values', () => {
+  resetOriginSurfaceCompatibilityTelemetry();
+  const originalWrite = process.stderr.write;
+  const stderrWrites = [];
+  process.stderr.write = (chunk, encoding, callback) => {
+    stderrWrites.push(String(chunk));
+    if (typeof encoding === 'function') {
+      encoding();
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+    return true;
+  };
+
+  try {
+    assert.equal(
+      resolveCreateOriginSurface('work', {
+        targetNoun: 'channel',
+      }),
+      'work',
+    );
+    assert.equal(
+      resolveCreateOriginSurface(undefined, {
+        targetNoun: 'parallel group',
+        telemetryTarget: 'parallel_group',
+      }),
+      'chat',
+    );
+    assert.match(stderrWrites[0] ?? '', /parallel group missing explicit originSurface/u);
+    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
+      fallbackCount: 1,
+      fallbackTargetCounts: {
+        parallel_group: 1,
+      },
+      latestFallback: {
+        targetNoun: 'parallel_group',
+        resolvedSurface: 'chat',
+      },
+    });
+
+    assert.throws(
+      () => resolveCreateOriginSurface('bogus', {
+        targetNoun: 'channel',
+      }),
+      (error) => {
+        assert.equal(error.name, 'ChatApiError');
+        assert.equal(error.statusCode, 400);
+        assert.equal(error.code, 'invalid_origin_surface');
+        assert.match(error.message, /channel originSurface must be one of/u);
+        assert.deepEqual(error.details, { received: 'bogus' });
+        return true;
+      },
+    );
+  } finally {
+    process.stderr.write = originalWrite;
+    resetOriginSurfaceCompatibilityTelemetry();
+  }
+});
 
 test('persistCatAssignmentUpdate starts new cat sessions from the orchestrator attachment cwd', async () => {
   const chatStore = new MemoryChatStore();
