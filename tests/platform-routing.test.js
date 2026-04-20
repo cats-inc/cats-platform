@@ -14,6 +14,7 @@ import {
   PLATFORM_SURFACE_ROUTES,
 } from '../build/server/app/renderer/routeMap.js';
 import {
+  platformSurfaceLabel,
   listPlatformSurfaceDescriptors,
   platformSurfaceRoutePrefix,
   platformSurfaceSubtitle,
@@ -90,6 +91,9 @@ test('platform surface descriptors expose product switcher metadata and stable r
   assert.equal(platformSurfaceRoutePrefix('chat'), '/chat');
   assert.equal(platformSurfaceRoutePrefix('work'), '/work');
   assert.equal(platformSurfaceRoutePrefix('code'), '/code');
+  assert.equal(platformSurfaceLabel('chat'), 'Chat');
+  assert.equal(platformSurfaceLabel('work'), 'Work');
+  assert.equal(platformSurfaceLabel('code'), 'Code');
   assert.equal(resolvePlatformSurfaceRoutePrefix('chat'), '/chat');
   assert.equal(resolvePlatformSurfaceRoutePrefix('work'), '/work');
   assert.equal(resolvePlatformSurfaceRoutePrefix('code'), '/code');

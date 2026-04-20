@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { platformSurfaceLabel } from '../../../../core/platformSurface.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 
 export interface ComposerSurfaceChipProps {
@@ -7,12 +8,6 @@ export interface ComposerSurfaceChipProps {
   onDismiss?: () => void;
   disabled?: boolean;
 }
-
-const SURFACE_LABELS: Record<PlatformSurfaceId, string> = {
-  chat: 'Chat',
-  code: 'Code',
-  work: 'Work',
-};
 
 function renderSurfaceIcon(surface: PlatformSurfaceId): ReactNode {
   const common = {
@@ -50,7 +45,7 @@ function renderSurfaceIcon(surface: PlatformSurfaceId): ReactNode {
 }
 
 export function ComposerSurfaceChip({ surface, onDismiss, disabled = false }: ComposerSurfaceChipProps) {
-  const label = SURFACE_LABELS[surface];
+  const label = platformSurfaceLabel(surface);
   return (
     <span className={`composerSurfaceChip composerSurfaceChip${capitalize(surface)}`}>
       {renderSurfaceIcon(surface)}

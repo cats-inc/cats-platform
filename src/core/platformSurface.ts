@@ -28,6 +28,12 @@ const PLATFORM_SURFACE_DESCRIPTOR_BY_ID = new Map(
   PLATFORM_SURFACE_DESCRIPTORS.map((descriptor) => [descriptor.id, descriptor] as const),
 );
 
+const PLATFORM_SURFACE_LABELS: Readonly<Record<PlatformSurfaceId, string>> = {
+  chat: 'Chat',
+  work: 'Work',
+  code: 'Code',
+};
+
 export function listPlatformSurfaceDescriptors(): readonly PlatformSurfaceDescriptor[] {
   return PLATFORM_SURFACE_DESCRIPTORS;
 }
@@ -41,6 +47,10 @@ export function resolvePlatformSurfaceFromPath(pathname: string): PlatformSurfac
 
 export function platformSurfaceProductName(surface: PlatformSurfaceId): string {
   return resolvePlatformSurfaceProductName(surface);
+}
+
+export function platformSurfaceLabel(surface: PlatformSurfaceId): string {
+  return PLATFORM_SURFACE_LABELS[surface] ?? 'Chat';
 }
 
 export function platformSurfaceSubtitle(surface: PlatformSurfaceId): string {

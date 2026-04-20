@@ -11,6 +11,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
+import { platformSurfaceLabel } from '../../core/platformSurface.js';
 import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import {
   isPlatformNonProductPath,
@@ -52,21 +53,9 @@ function resolveProductEntryPath(surface: string): string {
   return route ? route.routePrefix : '/';
 }
 
-function resolvePlatformSurfaceLabel(surface: PlatformSurfaceId): string {
-  switch (surface) {
-    case 'code':
-      return 'Code';
-    case 'work':
-      return 'Work';
-    case 'chat':
-    default:
-      return 'Chat';
-  }
-}
-
 function resolveLoadingTitleForPath(pathname: string): string {
   const surface = resolvePlatformSurfaceForPath(pathname);
-  return surface ? `Loading ${resolvePlatformSurfaceLabel(surface)}` : 'Loading';
+  return surface ? `Loading ${platformSurfaceLabel(surface)}` : 'Loading';
 }
 
 export function shouldRenderGuideCatSidecar(input: {
@@ -90,7 +79,7 @@ function ProductSurfaceFallback({
   surface: PlatformSurfaceId;
   onVisibilityChange: (visible: boolean) => void;
 }) {
-  const surfaceLabel = resolvePlatformSurfaceLabel(surface);
+  const surfaceLabel = platformSurfaceLabel(surface);
 
   useEffect(() => {
     onVisibilityChange(true);
