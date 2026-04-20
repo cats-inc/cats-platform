@@ -129,7 +129,14 @@ export function ConversationSidebarFooter<
  *           });
  *         }}
  *         containerClassName="sidebarFooter"
- *         triggerClassName="sidebarFooterButton"
+ *         // The original popup trigger class was `.sidebarFooterButton`
+ *         // before the split-click refactor. That class was removed
+ *         // along with the single-button markup; when re-enabling the
+ *         // menu, either re-introduce `.sidebarFooterButton` in
+ *         // sidebar-chrome.css (copying the styling currently split
+ *         // across `.sidebarFooterMainButton` and `.sidebarFooterTrailing`)
+ *         // or pick a new trigger class.
+ *         triggerClassName="sidebarFooterMainButton"
  *         menuWidth="trigger"
  *         rootRef={accountMenuRef}
  *         avatar={<div className="profileBadge" style={…}>…</div>}

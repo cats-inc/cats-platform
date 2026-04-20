@@ -93,12 +93,18 @@
  * Two real buttons = two real Tab stops, no nested interactive
  * markup. "Whole pill hovers as one" is preserved by painting the
  * hover bg on the container; the inner buttons stay transparent so
- * the bg shows through both halves simultaneously. The divider is
- * inset (not edge-to-edge) because the runtime button is height-
- * limited — border-left then only spans the shorter button. */
+ * the bg shows through both halves simultaneously. No divider line
+ * between them — the rounded pill already implies a single chip, and
+ * a vertical border read as "cramped against the right curve" when
+ * combined with the dot's natural right-side position. */
+/* The two inner buttons fill the pill end-to-end and fill the pill
+ * height (align-items: stretch). That way the whole hover-highlighted
+ * pill is also fully clickable: the avatar+name half fires on any
+ * pixel of its half, the runtime half absorbs the right-side breathing
+ * padding into its own hit area. */
 .lobbyIdentity {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel);
@@ -124,13 +130,16 @@
 
 .lobbyIdentityRuntime {
   display: grid;
+  place-content: center;
   place-items: center;
   width: 20px;
-  height: 20px;
-  margin-left: var(--space-1);
-  padding: 0 var(--space-2);
+  /* Right padding moves the dot off the rounded edge while keeping the
+   * breathing space inside the button's hit area. align-self: auto
+   * (default) → inherits parent's `align-items: stretch`, so the
+   * button fills the pill vertically and there's no dead zone above /
+   * below the 9px dot. */
+  padding: 0 var(--space-2) 0 0;
   border: 0;
-  border-left: 1px solid var(--border);
   border-radius: 0 999px 999px 0;
   background: transparent;
   color: inherit;

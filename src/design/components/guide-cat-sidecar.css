@@ -201,6 +201,11 @@ body.guideCatDragging .guideCatDockSlot,
  * keyboard, matching the hover reveal behaviour. */
 .guideCatDockUndockSlot {
   display: grid;
+  /* See `.sidebarFooterTrailing` note: `place-content` centres the
+   * grid tracks in the 24x24 container, `place-items` centres each
+   * item in its cell. Both are needed because auto-sized tracks with
+   * fixed-size children sit at the grid's start by default. */
+  place-content: center;
   place-items: center;
   width: 24px;
   height: 24px;

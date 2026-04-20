@@ -353,11 +353,16 @@
  * trailing runtime slot (→ /settings/runtime). Each has its own Tab
  * stop and Enter/Space activation. The "whole-row highlight" is
  * achieved by hovering the container — both inner buttons are
- * transparent so the container bg shows through. */
+ * transparent so the container bg shows through. Layout mirrors the
+ * guide-cat dock row directly above so the two 24x24 trailing slots
+ * land in the same optical column: `align-items: center` on the row,
+ * `align-self: stretch` on the main button (so its click area keeps
+ * the full 60px height), and explicit `margin-right: 18px` on the
+ * trailing button to match the guide-cat row's `padding-right: 18px`. */
 .sidebarFooter {
   position: relative;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   margin: 0;
   padding: 0;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
@@ -378,7 +383,11 @@
   gap: 10px;
   flex: 1;
   min-width: 0;
-  padding: 10px 0 10px 18px;
+  align-self: stretch;
+  /* Right padding visually separates the name text from the trailing
+   * button while still being part of the main button's hit area — no
+   * dead gap between the two halves. */
+  padding: 0 10px 0 18px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -410,17 +419,46 @@
 .sidebarFooterTrailing {
   position: relative;
   display: grid;
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
+  flex: 0 0 42px;
+  /* 42px wide = 24 icon visual + 18 right gutter; full row height so
+   * the button eats the top / bottom margin that used to be dead zone
+   * between the 24x24 slot and the row edges. The 18px gutter lives
+   * inside the button as `padding-right`, so clicks in the far-right
+   * strip (between the icon and the sidebar edge) still activate the
+   * button — no hover-highlighted-but-inert strip remains. */
+  width: 42px;
+  padding-right: 18px;
+  align-self: stretch;
+  place-content: center;
   place-items: center;
-  margin: auto 18px auto 6px;
+  margin: 0;
   border: 0;
-  border-radius: 6px;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
+}
+
+/* The visible hover affordance is a 24x24 rounded square centred on
+ * the icon, not the full 42x60 hit area. Use a pseudo-element so the
+ * click surface can stay large while the visual still matches the
+ * cat-row `.myCatOverflowButton` silhouette. */
+.sidebarFooterTrailing::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  border-radius: 6px;
+  background: transparent;
   transition: background 0.15s ease;
+  pointer-events: none;
+}
+
+.sidebarFooterTrailing:hover::before,
+.sidebarFooterTrailing:focus-visible::before {
+  background: var(--panel-hover);
 }
 
 .sidebarFooterTrailing > .runtimeStatusDot {
@@ -431,6 +469,7 @@
 .sidebarFooterRuntimeLink {
   grid-area: 1 / 1;
   display: grid;
+  place-content: center;
   place-items: center;
   width: 24px;
   height: 24px;
@@ -447,8 +486,4 @@
 .sidebarFooter:hover .sidebarFooterRuntimeLink,
 .sidebarFooterTrailing:focus-visible .sidebarFooterRuntimeLink {
   opacity: 1;
-}
-
-.sidebarFooterTrailing:hover {
-  background: var(--panel-hover);
 }
