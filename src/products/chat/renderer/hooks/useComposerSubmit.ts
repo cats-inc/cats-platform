@@ -129,7 +129,21 @@ export async function resolveDispatchExecutionTargetValue(
   }
 }
 
-function stageCrossSurfaceDraftNavigationHandoff(input: {
+export function resolveCrossSurfaceDraftDispatchState(input: {
+  showingNewChatDraft: boolean;
+  draftSurface: PlatformSurfaceId;
+}): {
+  targetSurface: PlatformSurfaceId;
+  isCrossSurfaceDraftDispatch: boolean;
+} {
+  const targetSurface = input.showingNewChatDraft ? input.draftSurface : 'chat';
+  return {
+    targetSurface,
+    isCrossSurfaceDraftDispatch: input.showingNewChatDraft && targetSurface !== 'chat',
+  };
+}
+
+export function stageCrossSurfaceDraftNavigationHandoff(input: {
   kind: 'draft-create-channel' | 'draft-create-parallel-group';
   sourceSurface: PlatformSurfaceId;
   targetSurface: PlatformSurfaceId;
@@ -307,8 +321,13 @@ export function useComposerSubmit(options: {
       showingMyCatDirectLane,
     });
     const isCatScopedLaneRoute = draftRoute.isDirectLaneRoute;
-    const targetSurface = wasDraftingNewChat ? draftSurface : 'chat';
-    const isCrossSurfaceDraftDispatch = wasDraftingNewChat && targetSurface !== 'chat';
+    const {
+      targetSurface,
+      isCrossSurfaceDraftDispatch,
+    } = resolveCrossSurfaceDraftDispatchState({
+      showingNewChatDraft: wasDraftingNewChat,
+      draftSurface,
+    });
     const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftDefaultRecipientCatId)
       ? initialSelectedChannel
       : null;
