@@ -24,6 +24,7 @@ import {
   renameChatChannel as renameWorkspaceChatChannel,
   resetSetup as resetWorkspaceSetup,
 } from '../api/index.js';
+import { resetComposerDraftState } from '../composerDraftState.js';
 import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
 import { clearRememberedExecutionLabels } from '../../../../shared/executionLabel.js';
 import {
@@ -33,10 +34,7 @@ import {
   createSetupBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
-import {
-  createDefaultRuntimeSessionPolicy,
-  type RuntimeSessionPolicy,
-} from '../../../../shared/runtimeSessionPolicy.js';
+import { type RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 
 export interface WorkspaceNavigationChannelRef {
   id: string;
@@ -163,20 +161,24 @@ export function useWorkspaceAppNavigationActions<
   }) => {
     setAddCatOpen(false);
     setPlusMenuOpen(false);
-    setDraftCwd(null);
-    setDraftCatIds([]);
-    setDraftTemporaryParticipants?.([]);
-    setDraftHighlightedCatId(null);
-    setDraftCatExecutionTargetOverrides(new Map());
-    setDraftRuntimeSessionPolicy?.(createDefaultRuntimeSessionPolicy());
-    setDraftWorkflowShape?.('sequential');
-    setDraftAudienceKeys?.(null);
-    resetDraftParallelChatTargets?.({
-      includeCompareTarget: options?.includeCompareTarget ?? false,
+    resetComposerDraftState({
+      setDraftCwd,
+      setDraftCatIds,
+      setDraftTemporaryParticipants,
+      setDraftHighlightedCatId,
+      setDraftCatExecutionTargetOverrides,
+      setDraftRuntimeSessionPolicy,
+      setDraftWorkflowShape,
+      setDraftAudienceKeys,
+      resetDraftParallelChatTargets: () => {
+        resetDraftParallelChatTargets?.({
+          includeCompareTarget: options?.includeCompareTarget ?? false,
+        });
+      },
+      setDraftFiles,
+      setChannelFiles,
     });
-    setDraftFiles([]);
     setChannelPlusMenuOpen(false);
-    setChannelFiles([]);
   }, [
     setAddCatOpen,
     setPlusMenuOpen,
@@ -190,8 +192,8 @@ export function useWorkspaceAppNavigationActions<
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
     setDraftFiles,
-    setChannelPlusMenuOpen,
     setChannelFiles,
+    setChannelPlusMenuOpen,
   ]);
 
   const onOpenChatsOverview = useCallback((): void => {
