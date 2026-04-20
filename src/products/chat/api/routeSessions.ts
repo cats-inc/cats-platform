@@ -66,7 +66,7 @@ export async function cancelSessionIds(
 
 interface ProductDeleteRuntimeFailureDetail {
   sessionId: string;
-  status: 'retained' | 'error';
+  status: 'error';
   message: string;
   runtimeStatusCode?: number;
 }
@@ -105,11 +105,7 @@ export async function cleanupSessionsForProductDelete(
     try {
       const result = await context.dependencies.runtimeClient.deleteSession(sessionId);
       if (result.status === 'retained') {
-        failures.push({
-          sessionId,
-          status: 'retained',
-          message: result.reason?.trim() || 'cats-runtime retained the session instead of deleting it.',
-        });
+        continue;
       }
     } catch (error) {
       if (error instanceof RuntimeRequestError && error.status === 404) {
@@ -129,16 +125,10 @@ export async function cleanupSessionsForProductDelete(
     return;
   }
 
-  const retained = failures.filter((failure) => failure.status === 'retained');
-  const statusCode = retained.length > 0 ? 409 : 502;
-  const message = retained.length > 0
-    ? 'Linked runtime sessions could not be deleted, so the product delete was cancelled.'
-    : 'Failed to delete linked runtime sessions, so the product delete was cancelled.';
-
   throw new ChatApiError(
-    statusCode,
+    502,
     'runtime_session_delete_failed',
-    message,
+    'Failed to delete linked runtime sessions, so the product delete was cancelled.',
     {
       failures,
       failMode: 'fail_and_keep',

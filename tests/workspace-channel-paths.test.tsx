@@ -10,6 +10,7 @@ import {
   readNewChatPreset as readCodeNewChatPreset,
   resolveVisibleChatPath as resolveCodeVisibleChatPath,
 } from '../src/products/code/shared/channelPaths.ts';
+import { resolveWorkspaceVisibleChatPath } from '../src/products/shared/channelPaths.ts';
 import {
   buildChannelPath as buildWorkChannelPath,
   buildNewGroupChatPath as buildWorkNewGroupChatPath,
@@ -21,9 +22,13 @@ import {
 } from '../src/products/work/shared/channelPaths.ts';
 
 test('workspace channel paths keep product prefixes while sharing visible-chat semantics', () => {
-  const channels = [
-    { id: 'direct-1', roomMode: 'direct_cat_chat' as const },
-    { id: 'boss-1', roomMode: 'boss_chat' as const },
+  const workChannels = [
+    { id: 'direct-1', originSurface: 'work' as const, roomMode: 'direct_cat_chat' as const },
+    { id: 'boss-1', originSurface: 'work' as const, roomMode: 'boss_chat' as const },
+  ];
+  const codeChannels = [
+    { id: 'direct-1', originSurface: 'code' as const, roomMode: 'direct_cat_chat' as const },
+    { id: 'boss-1', originSurface: 'code' as const, roomMode: 'boss_chat' as const },
   ];
 
   assert.equal(buildWorkNewChatPath('cat-1'), '/work/new?cat=cat-1');
@@ -40,6 +45,25 @@ test('workspace channel paths keep product prefixes while sharing visible-chat s
   assert.equal(readCodeNewChatPreset('?preset=parallel'), 'parallel');
   assert.equal(readWorkNewChatPreset('?preset=unknown'), 'default');
   assert.equal(readCodeNewChatPreset(''), 'default');
-  assert.equal(resolveWorkVisibleChatPath(channels, 'direct-1'), '/work/chats/boss-1');
-  assert.equal(resolveCodeVisibleChatPath(channels, 'direct-1'), '/code/chats/boss-1');
+  assert.equal(resolveWorkVisibleChatPath(workChannels, 'direct-1'), '/work/chats/boss-1');
+  assert.equal(resolveCodeVisibleChatPath(codeChannels, 'direct-1'), '/code/chats/boss-1');
+
+  const crossSurfaceChannels = [
+    { id: 'code-1', originSurface: 'code' as const, roomMode: 'boss_chat' as const },
+    { id: 'chat-1', originSurface: 'chat' as const, roomMode: 'boss_chat' as const },
+  ];
+
+  assert.equal(
+    resolveWorkspaceVisibleChatPath('/code', crossSurfaceChannels, 'chat-1', 'code'),
+    '/code/chats/code-1',
+  );
+  assert.equal(resolveCodeVisibleChatPath(crossSurfaceChannels, 'chat-1'), '/code/chats/code-1');
+  assert.equal(resolveWorkVisibleChatPath(crossSurfaceChannels, 'chat-1'), '/work/new');
+  assert.equal(
+    resolveCodeVisibleChatPath(
+      [{ id: 'chat-1', originSurface: 'chat' as const, roomMode: 'boss_chat' as const }],
+      'chat-1',
+    ),
+    '/code/new',
+  );
 });

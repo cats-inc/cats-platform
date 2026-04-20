@@ -1,6 +1,7 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
 import { isDirectLaneSummary } from './channelTopology.js';
 import { resolvePlatformSurfaceRoutePrefix } from '../../../shared/platformProducts.js';
+import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 
 export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -85,18 +86,20 @@ export function resolveDefaultChatPath(selectedChannelId: string | null | undefi
 }
 
 export function resolveVisibleChatPath(
-  channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>>,
+  channels: ReadonlyArray<Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind' | 'originSurface'>>,
   selectedChannelId: string | null | undefined,
 ): string {
+  const visibleChannels = channels.filter((channel) =>
+    normalizePlatformSurface(channel.originSurface, 'chat') === 'chat');
   const normalized = selectedChannelId?.trim() ?? '';
-  const selectedVisible = channels.find((channel) =>
+  const selectedVisible = visibleChannels.find((channel) =>
     channel.id === normalized && !isDirectLaneSummary(channel),
   );
   if (selectedVisible) {
     return buildChannelPath(selectedVisible.id);
   }
 
-  const firstVisible = channels.find((channel) => !isDirectLaneSummary(channel));
+  const firstVisible = visibleChannels.find((channel) => !isDirectLaneSummary(channel));
   return firstVisible ? buildChannelPath(firstVisible.id) : NEW_CHAT_PATH;
 }
 

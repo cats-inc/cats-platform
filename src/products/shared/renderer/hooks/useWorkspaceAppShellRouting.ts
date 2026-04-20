@@ -33,7 +33,7 @@ import {
 
 const APP_SHELL_BACKGROUND_REFRESH_MS = 5_000;
 
-type RoutingChannelLike = Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind'>;
+type RoutingChannelLike = Pick<ChatChannelSummary, 'id' | 'roomMode' | 'channelKind' | 'originSurface'>;
 type RoutingCatLike = { id: string; status: string };
 
 export interface WorkspaceRoutingPayloadLike {
@@ -99,7 +99,7 @@ function consumeInitialWarmNavigationPayload<
 ): TPayload | null {
   return (
     consumeCrossSurfaceNavigationHandoff(match)?.snapshot?.appShellPayload ?? null
-  ) as TPayload | null;
+  ) as unknown as TPayload | null;
 }
 
 export function resolveInitialWorkspaceWarmNavigationPayload<
@@ -242,6 +242,7 @@ export function useWorkspaceAppShellRouting<
         chatPrefix,
         readyPayload.chat.channels,
         selectedChannelId,
+        surface,
       )
     : resolveWorkspaceNewChatPath(chatPrefix);
   const draftRecipientFallbackPath =
@@ -259,6 +260,7 @@ export function useWorkspaceAppShellRouting<
                     chatPrefix,
                     readyPayload.chat.channels,
                     readyPayload.chat.selectedChannelId,
+                    surface,
                   )
                 : resolveWorkspaceNewChatPath(chatPrefix)
             )

@@ -38,6 +38,7 @@ import { type RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPoli
 
 export interface WorkspaceNavigationChannelRef {
   id: string;
+  originSurface?: PlatformSurfaceId | null;
   channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
   defaultRecipientCatId?: string | null;
   roomMode?: RoomRoutingMode | null;
@@ -201,10 +202,17 @@ export function useWorkspaceAppNavigationActions<
       return;
     }
 
-    navigate(resolveWorkspaceVisibleChatPath(chatPrefix, state.payload.chat.channels, state.payload.chat.selectedChannelId));
+    navigate(
+      resolveWorkspaceVisibleChatPath(
+        chatPrefix,
+        state.payload.chat.channels,
+        state.payload.chat.selectedChannelId,
+        platformShellSurface,
+      ),
+    );
     setFeedback('');
     setAddCatOpen(false);
-  }, [chatPrefix, navigate, setAddCatOpen, setFeedback, state]);
+  }, [chatPrefix, navigate, platformShellSurface, setAddCatOpen, setFeedback, state]);
 
   const onSelect = useCallback((channelId: string): void => {
     navigate(buildWorkspaceChannelPath(chatPrefix, channelId));
@@ -245,13 +253,29 @@ export function useWorkspaceAppNavigationActions<
         setAddCatOpen(false);
         setFeedback('');
       });
-      navigate(resolveWorkspaceVisibleChatPath(chatPrefix, payload.chat.channels, payload.chat.selectedChannelId));
+      navigate(
+        resolveWorkspaceVisibleChatPath(
+          chatPrefix,
+          payload.chat.channels,
+          payload.chat.selectedChannelId,
+          platformShellSurface,
+        ),
+      );
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
     } finally {
       setBusy(clearBusyState());
     }
-  }, [chatPrefix, navigate, navigationApi, setAddCatOpen, setBusy, setFeedback, setState]);
+  }, [
+    chatPrefix,
+    navigate,
+    navigationApi,
+    platformShellSurface,
+    setAddCatOpen,
+    setBusy,
+    setFeedback,
+    setState,
+  ]);
 
   const onDeleteCat = useCallback(async (catId: string): Promise<void> => {
     const confirmed = confirmDialog

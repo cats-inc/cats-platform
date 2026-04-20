@@ -233,7 +233,7 @@ test('DELETE /api/channels/:id keeps close-only behavior when debug retention ov
   });
 });
 
-test('DELETE /api/channels/:id fails and keeps product state when runtime delete is retained', async () => {
+test('DELETE /api/channels/:id treats retained runtime delete as success and removes product state', async () => {
   const runtime = createRuntimeStub({
     deleteResults: new Map([
       ['session-retained-channel', {
@@ -264,12 +264,12 @@ test('DELETE /api/channels/:id fails and keeps product state when runtime delete
     const response = await fetch(`${baseUrl}/api/channels/${channelId}`, {
       method: 'DELETE',
     });
-    assert.equal(response.status, 409);
+    assert.equal(response.status, 200);
     const payload = await response.json();
-    assert.equal(payload.error.code, 'runtime_session_delete_failed');
+    assert.equal(payload.deleted, true);
 
     const persisted = await store.read();
-    assert.ok(persisted.channels.some((channel) => channel.id === channelId));
+    assert.ok(!persisted.channels.some((channel) => channel.id === channelId));
   }, { chatStore });
 });
 

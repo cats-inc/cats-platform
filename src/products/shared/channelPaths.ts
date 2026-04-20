@@ -1,4 +1,6 @@
+import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import type { RoomRoutingMode } from '../../shared/roomRouting.js';
+import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import { isDirectLaneSummary, type ProductChannelKind } from './channelTopology.js';
 
 export const UUID_PATTERN =
@@ -15,6 +17,7 @@ type WorkspaceChannelSummaryRef = {
   id: string;
   roomMode?: RoomRoutingMode | null;
   channelKind?: ProductChannelKind | null;
+  originSurface?: PlatformSurfaceId | null;
 };
 
 function normalizeRouteToken(value: string | null | undefined): string | null {
@@ -111,16 +114,21 @@ export function resolveWorkspaceVisibleChatPath(
   chatPrefix: string,
   channels: ReadonlyArray<WorkspaceChannelSummaryRef>,
   selectedChannelId: string | null | undefined,
+  activeSurface?: PlatformSurfaceId,
 ): string {
+  const visibleChannels = activeSurface
+    ? channels.filter((channel) =>
+      normalizePlatformSurface(channel.originSurface, 'chat') === activeSurface)
+    : channels;
   const normalized = selectedChannelId?.trim() ?? '';
-  const selectedVisible = channels.find((channel) =>
+  const selectedVisible = visibleChannels.find((channel) =>
     channel.id === normalized && !isDirectLaneSummary(channel),
   );
   if (selectedVisible) {
     return buildWorkspaceChannelPath(chatPrefix, selectedVisible.id);
   }
 
-  const firstVisible = channels.find((channel) => !isDirectLaneSummary(channel));
+  const firstVisible = visibleChannels.find((channel) => !isDirectLaneSummary(channel));
   return firstVisible
     ? buildWorkspaceChannelPath(chatPrefix, firstVisible.id)
     : resolveWorkspaceNewChatPath(chatPrefix);

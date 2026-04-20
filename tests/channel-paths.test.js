@@ -42,6 +42,20 @@ test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overv
     resolveVisibleChatPath([{ id: 'direct-1', roomMode: 'direct_cat_chat' }], 'direct-1'),
     NEW_CHAT_PATH,
   );
+
+  const crossSurfaceChannels = [
+    { id: 'chat-1', roomMode: 'boss_chat', originSurface: 'chat' },
+    { id: 'code-1', roomMode: 'boss_chat', originSurface: 'code' },
+  ];
+
+  assert.equal(
+    resolveVisibleChatPath(crossSurfaceChannels, 'code-1'),
+    '/chat/chats/chat-1',
+  );
+  assert.equal(
+    resolveVisibleChatPath([{ id: 'code-1', roomMode: 'boss_chat', originSurface: 'code' }], 'code-1'),
+    NEW_CHAT_PATH,
+  );
 });
 
 test('resolveVisibleChatPath trusts channelKind for direct lanes even when roomMode is legacy-mismatched', () => {
@@ -100,4 +114,3 @@ test('slugifyChannelLabel falls back to chat for non-Latin input', () => {
   assert.equal(slugifyChannelLabel('   '), 'chat');
   assert.equal(slugifyChannelLabel('Hello World'), 'hello-world');
 });
-
