@@ -86,7 +86,15 @@ function createEnvelope(
   };
 }
 
-test('PlatformLobby renders the shared account menu trigger in the top bar', () => {
+test('PlatformLobby renders the split-click account chrome in the top bar', () => {
+  // The Lobby user chrome used to open an <AccountIdentityMenu> popup
+  // (Settings / Environment). That popup is temporarily disabled in
+  // favour of split-click routing: the main half goes to
+  // /settings/general, the runtime sub-region goes to
+  // /settings/runtime. Enforce both the new structural contract —
+  // container + two real <button>s, no nested interactive markup —
+  // and the absence of the old popup a11y attributes, so the popup
+  // restoration in a later version is a deliberate, test-guided swap.
   const markup = renderToStaticMarkup(
     <StaticRouter location="/lobby">
       <GuideCatPlacementProvider
@@ -102,10 +110,17 @@ test('PlatformLobby renders the shared account menu trigger in the top bar', () 
     </StaticRouter>,
   );
 
-  assert.match(markup, /class="lobbyIdentity"/u);
-  assert.match(markup, /aria-haspopup="menu"/u);
-  assert.match(markup, /aria-expanded="false"/u);
+  // Container is a div with role="group"; two sibling <button>s sit
+  // inside, each with their own aria-label for AT announcement.
+  assert.match(markup, /<div class="lobbyIdentity" role="group"/u);
+  assert.match(markup, /<button[^>]+class="lobbyIdentityMainButton"[^>]+aria-label="Open account settings"/u);
+  assert.match(markup, /<button[^>]+class="lobbyIdentityRuntime"[^>]+aria-label="Runtime status: [^"]+"/u);
   assert.match(markup, />Ken</u);
+
+  // Popup-menu artefacts must be gone — no more aria-haspopup / aria-
+  // expanded, no Settings menu item text.
+  assert.doesNotMatch(markup, /aria-haspopup/u);
+  assert.doesNotMatch(markup, /aria-expanded/u);
   assert.doesNotMatch(markup, />Settings</u);
 });
 

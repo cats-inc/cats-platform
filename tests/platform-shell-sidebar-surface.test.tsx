@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isValidElement, type ReactNode, type RefObject } from 'react';
 
-import { AccountIdentityMenu } from '../src/design/components/AccountIdentityMenu.tsx';
 import { PlatformSurfaceSwitcher } from '../src/design/components/PlatformSurfaceSwitcher.tsx';
 import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
 import { ConversationSidebarMyCatsSection } from '../src/app/renderer/productShell/ConversationSidebarMyCats.tsx';
@@ -184,25 +183,6 @@ function findSurfaceSwitcherActiveSurface(node: ReactNode): PlatformSurfaceId {
   }
 
   return switcher.props.activeSurface as PlatformSurfaceId;
-}
-
-function findAccountIdentityMenu(
-  node: ReactNode,
-): { props: { open?: boolean; menuWidth?: string } } {
-  const footer = findElementByComponent(node, ConversationSidebarFooter);
-  if (!footer) {
-    throw new Error('ConversationSidebarFooter not found.');
-  }
-
-  const footerTree = ConversationSidebarFooter(
-    footer.props as Parameters<typeof ConversationSidebarFooter>[0],
-  );
-  const accountMenu = findElementByComponent(footerTree, AccountIdentityMenu);
-  if (!accountMenu) {
-    throw new Error('AccountIdentityMenu not found.');
-  }
-
-  return accountMenu as { props: { open?: boolean; menuWidth?: string } };
 }
 
 function flattenText(node: ReactNode): string {
@@ -806,9 +786,10 @@ test('Code sidebar surfaces code-origin recents once a +New code channel lands',
 
 test('Work and Code sidebars wire split-click navigation through the shared footer', () => {
   // Temporary variant while the popup menu is disabled; the Footer's
-  // AccountIdentityMenu is preserved as a comment. Once it returns,
-  // flip this back to asserting `findAccountIdentityMenu(tree)` the way
-  // the original test did.
+  // <AccountIdentityMenu> JSX is preserved as a comment. Once it
+  // returns, re-add the AccountIdentityMenu import, reinstate a
+  // findAccountIdentityMenu helper, and flip this back to asserting
+  // the menu's `open` + `menuWidth` props.
   let workSettingsCount = 0;
   let workRuntimeCount = 0;
   let codeSettingsCount = 0;

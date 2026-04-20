@@ -56,6 +56,49 @@ function findElementByType<TProps>(
   return findElementByType<TProps>(children, componentType);
 }
 
+function findDescendantByClassName<TProps>(
+  node: ReactNode,
+  className: string,
+): { type: unknown; props: TProps } {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      try {
+        return findDescendantByClassName<TProps>(child, className);
+      } catch {
+        continue;
+      }
+    }
+    throw new Error(`Element with class "${className}" not found.`);
+  }
+
+  if (!isValidElement(node)) {
+    throw new Error(`Element with class "${className}" not found.`);
+  }
+
+  const cls = (node.props as { className?: string })?.className;
+  if (typeof cls === 'string' && cls.split(/\s+/).includes(className)) {
+    return node as { type: unknown; props: TProps };
+  }
+
+  const children = (node.props as { children?: ReactNode })?.children;
+  if (children == null || children === false) {
+    throw new Error(`Element with class "${className}" not found.`);
+  }
+
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      try {
+        return findDescendantByClassName<TProps>(child, className);
+      } catch {
+        continue;
+      }
+    }
+    throw new Error(`Element with class "${className}" not found.`);
+  }
+
+  return findDescendantByClassName<TProps>(children, className);
+}
+
 function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
 ): ChatChannelSummary {
@@ -398,11 +441,12 @@ test('Sidebar excludes non-chat recents and compare groups by origin surface', (
   );
 });
 
-test('Sidebar footer wires split-click navigation to Settings sections', () => {
+test('Sidebar footer exposes two sibling buttons for settings and runtime navigation', () => {
   // Temporary variant of the account-menu test while the popup menu is
-  // disabled: the footer routes the runtime dot to /settings/runtime and
-  // everything else to /settings/general via two injected callbacks.
-  // When the popup returns (see the preservation block in
+  // disabled. Two real <button> siblings (main + trailing) so keyboard
+  // users Tab to the runtime entry independently and Enter/Space
+  // activates it natively — no click-target detection, no nested
+  // interactives. When the popup returns (see preservation block in
   // ConversationSidebarFooter.tsx), flip this back to asserting the
   // <AccountIdentityMenu> wiring.
   let navigateSettingsCount = 0;
@@ -451,19 +495,31 @@ test('Sidebar footer wires split-click navigation to Settings sections', () => {
   assert.equal(typeof footer.props.onNavigateRuntime, 'function');
 
   const footerTree = ConversationSidebarFooter(footer.props);
-  const button = findElementByType<{
-    onClick: (event: { target: { closest: (selector: string) => unknown } }) => void;
-  }>(footerTree, 'button');
 
-  // Click on profile badge / name: `closest('[data-runtime-dot]')` is
-  // null, so the general settings callback fires.
-  button.props.onClick({ target: { closest: () => null } });
+  // Both halves must be real <button>s so they participate in the
+  // browser's native focus/activation chain (no role="button" <span>s,
+  // no `tabIndex={0}` workarounds).
+  const mainButton = findDescendantByClassName<{
+    onClick: () => void;
+  }>(footerTree, 'sidebarFooterMainButton');
+  const trailingButton = findDescendantByClassName<{
+    onClick: () => void;
+    'aria-label': string;
+  }>(footerTree, 'sidebarFooterTrailing');
+  assert.equal(mainButton.type, 'button');
+  assert.equal(trailingButton.type, 'button');
+  assert.match(trailingButton.props['aria-label'], /Runtime status/);
+
+  // Activating the main button (keyboard Enter/Space or mouse click —
+  // the browser funnels both into `onClick`) navigates to general
+  // settings.
+  mainButton.props.onClick();
   assert.equal(navigateSettingsCount, 1);
   assert.equal(navigateRuntimeCount, 0);
 
-  // Click on the runtime dot: `closest('[data-runtime-dot]')` returns
-  // the dot element, so the runtime callback fires instead.
-  button.props.onClick({ target: { closest: () => ({}) } });
+  // Activating the trailing button (independent Tab stop) navigates
+  // to runtime settings.
+  trailingButton.props.onClick();
   assert.equal(navigateSettingsCount, 1);
   assert.equal(navigateRuntimeCount, 1);
 });

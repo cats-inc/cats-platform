@@ -1,4 +1,4 @@
-import { type MouseEvent, type RefObject } from 'react';
+import type { RefObject } from 'react';
 
 import {
   resolveRuntimeDotClassName,
@@ -37,21 +37,12 @@ export function ConversationSidebarFooter<
   onNavigateRuntime: () => void;
   catInitials: (name: string) => string;
 }) {
-  function handleFooterClick(event: MouseEvent<HTMLButtonElement>): void {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('[data-runtime-dot]')) {
-      onNavigateRuntime();
-      return;
-    }
-    onNavigateSettings();
-  }
-
   return (
     <div className="sidebarFooter" ref={accountMenuRef}>
       <button
         type="button"
-        className="sidebarFooterButton"
-        onClick={handleFooterClick}
+        className="sidebarFooterMainButton"
+        onClick={onNavigateSettings}
         aria-label="Open account settings"
       >
         <div
@@ -69,27 +60,32 @@ export function ConversationSidebarFooter<
         <div className="sidebarFooterMeta">
           <strong>{payload.ownerDisplayName}</strong>
         </div>
-        <span className="sidebarFooterTrailing" data-runtime-dot>
-          <span
-            className={resolveRuntimeDotClassName(runtimeFooterStatus)}
-            data-tooltip={runtimeFooterLabel}
-            aria-label={runtimeFooterLabel}
-          />
-          <span className="sidebarFooterRuntimeLink" aria-hidden="true">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 3h8v8" />
-              <path d="M13 3 4 12" />
-            </svg>
-          </span>
+      </button>
+      <button
+        type="button"
+        className="sidebarFooterTrailing"
+        onClick={onNavigateRuntime}
+        aria-label={`Runtime status: ${runtimeFooterLabel}`}
+        data-tooltip={runtimeFooterLabel}
+      >
+        <span
+          className={resolveRuntimeDotClassName(runtimeFooterStatus)}
+          aria-hidden="true"
+        />
+        <span className="sidebarFooterRuntimeLink" aria-hidden="true">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 3h8v8" />
+            <path d="M13 3 4 12" />
+          </svg>
         </span>
       </button>
     </div>
@@ -100,17 +96,18 @@ export function ConversationSidebarFooter<
  *
  * Earlier versions opened a two-item popup menu (Settings / Environment)
  * when the footer was clicked. We are temporarily replacing it with
- * split-click routing: the runtime dot calls `onNavigateRuntime`, the
- * rest of the footer calls `onNavigateSettings`. The popup returns once
- * more account-level actions exist — keep this block here so restoring
- * the menu is a mechanical swap.
+ * split-click routing: a dedicated trailing <button> navigates to
+ * /settings/runtime; the main row <button> navigates to /settings/general.
+ * Two sibling buttons (instead of one outer button with click-target
+ * detection) give keyboard users an independent Tab stop and Enter /
+ * Space activation for the runtime entry. Keep this block here so
+ * restoring the menu is a mechanical swap.
  *
  * To re-enable:
  *  1. Re-add the imports used below:
  *       import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
  *       import { executeEnvironmentRecovery } from '../../../shared/environmentRecoveryAction.js';
- *  2. Drop `handleFooterClick` (and the `onNavigateRuntime` prop if
- *     unused elsewhere) from the body above.
+ *  2. Drop the two-button <div> + both click handlers above.
  *  3. Un-prefix the `_accountMenuOpen` / `_onAccountMenuToggle`
  *     destructured props and restore the toggle helper:
  *
@@ -119,7 +116,7 @@ export function ConversationSidebarFooter<
  *           onAccountMenuToggle();
  *         }
  *       }
- *  4. Replace the returned <div><button/></div> with:
+ *  4. Replace the returned <div> with:
  *
  *       <AccountIdentityMenu
  *         open={accountMenuOpen}

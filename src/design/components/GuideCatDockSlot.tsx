@@ -111,21 +111,13 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
           {slotKind === 'workspace' ? (
             <>
               <span className="guideCatDockName">{displayName}</span>
-              <span
+              <button
+                type="button"
                 className="guideCatDockUndockSlot"
-                role="button"
-                tabIndex={0}
                 aria-label={`Undock ${displayName}`}
                 onClick={(event) => {
                   event.stopPropagation();
                   undock();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.stopPropagation();
-                    event.preventDefault();
-                    undock();
-                  }
                 }}
               >
                 <svg
@@ -141,7 +133,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
                   <path d="M5 3h8v8" />
                   <path d="M13 3 4 12" />
                 </svg>
-              </span>
+              </button>
             </>
           ) : null}
         </>

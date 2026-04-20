@@ -99,37 +99,28 @@ export function PlatformLobby({
               onSelect={(catId) => navigate(buildDirectLanePath(catId))}
             />
             <GuideCatDockSlot slotKind="lobby" />
-            <button
-              type="button"
-              className="lobbyIdentity"
-              onClick={() => navigate('/settings/general', { state: settingsNavState })}
-              aria-label="Open account settings"
-            >
-              <span className="lobbyAvatar" style={avatarStyle}>
-                {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
-              </span>
-              <span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>
-              <span
+            <div className="lobbyIdentity" role="group" aria-label="Account settings">
+              <button
+                type="button"
+                className="lobbyIdentityMainButton"
+                onClick={() => navigate('/settings/general', { state: settingsNavState })}
+                aria-label="Open account settings"
+              >
+                <span className="lobbyAvatar" style={avatarStyle}>
+                  {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
+                </span>
+                <span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>
+              </button>
+              <button
+                type="button"
                 className="lobbyIdentityRuntime"
-                role="button"
-                tabIndex={0}
+                onClick={() => navigate('/settings/runtime', { state: settingsNavState })}
                 data-tooltip={runtimeTooltip}
                 aria-label={`Runtime status: ${runtimeTooltip}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  navigate('/settings/runtime', { state: settingsNavState });
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.stopPropagation();
-                    event.preventDefault();
-                    navigate('/settings/runtime', { state: settingsNavState });
-                  }
-                }}
               >
                 <span className={dotClass} aria-hidden="true" />
-              </span>
-            </button>
+              </button>
+            </div>
             {/* ─── Preserved: popup-menu variant (re-enable in a later
              * release) — original click opened a Settings / Environment
              * menu via <AccountIdentityMenu>. Split-click routing above

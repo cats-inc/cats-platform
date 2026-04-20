@@ -193,17 +193,20 @@ body.guideCatDragging .guideCatDockSlot,
   display: none;
 }
 
-/* 24x24 hover-reveal undock target at the right end of the docked row,
- * optically aligned with the `.sidebarFooterTrailing` runtime dot in the
- * user chrome directly below. Same reveal pattern as that slot: hidden
- * by default, fades in when the docked row is hovered, keeps its own
- * hover background on the inner target. */
+/* 24x24 hover-reveal undock button at the right end of the docked row,
+ * optically aligned with the `.sidebarFooterTrailing` runtime dot in
+ * the user chrome below. A real <button> so keyboard users get a Tab
+ * stop with Enter/Space activation. Invisible-but-in-tab-order would
+ * be an a11y regression — `:focus-visible` reveals it when reached by
+ * keyboard, matching the hover reveal behaviour. */
 .guideCatDockUndockSlot {
   display: grid;
   place-items: center;
   width: 24px;
   height: 24px;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
   color: var(--muted);
   opacity: 0;
   transition: opacity 0.15s ease, background 0.15s ease;
@@ -211,7 +214,8 @@ body.guideCatDragging .guideCatDockSlot,
   cursor: pointer;
 }
 
-.guideCatDockSlot--workspace[data-active='true']:hover .guideCatDockUndockSlot {
+.guideCatDockSlot--workspace[data-active='true']:hover .guideCatDockUndockSlot,
+.guideCatDockUndockSlot:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }

@@ -88,28 +88,38 @@
   outline-offset: 0px;
 }
 
-/* Split-click user chrome: clicking the pill navigates to
- * /settings/general; clicking the runtime sub-region (right, past the
- * divider) navigates to /settings/runtime. Whole pill hovers as one —
- * same pattern as AudienceChip + audienceChipWorkflow. The divider is
- * inset (not edge-to-edge) because the sub-region's height is shorter
- * than the pill, so `border-left` only spans the sub-region. */
+/* Split-click user chrome: a container div with two real <button>
+ * children (main → /settings/general; runtime → /settings/runtime).
+ * Two real buttons = two real Tab stops, no nested interactive
+ * markup. "Whole pill hovers as one" is preserved by painting the
+ * hover bg on the container; the inner buttons stay transparent so
+ * the bg shows through both halves simultaneously. The divider is
+ * inset (not edge-to-edge) because the runtime button is height-
+ * limited — border-left then only spans the shorter button. */
 .lobbyIdentity {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel);
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
   transition: background 0.12s ease;
 }
 
 .lobbyIdentity:hover {
   background: var(--panel-hover);
+}
+
+.lobbyIdentityMainButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
+  border: 0;
+  border-radius: 999px 0 0 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
 .lobbyIdentityRuntime {
@@ -118,8 +128,13 @@
   width: 20px;
   height: 20px;
   margin-left: var(--space-1);
-  padding-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 0;
   border-left: 1px solid var(--border);
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
 }
 
