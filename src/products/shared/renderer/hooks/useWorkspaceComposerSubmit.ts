@@ -21,10 +21,7 @@ import {
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
-import {
-  createDefaultRuntimeSessionPolicy,
-  type RuntimeSessionPolicy,
-} from '../../../../shared/runtimeSessionPolicy.js';
+import { type RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import {
   buildWorkspaceChannelPath,
@@ -311,15 +308,17 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           setActiveDispatchRequest(null);
         }
         setFeedback('');
-        setDraftCwd(null);
-        setDraftCatIds([]);
-        setDraftTemporaryParticipants?.([]);
-        setDraftHighlightedCatId(null);
-        setDraftCatExecutionTargetOverrides(new Map());
-        setDraftRuntimeSessionPolicy?.(createDefaultRuntimeSessionPolicy());
-        setDraftFiles([]);
-        setDraftWorkflowShape?.('sequential');
-        setDraftAudienceKeys?.(null);
+        resetComposerDraftState({
+          setDraftCwd,
+          setDraftCatIds,
+          setDraftTemporaryParticipants,
+          setDraftHighlightedCatId,
+          setDraftCatExecutionTargetOverrides,
+          setDraftRuntimeSessionPolicy,
+          setDraftFiles,
+          setDraftWorkflowShape,
+          setDraftAudienceKeys,
+        });
         resetDraftParallelChatTargets?.();
         return;
       }
