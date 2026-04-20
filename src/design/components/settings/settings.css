@@ -196,14 +196,17 @@
 
 /* ─── Danger zone ─────────────────────────────────────────────────────── */
 /* Inherits card styles via dual className (.contentCard + .settings-section).
- * Phase 1 does not add red accents; red trim / danger title coloring is a
- * Phase 3.4 decision when PlatformSettingsData migrates.
+ * The title uses `--settings-danger` so the primitive is the single place
+ * that surfaces the danger token (SPEC-073 FR-9); the card chrome stays
+ * neutral so destructive-action cards still sit quietly in the stack and
+ * only the headline signals intent.
  */
 
 .settings-danger-zone__title {
   margin: 0;
   font-size: var(--settings-title-size);
   font-weight: 600;
+  color: var(--settings-danger);
 }
 
 .settings-danger-zone__description {

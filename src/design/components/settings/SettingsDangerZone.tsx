@@ -1,9 +1,13 @@
-import type { ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
 export interface SettingsDangerZoneProps {
   title: string;
   description?: ReactNode;
-  children: ReactNode;
+  /** Single action element (typically a `<button className="dangerButton">`).
+   * For multi-button rows, wrap in `<SettingsActionBar>` — otherwise the
+   * section's `> * + *` row rhythm stacks the buttons vertically. Typed as
+   * `ReactElement` so the multi-child mistake fails at compile time. */
+  children: ReactElement;
   className?: string;
 }
 

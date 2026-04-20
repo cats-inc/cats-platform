@@ -318,6 +318,7 @@ duplicated pattern with bare CSS classes where a primitive exists.
 | 2026-04-21 | Phase 3.2 complete — Chat + Draft builder sections on primitives, owner-approved |
 | 2026-04-21 | Phase 3.3 complete — Runtime page on primitives; `resolveRuntimeConnectionChip` returns `tone`; every section given a titled header with description |
 | 2026-04-21 | Phase 3.4 complete — Data page on `SettingsDangerZone`. SPEC-073 tweak: danger-zone actions are direct children (no wrapper div); multi-button rows wrap in `<SettingsActionBar>` |
+| 2026-04-21 | Phase 3.4 follow-up — addressed Codex review: title now uses `var(--settings-danger)` to satisfy SPEC-073 FR-9; `SettingsDangerZone.children` tightened to `ReactElement` so the "wrap in SettingsActionBar" rule is enforced at compile time |
 
 ---
 
