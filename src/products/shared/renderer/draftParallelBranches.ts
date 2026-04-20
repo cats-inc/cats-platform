@@ -1,9 +1,9 @@
-import type { RoomWorkflowShape } from '../../../shared/roomRouting.js';
+import type { DraftRoomWorkflowShape } from '../../../shared/roomRouting.js';
 
 export interface DraftParallelBranchState<TTarget> {
   target: TTarget;
   audienceKeys: string[];
-  workflowShape: RoomWorkflowShape;
+  workflowShape: DraftRoomWorkflowShape;
 }
 
 function normalizeAudienceKeys(
@@ -21,7 +21,7 @@ export function createDraftParallelBranches<TTarget>(
   targets: readonly TTarget[],
   options: {
     seedAudienceKeys?: readonly string[] | null;
-    seedWorkflowShape?: RoomWorkflowShape;
+    seedWorkflowShape?: DraftRoomWorkflowShape;
   } = {},
 ): DraftParallelBranchState<TTarget>[] {
   const audienceKeys = normalizeAudienceKeys(options.seedAudienceKeys);

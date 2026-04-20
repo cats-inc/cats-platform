@@ -4,7 +4,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
 
 import {
   createInitialParallelTargets,
@@ -55,7 +55,7 @@ export function useWorkspaceParallelDraft(options: {
   const resetDraftParallelChatTargets = useCallback((options?: {
     includeCompareTarget?: boolean;
     seedAudienceKeys?: readonly string[] | null;
-    seedWorkflowShape?: RoomWorkflowShape;
+    seedWorkflowShape?: DraftRoomWorkflowShape;
   }) => {
     setDraftParallelBranches(createDraftParallelBranches(
       createInitialParallelTargets(draftExecutionTarget, {
@@ -87,7 +87,7 @@ export function useWorkspaceParallelDraft(options: {
 
   const onAddDraftParallelChatTarget = useCallback((options?: {
     seedAudienceKeys?: readonly string[] | null;
-    seedWorkflowShape?: RoomWorkflowShape;
+    seedWorkflowShape?: DraftRoomWorkflowShape;
   }) => {
     setDraftParallelBranches((prev) => {
       if (prev.length >= maxParallelChats) {

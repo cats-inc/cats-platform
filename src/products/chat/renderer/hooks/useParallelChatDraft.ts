@@ -22,7 +22,7 @@ import {
   createParallelChatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
-import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import type { SelectedChannelView } from '../../shared/channelEntry.js';
 import { relayParallelChatMessage } from '../api/index.js';
@@ -177,7 +177,7 @@ export function useParallelChatDraft(options: {
   const resetDraftParallelChatTargets = useCallback((options?: {
     includeCompareTarget?: boolean;
     seedAudienceKeys?: readonly string[] | null;
-    seedWorkflowShape?: RoomWorkflowShape;
+    seedWorkflowShape?: DraftRoomWorkflowShape;
   }) => {
     setDraftParallelBranches(createDraftParallelBranches(
       createInitialCompareTargetsWithOptions(draftExecutionTarget, {
@@ -213,7 +213,7 @@ export function useParallelChatDraft(options: {
 
   const onAddDraftParallelChatTarget = useCallback((options?: {
     seedAudienceKeys?: readonly string[] | null;
-    seedWorkflowShape?: RoomWorkflowShape;
+    seedWorkflowShape?: DraftRoomWorkflowShape;
   }) => {
     setDraftParallelBranches((prev) => {
       const nextTarget = createNextCompareTarget(

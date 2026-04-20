@@ -47,14 +47,17 @@ function NewChatDraftInner(props: NewChatDraftProps) {
   const isDirectLaneDraft = !(props.allowAddCat ?? true) && Boolean(props.draftDefaultRecipientCatId);
   const isParallelDraft = (props.parallelTargets?.length ?? 0) >= 2;
   const entryPreset = props.entryPreset ?? 'default';
+  // The hard-coded "Pomodoro app" chip only belongs on the default
+  // single-chat draft. Group / parallel entries (and any default draft
+  // that has been expanded to multiple parallel targets) surface their
+  // chips through runtime-backed `newChatAssist` content via the
+  // shared composer's `visibleStarterSuggestions`, not via this
+  // chat-product fallback. Including those entries here previously
+  // leaked the Pomodoro chip into surfaces that should stay clean.
   const showsChatStarterChip =
     !isDirectLaneDraft
-    && (
-      entryPreset === 'default'
-      || entryPreset === 'group'
-      || entryPreset === 'parallel'
-      || isParallelDraft
-    );
+    && entryPreset === 'default'
+    && !isParallelDraft;
 
   const leadingStarterChips = showsChatStarterChip
     ? [

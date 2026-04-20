@@ -626,7 +626,7 @@ test('chat and workspace apps consume a dedicated generic-draft route entry hook
   assert.doesNotMatch(workspaceAppSource, /wasGenericNewChatRoute/u);
   assert.match(hookSource, /export function useOnGenericDraftRouteEntry/u);
   assert.match(hookSource, /useRef/u);
-  assert.match(hookSource, /justEnteredGenericDraftRoute/u);
+  assert.match(hookSource, /previousGenericDraftRouteKey/u);
 });
 
 test('chat and workspace apps consume shared channel-title presentation helpers', async () => {

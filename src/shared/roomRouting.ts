@@ -80,6 +80,14 @@ export type RoomWorkflowShape =
   | 'concurrent'
   | 'converge';
 
+/** Subset of RoomWorkflowShape that draft / composer state may hold. The
+ * 'converge' shape is a runtime-only state produced by the orchestrator;
+ * draft branches and the composer submit pipeline never carry it. Keep
+ * the broader RoomWorkflowShape for runtime / projection / recovery code,
+ * and use this narrower alias inside the draft surface so the type system
+ * blocks 'converge' from leaking in. */
+export type DraftRoomWorkflowShape = Exclude<RoomWorkflowShape, 'converge'>;
+
 export type RoomWorkflowBranchStrategy =
   | 'fork_if_possible'
   | 'transplant_context'

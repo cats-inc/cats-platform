@@ -417,7 +417,6 @@ export function createWorkspaceProductApp({
     const advancedDraftControlsEnabled = readyPayload
       ? isAdvancedDraftControlsEnabled(readyPayload.chat.advancedDraftControls, shellSurface)
       : false;
-    const hasVisibleParallelDraftTargets = draftParallelChatTargets.length > 1;
     const {
       draftExecutionTarget,
       setDraftExecutionTarget,
@@ -458,6 +457,7 @@ export function createWorkspaceProductApp({
       maxParallelChats,
       seedCompareTarget: showingParallelChatDraft,
     });
+    const hasVisibleParallelDraftTargets = draftParallelChatTargets.length > 1;
     const seedDraftGroupParticipants = useCallback(
       () => createInitialGroupParticipants(draftExecutionTarget, maxDraftGroupParticipants),
       [
