@@ -597,9 +597,11 @@ contracts.
       existing stderr line, and `/api/debug/origin-surface-compatibility` now
       surfaces that per-process snapshot behind the existing debug gate.
       Telemetry helper coverage now also locks defensive inspect/reset
-      semantics, and route-support unit coverage now locks explicit / missing /
-      invalid origin-surface resolution semantics; broader platform
-      logging/reporting still remains.
+      semantics, route-support unit coverage now locks explicit / missing /
+      invalid origin-surface resolution semantics, and route-level server
+      coverage now proves explicit non-chat channel/group creates bypass the
+      compatibility fallback entirely; broader platform logging/reporting still
+      remains.
 - [x] Wire cross-surface draft dispatch and warm navigation handoff so that
       flipping `+New chat`'s draft surface (currently chat -> code via the
       seeded Pomodoro helper chip, later more entries) actually creates a

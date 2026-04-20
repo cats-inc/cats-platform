@@ -125,6 +125,33 @@ test('POST /api/channels keeps legacy raw create requests compatible by defaulti
   });
 });
 
+test('POST /api/channels preserves explicit non-chat originSurface values without recording a compatibility fallback', async () => {
+  resetOriginSurfaceCompatibilityTelemetry();
+  await withServer(async (baseUrl, chatStore) => {
+    const response = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Work-owned chat create',
+        topic: 'This should keep its owning surface.',
+        originSurface: 'work',
+      }),
+    });
+
+    assert.equal(response.status, 201);
+    const payload = await response.json();
+    assert.equal(payload.channel.originSurface, 'work');
+
+    const persisted = await chatStore.read();
+    assert.equal(persisted.channels[0]?.originSurface, 'work');
+    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
+      fallbackCount: 0,
+      fallbackTargetCounts: {},
+      latestFallback: null,
+    });
+  });
+});
+
 test('POST /api/channels rejects invalid originSurface values instead of silently coercing them to chat', async () => {
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/channels`, {
@@ -185,6 +212,43 @@ test('POST /api/concurrent-groups keeps legacy raw create requests compatible by
         targetNoun: 'parallel_group',
         resolvedSurface: 'chat',
       },
+    });
+  });
+});
+
+test('POST /api/concurrent-groups preserves explicit non-chat originSurface values without recording a compatibility fallback', async () => {
+  resetOriginSurfaceCompatibilityTelemetry();
+  await withServer(async (baseUrl, chatStore) => {
+    const response = await fetch(`${baseUrl}/api/concurrent-groups`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Code-owned compare create',
+        originSurface: 'code',
+        targets: [
+          { provider: 'claude', instance: null, model: 'claude-default' },
+          { provider: 'codex', instance: null, model: 'gpt-5.4' },
+        ],
+      }),
+    });
+
+    assert.equal(response.status, 201);
+    const payload = await response.json();
+    assert.equal(payload.group.originSurface, 'code');
+
+    const persisted = await chatStore.read();
+    const group = persisted.parallelChatGroups[0];
+    assert.equal(group?.originSurface, 'code');
+    assert.ok(group);
+    assert.deepEqual(
+      group.memberChannelIds.map((channelId) =>
+        persisted.channels.find((channel) => channel.id === channelId)?.originSurface ?? null),
+      ['code', 'code'],
+    );
+    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
+      fallbackCount: 0,
+      fallbackTargetCounts: {},
+      latestFallback: null,
     });
   });
 });
