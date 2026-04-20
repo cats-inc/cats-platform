@@ -151,6 +151,19 @@ separately so a single page's regression does not block others.
       - Verifies that the danger primitive covers the Data page's
         actions; adjust SPEC-073 if not
       - Owner review before commit
+- [x] **3.5** Confirm `PlatformSettingsCode.tsx` and
+      `PlatformSettingsWork.tsx` (added after the original Phase 3 list
+      was written, when upstream commit `99d4ff82` split conversation
+      behavior out per product) are already primitive-consuming.
+      Both pages compose only `ProductConversationBehaviorSection`
+      (uses `<SettingsSection>` / `<SettingsSectionHeader>` /
+      `<SettingsOptionRow layout="stack">`) and
+      `ProductAdvancedDraftControlsSection` (migrated in 3.2), so
+      there is no raw `.contentCard` / `<h2>` / `.heroNote` to replace.
+      No migration work required; recording here for completeness.
+      Also deleted the orphaned `PlatformSettingsProductPlaceholder.tsx`
+      that was the pre-split stand-in — dead code since the product
+      pages landed.
 
 **Deliverables**: five of seven Settings surfaces on primitives; any
 primitive gaps discovered get fed back to SPEC-073 before Phase 4.
@@ -331,6 +344,7 @@ duplicated pattern with bare CSS classes where a primitive exists.
 | 2026-04-21 | Phase 3.4 follow-up — addressed Codex review: title now uses `var(--settings-danger)` to satisfy SPEC-073 FR-9; `SettingsDangerZone.children` tightened to `ReactElement` so the "wrap in SettingsActionBar" rule is enforced at compile time |
 | 2026-04-21 | Phase 3.3 follow-up — Runtime page-local rules (`.settingsRuntime*`) moved out of `platform-setup.css` into `platform-settings.css` and routed through Settings tokens; removes the `.setupRuntimeList margin: 0` that was collapsing the section row-gap against Ready providers / Need attention |
 | 2026-04-21 | Phase 1.7 closed (no consolidation) — `.sectionLabel` and `.eyebrow` are distinct patterns, not duplicates. Settings-scoped canonical already exists as `.settings-section-header__eyebrow`. Remaining Settings `.sectionLabel` callsites migrate through Phase 4 |
+| 2026-04-21 | Phase 3.5 recorded — `PlatformSettingsCode.tsx` / `PlatformSettingsWork.tsx` (created after Phase 3 list was drafted, via upstream split-conversation-behavior commit) are primitive-consuming from birth via shared sections. Orphan `PlatformSettingsProductPlaceholder.tsx` deleted. |
 
 ---
 
