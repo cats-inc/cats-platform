@@ -664,6 +664,11 @@ contracts.
       of one global mixed default
 - [ ] Keep work surfaces product-owned and avoid leaking provider or runtime
       internals into the UI model
+- [ ] Move product-scoped conversation-behavior preferences off the temporary
+      `chat.conversationBehavior.{work,code}` seam and shared
+      `PATCH /api/preferences` route onto Work- and Code-owned state slices
+      plus product delegates, so surface behavior settings stop piggybacking
+      on Chat contracts once those products have stable preference boundaries
 - [ ] Extend task-strategy handoff beyond the current Chat-first
       `product: 'chat'` call sites so `Cats Work` and `Cats Code` resolve
       product defaults and runtime bridge inputs through their own
@@ -710,4 +715,4 @@ contracts.
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-04-21*

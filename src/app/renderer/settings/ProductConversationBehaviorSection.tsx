@@ -5,7 +5,7 @@ import type {
   ConcurrentChatPresentationMode,
 } from '../../../products/shared/api/workspaceContracts.js';
 import {
-  cloneConversationBehaviorPreferences,
+  applyConversationBehaviorPatch,
   resolveConversationBehaviorPreferences,
   type ConversationBehaviorSurface,
   type SurfaceConversationBehaviorPatch,
@@ -28,26 +28,16 @@ function applyConversationBehaviorPatchToPayload(
   surface: ConversationBehaviorSurface,
   patch: SurfaceConversationBehaviorPatch,
 ): AppShellPayload {
-  const conversationBehavior = cloneConversationBehaviorPreferences(
-    payload.chat.conversationBehavior,
-  );
-  const nextSurfaceBehavior = conversationBehavior[surface];
-
-  if (typeof patch.showVerboseMessages === 'boolean') {
-    nextSurfaceBehavior.showVerboseMessages = patch.showVerboseMessages;
-  }
-  if (typeof patch.showLiveProgressDetails === 'boolean') {
-    nextSurfaceBehavior.showLiveProgressDetails = patch.showLiveProgressDetails;
-  }
-  if (patch.concurrentPresentationMode) {
-    nextSurfaceBehavior.concurrentPresentationMode = patch.concurrentPresentationMode;
-  }
-
   return {
     ...payload,
     chat: {
       ...payload.chat,
-      conversationBehavior,
+      conversationBehavior: applyConversationBehaviorPatch(
+        payload.chat.conversationBehavior,
+        {
+          [surface]: patch,
+        },
+      ),
     },
   };
 }
