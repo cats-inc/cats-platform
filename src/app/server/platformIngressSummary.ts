@@ -54,9 +54,12 @@ function isLoopbackHost(host: string): boolean {
 
 function classifyInterfaceReachability(interfaceName: string): InterfaceReachability {
   const normalized = interfaceName.trim().toLowerCase();
+  // Intentionally avoid matching macOS `utun*`: that namespace is shared by
+  // NetworkExtension-based VPNs, iCloud Private Relay, and unrelated kernel
+  // tunnels. Labeling those as trusted overlay URLs would mislead operators
+  // about which interfaces are safe to use for browser ingress.
   if (
     /tailscale|headscale|nebula|zerotier|wireguard/u.test(normalized)
-    || /^utun\d/u.test(normalized)
     || /^wg\d/u.test(normalized)
     || /^zt[a-z0-9]/u.test(normalized)
   ) {

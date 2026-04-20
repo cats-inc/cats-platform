@@ -119,14 +119,11 @@ test('summarizePlatformIngress reports trusted overlay binds without mislabeling
   assert.ok(summary.notes.some((note) => /Overlay URLs/u.test(note)));
 });
 
-test('summarizePlatformIngress classifies macOS utun, WireGuard, and ZeroTier interfaces as overlay', () => {
+test('summarizePlatformIngress classifies WireGuard and ZeroTier interfaces as overlay', () => {
   const summary = summarizePlatformIngress({
     host: '0.0.0.0',
     port: 8181,
     networkInterfaces: {
-      utun3: [
-        { address: '100.64.1.1', family: 'IPv4', internal: false },
-      ],
       wg0: [
         { address: '10.200.0.7', family: 'IPv4', internal: false },
       ],
@@ -143,8 +140,30 @@ test('summarizePlatformIngress classifies macOS utun, WireGuard, and ZeroTier in
   assert.deepEqual(summary.urls.overlayUrls, [
     'http://10.147.20.5:8181',
     'http://10.200.0.7:8181',
-    'http://100.64.1.1:8181',
   ]);
+});
+
+test('summarizePlatformIngress does not blanket-classify macOS utun* as trusted overlay', () => {
+  const summary = summarizePlatformIngress({
+    host: '0.0.0.0',
+    port: 8181,
+    networkInterfaces: {
+      utun3: [
+        { address: '100.64.1.1', family: 'IPv4', internal: false },
+      ],
+      utun7: [
+        { address: '10.99.0.5', family: 'IPv4', internal: false },
+      ],
+      en0: [
+        { address: '192.168.1.25', family: 'IPv4', internal: false },
+      ],
+    },
+  });
+
+  assert.deepEqual(summary.urls.overlayUrls, []);
+  assert.ok(!summary.urls.overlayUrls.some((url) => url.includes('100.64.1.1')));
+  assert.ok(!summary.urls.overlayUrls.some((url) => url.includes('10.99.0.5')));
+  assert.ok(summary.urls.lanUrls.includes('http://192.168.1.25:8181'));
 });
 
 test('summarizePlatformIngress treats Linux docker bridges and VirtualBox host-only nets as virtual', () => {
