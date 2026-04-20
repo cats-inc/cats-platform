@@ -1209,15 +1209,18 @@ export function createWorkspaceProductApp({
 
       const seedAudienceKeys = resolveParallelAudienceSeed();
       const seedWorkflowShape = draftParallelBranchWorkflowShapes[0] ?? draftWorkflowShape;
-      if (effectiveNewChatPreset === "default") {
-        if (hasVisibleParallelDraftTargets) {
-          onAddDraftParallelChatTarget({
-            seedAudienceKeys,
-            seedWorkflowShape,
-          });
-          return;
-        }
-
+      // First transition into parallel mode: reseed branch 0 alongside
+      // the new compare branch so both rows share the audience the
+      // draft already had. Without this, a +Group draft expanded with
+      // +compare leaves branch 0 with the empty audienceKeys it was
+      // initialised with — the lead row's avatar roster disappears
+      // (shouldShowGroupParticipantRoster gates on !isParallelMode)
+      // and the audience chip migrates to branch 1, which the seed
+      // logic correctly populates from `resolveParallelAudienceSeed`.
+      // Default preset already used reset-on-first-transition; the
+      // group / parallel presets need the same treatment so the lead
+      // row carries the user's group audience into parallel mode.
+      if (!hasVisibleParallelDraftTargets) {
         resetDraftParallelChatTargets({
           includeCompareTarget: true,
           seedAudienceKeys,
@@ -1232,7 +1235,6 @@ export function createWorkspaceProductApp({
     }, [
       draftParallelBranchWorkflowShapes,
       draftWorkflowShape,
-      effectiveNewChatPreset,
       hasVisibleParallelDraftTargets,
       onAddDraftParallelChatTarget,
       resolveParallelAudienceSeed,
