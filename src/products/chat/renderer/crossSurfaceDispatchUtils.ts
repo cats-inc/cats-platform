@@ -23,6 +23,10 @@ export function resolveCrossSurfaceParallelGroupHandoffId(input: {
     return '';
   }
 
+  // Prefer the post-dispatch projection when available because it reflects the
+  // latest selected/active member channel after the first turn was sent. Fall
+  // back to the just-created groups only when the dispatch projection has not
+  // materialized that membership yet.
   return input.dispatchGroups.find((group) => group.memberChannelIds.includes(activeChannelId))?.id
     ?? input.createdGroups.find((group) => group.memberChannelIds.includes(activeChannelId))?.id
     ?? '';

@@ -309,7 +309,6 @@ export function useComposerSubmit(options: {
     const isCatScopedLaneRoute = draftRoute.isDirectLaneRoute;
     const targetSurface = wasDraftingNewChat ? draftSurface : 'chat';
     const isCrossSurfaceDraftDispatch = wasDraftingNewChat && targetSurface !== 'chat';
-    const suppressSourceNavigation = isCrossSurfaceDraftDispatch;
     const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftDefaultRecipientCatId)
       ? initialSelectedChannel
       : null;
@@ -357,8 +356,6 @@ export function useComposerSubmit(options: {
     };
     const buildTargetChannelPath = (nextChannelId: string): string =>
       buildCrossSurfaceChannelPath(targetSurface, nextChannelId);
-    const navigateAfterDispatch = (nextPath: string): boolean =>
-      navigateWithinManagedFlow(nextPath);
     const clearStagedTargetHandoff = (nextPath: string): void => {
       clearCrossSurfaceNavigationHandoff({
         surface: targetSurface,
@@ -394,8 +391,8 @@ export function useComposerSubmit(options: {
         rollbackPayload = dispatch.createdAppShell;
         successNavigationPath = dispatch.rollbackPath;
         setComposerDraft('');
-        if (!suppressSourceNavigation) {
-          navigateAfterDispatch(successNavigationPath);
+        if (!isCrossSurfaceDraftDispatch) {
+          navigateWithinManagedFlow(successNavigationPath);
         }
         setState({ status: 'ready', payload: dispatch.createdAppShell });
         restoreFiles = () => {
@@ -422,7 +419,7 @@ export function useComposerSubmit(options: {
           snapshotPayload: dispatch.dispatchAppShell,
           pendingExecution: dispatch.dispatchRequest != null,
         });
-        if (suppressSourceNavigation && !navigateAfterDispatch(successNavigationPath)) {
+        if (isCrossSurfaceDraftDispatch && !navigateWithinManagedFlow(successNavigationPath)) {
           clearStagedTargetHandoff(successNavigationPath);
         }
         if (dispatch.dispatchRequest) {
@@ -532,7 +529,7 @@ export function useComposerSubmit(options: {
         createChatChannel,
         insertCreatedChannelIntoPayload,
         setState,
-        navigate: suppressSourceNavigation ? () => {} : navigate,
+        navigate: isCrossSurfaceDraftDispatch ? () => {} : navigate,
         setChannelFiles,
         originalDraftFiles,
         originalChannelFiles,
@@ -586,8 +583,8 @@ export function useComposerSubmit(options: {
       setComposerDraft('');
       setDraftFiles([]);
       setChannelFiles([]);
-      if (!suppressSourceNavigation) {
-        navigateAfterDispatch(successNavigationPath);
+      if (!isCrossSurfaceDraftDispatch) {
+        navigateWithinManagedFlow(successNavigationPath);
       }
       setBusy(createComposerBusyState('ack', createChannelComposerBusyScope(channelId)));
 
@@ -625,7 +622,7 @@ export function useComposerSubmit(options: {
       }
       setComposerDraft('');
       setFeedback('');
-      if (!navigateAfterDispatch(successNavigationPath) && suppressSourceNavigation) {
+      if (!navigateWithinManagedFlow(successNavigationPath) && isCrossSurfaceDraftDispatch) {
         clearStagedTargetHandoff(successNavigationPath);
       }
 

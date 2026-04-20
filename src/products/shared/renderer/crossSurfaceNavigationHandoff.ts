@@ -58,10 +58,23 @@ export interface CrossSurfaceNavigationHandoffMatch {
   path: string;
 }
 
+export const CROSS_SURFACE_NAVIGATION_HANDOFF_TTL_MS = 60_000;
+
 const stagedCrossSurfaceNavigationHandoffs = new Map<
   string,
   CrossSurfaceNavigationHandoffBundle
 >();
+const loggedCrossSurfaceNavigationHandoffMisses = new Set<string>();
+
+function compareNormalizedRouteSegment(left: string, right: string): number {
+  if (left < right) {
+    return -1;
+  }
+  if (left > right) {
+    return 1;
+  }
+  return 0;
+}
 
 function normalizeRoutePath(path: string): string {
   const trimmedPath = path.trim();
@@ -74,13 +87,11 @@ function normalizeRoutePath(path: string): string {
       trimmedPath.startsWith('/') ? trimmedPath : `/${trimmedPath}`,
       'https://cats.local',
     );
-    const normalizedPathname = url.pathname !== '/'
-      ? url.pathname.replace(/\/+$/u, '')
-      : url.pathname;
+    const normalizedPathname = url.pathname;
     const normalizedSearchEntries = [...url.searchParams.entries()].sort(([leftKey, leftValue], [rightKey, rightValue]) =>
       leftKey === rightKey
-        ? leftValue.localeCompare(rightValue)
-        : leftKey.localeCompare(rightKey));
+        ? compareNormalizedRouteSegment(leftValue, rightValue)
+        : compareNormalizedRouteSegment(leftKey, rightKey));
     const normalizedSearch = normalizedSearchEntries.length > 0
       ? `?${new URLSearchParams(normalizedSearchEntries).toString()}`
       : '';
@@ -99,37 +110,101 @@ function buildCrossSurfaceNavigationHandoffKey(match: CrossSurfaceNavigationHand
   return `${match.surface}:${normalizeRoutePath(match.path)}`;
 }
 
-function readLatestStagedCrossSurfaceNavigationHandoff(): CrossSurfaceNavigationHandoffBundle | null {
-  let latestBundle: CrossSurfaceNavigationHandoffBundle | null = null;
-  for (const bundle of stagedCrossSurfaceNavigationHandoffs.values()) {
-    latestBundle = bundle;
+function resetCrossSurfaceNavigationHandoffMissLog(): void {
+  loggedCrossSurfaceNavigationHandoffMisses.clear();
+}
+
+function isFreshCrossSurfaceNavigationHandoff(bundle: CrossSurfaceNavigationHandoffBundle): boolean {
+  const stagedAt = Date.parse(bundle.createdAt);
+  if (Number.isNaN(stagedAt)) {
+    return true;
   }
-  return latestBundle;
+
+  return Date.now() - stagedAt <= CROSS_SURFACE_NAVIGATION_HANDOFF_TTL_MS;
 }
 
 function shouldLogCrossSurfaceNavigationHandoffDebug(): boolean {
   return typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
 }
 
-function logCrossSurfaceNavigationHandoffMiss(match: CrossSurfaceNavigationHandoffMatch): void {
+function logCrossSurfaceNavigationHandoffMiss(
+  match: CrossSurfaceNavigationHandoffMatch,
+  reason: 'missing' | 'stale' | 'invalid',
+): void {
   if (
     !shouldLogCrossSurfaceNavigationHandoffDebug()
-    || stagedCrossSurfaceNavigationHandoffs.size === 0
     || typeof console === 'undefined'
     || typeof console.warn !== 'function'
   ) {
     return;
   }
 
+  const requestedKey = buildCrossSurfaceNavigationHandoffKey(match);
   const stagedTargets = [...stagedCrossSurfaceNavigationHandoffs.values()].map((bundle) =>
     `${bundle.targetSurface}:${bundle.destination.route.path}`);
+  const warningFingerprint = `${reason}:${requestedKey}:${stagedTargets.join('|')}`;
+  if (loggedCrossSurfaceNavigationHandoffMisses.has(warningFingerprint)) {
+    return;
+  }
+  loggedCrossSurfaceNavigationHandoffMisses.add(warningFingerprint);
+
   console.warn(
-    '[cats-platform] warm navigation handoff miss; falling back to cold boot.',
+    reason === 'stale'
+      ? '[cats-platform] staged warm navigation handoff expired before mount; continuing with cold boot.'
+      : reason === 'invalid'
+        ? '[cats-platform] staged warm navigation handoff failed route validation; continuing with cold boot.'
+        : '[cats-platform] no staged warm navigation handoff matched the requested route; continuing with cold boot.',
     {
-      requested: buildCrossSurfaceNavigationHandoffKey(match),
+      requested: requestedKey,
       stagedTargets,
     },
   );
+}
+
+function validateCrossSurfaceNavigationHandoffMatch(
+  bundle: CrossSurfaceNavigationHandoffBundle,
+  match: CrossSurfaceNavigationHandoffMatch,
+): boolean {
+  return matchesCrossSurfaceNavigationHandoff(bundle, match);
+}
+
+function resolveStagedCrossSurfaceNavigationHandoff(
+  match: CrossSurfaceNavigationHandoffMatch,
+  options?: { consume?: boolean; logMiss?: boolean },
+): CrossSurfaceNavigationHandoffBundle | null {
+  const handoffKey = buildCrossSurfaceNavigationHandoffKey(match);
+  const stagedBundle = stagedCrossSurfaceNavigationHandoffs.get(handoffKey) ?? null;
+  if (!stagedBundle) {
+    if (options?.logMiss) {
+      logCrossSurfaceNavigationHandoffMiss(match, 'missing');
+    }
+    return null;
+  }
+
+  if (!validateCrossSurfaceNavigationHandoffMatch(stagedBundle, match)) {
+    stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
+    resetCrossSurfaceNavigationHandoffMissLog();
+    if (options?.logMiss) {
+      logCrossSurfaceNavigationHandoffMiss(match, 'invalid');
+    }
+    return null;
+  }
+
+  if (!isFreshCrossSurfaceNavigationHandoff(stagedBundle)) {
+    stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
+    resetCrossSurfaceNavigationHandoffMissLog();
+    if (options?.logMiss) {
+      logCrossSurfaceNavigationHandoffMiss(match, 'stale');
+    }
+    return null;
+  }
+
+  if (options?.consume) {
+    stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
+    resetCrossSurfaceNavigationHandoffMissLog();
+  }
+
+  return stagedBundle;
 }
 
 export function isImplementedCrossSurfaceNavigationHandoffKind(
@@ -153,28 +228,36 @@ export function stageCrossSurfaceNavigationHandoff(
       },
     },
   };
+  resetCrossSurfaceNavigationHandoffMissLog();
   stagedCrossSurfaceNavigationHandoffs.set(
     buildCrossSurfaceNavigationHandoffKey(normalizedBundle.destination.route),
     normalizedBundle,
   );
 }
 
-export function peekCrossSurfaceNavigationHandoff(): CrossSurfaceNavigationHandoffBundle | null {
-  return readLatestStagedCrossSurfaceNavigationHandoff();
+export function peekLatestStagedCrossSurfaceNavigationHandoff(): CrossSurfaceNavigationHandoffBundle | null {
+  const stagedEntries = [...stagedCrossSurfaceNavigationHandoffs.entries()].reverse();
+  for (const [handoffKey, bundle] of stagedEntries) {
+    if (!validateCrossSurfaceNavigationHandoffMatch(bundle, bundle.destination.route)) {
+      stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
+      resetCrossSurfaceNavigationHandoffMissLog();
+      continue;
+    }
+    if (!isFreshCrossSurfaceNavigationHandoff(bundle)) {
+      stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
+      resetCrossSurfaceNavigationHandoffMissLog();
+      continue;
+    }
+    return bundle;
+  }
+
+  return null;
 }
 
 export function peekCrossSurfaceNavigationHandoffForMatch(
   match: CrossSurfaceNavigationHandoffMatch,
 ): CrossSurfaceNavigationHandoffBundle | null {
-  const stagedBundle = stagedCrossSurfaceNavigationHandoffs.get(
-    buildCrossSurfaceNavigationHandoffKey(match),
-  ) ?? null;
-  if (!stagedBundle) {
-    logCrossSurfaceNavigationHandoffMiss(match);
-    return null;
-  }
-
-  return stagedBundle;
+  return resolveStagedCrossSurfaceNavigationHandoff(match);
 }
 
 export function peekCrossSurfaceNavigationSnapshot<TPayload extends AppShellPayload = AppShellPayload>(
@@ -185,7 +268,7 @@ export function peekCrossSurfaceNavigationSnapshot<TPayload extends AppShellPayl
   ) as TPayload | null;
 }
 
-export function consumeCrossSurfaceNavigationSnapshot<TPayload = AppShellPayload>(
+export function consumeCrossSurfaceNavigationSnapshot<TPayload extends AppShellPayload = AppShellPayload>(
   match: CrossSurfaceNavigationHandoffMatch,
 ): TPayload | null {
   return (
@@ -198,12 +281,14 @@ export function clearCrossSurfaceNavigationHandoff(
 ): void {
   if (!match) {
     stagedCrossSurfaceNavigationHandoffs.clear();
+    resetCrossSurfaceNavigationHandoffMissLog();
     return;
   }
 
   stagedCrossSurfaceNavigationHandoffs.delete(
     buildCrossSurfaceNavigationHandoffKey(match),
   );
+  resetCrossSurfaceNavigationHandoffMissLog();
 }
 
 export function matchesCrossSurfaceNavigationHandoff(
@@ -218,13 +303,8 @@ export function matchesCrossSurfaceNavigationHandoff(
 export function consumeCrossSurfaceNavigationHandoff(
   match: CrossSurfaceNavigationHandoffMatch,
 ): CrossSurfaceNavigationHandoffBundle | null {
-  const handoffKey = buildCrossSurfaceNavigationHandoffKey(match);
-  const stagedBundle = stagedCrossSurfaceNavigationHandoffs.get(handoffKey) ?? null;
-  if (!stagedBundle) {
-    logCrossSurfaceNavigationHandoffMiss(match);
-    return null;
-  }
-
-  stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
-  return stagedBundle;
+  return resolveStagedCrossSurfaceNavigationHandoff(match, {
+    consume: true,
+    logMiss: true,
+  });
 }

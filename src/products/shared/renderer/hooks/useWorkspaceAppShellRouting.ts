@@ -27,7 +27,7 @@ import { shouldWakeRouteChannelOnEntry, type SelectedChannelView } from '../../c
 import { isDirectLaneChannel } from '../../channelTopology.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
 import {
-  consumeCrossSurfaceNavigationSnapshot,
+  consumeCrossSurfaceNavigationHandoff,
 } from '../crossSurfaceNavigationHandoff.js';
 
 const APP_SHELL_BACKGROUND_REFRESH_MS = 5_000;
@@ -86,6 +86,19 @@ export interface WorkspaceAppShellRoutingOptions<
     draftDefaultRecipientCatId: string;
     showingMyCatDirectLane: boolean;
   }) => string;
+}
+
+function consumeInitialWarmNavigationPayload<
+  TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+>(
+  match: {
+    surface: PlatformSurfaceId;
+    path: string;
+  },
+): TPayload | null {
+  return (
+    consumeCrossSurfaceNavigationHandoff(match)?.snapshot?.appShellPayload ?? null
+  ) as TPayload | null;
 }
 
 export function useWorkspaceAppShellRouting<
@@ -179,7 +192,7 @@ export function useWorkspaceAppShellRouting<
     // Warm handoff is intentionally one-shot for the first mounted route only.
     // Later route changes should refresh from the canonical URL/app-shell flow
     // instead of re-consuming a stale staged bundle from a previous navigation.
-    const warmPayload = consumeCrossSurfaceNavigationSnapshot<TPayload>({
+    const warmPayload = consumeInitialWarmNavigationPayload<TPayload>({
       surface: initialNavigationMatchRef.current.surface,
       path: initialNavigationMatchRef.current.path,
     });

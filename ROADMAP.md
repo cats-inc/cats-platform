@@ -581,20 +581,32 @@ contracts.
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when
       the compatibility fallback can safely be removed
-- [ ] Wire cross-surface draft dispatch and warm navigation handoff so that
+- [x] Wire cross-surface draft dispatch and warm navigation handoff so that
       flipping `+New chat`'s draft surface (currently chat -> code via the
       seeded Pomodoro helper chip, later more entries) actually creates a
       destination-owned conversation on the target product and lands in its
-      active route, instead of staying a UI-only preview. The current gap is:
-      `chat/renderer/components/NewChatDraft.tsx` only mutates local
-      `draftSurface`, while send still goes through Chat-owned submit wiring and
-      routes to `/chat/chats/<id>`. The follow-up needs explicit
-      `targetSurface` semantics, shared cross-surface dispatch, and warm
-      handoff optimization across the `React.lazy` product boundary. Tracked by
+      active route instead of staying a UI-only preview.
+      Completed: `targetSurface` now drives destination-owned conversation
+      creation, shared cross-surface route resolution, warm product prefetch,
+      and one-shot warm bootstrap across the `React.lazy` product boundary.
+      Tracked by
       [ADR-073](./docs/decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md),
       [SPEC-074](./docs/specs/SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md),
       and
       [PLAN-066](./docs/plans/PLAN-066-cross-surface-draft-dispatch-and-warm-product-handoff-rollout.md).
+- [ ] Add measurable warm-navigation observability above the current dev-only
+      miss warnings, including hit/miss/stale counters and enough route-target
+      metadata to judge whether the generic handoff seam is paying for itself
+      once more consumers adopt it
+- [ ] Add integration coverage for the warm-navigation seam instead of relying
+      only on pure seam tests, specifically `useWorkspaceAppShellRouting`
+      mount-time consume + background refresh behavior and the cross-surface
+      `useComposerSubmit` dispatch flow (target stamp, prefetch timing, navigate
+      gating, and staged-handoff clear behavior)
+- [ ] Exercise the generic `sourceSurface` path with at least one non-Chat
+      initiator before landing the second consumer, so `work -> code`,
+      `code -> work`, or equivalent cross-product dispatch proves the handoff
+      bundle and routing seam are truly generic instead of only Chat-shaped
 - [ ] Reuse the same warm navigation handoff seam for later supported
       cross-surface navigation targets such as existing conversations,
       artifacts, tasks, and runs, instead of letting each deep-link or

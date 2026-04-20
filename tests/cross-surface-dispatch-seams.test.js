@@ -9,7 +9,7 @@ import {
 } from '../src/products/shared/renderer/crossSurfaceNavigationHandoff.ts';
 import { resolveCrossSurfaceParallelGroupHandoffId } from '../src/products/chat/renderer/crossSurfaceDispatchUtils.ts';
 
-test('parallel draft handoff resolves the created group from the active channel instead of falling back to an arbitrary first group', () => {
+test('parallel draft handoff resolves the created group from the active channel', () => {
   assert.equal(
     resolveCrossSurfaceParallelGroupHandoffId({
       dispatchRequest: null,
@@ -25,6 +25,9 @@ test('parallel draft handoff resolves the created group from the active channel 
     }),
     'created-group',
   );
+});
+
+test('parallel draft handoff never falls back to the first group when the active channel matches none', () => {
   assert.equal(
     resolveCrossSurfaceParallelGroupHandoffId({
       dispatchRequest: null,
@@ -73,8 +76,14 @@ test('initial warm navigation payload is consumed once per mounted route', () =>
     consumeCrossSurfaceNavigationSnapshot(match),
     snapshotPayload,
   );
-  assert.equal(
-    consumeCrossSurfaceNavigationSnapshot(match),
-    null,
-  );
+  const originalWarn = console.warn;
+  try {
+    console.warn = () => {};
+    assert.equal(
+      consumeCrossSurfaceNavigationSnapshot(match),
+      null,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
 });
