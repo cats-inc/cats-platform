@@ -54,10 +54,18 @@ function isLoopbackHost(host: string): boolean {
 
 function classifyInterfaceReachability(interfaceName: string): InterfaceReachability {
   const normalized = interfaceName.trim().toLowerCase();
-  if (/tailscale/u.test(normalized)) {
+  if (
+    /tailscale|headscale|nebula|zerotier|wireguard/u.test(normalized)
+    || /^utun\d/u.test(normalized)
+    || /^wg\d/u.test(normalized)
+    || /^zt[a-z0-9]/u.test(normalized)
+  ) {
     return 'overlay';
   }
-  if (/wsl|docker|vethernet|hyper-v|virtualbox|vmware|podman/u.test(normalized)) {
+  if (
+    /wsl|docker|vethernet|hyper-v|virtualbox|vmware|podman|vboxnet/u.test(normalized)
+    || /^br-/u.test(normalized)
+  ) {
     return 'virtual';
   }
   return 'lan';

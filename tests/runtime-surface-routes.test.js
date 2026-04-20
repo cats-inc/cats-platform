@@ -62,6 +62,9 @@ async function withRuntimeStub(callback) {
         '</head>',
         '<body>',
         '  <a id="surface-dashboard" href="/dashboard">Dashboard</a>',
+        '  <a id="surface-setup-query" href="/setup?welcome=1">Setup</a>',
+        "  <a id=\"surface-playground-single\" href='/playground'>Playground</a>",
+        '  <a id="home" href="/">Home</a>',
         '  <script>window.surfaceDescriptors = {"href":"/setup"};</script>',
         '</body>',
         '</html>',
@@ -182,6 +185,16 @@ test('GET /runtime/setup serves a platform-hosted runtime surface', async () => 
       assert.match(html, /data-cats-runtime-platform-proxy/u);
       assert.match(html, /id="surface-dashboard" href="\/runtime\/dashboard"/u);
       assert.match(html, /"href":"\/runtime\/setup"/u);
+      assert.match(
+        html,
+        /id="surface-setup-query" href="\/runtime\/setup\?welcome=1"/u,
+      );
+      assert.match(
+        html,
+        /id="surface-playground-single" href='\/runtime\/playground'/u,
+      );
+      assert.match(html, /id="home" href="\/"/u);
+      assert.doesNotMatch(html, /id="home" href="\/runtime"/u);
     });
   });
 });
@@ -266,6 +279,31 @@ test('GET /runtime/api streams runtime SSE responses', async () => {
       assert.equal(response.status, 200);
       assert.match(response.headers.get('content-type') || '', /text\/event-stream/u);
       assert.equal(await response.text(), 'data: {"type":"ready"}\n\n');
+    });
+  });
+});
+
+test('GET /runtime/api rejects paths that are not on the proxy allow-list', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, 'platform-secret', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/api/not-allowlisted`);
+      assert.equal(response.status, 404);
+      assert.match(response.headers.get('content-type') || '', /application\/json/u);
+
+      const payload = await response.json();
+      assert.equal(payload.error?.code, 'runtime_proxy_path_not_allowed');
+    });
+  });
+});
+
+test('GET /runtime/api rejects the bare prefix without forwarding to the runtime root', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/api`);
+      assert.equal(response.status, 404);
+
+      const payload = await response.json();
+      assert.equal(payload.error?.code, 'runtime_proxy_path_not_allowed');
     });
   });
 });

@@ -286,6 +286,10 @@ function buildRuntimeProxyInjectionScript(): string {
   ].join('\n');
 }
 
+function escapeRegExp(source: string): string {
+  return source.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+}
+
 function rewriteRuntimeSurfaceHtml(html: string): string {
   if (html.includes(RUNTIME_PROXY_INJECTION_MARKER)) {
     return html;
@@ -293,8 +297,26 @@ function rewriteRuntimeSurfaceHtml(html: string): string {
 
   let rewritten = html;
   for (const [runtimePath, platformPath] of PLATFORM_SURFACE_ROUTE_MAP.entries()) {
-    rewritten = rewritten.replaceAll(`href="${runtimePath}"`, `href="${platformPath}"`);
-    rewritten = rewritten.replaceAll(`"href":"${runtimePath}"`, `"href":"${platformPath}"`);
+    if (runtimePath === '/') {
+      continue;
+    }
+    const escapedRuntimePath = escapeRegExp(runtimePath);
+    const hrefAttributePattern = new RegExp(
+      `href=(["'])${escapedRuntimePath}((?:[?#][^"']*)?)\\1`,
+      'gu',
+    );
+    rewritten = rewritten.replace(
+      hrefAttributePattern,
+      (_match, quote: string, tail: string) => `href=${quote}${platformPath}${tail}${quote}`,
+    );
+    const hrefJsonPattern = new RegExp(
+      `"href":"${escapedRuntimePath}((?:[?#][^"]*)?)"`,
+      'gu',
+    );
+    rewritten = rewritten.replace(
+      hrefJsonPattern,
+      (_match, tail: string) => `"href":"${platformPath}${tail}"`,
+    );
   }
 
   return rewritten.replace(
@@ -376,6 +398,16 @@ export async function handleRuntimeApiProxyRoute(
   }
 
   const runtimePath = url.pathname.slice(prefix.length) || '/';
+
+  if (!isRuntimeApiPath(runtimePath)) {
+    sendJson(response, 404, {
+      error: {
+        code: 'runtime_proxy_path_not_allowed',
+        message: `Runtime API path is not exposed through /runtime/api: ${runtimePath}`,
+      },
+    });
+    return true;
+  }
 
   try {
     const upstream = await fetchRuntimeUpstream(
