@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
+import { deriveAppRouteState as deriveChatAppRouteState } from '../src/products/chat/renderer/appViewState.ts';
 import { deriveAppRouteState as deriveCodeAppRouteState } from '../src/products/code/renderer/appViewState.ts';
 import { deriveAppViewState as deriveWorkAppViewState } from '../src/products/work/renderer/appViewState.ts';
 
@@ -238,6 +239,22 @@ test('Code app route state keeps shared direct-lane selection semantics', () => 
   const payload = createPayload();
 
   const routeState = deriveCodeAppRouteState({
+    state: { status: 'ready', payload },
+    routeChannelId: 'direct-lane-1',
+    draftDefaultRecipientCatId: 'companion-cat',
+    showingMyCatDirectLane: true,
+  });
+
+  assert.equal(routeState.routeChannelTitle, 'Companion');
+  assert.equal(routeState.selectedChannel?.id, 'direct-lane-1');
+  assert.equal(routeState.selectedDirectLane?.id, 'direct-lane-1');
+  assert.equal(routeState.routeDirectLaneSummary?.id, 'direct-lane-1');
+});
+
+test('Chat app route state reuses the shared direct-lane selection semantics', () => {
+  const payload = createPayload();
+
+  const routeState = deriveChatAppRouteState({
     state: { status: 'ready', payload },
     routeChannelId: 'direct-lane-1',
     draftDefaultRecipientCatId: 'companion-cat',
