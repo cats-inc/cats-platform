@@ -32,3 +32,25 @@ test('parallel group handoff routes through the active member channel', () => {
     { surface: 'work', path: '/work/chats/channel-9' },
   );
 });
+
+test('parallel group handoff rejects missing active member routes', () => {
+  assert.throws(
+    () => buildCrossSurfaceNavigationPath({
+      surface: 'code',
+      entityKind: 'parallel-group',
+      entityId: 'group-1',
+    }),
+    /requires an active channel route target/u,
+  );
+});
+
+test('registry keeps reserved entity kinds on the explicit throw path until they ship', () => {
+  assert.throws(
+    () => buildCrossSurfaceNavigationPath({
+      surface: 'work',
+      entityKind: 'artifact',
+      entityId: 'artifact-1',
+    }),
+    /No cross-surface navigation path builder is registered for artifact/u,
+  );
+});

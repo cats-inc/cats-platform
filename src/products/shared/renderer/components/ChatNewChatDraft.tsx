@@ -25,7 +25,7 @@ import { DraftComposerStack } from './DraftComposerStack.js';
 import { ParallelDraftShadowBranchRow } from './ParallelDraftShadowBranchRow.js';
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
-import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import type {
   RuntimeSessionPolicy,
 } from '../../../../shared/runtimeSessionPolicy.js';
@@ -100,12 +100,12 @@ export interface NewChatDraftProps {
   onFolderBrowsePathChange?: (path: string) => void;
   onFolderBrowse?: (path: string) => void;
   onFolderBrowseSelect?: () => void;
-  draftWorkflowShape?: RoomWorkflowShape;
+  draftWorkflowShape?: DraftRoomWorkflowShape;
   onToggleDraftWorkflowShape?: () => void;
   draftAudienceKeys?: string[] | null;
   onSetAudienceKeys?: (keys: string[]) => void;
   parallelBranchAudienceKeys?: string[][];
-  parallelBranchWorkflowShapes?: RoomWorkflowShape[];
+  parallelBranchWorkflowShapes?: DraftRoomWorkflowShape[];
   onSetParallelBranchAudienceKeys?: (index: number, keys: string[]) => void;
   onToggleParallelBranchWorkflowShape?: (index: number) => void;
   onQuickAddParallelBranchTemporaryParticipant?: (index: number) => void;

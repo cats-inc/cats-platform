@@ -38,27 +38,56 @@ test('cross-surface handoff store only consumes a matching target surface route'
     },
     createdAt: '2026-04-20T10:00:00.000Z',
   });
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'work',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-2',
+      route: {
+        surface: 'work',
+        path: '/work/chats/channel-2/?b=2&a=1',
+      },
+    },
+    createdAt: '2026-04-20T10:00:01.000Z',
+  });
 
   const staged = peekCrossSurfaceNavigationHandoff();
   assert.ok(staged);
+  assert.equal(staged.destination.entityId, 'channel-2');
   assert.equal(
     matchesCrossSurfaceNavigationHandoff(staged, {
-      surface: 'code',
-      path: '/code/chats/channel-1',
+      surface: 'work',
+      path: '/work/chats/channel-2/?a=1&b=2',
     }),
     true,
   );
   assert.equal(
-    consumeCrossSurfaceNavigationHandoff({
-      surface: 'chat',
-      path: '/chat/chats/channel-1',
-    }),
+    (() => {
+      const originalWarn = console.warn;
+      try {
+        console.warn = () => {};
+        return consumeCrossSurfaceNavigationHandoff({
+          surface: 'chat',
+          path: '/chat/chats/channel-1',
+        });
+      } finally {
+        console.warn = originalWarn;
+      }
+    })(),
     null,
   );
   assert.ok(
     consumeCrossSurfaceNavigationHandoff({
       surface: 'code',
       path: '/code/chats/channel-1',
+    }),
+  );
+  assert.ok(
+    consumeCrossSurfaceNavigationHandoff({
+      surface: 'work',
+      path: '/work/chats/channel-2?a=1&b=2',
     }),
   );
   assert.equal(peekCrossSurfaceNavigationHandoff(), null);
@@ -95,4 +124,41 @@ test('warm bootstrap can peek a matching snapshot before the mount-time consume'
   assert.deepEqual(peekCrossSurfaceNavigationSnapshot(match), snapshotPayload);
   assert.ok(consumeCrossSurfaceNavigationHandoff(match));
   assert.equal(peekCrossSurfaceNavigationHandoff(), null);
+});
+
+test('handoff store warns in development when a staged bundle misses the requested route', () => {
+  clearCrossSurfaceNavigationHandoff();
+  const originalWarn = console.warn;
+  const warnings = [];
+
+  try {
+    console.warn = (...args) => warnings.push(args);
+    stageCrossSurfaceNavigationHandoff({
+      kind: 'draft-create-channel',
+      sourceSurface: 'chat',
+      targetSurface: 'code',
+      destination: {
+        entityKind: 'channel',
+        entityId: 'channel-7',
+        route: {
+          surface: 'code',
+          path: '/code/chats/channel-7',
+        },
+      },
+      createdAt: '2026-04-20T10:10:00.000Z',
+    });
+
+    assert.equal(
+      consumeCrossSurfaceNavigationHandoff({
+        surface: 'code',
+        path: '/code/chats/channel-8',
+      }),
+      null,
+    );
+    assert.equal(warnings.length, 1);
+    assert.match(String(warnings[0][0]), /warm navigation handoff miss/u);
+  } finally {
+    console.warn = originalWarn;
+    clearCrossSurfaceNavigationHandoff();
+  }
 });

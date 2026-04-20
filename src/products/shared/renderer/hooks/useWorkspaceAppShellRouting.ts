@@ -27,7 +27,7 @@ import { shouldWakeRouteChannelOnEntry, type SelectedChannelView } from '../../c
 import { isDirectLaneChannel } from '../../channelTopology.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
 import {
-  consumeCrossSurfaceNavigationHandoff,
+  consumeCrossSurfaceNavigationSnapshot,
 } from '../crossSurfaceNavigationHandoff.js';
 
 const APP_SHELL_BACKGROUND_REFRESH_MS = 5_000;
@@ -176,12 +176,13 @@ export function useWorkspaceAppShellRouting<
 
   useEffect(() => {
     const controller = new AbortController();
-    const warmNavigationHandoff = consumeCrossSurfaceNavigationHandoff({
+    // Warm handoff is intentionally one-shot for the first mounted route only.
+    // Later route changes should refresh from the canonical URL/app-shell flow
+    // instead of re-consuming a stale staged bundle from a previous navigation.
+    const warmPayload = consumeCrossSurfaceNavigationSnapshot<TPayload>({
       surface: initialNavigationMatchRef.current.surface,
       path: initialNavigationMatchRef.current.path,
     });
-    const warmPayload =
-      warmNavigationHandoff?.snapshot?.appShellPayload as unknown as TPayload | undefined;
 
     if (warmPayload && !initialHadReadyStateRef.current) {
       startTransition(() => {

@@ -70,7 +70,7 @@ import { useComposerRequestControls } from './useComposerRequestControls.js';
 import { useComposerRequestLifecycle } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
 import type { DraftParallelBranchState } from '../draftParallelBranches.js';
-import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -121,7 +121,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   draftWorkflowShape?: 'sequential' | 'concurrent';
   draftAudienceKeys?: string[] | null;
   draftParallelBranchAudienceKeys?: string[][];
-  draftParallelBranchWorkflowShapes?: RoomWorkflowShape[];
+  draftParallelBranchWorkflowShapes?: DraftRoomWorkflowShape[];
   activeWorkflowShape?: 'sequential' | 'concurrent';
   activeAudienceKeys?: string[] | null;
   resetDraftParallelChatTargets?: () => void;
