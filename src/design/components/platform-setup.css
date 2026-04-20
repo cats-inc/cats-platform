@@ -99,30 +99,6 @@
   line-height: 1.5;
 }
 
-.setupRuntimeMetrics {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.setupRuntimeMetric {
-  display: grid;
-  gap: 4px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel-hover);
-}
-
-.setupRuntimeMetric strong {
-  font-size: 1.15rem;
-}
-
-.setupRuntimeMetric span {
-  font-size: 0.78rem;
-  opacity: 0.7;
-}
-
 .setupRuntimeSection {
   display: grid;
   gap: 8px;
@@ -131,28 +107,6 @@
 .setupRuntimeSection h2 {
   margin: 0;
   font-size: 0.95rem;
-}
-
-.setupRuntimeList {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.setupRuntimeList li {
-  display: grid;
-  gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel-hover);
-}
-
-.setupRuntimeList span {
-  font-size: 0.82rem;
-  opacity: 0.72;
 }
 
 .setupRuntimeNote {
@@ -256,9 +210,5 @@
   .setupActionGroup {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .setupRuntimeMetrics {
-    grid-template-columns: 1fr;
   }
 }

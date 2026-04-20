@@ -58,16 +58,16 @@ export function PlatformSettingsRuntime({
             {runtimeSetupChip.label}
           </SettingsStatusChip>
         </div>
-        <div className="setupRuntimeMetrics">
-          <div className="setupRuntimeMetric">
+        <div className="settingsRuntimeMetrics">
+          <div className="settingsRuntimeMetric">
             <strong>{payload.runtimeSetup.availableCount}</strong>
             <span>ready providers</span>
           </div>
-          <div className="setupRuntimeMetric">
+          <div className="settingsRuntimeMetric">
             <strong>{payload.runtimeSetup.providerCount}</strong>
             <span>providers scanned</span>
           </div>
-          <div className="setupRuntimeMetric">
+          <div className="settingsRuntimeMetric">
             <strong>{payload.runtimeSetup.providersNeedingAttention.length}</strong>
             <span>need attention</span>
           </div>
@@ -83,7 +83,7 @@ export function PlatformSettingsRuntime({
             />
           }
         >
-          <ul className="setupRuntimeList">
+          <ul className="settingsRuntimeList">
             {payload.runtimeSetup.providersReadyToApply.map((entry) => (
               <li key={entry.provider}>
                 <strong>{entry.provider}</strong>
@@ -103,7 +103,7 @@ export function PlatformSettingsRuntime({
             />
           }
         >
-          <ul className="setupRuntimeList">
+          <ul className="settingsRuntimeList">
             {payload.runtimeSetup.providersNeedingAttention.map((entry) => (
               <li key={entry.provider}>
                 <strong>{entry.provider}</strong>
