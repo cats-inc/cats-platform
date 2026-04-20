@@ -122,10 +122,10 @@ with the authoring experience.
 Goal: migrate the remaining simple pages. Each sub-task lands
 separately so a single page's regression does not block others.
 
-- [ ] **3.1** Migrate `PlatformSettingsDesktopStartup.tsx`
+- [x] **3.1** Migrate `PlatformSettingsDesktopStartup.tsx`
       - Sections: startup behavior, system tray, window defaults
       - Owner review before commit
-- [ ] **3.2** Migrate `PlatformSettingsChat.tsx`
+- [x] **3.2** Migrate `PlatformSettingsChat.tsx`
       - Sections: verbose messages, live progress, layout mode
       - `<SettingsOptionRow>` with `layout="stack"` for the
         concurrent-response-layout `<select>`
@@ -314,6 +314,8 @@ duplicated pattern with bare CSS classes where a primitive exists.
 | Date       | Update                                 |
 |------------|----------------------------------------|
 | 2026-04-18 | Plan created alongside SPEC-073 / ADR-072 |
+| 2026-04-20 | Phase 3.1 complete — DesktopStartup migrated to primitives, owner-approved |
+| 2026-04-21 | Phase 3.2 complete — Chat + Draft builder sections on primitives, owner-approved |
 
 ---
 
