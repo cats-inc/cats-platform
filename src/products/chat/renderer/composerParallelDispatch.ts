@@ -11,7 +11,7 @@ import {
   resolveDraftAudienceParticipantIds,
   type DraftTemporaryParticipant,
 } from './chatUtils.js';
-import { buildChannelPath } from '../shared/channelPaths.js';
+import { buildChannelPath as buildChatChannelPath } from '../shared/channelPaths.js';
 import type { DraftParallelBranchState } from '../../shared/renderer/draftParallelBranches.js';
 
 export interface ParallelDispatchRequestState {
@@ -46,6 +46,7 @@ export interface SubmitNewParallelChatDraftOptions {
   draftParallelChatTargets: ExecutionTargetValue[];
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
+  buildChannelPath?: (channelId: string) => string;
   signal?: AbortSignal;
 }
 
@@ -66,6 +67,7 @@ export async function submitNewParallelChatDraft({
   draftParallelChatTargets,
   draftParticipantCatIds = [],
   draftTemporaryParticipants = [],
+  buildChannelPath = buildChatChannelPath,
   signal,
 }: SubmitNewParallelChatDraftOptions): Promise<SubmitNewParallelChatDraftResult> {
   if (draftParallelChatTargets.length < 2) {

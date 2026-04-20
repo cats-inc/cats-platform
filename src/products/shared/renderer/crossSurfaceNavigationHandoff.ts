@@ -106,10 +106,12 @@ export function peekCrossSurfaceNavigationHandoffForMatch(
   return stagedBundle;
 }
 
-export function peekCrossSurfaceNavigationSnapshot(
+export function peekCrossSurfaceNavigationSnapshot<TPayload extends AppShellPayload = AppShellPayload>(
   match: CrossSurfaceNavigationHandoffMatch,
-): AppShellPayload | null {
-  return peekCrossSurfaceNavigationHandoffForMatch(match)?.snapshot?.appShellPayload ?? null;
+): TPayload | null {
+  return (
+    peekCrossSurfaceNavigationHandoffForMatch(match)?.snapshot?.appShellPayload ?? null
+  ) as TPayload | null;
 }
 
 export function clearCrossSurfaceNavigationHandoff(): void {

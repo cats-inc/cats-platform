@@ -19,10 +19,8 @@ import {
   createParallelChatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { AppShellPayload } from '../../api/contracts';
-import {
-  buildChannelPath,
-} from '../../shared/channelPaths';
 import {
   normalizeSelectedChannelView,
 } from '../../shared/channelEntry';
@@ -73,6 +71,15 @@ import {
 } from '../../../shared/renderer/hooks/useWorkspaceExecutionTargetState.js';
 import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
 import type { DraftParallelBranchState } from '../../../shared/renderer/draftParallelBranches.js';
+import {
+  buildCrossSurfaceChannelPath,
+  prefetchCrossSurfaceNavigationTarget,
+  resolveCrossSurfaceNavigationRouteTarget,
+} from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
+import {
+  clearCrossSurfaceNavigationHandoff,
+  stageCrossSurfaceNavigationHandoff,
+} from '../../../shared/renderer/crossSurfaceNavigationHandoff.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -120,11 +127,50 @@ export async function resolveDispatchExecutionTargetValue(
   }
 }
 
+function stageCrossSurfaceDraftNavigationHandoff(input: {
+  kind: 'draft-create-channel' | 'draft-create-parallel-group';
+  targetSurface: PlatformSurfaceId;
+  entityId: string;
+  entityKind: 'channel' | 'parallel-group';
+  activeChannelId?: string | null;
+  snapshotPayload: AppShellPayload;
+  pendingExecution: boolean;
+}): void {
+  if (input.targetSurface === 'chat' || !input.entityId.trim()) {
+    return;
+  }
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: input.kind,
+    sourceSurface: 'chat',
+    targetSurface: input.targetSurface,
+    destination: {
+      entityKind: input.entityKind,
+      entityId: input.entityId,
+      route: resolveCrossSurfaceNavigationRouteTarget({
+        surface: input.targetSurface,
+        entityKind: input.entityKind,
+        entityId: input.entityId,
+        activeChannelId: input.activeChannelId,
+      }),
+    },
+    createdAt: new Date().toISOString(),
+    snapshot: {
+      appShellPayload: input.snapshotPayload,
+    },
+    optimisticState: {
+      pendingExecution: input.pendingExecution,
+      selectedChannelId: input.snapshotPayload.chat.selectedChannelId,
+    },
+  });
+}
+
 export function useComposerSubmit(options: {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
   currentPathname: string;
+  draftSurface: PlatformSurfaceId;
   composerDraft: string;
   setComposerDraft: Dispatch<SetStateAction<string>>;
   showingNewChatDraft: boolean;
@@ -171,6 +217,7 @@ export function useComposerSubmit(options: {
     setState,
     navigate,
     currentPathname,
+    draftSurface,
     composerDraft,
     setComposerDraft,
     showingNewChatDraft,
@@ -257,6 +304,8 @@ export function useComposerSubmit(options: {
       showingMyCatDirectLane,
     });
     const isCatScopedLaneRoute = draftRoute.isDirectLaneRoute;
+    const targetSurface = wasDraftingNewChat ? draftSurface : 'chat';
+    const isCrossSurfaceDraftDispatch = wasDraftingNewChat && targetSurface !== 'chat';
     const hydratedDirectLane = isDirectLaneSelectedForCat(initialSelectedChannel, draftDefaultRecipientCatId)
       ? initialSelectedChannel
       : null;
@@ -268,6 +317,7 @@ export function useComposerSubmit(options: {
     let rollbackPath = draftRoute.isDirectLaneRoute || wasDraftingNewChat
       ? resolveDraftRoutePath({ route: draftRoute })
       : currentPathname;
+    let successNavigationPath = rollbackPath;
     const originalDraftFiles = [...draftFiles];
     const originalChannelFiles = [...channelFiles];
     let restoreFiles = (): void => {
@@ -301,31 +351,40 @@ export function useComposerSubmit(options: {
           ? currentSoloChannelExecutionTarget
           : nextExecutionTarget);
     };
+    const buildTargetChannelPath = (nextChannelId: string): string =>
+      buildCrossSurfaceChannelPath(targetSurface, nextChannelId);
 
     setFeedback('');
     const { id: submitId, controller: ackController } = beginAckRequest();
     let keepBusyAfterReturn = false;
     captureManagedComposerLocation(managedNavigationLocationRef);
     try {
+      if (isCrossSurfaceDraftDispatch) {
+        void prefetchCrossSurfaceNavigationTarget(targetSurface);
+      }
+
       if (showingParallelChatDraft && wasDraftingNewChat) {
         setBusy(createParallelChatBusyState('ack'));
         const dispatch = await submitNewParallelChatDraft({
           body,
           payload: initialPayload,
-          originSurface: 'chat',
+          originSurface: targetSurface,
           draftCwd,
           draftFiles,
           draftParallelBranches,
           draftParallelChatTargets,
           draftParticipantCatIds,
           draftTemporaryParticipants,
+          buildChannelPath: buildTargetChannelPath,
           signal: ackController.signal,
         });
 
         rollbackPayload = dispatch.createdAppShell;
-        rollbackPath = dispatch.rollbackPath;
+        successNavigationPath = dispatch.rollbackPath;
         setComposerDraft('');
-        navigateWithinManagedFlow(rollbackPath);
+        if (!isCrossSurfaceDraftDispatch) {
+          navigateWithinManagedFlow(successNavigationPath);
+        }
         setState({ status: 'ready', payload: dispatch.createdAppShell });
         restoreFiles = () => {
           setChannelFiles(originalDraftFiles);
@@ -333,6 +392,28 @@ export function useComposerSubmit(options: {
         clearAckRequestIfCurrent(submitId);
         rollbackPayload = dispatch.dispatchAppShell;
         setState({ status: 'ready', payload: dispatch.dispatchAppShell });
+        const parallelGroupId =
+          dispatch.dispatchRequest?.groupId
+          ?? dispatch.createdAppShell.chat.parallelChatGroups.find((group) =>
+            group.memberChannelIds.includes(
+              dispatch.dispatchRequest?.channelId
+                ?? dispatch.dispatchAppShell.chat.selectedChannelId
+                ?? '',
+            ))?.id
+          ?? dispatch.createdAppShell.chat.parallelChatGroups[0]?.id
+          ?? '';
+        stageCrossSurfaceDraftNavigationHandoff({
+          kind: 'draft-create-parallel-group',
+          targetSurface,
+          entityId: parallelGroupId,
+          entityKind: 'parallel-group',
+          activeChannelId: dispatch.dispatchRequest?.channelId ?? dispatch.dispatchAppShell.chat.selectedChannelId,
+          snapshotPayload: dispatch.dispatchAppShell,
+          pendingExecution: dispatch.dispatchRequest != null,
+        });
+        if (isCrossSurfaceDraftDispatch && !navigateWithinManagedFlow(successNavigationPath)) {
+          clearCrossSurfaceNavigationHandoff();
+        }
         if (dispatch.dispatchRequest) {
           setActiveDispatchRequest({
             id: submitId,
@@ -427,7 +508,7 @@ export function useComposerSubmit(options: {
         body,
         existingCount: initialPayload.chat.channels.length,
         draftCwd,
-        originSurface: 'chat',
+        originSurface: targetSurface,
         draftDefaultRecipientCatId,
         participantCatIds: draftParticipantCatIds,
         temporaryParticipants: draftTemporaryParticipants,
@@ -440,11 +521,11 @@ export function useComposerSubmit(options: {
         createChatChannel,
         insertCreatedChannelIntoPayload,
         setState,
-        navigate,
+        navigate: isCrossSurfaceDraftDispatch ? () => {} : navigate,
         setChannelFiles,
         originalDraftFiles,
         originalChannelFiles,
-        buildChannelPath,
+        buildChannelPath: buildTargetChannelPath,
         updateSelectedChannel,
         uploadChannelAttachments,
         signal: ackController.signal,
@@ -452,7 +533,7 @@ export function useComposerSubmit(options: {
       payload = preparedSendContext.payload;
       rollbackPayload = preparedSendContext.rollbackPayload;
       channelId = preparedSendContext.channelId;
-      rollbackPath = preparedSendContext.rollbackPath;
+      successNavigationPath = preparedSendContext.rollbackPath;
       restoreFiles = preparedSendContext.restoreFiles;
       const { messageBody, soloDispatchTarget } = preparedSendContext;
       const draftAudienceParticipantIds = wasDraftingNewChat
@@ -494,7 +575,9 @@ export function useComposerSubmit(options: {
       setComposerDraft('');
       setDraftFiles([]);
       setChannelFiles([]);
-      navigateWithinManagedFlow(rollbackPath);
+      if (!isCrossSurfaceDraftDispatch) {
+        navigateWithinManagedFlow(successNavigationPath);
+      }
       setBusy(createComposerBusyState('ack', createChannelComposerBusyScope(channelId)));
 
       const dispatch = await sendChatMessage(channelId, {
@@ -509,6 +592,14 @@ export function useComposerSubmit(options: {
       clearAckRequestIfCurrent(submitId);
       rollbackPayload = dispatch.appShell;
       setState({ status: 'ready', payload: dispatch.appShell });
+      stageCrossSurfaceDraftNavigationHandoff({
+        kind: 'draft-create-channel',
+        targetSurface,
+        entityId: channelId,
+        entityKind: 'channel',
+        snapshotPayload: dispatch.appShell,
+        pendingExecution: isChannelDispatchRunning(dispatch.appShell, channelId),
+      });
       if (isChannelDispatchRunning(dispatch.appShell, channelId)) {
         setActiveDispatchRequest({
           id: submitId,
@@ -522,7 +613,9 @@ export function useComposerSubmit(options: {
       }
       setComposerDraft('');
       setFeedback('');
-      navigateWithinManagedFlow(rollbackPath);
+      if (!navigateWithinManagedFlow(successNavigationPath) && isCrossSurfaceDraftDispatch) {
+        clearCrossSurfaceNavigationHandoff();
+      }
 
       if (isCatScopedLaneRoute) {
         resetComposerDraftState({
@@ -584,6 +677,7 @@ export function useComposerSubmit(options: {
     draftFiles,
     draftEntryKind,
     draftDefaultRecipientCatId,
+    draftSurface,
     draftExecutionTarget.instance,
     draftExecutionTarget.modelSelection,
     draftExecutionTarget.model,

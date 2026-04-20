@@ -180,7 +180,8 @@ export function useWorkspaceAppShellRouting<
       surface: initialNavigationMatchRef.current.surface,
       path: initialNavigationMatchRef.current.path,
     });
-    const warmPayload = warmNavigationHandoff?.snapshot?.appShellPayload as TPayload | undefined;
+    const warmPayload =
+      warmNavigationHandoff?.snapshot?.appShellPayload as unknown as TPayload | undefined;
 
     if (warmPayload && !initialHadReadyStateRef.current) {
       startTransition(() => {

@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import {
   NewChatDraft as SharedChatNewChatDraft,
-  type NewChatDraftProps,
+  type NewChatDraftProps as SharedNewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import {
@@ -12,15 +12,19 @@ import {
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
+import { prefetchCrossSurfaceNavigationTarget } from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
 
-export type { NewChatDraftProps };
+export interface NewChatDraftProps extends SharedNewChatDraftProps {
+  draftSurface: PlatformSurfaceId;
+  onDraftSurfaceChange: (surface: PlatformSurfaceId) => void;
+}
 
 const POMODORO_PROMPT = 'Write a small pomodoro timer app.';
 
 export function NewChatDraft(props: NewChatDraftProps) {
-  // Reset per-draft state (draftSurface, repo probe, ...) when the route
-  // identity changes so switching between +New chat, +Group, +Parallel,
-  // cat-led, and direct-lane drafts does not leak state across entries.
+  // Reset per-draft UI state (folder probe, starter visibility, ...) when the
+  // route identity changes so switching between +New chat, +Group,
+  // +Parallel, cat-led, and direct-lane drafts does not leak across entries.
   const draftKey = [
     props.entryPreset ?? 'default',
     (props.allowAddCat ?? true) ? 'public' : 'direct',
@@ -30,7 +34,6 @@ export function NewChatDraft(props: NewChatDraftProps) {
 }
 
 function NewChatDraftInner(props: NewChatDraftProps) {
-  const [draftSurface, setDraftSurface] = useState<PlatformSurfaceId>('chat');
   const codeChips = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
@@ -38,10 +41,13 @@ function NewChatDraftInner(props: NewChatDraftProps) {
     onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
   });
 
-  const isCodeSurface = draftSurface === 'code';
+  const isCodeSurface = props.draftSurface === 'code';
 
-  const surfaceTag: ReactNode = draftSurface !== 'chat' ? (
-    <ComposerSurfaceChip surface={draftSurface} onDismiss={() => setDraftSurface('chat')} />
+  const surfaceTag: ReactNode = props.draftSurface !== 'chat' ? (
+    <ComposerSurfaceChip
+      surface={props.draftSurface}
+      onDismiss={() => props.onDraftSurfaceChange('chat')}
+    />
   ) : null;
 
   const isDirectLaneDraft = !(props.allowAddCat ?? true) && Boolean(props.draftDefaultRecipientCatId);
@@ -70,23 +76,8 @@ function NewChatDraftInner(props: NewChatDraftProps) {
         label: 'Pomodoro app',
         onClick: () => {
           props.onComposerChange(POMODORO_PROMPT);
-          // TODO(cross-surface-dispatch): setDraftSurface('code') only flips
-          // local UI (ComposerSurfaceChip, WHERE header, Choose workspace).
-          // Send still goes through chat's useComposerSubmit at
-          //   chat/renderer/hooks/useComposerSubmit.ts (hardcoded
-          //   originSurface: 'chat' at ~:310 and ~:422)
-          // and lands at chat/shared/channelPaths.ts:buildChannelPath =>
-          // /chat/chats/<id>, not /code/<id>. A proper fix needs:
-          //   1. chat submit to detect draftSurface and dispatch to the
-          //      target product's create API (not chat's createChatChannel)
-          //   2. navigate to the target surface's buildChannelPath
-          //   3. prefetch the target product bundle on surface switch to
-          //      cover the React.lazy gap in app/renderer/App.tsx
-          // Tracked in:
-          //   - ADR-073: target-surface dispatch + warm cross-surface handoff
-          //   - SPEC-074: cross-surface draft dispatch and warm product handoff
-          //   - PLAN-066: rollout for dispatch, routing, and handoff continuity
-          setDraftSurface('code');
+          void prefetchCrossSurfaceNavigationTarget('code');
+          props.onDraftSurfaceChange('code');
         },
       },
     ]

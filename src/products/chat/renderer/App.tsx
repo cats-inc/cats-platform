@@ -125,12 +125,21 @@ export default function App() {
     draftDefaultRecipientCatId,
     showingMyCatDirectLane: Boolean(routeMyCatId),
   });
+  const [draftSurface, setDraftSurface] = useState<PlatformSurfaceId>('chat');
+  const draftSurfaceResetKey = useMemo(
+    () => [
+      newChatPreset,
+      draftRoute.isDirectLaneRoute ? 'direct' : 'public',
+      draftDefaultRecipientCatId ?? 'none',
+    ].join(':'),
+    [draftDefaultRecipientCatId, draftRoute.isDirectLaneRoute, newChatPreset],
+  );
   const currentNavigationPath = useMemo(
     () => buildCrossSurfaceNavigationMatchPath(location.pathname, location.search),
     [location.pathname, location.search],
   );
   const initialWarmPayload = useMemo(
-    () => peekCrossSurfaceNavigationSnapshot({
+    () => peekCrossSurfaceNavigationSnapshot<AppShellPayload>({
       surface: 'chat',
       path: currentNavigationPath,
     }),
@@ -375,6 +384,10 @@ export default function App() {
     .filter((participant) => participant.status === 'active')
     .map((participant) => participant.participantId)
     .join('|');
+
+  useEffect(() => {
+    setDraftSurface('chat');
+  }, [draftSurfaceResetKey]);
 
   useEffect(() => {
     const nextAudienceState = resolveActiveChannelAudienceState({
@@ -803,6 +816,7 @@ export default function App() {
     setState,
     navigate,
     currentPathname: location.pathname,
+    draftSurface,
     composerDraft,
     setComposerDraft,
     showingNewChatDraft,
@@ -1224,6 +1238,8 @@ export default function App() {
                     : undefined,
                 }}
                 draftSurfaceProps={{
+                  draftSurface,
+                  onDraftSurfaceChange: setDraftSurface,
                   composerDraft,
                   busy,
                   greeting,
