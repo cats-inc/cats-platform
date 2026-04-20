@@ -792,6 +792,7 @@ export default function App() {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftSurface,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,

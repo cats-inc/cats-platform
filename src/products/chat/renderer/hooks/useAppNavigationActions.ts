@@ -7,6 +7,7 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/contracts.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import type { DraftTemporaryParticipant } from '../chatUtils.js';
 import {
@@ -56,6 +57,7 @@ export function useAppNavigationActions(options: {
   setDraftTemporaryParticipants: Dispatch<SetStateAction<DraftTemporaryParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
+  setDraftSurface?: Dispatch<SetStateAction<PlatformSurfaceId>>;
   setDraftWorkflowShape: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
   resetDraftParallelChatTargets: (options?: { includeCompareTarget?: boolean }) => void;
@@ -81,6 +83,7 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftSurface,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
@@ -119,6 +122,7 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants([]);
     setDraftHighlightedCatId(null);
     setDraftCatExecutionTargetOverrides(new Map());
+    setDraftSurface?.('chat');
     setDraftWorkflowShape('sequential');
     setDraftAudienceKeys(null);
     resetDraftParallelChatTargets({
@@ -138,6 +142,7 @@ export function useAppNavigationActions(options: {
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftSurface,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
