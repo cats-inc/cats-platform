@@ -9,6 +9,11 @@ import { useNavigate } from 'react-router-dom';
 import type { WorkProjectListProjection } from '../../api/projection.js';
 import { buildChannelPath } from '../../shared/channelPaths.js';
 import { fetchWorkProjectList } from '../api/dashboard.js';
+import {
+  buildWorkIntakePath,
+  buildWorkProjectPath,
+  WORK_WAR_ROOM_PATH,
+} from '../workPaths.js';
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -104,7 +109,7 @@ export function ProjectListView() {
             className="operatorActionButton"
             onClick={() => {
               startTransition(() => {
-                navigate('/work/war-room');
+                navigate(WORK_WAR_ROOM_PATH);
               });
             }}
           >
@@ -130,7 +135,7 @@ export function ProjectListView() {
             className="operatorActionButton operatorActionButtonPrimary"
             onClick={() => {
               startTransition(() => {
-                navigate('/work/intake');
+                navigate(buildWorkIntakePath());
               });
             }}
           >
@@ -237,7 +242,7 @@ export function ProjectListView() {
                         className="operatorActionButton"
                         onClick={() => {
                           startTransition(() => {
-                            navigate(`/work/projects/${encodeURIComponent(project.id)}`);
+                            navigate(buildWorkProjectPath(project.id));
                           });
                         }}
                       >

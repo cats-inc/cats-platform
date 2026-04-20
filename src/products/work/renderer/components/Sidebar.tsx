@@ -22,6 +22,13 @@ import {
 import { isDirectLaneSummary } from '../../shared/channelTopology.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
+import {
+  WORK_ROUTE_PREFIX,
+  isWorkProjectsPath,
+  isWorkTasksPath,
+  isWorkWarRoomPath,
+  isWorkWorkItemsPath,
+} from '../workPaths.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
@@ -106,7 +113,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 }
 
 function createExtraActionGroups(props: SidebarProps): ConversationSidebarActionGroup[] {
-  const currentPath = globalThis.location?.pathname ?? '/work';
+  const currentPath = globalThis.location?.pathname ?? WORK_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
 
   if (props.onOpenWarRoom) {
@@ -118,7 +125,7 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           key: 'war-room',
           label: 'War Room',
           onClick: props.onOpenWarRoom,
-          active: currentPath.startsWith('/work/war-room'),
+          active: isWorkWarRoomPath(currentPath),
           icon: (
             <svg
               width="16"
@@ -150,7 +157,7 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           key: 'tasks',
           label: 'Tasks',
           onClick: props.onOpenTasks,
-          active: currentPath === '/work/tasks' || currentPath.startsWith('/work/tasks/'),
+          active: isWorkTasksPath(currentPath),
           icon: (
             <svg
               width="16"
@@ -182,7 +189,7 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           key: 'projects',
           label: 'Projects',
           onClick: props.onOpenProjects,
-          active: currentPath.startsWith('/work/projects'),
+          active: isWorkProjectsPath(currentPath),
           icon: (
             <svg
               width="16"
@@ -214,7 +221,7 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           key: 'work-items',
           label: 'Work Items',
           onClick: props.onOpenWorkItems,
-          active: currentPath.startsWith('/work/work-items'),
+          active: isWorkWorkItemsPath(currentPath),
           icon: (
             <svg
               width="16"

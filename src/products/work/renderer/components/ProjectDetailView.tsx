@@ -10,6 +10,11 @@ import type { WorkProjectDetailProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
 import { listCatActorLinks } from '../actorLinks.js';
 import { fetchWorkProjectDetail } from '../api/dashboard.js';
+import {
+  buildWorkProjectPath,
+  buildWorkTaskPath,
+  buildWorkWorkItemPath,
+} from '../workPaths.js';
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -114,7 +119,7 @@ export function ProjectDetailView() {
             className="operatorActionButton"
             onClick={() => {
               startTransition(() => {
-                navigate('/work/projects');
+                navigate(buildWorkProjectPath());
               });
             }}
           >
@@ -235,7 +240,7 @@ export function ProjectDetailView() {
                         className="operatorActionButton"
                         onClick={() => {
                           startTransition(() => {
-                            navigate(`/work/tasks/${encodeURIComponent(task.id)}`);
+                            navigate(buildWorkTaskPath(task.id));
                           });
                         }}
                       >
@@ -312,7 +317,7 @@ export function ProjectDetailView() {
                         className="operatorActionButton"
                         onClick={() => {
                           startTransition(() => {
-                            navigate(`/work/work-items/${encodeURIComponent(workItem.id)}`);
+                            navigate(buildWorkWorkItemPath(workItem.id));
                           });
                         }}
                       >

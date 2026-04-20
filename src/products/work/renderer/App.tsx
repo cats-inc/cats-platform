@@ -2,6 +2,13 @@ import { createWorkspaceProductApp } from "../../shared/renderer/WorkspaceProduc
 import { AppRoutes } from "./AppRoutes";
 import { Sidebar } from "./components/Sidebar";
 import { BootShell } from "./chatUtils";
+import {
+  WORK_INTAKE_PATH,
+  WORK_WAR_ROOM_PATH,
+  WORK_PROJECTS_PATH,
+  WORK_TASKS_PATH,
+  WORK_WORK_ITEMS_PATH,
+} from "./workPaths.js";
 import "./styles.css";
 
 export default createWorkspaceProductApp({
@@ -13,11 +20,11 @@ export default createWorkspaceProductApp({
   renderSidebar: (props) => (
     <Sidebar
       {...props}
-      onStartWorkIntake={() => props.navigate("/work/intake")}
-      onOpenWarRoom={() => props.navigate("/work/war-room")}
-      onOpenProjects={() => props.navigate("/work/projects")}
-      onOpenTasks={() => props.navigate("/work/tasks")}
-      onOpenWorkItems={() => props.navigate("/work/work-items")}
+      onStartWorkIntake={() => props.navigate(WORK_INTAKE_PATH)}
+      onOpenWarRoom={() => props.navigate(WORK_WAR_ROOM_PATH)}
+      onOpenProjects={() => props.navigate(WORK_PROJECTS_PATH)}
+      onOpenTasks={() => props.navigate(WORK_TASKS_PATH)}
+      onOpenWorkItems={() => props.navigate(WORK_WORK_ITEMS_PATH)}
     />
   ),
 });
