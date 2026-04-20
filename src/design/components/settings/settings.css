@@ -212,10 +212,6 @@
   font-size: var(--settings-body-size);
 }
 
-.settings-danger-zone__actions {
-  margin-top: var(--space-3);
-  display: flex;
-  gap: var(--settings-action-gap);
-  align-items: center;
-  flex-wrap: wrap;
-}
+/* Danger-zone actions rely on the same `.settings-section > * + *` row
+ * gap that every other section uses. For multi-button rows, callers
+ * wrap children in `<SettingsActionBar>`. */

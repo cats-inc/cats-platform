@@ -27,7 +27,7 @@ export function SettingsDangerZone({
       {description ? (
         <p className="settings-danger-zone__description">{description}</p>
       ) : null}
-      <div className="settings-danger-zone__actions">{children}</div>
+      {children}
     </section>
   );
 }

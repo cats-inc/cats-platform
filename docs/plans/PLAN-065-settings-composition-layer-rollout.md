@@ -136,7 +136,7 @@ separately so a single page's regression does not block others.
       - `<SettingsStatusChip tone="ready|warm|muted">` for the chip
         row
       - Owner review before commit
-- [ ] **3.4** Migrate `PlatformSettingsData.tsx`
+- [x] **3.4** Migrate `PlatformSettingsData.tsx`
       - First real use of `<SettingsDangerZone>` for "Reset all data"
       - Verifies that the danger primitive covers the Data page's
         actions; adjust SPEC-073 if not
@@ -317,6 +317,7 @@ duplicated pattern with bare CSS classes where a primitive exists.
 | 2026-04-20 | Phase 3.1 complete — DesktopStartup migrated to primitives, owner-approved |
 | 2026-04-21 | Phase 3.2 complete — Chat + Draft builder sections on primitives, owner-approved |
 | 2026-04-21 | Phase 3.3 complete — Runtime page on primitives; `resolveRuntimeConnectionChip` returns `tone`; every section given a titled header with description |
+| 2026-04-21 | Phase 3.4 complete — Data page on `SettingsDangerZone`. SPEC-073 tweak: danger-zone actions are direct children (no wrapper div); multi-button rows wrap in `<SettingsActionBar>` |
 
 ---
 

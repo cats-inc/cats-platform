@@ -311,7 +311,9 @@ renders the classes below.
   `.settings-danger-zone`
   - `.settings-danger-zone__title`
   - `.settings-danger-zone__description`
-  - `.settings-danger-zone__actions`
+  - Children render as direct descendants of the section, inheriting
+    the standard `.settings-section > * + *` row-gap rhythm. For
+    multi-button rows, wrap children in `<SettingsActionBar>`.
 
 Where the existing class does the right thing (`.contentCard`,
 `.statusChip`, `.heroNote`, etc.), the new class applies in addition so

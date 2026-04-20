@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
+import { SettingsDangerZone } from '../../../design/components/settings/index.js';
 import {
   isSetupResetBusy,
   type WorkspaceBusyState,
@@ -34,12 +35,10 @@ export function PlatformSettingsData({
       title="Data"
       products={payload.products}
     >
-      <div className="contentCard">
-        <h2>Reset all data</h2>
-        <p className="heroNote">
-          This will erase all chats, cats, platform preferences, and setup state.
-          You will be returned to the setup wizard.
-        </p>
+      <SettingsDangerZone
+        title="Reset all data"
+        description="This will erase all chats, cats, platform preferences, and setup state. You will be returned to the setup wizard."
+      >
         <button
           className="dangerButton"
           type="button"
@@ -48,7 +47,7 @@ export function PlatformSettingsData({
         >
           {resetBusy ? 'Resetting...' : 'Reset all data'}
         </button>
-      </div>
+      </SettingsDangerZone>
       <ToastContainer toasts={toasts} />
     </PlatformSettingsShell>
   );
