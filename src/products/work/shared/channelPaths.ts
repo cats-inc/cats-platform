@@ -1,4 +1,5 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
+import { resolvePlatformSurfaceRoutePrefix } from '../../../shared/platformProducts.js';
 import {
   buildWorkspaceNewGroupChatPath,
   buildWorkspaceNewParallelChatPath,
@@ -27,7 +28,7 @@ export {
   createChannelExportFilename,
 } from '../../shared/channelPaths.js';
 
-export const CHAT_PREFIX = '/work';
+export const CHAT_PREFIX = resolvePlatformSurfaceRoutePrefix('work');
 export const NEW_CHAT_PATH = resolveWorkspaceNewChatPath(CHAT_PREFIX);
 export const MY_CATS_PATH_PREFIX = resolveWorkspaceMyCatsPathPrefix(CHAT_PREFIX);
 

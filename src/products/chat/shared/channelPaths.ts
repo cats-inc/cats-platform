@@ -1,10 +1,11 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
 import { isDirectLaneSummary } from './channelTopology.js';
+import { resolvePlatformSurfaceRoutePrefix } from '../../../shared/platformProducts.js';
 
 export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
-export const CHAT_PREFIX = '/chat';
+export const CHAT_PREFIX = resolvePlatformSurfaceRoutePrefix('chat');
 export const NEW_CHAT_PATH = `${CHAT_PREFIX}/new`;
 export const NEW_CHAT_CAT_QUERY_PARAM = 'cat';
 export const NEW_CHAT_PRESET_QUERY_PARAM = 'preset';

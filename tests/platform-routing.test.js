@@ -19,6 +19,9 @@ import {
   platformSurfaceSubtitle,
 } from '../build/server/core/platformSurface.js';
 import {
+  resolvePlatformSurfaceRoutePrefix,
+} from '../build/server/shared/platformProducts.js';
+import {
   buildWorkDashboardProjection,
   buildWorkProjectListProjection,
   buildWorkProjectDetailProjection,
@@ -87,6 +90,9 @@ test('platform surface descriptors expose product switcher metadata and stable r
   assert.equal(platformSurfaceRoutePrefix('chat'), '/chat');
   assert.equal(platformSurfaceRoutePrefix('work'), '/work');
   assert.equal(platformSurfaceRoutePrefix('code'), '/code');
+  assert.equal(resolvePlatformSurfaceRoutePrefix('chat'), '/chat');
+  assert.equal(resolvePlatformSurfaceRoutePrefix('work'), '/work');
+  assert.equal(resolvePlatformSurfaceRoutePrefix('code'), '/code');
   assert.equal(
     platformSurfaceSubtitle('code'),
     'Repos, runs, and coding workspace',

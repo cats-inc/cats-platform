@@ -70,6 +70,17 @@ const PLATFORM_PRODUCT_DESCRIPTORS: readonly PlatformProductDescriptor[] = [
   },
 ] as const;
 
+const PLATFORM_PRODUCT_DESCRIPTOR_BY_ID = new Map(
+  PLATFORM_PRODUCT_DESCRIPTORS.map((descriptor) => [descriptor.id, descriptor] as const),
+);
+
+const PLATFORM_PRODUCT_DESCRIPTOR_BY_SURFACE = new Map(
+  PLATFORM_PRODUCT_DESCRIPTORS
+    .filter((descriptor): descriptor is PlatformProductDescriptor & { surface: PlatformSurfaceId } =>
+      descriptor.surface !== null)
+    .map((descriptor) => [descriptor.surface, descriptor] as const),
+);
+
 function clonePlatformProductDescriptor(descriptor: PlatformProductDescriptor): PlatformProductDescriptor {
   return {
     ...descriptor,
@@ -83,7 +94,7 @@ export function listPlatformProductDescriptors(): PlatformProductDescriptor[] {
 }
 
 export function getPlatformProductDescriptor(productId: PlatformProductId): PlatformProductDescriptor | null {
-  const matched = PLATFORM_PRODUCT_DESCRIPTORS.find((descriptor) => descriptor.id === productId);
+  const matched = PLATFORM_PRODUCT_DESCRIPTOR_BY_ID.get(productId);
   if (!matched) {
     return null;
   }
@@ -91,9 +102,13 @@ export function getPlatformProductDescriptor(productId: PlatformProductId): Plat
 }
 
 export function getPlatformProductBySurface(surface: PlatformSurfaceId): PlatformProductDescriptor | null {
-  const matched = PLATFORM_PRODUCT_DESCRIPTORS.find((descriptor) => descriptor.surface === surface);
+  const matched = PLATFORM_PRODUCT_DESCRIPTOR_BY_SURFACE.get(surface);
   if (!matched) {
     return null;
   }
   return clonePlatformProductDescriptor(matched);
+}
+
+export function resolvePlatformSurfaceRoutePrefix(surface: PlatformSurfaceId): `/${string}` {
+  return PLATFORM_PRODUCT_DESCRIPTOR_BY_SURFACE.get(surface)?.routePrefix ?? '/chat';
 }

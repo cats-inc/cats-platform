@@ -7,6 +7,8 @@ import {
 import type { NavigateFunction } from 'react-router-dom';
 
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../api/workspaceContracts.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import { resolvePlatformSurfaceRoutePrefix } from '../../../../shared/platformProducts.js';
 import {
   buildWorkspaceChannelPath,
   buildWorkspaceNewGroupChatPath,
@@ -76,19 +78,6 @@ const defaultNavigationApi: WorkspaceAppNavigationApi<WorkspaceAppShellPayload> 
   resetSetup: resetWorkspaceSetup,
 };
 
-function resolveWorkspaceChatPrefix(
-  platformShellSurface: 'chat' | 'work' | 'code',
-): string {
-  switch (platformShellSurface) {
-    case 'chat':
-      return '/chat';
-    case 'work':
-      return '/work';
-    default:
-      return '/code';
-  }
-}
-
 export type WorkspaceNavigationLoadState<
   TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
 > =
@@ -104,7 +93,7 @@ export interface UseWorkspaceAppNavigationActionsOptions<
   state: WorkspaceNavigationLoadState<TPayload>;
   setState: Dispatch<SetStateAction<WorkspaceNavigationLoadState<TPayload>>>;
   navigate: NavigateFunction;
-  platformShellSurface: 'chat' | 'work' | 'code';
+  platformShellSurface: PlatformSurfaceId;
   setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
   setComposerDraft: Dispatch<SetStateAction<string>>;
@@ -164,7 +153,7 @@ export function useWorkspaceAppNavigationActions<
     navigationApi: providedNavigationApi,
     confirm: confirmDialog,
   } = options;
-  const chatPrefix = resolveWorkspaceChatPrefix(platformShellSurface);
+  const chatPrefix = resolvePlatformSurfaceRoutePrefix(platformShellSurface);
   const navigationApi = (
     providedNavigationApi ?? defaultNavigationApi
   ) as WorkspaceAppNavigationApi<TPayload>;
