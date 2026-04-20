@@ -105,6 +105,7 @@ export function AppRoutes({
         {...chatSurfaceProps}
         payload={payload}
         selectedChannel={channel}
+        behaviorSurface="work"
         onOpenAddCat={options.onOpenAddCat}
         showAddCatButton={options.showAddCatButton}
         renderComposerHeaderAccessory={(ctx) => (

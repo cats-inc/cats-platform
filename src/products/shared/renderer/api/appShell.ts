@@ -3,6 +3,12 @@ import type {
   NewChatDefaults,
   UpdateGlobalOrchestratorInput,
 } from '../../api/workspaceContracts.js';
+import type {
+  ConversationBehaviorPatch,
+  ConversationBehaviorPreferences,
+  ConversationBehaviorSurface,
+  SurfaceConversationBehaviorPatch,
+} from '../../conversationBehavior.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import type {
   FolderBrowsePreferenceScope,
@@ -16,9 +22,7 @@ import { expectJson, readErrorMessage } from './http.js';
 export interface WorkspacePreferencesPayload {
   preferences: {
     selectedChannelId: string;
-    showVerboseMessages: boolean;
-    showLiveProgressDetails?: boolean;
-    concurrentPresentationMode?: string;
+    conversationBehavior?: ConversationBehaviorPreferences;
     newChatDefaults: NewChatDefaults;
     advancedDraftControls?: Record<string, boolean>;
     folderBrowsePreferences?: FolderBrowsePreferences;
@@ -74,8 +78,9 @@ export async function updateSelectedChannel(
   );
 }
 
-export async function updateVerbosePreference(
-  show: boolean,
+export async function updateConversationBehaviorPreference(
+  surface: ConversationBehaviorSurface,
+  patch: SurfaceConversationBehaviorPatch,
   signal?: AbortSignal,
 ): Promise<AppShellPayload> {
   const response = await fetch('/api/preferences', {
@@ -84,55 +89,17 @@ export async function updateVerbosePreference(
       'content-type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify({ showVerboseMessages: show }),
+    body: JSON.stringify({
+      conversationBehavior: {
+        [surface]: patch,
+      } satisfies ConversationBehaviorPatch,
+    }),
     signal,
   });
 
   return mutateAndRefetch(
     response,
-    `cats verbose preference update returned ${response.status}`,
-    signal,
-  );
-}
-
-export async function updateLiveProgressDetailsPreference(
-  show: boolean,
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch('/api/preferences', {
-    method: 'PATCH',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ showLiveProgressDetails: show }),
-    signal,
-  });
-
-  return mutateAndRefetch(
-    response,
-    `cats live progress preference update returned ${response.status}`,
-    signal,
-  );
-}
-
-export async function updateConcurrentPresentationModePreference(
-  mode: string,
-  signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  const response = await fetch('/api/preferences', {
-    method: 'PATCH',
-    headers: {
-      'content-type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ concurrentPresentationMode: mode }),
-    signal,
-  });
-
-  return mutateAndRefetch(
-    response,
-    `cats concurrent presentation mode update returned ${response.status}`,
+    `cats conversation behavior update returned ${response.status}`,
     signal,
   );
 }

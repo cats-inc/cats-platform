@@ -47,6 +47,7 @@ import type {
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { FolderBrowsePreferences } from '../folderBrowsePreferences.js';
 import type { AdvancedDraftControlsPreferences } from '../advancedDraftControls.js';
+import type { ConversationBehaviorPreferences } from '../conversationBehavior.js';
 import type {
   RuntimePermissionMode,
   RuntimeSessionCreateContractInput,
@@ -114,6 +115,14 @@ export type {
   CreateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../../../core/companionContracts.js';
+export type {
+  ConcurrentChatPresentationMode,
+  ConversationBehaviorPatch,
+  ConversationBehaviorPreferences,
+  ConversationBehaviorSurface,
+  SurfaceConversationBehaviorPatch,
+  SurfaceConversationBehaviorPreferences,
+} from '../conversationBehavior.js';
 
 export type ChatChannelStatus =
   | 'planned'
@@ -136,12 +145,6 @@ export type ParallelChatRelayCommandKind =
   | 'counter_this'
   | 'synthesize_this';
 export type ParallelChatRelayTargetPolicy = 'all_others' | 'single';
-
-export type ConcurrentChatPresentationMode =
-  | 'inline_stack'
-  | 'compare_cards'
-  | 'focus_rail'
-  | 'adaptive';
 
 export interface MessageUsageSummary {
   inputTokens: number;
@@ -452,9 +455,7 @@ export interface ChatState {
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
-  showVerboseMessages: boolean;
-  showLiveProgressDetails?: boolean;
-  concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  conversationBehavior?: ConversationBehaviorPreferences;
   advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
 }
@@ -500,9 +501,7 @@ export interface ChatShellState {
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
-  showVerboseMessages: boolean;
-  showLiveProgressDetails?: boolean;
-  concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  conversationBehavior?: ConversationBehaviorPreferences;
   advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
   botBindings: ChatBotBindingSummary[];

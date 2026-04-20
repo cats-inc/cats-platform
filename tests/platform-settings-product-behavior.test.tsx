@@ -4,12 +4,13 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
 
-import { PlatformSettingsChat } from '../src/app/renderer/settings/PlatformSettingsChat.tsx';
+import { PlatformSettingsCode } from '../src/app/renderer/settings/PlatformSettingsCode.tsx';
+import { PlatformSettingsWork } from '../src/app/renderer/settings/PlatformSettingsWork.tsx';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 
 function createPayload(): AppShellPayload {
   return {
-    setupCompleteAt: '2026-04-16T00:00:00.000Z',
+    setupCompleteAt: '2026-04-21T00:00:00.000Z',
     ownerDisplayName: 'Kenny',
     ownerAvatarColor: null,
     ownerAvatarUrl: null,
@@ -46,13 +47,55 @@ function createPayload(): AppShellPayload {
           },
         ],
       },
+      {
+        id: 'work',
+        surface: 'work',
+        routePrefix: '/work',
+        productName: 'Cats Work',
+        subtitle: 'Projects, approvals, and operator workflow',
+        group: 'office',
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
+        setup: {
+          selectable: true,
+        },
+        settings: [
+          {
+            id: 'work',
+            label: 'Work',
+            path: '/settings/work',
+          },
+        ],
+      },
+      {
+        id: 'code',
+        surface: 'code',
+        routePrefix: '/code',
+        productName: 'Cats Code',
+        subtitle: 'Repos, runs, and coding workspace',
+        group: 'office',
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
+        setup: {
+          selectable: true,
+        },
+        settings: [
+          {
+            id: 'code',
+            label: 'Code',
+            path: '/settings/code',
+          },
+        ],
+      },
     ],
     chat: {
       conversationBehavior: {
         chat: {
           showVerboseMessages: false,
-          showLiveProgressDetails: true,
-          concurrentPresentationMode: 'compare_cards',
+          showLiveProgressDetails: false,
+          concurrentPresentationMode: 'inline_stack',
         },
         work: {
           showVerboseMessages: true,
@@ -61,13 +104,13 @@ function createPayload(): AppShellPayload {
         },
         code: {
           showVerboseMessages: false,
-          showLiveProgressDetails: false,
+          showLiveProgressDetails: true,
           concurrentPresentationMode: 'adaptive',
         },
       },
       advancedDraftControls: {
         chat: false,
-        code: false,
+        code: true,
         work: false,
       },
     },
@@ -96,7 +139,7 @@ function createPayload(): AppShellPayload {
       error: null,
     },
     metadata: {
-      generatedAt: '2026-04-16T00:00:00.000Z',
+      generatedAt: '2026-04-21T00:00:00.000Z',
       host: '127.0.0.1',
       port: 8181,
     },
@@ -104,10 +147,10 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('PlatformSettingsChat renders conversation and draft-builder controls on the live settings page', () => {
+test('PlatformSettingsWork renders a work-only conversation behavior section', () => {
   const markup = renderToStaticMarkup(
-    <StaticRouter location="/settings/chat">
-      <PlatformSettingsChat
+    <StaticRouter location="/settings/work">
+      <PlatformSettingsWork
         payload={createPayload()}
         onPayloadUpdate={() => {}}
       />
@@ -115,12 +158,25 @@ test('PlatformSettingsChat renders conversation and draft-builder controls on th
   );
 
   assert.match(markup, /Conversation behavior/u);
-  assert.match(markup, /Concurrent response layout/u);
-  assert.match(markup, /Inline stack/u);
-  assert.match(markup, /Compare cards/u);
+  assert.match(markup, /These settings affect Cats Work only\./u);
+  assert.match(markup, /Choose how multi-model replies are arranged in Cats Work\./u);
   assert.match(markup, /Focus rail/u);
-  assert.match(markup, /Adaptive/u);
-  assert.match(markup, /Draft builder/u);
-  assert.match(markup, /Enable advanced draft controls/u);
   assert.match(markup, /selected=""/u);
+});
+
+test('PlatformSettingsCode renders a code-only conversation behavior section', () => {
+  const markup = renderToStaticMarkup(
+    <StaticRouter location="/settings/code">
+      <PlatformSettingsCode
+        payload={createPayload()}
+        onPayloadUpdate={() => {}}
+      />
+    </StaticRouter>,
+  );
+
+  assert.match(markup, /Conversation behavior/u);
+  assert.match(markup, /These settings affect Cats Code only\./u);
+  assert.match(markup, /Choose how multi-model replies are arranged in Cats Code\./u);
+  assert.match(markup, /Adaptive/u);
+  assert.match(markup, /checked/u);
 });

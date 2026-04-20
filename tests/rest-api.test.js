@@ -636,52 +636,110 @@ test('PATCH /api/preferences persists new chat model defaults across subsequent 
   });
 });
 
-test('GET /api/preferences includes showVerboseMessages defaulting to false', async () => {
+test('GET /api/preferences includes default conversation behavior for chat, work, and code', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/preferences`);
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.preferences.showVerboseMessages, false);
-    assert.equal(payload.preferences.showLiveProgressDetails, false);
-  });
-});
-
-test('PATCH /api/preferences accepts showVerboseMessages and persists it', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
-    // Enable verbose messages
-    const patchResponse = await fetch(`${baseUrl}/api/preferences`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ showVerboseMessages: true }),
+    assert.deepEqual(payload.preferences.conversationBehavior, {
+      chat: {
+        showVerboseMessages: false,
+        showLiveProgressDetails: false,
+        concurrentPresentationMode: 'inline_stack',
+      },
+      work: {
+        showVerboseMessages: false,
+        showLiveProgressDetails: false,
+        concurrentPresentationMode: 'inline_stack',
+      },
+      code: {
+        showVerboseMessages: false,
+        showLiveProgressDetails: false,
+        concurrentPresentationMode: 'inline_stack',
+      },
     });
-    assert.equal(patchResponse.status, 200);
-    const patchPayload = await patchResponse.json();
-    assert.equal(patchPayload.preferences.showVerboseMessages, true);
-
-    // Verify it persists on GET
-    const getResponse = await fetch(`${baseUrl}/api/preferences`);
-    assert.equal(getResponse.status, 200);
-    const getPayload = await getResponse.json();
-    assert.equal(getPayload.preferences.showVerboseMessages, true);
   });
 });
 
-test('PATCH /api/preferences accepts showLiveProgressDetails and persists it', async () => {
+test('PATCH /api/preferences accepts chat conversation behavior and persists it', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const patchResponse = await fetch(`${baseUrl}/api/preferences`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ showLiveProgressDetails: true }),
+      body: JSON.stringify({
+        conversationBehavior: {
+          chat: {
+            showVerboseMessages: true,
+            concurrentPresentationMode: 'compare_cards',
+          },
+        },
+      }),
     });
     assert.equal(patchResponse.status, 200);
     const patchPayload = await patchResponse.json();
-    assert.equal(patchPayload.preferences.showLiveProgressDetails, true);
+    assert.equal(patchPayload.preferences.conversationBehavior.chat.showVerboseMessages, true);
+    assert.equal(
+      patchPayload.preferences.conversationBehavior.chat.concurrentPresentationMode,
+      'compare_cards',
+    );
 
     const getResponse = await fetch(`${baseUrl}/api/preferences`);
     assert.equal(getResponse.status, 200);
     const getPayload = await getResponse.json();
-    assert.equal(getPayload.preferences.showLiveProgressDetails, true);
+    assert.equal(getPayload.preferences.conversationBehavior.chat.showVerboseMessages, true);
+    assert.equal(
+      getPayload.preferences.conversationBehavior.chat.concurrentPresentationMode,
+      'compare_cards',
+    );
+  });
+});
+
+test('PATCH /api/preferences keeps work conversation behavior isolated from chat app-shell behavior', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const patchResponse = await fetch(`${baseUrl}/api/preferences`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        conversationBehavior: {
+          work: {
+            showVerboseMessages: true,
+            showLiveProgressDetails: true,
+            concurrentPresentationMode: 'focus_rail',
+          },
+        },
+      }),
+    });
+    assert.equal(patchResponse.status, 200);
+    const patchPayload = await patchResponse.json();
+    assert.deepEqual(patchPayload.preferences.conversationBehavior.work, {
+      showVerboseMessages: true,
+      showLiveProgressDetails: true,
+      concurrentPresentationMode: 'focus_rail',
+    });
+
+    const getResponse = await fetch(`${baseUrl}/api/preferences`);
+    assert.equal(getResponse.status, 200);
+    const getPayload = await getResponse.json();
+    assert.deepEqual(getPayload.preferences.conversationBehavior.work, {
+      showVerboseMessages: true,
+      showLiveProgressDetails: true,
+      concurrentPresentationMode: 'focus_rail',
+    });
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(appShellResponse.status, 200);
+    const appShellPayload = await appShellResponse.json();
+    assert.deepEqual(appShellPayload.chat.conversationBehavior.work, {
+      showVerboseMessages: true,
+      showLiveProgressDetails: true,
+      concurrentPresentationMode: 'focus_rail',
+    });
+    assert.deepEqual(appShellPayload.chat.conversationBehavior.chat, {
+      showVerboseMessages: false,
+      showLiveProgressDetails: false,
+      concurrentPresentationMode: 'inline_stack',
+    });
   });
 });
 

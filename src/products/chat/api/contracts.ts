@@ -48,6 +48,7 @@ import type {
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { FolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 import type { AdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
+import type { ConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
 import type {
   RuntimePermissionMode,
   RuntimeSessionCreateContractInput,
@@ -116,6 +117,15 @@ export type {
   CreateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
+export type {
+  ConcurrentChatPresentationMode,
+  ConversationBehaviorPatch,
+  ConversationBehaviorPreferences,
+  ConversationBehaviorSurface,
+  SurfaceConversationBehaviorPatch,
+  SurfaceConversationBehaviorPreferences,
+} from '../../shared/conversationBehavior.js';
+export { CONCURRENT_PRESENTATION_MODES } from '../../shared/conversationBehavior.js';
 
 export type ChatChannelStatus =
   | 'planned'
@@ -138,15 +148,6 @@ export type ParallelChatRelayCommandKind =
   | 'counter_this'
   | 'synthesize_this';
 export type ParallelChatRelayTargetPolicy = 'all_others' | 'single';
-
-export type ConcurrentChatPresentationMode =
-  | 'inline_stack'
-  | 'compare_cards'
-  | 'focus_rail'
-  | 'adaptive';
-export const CONCURRENT_PRESENTATION_MODES: readonly ConcurrentChatPresentationMode[] = [
-  'inline_stack', 'compare_cards', 'focus_rail', 'adaptive',
-];
 
 export interface MessageUsageSummary {
   inputTokens: number;
@@ -467,9 +468,7 @@ export interface ChatState {
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
-  showVerboseMessages: boolean;
-  showLiveProgressDetails?: boolean;
-  concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  conversationBehavior?: ConversationBehaviorPreferences;
   advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
 }
@@ -515,9 +514,7 @@ export interface ChatShellState {
   globalOrchestrator: GlobalOrchestratorSummary;
   newChatDefaults: NewChatDefaults;
   capabilities: ChatCapabilities;
-  showVerboseMessages: boolean;
-  showLiveProgressDetails?: boolean;
-  concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  conversationBehavior?: ConversationBehaviorPreferences;
   advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
   botBindings: ChatBotBindingSummary[];

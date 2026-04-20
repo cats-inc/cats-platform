@@ -13,13 +13,11 @@ export {
   resetChannelContinuity,
   updateChatOrchestrator,
   updateChannelPendingExecutionTarget,
-  updateConcurrentPresentationModePreference,
   updateAdvancedDraftControlsPreference,
+  updateConversationBehaviorPreference,
   updateFolderBrowsePreference,
-  updateLiveProgressDetailsPreference,
   updateNewChatDefaultsPreference,
   updateSelectedChannel,
-  updateVerbosePreference,
 } from './appShell.js';
 
 export {

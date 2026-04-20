@@ -2,9 +2,7 @@ import type {
   ChatCat,
   ChatChannelState,
   ChatState,
-  ConcurrentChatPresentationMode,
 } from '../../api/contracts.js';
-import { CONCURRENT_PRESENTATION_MODES } from '../../api/contracts.js';
 import type {
   AssistantPresetRecord,
   ArchiveMetadataRecord,
@@ -75,24 +73,14 @@ import {
   normalizeNewChatDefaults,
 } from './entities.js';
 import { normalizeFolderBrowsePreferences } from '../../../shared/folderBrowsePreferences.js';
+import { normalizeConversationBehaviorPreferences } from '../../../shared/conversationBehavior.js';
 import {
   asRecord,
-  readBoolean,
   readNullableString,
   readString,
 } from './shared.js';
 import { createDefaultCoreState } from '../../../../core/model/index.js';
 import { syncCoreStateWithChatState } from '../core-projection/index.js';
-
-function normalizeConcurrentPresentationMode(
-  value: unknown,
-): ConcurrentChatPresentationMode {
-  if (typeof value === 'string'
-    && (CONCURRENT_PRESENTATION_MODES as readonly string[]).includes(value)) {
-    return value as ConcurrentChatPresentationMode;
-  }
-  return 'inline_stack';
-}
 
 export function normalizeChatState(rawState: unknown): ChatState {
   const fallback = createDefaultChatState();
@@ -147,10 +135,8 @@ export function normalizeChatState(rawState: unknown): ChatState {
     globalOrchestrator: normalizeGlobalOrchestrator(stateRecord.globalOrchestrator),
     newChatDefaults: normalizeNewChatDefaults(stateRecord.newChatDefaults),
     capabilities: normalizeCapabilities(stateRecord.capabilities),
-    showVerboseMessages: readBoolean(stateRecord.showVerboseMessages, false),
-    showLiveProgressDetails: readBoolean(stateRecord.showLiveProgressDetails, false),
-    concurrentPresentationMode: normalizeConcurrentPresentationMode(
-      stateRecord.concurrentPresentationMode,
+    conversationBehavior: normalizeConversationBehaviorPreferences(
+      stateRecord.conversationBehavior,
     ),
     advancedDraftControls: normalizeAdvancedDraftControlsPreferences(
       stateRecord.advancedDraftControls,

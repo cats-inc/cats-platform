@@ -10,12 +10,16 @@ import {
   type AdvancedDraftControlsPatch,
 } from '../../../shared/advancedDraftControls.js';
 import {
+  applyConversationBehaviorPatch,
+  createDefaultConversationBehaviorPreferences,
+  type ConversationBehaviorPatch,
+} from '../../../shared/conversationBehavior.js';
+import {
   createDefaultFolderBrowsePreferences,
   isFolderBrowsePreferenceSurface,
   normalizeFolderBrowsePreferences,
   writeFolderBrowseRememberedPath,
 } from '../../../shared/folderBrowsePreferences.js';
-import { CONCURRENT_PRESENTATION_MODES } from '../contracts.js';
 import {
   DEFAULT_CHAT_SCOPE_ID,
   handleRestError,
@@ -30,9 +34,8 @@ const PREFERENCES_MUTATION_GATE_KEY = 'preferences';
 function serializePreferences(state: ChatState) {
   return {
     selectedChannelId: state.selectedChannelId,
-    showVerboseMessages: state.showVerboseMessages,
-    showLiveProgressDetails: state.showLiveProgressDetails ?? false,
-    concurrentPresentationMode: state.concurrentPresentationMode ?? 'inline_stack',
+    conversationBehavior:
+      state.conversationBehavior ?? createDefaultConversationBehaviorPreferences(),
     newChatDefaults: state.newChatDefaults,
     advancedDraftControls:
       state.advancedDraftControls ?? createDefaultAdvancedDraftControlsPreferences(),
@@ -43,9 +46,7 @@ function serializePreferences(state: ChatState) {
 function applyPreferencePatch(
   state: ChatState,
   body: {
-    showVerboseMessages?: boolean;
-    showLiveProgressDetails?: boolean;
-    concurrentPresentationMode?: string;
+    conversationBehavior?: ConversationBehaviorPatch;
     advancedDraftControls?: AdvancedDraftControlsPatch;
     newChatDefaults?: {
       provider?: string;
@@ -62,25 +63,13 @@ function applyPreferencePatch(
 ): ChatState {
   let nextState = state;
 
-  if (typeof body.showVerboseMessages === 'boolean') {
+  if (body.conversationBehavior && typeof body.conversationBehavior === 'object') {
     nextState = {
       ...nextState,
-      showVerboseMessages: body.showVerboseMessages,
-    };
-  }
-
-  if (typeof body.showLiveProgressDetails === 'boolean') {
-    nextState = {
-      ...nextState,
-      showLiveProgressDetails: body.showLiveProgressDetails,
-    };
-  }
-
-  if (typeof body.concurrentPresentationMode === 'string'
-    && (CONCURRENT_PRESENTATION_MODES as readonly string[]).includes(body.concurrentPresentationMode)) {
-    nextState = {
-      ...nextState,
-      concurrentPresentationMode: body.concurrentPresentationMode as typeof nextState.concurrentPresentationMode,
+      conversationBehavior: applyConversationBehaviorPatch(
+        nextState.conversationBehavior,
+        body.conversationBehavior,
+      ),
     };
   }
 
@@ -146,9 +135,7 @@ async function handleRestUpdatePreferences(
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<{
       selectedChannelId?: string;
-      showVerboseMessages?: boolean;
-      showLiveProgressDetails?: boolean;
-      concurrentPresentationMode?: string;
+      conversationBehavior?: ConversationBehaviorPatch;
       advancedDraftControls?: AdvancedDraftControlsPatch;
       newChatDefaults?: {
         provider?: string;

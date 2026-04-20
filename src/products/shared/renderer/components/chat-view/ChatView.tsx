@@ -86,6 +86,10 @@ import {
 } from '../../workspaceChatUtils.js';
 import { buildChatLaneId } from '../../../../../shared/chatCoreIds.js';
 import { isBrowserLiveTraceEnabled } from '../../../../../shared/liveTrace.js';
+import {
+  resolveConversationBehaviorPreferences,
+  type ConversationBehaviorSurface,
+} from '../../../conversationBehavior.js';
 
 let _lastLiveIndicatorLogSignature: string | null = null;
 let _lastLiveIndicatorLogAt: number | null = null;
@@ -234,6 +238,7 @@ export interface ChatViewProps {
   onSelect?: (channelId: string) => void;
   onOpenAddCat?: () => void;
   showAddCatButton?: boolean;
+  behaviorSurface?: ConversationBehaviorSurface;
   liveIndicator?: LiveIndicatorState;
   compareGroup?: ParallelChatGroupSummary | null;
   compareSendScope?: 'all_members' | 'active_only';
@@ -303,6 +308,7 @@ export function ChatView({
   onSelect,
   onOpenAddCat,
   showAddCatButton = true,
+  behaviorSurface = 'chat',
   liveIndicator,
   compareGroup = null,
   compareSendScope = 'all_members',
@@ -320,8 +326,16 @@ export function ChatView({
   buildSidePanelSections,
   sidePanelTitle = 'Chat Setup',
 }: ChatViewProps) {
+  const conversationBehavior = useMemo(
+    () => resolveConversationBehaviorPreferences(
+      payload.chat.conversationBehavior,
+      behaviorSurface,
+    ),
+    [behaviorSurface, payload.chat.conversationBehavior],
+  );
   const visibleMessages = selectedChannel.messages.filter(
-    (message) => payload.chat.showVerboseMessages || message.metadata?.verbosity !== 'verbose',
+    (message) =>
+      conversationBehavior.showVerboseMessages || message.metadata?.verbosity !== 'verbose',
   );
   const hasConversationStarted = visibleMessages.length > 0;
   const transcriptFollowState = useMemo(
@@ -415,15 +429,15 @@ export function ChatView({
       resolveConcurrentClusterPresentationMode({
         channelId: selectedChannel.id,
         turnId: context.turnId,
-        userDefault: payload.chat.concurrentPresentationMode ?? 'inline_stack',
+        userDefault: conversationBehavior.concurrentPresentationMode,
         segmentCount: context.segmentCount,
         viewportWidth,
         workflowRecommendation: null,
         uiStateByKey: concurrentClusterUiStateByKey,
       }),
     [
+      conversationBehavior.concurrentPresentationMode,
       concurrentClusterUiStateByKey,
-      payload.chat.concurrentPresentationMode,
       selectedChannel.id,
       viewportWidth,
     ],
@@ -532,7 +546,7 @@ export function ChatView({
           && message.senderKind !== 'system'
           && !(
             message.metadata?.verbosity === 'verbose'
-            && payload.chat.showVerboseMessages !== true
+            && conversationBehavior.showVerboseMessages !== true
           ));
         const activeTurnTargetStateIds: string[] = activeTurn?.targetStatuses
           ?.map((target) => target.id)
@@ -612,7 +626,7 @@ export function ChatView({
         return 'idle' as const;
       })(),
     }),
-    [payload.chat.showVerboseMessages, selectedChannel, visibleLiveIndicator],
+    [conversationBehavior.showVerboseMessages, selectedChannel, visibleLiveIndicator],
   );
   const runIdsKey = useMemo(
     () => operatorView?.runs.map((run) => run.id).join('|') ?? '',
@@ -1108,7 +1122,7 @@ export function ChatView({
         buildParticipantAvatarStyle={buildParticipantAvatarStyle}
         resolveParticipantAvatarUrl={resolveParticipantAvatarUrl}
         resolveParticipantDisplayName={resolveParticipantDisplayName}
-        showLiveProgressDetails={payload.chat.showLiveProgressDetails === true}
+        showLiveProgressDetails={conversationBehavior.showLiveProgressDetails}
         resolveConcurrentClusterPresentationMode={resolveConcurrentClusterMode}
         buildConcurrentClusterActions={buildConcurrentClusterActions}
         buildTranscriptMessageActions={buildTranscriptMessageActions}

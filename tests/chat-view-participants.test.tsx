@@ -37,7 +37,23 @@ function createPayload(): AppShellPayload {
       channels: [],
       selectedChannelId: 'channel-1',
       selectedChannel: null,
-      showVerboseMessages: false,
+      conversationBehavior: {
+        chat: {
+          showVerboseMessages: false,
+          showLiveProgressDetails: false,
+          concurrentPresentationMode: 'inline_stack',
+        },
+        work: {
+          showVerboseMessages: false,
+          showLiveProgressDetails: false,
+          concurrentPresentationMode: 'inline_stack',
+        },
+        code: {
+          showVerboseMessages: false,
+          showLiveProgressDetails: false,
+          concurrentPresentationMode: 'inline_stack',
+        },
+      },
     },
   } as unknown as AppShellPayload;
 }
@@ -299,6 +315,71 @@ test('ChatView shows temporary participants in the top bar and composer avatar s
   assert.doesNotMatch(markup, /data-tooltip="2 participants"/u);
   assert.match(markup, /channelParticipantAvatar/u);
   assert.doesNotMatch(markup, /#F04A70|#2B9CF0/u);
+});
+
+test('ChatView resolves verbose-message visibility from the current product surface', () => {
+  const selectedChannel = createChannel({
+    messages: [
+      {
+        id: 'message-user',
+        channelId: 'channel-1',
+        senderKind: 'user',
+        senderName: 'Kenny',
+        body: 'Review this.',
+        mentions: [],
+        metadata: {},
+        usage: null,
+        createdAt: '2026-04-07T00:01:00.000Z',
+      },
+      {
+        id: 'message-verbose',
+        channelId: 'channel-1',
+        senderKind: 'system',
+        senderName: 'Runtime',
+        body: 'Verbose routing detail.',
+        mentions: [],
+        metadata: {
+          verbosity: 'verbose',
+        },
+        usage: null,
+        createdAt: '2026-04-07T00:01:01.000Z',
+      },
+    ],
+  });
+  const payload = {
+    ...createPayload(),
+    chat: {
+      ...createPayload().chat,
+      conversationBehavior: {
+        ...createPayload().chat.conversationBehavior,
+        work: {
+          ...createPayload().chat.conversationBehavior.work,
+          showVerboseMessages: true,
+        },
+      },
+    },
+  } as unknown as AppShellPayload;
+
+  const chatMarkup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        payload,
+        selectedChannel,
+      })}
+    />,
+  );
+  const workMarkup = renderToStaticMarkup(
+    <ChatView
+      {...createProps({
+        payload,
+        selectedChannel,
+        behaviorSurface: 'work',
+      })}
+    />,
+  );
+
+  assert.doesNotMatch(chatMarkup, /Verbose routing detail\./u);
+  assert.match(workMarkup, /Verbose routing detail\./u);
 });
 
 test('ChatView keeps Cat visuals in room stacks while the composer stack preserves boss styling', () => {
@@ -1067,7 +1148,13 @@ test('ChatView keeps live assistant progress collapsed when progress details are
           ...createPayload(),
           chat: {
             ...createPayload().chat,
-            showLiveProgressDetails: false,
+            conversationBehavior: {
+              ...createPayload().chat.conversationBehavior,
+              chat: {
+                ...createPayload().chat.conversationBehavior.chat,
+                showLiveProgressDetails: false,
+              },
+            },
           },
         } as unknown as AppShellPayload,
         selectedChannel: createChannel({
@@ -1150,7 +1237,13 @@ test('ChatView shows provider-specific live assistant progress when progress det
           ...createPayload(),
           chat: {
             ...createPayload().chat,
-            showLiveProgressDetails: true,
+            conversationBehavior: {
+              ...createPayload().chat.conversationBehavior,
+              chat: {
+                ...createPayload().chat.conversationBehavior.chat,
+                showLiveProgressDetails: true,
+              },
+            },
           },
         } as unknown as AppShellPayload,
         selectedChannel: createChannel({
@@ -1636,7 +1729,13 @@ test('ChatView streams text content directly in the assistant bubble body when p
           ...createPayload(),
           chat: {
             ...createPayload().chat,
-            showLiveProgressDetails: true,
+            conversationBehavior: {
+              ...createPayload().chat.conversationBehavior,
+              chat: {
+                ...createPayload().chat.conversationBehavior.chat,
+                showLiveProgressDetails: true,
+              },
+            },
           },
         } as unknown as AppShellPayload,
         selectedChannel: createChannel({

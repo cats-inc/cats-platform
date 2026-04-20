@@ -9,6 +9,7 @@ import {
 } from '../../../products/shared/advancedDraftControls.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
+import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
 
 export interface PlatformSettingsCodeProps {
   payload: AppShellPayload;
@@ -50,6 +51,12 @@ export function PlatformSettingsCode({
 
   return (
     <PlatformSettingsShell section="code" title="Code" products={payload.products}>
+      <ProductConversationBehaviorSection
+        surface="code"
+        payload={payload}
+        onPayloadUpdate={onPayloadUpdate}
+        onError={showToast}
+      />
       <ProductAdvancedDraftControlsSection
         surface="code"
         enabled={enabled}

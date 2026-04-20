@@ -13,6 +13,7 @@ import {
 } from '../../../shared/providerCatalog.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
 import { createDefaultAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
+import { createDefaultConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
 import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 export { createEmptyMemoryCheckpoint };
 
@@ -103,6 +104,7 @@ export function createDefaultNewChatDefaults(): NewChatDefaults {
 
 export function createDefaultChatState(): ChatState {
   const createdAt = isoNow();
+  const conversationBehavior = createDefaultConversationBehaviorPreferences();
 
   return {
     id: 'default',
@@ -115,9 +117,7 @@ export function createDefaultChatState(): ChatState {
     globalOrchestrator: createDefaultOrchestrator(createdAt),
     newChatDefaults: createDefaultNewChatDefaults(),
     capabilities: createCapabilities(),
-    showVerboseMessages: false,
-    showLiveProgressDetails: false,
-    concurrentPresentationMode: 'inline_stack' as const,
+    conversationBehavior,
     advancedDraftControls: createDefaultAdvancedDraftControlsPreferences(),
     folderBrowsePreferences: createDefaultFolderBrowsePreferences(),
   };
