@@ -11,6 +11,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
+import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import {
   isPlatformNonProductPath,
   resolvePreferredPlatformSurface,
@@ -138,10 +139,7 @@ function readRequestedPlatformSurface(
   }
 
   const record = value as { platformShellSurface?: unknown };
-  const surface = record.platformShellSurface;
-  return surface === 'chat' || surface === 'work' || surface === 'code'
-    ? surface
-    : null;
+  return normalizePlatformSurface(record.platformShellSurface);
 }
 
 export function resolvePlatformDocumentTitle(input: {

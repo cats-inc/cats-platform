@@ -1,6 +1,10 @@
 export type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
-import { isEnabledPlatformSurface } from '../../shared/platformSurfaces.js';
+import { isEnabledPlatformSurface, normalizePlatformSurface } from '../../shared/platformSurfaces.js';
+import {
+  listPlatformSurfaceDescriptors,
+  resolvePlatformSurfaceFromPath,
+} from '../../core/platformSurface.js';
 
 export interface PlatformSurfaceRoute {
   surface: PlatformSurfaceId;
@@ -9,26 +13,23 @@ export interface PlatformSurfaceRoute {
   placeholder: boolean;
 }
 
-export const PLATFORM_SURFACE_ROUTES: Record<PlatformSurfaceId, PlatformSurfaceRoute> = {
-  chat: {
-    surface: 'chat',
-    routePrefix: '/chat',
-    apiBase: null,
-    placeholder: !isEnabledPlatformSurface('chat'),
-  },
-  work: {
-    surface: 'work',
-    routePrefix: '/work',
-    apiBase: '/api/work',
-    placeholder: !isEnabledPlatformSurface('work'),
-  },
-  code: {
-    surface: 'code',
-    routePrefix: '/code',
-    apiBase: '/api/code',
-    placeholder: !isEnabledPlatformSurface('code'),
-  },
+const PLATFORM_SURFACE_API_BASES: Readonly<Record<PlatformSurfaceId, string | null>> = {
+  chat: null,
+  work: '/api/work',
+  code: '/api/code',
 };
+
+export const PLATFORM_SURFACE_ROUTES = Object.fromEntries(
+  listPlatformSurfaceDescriptors().map((descriptor) => [
+    descriptor.id,
+    {
+      surface: descriptor.id,
+      routePrefix: descriptor.routePrefix,
+      apiBase: PLATFORM_SURFACE_API_BASES[descriptor.id],
+      placeholder: !isEnabledPlatformSurface(descriptor.id),
+    } satisfies PlatformSurfaceRoute,
+  ]),
+) as Record<PlatformSurfaceId, PlatformSurfaceRoute>;
 
 export function isPlatformNonProductPath(pathname: string): boolean {
   if (pathname === '/setup') {
@@ -52,19 +53,7 @@ export function isPlatformNonProductPath(pathname: string): boolean {
 }
 
 export function resolvePlatformSurfaceForPath(pathname: string): PlatformSurfaceId {
-  if (pathname === '/work' || pathname.startsWith('/work/')) {
-    return 'work';
-  }
-
-  if (pathname === '/code' || pathname.startsWith('/code/')) {
-    return 'code';
-  }
-
-  if (pathname === '/chat' || pathname.startsWith('/chat/')) {
-    return 'chat';
-  }
-
-  return 'chat';
+  return resolvePlatformSurfaceFromPath(pathname);
 }
 
 export function resolvePreferredPlatformSurface(
@@ -73,20 +62,24 @@ export function resolvePreferredPlatformSurface(
   storedSurface: string | null | undefined,
   fallbackSurface: string | null | undefined = 'chat',
 ): PlatformSurfaceId {
-  if (routeSurface === 'chat' || routeSurface === 'work' || routeSurface === 'code') {
-    return routeSurface;
+  const explicitSurface = normalizePlatformSurface(routeSurface);
+  if (explicitSurface) {
+    return explicitSurface;
   }
 
-  if (sessionSurface === 'chat' || sessionSurface === 'work' || sessionSurface === 'code') {
-    return sessionSurface;
+  const nextSessionSurface = normalizePlatformSurface(sessionSurface);
+  if (nextSessionSurface) {
+    return nextSessionSurface;
   }
 
-  if (storedSurface === 'chat' || storedSurface === 'work' || storedSurface === 'code') {
-    return storedSurface;
+  const nextStoredSurface = normalizePlatformSurface(storedSurface);
+  if (nextStoredSurface) {
+    return nextStoredSurface;
   }
 
-  if (fallbackSurface === 'work' || fallbackSurface === 'code') {
-    return fallbackSurface;
+  const nextFallbackSurface = normalizePlatformSurface(fallbackSurface);
+  if (nextFallbackSurface) {
+    return nextFallbackSurface;
   }
 
   return 'chat';

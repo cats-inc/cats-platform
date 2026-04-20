@@ -6,6 +6,7 @@ import type { PlatformPreferences } from '../../shared/platformPreferences.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { GUIDE_CAT_SYSTEM_NAME } from '../../shared/guideCatIdentity.js';
+import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 
 export interface SetupDebugContextInput {
   ownerDisplayName: string;
@@ -66,7 +67,7 @@ type ParseResult<T> =
   | { ok: false; message: string };
 
 function parsePlatformSurface(value: unknown): PlatformSurfaceId | undefined {
-  return value === 'chat' || value === 'work' || value === 'code' ? value : undefined;
+  return normalizePlatformSurface(value) ?? undefined;
 }
 
 function parseLobbyAnimationMode(value: unknown): PlatformLobbyAnimationMode | undefined {
