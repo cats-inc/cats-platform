@@ -110,6 +110,7 @@ to the runtime or changing desktop defaults.
 | 2026-04-20 | Platform now exposes a same-origin runtime root at `/runtime`, and browser-facing app-shell payloads advertise that ingress root instead of the loopback runtime upstream |
 | 2026-04-20 | Added `GET /api/platform/ingress` so operators can inspect the current bind mode and candidate local/LAN browser URLs before manual second-device verification |
 | 2026-04-20 | Ingress diagnostics now separate LAN and trusted-overlay URLs and intentionally filter common virtual adapters such as WSL/Docker out of browser-entry suggestions |
+| 2026-04-20 | Added a cross-platform `npm run ingress:smoke` helper so LAN/tunnel verification can probe the same-origin `/runtime/*` and `/runtime/api/*` seam without relying only on manual browser clicks |
 
 ---
 

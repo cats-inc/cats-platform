@@ -10,12 +10,40 @@ scripts/
 ├── windows/   # PowerShell (.ps1)
 ├── linux/     # Bash (.sh)
 ├── macos/     # Bash (.sh)
-└── testing/   # Test helpers (shared)
+└── testing/   # Test and smoke helpers (shared)
 ```
 
 ## Standards
 
 Follow `docs/SCRIPT-STANDARDS.md` for naming and documentation rules.
+
+## Ingress Smoke Helper
+
+`cats-platform` now also ships a small cross-platform ingress probe:
+
+- `scripts/testing/check-platform-ingress.mjs`
+
+It accepts a target Cats base URL and verifies the platform-owned browser
+ingress seam:
+
+- `/health`
+- `/api/platform/ingress`
+- `/runtime`
+- `/runtime/setup`
+- `/runtime/dashboard?bootstrap=1`
+- `/runtime/api/health`
+
+Representative usage:
+
+```bash
+node scripts/testing/check-platform-ingress.mjs
+node scripts/testing/check-platform-ingress.mjs --base-url http://192.168.1.25:8181
+node scripts/testing/check-platform-ingress.mjs --base-url https://example.ts.net
+```
+
+This is the recommended quick probe for trusted LAN and tunnel follow-through,
+because it validates that browser-facing runtime routes still stay on the Cats
+origin instead of leaking back to the runtime origin.
 
 ## Public Ingress Helpers
 

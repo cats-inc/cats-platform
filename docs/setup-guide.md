@@ -85,6 +85,10 @@ Notes:
   bind mode plus the candidate local, LAN, and trusted-overlay URLs for this
   machine. Common virtual adapters such as WSL/Docker are intentionally
   filtered out of those browser-entry suggestions.
+- `npm run ingress:smoke -- --base-url http://<LAN-IP>:8181` is the quick
+  same-origin ingress probe for LAN or tunnel verification. It checks
+  `/api/platform/ingress`, `/runtime`, `/runtime/setup`, and `/runtime/api/health`
+  through the Cats origin.
 
 Current first-run behavior:
 

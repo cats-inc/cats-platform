@@ -42,6 +42,7 @@
     "dev": "npm run dev:web",
     "dev:server": "tsx watch src/index.ts",
     "dev:web": "vite",
+    "ingress:smoke": "node scripts/testing/check-platform-ingress.mjs",
     "preview:bootstrap": "npm run build:host && node scripts/preview-bootstrap.mjs",
     "preview:web": "vite preview",
     "prepack": "npm run build",

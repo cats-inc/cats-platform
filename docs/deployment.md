@@ -57,6 +57,10 @@ Current decision:
 - `GET /api/platform/ingress` exposes the current bind mode plus candidate
   local/LAN/trusted-overlay browser URLs for operator verification, while
   filtering out common virtual-only adapter addresses such as WSL/Docker
+- `npm run ingress:smoke -- --base-url <url>` is the recommended operator probe
+  before opening the app from another device or through Tailscale/ngrok,
+  because it verifies that `/runtime/*` and `/runtime/api/*` still resolve
+  through the Cats origin
 
 ### Desktop Host First Slice
 
