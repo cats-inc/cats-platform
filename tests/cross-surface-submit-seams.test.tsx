@@ -80,6 +80,33 @@ test('stageCrossSurfaceDraftNavigationHandoff stages destination-owned channel h
   });
 });
 
+test('stageCrossSurfaceDraftNavigationHandoff preserves a non-chat source surface in the staged bundle', () => {
+  clearCrossSurfaceNavigationHandoff();
+
+  stageCrossSurfaceDraftNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'work',
+    targetSurface: 'code',
+    entityId: 'channel-work-to-code',
+    entityKind: 'channel',
+    snapshotPayload: createSnapshotPayload('channel-work-to-code') as never,
+    pendingExecution: false,
+  });
+
+  const handoff = consumeCrossSurfaceNavigationHandoff({
+    surface: 'code',
+    path: '/code/chats/channel-work-to-code',
+  });
+  assert.ok(handoff);
+  assert.equal(handoff.sourceSurface, 'work');
+  assert.equal(handoff.targetSurface, 'code');
+  assert.equal(handoff.destination.entityId, 'channel-work-to-code');
+  assert.deepEqual(handoff.optimisticState, {
+    pendingExecution: false,
+    selectedChannelId: 'channel-work-to-code',
+  });
+});
+
 test('stageCrossSurfaceDraftNavigationHandoff ignores chat-local and blank-id dispatches', () => {
   clearCrossSurfaceNavigationHandoff();
 

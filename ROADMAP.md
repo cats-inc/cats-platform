@@ -631,6 +631,9 @@ contracts.
       initiator before landing the second consumer, so `work -> code`,
       `code -> work`, or equivalent cross-product dispatch proves the handoff
       bundle and routing seam are truly generic instead of only Chat-shaped
+      Progress: cross-surface submit seam coverage now proves staged
+      `work -> code` handoff bundles preserve `sourceSurface`; a real
+      product-owned non-Chat dispatch consumer still remains to be landed.
 - [ ] Reuse the same warm navigation handoff seam for later supported
       cross-surface navigation targets such as existing conversations,
       artifacts, tasks, and runs, instead of letting each deep-link or
