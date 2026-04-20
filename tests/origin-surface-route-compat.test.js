@@ -6,6 +6,10 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
+import {
+  inspectOriginSurfaceCompatibilityTelemetry,
+  resetOriginSurfaceCompatibilityTelemetry,
+} from '../build/server/products/chat/api/originSurfaceCompatibilityTelemetry.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 const baseConfig = {
@@ -90,6 +94,7 @@ async function withServer(callback) {
 }
 
 test('POST /api/channels keeps legacy raw create requests compatible by defaulting missing originSurface to chat', async () => {
+  resetOriginSurfaceCompatibilityTelemetry();
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
@@ -106,6 +111,17 @@ test('POST /api/channels keeps legacy raw create requests compatible by defaulti
 
     const persisted = await chatStore.read();
     assert.equal(persisted.channels[0]?.originSurface, 'chat');
+
+    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
+      fallbackCount: 1,
+      fallbackTargetCounts: {
+        channel: 1,
+      },
+      latestFallback: {
+        targetNoun: 'channel',
+        resolvedSurface: 'chat',
+      },
+    });
   });
 });
 
@@ -132,6 +148,7 @@ test('POST /api/channels rejects invalid originSurface values instead of silentl
 });
 
 test('POST /api/concurrent-groups keeps legacy raw create requests compatible by defaulting missing originSurface to chat', async () => {
+  resetOriginSurfaceCompatibilityTelemetry();
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/concurrent-groups`, {
       method: 'POST',
@@ -158,6 +175,17 @@ test('POST /api/concurrent-groups keeps legacy raw create requests compatible by
         persisted.channels.find((channel) => channel.id === channelId)?.originSurface ?? null),
       ['chat', 'chat'],
     );
+
+    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
+      fallbackCount: 1,
+      fallbackTargetCounts: {
+        parallel_group: 1,
+      },
+      latestFallback: {
+        targetNoun: 'parallel_group',
+        resolvedSurface: 'chat',
+      },
+    });
   });
 });
 

@@ -585,6 +585,9 @@ contracts.
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when
       the compatibility fallback can safely be removed
+      Progress: the Chat create routes now record inspectable fallback counts,
+      stable target keys, and the latest compatibility fallback alongside the
+      existing stderr line; broader platform logging/reporting still remains.
 - [x] Wire cross-surface draft dispatch and warm navigation handoff so that
       flipping `+New chat`'s draft surface (currently chat -> code via the
       seeded Pomodoro helper chip, later more entries) actually creates a
