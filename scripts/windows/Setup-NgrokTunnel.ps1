@@ -139,6 +139,17 @@ function Query-NgrokApi {
   }
 }
 
+function Show-IngressProbeHint {
+  param([string]$BaseUrl)
+
+  if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
+    return
+  }
+
+  Write-Host 'Probe same-origin runtime ingress with:' -ForegroundColor Gray
+  Write-Host "  npm run ingress:smoke -- --base-url $BaseUrl" -ForegroundColor Gray
+}
+
 function New-RunnerScript {
   param(
     [string]$ProjectRoot,
@@ -301,6 +312,7 @@ function Show-VerifySummary {
     Write-Host 'ngrok API is responding on http://127.0.0.1:4040/api/tunnels.' -ForegroundColor Green
     foreach ($tunnel in $api.tunnels) {
       Write-Host "Tunnel: $($tunnel.public_url) -> $($tunnel.config.addr)" -ForegroundColor Gray
+      Show-IngressProbeHint -BaseUrl $tunnel.public_url
     }
   } else {
     Write-Host 'ngrok API is not responding.' -ForegroundColor Yellow
@@ -309,6 +321,7 @@ function Show-VerifySummary {
   try {
     $response = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
     Write-Host "Local cats server health responded with HTTP $($response.StatusCode)." -ForegroundColor Green
+    Show-IngressProbeHint -BaseUrl "http://127.0.0.1:$Port"
   } catch {
     Write-Host "Local cats server is not responding on http://127.0.0.1:$Port/health yet." -ForegroundColor DarkYellow
   }

@@ -95,6 +95,20 @@ query_ngrok_api() {
   curl --silent --fail --max-time 3 "http://127.0.0.1:4040/api/tunnels" || true
 }
 
+ngrok_public_urls() {
+  local api_text="$1"
+  grep -Eo 'https://[^"]+' <<<"$api_text" | sort -u || true
+}
+
+print_ingress_probe_hint() {
+  local base_url="$1"
+  if [[ -z "$base_url" ]]; then
+    return
+  fi
+  echo 'Probe same-origin runtime ingress with:'
+  echo "  (cd \"$PROJECT_ROOT\" && npm run ingress:smoke -- --base-url $base_url)"
+}
+
 create_runner() {
   mkdir -p "$APP_SUPPORT_DIR" "$STATE_DIR" "$LAUNCH_AGENTS_DIR"
 
@@ -252,12 +266,18 @@ if [[ "$COMMAND" == 'verify' ]]; then
   API_TEXT="$(query_ngrok_api)"
   if [[ -n "$API_TEXT" ]]; then
     echo 'ngrok API is responding on http://127.0.0.1:4040/api/tunnels.'
+    while IFS= read -r URL; do
+      [[ -z "$URL" ]] && continue
+      echo "Tunnel URL: $URL"
+      print_ingress_probe_hint "$URL"
+    done < <(ngrok_public_urls "$API_TEXT")
   else
     echo 'ngrok API is not responding.'
   fi
   if command -v curl >/dev/null 2>&1; then
     if curl --silent --fail --max-time 3 "http://127.0.0.1:$PORT/health" >/dev/null; then
       echo "Local cats server is responding on http://127.0.0.1:$PORT/health."
+      print_ingress_probe_hint "http://127.0.0.1:$PORT"
     else
       echo "Local cats server is not responding yet."
     fi

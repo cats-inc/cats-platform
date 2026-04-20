@@ -113,6 +113,15 @@ public_url() {
   grep -Eo 'https://[^[:space:]]+\.ts\.net(:[0-9]+)?' <<<"$status_text" | head -n 1 || true
 }
 
+print_ingress_probe_hint() {
+  local base_url="$1"
+  if [[ -z "$base_url" ]]; then
+    return
+  fi
+  echo 'Probe same-origin runtime ingress with:'
+  echo "  (cd \"$PROJECT_ROOT\" && npm run ingress:smoke -- --base-url $base_url)"
+}
+
 https_port_from_url() {
   local url="$1"
   if [[ -z "$url" ]]; then
@@ -250,6 +259,7 @@ if [[ "$COMMAND" == 'verify' ]]; then
     echo "Funnel is configured for cats on port $PORT."
     if [[ -n "$URL" ]]; then
       echo "Public URL: $URL"
+      print_ingress_probe_hint "$URL"
     fi
   else
     echo "No Funnel is currently configured for cats on port $PORT."
@@ -257,6 +267,7 @@ if [[ "$COMMAND" == 'verify' ]]; then
   if command -v curl >/dev/null 2>&1; then
     if curl --silent --fail --max-time 3 "http://127.0.0.1:$PORT/health" >/dev/null; then
       echo "Local cats server is responding on http://127.0.0.1:$PORT/health."
+      print_ingress_probe_hint "http://127.0.0.1:$PORT"
     else
       echo "Local cats server is not responding yet."
     fi

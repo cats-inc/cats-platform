@@ -45,6 +45,10 @@ This is the recommended quick probe for trusted LAN and tunnel follow-through,
 because it validates that browser-facing runtime routes still stay on the Cats
 origin instead of leaking back to the runtime origin.
 
+The Tailscale/ngrok `verify` helpers now print the matching `npm run ingress:smoke`
+command for the detected local or public base URL, so operators do not need to
+reconstruct that probe manually.
+
 ## Public Ingress Helpers
 
 `cats` now ships local/self-hosted startup helpers for both Tailscale Funnel
