@@ -1158,6 +1158,10 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
     new URL('../src/products/chat/renderer/composerParallelDispatch.ts', import.meta.url),
     'utf8',
   );
+  const sharedParallelDispatchSource = await readFile(
+    new URL('../src/products/shared/renderer/composerParallelDispatch.ts', import.meta.url),
+    'utf8',
+  );
   const sharedRequestControlsSource = await readFile(
     new URL('../src/products/shared/renderer/hooks/useComposerRequestControls.ts', import.meta.url),
     'utf8',
@@ -1178,6 +1182,11 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
   assert.match(hookSource, /sendChatMessage/u);
   assert.match(parallelDispatchSource, /createParallelChatGroup/u);
   assert.match(parallelDispatchSource, /sendParallelChatMessage/u);
+  assert.match(sharedParallelDispatchSource, /export function buildParallelChatDraftCreateInput/u);
+  assert.match(
+    sharedParallelDispatchSource,
+    /createParallelChatGroup\(\s*buildParallelChatDraftCreateInput\(/u,
+  );
   assert.match(sharedRequestControlsSource, /export function useComposerRequestControls/u);
   assert.match(sharedRequestControlsSource, /cancelPendingAckRequest/u);
   assert.match(sharedRequestControlsSource, /cancelConcurrentGroup/u);
