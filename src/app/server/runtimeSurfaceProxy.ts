@@ -328,7 +328,9 @@ export async function handleRuntimeSurfaceRoute(
       const forwardedHeaders = createForwardedResponseHeaders(upstream);
       const location = upstream.headers.get('location');
       if (location) {
-        forwardedHeaders.Location = rewriteSurfaceLocation(
+        delete forwardedHeaders.location;
+        delete forwardedHeaders.Location;
+        forwardedHeaders.location = rewriteSurfaceLocation(
           location,
           dependencies.shared.config.runtimeBaseUrl,
         );

@@ -37,6 +37,17 @@ async function withRuntimeStub(callback) {
     }
 
     if (url.pathname === '/setup' || url.pathname === '/dashboard' || url.pathname === '/playground') {
+      if (
+        url.pathname !== '/setup'
+        && url.searchParams.get('bootstrap') === '1'
+      ) {
+        response.writeHead(302, {
+          location: '/setup',
+        });
+        response.end();
+        return;
+      }
+
       const label = url.pathname.slice(1) || 'root';
       const html = [
         '<!DOCTYPE html>',
@@ -166,6 +177,18 @@ test('GET /runtime/setup serves a platform-hosted runtime surface', async () => 
       assert.match(html, /data-cats-runtime-platform-proxy/u);
       assert.match(html, /id="surface-dashboard" href="\/runtime\/dashboard"/u);
       assert.match(html, /"href":"\/runtime\/setup"/u);
+    });
+  });
+});
+
+test('GET /runtime/dashboard rewrites runtime bootstrap redirects onto platform ingress', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/dashboard?bootstrap=1`, {
+        redirect: 'manual',
+      });
+      assert.equal(response.status, 302);
+      assert.equal(response.headers.get('location'), '/runtime/setup');
     });
   });
 });
