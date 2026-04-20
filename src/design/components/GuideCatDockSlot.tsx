@@ -33,6 +33,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
     presentation,
     onDockedPointerDown,
     consumePillClickSuppression,
+    clearPillClickSuppression,
     dragActive,
     undock,
   } = useGuideCatPlacement();
@@ -73,6 +74,17 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
   // (onPointerDown below) — pointerdown on the surrounding row does
   // nothing, so the user can only start a drag by grabbing the avatar.
   const handleRowClick = isActive ? handleClick : undefined;
+  // Mirror the pill's pointer-down behaviour (`onDockedPointerDown` clears
+  // the drag-suppression flag) so the user's first click on the row area
+  // after drag-dropping into the slot is not swallowed. Without this, a
+  // drag-drop whose synthetic click never fired would leave `suppressRef`
+  // set, and the first row click would be consumed rather than toggle the
+  // sidecar open.
+  const handleRowPointerDown = isActive
+    ? () => {
+        clearPillClickSuppression();
+      }
+    : undefined;
   const handlePillClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     // Stop the click from bubbling into the row handler; otherwise a
     // direct avatar click would fire toggle twice (button + row) and
@@ -89,6 +101,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
       data-preview={isPreview ? 'true' : 'false'}
       data-dragging={dragActive ? 'true' : 'false'}
       onClick={handleRowClick}
+      onPointerDown={handleRowPointerDown}
     >
       {isActive ? (
         <>

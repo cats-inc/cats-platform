@@ -58,6 +58,11 @@ export interface GuideCatPlacementContextValue {
   /** Returns true if the previous pointer interaction was a drag; consuming
       resets the flag so the next click is allowed through. */
   consumePillClickSuppression: () => boolean;
+  /** Resets the drag-suppression flag without reading it. Use on non-pill
+      pointer-downs inside a docked row so a prior drag-release whose
+      synthetic click never arrived does not swallow the user's first
+      deliberate click on the surrounding chrome. */
+  clearPillClickSuppression: () => void;
   presentation: GuideCatSidecarState;
   dragActive: boolean;
   /** Viewport x (px) where the open-state panel should start its left edge,
@@ -565,6 +570,10 @@ export function GuideCatPlacementProvider({
     return was;
   }, []);
 
+  const clearPillClickSuppression = useCallback(() => {
+    suppressClickRef.current = false;
+  }, []);
+
   const undock = useCallback(() => {
     if (projection.kind !== 'docked') return;
     const rect = getDockSlotRect(projection.slot);
@@ -584,6 +593,7 @@ export function GuideCatPlacementProvider({
       onFloatingPointerDown,
       onDockedPointerDown,
       consumePillClickSuppression,
+      clearPillClickSuppression,
       presentation,
       dragActive: dragActivated,
       panelOriginX,
@@ -598,6 +608,7 @@ export function GuideCatPlacementProvider({
       onFloatingPointerDown,
       onDockedPointerDown,
       consumePillClickSuppression,
+      clearPillClickSuppression,
       presentation,
       dragActivated,
       panelOriginX,
