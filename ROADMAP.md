@@ -614,6 +614,10 @@ contracts.
       mount-time consume + background refresh behavior and the cross-surface
       `useComposerSubmit` dispatch flow (target stamp, prefetch timing, navigate
       gating, and staged-handoff clear behavior)
+      Progress: `useWorkspaceAppShellRouting` now exposes pure helper coverage
+      for initial warm-payload consume gating and background refresh merge
+      rules; full mount/integration coverage and submit-flow coverage still
+      remain.
 - [ ] Exercise the generic `sourceSurface` path with at least one non-Chat
       initiator before landing the second consumer, so `work -> code`,
       `code -> work`, or equivalent cross-product dispatch proves the handoff

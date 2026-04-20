@@ -28,6 +28,7 @@ import { isDirectLaneChannel } from '../../channelTopology.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
 import {
   consumeCrossSurfaceNavigationHandoff,
+  type CrossSurfaceNavigationRouteTarget,
 } from '../crossSurfaceNavigationHandoff.js';
 
 const APP_SHELL_BACKGROUND_REFRESH_MS = 5_000;
@@ -43,14 +44,14 @@ export interface WorkspaceRoutingPayloadLike {
   };
 }
 
-interface BackgroundRefreshPayloadLike extends WorkspaceRoutingPayloadLike {
+export interface BackgroundRefreshPayloadLike extends WorkspaceRoutingPayloadLike {
   runtime: AppShellPayload['runtime'];
   runtimeSetup: AppShellPayload['runtimeSetup'];
   metadata: AppShellPayload['metadata'];
   bootstrapAttemptId: AppShellPayload['bootstrapAttemptId'];
 }
 
-type LoadStateLike<TPayload extends WorkspaceRoutingPayloadLike> =
+export type LoadStateLike<TPayload extends WorkspaceRoutingPayloadLike> =
   | { status: 'loading' }
   | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
@@ -99,6 +100,75 @@ function consumeInitialWarmNavigationPayload<
   return (
     consumeCrossSurfaceNavigationHandoff(match)?.snapshot?.appShellPayload ?? null
   ) as TPayload | null;
+}
+
+export function resolveInitialWorkspaceWarmNavigationPayload<
+  TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+>(
+  input: {
+    initialHadReadyState: boolean;
+    match: CrossSurfaceNavigationRouteTarget;
+    consumeWarmPayload?: (match: CrossSurfaceNavigationRouteTarget) => TPayload | null;
+  },
+): TPayload | null {
+  if (input.initialHadReadyState) {
+    return null;
+  }
+
+  return (
+    input.consumeWarmPayload?.(input.match)
+    ?? consumeInitialWarmNavigationPayload<TPayload>(input.match)
+  );
+}
+
+export function shouldApplyWorkspaceBackgroundRefresh<
+  TPayload extends BackgroundRefreshPayloadLike = AppShellPayload,
+>(
+  currentPayload: TPayload,
+  nextPayload: TPayload,
+): boolean {
+  const currentGeneratedAt = Date.parse(currentPayload.metadata.generatedAt);
+  const nextGeneratedAt = Date.parse(nextPayload.metadata.generatedAt);
+
+  if (Number.isNaN(currentGeneratedAt) || Number.isNaN(nextGeneratedAt)) {
+    return true;
+  }
+
+  return nextGeneratedAt >= currentGeneratedAt;
+}
+
+export function mergeWorkspaceBackgroundRefreshPayload<
+  TPayload extends BackgroundRefreshPayloadLike = AppShellPayload,
+>(
+  currentPayload: TPayload,
+  nextPayload: TPayload,
+): TPayload {
+  return {
+    ...currentPayload,
+    runtime: nextPayload.runtime,
+    runtimeSetup: nextPayload.runtimeSetup,
+    metadata: nextPayload.metadata,
+    bootstrapAttemptId: nextPayload.bootstrapAttemptId,
+  } as TPayload;
+}
+
+export function applyWorkspaceBackgroundRefresh<
+  TPayload extends BackgroundRefreshPayloadLike = AppShellPayload,
+>(
+  current: LoadStateLike<TPayload>,
+  nextPayload: TPayload,
+): LoadStateLike<TPayload> {
+  if (
+    current.status !== 'ready'
+    || !shouldApplyWorkspaceBackgroundRefresh(current.payload, nextPayload)
+  ) {
+    return current;
+  }
+
+  return {
+    status: 'ready',
+    payload: mergeWorkspaceBackgroundRefreshPayload(current.payload, nextPayload),
+  };
 }
 
 export function useWorkspaceAppShellRouting<
@@ -173,31 +243,20 @@ export function useWorkspaceAppShellRouting<
   });
   const initialHadReadyStateRef = useRef(state.status === 'ready');
 
-  function shouldApplyBackgroundRefresh(
-    currentPayload: TPayload,
-    nextPayload: TPayload,
-  ): boolean {
-    const currentGeneratedAt = Date.parse(currentPayload.metadata.generatedAt);
-    const nextGeneratedAt = Date.parse(nextPayload.metadata.generatedAt);
-
-    if (Number.isNaN(currentGeneratedAt) || Number.isNaN(nextGeneratedAt)) {
-      return true;
-    }
-
-    return nextGeneratedAt >= currentGeneratedAt;
-  }
-
   useEffect(() => {
     const controller = new AbortController();
     // Warm handoff is intentionally one-shot for the first mounted route only.
     // Later route changes should refresh from the canonical URL/app-shell flow
     // instead of re-consuming a stale staged bundle from a previous navigation.
-    const warmPayload = consumeInitialWarmNavigationPayload<TPayload>({
-      surface: initialNavigationMatchRef.current.surface,
-      path: initialNavigationMatchRef.current.path,
+    const warmPayload = resolveInitialWorkspaceWarmNavigationPayload<TPayload>({
+      initialHadReadyState: initialHadReadyStateRef.current,
+      match: {
+        surface: initialNavigationMatchRef.current.surface,
+        path: initialNavigationMatchRef.current.path,
+      },
     });
 
-    if (warmPayload && !initialHadReadyStateRef.current) {
+    if (warmPayload) {
       startTransition(() => {
         setState({ status: 'ready', payload: warmPayload });
       });
@@ -252,23 +311,7 @@ export function useWorkspaceAppShellRouting<
 
           startTransition(() => {
             setState((current) => {
-              if (
-                current.status !== 'ready'
-                || !shouldApplyBackgroundRefresh(current.payload, nextPayload)
-              ) {
-                return current;
-              }
-
-              return {
-                status: 'ready',
-                payload: {
-                  ...current.payload,
-                  runtime: nextPayload.runtime,
-                  runtimeSetup: nextPayload.runtimeSetup,
-                  metadata: nextPayload.metadata,
-                  bootstrapAttemptId: nextPayload.bootstrapAttemptId,
-                },
-              };
+              return applyWorkspaceBackgroundRefresh(current, nextPayload);
             });
           });
         })
