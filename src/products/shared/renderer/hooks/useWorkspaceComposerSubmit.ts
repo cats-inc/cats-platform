@@ -90,7 +90,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   navigate: NavigateFunction;
   chatPrefix: string;
   originSurface: PlatformSurfaceId;
-  currentPathname: string;
+  currentPath: string;
   composerDraft: string;
   setComposerDraft: Dispatch<SetStateAction<string>>;
   showingNewChatDraft: boolean;
@@ -154,7 +154,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     navigate,
     chatPrefix,
     originSurface,
-    currentPathname,
+    currentPath,
     composerDraft,
     setComposerDraft,
     showingNewChatDraft,
@@ -249,7 +249,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       ? buildWorkspaceMyCatPath(chatPrefix, draftDefaultRecipientCatId ?? '')
       : wasDraftingNewChat
         ? buildWorkspaceNewChatPath(chatPrefix, draftDefaultRecipientCatId)
-        : currentPathname;
+        : currentPath;
     const originalDraftFiles = [...draftFiles];
     const originalChannelFiles = [...channelFiles];
     let restoreFiles = (): void => {
@@ -331,7 +331,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
 
         // Compare-container sends rely on the group dispatch ack to materialize
         // member-local optimistic messages consistently across the container.
-        rollbackPath = currentPathname;
+        rollbackPath = currentPath;
         setComposerDraft('');
         setChannelFiles([]);
         setBusy(createParallelChatBusyState('ack'));
@@ -528,7 +528,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     clearAckRequestIfCurrent,
     clearDispatchRequestIfCurrent,
     composerDraft,
-    currentPathname,
+    currentPath,
     draftCatIds,
     draftTemporaryParticipants,
     draftCwd,

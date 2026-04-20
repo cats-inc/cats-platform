@@ -976,7 +976,7 @@ export function createWorkspaceProductApp({
       setState,
       navigate,
       originSurface: shellSurface,
-      currentPathname: location.pathname,
+      currentPath: `${location.pathname}${location.search}`,
       composerDraft,
       setComposerDraft,
       showingNewChatDraft,

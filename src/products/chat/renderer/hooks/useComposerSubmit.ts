@@ -170,7 +170,7 @@ export function useComposerSubmit(options: {
   state: LoadStateLike;
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   navigate: NavigateFunction;
-  currentPathname: string;
+  currentPath: string;
   draftSurface: PlatformSurfaceId;
   composerDraft: string;
   setComposerDraft: Dispatch<SetStateAction<string>>;
@@ -217,7 +217,7 @@ export function useComposerSubmit(options: {
     state,
     setState,
     navigate,
-    currentPathname,
+    currentPath,
     draftSurface,
     composerDraft,
     setComposerDraft,
@@ -317,7 +317,7 @@ export function useComposerSubmit(options: {
       : initialPayload.chat.selectedChannelId;
     let rollbackPath = draftRoute.isDirectLaneRoute || wasDraftingNewChat
       ? resolveDraftRoutePath({ route: draftRoute })
-      : currentPathname;
+      : currentPath;
     let successNavigationPath = rollbackPath;
     const originalDraftFiles = [...draftFiles];
     const originalChannelFiles = [...channelFiles];
@@ -446,7 +446,7 @@ export function useComposerSubmit(options: {
           throw new Error('No parallel chat is available for sending messages.');
         }
 
-        rollbackPath = currentPathname;
+        rollbackPath = currentPath;
         setComposerDraft('');
         setChannelFiles([]);
         setBusy(createParallelChatBusyState('ack'));
@@ -671,7 +671,7 @@ export function useComposerSubmit(options: {
   }, [
     channelFiles,
     composerDraft,
-    currentPathname,
+    currentPath,
     draftParticipantCatIds,
     draftTemporaryParticipants,
     draftCwd,

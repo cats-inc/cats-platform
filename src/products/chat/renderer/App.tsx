@@ -815,7 +815,7 @@ export default function App() {
     state,
     setState,
     navigate,
-    currentPathname: location.pathname,
+    currentPath: `${location.pathname}${location.search}`,
     draftSurface,
     composerDraft,
     setComposerDraft,
