@@ -112,3 +112,12 @@ export function getPlatformProductBySurface(surface: PlatformSurfaceId): Platfor
 export function resolvePlatformSurfaceRoutePrefix(surface: PlatformSurfaceId): `/${string}` {
   return PLATFORM_PRODUCT_DESCRIPTOR_BY_SURFACE.get(surface)?.routePrefix ?? '/chat';
 }
+
+export function resolvePlatformSurfaceProductName(surface: PlatformSurfaceId): string {
+  return PLATFORM_PRODUCT_DESCRIPTOR_BY_SURFACE.get(surface)?.productName ?? 'Cats Chat';
+}
+
+export function resolvePlatformSurfaceSubtitle(surface: PlatformSurfaceId): string {
+  return PLATFORM_PRODUCT_DESCRIPTOR_BY_SURFACE.get(surface)?.subtitle
+    ?? 'Conversations with companions and personal agents';
+}

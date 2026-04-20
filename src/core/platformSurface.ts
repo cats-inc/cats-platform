@@ -1,5 +1,10 @@
 import type { PlatformProductMaturity, PlatformSurfaceId } from '../shared/platform-contract.js';
-import { listPlatformProductDescriptors } from '../shared/platformProducts.js';
+import {
+  listPlatformProductDescriptors,
+  resolvePlatformSurfaceProductName,
+  resolvePlatformSurfaceRoutePrefix,
+  resolvePlatformSurfaceSubtitle,
+} from '../shared/platformProducts.js';
 
 interface PlatformSurfaceDescriptor {
   id: PlatformSurfaceId;
@@ -35,16 +40,13 @@ export function resolvePlatformSurfaceFromPath(pathname: string): PlatformSurfac
 }
 
 export function platformSurfaceProductName(surface: PlatformSurfaceId): string {
-  return PLATFORM_SURFACE_DESCRIPTOR_BY_ID.get(surface)?.productName
-    ?? 'Cats Chat';
+  return resolvePlatformSurfaceProductName(surface);
 }
 
 export function platformSurfaceSubtitle(surface: PlatformSurfaceId): string {
-  return PLATFORM_SURFACE_DESCRIPTOR_BY_ID.get(surface)?.subtitle
-    ?? 'Conversations with companions and personal agents';
+  return resolvePlatformSurfaceSubtitle(surface);
 }
 
 export function platformSurfaceRoutePrefix(surface: PlatformSurfaceId): `/${string}` {
-  return PLATFORM_SURFACE_DESCRIPTOR_BY_ID.get(surface)?.routePrefix
-    ?? '/chat';
+  return resolvePlatformSurfaceRoutePrefix(surface);
 }
