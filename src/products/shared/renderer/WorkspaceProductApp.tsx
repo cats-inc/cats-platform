@@ -806,51 +806,74 @@ export function createWorkspaceProductApp({
         return;
       }
 
-      const visibleCatNames = draftParticipants.participantCatIds
-        .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? "")
-        .filter((name) => name.trim().length > 0);
-      let addedParticipantId: string | null = null;
+      const isBranchScoped = branchIndex !== null && draftParallelChatTargets.length >= 2;
 
-      setDraftTemporaryParticipants((current) => {
-        if (draftParticipants.participantCatIds.length + current.length >= maxDraftGroupParticipants) {
-          return current;
+      if (isBranchScoped) {
+        // Parallel branch: each branch is its own sub-chat, so
+        // maxChatParticipants caps branch membership. The shared pool
+        // can legitimately grow past that total when multiple
+        // branches each hold their own members.
+        const branchMembers = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+        if (
+          Number.isFinite(maxDraftGroupParticipants)
+          && branchMembers.length >= maxDraftGroupParticipants
+        ) {
+          return;
         }
-
-        const nextParticipant =
-          current.length === 0 && draftParticipants.participantCatIds.length === 0
-            ? createDraftTemporaryParticipant({
-                provider: draftExecutionTarget.provider,
-                instance: draftExecutionTarget.instance,
-                model: draftExecutionTarget.model,
-                modelSelection: draftExecutionTarget.modelSelection,
-                takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
-                randomUUID: () =>
-                  globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
-              })
-            : createNextGroupTemporaryParticipant({
-                baseProvider: draftExecutionTarget.provider,
-                existingParticipants: current,
-                takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
-                randomUUID: () =>
-                  globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
-              });
-        addedParticipantId = nextParticipant.participantId;
-        return [...current, nextParticipant];
-      });
-
-      if (!addedParticipantId) {
+      } else if (
+        draftParticipants.participantCatIds.length + draftTemporaryParticipants.length >= maxDraftGroupParticipants
+      ) {
         return;
       }
 
-      const nextParticipantKey = `temp:${addedParticipantId}`;
-      if (branchIndex !== null && draftParallelChatTargets.length >= 2) {
-        onSetDraftParallelBranchAudienceKeys(
-          branchIndex,
-          appendAudienceKeyWithinLimit(
-            draftParallelBranchAudienceKeys[branchIndex] ?? [],
-            nextParticipantKey,
-          ),
-        );
+      // Build the temp synchronously so its id is available for the
+      // audience update below. Creating it inside the setter defers
+      // execution to React's commit phase, which runs after this
+      // callback returns — the closure read afterwards would always
+      // miss the freshly-generated id.
+      const visibleCatNames = draftParticipants.participantCatIds
+        .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? "")
+        .filter((name) => name.trim().length > 0);
+      const takenNames = [
+        ...visibleCatNames,
+        ...draftTemporaryParticipants.map((participant) => participant.name),
+      ];
+      const nextParticipant =
+        draftTemporaryParticipants.length === 0
+        && draftParticipants.participantCatIds.length === 0
+          ? createDraftTemporaryParticipant({
+              provider: draftExecutionTarget.provider,
+              instance: draftExecutionTarget.instance,
+              model: draftExecutionTarget.model,
+              modelSelection: draftExecutionTarget.modelSelection,
+              takenNames,
+              randomUUID: () =>
+                globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+            })
+          : createNextGroupTemporaryParticipant({
+              baseProvider: draftExecutionTarget.provider,
+              existingParticipants: draftTemporaryParticipants,
+              takenNames,
+              randomUUID: () =>
+                globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+            });
+      const nextParticipantKey = `temp:${nextParticipant.participantId}`;
+
+      setDraftTemporaryParticipants((current) => [...current, nextParticipant]);
+
+      if (isBranchScoped) {
+        // Branch membership list — dedupe + append. Bypasses
+        // appendAudienceKeyWithinLimit because that helper caps at
+        // maxDraftAudienceParticipants, which is the chip-selection
+        // cap, not the per-branch membership cap
+        // (maxDraftGroupParticipants).
+        const currentBranchKeys = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+        const dedupedKeys = currentBranchKeys.filter((key, index, source) =>
+          source.indexOf(key) === index);
+        const nextBranchKeys = dedupedKeys.includes(nextParticipantKey)
+          ? dedupedKeys
+          : [...dedupedKeys, nextParticipantKey];
+        onSetDraftParallelBranchAudienceKeys(branchIndex, nextBranchKeys);
         return;
       }
 
@@ -1253,74 +1276,28 @@ export function createWorkspaceProductApp({
 
       const seedWorkflowShape = draftParallelBranchWorkflowShapes[0] ?? draftWorkflowShape;
 
-      // Advanced draft controls off: +Parallel stays strictly 1×N. No
-      // temp participant is created and no branch audience is seeded —
-      // each shadow row falls back to the target-derived chip, and the
-      // lead row keeps its existing 1-recipient shape.
-      if (!advancedDraftControlsEnabled) {
-        onAddDraftParallelChatTarget({
-          seedAudienceKeys: [],
-          seedWorkflowShape,
-        });
-        return;
-      }
-
-      // Smart-arrange: each new parallel branch boots with one fresh
-      // temp participant whose provider/model matches the next slot in
-      // the parallel-target rotation. This gives every shadow row its
-      // own distinct audience (e.g. row 1 → Codex, row 2 → Gemini,
-      // row 3 → Cursor, ...) instead of mirroring the lead row.
-      // The user can then +collab on the shadow row to grow it past
-      // M=1; only the lead row is required to keep M >= 2 (group
-      // semantics).
-      const nextTarget = createNextParallelTarget(
-        draftParallelChatTargets,
-        draftExecutionTarget,
-      );
-      const visibleCatNames = draftParticipants.participantCatIds
-        .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? "")
-        .filter((name) => name.trim().length > 0);
-      const newTemp = createDraftTemporaryParticipant({
-        provider: nextTarget.provider,
-        instance: nextTarget.instance,
-        model: nextTarget.model,
-        modelSelection: nextTarget.modelSelection,
-        takenNames: [
-          ...visibleCatNames,
-          ...draftTemporaryParticipants.map((participant) => participant.name),
-        ],
-        randomUUID: () =>
-          globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
-      });
-      setDraftTemporaryParticipants((current) => [...current, newTemp]);
-      const newAudienceKey = `temp:${newTemp.participantId}`;
-
-      // First transition into parallel mode: seed branch 0 with the
-      // existing draft audience so the lead row's roster + chip stay
-      // wired to the M >= 2 group audience the user already chose.
-      // Subsequent +compare clicks leave the lead alone and just
-      // append a new shadow with its own fresh single participant.
+      // +compare only appends a parallel target — it never creates a
+      // temp or seeds a branch audience. Each shadow row starts solo
+      // (target-derived chip) and must earn its members via the
+      // branch's own +collaborate, which is the only entrypoint that
+      // consumes a pool slot (maxChatParticipants). Seeding the lead
+      // audience on first transition stays free because it only
+      // references existing participants.
       if (!hasVisibleParallelDraftTargets) {
         const leadAudienceSeed = resolveParallelAudienceSeed();
         onSetDraftParallelBranchAudienceKeys(0, leadAudienceSeed);
       }
       onAddDraftParallelChatTarget({
-        seedAudienceKeys: [newAudienceKey],
+        seedAudienceKeys: [],
         seedWorkflowShape,
       });
     }, [
-      advancedDraftControlsEnabled,
-      draftExecutionTarget,
       draftParallelBranchWorkflowShapes,
-      draftParallelChatTargets,
-      draftParticipants.participantCatIds,
-      draftTemporaryParticipants,
       draftWorkflowShape,
       hasVisibleParallelDraftTargets,
       onAddDraftParallelChatTarget,
       onSetDraftParallelBranchAudienceKeys,
       resolveParallelAudienceSeed,
-      setDraftTemporaryParticipants,
       state,
       supportsStructuredDraftModes,
     ]);

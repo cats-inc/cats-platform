@@ -1142,6 +1142,161 @@ test('+Group preset with advanced on still lets every shadow row add collaborato
   assert.equal(collabButtons.length, 3);
 });
 
+test('+Group + +compare keeps the lead roster scoped to branch-0 audience and excludes shadow-only temps', () => {
+  // Regression guard: after +compare from +Group, the pool gains a
+  // shadow-only temp participant. The lead row's roster must stay
+  // scoped to branch-0's audience (the seeded group) and not display
+  // the shadow's temp.
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'group',
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          leadTarget,
+          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+        ],
+        parallelBranchAudienceKeys: [
+          ['temp:lead-a', 'temp:lead-b'],
+          ['temp:shadow-c'],
+        ],
+        parallelBranchWorkflowShapes: ['sequential', 'sequential'],
+        draftTemporaryParticipants: [
+          { participantId: 'lead-a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
+        ],
+        onQuickAddParallelBranchTemporaryParticipant: () => {},
+        onSetParallelBranchAudienceKeys: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="parallelStubStack"/u);
+  const leadRosterSlots = markup.match(/class="composerGroupAvatarSlot"/gu) ?? [];
+  // Lead roster: 2 participants (Aria + Bram). The shadow-only temp
+  // (Cleo) must not show up here even though it shares the same pool.
+  assert.equal(leadRosterSlots.length, 2);
+  assert.doesNotMatch(markup, /Cleo/u);
+});
+
+test('+Group + +compare hides lead remove buttons while lead branch sits at the group minimum', () => {
+  // Regression guard: the group-minimum check must be branch-scoped in
+  // parallel mode. Lead branch audience at exactly 2 participants
+  // cannot shrink further, so the roster × buttons stay hidden even
+  // though the shadow branch adds a third temp into the pool.
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'group',
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          leadTarget,
+          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+        ],
+        parallelBranchAudienceKeys: [
+          ['temp:lead-a', 'temp:lead-b'],
+          ['temp:shadow-c'],
+        ],
+        parallelBranchWorkflowShapes: ['sequential', 'sequential'],
+        draftTemporaryParticipants: [
+          { participantId: 'lead-a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
+        ],
+        onSetParallelBranchAudienceKeys: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  const leadSlots = markup.match(/class="composerGroupAvatarSlot"/gu) ?? [];
+  assert.equal(leadSlots.length, 2);
+  const removeButtons = markup.match(/composerGroupAvatarRemove/gu) ?? [];
+  assert.equal(removeButtons.length, 0);
+});
+
+test('parallel shadow branch with a single audience member renders as a target-style chip without avatar or popover', () => {
+  // Regression guard: a shadow branch whose audience is exactly one
+  // temp participant must degrade to the target-only chip — no avatar
+  // and no audience-selection popover. Growing the shadow via
+  // +collaborate (>= 2 members) re-enables the full treatment.
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          leadTarget,
+          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+        ],
+        parallelBranchAudienceKeys: [
+          [],
+          ['temp:shadow-c'],
+        ],
+        parallelBranchWorkflowShapes: ['sequential', 'sequential'],
+        draftTemporaryParticipants: [
+          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
+        ],
+        onSetParallelBranchAudienceKeys: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="parallelStubStack"/u);
+  assert.doesNotMatch(markup, /class="audienceChipAvatar"/u);
+  assert.doesNotMatch(markup, /Cleo/u);
+});
+
+test('+Group + many +compares keeps every branch collaborator button visible while each branch is under its M cap', () => {
+  // Regression guard: the +collaborate button must be gated per-branch
+  // (each branch audience vs maxAudienceParticipants), not by the
+  // shared pool cap. After 3 +compare clicks the pool hits
+  // maxChatParticipants but every branch still sits under M=3, so
+  // lead + each shadow must keep their +collaborate button visible.
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'group',
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          leadTarget,
+          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+          { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
+          { provider: 'cursor-cli', instance: null, model: 'composer-max', modelSelection: null },
+        ],
+        parallelBranchAudienceKeys: [
+          ['temp:a', 'temp:b'],
+          ['temp:c'],
+          ['temp:d'],
+          ['temp:e'],
+        ],
+        parallelBranchWorkflowShapes: ['sequential', 'sequential', 'sequential', 'sequential'],
+        draftTemporaryParticipants: [
+          { participantId: 'a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
+          { participantId: 'd', name: 'Dot', provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null, roleHint: null },
+          { participantId: 'e', name: 'Echo', provider: 'cursor-cli', instance: null, model: 'composer-max', modelSelection: null, roleHint: null },
+        ],
+        onQuickAddDraftTemporaryParticipant: () => {},
+        onQuickAddParallelBranchTemporaryParticipant: () => {},
+        onSetParallelBranchAudienceKeys: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  const collabButtons = markup.match(/aria-label="Add another model to collaborate"/gu) ?? [];
+  // 1 lead (audience=2 < 3) + 3 shadows (each audience=1 < 3) = 4 buttons.
+  assert.equal(collabButtons.length, 4);
+});
+
 test('parallel draft without temp participants keeps the lead roster collapsed and shadows target-only', () => {
   // When +compare runs under advanced-off semantics it only appends a
   // parallel target — no temp participant is added and no branch

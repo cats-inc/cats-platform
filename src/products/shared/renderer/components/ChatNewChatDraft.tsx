@@ -207,6 +207,12 @@ export function NewChatDraft({
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const maxAudienceParticipants = payload.chat.capabilities.maxAudienceParticipants ?? 3;
+  // Per-branch membership cap. Each branch (lead OR shadow) is its
+  // own sub-chat, so maxChatParticipants applies per branch, not to
+  // the shared pool of temps. The audience chip still respects
+  // maxAudienceParticipants for selection, independently of how many
+  // members the branch holds.
+  const maxBranchMembers = payload.chat.capabilities.maxChatParticipants ?? Number.POSITIVE_INFINITY;
   const {
     chatCats,
     assistantPresets,
@@ -260,25 +266,30 @@ export function NewChatDraft({
     return participants.slice(0, maxAudienceParticipants);
   }
 
+  function resolveParallelBranchMembers(
+    branchIndex: number,
+  ): typeof groupComposerParticipants {
+    const branchAudienceKeys = parallelBranchAudienceKeys?.[branchIndex] ?? [];
+    if (groupComposerParticipants.length === 0 || branchAudienceKeys.length === 0) {
+      return [];
+    }
+    const byKey = new Map(groupComposerParticipants.map((p) => [p.key, p]));
+    return branchAudienceKeys.map((key) => byKey.get(key)).filter(Boolean) as typeof groupComposerParticipants;
+  }
+
   function resolveParallelBranchAudienceParticipants(
     branchIndex: number,
     target: ExecutionTargetValue,
   ): typeof groupComposerParticipants {
-    const branchAudienceKeys = parallelBranchAudienceKeys?.[branchIndex] ?? [];
-    if (groupComposerParticipants.length === 0 || branchAudienceKeys.length === 0) {
+    // Audience chip display: capped at maxAudienceParticipants.
+    // The roster uses the uncapped member list (see
+    // resolveParallelBranchMembers) so the full branch membership is
+    // visible even when the audience chip truncates with "+N".
+    const members = resolveParallelBranchMembers(branchIndex);
+    if (members.length === 0) {
       return [buildAudienceParticipantFromExecutionTarget(target, `parallel:${branchIndex}`)];
     }
-
-    const byKey = new Map(groupComposerParticipants.map((participant) => [participant.key, participant]));
-    const resolved = branchAudienceKeys
-      .map((key) => byKey.get(key))
-      .filter(Boolean) as typeof groupComposerParticipants;
-
-    if (resolved.length > 0) {
-      return capAudienceParticipants(resolved);
-    }
-
-    return [buildAudienceParticipantFromExecutionTarget(target, `parallel:${branchIndex}`)];
+    return capAudienceParticipants(members);
   }
 
   // Build unified audience participants for all modes
@@ -313,6 +324,12 @@ export function NewChatDraft({
   const hasPrimaryParallelBranchAudience = isParallelMode
     && groupComposerParticipants.length > 0
     && (parallelBranchAudienceKeys?.[0]?.length ?? 0) > 0;
+  // Lead branch membership (uncapped): the roster must show every
+  // member of the lead branch, whereas the audience chip stays
+  // capped at maxAudienceParticipants via audienceParticipants.
+  const leadBranchMembers: typeof groupComposerParticipants = isParallelMode
+    ? resolveParallelBranchMembers(0)
+    : [];
 
   // Determine click action for single-participant chip
   const audienceSingleClick = (() => {
@@ -361,13 +378,29 @@ export function NewChatDraft({
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
   const shouldRenderGroupAddRow =
     !isDirectLaneContext && (isGroupDraft || showDraftGroupAddButton);
-  const canAddAnotherGroupParticipant = !hasReachedGroupParticipantLimit;
+  // Parallel mode: each branch is its own sub-chat, so lead's
+  // +collaborate is gated purely on lead-branch membership vs
+  // maxChatParticipants. The shared pool cap does not apply here
+  // because a pool can legitimately grow past that when multiple
+  // branches each host their own members.
+  const leadBranchAudienceLength = isParallelMode
+    ? (parallelBranchAudienceKeys?.[0]?.length ?? 0)
+    : groupComposerParticipants.length;
+  const canAddAnotherGroupParticipant = isParallelMode
+    ? leadBranchAudienceLength < maxBranchMembers
+    : !hasReachedGroupParticipantLimit;
+  // Group-minimum (>= 2 for +Group) stays branch-scoped so a shadow
+  // adding to the pool does not unlock × on the lead's at-minimum
+  // roster.
+  const leadRosterLength = isParallelMode
+    ? leadBranchAudienceLength
+    : groupComposerParticipants.length;
   const canRemoveGroupParticipant =
     !isSubmittingFirstTurn
     && (
       entryPreset === 'group'
-        ? groupComposerParticipants.length > 2
-        : groupComposerParticipants.length >= 2
+        ? leadRosterLength > 2
+        : leadRosterLength >= 2
     );
   const minParallelTargetCount = entryPreset === 'parallel' ? 2 : 1;
   const useDangerGroupRemoveHover = entryPreset === 'group';
@@ -591,12 +624,25 @@ export function NewChatDraft({
                   {shouldRenderGroupAddRow ? (
                     <div className="composerGroupAddRow">
                       <BranchAudienceRoster
-                        audienceParticipants={groupComposerParticipants}
+                        audienceParticipants={isParallelMode ? leadBranchMembers : groupComposerParticipants}
                         isSubmittingFirstTurn={isSubmittingFirstTurn}
                         canRemoveParticipant={canRemoveGroupParticipant}
                         useDangerRemoveHover={useDangerGroupRemoveHover}
                         onAvatarClick={() => openSidePanelTo('cats')}
                         onRemoveParticipant={(participant) => {
+                          // Parallel mode: the lead row is one branch among
+                          // many. Removing here must stay branch-scoped so
+                          // we don't rip the participant out of the pool
+                          // and break shadow branches that still reference
+                          // it. Pool-level deletion stays in the side panel.
+                          if (isParallelMode) {
+                            if (!onSetParallelBranchAudienceKeys) return;
+                            const nextKeys = leadBranchMembers
+                              .filter((p) => p.key !== participant.key)
+                              .map((p) => p.key);
+                            onSetParallelBranchAudienceKeys(0, nextKeys);
+                            return;
+                          }
                           if (participant.isCat && participant.catId) {
                             onToggleDraftCat(participant.catId);
                           } else if (participant.participantId) {
@@ -768,9 +814,15 @@ export function NewChatDraft({
                   <ParallelDraftShadowBranchRow
                     branchIndex={i + 1}
                     target={target}
+                    branchMembers={resolveParallelBranchMembers(i + 1)}
                     audienceParticipants={
-                      groupComposerParticipants.length > 0
-                      && (parallelBranchAudienceKeys?.[i + 1]?.length ?? 0) > 0
+                      // A shadow row with only a single branch member
+                      // is effectively solo — fall through to the
+                      // target-derived chip so the chip stays plain
+                      // (no avatar, no popover). Two or more members
+                      // means the shadow has grown via +collaborate
+                      // and earns the full branch-audience treatment.
+                      (parallelBranchAudienceKeys?.[i + 1]?.length ?? 0) > 1
                         ? resolveParallelBranchAudienceParticipants(i + 1, target)
                         : []
                     }
@@ -778,7 +830,9 @@ export function NewChatDraft({
                     workflowShape={parallelBranchWorkflowShapes?.[i + 1] ?? 'sequential'}
                     maxAudienceParticipants={maxAudienceParticipants}
                     isSubmittingFirstTurn={isSubmittingFirstTurn}
-                    canAddCollaborator={canAddAnotherGroupParticipant}
+                    canAddCollaborator={
+                      (parallelBranchAudienceKeys?.[i + 1]?.length ?? 0) < maxBranchMembers
+                    }
                     accentCollaborateButton={accentGroupAddButton}
                     onAddCollaborator={onQuickAddParallelBranchTemporaryParticipant}
                     onSetAudienceKeys={onSetParallelBranchAudienceKeys}

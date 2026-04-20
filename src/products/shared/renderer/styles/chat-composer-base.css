@@ -149,9 +149,10 @@
 .parallelStubAudienceControls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   flex: 1 1 auto;
+  padding-inline-start: 36px;
 }
 
 .parallelStubTargetControls {

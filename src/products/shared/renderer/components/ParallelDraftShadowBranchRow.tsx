@@ -8,6 +8,12 @@ import { AudienceChip } from './AudienceChip.js';
 interface ParallelDraftShadowBranchRowProps {
   branchIndex: number;
   target: ExecutionTargetValue;
+  /**
+   * Full branch membership (uncapped) — drives the left roster
+   * avatars. The right audience chip receives `audienceParticipants`
+   * separately so it can stay capped at maxAudienceParticipants.
+   */
+  branchMembers: DraftComposerStackParticipant[];
   audienceParticipants: DraftComposerStackParticipant[];
   allParticipants: DraftComposerStackParticipant[];
   workflowShape: RoomWorkflowShape;
@@ -27,6 +33,7 @@ interface ParallelDraftShadowBranchRowProps {
 export function ParallelDraftShadowBranchRow({
   branchIndex,
   target,
+  branchMembers,
   audienceParticipants,
   allParticipants,
   workflowShape,
@@ -55,14 +62,14 @@ export function ParallelDraftShadowBranchRow({
       <div className="parallelStubBranchRow">
         <div className="parallelStubAudienceControls">
           <BranchAudienceRoster
-            audienceParticipants={audienceParticipants}
+            audienceParticipants={branchMembers}
             isSubmittingFirstTurn={isSubmittingFirstTurn}
-            canRemoveParticipant={audienceParticipants.length >= 2}
+            canRemoveParticipant={branchMembers.length >= 2}
             useDangerRemoveHover={useDangerParallelRemoveHover}
             onAvatarClick={onOpenAudience}
             onRemoveParticipant={(participant) => {
               if (!onSetAudienceKeys) return;
-              const nextKeys = audienceParticipants
+              const nextKeys = branchMembers
                 .filter((p) => p.key !== participant.key)
                 .map((p) => p.key);
               onSetAudienceKeys(branchIndex, nextKeys);
@@ -86,8 +93,12 @@ export function ParallelDraftShadowBranchRow({
         <div className="parallelStubTargetControls">
           <AudienceChip
             audienceParticipants={displayParticipants}
-            allParticipants={allParticipants}
-            onSetAudienceKeys={onSetAudienceKeys
+            // Solo shadow (0 or 1 branch member) behaves like a
+            // target-only row: no popover to pick audience, no
+            // multi-select affordance. The popover reappears once the
+            // shadow has grown via +collaborate into an M >= 2 branch.
+            allParticipants={branchMembers.length > 1 ? allParticipants : []}
+            onSetAudienceKeys={onSetAudienceKeys && branchMembers.length > 1
               ? (keys) => onSetAudienceKeys(branchIndex, keys)
               : undefined}
             onSingleClick={onOpenAudience}
