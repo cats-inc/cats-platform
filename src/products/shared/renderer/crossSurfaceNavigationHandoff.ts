@@ -60,11 +60,88 @@ export interface CrossSurfaceNavigationHandoffMatch {
 
 export const CROSS_SURFACE_NAVIGATION_HANDOFF_TTL_MS = 60_000;
 
+// -------------------------- observability seam --------------------------
+//
+// Pluggable hook so product/telemetry wiring can count hit/miss/stage rates
+// without this module taking a hard dependency on a telemetry client. The
+// default observer is null so zero cost in prod until wired.
+
+export type CrossSurfaceNavigationHandoffObservationEvent =
+  | {
+      kind: 'stage';
+      bundle: CrossSurfaceNavigationHandoffBundle;
+    }
+  | {
+      kind: 'hit';
+      match: CrossSurfaceNavigationHandoffMatch;
+      bundle: CrossSurfaceNavigationHandoffBundle;
+    }
+  | {
+      kind: 'miss';
+      match: CrossSurfaceNavigationHandoffMatch;
+      reason: 'missing' | 'stale' | 'invalid';
+    };
+
+export type CrossSurfaceNavigationHandoffObserver = (
+  event: CrossSurfaceNavigationHandoffObservationEvent,
+) => void;
+
+let crossSurfaceNavigationHandoffObserver: CrossSurfaceNavigationHandoffObserver | null = null;
+
+export function setCrossSurfaceNavigationHandoffObserver(
+  next: CrossSurfaceNavigationHandoffObserver | null,
+): void {
+  crossSurfaceNavigationHandoffObserver = next;
+}
+
+function emitCrossSurfaceNavigationHandoffEvent(
+  event: CrossSurfaceNavigationHandoffObservationEvent,
+): void {
+  if (!crossSurfaceNavigationHandoffObserver) {
+    return;
+  }
+  try {
+    crossSurfaceNavigationHandoffObserver(event);
+  } catch {
+    // Observer errors must not break the seam.
+  }
+}
+
+// -------------------------- store + dedup log --------------------------
+
 const stagedCrossSurfaceNavigationHandoffs = new Map<
   string,
   CrossSurfaceNavigationHandoffBundle
 >();
 const loggedCrossSurfaceNavigationHandoffMisses = new Set<string>();
+
+// Every state mutation (set/delete/clear) resets the miss-log dedup window so
+// miss warnings become observable again against the new store state. All
+// mutation paths must route through these helpers rather than touching the
+// Map directly, to keep the reset guarantee local and auditable.
+
+function setStagedCrossSurfaceNavigationHandoff(
+  key: string,
+  bundle: CrossSurfaceNavigationHandoffBundle,
+): void {
+  stagedCrossSurfaceNavigationHandoffs.set(key, bundle);
+  loggedCrossSurfaceNavigationHandoffMisses.clear();
+}
+
+function deleteStagedCrossSurfaceNavigationHandoff(key: string): boolean {
+  const deleted = stagedCrossSurfaceNavigationHandoffs.delete(key);
+  if (deleted) {
+    loggedCrossSurfaceNavigationHandoffMisses.clear();
+  }
+  return deleted;
+}
+
+function clearAllStagedCrossSurfaceNavigationHandoffs(): void {
+  stagedCrossSurfaceNavigationHandoffs.clear();
+  loggedCrossSurfaceNavigationHandoffMisses.clear();
+}
+
+// -------------------------- path normalization --------------------------
 
 function compareNormalizedRouteSegment(left: string, right: string): number {
   if (left < right) {
@@ -110,14 +187,14 @@ function buildCrossSurfaceNavigationHandoffKey(match: CrossSurfaceNavigationHand
   return `${match.surface}:${normalizeRoutePath(match.path)}`;
 }
 
-function resetCrossSurfaceNavigationHandoffMissLog(): void {
-  loggedCrossSurfaceNavigationHandoffMisses.clear();
-}
+// -------------------------- freshness + miss log --------------------------
 
 function isFreshCrossSurfaceNavigationHandoff(bundle: CrossSurfaceNavigationHandoffBundle): boolean {
   const stagedAt = Date.parse(bundle.createdAt);
   if (Number.isNaN(stagedAt)) {
-    return true;
+    // Malformed createdAt is treated as stale so buggy bundles do not linger
+    // in the store forever waiting for an explicit clear.
+    return false;
   }
 
   return Date.now() - stagedAt <= CROSS_SURFACE_NAVIGATION_HANDOFF_TTL_MS;
@@ -140,14 +217,17 @@ function logCrossSurfaceNavigationHandoffMiss(
   }
 
   const requestedKey = buildCrossSurfaceNavigationHandoffKey(match);
-  const stagedTargets = [...stagedCrossSurfaceNavigationHandoffs.values()].map((bundle) =>
-    `${bundle.targetSurface}:${bundle.destination.route.path}`);
-  const warningFingerprint = `${reason}:${requestedKey}:${stagedTargets.join('|')}`;
+  // Dedup within the current store epoch. Any state mutation (stage / delete /
+  // clear) resets the log via the mutation helpers above, so a fresh state
+  // epoch automatically re-opens the warning window.
+  const warningFingerprint = `${reason}:${requestedKey}`;
   if (loggedCrossSurfaceNavigationHandoffMisses.has(warningFingerprint)) {
     return;
   }
   loggedCrossSurfaceNavigationHandoffMisses.add(warningFingerprint);
 
+  const stagedTargets = [...stagedCrossSurfaceNavigationHandoffs.values()].map((bundle) =>
+    `${bundle.targetSurface}:${bundle.destination.route.path}`);
   console.warn(
     reason === 'stale'
       ? '[cats-platform] staged warm navigation handoff expired before mount; continuing with cold boot.'
@@ -161,51 +241,55 @@ function logCrossSurfaceNavigationHandoffMiss(
   );
 }
 
-function validateCrossSurfaceNavigationHandoffMatch(
-  bundle: CrossSurfaceNavigationHandoffBundle,
-  match: CrossSurfaceNavigationHandoffMatch,
-): boolean {
-  return matchesCrossSurfaceNavigationHandoff(bundle, match);
-}
+// -------------------------- resolver --------------------------
+//
+// Peek path (no options): pure read, does not mutate the store and does not
+// log or emit. Consume path (consume: true): GCs invalid/stale entries it
+// encounters, emits hit/miss events, and logs miss warnings in dev.
 
 function resolveStagedCrossSurfaceNavigationHandoff(
   match: CrossSurfaceNavigationHandoffMatch,
-  options?: { consume?: boolean; logMiss?: boolean },
+  options?: { consume?: boolean },
 ): CrossSurfaceNavigationHandoffBundle | null {
+  const consume = options?.consume === true;
   const handoffKey = buildCrossSurfaceNavigationHandoffKey(match);
   const stagedBundle = stagedCrossSurfaceNavigationHandoffs.get(handoffKey) ?? null;
+
   if (!stagedBundle) {
-    if (options?.logMiss) {
+    if (consume) {
       logCrossSurfaceNavigationHandoffMiss(match, 'missing');
+      emitCrossSurfaceNavigationHandoffEvent({ kind: 'miss', match, reason: 'missing' });
     }
     return null;
   }
 
-  if (!validateCrossSurfaceNavigationHandoffMatch(stagedBundle, match)) {
-    stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
-    resetCrossSurfaceNavigationHandoffMissLog();
-    if (options?.logMiss) {
+  if (!matchesCrossSurfaceNavigationHandoff(stagedBundle, match)) {
+    if (consume) {
+      deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
       logCrossSurfaceNavigationHandoffMiss(match, 'invalid');
+      emitCrossSurfaceNavigationHandoffEvent({ kind: 'miss', match, reason: 'invalid' });
     }
     return null;
   }
 
   if (!isFreshCrossSurfaceNavigationHandoff(stagedBundle)) {
-    stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
-    resetCrossSurfaceNavigationHandoffMissLog();
-    if (options?.logMiss) {
+    if (consume) {
+      deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
       logCrossSurfaceNavigationHandoffMiss(match, 'stale');
+      emitCrossSurfaceNavigationHandoffEvent({ kind: 'miss', match, reason: 'stale' });
     }
     return null;
   }
 
-  if (options?.consume) {
-    stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
-    resetCrossSurfaceNavigationHandoffMissLog();
+  if (consume) {
+    deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
+    emitCrossSurfaceNavigationHandoffEvent({ kind: 'hit', match, bundle: stagedBundle });
   }
 
   return stagedBundle;
 }
+
+// -------------------------- public API --------------------------
 
 export function isImplementedCrossSurfaceNavigationHandoffKind(
   kind: CrossSurfaceNavigationHandoffKind,
@@ -228,24 +312,31 @@ export function stageCrossSurfaceNavigationHandoff(
       },
     },
   };
-  resetCrossSurfaceNavigationHandoffMissLog();
-  stagedCrossSurfaceNavigationHandoffs.set(
+  setStagedCrossSurfaceNavigationHandoff(
     buildCrossSurfaceNavigationHandoffKey(normalizedBundle.destination.route),
     normalizedBundle,
   );
+  emitCrossSurfaceNavigationHandoffEvent({ kind: 'stage', bundle: normalizedBundle });
 }
 
-export function peekLatestStagedCrossSurfaceNavigationHandoff(): CrossSurfaceNavigationHandoffBundle | null {
-  const stagedEntries = [...stagedCrossSurfaceNavigationHandoffs.entries()].reverse();
-  for (const [handoffKey, bundle] of stagedEntries) {
-    if (!validateCrossSurfaceNavigationHandoffMatch(bundle, bundle.destination.route)) {
-      stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
-      resetCrossSurfaceNavigationHandoffMissLog();
+/**
+ * Dev/test inspector that returns the most recently staged bundle that is
+ * still valid and fresh. Iterates the store in reverse insertion order and
+ * opportunistically GCs invalid/stale entries it encounters. Not intended for
+ * production route resolution — consumers should key off
+ * `peekCrossSurfaceNavigationHandoffForMatch` /
+ * `consumeCrossSurfaceNavigationHandoff` instead.
+ */
+export function inspectLatestStagedCrossSurfaceNavigationHandoff(): CrossSurfaceNavigationHandoffBundle | null {
+  const stagedEntries = [...stagedCrossSurfaceNavigationHandoffs.entries()];
+  for (let index = stagedEntries.length - 1; index >= 0; index -= 1) {
+    const [handoffKey, bundle] = stagedEntries[index];
+    if (!matchesCrossSurfaceNavigationHandoff(bundle, bundle.destination.route)) {
+      deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
       continue;
     }
     if (!isFreshCrossSurfaceNavigationHandoff(bundle)) {
-      stagedCrossSurfaceNavigationHandoffs.delete(handoffKey);
-      resetCrossSurfaceNavigationHandoffMissLog();
+      deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
       continue;
     }
     return bundle;
@@ -280,15 +371,13 @@ export function clearCrossSurfaceNavigationHandoff(
   match?: CrossSurfaceNavigationHandoffMatch,
 ): void {
   if (!match) {
-    stagedCrossSurfaceNavigationHandoffs.clear();
-    resetCrossSurfaceNavigationHandoffMissLog();
+    clearAllStagedCrossSurfaceNavigationHandoffs();
     return;
   }
 
-  stagedCrossSurfaceNavigationHandoffs.delete(
+  deleteStagedCrossSurfaceNavigationHandoff(
     buildCrossSurfaceNavigationHandoffKey(match),
   );
-  resetCrossSurfaceNavigationHandoffMissLog();
 }
 
 export function matchesCrossSurfaceNavigationHandoff(
@@ -303,8 +392,5 @@ export function matchesCrossSurfaceNavigationHandoff(
 export function consumeCrossSurfaceNavigationHandoff(
   match: CrossSurfaceNavigationHandoffMatch,
 ): CrossSurfaceNavigationHandoffBundle | null {
-  return resolveStagedCrossSurfaceNavigationHandoff(match, {
-    consume: true,
-    logMiss: true,
-  });
+  return resolveStagedCrossSurfaceNavigationHandoff(match, { consume: true });
 }

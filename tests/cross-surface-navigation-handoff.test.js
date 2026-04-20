@@ -6,11 +6,12 @@ import {
   buildCrossSurfaceNavigationMatchPath,
   clearCrossSurfaceNavigationHandoff,
   consumeCrossSurfaceNavigationHandoff,
+  inspectLatestStagedCrossSurfaceNavigationHandoff,
   isImplementedCrossSurfaceNavigationHandoffKind,
   matchesCrossSurfaceNavigationHandoff,
-  peekLatestStagedCrossSurfaceNavigationHandoff,
   peekCrossSurfaceNavigationHandoffForMatch,
   peekCrossSurfaceNavigationSnapshot,
+  setCrossSurfaceNavigationHandoffObserver,
   stageCrossSurfaceNavigationHandoff,
 } from '../src/products/shared/renderer/crossSurfaceNavigationHandoff.ts';
 
@@ -37,7 +38,7 @@ test('cross-surface handoff store only consumes a matching target surface route'
         path: ' /code/chats/channel-1 ',
       },
     },
-    createdAt: '2026-04-20T10:00:00.000Z',
+    createdAt: new Date().toISOString(),
   });
   stageCrossSurfaceNavigationHandoff({
     kind: 'draft-create-channel',
@@ -51,10 +52,10 @@ test('cross-surface handoff store only consumes a matching target surface route'
         path: '/work/chats/channel-2?b=2&a=1',
       },
     },
-    createdAt: '2026-04-20T10:00:01.000Z',
+    createdAt: new Date().toISOString(),
   });
 
-  const staged = peekLatestStagedCrossSurfaceNavigationHandoff();
+  const staged = inspectLatestStagedCrossSurfaceNavigationHandoff();
   assert.ok(staged);
   assert.equal(staged.destination.entityId, 'channel-2');
   assert.equal(
@@ -91,7 +92,7 @@ test('cross-surface handoff store only consumes a matching target surface route'
       path: '/work/chats/channel-2?a=1&b=2',
     }),
   );
-  assert.equal(peekLatestStagedCrossSurfaceNavigationHandoff(), null);
+  assert.equal(inspectLatestStagedCrossSurfaceNavigationHandoff(), null);
 });
 
 test('warm bootstrap can peek a matching snapshot before the mount-time consume', () => {
@@ -115,7 +116,7 @@ test('warm bootstrap can peek a matching snapshot before the mount-time consume'
       entityId: 'channel-42',
       route: match,
     },
-    createdAt: '2026-04-20T10:05:00.000Z',
+    createdAt: new Date().toISOString(),
     snapshot: {
       appShellPayload: snapshotPayload,
     },
@@ -124,41 +125,64 @@ test('warm bootstrap can peek a matching snapshot before the mount-time consume'
   assert.deepEqual(peekCrossSurfaceNavigationHandoffForMatch(match)?.snapshot?.appShellPayload, snapshotPayload);
   assert.deepEqual(peekCrossSurfaceNavigationSnapshot(match), snapshotPayload);
   assert.ok(consumeCrossSurfaceNavigationHandoff(match));
-  assert.equal(peekLatestStagedCrossSurfaceNavigationHandoff(), null);
+  assert.equal(inspectLatestStagedCrossSurfaceNavigationHandoff(), null);
 });
 
-test('peek helpers stay side-effect free when another staged target does not match', () => {
+test('peek does not evict invalid or stale staged bundles; only consume does', () => {
   clearCrossSurfaceNavigationHandoff();
-  const warnings = [];
-  const originalWarn = console.warn;
+  const events = [];
+  setCrossSurfaceNavigationHandoffObserver((event) => events.push(event));
 
   try {
-    console.warn = (...args) => warnings.push(args);
+    // Stage an invalid bundle: keyed under /code/... but targetSurface='work'.
+    // The key-lookup hits, but matches*() returns false.
     stageCrossSurfaceNavigationHandoff({
       kind: 'draft-create-channel',
       sourceSurface: 'chat',
-      targetSurface: 'code',
+      targetSurface: 'work',
       destination: {
         entityKind: 'channel',
-        entityId: 'channel-99',
+        entityId: 'channel-invalid',
         route: {
           surface: 'code',
-          path: '/code/chats/channel-99',
+          path: '/code/chats/channel-invalid',
         },
       },
-      createdAt: '2026-04-20T10:06:00.000Z',
+      createdAt: new Date().toISOString(),
     });
 
+    // Pure peek: returns null, emits no events, does not evict the bundle.
     assert.equal(
       peekCrossSurfaceNavigationHandoffForMatch({
-        surface: 'work',
-        path: '/work/chats/channel-99',
+        surface: 'code',
+        path: '/code/chats/channel-invalid',
       }),
       null,
     );
-    assert.equal(warnings.length, 0);
+
+    // If peek had evicted, the subsequent consume would see 'missing'. It
+    // should instead still detect the invalid bundle and emit 'miss:invalid'.
+    const originalWarn = console.warn;
+    try {
+      console.warn = () => {};
+      assert.equal(
+        consumeCrossSurfaceNavigationHandoff({
+          surface: 'code',
+          path: '/code/chats/channel-invalid',
+        }),
+        null,
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    // Observer trace: one stage event + one miss:invalid (NOT miss:missing).
+    const observedTrace = events.map((event) =>
+      event.kind === 'miss' ? `${event.kind}:${event.reason}` : event.kind,
+    );
+    assert.deepEqual(observedTrace, ['stage', 'miss:invalid']);
   } finally {
-    console.warn = originalWarn;
+    setCrossSurfaceNavigationHandoffObserver(null);
     clearCrossSurfaceNavigationHandoff();
   }
 });
@@ -180,7 +204,7 @@ test('stale handoff bundles expire instead of warming an unrelated future mount'
     createdAt: new Date(Date.now() - CROSS_SURFACE_NAVIGATION_HANDOFF_TTL_MS - 1_000).toISOString(),
   });
 
-  assert.equal(peekLatestStagedCrossSurfaceNavigationHandoff(), null);
+  assert.equal(inspectLatestStagedCrossSurfaceNavigationHandoff(), null);
   const originalWarn = console.warn;
   try {
     console.warn = () => {};
@@ -193,6 +217,52 @@ test('stale handoff bundles expire instead of warming an unrelated future mount'
     );
   } finally {
     console.warn = originalWarn;
+  }
+});
+
+test('malformed createdAt is treated as stale rather than lingering in the store', () => {
+  clearCrossSurfaceNavigationHandoff();
+  const events = [];
+  setCrossSurfaceNavigationHandoffObserver((event) => events.push(event));
+
+  try {
+    stageCrossSurfaceNavigationHandoff({
+      kind: 'draft-create-channel',
+      sourceSurface: 'chat',
+      targetSurface: 'code',
+      destination: {
+        entityKind: 'channel',
+        entityId: 'channel-nan',
+        route: {
+          surface: 'code',
+          path: '/code/chats/channel-nan',
+        },
+      },
+      createdAt: 'not-a-real-timestamp',
+    });
+
+    const originalWarn = console.warn;
+    try {
+      console.warn = () => {};
+      assert.equal(
+        consumeCrossSurfaceNavigationHandoff({
+          surface: 'code',
+          path: '/code/chats/channel-nan',
+        }),
+        null,
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    assert.equal(inspectLatestStagedCrossSurfaceNavigationHandoff(), null);
+    const observedTrace = events.map((event) =>
+      event.kind === 'miss' ? `${event.kind}:${event.reason}` : event.kind,
+    );
+    assert.deepEqual(observedTrace, ['stage', 'miss:stale']);
+  } finally {
+    setCrossSurfaceNavigationHandoffObserver(null);
+    clearCrossSurfaceNavigationHandoff();
   }
 });
 
@@ -210,7 +280,7 @@ test('trailing slash stays part of the normalized route identity', () => {
         path: '/code/chats/channel-slash/',
       },
     },
-    createdAt: '2026-04-20T10:07:00.000Z',
+    createdAt: new Date().toISOString(),
   });
 
   assert.equal(
@@ -242,7 +312,7 @@ test('mismatched staged bundle metadata is rejected even when the keyed route hi
         path: '/code/chats/channel-invalid',
       },
     },
-    createdAt: '2026-04-20T10:08:00.000Z',
+    createdAt: new Date().toISOString(),
   });
 
   assert.equal(
@@ -252,7 +322,138 @@ test('mismatched staged bundle metadata is rejected even when the keyed route hi
     }),
     null,
   );
-  assert.equal(peekLatestStagedCrossSurfaceNavigationHandoff(), null);
+  // inspectLatest iterates + opportunistically GCs invalid entries, so the
+  // store ends empty once a dev/test caller looks at it.
+  assert.equal(inspectLatestStagedCrossSurfaceNavigationHandoff(), null);
+});
+
+test('non-chat source surfaces survive a stage -> consume round trip intact', () => {
+  clearCrossSurfaceNavigationHandoff();
+  const snapshotPayload = {
+    chat: {
+      selectedChannelId: 'channel-cross',
+    },
+  };
+  const match = {
+    surface: 'code',
+    path: buildCrossSurfaceNavigationMatchPath('/code/chats/channel-cross'),
+  };
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'work',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-cross',
+      route: match,
+    },
+    createdAt: new Date().toISOString(),
+    snapshot: {
+      appShellPayload: snapshotPayload,
+    },
+  });
+
+  const consumed = consumeCrossSurfaceNavigationHandoff(match);
+  assert.ok(consumed);
+  assert.equal(consumed.sourceSurface, 'work');
+  assert.equal(consumed.targetSurface, 'code');
+  assert.equal(consumed.destination.route.surface, 'code');
+  assert.deepEqual(consumed.snapshot?.appShellPayload, snapshotPayload);
+});
+
+test('observer seam emits stage, hit, and miss-reason events for consume flows', () => {
+  clearCrossSurfaceNavigationHandoff();
+  const events = [];
+  setCrossSurfaceNavigationHandoffObserver((event) => events.push(event));
+
+  try {
+    stageCrossSurfaceNavigationHandoff({
+      kind: 'draft-create-channel',
+      sourceSurface: 'chat',
+      targetSurface: 'code',
+      destination: {
+        entityKind: 'channel',
+        entityId: 'channel-observer',
+        route: {
+          surface: 'code',
+          path: '/code/chats/channel-observer',
+        },
+      },
+      createdAt: new Date().toISOString(),
+    });
+
+    // Pure peek should not emit.
+    peekCrossSurfaceNavigationHandoffForMatch({
+      surface: 'code',
+      path: '/code/chats/channel-observer',
+    });
+
+    // Successful consume emits 'hit'.
+    assert.ok(
+      consumeCrossSurfaceNavigationHandoff({
+        surface: 'code',
+        path: '/code/chats/channel-observer',
+      }),
+    );
+
+    // Second consume on the now-empty store emits 'miss:missing'.
+    const originalWarn = console.warn;
+    try {
+      console.warn = () => {};
+      assert.equal(
+        consumeCrossSurfaceNavigationHandoff({
+          surface: 'code',
+          path: '/code/chats/channel-observer',
+        }),
+        null,
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    const observedTrace = events.map((event) =>
+      event.kind === 'miss' ? `${event.kind}:${event.reason}` : event.kind,
+    );
+    assert.deepEqual(observedTrace, ['stage', 'hit', 'miss:missing']);
+  } finally {
+    setCrossSurfaceNavigationHandoffObserver(null);
+    clearCrossSurfaceNavigationHandoff();
+  }
+});
+
+test('observer errors do not break the handoff seam', () => {
+  clearCrossSurfaceNavigationHandoff();
+  setCrossSurfaceNavigationHandoffObserver(() => {
+    throw new Error('observer blew up');
+  });
+
+  try {
+    // Stage + consume should still succeed even though the observer throws.
+    stageCrossSurfaceNavigationHandoff({
+      kind: 'draft-create-channel',
+      sourceSurface: 'chat',
+      targetSurface: 'code',
+      destination: {
+        entityKind: 'channel',
+        entityId: 'channel-resilient',
+        route: {
+          surface: 'code',
+          path: '/code/chats/channel-resilient',
+        },
+      },
+      createdAt: new Date().toISOString(),
+    });
+    assert.ok(
+      consumeCrossSurfaceNavigationHandoff({
+        surface: 'code',
+        path: '/code/chats/channel-resilient',
+      }),
+    );
+  } finally {
+    setCrossSurfaceNavigationHandoffObserver(null);
+    clearCrossSurfaceNavigationHandoff();
+  }
 });
 
 test('handoff store warns once per staged miss fingerprint in development', () => {
@@ -274,7 +475,7 @@ test('handoff store warns once per staged miss fingerprint in development', () =
           path: '/code/chats/channel-7',
         },
       },
-      createdAt: '2026-04-20T10:10:00.000Z',
+      createdAt: new Date().toISOString(),
     });
 
     assert.equal(
