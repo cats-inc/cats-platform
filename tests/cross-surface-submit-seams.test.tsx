@@ -107,6 +107,38 @@ test('stageCrossSurfaceDraftNavigationHandoff preserves a non-chat source surfac
   });
 });
 
+test('stageCrossSurfaceDraftNavigationHandoff routes parallel-group handoffs through the active member channel', () => {
+  clearCrossSurfaceNavigationHandoff();
+
+  stageCrossSurfaceDraftNavigationHandoff({
+    kind: 'draft-create-parallel-group',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    entityId: 'group-cross-surface',
+    entityKind: 'parallel-group',
+    activeChannelId: 'channel-group-active',
+    snapshotPayload: createSnapshotPayload('channel-group-active') as never,
+    pendingExecution: true,
+  });
+
+  const handoff = consumeCrossSurfaceNavigationHandoff({
+    surface: 'code',
+    path: '/code/chats/channel-group-active',
+  });
+  assert.ok(handoff);
+  assert.equal(handoff.kind, 'draft-create-parallel-group');
+  assert.equal(handoff.destination.entityKind, 'parallel-group');
+  assert.equal(handoff.destination.entityId, 'group-cross-surface');
+  assert.deepEqual(handoff.destination.route, {
+    surface: 'code',
+    path: '/code/chats/channel-group-active',
+  });
+  assert.deepEqual(handoff.optimisticState, {
+    pendingExecution: true,
+    selectedChannelId: 'channel-group-active',
+  });
+});
+
 test('stageCrossSurfaceDraftNavigationHandoff ignores chat-local and blank-id dispatches', () => {
   clearCrossSurfaceNavigationHandoff();
 
@@ -149,4 +181,21 @@ test('stageCrossSurfaceDraftNavigationHandoff ignores chat-local and blank-id di
   } finally {
     console.warn = originalWarn;
   }
+});
+
+test('stageCrossSurfaceDraftNavigationHandoff requires an active member channel for parallel-group targets', () => {
+  clearCrossSurfaceNavigationHandoff();
+
+  assert.throws(
+    () => stageCrossSurfaceDraftNavigationHandoff({
+      kind: 'draft-create-parallel-group',
+      sourceSurface: 'chat',
+      targetSurface: 'code',
+      entityId: 'group-missing-active',
+      entityKind: 'parallel-group',
+      snapshotPayload: createSnapshotPayload('channel-group-active') as never,
+      pendingExecution: false,
+    }),
+    /requires an active channel route target/u,
+  );
 });
