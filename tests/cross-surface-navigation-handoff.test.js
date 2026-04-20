@@ -504,6 +504,91 @@ test('observer receives defensive clones; mutating an event does not corrupt the
   }
 });
 
+test('emit is zero-cost when no observer is registered (no eager structuredClone)', () => {
+  clearCrossSurfaceNavigationHandoff();
+  setCrossSurfaceNavigationHandoffObserver(null);
+
+  // A bare function is one of the payload shapes `structuredClone` cannot
+  // handle: it would throw `DataCloneError` the moment clone runs. If the
+  // emit path cloned eagerly at the call site, this stage would blow up
+  // during the call even though nobody is listening. With the lazy-clone
+  // fix, stage and consume skip the clone entirely while no observer is
+  // registered, and both succeed.
+  const nonCloneableAppShell = {
+    chat: { selectedChannelId: 'channel-zero-cost' },
+    extra: () => 'structuredClone cannot serialize this',
+  };
+  const match = {
+    surface: 'code',
+    path: '/code/chats/channel-zero-cost',
+  };
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-zero-cost',
+      route: match,
+    },
+    createdAt: new Date().toISOString(),
+    snapshot: {
+      appShellPayload: nonCloneableAppShell,
+    },
+  });
+
+  const consumed = consumeCrossSurfaceNavigationHandoff(match);
+  assert.ok(consumed);
+  assert.equal(consumed.snapshot?.appShellPayload, nonCloneableAppShell);
+  clearCrossSurfaceNavigationHandoff();
+});
+
+test('observer clone failures are contained and do not break stage or consume', () => {
+  clearCrossSurfaceNavigationHandoff();
+  const events = [];
+  setCrossSurfaceNavigationHandoffObserver((event) => events.push(event));
+
+  try {
+    const nonCloneableAppShell = {
+      chat: { selectedChannelId: 'channel-clone-fail' },
+      extra: () => 'boom',
+    };
+    const match = {
+      surface: 'code',
+      path: '/code/chats/channel-clone-fail',
+    };
+
+    // Stage should still succeed even though structuredClone will throw
+    // inside the emit path — the try/catch inside emit must swallow it.
+    stageCrossSurfaceNavigationHandoff({
+      kind: 'draft-create-channel',
+      sourceSurface: 'chat',
+      targetSurface: 'code',
+      destination: {
+        entityKind: 'channel',
+        entityId: 'channel-clone-fail',
+        route: match,
+      },
+      createdAt: new Date().toISOString(),
+      snapshot: {
+        appShellPayload: nonCloneableAppShell,
+      },
+    });
+
+    // Consume-hit should also tolerate the clone failure at emit time.
+    const consumed = consumeCrossSurfaceNavigationHandoff(match);
+    assert.ok(consumed);
+
+    // Because clone failed inside the try/catch before the observer was
+    // ever called, no stage or hit events reached the observer.
+    assert.equal(events.length, 0);
+  } finally {
+    setCrossSurfaceNavigationHandoffObserver(null);
+    clearCrossSurfaceNavigationHandoff();
+  }
+});
+
 test('observer errors do not break the handoff seam', () => {
   clearCrossSurfaceNavigationHandoff();
   setCrossSurfaceNavigationHandoffObserver(() => {

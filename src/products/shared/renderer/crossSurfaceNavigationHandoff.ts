@@ -97,26 +97,28 @@ export function setCrossSurfaceNavigationHandoffObserver(
 function emitCrossSurfaceNavigationHandoffEvent(
   event: CrossSurfaceNavigationHandoffObservationEvent,
 ): void {
-  if (!crossSurfaceNavigationHandoffObserver) {
+  const observer = crossSurfaceNavigationHandoffObserver;
+  if (!observer) {
+    // Zero-cost fast path: without a subscriber we skip both the
+    // `structuredClone` below and the observer invocation entirely, so
+    // stage / consume hot paths do no extra work until telemetry is wired.
     return;
   }
   try {
-    crossSurfaceNavigationHandoffObserver(event);
+    // Handoff bundles live in a module-scoped store, so handing an observer
+    // the raw reference would let a misbehaving observer mutate
+    // `destination.route.path`, `snapshot`, etc. and silently corrupt later
+    // match / consume calls. The clone happens inside this try/catch so
+    // both observer errors and (rare) clone failures stay contained rather
+    // than breaking the stage / consume code that triggered the emit.
+    if (event.kind === 'miss') {
+      observer(event);
+      return;
+    }
+    observer({ ...event, bundle: structuredClone(event.bundle) });
   } catch {
-    // Observer errors must not break the seam.
+    // Observer errors and clone failures must not break the seam.
   }
-}
-
-// Handoff bundles live in a module-scoped store so every stage / hit event
-// would otherwise hand observers a live reference to the backing record. A
-// misbehaving observer could then mutate `destination.route.path`,
-// `snapshot`, etc. and silently corrupt later match / consume calls. The
-// observer seam is for telemetry and debug, so trading a structured clone
-// per emit for store integrity is worth it.
-function cloneBundleForObservation(
-  bundle: CrossSurfaceNavigationHandoffBundle,
-): CrossSurfaceNavigationHandoffBundle {
-  return structuredClone(bundle);
 }
 
 // -------------------------- store + dedup log --------------------------
@@ -302,7 +304,7 @@ function resolveStagedCrossSurfaceNavigationHandoff(
     emitCrossSurfaceNavigationHandoffEvent({
       kind: 'hit',
       match,
-      bundle: cloneBundleForObservation(stagedBundle),
+      bundle: stagedBundle,
     });
   }
 
@@ -338,7 +340,7 @@ export function stageCrossSurfaceNavigationHandoff(
   );
   emitCrossSurfaceNavigationHandoffEvent({
     kind: 'stage',
-    bundle: cloneBundleForObservation(normalizedBundle),
+    bundle: normalizedBundle,
   });
 }
 
