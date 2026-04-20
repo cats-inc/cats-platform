@@ -833,7 +833,13 @@ export function NewChatDraft({
                     canAddCollaborator={
                       (parallelBranchAudienceKeys?.[i + 1]?.length ?? 0) < maxBranchMembers
                     }
-                    accentCollaborateButton={accentGroupAddButton}
+                    // Accent (blue) styling is reserved for the two
+                    // hint-labelled teaching affordances in the Chat
+                    // composer: the lead row's +collaborate in
+                    // +Group preset and the +compare button in
+                    // +Parallel preset. Shadow rows always use the
+                    // default chrome.
+                    accentCollaborateButton={false}
                     onAddCollaborator={onQuickAddParallelBranchTemporaryParticipant}
                     onSetAudienceKeys={onSetParallelBranchAudienceKeys}
                     onToggleWorkflowShape={onToggleParallelBranchWorkflowShape}

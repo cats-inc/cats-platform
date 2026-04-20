@@ -763,6 +763,11 @@ export default function App() {
     state,
   ]);
   const onDraftParallelBranchGroupAddButtonClick = useCallback((branchIndex: number): void => {
+    if (state.status !== 'ready') return;
+
+    // Empty-draft bootstrap: no cats and no temps anywhere — seed the
+    // global pool with 2 participants and attribute them to this
+    // branch.
     if (draftParticipants.participantCatIds.length === 0 && draftTemporaryParticipants.length === 0) {
       const seededParticipants = seedDraftGroupParticipants();
       const seededKeys = seededParticipants.map((participant) => `temp:${participant.participantId}`);
@@ -771,14 +776,59 @@ export default function App() {
       return;
     }
 
+    // Branch bootstrap: pool is non-empty but THIS branch is empty.
+    // The first +collaborate click on an empty shadow should jump
+    // straight to 2 members so the roster becomes visible (roster
+    // hides itself at length <= 1). Matches the lead-row bootstrap.
+    const currentBranchKeys = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+    if (currentBranchKeys.length === 0) {
+      const branchTarget = draftParallelChatTargets[branchIndex] ?? draftExecutionTarget;
+      const visibleCatNames = draftParticipants.participantCatIds
+        .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? '')
+        .filter((name) => name.trim().length > 0);
+      const randomUUID = () =>
+        globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`;
+      const firstTemp = createDraftTemporaryParticipant({
+        provider: branchTarget.provider,
+        instance: branchTarget.instance,
+        model: branchTarget.model,
+        modelSelection: branchTarget.modelSelection,
+        takenNames: [
+          ...visibleCatNames,
+          ...draftTemporaryParticipants.map((participant) => participant.name),
+        ],
+        randomUUID,
+      });
+      const poolAfterFirst = [...draftTemporaryParticipants, firstTemp];
+      const secondTemp = createNextGroupTemporaryParticipant({
+        baseProvider: branchTarget.provider,
+        existingParticipants: poolAfterFirst,
+        takenNames: [
+          ...visibleCatNames,
+          ...poolAfterFirst.map((participant) => participant.name),
+        ],
+        randomUUID,
+      });
+      setDraftTemporaryParticipants((current) => [...current, firstTemp, secondTemp]);
+      onSetDraftParallelBranchAudienceKeys(branchIndex, [
+        `temp:${firstTemp.participantId}`,
+        `temp:${secondTemp.participantId}`,
+      ]);
+      return;
+    }
+
     onQuickAddDraftTemporaryParticipantToBranch(branchIndex);
   }, [
-    draftParticipants.participantCatIds.length,
-    draftTemporaryParticipants.length,
+    draftExecutionTarget,
+    draftParallelBranchAudienceKeys,
+    draftParallelChatTargets,
+    draftParticipants.participantCatIds,
+    draftTemporaryParticipants,
     onQuickAddDraftTemporaryParticipantToBranch,
     onSetDraftParallelBranchAudienceKeys,
     seedDraftGroupParticipants,
     setDraftTemporaryParticipants,
+    state,
   ]);
   const {
     onOpenChatsOverview,
