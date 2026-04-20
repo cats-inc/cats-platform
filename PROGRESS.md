@@ -97,7 +97,7 @@ Known follow-ups:
 | Document `Cats Chat` and `Cats Work` as parallel product tracks | [x] | Roadmap and architecture now assume a shared-core split instead of one future control-plane jump |
 | Document `cats-runtime` direct API and MCP facade responsibilities | [x] | Runtime boundary planning now distinguishes app APIs from orchestrator tool use |
 | Freeze the platform desktop stance | [x] | Electron plus React/TypeScript remains the current path; Tauri and Flutter are not on the active route |
-| Annotate exploratory Paperclip control-plane documents | [ ] | Existing research remains in-tree but needs explicit exploratory labels everywhere it appears |
+| Annotate exploratory Paperclip control-plane documents | [x] | Root, architecture, agent-guide, plans/specs indexes, and research index now explicitly frame the Paperclip control-plane documents as exploratory reference only |
 | Land the first implementation slices for shared storage and contracts | [x] | `src/shared/core.ts`, `src/core/model.ts`, the core-backed chat-state store, and `/api/core/*` read/write routes are now in-tree |
 | Land the platform-host first slice through Work/Code placeholders | [x] | `src/app/*`, `src/core/*`, `src/products/*`, route ownership, and placeholder Work/Code surfaces are now in place |
 | Finish validation-only Phase 8A passes | [x] | Server route coverage, platform route-map coverage, and architecture/progress doc sync are now in place |
