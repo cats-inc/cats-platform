@@ -1571,7 +1571,8 @@ export function createWorkspaceProductApp({
                         ? onToggleDraftParallelBranchWorkflowShape
                         : undefined,
                     onQuickAddParallelBranchTemporaryParticipant:
-                      supportsStructuredDraftModes
+                      advancedDraftControlsEnabled
+                        && supportsStructuredDraftModes
                         && showingGenericNewChatDraft
                         && hasVisibleParallelDraftTargets
                         ? onDraftParallelBranchGroupAddButtonClick

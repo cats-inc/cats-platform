@@ -1062,9 +1062,9 @@ test('fresh draft greetings share one pool and still honor an explicit override 
 
 test('advanced draft controls off hides the per-branch collaborator button on parallel shadow rows', () => {
   // Regression guard: when advanced draft controls are OFF the
-  // +Parallel entry must stay strictly 1xN — shadow rows cannot sprout
-  // their own +collaborate button even if the caller would otherwise
-  // wire a per-branch quick-add callback.
+  // upstream app drops the per-branch quick-add callback, so shadow
+  // rows must not render their +collaborate button. Callback absence
+  // is the single gate the shadow row trusts.
   const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
   const markup = renderToStaticMarkup(
     <NewChatDraft
@@ -1076,7 +1076,6 @@ test('advanced draft controls off hides the per-branch collaborator button on pa
           { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
         ],
         showDraftGroupAddButton: false,
-        onQuickAddParallelBranchTemporaryParticipant: () => {},
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1109,6 +1108,37 @@ test('advanced draft controls on exposes a collaborator button on every parallel
   assert.match(markup, /class="parallelStubStack"/u);
   const collabButtons = markup.match(/aria-label="Add another model to collaborate"/gu) ?? [];
   // 1 lead row + 2 shadow rows = 3 collaborator buttons when advanced is on.
+  assert.equal(collabButtons.length, 3);
+});
+
+test('+Group preset with advanced on still lets every shadow row add collaborators', () => {
+  // Regression guard: the +Group entry intentionally sets
+  // showDraftGroupAddButton=false (the preset already gives lead its
+  // group add row via isGroupDraft). Shadow rows must still pick up
+  // their +collaborate button from the per-branch quick-add callback
+  // so the M>=2 × N>=2 matrix stays reachable from +Group.
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'group',
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          leadTarget,
+          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+          { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
+        ],
+        showDraftGroupAddButton: false,
+        onQuickAddDraftTemporaryParticipant: () => {},
+        onQuickAddParallelBranchTemporaryParticipant: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="parallelStubStack"/u);
+  const collabButtons = markup.match(/aria-label="Add another model to collaborate"/gu) ?? [];
+  // 1 lead (via isGroupDraft) + 2 shadows (via callback presence).
   assert.equal(collabButtons.length, 3);
 });
 

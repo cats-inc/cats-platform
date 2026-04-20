@@ -13,17 +13,17 @@ const SURFACE_COPY: Record<'chat' | 'code' | 'work', {
   chat: {
     title: 'Draft builder',
     description: 'Let any Chat draft add collaborators or compare against other models.',
-    toggleDescription: 'Shows the +collaborate and +compare buttons that are hidden by default.',
+    toggleDescription: 'Shows whichever +collaborate or +compare button each draft entry hides by default.',
   },
   code: {
     title: 'Draft builder',
     description: 'Let any Code draft add collaborators or compare against other models.',
-    toggleDescription: 'Shows the +collaborate and +compare buttons that are hidden by default.',
+    toggleDescription: 'Shows whichever +collaborate or +compare button each draft entry hides by default.',
   },
   work: {
     title: 'Draft builder',
     description: 'Let any Work draft add collaborators or compare against other models.',
-    toggleDescription: 'Shows the +collaborate and +compare buttons that are hidden by default.',
+    toggleDescription: 'Shows whichever +collaborate or +compare button each draft entry hides by default.',
   },
 };
 

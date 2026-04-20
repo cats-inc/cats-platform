@@ -778,7 +778,7 @@ export function NewChatDraft({
                     workflowShape={parallelBranchWorkflowShapes?.[i + 1] ?? 'sequential'}
                     maxAudienceParticipants={maxAudienceParticipants}
                     isSubmittingFirstTurn={isSubmittingFirstTurn}
-                    canAddCollaborator={canAddAnotherGroupParticipant && showDraftGroupAddButton}
+                    canAddCollaborator={canAddAnotherGroupParticipant}
                     accentCollaborateButton={accentGroupAddButton}
                     onAddCollaborator={onQuickAddParallelBranchTemporaryParticipant}
                     onSetAudienceKeys={onSetParallelBranchAudienceKeys}

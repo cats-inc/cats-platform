@@ -68,12 +68,12 @@ export function ParallelDraftShadowBranchRow({
               onSetAudienceKeys(branchIndex, nextKeys);
             }}
           />
-          {canAddCollaborator ? (
+          {canAddCollaborator && onAddCollaborator ? (
             <button
               type="button"
               className={`parallelAddButton${accentCollaborateButton ? ' parallelAddButtonAccent' : ''}`}
               disabled={isSubmittingFirstTurn}
-              onClick={() => onAddCollaborator?.(branchIndex)}
+              onClick={() => onAddCollaborator(branchIndex)}
               aria-label="Add another model to collaborate"
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

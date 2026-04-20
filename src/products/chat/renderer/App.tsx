@@ -1367,7 +1367,8 @@ export default function App() {
                       ? onToggleDraftParallelBranchWorkflowShape
                       : undefined,
                   onQuickAddParallelBranchTemporaryParticipant:
-                    draftRoute.isGenericNewChatRoute
+                    advancedDraftControlsEnabled
+                      && draftRoute.isGenericNewChatRoute
                       && hasVisibleParallelDraftTargets
                       ? onDraftParallelBranchGroupAddButtonClick
                       : undefined,
