@@ -115,8 +115,10 @@ default.
 
 ## Open Questions
 
-- [ ] Does phase 2 need a dedicated `CATS_PUBLIC_BASE_URL`, or can that wait
-      until a concrete absolute-URL consumer exists?
+- [x] Phase 2 does not need a dedicated `CATS_PUBLIC_BASE_URL` yet. Current
+      browser-facing runtime and recovery entrypoints stay on same-origin
+      relative paths under `/runtime/*`, so revisit this only when a concrete
+      absolute-URL consumer appears.
 - [ ] Should tunnel-mode diagnostics surface the effective remote entry URL, or
       is deployment documentation enough for the first tunnel slice?
 - [ ] Do we want a later host-auth layer for trusted-tunnel access, or is that

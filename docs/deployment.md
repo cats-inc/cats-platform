@@ -35,6 +35,26 @@ Container assets were inherited from bootstrap and have not yet been refreshed
 for the current `build/server/` plus `build/renderer/` output layout. Treat them as a future
 follow-up, not a validated deployment path.
 
+### Trusted LAN / Tunnel Browser Access
+
+For browser access from another device or a trusted tunnel/overlay:
+
+- expose `cats-platform`, not `cats-runtime`
+- keep `CATS_RUNTIME_BASE_URL` pointing at the local runtime upstream
+  (typically `http://127.0.0.1:3110`)
+- let browsers enter through the Cats origin only, including runtime setup and
+  diagnostics under `/runtime/*` and `/runtime/api/*`
+- keep packaged Electron on `CATS_DESKTOP_APP_HOST=127.0.0.1` and
+  `CATS_DESKTOP_RUNTIME_HOST=127.0.0.1`
+
+Current decision:
+
+- trusted LAN binds may use `CATS_HOST=0.0.0.0` for self-hosted/dev web
+- Tailscale/ngrok should target the local `cats-platform` port, not the runtime
+- a dedicated `CATS_PUBLIC_BASE_URL` is not required in the current slice
+  because browser-facing runtime/recovery links are same-origin relative paths
+- this remains a trusted operator workflow, not a public-internet deployment
+
 ### Desktop Host First Slice
 
 The first desktop-host slice is now in-tree:
@@ -374,4 +394,4 @@ per-user path.
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-20*

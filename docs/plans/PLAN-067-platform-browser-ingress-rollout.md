@@ -51,8 +51,8 @@ changing packaged Electron behavior.
 
 ### Phase 2: Trusted Tunnel / Overlay Follow-Through
 
-- [ ] Task 3.1: Document the Tailscale/ngrok deployment shape with `cats-platform` as the only ingress target.
-- [ ] Task 3.2: Decide whether a platform-owned external base URL setting is required for absolute links or webhook-facing flows.
+- [x] Task 3.1: Document the Tailscale/ngrok deployment shape with `cats-platform` as the only ingress target.
+- [x] Task 3.2: Decide whether a platform-owned external base URL setting is required for absolute links or webhook-facing flows.
 - [ ] Task 3.3: Add tunnel-mode diagnostics or helpers only if a concrete operator workflow needs them.
 
 **Deliverables**: Remote access planning exists without coupling tunnel behavior
@@ -105,6 +105,8 @@ to the runtime or changing desktop defaults.
 |------|--------|
 | 2026-04-20 | Plan created from the new LAN + tunnel browser-ingress direction |
 | 2026-04-20 | Phase 1A routing foundation and phase 1B dev-host env slice landed; manual second-device verification still pending |
+| 2026-04-20 | Browser-facing runtime recovery/setup links now stay on platform-owned `/runtime/*` paths instead of jumping back to the runtime origin |
+| 2026-04-20 | Phase 2 docs now pin Tailscale/ngrok to `cats-platform` and explicitly defer a public-base-url setting until a concrete absolute-link consumer appears |
 
 ---
 

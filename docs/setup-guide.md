@@ -94,7 +94,7 @@ Current first-run behavior:
 - if runtime/provider health regresses later, Cats stays in recovery instead
   of sending the user back through onboarding
 
-### Optional: auto-start local cats with Tailscale Funnel or ngrok for webhook mode
+### Optional: auto-start local cats with Tailscale Funnel or ngrok for trusted browser / webhook mode
 
 For self-hosted Telegram webhook development, `cats` now includes helper
 scripts that can:
@@ -103,6 +103,15 @@ scripts that can:
 - create a login auto-start runner
 - start the built local `cats` server
 - ensure a public ingress provider is available
+
+Ingress boundary:
+
+- the tunnel or overlay points at the local `cats-platform` host only
+- `cats-runtime` stays behind the platform host and should remain loopback-only
+- browser access to runtime setup/dashboard/playground stays under the Cats
+  origin via `/runtime/*` and `/runtime/api/*`
+- the packaged Electron app does not use these helpers and should keep its
+  desktop-specific loopback defaults
 
 They still do **not** register Telegram webhooks. Webhook lifecycle stays in
 `Settings > Cats`.
@@ -114,6 +123,9 @@ Current reality:
   can work without any public URL
 - until that polling slice lands, these helpers remain the local path for
   webhook-mode Telegram development
+- the same helpers can also be used for trusted browser access through a
+  Tailscale or ngrok URL, as long as the operator treats that URL as a trusted
+  private entrypoint rather than a public deployment
 
 Choose the helper for your platform and ingress provider:
 
