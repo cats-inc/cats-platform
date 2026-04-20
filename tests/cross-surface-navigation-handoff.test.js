@@ -6,11 +6,13 @@ import {
   buildCrossSurfaceNavigationMatchPath,
   clearCrossSurfaceNavigationHandoff,
   consumeCrossSurfaceNavigationHandoff,
+  inspectCrossSurfaceNavigationHandoffTelemetry,
   inspectLatestStagedCrossSurfaceNavigationHandoff,
   isImplementedCrossSurfaceNavigationHandoffKind,
   matchesCrossSurfaceNavigationHandoff,
   peekCrossSurfaceNavigationHandoffForMatch,
   peekCrossSurfaceNavigationSnapshot,
+  resetCrossSurfaceNavigationHandoffTelemetry,
   setCrossSurfaceNavigationHandoffObserver,
   stageCrossSurfaceNavigationHandoff,
 } from '../src/products/shared/renderer/crossSurfaceNavigationHandoff.ts';
@@ -422,6 +424,153 @@ test('observer seam emits stage, hit, and miss-reason events for consume flows',
     setCrossSurfaceNavigationHandoffObserver(null);
     clearCrossSurfaceNavigationHandoff();
   }
+});
+
+test('telemetry snapshot records stage, missing miss, and hit counters with latest route metadata', () => {
+  clearCrossSurfaceNavigationHandoff();
+  resetCrossSurfaceNavigationHandoffTelemetry();
+
+  const match = {
+    surface: 'code',
+    path: '/code/chats/channel-telemetry?b=2&a=1',
+  };
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-telemetry',
+      route: match,
+    },
+    createdAt: new Date().toISOString(),
+  });
+
+  let telemetry = inspectCrossSurfaceNavigationHandoffTelemetry();
+  assert.equal(telemetry.counters.stage, 1);
+  assert.equal(telemetry.counters.hit, 0);
+  assert.deepEqual(telemetry.counters.miss, { missing: 0, stale: 0, invalid: 0 });
+  assert.deepEqual(telemetry.latestStage, {
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    entityKind: 'channel',
+    entityId: 'channel-telemetry',
+    route: {
+      surface: 'code',
+      path: '/code/chats/channel-telemetry?a=1&b=2',
+    },
+  });
+  assert.deepEqual(telemetry.activeStagedTargets, [telemetry.latestStage]);
+
+  const originalWarn = console.warn;
+  try {
+    console.warn = () => {};
+    assert.equal(
+      consumeCrossSurfaceNavigationHandoff({
+        surface: 'code',
+        path: '/code/chats/channel-elsewhere',
+      }),
+      null,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  telemetry = inspectCrossSurfaceNavigationHandoffTelemetry();
+  assert.deepEqual(telemetry.counters.miss, { missing: 1, stale: 0, invalid: 0 });
+  assert.deepEqual(telemetry.latestMiss, {
+    match: {
+      surface: 'code',
+      path: '/code/chats/channel-elsewhere',
+    },
+    reason: 'missing',
+  });
+  assert.equal(telemetry.activeStagedTargets.length, 1);
+
+  const consumed = consumeCrossSurfaceNavigationHandoff({
+    surface: 'code',
+    path: '/code/chats/channel-telemetry?a=1&b=2',
+  });
+  assert.ok(consumed);
+
+  telemetry = inspectCrossSurfaceNavigationHandoffTelemetry();
+  assert.equal(telemetry.counters.hit, 1);
+  assert.deepEqual(telemetry.latestHit, {
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    entityKind: 'channel',
+    entityId: 'channel-telemetry',
+    route: {
+      surface: 'code',
+      path: '/code/chats/channel-telemetry?a=1&b=2',
+    },
+    match: {
+      surface: 'code',
+      path: '/code/chats/channel-telemetry?a=1&b=2',
+    },
+  });
+  assert.deepEqual(telemetry.activeStagedTargets, []);
+});
+
+test('telemetry stays cold on empty-store consume and tracks stale misses separately', () => {
+  clearCrossSurfaceNavigationHandoff();
+  resetCrossSurfaceNavigationHandoffTelemetry();
+
+  assert.equal(
+    consumeCrossSurfaceNavigationHandoff({
+      surface: 'chat',
+      path: '/chat/chats/channel-cold-start',
+    }),
+    null,
+  );
+  let telemetry = inspectCrossSurfaceNavigationHandoffTelemetry();
+  assert.equal(telemetry.counters.stage, 0);
+  assert.equal(telemetry.counters.hit, 0);
+  assert.deepEqual(telemetry.counters.miss, { missing: 0, stale: 0, invalid: 0 });
+  assert.equal(telemetry.latestMiss, null);
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-stale-telemetry',
+      route: {
+        surface: 'code',
+        path: '/code/chats/channel-stale-telemetry',
+      },
+    },
+    createdAt: new Date(Date.now() - CROSS_SURFACE_NAVIGATION_HANDOFF_TTL_MS - 1_000).toISOString(),
+  });
+
+  const originalWarn = console.warn;
+  try {
+    console.warn = () => {};
+    assert.equal(
+      consumeCrossSurfaceNavigationHandoff({
+        surface: 'code',
+        path: '/code/chats/channel-stale-telemetry',
+      }),
+      null,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  telemetry = inspectCrossSurfaceNavigationHandoffTelemetry();
+  assert.equal(telemetry.counters.stage, 1);
+  assert.equal(telemetry.counters.hit, 0);
+  assert.deepEqual(telemetry.counters.miss, { missing: 0, stale: 1, invalid: 0 });
+  assert.deepEqual(telemetry.latestMiss, {
+    match: {
+      surface: 'code',
+      path: '/code/chats/channel-stale-telemetry',
+    },
+    reason: 'stale',
+  });
+  assert.deepEqual(telemetry.activeStagedTargets, []);
 });
 
 test('cold boot consume on an empty store is silent and does not pollute telemetry', () => {

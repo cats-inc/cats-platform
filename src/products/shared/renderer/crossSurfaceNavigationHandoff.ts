@@ -86,12 +86,185 @@ export type CrossSurfaceNavigationHandoffObserver = (
   event: CrossSurfaceNavigationHandoffObservationEvent,
 ) => void;
 
+export interface CrossSurfaceNavigationHandoffTelemetryTarget {
+  sourceSurface: PlatformSurfaceId;
+  targetSurface: PlatformSurfaceId;
+  entityKind: CrossSurfaceNavigationDestinationEntityKind;
+  entityId: string;
+  route: CrossSurfaceNavigationRouteTarget;
+}
+
+export interface CrossSurfaceNavigationHandoffTelemetryHit
+  extends CrossSurfaceNavigationHandoffTelemetryTarget {
+  match: CrossSurfaceNavigationHandoffMatch;
+}
+
+export interface CrossSurfaceNavigationHandoffTelemetryMiss {
+  match: CrossSurfaceNavigationHandoffMatch;
+  reason: 'missing' | 'stale' | 'invalid';
+}
+
+export interface CrossSurfaceNavigationHandoffTelemetrySnapshot {
+  counters: {
+    stage: number;
+    hit: number;
+    miss: {
+      missing: number;
+      stale: number;
+      invalid: number;
+    };
+  };
+  activeStagedTargets: CrossSurfaceNavigationHandoffTelemetryTarget[];
+  latestStage: CrossSurfaceNavigationHandoffTelemetryTarget | null;
+  latestHit: CrossSurfaceNavigationHandoffTelemetryHit | null;
+  latestMiss: CrossSurfaceNavigationHandoffTelemetryMiss | null;
+}
+
 let crossSurfaceNavigationHandoffObserver: CrossSurfaceNavigationHandoffObserver | null = null;
+
+const crossSurfaceNavigationHandoffTelemetry: CrossSurfaceNavigationHandoffTelemetrySnapshot = {
+  counters: {
+    stage: 0,
+    hit: 0,
+    miss: {
+      missing: 0,
+      stale: 0,
+      invalid: 0,
+    },
+  },
+  activeStagedTargets: [],
+  latestStage: null,
+  latestHit: null,
+  latestMiss: null,
+};
 
 export function setCrossSurfaceNavigationHandoffObserver(
   next: CrossSurfaceNavigationHandoffObserver | null,
 ): void {
   crossSurfaceNavigationHandoffObserver = next;
+}
+
+function buildCrossSurfaceNavigationTelemetryTarget(
+  bundle: CrossSurfaceNavigationHandoffBundle,
+): CrossSurfaceNavigationHandoffTelemetryTarget {
+  return {
+    sourceSurface: bundle.sourceSurface,
+    targetSurface: bundle.targetSurface,
+    entityKind: bundle.destination.entityKind,
+    entityId: bundle.destination.entityId,
+    route: {
+      surface: bundle.destination.route.surface,
+      path: bundle.destination.route.path,
+    },
+  };
+}
+
+function refreshCrossSurfaceNavigationTelemetryTargets(): void {
+  crossSurfaceNavigationHandoffTelemetry.activeStagedTargets = [
+    ...stagedCrossSurfaceNavigationHandoffs.values(),
+  ].map(buildCrossSurfaceNavigationTelemetryTarget);
+}
+
+function recordCrossSurfaceNavigationHandoffStage(
+  bundle: CrossSurfaceNavigationHandoffBundle,
+): void {
+  crossSurfaceNavigationHandoffTelemetry.counters.stage += 1;
+  crossSurfaceNavigationHandoffTelemetry.latestStage = buildCrossSurfaceNavigationTelemetryTarget(bundle);
+  refreshCrossSurfaceNavigationTelemetryTargets();
+}
+
+function recordCrossSurfaceNavigationHandoffHit(
+  match: CrossSurfaceNavigationHandoffMatch,
+  bundle: CrossSurfaceNavigationHandoffBundle,
+): void {
+  crossSurfaceNavigationHandoffTelemetry.counters.hit += 1;
+  crossSurfaceNavigationHandoffTelemetry.latestHit = {
+    ...buildCrossSurfaceNavigationTelemetryTarget(bundle),
+    match: {
+      surface: match.surface,
+      path: normalizeRoutePath(match.path),
+    },
+  };
+  refreshCrossSurfaceNavigationTelemetryTargets();
+}
+
+function recordCrossSurfaceNavigationHandoffMiss(
+  match: CrossSurfaceNavigationHandoffMatch,
+  reason: 'missing' | 'stale' | 'invalid',
+): void {
+  crossSurfaceNavigationHandoffTelemetry.counters.miss[reason] += 1;
+  crossSurfaceNavigationHandoffTelemetry.latestMiss = {
+    match: {
+      surface: match.surface,
+      path: normalizeRoutePath(match.path),
+    },
+    reason,
+  };
+  refreshCrossSurfaceNavigationTelemetryTargets();
+}
+
+export function inspectCrossSurfaceNavigationHandoffTelemetry(): CrossSurfaceNavigationHandoffTelemetrySnapshot {
+  return {
+    counters: {
+      stage: crossSurfaceNavigationHandoffTelemetry.counters.stage,
+      hit: crossSurfaceNavigationHandoffTelemetry.counters.hit,
+      miss: {
+        missing: crossSurfaceNavigationHandoffTelemetry.counters.miss.missing,
+        stale: crossSurfaceNavigationHandoffTelemetry.counters.miss.stale,
+        invalid: crossSurfaceNavigationHandoffTelemetry.counters.miss.invalid,
+      },
+    },
+    activeStagedTargets: crossSurfaceNavigationHandoffTelemetry.activeStagedTargets.map((target) => ({
+      ...target,
+      route: {
+        surface: target.route.surface,
+        path: target.route.path,
+      },
+    })),
+    latestStage: crossSurfaceNavigationHandoffTelemetry.latestStage
+      ? {
+          ...crossSurfaceNavigationHandoffTelemetry.latestStage,
+          route: {
+            surface: crossSurfaceNavigationHandoffTelemetry.latestStage.route.surface,
+            path: crossSurfaceNavigationHandoffTelemetry.latestStage.route.path,
+          },
+        }
+      : null,
+    latestHit: crossSurfaceNavigationHandoffTelemetry.latestHit
+      ? {
+          ...crossSurfaceNavigationHandoffTelemetry.latestHit,
+          route: {
+            surface: crossSurfaceNavigationHandoffTelemetry.latestHit.route.surface,
+            path: crossSurfaceNavigationHandoffTelemetry.latestHit.route.path,
+          },
+          match: {
+            surface: crossSurfaceNavigationHandoffTelemetry.latestHit.match.surface,
+            path: crossSurfaceNavigationHandoffTelemetry.latestHit.match.path,
+          },
+        }
+      : null,
+    latestMiss: crossSurfaceNavigationHandoffTelemetry.latestMiss
+      ? {
+          reason: crossSurfaceNavigationHandoffTelemetry.latestMiss.reason,
+          match: {
+            surface: crossSurfaceNavigationHandoffTelemetry.latestMiss.match.surface,
+            path: crossSurfaceNavigationHandoffTelemetry.latestMiss.match.path,
+          },
+        }
+      : null,
+  };
+}
+
+export function resetCrossSurfaceNavigationHandoffTelemetry(): void {
+  crossSurfaceNavigationHandoffTelemetry.counters.stage = 0;
+  crossSurfaceNavigationHandoffTelemetry.counters.hit = 0;
+  crossSurfaceNavigationHandoffTelemetry.counters.miss.missing = 0;
+  crossSurfaceNavigationHandoffTelemetry.counters.miss.stale = 0;
+  crossSurfaceNavigationHandoffTelemetry.counters.miss.invalid = 0;
+  crossSurfaceNavigationHandoffTelemetry.activeStagedTargets = [];
+  crossSurfaceNavigationHandoffTelemetry.latestStage = null;
+  crossSurfaceNavigationHandoffTelemetry.latestHit = null;
+  crossSurfaceNavigationHandoffTelemetry.latestMiss = null;
 }
 
 function emitCrossSurfaceNavigationHandoffEvent(
@@ -140,12 +313,14 @@ function setStagedCrossSurfaceNavigationHandoff(
 ): void {
   stagedCrossSurfaceNavigationHandoffs.set(key, bundle);
   loggedCrossSurfaceNavigationHandoffMisses.clear();
+  refreshCrossSurfaceNavigationTelemetryTargets();
 }
 
 function deleteStagedCrossSurfaceNavigationHandoff(key: string): boolean {
   const deleted = stagedCrossSurfaceNavigationHandoffs.delete(key);
   if (deleted) {
     loggedCrossSurfaceNavigationHandoffMisses.clear();
+    refreshCrossSurfaceNavigationTelemetryTargets();
   }
   return deleted;
 }
@@ -153,6 +328,7 @@ function deleteStagedCrossSurfaceNavigationHandoff(key: string): boolean {
 function clearAllStagedCrossSurfaceNavigationHandoffs(): void {
   stagedCrossSurfaceNavigationHandoffs.clear();
   loggedCrossSurfaceNavigationHandoffMisses.clear();
+  refreshCrossSurfaceNavigationTelemetryTargets();
 }
 
 // -------------------------- path normalization --------------------------
@@ -276,6 +452,7 @@ function resolveStagedCrossSurfaceNavigationHandoff(
     // hit/miss rates and spam dev warnings on normal app launches.
     if (consume && stagedCrossSurfaceNavigationHandoffs.size > 0) {
       logCrossSurfaceNavigationHandoffMiss(match, 'missing');
+      recordCrossSurfaceNavigationHandoffMiss(match, 'missing');
       emitCrossSurfaceNavigationHandoffEvent({ kind: 'miss', match, reason: 'missing' });
     }
     return null;
@@ -285,6 +462,7 @@ function resolveStagedCrossSurfaceNavigationHandoff(
     if (consume) {
       deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
       logCrossSurfaceNavigationHandoffMiss(match, 'invalid');
+      recordCrossSurfaceNavigationHandoffMiss(match, 'invalid');
       emitCrossSurfaceNavigationHandoffEvent({ kind: 'miss', match, reason: 'invalid' });
     }
     return null;
@@ -294,6 +472,7 @@ function resolveStagedCrossSurfaceNavigationHandoff(
     if (consume) {
       deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
       logCrossSurfaceNavigationHandoffMiss(match, 'stale');
+      recordCrossSurfaceNavigationHandoffMiss(match, 'stale');
       emitCrossSurfaceNavigationHandoffEvent({ kind: 'miss', match, reason: 'stale' });
     }
     return null;
@@ -301,6 +480,7 @@ function resolveStagedCrossSurfaceNavigationHandoff(
 
   if (consume) {
     deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
+    recordCrossSurfaceNavigationHandoffHit(match, stagedBundle);
     emitCrossSurfaceNavigationHandoffEvent({
       kind: 'hit',
       match,
@@ -338,6 +518,7 @@ export function stageCrossSurfaceNavigationHandoff(
     buildCrossSurfaceNavigationHandoffKey(normalizedBundle.destination.route),
     normalizedBundle,
   );
+  recordCrossSurfaceNavigationHandoffStage(normalizedBundle);
   emitCrossSurfaceNavigationHandoffEvent({
     kind: 'stage',
     bundle: normalizedBundle,

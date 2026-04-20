@@ -602,6 +602,10 @@ contracts.
       miss warnings, including hit/miss/stale counters and enough route-target
       metadata to judge whether the generic handoff seam is paying for itself
       once more consumers adopt it
+      Progress: the shared cross-surface handoff store now exposes inspectable
+      stage/hit/miss telemetry counters plus latest route metadata and active
+      staged targets; product-level wiring and longer-horizon reporting still
+      remain.
 - [ ] Add integration coverage for the warm-navigation seam instead of relying
       only on pure seam tests, specifically `useWorkspaceAppShellRouting`
       mount-time consume + background refresh behavior and the cross-surface
