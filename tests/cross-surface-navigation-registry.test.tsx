@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  buildCrossSurfaceChannelPath,
+  buildCrossSurfaceNavigationPath,
+  resolveCrossSurfaceNavigationRouteTarget,
+} from '../src/products/shared/renderer/crossSurfaceNavigationRegistry.js';
+
+test('cross-surface navigation registry builds channel routes per surface', () => {
+  assert.equal(buildCrossSurfaceChannelPath('chat', 'channel-1'), '/chat/chats/channel-1');
+  assert.equal(buildCrossSurfaceChannelPath('code', 'channel-1'), '/code/chats/channel-1');
+  assert.equal(buildCrossSurfaceChannelPath('work', 'channel-1'), '/work/chats/channel-1');
+});
+
+test('parallel group handoff routes through the active member channel', () => {
+  assert.equal(
+    buildCrossSurfaceNavigationPath({
+      surface: 'code',
+      entityKind: 'parallel-group',
+      entityId: 'group-1',
+      activeChannelId: 'channel-2',
+    }),
+    '/code/chats/channel-2',
+  );
+  assert.deepEqual(
+    resolveCrossSurfaceNavigationRouteTarget({
+      surface: 'work',
+      entityKind: 'channel',
+      entityId: 'channel-9',
+    }),
+    { surface: 'work', path: '/work/chats/channel-9' },
+  );
+});
