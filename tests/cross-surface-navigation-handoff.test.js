@@ -573,6 +573,36 @@ test('telemetry stays cold on empty-store consume and tracks stale misses separa
   assert.deepEqual(telemetry.activeStagedTargets, []);
 });
 
+test('browser debug global mirrors the latest warm navigation telemetry snapshot', () => {
+  clearCrossSurfaceNavigationHandoff();
+  resetCrossSurfaceNavigationHandoffTelemetry();
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-browser-debug',
+      route: {
+        surface: 'code',
+        path: '/code/chats/channel-browser-debug',
+      },
+    },
+    createdAt: new Date().toISOString(),
+  });
+
+  const browserTelemetry = globalThis.__catsCrossSurfaceNavigationHandoffTelemetry;
+  assert.ok(browserTelemetry && typeof browserTelemetry === 'object');
+  assert.equal(browserTelemetry.counters.stage, 1);
+  assert.equal(browserTelemetry.latestStage?.entityId, 'channel-browser-debug');
+
+  resetCrossSurfaceNavigationHandoffTelemetry();
+  const resetTelemetry = globalThis.__catsCrossSurfaceNavigationHandoffTelemetry;
+  assert.equal(resetTelemetry.counters.stage, 0);
+  assert.equal(resetTelemetry.latestStage, null);
+});
+
 test('cold boot consume on an empty store is silent and does not pollute telemetry', () => {
   clearCrossSurfaceNavigationHandoff();
   const events = [];

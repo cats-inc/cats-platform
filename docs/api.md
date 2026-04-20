@@ -788,24 +788,22 @@ POST /api/runtime/mcp
 
 ```text
 GET /api/debug/live-trace
-GET /api/debug/navigation-handoff
 GET /api/debug/origin-surface-compatibility
 ```
 
 - `GET /api/debug/live-trace` returns the current server live-trace buffer when
   `debugLiveTrace` is enabled; otherwise it returns `404` with
   `live_trace_disabled`.
-- `GET /api/debug/navigation-handoff` returns the current warm-navigation
-  handoff telemetry snapshot when `debugLiveTrace` is enabled; otherwise it
-  returns `404` with `navigation_handoff_debug_disabled`.
 - `GET /api/debug/origin-surface-compatibility` returns the current
   `originSurface` compatibility-fallback telemetry snapshot when
   `debugLiveTrace` is enabled; otherwise it returns `404` with
   `origin_surface_compatibility_debug_disabled`.
-- The navigation-handoff payload exposes:
+- Warm-navigation handoff telemetry is renderer-owned, not app-server-owned.
+  Browser debugging should inspect
+  `window.__catsCrossSurfaceNavigationHandoffTelemetry`, which mirrors:
   - stage/hit/miss counters
   - active staged targets still waiting to be consumed
-  - latest stage/hit/miss metadata for the current process
+  - latest stage/hit/miss metadata for the current renderer process
 - The origin-surface compatibility payload exposes:
   - total fallback count
   - fallback counts by stable target key such as `channel` or `parallel_group`

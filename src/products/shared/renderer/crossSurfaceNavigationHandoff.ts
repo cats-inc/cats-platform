@@ -59,6 +59,7 @@ export interface CrossSurfaceNavigationHandoffMatch {
 }
 
 export const CROSS_SURFACE_NAVIGATION_HANDOFF_TTL_MS = 60_000;
+const BROWSER_NAVIGATION_HANDOFF_TELEMETRY_KEY = '__catsCrossSurfaceNavigationHandoffTelemetry';
 
 // -------------------------- observability seam --------------------------
 //
@@ -163,6 +164,7 @@ function refreshCrossSurfaceNavigationTelemetryTargets(): void {
   crossSurfaceNavigationHandoffTelemetry.activeStagedTargets = [
     ...stagedCrossSurfaceNavigationHandoffs.values(),
   ].map(buildCrossSurfaceNavigationTelemetryTarget);
+  syncCrossSurfaceNavigationHandoffTelemetryGlobal();
 }
 
 function recordCrossSurfaceNavigationHandoffStage(
@@ -265,6 +267,13 @@ export function resetCrossSurfaceNavigationHandoffTelemetry(): void {
   crossSurfaceNavigationHandoffTelemetry.latestStage = null;
   crossSurfaceNavigationHandoffTelemetry.latestHit = null;
   crossSurfaceNavigationHandoffTelemetry.latestMiss = null;
+  syncCrossSurfaceNavigationHandoffTelemetryGlobal();
+}
+
+function syncCrossSurfaceNavigationHandoffTelemetryGlobal(): void {
+  const traceGlobal = globalThis as Record<string, unknown>;
+  traceGlobal[BROWSER_NAVIGATION_HANDOFF_TELEMETRY_KEY]
+    = inspectCrossSurfaceNavigationHandoffTelemetry();
 }
 
 function emitCrossSurfaceNavigationHandoffEvent(
