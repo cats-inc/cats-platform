@@ -581,6 +581,10 @@ contracts.
       invariants after the current legacy fixtures are migrated, so typed
       product-owned create paths and lower-level state mutation helpers no
       longer diverge on whether missing ownership metadata is tolerated
+      Progress: shared workspace composer-dispatch seam coverage now proves
+      Work/Code product-owned draft creates preserve `originSurface` into the
+      typed channel-create input; lower-level model tolerance cleanup still
+      remains.
 - [ ] Replace the current stderr-only `originSurface` compatibility warning
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when
