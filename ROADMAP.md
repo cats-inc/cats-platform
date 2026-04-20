@@ -584,8 +584,10 @@ contracts.
       Progress: shared workspace composer-dispatch seam coverage now proves
       Work/Code product-owned draft creates preserve `originSurface` into the
       typed channel-create input, and shared parallel-draft payload helpers now
-      cover the same contract for grouped fan-out; lower-level model tolerance
-      cleanup still remains.
+      cover the same contract for grouped fan-out. State-model characterization
+      coverage now also locks the current lower-level behavior (explicit
+      surfaces preserved, invalid values rejected, missing ownership still
+      defaulting to `chat`); actual tolerance cleanup still remains.
 - [ ] Replace the current stderr-only `originSurface` compatibility warning
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when
