@@ -302,6 +302,7 @@ test('Work sidebar keeps the Work product selected on platform settings routes',
       onAccountMenuToggle: () => {},
       onOverflowMenuToggle: () => {},
       onNavigateSettings: () => {},
+      onNavigateRuntime: () => {},
       onSwitchProduct: () => {},
       activeMyCatId: null,
       onDirectChatCat: () => {},
@@ -338,6 +339,7 @@ test('Work sidebar marks War Room active for war-room routes', () => {
       onAccountMenuToggle: () => {},
       onOverflowMenuToggle: () => {},
       onNavigateSettings: () => {},
+      onNavigateRuntime: () => {},
       onSwitchProduct: () => {},
       activeMyCatId: null,
       onDirectChatCat: () => {},
@@ -375,6 +377,7 @@ test('Work sidebar marks Tasks active for task routes', () => {
       onAccountMenuToggle: () => {},
       onOverflowMenuToggle: () => {},
       onNavigateSettings: () => {},
+      onNavigateRuntime: () => {},
       onSwitchProduct: () => {},
       activeMyCatId: null,
       onDirectChatCat: () => {},
@@ -411,6 +414,7 @@ test('Work sidebar marks Projects active for portfolio routes', () => {
       onAccountMenuToggle: () => {},
       onOverflowMenuToggle: () => {},
       onNavigateSettings: () => {},
+      onNavigateRuntime: () => {},
       onSwitchProduct: () => {},
       activeMyCatId: null,
       onDirectChatCat: () => {},
@@ -447,6 +451,7 @@ test('Work sidebar marks Work Items active for managed-work routes', () => {
       onAccountMenuToggle: () => {},
       onOverflowMenuToggle: () => {},
       onNavigateSettings: () => {},
+      onNavigateRuntime: () => {},
       onSwitchProduct: () => {},
       activeMyCatId: null,
       onDirectChatCat: () => {},
@@ -479,6 +484,7 @@ test('Code sidebar keeps the Code product selected on platform settings routes',
       onAccountMenuToggle: () => {},
       onOverflowMenuToggle: () => {},
       onNavigateSettings: () => {},
+      onNavigateRuntime: () => {},
       onSwitchProduct: () => {},
       activeMyCatId: null,
       onDirectChatCat: () => {},
@@ -515,6 +521,7 @@ test('Code sidebar exposes New Code, Team Code, and Peer Code actions', () => {
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -560,6 +567,7 @@ test('Code sidebar hides My Clowders until clowder groups are available', () => 
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -597,6 +605,7 @@ test('Work sidebar hides My Catteries until organization groups are available', 
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -628,6 +637,7 @@ test('Code sidebar clears chat recents and shows No codes yet', () => {
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -699,6 +709,7 @@ test('Work sidebar surfaces work-origin recents while filtering out chat recents
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -770,6 +781,7 @@ test('Code sidebar surfaces code-origin recents once a +New code channel lands',
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -792,7 +804,16 @@ test('Code sidebar surfaces code-origin recents once a +New code channel lands',
   assert.equal(recentsSection.props.emptyStateLabel, 'No codes yet');
 });
 
-test('Work and Code sidebars keep the shared environment account menu wiring', () => {
+test('Work and Code sidebars wire split-click navigation through the shared footer', () => {
+  // Temporary variant while the popup menu is disabled; the Footer's
+  // AccountIdentityMenu is preserved as a comment. Once it returns,
+  // flip this back to asserting `findAccountIdentityMenu(tree)` the way
+  // the original test did.
+  let workSettingsCount = 0;
+  let workRuntimeCount = 0;
+  let codeSettingsCount = 0;
+  let codeRuntimeCount = 0;
+
   const workTree = WorkSidebar({
     payload: createPayload(),
     sidebarOpen: true,
@@ -817,7 +838,12 @@ test('Work and Code sidebars keep the shared environment account menu wiring', (
     onArchiveCat: () => {},
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
-    onNavigateSettings: () => {},
+    onNavigateSettings: () => {
+      workSettingsCount += 1;
+    },
+    onNavigateRuntime: () => {
+      workRuntimeCount += 1;
+    },
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -843,7 +869,12 @@ test('Work and Code sidebars keep the shared environment account menu wiring', (
     onArchiveCat: () => {},
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
-    onNavigateSettings: () => {},
+    onNavigateSettings: () => {
+      codeSettingsCount += 1;
+    },
+    onNavigateRuntime: () => {
+      codeRuntimeCount += 1;
+    },
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -851,12 +882,33 @@ test('Work and Code sidebars keep the shared environment account menu wiring', (
     onOpenRelay: () => {},
   });
 
-  const workAccountMenu = findAccountIdentityMenu(workTree);
-  const codeAccountMenu = findAccountIdentityMenu(codeTree);
+  function exerciseFooter(
+    tree: ReactNode,
+    label: string,
+  ): { onNavigateSettings: () => void; onNavigateRuntime: () => void } {
+    const footer = findElementByComponent(tree, ConversationSidebarFooter);
+    if (!footer) {
+      throw new Error(`Footer not found in ${label} tree.`);
+    }
+    const footerProps = footer.props as {
+      onNavigateSettings: () => void;
+      onNavigateRuntime: () => void;
+    };
+    assert.equal(typeof footerProps.onNavigateSettings, 'function', `${label} settings`);
+    assert.equal(typeof footerProps.onNavigateRuntime, 'function', `${label} runtime`);
+    return footerProps;
+  }
 
-  assert.equal(workAccountMenu.props.open, true);
-  assert.equal(workAccountMenu.props.menuWidth, 'trigger');
+  const workFooter = exerciseFooter(workTree, 'Work');
+  const codeFooter = exerciseFooter(codeTree, 'Code');
 
-  assert.equal(codeAccountMenu.props.open, true);
-  assert.equal(codeAccountMenu.props.menuWidth, 'trigger');
+  workFooter.onNavigateSettings();
+  assert.equal(workSettingsCount, 1);
+  workFooter.onNavigateRuntime();
+  assert.equal(workRuntimeCount, 1);
+
+  codeFooter.onNavigateSettings();
+  assert.equal(codeSettingsCount, 1);
+  codeFooter.onNavigateRuntime();
+  assert.equal(codeRuntimeCount, 1);
 });

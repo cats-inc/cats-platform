@@ -163,6 +163,7 @@ export interface WorkspaceProductSidebarProps {
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
+  onNavigateRuntime: () => void;
   onSwitchProduct: (surface: PlatformSurfaceId) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
@@ -992,6 +993,7 @@ export function createWorkspaceProductApp({
       onDeleteChannel,
       onDeleteCat,
       onNavigateSettings,
+      onNavigateRuntime,
       onDirectChatCat,
       onResetSetup,
       onStartNewChat,
@@ -1453,6 +1455,7 @@ export function createWorkspaceProductApp({
                 onAccountMenuToggle: () => setAccountMenuOpen(!accountMenuOpen),
                 onOverflowMenuToggle: setOverflowMenuOpenId,
                 onNavigateSettings,
+                onNavigateRuntime,
                 onSwitchProduct,
                 activeMyCatId,
                 onDirectChatCat,

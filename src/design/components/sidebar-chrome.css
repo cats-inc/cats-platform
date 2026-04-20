@@ -391,3 +391,50 @@
   font-size: 0.75rem;
   font-weight: 700;
 }
+
+/* Trailing 24x24 slot that swaps between the runtime status dot (idle)
+ * and a link-arrow (on row hover). Structurally mirrors `.myCatTrailing`
+ * / `.myCatOverflowButton` so the hover-reveal target is the same size
+ * as the cat / recents overflow buttons. The parent `.sidebarFooterButton`
+ * catches the click and routes it to `/settings/runtime` via the
+ * `[data-runtime-dot]` marker on this wrapper. */
+.sidebarFooterTrailing {
+  position: relative;
+  display: grid;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  margin-left: auto;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.sidebarFooterTrailing > .runtimeStatusDot {
+  grid-area: 1 / 1;
+  transition: opacity 0.15s ease;
+}
+
+.sidebarFooterRuntimeLink {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.sidebarFooterButton:hover .sidebarFooterTrailing > .runtimeStatusDot {
+  opacity: 0;
+}
+
+.sidebarFooterButton:hover .sidebarFooterRuntimeLink {
+  opacity: 1;
+}
+
+.sidebarFooterTrailing:hover {
+  background: var(--panel-hover);
+}

@@ -297,6 +297,7 @@ function createSidebarTree(
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat,

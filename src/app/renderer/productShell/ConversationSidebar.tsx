@@ -175,6 +175,7 @@ export interface ConversationSidebarProps<
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
+  onNavigateRuntime: () => void;
   onSwitchProduct: (surface: PlatformSurfaceId) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
@@ -214,6 +215,7 @@ export function ConversationSidebar<
   onAccountMenuToggle,
   onOverflowMenuToggle,
   onNavigateSettings,
+  onNavigateRuntime,
   onSwitchProduct,
   activeMyCatId,
   onDirectChatCat,
@@ -328,6 +330,7 @@ export function ConversationSidebar<
         runtimeFooterLabel={runtimeFooterLabel}
         onAccountMenuToggle={onAccountMenuToggle}
         onNavigateSettings={onNavigateSettings}
+        onNavigateRuntime={onNavigateRuntime}
         catInitials={helpers.catInitials}
       />
     </aside>

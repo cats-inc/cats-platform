@@ -51,6 +51,7 @@ export interface SidebarProps {
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
+  onNavigateRuntime: () => void;
   onSwitchProduct: (surface: PlatformSurfaceId) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
@@ -245,6 +246,7 @@ export function Sidebar(props: SidebarProps) {
     onAccountMenuToggle: props.onAccountMenuToggle,
     onOverflowMenuToggle: props.onOverflowMenuToggle,
     onNavigateSettings: props.onNavigateSettings,
+    onNavigateRuntime: props.onNavigateRuntime,
     onSwitchProduct: props.onSwitchProduct,
     activeMyCatId: props.activeMyCatId,
     onDirectChatCat: props.onDirectChatCat,

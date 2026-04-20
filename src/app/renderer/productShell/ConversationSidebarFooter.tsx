@@ -1,7 +1,5 @@
-import type { RefObject } from 'react';
+import { type MouseEvent, type RefObject } from 'react';
 
-import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
-import { executeEnvironmentRecovery } from '../../../shared/environmentRecoveryAction.js';
 import {
   resolveRuntimeDotClassName,
   type RuntimePresentationStatus,
@@ -17,13 +15,17 @@ export function ConversationSidebarFooter<
   TChannel extends ConversationSidebarChannel,
 >({
   payload,
-  accountMenuOpen,
   accountMenuRef,
   runtimeFooterStatus,
   runtimeFooterLabel,
-  onAccountMenuToggle,
   onNavigateSettings,
+  onNavigateRuntime,
   catInitials,
+  // Popup-menu state props. Unused while the popup is disabled (see the
+  // preservation comment at the bottom of the file); kept in the prop
+  // shape so parents don't need to rewire when the menu comes back.
+  accountMenuOpen: _accountMenuOpen,
+  onAccountMenuToggle: _onAccountMenuToggle,
 }: {
   payload: ConversationSidebarPayload<TCat, TChannel>;
   accountMenuOpen: boolean;
@@ -32,30 +34,26 @@ export function ConversationSidebarFooter<
   runtimeFooterLabel: string;
   onAccountMenuToggle: () => void;
   onNavigateSettings: () => void;
+  onNavigateRuntime: () => void;
   catInitials: (name: string) => string;
 }) {
-  function handleAccountMenuOpenChange(nextOpen: boolean): void {
-    if (nextOpen !== accountMenuOpen) {
-      onAccountMenuToggle();
+  function handleFooterClick(event: MouseEvent<HTMLButtonElement>): void {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('[data-runtime-dot]')) {
+      onNavigateRuntime();
+      return;
     }
+    onNavigateSettings();
   }
 
   return (
-    <AccountIdentityMenu
-      open={accountMenuOpen}
-      onOpenChange={handleAccountMenuOpenChange}
-      onNavigateSettings={onNavigateSettings}
-      onNavigateEnvironment={() => {
-        void executeEnvironmentRecovery({
-          runtimeStatus: runtimeFooterStatus,
-          runtimeSetupStatus: payload.runtimeSetup?.status,
-        });
-      }}
-      containerClassName="sidebarFooter"
-      triggerClassName="sidebarFooterButton"
-      menuWidth="trigger"
-      rootRef={accountMenuRef}
-      avatar={(
+    <div className="sidebarFooter" ref={accountMenuRef}>
+      <button
+        type="button"
+        className="sidebarFooterButton"
+        onClick={handleFooterClick}
+        aria-label="Open account settings"
+      >
         <div
           className="profileBadge"
           style={payload.ownerAvatarUrl
@@ -68,19 +66,83 @@ export function ConversationSidebarFooter<
         >
           {payload.ownerAvatarUrl ? null : catInitials(payload.ownerDisplayName)}
         </div>
-      )}
-      meta={(
         <div className="sidebarFooterMeta">
           <strong>{payload.ownerDisplayName}</strong>
         </div>
-      )}
-      statusIndicator={(
-        <span
-          className={resolveRuntimeDotClassName(runtimeFooterStatus)}
-          data-tooltip={runtimeFooterLabel}
-          aria-label={runtimeFooterLabel}
-        />
-      )}
-    />
+        <span className="sidebarFooterTrailing" data-runtime-dot>
+          <span
+            className={resolveRuntimeDotClassName(runtimeFooterStatus)}
+            data-tooltip={runtimeFooterLabel}
+            aria-label={runtimeFooterLabel}
+          />
+          <span className="sidebarFooterRuntimeLink" aria-hidden="true">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 3h8v8" />
+              <path d="M13 3 4 12" />
+            </svg>
+          </span>
+        </span>
+      </button>
+    </div>
   );
 }
+
+/* ─── Preserved: popup-menu variant (re-enable in a later release) ─────
+ *
+ * Earlier versions opened a two-item popup menu (Settings / Environment)
+ * when the footer was clicked. We are temporarily replacing it with
+ * split-click routing: the runtime dot calls `onNavigateRuntime`, the
+ * rest of the footer calls `onNavigateSettings`. The popup returns once
+ * more account-level actions exist — keep this block here so restoring
+ * the menu is a mechanical swap.
+ *
+ * To re-enable:
+ *  1. Re-add the imports used below:
+ *       import { AccountIdentityMenu } from '../../../design/components/AccountIdentityMenu.js';
+ *       import { executeEnvironmentRecovery } from '../../../shared/environmentRecoveryAction.js';
+ *  2. Drop `handleFooterClick` (and the `onNavigateRuntime` prop if
+ *     unused elsewhere) from the body above.
+ *  3. Un-prefix the `_accountMenuOpen` / `_onAccountMenuToggle`
+ *     destructured props and restore the toggle helper:
+ *
+ *       function handleAccountMenuOpenChange(nextOpen: boolean): void {
+ *         if (nextOpen !== accountMenuOpen) {
+ *           onAccountMenuToggle();
+ *         }
+ *       }
+ *  4. Replace the returned <div><button/></div> with:
+ *
+ *       <AccountIdentityMenu
+ *         open={accountMenuOpen}
+ *         onOpenChange={handleAccountMenuOpenChange}
+ *         onNavigateSettings={onNavigateSettings}
+ *         onNavigateEnvironment={() => {
+ *           void executeEnvironmentRecovery({
+ *             runtimeStatus: runtimeFooterStatus,
+ *             runtimeSetupStatus: payload.runtimeSetup?.status,
+ *           });
+ *         }}
+ *         containerClassName="sidebarFooter"
+ *         triggerClassName="sidebarFooterButton"
+ *         menuWidth="trigger"
+ *         rootRef={accountMenuRef}
+ *         avatar={<div className="profileBadge" style={…}>…</div>}
+ *         meta={<div className="sidebarFooterMeta"><strong>…</strong></div>}
+ *         statusIndicator={
+ *           <span
+ *             className={resolveRuntimeDotClassName(runtimeFooterStatus)}
+ *             data-tooltip={runtimeFooterLabel}
+ *             aria-label={runtimeFooterLabel}
+ *           />
+ *         }
+ *       />
+ */

@@ -841,6 +841,7 @@ export default function App() {
     onArchiveCat,
     onDeleteCat,
     onNavigateSettings,
+    onNavigateRuntime,
     onCreateNewCat,
     onDirectChatCat,
     onResetSetup,
@@ -1233,6 +1234,7 @@ export default function App() {
                 onAccountMenuToggle={() => setAccountMenuOpen(!accountMenuOpen)}
                 onOverflowMenuToggle={setOverflowMenuOpenId}
                 onNavigateSettings={onNavigateSettings}
+                onNavigateRuntime={onNavigateRuntime}
                 onCreateNewCat={onCreateNewCat}
                 onSwitchProduct={onSwitchProduct}
                 activeMyCatId={activeMyCatId}

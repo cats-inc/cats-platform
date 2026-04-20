@@ -302,6 +302,15 @@ export function useWorkspaceAppNavigationActions<
     setFeedback('');
   }, [navigate, platformShellSurface, setAccountMenuOpen, setAddCatOpen, setFeedback]);
 
+  const onNavigateRuntime = useCallback((): void => {
+    navigate('/settings/runtime', {
+      state: { platformShellSurface },
+    });
+    setAccountMenuOpen(false);
+    setAddCatOpen(false);
+    setFeedback('');
+  }, [navigate, platformShellSurface, setAccountMenuOpen, setAddCatOpen, setFeedback]);
+
   const onCreateNewCat = useCallback((): void => {
     navigate('/settings/cats/new', {
       state: { platformShellSurface },
@@ -400,6 +409,7 @@ export function useWorkspaceAppNavigationActions<
     onDeleteChannel,
     onDeleteCat,
     onNavigateSettings,
+    onNavigateRuntime,
     onCreateNewCat,
     onDirectChatCat,
     onResetSetup,

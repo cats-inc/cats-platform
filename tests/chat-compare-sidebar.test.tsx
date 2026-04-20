@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isValidElement, type ComponentProps, type ReactNode, type RefObject } from 'react';
 
-import { AccountIdentityMenu } from '../src/design/components/AccountIdentityMenu.tsx';
 import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
 import { ConversationSidebarNavigation } from '../src/app/renderer/productShell/ConversationSidebarNavigation.tsx';
 import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
@@ -230,6 +229,7 @@ test('Sidebar groups parallel chats and shows member labels in Recents', () => {
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -302,6 +302,7 @@ test('Sidebar exposes a dedicated Group chat primary action', () => {
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -378,6 +379,7 @@ test('Sidebar excludes non-chat recents and compare groups by origin surface', (
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -396,7 +398,16 @@ test('Sidebar excludes non-chat recents and compare groups by origin surface', (
   );
 });
 
-test('Sidebar wires the shared account identity menu to the runtime root', () => {
+test('Sidebar footer wires split-click navigation to Settings sections', () => {
+  // Temporary variant of the account-menu test while the popup menu is
+  // disabled: the footer routes the runtime dot to /settings/runtime and
+  // everything else to /settings/general via two injected callbacks.
+  // When the popup returns (see the preservation block in
+  // ConversationSidebarFooter.tsx), flip this back to asserting the
+  // <AccountIdentityMenu> wiring.
+  let navigateSettingsCount = 0;
+  let navigateRuntimeCount = 0;
+
   const tree = Sidebar({
     payload: createPayload(),
     sidebarOpen: true,
@@ -421,7 +432,12 @@ test('Sidebar wires the shared account identity menu to the runtime root', () =>
     onArchiveCat: () => {},
     onAccountMenuToggle: () => {},
     onOverflowMenuToggle: () => {},
-    onNavigateSettings: () => {},
+    onNavigateSettings: () => {
+      navigateSettingsCount += 1;
+    },
+    onNavigateRuntime: () => {
+      navigateRuntimeCount += 1;
+    },
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
@@ -431,13 +447,25 @@ test('Sidebar wires the shared account identity menu to the runtime root', () =>
     tree,
     ConversationSidebarFooter,
   );
+  assert.equal(typeof footer.props.onNavigateSettings, 'function');
+  assert.equal(typeof footer.props.onNavigateRuntime, 'function');
+
   const footerTree = ConversationSidebarFooter(footer.props);
-  const accountMenu = findElementByType<{
-    open?: boolean;
-    menuWidth?: string;
-  }>(footerTree, AccountIdentityMenu);
-  assert.equal(accountMenu.props.open, true);
-  assert.equal(accountMenu.props.menuWidth, 'trigger');
+  const button = findElementByType<{
+    onClick: (event: { target: { closest: (selector: string) => unknown } }) => void;
+  }>(footerTree, 'button');
+
+  // Click on profile badge / name: `closest('[data-runtime-dot]')` is
+  // null, so the general settings callback fires.
+  button.props.onClick({ target: { closest: () => null } });
+  assert.equal(navigateSettingsCount, 1);
+  assert.equal(navigateRuntimeCount, 0);
+
+  // Click on the runtime dot: `closest('[data-runtime-dot]')` returns
+  // the dot element, so the runtime callback fires instead.
+  button.props.onClick({ target: { closest: () => ({}) } });
+  assert.equal(navigateSettingsCount, 1);
+  assert.equal(navigateRuntimeCount, 1);
 });
 
 test('new-chat route helpers keep group and parallel entry intents explicit', () => {
