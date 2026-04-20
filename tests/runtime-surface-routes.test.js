@@ -36,7 +36,12 @@ async function withRuntimeStub(callback) {
       body += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
     }
 
-    if (url.pathname === '/setup' || url.pathname === '/dashboard' || url.pathname === '/playground') {
+    if (
+      url.pathname === '/'
+      || url.pathname === '/setup'
+      || url.pathname === '/dashboard'
+      || url.pathname === '/playground'
+    ) {
       if (
         url.pathname !== '/setup'
         && url.searchParams.get('bootstrap') === '1'
@@ -177,6 +182,21 @@ test('GET /runtime/setup serves a platform-hosted runtime surface', async () => 
       assert.match(html, /data-cats-runtime-platform-proxy/u);
       assert.match(html, /id="surface-dashboard" href="\/runtime\/dashboard"/u);
       assert.match(html, /"href":"\/runtime\/setup"/u);
+    });
+  });
+});
+
+test('GET /runtime serves a platform-hosted runtime root surface', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime`);
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get('content-type') || '', /text\/html/u);
+
+      const html = await response.text();
+      assert.match(html, /<title>root<\/title>/u);
+      assert.match(html, /data-cats-runtime-platform-proxy/u);
+      assert.match(html, /id="surface-dashboard" href="\/runtime\/dashboard"/u);
     });
   });
 });

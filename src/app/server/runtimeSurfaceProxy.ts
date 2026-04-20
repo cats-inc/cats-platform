@@ -6,12 +6,15 @@ import { sendJson, sendMethodNotAllowed } from '../../shared/http.js';
 import type { ResolvedServerDependencies } from './contracts.js';
 
 const RUNTIME_SURFACE_ROUTE_MAP = new Map<string, string>([
+  ['/runtime', '/'],
+  ['/runtime/', '/'],
   ['/runtime/setup', '/setup'],
   ['/runtime/dashboard', '/dashboard'],
   ['/runtime/playground', '/playground'],
 ]);
 
 const PLATFORM_SURFACE_ROUTE_MAP = new Map<string, string>([
+  ['/', '/runtime'],
   ['/setup', '/runtime/setup'],
   ['/dashboard', '/runtime/dashboard'],
   ['/playground', '/runtime/playground'],

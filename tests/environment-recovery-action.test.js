@@ -136,7 +136,7 @@ test('executeEnvironmentRecovery ignores verification-only desktop setup recomme
   );
 
   assert.equal(triggered, false);
-  assert.equal(openedUrl, '/runtime/dashboard');
+  assert.equal(openedUrl, '/runtime');
 });
 
 test('openBrowserUrl falls back to location.assign when window.open is unavailable', () => {

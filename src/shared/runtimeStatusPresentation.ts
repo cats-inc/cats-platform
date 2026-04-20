@@ -7,7 +7,7 @@
 
 import type { RuntimeSetupStatus } from './runtimeSetup.js';
 import {
-  PLATFORM_RUNTIME_DASHBOARD_PATH,
+  PLATFORM_RUNTIME_ROOT_PATH,
   PLATFORM_RUNTIME_SETUP_PATH,
 } from './runtimeIngressPaths.js';
 
@@ -105,7 +105,7 @@ export function resolveRuntimeRecoveryUrl(
   if (target === 'runtime-setup') {
     return PLATFORM_RUNTIME_SETUP_PATH;
   }
-  return PLATFORM_RUNTIME_DASHBOARD_PATH;
+  return PLATFORM_RUNTIME_ROOT_PATH;
 }
 
 // -- Lobby identity dot (PlatformLobby) --

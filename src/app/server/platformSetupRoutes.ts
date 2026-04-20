@@ -5,6 +5,7 @@ import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
 import { appendPlatformOnboardingEvent } from '../../shared/platformOnboardingHistory.js';
 import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
 import { readPlatformPreferences, writePlatformPreferences } from '../../shared/platformPreferences.js';
+import { PLATFORM_RUNTIME_ROOT_PATH } from '../../shared/runtimeIngressPaths.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import {
   readRuntimeSetupSummary,
@@ -239,7 +240,7 @@ async function handlePlatformSetupComplete(
       payload = {
         app: { name: 'cats-platform', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
         products: listPlatformProductDescriptors(),
-        runtime: { baseUrl: context.dependencies.config.runtimeBaseUrl, reachable: false, status: 'warm', service: 'cats-runtime' },
+        runtime: { baseUrl: PLATFORM_RUNTIME_ROOT_PATH, reachable: false, status: 'warm', service: 'cats-runtime' },
         runtimeSetup: runtimeSetup ?? null,
         metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
         bootstrapAttemptId: attemptId,

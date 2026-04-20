@@ -158,6 +158,7 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
 
     const payload = await response.json();
     assert.equal(payload.setupCompleteAt, null);
+    assert.equal(payload.runtime.baseUrl, '/runtime');
     assert.equal(payload.guideCat, null);
     assert.deepEqual(payload.assistantPresets, []);
     assert.equal(payload.lastProductSurface, null);

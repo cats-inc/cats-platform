@@ -210,10 +210,10 @@ describe('resolveRuntimeRecoveryUrl', () => {
     );
   });
 
-  it('returns platform dashboard path for runtime-root target', () => {
+  it('returns platform runtime root path for runtime-root target', () => {
     assert.equal(
       resolveRuntimeRecoveryUrl('runtime-root'),
-      '/runtime/dashboard',
+      '/runtime',
     );
   });
 

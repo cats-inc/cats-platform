@@ -15,6 +15,7 @@ import {
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
+import { PLATFORM_RUNTIME_ROOT_PATH } from '../../../shared/runtimeIngressPaths.js';
 import { cloneAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
@@ -73,6 +74,10 @@ export function createAppShell(
   const summary = summarizeState(chat);
   const botBindings: ChatBotBindingSummary[] = setup?.botBindings ?? [];
   const resolvedSetupCompleteAt = resolveSetupCompleteAt(chat, now, setup);
+  const browserRuntime = {
+    ...runtime,
+    baseUrl: PLATFORM_RUNTIME_ROOT_PATH,
+  };
 
   return {
     app: {
@@ -105,7 +110,7 @@ export function createAppShell(
       selectedChannel: summary.selectedChannel,
       globalOrchestrator: {
         ...summary.globalOrchestrator,
-        status: runtime.reachable ? 'ready' : 'warming',
+        status: browserRuntime.reachable ? 'ready' : 'warming',
       },
       newChatDefaults: structuredClone(chat.newChatDefaults),
       capabilities: {
@@ -130,7 +135,7 @@ export function createAppShell(
       botBindings,
       newChatAssist: structuredClone(setup?.newChatAssist ?? null),
     },
-    runtime,
+    runtime: browserRuntime,
     runtimeSetup: setup?.runtimeSetup ?? createUnavailableRuntimeSetupSummary(
       new Error('Runtime setup was missing while building the app shell.'),
     ),

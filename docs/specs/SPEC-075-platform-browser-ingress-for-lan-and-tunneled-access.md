@@ -56,8 +56,8 @@ and preserve the current packaged Electron loopback-only sidecar topology.
    bind host without changing packaged Electron defaults.
 2. The packaged Electron host shall keep the app host and runtime host on
    loopback by default, using desktop-specific host configuration.
-3. `cats-platform` shall host runtime setup, dashboard, and playground pages
-   under `/runtime/*`.
+3. `cats-platform` shall host the browser-facing runtime root under `/runtime`
+   and the runtime setup, dashboard, and playground pages under `/runtime/*`.
 4. `cats-platform` shall proxy runtime JSON and streaming routes under
    `/runtime/api/*`.
 5. Platform-hosted runtime pages shall use `/runtime/*` and `/runtime/api/*`

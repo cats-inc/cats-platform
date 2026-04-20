@@ -1,5 +1,7 @@
 export type PlatformRuntimeSurface = 'setup' | 'dashboard' | 'playground';
 
+export const PLATFORM_RUNTIME_ROOT_PATH = '/runtime';
+
 const PLATFORM_RUNTIME_SURFACE_PATHS = {
   setup: '/runtime/setup',
   dashboard: '/runtime/dashboard',
