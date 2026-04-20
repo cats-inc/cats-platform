@@ -628,9 +628,10 @@ contracts.
       Progress: `useWorkspaceAppShellRouting` and the Chat cross-surface submit
       seam now expose pure helper coverage for initial warm-payload consume
       gating, initial mount fetch/error races, background refresh merge rules,
-      target-surface dispatch decisions, prefetch-surface resolution, targeted
-      staged-handoff clear semantics, and staged draft handoff payloads; full
-      mount/integration coverage still remains.
+      target-surface dispatch decisions, prefetch-surface resolution,
+      product-surface loader handoff, targeted staged-handoff clear semantics,
+      and staged draft handoff payloads; full mount/integration coverage still
+      remains.
 - [ ] Exercise the generic `sourceSurface` path with at least one non-Chat
       initiator before landing the second consumer, so `work -> code`,
       `code -> work`, or equivalent cross-product dispatch proves the handoff

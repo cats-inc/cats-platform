@@ -29,6 +29,13 @@ export function createLazyProductSurface(
   return lazy(resolveProductSurfaceLoader(surface));
 }
 
+export function loadProductSurface(
+  surface: PlatformSurfaceId,
+  resolveLoader: (surface: PlatformSurfaceId) => ProductSurfaceLoader = resolveProductSurfaceLoader,
+): Promise<ProductSurfaceModule> {
+  return resolveLoader(surface)();
+}
+
 export function prefetchProductSurface(surface: PlatformSurfaceId): Promise<ProductSurfaceModule> {
-  return resolveProductSurfaceLoader(surface)();
+  return loadProductSurface(surface);
 }
