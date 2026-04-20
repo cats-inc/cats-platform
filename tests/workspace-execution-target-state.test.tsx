@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { normalizeProviderAdvancedModelCatalog, type ProductProviderRegistryReadModel } from '../src/shared/providerCatalog.ts';
-import { reconcileRuntimeBackedExecutionTargetValue } from '../src/products/shared/renderer/hooks/useWorkspaceExecutionTargetState.ts';
+import {
+  createDefaultExecutionTargetValue,
+  createExecutionTargetValueForProvider,
+  reconcileRuntimeBackedExecutionTargetValue,
+  sameExecutionTargetValue,
+  toExecutionTargetValue,
+  toSoloChannelExecutionTargetValue,
+} from '../src/products/shared/renderer/hooks/useWorkspaceExecutionTargetState.ts';
 import { resolveDispatchExecutionTargetValue } from '../src/products/chat/renderer/hooks/useComposerSubmit.ts';
 
 function createProviderRegistry(): ProductProviderRegistryReadModel {
@@ -29,6 +36,179 @@ function createProviderRegistry(): ProductProviderRegistryReadModel {
     ],
   };
 }
+
+test('execution target helper defaults stay Claude-backed and normalize trimmed persisted providers', () => {
+  assert.deepEqual(createDefaultExecutionTargetValue(), {
+    provider: 'claude',
+    instance: 'native',
+    model: 'opus',
+    modelSelection: null,
+    executionLabel: null,
+  });
+  assert.deepEqual(createExecutionTargetValueForProvider('claude'), {
+    provider: 'claude',
+    instance: 'native',
+    model: 'opus',
+    modelSelection: null,
+    executionLabel: null,
+  });
+  assert.deepEqual(toExecutionTargetValue(null), createDefaultExecutionTargetValue());
+  assert.deepEqual(toExecutionTargetValue({
+    provider: ' codex ',
+    model: null,
+    instance: null,
+    modelSelection: {
+      entryId: 'gpt-5.4',
+      entryMode: 'explicit',
+    },
+  }), {
+    provider: 'codex',
+    model: 'gpt-5.4',
+    instance: 'native',
+    modelSelection: {
+      entryId: 'gpt-5.4',
+      entryMode: 'explicit',
+    },
+    executionLabel: null,
+  });
+});
+
+test('execution target equality compares normalized nullable fields and model selection content', () => {
+  assert.equal(
+    sameExecutionTargetValue(
+      {
+        provider: 'claude',
+        instance: undefined,
+        model: 'opus',
+        modelSelection: {
+          entryId: 'opus',
+          entryMode: 'explicit',
+          controls: {
+            'claude.reasoning_effort': 'xhigh',
+          },
+        },
+        executionLabel: 'ignored-left',
+      },
+      {
+        provider: 'claude',
+        instance: null,
+        model: 'opus',
+        modelSelection: {
+          entryId: 'opus',
+          entryMode: 'explicit',
+          controls: {
+            'claude.reasoning_effort': 'xhigh',
+          },
+        },
+        executionLabel: 'ignored-right',
+      },
+    ),
+    true,
+  );
+  assert.equal(
+    sameExecutionTargetValue(
+      {
+        provider: 'claude',
+        instance: 'native',
+        model: 'opus',
+        modelSelection: null,
+        executionLabel: null,
+      },
+      {
+        provider: 'claude',
+        instance: 'native',
+        model: 'opus',
+        modelSelection: {
+          entryId: 'opus',
+          entryMode: 'explicit',
+        },
+        executionLabel: null,
+      },
+    ),
+    false,
+  );
+});
+
+test('solo channel execution target falls back to the global orchestrator when pending values are absent', () => {
+  assert.equal(
+    toSoloChannelExecutionTargetValue(null, null),
+    null,
+  );
+
+  assert.deepEqual(
+    toSoloChannelExecutionTargetValue(
+      {
+        newChatDefaults: null,
+        globalOrchestrator: {
+          executionTarget: {
+            provider: 'claude',
+            model: 'opus',
+            instance: 'native',
+          },
+          executionModelSelection: {
+            entryId: 'opus',
+            entryMode: 'explicit',
+          },
+        },
+      },
+      {
+        id: 'channel-solo',
+        composerMode: 'solo',
+        pendingProvider: null,
+        pendingModel: null,
+        pendingInstance: null,
+        pendingModelSelection: null,
+      },
+    ),
+    {
+      provider: 'claude',
+      model: 'opus',
+      instance: 'native',
+      modelSelection: {
+        entryId: 'opus',
+        entryMode: 'explicit',
+      },
+      executionLabel: null,
+    },
+  );
+
+  assert.deepEqual(
+    toSoloChannelExecutionTargetValue(
+      {
+        newChatDefaults: null,
+        globalOrchestrator: {
+          executionTarget: {
+            provider: 'claude',
+            model: 'opus',
+            instance: 'native',
+          },
+          executionModelSelection: null,
+        },
+      },
+      {
+        id: 'channel-solo',
+        composerMode: 'solo',
+        pendingProvider: 'codex',
+        pendingModel: 'gpt-5.4',
+        pendingInstance: 'default',
+        pendingModelSelection: {
+          entryId: 'gpt-5.4',
+          entryMode: 'explicit',
+        },
+      },
+    ),
+    {
+      provider: 'codex',
+      model: 'gpt-5.4',
+      instance: 'default',
+      modelSelection: {
+        entryId: 'gpt-5.4',
+        entryMode: 'explicit',
+      },
+      executionLabel: null,
+    },
+  );
+});
 
 test('runtime-backed execution target reconciliation adopts the advanced default effort for bare Claude opus targets', async () => {
   const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
