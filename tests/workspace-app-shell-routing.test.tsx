@@ -36,7 +36,7 @@ function createPayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('resolveInitialWorkspaceWarmNavigationPayload skips consume when the route already mounted ready', () => {
+test('resolveInitialWorkspaceWarmNavigationPayload always drains staged handoff and only applies it when the route was not already ready', () => {
   let calls = 0;
   const warmPayload = createPayload({
     metadata: {
@@ -54,6 +54,9 @@ test('resolveInitialWorkspaceWarmNavigationPayload skips consume when the route 
     return warmPayload;
   };
 
+  // When the factory already peek-seeded initial state, the bundle must still
+  // be drained so it cannot re-hydrate a later remount from a stale snapshot;
+  // the returned payload is null because state is already ready.
   assert.equal(
     resolveInitialWorkspaceWarmNavigationPayload({
       initialHadReadyState: true,
@@ -65,7 +68,7 @@ test('resolveInitialWorkspaceWarmNavigationPayload skips consume when the route 
     }),
     null,
   );
-  assert.equal(calls, 0);
+  assert.equal(calls, 1);
 
   assert.equal(
     resolveInitialWorkspaceWarmNavigationPayload({
@@ -78,7 +81,7 @@ test('resolveInitialWorkspaceWarmNavigationPayload skips consume when the route 
     }),
     warmPayload,
   );
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
 });
 
 test('workspace background refresh keeps chat state while updating runtime envelope fields', () => {
