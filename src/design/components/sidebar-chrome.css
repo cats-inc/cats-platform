@@ -419,15 +419,20 @@
 .sidebarFooterTrailing {
   position: relative;
   display: grid;
-  flex: 0 0 42px;
-  /* 42px wide = 24 icon visual + 18 right gutter; full row height so
-   * the button eats the top / bottom margin that used to be dead zone
-   * between the 24x24 slot and the row edges. The 18px gutter lives
-   * inside the button as `padding-right`, so clicks in the far-right
-   * strip (between the icon and the sidebar edge) still activate the
-   * button — no hover-highlighted-but-inert strip remains. */
-  width: 42px;
-  padding-right: 18px;
+  flex: 0 0 44px;
+  /* 44px wide = 24 icon visual + 20 right gutter. The extra 2px on
+   * the right (vs. a naive 18) compensates for the 2px transparent
+   * border `.guideCatDockSlot` carries in its base rule (to reserve
+   * layout space for the drag-preview solid border). That border
+   * shifts the dock row's content-area 2px inboard, so without this
+   * compensation the undock button lands 2px left of where the
+   * runtime slot renders. The gutter lives inside the button as
+   * `padding-right`, so clicks in the far-right strip still activate
+   * the button — no hover-highlighted-but-inert strip remains. Full
+   * row height eats the top / bottom margin that used to be dead
+   * zone between the 24x24 slot and the row edges. */
+  width: 44px;
+  padding-right: 20px;
   align-self: stretch;
   place-content: center;
   place-items: center;
@@ -439,14 +444,16 @@
 }
 
 /* The visible hover affordance is a 24x24 rounded square centred on
- * the icon, not the full 42x60 hit area. Use a pseudo-element so the
+ * the icon, not the full 44x60 hit area. Use a pseudo-element so the
  * click surface can stay large while the visual still matches the
- * cat-row `.myCatOverflowButton` silhouette. */
+ * cat-row `.myCatOverflowButton` silhouette. `right: 20` keeps the
+ * pseudo aligned with the dock row's undock button, which lands at
+ * 20px from the sidebar edge because of the dock slot's 2px border. */
 .sidebarFooterTrailing::before {
   content: '';
   position: absolute;
   top: 50%;
-  right: 18px;
+  right: 20px;
   width: 24px;
   height: 24px;
   transform: translateY(-50%);
@@ -461,13 +468,23 @@
   background: var(--panel-hover);
 }
 
+/* `position: relative` + `z-index: 1` promotes the icons above the
+ * positioned `::before` hover affordance. Without the z-index, the
+ * absolute-positioned pseudo-element stacks on top of these
+ * non-positioned grid items when same-z-index tie-breaking runs —
+ * which meant the hover bg painted over the icons and the row showed
+ * an empty slot on hover. */
 .sidebarFooterTrailing > .runtimeStatusDot {
   grid-area: 1 / 1;
+  position: relative;
+  z-index: 1;
   transition: opacity 0.15s ease;
 }
 
 .sidebarFooterRuntimeLink {
   grid-area: 1 / 1;
+  position: relative;
+  z-index: 1;
   display: grid;
   place-content: center;
   place-items: center;
@@ -486,4 +503,21 @@
 .sidebarFooter:hover .sidebarFooterRuntimeLink,
 .sidebarFooterTrailing:focus-visible .sidebarFooterRuntimeLink {
   opacity: 1;
+}
+
+/* Collapsed sidebar: there's no room to split into main / runtime
+ * click zones in a 64px-wide column, and any click inside the footer
+ * should expand the sidebar first (so the new split-click can then
+ * be reached). Hide the trailing button entirely, and let the main
+ * button fill the narrow column so the avatar centres. The existing
+ * `.sidebarCollapsed .sidebarFooterButton` rule in chat-shell-base.css
+ * still targets the pre-rename class name and no longer applies; this
+ * block restores the same behaviour under the new class. */
+.sidebarCollapsed .sidebarFooterMainButton {
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebarCollapsed .sidebarFooterTrailing {
+  display: none;
 }
