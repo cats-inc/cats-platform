@@ -389,6 +389,23 @@ test('observer seam emits stage, hit, and miss-reason events for consume flows',
       path: '/code/chats/channel-observer',
     });
 
+    // A consume against an unrelated route while the store still holds the
+    // staged bundle is a legitimate miss (user navigated away from the
+    // intended target), so it emits 'miss:missing'.
+    const originalWarn = console.warn;
+    try {
+      console.warn = () => {};
+      assert.equal(
+        consumeCrossSurfaceNavigationHandoff({
+          surface: 'code',
+          path: '/code/chats/channel-elsewhere',
+        }),
+        null,
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
+
     // Successful consume emits 'hit'.
     assert.ok(
       consumeCrossSurfaceNavigationHandoff({
@@ -397,25 +414,90 @@ test('observer seam emits stage, hit, and miss-reason events for consume flows',
       }),
     );
 
-    // Second consume on the now-empty store emits 'miss:missing'.
-    const originalWarn = console.warn;
-    try {
-      console.warn = () => {};
-      assert.equal(
-        consumeCrossSurfaceNavigationHandoff({
-          surface: 'code',
-          path: '/code/chats/channel-observer',
-        }),
-        null,
-      );
-    } finally {
-      console.warn = originalWarn;
-    }
-
     const observedTrace = events.map((event) =>
       event.kind === 'miss' ? `${event.kind}:${event.reason}` : event.kind,
     );
-    assert.deepEqual(observedTrace, ['stage', 'hit', 'miss:missing']);
+    assert.deepEqual(observedTrace, ['stage', 'miss:missing', 'hit']);
+  } finally {
+    setCrossSurfaceNavigationHandoffObserver(null);
+    clearCrossSurfaceNavigationHandoff();
+  }
+});
+
+test('cold boot consume on an empty store is silent and does not pollute telemetry', () => {
+  clearCrossSurfaceNavigationHandoff();
+  const events = [];
+  const warnings = [];
+  const originalWarn = console.warn;
+
+  try {
+    console.warn = (...args) => warnings.push(args);
+    setCrossSurfaceNavigationHandoffObserver((event) => events.push(event));
+
+    // Emulate a normal app launch: no warm handoff was ever staged, and the
+    // product mount hook still calls consume on first render.
+    assert.equal(
+      consumeCrossSurfaceNavigationHandoff({
+        surface: 'chat',
+        path: '/chat/chats/channel-cold-boot',
+      }),
+      null,
+    );
+
+    assert.deepEqual(events, []);
+    assert.equal(warnings.length, 0);
+  } finally {
+    setCrossSurfaceNavigationHandoffObserver(null);
+    console.warn = originalWarn;
+    clearCrossSurfaceNavigationHandoff();
+  }
+});
+
+test('observer receives defensive clones; mutating an event does not corrupt the store', () => {
+  clearCrossSurfaceNavigationHandoff();
+  setCrossSurfaceNavigationHandoffObserver((event) => {
+    if (event.kind === 'stage' || event.kind === 'hit') {
+      // A misbehaving observer tries to tamper with the live bundle.
+      event.bundle.destination.route.path = '/tampered';
+      event.bundle.destination.entityId = 'tampered';
+      if (event.bundle.snapshot?.appShellPayload) {
+        event.bundle.snapshot.appShellPayload = {};
+      }
+    }
+  });
+
+  try {
+    const snapshotPayload = {
+      chat: {
+        selectedChannelId: 'channel-clone',
+      },
+    };
+    const originalRoute = {
+      surface: 'code',
+      path: '/code/chats/channel-clone',
+    };
+    stageCrossSurfaceNavigationHandoff({
+      kind: 'draft-create-channel',
+      sourceSurface: 'chat',
+      targetSurface: 'code',
+      destination: {
+        entityKind: 'channel',
+        entityId: 'channel-clone',
+        route: originalRoute,
+      },
+      createdAt: new Date().toISOString(),
+      snapshot: {
+        appShellPayload: snapshotPayload,
+      },
+    });
+
+    // Observer mutation of the stage-event bundle must not reach the store:
+    // consume with the original route still hits.
+    const consumed = consumeCrossSurfaceNavigationHandoff(originalRoute);
+    assert.ok(consumed);
+    assert.equal(consumed.destination.entityId, 'channel-clone');
+    assert.equal(consumed.destination.route.path, '/code/chats/channel-clone');
+    assert.deepEqual(consumed.snapshot?.appShellPayload, snapshotPayload);
   } finally {
     setCrossSurfaceNavigationHandoffObserver(null);
     clearCrossSurfaceNavigationHandoff();

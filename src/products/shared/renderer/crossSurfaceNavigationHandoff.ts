@@ -107,6 +107,18 @@ function emitCrossSurfaceNavigationHandoffEvent(
   }
 }
 
+// Handoff bundles live in a module-scoped store so every stage / hit event
+// would otherwise hand observers a live reference to the backing record. A
+// misbehaving observer could then mutate `destination.route.path`,
+// `snapshot`, etc. and silently corrupt later match / consume calls. The
+// observer seam is for telemetry and debug, so trading a structured clone
+// per emit for store integrity is worth it.
+function cloneBundleForObservation(
+  bundle: CrossSurfaceNavigationHandoffBundle,
+): CrossSurfaceNavigationHandoffBundle {
+  return structuredClone(bundle);
+}
+
 // -------------------------- store + dedup log --------------------------
 
 const stagedCrossSurfaceNavigationHandoffs = new Map<
@@ -256,7 +268,11 @@ function resolveStagedCrossSurfaceNavigationHandoff(
   const stagedBundle = stagedCrossSurfaceNavigationHandoffs.get(handoffKey) ?? null;
 
   if (!stagedBundle) {
-    if (consume) {
+    // Only classify as a miss when the store actually holds something that
+    // could have matched. A cold boot or an unrelated navigation with no
+    // staged handoffs is not a miss — counting it would pollute telemetry
+    // hit/miss rates and spam dev warnings on normal app launches.
+    if (consume && stagedCrossSurfaceNavigationHandoffs.size > 0) {
       logCrossSurfaceNavigationHandoffMiss(match, 'missing');
       emitCrossSurfaceNavigationHandoffEvent({ kind: 'miss', match, reason: 'missing' });
     }
@@ -283,7 +299,11 @@ function resolveStagedCrossSurfaceNavigationHandoff(
 
   if (consume) {
     deleteStagedCrossSurfaceNavigationHandoff(handoffKey);
-    emitCrossSurfaceNavigationHandoffEvent({ kind: 'hit', match, bundle: stagedBundle });
+    emitCrossSurfaceNavigationHandoffEvent({
+      kind: 'hit',
+      match,
+      bundle: cloneBundleForObservation(stagedBundle),
+    });
   }
 
   return stagedBundle;
@@ -316,7 +336,10 @@ export function stageCrossSurfaceNavigationHandoff(
     buildCrossSurfaceNavigationHandoffKey(normalizedBundle.destination.route),
     normalizedBundle,
   );
-  emitCrossSurfaceNavigationHandoffEvent({ kind: 'stage', bundle: normalizedBundle });
+  emitCrossSurfaceNavigationHandoffEvent({
+    kind: 'stage',
+    bundle: cloneBundleForObservation(normalizedBundle),
+  });
 }
 
 /**
