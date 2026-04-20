@@ -193,6 +193,37 @@ body.guideCatDragging .guideCatDockSlot,
   display: none;
 }
 
+/* 24x24 hover-reveal undock target at the right end of the docked row,
+ * optically aligned with the `.sidebarFooterTrailing` runtime dot in the
+ * user chrome directly below. Same reveal pattern as that slot: hidden
+ * by default, fades in when the docked row is hovered, keeps its own
+ * hover background on the inner target. */
+.guideCatDockUndockSlot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  pointer-events: none;
+  cursor: pointer;
+}
+
+.guideCatDockSlot--workspace[data-active='true']:hover .guideCatDockUndockSlot {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.guideCatDockUndockSlot:hover {
+  background: var(--panel-hover);
+}
+
+.sidebarCollapsed .guideCatDockUndockSlot {
+  display: none;
+}
+
 .guideCatDockSlot--workspace[data-active='true'] + .sidebarFooter {
   border-top: none;
 }

@@ -68,6 +68,10 @@ export interface GuideCatPlacementContextValue {
    * is not currently mounted. Used by the sidecar to anchor the bubble-mode
    * peek next to the docked pill without caching stale geometry. */
   getDockSlotRect: (slot: GuideCatDockSlotKind) => GuideCatSlotRect | null;
+  /** Explicit (non-drag) undock from the current dock slot: commits a
+   * floating placement anchored near the slot centre, mirroring what a
+   * drag-release-with-escape would produce. No-op when not docked. */
+  undock: () => void;
 }
 
 const GuideCatPlacementContext = createContext<GuideCatPlacementContextValue | null>(null);
@@ -561,6 +565,15 @@ export function GuideCatPlacementProvider({
     return was;
   }, []);
 
+  const undock = useCallback(() => {
+    if (projection.kind !== 'docked') return;
+    const rect = getDockSlotRect(projection.slot);
+    if (!rect) return;
+    const centerX = (rect.left + rect.right) / 2;
+    const centerY = (rect.top + rect.bottom) / 2;
+    onCommit(resolveFloatingReleaseCommit(centerX, centerY, true));
+  }, [projection, onCommit, resolveFloatingReleaseCommit, getDockSlotRect]);
+
   const value: GuideCatPlacementContextValue = useMemo(
     () => ({
       guideCat,
@@ -575,6 +588,7 @@ export function GuideCatPlacementProvider({
       dragActive: dragActivated,
       panelOriginX,
       getDockSlotRect,
+      undock,
     }),
     [
       guideCat,
@@ -588,6 +602,7 @@ export function GuideCatPlacementProvider({
       dragActivated,
       panelOriginX,
       getDockSlotRect,
+      undock,
     ],
   );
 

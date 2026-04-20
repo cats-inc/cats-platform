@@ -34,6 +34,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
     onDockedPointerDown,
     consumePillClickSuppression,
     dragActive,
+    undock,
   } = useGuideCatPlacement();
   const registerRef = useRegisterGuideCatDockSlot(slotKind);
 
@@ -108,7 +109,40 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
             />
           </button>
           {slotKind === 'workspace' ? (
-            <span className="guideCatDockName">{displayName}</span>
+            <>
+              <span className="guideCatDockName">{displayName}</span>
+              <span
+                className="guideCatDockUndockSlot"
+                role="button"
+                tabIndex={0}
+                aria-label={`Undock ${displayName}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  undock();
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    undock();
+                  }
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 3h8v8" />
+                  <path d="M13 3 4 12" />
+                </svg>
+              </span>
+            </>
           ) : null}
         </>
       ) : null}
