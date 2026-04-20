@@ -1,9 +1,12 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-function readFirstDefined(keys: string[]): string | undefined {
+function readFirstDefined(
+  env: Record<string, string | undefined>,
+  keys: string[],
+): string | undefined {
   for (const key of keys) {
-    const value = process.env[key]?.trim();
+    const value = env[key]?.trim();
     if (value) {
       return value;
     }
@@ -30,30 +33,33 @@ function normalizeProxyHost(host: string): string {
   return host;
 }
 
-const appHost = readFirstDefined(['CATS_HOST', 'CATS_INC_HOST']) || '127.0.0.1';
-const appPort = parsePort(readFirstDefined(['CATS_PORT', 'CATS_INC_PORT']), 8181);
-const webHost = readFirstDefined(['CATS_WEB_HOST']) || appHost;
-const devPort = parsePort(readFirstDefined(['CATS_WEB_DEV_PORT']), 5173);
-const previewPort = parsePort(readFirstDefined(['CATS_WEB_PREVIEW_PORT']), 4173);
-const proxyTarget = readFirstDefined(['CATS_WEB_PROXY_TARGET'])
-  || `http://${normalizeProxyHost(appHost)}:${appPort}`;
+export default defineConfig(({ mode }) => {
+  const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
+  const appHost = readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || '127.0.0.1';
+  const appPort = parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), 8181);
+  const webHost = readFirstDefined(env, ['CATS_WEB_HOST']) || appHost;
+  const devPort = parsePort(readFirstDefined(env, ['CATS_WEB_DEV_PORT']), 5173);
+  const previewPort = parsePort(readFirstDefined(env, ['CATS_WEB_PREVIEW_PORT']), 4173);
+  const proxyTarget = readFirstDefined(env, ['CATS_WEB_PROXY_TARGET'])
+    || `http://${normalizeProxyHost(appHost)}:${appPort}`;
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    host: webHost,
-    port: devPort,
-    proxy: {
-      '/api': proxyTarget,
-      '/health': proxyTarget,
-      '/runtime': proxyTarget,
+  return {
+    plugins: [react()],
+    server: {
+      host: webHost,
+      port: devPort,
+      proxy: {
+        '/api': proxyTarget,
+        '/health': proxyTarget,
+        '/runtime': proxyTarget,
+      },
     },
-  },
-  preview: {
-    host: webHost,
-    port: previewPort,
-  },
-  build: {
-    outDir: 'build/renderer',
-  },
+    preview: {
+      host: webHost,
+      port: previewPort,
+    },
+    build: {
+      outDir: 'build/renderer',
+    },
+  };
 });
