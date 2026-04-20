@@ -74,6 +74,8 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onHighlightDraftCat: () => {},
     draftCatExecutionTargetOverrides: new Map(),
     onDraftCatExecutionTargetOverride: () => {},
+    draftSurface: 'chat',
+    onDraftSurfaceChange: () => {},
     ...overrides,
   };
 }

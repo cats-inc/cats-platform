@@ -10,6 +10,7 @@ import {
 } from '../draftChatUtils.js';
 import {
   fingerprintDraftHelperChips,
+  resolveDraftHelperRegionVisibility,
   useDraftHelperChipVisibility,
 } from '../draftHelperChips.js';
 import { catInitials, isChatCat, truncatePath } from '../workspaceChatUtils.js';
@@ -750,23 +751,18 @@ export function NewChatDraft({
             />
           )}
           helperRegion={(() => {
-            if (isDirectLaneContext) return null;
-            const runtimeChipsVisible =
-              showDraftHelperChips && visibleStarterSuggestions.length > 0;
-            // Runtime-backed `newChatAssist` chips win over the
-            // product-supplied fallback when both exist, so a +New
-            // draft expanded into a group with runtime group chips
-            // does not pile the chat-product Pomodoro fallback on
-            // top. The fallback only renders when no runtime chip
-            // list is on screen.
-            const fallbackChipsVisible =
-              !runtimeChipsVisible
-              && Boolean(leadingStarterChips && leadingStarterChips.length > 0);
-            if (!runtimeChipsVisible && !fallbackChipsVisible) return null;
+            const { runtimeChipsRendered, fallbackChipsRendered } =
+              resolveDraftHelperRegionVisibility({
+                isDirectLaneContext,
+                showDraftHelperChips,
+                runtimeChipCount: visibleStarterSuggestions.length,
+                fallbackChipCount: leadingStarterChips?.length ?? 0,
+              });
+            if (!runtimeChipsRendered && !fallbackChipsRendered) return null;
             return (
               <div className="draftPromptSuggestions">
                 <div className="chipRow">
-                  {fallbackChipsVisible
+                  {fallbackChipsRendered
                     ? leadingStarterChips?.map((chip) => (
                         <button
                           key={chip.id}
@@ -782,7 +778,7 @@ export function NewChatDraft({
                         </button>
                       ))
                     : null}
-                  {runtimeChipsVisible
+                  {runtimeChipsRendered
                     ? visibleStarterSuggestions.map((suggestion) => (
                         <button
                           key={suggestion.id}
