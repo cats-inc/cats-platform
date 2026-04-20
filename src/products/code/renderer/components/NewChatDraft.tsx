@@ -1,19 +1,12 @@
-import { useNavigate } from 'react-router-dom';
-
 import {
   NewChatDraft as ChatNewChatDraft,
   type NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
 import {
-  NewChatDraft as WorkspaceNewChatDraft,
-  type NewChatDraftProps as WorkspaceDraftProps,
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
-import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
-import { isComposerBusyForDraft } from '../../../../shared/composer.js';
-import { buildNewGroupChatPath, buildNewParallelChatPath } from '../../shared/channelPaths.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   greeting: 'Ready to code.',
@@ -48,182 +41,39 @@ function resolveCodeDraftHelperChips(props: NewChatDraftProps): Array<{
     }));
 }
 
-function buildWorkspaceDraftProps(input: {
-  props: NewChatDraftProps;
-  visibleHelperChips: Array<{
-    id: string;
-    label?: string | null;
-    prompt: string;
-  }>;
-  onSelectHelperChip: (prompt: string) => void;
-}): WorkspaceDraftProps {
-  const { props, visibleHelperChips, onSelectHelperChip } = input;
-  const {
-    greeting,
-    greetingPool,
-    draftTemporaryParticipants,
-    onAddDraftTemporaryParticipant,
-    onQuickAddDraftTemporaryParticipant,
-    onRemoveDraftTemporaryParticipant,
-    onUpdateDraftTemporaryParticipant,
-    entryPreset,
-    parallelTargets,
-    onParallelTargetChange,
-    onAddParallelTarget,
-    onRemoveParallelTarget,
-    draftWorkflowShape,
-    onToggleDraftWorkflowShape,
-    draftAudienceKeys,
-    onSetAudienceKeys,
-    draftRuntimeSessionPolicy,
-    onDraftRuntimeSessionPolicyChange,
-    onCancelPendingSend,
-    hideDraftGroupHint,
-    hideDraftParallelHint,
-    ...workspaceProps
-  } = props;
-  const codeAssist = props.payload.guideCatAssist?.codeNewDraft ?? null;
-  const assistGreeting = codeAssist?.bundle.content.greeting?.trim() || null;
-  const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
-
-  // Default +New code intentionally ignores the chat-group and parallel draft fields
-  // until Team Code and Peer Code get their own product-owned draft surfaces.
-  void greetingPool;
-  void draftTemporaryParticipants;
-  void onAddDraftTemporaryParticipant;
-  void onQuickAddDraftTemporaryParticipant;
-  void onRemoveDraftTemporaryParticipant;
-  void onUpdateDraftTemporaryParticipant;
-  void entryPreset;
-  void parallelTargets;
-  void onParallelTargetChange;
-  void onAddParallelTarget;
-  void onRemoveParallelTarget;
-  void draftWorkflowShape;
-  void onToggleDraftWorkflowShape;
-  void draftAudienceKeys;
-  void onSetAudienceKeys;
-  void draftRuntimeSessionPolicy;
-  void onDraftRuntimeSessionPolicyChange;
-  void onCancelPendingSend;
-  void hideDraftGroupHint;
-  void hideDraftParallelHint;
-
-  return {
-    ...workspaceProps,
-    greeting: assistGreeting ?? greeting ?? undefined,
-    postComposerAccessory: visibleHelperChips.length > 0 ? (
-      <div className="draftPromptSuggestions">
-        <div className="chipRow">
-          {visibleHelperChips.map((chip) => (
-            <button
-              key={chip.id}
-              className="promptChip draftPromptChip"
-              type="button"
-              disabled={isSubmittingFirstTurn}
-              onClick={() => onSelectHelperChip(chip.prompt)}
-            >
-              {chip.label?.trim() || chip.prompt}
-            </button>
-          ))}
-        </div>
-      </div>
-    ) : null,
-  };
-}
-
+/**
+ * Every Code entry — +New Code, +Team Code, +Peer Code — renders
+ * through `ChatNewChatDraft`. The shell (`WorkspaceProductApp`)
+ * already computes `showDraftGroupAddButton` / `hideDraftGroupHint` /
+ * `hideDraftParallelHint` correctly per preset for surface='code', so
+ * this wrapper only layers on Code-specific chrome: surface chip,
+ * session chips, helper chips, and the Code copy strings.
+ */
 export function NewChatDraft(props: NewChatDraftProps) {
-  if (props.entryPreset === 'group' || props.entryPreset === 'parallel') {
-    return <CodeGroupParallelDraft {...props} />;
-  }
-  return <CodeDefaultDraft {...props} />;
-}
-
-function CodeGroupParallelDraft(props: NewChatDraftProps) {
-  const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
-    props.payload.chat.advancedDraftControls,
-    'code',
-  );
   const helperChips = resolveCodeDraftHelperChips(props);
-  const showCrossGroupButton = advancedDraftControlsEnabled && props.entryPreset === 'parallel';
   const { permissionChip, whereExtras } = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
     draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
     onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
   });
+
   return (
     <ChatNewChatDraft
       {...props}
       preserveHelperChipsOnSelect
-      leadingStarterChips={helperChips.map((chip) => ({
-        id: chip.id,
-        label: chip.label,
-        onClick: () => {
-          props.onComposerChange(chip.prompt);
-        },
-      }))}
+      leadingStarterChips={helperChips.length > 0
+        ? helperChips.map((chip) => ({
+            id: chip.id,
+            label: chip.label,
+            onClick: () => { props.onComposerChange(chip.prompt); },
+          }))
+        : undefined}
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
       composerPlaceholder={NEW_CODE_DRAFT_COPY.composerPlaceholder}
       folderActionLabel={NEW_CODE_DRAFT_COPY.folderActionLabel}
-      showDraftGroupAddButton={showCrossGroupButton}
-      hideDraftGroupHint={showCrossGroupButton}
-      hideDraftParallelHint={advancedDraftControlsEnabled && props.entryPreset !== 'parallel'}
-    />
-  );
-}
-
-function CodeDefaultDraft(props: NewChatDraftProps) {
-  const navigate = useNavigate();
-  const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
-    props.payload.chat.advancedDraftControls,
-    'code',
-  );
-  const availableHelperChips = resolveCodeDraftHelperChips(props);
-  const showAdvancedEntryButtons =
-    advancedDraftControlsEnabled
-    && props.allowAddCat !== false
-    && !props.draftDefaultRecipientCatId;
-  const { permissionChip, whereExtras } = useDraftSessionChips({
-    draftCwd: props.draftCwd,
-    busy: props.busy,
-    draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
-    onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
-  });
-  const workspaceProps = buildWorkspaceDraftProps({
-    props,
-    visibleHelperChips: availableHelperChips,
-    onSelectHelperChip: (prompt) => {
-      props.onComposerChange(prompt);
-    },
-  });
-
-  // +New Code's draft surface intentionally omits the M*N composer
-  // layout (that lives in Team Code / Peer Code). When the user
-  // clicks the teaching +collaborate / +compare buttons on +New
-  // Code, route them to the corresponding dedicated draft instead of
-  // silently mutating the shared draft state that +New Code does not
-  // render.
-  const navigateToTeamCode = showAdvancedEntryButtons
-    ? () => { navigate(buildNewGroupChatPath()); }
-    : undefined;
-  const navigateToPeerCode = showAdvancedEntryButtons
-    ? () => { navigate(buildNewParallelChatPath()); }
-    : undefined;
-
-  return (
-    <WorkspaceNewChatDraft
-      {...workspaceProps}
-      copy={NEW_CODE_DRAFT_COPY}
-      composerHeaderAccessory={permissionChip}
-      composerHeaderWhereExtras={whereExtras}
-      surfaceTag={<ComposerSurfaceChip surface="code" />}
-      showDraftGroupAddButton={showAdvancedEntryButtons}
-      onQuickAddDraftTemporaryParticipant={navigateToTeamCode}
-      showDraftParallelAddButton={showAdvancedEntryButtons}
-      onAddParallelTarget={navigateToPeerCode}
     />
   );
 }
