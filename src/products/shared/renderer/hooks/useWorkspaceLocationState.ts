@@ -9,6 +9,7 @@ import {
   readWorkspaceNewChatLeadCatId,
   type WorkspaceNewChatPreset,
 } from '../../channelPaths.js';
+import { isSettingsPath } from '../../../../shared/settingsRoute.js';
 
 export interface WorkspaceLocationState {
   location: ReturnType<typeof useLocation>;
@@ -34,8 +35,7 @@ export function useWorkspaceLocationState(chatPrefix: string): WorkspaceLocation
 
   return {
     location,
-    settingsMode:
-      location.pathname === '/settings' || location.pathname.startsWith('/settings/'),
+    settingsMode: isSettingsPath(location.pathname),
     routeChannelId,
     routeMyCatId,
     showingNewChatDraft,

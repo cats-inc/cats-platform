@@ -22,6 +22,7 @@ import {
   readNewChatPreset,
 } from '../shared/channelPaths';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import { isSettingsPath } from '../../../shared/settingsRoute.js';
 import {
   getProviderDisplayName,
 } from '../../../shared/providerCatalog';
@@ -113,7 +114,7 @@ import './styles.css';
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const settingsMode = location.pathname === '/settings' || location.pathname.startsWith('/settings/');
+  const settingsMode = isSettingsPath(location.pathname);
   const channelMatch = useMatch(`${CHAT_PREFIX}/chats/:channelId`);
   const myCatMatch = useMatch(`${CHAT_PREFIX}/my-cats/:catId`);
   const routeChannelId = channelMatch?.params.channelId ?? null;

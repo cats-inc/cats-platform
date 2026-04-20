@@ -1,3 +1,5 @@
+import { isSettingsPath } from '../../../shared/settingsRoute.js';
+
 // Tracks the router-history position just before the user entered the
 // Settings surface in this session, so the X close button can skip all
 // in-settings tab navigations (e.g., General → My Cats → Assistants) and
@@ -21,15 +23,9 @@
 //     hasSeenNonSettings stays false → preSettingsIdx stays null → the
 //     close button falls back to /lobby with replace.
 
-const SETTINGS_PATH_PREFIX = '/settings';
-
 let preSettingsIdx: number | null = null;
 let wasInSettings = false;
 let hasSeenNonSettings = false;
-
-export function isSettingsPath(pathname: string): boolean {
-  return pathname === SETTINGS_PATH_PREFIX || pathname.startsWith(`${SETTINGS_PATH_PREFIX}/`);
-}
 
 export function recordSettingsRouteTransition(pathname: string, idx: number | undefined): void {
   const nowInSettings = isSettingsPath(pathname);
@@ -61,3 +57,5 @@ export function __resetSettingsExitMemoryForTests(): void {
   wasInSettings = false;
   hasSeenNonSettings = false;
 }
+
+export { isSettingsPath };

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import type { GuideCatPlacement, GuideCatSidecarMode } from '../../shared/platform-contract.js';
+import { isSettingsPath } from '../../shared/settingsRoute.js';
 
 export type GuideCatSidecarViewState = 'hidden' | 'collapsed' | 'welcome-peek' | 'open';
 type GuideCatSidecarInnerState = Exclude<GuideCatSidecarViewState, 'hidden'>;
@@ -158,8 +159,7 @@ export function useGuideCatSidecarState(
   modeRef.current = mode;
 
   const isSetupRoute = location.pathname === '/setup';
-  const isSettingsRoute =
-    location.pathname === '/settings' || location.pathname.startsWith('/settings/');
+  const isSettingsRoute = isSettingsPath(location.pathname);
   // Settings hides the sidecar for floating placement because there is no
   // canvas to anchor against, but a docked pill should still be clickable
   // from the sidebar chrome even while the settings page is open. The

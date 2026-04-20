@@ -35,6 +35,7 @@ import { fetchPlatformEnvelope } from './setup/api';
 import { prefetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
 import { isGuideCatEnabledStatus } from '../../shared/guideCatIdentity.js';
+import { isSettingsPath } from '../../shared/settingsRoute.js';
 import { createLazyProductSurface } from './productSurfaceEntries.js';
 
 type PlatformLoadState =
@@ -366,7 +367,7 @@ export default function PlatformApp() {
   }, [state.status, state.status === 'ready' ? state.envelope.lastProductSurface : null]);
 
   useEffect(() => {
-    if (location.pathname === '/settings' || location.pathname.startsWith('/settings/')) {
+    if (isSettingsPath(location.pathname)) {
       setActiveSurface((current) => (current === preferredSurface ? current : preferredSurface));
       return;
     }

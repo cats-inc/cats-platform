@@ -3,6 +3,7 @@ import type {
   GuideCatPlacement,
 } from '../../shared/platform-contract.js';
 import { GUIDE_CAT_FLOATING_ANCHOR_DEFAULT } from '../../shared/platform-contract.js';
+import { isSettingsPath } from '../../shared/settingsRoute.js';
 
 export type GuideCatSurfaceClass = 'lobby' | 'workspace' | 'hidden';
 export type GuideCatDockSlotKind = 'lobby' | 'workspace';
@@ -37,7 +38,7 @@ export function resolveGuideCatSurfaceClass(
   if (pathname === '/setup') {
     return 'hidden';
   }
-  const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/');
+  const isSettingsRoute = isSettingsPath(pathname);
   if (isSettingsRoute) {
     // When the pill is docked, the sidebar still renders in settings mode
     // and the user can reasonably click the docked pill to open a peek.

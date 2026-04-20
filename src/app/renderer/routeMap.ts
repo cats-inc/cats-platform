@@ -1,5 +1,6 @@
 export type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
+import { isSettingsPath } from '../../shared/settingsRoute.js';
 import { isEnabledPlatformSurface, normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import { resolvePlatformSurfaceApiBase } from '../../shared/platformSurfaceApi.js';
 import {
@@ -40,7 +41,7 @@ export function isPlatformNonProductPath(pathname: string): boolean {
     return true;
   }
 
-  if (pathname === '/settings' || pathname.startsWith('/settings/')) {
+  if (isSettingsPath(pathname)) {
     return true;
   }
 
@@ -84,7 +85,7 @@ export function resolvePlatformShellSurface(
   pathname: string,
   lastKnownSurface: PlatformSurfaceId | null | undefined,
 ): PlatformSurfaceId {
-  if (pathname === '/settings' || pathname.startsWith('/settings/')) {
+  if (isSettingsPath(pathname)) {
     return lastKnownSurface ?? 'chat';
   }
 
