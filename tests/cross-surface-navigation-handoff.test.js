@@ -130,6 +130,44 @@ test('warm bootstrap can peek a matching snapshot before the mount-time consume'
   assert.equal(inspectLatestStagedCrossSurfaceNavigationHandoff(), null);
 });
 
+test('conversation-shaped handoff bundles round-trip through the generic warm-navigation store', () => {
+  clearCrossSurfaceNavigationHandoff();
+  const snapshotPayload = {
+    chat: {
+      selectedChannelId: 'conversation-99',
+    },
+  };
+  const match = {
+    surface: 'work',
+    path: buildCrossSurfaceNavigationMatchPath('/work/chats/conversation-99'),
+  };
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'navigate-conversation',
+    sourceSurface: 'code',
+    targetSurface: 'work',
+    destination: {
+      entityKind: 'conversation',
+      entityId: 'conversation-99',
+      route: match,
+    },
+    createdAt: new Date().toISOString(),
+    snapshot: {
+      appShellPayload: snapshotPayload,
+    },
+  });
+
+  assert.deepEqual(peekCrossSurfaceNavigationSnapshot(match), snapshotPayload);
+  const consumed = consumeCrossSurfaceNavigationHandoff(match);
+  assert.ok(consumed);
+  assert.equal(consumed.kind, 'navigate-conversation');
+  assert.equal(consumed.sourceSurface, 'code');
+  assert.equal(consumed.targetSurface, 'work');
+  assert.equal(consumed.destination.entityKind, 'conversation');
+  assert.equal(consumed.destination.entityId, 'conversation-99');
+  assert.deepEqual(consumed.snapshot?.appShellPayload, snapshotPayload);
+});
+
 test('peek does not evict invalid or stale staged bundles; only consume does', () => {
   clearCrossSurfaceNavigationHandoff();
   const events = [];

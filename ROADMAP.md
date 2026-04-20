@@ -642,6 +642,10 @@ contracts.
       artifacts, tasks, and runs, instead of letting each deep-link or
       product-to-product jump invent a second continuity stack above routing,
       prefetch, and handoff-state consumption
+      Progress: registry and handoff-store seam coverage now prove
+      `conversation` targets already route and round-trip through the generic
+      warm-navigation stack; actual non-draft consumers for conversations,
+      artifacts, tasks, and runs still remain.
 - [ ] After the first cross-surface draft submit path ships, choose and land
       the first non-draft consumer of the warm navigation seam so the generic
       investment is proven by a real follow-on path rather than remaining

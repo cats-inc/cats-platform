@@ -31,6 +31,14 @@ test('parallel group handoff routes through the active member channel', () => {
     }),
     { surface: 'work', path: '/work/chats/channel-9' },
   );
+  assert.deepEqual(
+    resolveCrossSurfaceNavigationRouteTarget({
+      surface: 'code',
+      entityKind: 'conversation',
+      entityId: 'conversation-7',
+    }),
+    { surface: 'code', path: '/code/chats/conversation-7' },
+  );
 });
 
 test('parallel group handoff rejects missing active member routes', () => {
