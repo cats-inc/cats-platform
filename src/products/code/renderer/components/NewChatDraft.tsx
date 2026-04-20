@@ -8,10 +8,6 @@ import {
   type WorkspaceNewChatDraftCopy,
 } from '../../../shared/renderer/components/NewChatDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
-import {
-  fingerprintDraftHelperChips,
-  useDraftHelperChipVisibility,
-} from '../../../shared/renderer/draftHelperChips.js';
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
@@ -140,6 +136,7 @@ function CodeGroupParallelDraft(props: NewChatDraftProps) {
   return (
     <ChatNewChatDraft
       {...props}
+      preserveHelperChipsOnSelect
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
@@ -169,19 +166,10 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
   const availableHelperChips = (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
     .filter((chip) => chip.prompt.trim().length > 0)
     .slice(0, 3);
-  const helperChipResetKey = fingerprintDraftHelperChips(availableHelperChips);
-  const {
-    showDraftHelperChips,
-    dismissDraftHelperChips,
-  } = useDraftHelperChipVisibility({
-    availableChipCount: availableHelperChips.length,
-    resetKey: helperChipResetKey,
-  });
   const workspaceProps = buildWorkspaceDraftProps({
     props,
-    visibleHelperChips: showDraftHelperChips ? availableHelperChips : [],
+    visibleHelperChips: availableHelperChips,
     onSelectHelperChip: (prompt) => {
-      dismissDraftHelperChips();
       props.onComposerChange(prompt);
     },
   });

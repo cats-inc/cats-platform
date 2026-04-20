@@ -126,6 +126,7 @@ export interface NewChatDraftProps {
     label: string;
     onClick: () => void;
   }>;
+  preserveHelperChipsOnSelect?: boolean;
 }
 
 export function NewChatDraft({
@@ -204,6 +205,7 @@ export function NewChatDraft({
   folderActionLabel = 'Choose folder',
   chooseFolderPlacement = 'header',
   leadingStarterChips,
+  preserveHelperChipsOnSelect = false,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const maxAudienceParticipants = payload.chat.capabilities.maxAudienceParticipants ?? 3;
@@ -779,7 +781,9 @@ export function NewChatDraft({
                           type="button"
                           disabled={isSubmittingFirstTurn}
                           onClick={() => {
-                            dismissDraftHelperChips();
+                            if (!preserveHelperChipsOnSelect) {
+                              dismissDraftHelperChips();
+                            }
                             chip.onClick();
                           }}
                         >
@@ -795,7 +799,9 @@ export function NewChatDraft({
                           type="button"
                           disabled={isSubmittingFirstTurn}
                           onClick={() => {
-                            dismissDraftHelperChips();
+                            if (!preserveHelperChipsOnSelect) {
+                              dismissDraftHelperChips();
+                            }
                             onComposerChange(suggestion.prompt);
                           }}
                         >
