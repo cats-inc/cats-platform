@@ -170,7 +170,7 @@ test('group route uses the greeting seam instead of a fixed heading', () => {
   assert.doesNotMatch(markup, /Start a group chat/u);
 });
 
-test('group route does not show helper chips without runtime-backed assist content', () => {
+test('group route shows the same Pomodoro helper chip as the default new chat draft', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -180,7 +180,8 @@ test('group route does not show helper chips without runtime-backed assist conte
   );
 
   assert.doesNotMatch(markup, /split roles, and ask for a coordinated plan/u);
-  assert.doesNotMatch(markup, /draftPromptChip/u);
+  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, /draftPromptChip/u);
 });
 
 test('default chat draft expanded to a group with runtime assist hides the chat-product fallback chip', () => {
@@ -623,10 +624,11 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
   assert.equal(implicitIconMatches.length, 0);
 });
 
-test('parallel draft does not show helper chips without runtime-backed assist content', () => {
+test('parallel draft shows the same Pomodoro helper chip as the default new chat draft', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
+        entryPreset: 'parallel',
         parallelTargets: [
           {
             provider: 'claude-cli',
@@ -645,7 +647,8 @@ test('parallel draft does not show helper chips without runtime-backed assist co
     />,
   );
 
-  assert.doesNotMatch(markup, /draftPromptChip/u);
+  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, /draftPromptChip/u);
   assert.doesNotMatch(markup, /Compare how different models would approach the same task\./u);
 });
 
@@ -811,7 +814,8 @@ test('group draft ignores deterministic payload-backed starter prompts', () => {
   );
 
   assert.doesNotMatch(markup, /Brief the group, split roles, and ask for a coordinated plan\./u);
-  assert.doesNotMatch(markup, /draftPromptChip/u);
+  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, /draftPromptChip/u);
 });
 
 test('group draft surfaces runtime-origin payload-backed starter prompts', () => {

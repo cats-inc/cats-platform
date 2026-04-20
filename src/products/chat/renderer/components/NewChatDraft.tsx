@@ -53,21 +53,20 @@ function NewChatDraftInner(props: NewChatDraftProps) {
   const isDirectLaneDraft = !(props.allowAddCat ?? true) && Boolean(props.draftDefaultRecipientCatId);
   const isParallelDraft = (props.parallelTargets?.length ?? 0) >= 2;
   const entryPreset = props.entryPreset ?? 'default';
-  // The hard-coded "Pomodoro app" chip only belongs on the default
-  // single-chat draft. Group / parallel entries (and any default draft
-  // that has been expanded to multiple parallel targets) surface their
-  // chips through runtime-backed `newChatAssist` content via the
-  // shared composer's `visibleStarterSuggestions`, not via this
-  // chat-product fallback. Including those entries here previously
-  // leaked the Pomodoro chip into surfaces that should stay clean.
-  // The shared composer additionally hides this fallback whenever a
-  // runtime starter suggestion list is non-empty (see helperRegion in
-  // ChatNewChatDraft.tsx), so a +New draft expanded to a group with
-  // runtime assist content does not show both chip sources at once.
+  // Chat owns the cross-surface "Pomodoro app" affordance for fresh
+  // +New, +Group, and +Parallel entry routes. Any runtime-backed
+  // `newChatAssist` chips still take precedence inside the shared
+  // composer helperRegion, so this fallback only renders when the
+  // route has no runtime chip source. Keep expanded default compare
+  // drafts excluded; they are no longer one of the dedicated fresh
+  // entry routes the product is asking to decorate.
   const showsChatStarterChip =
     !isDirectLaneDraft
-    && entryPreset === 'default'
-    && !isParallelDraft;
+    && (
+      entryPreset === 'group'
+      || entryPreset === 'parallel'
+      || (entryPreset === 'default' && !isParallelDraft)
+    );
 
   const leadingStarterChips = showsChatStarterChip
     ? [
