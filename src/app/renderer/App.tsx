@@ -11,7 +11,10 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
-import { platformSurfaceLabel } from '../../core/platformSurface.js';
+import {
+  platformSurfaceLabel,
+  platformSurfaceRoutePrefix,
+} from '../../core/platformSurface.js';
 import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import {
   isPlatformNonProductPath,
@@ -46,11 +49,6 @@ const CodeApp = createLazyProductSurface('code');
 
 function isLobbyPath(pathname: string): boolean {
   return pathname === '/lobby' || pathname.startsWith('/lobby/');
-}
-
-function resolveProductEntryPath(surface: string): string {
-  const route = PLATFORM_SURFACE_ROUTES[surface as keyof typeof PLATFORM_SURFACE_ROUTES];
-  return route ? route.routePrefix : '/';
 }
 
 function resolveLoadingTitleForPath(pathname: string): string {
@@ -176,7 +174,7 @@ export default function PlatformApp() {
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   const [productSurfaceFallbackActive, setProductSurfaceFallbackActive] = useState(false);
   const [guideCatProactiveGreetingToken, setGuideCatProactiveGreetingToken] = useState(0);
-  const lastSyncedSurface = useRef<string | null>(null);
+  const lastSyncedSurface = useRef<PlatformSurfaceId | null>(null);
   const previousPathnameRef = useRef(location.pathname);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
 
@@ -504,7 +502,7 @@ export default function PlatformApp() {
   // Setup complete: products at their own prefix, settings at /settings/*.
   const shellSurface = resolvePlatformShellSurface(location.pathname, preferredSurface);
   const hasStoredSurface = Boolean(readyEnvelope.lastProductSurface);
-  const entryPath = hasStoredSurface ? resolveProductEntryPath(preferredSurface) : '/lobby';
+  const entryPath = hasStoredSurface ? platformSurfaceRoutePrefix(preferredSurface) : '/lobby';
   const settingsSurfaceElement = renderProductSurface(
     shellSurface,
     setProductSurfaceFallbackActive,
