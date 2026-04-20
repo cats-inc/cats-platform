@@ -1,8 +1,7 @@
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import { resolvePlatformSurfaceRoutePrefix } from '../../../shared/platformProducts.js';
 import { prefetchProductSurface } from '../../../app/renderer/productSurfaceEntries.js';
-import { buildChannelPath as buildChatChannelPath } from '../../chat/shared/channelPaths.js';
-import { buildChannelPath as buildCodeChannelPath } from '../../code/shared/channelPaths.js';
-import { buildChannelPath as buildWorkChannelPath } from '../../work/shared/channelPaths.js';
+import { buildWorkspaceChannelPath } from '../channelPaths.js';
 import type {
   CrossSurfaceNavigationDestinationEntityKind,
   CrossSurfaceNavigationRouteTarget,
@@ -15,17 +14,11 @@ export interface CrossSurfaceNavigationTarget {
   activeChannelId?: string | null;
 }
 
-const CHANNEL_PATH_BUILDERS: Record<PlatformSurfaceId, (channelId: string) => string> = {
-  chat: buildChatChannelPath,
-  code: buildCodeChannelPath,
-  work: buildWorkChannelPath,
-};
-
 export function buildCrossSurfaceChannelPath(
   surface: PlatformSurfaceId,
   channelId: string,
 ): string {
-  return CHANNEL_PATH_BUILDERS[surface](channelId);
+  return buildWorkspaceChannelPath(resolvePlatformSurfaceRoutePrefix(surface), channelId);
 }
 
 export function buildCrossSurfaceNavigationPath(
