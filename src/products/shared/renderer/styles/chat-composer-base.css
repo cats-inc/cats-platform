@@ -869,20 +869,21 @@
 }
 
 .composerSurfaceChipCode {
+  background: rgba(72, 160, 100, 0.12);
+  color: #2e6f43;
+  border-color: rgba(72, 160, 100, 0.28);
+}
+
+.composerSurfaceChipWork {
   background: rgba(95, 135, 240, 0.12);
   color: #3856a0;
   border-color: rgba(95, 135, 240, 0.25);
 }
 
-.composerSurfaceChipWork {
-  background: rgba(176, 132, 72, 0.12);
-  color: #7a5428;
-  border-color: rgba(176, 132, 72, 0.3);
-}
-
 .composerSurfaceChipChat {
-  background: rgba(120, 120, 120, 0.1);
-  color: var(--muted);
+  background: rgba(216, 170, 54, 0.14);
+  color: #8a6318;
+  border-color: rgba(216, 170, 54, 0.3);
 }
 
 .draftCustomRegion {
