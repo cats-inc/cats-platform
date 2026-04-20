@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type { CreateParallelChatGroupInput } from './api/chat.js';
 import {
   createParallelChatGroup,
   encodeAttachmentFiles,
@@ -56,6 +57,40 @@ export interface SubmitNewParallelChatDraftResult {
   dispatchRequest: ParallelDispatchRequestState | null;
 }
 
+export function buildParallelChatDraftCreateInput(input: {
+  body: string;
+  existingCount: number;
+  originSurface: PlatformSurfaceId;
+  draftCwd: string | null;
+  draftParallelBranches: DraftParallelBranchState<WorkspaceExecutionTargetValue>[];
+  draftParallelChatTargets: WorkspaceExecutionTargetValue[];
+  draftParticipantCatIds?: string[];
+  draftTemporaryParticipants?: DraftTemporaryParticipant[];
+}): CreateParallelChatGroupInput {
+  return {
+    title: createDraftChannelTitle(input.body, input.existingCount),
+    originSurface: input.originSurface,
+    repoPath: input.draftCwd ?? undefined,
+    targets: input.draftParallelChatTargets.map((target, index) => ({
+      provider: target.provider,
+      instance: target.instance ?? null,
+      model: target.model ?? null,
+      modelSelection: target.modelSelection ?? null,
+      audienceKeys: input.draftParallelBranches[index]?.audienceKeys ?? [],
+    })),
+    participantCatIds: input.draftParticipantCatIds ?? [],
+    temporaryParticipants: (input.draftTemporaryParticipants ?? []).map((participant) => ({
+      participantId: participant.participantId,
+      name: participant.name,
+      provider: participant.provider,
+      instance: participant.instance ?? undefined,
+      model: participant.model ?? undefined,
+      modelSelection: participant.modelSelection ?? null,
+      roleHint: participant.roleHint ?? undefined,
+    })),
+  };
+}
+
 export async function submitNewParallelChatDraft({
   body,
   payload,
@@ -73,28 +108,19 @@ export async function submitNewParallelChatDraft({
     throw new Error('Choose at least two parallel chats before sending.');
   }
 
-  const created = await createParallelChatGroup({
-    title: createDraftChannelTitle(body, payload.chat.channels.length),
-    originSurface,
-    repoPath: draftCwd ?? undefined,
-    targets: draftParallelChatTargets.map((target, index) => ({
-      provider: target.provider,
-      instance: target.instance ?? null,
-      model: target.model ?? null,
-      modelSelection: target.modelSelection ?? null,
-      audienceKeys: draftParallelBranches[index]?.audienceKeys ?? [],
-    })),
-    participantCatIds: draftParticipantCatIds,
-    temporaryParticipants: draftTemporaryParticipants.map((participant) => ({
-      participantId: participant.participantId,
-      name: participant.name,
-      provider: participant.provider,
-      instance: participant.instance ?? undefined,
-      model: participant.model ?? undefined,
-      modelSelection: participant.modelSelection ?? null,
-      roleHint: participant.roleHint ?? undefined,
-    })),
-  }, signal);
+  const created = await createParallelChatGroup(
+    buildParallelChatDraftCreateInput({
+      body,
+      existingCount: payload.chat.channels.length,
+      originSurface,
+      draftCwd,
+      draftParallelBranches,
+      draftParallelChatTargets,
+      draftParticipantCatIds,
+      draftTemporaryParticipants,
+    }),
+    signal,
+  );
   const activeChannelId =
     created.appShell.chat.selectedChannelId
       ? created.appShell.chat.selectedChannelId
