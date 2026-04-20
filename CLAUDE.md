@@ -107,7 +107,6 @@ Rules:
   - `src/core/types.ts`
   - `src/platform/orchestration/contracts.ts`
   - `src/shared/roomRouting.ts`
-  - `src/products/chat/api/contracts.ts`
 - Do not reshape frozen shared contracts during product feature work. If a shared shape must change, stop and route it through integration review plus docs (`SPEC/ADR/PLAN`) first.
 - Do not expand platform-host wiring directly during product work. `src/app/server/**` is integration-owned.
 - Product APIs must land through product-owned delegates:
@@ -125,4 +124,4 @@ Rules:
 
 This file is maintained by Claude only. Other agents should not modify this file.
 
-Last updated: 2026-03-25
+Last updated: 2026-04-21
