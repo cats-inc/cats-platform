@@ -54,6 +54,8 @@ Current decision:
 - a dedicated `CATS_PUBLIC_BASE_URL` is not required in the current slice
   because browser-facing runtime/recovery links are same-origin relative paths
 - this remains a trusted operator workflow, not a public-internet deployment
+- `GET /api/platform/ingress` exposes the current bind mode plus candidate
+  local/LAN browser URLs for operator verification
 
 ### Desktop Host First Slice
 

@@ -81,6 +81,8 @@ Notes:
   the packaged desktop app.
 - This is a trusted-LAN workflow only. It is not equivalent to a public
   internet deployment.
+- `GET /api/platform/ingress` returns a machine-readable summary of the current
+  bind mode plus the candidate local/LAN URLs for this machine.
 
 Current first-run behavior:
 

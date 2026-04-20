@@ -108,6 +108,7 @@ to the runtime or changing desktop defaults.
 | 2026-04-20 | Browser-facing runtime recovery/setup links now stay on platform-owned `/runtime/*` paths instead of jumping back to the runtime origin |
 | 2026-04-20 | Phase 2 docs now pin Tailscale/ngrok to `cats-platform` and explicitly defer a public-base-url setting until a concrete absolute-link consumer appears |
 | 2026-04-20 | Platform now exposes a same-origin runtime root at `/runtime`, and browser-facing app-shell payloads advertise that ingress root instead of the loopback runtime upstream |
+| 2026-04-20 | Added `GET /api/platform/ingress` so operators can inspect the current bind mode and candidate local/LAN browser URLs before manual second-device verification |
 
 ---
 

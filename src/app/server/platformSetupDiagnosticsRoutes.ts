@@ -5,6 +5,7 @@ import {
   readPlatformOnboardingHistory,
 } from '../../shared/platformOnboardingHistory.js';
 import { normalizeAttemptId } from './platformSetupRouteSupport.js';
+import { summarizePlatformIngress } from './platformIngressSummary.js';
 
 type PlatformSetupContext = RouteContext<ChatApiDependencies>;
 
@@ -45,6 +46,18 @@ async function handleBootstrapDiagnosticsOpened(
 export async function routePlatformSetupDiagnosticsApi(
   context: PlatformSetupContext,
 ): Promise<boolean> {
+  if (context.url.pathname === '/api/platform/ingress') {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    sendJson(context.response, 200, summarizePlatformIngress({
+      host: context.dependencies.config.host,
+      port: context.dependencies.config.port,
+    }));
+    return true;
+  }
+
   if (context.url.pathname === '/api/platform/bootstrap-diagnostics') {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
