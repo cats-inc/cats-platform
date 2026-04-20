@@ -17,7 +17,6 @@ import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
 import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import { CatAvatarRow } from './CatAvatarRow.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
-import { CollaborateIcon } from './DraftBuilderIcons.js';
 import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DraftComposerStack } from './DraftComposerStack.js';
@@ -463,7 +462,10 @@ export function WorkspaceNewChatDraft({
                       onClick={onQuickAddDraftTemporaryParticipant}
                       aria-label="Add another model to collaborate"
                     >
-                      <CollaborateIcon />
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 3v10" />
+                        <path d="M3 8h10" />
+                      </svg>
                     </button>
                   ) : null}
                 </div>

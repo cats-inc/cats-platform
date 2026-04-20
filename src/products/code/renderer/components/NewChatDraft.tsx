@@ -1,5 +1,3 @@
-import { useNavigate } from 'react-router-dom';
-
 import {
   NewChatDraft as ChatNewChatDraft,
   type NewChatDraftProps,
@@ -13,7 +11,6 @@ import { ComposerSurfaceChip } from '../../../shared/renderer/components/Compose
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
-import { buildNewGroupChatPath, buildNewParallelChatPath } from '../../shared/channelPaths.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   greeting: 'Ready to code.',
@@ -176,7 +173,6 @@ function CodeGroupParallelDraft(props: NewChatDraftProps) {
 }
 
 function CodeDefaultDraft(props: NewChatDraftProps) {
-  const navigate = useNavigate();
   const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
     props.payload.chat.advancedDraftControls,
     'code',
@@ -200,19 +196,6 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
     },
   });
 
-  // +New Code's draft surface intentionally omits the M*N composer
-  // layout (that lives in Team Code / Peer Code). When the user
-  // clicks the teaching +collaborate / +compare buttons on +New
-  // Code, route them to the corresponding dedicated draft instead of
-  // silently mutating the shared draft state that +New Code does not
-  // render.
-  const navigateToTeamCode = showAdvancedEntryButtons
-    ? () => { navigate(buildNewGroupChatPath()); }
-    : undefined;
-  const navigateToPeerCode = showAdvancedEntryButtons
-    ? () => { navigate(buildNewParallelChatPath()); }
-    : undefined;
-
   return (
     <WorkspaceNewChatDraft
       {...workspaceProps}
@@ -221,9 +204,11 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
       showDraftGroupAddButton={showAdvancedEntryButtons}
-      onQuickAddDraftTemporaryParticipant={navigateToTeamCode}
+      onQuickAddDraftTemporaryParticipant={showAdvancedEntryButtons
+        ? props.onQuickAddDraftTemporaryParticipant
+        : undefined}
       showDraftParallelAddButton={showAdvancedEntryButtons}
-      onAddParallelTarget={navigateToPeerCode}
+      onAddParallelTarget={showAdvancedEntryButtons ? props.onAddParallelTarget : undefined}
     />
   );
 }
