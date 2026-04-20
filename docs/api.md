@@ -287,6 +287,11 @@ Retrieval-context responses return `{ retrieval }`, where `retrieval` includes:
 ```text
 POST /api/setup/complete
 POST /api/setup/reset
+POST /api/platform/setup/complete
+POST /api/platform/preferences
+GET  /api/platform/bootstrap-diagnostics
+POST /api/platform/bootstrap-diagnostics/opened
+GET  /api/platform/ingress
 ```
 
 - `POST /api/setup/complete` finishes first-run onboarding by:
@@ -296,6 +301,26 @@ POST /api/setup/reset
   - returning the refreshed `AppShellPayload`
 - `POST /api/setup/reset` clears chat/core state back to the uninitialized
   first-run baseline and returns the refreshed `AppShellPayload`.
+- `POST /api/platform/setup/complete` finishes the newer platform-owned setup
+  flow by:
+  - persisting owner display-name updates
+  - optionally creating the platform-level `Guide Cat`
+  - preserving `Boss Cat` assignment as a Chat concern instead of forcing one
+    during setup
+  - returning the refreshed `PlatformHostEnvelope` / `AppShellPayload`
+- `POST /api/platform/preferences` persists owner-level platform preferences
+  such as `lastProductSurface` and desktop startup toggles.
+- `GET /api/platform/bootstrap-diagnostics` returns the retained packaged-setup
+  attempt history used by the desktop/bootstrap experience.
+- `POST /api/platform/bootstrap-diagnostics/opened` appends the current
+  `setup_opened` event to that packaged-setup history.
+- `GET /api/platform/ingress` returns a trusted-operator ingress summary for the
+  current host bind, including:
+  - `binding` mode (`loopback`, `wildcard`, or `specific`)
+  - candidate local and LAN browser URLs
+  - the same-origin runtime ingress roots (`/runtime`, `/runtime/api`)
+  - operator notes about whether the current bind is reachable from another
+    device on the LAN
 
 ### Channels
 
