@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-067](./PLAN-067-platform-browser-ingress-rollout.md) | Platform Browser Ingress Rollout | In Progress | [SPEC-075](../specs/SPEC-075-platform-browser-ingress-for-lan-and-tunneled-access.md), [ADR-074](../decisions/074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md) |
 | [PLAN-066](./PLAN-066-cross-surface-draft-dispatch-and-warm-product-handoff-rollout.md) | Cross-Surface Draft Dispatch and Warm Product Handoff Rollout | Draft | [SPEC-074](../specs/SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md), [ADR-073](../decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) |
 | [PLAN-065](./PLAN-065-settings-composition-layer-rollout.md) | Settings Composition Layer Rollout | Draft | [SPEC-073](../specs/SPEC-073-settings-composition-layer.md), [ADR-072](../decisions/072-settings-composition-layer-in-design.md) |
 | [PLAN-064](./PLAN-064-new-code-mvp-task-run-artifact-materialization.md) | New Code MVP Task, Run, and Artifact Materialization | Draft | [SPEC-043](../specs/SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md), [SPEC-041](../specs/SPEC-041-cats-code-v1-local-builder-loop.md), [SPEC-061](../specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md), [PLAN-029](./PLAN-029-cats-code-v1-local-builder-loop.md), [PLAN-032](./PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) |

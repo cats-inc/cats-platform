@@ -759,13 +759,12 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
   });
 });
 
-test('GET /runtime/setup redirects to the configured cats-runtime setup page', async () => {
+test('GET /runtime/setup serves a platform-hosted runtime setup page', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(new URL('/runtime/setup', baseUrl), {
-      redirect: 'manual',
-    });
-    assert.equal(response.status, 302);
-    assert.equal(response.headers.get('location'), 'http://127.0.0.1:3110/setup');
+    const response = await fetch(new URL('/runtime/setup', baseUrl));
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /data-cats-runtime-platform-proxy/);
   });
 });
 

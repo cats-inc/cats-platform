@@ -5,6 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routePlatformSetupApi } from './platformSetupRoutes.js';
+import {
+  handleRuntimeApiProxyRoute,
+  handleRuntimeSurfaceRoute,
+} from './runtimeSurfaceProxy.js';
 
 import { routeCoreApi } from '../../core/api/index.js';
 import {
@@ -291,17 +295,6 @@ async function handleShellOpenFolder(
   }
 }
 
-function sendRuntimeSetupRedirect(
-  dependencies: ResolvedServerDependencies,
-  response: import('node:http').ServerResponse,
-): void {
-  const runtimeBaseUrl = dependencies.shared.config.runtimeBaseUrl.replace(/\/$/, '');
-  response.writeHead(302, {
-    Location: `${runtimeBaseUrl}/setup`,
-  });
-  response.end();
-}
-
 export async function routeRequest(
   request: IncomingMessage,
   response: import('node:http').ServerResponse,
@@ -395,12 +388,11 @@ export async function routeRequest(
     return;
   }
 
-  if (url.pathname === '/runtime/setup') {
-    if (method !== 'GET') {
-      sendMethodNotAllowed(response, ['GET']);
-      return;
-    }
-    sendRuntimeSetupRedirect(dependencies, response);
+  if (await handleRuntimeSurfaceRoute(request, response, url, method, dependencies)) {
+    return;
+  }
+
+  if (await handleRuntimeApiProxyRoute(request, response, url, dependencies)) {
     return;
   }
 

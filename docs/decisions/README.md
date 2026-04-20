@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels](./074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md) | Keep browser ingress at the platform host and phase LAN before tunnels | Accepted | 2026-04-20 |
 | [073-use-target-surface-dispatch-and-warm-cross-surface-handoff](./073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) | Use target-surface dispatch and warm cross-surface handoff for draft submits | Accepted | 2026-04-20 |
 | [072-settings-composition-layer-in-design](./072-settings-composition-layer-in-design.md) | Settings composition layer lives in `src/design/`, built on tokens + shared classes + minimal compound components | Proposed | 2026-04-18 |
 | [071-reject-invalid-runtime-session-policy-combinations-at-create-boundary](./071-reject-invalid-runtime-session-policy-combinations-at-create-boundary.md) | Reject invalid runtime session policy combinations at the create boundary | Accepted | 2026-04-18 |

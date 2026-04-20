@@ -1,0 +1,228 @@
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import { createServer as createHttpServer } from 'node:http';
+import test from 'node:test';
+
+import { createServer as createPlatformServer } from '../build/server/app/server/index.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+
+function createRuntimeClientStub(runtimeBaseUrl) {
+  return {
+    async getHealth() {
+      return {
+        baseUrl: runtimeBaseUrl,
+        reachable: true,
+        status: 'ok',
+        service: 'cats-runtime',
+      };
+    },
+    async getProviderConfig() {
+      return {};
+    },
+    async getProviderDiagnostics() {
+      return {
+        probe: 'light',
+        providers: [],
+      };
+    },
+  };
+}
+
+async function withRuntimeStub(callback) {
+  const server = createHttpServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+    let body = '';
+    for await (const chunk of request) {
+      body += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+    }
+
+    if (url.pathname === '/setup' || url.pathname === '/dashboard' || url.pathname === '/playground') {
+      const label = url.pathname.slice(1) || 'root';
+      const html = [
+        '<!DOCTYPE html>',
+        '<html lang="en">',
+        '<head>',
+        `  <title>${label}</title>`,
+        '</head>',
+        '<body>',
+        '  <a id="surface-dashboard" href="/dashboard">Dashboard</a>',
+        '  <script>window.surfaceDescriptors = {"href":"/setup"};</script>',
+        '</body>',
+        '</html>',
+      ].join('\n');
+      response.writeHead(200, {
+        'content-type': 'text/html; charset=utf-8',
+      });
+      response.end(html);
+      return;
+    }
+
+    if (url.pathname === '/setup-state') {
+      response.writeHead(200, {
+        'content-type': 'application/json; charset=utf-8',
+      });
+      response.end(JSON.stringify({
+        upstream: {
+          path: `${url.pathname}${url.search}`,
+          authorization: request.headers.authorization ?? '',
+        },
+      }));
+      return;
+    }
+
+    if (url.pathname === '/setup-scan') {
+      response.writeHead(200, {
+        'content-type': 'application/json; charset=utf-8',
+      });
+      response.end(JSON.stringify({
+        upstream: {
+          method: request.method ?? 'GET',
+          path: `${url.pathname}${url.search}`,
+          authorization: request.headers.authorization ?? '',
+          body,
+        },
+      }));
+      return;
+    }
+
+    if (url.pathname === '/sessions/session-1/stream') {
+      response.writeHead(200, {
+        'content-type': 'text/event-stream; charset=utf-8',
+        'cache-control': 'no-cache',
+      });
+      response.write('data: {"type":"ready"}\n\n');
+      response.end();
+      return;
+    }
+
+    response.writeHead(404, {
+      'content-type': 'application/json; charset=utf-8',
+    });
+    response.end(JSON.stringify({
+      error: {
+        code: 'not_found',
+      },
+    }));
+  });
+
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to resolve runtime stub address');
+  }
+
+  try {
+    await callback(`http://127.0.0.1:${address.port}`);
+  } finally {
+    server.close();
+    await once(server, 'close');
+  }
+}
+
+async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback) {
+  const server = createPlatformServer({
+    shared: {
+      config: {
+        host: '127.0.0.1',
+        port: 8181,
+        runtimeBaseUrl,
+        runtimeApiKey,
+        chatStatePath: 'unused-for-tests',
+      },
+      runtimeClient: createRuntimeClientStub(runtimeBaseUrl),
+      now: () => new Date('2026-04-20T00:00:00.000Z'),
+    },
+    chat: {
+      chatStore: new MemoryChatStore(),
+    },
+  });
+
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to resolve platform test server address');
+  }
+
+  try {
+    await callback(`http://127.0.0.1:${address.port}`);
+  } finally {
+    server.close();
+    await once(server, 'close');
+  }
+}
+
+test('GET /runtime/setup serves a platform-hosted runtime surface', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/setup`);
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get('content-type') || '', /text\/html/u);
+
+      const html = await response.text();
+      assert.match(html, /data-cats-runtime-platform-proxy/u);
+      assert.match(html, /id="surface-dashboard" href="\/runtime\/dashboard"/u);
+      assert.match(html, /"href":"\/runtime\/setup"/u);
+    });
+  });
+});
+
+test('POST /runtime/api/setup-scan forwards body and fallback runtime auth', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, 'platform-secret', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/api/setup-scan?manual=true`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ manual: true }),
+      });
+      assert.equal(response.status, 200);
+
+      const payload = await response.json();
+      assert.deepEqual(payload, {
+        upstream: {
+          method: 'POST',
+          path: '/setup-scan?manual=true',
+          authorization: 'Bearer platform-secret',
+          body: '{"manual":true}',
+        },
+      });
+    });
+  });
+});
+
+test('GET /runtime/api/setup-state preserves caller auth when present', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, 'platform-secret', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/api/setup-state`, {
+        headers: {
+          authorization: 'Bearer caller-secret',
+        },
+      });
+      assert.equal(response.status, 200);
+
+      const payload = await response.json();
+      assert.deepEqual(payload, {
+        upstream: {
+          path: '/setup-state',
+          authorization: 'Bearer caller-secret',
+        },
+      });
+    });
+  });
+});
+
+test('GET /runtime/api streams runtime SSE responses', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/api/sessions/session-1/stream`);
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get('content-type') || '', /text\/event-stream/u);
+      assert.equal(await response.text(), 'data: {"type":"ready"}\n\n');
+    });
+  });
+});

@@ -48,6 +48,40 @@ Open:
 - Renderer: `http://127.0.0.1:5173`
 - API: `http://127.0.0.1:8181/health`
 
+### Optional: local-IP browser access on the same LAN
+
+For trusted LAN testing from another device such as an iPad, keep
+`cats-runtime` on loopback and expose the browser entrypoint from
+`cats-platform` only.
+
+Recommended dev setup:
+
+```bash
+# Keep the app server local unless you need the built server itself on LAN.
+CATS_HOST=127.0.0.1
+CATS_PORT=8181
+
+# Expose the Vite dev host on the LAN.
+CATS_WEB_HOST=0.0.0.0
+```
+
+If you want the built Node server itself to bind on the LAN instead of the
+Vite dev host, set:
+
+```bash
+CATS_HOST=0.0.0.0
+```
+
+Notes:
+
+- Vite now proxies `/runtime/*` to the app server, so runtime setup/dashboard
+  routes stay on the Cats origin during dev.
+- Packaged Electron should keep using `CATS_DESKTOP_APP_HOST=127.0.0.1` and
+  `CATS_DESKTOP_RUNTIME_HOST=127.0.0.1`. Do not reuse the LAN host settings for
+  the packaged desktop app.
+- This is a trusted-LAN workflow only. It is not equivalent to a public
+  internet deployment.
+
 Current first-run behavior:
 
 - `/setup` is a 2-step flow: owner name, then optional Guide Cat

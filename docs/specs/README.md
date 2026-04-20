@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-075](./SPEC-075-platform-browser-ingress-for-lan-and-tunneled-access.md) | Platform Browser Ingress for LAN and Tunneled Access | Draft | [PLAN-067](../plans/PLAN-067-platform-browser-ingress-rollout.md), [ADR-074](../decisions/074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md) |
 | [SPEC-074](./SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md) | Cross-Surface Draft Dispatch and Warm Product Handoff | Draft | [PLAN-066](../plans/PLAN-066-cross-surface-draft-dispatch-and-warm-product-handoff-rollout.md), [ADR-073](../decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) |
 | [SPEC-073](./SPEC-073-settings-composition-layer.md) | Settings UI Composition Layer | Draft | [PLAN-065](../plans/PLAN-065-settings-composition-layer-rollout.md), [ADR-072](../decisions/072-settings-composition-layer-in-design.md) |
 | [SPEC-072](./SPEC-072-runtime-session-policy-boundary-validation.md) | Runtime Session Policy Boundary Validation | In Progress (First Slice Landed) | [PLAN-062](../plans/PLAN-062-runtime-session-policy-boundary-hardening.md), [ADR-071](../decisions/071-reject-invalid-runtime-session-policy-combinations-at-create-boundary.md) |
