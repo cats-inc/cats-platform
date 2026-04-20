@@ -3,6 +3,13 @@ import { expectJson } from './http.js';
 import type { WorkIntakePlanProjection } from '../../api/intakeProjection.js';
 import type { WorkTemplate } from '../../templates/types.js';
 import type { WorkIntakeInput } from '../../intake/types.js';
+import {
+  buildWorkApiIntakeApprovePath,
+  buildWorkApiIntakePlanPath,
+  buildWorkApiIntakeRejectPath,
+  WORK_API_INTAKE_PATH,
+  WORK_API_TEMPLATES_PATH,
+} from '../../shared/apiPaths.js';
 
 export interface WorkTemplateListResponse {
   product: { id: string; name: string };
@@ -12,7 +19,7 @@ export interface WorkTemplateListResponse {
 export async function fetchWorkTemplates(
   signal?: AbortSignal,
 ): Promise<WorkTemplate[]> {
-  const response = await fetch('/api/work/templates', { signal });
+  const response = await fetch(WORK_API_TEMPLATES_PATH, { signal });
   const payload = await expectJson<WorkTemplateListResponse>(
     response,
     'Failed to load templates',
@@ -24,7 +31,7 @@ export async function submitWorkIntake(
   input: WorkIntakeInput,
   signal?: AbortSignal,
 ): Promise<WorkIntakePlanProjection> {
-  const response = await fetch('/api/work/intake', {
+  const response = await fetch(WORK_API_INTAKE_PATH, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
@@ -37,7 +44,7 @@ export async function fetchIntakePlan(
   projectId: string,
   signal?: AbortSignal,
 ): Promise<WorkIntakePlanProjection> {
-  const response = await fetch(`/api/work/intake/${encodeURIComponent(projectId)}/plan`, {
+  const response = await fetch(buildWorkApiIntakePlanPath(projectId), {
     signal,
   });
   return expectJson<WorkIntakePlanProjection>(response, 'Failed to load intake plan');
@@ -48,7 +55,7 @@ export async function approveIntakePlan(
   signal?: AbortSignal,
 ): Promise<WorkIntakePlanProjection> {
   const response = await fetch(
-    `/api/work/intake/${encodeURIComponent(projectId)}/approve`,
+    buildWorkApiIntakeApprovePath(projectId),
     { method: 'POST', signal },
   );
   return expectJson<WorkIntakePlanProjection>(response, 'Failed to approve plan');
@@ -60,7 +67,7 @@ export async function rejectIntakePlan(
   signal?: AbortSignal,
 ): Promise<WorkIntakePlanProjection> {
   const response = await fetch(
-    `/api/work/intake/${encodeURIComponent(projectId)}/reject`,
+    buildWorkApiIntakeRejectPath(projectId),
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

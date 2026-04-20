@@ -45,6 +45,15 @@ import {
   resolveActorName,
 } from './projectionSupport.js';
 import { getWorkTemplate } from '../templates/index.js';
+import {
+  WORK_API_INTAKE_PATH,
+  WORK_API_PREFIX,
+  WORK_API_PROJECTS_PATH,
+  WORK_API_TASKS_PATH,
+  WORK_API_TEMPLATES_PATH,
+  WORK_API_WAR_ROOM_PATH,
+  WORK_API_WORK_ITEMS_PATH,
+} from '../shared/apiPaths.js';
 
 const WORK_DASHBOARD_INTAKE_LIMIT = 8;
 const WORK_DASHBOARD_PENDING_PLAN_LIMIT = 8;
@@ -311,7 +320,7 @@ export interface WorkDashboardProjection {
     name: 'Cats Work';
     status: 'active';
     routeBase: '/work';
-    apiBase: '/api/work';
+    apiBase: typeof WORK_API_PREFIX;
   };
   summary: WorkDashboardSummary;
   sections: {
@@ -711,7 +720,7 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
       name: 'Cats Work',
       status: 'active',
       routeBase: '/work',
-      apiBase: '/api/work',
+      apiBase: WORK_API_PREFIX,
     },
     summary: {
       ownerActorId: core.ownerProfile.actorId,
@@ -792,12 +801,12 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
     extensionPoints: {
       projectionSource: 'cats-core',
       futureRoutes: [
-        '/api/work/projects',
-        '/api/work/tasks',
-        '/api/work/work-items',
-        '/api/work/intake',
-        '/api/work/templates',
-        '/api/work/war-room',
+        WORK_API_PROJECTS_PATH,
+        WORK_API_TASKS_PATH,
+        WORK_API_WORK_ITEMS_PATH,
+        WORK_API_INTAKE_PATH,
+        WORK_API_TEMPLATES_PATH,
+        WORK_API_WAR_ROOM_PATH,
       ],
     },
   };

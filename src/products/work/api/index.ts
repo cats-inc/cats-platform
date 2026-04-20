@@ -20,6 +20,18 @@ import {
   sendMethodNotAllowed,
   type RouteContext,
 } from '../../../shared/http.js';
+import {
+  buildWorkApiProjectPath,
+  buildWorkApiTaskPath,
+  buildWorkApiWorkItemPath,
+  WORK_API_PREFIX,
+  WORK_API_PROJECT_DETAIL_PATTERN,
+  WORK_API_PROJECTS_PATH,
+  WORK_API_TASK_DETAIL_PATTERN,
+  WORK_API_TASKS_PATH,
+  WORK_API_WORK_ITEM_DETAIL_PATTERN,
+  WORK_API_WORK_ITEMS_PATH,
+} from '../shared/apiPaths.js';
 
 export const WORK_API_SLICE = 'work';
 
@@ -86,7 +98,7 @@ export async function routeWorkApi(
     return true;
   }
 
-  const projectDetailMatch = matchRoute(context.url.pathname, /^\/api\/work\/projects\/([^/]+)$/u);
+  const projectDetailMatch = matchRoute(context.url.pathname, WORK_API_PROJECT_DETAIL_PATTERN);
   if (projectDetailMatch) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
@@ -116,7 +128,7 @@ export async function routeWorkApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/work/projects') {
+  if (context.url.pathname === WORK_API_PROJECTS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -130,7 +142,7 @@ export async function routeWorkApi(
     return true;
   }
 
-  const workItemDetailMatch = matchRoute(context.url.pathname, /^\/api\/work\/work-items\/([^/]+)$/u);
+  const workItemDetailMatch = matchRoute(context.url.pathname, WORK_API_WORK_ITEM_DETAIL_PATTERN);
   if (workItemDetailMatch) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
@@ -160,7 +172,7 @@ export async function routeWorkApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/work/work-items') {
+  if (context.url.pathname === WORK_API_WORK_ITEMS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -174,7 +186,7 @@ export async function routeWorkApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/work/tasks') {
+  if (context.url.pathname === WORK_API_TASKS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -188,7 +200,7 @@ export async function routeWorkApi(
     return true;
   }
 
-  const detailMatch = matchRoute(context.url.pathname, /^\/api\/work\/tasks\/([^/]+)$/u);
+  const detailMatch = matchRoute(context.url.pathname, WORK_API_TASK_DETAIL_PATTERN);
   if (detailMatch) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
@@ -218,7 +230,7 @@ export async function routeWorkApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/work') {
+  if (context.url.pathname === WORK_API_PREFIX) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;

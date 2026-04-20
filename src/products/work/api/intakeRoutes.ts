@@ -20,6 +20,13 @@ import {
 } from './intakeProjection.js';
 import type { WorkApiDependencies } from './index.js';
 import type { WorkIntakeInput } from '../intake/types.js';
+import {
+  WORK_API_INTAKE_APPROVE_PATTERN,
+  WORK_API_INTAKE_PATH,
+  WORK_API_INTAKE_PLAN_PATTERN,
+  WORK_API_INTAKE_REJECT_PATTERN,
+  WORK_API_TEMPLATES_PATH,
+} from '../shared/apiPaths.js';
 
 function readNonEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') {
@@ -76,7 +83,7 @@ export async function routeWorkIntakeApi(
   context: RouteContext<WorkApiDependencies>,
 ): Promise<boolean> {
   // GET /api/work/templates
-  if (context.url.pathname === '/api/work/templates') {
+  if (context.url.pathname === WORK_API_TEMPLATES_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -90,7 +97,7 @@ export async function routeWorkIntakeApi(
   }
 
   // POST /api/work/intake
-  if (context.url.pathname === '/api/work/intake') {
+  if (context.url.pathname === WORK_API_INTAKE_PATH) {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
@@ -134,7 +141,7 @@ export async function routeWorkIntakeApi(
   // POST /api/work/intake/:projectId/approve
   const approveMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/work\/intake\/([^/]+)\/approve$/u,
+    WORK_API_INTAKE_APPROVE_PATTERN,
   );
   if (approveMatch) {
     if (context.method !== 'POST') {
@@ -248,7 +255,7 @@ export async function routeWorkIntakeApi(
   // POST /api/work/intake/:projectId/reject
   const rejectMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/work\/intake\/([^/]+)\/reject$/u,
+    WORK_API_INTAKE_REJECT_PATTERN,
   );
   if (rejectMatch) {
     if (context.method !== 'POST') {
@@ -334,7 +341,7 @@ export async function routeWorkIntakeApi(
   // GET /api/work/intake/:projectId/plan
   const planMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/work\/intake\/([^/]+)\/plan$/u,
+    WORK_API_INTAKE_PLAN_PATTERN,
   );
   if (planMatch) {
     if (context.method !== 'GET') {
