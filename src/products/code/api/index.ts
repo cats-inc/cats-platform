@@ -25,6 +25,15 @@ import {
   sendMethodNotAllowed,
   type RouteContext,
 } from '../../../shared/http.js';
+import {
+  CODE_API_ARTIFACT_DETAIL_PATTERN,
+  CODE_API_ARTIFACTS_PATH,
+  CODE_API_BUILDS_PATH,
+  CODE_API_PREFIX,
+  CODE_API_PREVIEWS_PATH,
+  CODE_API_TASK_DETAIL_PATTERN,
+  CODE_API_TASKS_PATH,
+} from '../shared/apiPaths.js';
 
 export const CODE_API_SLICE = 'code';
 
@@ -94,7 +103,7 @@ export async function routeCodeApi(
     return true;
   }
 
-  const artifactDetailMatch = matchRoute(context.url.pathname, /^\/api\/code\/artifacts\/([^/]+)$/u);
+  const artifactDetailMatch = matchRoute(context.url.pathname, CODE_API_ARTIFACT_DETAIL_PATTERN);
   if (artifactDetailMatch) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
@@ -124,7 +133,7 @@ export async function routeCodeApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/code/artifacts') {
+  if (context.url.pathname === CODE_API_ARTIFACTS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -138,7 +147,7 @@ export async function routeCodeApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/code/builds') {
+  if (context.url.pathname === CODE_API_BUILDS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -152,7 +161,7 @@ export async function routeCodeApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/code/previews') {
+  if (context.url.pathname === CODE_API_PREVIEWS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -166,7 +175,7 @@ export async function routeCodeApi(
     return true;
   }
 
-  const taskDetailMatch = matchRoute(context.url.pathname, /^\/api\/code\/tasks\/([^/]+)$/u);
+  const taskDetailMatch = matchRoute(context.url.pathname, CODE_API_TASK_DETAIL_PATTERN);
   if (taskDetailMatch) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
@@ -196,7 +205,7 @@ export async function routeCodeApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/code/tasks') {
+  if (context.url.pathname === CODE_API_TASKS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
@@ -210,7 +219,7 @@ export async function routeCodeApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/code') {
+  if (context.url.pathname === CODE_API_PREFIX) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;

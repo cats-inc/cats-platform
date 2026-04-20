@@ -1,5 +1,10 @@
 import { expectJson } from './http.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
+import {
+  buildCodeApiRelayFanOutPath,
+  buildCodeApiRelayRosterEntryPath,
+  CODE_API_RELAY_THREADS_PATH,
+} from '../../shared/apiPaths.js';
 
 export interface CodeRelayRosterEntryPayload {
   id: string;
@@ -94,7 +99,7 @@ export interface CodeRelayThreadsPayload {
 }
 
 export async function fetchCodeRelayThreads(): Promise<CodeRelayThreadsPayload> {
-  const response = await fetch('/api/code/relay/threads');
+  const response = await fetch(CODE_API_RELAY_THREADS_PATH);
   return expectJson<CodeRelayThreadsPayload>(response, 'Failed to load Code relay threads.');
 }
 
@@ -103,7 +108,7 @@ export async function createCodeRelayThread(input: {
   objective?: string | null;
   repoPath?: string | null;
 }): Promise<CodeRelayThreadsPayload> {
-  const response = await fetch('/api/code/relay/threads', {
+  const response = await fetch(CODE_API_RELAY_THREADS_PATH, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
@@ -125,7 +130,7 @@ export async function updateCodeRelayRosterEntry(
   },
 ): Promise<CodeRelayThreadsPayload> {
   const response = await fetch(
-    `/api/code/relay/threads/${encodeURIComponent(threadId)}/roster/${encodeURIComponent(agentId)}`,
+    buildCodeApiRelayRosterEntryPath(threadId, agentId),
     {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -145,7 +150,7 @@ export async function runCodeRelayFanOut(
   },
 ): Promise<CodeRelayThreadsPayload> {
   const response = await fetch(
-    `/api/code/relay/threads/${encodeURIComponent(threadId)}/fan-out`,
+    buildCodeApiRelayFanOutPath(threadId),
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

@@ -40,6 +40,15 @@ import {
   readCodeWorkspaceSummaryFromTask,
   type CodeWorkspaceSummary,
 } from '../shared/workspaceSummary.js';
+import {
+  CODE_API_ARTIFACT_DETAIL_PATH_TEMPLATE,
+  CODE_API_ARTIFACTS_PATH,
+  CODE_API_BUILDS_PATH,
+  CODE_API_PREFIX,
+  CODE_API_PREVIEWS_PATH,
+  CODE_API_TASK_DETAIL_PATH_TEMPLATE,
+  CODE_API_TASKS_PATH,
+} from '../shared/apiPaths.js';
 
 const CODE_DASHBOARD_TASK_LIMIT = 16;
 const CODE_DASHBOARD_ARTIFACT_LIMIT = 18;
@@ -186,7 +195,7 @@ export interface CodeDashboardProjection {
     name: 'Cats Code';
     status: 'active';
     routeBase: '/code';
-    apiBase: '/api/code';
+    apiBase: typeof CODE_API_PREFIX;
   };
   summary: CodeDashboardSummary;
   sections: {
@@ -531,7 +540,7 @@ export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboard
       name: 'Cats Code',
       status: 'active',
       routeBase: '/code',
-      apiBase: '/api/code',
+      apiBase: CODE_API_PREFIX,
     },
     summary: {
       ownerActorId: core.ownerProfile.actorId,
@@ -565,12 +574,12 @@ export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboard
     extensionPoints: {
       projectionSource: 'cats-core',
       futureRoutes: [
-        '/api/code/tasks',
-        '/api/code/tasks/:taskId',
-        '/api/code/artifacts',
-        '/api/code/artifacts/:artifactId',
-        '/api/code/builds',
-        '/api/code/previews',
+        CODE_API_TASKS_PATH,
+        CODE_API_TASK_DETAIL_PATH_TEMPLATE,
+        CODE_API_ARTIFACTS_PATH,
+        CODE_API_ARTIFACT_DETAIL_PATH_TEMPLATE,
+        CODE_API_BUILDS_PATH,
+        CODE_API_PREVIEWS_PATH,
       ],
     },
   };

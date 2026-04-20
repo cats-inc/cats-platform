@@ -14,6 +14,11 @@ import {
 import type { CodeWorkspaceKind } from '../shared/workspaceSummary.js';
 import { buildCodeTaskDetailProjection } from './projection.js';
 import type { CodeApiRouteContext } from './index.js';
+import {
+  CODE_API_TASK_EXECUTE_PATTERN,
+  CODE_API_TASK_RESUME_PATTERN,
+  CODE_API_TASKS_PATH,
+} from '../shared/apiPaths.js';
 
 interface CreateTaskBody {
   title: string;
@@ -40,7 +45,7 @@ export async function routeCodeTaskMutationApi(
   // POST /api/code/tasks/{taskId}/execute
   const executeMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/code\/tasks\/([^/]+)\/execute$/u,
+    CODE_API_TASK_EXECUTE_PATTERN,
   );
   if (executeMatch) {
     if (context.method !== 'POST') {
@@ -109,7 +114,7 @@ export async function routeCodeTaskMutationApi(
   // POST /api/code/tasks/{taskId}/resume
   const resumeMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/code\/tasks\/([^/]+)\/resume$/u,
+    CODE_API_TASK_RESUME_PATTERN,
   );
   if (resumeMatch) {
     if (context.method !== 'POST') {
@@ -142,7 +147,7 @@ export async function routeCodeTaskMutationApi(
   }
 
   // POST /api/code/tasks — create new code task
-  if (context.url.pathname === '/api/code/tasks') {
+  if (context.url.pathname === CODE_API_TASKS_PATH) {
     if (context.method !== 'POST') {
       return false;
     }

@@ -13,6 +13,10 @@ import {
   type CodePlanStepStatus,
 } from '../state/planSteps.js';
 import type { CodeApiRouteContext } from './index.js';
+import {
+  CODE_API_TASK_PLAN_PATTERN,
+  CODE_API_TASK_PLAN_STEP_PATTERN,
+} from '../shared/apiPaths.js';
 
 interface WritePlanBody {
   steps: CodePlanStep[];
@@ -29,7 +33,7 @@ export async function routeCodePlanApi(
   // PATCH /api/code/tasks/{taskId}/plan/steps/{stepId}
   const stepMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/code\/tasks\/([^/]+)\/plan\/steps\/([^/]+)$/u,
+    CODE_API_TASK_PLAN_STEP_PATTERN,
   );
   if (stepMatch) {
     if (context.method !== 'PATCH') {
@@ -84,7 +88,7 @@ export async function routeCodePlanApi(
   // GET/PUT /api/code/tasks/{taskId}/plan
   const planMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/code\/tasks\/([^/]+)\/plan$/u,
+    CODE_API_TASK_PLAN_PATTERN,
   );
   if (planMatch) {
     const taskId = planMatch[0];

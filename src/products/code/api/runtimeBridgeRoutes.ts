@@ -1,5 +1,6 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import type { CodeApiRouteContext } from './index.js';
+import { CODE_API_RUNTIME_SESSION_OBSERVE_PATTERN } from '../shared/apiPaths.js';
 
 export async function routeCodeRuntimeBridgeApi(
   context: CodeApiRouteContext,
@@ -7,7 +8,7 @@ export async function routeCodeRuntimeBridgeApi(
   // GET /api/code/runtime/sessions/{sessionId}/observe
   const observeMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/code\/runtime\/sessions\/([^/]+)\/observe$/u,
+    CODE_API_RUNTIME_SESSION_OBSERVE_PATTERN,
   );
   if (observeMatch) {
     if (context.method !== 'GET') {

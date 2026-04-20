@@ -7,6 +7,12 @@ import {
   type DeliveryArtifactExportInput,
 } from '../state/deliveryProxy.js';
 import type { CodeApiRouteContext } from './index.js';
+import {
+  CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH,
+  CODE_API_DELIVERY_REPO_COMMIT_PATH,
+  CODE_API_DELIVERY_REPO_PUSH_PATH,
+  CODE_API_DELIVERY_REPO_STATUS_PATH,
+} from '../shared/apiPaths.js';
 
 function createDeliveryProxy(context: CodeApiRouteContext): CodeDeliveryProxy {
   const runtimeBaseUrl = context.dependencies.config.runtimeBaseUrl;
@@ -18,7 +24,7 @@ export async function routeCodeDeliveryApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
   // POST /api/code/delivery/repo/status
-  if (context.url.pathname === '/api/code/delivery/repo/status') {
+  if (context.url.pathname === CODE_API_DELIVERY_REPO_STATUS_PATH) {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
@@ -55,7 +61,7 @@ export async function routeCodeDeliveryApi(
   }
 
   // POST /api/code/delivery/repo/commit
-  if (context.url.pathname === '/api/code/delivery/repo/commit') {
+  if (context.url.pathname === CODE_API_DELIVERY_REPO_COMMIT_PATH) {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
@@ -94,7 +100,7 @@ export async function routeCodeDeliveryApi(
   }
 
   // POST /api/code/delivery/repo/push
-  if (context.url.pathname === '/api/code/delivery/repo/push') {
+  if (context.url.pathname === CODE_API_DELIVERY_REPO_PUSH_PATH) {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
@@ -133,7 +139,7 @@ export async function routeCodeDeliveryApi(
   }
 
   // POST /api/code/delivery/artifacts/export
-  if (context.url.pathname === '/api/code/delivery/artifacts/export') {
+  if (context.url.pathname === CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH) {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;

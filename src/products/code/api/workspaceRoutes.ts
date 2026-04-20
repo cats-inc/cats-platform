@@ -4,6 +4,7 @@ import {
   type ResolveCodeWorkspaceInput,
 } from '../state/workspaceResolution.js';
 import type { CodeApiRouteContext } from './index.js';
+import { CODE_API_WORKSPACE_RESOLVE_PATH } from '../shared/apiPaths.js';
 
 interface ResolveWorkspaceBody {
   path?: string | null;
@@ -14,7 +15,7 @@ interface ResolveWorkspaceBody {
 export async function routeCodeWorkspaceApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
-  if (context.url.pathname !== '/api/code/workspace/resolve') {
+  if (context.url.pathname !== CODE_API_WORKSPACE_RESOLVE_PATH) {
     return false;
   }
 

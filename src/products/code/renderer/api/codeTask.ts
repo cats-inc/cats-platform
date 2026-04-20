@@ -7,6 +7,21 @@ import type {
   CodeWorkspaceKind,
   CodeWorkspaceSummary,
 } from '../../shared/workspaceSummary.js';
+import {
+  buildCodeApiArtifactPath,
+  buildCodeApiRuntimeSessionObservePath,
+  buildCodeApiTaskExecutePath,
+  buildCodeApiTaskPath,
+  buildCodeApiTaskPlanPath,
+  buildCodeApiTaskPlanStepPath,
+  buildCodeApiTaskResumePath,
+  CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH,
+  CODE_API_DELIVERY_REPO_COMMIT_PATH,
+  CODE_API_DELIVERY_REPO_PUSH_PATH,
+  CODE_API_DELIVERY_REPO_STATUS_PATH,
+  CODE_API_TASKS_PATH,
+  CODE_API_WORKSPACE_RESOLVE_PATH,
+} from '../../shared/apiPaths.js';
 
 export interface CreateCodeTaskInput {
   title: string;
@@ -161,11 +176,11 @@ export interface CodeArtifactDetailResponse {
 export async function resolveWorkspace(
   input: ResolveWorkspaceInput,
 ): Promise<ResolveWorkspaceResponse> {
-  return postJson<ResolveWorkspaceResponse>('/api/code/workspace/resolve', input);
+  return postJson<ResolveWorkspaceResponse>(CODE_API_WORKSPACE_RESOLVE_PATH, input);
 }
 
 export async function createCodeTask(input: CreateCodeTaskInput): Promise<CreateCodeTaskResponse> {
-  const response = await postJson<{ task: unknown }>('/api/code/tasks', input);
+  const response = await postJson<{ task: unknown }>(CODE_API_TASKS_PATH, input);
   return {
     task: readCodeTaskBuilderDetail(response.task),
   };
@@ -176,7 +191,7 @@ export async function executeCodeTask(
   input: ExecuteCodeTaskInput,
 ): Promise<ExecuteCodeTaskResponse> {
   const response = await postJson<{ task: unknown; sessionId: string }>(
-    `/api/code/tasks/${encodeURIComponent(taskId)}/execute`,
+    buildCodeApiTaskExecutePath(taskId),
     input,
   );
   return {
@@ -187,7 +202,7 @@ export async function executeCodeTask(
 
 export async function resumeCodeTask(taskId: string): Promise<ResumeCodeTaskResponse> {
   const response = await postJson<{ task: unknown }>(
-    `/api/code/tasks/${encodeURIComponent(taskId)}/resume`,
+    buildCodeApiTaskResumePath(taskId),
     {},
   );
   return {
@@ -197,7 +212,7 @@ export async function resumeCodeTask(taskId: string): Promise<ResumeCodeTaskResp
 
 export async function fetchCodePlan(taskId: string): Promise<CodePlanState | null> {
   const response = await fetchJson<{ plan?: CodePlanState | null }>(
-    `/api/code/tasks/${encodeURIComponent(taskId)}/plan`,
+    buildCodeApiTaskPlanPath(taskId),
   );
   return response.plan ?? null;
 }
@@ -207,7 +222,7 @@ export async function updateCodePlan(
   steps: PlanStepInput[],
   replan = false,
 ): Promise<unknown> {
-  return postJson(`/api/code/tasks/${encodeURIComponent(taskId)}/plan`, {
+  return postJson(buildCodeApiTaskPlanPath(taskId), {
     steps,
     replan,
   }, 'PUT');
@@ -219,39 +234,39 @@ export async function updateCodePlanStep(
   status: PlanStepInput['status'],
 ): Promise<unknown> {
   return postJson(
-    `/api/code/tasks/${encodeURIComponent(taskId)}/plan/steps/${encodeURIComponent(stepId)}`,
+    buildCodeApiTaskPlanStepPath(taskId, stepId),
     { status },
     'PATCH',
   );
 }
 
 export async function inspectRepoStatus(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
-  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/status', input);
+  return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_STATUS_PATH, input);
 }
 
 export async function previewCommit(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
-  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/commit', {
+  return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_COMMIT_PATH, {
     ...input,
     apply: false,
   });
 }
 
 export async function applyCommit(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
-  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/commit', {
+  return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_COMMIT_PATH, {
     ...input,
     apply: true,
   });
 }
 
 export async function previewPush(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
-  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/push', {
+  return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_PUSH_PATH, {
     ...input,
     apply: false,
   });
 }
 
 export async function applyPush(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
-  return postJson<CodeDeliveryResult>('/api/code/delivery/repo/push', {
+  return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_PUSH_PATH, {
     ...input,
     apply: true,
   });
@@ -262,14 +277,14 @@ export async function exportArtifacts(input: {
   sessionId?: string | null;
   artifactIds?: string[];
 }): Promise<CodeDeliveryResult> {
-  return postJson<CodeDeliveryResult>('/api/code/delivery/artifacts/export', input);
+  return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH, input);
 }
 
 export async function fetchCodeTaskDetail(
   taskId: string,
 ): Promise<CodeTaskBuilderDetailSummary> {
   return readCodeTaskBuilderDetail(
-    await fetchJson(`/api/code/tasks/${encodeURIComponent(taskId)}`),
+    await fetchJson(buildCodeApiTaskPath(taskId)),
   );
 }
 
@@ -277,7 +292,7 @@ export async function fetchCodeArtifactDetail(
   artifactId: string,
 ): Promise<CodeArtifactDetailResponse> {
   return fetchJson<CodeArtifactDetailResponse>(
-    `/api/code/artifacts/${encodeURIComponent(artifactId)}`,
+    buildCodeApiArtifactPath(artifactId),
   );
 }
 
@@ -285,7 +300,7 @@ export async function observeRuntimeSession(
   sessionId: string,
 ): Promise<RuntimeObservationResponse> {
   return fetchJson<RuntimeObservationResponse>(
-    `/api/code/runtime/sessions/${encodeURIComponent(sessionId)}/observe`,
+    buildCodeApiRuntimeSessionObservePath(sessionId),
   );
 }
 

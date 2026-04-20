@@ -25,6 +25,11 @@ import type {
   CodeRelayRosterEntry,
   CodeRelayThreadRecord,
 } from '../state/relayContracts.js';
+import {
+  CODE_API_RELAY_FAN_OUT_PATTERN,
+  CODE_API_RELAY_ROSTER_ENTRY_PATTERN,
+  CODE_API_RELAY_THREADS_PATH,
+} from '../shared/apiPaths.js';
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
@@ -290,7 +295,7 @@ async function completeFanOutInBackground(
 export async function routeCodeRelayApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
-  if (context.url.pathname === '/api/code/relay/threads') {
+  if (context.url.pathname === CODE_API_RELAY_THREADS_PATH) {
     if (context.method === 'GET') {
       sendJson(context.response, 200, await buildRelayThreadsPayload(context));
       return true;
@@ -333,7 +338,7 @@ export async function routeCodeRelayApi(
 
   const rosterMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/code\/relay\/threads\/([^/]+)\/roster\/([^/]+)$/u,
+    CODE_API_RELAY_ROSTER_ENTRY_PATTERN,
   );
   if (rosterMatch) {
     if (context.method !== 'PATCH') {
@@ -412,7 +417,7 @@ export async function routeCodeRelayApi(
 
   const fanOutMatch = matchRoute(
     context.url.pathname,
-    /^\/api\/code\/relay\/threads\/([^/]+)\/fan-out$/u,
+    CODE_API_RELAY_FAN_OUT_PATTERN,
   );
   if (fanOutMatch) {
     if (context.method !== 'POST') {
