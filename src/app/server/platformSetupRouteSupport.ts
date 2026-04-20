@@ -2,7 +2,11 @@ import type {
   PlatformLobbyAnimationMode,
   PlatformSurfaceId,
 } from '../../shared/platform-contract.js';
-import type { PlatformPreferences } from '../../shared/platformPreferences.js';
+import {
+  parsePlatformLobbyAnimationMode,
+  normalizePlatformLobbyAnimationMode,
+  type PlatformPreferences,
+} from '../../shared/platformPreferences.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { GUIDE_CAT_SYSTEM_NAME } from '../../shared/guideCatIdentity.js';
@@ -71,7 +75,7 @@ function parsePlatformSurface(value: unknown): PlatformSurfaceId | undefined {
 }
 
 function parseLobbyAnimationMode(value: unknown): PlatformLobbyAnimationMode | undefined {
-  return value === 'off' || value === 'reduced' || value === 'full' ? value : undefined;
+  return parsePlatformLobbyAnimationMode(value);
 }
 
 export function buildSetupDebugContext(input: SetupDebugContextInput): Record<string, unknown> {

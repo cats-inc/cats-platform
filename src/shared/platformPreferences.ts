@@ -6,6 +6,7 @@ import type {
   PlatformSurfaceId,
 } from './platform-contract.js';
 import { resolvePlatformPreferencesPathFromChatState } from './platformPaths.js';
+import { normalizePlatformSurface } from './platformSurfaces.js';
 
 export interface PlatformPreferences {
   lastProductSurface: PlatformSurfaceId | null;
@@ -23,6 +24,21 @@ const DEFAULTS: PlatformPreferences = {
   lobbyAnimationMode: 'reduced',
 };
 
+export function parsePlatformLobbyAnimationMode(
+  value: unknown,
+): PlatformLobbyAnimationMode | undefined {
+  return value === 'off' || value === 'reduced' || value === 'full'
+    ? value
+    : undefined;
+}
+
+export function normalizePlatformLobbyAnimationMode(
+  value: unknown,
+  fallback: PlatformLobbyAnimationMode = DEFAULTS.lobbyAnimationMode,
+): PlatformLobbyAnimationMode {
+  return parsePlatformLobbyAnimationMode(value) ?? fallback;
+}
+
 export function resolvePlatformPreferencesPath(chatStatePath: string): string {
   return resolvePlatformPreferencesPathFromChatState(chatStatePath);
 }
@@ -33,22 +49,12 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
   }
 
   const record = value as Record<string, unknown>;
-  const surface = record.lastProductSurface;
-  const lobbyAnimationMode = record.lobbyAnimationMode;
   return {
-    lastProductSurface:
-      surface === 'chat' || surface === 'work' || surface === 'code'
-        ? surface
-        : null,
+    lastProductSurface: normalizePlatformSurface(record.lastProductSurface),
     startAtLogin: record.startAtLogin !== false,
     openWindowOnStartup: record.openWindowOnStartup === true,
     systemTrayEnabled: record.systemTrayEnabled !== false,
-    lobbyAnimationMode:
-      lobbyAnimationMode === 'off'
-      || lobbyAnimationMode === 'reduced'
-      || lobbyAnimationMode === 'full'
-        ? lobbyAnimationMode
-        : DEFAULTS.lobbyAnimationMode,
+    lobbyAnimationMode: normalizePlatformLobbyAnimationMode(record.lobbyAnimationMode),
   };
 }
 

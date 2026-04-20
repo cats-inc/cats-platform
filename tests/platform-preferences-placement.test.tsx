@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { parsePlatformPreferencesUpdate } from '../src/app/server/platformSetupRouteSupport.ts';
-import type { PlatformPreferences } from '../src/shared/platformPreferences.ts';
+import {
+  normalizePlatformLobbyAnimationMode,
+  type PlatformPreferences,
+} from '../src/shared/platformPreferences.ts';
 import type { PlatformPreferencesUpdateBody } from '../src/app/server/platformSetupRouteSupport.ts';
 
 function baselinePreferences(): PlatformPreferences {
@@ -103,4 +106,10 @@ test('parsePlatformPreferencesUpdate ignores legacy guide-cat keys without touch
     assert.equal('guideCatFloatingAnchor' in result.value, false);
     assert.equal('guideCatSidecarSeen' in result.value, false);
   }
+});
+
+test('normalizePlatformLobbyAnimationMode falls back when the value is invalid', () => {
+  assert.equal(normalizePlatformLobbyAnimationMode('full'), 'full');
+  assert.equal(normalizePlatformLobbyAnimationMode('max'), 'reduced');
+  assert.equal(normalizePlatformLobbyAnimationMode('max', 'off'), 'off');
 });
