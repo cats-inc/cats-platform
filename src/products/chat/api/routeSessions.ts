@@ -71,6 +71,17 @@ interface ProductDeleteRuntimeFailureDetail {
   runtimeStatusCode?: number;
 }
 
+function logRetainedProductDeleteSession(
+  sessionId: string,
+  reason: string | null | undefined,
+): void {
+  const normalizedReason = reason?.trim();
+  process.stderr.write(
+    `[cats-product-delete] runtime retained linked session ${sessionId}; continuing product delete`
+    + `${normalizedReason ? `; reason: ${normalizedReason}` : ''}\n`,
+  );
+}
+
 export async function cleanupSessionsForProductDelete(
   context: ChatApiRouteContext,
   sessionIds: Array<string | null | undefined>,
@@ -105,6 +116,7 @@ export async function cleanupSessionsForProductDelete(
     try {
       const result = await context.dependencies.runtimeClient.deleteSession(sessionId);
       if (result.status === 'retained') {
+        logRetainedProductDeleteSession(sessionId, result.reason);
         continue;
       }
     } catch (error) {

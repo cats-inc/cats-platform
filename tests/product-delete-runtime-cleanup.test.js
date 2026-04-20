@@ -246,6 +246,8 @@ test('DELETE /api/channels/:id treats retained runtime delete as success and rem
   });
   const chatStore = new MemoryChatStore();
   const now = new Date('2026-04-02T12:00:00.000Z');
+  const originalWrite = process.stderr.write;
+  const stderrWrites = [];
   let state = await chatStore.read();
   state = createCat(state, { name: 'Retained Cat', provider: 'claude' }, now);
   const catId = state.cats[0].id;
@@ -259,18 +261,36 @@ test('DELETE /api/channels/:id treats retained runtime delete as success and rem
     model: 'claude-default',
   }, now);
   await chatStore.write(state);
+  process.stderr.write = (chunk, encoding, callback) => {
+    stderrWrites.push(String(chunk));
+    if (typeof encoding === 'function') {
+      encoding();
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+    return true;
+  };
 
-  await withServer(runtime, async (baseUrl, store) => {
-    const response = await fetch(`${baseUrl}/api/channels/${channelId}`, {
-      method: 'DELETE',
-    });
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.deleted, true);
+  try {
+    await withServer(runtime, async (baseUrl, store) => {
+      const response = await fetch(`${baseUrl}/api/channels/${channelId}`, {
+        method: 'DELETE',
+      });
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.deleted, true);
 
-    const persisted = await store.read();
-    assert.ok(!persisted.channels.some((channel) => channel.id === channelId));
-  }, { chatStore });
+      const persisted = await store.read();
+      assert.ok(!persisted.channels.some((channel) => channel.id === channelId));
+    }, { chatStore });
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+
+  assert.match(
+    stderrWrites.join(''),
+    /runtime retained linked session session-retained-channel; continuing product delete; reason: Session files were kept for retry\./u,
+  );
 });
 
 test('DELETE /api/channels/:id returns 502 and keeps product state when runtime delete errors', async () => {

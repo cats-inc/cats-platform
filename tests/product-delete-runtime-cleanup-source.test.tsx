@@ -217,18 +217,38 @@ test('DELETE /api/channels/:id no longer fails on retained runtime deletes', asy
   });
   const chatStore = new MemoryChatStore();
   const channelId = await seedChannelWithSession(chatStore, 'session-retained-channel');
+  const originalWrite = process.stderr.write;
+  const stderrWrites: string[] = [];
+  process.stderr.write = (chunk, encoding, callback) => {
+    stderrWrites.push(String(chunk));
+    if (typeof encoding === 'function') {
+      encoding();
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+    return true;
+  };
 
-  await withServer(runtime, async (baseUrl, store) => {
-    const response = await fetch(`${baseUrl}/api/channels/${channelId}`, {
-      method: 'DELETE',
-    });
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.deleted, true);
+  try {
+    await withServer(runtime, async (baseUrl, store) => {
+      const response = await fetch(`${baseUrl}/api/channels/${channelId}`, {
+        method: 'DELETE',
+      });
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.deleted, true);
 
-    const persisted = await store.read();
-    assert.equal(persisted.channels.some((channel) => channel.id === channelId), false);
-  }, chatStore);
+      const persisted = await store.read();
+      assert.equal(persisted.channels.some((channel) => channel.id === channelId), false);
+    }, chatStore);
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+
+  assert.match(
+    stderrWrites.join(''),
+    /runtime retained linked session session-retained-channel; continuing product delete; reason: Session files were kept for retry\./u,
+  );
 });
 
 test('DELETE /api/channels/:id still fails on real runtime delete errors', async () => {
