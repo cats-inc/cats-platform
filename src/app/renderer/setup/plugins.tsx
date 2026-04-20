@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { CatCreationFields } from './CatCreationFields.js';
 import type { ProductProviderRegistryReadModel } from '../../../shared/providerCatalog.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import { resolveProviderRegistrySetupHref } from '../../../design/components/ProviderModelFields.js';
 import {
   resolveClientGuideCatName,
@@ -14,7 +15,6 @@ export interface GuideCatSetupFieldsProps {
   model: string;
   modelSelection: ProviderModelSelection | null;
   runtimeReachable: boolean;
-  runtimeBaseUrl: string;
   onTargetChange: (target: {
     provider: string;
     instance: string;
@@ -29,7 +29,6 @@ export function GuideCatSetupFields({
   model,
   modelSelection,
   runtimeReachable,
-  runtimeBaseUrl,
   onTargetChange,
 }: GuideCatSetupFieldsProps) {
   const guideCatName = resolveClientGuideCatName();
@@ -38,7 +37,7 @@ export function GuideCatSetupFields({
     providers: [],
   });
   const runtimeSetupHref = resolveProviderRegistrySetupHref(providerRegistry)
-    ?? `${runtimeBaseUrl.replace(/\/$/, '')}/setup`;
+    ?? PLATFORM_RUNTIME_SETUP_PATH;
   const runtimeStatusChip = providerRegistry.state === 'runtime_unreachable'
     ? { className: 'statusChip statusChipWarm', label: 'Provider registry unavailable' }
     : providerRegistry.state === 'no_usable_targets'

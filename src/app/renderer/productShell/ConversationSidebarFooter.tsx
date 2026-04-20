@@ -48,7 +48,6 @@ export function ConversationSidebarFooter<
       onNavigateEnvironment={() => {
         void executeEnvironmentRecovery({
           runtimeStatus: runtimeFooterStatus,
-          runtimeBaseUrl: payload.runtime.baseUrl,
           runtimeSetupStatus: payload.runtimeSetup?.status,
         });
       }}

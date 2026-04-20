@@ -107,7 +107,6 @@ export function PlatformLobby({
               onNavigateEnvironment={() => {
                 void executeEnvironmentRecovery({
                   runtimeStatus,
-                  runtimeBaseUrl: envelope.runtime.baseUrl,
                   runtimeSetupStatus: envelope.runtimeSetup.status,
                 });
               }}

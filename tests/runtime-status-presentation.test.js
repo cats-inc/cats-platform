@@ -205,29 +205,22 @@ describe('resolveRuntimeRecoveryTarget', () => {
 describe('resolveRuntimeRecoveryUrl', () => {
   it('throws for desktop-setup because it is not a runtime URL target', () => {
     assert.throws(
-      () => resolveRuntimeRecoveryUrl('http://localhost:8100', 'desktop-setup'),
+      () => resolveRuntimeRecoveryUrl('desktop-setup'),
       /Desktop setup targets/i,
     );
   });
 
-  it('returns root URL for runtime-root target', () => {
+  it('returns platform dashboard path for runtime-root target', () => {
     assert.equal(
-      resolveRuntimeRecoveryUrl('http://localhost:8100', 'runtime-root'),
-      'http://localhost:8100/',
+      resolveRuntimeRecoveryUrl('runtime-root'),
+      '/runtime/dashboard',
     );
   });
 
-  it('returns setup URL for runtime-setup target', () => {
+  it('returns platform setup path for runtime-setup target', () => {
     assert.equal(
-      resolveRuntimeRecoveryUrl('http://localhost:8100', 'runtime-setup'),
-      'http://localhost:8100/setup',
-    );
-  });
-
-  it('handles trailing slash in base URL', () => {
-    assert.equal(
-      resolveRuntimeRecoveryUrl('http://localhost:8100/', 'runtime-setup'),
-      'http://localhost:8100/setup',
+      resolveRuntimeRecoveryUrl('runtime-setup'),
+      '/runtime/setup',
     );
   });
 });

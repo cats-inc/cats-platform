@@ -1,5 +1,6 @@
 import { resolveRuntimeConnectionChip } from '../../../design/components/runtimeChips.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
@@ -114,7 +115,7 @@ export function PlatformSettingsRuntime({
         </p>
         <a
           className="secondaryButton settingsInlineLink"
-          href={`${payload.runtime.baseUrl.replace(/\/$/, '')}/setup`}
+          href={PLATFORM_RUNTIME_SETUP_PATH}
           target="_blank"
           rel="noreferrer"
         >

@@ -196,7 +196,6 @@ export function PlatformSetupWizard({
                 model={model}
                 modelSelection={modelSelection}
                 runtimeReachable={envelope.runtime.reachable}
-                runtimeBaseUrl={envelope.runtime.baseUrl}
                 onTargetChange={(target) => {
                   setProvider(target.provider);
                   setInstance(target.instance);

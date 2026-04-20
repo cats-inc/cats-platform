@@ -6,6 +6,10 @@
  */
 
 import type { RuntimeSetupStatus } from './runtimeSetup.js';
+import {
+  PLATFORM_RUNTIME_DASHBOARD_PATH,
+  PLATFORM_RUNTIME_SETUP_PATH,
+} from './runtimeIngressPaths.js';
 
 export type RuntimePresentationStatus = 'ready' | 'degraded' | 'unavailable' | 'unknown';
 
@@ -93,17 +97,15 @@ export function resolveRuntimeRecoveryTarget(
 }
 
 export function resolveRuntimeRecoveryUrl(
-  runtimeBaseUrl: string,
   target: RuntimeRecoveryTarget,
 ): string {
-  const base = new URL('/', runtimeBaseUrl).toString().replace(/\/$/, '');
   if (target === 'desktop-setup') {
     throw new Error('Desktop setup targets must be handled before resolving a runtime URL.');
   }
   if (target === 'runtime-setup') {
-    return `${base}/setup`;
+    return PLATFORM_RUNTIME_SETUP_PATH;
   }
-  return `${base}/`;
+  return PLATFORM_RUNTIME_DASHBOARD_PATH;
 }
 
 // -- Lobby identity dot (PlatformLobby) --

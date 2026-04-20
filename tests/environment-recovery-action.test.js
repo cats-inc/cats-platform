@@ -51,7 +51,6 @@ test('executeEnvironmentRecovery falls back to runtime setup when desktop trigge
   await executeEnvironmentRecovery(
     {
       runtimeStatus: 'unavailable',
-      runtimeBaseUrl: 'http://localhost:8484',
     },
     {
       getDesktopSetupRecommendation: async () => ({
@@ -66,7 +65,7 @@ test('executeEnvironmentRecovery falls back to runtime setup when desktop trigge
     },
   );
 
-  assert.equal(openedUrl, 'http://localhost:8484/setup');
+  assert.equal(openedUrl, '/runtime/setup');
 });
 
 test('executeEnvironmentRecovery routes to runtime setup when runtime setup needs remediation', async () => {
@@ -75,7 +74,6 @@ test('executeEnvironmentRecovery routes to runtime setup when runtime setup need
   await executeEnvironmentRecovery(
     {
       runtimeStatus: 'ready',
-      runtimeBaseUrl: 'http://localhost:8484',
       runtimeSetupStatus: 'attention_required',
     },
     {
@@ -86,7 +84,7 @@ test('executeEnvironmentRecovery routes to runtime setup when runtime setup need
     },
   );
 
-  assert.equal(openedUrl, 'http://localhost:8484/setup');
+  assert.equal(openedUrl, '/runtime/setup');
 });
 
 test('executeEnvironmentRecovery does not navigate when desktop packaged setup succeeds', async () => {
@@ -95,7 +93,6 @@ test('executeEnvironmentRecovery does not navigate when desktop packaged setup s
   await executeEnvironmentRecovery(
     {
       runtimeStatus: 'unavailable',
-      runtimeBaseUrl: 'http://localhost:8484',
     },
     {
       getDesktopSetupRecommendation: async () => ({
@@ -120,7 +117,6 @@ test('executeEnvironmentRecovery ignores verification-only desktop setup recomme
   await executeEnvironmentRecovery(
     {
       runtimeStatus: 'ready',
-      runtimeBaseUrl: 'http://localhost:8484',
       runtimeSetupStatus: 'ready',
     },
     {
@@ -140,7 +136,7 @@ test('executeEnvironmentRecovery ignores verification-only desktop setup recomme
   );
 
   assert.equal(triggered, false);
-  assert.equal(openedUrl, 'http://localhost:8484/');
+  assert.equal(openedUrl, '/runtime/dashboard');
 });
 
 test('openBrowserUrl falls back to location.assign when window.open is unavailable', () => {
@@ -156,11 +152,11 @@ test('openBrowserUrl falls back to location.assign when window.open is unavailab
       },
     },
     () => {
-      openBrowserUrl('http://localhost:8484/setup');
+      openBrowserUrl('/runtime/setup');
     },
   );
 
-  assert.equal(assignedUrl, 'http://localhost:8484/setup');
+  assert.equal(assignedUrl, '/runtime/setup');
 });
 
 test('openBrowserUrl throws when no browser navigation context exists', () => {
@@ -171,7 +167,7 @@ test('openBrowserUrl throws when no browser navigation context exists', () => {
     },
     () => {
       assert.throws(
-        () => openBrowserUrl('http://localhost:8484/setup'),
+        () => openBrowserUrl('/runtime/setup'),
         /browser navigation context/i,
       );
     },

@@ -26,7 +26,6 @@ export interface EnvironmentRecoveryActionDependencies {
 
 export async function executeEnvironmentRecovery(input: {
   runtimeStatus: RuntimePresentationStatus;
-  runtimeBaseUrl: string;
   runtimeSetupStatus?: RuntimeSetupStatus | null;
 }, dependencies: EnvironmentRecoveryActionDependencies = {}): Promise<void> {
   const readDesktopSetupRecommendation = dependencies.getDesktopSetupRecommendation
@@ -56,5 +55,5 @@ export async function executeEnvironmentRecovery(input: {
     target = runtimeFallbackTarget;
   }
 
-  openRecoveryUrl(resolveRuntimeRecoveryUrl(input.runtimeBaseUrl, target));
+  openRecoveryUrl(resolveRuntimeRecoveryUrl(target));
 }

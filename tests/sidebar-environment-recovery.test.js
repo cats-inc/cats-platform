@@ -19,6 +19,8 @@ test('lobby and conversation sidebar pass runtime setup status into environment 
   ]);
 
   assert.match(lobbySource, /runtimeSetupStatus:\s*envelope\.runtimeSetup\.status/u);
+  assert.doesNotMatch(lobbySource, /runtimeBaseUrl:\s*envelope\.runtime\.baseUrl/u);
   assert.match(sidebarSource, /ConversationSidebarFooter\.js/u);
   assert.match(footerSource, /runtimeSetupStatus:\s*payload\.runtimeSetup\?\.status/u);
+  assert.doesNotMatch(footerSource, /runtimeBaseUrl:\s*payload\.runtime\.baseUrl/u);
 });
