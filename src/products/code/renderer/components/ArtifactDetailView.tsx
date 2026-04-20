@@ -8,6 +8,10 @@ import {
   fetchCodeArtifactDetail,
   type CodeArtifactDetailResponse,
 } from '../api/codeTask.js';
+import {
+  buildCodeArtifactPath,
+  CODE_BUILD_PATH,
+} from '../codePaths.js';
 
 function artifactStatusClassName(status: string): string {
   switch (status) {
@@ -105,7 +109,7 @@ export function ArtifactDetailView() {
           <button
             type="button"
             className="operatorActionButton"
-            onClick={() => navigate('/code/build')}
+            onClick={() => navigate(CODE_BUILD_PATH)}
           >
             Back to Build
           </button>
@@ -131,7 +135,7 @@ export function ArtifactDetailView() {
             <button
               type="button"
               className="operatorActionButton"
-              onClick={() => navigate('/code/build')}
+              onClick={() => navigate(CODE_BUILD_PATH)}
             >
               Back to Build
             </button>
@@ -279,7 +283,7 @@ export function ArtifactDetailView() {
                   <button
                     type="button"
                     className="operatorActionButton"
-                    onClick={() => navigate(`/code/artifacts/${artifact.id}`)}
+                    onClick={() => navigate(buildCodeArtifactPath(artifact.id))}
                   >
                     View artifact
                   </button>

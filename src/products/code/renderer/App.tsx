@@ -2,6 +2,10 @@ import { createWorkspaceProductApp } from "../../shared/renderer/WorkspaceProduc
 import { AppRoutes } from "./AppRoutes";
 import { Sidebar } from "./components/Sidebar";
 import { BootShell } from "./chatUtils";
+import {
+  CODE_BUILD_PATH,
+  CODE_RELAY_PATH,
+} from "./codePaths.js";
 import "./styles.css";
 
 export default createWorkspaceProductApp({
@@ -15,8 +19,8 @@ export default createWorkspaceProductApp({
       {...props}
       onStartNewGroupChat={props.onStartNewGroupChat}
       onStartNewParallelChat={props.onStartNewParallelChat}
-      onOpenRelay={() => props.navigate("/code/relay")}
-      onOpenBuild={() => props.navigate("/code/build")}
+      onOpenRelay={() => props.navigate(CODE_RELAY_PATH)}
+      onOpenBuild={() => props.navigate(CODE_BUILD_PATH)}
     />
   ),
 });

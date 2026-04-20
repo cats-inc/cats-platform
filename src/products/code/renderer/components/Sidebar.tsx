@@ -22,6 +22,11 @@ import {
 import { isDirectLaneSummary } from '../../shared/channelTopology.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
+import {
+  CODE_ROUTE_PREFIX,
+  isCodeBuildPath,
+  isCodeRelayPath,
+} from '../codePaths.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
@@ -131,7 +136,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 }
 
 function createExtraActionGroups(props: SidebarProps): ConversationSidebarActionGroup[] {
-  const currentPath = globalThis.location?.pathname ?? '/code';
+  const currentPath = globalThis.location?.pathname ?? CODE_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
 
   if (props.onOpenRelay) {
@@ -143,7 +148,7 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           key: 'relay',
           label: 'Relay',
           onClick: props.onOpenRelay,
-          active: currentPath.startsWith('/code/relay'),
+          active: isCodeRelayPath(currentPath),
           icon: (
             <svg
               width="16"
@@ -178,7 +183,7 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           key: 'build',
           label: 'Build',
           onClick: props.onOpenBuild,
-          active: currentPath.startsWith('/code/build'),
+          active: isCodeBuildPath(currentPath),
           icon: (
             <svg
               width="16"

@@ -30,6 +30,7 @@ import {
   resolveWorkspace,
 } from '../api/codeTask.js';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths.js';
+import { buildCodeArtifactPath } from '../codePaths.js';
 
 type BuilderStep = 'workspace' | 'task' | 'running' | 'done';
 
@@ -573,7 +574,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
               artifacts={artifacts}
               previewTarget={previewTarget}
               onOpenArtifact={(id) => {
-                navigate(`/code/artifacts/${id}`);
+                navigate(buildCodeArtifactPath(id));
               }}
             />
             <DeliveryPanel
