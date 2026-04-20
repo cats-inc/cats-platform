@@ -56,6 +56,10 @@ contracts.
 - [x] Finish extracting shared platform shell and design primitives into a
       dedicated `src/design/` layer without pushing Chat-specific visuals into
       shared modules
+- [x] Land the first shared settings composition layer in
+      `src/design/components/settings/`, including settings-scoped tokens and
+      reusable section/header/row/action/status primitives so Settings pages
+      can migrate incrementally onto one design contract
 - [x] Publish a product integration guide that freezes shared contracts,
       clarifies dependency-slice ownership, and defines the platform-host
       registration protocol for parallel Chat/Work/Code delivery

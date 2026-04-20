@@ -425,6 +425,16 @@ Current platform settings behavior follows the same split:
 - channel-only temporary participants stay inside the room and are not persisted
   into the global settings registry
 
+The renderer and design layer now also carry a first settings-composition slice
+under `src/design/components/settings/`:
+
+- Settings-scoped tokens live beside the primitive composition layer rather
+  than as scattered page-local CSS values
+- shared primitives such as section, header, option row, action bar, status
+  chip, and danger-zone now live in `src/design/` instead of app-local files
+- migration remains incremental, page by page, so existing settings routes can
+  adopt the shared contract without a flag-day rewrite of every page
+
 `Guide Cat` is now also framed as an optional surface-assist capability.
 Sidecar help, setup assistance, lobby suggestions, and composer prompt chips
 should all be treated as projections of that capability rather than as
