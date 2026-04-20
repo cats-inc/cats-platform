@@ -71,13 +71,23 @@ clean up duplicate CSS so existing pages show no regression.
       - Delete `settings-shell.css:242`
       - Diff computed styles before/after on the Data and Assistants
         pages to confirm no pixel shift
-- [ ] **1.7** Consolidate `.sectionLabel` and `.eyebrow`:
-      - Grep all callsites of `.sectionLabel`
-      - Pick the canonical class (proposal: `.eyebrow` in `panel.css`,
-        aliased as `.settings-section-header__eyebrow`)
-      - Either replace callsites or leave `.sectionLabel` as a
-        legacy alias that applies the same rules as `.eyebrow`
-        (decide during implementation; prefer alias to avoid churn)
+- [x] **1.7** Clarify `.sectionLabel` vs `.eyebrow` (investigation,
+      no consolidation):
+      - Grep showed `.sectionLabel` (muted-soft, 0.73rem, tracking
+        0.04em) and `.eyebrow` in `panel.css` (accent color, 0.75rem,
+        tracking 0.12em) are **two distinct visual patterns**, not
+        duplicates. Aliasing `.sectionLabel → .eyebrow` would regress
+        every sidebar/chrome label from muted to accent color
+      - The Settings-scoped eyebrow primitive class
+        `.settings-section-header__eyebrow` already mirrors
+        `.sectionLabel`'s values, so the canonical Settings eyebrow is
+        effectively in place
+      - Remaining direct `.sectionLabel` uses inside Settings
+        (SettingsAssistants, SettingsCats and its sub-components) are
+        concentrated in the Phase 4 pages. They get converted to
+        `<SettingsSectionHeader eyebrow>` as part of Phase 4.1 / 4.2
+        migrations and the Phase 4.3 audit. Non-Settings `.sectionLabel`
+        callers (sidebar-chrome, Work views) are out of PLAN-065 scope
 - [x] **1.8** Replace hard-coded `#3a2c26` in `.settingsCheckboxLabel`
       with `var(--settings-text)` (= `var(--text)`)
 - [x] **1.9** Typecheck cleanly (`npx tsc --noEmit`)
@@ -319,6 +329,8 @@ duplicated pattern with bare CSS classes where a primitive exists.
 | 2026-04-21 | Phase 3.3 complete — Runtime page on primitives; `resolveRuntimeConnectionChip` returns `tone`; every section given a titled header with description |
 | 2026-04-21 | Phase 3.4 complete — Data page on `SettingsDangerZone`. SPEC-073 tweak: danger-zone actions are direct children (no wrapper div); multi-button rows wrap in `<SettingsActionBar>` |
 | 2026-04-21 | Phase 3.4 follow-up — addressed Codex review: title now uses `var(--settings-danger)` to satisfy SPEC-073 FR-9; `SettingsDangerZone.children` tightened to `ReactElement` so the "wrap in SettingsActionBar" rule is enforced at compile time |
+| 2026-04-21 | Phase 3.3 follow-up — Runtime page-local rules (`.settingsRuntime*`) moved out of `platform-setup.css` into `platform-settings.css` and routed through Settings tokens; removes the `.setupRuntimeList margin: 0` that was collapsing the section row-gap against Ready providers / Need attention |
+| 2026-04-21 | Phase 1.7 closed (no consolidation) — `.sectionLabel` and `.eyebrow` are distinct patterns, not duplicates. Settings-scoped canonical already exists as `.settings-section-header__eyebrow`. Remaining Settings `.sectionLabel` callsites migrate through Phase 4 |
 
 ---
 
