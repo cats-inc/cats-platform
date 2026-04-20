@@ -111,14 +111,14 @@ export function resolveInitialWorkspaceWarmNavigationPayload<
     consumeWarmPayload?: (match: CrossSurfaceNavigationRouteTarget) => TPayload | null;
   },
 ): TPayload | null {
-  if (input.initialHadReadyState) {
-    return null;
-  }
-
-  return (
+  // Always drain the staged bundle so it cannot outlive its first use — even
+  // when the factory already peek-seeded initial state (`initialHadReadyState`
+  // true). Leaving it in the store lets a remount within the TTL window
+  // re-hydrate against a stale snapshot.
+  const consumed =
     input.consumeWarmPayload?.(input.match)
-    ?? consumeInitialWarmNavigationPayload<TPayload>(input.match)
-  );
+    ?? consumeInitialWarmNavigationPayload<TPayload>(input.match);
+  return input.initialHadReadyState ? null : consumed;
 }
 
 export async function runWorkspaceInitialAppShellLoad<

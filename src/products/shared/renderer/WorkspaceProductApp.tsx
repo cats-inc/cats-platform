@@ -95,9 +95,10 @@ import {
 } from "./appShellPresentation.js";
 import {
   buildCrossSurfaceNavigationMatchPath,
-  peekCrossSurfaceNavigationOptimisticState,
+  peekCrossSurfaceNavigationHandoffForMatch,
   peekCrossSurfaceNavigationSnapshot,
 } from "./crossSurfaceNavigationHandoff.js";
+import type { PendingDispatchHydration } from "./hooks/useComposerRequestLifecycle.js";
 import {
   createInitialGroupParticipants,
   createNextGroupTemporaryParticipant,
@@ -216,22 +217,46 @@ export function createWorkspaceProductApp({
       }),
       [currentNavigationPath, shellSurface],
     );
-    const pendingDispatchHydration = useMemo<{ channelId: string } | null>(() => {
+    const pendingDispatchHydration = useMemo<PendingDispatchHydration | null>(() => {
       if (!initialWarmPayload) {
         return null;
       }
-      const optimistic = peekCrossSurfaceNavigationOptimisticState({
+      const bundle = peekCrossSurfaceNavigationHandoffForMatch({
         surface: shellSurface,
         path: currentNavigationPath,
       });
-      if (!optimistic?.pendingExecution) {
+      if (!bundle?.optimisticState?.pendingExecution) {
         return null;
       }
-      const channelId =
-        optimistic.selectedChannelId
-        ?? initialWarmPayload.chat.selectedChannelId
-        ?? null;
-      return channelId ? { channelId } : null;
+      const { entityKind, entityId } = bundle.destination;
+      if (entityKind === 'channel') {
+        const channelId =
+          bundle.optimisticState.selectedChannelId
+          ?? initialWarmPayload.chat.selectedChannelId
+          ?? entityId
+          ?? null;
+        return channelId ? { kind: 'channel', channelId } : null;
+      }
+      if (entityKind === 'parallel-group') {
+        const groupId = entityId;
+        const group = initialWarmPayload.chat.parallelChatGroups.find(
+          (candidate) => candidate.id === groupId,
+        );
+        if (!group || group.memberChannelIds.length === 0) {
+          return null;
+        }
+        const activeChannelId =
+          bundle.optimisticState.selectedChannelId
+          ?? initialWarmPayload.chat.selectedChannelId
+          ?? group.memberChannelIds[0];
+        return {
+          kind: 'parallel',
+          groupId,
+          activeChannelId,
+          channelIds: group.memberChannelIds,
+        };
+      }
+      return null;
     }, [currentNavigationPath, initialWarmPayload, shellSurface]);
 
     const {

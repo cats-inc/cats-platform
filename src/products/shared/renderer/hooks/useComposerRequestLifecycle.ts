@@ -5,6 +5,7 @@ import {
   clearBusyState,
   createChannelComposerBusyScope,
   createComposerBusyState,
+  createParallelChatBusyState,
   isParallelChatBusy,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
@@ -27,9 +28,14 @@ export interface ActiveSubmitRequest {
   channelIds?: string[];
 }
 
-export interface PendingDispatchHydration {
-  channelId: string;
-}
+export type PendingDispatchHydration =
+  | { kind: 'channel'; channelId: string }
+  | {
+      kind: 'parallel';
+      groupId: string;
+      activeChannelId: string;
+      channelIds: string[];
+    };
 
 function isDispatchRequestRunning<TPayload>(
   payload: TPayload,
@@ -76,7 +82,7 @@ export function useComposerRequestLifecycle<TPayload>(options: {
   const activeAckRequestRef = useRef<ActiveAckRequest | null>(null);
   const activeDispatchRequestRef = useRef<ActiveSubmitRequest | null>(null);
   const nextSubmitIdRef = useRef(1);
-  const hydratedDispatchChannelIdRef = useRef<string | null>(null);
+  const hydratedDispatchKeyRef = useRef<string | null>(null);
 
   useEffect(() => () => {
     activeAckRequestRef.current?.controller.abort();
@@ -88,28 +94,56 @@ export function useComposerRequestLifecycle<TPayload>(options: {
   // staged warm payload whose dispatch is still running on the backend, local
   // busy + active-request state start empty, so `useLiveIndicator` would skip
   // opening the channel stream and the watchdog below would never activate.
-  // Prime both from the handoff's optimistic signal so in-flight work surfaces.
+  // Prime both from the handoff's optimistic signal so in-flight work surfaces,
+  // branching on dispatch kind so parallel-group stop semantics stay intact.
   useEffect(() => {
     if (
       !hydratePendingDispatch
       || state.status !== 'ready'
       || activeDispatchRequestRef.current !== null
-      || hydratedDispatchChannelIdRef.current === hydratePendingDispatch.channelId
     ) {
       return;
     }
-    const { channelId } = hydratePendingDispatch;
-    if (!channelId || !isChannelDispatchRunning(state.payload, channelId)) {
+    const hydrationKey = hydratePendingDispatch.kind === 'channel'
+      ? hydratePendingDispatch.channelId
+      : hydratePendingDispatch.groupId;
+    if (!hydrationKey || hydratedDispatchKeyRef.current === hydrationKey) {
       return;
     }
-    hydratedDispatchChannelIdRef.current = channelId;
+
+    if (hydratePendingDispatch.kind === 'channel') {
+      const { channelId } = hydratePendingDispatch;
+      if (!isChannelDispatchRunning(state.payload, channelId)) {
+        return;
+      }
+      hydratedDispatchKeyRef.current = hydrationKey;
+      activeDispatchRequestRef.current = {
+        id: nextSubmitIdRef.current,
+        kind: 'channel',
+        channelId,
+      };
+      nextSubmitIdRef.current += 1;
+      setBusy(createComposerBusyState('send', createChannelComposerBusyScope(channelId)));
+      return;
+    }
+
+    const { groupId, activeChannelId, channelIds } = hydratePendingDispatch;
+    if (channelIds.length === 0 || !activeChannelId) {
+      return;
+    }
+    if (!channelIds.some((memberChannelId) => isChannelDispatchRunning(state.payload, memberChannelId))) {
+      return;
+    }
+    hydratedDispatchKeyRef.current = hydrationKey;
     activeDispatchRequestRef.current = {
       id: nextSubmitIdRef.current,
-      kind: 'channel',
-      channelId,
+      kind: 'parallel',
+      channelId: activeChannelId,
+      groupId,
+      channelIds,
     };
     nextSubmitIdRef.current += 1;
-    setBusy(createComposerBusyState('send', createChannelComposerBusyScope(channelId)));
+    setBusy(createParallelChatBusyState('dispatch'));
   }, [hydratePendingDispatch, isChannelDispatchRunning, setBusy, state]);
 
   useEffect(() => {
