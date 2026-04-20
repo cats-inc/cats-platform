@@ -13,7 +13,7 @@ import {
   resolveDraftHelperRegionVisibility,
   useDraftHelperChipVisibility,
 } from '../draftHelperChips.js';
-import { catInitials, isChatCat, truncatePath } from '../workspaceChatUtils.js';
+import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
 import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
 import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import {
@@ -22,6 +22,7 @@ import {
 import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DraftComposerStack } from './DraftComposerStack.js';
+import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import { ParallelDraftShadowBranchRow } from './ParallelDraftShadowBranchRow.js';
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
@@ -361,10 +362,6 @@ export function NewChatDraft({
   const shouldRenderGroupAddRow =
     !isDirectLaneContext && (isGroupDraft || showDraftGroupAddButton);
   const canAddAnotherGroupParticipant = !hasReachedGroupParticipantLimit;
-  const shouldShowGroupParticipantRoster =
-    groupComposerParticipants.length > 0
-    && !isParallelMode
-    && (entryPreset === 'group' || groupComposerParticipants.length > 1);
   const canRemoveGroupParticipant =
     !isSubmittingFirstTurn
     && (
@@ -593,54 +590,20 @@ export function NewChatDraft({
                   </div>
                   {shouldRenderGroupAddRow ? (
                     <div className="composerGroupAddRow">
-                      {shouldShowGroupParticipantRoster
-                        ? groupComposerParticipants.map((participant) => (
-                            <div key={participant.key} className="composerGroupAvatarSlot">
-                              <div
-                                className="catAvatar"
-                                role={isSubmittingFirstTurn ? undefined : 'button'}
-                                tabIndex={isSubmittingFirstTurn ? undefined : 0}
-                                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cats')}
-                                data-tooltip={participant.isCat && participant.executionLabel
-                                  ? `${participant.name} \u00b7 ${participant.executionLabel}`
-                                  : (participant.executionLabel || participant.name)}
-                                style={
-                                  participant.avatarUrl
-                                    ? {
-                                        backgroundImage: `url(${participant.avatarUrl})`,
-                                        backgroundSize: 'cover',
-                                        backgroundPosition: 'center',
-                                      }
-                                    : participant.isCat
-                                      ? { background: participant.avatarColor ?? '#8B7E74' }
-                                      : {
-                                          background: '#fff',
-                                          color: '#222',
-                                          border: '1px solid rgba(0, 0, 0, 0.15)',
-                                        }
-                                }
-                              >
-                                {participant.avatarUrl ? null : catInitials(participant.name)}
-                              </div>
-                              {canRemoveGroupParticipant ? (
-                                <button
-                                  type="button"
-                                  className={`composerGroupAvatarRemove${useDangerGroupRemoveHover ? ' composerGroupAvatarRemoveDanger' : ''}`}
-                                  aria-label={`Remove ${participant.name}`}
-                                  onClick={() => {
-                                    if (participant.isCat && participant.catId) {
-                                      onToggleDraftCat(participant.catId);
-                                    } else if (participant.participantId) {
-                                      onRemoveDraftTemporaryParticipant(participant.participantId);
-                                    }
-                                  }}
-                                >
-                                  &times;
-                                </button>
-                              ) : null}
-                            </div>
-                          ))
-                        : null}
+                      <BranchAudienceRoster
+                        audienceParticipants={groupComposerParticipants}
+                        isSubmittingFirstTurn={isSubmittingFirstTurn}
+                        canRemoveParticipant={canRemoveGroupParticipant}
+                        useDangerRemoveHover={useDangerGroupRemoveHover}
+                        onAvatarClick={() => openSidePanelTo('cats')}
+                        onRemoveParticipant={(participant) => {
+                          if (participant.isCat && participant.catId) {
+                            onToggleDraftCat(participant.catId);
+                          } else if (participant.participantId) {
+                            onRemoveDraftTemporaryParticipant(participant.participantId);
+                          }
+                        }}
+                      />
                       {renderCollaborateAddControl({
                         showHint: !hideDraftGroupHint,
                         accent: accentGroupAddButton,
@@ -821,7 +784,6 @@ export function NewChatDraft({
                     onSetAudienceKeys={onSetParallelBranchAudienceKeys}
                     onToggleWorkflowShape={onToggleParallelBranchWorkflowShape}
                     onOpenAudience={() => openSidePanelTo('cats')}
-                    onOpenTarget={() => openSidePanelTo(`parallel:${i + 1}`)}
                     onRemoveParallelTarget={onRemoveParallelTarget}
                     canRemoveParallelTarget={parallelTargets.length > minParallelTargetCount}
                     useDangerParallelRemoveHover={useDangerParallelRemoveHover}

@@ -100,6 +100,7 @@ import {
 import {
   createInitialGroupParticipants,
   createNextGroupTemporaryParticipant,
+  createNextParallelTarget,
   createDraftTemporaryParticipant,
   reconcileDraftAudienceKeysAfterParticipantRemoval,
   resolveGenericDraftTemporaryParticipants,
@@ -1203,42 +1204,67 @@ export function createWorkspaceProductApp({
       supportsStructuredDraftModes,
     ]);
     const onDraftParallelAddButtonClick = useCallback((): void => {
-      if (!supportsStructuredDraftModes) {
+      if (!supportsStructuredDraftModes || state.status !== "ready") {
         return;
       }
 
-      const seedAudienceKeys = resolveParallelAudienceSeed();
       const seedWorkflowShape = draftParallelBranchWorkflowShapes[0] ?? draftWorkflowShape;
-      // First transition into parallel mode: reseed branch 0 alongside
-      // the new compare branch so both rows share the audience the
-      // draft already had. Without this, a +Group draft expanded with
-      // +compare leaves branch 0 with the empty audienceKeys it was
-      // initialised with — the lead row's avatar roster disappears
-      // (shouldShowGroupParticipantRoster gates on !isParallelMode)
-      // and the audience chip migrates to branch 1, which the seed
-      // logic correctly populates from `resolveParallelAudienceSeed`.
-      // Default preset already used reset-on-first-transition; the
-      // group / parallel presets need the same treatment so the lead
-      // row carries the user's group audience into parallel mode.
+      // Smart-arrange: each new parallel branch boots with one fresh
+      // temp participant whose provider/model matches the next slot in
+      // the parallel-target rotation. This gives every shadow row its
+      // own distinct audience (e.g. row 1 → Codex, row 2 → Gemini,
+      // row 3 → Cursor, ...) instead of mirroring the lead row.
+      // The user can then +collab on the shadow row to grow it past
+      // M=1; only the lead row is required to keep M >= 2 (group
+      // semantics).
+      const nextTarget = createNextParallelTarget(
+        draftParallelChatTargets,
+        draftExecutionTarget,
+      );
+      const visibleCatNames = draftParticipants.participantCatIds
+        .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? "")
+        .filter((name) => name.trim().length > 0);
+      const newTemp = createDraftTemporaryParticipant({
+        provider: nextTarget.provider,
+        instance: nextTarget.instance,
+        model: nextTarget.model,
+        modelSelection: nextTarget.modelSelection,
+        takenNames: [
+          ...visibleCatNames,
+          ...draftTemporaryParticipants.map((participant) => participant.name),
+        ],
+        randomUUID: () =>
+          globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+      });
+      setDraftTemporaryParticipants((current) => [...current, newTemp]);
+      const newAudienceKey = `temp:${newTemp.participantId}`;
+
+      // First transition into parallel mode: seed branch 0 with the
+      // existing draft audience so the lead row's roster + chip stay
+      // wired to the M >= 2 group audience the user already chose.
+      // Subsequent +compare clicks leave the lead alone and just
+      // append a new shadow with its own fresh single participant.
       if (!hasVisibleParallelDraftTargets) {
-        resetDraftParallelChatTargets({
-          includeCompareTarget: true,
-          seedAudienceKeys,
-          seedWorkflowShape,
-        });
-        return;
+        const leadAudienceSeed = resolveParallelAudienceSeed();
+        onSetDraftParallelBranchAudienceKeys(0, leadAudienceSeed);
       }
       onAddDraftParallelChatTarget({
-        seedAudienceKeys,
+        seedAudienceKeys: [newAudienceKey],
         seedWorkflowShape,
       });
     }, [
+      draftExecutionTarget,
       draftParallelBranchWorkflowShapes,
+      draftParallelChatTargets,
+      draftParticipants.participantCatIds,
+      draftTemporaryParticipants,
       draftWorkflowShape,
       hasVisibleParallelDraftTargets,
       onAddDraftParallelChatTarget,
+      onSetDraftParallelBranchAudienceKeys,
       resolveParallelAudienceSeed,
-      resetDraftParallelChatTargets,
+      setDraftTemporaryParticipants,
+      state,
       supportsStructuredDraftModes,
     ]);
 

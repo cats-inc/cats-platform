@@ -1,7 +1,6 @@
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
-import {
-  buildAudienceParticipantFromExecutionTarget,
-} from '../audienceParticipantBuilder.js';
+import { buildAudienceParticipantFromExecutionTarget } from '../audienceParticipantBuilder.js';
+import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
 import type { ExecutionTargetValue } from './ExecutionTarget.js';
 import { AudienceChip } from './AudienceChip.js';
@@ -20,7 +19,6 @@ interface ParallelDraftShadowBranchRowProps {
   onSetAudienceKeys?: (branchIndex: number, keys: string[]) => void;
   onToggleWorkflowShape?: (branchIndex: number) => void;
   onOpenAudience?: () => void;
-  onOpenTarget: () => void;
   onRemoveParallelTarget?: (branchIndex: number) => void;
   canRemoveParallelTarget: boolean;
   useDangerParallelRemoveHover: boolean;
@@ -40,33 +38,36 @@ export function ParallelDraftShadowBranchRow({
   onSetAudienceKeys,
   onToggleWorkflowShape,
   onOpenAudience,
-  onOpenTarget,
   onRemoveParallelTarget,
   canRemoveParallelTarget,
   useDangerParallelRemoveHover,
 }: ParallelDraftShadowBranchRowProps) {
-  const showAudienceChip = audienceParticipants.length > 0;
-
+  // Fall back to a target-derived chip when the branch has no
+  // audienceKeys yet (legacy parallel-preset bootstraps that haven't
+  // been seeded with a temp participant). The chip on the right is
+  // never empty so each shadow row always has something to interact
+  // with.
+  const displayParticipants = audienceParticipants.length > 0
+    ? audienceParticipants
+    : [buildAudienceParticipantFromExecutionTarget(target, `parallel:${branchIndex}`)];
   return (
     <div className="parallelStubCard">
       <div className="parallelStubBranchRow">
         <div className="parallelStubAudienceControls">
-          {showAudienceChip ? (
-            <AudienceChip
-              audienceParticipants={audienceParticipants}
-              allParticipants={allParticipants}
-              onSetAudienceKeys={onSetAudienceKeys
-                ? (keys) => onSetAudienceKeys(branchIndex, keys)
-                : undefined}
-              onSingleClick={onOpenAudience}
-              disabled={isSubmittingFirstTurn}
-              maxSelectedParticipants={maxAudienceParticipants}
-              workflowShape={workflowShape}
-              onToggleWorkflowShape={onToggleWorkflowShape
-                ? () => onToggleWorkflowShape(branchIndex)
-                : undefined}
-            />
-          ) : null}
+          <BranchAudienceRoster
+            audienceParticipants={audienceParticipants}
+            isSubmittingFirstTurn={isSubmittingFirstTurn}
+            canRemoveParticipant={audienceParticipants.length >= 2}
+            useDangerRemoveHover={useDangerParallelRemoveHover}
+            onAvatarClick={onOpenAudience}
+            onRemoveParticipant={(participant) => {
+              if (!onSetAudienceKeys) return;
+              const nextKeys = audienceParticipants
+                .filter((p) => p.key !== participant.key)
+                .map((p) => p.key);
+              onSetAudienceKeys(branchIndex, nextKeys);
+            }}
+          />
           {canAddCollaborator ? (
             <button
               type="button"
@@ -84,9 +85,18 @@ export function ParallelDraftShadowBranchRow({
         </div>
         <div className="parallelStubTargetControls">
           <AudienceChip
-            audienceParticipants={[buildAudienceParticipantFromExecutionTarget(target, `parallel:${branchIndex}`)]}
-            onSingleClick={isSubmittingFirstTurn ? undefined : onOpenTarget}
+            audienceParticipants={displayParticipants}
+            allParticipants={allParticipants}
+            onSetAudienceKeys={onSetAudienceKeys
+              ? (keys) => onSetAudienceKeys(branchIndex, keys)
+              : undefined}
+            onSingleClick={onOpenAudience}
             disabled={isSubmittingFirstTurn}
+            maxSelectedParticipants={maxAudienceParticipants}
+            workflowShape={workflowShape}
+            onToggleWorkflowShape={onToggleWorkflowShape
+              ? () => onToggleWorkflowShape(branchIndex)
+              : undefined}
           />
           <button
             type="button"
