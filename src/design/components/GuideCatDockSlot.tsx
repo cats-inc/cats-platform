@@ -130,8 +130,12 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M5 3h8v8" />
-                  <path d="M13 3 4 12" />
+                  {/* 8x8 arrow centred on the viewBox centre (8, 8)
+                   * so it sits in the middle of the hover affordance.
+                   * Shared visual language with the sidebar footer's
+                   * runtime link icon. */}
+                  <path d="M4 4h8v8" />
+                  <path d="M4 12 12 4" />
                 </svg>
               </button>
             </>

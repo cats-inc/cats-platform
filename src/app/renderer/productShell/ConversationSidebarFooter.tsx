@@ -83,8 +83,13 @@ export function ConversationSidebarFooter<
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="M5 3h8v8" />
-            <path d="M13 3 4 12" />
+            {/* 8x8 arrow centred on (8, 8) so it sits in the middle
+             * of the 14x14 svg slot — and therefore in the middle of
+             * the 24x24 hover box it overlays. The previous path
+             * (bbox centre 8.5, 7.5) rendered visibly top-right of
+             * the hover affordance. */}
+            <path d="M4 4h8v8" />
+            <path d="M4 12 12 4" />
           </svg>
         </span>
       </button>
