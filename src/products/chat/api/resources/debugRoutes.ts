@@ -1,6 +1,7 @@
 import { sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
 import { readServerLiveTrace } from '../../../../shared/liveTrace.js';
 import { inspectCrossSurfaceNavigationHandoffTelemetry } from '../../../shared/renderer/crossSurfaceNavigationHandoff.js';
+import { inspectOriginSurfaceCompatibilityTelemetry } from '../originSurfaceCompatibilityTelemetry.js';
 import type { ChatApiRouteContext } from '../routeSupport.js';
 
 async function handleRestGetLiveTrace(
@@ -35,12 +36,29 @@ async function handleRestGetNavigationHandoffTelemetry(
   });
 }
 
+async function handleRestGetOriginSurfaceCompatibilityTelemetry(
+  context: ChatApiRouteContext,
+): Promise<void> {
+  if (!context.dependencies.config.debugLiveTrace) {
+    sendJson(context.response, 404, {
+      error: 'origin_surface_compatibility_debug_disabled',
+    });
+    return;
+  }
+
+  sendJson(context.response, 200, {
+    enabled: true,
+    compatibility: inspectOriginSurfaceCompatibilityTelemetry(),
+  });
+}
+
 export async function routeChatDebugResourceApi(
   context: ChatApiRouteContext,
 ): Promise<boolean> {
   if (
     context.url.pathname !== '/api/debug/live-trace'
     && context.url.pathname !== '/api/debug/navigation-handoff'
+    && context.url.pathname !== '/api/debug/origin-surface-compatibility'
   ) {
     return false;
   }
@@ -52,6 +70,11 @@ export async function routeChatDebugResourceApi(
 
   if (context.url.pathname === '/api/debug/navigation-handoff') {
     await handleRestGetNavigationHandoffTelemetry(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/debug/origin-surface-compatibility') {
+    await handleRestGetOriginSurfaceCompatibilityTelemetry(context);
     return true;
   }
 

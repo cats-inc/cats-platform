@@ -10,6 +10,10 @@ import {
   resetCrossSurfaceNavigationHandoffTelemetry,
   stageCrossSurfaceNavigationHandoff,
 } from '../build/server/products/shared/renderer/crossSurfaceNavigationHandoff.js';
+import {
+  recordOriginSurfaceCompatibilityFallback,
+  resetOriginSurfaceCompatibilityTelemetry,
+} from '../build/server/products/chat/api/originSurfaceCompatibilityTelemetry.js';
 import { routeChatDebugResourceApi } from '../build/server/products/chat/api/resources/debugRoutes.js';
 
 function createResponse() {
@@ -145,4 +149,50 @@ test('routeChatDebugResourceApi reports disabled navigation handoff telemetry wh
   assert.equal(handled, true);
   assert.equal(response.statusCode, 404);
   assert.equal(JSON.parse(response.body).error, 'navigation_handoff_debug_disabled');
+});
+
+test('routeChatDebugResourceApi returns origin-surface compatibility telemetry when enabled', async () => {
+  resetOriginSurfaceCompatibilityTelemetry();
+  recordOriginSurfaceCompatibilityFallback('channel', 'chat');
+  recordOriginSurfaceCompatibilityFallback('parallel_group', 'chat');
+
+  const response = createResponse();
+  const handled = await routeChatDebugResourceApi({
+    url: new URL('http://localhost/api/debug/origin-surface-compatibility'),
+    method: 'GET',
+    response,
+    dependencies: {
+      config: {
+        debugLiveTrace: true,
+      },
+    },
+  });
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = JSON.parse(response.body);
+  assert.equal(payload.enabled, true);
+  assert.equal(payload.compatibility.fallbackCount, 2);
+  assert.equal(payload.compatibility.fallbackTargetCounts.channel, 1);
+  assert.equal(payload.compatibility.fallbackTargetCounts.parallel_group, 1);
+  assert.equal(payload.compatibility.latestFallback.targetNoun, 'parallel_group');
+  resetOriginSurfaceCompatibilityTelemetry();
+});
+
+test('routeChatDebugResourceApi reports disabled origin-surface compatibility telemetry when the debug flag is off', async () => {
+  const response = createResponse();
+  const handled = await routeChatDebugResourceApi({
+    url: new URL('http://localhost/api/debug/origin-surface-compatibility'),
+    method: 'GET',
+    response,
+    dependencies: {
+      config: {
+        debugLiveTrace: false,
+      },
+    },
+  });
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 404);
+  assert.equal(JSON.parse(response.body).error, 'origin_surface_compatibility_debug_disabled');
 });
