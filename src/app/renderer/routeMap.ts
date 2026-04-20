@@ -1,12 +1,16 @@
 export type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
-import { isSettingsPath } from '../../shared/settingsRoute.js';
 import { isEnabledPlatformSurface, normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import { resolvePlatformSurfaceApiBase } from '../../shared/platformSurfaceApi.js';
+import {
+  isSettingsPath,
+} from '../../shared/platformRoutePaths.js';
 import {
   listPlatformSurfaceDescriptors,
   resolvePlatformSurfaceFromPath,
 } from '../../core/platformSurface.js';
+
+export { isPlatformNonProductPath } from '../../shared/platformRoutePaths.js';
 
 export interface PlatformSurfaceRoute {
   surface: PlatformSurfaceId;
@@ -26,27 +30,6 @@ export const PLATFORM_SURFACE_ROUTES = Object.fromEntries(
     } satisfies PlatformSurfaceRoute,
   ]),
 ) as Record<PlatformSurfaceId, PlatformSurfaceRoute>;
-
-export function isPlatformNonProductPath(pathname: string): boolean {
-  if (pathname === '/setup') {
-    return true;
-  }
-
-  if (
-    pathname === '/lobby'
-    || pathname.startsWith('/lobby/')
-    || pathname === '/products'
-    || pathname.startsWith('/products/')
-  ) {
-    return true;
-  }
-
-  if (isSettingsPath(pathname)) {
-    return true;
-  }
-
-  return false;
-}
 
 export function resolvePlatformSurfaceForPath(pathname: string): PlatformSurfaceId {
   return resolvePlatformSurfaceFromPath(pathname);

@@ -32,6 +32,11 @@ import {
 import {
   resolveClientGuideCatName,
 } from '../../shared/guideCatIdentity.js';
+import {
+  isLobbyPath,
+  isSetupPath,
+} from '../../shared/platformRoutePaths.js';
+import { isSettingsPath } from '../../shared/settingsRoute.js';
 
 interface GuideCatSidecarProps {
   guideCat: GuideCatRecord;
@@ -60,16 +65,16 @@ export function resolveGuideCatSidecarSurfaceMode(
   pathname: string,
   placement: 'floating' | 'docked' = 'floating',
 ): GuideCatSidecarSurfaceMode {
-  if (pathname === '/setup') {
+  if (isSetupPath(pathname)) {
     return 'hidden';
   }
-  if (pathname === '/settings' || pathname.startsWith('/settings/')) {
+  if (isSettingsPath(pathname)) {
     // Mirror resolveGuideCatSurfaceClass: a docked pill on /settings keeps
     // the sidecar alive (but it opens as a speech bubble — see
     // useGuideCatSidecarState) so it does not smother the settings canvas.
     return placement === 'docked' ? 'product' : 'hidden';
   }
-  return pathname === '/lobby' ? 'lobby' : 'product';
+  return isLobbyPath(pathname) ? 'lobby' : 'product';
 }
 
 export function CollapsedPill({

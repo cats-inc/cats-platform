@@ -36,6 +36,10 @@ import { prefetchProviderRegistryFromClientCache } from './providerRegistryClien
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
 import { isGuideCatEnabledStatus } from '../../shared/guideCatIdentity.js';
 import { isSettingsPath } from '../../shared/settingsRoute.js';
+import {
+  isLobbyPath,
+  isProductsPath,
+} from '../../shared/platformRoutePaths.js';
 import { createLazyProductSurface } from './productSurfaceEntries.js';
 
 type PlatformLoadState =
@@ -47,10 +51,6 @@ const PLATFORM_ENVELOPE_BACKGROUND_REFRESH_MS = 5_000;
 const ChatApp = createLazyProductSurface('chat');
 const WorkApp = createLazyProductSurface('work');
 const CodeApp = createLazyProductSurface('code');
-
-function isLobbyPath(pathname: string): boolean {
-  return pathname === '/lobby' || pathname.startsWith('/lobby/');
-}
 
 function resolveLoadingTitleForPath(pathname: string): string {
   const surface = resolvePlatformSurfaceForPath(pathname);
@@ -144,10 +144,8 @@ export function resolvePlatformDocumentTitle(input: {
   }
 
   if (
-    input.pathname === '/lobby'
-    || input.pathname.startsWith('/lobby/')
-    || input.pathname === '/products'
-    || input.pathname.startsWith('/products/')
+    isLobbyPath(input.pathname)
+    || isProductsPath(input.pathname)
   ) {
     return 'Cats';
   }

@@ -3,6 +3,7 @@ import type {
   GuideCatPlacement,
 } from '../../shared/platform-contract.js';
 import { GUIDE_CAT_FLOATING_ANCHOR_DEFAULT } from '../../shared/platform-contract.js';
+import { isLobbyPath, isSetupPath } from '../../shared/platformRoutePaths.js';
 import { isSettingsPath } from '../../shared/settingsRoute.js';
 
 export type GuideCatSurfaceClass = 'lobby' | 'workspace' | 'hidden';
@@ -35,7 +36,7 @@ export function resolveGuideCatSurfaceClass(
   pathname: string,
   placement: GuideCatPlacement = 'floating',
 ): GuideCatSurfaceClass {
-  if (pathname === '/setup') {
+  if (isSetupPath(pathname)) {
     return 'hidden';
   }
   const isSettingsRoute = isSettingsPath(pathname);
@@ -46,7 +47,7 @@ export function resolveGuideCatSurfaceClass(
     // no floating surface to anchor against inside the settings layout).
     return placement === 'docked' ? 'workspace' : 'hidden';
   }
-  if (pathname === '/lobby' || pathname.startsWith('/lobby/')) {
+  if (isLobbyPath(pathname)) {
     return 'lobby';
   }
   return 'workspace';
