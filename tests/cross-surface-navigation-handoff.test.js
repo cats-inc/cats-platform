@@ -168,6 +168,111 @@ test('conversation-shaped handoff bundles round-trip through the generic warm-na
   assert.deepEqual(consumed.snapshot?.appShellPayload, snapshotPayload);
 });
 
+test('targeted clear evicts only the matching staged route and keeps unrelated handoffs intact', () => {
+  clearCrossSurfaceNavigationHandoff();
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-clear-a',
+      route: {
+        surface: 'code',
+        path: '/code/chats/channel-clear-a',
+      },
+    },
+    createdAt: new Date().toISOString(),
+  });
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-clear-b',
+      route: {
+        surface: 'code',
+        path: '/code/chats/channel-clear-b',
+      },
+    },
+    createdAt: new Date().toISOString(),
+  });
+
+  clearCrossSurfaceNavigationHandoff({
+    surface: 'code',
+    path: '/code/chats/channel-clear-a',
+  });
+
+  const originalWarn = console.warn;
+  try {
+    console.warn = () => {};
+    assert.equal(
+      consumeCrossSurfaceNavigationHandoff({
+        surface: 'code',
+        path: '/code/chats/channel-clear-a',
+      }),
+      null,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  const remaining = consumeCrossSurfaceNavigationHandoff({
+    surface: 'code',
+    path: '/code/chats/channel-clear-b',
+  });
+  assert.ok(remaining);
+  assert.equal(remaining.destination.entityId, 'channel-clear-b');
+});
+
+test('targeted clear updates active staged telemetry targets without resetting counters', () => {
+  clearCrossSurfaceNavigationHandoff();
+  resetCrossSurfaceNavigationHandoffTelemetry();
+
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'work',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-telemetry-a',
+      route: {
+        surface: 'work',
+        path: '/work/chats/channel-telemetry-a',
+      },
+    },
+    createdAt: new Date().toISOString(),
+  });
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'draft-create-channel',
+    sourceSurface: 'chat',
+    targetSurface: 'work',
+    destination: {
+      entityKind: 'channel',
+      entityId: 'channel-telemetry-b',
+      route: {
+        surface: 'work',
+        path: '/work/chats/channel-telemetry-b',
+      },
+    },
+    createdAt: new Date().toISOString(),
+  });
+
+  clearCrossSurfaceNavigationHandoff({
+    surface: 'work',
+    path: '/work/chats/channel-telemetry-a',
+  });
+
+  const telemetry = inspectCrossSurfaceNavigationHandoffTelemetry();
+  assert.equal(telemetry.counters.stage, 2);
+  assert.deepEqual(
+    telemetry.activeStagedTargets.map((target) => target.entityId),
+    ['channel-telemetry-b'],
+  );
+});
+
 test('peek does not evict invalid or stale staged bundles; only consume does', () => {
   clearCrossSurfaceNavigationHandoff();
   const events = [];
