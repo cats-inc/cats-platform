@@ -130,7 +130,7 @@ separately so a single page's regression does not block others.
       - `<SettingsOptionRow>` with `layout="stack"` for the
         concurrent-response-layout `<select>`
       - Owner review before commit
-- [ ] **3.3** Migrate `PlatformSettingsRuntime.tsx`
+- [x] **3.3** Migrate `PlatformSettingsRuntime.tsx`
       - `<SettingsSection>` with a metrics grid inside (metrics
         layout is page-local CSS, not a new primitive)
       - `<SettingsStatusChip tone="ready|warm|muted">` for the chip
@@ -316,6 +316,7 @@ duplicated pattern with bare CSS classes where a primitive exists.
 | 2026-04-18 | Plan created alongside SPEC-073 / ADR-072 |
 | 2026-04-20 | Phase 3.1 complete — DesktopStartup migrated to primitives, owner-approved |
 | 2026-04-21 | Phase 3.2 complete — Chat + Draft builder sections on primitives, owner-approved |
+| 2026-04-21 | Phase 3.3 complete — Runtime page on primitives; `resolveRuntimeConnectionChip` returns `tone`; every section given a titled header with description |
 
 ---
 

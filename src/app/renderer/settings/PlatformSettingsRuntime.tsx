@@ -1,4 +1,10 @@
 import { resolveRuntimeConnectionChip } from '../../../design/components/runtimeChips.js';
+import {
+  SettingsSection,
+  SettingsSectionHeader,
+  SettingsStatusChip,
+  type SettingsStatusChipTone,
+} from '../../../design/components/settings/index.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
@@ -6,34 +12,19 @@ import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 function resolveRuntimeSetupChip(
   runtimeSetup: RuntimeSetupSummary,
-): { className: string; label: string } {
+): { tone: SettingsStatusChipTone; label: string } {
   switch (runtimeSetup.status) {
     case 'ready':
-      return {
-        className: 'statusChip statusChipReady',
-        label: 'Runtime ready',
-      };
+      return { tone: 'ready', label: 'Runtime ready' };
     case 'ready_to_apply':
-      return {
-        className: 'statusChip statusChipWarm',
-        label: 'Ready to apply',
-      };
+      return { tone: 'warm', label: 'Ready to apply' };
     case 'attention_required':
-      return {
-        className: 'statusChip statusChipWarm',
-        label: 'Needs remediation',
-      };
+      return { tone: 'warm', label: 'Needs remediation' };
     case 'scan_required':
-      return {
-        className: 'statusChip statusChipWarm',
-        label: 'Scan required',
-      };
+      return { tone: 'warm', label: 'Scan required' };
     case 'unavailable':
     default:
-      return {
-        className: 'statusChip statusChipWarm',
-        label: 'Setup unavailable',
-      };
+      return { tone: 'warm', label: 'Setup unavailable' };
   }
 }
 
@@ -51,14 +42,22 @@ export function PlatformSettingsRuntime({
       title="Runtime"
       products={payload.products}
     >
-      <div className="contentCard">
+      <SettingsSection
+        header={
+          <SettingsSectionHeader
+            title="Runtime status"
+            description={payload.runtimeSetup.summary}
+          />
+        }
+      >
         <div className="settingsChipRow">
-          <span className={runtimeChip.className}>{runtimeChip.label}</span>
-          <span className={runtimeSetupChip.className}>{runtimeSetupChip.label}</span>
+          <SettingsStatusChip tone={runtimeChip.tone}>
+            {runtimeChip.label}
+          </SettingsStatusChip>
+          <SettingsStatusChip tone={runtimeSetupChip.tone}>
+            {runtimeSetupChip.label}
+          </SettingsStatusChip>
         </div>
-        <p className="heroNote settingsCardNote">
-          {payload.runtimeSetup.summary}
-        </p>
         <div className="setupRuntimeMetrics">
           <div className="setupRuntimeMetric">
             <strong>{payload.runtimeSetup.availableCount}</strong>
@@ -73,11 +72,17 @@ export function PlatformSettingsRuntime({
             <span>need attention</span>
           </div>
         </div>
-      </div>
+      </SettingsSection>
 
       {payload.runtimeSetup.providersReadyToApply.length > 0 ? (
-        <div className="contentCard">
-          <h2>Ready providers</h2>
+        <SettingsSection
+          header={
+            <SettingsSectionHeader
+              title="Ready providers"
+              description="Providers detected on this machine that are ready to activate in the runtime."
+            />
+          }
+        >
           <ul className="setupRuntimeList">
             {payload.runtimeSetup.providersReadyToApply.map((entry) => (
               <li key={entry.provider}>
@@ -86,12 +91,18 @@ export function PlatformSettingsRuntime({
               </li>
             ))}
           </ul>
-        </div>
+        </SettingsSection>
       ) : null}
 
       {payload.runtimeSetup.providersNeedingAttention.length > 0 ? (
-        <div className="contentCard">
-          <h2>Need attention</h2>
+        <SettingsSection
+          header={
+            <SettingsSectionHeader
+              title="Need attention"
+              description="Providers the scan flagged for remediation before they can join the runtime."
+            />
+          }
+        >
           <ul className="setupRuntimeList">
             {payload.runtimeSetup.providersNeedingAttention.map((entry) => (
               <li key={entry.provider}>
@@ -105,14 +116,17 @@ export function PlatformSettingsRuntime({
               </li>
             ))}
           </ul>
-        </div>
+        </SettingsSection>
       ) : null}
 
-      <div className="contentCard">
-        <h2>Standalone setup</h2>
-        <p className="heroNote">
-          Open the standalone runtime setup when you need provider remediation or a deeper scan.
-        </p>
+      <SettingsSection
+        header={
+          <SettingsSectionHeader
+            title="Standalone setup"
+            description="Open the standalone runtime setup when you need provider remediation or a deeper scan."
+          />
+        }
+      >
         <a
           className="secondaryButton settingsInlineLink"
           href={PLATFORM_RUNTIME_SETUP_PATH}
@@ -121,7 +135,7 @@ export function PlatformSettingsRuntime({
         >
           Open Cats Runtime setup
         </a>
-      </div>
+      </SettingsSection>
     </PlatformSettingsShell>
   );
 }
