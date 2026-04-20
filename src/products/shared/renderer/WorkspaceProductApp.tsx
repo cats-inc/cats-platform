@@ -171,7 +171,6 @@ export type WorkspaceProductShellSurface = "work" | "code";
 
 export interface WorkspaceProductAppConfig {
   productName: "Work" | "Code";
-  chatPrefix: string;
   shellSurface: WorkspaceProductShellSurface;
   supportsStructuredDraftModes?: boolean;
   BootShell: ComponentType;
@@ -181,13 +180,13 @@ export interface WorkspaceProductAppConfig {
 
 export function createWorkspaceProductApp({
   productName,
-  chatPrefix,
   shellSurface,
   supportsStructuredDraftModes = false,
   BootShell,
   AppRoutesComponent,
   renderSidebar,
 }: WorkspaceProductAppConfig) {
+  const chatPrefix = platformSurfaceRoutePrefix(shellSurface);
   const useComposerSubmit =
     createUseComposerSubmit<ExecutionTargetValue>(chatPrefix);
 

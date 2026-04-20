@@ -6,7 +6,6 @@ import "./styles.css";
 
 export default createWorkspaceProductApp({
   productName: "Code",
-  chatPrefix: "/code",
   shellSurface: "code",
   supportsStructuredDraftModes: true,
   BootShell,
