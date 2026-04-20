@@ -91,6 +91,10 @@ import {
   resolveVisibleChatChannelId,
 } from '../../shared/renderer/appShellPresentation.js';
 import {
+  buildCrossSurfaceNavigationMatchPath,
+  peekCrossSurfaceNavigationSnapshot,
+} from '../../shared/renderer/crossSurfaceNavigationHandoff.js';
+import {
   activateChatChannel,
   fetchAppShell,
   resetChannelContinuity,
@@ -121,6 +125,17 @@ export default function App() {
     draftDefaultRecipientCatId,
     showingMyCatDirectLane: Boolean(routeMyCatId),
   });
+  const currentNavigationPath = useMemo(
+    () => buildCrossSurfaceNavigationMatchPath(location.pathname, location.search),
+    [location.pathname, location.search],
+  );
+  const initialWarmPayload = useMemo(
+    () => peekCrossSurfaceNavigationSnapshot({
+      surface: 'chat',
+      path: currentNavigationPath,
+    }),
+    [currentNavigationPath],
+  );
 
   const {
     state,
@@ -143,7 +158,9 @@ export default function App() {
     channelFiles,
     setChannelFiles,
   } = useWorkspaceAppTransientState<AppLoadState, CatFormState>({
-    initialState: { status: 'loading' },
+    initialState: initialWarmPayload
+      ? { status: 'ready', payload: initialWarmPayload }
+      : { status: 'loading' },
     createEmptyCatForm: emptyCatForm,
     pickGreeting,
   });
@@ -918,6 +935,8 @@ export default function App() {
     setState,
     navigate,
     busy,
+    surface: 'chat',
+    currentPath: currentNavigationPath,
     routeChannelId,
     routeChannelExists,
     selectedChannelId,

@@ -64,6 +64,10 @@ function normalizeRoutePath(path: string): string {
   return path.trim();
 }
 
+export function buildCrossSurfaceNavigationMatchPath(pathname: string, search = ''): string {
+  return normalizeRoutePath(`${pathname}${search}`);
+}
+
 export function isImplementedCrossSurfaceNavigationHandoffKind(
   kind: CrossSurfaceNavigationHandoffKind,
 ): kind is ImplementedCrossSurfaceNavigationHandoffKind {
@@ -89,6 +93,23 @@ export function stageCrossSurfaceNavigationHandoff(
 
 export function peekCrossSurfaceNavigationHandoff(): CrossSurfaceNavigationHandoffBundle | null {
   return stagedCrossSurfaceNavigationHandoff;
+}
+
+export function peekCrossSurfaceNavigationHandoffForMatch(
+  match: CrossSurfaceNavigationHandoffMatch,
+): CrossSurfaceNavigationHandoffBundle | null {
+  const stagedBundle = stagedCrossSurfaceNavigationHandoff;
+  if (!stagedBundle || !matchesCrossSurfaceNavigationHandoff(stagedBundle, match)) {
+    return null;
+  }
+
+  return stagedBundle;
+}
+
+export function peekCrossSurfaceNavigationSnapshot(
+  match: CrossSurfaceNavigationHandoffMatch,
+): AppShellPayload | null {
+  return peekCrossSurfaceNavigationHandoffForMatch(match)?.snapshot?.appShellPayload ?? null;
 }
 
 export function clearCrossSurfaceNavigationHandoff(): void {

@@ -1,6 +1,7 @@
 import {
   startTransition,
   useEffect,
+  useRef,
   type Dispatch,
   type SetStateAction,
 } from 'react';
@@ -10,6 +11,7 @@ import {
   doesComposerSelectionBlockChannelRoute,
 } from '../../../../shared/composer.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { AppShellPayload, ChatChannelSummary } from '../../api/workspaceContracts.js';
 import {
   fetchAppShell as fetchWorkspaceAppShell,
@@ -24,6 +26,9 @@ import {
 import { shouldWakeRouteChannelOnEntry, type SelectedChannelView } from '../../channelEntry.js';
 import { isDirectLaneChannel } from '../../channelTopology.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
+import {
+  consumeCrossSurfaceNavigationHandoff,
+} from '../crossSurfaceNavigationHandoff.js';
 
 const APP_SHELL_BACKGROUND_REFRESH_MS = 5_000;
 
@@ -57,6 +62,8 @@ export interface WorkspaceAppShellRoutingOptions<
   setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
   navigate: NavigateFunction;
   busy: WorkspaceBusyState;
+  surface: PlatformSurfaceId;
+  currentPath: string;
   chatPrefix: string;
   routeChannelId: string | null;
   routeChannelExists: boolean;
@@ -89,6 +96,8 @@ export function useWorkspaceAppShellRouting<
     setState,
     navigate,
     busy,
+    surface,
+    currentPath,
     chatPrefix,
     routeChannelId,
     routeChannelExists,
@@ -145,6 +154,11 @@ export function useWorkspaceAppShellRouting<
     readySelectedChannel && isDirectLaneChannel(readySelectedChannel)
       ? readySelectedChannel.roomRouting.defaultRecipientId ?? null
       : null;
+  const initialNavigationMatchRef = useRef({
+    surface,
+    path: currentPath,
+  });
+  const initialHadReadyStateRef = useRef(state.status === 'ready');
 
   function shouldApplyBackgroundRefresh(
     currentPayload: TPayload,
@@ -162,6 +176,17 @@ export function useWorkspaceAppShellRouting<
 
   useEffect(() => {
     const controller = new AbortController();
+    const warmNavigationHandoff = consumeCrossSurfaceNavigationHandoff({
+      surface: initialNavigationMatchRef.current.surface,
+      path: initialNavigationMatchRef.current.path,
+    });
+    const warmPayload = warmNavigationHandoff?.snapshot?.appShellPayload as TPayload | undefined;
+
+    if (warmPayload && !initialHadReadyStateRef.current) {
+      startTransition(() => {
+        setState({ status: 'ready', payload: warmPayload });
+      });
+    }
 
     void fetchAppShell(controller.signal)
       .then((payload) => {
@@ -170,7 +195,11 @@ export function useWorkspaceAppShellRouting<
         });
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
+        if (
+          !controller.signal.aborted
+          && !warmPayload
+          && !initialHadReadyStateRef.current
+        ) {
           setState({
             status: 'error',
             message: error instanceof Error ? error.message : 'Unknown renderer error',
@@ -179,7 +208,7 @@ export function useWorkspaceAppShellRouting<
       });
 
     return () => controller.abort();
-  }, [setState]);
+  }, [fetchAppShell, setState]);
 
   useEffect(() => {
     if (

@@ -94,6 +94,10 @@ import {
   resolveVisibleChatChannelId,
 } from "./appShellPresentation.js";
 import {
+  buildCrossSurfaceNavigationMatchPath,
+  peekCrossSurfaceNavigationSnapshot,
+} from "./crossSurfaceNavigationHandoff.js";
+import {
   createInitialGroupParticipants,
   createNextGroupTemporaryParticipant,
   createDraftTemporaryParticipant,
@@ -200,6 +204,17 @@ export function createWorkspaceProductApp({
     const effectiveNewChatPreset = supportsStructuredDraftModes ? newChatPreset : "default";
     const showingParallelChatDraft = effectiveNewChatPreset === "parallel";
     const showingGenericNewChatDraft = !draftDefaultRecipientCatId;
+    const currentNavigationPath = useMemo(
+      () => buildCrossSurfaceNavigationMatchPath(location.pathname, location.search),
+      [location.pathname, location.search],
+    );
+    const initialWarmPayload = useMemo(
+      () => peekCrossSurfaceNavigationSnapshot({
+        surface: shellSurface,
+        path: currentNavigationPath,
+      }),
+      [currentNavigationPath, shellSurface],
+    );
 
     const {
       state,
@@ -222,7 +237,9 @@ export function createWorkspaceProductApp({
       channelFiles,
       setChannelFiles,
     } = useWorkspaceAppTransientState<AppLoadState, CatFormState>({
-      initialState: { status: "loading" },
+      initialState: initialWarmPayload
+        ? { status: "ready", payload: initialWarmPayload }
+        : { status: "loading" },
       createEmptyCatForm: emptyCatForm,
       pickGreeting,
     });
@@ -1094,6 +1111,8 @@ export function createWorkspaceProductApp({
       setState,
       navigate,
       busy,
+      surface: shellSurface,
+      currentPath: currentNavigationPath,
       chatPrefix,
       routeChannelId,
       routeChannelExists,
