@@ -84,9 +84,19 @@
 
 .settings-option-row[data-layout='stack'] {
   display: grid;
-  grid-auto-flow: row;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
-  justify-content: start;
+}
+
+/* In stack layout the control sits on its own row, so the wrapper switches
+ * from `inline-flex` (content-sized, the inline default) to a block that
+ * fills the row. Form controls inside carry `width: 100%` from their
+ * component classes (.textInput, etc.), so this makes the <select> /
+ * <input> / <textarea> width independent of the label/description text
+ * length above — a narrow description no longer narrows the control. */
+.settings-option-row[data-layout='stack'] .settings-option-row__control {
+  display: block;
+  width: 100%;
 }
 
 .settings-option-row[data-choice='true'] {
