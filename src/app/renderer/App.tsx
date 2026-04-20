@@ -1,6 +1,5 @@
 import {
   Suspense,
-  lazy,
   startTransition,
   useCallback,
   useEffect,
@@ -31,6 +30,7 @@ import { fetchPlatformEnvelope } from './setup/api';
 import { prefetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
 import { isGuideCatEnabledStatus } from '../../shared/guideCatIdentity.js';
+import { createLazyProductSurface } from './productSurfaceEntries.js';
 
 type PlatformLoadState =
   | { status: 'loading' }
@@ -38,9 +38,9 @@ type PlatformLoadState =
   | { status: 'error'; message: string };
 
 const PLATFORM_ENVELOPE_BACKGROUND_REFRESH_MS = 5_000;
-const ChatApp = lazy(() => import('../../products/chat/renderer/App'));
-const WorkApp = lazy(() => import('../../products/work/renderer/App'));
-const CodeApp = lazy(() => import('../../products/code/renderer/App'));
+const ChatApp = createLazyProductSurface('chat');
+const WorkApp = createLazyProductSurface('work');
+const CodeApp = createLazyProductSurface('code');
 
 function isLobbyPath(pathname: string): boolean {
   return pathname === '/lobby' || pathname.startsWith('/lobby/');
