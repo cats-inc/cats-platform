@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   buildCrossSurfaceChannelPath,
   buildCrossSurfaceNavigationPath,
+  resolveCrossSurfaceNavigationPrefetchSurface,
   resolveCrossSurfaceNavigationRouteTarget,
 } from '../src/products/shared/renderer/crossSurfaceNavigationRegistry.js';
 
@@ -60,5 +61,21 @@ test('registry keeps reserved entity kinds on the explicit throw path until they
       entityId: 'artifact-1',
     }),
     /No cross-surface navigation path builder is registered for artifact/u,
+  );
+});
+
+test('prefetch surface resolution accepts either a raw surface or a navigation target shape', () => {
+  assert.equal(resolveCrossSurfaceNavigationPrefetchSurface('chat'), 'chat');
+  assert.equal(
+    resolveCrossSurfaceNavigationPrefetchSurface({
+      surface: 'code',
+    }),
+    'code',
+  );
+  assert.equal(
+    resolveCrossSurfaceNavigationPrefetchSurface({
+      surface: 'work',
+    }),
+    'work',
   );
 });

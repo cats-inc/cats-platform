@@ -58,12 +58,18 @@ export function resolveCrossSurfaceNavigationRouteTarget(
   };
 }
 
+export function resolveCrossSurfaceNavigationPrefetchSurface(
+  surfaceOrTarget: PlatformSurfaceId | Pick<CrossSurfaceNavigationTarget, 'surface'>,
+): PlatformSurfaceId {
+  return typeof surfaceOrTarget === 'string'
+    ? surfaceOrTarget
+    : surfaceOrTarget.surface;
+}
+
 export function prefetchCrossSurfaceNavigationTarget(
   surfaceOrTarget: PlatformSurfaceId | Pick<CrossSurfaceNavigationTarget, 'surface'>,
 ): Promise<unknown> {
-  const surface =
-    typeof surfaceOrTarget === 'string'
-      ? surfaceOrTarget
-      : surfaceOrTarget.surface;
-  return prefetchProductSurface(surface);
+  return prefetchProductSurface(
+    resolveCrossSurfaceNavigationPrefetchSurface(surfaceOrTarget),
+  );
 }
