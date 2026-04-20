@@ -85,6 +85,68 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
+function createCodeAssistPayload(): AppShellPayload {
+  return {
+    ...createPayload(),
+    guideCatAssist: {
+      codeNewDraft: {
+        scopeKey: 'code:new:default:default',
+        renderSource: 'cache',
+        cacheHit: true,
+        missing: false,
+        stale: false,
+        refreshEligible: false,
+        surfaceDisabled: false,
+        lastFailure: null,
+        bundle: {
+          bundleId: 'code:new:default:default',
+          scope: {
+            surfaceId: 'code:new',
+            surfaceMode: 'default',
+            audienceState: 'default',
+          },
+          content: {
+            greeting: 'Pick a small coding task.',
+            entryChips: [
+              {
+                id: 'code-pomodoro',
+                label: 'Pomodoro app',
+                prompt: 'Write a small pomodoro timer app.',
+              },
+              {
+                id: 'code-fix-bug',
+                label: 'Fix a bug',
+                prompt: 'Find and fix a bug in this codebase.',
+              },
+              {
+                id: 'code-refactor',
+                label: 'Refactor code',
+                prompt: 'Refactor this code without changing behavior.',
+              },
+              {
+                id: 'code-hidden',
+                label: 'Hidden helper',
+                prompt: 'This helper should not render.',
+              },
+            ],
+          },
+          provenance: {
+            originMode: 'runtime',
+            refreshContextHash: 'gca:v1:test-code',
+            missionId: null,
+            runId: null,
+          },
+          freshness: {
+            generatedAt: '2026-04-17T12:00:00.000Z',
+            expiresAt: null,
+            lastRefreshStatus: 'ok',
+          },
+        },
+      },
+    },
+  } as AppShellPayload;
+}
+
 test('new code draft publishes code-specific copy overrides for the shared workspace draft', () => {
   assert.equal(NEW_CODE_DRAFT_COPY.greeting, 'Ready to code.');
   assert.equal(
@@ -136,65 +198,7 @@ test('new code default draft prefers payload-backed assist greeting and shows up
     <NewChatDraft
       {...createProps({
         greeting: 'Legacy code greeting.',
-        payload: {
-          ...createPayload(),
-          guideCatAssist: {
-            codeNewDraft: {
-              scopeKey: 'code:new:default:default',
-              renderSource: 'cache',
-              cacheHit: true,
-              missing: false,
-              stale: false,
-              refreshEligible: false,
-              surfaceDisabled: false,
-              lastFailure: null,
-              bundle: {
-                bundleId: 'code:new:default:default',
-                scope: {
-                  surfaceId: 'code:new',
-                  surfaceMode: 'default',
-                  audienceState: 'default',
-                },
-                content: {
-                  greeting: 'Pick a small coding task.',
-                  entryChips: [
-                    {
-                      id: 'code-pomodoro',
-                      label: 'Pomodoro app',
-                      prompt: 'Write a small pomodoro timer app.',
-                    },
-                    {
-                      id: 'code-fix-bug',
-                      label: 'Fix a bug',
-                      prompt: 'Find and fix a bug in this codebase.',
-                    },
-                    {
-                      id: 'code-refactor',
-                      label: 'Refactor code',
-                      prompt: 'Refactor this code without changing behavior.',
-                    },
-                    {
-                      id: 'code-hidden',
-                      label: 'Hidden helper',
-                      prompt: 'This helper should not render.',
-                    },
-                  ],
-                },
-                provenance: {
-                  originMode: 'runtime',
-                  refreshContextHash: 'gca:v1:test-code',
-                  missionId: null,
-                  runId: null,
-                },
-                freshness: {
-                  generatedAt: '2026-04-17T12:00:00.000Z',
-                  expiresAt: null,
-                  lastRefreshStatus: 'ok',
-                },
-              },
-            },
-          },
-        } as AppShellPayload,
+        payload: createCodeAssistPayload(),
       })}
     />,
   );
@@ -211,31 +215,21 @@ test('new code default draft prefers payload-backed assist greeting and shows up
 });
 
 test('new code helper chips stay visible while the user types manually', () => {
+  const assistPayload = createCodeAssistPayload();
+  const assistReadModel = assistPayload.guideCatAssist?.codeNewDraft;
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
         composerDraft: 'User typed this manually.',
         payload: {
-          ...createPayload(),
+          ...assistPayload,
           guideCatAssist: {
             codeNewDraft: {
-              scopeKey: 'code:new:default:default',
-              renderSource: 'cache',
-              cacheHit: true,
-              missing: false,
-              stale: false,
-              refreshEligible: false,
-              surfaceDisabled: false,
-              lastFailure: null,
+              ...assistReadModel!,
               bundle: {
-                bundleId: 'code:new:default:default',
-                scope: {
-                  surfaceId: 'code:new',
-                  surfaceMode: 'default',
-                  audienceState: 'default',
-                },
+                ...assistReadModel!.bundle,
                 content: {
-                  greeting: 'Pick a small coding task.',
+                  ...assistReadModel!.bundle.content,
                   entryChips: [
                     {
                       id: 'code-pomodoro',
@@ -245,15 +239,8 @@ test('new code helper chips stay visible while the user types manually', () => {
                   ],
                 },
                 provenance: {
-                  originMode: 'runtime',
+                  ...assistReadModel!.bundle.provenance,
                   refreshContextHash: 'gca:v1:test-code-manual-typing',
-                  missionId: null,
-                  runId: null,
-                },
-                freshness: {
-                  generatedAt: '2026-04-17T12:00:00.000Z',
-                  expiresAt: null,
-                  lastRefreshStatus: 'ok',
                 },
               },
             },
@@ -264,6 +251,40 @@ test('new code helper chips stay visible while the user types manually', () => {
   );
 
   assert.match(markup, />Pomodoro app</u);
+});
+
+test('team code and peer code drafts reuse the same code helper chips', () => {
+  const groupMarkup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'group',
+        payload: createCodeAssistPayload(),
+      })}
+    />,
+  );
+  const parallelMarkup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'parallel',
+        payload: createCodeAssistPayload(),
+        parallelTargets: [
+          {
+            provider: 'claude',
+            instance: 'native',
+            model: 'claude-sonnet',
+            modelSelection: null,
+          },
+        ],
+      })}
+    />,
+  );
+
+  for (const markup of [groupMarkup, parallelMarkup]) {
+    assert.match(markup, />Pomodoro app</u);
+    assert.match(markup, />Fix a bug</u);
+    assert.match(markup, />Refactor code</u);
+    assert.doesNotMatch(markup, />Hidden helper</u);
+  }
 });
 
 test('new code solo drafts without an explicit direct-lane route do not render the composer stack', () => {

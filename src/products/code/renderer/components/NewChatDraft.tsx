@@ -30,6 +30,21 @@ export type {
   NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
 
+function resolveCodeDraftHelperChips(props: NewChatDraftProps): Array<{
+  id: string;
+  label: string;
+  prompt: string;
+}> {
+  return (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
+    .filter((chip) => chip.prompt.trim().length > 0)
+    .slice(0, 3)
+    .map((chip) => ({
+      id: chip.id,
+      label: chip.label?.trim() || chip.prompt,
+      prompt: chip.prompt,
+    }));
+}
+
 function buildWorkspaceDraftProps(input: {
   props: NewChatDraftProps;
   visibleHelperChips: Array<{
@@ -126,6 +141,7 @@ function CodeGroupParallelDraft(props: NewChatDraftProps) {
     props.payload.chat.advancedDraftControls,
     'code',
   );
+  const helperChips = resolveCodeDraftHelperChips(props);
   const showCrossGroupButton = advancedDraftControlsEnabled && props.entryPreset === 'parallel';
   const { permissionChip, whereExtras } = useDraftSessionChips({
     draftCwd: props.draftCwd,
@@ -137,6 +153,13 @@ function CodeGroupParallelDraft(props: NewChatDraftProps) {
     <ChatNewChatDraft
       {...props}
       preserveHelperChipsOnSelect
+      leadingStarterChips={helperChips.map((chip) => ({
+        id: chip.id,
+        label: chip.label,
+        onClick: () => {
+          props.onComposerChange(chip.prompt);
+        },
+      }))}
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
@@ -153,6 +176,7 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
     props.payload.chat.advancedDraftControls,
     'code',
   );
+  const availableHelperChips = resolveCodeDraftHelperChips(props);
   const showAdvancedEntryButtons =
     advancedDraftControlsEnabled
     && props.allowAddCat !== false
@@ -163,9 +187,6 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
     draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
     onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
   });
-  const availableHelperChips = (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
-    .filter((chip) => chip.prompt.trim().length > 0)
-    .slice(0, 3);
   const workspaceProps = buildWorkspaceDraftProps({
     props,
     visibleHelperChips: availableHelperChips,
