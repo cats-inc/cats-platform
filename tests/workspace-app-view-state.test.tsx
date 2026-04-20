@@ -272,3 +272,81 @@ test('Work app view state keeps shared settings and direct-lane derivation seman
   assert.equal(viewState.showBossCatAvatar, true);
   assert.deepEqual(Array.from(viewState.assignedCatIds), ['companion-cat']);
 });
+
+test('Work app view state keeps the direct-lane boot surface only until the lane hydrates', () => {
+  const payload = createPayload();
+  const routeDirectLaneSummary = payload.chat.channels[0] ?? null;
+
+  const bootingViewState = deriveWorkAppViewState({
+    pathname: '/work/my-cats/companion-cat',
+    payload,
+    draftDefaultRecipientCatId: 'companion-cat',
+    selectedChannel: null,
+    selectedDirectLane: null,
+    routeDirectLaneSummary,
+    showingMyCatDirectLane: true,
+    addCatOpen: false,
+    showingNewChatDraft: false,
+    draftCatIds: [],
+  });
+  const hydratedViewState = deriveWorkAppViewState({
+    pathname: '/work/my-cats/companion-cat',
+    payload,
+    draftDefaultRecipientCatId: 'companion-cat',
+    selectedChannel: null,
+    selectedDirectLane: payload.chat.selectedChannel,
+    routeDirectLaneSummary,
+    showingMyCatDirectLane: true,
+    addCatOpen: false,
+    showingNewChatDraft: false,
+    draftCatIds: [],
+  });
+
+  assert.equal(bootingViewState.showDirectLaneBoot, true);
+  assert.equal(hydratedViewState.showDirectLaneBoot, false);
+});
+
+test('Work app view state only opens Add Cat for existing rooms or generic drafts', () => {
+  const payload = createPayload();
+
+  const existingRoomViewState = deriveWorkAppViewState({
+    pathname: '/work/chats/direct-lane-1',
+    payload,
+    draftDefaultRecipientCatId: null,
+    selectedChannel: payload.chat.selectedChannel,
+    selectedDirectLane: null,
+    routeDirectLaneSummary: null,
+    showingMyCatDirectLane: false,
+    addCatOpen: true,
+    showingNewChatDraft: false,
+    draftCatIds: [],
+  });
+  const genericDraftViewState = deriveWorkAppViewState({
+    pathname: '/work/new',
+    payload,
+    draftDefaultRecipientCatId: null,
+    selectedChannel: null,
+    selectedDirectLane: null,
+    routeDirectLaneSummary: null,
+    showingMyCatDirectLane: false,
+    addCatOpen: true,
+    showingNewChatDraft: true,
+    draftCatIds: [],
+  });
+  const directDraftViewState = deriveWorkAppViewState({
+    pathname: '/work/new/companion-cat',
+    payload,
+    draftDefaultRecipientCatId: 'companion-cat',
+    selectedChannel: null,
+    selectedDirectLane: null,
+    routeDirectLaneSummary: null,
+    showingMyCatDirectLane: false,
+    addCatOpen: true,
+    showingNewChatDraft: true,
+    draftCatIds: [],
+  });
+
+  assert.equal(existingRoomViewState.showAddCatPanel, true);
+  assert.equal(genericDraftViewState.showAddCatPanel, true);
+  assert.equal(directDraftViewState.showAddCatPanel, false);
+});
