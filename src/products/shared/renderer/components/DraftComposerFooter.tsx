@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { CompareIcon } from './DraftBuilderIcons.js';
+
 export interface DraftComposerFooterProps {
   accessory?: ReactNode;
   showParallelAddButton?: boolean;
@@ -39,19 +41,7 @@ export function DraftComposerFooter({
             onClick={onAddParallelTarget}
             aria-label="Add parallel chat"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M8 3v10" />
-              <path d="M3 8h10" />
-            </svg>
+            <CompareIcon />
           </button>
         </div>
       ) : null}

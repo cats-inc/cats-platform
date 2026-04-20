@@ -1,5 +1,17 @@
 /* Composer plus menu and draft context */
 
+/*
+ * Single source of truth for the draft-builder teaching accent.
+ * Reserved for the lead row's +collaborate in +Group preset and the
+ * +compare button in +Parallel preset — the buttons that teach the
+ * user "click here". Stored as space-separated R G B channel values
+ * so the same colour can drive both rgb() and rgba() with different
+ * alphas without restating the hue.
+ */
+:root {
+  --draft-teaching-accent: 52 100 180;
+}
+
 .composerPlusButton {
   display: grid;
   width: 28px;
@@ -207,6 +219,7 @@
   max-width: none;
   margin: 0 0 0 auto;
   padding-right: 0;
+  transform: translateX(1px);
 }
 
 .parallelAddHint {
@@ -234,18 +247,18 @@
 }
 
 .parallelAddHintAccent {
-  color: rgba(60, 100, 180, 0.6);
+  color: rgb(var(--draft-teaching-accent) / 0.6);
 }
 
 .parallelAddButtonAccent {
-  border-color: rgba(60, 100, 180, 0.4);
-  color: rgba(60, 100, 180, 0.7);
+  border-color: rgb(var(--draft-teaching-accent) / 0.4);
+  color: rgb(var(--draft-teaching-accent) / 0.7);
 }
 
 .parallelAddButtonAccent:hover:not(:disabled) {
-  background: rgba(60, 100, 180, 0.08);
-  color: #3464b4;
-  border-color: rgba(60, 100, 180, 0.6);
+  background: rgb(var(--draft-teaching-accent) / 0.08);
+  color: rgb(var(--draft-teaching-accent));
+  border-color: rgb(var(--draft-teaching-accent) / 0.6);
 }
 
 .composerGroupAddRow {

@@ -4,6 +4,7 @@ import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
 import type { ExecutionTargetValue } from './ExecutionTarget.js';
 import { AudienceChip } from './AudienceChip.js';
+import { CollaborateIcon } from './DraftBuilderIcons.js';
 
 interface ParallelDraftShadowBranchRowProps {
   branchIndex: number;
@@ -83,10 +84,7 @@ export function ParallelDraftShadowBranchRow({
               onClick={() => onAddCollaborator(branchIndex)}
               aria-label="Add another model to collaborate"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 3v10" />
-                <path d="M3 8h10" />
-              </svg>
+              <CollaborateIcon />
             </button>
           ) : null}
         </div>
