@@ -181,6 +181,96 @@ test('group route does not show helper chips without runtime-backed assist conte
   assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
+test('default chat draft expanded to a group with runtime assist hides the chat-product fallback chip', () => {
+  // Reviewer-flagged regression for 8a5024fa: a +New (default)
+  // draft that the user expands by adding collaborators is treated
+  // as a group draft (draftStarterSuggestionContext.ts:25,
+  // `participantCount > 1`), so any payload-backed group assist
+  // chips surface via the shared composer's
+  // visibleStarterSuggestions. Without the new helperRegion
+  // priority rule, the chat-product Pomodoro fallback would still
+  // render alongside the runtime group chips because the
+  // chat-product wrapper still supplies it for entryPreset='default'.
+  const payload = createPayload();
+  payload.chat.newChatAssist = {
+    group: {
+      scopeKey: 'chat:new:group:default',
+      renderSource: 'cache',
+      cacheHit: true,
+      missing: false,
+      stale: false,
+      refreshEligible: false,
+      surfaceDisabled: false,
+      lastFailure: null,
+      bundle: {
+        bundleId: 'chat:new:group:default',
+        scope: {
+          surfaceId: 'chat:new',
+          surfaceMode: 'group',
+          audienceState: 'default',
+        },
+        content: {
+          greeting: 'Round up the room.',
+          entryChips: [
+            {
+              id: 'group-roles',
+              prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
+            },
+          ],
+        },
+        provenance: {
+          originMode: 'runtime',
+          refreshContextHash: 'gca:v1:test-default-expanded-runtime',
+          missionId: null,
+          runId: null,
+        },
+        freshness: {
+          generatedAt: '2026-04-17T12:00:00.000Z',
+          expiresAt: null,
+          lastRefreshStatus: 'ok',
+        },
+      },
+    },
+  } as typeof payload.chat.newChatAssist;
+
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload,
+        greeting: null,
+        // entryPreset omitted -> 'default'.
+        draftTemporaryParticipants: [
+          {
+            participantId: 'participant-a',
+            name: 'Reviewer A',
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+            modelSelection: null,
+            roleHint: null,
+          },
+          {
+            participantId: 'participant-b',
+            name: 'Reviewer B',
+            provider: 'claude',
+            instance: 'native',
+            model: 'claude-sonnet',
+            modelSelection: null,
+            roleHint: null,
+          },
+        ],
+      })}
+    />,
+  );
+
+  // The runtime group chip surfaces.
+  assert.match(markup, /Brief the group, split roles, and ask for a coordinated plan\./u);
+  // The chat-product Pomodoro fallback yields, even though the
+  // chat wrapper's `entryPreset === 'default' && !isParallelDraft`
+  // gate is still true.
+  assert.doesNotMatch(markup, /Pomodoro app/u);
+});
+
 test('advanced draft controls expose group and compare add buttons on the default chat draft without hint copy', () => {
   const target = {
     provider: 'claude',

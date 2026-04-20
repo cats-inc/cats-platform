@@ -54,6 +54,10 @@ function NewChatDraftInner(props: NewChatDraftProps) {
   // shared composer's `visibleStarterSuggestions`, not via this
   // chat-product fallback. Including those entries here previously
   // leaked the Pomodoro chip into surfaces that should stay clean.
+  // The shared composer additionally hides this fallback whenever a
+  // runtime starter suggestion list is non-empty (see helperRegion in
+  // ChatNewChatDraft.tsx), so a +New draft expanded to a group with
+  // runtime assist content does not show both chip sources at once.
   const showsChatStarterChip =
     !isDirectLaneDraft
     && entryPreset === 'default'

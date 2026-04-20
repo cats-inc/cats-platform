@@ -749,42 +749,59 @@ export function NewChatDraft({
               onAddParallelTarget={onAddParallelTarget}
             />
           )}
-          helperRegion={!isDirectLaneContext && (showDraftHelperChips || (leadingStarterChips && leadingStarterChips.length > 0)) ? (
-            <div className="draftPromptSuggestions">
-              <div className="chipRow">
-                {leadingStarterChips?.map((chip) => (
-                  <button
-                    key={chip.id}
-                    className="promptChip draftPromptChip"
-                    type="button"
-                    disabled={isSubmittingFirstTurn}
-                    onClick={() => {
-                      dismissDraftHelperChips();
-                      chip.onClick();
-                    }}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-                {showDraftHelperChips
-                  ? visibleStarterSuggestions.map((suggestion) => (
-                      <button
-                        key={suggestion.id}
-                        className="promptChip draftPromptChip"
-                        type="button"
-                        disabled={isSubmittingFirstTurn}
-                        onClick={() => {
-                          dismissDraftHelperChips();
-                          onComposerChange(suggestion.prompt);
-                        }}
-                      >
-                        {suggestion.prompt}
-                      </button>
-                    ))
-                  : null}
+          helperRegion={(() => {
+            if (isDirectLaneContext) return null;
+            const runtimeChipsVisible =
+              showDraftHelperChips && visibleStarterSuggestions.length > 0;
+            // Runtime-backed `newChatAssist` chips win over the
+            // product-supplied fallback when both exist, so a +New
+            // draft expanded into a group with runtime group chips
+            // does not pile the chat-product Pomodoro fallback on
+            // top. The fallback only renders when no runtime chip
+            // list is on screen.
+            const fallbackChipsVisible =
+              !runtimeChipsVisible
+              && Boolean(leadingStarterChips && leadingStarterChips.length > 0);
+            if (!runtimeChipsVisible && !fallbackChipsVisible) return null;
+            return (
+              <div className="draftPromptSuggestions">
+                <div className="chipRow">
+                  {fallbackChipsVisible
+                    ? leadingStarterChips?.map((chip) => (
+                        <button
+                          key={chip.id}
+                          className="promptChip draftPromptChip"
+                          type="button"
+                          disabled={isSubmittingFirstTurn}
+                          onClick={() => {
+                            dismissDraftHelperChips();
+                            chip.onClick();
+                          }}
+                        >
+                          {chip.label}
+                        </button>
+                      ))
+                    : null}
+                  {runtimeChipsVisible
+                    ? visibleStarterSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          className="promptChip draftPromptChip"
+                          type="button"
+                          disabled={isSubmittingFirstTurn}
+                          onClick={() => {
+                            dismissDraftHelperChips();
+                            onComposerChange(suggestion.prompt);
+                          }}
+                        >
+                          {suggestion.prompt}
+                        </button>
+                      ))
+                    : null}
+                </div>
               </div>
-            </div>
-          ) : null}
+            );
+          })()}
           shadowStack={isParallelMode && parallelTargets && parallelTargets.length > 1 ? (
             <div className="parallelStubStack">
               {parallelTargets.slice(1).map((target, i, arr) => (
